@@ -1,7 +1,9 @@
-from memanto.app.services.memory_parsing_service import MemoryParsingService
+from memanto.app.config import settings
 from memanto.app.core import MemoryRecord
+from memanto.app.services.memory_parsing_service import MemoryParsingService
 
-#1 Rule-based detection
+
+# 1 Rule-based detection
 def test_detect_preference():
     parser = MemoryParsingService()
 
@@ -20,7 +22,8 @@ def test_detect_preference():
 
     assert memory.type == "preference"
 
-#2 Do NOT override existing type
+
+# 2 Do NOT override existing type
 def test_no_override_existing_type():
     parser = MemoryParsingService()
 
@@ -38,9 +41,8 @@ def test_no_override_existing_type():
 
     assert memory.type == "fact"
 
-from memanto.app.config import settings
 
-#3. Config disabled
+# 3. Config disabled
 def test_auto_parse_disabled(monkeypatch):
     monkeypatch.setattr(settings, "AUTO_PARSE_ENABLED", False)
 
@@ -61,7 +63,8 @@ def test_auto_parse_disabled(monkeypatch):
 
     assert memory.type is None
 
-#4. Fallback to fact
+
+# 4. Fallback to fact
 def test_fallback_to_fact():
     parser = MemoryParsingService()
 
@@ -79,11 +82,10 @@ def test_fallback_to_fact():
     parser.parse_memory(memory)
 
     assert memory.type == "fact"
-    
-#5. LLM fallback is triggered
-def test_llm_fallback_triggered(monkeypatch):
-    from memanto.app.config import settings
 
+
+# 5. LLM fallback is triggered
+def test_llm_fallback_triggered(monkeypatch):
     monkeypatch.setattr(settings, "USE_LLM_FALLBACK", True)
 
     parser = MemoryParsingService()

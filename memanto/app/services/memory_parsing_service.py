@@ -4,10 +4,8 @@ Memory Parsing Service
 Auto-detect memory type before ingestion.
 """
 
-from typing import Optional
-
-from memanto.app.core import MemoryRecord
 from memanto.app.config import settings
+from memanto.app.core import MemoryRecord
 from memanto.app.services.memory_export_service import MEMORY_TYPE_ORDER
 
 
@@ -30,10 +28,10 @@ class MemoryParsingService:
         if memory.type:
             return memory
 
-# 3. Rule-based detection
+        # 3. Rule-based detection
         detected = self._rule_based(memory.content)
 
-# 4. LLM fallback (only if rule-based fails and enabled)
+        # 4. LLM fallback (only if rule-based fails and enabled)
         if not detected and settings.USE_LLM_FALLBACK:
             detected = self._llm_fallback(memory.content)
 
@@ -42,7 +40,7 @@ class MemoryParsingService:
 
         return memory
 
-    def _rule_based(self, text: str) -> Optional[str]:
+    def _rule_based(self, text: str) -> str | None:
         if not text:
             return None
         text = text.lower().strip()
@@ -87,9 +85,9 @@ class MemoryParsingService:
             return "fact"
 
         return None
-    
+
     # LLM fallback (optional, disabled by default for low token usage)
-    def _llm_fallback(self, text: str) -> Optional[str]:
+    def _llm_fallback(self, text: str) -> str | None:
         """Fallback using LLM when rule-based fails.
         Placeholder for now. Can integrate Moorcheh/LLM later."""
         return None

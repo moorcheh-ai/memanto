@@ -9,9 +9,9 @@ if TYPE_CHECKING:
     from moorcheh_sdk import MoorchehClient
 
 from memanto.app.core import MemoryRecord
+from memanto.app.services.memory_parsing_service import MemoryParsingService
 from memanto.app.utils.errors import MemoryError
 from memanto.app.utils.ids import generate_memory_id
-from memanto.app.services.memory_parsing_service import MemoryParsingService
 
 
 class MemoryWriteService:
@@ -51,8 +51,8 @@ class MemoryWriteService:
             now = datetime.utcnow()
             memory.created_at = now
             memory.updated_at = now
-    
-            # Auto parse memory type 
+
+            # Auto parse memory type
             parser = MemoryParsingService()
             memory = parser.parse_memory(memory)
 
