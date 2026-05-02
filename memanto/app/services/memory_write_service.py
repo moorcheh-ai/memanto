@@ -11,6 +11,7 @@ if TYPE_CHECKING:
 from memanto.app.core import MemoryRecord
 from memanto.app.utils.errors import MemoryError
 from memanto.app.utils.ids import generate_memory_id
+from memanto.app.services.memory_parsing_service import MemoryParsingService
 
 
 class MemoryWriteService:
@@ -50,6 +51,10 @@ class MemoryWriteService:
             now = datetime.utcnow()
             memory.created_at = now
             memory.updated_at = now
+    
+            # Auto parse memory type 
+            parser = MemoryParsingService()
+            memory = parser.parse_memory(memory)
 
             # Add namespace
             namespace = memory.get_scope().to_namespace()
@@ -117,6 +122,7 @@ class MemoryWriteService:
             # Enforce server-side timestamps for batch (single timestamp for all)
             now = datetime.utcnow()
 
+            parser = MemoryParsingService()
             for memory in memories:
                 try:
                     # Generate ID if not provided
@@ -126,6 +132,8 @@ class MemoryWriteService:
                     # Enforce server-side timestamps (never trust client)
                     memory.created_at = now
                     memory.updated_at = now
+
+                    memory = parser.parse_memory(memory)
 
                     # Add namespace
                     namespace = memory.get_scope().to_namespace()

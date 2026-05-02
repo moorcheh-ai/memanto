@@ -126,6 +126,10 @@ class Settings(BaseSettings):
     # Schedule Configuration
     MEMANTO_SCHEDULE_TIME: str = "23:55"
 
+    # Auto Parsing Configuration
+    AUTO_PARSE_ENABLED: bool = True
+    USE_LLM_FALLBACK: bool = False
+
     model_config = SettingsConfigDict(
         env_file=".env", case_sensitive=True, extra="ignore"
     )
