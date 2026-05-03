@@ -1,0 +1,66 @@
+Sample recording transcript. This is the intended flow to record after setting
+MOORCHEH_API_KEY. Memory IDs and scores will differ on each run.
+
+$ python examples/crewai_memanto_memory_demo/crewai_memanto_memory_demo.py --phase store --namespace crewai-memanto-recording
+
+========================================================================
+[Session 1] Research Agent storing findings in Memanto
+========================================================================
+[CrewAI role] Research Agent
+[Memanto] agent=crewai-memanto-recording namespace=memanto_agent_crewai-memanto-recording
+[Topic] AI customer support automation
+[Memanto] Stored memory: fact id=<memory-id>
+[Memanto] Stored memory: preference id=<memory-id>
+[Memanto] Stored memory: artifact id=<memory-id>
+
+[Session 1] Complete. Start a later run with:
+  python examples/crewai_memanto_memory_demo/crewai_memanto_memory_demo.py --phase recall
+
+$ python examples/crewai_memanto_memory_demo/crewai_memanto_memory_demo.py --phase recall --simulate-24h --namespace crewai-memanto-recording
+
+========================================================================
+[Session 2] Writer Agent recalling Memanto memory (24 hours later)
+========================================================================
+[CrewAI role] Writer Agent
+[Boundary] No Session 1 Python variables are used in this phase.
+[Memanto] Running semantic recall for prior research and preferences.
+[Memanto] Retrieved memories from durable storage:
+  1. [fact] AI customer support automation: automation findings
+     id=<memory-id>
+     Research finding for AI customer support automation: ...
+  2. [preference] AI customer support automation: writer preference
+     id=<memory-id>
+     User preference for AI customer support automation: ...
+  3. [artifact] AI customer support automation: task outcome
+     id=<memory-id>
+     Task outcome for AI customer support automation: ...
+
+[Writer Agent] Current preference used:
+  User preference for AI customer support automation: write the final brief...
+
+[Writer Agent] Draft based only on recalled Memanto context:
+  Brief for AI customer support automation:
+  Preference: User preference for AI customer support automation...
+  Use these recalled points:
+  - Research finding for AI customer support automation...
+  - User preference for AI customer support automation...
+  - Task outcome for AI customer support automation...
+  Recommendation: ship a scoped agent workflow, persist outcomes in Memanto...
+
+$ python examples/crewai_memanto_memory_demo/crewai_memanto_memory_demo.py --phase update --namespace crewai-memanto-recording
+
+========================================================================
+[Contradiction Test] Updating an old preference in Memanto
+========================================================================
+[Memanto] Storing old preference first.
+[Memanto] Stored old preference id=<old-memory-id>
+[Memanto] Storing corrected preference with supersession metadata.
+[Memanto] Stored corrected preference id=<new-memory-id>
+[Memanto] Recalling current-only preferences.
+[Result] Current preferences returned by Memanto:
+  1. [preference] AI customer support automation: current tone preference
+     id=<new-memory-id>
+     Preference key demo-tone for AI customer support automation: CURRENT...
+
+[Result] Latest preference used:
+  Preference key demo-tone for AI customer support automation: CURRENT...
