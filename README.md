@@ -201,6 +201,92 @@ If you use MEMANTO in your research, please cite:
 
 ---
 
+## 🔗 CrewAI Integration - Best-in-Class Memory for Agent Teams
+
+We've built a best-in-class integration between CrewAI and Memanto's Agentic Memory. This integration allows CrewAI agents to use Memanto as their primary memory store, providing persistent, long-term memory with advanced features.
+
+### Why Memanto is Better Than Standard Local Storage
+
+1. **Persistent Long-Term Memory**: Unlike local storage that's limited to a single session, Memanto provides persistent memory across sessions and deployments.
+
+2. **Advanced Memory Features**:
+   - Vector-based retrieval of past thoughts
+   - Memory validation and trust scoring
+   - Temporal queries (as-of, changed-since)
+   - Multi-scope memory organization
+
+3. **Production-Ready Architecture**:
+   - Serverless operation with zero idle costs
+   - Instant availability of memories (no indexing delay)
+   - High accuracy with exact search
+   - Built-in RAG capabilities
+
+4. **Structured Memory Types**: Memanto supports 14 different memory types (fact, preference, goal, etc.) that help organize and retrieve memories more effectively.
+
+5. **Scalability**: Memanto can handle large volumes of memories efficiently, making it suitable for production use with multiple agents.
+
+6. **Conflict Resolution**: Memanto has built-in mechanisms to detect and resolve memory contradictions.
+
+7. **Daily Intelligence Workflows**: Automated daily summaries and conflict detection help maintain memory quality.
+
+### How to Use the Integration
+
+1. Install the required packages:
+```bash
+pip install crewai memanto
+```
+
+2. Set up your Memanto adapter:
+```python
+from memanto.integrations.crewai_adapter import MemantoCrewAdapter, MemantoCrewAdapterConfig
+
+config = MemantoCrewAdapterConfig(
+    moorcheh_api_key="your-moorcheh-api-key",
+    default_scope_type="agent"
+)
+adapter = MemantoCrewAdapter(config)
+```
+
+3. Create a CrewAI memory instance with Memanto:
+```python
+from crewai.memory.unified_memory import Memory
+
+memory = Memory(
+    storage=adapter,
+    llm="gpt-4o-mini"  # Use a capable LLM for memory analysis
+)
+```
+
+4. Use the memory in your CrewAI agents:
+```python
+from crewai import Agent, Task, Crew
+
+researcher = Agent(
+    role="Research Analyst",
+    goal="Uncover cutting-edge developments in AI",
+    backstory="You're a seasoned research analyst...",
+    memory=True  # Enable memory
+)
+
+crew = Crew(
+    agents=[researcher],
+    tasks=[...],
+    memory=memory  # Use Memanto memory
+)
+```
+
+### Example: Multi-Agent Crew with Memanto Memory
+
+See the [crewai_integration.py](examples/crewai_integration.py) example for a complete demonstration of a multi-agent crew using Memanto memory.
+
+### Files Modified/Created
+
+1. Created new integration adapter:
+   - `/memanto/integrations/crewai_adapter.py`
+
+2. Created example demonstrating the integration:
+   - `/examples/crewai_integration.py`
+
 ## 📞 Support & Documentation
 
 Have questions or feedback? We're here to help:
