@@ -1,0 +1,34 @@
+{
+  echo "CrewAI + Memanto proof transcript."
+  echo "Captured without printing secrets or making paid LLM calls."
+  echo
+  echo "## Dry-run proof"
+  echo
+  echo '$ rm -f /tmp/crewai_memanto_memory_demo_final.json'
+  rm -f /tmp/crewai_memanto_memory_demo_final.json
+  echo
+  echo '$ python examples/crewai_memanto_memory/crewai_memanto_memory_demo.py --mode dry-run --run 1 --store /tmp/crewai_memanto_memory_demo_final.json'
+  python examples/crewai_memanto_memory/crewai_memanto_memory_demo.py \
+    --mode dry-run \
+    --run 1 \
+    --store /tmp/crewai_memanto_memory_demo_final.json
+  echo
+  echo '$ python examples/crewai_memanto_memory/crewai_memanto_memory_demo.py --mode dry-run --run 2 --store /tmp/crewai_memanto_memory_demo_final.json'
+  python examples/crewai_memanto_memory/crewai_memanto_memory_demo.py \
+    --mode dry-run \
+    --run 2 \
+    --store /tmp/crewai_memanto_memory_demo_final.json
+  echo
+  echo "## Live Memanto proof"
+  echo
+  echo '$ python examples/crewai_memanto_memory/crewai_memanto_memory_demo.py --mode live --run both --agent-id crewai-memanto-memory-demo-cwwjacobs'
+  python examples/crewai_memanto_memory/crewai_memanto_memory_demo.py \
+    --mode live \
+    --run both \
+    --agent-id crewai-memanto-memory-demo-cwwjacobs
+  echo
+  echo "## Compile check"
+  echo
+  echo '$ python -m py_compile examples/crewai_memanto_memory/crewai_memanto_memory_demo.py'
+  python -m py_compile examples/crewai_memanto_memory/crewai_memanto_memory_demo.py
+} | tee examples/crewai_memanto_memory/terminal-proof.txt
