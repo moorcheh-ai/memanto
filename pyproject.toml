@@ -64,6 +64,10 @@ all = [
     "ruff>=0.14.6,<0.15",
 ]
 
+crewai = [
+    "crewai>=0.1.0",
+]
+
 [project.scripts]
 memanto = "memanto.cli.main:app"
 
