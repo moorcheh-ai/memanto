@@ -1,0 +1,11 @@
+# Core
+crewai>=0.80.0
+memanto>=0.1.0
+requests>=2.31.0
+pydantic>=2.0.0
+
+# LLM backend (CrewAI default)
+openai>=1.30.0
+
+# Optional: for the demo script
+python-dotenv>=1.0.0
