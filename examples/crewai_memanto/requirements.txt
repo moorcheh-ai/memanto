@@ -1,0 +1,2 @@
+crewai>=0.80.0
+memanto>=0.1.0
