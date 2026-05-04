@@ -1,22 +1,31 @@
+from typing import Any, cast
+
 from memanto.app.config import settings
+from memanto.app.constants import MemoryType
 from memanto.app.core import MemoryRecord
 from memanto.app.services.memory_parsing_service import MemoryParsingService
 
 
-# 1 Rule-based detection
-def test_detect_preference():
-    parser = MemoryParsingService()
-
+def make_memory(content: str, memory_type: MemoryType | None = None) -> MemoryRecord:
     memory = MemoryRecord(
-        content="I like Python",
-        type="fact",
+        content=content,
+        type=memory_type or "fact",
         title="test",
         actor_id="user",
         source="test",
         scope_type="agent",
         scope_id="test",
     )
-    memory.type = None
+    if memory_type is None:
+        cast(Any, memory).type = None
+    return memory
+
+
+# 1 Rule-based detection
+def test_detect_preference():
+    parser = MemoryParsingService()
+
+    memory = make_memory("I like Python")
 
     parser.parse_memory(memory)
 
@@ -27,15 +36,7 @@ def test_detect_preference():
 def test_no_override_existing_type():
     parser = MemoryParsingService()
 
-    memory = MemoryRecord(
-        content="I like Python",
-        type="fact",
-        title="test",
-        actor_id="user",
-        source="test",
-        scope_type="agent",
-        scope_id="test",
-    )
+    memory = make_memory("I like Python", "fact")
 
     parser.parse_memory(memory)
 
@@ -48,36 +49,20 @@ def test_auto_parse_disabled(monkeypatch):
 
     parser = MemoryParsingService()
 
-    memory = MemoryRecord(
-        content="I like Python",
-        type="fact",
-        title="test",
-        actor_id="user",
-        source="test",
-        scope_type="agent",
-        scope_id="test",
-    )
-    memory.type = None
+    memory = make_memory("I like Python")
 
     parser.parse_memory(memory)
 
     assert memory.type is None
+
+    monkeypatch.setattr(settings, "AUTO_PARSE_ENABLED", True)
 
 
 # 4. Fallback to fact
 def test_fallback_to_fact():
     parser = MemoryParsingService()
 
-    memory = MemoryRecord(
-        content="Earth is round",
-        type="fact",
-        title="test",
-        actor_id="user",
-        source="test",
-        scope_type="agent",
-        scope_id="test",
-    )
-    memory.type = None
+    memory = make_memory("The API endpoint is https://example.com")
 
     parser.parse_memory(memory)
 
@@ -96,17 +81,69 @@ def test_llm_fallback_triggered(monkeypatch):
 
     monkeypatch.setattr(parser, "_llm_fallback", mock_llm)
 
-    memory = MemoryRecord(
-        content="random unrelated words here",
-        type="fact",
-        title="test",
-        actor_id="user",
-        source="test",
-        scope_type="agent",
-        scope_id="test",
-    )
-    memory.type = None
+    memory = make_memory("qwerty asdf zxczzx 123123")
 
     parser.parse_memory(memory)
 
     assert memory.type == "context"
+
+
+def test_boundary_matching_avoids_substring_false_positive():
+    parser = MemoryParsingService()
+
+    memory = make_memory("The team selected mustard yellow for the warning badge")
+
+    parser.parse_memory(memory)
+
+    assert memory.type == "decision"
+
+
+def test_mixed_context_prioritizes_stronger_preference_signal():
+    parser = MemoryParsingService()
+
+    memory = make_memory("Alex mentioned he prefers dark mode for long coding sessions")
+
+    parser.parse_memory(memory)
+
+    assert memory.type == "preference"
+
+
+def test_mixed_context_prioritizes_instruction_over_weak_event_signal():
+    parser = MemoryParsingService()
+
+    memory = make_memory("Yesterday we agreed the agent must avoid changing user edits")
+
+    parser.parse_memory(memory)
+
+    assert memory.type == "instruction"
+
+
+def test_richer_lexical_coverage_for_common_scenarios():
+    parser = MemoryParsingService()
+
+    cases = {
+        "The action item is to follow up with the client by EOD": "commitment",
+        "I realized the root cause was a timeout in the export job": "learning",
+        "The app keeps crashing with a traceback during upload": "error",
+        "Saved the output to exports/session_report.md": "artifact",
+        "Alex reports to Jordan on the platform team": "relationship",
+        "Currently the project is blocked waiting on API access": "context",
+        "The client usually asks for CSV exports": "observation",
+    }
+
+    for content, expected_type in cases.items():
+        memory = make_memory(content)
+
+        parser.parse_memory(memory)
+
+        assert memory.type == expected_type
+
+
+def test_unrelated_text_does_not_fall_back_to_fact():
+    parser = MemoryParsingService()
+
+    memory = make_memory("random unrelated words here")
+
+    parser.parse_memory(memory)
+
+    assert memory.type is None

@@ -4,12 +4,232 @@ Memory Parsing Service
 Auto-detect memory type before ingestion.
 """
 
+import re
+from dataclasses import dataclass
+from typing import ClassVar
+
 from memanto.app.config import settings
 from memanto.app.core import MemoryRecord
 from memanto.app.services.memory_export_service import MEMORY_TYPE_ORDER
 
 
+@dataclass(frozen=True)
+class MemoryRule:
+    pattern: re.Pattern[str]
+    score: int
+
+
 class MemoryParsingService:
+    MIN_RULE_SCORE: ClassVar[int] = 3
+
+    # Tie-break toward durable, user-actionable memories when multiple weak
+    # signals appear in the same sentence.
+    TYPE_PRIORITY: ClassVar[dict[str, int]] = {
+        memory_type: index for index, memory_type in enumerate(MEMORY_TYPE_ORDER)
+    }
+
+    RULES: ClassVar[dict[str, list[MemoryRule]]] = {
+        "preference": [
+            MemoryRule(re.compile(pattern, re.IGNORECASE), score)
+            for pattern, score in [
+                (
+                    r"\b(?:i|we|they|he|she|user|client|customer)\s+(?:really\s+)?(?:like|likes|love|loves|prefer|prefers|enjoy|enjoys|favor|favors)\b",
+                    4,
+                ),
+                (r"\b(?:my|our|their|his|her)\s+favou?rite\b", 4),
+                (
+                    r"\bfavou?rite\s+(?:is|are|tool|language|framework|color|colour|theme)\b",
+                    4,
+                ),
+                (
+                    r"\b(?:would rather|rather use|prefer to|prefers to|preference for|likes to)\b",
+                    4,
+                ),
+                (r"\b(?:dislike|dislikes|hate|hates|avoid using|not a fan of)\b", 3),
+                (
+                    r"\b(?:works best for|feels better with|is more comfortable with)\b",
+                    3,
+                ),
+            ]
+        ],
+        "instruction": [
+            MemoryRule(re.compile(pattern, re.IGNORECASE), score)
+            for pattern, score in [
+                (r"\b(?:must|always|never)\b", 5),
+                (r"\b(?:should|shall|required to|requirement|mandatory)\b", 4),
+                (r"\b(?:do not|don't|avoid|make sure to|ensure|remember to)\b", 4),
+                (
+                    r"\b(?:use|prefer|follow|keep|include|exclude)\s+.+\b(?:by default|going forward|from now on|for future|whenever)\b",
+                    5,
+                ),
+                (r"\b(?:rule|guideline|constraint|policy)\b", 3),
+            ]
+        ],
+        "decision": [
+            MemoryRule(re.compile(pattern, re.IGNORECASE), score)
+            for pattern, score in [
+                (
+                    r"\b(?:decided|decision|chose|chosen|selected|settled on|went with|going with)\b",
+                    5,
+                ),
+                (r"\b(?:agreed to|agreed on|approved|rejected|accepted)\b", 4),
+                (r"\b(?:we|i|team|client)\s+(?:will use|picked|standardized on)\b", 4),
+            ]
+        ],
+        "goal": [
+            MemoryRule(re.compile(pattern, re.IGNORECASE), score)
+            for pattern, score in [
+                (r"\b(?:goal|aim|objective|target|milestone|north star)\b", 5),
+                (
+                    r"\b(?:trying to|want to achieve|working toward|focus is to|intends? to)\b",
+                    4,
+                ),
+                (
+                    r"\b(?:increase|reduce|improve|ship|launch|finish)\s+.+\b(?:by|before|this quarter|this month|next sprint)\b",
+                    4,
+                ),
+            ]
+        ],
+        "commitment": [
+            MemoryRule(re.compile(pattern, re.IGNORECASE), score)
+            for pattern, score in [
+                (r"\b(?:todo|to-do|action item|follow up|next step|due)\b", 5),
+                (
+                    r"\b(?:i|we|they|he|she)\s+(?:will|shall|need to|needs to|have to|has to|promised to|committed to)\b",
+                    4,
+                ),
+                (
+                    r"\b(?:assign|assigned|responsible for|owner is|by tomorrow|by eod|by end of day)\b",
+                    4,
+                ),
+                (r"\b(?:remind me to|don't forget to|need a reminder)\b", 5),
+            ]
+        ],
+        "event": [
+            MemoryRule(re.compile(pattern, re.IGNORECASE), score)
+            for pattern, score in [
+                (
+                    r"\b(?:met|meeting|call|sync|standup|demo|workshop|interview|conversation)\b",
+                    4,
+                ),
+                (
+                    r"\b(?:yesterday|today|last night|last week|this morning|earlier|on \d{4}-\d{2}-\d{2})\b",
+                    3,
+                ),
+                (
+                    r"\b(?:happened|occurred|launched|released|deployed|discussed|mentioned|told me|said)\b",
+                    3,
+                ),
+            ]
+        ],
+        "learning": [
+            MemoryRule(re.compile(pattern, re.IGNORECASE), score)
+            for pattern, score in [
+                (
+                    r"\b(?:learned|lesson|takeaway|discovered|realized|found out|understood)\b",
+                    5,
+                ),
+                (
+                    r"\b(?:insight|key point|root cause|what worked|what did not work)\b",
+                    4,
+                ),
+                (r"\b(?:next time|in hindsight)\b", 3),
+            ]
+        ],
+        "error": [
+            MemoryRule(re.compile(pattern, re.IGNORECASE), score)
+            for pattern, score in [
+                (
+                    r"\b(?:error|failed|failure|bug|exception|traceback|crash|outage|incident)\b",
+                    5,
+                ),
+                (
+                    r"\b(?:broken|regression|doesn't work|does not work|not working|timed out|timeout)\b",
+                    4,
+                ),
+                (r"\b(?:blocked by|problem|issue|wrong|incorrect|misclassified)\b", 3),
+            ]
+        ],
+        "relationship": [
+            MemoryRule(re.compile(pattern, re.IGNORECASE), score)
+            for pattern, score in [
+                (
+                    r"\b(?:team|manager|client|customer|stakeholder|partner|vendor|coworker|colleague)\b",
+                    4,
+                ),
+                (
+                    r"\b(?:reports to|works with|collaborates with|mentor|mentee|lead for|owner of)\b",
+                    5,
+                ),
+                (
+                    r"\b(?:(?-i:[A-Z][a-z]+)|user|client|customer|manager|teammate|stakeholder)\s+(?:said|mentioned|asked|prefers|likes|needs)\b",
+                    2,
+                ),
+            ]
+        ],
+        "context": [
+            MemoryRule(re.compile(pattern, re.IGNORECASE), score)
+            for pattern, score in [
+                (
+                    r"\b(?:context|status|currently|right now|now|at the moment|background)\b",
+                    4,
+                ),
+                (
+                    r"\b(?:in progress|pending|blocked|waiting on|state is|session summary)\b",
+                    4,
+                ),
+                (r"\b(?:we are on|this project uses|the repo has|environment is)\b", 3),
+            ]
+        ],
+        "observation": [
+            MemoryRule(re.compile(pattern, re.IGNORECASE), score)
+            for pattern, score in [
+                (r"\b(?:noticed|observed|pattern|trend|recurring|repeatedly)\b", 5),
+                (
+                    r"\b(?:often|usually|tends to|tend to|frequently|sometimes|rarely)\b",
+                    5,
+                ),
+                (r"\b(?:appears to|seems to|looks like|keeps happening)\b", 3),
+            ]
+        ],
+        "artifact": [
+            MemoryRule(re.compile(pattern, re.IGNORECASE), score)
+            for pattern, score in [
+                (
+                    r"\b(?:file|report|document|doc|output|artifact|attachment|spreadsheet|slide|deck)\b",
+                    4,
+                ),
+                (
+                    r"\b(?:created|generated|exported|uploaded|downloaded|saved)\s+.+\b(?:file|report|document|output|artifact)\b",
+                    5,
+                ),
+                (
+                    r"\b[\w./-]+\.(?:py|md|txt|json|yaml|yml|csv|xlsx|pdf|pptx|png|jpg|jpeg|html|css|js|ts|tsx)\b",
+                    5,
+                ),
+                (r"https?://\S+", 4),
+            ]
+        ],
+        "fact": [
+            MemoryRule(re.compile(pattern, re.IGNORECASE), score)
+            for pattern, score in [
+                (
+                    r"\b(?:is|are|was|were)\s+(?:called|named|located|based|enabled|disabled|available|unavailable|true|false)\b",
+                    4,
+                ),
+                (r"\b(?:has|have|contains|supports|uses|runs on|depends on)\b", 2),
+                (
+                    r"\b(?:version|port|api key|endpoint|url|path|email|phone|address)\s+(?:is|=|:)\b",
+                    4,
+                ),
+                (
+                    r"\b[A-Z][A-Za-z0-9_-]*(?:\s+[A-Z][A-Za-z0-9_-]*)?\s+(?:is|are|was|were)\s+[\w .,'/-]+$",
+                    3,
+                ),
+            ]
+        ],
+    }
+
     def parse_memory(self, memory: MemoryRecord) -> MemoryRecord:
         """
         Auto-detect memory type.
@@ -43,51 +263,32 @@ class MemoryParsingService:
     def _rule_based(self, text: str) -> str | None:
         if not text:
             return None
-        text = text.lower().strip()
+        normalized = re.sub(r"\s+", " ", text).strip()
+        scores = self._score_types(normalized)
+        if not scores:
+            return None
 
-        if any(word in text for word in ["i like", "prefer", "favorite"]):
-            return "preference"
+        detected, score = max(
+            scores.items(),
+            key=lambda item: (item[1], -self.TYPE_PRIORITY.get(item[0], 999)),
+        )
+        if score < self.MIN_RULE_SCORE:
+            return None
 
-        if any(word in text for word in ["must", "should", "always"]):
-            return "instruction"
+        return detected
 
-        if any(word in text for word in ["decided", "we chose", "selected"]):
-            return "decision"
-
-        if any(word in text for word in ["goal", "aim", "target"]):
-            return "goal"
-
-        if any(word in text for word in ["todo", "will do", "need to"]):
-            return "commitment"
-
-        if any(word in text for word in ["met", "meeting", "yesterday"]):
-            return "event"
-
-        if any(word in text for word in ["learned", "lesson"]):
-            return "learning"
-
-        if any(word in text for word in ["error", "failed", "bug"]):
-            return "error"
-
-        if any(word in text for word in ["team", "manager", "client"]):
-            return "relationship"
-
-        if any(word in text for word in ["context", "status", "currently"]):
-            return "context"
-
-        if any(word in text for word in ["noticed", "pattern", "often"]):
-            return "observation"
-
-        if any(word in text for word in ["file", "report", "document", "output"]):
-            return "artifact"
-
-        if " is " in text or " are " in text:
-            return "fact"
-
-        return None
+    def _score_types(self, text: str) -> dict[str, int]:
+        scores: dict[str, int] = {}
+        for memory_type, rules in self.RULES.items():
+            score = sum(rule.score for rule in rules if rule.pattern.search(text))
+            if score:
+                scores[memory_type] = score
+        return scores
 
     # LLM fallback (optional, disabled by default for low token usage)
     def _llm_fallback(self, text: str) -> str | None:
         """Fallback using LLM when rule-based fails.
-        Placeholder for now. Can integrate Moorcheh/LLM later."""
+        Placeholder for now. Keep rule parsing deterministic until the LLM
+        design supports structured output, multi-label signals, and validation.
+        """
         return None
