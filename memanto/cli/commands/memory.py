@@ -29,8 +29,8 @@ from memanto.cli.commands._shared import (
 @app.command()
 def remember(
     content: str | None = typer.Argument(None, help="Memory content to store"),
-    memory_type: str = typer.Option(
-        "fact",
+    memory_type: str | None = typer.Option(
+        None,
         "--type",
         "-t",
         help="Memory type (fact, preference, goal, decision, artifact, learning, event, instruction, relationship, context, observation, commitment, error)",
@@ -163,7 +163,8 @@ def remember(
 
         console.print("[green]Memory stored successfully![/green]")
         console.print(f"[dim]Memory ID: {result.get('memory_id', 'unknown')}[/dim]")
-        console.print(f"[dim]Type: {memory_type} | Confidence: {confidence}[/dim]")
+        parsed_type = result.get("type") or memory_type
+        console.print(f"[dim]Type: {parsed_type} | Confidence: {confidence}[/dim]")
         console.print(f"[dim]Completed in {elapsed:.2f}s[/dim]")
 
     except Exception as e:

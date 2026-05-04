@@ -392,7 +392,7 @@ class SessionService:
         write_header = not summary_file.exists()
 
         # Format the memory into Markdown
-        memory_type = getattr(memory_record, "type", "unknown").upper()
+        memory_type = (getattr(memory_record, "type", None) or "unclassified").upper()
         title = getattr(memory_record, "title", "Untitled")
         content = getattr(memory_record, "content", "")
         confidence = getattr(memory_record, "confidence", 1.0)

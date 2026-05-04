@@ -6,9 +6,10 @@ Auto-detect memory type before ingestion.
 
 import re
 from dataclasses import dataclass
-from typing import ClassVar
+from typing import ClassVar, cast
 
 from memanto.app.config import settings
+from memanto.app.constants import MemoryType
 from memanto.app.core import MemoryRecord
 from memanto.app.services.memory_export_service import MEMORY_TYPE_ORDER
 
@@ -55,7 +56,11 @@ class MemoryParsingService:
         "instruction": [
             MemoryRule(re.compile(pattern, re.IGNORECASE), score)
             for pattern, score in [
-                (r"\b(?:must|always|never)\b", 5),
+                (
+                    r"\bmust\s+(?!say\b)(?:be|do|have|fix|complete|finish|ensure|avoid|follow|use|stop|start|finalize|implement|update|deploy)\b",
+                    5,
+                ),
+                (r"\b(?:always|never)\b", 5),
                 (r"\b(?:should|shall|required to|requirement|mandatory)\b", 4),
                 (r"\b(?:do not|don't|avoid|make sure to|ensure|remember to)\b", 4),
                 (
@@ -217,7 +222,7 @@ class MemoryParsingService:
                     r"\b(?:is|are|was|were)\s+(?:called|named|located|based|enabled|disabled|available|unavailable|true|false)\b",
                     4,
                 ),
-                (r"\b(?:has|have|contains|supports|uses|runs on|depends on)\b", 2),
+                (r"\b(?:has|have|contains|supports|uses|runs on|depends on)\b", 1),
                 (
                     r"\b(?:version|port|api key|endpoint|url|path|email|phone|address)\s+(?:is|=|:)\b",
                     4,
@@ -256,7 +261,7 @@ class MemoryParsingService:
             detected = self._llm_fallback(memory.content)
 
         if detected and detected in MEMORY_TYPE_ORDER:
-            memory.type = detected
+            memory.type = cast(MemoryType, detected)
 
         return memory
 
@@ -264,16 +269,47 @@ class MemoryParsingService:
         if not text:
             return None
         normalized = re.sub(r"\s+", " ", text).strip()
+        # Avoid classifying very short / weak inputs
+        if len(normalized.split()) < 3:
+            return None
         scores = self._score_types(normalized)
+        # If only "fact" is detected with weak signal, treat as unknown
+        # BUT allow strong factual patterns (like URLs, endpoints, "is/are" statements)
+        if set(scores.keys()) == {"fact"}:
+            fact_score = scores.get("fact", 0)
+
+            # allow strong fact signals
+            strong_fact_patterns = [
+                r"https?://\S+",
+                r"\b(?:endpoint|url|api key|path|email|phone|address)\b",
+                r"\b(?:is|are|was|were)\b",
+            ]
+
+            if fact_score < 4 and not any(
+                re.search(p, text, re.IGNORECASE) for p in strong_fact_patterns
+            ):
+                return None
         if not scores:
             return None
 
+        # pick best candidate
         detected, score = max(
             scores.items(),
             key=lambda item: (item[1], -self.TYPE_PRIORITY.get(item[0], 999)),
         )
+
+        # reject low-confidence
         if score < self.MIN_RULE_SCORE:
             return None
+
+        # refined ambiguity guard:
+        # only block when signals are weak and very close
+        sorted_scores = sorted(scores.values(), reverse=True)
+        if len(sorted_scores) > 1:
+            second_score = sorted_scores[1]
+            # allow strong signals (score >= 4) to pass even if tied
+            if (score - second_score) <= 1 and score < 4:
+                return None
 
         return detected
 

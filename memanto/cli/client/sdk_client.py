@@ -422,7 +422,7 @@ class SdkClient:
     def remember(
         self,
         agent_id: str,
-        memory_type: str,
+        memory_type: str | None,
         title: str,
         content: str,
         confidence: float = 0.8,
@@ -458,7 +458,9 @@ class SdkClient:
 
         self._validate_memory_input(memory_type, title, content, confidence)
 
-        resolved_memory_type = cast(MemoryType, memory_type)
+        resolved_memory_type = (
+            cast(MemoryType, memory_type) if memory_type is not None else None
+        )
         resolved_provenance = provenance or "explicit_statement"
         if resolved_provenance not in _VALID_PROVENANCE:
             raise ValueError(
@@ -501,6 +503,7 @@ class SdkClient:
             "namespace": result.get("namespace"),
             "status": result.get("status", "queued"),
             "confidence": confidence,
+            "type": result.get("type"),
         }
 
     def batch_remember(
@@ -542,9 +545,10 @@ class SdkClient:
             title = raw_title or (
                 raw_content[:47] + "..." if len(raw_content) > 50 else raw_content
             )
+            raw_type = item.get("type")
 
             memory = MemoryRecord(
-                type=item.get("type", "fact"),
+                type=raw_type,
                 title=title,
                 content=raw_content,
                 scope_type="agent",
@@ -1233,13 +1237,13 @@ class SdkClient:
 
     @staticmethod
     def _validate_memory_input(
-        memory_type: str,
+        memory_type: str | None,
         title: str,
         content: str,
         confidence: float,
     ) -> None:
         """Validate memory fields before sending to service layer."""
-        if memory_type not in _VALID_MEMORY_TYPES:
+        if memory_type is not None and memory_type not in _VALID_MEMORY_TYPES:
             raise ValueError(
                 f"Invalid memory_type '{memory_type}'. "
                 f"Must be one of: {', '.join(sorted(_VALID_MEMORY_TYPES))}"

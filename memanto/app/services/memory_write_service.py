@@ -87,6 +87,7 @@ class MemoryWriteService:
                 "reason": validation_result.get("reason", "Stored successfully"),
                 "confidence": memory.confidence,
                 "memory_status": memory.status,
+                "type": memory.type,
             }
 
         except Exception as e:
@@ -181,6 +182,7 @@ class MemoryWriteService:
                             "reason": validation_result.get(
                                 "reason", "Validated successfully"
                             ),
+                            "type": memory.type,
                         }
                     )
 

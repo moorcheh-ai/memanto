@@ -111,7 +111,9 @@ def test_mixed_context_prioritizes_stronger_preference_signal():
 def test_mixed_context_prioritizes_instruction_over_weak_event_signal():
     parser = MemoryParsingService()
 
-    memory = make_memory("Yesterday we agreed the agent must avoid changing user edits")
+    memory = make_memory(
+        "I prefer the new approach because we decided it must be implemented before the next client meeting."
+    )
 
     parser.parse_memory(memory)
 
