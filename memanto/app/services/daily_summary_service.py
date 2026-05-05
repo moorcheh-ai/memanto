@@ -43,7 +43,9 @@ class DailySummaryService:
         self.summaries_dir = summaries_dir or Path.home() / ".memanto" / "summaries"
         self.summaries_dir.mkdir(parents=True, exist_ok=True)
 
-    def generate_summary(self, agent_id: str, date: str) -> dict[str, Any]:
+    def generate_summary(
+        self, agent_id: str, date: str, output_path: str | None = None
+    ) -> dict[str, Any]:
         """
         Generate a daily natural language summary for an agent and date.
         """
@@ -98,7 +100,13 @@ Format the output as a Markdown report:
         except Exception as e:
             raise MemoryError(f"AI summarization failed: {str(e)}")
 
-        summary_path = self.summaries_dir / f"{agent_id}_{date}.md"
+        if output_path:
+            summary_path = Path(output_path)
+            # Ensure parent directories exist
+            summary_path.parent.mkdir(parents=True, exist_ok=True)
+        else:
+            summary_path = self.summaries_dir / f"{agent_id}_{date}.md"
+
         with open(summary_path, "w", encoding="utf-8") as f:
             f.write(summary_text)
 

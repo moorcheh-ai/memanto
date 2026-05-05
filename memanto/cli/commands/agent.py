@@ -34,7 +34,7 @@ from memanto.cli.commands._shared import (
 def agent_create(
     agent_id: str = typer.Argument(..., help="Unique agent identifier"),
     pattern: str = typer.Option(
-        "tool", help="Agent pattern: tool, chat, research, or custom"
+        "tool", help="Agent pattern: project, support, or tool"
     ),
     description: str | None = typer.Option(None, help="Agent description"),
 ):

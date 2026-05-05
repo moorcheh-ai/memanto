@@ -5,7 +5,7 @@ New session-based architecture endpoints.
 Replaces tenant_id with Moorcheh API key-based authentication.
 """
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 
 from memanto.app.config import settings
 from memanto.app.models.session import (
@@ -220,6 +220,11 @@ async def extend_session(
 
     Adds additional hours to session expiration.
     """
+    if additional_hours <= 0:
+        raise HTTPException(
+            status_code=422, detail="Additional hours must be greater than 0."
+        )
+
     try:
         extended_session = get_session_service().extend_session(
             session.agent_id, additional_hours

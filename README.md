@@ -31,15 +31,37 @@
 
 ## What Is MEMANTO?
 
-MEMANTO is a universal memory layer for agentic AI. While LLMs often forget context between sessions, MEMANTO gives your agents long-term memory so they can carry context forward and remember what matters across sessions.
+**MEMANTO is a memory agent. It remembers, recalls, and answers — so your agents can achieve long-term goals and avoid confusion.**
+
+Most memory tools today are passive infrastructure: agents have to query them, parse the results, and figure out what to do next. MEMANTO is built differently. It's an active memory agent designed from the gaps agents themselves named when asked about their memory — three operations (`remember`, `recall`, `answer`) that give your agents persistent context across sessions, with state-of-the-art retrieval and zero ingestion latency.
+
+> *"My memory exists as a static snapshot injected into context — useful, but fundamentally passive. I can't query it, update it mid-conversation, express confidence levels, or distinguish between 'I know this' versus 'I was told this once.'"*
+>
+> — A representative model reply that became MEMANTO's design brief.
+
+We unpacked that into six concrete gaps and built MEMANTO to solve all six.
+
+### The Six Gaps
+
+| # | Gap | What MEMANTO does about it |
+| --- | --- | --- |
+| 1 | **Static injection** — memory arrives as a blob, not queryable by relevance | Queryable, not injectable |
+| 2 | **No temporal decay** — a preference from 6 months ago weighs the same as yesterday's deadline | Versioning, recency signals, temporal queries |
+| 3 | **No provenance** — can't tell explicit facts from inferred patterns or outdated info | Confidence + provenance metadata on every memory |
+| 4 | **Flat memory** — episodic, semantic, and procedural all collapsed to one layer | Typed and hierarchical — 13 built-in memory categories |
+| 5 | **No writeback** — contradictions silently coexist | Conflict detection, explicit versioning, no silent overwrites |
+| 6 | **Indexing delay** — mandatory LLM extraction, graph construction bottleneck | Zero-overhead ingestion, available at write time |
 
 ## Why MEMANTO Performs
 
-MEMANTO is built for teams that want high-quality agent memory without graph-heavy complexity. It combines immediate semantic availability, low-overhead serverless operation, and strong real-world memory accuracy so you can ship production workflows with a simpler architecture.
+MEMANTO is built for teams that want SOTA agent memory without graph-heavy complexity. It pairs a typed semantic memory schema with [Moorcheh's](https://moorcheh.ai/) information-theoretic retrieval engine — a no-indexing semantic database that delivers exact search, sub-90ms retrieval, and zero ingestion delay.
 
-- **Zero-cost ingestion latency**: No indexing wait or token usage at ingestion, so memories are available for retrieval immediately.
-- **Zero storage cost at idle**: Serverless architecture scales to zero when not in use.
-- **State-of-the-art benchmark performance**: Final evaluation results reached **89.8% on LongMemEval** and **87.1% on LoCoMo**.
+* **State-of-the-art benchmarks**: **89.8% on LongMemEval** and **87.1% on LoCoMo** — outperforming Mem0, Mem0g, Zep, and Letta on both. [Public datasets on Hugging Face](https://huggingface.co/moorcheh).
+* **Three primitives, not two**: `remember`, `recall`, and `answer` — LLM-grounded responses generated directly from your agent's memory, with no extra API key.
+* **Zero ingestion latency**: No indexing wait, no LLM extraction tax at write time. Memories are searchable the instant they're stored.
+* **Zero idle cost**: Serverless architecture scales to zero when not in use.
+* **Single-query retrieval**: One call. No multi-stage pipelines, no graph schema to maintain, no rerankers to wire up.
+* **Typed semantic memory**: 13 built-in memory categories — `instruction`, `fact`, `decision`, `goal`, `preference`, `relationship`, and more — for cleaner retrieval and contradiction detection.
 
 ## 🏗️ Architecture
 

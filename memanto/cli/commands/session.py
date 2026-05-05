@@ -71,6 +71,9 @@ def session_extend(
     hours: int = typer.Option(6, "--hours", "-h", help="Number of hours to extend"),
 ):
     """Extend the current session."""
+    if hours <= 0:
+        _error("Hours must be greater than 0.")
+
     active_agent_id, _ = config_manager.get_active_session()
 
     if not active_agent_id:

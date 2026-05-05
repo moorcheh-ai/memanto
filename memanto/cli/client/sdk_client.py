@@ -908,13 +908,16 @@ class SdkClient:
             "namespace": namespace,
         }
 
-    def generate_daily_summary(self, agent_id: str, date: str) -> dict[str, Any]:
+    def generate_daily_summary(
+        self, agent_id: str, date: str, output_path: str | None = None
+    ) -> dict[str, Any]:
         """
         Generate a daily AI summary from session MD files.
 
         Args:
             agent_id: Target agent.
             date: Date string (YYYY-MM-DD).
+            output_path: Optional custom output path for the summary MD file.
 
         Returns:
             Dict with ``status``, ``summary_path``, ``sessions_count``.
@@ -930,7 +933,9 @@ class SdkClient:
 
         service = self._get_daily_summary_service()
 
-        summary_result = service.generate_summary(agent_id, date)
+        summary_result = service.generate_summary(
+            agent_id, date, output_path=output_path
+        )
         conflict_result = service.generate_conflict_report(agent_id, date)
 
         # Auto-export memories to keep local MD cache up to date

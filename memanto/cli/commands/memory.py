@@ -543,7 +543,9 @@ def daily_summary(
             f"[cyan]Generating daily summary for '{agent_id}' on {date}...",
             spinner="dots",
         ):
-            result = client.generate_daily_summary(agent_id=agent_id, date=date)
+            result = client.generate_daily_summary(
+                agent_id=agent_id, date=date, output_path=output_path
+            )
         elapsed = time.perf_counter() - start
 
         summary = result.get("summary", {})
