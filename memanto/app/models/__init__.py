@@ -56,9 +56,9 @@ class BatchRememberItem(BaseModel):
     """Single memory item in a batch-remember request"""
 
     content: str = Field(..., max_length=10000, description="Memory content")
-    type: str = Field(
-        "fact",
-        description="Memory type: fact, decision, instruction, commitment, event, etc.",
+    type: str | None = Field(
+        None,
+        description="Memory type. Omit to auto-parse.",
     )
     title: str | None = Field(
         None, max_length=100, description="Memory title (defaults to truncated content)"

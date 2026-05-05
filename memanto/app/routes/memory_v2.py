@@ -10,6 +10,7 @@ import os
 import tempfile
 from datetime import datetime
 from pathlib import Path
+from typing import cast
 
 from fastapi import APIRouter, Body, Depends, File, HTTPException, Query, UploadFile
 
@@ -30,7 +31,9 @@ router = APIRouter()
 async def remember(
     agent_id: str,
     content: str = Body(..., embed=True, description="Memory content"),
-    memory_type: str = Query("fact", description="Type of memory"),
+    memory_type: str | None = Query(
+        None, description="Type of memory. Omit to auto-parse."
+    ),
     title: str | None = Query(
         None, description="Memory title (optional, defaults to truncated content)"
     ),
@@ -73,8 +76,6 @@ async def remember(
         # Initialize memory write service
         write_service = MemoryWriteService(client)
 
-        from typing import cast
-
         from memanto.app.constants import MemoryType, ProvenanceType
 
         resolved_title = title or (
@@ -83,7 +84,7 @@ async def remember(
 
         # Create memory record with scope fields and provenance
         memory = MemoryRecord(
-            type=cast(MemoryType, memory_type),
+            type=cast(MemoryType, memory_type) if memory_type is not None else None,
             title=resolved_title,
             content=content,
             scope_type="agent",
@@ -117,6 +118,7 @@ async def remember(
             "session_id": session.session_id,
             "namespace": session.namespace,
             "status": "queued",
+            "type": result.get("type"),
             "provenance": provenance,
             "confidence": confidence,
             # "computed_confidence": trust_score["computed_confidence"],
@@ -159,8 +161,6 @@ async def batch_remember(
         write_service = MemoryWriteService(client)
 
         # Convert each item to a MemoryRecord
-        from typing import cast
-
         from memanto.app.constants import MemoryType
 
         memory_records = []
@@ -169,7 +169,7 @@ async def batch_remember(
                 item.content[:47] + "..." if len(item.content) > 50 else item.content
             )
             memory = MemoryRecord(
-                type=cast(MemoryType, item.type),
+                type=cast(MemoryType, item.type) if item.type is not None else None,
                 title=title,
                 content=item.content,
                 scope_type="agent",
