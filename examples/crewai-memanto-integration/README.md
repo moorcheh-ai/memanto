@@ -194,3 +194,22 @@ class MemantoAgentMemory:
 ## 📄 License
 
 MIT
+
+## 🔄 Contradictory Memory Handling
+
+MEMANTO natively handles contradictory information through versioning and confidence scoring:
+
+```python
+# Store initial fact
+memory.remember("User prefers dark mode", memory_type="preference")
+
+# Later, user changes preference - MEMANTO versions this automatically
+memory.remember("User prefers light mode", memory_type="preference")
+
+# When recalling, MEMANTO returns the most recent version
+# with both available for conflict resolution
+results = memory.recall("user theme preference")
+```
+
+This means your CrewAI agents never silently overwrite information - 
+conflicts are detected and versioned for intelligent resolution.
