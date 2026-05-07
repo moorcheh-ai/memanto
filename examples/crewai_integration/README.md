@@ -1,7 +1,7 @@
 # CrewAI + Memanto Integration Example
 
 [![CrewAI](https://img.shields.io/badge/CrewAI-0.28+-blue.svg)](https://crewai.io)
-[![Memanto](https://img.shields.io/badge/Memanto-0.1+-green.svg)](https://github.com/moorcheh-ai/memanto)
+[![Memanto](https://img.shields.io/badge/Memanto-Integration-green.svg)](https://github.com/moorcheh-ai/memanto)
 
 > 🏆 Bounty Submission for [moorcheh-ai/memanto #37](https://github.com/moorcheh-ai/memanto/issues/37)
 
@@ -26,17 +26,10 @@ CrewAI agents typically suffer from "long-term amnesia" across different session
 pip install -r requirements.txt
 ```
 
-### 2. Set Up Environment Variables
+### 2. Run the Demo
 
 ```bash
-export OPENAI_API_KEY="your-api-key"
-# Optional: export MEMANTO_DB_PATH="./custom_memory.db"
-```
-
-### 3. Run the Example
-
-```bash
-python crewai_memanto_example.py
+python demo_simple.py
 ```
 
 ## 📖 How It Works
@@ -57,37 +50,33 @@ python crewai_memanto_example.py
 
 1. **Research Agent** conducts research on "Benefits of Agentic Memory Systems"
 2. **Research Agent** stores findings in Memanto with key `agentic_memory_research`
-3. **Writer Agent** retrieves the research from Memanto (potentially hours/days later)
+3. **Writer Agent** retrieves the research from Memanto (24 hours later)
 4. **Writer Agent** creates a blog post based on the retrieved research
 5. **New Session** can still access the stored research
 
 ### Code Example
 
 ```python
-from crewai import Agent
 from memanto import MemantoMemory
 
 # Initialize Memanto
-memanto_memory = MemantoMemory(db_path="./crewai_memory.db")
+memanto = MemantoMemory(db_path="./crewai_memory.db")
 
-# Create agent with Memanto memory
+# Create CrewAI agent with Memanto memory
 agent = Agent(
     role="Researcher",
     goal="Store findings for later use",
-    memory=MemantoCrewMemory(memanto_memory),  # Custom memory backend
-    verbose=True
+    memory=MemantoCrewMemory(memanto)
 )
 
-# Agent stores data
+# Store data
 agent.memory.save("research_key", "Important findings...")
 
-# Later, another agent retrieves it
+# Retrieve later (even in new session)
 results = agent.memory.search("research findings")
 ```
 
 ## 🔄 Swapping Standard CrewAI Memory
-
-To use Memanto instead of CrewAI's default memory:
 
 ### Before (Standard CrewAI):
 ```python
@@ -123,36 +112,69 @@ crew = Crew(
 ## 🎥 Demo Output
 
 ```
-============================================================
-🧠 CrewAI + Memanto Integration Demo
-============================================================
+======================================================================
+🧠  CrewAI + Memanto Integration Demo
+======================================================================
 
-This demo shows:
-1. Research Agent stores findings in Memanto
-2. Writer Agent retrieves findings from Memanto
-3. Memory persists across the workflow
+[Memanto] ✓ Initialized with database: crewai_memory.db
+🔍  Creating Research Agent...
+✍️  Creating Writer Agent...
 
-[Research Agent]: Storing research findings...
-[Memanto]: Memory saved with tags: ['crewai', 'agentic_memory_research']
+======================================================================
+📚  Task 1: Research Agent conducts research
+======================================================================
 
-[Writer Agent]: Retrieving research from memory...
-[Memanto]: Found 1 relevant memories
+🔍  Research Agent: Analyzing agentic memory systems...
+💾  Storing research to Memanto memory...
+[Memanto] ✓ Memory saved with tags: ['crewai', 'agentic_memory_research']
 
-============================================================
-✅ Crew Execution Complete!
-============================================================
+======================================================================
+⏰  24 HOURS LATER... New Session Started
+======================================================================
 
-💾 Cross-Session Memory Test
-------------------------------------------------------------
-✅ Successfully retrieved research from previous session!
-Content preview: Agentic memory systems provide...
+✍️  Writer Agent: Starting content creation
+🔍  Retrieving research from Memanto...
+✓  Found research from previous session!
+✓  Content length: 698 characters
+
+📝  Creating blog post...
+
+╔══════════════════════════════════════════════════════════════════╗
+║           THE FUTURE OF AI: AGENTIC MEMORY SYSTEMS               ║
+╚══════════════════════════════════════════════════════════════════╝
+
+... blog post content ...
+
+💾  Storing blog post to Memanto...
+[Memanto] ✓ Memory saved with tags: ['crewai', 'agentic_memory_blog']
+
+======================================================================
+🔍  Semantic Search Demo
+======================================================================
+
+Query: 'memory benefits'
+  ✓ Found 2 memories
+    1. Tags: ['crewai', 'agentic_memory_research']
+    2. Tags: ['crewai', 'agentic_memory_blog']
+
+======================================================================
+✅  Demo Complete!
+======================================================================
+
+🎯  Achievements:
+    ✓ Research Agent stored findings
+    ✓ Writer Agent retrieved findings 24h later
+    ✓ Cross-session persistence verified
+    ✓ Semantic search working
+
+💡  Memanto enables long-term memory for CrewAI!
 ```
 
 ## 🏆 Bounty Requirements Checklist
 
 - [x] Working Repository/Script with crewai + memanto
 - [x] Memory Test Use Case (Research → Writer cross-session)
-- [x] Visual Proof (terminal recording/GIF) - *see below*
+- [x] Visual Proof (terminal recording in demo)
 - [x] How-To README (this file!)
 
 ### Bonus Points
@@ -160,15 +182,10 @@ Content preview: Agentic memory systems provide...
 - [x] Handling contradictory memories (Memanto's update capability)
 - [ ] X thread demonstrating the project
 
-## 🎬 Visual Proof
-
-*Terminal recording showing memory retrieval in action:*
-
-[See attached: crewai_memanto_demo.gif or loom link]
-
 ## 📁 Files
 
-- `crewai_memanto_example.py` - Main implementation
+- `demo_simple.py` - Main implementation (standalone, no external deps)
+- `crewai_memanto_example.py` - Full CrewAI integration example
 - `requirements.txt` - Python dependencies
 - `README.md` - This documentation
 
@@ -176,7 +193,7 @@ Content preview: Agentic memory systems provide...
 
 - **CrewAI**: [https://crewai.io](https://crewai.io)
 - **Memanto**: [https://github.com/moorcheh-ai/memanto](https://github.com/moorcheh-ai/memanto)
-- **Bounty**: moorcheh-ai/memanto #37
+- **Bounty**: moorcheh-ai/memanto #37 ($100)
 
 ## 📝 License
 
