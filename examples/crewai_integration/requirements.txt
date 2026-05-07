@@ -1,0 +1,5 @@
+# CrewAI + Memanto Integration Requirements
+crewai>=0.28.0
+memanto>=0.0.8
+openai>=1.0.0
+python-dotenv>=1.0.0
