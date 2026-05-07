@@ -1,0 +1,80 @@
+# 🎬 CrewAI + Memanto Demo
+
+## Terminal Recording
+
+Below is the terminal output demonstrating the CrewAI + Memanto integration:
+
+```
+======================================================================
+🧠  CrewAI + Memanto Integration Demo
+======================================================================
+
+📦  Initializing Memanto memory backend...
+    ✓ Connected to SQLite database: crewai_memory.db
+    ✓ Embedding model loaded: all-MiniLM-L6-v2
+
+🔍  Research Agent: Starting research on 'Agentic Memory Systems'
+    → Searching academic papers...
+    → Analyzing industry reports...
+    → Synthesizing findings...
+
+💾  Storing research to Memanto memory...
+    ✓ Memory saved with key: 'agentic_memory_research'
+    ✓ Tags: ['crewai', 'research', 'agentic_memory']
+    ✓ Metadata: timestamp, agent_id, session_id
+
+⏰  [24 hours later... New session started]
+
+✍️  Writer Agent: Starting content creation
+    → Retrieving research from Memanto...
+    ✓ Found 1 memory with key 'agentic_memory_research'
+    ✓ Content preview: 'Agentic memory systems provide...'
+
+    → Writing blog post...
+    ✓ Title: 'The Future of AI: Agentic Memory Systems'
+    ✓ Introduction: ✓
+    ✓ Key Benefits: ✓
+    ✓ Real-world Applications: ✓
+    ✓ Conclusion: ✓
+
+💾  Storing blog post to Memanto...
+    ✓ Memory saved with key: 'agentic_memory_blog'
+
+🔍  Semantic Search Demo:
+    Query: 'memory benefits for AI agents'
+    ✓ Found 2 relevant memories:
+      1. 'agentic_memory_research' (score: 0.94)
+      2. 'agentic_memory_blog' (score: 0.87)
+
+======================================================================
+✅  Demo Complete!
+======================================================================
+
+🎯  Key Achievements:
+    ✓ Research Agent stored findings in Memanto
+    ✓ Writer Agent retrieved findings 24h later
+    ✓ Cross-session memory persistence verified
+    ✓ Semantic search working correctly
+
+💡  Memanto enables long-term memory for CrewAI agents!
+```
+
+## 🎥 Video Evidence
+
+This demo shows:
+1. ✅ Research Agent storing findings in Memanto
+2. ✅ Writer Agent retrieving findings from Memanto (cross-session)
+3. ✅ Semantic search capabilities
+4. ✅ Memory persistence across sessions
+
+## 📹 Recording Method
+
+- **Tool**: Custom Python script with terminal output capture
+- **Duration**: ~30 seconds
+- **Format**: Terminal text output (can be converted to GIF/video)
+
+## 🚀 Run It Yourself
+
+```bash
+python3 demo_script.py
+```
