@@ -16,15 +16,20 @@ The default path does not call a paid LLM. CrewAI LLM execution is opt-in with
 - `requirements.txt` - example-only dependency for CrewAI
 - `terminal-proof.txt` - terminal recording receipt and replay script with no secrets
 
+## Submission Links
+
+- Pull request: https://github.com/moorcheh-ai/memanto/pull/38
+- Bounty issue: https://github.com/moorcheh-ai/memanto/issues/37
+- Terminal recording: https://asciinema.org/a/WPJfJsQ6pqQlXyTX
+- X post tagging Moorcheh: https://x.com/ixcore_/status/2050839557583609948
+
 ## Visual Proof
 
-Terminal recording: https://asciinema.org/a/WPJfJsQ6pqQlXyTX
-
-The recording runs the live Memanto-backed demo without printing secrets. It
-shows the Research Agent flow storing durable context, the Writer Agent flow
-retrieving current memory in a later step, a newer concise-writing preference
-superseding an older contradictory preference, and the final draft using the
-retrieved memory.
+The Asciinema terminal recording runs the live Memanto-backed demo without
+printing secrets. It shows the Research Agent flow storing durable context, the
+Writer Agent flow retrieving current memory in a later step, a newer
+concise-writing preference superseding an older contradictory preference, and
+the final draft using the retrieved memory.
 
 ## Setup
 
