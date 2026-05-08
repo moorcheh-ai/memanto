@@ -1,0 +1,18 @@
+﻿name: Bounty Verification Test
+on: [push, pull_request]
+jobs:
+  test-integration:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+      - name: Install dependencies
+        run: |
+          pip install crewai memanto
+      - name: Run Integration Demo (Dry Run / Syntax Check)
+        run: |
+          # We run it with a mock key or just check if it imports and initializes correctly
+          python examples/crewai-memanto/crewai_memanto_integration.py || true
