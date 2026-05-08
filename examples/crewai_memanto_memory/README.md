@@ -14,7 +14,17 @@ The default path does not call a paid LLM. CrewAI LLM execution is opt-in with
 
 - `crewai_memanto_memory_demo.py` - argparse CLI and memory adapters
 - `requirements.txt` - example-only dependency for CrewAI
-- `terminal-proof.txt` - dry-run transcript with no secrets
+- `terminal-proof.txt` - terminal recording receipt and replay script with no secrets
+
+## Visual Proof
+
+Terminal recording: https://asciinema.org/a/WPJfJsQ6pqQlXyTX
+
+The recording runs the live Memanto-backed demo without printing secrets. It
+shows the Research Agent flow storing durable context, the Writer Agent flow
+retrieving current memory in a later step, a newer concise-writing preference
+superseding an older contradictory preference, and the final draft using the
+retrieved memory.
 
 ## Setup
 
