@@ -37,6 +37,12 @@ async def remember(
         description="Memory content",
         min_length=1,
     ),
+    body_type: str | None = Body(
+        None,
+        embed=True,
+        alias="type",
+        description="Type of memory. Omit to auto-parse.",
+    ),
     memory_type: str | None = Query(
         None,
         description="Type of memory. Omit to auto-parse.",
@@ -95,10 +101,13 @@ async def remember(
         resolved_title = title or (
             f"{content[:50]}..." if len(content) > 50 else content
         )
+        resolved_memory_type = memory_type if memory_type is not None else body_type
 
         # Create memory record with scope fields and provenance
         memory = MemoryRecord(
-            type=cast(MemoryType, memory_type) if memory_type is not None else None,
+            type=cast(MemoryType, resolved_memory_type)
+            if resolved_memory_type is not None
+            else None,
             title=resolved_title,
             content=content,
             scope_type="agent",
