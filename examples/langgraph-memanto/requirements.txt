@@ -1,0 +1,2 @@
+langgraph>=0.2.56
+memanto>=0.1.0
