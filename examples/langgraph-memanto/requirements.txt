@@ -1,0 +1,4 @@
+-e ../..
+langgraph>=0.2.76
+python-dotenv>=1.0.0
+pytest>=8.2.0
