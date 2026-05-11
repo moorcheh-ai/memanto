@@ -57,10 +57,11 @@ Expected proof point in the second session:
 SESSION 2: new LangGraph thread
 Memanto recalled durable context from an earlier session:
 - instruction: Please always escalate CSV export bugs to Priya.
-- preference: I prefer terse bullet replies.
 - commitment: The launch review is Tuesday at 9 AM Bangkok time.
+- preference: I prefer terse bullet replies.
+- relationship: The customer contact is Maya from Nova Clinics
 
-Memanto answer: Durable memory says: Please always escalate CSV export bugs to Priya.; I prefer terse bullet replies.; The launch review is Tuesday at 9 AM Bangkok time.
+Memanto answer: Durable memory says: Please always escalate CSV export bugs to Priya.; The launch review is Tuesday at 9 AM Bangkok time.; I prefer terse bullet replies.; The customer contact is Maya from Nova Clinics
 ```
 
 The second prompt does not mention Priya, terse replies, or Tuesday. Those facts
