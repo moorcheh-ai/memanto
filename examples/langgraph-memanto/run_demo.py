@@ -6,14 +6,12 @@ import argparse
 from pathlib import Path
 
 from dotenv import load_dotenv
-
 from langgraph_memanto import (
     JsonMemoryStore,
     MemantoMemoryStore,
     build_graph,
     run_turn,
 )
-
 
 SESSION_ONE = (
     "I'm Maya from Nova Clinics. Please always escalate CSV export bugs "
