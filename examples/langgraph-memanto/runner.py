@@ -47,6 +47,12 @@ def run_message(title: str, message: str) -> dict:
     try:
         graph = build_support_graph(memory)
         result = graph.invoke({"user_message": message})
+        stored_ids = result.get("stored_memory_ids", [])
+        if stored_ids:
+            memory.wait_until_indexed(
+                query=message,
+                minimum_count=len(stored_ids),
+            )
     finally:
         memory.close()
 

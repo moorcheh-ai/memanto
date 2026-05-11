@@ -8,6 +8,7 @@ only so contributors can smoke-test the LangGraph wiring without a Moorcheh key.
 from __future__ import annotations
 
 import json
+import time
 from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any, Protocol
@@ -52,6 +53,16 @@ class MemoryBackend(Protocol):
         memory_types: list[str] | None = None,
     ) -> list[MemoryItem]:
         """Recall memories relevant to a query."""
+
+    def wait_until_indexed(
+        self,
+        *,
+        query: str,
+        minimum_count: int,
+        timeout_seconds: float = 45.0,
+        poll_interval_seconds: float = 2.0,
+    ) -> list[MemoryItem]:
+        """Wait until recently written memories are queryable."""
 
 
 class MemantoMemoryBackend:
@@ -120,15 +131,42 @@ class MemantoMemoryBackend:
         limit: int = 5,
         memory_types: list[str] | None = None,
     ) -> list[MemoryItem]:
-        result = self.client.recall(
-            agent_id=self.agent_id,
-            query=query,
-            limit=limit,
-            type=memory_types,
-        )
+        raw_items: list[dict[str, Any]]
+        if memory_types and len(memory_types) > 1:
+            raw_items = []
+            seen_ids: set[str] = set()
+
+            for memory_type in memory_types:
+                result = self.client.recall(
+                    agent_id=self.agent_id,
+                    query=query,
+                    limit=limit,
+                    type=[memory_type],
+                )
+                for item in result.get("memories", []):
+                    item_id = str(item.get("id", ""))
+                    if item_id and item_id in seen_ids:
+                        continue
+                    if item_id:
+                        seen_ids.add(item_id)
+                    raw_items.append(item)
+
+            raw_items.sort(
+                key=lambda item: float(item.get("score", 0.0) or 0.0),
+                reverse=True,
+            )
+            raw_items = raw_items[:limit]
+        else:
+            result = self.client.recall(
+                agent_id=self.agent_id,
+                query=query,
+                limit=limit,
+                type=memory_types,
+            )
+            raw_items = result.get("memories", [])
 
         memories: list[MemoryItem] = []
-        for item in result.get("memories", []):
+        for item in raw_items:
             raw_tags: Any = item.get("tags", []) or []
             memories.append(
                 MemoryItem(
@@ -140,6 +178,25 @@ class MemantoMemoryBackend:
                 )
             )
         return memories
+
+    def wait_until_indexed(
+        self,
+        *,
+        query: str,
+        minimum_count: int,
+        timeout_seconds: float = 45.0,
+        poll_interval_seconds: float = 2.0,
+    ) -> list[MemoryItem]:
+        deadline = time.monotonic() + timeout_seconds
+        latest: list[MemoryItem] = []
+
+        while time.monotonic() < deadline:
+            latest = self.recall(query=query, limit=max(5, minimum_count))
+            if len(latest) >= minimum_count:
+                return latest
+            time.sleep(poll_interval_seconds)
+
+        return latest
 
 
 class LocalJsonMemoryBackend:
@@ -204,3 +261,13 @@ class LocalJsonMemoryBackend:
 
         scored.sort(key=lambda pair: pair[0], reverse=True)
         return [item for score, item in scored if score > 0][:limit]
+
+    def wait_until_indexed(
+        self,
+        *,
+        query: str,
+        minimum_count: int,
+        timeout_seconds: float = 45.0,
+        poll_interval_seconds: float = 2.0,
+    ) -> list[MemoryItem]:
+        return self.recall(query=query, limit=max(5, minimum_count))
