@@ -88,13 +88,13 @@ survives across independent graph threads.
 
 ```text
 examples/langgraph-memanto/
-├── README.md
-├── .env.example
-├── requirements.txt
-├── langgraph_memanto.py
-├── run_demo.py
-├── assets/langgraph-memanto-flight-demo.gif
-└── tests/test_langgraph_memanto.py
+|-- README.md
+|-- .env.example
+|-- requirements.txt
+|-- langgraph_memanto.py
+|-- run_demo.py
+|-- assets/langgraph-memanto-flight-demo.gif
+`-- tests/test_langgraph_memanto.py
 ```
 
 ## Test
