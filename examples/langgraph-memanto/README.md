@@ -47,13 +47,13 @@ retrieves them through `client.recall`.
 
 ```text
 examples/langgraph-memanto/
-├── README.md
-├── .env.example
-├── requirements.txt
-├── langgraph_memory_agent.py
-├── demo_cross_session.py
-├── demo/cross_session_recall.md
-└── tests/test_langgraph_memory_agent.py
+|-- README.md
+|-- .env.example
+|-- requirements.txt
+|-- langgraph_memory_agent.py
+|-- demo_cross_session.py
+|-- demo/cross_session_recall.md
+`-- tests/test_langgraph_memory_agent.py
 ```
 
 ## Workflow
