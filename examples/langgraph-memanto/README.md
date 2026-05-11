@@ -24,6 +24,7 @@ LangGraph is good at routing the current turn through a graph. It should not nee
 | `support_agent.py` | Defines the LangGraph state, nodes, and compiled workflow. |
 | `memory_adapter.py` | Provides a Memanto SDK adapter and a no-key dry-run adapter with the same interface. |
 | `run_demo.py` | Runs two separate support sessions to show recall across a fresh graph state. |
+| `tests/test_support_agent.py` | Verifies cross-session recall and confirms durable profile memory is not carried in graph state. |
 
 ## Local Smoke Test
 
@@ -35,6 +36,12 @@ python -m venv .venv
 .venv\Scripts\activate
 pip install -r requirements.txt
 python run_demo.py --mode dry-run
+```
+
+The local test path uses the same dry-run adapter and LangGraph workflow:
+
+```bash
+pytest tests -q
 ```
 
 Expected transcript:
