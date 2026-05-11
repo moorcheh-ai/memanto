@@ -38,6 +38,27 @@ def test_in_memory_client_recalls_across_sessions() -> None:
     assert "implementation checklists" in rendered
 
 
+def test_langgraph_dry_run_recalls_memory_outside_current_state() -> None:
+    memory = load_example_module("memanto_memory")
+    graph_module = load_example_module("graph")
+
+    client = memory.InMemoryMemantoClient()
+    graph = graph_module.build_support_graph(
+        client,
+        agent_id="test-langgraph-agent",
+    )
+
+    first_result = graph.invoke(graph_module.first_session_input())
+    second_input = graph_module.second_session_input()
+    second_result = graph.invoke(second_input)
+
+    assert "profile" not in second_input
+    assert first_result["remembered_id"] == "dry-1"
+    assert second_result["recalled_memories"]
+    assert "Friday demo" in second_result["reply"]
+    assert "implementation checklists" in second_result["reply"]
+
+
 def test_readme_contains_required_bounty_evidence() -> None:
     readme = (EXAMPLE_DIR / "README.md").read_text()
 
