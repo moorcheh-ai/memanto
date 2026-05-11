@@ -70,5 +70,6 @@ current LangGraph state has no prior messages.
 ## Demo Artifact
 
 See [`demo/cross_session_recall.md`](./demo/cross_session_recall.md) for the
-terminal transcript. The PR video/GIF can be recorded directly from the
-Quick Start commands above.
+terminal transcript.
+
+![Cross-session recall demo](./assets/cross-session-recall.gif)
