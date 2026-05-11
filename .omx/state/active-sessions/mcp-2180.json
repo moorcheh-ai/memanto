@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "repoRoot": "/Users/zheliu/Documents/Codex/2026-05-11/now-go-out-and-make-at-2/data/work/moorcheh-ai__memanto",
+  "branch": "earnbot/sec-moorcheh-ai-memanto-397",
+  "taskName": "Session start: mcp-connect",
+  "latestTaskPreview": "Session start: mcp-connect",
+  "agentName": "unknown",
+  "cliName": "unknown",
+  "worktreePath": "/Users/zheliu/Documents/Codex/2026-05-11/now-go-out-and-make-at-2/data/work/moorcheh-ai__memanto",
+  "taskMode": "",
+  "openspecTier": "",
+  "taskRoutingReason": "colony hook cwd binding",
+  "startedAt": "2026-05-11T17:38:26.781Z",
+  "lastHeartbeatAt": "2026-05-11T17:38:26.781Z",
+  "state": "working",
+  "sessionKey": "mcp-2180"
+}

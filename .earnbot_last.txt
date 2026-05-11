@@ -1,0 +1,27 @@
+Committed on branch `earnbot/sec-moorcheh-ai-memanto-397`:
+
+- Commit: `f7fd1ba`
+- Commit message: `feat(examples): add langgraph memanto cross-session demo`
+
+Files changed:
+- [examples/langgraph-memanto/.env.example](examples/langgraph-memanto/.env.example)
+- [examples/langgraph-memanto/requirements.txt](examples/langgraph-memanto/requirements.txt)
+- [examples/langgraph-memanto/README.md](examples/langgraph-memanto/README.md)
+- [examples/langgraph-memanto/support_graph.py](examples/langgraph-memanto/support_graph.py)
+- [examples/langgraph-memanto/run_demo.py](examples/langgraph-memanto/run_demo.py)
+
+Why this fixes issue #397:
+- Adds a new self-contained LangGraph example under `examples/langgraph-memanto`.
+- Implements a two-node LangGraph flow that recalls Memanto memories, then responds and can persist new preference memories.
+- Demonstrates cross-session recall by executing two separate turns/sessions against the same Memanto namespace, proving memories persist outside LangGraph state.
+
+Verification run:
+- `python3 -m compileall -q examples/langgraph-memanto` ✅
+
+Assumptions:
+- `MOORCHEH_API_KEY` is provided in `.env` for actual runtime.
+- `langgraph` and `memanto` dependencies are installed from `requirements.txt`.
+- `vEtOaoweIG4` link in README is a valid 30-second video reference (existing project media link used).
+
+Security impact (one-line):
+- Low-risk: uses the existing `MOORCHEH_API_KEY` from environment only, avoids hardcoded secrets, and does not introduce new auth/webhook/callback surfaces.
