@@ -1,0 +1,2 @@
+langgraph>=0.2.74
+python-dotenv>=1.0.1
