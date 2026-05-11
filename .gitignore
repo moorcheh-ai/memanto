@@ -82,6 +82,7 @@ cython_debug/
 *.db
 *.sqlite
 *.sqlite3
+examples/langgraph-memanto/.local_memanto_review_store.json
 
 # Logs
 logs/
