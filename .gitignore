@@ -82,6 +82,7 @@ cython_debug/
 *.db
 *.sqlite
 *.sqlite3
+.langgraph-memanto-demo.jsonl
 
 # Logs
 logs/
