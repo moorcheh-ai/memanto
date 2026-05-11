@@ -102,6 +102,15 @@ survives across independent graph threads.
 - The local adapter mirrors the SDK contract so reviewers can verify the flow
   without a Moorcheh API key; the `memanto` backend uses the real SDK path.
 
+## Why This Is Not A Checkpoint Saver
+
+LangGraph checkpointing and Memanto memory solve different problems in this
+example. The checkpointer keeps one graph run resumable. Memanto stores durable
+facts that should survive beyond a single graph thread, such as customer
+preferences, escalation rules, and commitments. The second session deliberately
+uses a fresh `thread_id` to prove the support context comes from Memanto, not
+from replayed checkpoint state.
+
 ## Files
 
 ```text
