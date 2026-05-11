@@ -1,0 +1,20 @@
+[project]
+name = "memanto-langgraph"
+version = "1.0.0"
+description = "Memanto tools for LangGraph — persistent cross-agent memory"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "memanto>=0.1.0",
+    "langgraph-sdk>=0.1.0",
+    "pydantic>=2.0",
+]
+
+[project.optional-dependencies]
+dev = ["pytest", "pytest-asyncio"]
+
+[tool.setuptools]
+packages = ["memanto_langgraph"]
+
+[tool.setuptools.package-data]
+memanto_langgraph = ["py.typed"]
