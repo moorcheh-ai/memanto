@@ -7,6 +7,8 @@ empty.
 
 ## What It Demonstrates
 
+![LangGraph + Memanto demo](./demo.gif)
+
 - **Cross-session recall**: session 2 remembers a user's preference stored in
   session 1.
 - **Memory outside graph state**: LangGraph state only carries the current
@@ -82,11 +84,17 @@ That boundary keeps LangGraph orchestration separate from the memory backend.
 
 ## Demo Recording
 
-For the bounty video/GIF, record this sequence:
+This folder includes `demo.gif` for a quick visual overview. To regenerate it:
+
+```bash
+pip install Pillow
+python make_demo_gif.py
+```
+
+For a terminal recording, record this sequence:
 
 1. Run `python support_agent.py`.
 2. Point to the "Session 1 stored memories" section.
 3. Point to the "Session 2 recalled memories" section.
 4. Show that session 2 starts with a new ticket and still uses session 1's
    preferences.
-
