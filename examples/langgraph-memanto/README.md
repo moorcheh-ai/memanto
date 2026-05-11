@@ -63,6 +63,7 @@ examples/langgraph-memanto/
 ├── README.md
 ├── .env.example
 ├── requirements.txt
+├── demo.gif
 ├── graph.py
 ├── memanto_memory.py
 ├── run_full_demo.py
