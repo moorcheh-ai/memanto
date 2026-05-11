@@ -1,0 +1,2 @@
+langgraph>=0.2.60
+pytest>=8.2.0
