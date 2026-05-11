@@ -60,10 +60,28 @@ Use this when recording or testing without a Moorcheh API key:
 set OFFLINE_DEMO=true
 python run_full_demo.py
 python validate_offline.py
+python -m pytest tests -q
 ```
 
 The offline path uses the same LangGraph nodes with an in-process memory adapter
 so CI and reviewers can verify the workflow shape without secrets.
+
+## Reviewer Checklist
+
+The example is designed to be reviewed without secrets:
+
+```bash
+python validate_offline.py
+python -m pytest tests -q
+python -m py_compile memory_store.py support_graph.py run_day_one.py run_day_two.py run_full_demo.py validate_offline.py
+```
+
+Expected result:
+
+- the validation script prints `offline validation passed`
+- the pytest suite passes
+- `run_full_demo.py` shows a fresh day-two LangGraph run recalling day-one
+  receipt preference and order-delay memories from the long-term memory adapter
 
 ## Expected Output
 
