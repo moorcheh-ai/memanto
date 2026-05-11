@@ -61,7 +61,7 @@ class MemoryRecord:
     score: float | None = None
 
     @classmethod
-    def from_mapping(cls, data: dict[str, Any]) -> "MemoryRecord":
+    def from_mapping(cls, data: dict[str, Any]) -> MemoryRecord:
         """Normalize SDK or local memory rows into one shape."""
 
         content = (
@@ -197,7 +197,7 @@ class MemantoMemoryStore:
         self._ensure_agent(description)
 
     @classmethod
-    def from_env(cls) -> "MemantoMemoryStore":
+    def from_env(cls) -> MemantoMemoryStore:
         api_key = os.environ.get("MOORCHEH_API_KEY", "").strip()
         if not api_key:
             raise RuntimeError("Set MOORCHEH_API_KEY or run the demo with --backend local.")
@@ -338,6 +338,7 @@ def extract_memories(message: str) -> list[MemoryRecord]:
     identity = re.search(
         r"\b(?:i am|i'm)\s+([A-Z][a-z]+)(?:\s+from\s+([A-Z][A-Za-z\s]+?))?[,.]",
         normalized,
+        flags=re.IGNORECASE,
     )
     if identity:
         name = identity.group(1)
