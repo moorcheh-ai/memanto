@@ -33,6 +33,7 @@ def test_cross_session_recall_comes_from_memory_not_prompt(tmp_path: Path) -> No
     assert "Priya" not in user_message
     assert "terse bullet replies" not in user_message
     assert result["recalled_memories"]
+    assert "Priya" in result["durable_answer"]
     assert "Priya" in result["answer"]
     assert "terse bullet replies" in result["answer"]
     assert "Tuesday" in result["answer"]

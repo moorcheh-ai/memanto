@@ -42,6 +42,7 @@ class SupportState(TypedDict, total=False):
     user_message: str
     memory_query: str
     recalled_memories: list[dict[str, Any]]
+    durable_answer: str
     memories_to_store: list[dict[str, Any]]
     stored_memory_ids: list[str]
     answer: str
@@ -272,6 +273,18 @@ def build_graph(memory: LongTermMemory):
             "recalled_memories": [item.as_public_dict() for item in memories],
         }
 
+    def ask_memory(state: SupportState) -> SupportState:
+        if not state.get("recalled_memories"):
+            return {
+                "durable_answer": (
+                    "No durable memory answer was requested because recall "
+                    "returned no matches."
+                )
+            }
+        return {
+            "durable_answer": memory.answer(state["memory_query"], limit=5),
+        }
+
     def extract_memory(state: SupportState) -> SupportState:
         memories = extract_memories(state["user_message"])
         return {"memories_to_store": [item.as_public_dict() for item in memories]}
@@ -291,17 +304,20 @@ def build_graph(memory: LongTermMemory):
         answer = render_support_answer(
             message=state["user_message"],
             recalled=recalled,
+            durable_answer=state.get("durable_answer", ""),
             stored_count=stored_count,
         )
         return {"answer": answer}
 
     graph.add_node("recall_memory", recall_memory)
+    graph.add_node("ask_memory", ask_memory)
     graph.add_node("extract_memory", extract_memory)
     graph.add_node("store_memory", store_memory)
     graph.add_node("draft_answer", draft_answer)
 
     graph.add_edge(START, "recall_memory")
-    graph.add_edge("recall_memory", "extract_memory")
+    graph.add_edge("recall_memory", "ask_memory")
+    graph.add_edge("ask_memory", "extract_memory")
     graph.add_edge("extract_memory", "store_memory")
     graph.add_edge("store_memory", "draft_answer")
     graph.add_edge("draft_answer", END)
@@ -321,6 +337,7 @@ def run_turn(
         "session_id": session_id,
         "user_message": user_message,
         "recalled_memories": [],
+        "durable_answer": "",
         "memories_to_store": [],
         "stored_memory_ids": [],
     }
@@ -389,6 +406,7 @@ def render_support_answer(
     *,
     message: str,
     recalled: list[MemoryRecord],
+    durable_answer: str,
     stored_count: int,
 ) -> str:
     """Create a deterministic answer so the demo works without an LLM key."""
@@ -403,6 +421,7 @@ def render_support_answer(
     else:
         context = "- No durable memory matched this turn yet."
         lead = "This appears to be a new support context:"
+        durable_answer = ""
 
     write_note = (
         f"Stored {stored_count} new typed memories for future LangGraph sessions."
@@ -412,9 +431,16 @@ def render_support_answer(
 
     return (
         f"{lead}\n{context}\n\n"
+        f"{_format_durable_answer(durable_answer)}"
         f"Current ticket: {message}\n"
         f"{write_note}"
     )
+
+
+def _format_durable_answer(answer: str) -> str:
+    if not answer:
+        return ""
+    return f"Memanto answer: {answer}\n\n"
 
 
 def _build_memory_query(message: str) -> str:

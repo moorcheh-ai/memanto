@@ -10,7 +10,8 @@ prompt.
 
 ## What It Demonstrates
 
-- `StateGraph` orchestration for recall, extraction, durable write, and reply nodes.
+- `StateGraph` orchestration for recall, grounded memory answer, extraction,
+  durable write, and reply nodes.
 - Memanto SDK usage through `remember`, `recall`, and `answer`.
 - Cross-session recall: session 2 starts with a new `thread_id` and no copied state.
 - Typed memories using Memanto's `relationship`, `instruction`, `preference`, and
@@ -58,6 +59,8 @@ Memanto recalled durable context from an earlier session:
 - instruction: Please always escalate CSV export bugs to Priya.
 - preference: I prefer terse bullet replies.
 - commitment: The launch review is Tuesday at 9 AM Bangkok time.
+
+Memanto answer: Durable memory says: Please always escalate CSV export bugs to Priya.; I prefer terse bullet replies.; The launch review is Tuesday at 9 AM Bangkok time.
 ```
 
 The second prompt does not mention Priya, terse replies, or Tuesday. Those facts
@@ -70,6 +73,9 @@ fresh user turn
       |
       v
 LangGraph recall_memory node ---> Memanto recall(query)
+      |
+      v
+LangGraph ask_memory node -----> Memanto answer(query)
       |
       v
 LangGraph extract_memory node ---> typed memory candidates
