@@ -91,6 +91,17 @@ LangGraph draft_answer node ----> support handoff answer
 LangGraph owns the short-lived flow state. Memanto owns the durable memory that
 survives across independent graph threads.
 
+## Review Checklist
+
+- The second session uses a new LangGraph `thread_id`, so LangGraph's
+  checkpoint state is intentionally empty for that turn.
+- The recalled escalation owner, reply style, deadline, and customer identity
+  are written to and read from the Memanto memory adapter.
+- The demo exercises all three Memanto primitives: `remember`, `recall`, and
+  `answer`.
+- The local adapter mirrors the SDK contract so reviewers can verify the flow
+  without a Moorcheh API key; the `memanto` backend uses the real SDK path.
+
 ## Files
 
 ```text
