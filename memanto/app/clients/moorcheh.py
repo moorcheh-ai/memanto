@@ -2,11 +2,9 @@
 Moorcheh Client Singleton
 """
 
-from fastapi import Depends
 from moorcheh_sdk import AsyncMoorchehClient, MoorchehClient
 
 from memanto.app.config import settings
-from memanto.app.routes.auth_deps import get_moorcheh_api_key
 
 
 class MoorchehClientSingleton:
@@ -57,15 +55,11 @@ class MoorchehClientSingleton:
 moorcheh_client = MoorchehClientSingleton()
 
 
-def get_moorcheh_client(
-    api_key: str = Depends(get_moorcheh_api_key),
-) -> MoorchehClient:
+def get_moorcheh_client() -> MoorchehClient:
     """Dependency injection function"""
-    return moorcheh_client.get_client(api_key)
+    return moorcheh_client.get_client()
 
 
-def get_async_moorcheh_client(
-    api_key: str = Depends(get_moorcheh_api_key),
-) -> AsyncMoorchehClient:
+def get_async_moorcheh_client() -> AsyncMoorchehClient:
     """Dependency injection function for async client"""
-    return moorcheh_client.get_async_client(api_key)
+    return moorcheh_client.get_async_client()

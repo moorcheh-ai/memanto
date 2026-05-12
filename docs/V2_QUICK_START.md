@@ -16,7 +16,6 @@ pip install pyjwt pydantic-settings
 
 ```bash
 curl -X POST "http://localhost:8000/api/v2/agents" \
-  -H "Authorization: Bearer YOUR_MOORCHEH_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{
     "agent_id": "my-agent",
@@ -29,7 +28,7 @@ curl -X POST "http://localhost:8000/api/v2/agents" \
 
 ```bash
 curl -X POST "http://localhost:8000/api/v2/agents/my-agent/activate" \
-  -H "Authorization: Bearer YOUR_MOORCHEH_API_KEY"
+  -H "Content-Type: application/json"
 ```
 
 **Response:**
@@ -50,9 +49,18 @@ curl -X POST "http://localhost:8000/api/v2/agents/my-agent/activate" \
 ### 3. Store Memory (NO tenant_id!)
 
 ```bash
-curl -X POST "http://localhost:8000/api/v2/agents/my-agent/remember?memory_type=fact&title=First+Memory&content=This+is+my+first+memory&confidence=0.9" \
-  -H "Authorization: Bearer YOUR_MOORCHEH_API_KEY" \
-  -H "X-Session-Token: YOUR_SESSION_TOKEN"
+curl -X POST "http://localhost:8000/api/v2/agents/my-agent/remember" \
+  -H "X-Session-Token: YOUR_SESSION_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "content": "This is my first memory",
+    "type": "fact",
+    "title": "First Memory",
+    "confidence": 0.9,
+    "tags": ["quick-start", "example"],
+    "source": "agent",
+    "provenance": "explicit_statement"
+  }'
 ```
 
 ### 4. Upload a File (Optional)
@@ -61,7 +69,6 @@ Upload a document directly into the agent's memory — content is chunked and ma
 
 ```bash
 curl -X POST "http://localhost:8000/api/v2/agents/my-agent/upload-file" \
-  -H "Authorization: Bearer YOUR_MOORCHEH_API_KEY" \
   -H "X-Session-Token: YOUR_SESSION_TOKEN" \
   -F "file=@/path/to/document.pdf"
 ```
@@ -84,18 +91,32 @@ curl -X POST "http://localhost:8000/api/v2/agents/my-agent/upload-file" \
 ### 5. Recall Memories
 
 ```bash
-curl -X GET "http://localhost:8000/api/v2/agents/my-agent/recall?query=first+memory&limit=5" \
-  -H "Authorization: Bearer YOUR_MOORCHEH_API_KEY" \
-  -H "X-Session-Token: YOUR_SESSION_TOKEN"
+curl -X POST "http://localhost:8000/api/v2/agents/my-agent/recall" \
+  -H "X-Session-Token: YOUR_SESSION_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "query": "first memory",
+    "limit": 5,
+    "type": ["fact"]
+  }'
 ```
 
 ### 6. Ask Questions (RAG)
 
 ```bash
-curl -X POST "http://localhost:8000/api/v2/agents/my-agent/answer?question=What+is+my+first+memory" \
-  -H "Authorization: Bearer YOUR_MOORCHEH_API_KEY" \
-  -H "X-Session-Token: YOUR_SESSION_TOKEN"
+curl -X POST "http://localhost:8000/api/v2/agents/my-agent/answer" \
+  -H "X-Session-Token: YOUR_SESSION_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "question": "What is my first memory?",
+    "limit": 5,
+    "temperature": 0.7,
+    "ai_model": "anthropic.claude-sonnet-4-6",
+    "kiosk_mode": true
+  }'
 ```
+
+`threshold` is only used when `kiosk_mode` is `true`. If omitted in kiosk mode, MEMANTO uses `0.10`.
 
 ---
 
@@ -105,7 +126,6 @@ curl -X POST "http://localhost:8000/api/v2/agents/my-agent/answer?question=What+
 import httpx
 
 # Configuration
-API_KEY = "your-moorcheh-api-key"
 AGENT_ID = "my-agent"
 BASE_URL = "http://localhost:8000"
 
@@ -114,7 +134,6 @@ client = httpx.Client(base_url=BASE_URL)
 # 1. Create agent (one-time)
 create_response = client.post(
     "/api/v2/agents",
-    headers={"Authorization": f"Bearer {API_KEY}"},
     json={
         "agent_id": AGENT_ID,
         "pattern": "support",
@@ -125,8 +144,7 @@ print("Agent created:", create_response.json())
 
 # 2. Activate session
 session_response = client.post(
-    f"/api/v2/agents/{AGENT_ID}/activate",
-    headers={"Authorization": f"Bearer {API_KEY}"}
+    f"/api/v2/agents/{AGENT_ID}/activate"
 )
 session_data = session_response.json()
 session_token = session_data["session_token"]
@@ -134,7 +152,6 @@ print(f"Session active until: {session_data['expires_at']}")
 
 # 3. Headers for subsequent requests
 headers = {
-    "Authorization": f"Bearer {API_KEY}",
     "X-Session-Token": session_token
 }
 
@@ -142,12 +159,14 @@ headers = {
 memory = client.post(
     f"/api/v2/agents/{AGENT_ID}/remember",
     headers=headers,
-    params={
-        "memory_type": "preference",
+    json={
+        "type": "preference",
         "title": "Customer 123 Communication",
         "content": "Customer prefers email over phone",
         "confidence": 0.9,
-        "tags": "customer-123,communication"
+        "tags": ["customer-123", "communication"],
+        "source": "agent",
+        "provenance": "explicit_statement"
     }
 )
 print("Memory stored:", memory.json())
@@ -162,10 +181,10 @@ with open("document.pdf", "rb") as f:
 print("Upload status:", upload.json()["status"])
 
 # 7. Recall memories
-memories = client.get(
+memories = client.post(
     f"/api/v2/agents/{AGENT_ID}/recall",
     headers=headers,
-    params={"query": "customer 123", "limit": 10}
+    json={"query": "customer 123", "limit": 10}
 )
 print("Found memories:", len(memories.json()["memories"]))
 
@@ -173,7 +192,7 @@ print("Found memories:", len(memories.json()["memories"]))
 answer = client.post(
     f"/api/v2/agents/{AGENT_ID}/answer",
     headers=headers,
-    params={"question": "How does customer 123 prefer to be contacted?"}
+    json={"question": "How does customer 123 prefer to be contacted?"}
 )
 print("Answer:", answer.json()["answer"])
 ```
@@ -196,24 +215,14 @@ print("Answer:", answer.json()["answer"])
 ### Check Session Status
 
 ```bash
-curl -X GET "http://localhost:8000/api/v2/session/current" \
-  -H "Authorization: Bearer YOUR_API_KEY" \
-  -H "X-Session-Token: YOUR_SESSION_TOKEN"
-```
-
-### Extend Session
-
-```bash
-curl -X POST "http://localhost:8000/api/v2/session/extend?additional_hours=4" \
-  -H "Authorization: Bearer YOUR_API_KEY" \
+curl -X GET "http://localhost:8000/api/v2/agents/my-agent/status" \
   -H "X-Session-Token: YOUR_SESSION_TOKEN"
 ```
 
 ### End Session
 
 ```bash
-curl -X POST "http://localhost:8000/api/v2/agents/my-agent/deactivate" \
-  -H "Authorization: Bearer YOUR_API_KEY"
+curl -X POST "http://localhost:8000/api/v2/agents/my-agent/deactivate"
 ```
 
 ---
@@ -223,22 +232,19 @@ curl -X POST "http://localhost:8000/api/v2/agents/my-agent/deactivate" \
 ### List All Agents
 
 ```bash
-curl -X GET "http://localhost:8000/api/v2/agents" \
-  -H "Authorization: Bearer YOUR_API_KEY"
+curl -X GET "http://localhost:8000/api/v2/agents"
 ```
 
 ### Get Agent Info
 
 ```bash
-curl -X GET "http://localhost:8000/api/v2/agents/my-agent" \
-  -H "Authorization: Bearer YOUR_API_KEY"
+curl -X GET "http://localhost:8000/api/v2/agents/my-agent"
 ```
 
 ### Delete Agent
 
 ```bash
-curl -X DELETE "http://localhost:8000/api/v2/agents/my-agent" \
-  -H "Authorization: Bearer YOUR_API_KEY"
+curl -X DELETE "http://localhost:8000/api/v2/agents/my-agent"
 ```
 
 ---
@@ -255,8 +261,7 @@ except httpx.HTTPStatusError as e:
     if e.response.status_code == 401:
         # Session expired - reactivate
         session_response = client.post(
-            f"/api/v2/agents/{AGENT_ID}/activate",
-            headers={"Authorization": f"Bearer {API_KEY}"}
+            f"/api/v2/agents/{AGENT_ID}/activate"
         )
         session_token = session_response.json()["session_token"]
         # Retry with new token
@@ -273,7 +278,6 @@ except httpx.HTTPStatusError as e:
         # Agent doesn't exist - create it
         client.post(
             "/api/v2/agents",
-            headers={"Authorization": f"Bearer {API_KEY}"},
             json={"agent_id": AGENT_ID, "pattern": "support"}
         )
 ```

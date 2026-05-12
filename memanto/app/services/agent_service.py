@@ -67,31 +67,15 @@ class AgentService:
         namespace = self._generate_namespace(agent_create.agent_id)
 
         # Create namespace in Moorcheh - CRITICAL: Must succeed
-        from typing import Any
-
         client = MoorchehClient(moorcheh_api_key)
-        namespace_created = False
-        namespace_info: Any = None
 
         try:
             # Use Moorcheh SDK to create namespace with type="text"
-            result = client.namespaces.create(namespace, type="text")
-            namespace_created = True
+            client.namespaces.create(namespace, type="text")
             print(f"[OK] Namespace created in Moorcheh: {namespace}")
-            namespace_info = result
         except ConflictError:
             # Namespace already exists - this is OK, agent might have been created before
-            namespace_created = True
             print(f"[OK] Namespace already exists in Moorcheh: {namespace}")
-            # Try to get namespace info
-            try:
-                ns_list = client.namespaces.list()
-                for ns in ns_list.get("namespaces", []):
-                    if ns.get("namespace_name") == namespace:
-                        namespace_info = ns
-                        break
-            except Exception:
-                pass  # If we can't get info, that's OK
         except Exception as e:
             # Unexpected error - fail the agent creation
             raise Exception(
@@ -108,11 +92,6 @@ class AgentService:
             memory_count=0,
             session_count=0,
             status="ready",
-            metadata={
-                **(agent_create.metadata or {}),
-                "namespace_verified": namespace_created,
-                "namespace_info": namespace_info,
-            },
         )
 
         # Save agent metadata

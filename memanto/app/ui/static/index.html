@@ -1445,7 +1445,7 @@
 
             if (S.token && S.agentId) {
                 try {
-                    const sess = await api('GET', '/api/v2/session/current');
+                    const sess = await api('GET', '/api/v2/status');
                     const hrs = Math.floor((sess.time_remaining_seconds || 0) / 3600);
                     const mins = Math.floor(((sess.time_remaining_seconds || 0) % 3600) / 60);
                     session.innerHTML = `
@@ -1471,19 +1471,20 @@
             const content = document.getElementById('remContent').value.trim();
             if (!content) { toast('Memory content is required', 'error'); return; }
             const title = document.getElementById('remTitle').value.trim() || (content.length > 47 ? content.substring(0, 47) + '...' : content);
-            const params = new URLSearchParams({
-                memory_type: document.getElementById('remType').value,
-                title, content,
-                confidence: document.getElementById('remConf').value,
+            const tagsRaw = document.getElementById('remTags').value.trim();
+            const body = {
+                type: document.getElementById('remType').value,
+                title,
+                content,
+                confidence: parseFloat(document.getElementById('remConf').value),
                 source: document.getElementById('remSource').value,
                 provenance: document.getElementById('remProv').value,
-            });
-            const tags = document.getElementById('remTags').value.trim();
-            if (tags) params.set('tags', tags);
+                tags: tagsRaw ? tagsRaw.split(',').map(t => t.trim()).filter(Boolean) : [],
+            };
             const btn = document.getElementById('btnRemember');
             btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Storing...';
             try {
-                await api('POST', `/api/v2/agents/${S.agentId}/remember?${params}`);
+                await api('POST', `/api/v2/agents/${S.agentId}/remember`, body);
                 toast('Memory stored successfully!');
                 document.getElementById('remContent').value = '';
                 document.getElementById('remTitle').value = '';
@@ -1506,7 +1507,7 @@
             msgs.innerHTML += `<div class="chat-msg assistant" id="answerLoading"><span class="spinner"></span> Thinking...</div>`;
             msgs.scrollTop = msgs.scrollHeight;
             try {
-                const res = await api('POST', `/api/v2/agents/${S.agentId}/answer?limit=5&threshold=0.25`, { question: q });
+                const res = await api('POST', `/api/v2/agents/${S.agentId}/answer`, { question: q, limit: 5, threshold: 0.25 });
                 document.getElementById('answerLoading').remove();
                 let sourcesHtml = '';
                 if (res.sources && res.sources.length) {
@@ -1527,15 +1528,15 @@
             if (!S.agentId || !S.token) { toast('No active agent/session', 'error'); return; }
             const q = document.getElementById('recQuery').value.trim();
             if (!q) { toast('Search query is required', 'error'); return; }
-            const params = new URLSearchParams({ query: q, limit: document.getElementById('recLimit').value || '10' });
-            const types = document.getElementById('recTypes').value.trim();
-            if (types) params.set('memory_types', types);
-            const sim = document.getElementById('recSim').value;
-            if (sim) params.set('min_similarity', sim);
+            const body = { query: q, limit: parseInt(document.getElementById('recLimit').value) || 10 };
+            const typesRaw = document.getElementById('recTypes').value.trim();
+            if (typesRaw) body.type = typesRaw.split(',').map(t => t.trim()).filter(Boolean);
+            const simRaw = document.getElementById('recSim').value;
+            if (simRaw) body.min_similarity = parseFloat(simRaw);
             const box = document.getElementById('recallResults');
             box.innerHTML = '<div class="loading-overlay"><span class="spinner"></span> Searching...</div>';
             try {
-                const res = await api('GET', `/api/v2/agents/${S.agentId}/recall?${params}`);
+                const res = await api('POST', `/api/v2/agents/${S.agentId}/recall`, body);
                 const mems = res.memories || [];
                 if (!mems.length) { box.innerHTML = '<p style="color:var(--text-dim);padding:20px">No memories found</p>'; return; }
                 box.innerHTML = buildMemoryTable(mems);
@@ -1550,22 +1551,26 @@
                 document.getElementById('explorerTable').innerHTML = '<p style="color:var(--text-dim);padding:20px">Activate an agent via CLI to explore memories</p>';
                 return;
             }
-            const q = document.getElementById('expSearch').value.trim() || '*';
+            const q = document.getElementById('expSearch').value.trim();
             const type = document.getElementById('expType').value;
             const box = document.getElementById('explorerTable');
             box.innerHTML = '<div class="loading-overlay"><span class="spinner"></span> Loading memories...</div>';
             try {
-                let url, params;
+                let url, body;
                 if (asOfDate) {
-                    params = new URLSearchParams({ query: q, as_of: asOfDate, limit: '50' });
-                    if (type) params.set('memory_types', type);
-                    url = `/api/v2/agents/${S.agentId}/recall/as-of?${params}`;
+                    body = { as_of: asOfDate, limit: 50 };
+                    if (type) body.type = [type];
+                    url = `/api/v2/agents/${S.agentId}/recall/as-of`;
+                } else if (!q) {
+                    body = { limit: 50 };
+                    if (type) body.type = [type];
+                    url = `/api/v2/agents/${S.agentId}/recall/recent`;
                 } else {
-                    params = new URLSearchParams({ query: q, limit: '50' });
-                    if (type) params.set('memory_types', type);
-                    url = `/api/v2/agents/${S.agentId}/recall?${params}`;
+                    body = { query: q, limit: 50 };
+                    if (type) body.type = [type];
+                    url = `/api/v2/agents/${S.agentId}/recall`;
                 }
-                const res = await api('GET', url);
+                const res = await api('POST', url, body);
                 S.memories = res.memories || [];
                 if (!S.memories.length) { box.innerHTML = '<p style="color:var(--text-dim);padding:20px">No memories found</p>'; return; }
                 box.innerHTML = buildMemoryTable(S.memories, true);
@@ -1915,7 +1920,7 @@
             cards.innerHTML = '<div class="loading-overlay"><span class="spinner"></span> Loading analytics...</div>';
 
             try {
-                const res = await api('GET', `/api/v2/agents/${S.agentId}/recall?query=*&limit=100`);
+                const res = await api('POST', `/api/v2/agents/${S.agentId}/recall/recent`, { limit: 100 });
                 const mems = res.memories || [];
 
                 const typeCounts = {};
@@ -2049,9 +2054,11 @@
         // Boot
         init();
 
-        // Auto-shutdown server when UI tab/window is closed
+        // Auto-shutdown server when UI tab/window is closed (only if started via 'memanto ui')
         window.addEventListener('beforeunload', () => {
-            navigator.sendBeacon('/api/ui/shutdown');
+            if (S.config && S.config.ui_mode) {
+                navigator.sendBeacon('/api/ui/shutdown');
+            }
         });
 
     </script>

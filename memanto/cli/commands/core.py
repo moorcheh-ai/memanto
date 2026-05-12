@@ -242,7 +242,7 @@ def status():
         )
         console.print()
 
-    # Active Session
+    # Active Agent
     active_agent_id, active_session_token = config_manager.get_active_session()
     has_session = bool(active_agent_id and active_session_token)
 
@@ -263,7 +263,7 @@ def status():
             sess_table.add_row("Pattern", session_data.get("pattern", "unknown"))
             sess_table.add_row("Namespace", session_data.get("namespace", "unknown"))
             sess_table.add_row(
-                "Session",
+                "Session Token",
                 (active_session_token[:24] + "...") if active_session_token else "None",
             )
             sess_table.add_row(
@@ -275,9 +275,7 @@ def status():
             minutes = remainder // 60
             sess_table.add_row("Remaining", f"{int(hours)}h {int(minutes)}m")
 
-            console.print(
-                Panel(sess_table, title="Active Session", border_style=SUCCESS)
-            )
+            console.print(Panel(sess_table, title="Active Agent", border_style=SUCCESS))
             console.print()
         except Exception:
             sess_table = Table(show_header=False, box=None, padding=(0, 2))
@@ -286,14 +284,12 @@ def status():
 
             sess_table.add_row("Agent", f"[bold]{active_agent_id}[/bold]")
             sess_table.add_row(
-                "Session",
+                "Session Token",
                 (active_session_token[:24] + "...") if active_session_token else "None",
             )
-            sess_table.add_row("Status", "[yellow]● session may be expired[/yellow]")
+            sess_table.add_row("Status", "[yellow]● activation may be expired[/yellow]")
 
-            console.print(
-                Panel(sess_table, title="Active Session", border_style=WARNING)
-            )
+            console.print(Panel(sess_table, title="Active Agent", border_style=WARNING))
             console.print()
     elif has_session and not server_online:
         try:
@@ -310,7 +306,7 @@ def status():
             sess_table.add_row("Pattern", session_data.get("pattern", "unknown"))
             sess_table.add_row("Namespace", session_data.get("namespace", "unknown"))
             sess_table.add_row(
-                "Session",
+                "Session Token",
                 (active_session_token[:24] + "...") if active_session_token else "None",
             )
             sess_table.add_row(
@@ -322,9 +318,7 @@ def status():
             minutes = remainder // 60
             sess_table.add_row("Remaining", f"{int(hours)}h {int(minutes)}m")
 
-            console.print(
-                Panel(sess_table, title="Active Session", border_style=SUCCESS)
-            )
+            console.print(Panel(sess_table, title="Active Agent", border_style=SUCCESS))
             console.print()
         except Exception:
             sess_table = Table(show_header=False, box=None, padding=(0, 2))
@@ -333,21 +327,19 @@ def status():
 
             sess_table.add_row("Agent", f"[bold]{active_agent_id}[/bold]")
             sess_table.add_row(
-                "Session",
+                "Session Token",
                 (active_session_token[:24] + "...") if active_session_token else "None",
             )
-            sess_table.add_row("Status", "[yellow]● session may be expired[/yellow]")
+            sess_table.add_row("Status", "[yellow]● activation may be expired[/yellow]")
 
-            console.print(
-                Panel(sess_table, title="Active Session", border_style=WARNING)
-            )
+            console.print(Panel(sess_table, title="Active Agent", border_style=WARNING))
             console.print()
     else:
         console.print(
             Panel(
-                "[dim]No active session[/dim]\n"
+                "[dim]No active agent[/dim]\n"
                 f"Activate an agent: [{BRIGHT}]memanto agent activate <agent-id>[/{BRIGHT}]",
-                title="Active Session",
+                title="Active Agent",
                 border_style="dim",
             )
         )
@@ -565,6 +557,7 @@ def ui(
 
     # Start server
     try:
+        os.environ["MEMANTO_UI_MODE"] = "true"
         uvicorn.run("memanto.app.main:app", host=host, port=port, log_level="info")
     except KeyboardInterrupt:
         console.print("\n\n[yellow]Dashboard stopped.[/yellow]")

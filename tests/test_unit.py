@@ -48,7 +48,6 @@ class TestSessionService:
         """Test session creation"""
         session = session_service.create_session(
             agent_id="test-agent",
-            moorcheh_api_key=settings.MOORCHEH_API_KEY,
             pattern=AgentPattern.SUPPORT,
             duration_hours=4,
         )
@@ -70,15 +69,13 @@ class TestSessionService:
 
     def test_validate_session(self, session_service):
         """Test session validation"""
-        api_key = settings.MOORCHEH_API_KEY
-
         # Create session
         session = session_service.create_session(
-            agent_id="test-agent", moorcheh_api_key=api_key, duration_hours=1
+            agent_id="test-agent", duration_hours=1
         )
 
         # Validate session
-        token_payload = session_service.validate_session(session.session_token, api_key)
+        token_payload = session_service.validate_session(session.session_token)
 
         assert token_payload.agent_id == "test-agent"
         assert token_payload.namespace == "memanto_agent_test-agent"
@@ -90,7 +87,6 @@ class TestSessionService:
         # Create session with very short duration
         session_service.create_session(
             agent_id="test-agent",
-            moorcheh_api_key=settings.MOORCHEH_API_KEY,
             duration_hours=0,  # Expires immediately
         )
 
@@ -105,35 +101,11 @@ class TestSessionService:
         # Just verify the logic exists
         print("✅ Session expiration logic exists")
 
-    def test_extend_session(self, session_service):
-        """Test session extension"""
-        # Create session
-        session = session_service.create_session(
-            agent_id="test-agent",
-            moorcheh_api_key=settings.MOORCHEH_API_KEY,
-            duration_hours=1,
-        )
-
-        original_expires = session.expires_at
-
-        # Extend session
-        extended_session = session_service.extend_session(
-            agent_id="test-agent", additional_hours=2
-        )
-
-        # Expiration should be 2 hours later
-        time_diff = (extended_session.expires_at - original_expires).total_seconds()
-        assert 1.9 * 3600 < time_diff < 2.1 * 3600
-
-        print("✅ Session extended successfully")
-        print(f"   Added: {time_diff / 3600:.2f} hours")
-
     def test_end_session(self, session_service):
         """Test ending session"""
         # Create session
         session = session_service.create_session(
             agent_id="test-agent",
-            moorcheh_api_key=settings.MOORCHEH_API_KEY,
             duration_hours=1,
         )
 
@@ -296,9 +268,7 @@ class TestMEMANTOArchitecture:
         from memanto.app.services.session_service import SessionService
 
         service = SessionService(secret_key="test-secret-min-32-bytes-abcdefg")
-        session = service.create_session(
-            agent_id="test-agent", moorcheh_api_key="test-key", duration_hours=4
-        )
+        session = service.create_session(agent_id="test-agent", duration_hours=4)
 
         # Decode token (without verification, just to check structure)
         payload = jwt.decode(session.session_token, options={"verify_signature": False})

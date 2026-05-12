@@ -139,7 +139,10 @@ If you need to access MEMANTO via HTTP (e.g., from a web app), start the server:
 memanto serve
 
 # Terminal 2 (or from your app)
-curl http://localhost:8000/api/v2/agents/my-agent/recall?query=memory
+curl -X POST "http://localhost:8000/api/v2/agents/my-agent/recall" \
+  -H "X-Session-Token: YOUR_SESSION_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"query":"memory","limit":5}'
 ```
 
 **Pros:**
@@ -274,7 +277,6 @@ memanto answer "question"                    # RAG question answering
 
 # Session Management
 memanto session info                      # Show session details
-memanto session extend --hours 2          # Extend session
 
 # Configuration
 memanto config show                       # Display config
@@ -474,11 +476,8 @@ memanto
 
 **Solution:**
 ```bash
-# Option 1: Reactivate
+# Reactivate
 memanto agent activate AGENT_ID
-
-# Option 2: Extend (if still valid)
-memanto session extend --hours 6
 ```
 
 ### Windows Unicode Errors

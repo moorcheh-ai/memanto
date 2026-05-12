@@ -3,6 +3,11 @@ Universal Adoption Endpoints
 """
 
 from fastapi import APIRouter, Header, HTTPException
+from memanto.app.services.universal_services import (
+    MemoryExplainService,
+    MemoryExportService,
+    MemorySupersedeService,
+)
 
 from memanto.app.models.universal_endpoints import (
     MemoryExplainRequest,
@@ -11,11 +16,6 @@ from memanto.app.models.universal_endpoints import (
     MemoryExportResponse,
     MemorySupersedeRequest,
     MemorySupersedeResponse,
-)
-from memanto.app.services.universal_services import (
-    MemoryExplainService,
-    MemoryExportService,
-    MemorySupersedeService,
 )
 from memanto.app.utils.auth import extract_tenant_from_auth
 from memanto.app.utils.logging import get_logger

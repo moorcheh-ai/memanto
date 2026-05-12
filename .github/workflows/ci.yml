@@ -64,6 +64,11 @@ jobs:
     - name: Create version fallback
       run: echo '__version__ = "0.0.0.dev0"' > memanto/app/_version.py
 
+    # Placeholder key satisfies unit/API tests (mocked Moorcheh). Live E2E in
+    # tests/test_e2e.py is skipped unless MOORCHEH_API_KEY is a real key.
+    # To run E2E in CI: add repository secret MOORCHEH_API_KEY and set:
+    #   env:
+    #     MOORCHEH_API_KEY: ${{ secrets.MOORCHEH_API_KEY }}
     - name: Run tests
       env:
         MOORCHEH_API_KEY: test-api-key

@@ -34,11 +34,10 @@ Agents can store:
 
 **Query**:
 ```bash
-curl "http://localhost:8000/api/v2/agents/{agent_id}/recall?\
-tenant_id={tenant}&\
-query=*&\
-created_after=2025-12-01T00:00:00Z&\
-limit=1000"
+curl -X POST "http://localhost:8000/api/v2/agents/{agent_id}/recall/changed-since" \
+  -H "X-Session-Token: {session_token}" \
+  -H "Content-Type: application/json" \
+  -d '{"since":"2025-12-01T00:00:00Z","limit":100}'
 ```
 
 **Visualization** (Python + Matplotlib):
@@ -147,13 +146,12 @@ Project Timeline with Milestones
 
 **Use Case**: Track what types of memories agent creates over time
 
-**Query**:
+**Query** (fetch everything since Dec 1, then client-side filter for the upper bound):
 ```bash
-curl "http://localhost:8000/api/v2/agents/{agent_id}/recall?\
-query=*&\
-created_after=2025-12-01T00:00:00Z&\
-created_before=2025-12-31T23:59:59Z" \
--H "X-Session-Token: {session_token}"
+curl -X POST "http://localhost:8000/api/v2/agents/{agent_id}/recall/changed-since" \
+  -H "X-Session-Token: {session_token}" \
+  -H "Content-Type: application/json" \
+  -d '{"since":"2025-12-01T00:00:00Z","limit":100}'
 ```
 
 **Visualization** (Stacked Area Chart):
@@ -257,15 +255,13 @@ def get_weekly_stats(agent_id, session_token, week_start):
 
     week_end = week_start + timedelta(days=7)
 
-    url = f"http://localhost:8000/api/v2/agents/{agent_id}/recall?\
-query=*&\
-created_after={week_start.isoformat()}Z&\
-created_before={week_end.isoformat()}Z&\
-limit=500"
-
+    url = f"http://localhost:8000/api/v2/agents/{agent_id}/recall/changed-since"
     headers = {"X-Session-Token": session_token}
-    response = requests.get(url, headers=headers)
-    memories = response.json()['memories']
+    response = requests.post(
+        url, headers=headers, json={"since": f"{week_start.isoformat()}Z", "limit": 100}
+    )
+    upper_bound = f"{week_end.isoformat()}Z"
+    memories = [m for m in response.json()['memories'] if m.get("created_at", "") <= upper_bound]
 
     return {
         'week': week_start.strftime('%Y-%m-%d'),
@@ -335,13 +331,11 @@ async def activity_stream(websocket: WebSocket, agent_id: str, session_token: st
     while True:
         # Query for new memories since last check
         now = datetime.utcnow()
-        url = f"http://localhost:8000/api/v2/agents/{agent_id}/recall?\
-query=*&\
-created_after={last_check.isoformat()}Z&\
-limit=50"
-        
+        url = f"http://localhost:8000/api/v2/agents/{agent_id}/recall/changed-since"
         headers = {"X-Session-Token": session_token}
-        response = requests.get(url, headers=headers)
+        response = requests.post(
+            url, headers=headers, json={"since": f"{last_check.isoformat()}Z", "limit": 50}
+        )
         new_memories = response.json()['memories']
 
         if new_memories:
@@ -386,14 +380,13 @@ def compare_periods(agent_id, session_token, period1_start, period1_end, period2
     """Compare two time periods"""
 
     def get_stats(start, end):
-        url = f"http://localhost:8000/api/v2/agents/{agent_id}/recall?\
-query=*&\
-created_after={start.isoformat()}Z&\
-created_before={end.isoformat()}Z&\
-limit=1000"
-        
+        url = f"http://localhost:8000/api/v2/agents/{agent_id}/recall/changed-since"
         headers = {"X-Session-Token": session_token}
-        memories = requests.get(url, headers=headers).json()['memories']
+        upper = f"{end.isoformat()}Z"
+        raw = requests.post(
+            url, headers=headers, json={"since": f"{start.isoformat()}Z", "limit": 100}
+        ).json()['memories']
+        memories = [m for m in raw if m.get("created_at", "") <= upper]
 
         return {
             'total': len(memories),
@@ -442,7 +435,11 @@ limit=1000"
 **1. Use automatic timestamps for filtering:**
 ```python
 # Get all memories from last week
-url = f"...?created_after={seven_days_ago}&limit=100"
+requests.post(
+    "http://localhost:8000/api/v2/agents/{agent_id}/recall/changed-since",
+    json={"since": seven_days_ago, "limit": 100},
+    headers={"X-Session-Token": session_token},
+)
 ```
 
 **2. Use semantic timeline for context:**
@@ -484,20 +481,29 @@ plt.scatter(milestone_dates, milestone_counts, s=200, color='red',
 
 ## API Query Patterns
 
+All examples below are `POST` with a JSON body and require `X-Session-Token` + `Content-Type: application/json` headers.
+
 ### Get Timeline Data
 ```bash
-# Last 7 days
-?created_after=$(date -d '7 days ago' -u +%Y-%m-%dT%H:%M:%SZ)
+# Last 7 days — temporal endpoint, no semantic search
+POST /recall/changed-since
+{"since":"<7d-ago ISO>"}
 
-# Specific date range
-?created_after=2025-12-20T00:00:00Z&created_before=2025-12-27T23:59:59Z
+# Specific date range — server gives you `since`; client-side filter for the upper bound
+POST /recall/changed-since
+{"since":"2025-12-20T00:00:00Z","limit":100}
+# then keep only m where m["created_at"] <= "2025-12-27T23:59:59Z"
 
 # This month
-?created_after=$(date -u +%Y-%m-01T00:00:00Z)
+POST /recall/changed-since
+{"since":"<YYYY-MM-01T00:00:00Z>"}
 
-# Combine with semantic tags
-?created_after=2025-12-01T00:00:00Z&query=milestone&tags=timeline
+# Combine with type filter (e.g. events / milestones)
+POST /recall/changed-since
+{"since":"2025-12-01T00:00:00Z","type":["event"]}
 ```
+
+> The `/recall` (similarity-search) endpoint does **not** accept `created_after` / `created_before` query params. For temporal listing always go through `/recall/changed-since`, `/recall/as-of`, or `/recall/recent`.
 
 ---
 

@@ -226,12 +226,20 @@ You'll see all 17 API endpoints with interactive testing!
  ```bash
  # 1. Activate agent session
  curl -X POST "http://localhost:8000/api/v2/agents/my-agent/activate" \
-   -H "Authorization: Bearer YOUR_MOORCHEH_API_KEY"
+   -H "Content-Type: application/json"
  
  # 2. Save the session_token from response, then store memory
- curl -X POST "http://localhost:8000/api/v2/agents/my-agent/remember?memory_type=fact&title=Test+Memory&content=MEMANTO+is+working&confidence=1.0" \
-   -H "Authorization: Bearer YOUR_MOORCHEH_API_KEY" \
-   -H "X-Session-Token: YOUR_SESSION_TOKEN"
+ curl -X POST "http://localhost:8000/api/v2/agents/my-agent/remember" \
+   -H "X-Session-Token: YOUR_SESSION_TOKEN" \
+   -H "Content-Type: application/json" \
+   -d '{
+     "type": "fact",
+     "title": "Test Memory",
+     "content": "MEMANTO is working",
+     "confidence": 1.0,
+     "source": "agent",
+     "provenance": "explicit_statement"
+   }'
  ```
  
  **Expected response:**
@@ -247,9 +255,14 @@ You'll see all 17 API endpoints with interactive testing!
  **Then recall the memory:**
  ```bash
  # Agent recalls its memories
- curl "http://localhost:8000/api/v2/agents/my-agent/recall?query=MEMANTO&limit=5" \
-   -H "Authorization: Bearer YOUR_MOORCHEH_API_KEY" \
-   -H "X-Session-Token: YOUR_SESSION_TOKEN"
+ curl -X POST "http://localhost:8000/api/v2/agents/my-agent/recall" \
+   -H "X-Session-Token: YOUR_SESSION_TOKEN" \
+   -H "Content-Type: application/json" \
+   -d '{
+     "query": "MEMANTO",
+     "limit": 5,
+     "type": ["fact"]
+   }'
  ```
 
 **Expected response:**
@@ -292,17 +305,13 @@ class MyAIAgent:
     def __init__(self):
         self.memanto_url = "http://localhost:8000"
         self.agent_id = "customer-support-bot"  # Stable agent identity
-        self.api_key = os.getenv("MOORCHEH_API_KEY") # Get from environment variable
         self.session_token = None # Will be set after activation
         self.client = httpx.AsyncClient()
 
     async def activate_session(self):
         """Activate a new session for the agent."""
         response = await self.client.post(
-            f"{self.memanto_url}/api/v2/agents/{self.agent_id}/activate",
-            headers={
-                "Authorization": f"Bearer {self.api_key}"
-            }
+            f"{self.memanto_url}/api/v2/agents/{self.agent_id}/activate"
         )
         response.raise_for_status()
         self.session_token = response.json().get("session_token")
@@ -318,15 +327,15 @@ class MyAIAgent:
 
         response = await self.client.post(
             f"{self.memanto_url}/api/v2/agents/{self.agent_id}/remember",
-            params={
-                "memory_type": memory_type,
+            json={
+                "type": memory_type,
                 "title": "Conversation Memory",
                 "content": fact,
                 "confidence": 0.9,
-                "source": "agent"
+                "source": "agent",
+                "provenance": "explicit_statement"
             },
             headers={
-                "Authorization": f"Bearer {self.api_key}",
                 "X-Session-Token": self.session_token
             }
         )
@@ -337,14 +346,13 @@ class MyAIAgent:
          if not self.session_token:
              await self.activate_session() # Activate if not already active
 
-         response = await self.client.get(
+         response = await self.client.post(
              f"{self.memanto_url}/api/v2/agents/{self.agent_id}/recall",
-             params={
+             json={
                  "query": query,
                  "limit": limit
              },
              headers={
-                 "Authorization": f"Bearer {self.api_key}",
                  "X-Session-Token": self.session_token
              }
          )

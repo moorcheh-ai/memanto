@@ -5,6 +5,7 @@ Utility functions to make temporal queries easier for agents.
 """
 
 from datetime import datetime, timedelta, timezone
+from typing import Any
 
 
 def parse_iso_timestamp(ts_str: str) -> datetime:
@@ -168,9 +169,9 @@ def build_temporal_query(
     created_after: str | None = None,
     created_before: str | None = None,
     limit: int = 10,
-) -> str:
+) -> dict[str, Any]:
     """
-    Build a complete temporal query URL
+    Build a complete temporal recall request payload.
 
     Args:
         base_url: MEMANTO server URL (e.g., "http://localhost:8000")
@@ -182,7 +183,10 @@ def build_temporal_query(
         limit: Maximum results
 
     Returns:
-        Complete query URL
+        Dict containing:
+        - method: HTTP method ("POST")
+        - url: recall endpoint URL
+        - json: request body for /api/v2/agents/{agent_id}/recall
 
     Examples:
         >>> build_temporal_query(
@@ -191,28 +195,37 @@ def build_temporal_query(
         ...     "decisions",
         ...     relative_time="last 7 days"
         ... )
-        'http://localhost:8000/api/v1/agents/claude_dev/recall?query=decisions&created_after=2025-12-20T00:00:00Z&limit=10'
+        {
+          "method": "POST",
+          "url": "http://localhost:8000/api/v2/agents/claude_dev/recall",
+          "json": {
+            "query": "decisions",
+            "created_after": "2025-12-20T00:00:00Z",
+            "limit": 10
+          }
+        }
     """
     # Parse relative time if provided and no absolute time given
     if relative_time and not created_after:
         created_after = parse_relative_time(relative_time)
 
-    # Build query parameters
-    params = [f"query={query}", f"limit={limit}"]
-
+    body: dict[str, Any] = {"query": query, "limit": limit}
     if created_after:
-        params.append(f"created_after={created_after}")
-
+        body["created_after"] = created_after
     if created_before:
-        params.append(f"created_before={created_before}")
+        body["created_before"] = created_before
 
-    return f"{base_url}/api/v1/agents/{agent_id}/recall?{'&'.join(params)}"
+    return {
+        "method": "POST",
+        "url": f"{base_url}/api/v2/agents/{agent_id}/recall",
+        "json": body,
+    }
 
 
 # Quick access functions for common queries
 def query_today(
     base_url: str, agent_id: str, query: str = "context", limit: int = 20
-) -> str:
+) -> dict[str, Any]:
     """Get memories from today"""
     return build_temporal_query(
         base_url, agent_id, query, relative_time="today", limit=limit
@@ -221,7 +234,7 @@ def query_today(
 
 def query_recent(
     base_url: str, agent_id: str, days: int = 7, query: str = "recent", limit: int = 20
-) -> str:
+) -> dict[str, Any]:
     """Get memories from last N days"""
     return build_temporal_query(
         base_url, agent_id, query, relative_time=f"last {days} days", limit=limit
@@ -230,7 +243,7 @@ def query_recent(
 
 def query_this_week(
     base_url: str, agent_id: str, query: str = "week", limit: int = 30
-) -> str:
+) -> dict[str, Any]:
     """Get memories from this week"""
     return build_temporal_query(
         base_url, agent_id, query, relative_time="this week", limit=limit

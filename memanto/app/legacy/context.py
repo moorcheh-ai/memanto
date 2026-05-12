@@ -6,6 +6,9 @@ using Moorcheh's AI capabilities.
 """
 
 from fastapi import APIRouter, Depends
+from memanto.app.services.context_summarization_service import (
+    ContextSummarizationService,
+)
 from moorcheh_sdk import MoorchehClient
 
 from memanto.app.clients.moorcheh import get_moorcheh_client
@@ -15,9 +18,6 @@ from memanto.app.models import (
     ConversationCompressionRequest,
     CustomSummarizationRequest,
     SummarizationResponse,
-)
-from memanto.app.services.context_summarization_service import (
-    ContextSummarizationService,
 )
 from memanto.app.utils.errors import map_error_to_http_exception
 

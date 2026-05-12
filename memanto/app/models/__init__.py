@@ -65,6 +65,15 @@ class BatchRememberItem(BaseModel):
     )
     confidence: float = Field(0.8, ge=0.0, le=1.0, description="Confidence score (0-1)")
     tags: list[str] | None = Field(None, description="Tags for this memory")
+    source: str = Field("agent", description="Source of memory")
+    provenance: str = Field(
+        "explicit_statement",
+        description="How memory was obtained (explicit_statement, inferred, observed, etc.)",
+    )
+
+
+class RememberRequest(BatchRememberItem):
+    """Request body for remember endpoint"""
 
 
 class BatchRememberRequest(BaseModel):
@@ -76,6 +85,55 @@ class BatchRememberRequest(BaseModel):
         max_length=100,
         description="List of memories to store (max 100)",
     )
+
+
+class SupersedeRequest(BaseModel):
+    """Request body for supersede endpoint"""
+
+    new_memory_id: str = Field(
+        ..., description="ID of new memory that supersedes the old one"
+    )
+
+
+class ConflictResolveRequest(BaseModel):
+    """Request body for resolving a conflict"""
+
+    conflict_index: int = Field(..., ge=0, description="Conflict index to resolve")
+    action: str = Field(
+        ...,
+        description="Resolution action: keep_old, keep_new, keep_both, remove_both, manual",
+    )
+    date: str | None = Field(
+        None, description="Conflict report date (YYYY-MM-DD). Defaults to today."
+    )
+    manual_content: str | None = Field(
+        None, description="Required when action is 'manual'"
+    )
+    manual_type: str | None = Field(
+        None, description="Optional memory type for manual action"
+    )
+
+
+class AnswerRequest(BaseModel):
+    """Request body for answer endpoint"""
+
+    question: str = Field(..., description="Question to ask")
+    limit: int | None = Field(
+        None, ge=1, le=100, description="Number of context memories to use"
+    )
+    threshold: float | None = Field(
+        None,
+        ge=0.0,
+        le=1.0,
+        description="Confidence threshold (used only in kiosk mode)",
+    )
+    temperature: float | None = Field(
+        None, ge=0.0, le=2.0, description="Temperature for the LLM response"
+    )
+    ai_model: str | None = Field(
+        None, description="AI model to use for generating the answer"
+    )
+    kiosk_mode: bool = Field(False, description="Kiosk mode setting")
 
 
 class MemoryUpdateRequest(BaseModel):

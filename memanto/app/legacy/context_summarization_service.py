@@ -58,7 +58,7 @@ class ContextSummarizationService:
                 query="",  # Empty query to get all
                 scope_type=scope_type,
                 scope_id=scope_id,
-                memory_types=memory_types,
+                type=memory_types,
                 limit=max_memories,
             )
 

@@ -263,11 +263,6 @@ def recall(
         "--changed-since",
         help="Differential query: What changed since this date? (ISO format)",
     ),
-    current_only: bool = typer.Option(
-        False,
-        "--current-only",
-        help="Current state query: What's currently true? (supersession-aware)",
-    ),
 ):
     """Search and retrieve memories for the active agent with temporal query support."""
     start = time.perf_counter()
@@ -279,23 +274,20 @@ def recall(
         )
 
     # Check for mutually exclusive temporal flags
-    temporal_flags = [as_of, changed_since, current_only]
+    temporal_flags = [as_of, changed_since]
     temporal_count = sum(1 for flag in temporal_flags if flag)
     if temporal_count > 1:
         _error(
             "Cannot use multiple temporal query modes together.",
-            hint="Use only one of: --as-of, --changed-since, --current-only",
+            hint="Use only one of: --as-of, --changed-since",
         )
 
-    # Validate query requirement (Temporal queries can default to matching all)
-    if not query:
-        if changed_since or as_of or current_only:
-            query = "*"  # Default to match all for temporal queries
-        else:
-            _error(
-                "Missing argument 'QUERY'.",
-                hint="Try 'memanto recall --help' for help.",
-            )
+    # Temporal queries list memories directly and don't take a query argument.
+    if query and (as_of or changed_since):
+        _error(
+            "Cannot provide a search query with temporal flags.",
+            hint="Temporal queries (--as-of, --changed-since) list all memories for that time. Remove the search query to continue.",
+        )
 
     client = get_client()
     agent_id = active_agent_id
@@ -325,7 +317,7 @@ def recall(
         changed_since = _validate_and_parse_timestamp(changed_since, "--changed-since")
 
     # Parse filters
-    memory_types = [memory_type] if memory_type else None
+    type = [memory_type] if memory_type else None
     tag_list = [t.strip() for t in tags.split(",")] if tags else None
 
     try:
@@ -335,10 +327,9 @@ def recall(
             if as_of:
                 results = client.recall_as_of(
                     agent_id=agent_id,
-                    query=query,
                     as_of=as_of,
                     limit=limit,
-                    memory_types=memory_types,
+                    type=type,
                 )
                 temporal_mode = "as_of"
             elif changed_since:
@@ -346,26 +337,23 @@ def recall(
                     agent_id=agent_id,
                     since=changed_since,
                     limit=limit,
-                    memory_types=memory_types,
+                    type=type,
                 )
                 temporal_mode = "changed_since"
-            elif current_only:
-                results = client.recall_current(
-                    agent_id=agent_id,
-                    query=query,
-                    limit=limit,
-                    memory_types=memory_types,
-                )
-                temporal_mode = "current_only"
-            else:
+            elif query:
                 # Standard recall
                 results = client.recall(
                     agent_id=agent_id,
                     query=query,
                     limit=limit,
-                    memory_types=memory_types,
+                    type=type,
                     tags=tag_list,
                     min_confidence=min_confidence,
+                )
+            else:
+                _error(
+                    "Missing argument 'QUERY'.",
+                    hint="Try 'memanto recall --help' for help.",
                 )
         elapsed = time.perf_counter() - start
 
@@ -380,7 +368,6 @@ def recall(
         mode_labels = {
             "as_of": f"Point-in-time (as of {as_of})",
             "changed_since": f"Differential (since {changed_since})",
-            "current_only": "Current state (supersession-aware)",
             "standard": "Standard search",
         }
         mode_label = mode_labels.get(temporal_mode, "Standard search")
@@ -683,8 +670,8 @@ def conflicts(
     # Interactive mode
     if not active_session_token:
         _error(
-            "No active session.",
-            hint="Resolving conflicts requires a session.\n"
+            "No active agent activation.",
+            hint="Resolving conflicts requires an active agent.\n"
             "Run 'memanto agent activate <agent-id>' first.",
         )
 

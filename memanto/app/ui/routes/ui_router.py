@@ -13,6 +13,7 @@ from fastapi import APIRouter, BackgroundTasks, HTTPException
 from fastapi.responses import FileResponse, HTMLResponse
 from fastapi.staticfiles import StaticFiles
 
+from memanto.app.config import settings
 from memanto.cli.client.direct_client import DirectClient
 from memanto.cli.config.manager import ConfigManager
 
@@ -61,6 +62,7 @@ async def get_ui_config():
         "active_agent_id": active_agent_id,
         "session_token": active_session_token,
         "has_active_session": bool(active_session_token),
+        "ui_mode": settings.MEMANTO_UI_MODE,
     }
 
 
@@ -223,6 +225,8 @@ async def shutdown_server(background_tasks: BackgroundTasks):
     Gracefully shutdown the MEMANTO server.
     Called by the UI when the browser tab is closed.
     """
+    if not settings.MEMANTO_UI_MODE:
+        return {"status": "ignored", "reason": "Not in UI mode"}
 
     def kill_server():
         time.sleep(0.5)  # Allow the response to send before killing

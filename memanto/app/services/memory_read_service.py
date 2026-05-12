@@ -4,7 +4,7 @@ Memory Read Service
 
 import re
 from datetime import datetime, timezone
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 if TYPE_CHECKING:
     from moorcheh_sdk import MoorchehClient
@@ -60,7 +60,7 @@ class MemoryReadService:
         query: str,
         scope_type: str | None = None,
         scope_id: str | None = None,
-        memory_types: list[str] | None = None,
+        type: list[str] | None = None,
         tags: list[str] | None = None,
         min_confidence: float | None = None,
         status_filter: list[str] | None = None,
@@ -89,7 +89,7 @@ class MemoryReadService:
             # Build enhanced query with Moorcheh metadata filters
             enhanced_query = self._build_filtered_query(
                 query=query,
-                memory_types=memory_types,
+                type=type,
                 tags=tags,
                 min_confidence=min_confidence,
                 status_filter=status_filter,
@@ -151,7 +151,7 @@ class MemoryReadService:
         self,
         query: str,
         scopes: list[dict[str, str]],
-        memory_types: list[str] | None = None,
+        type: list[str] | None = None,
         tags: list[str] | None = None,
         min_confidence: float | None = None,
         status_filter: list[str] | None = None,
@@ -185,7 +185,7 @@ class MemoryReadService:
             # Build enhanced query with filters
             enhanced_query = self._build_filtered_query(
                 query=query,
-                memory_types=memory_types,
+                type=type,
                 tags=tags,
                 min_confidence=min_confidence,
                 status_filter=status_filter,
@@ -224,11 +224,9 @@ class MemoryReadService:
 
     def search_as_of(
         self,
-        query: str,
         as_of_date: str,
-        scope_type: str | None = None,
-        scope_id: str | None = None,
-        memory_types: list[str] | None = None,
+        agent_id: str,
+        type: list[str] | None = None,
         tags: list[str] | None = None,
         limit: int = 10,
     ) -> dict[str, Any]:
@@ -240,40 +238,35 @@ class MemoryReadService:
         2. NOT superseded before as_of_date
         3. NOT expired at as_of_date
 
-        This answers: "What did the system know on date X?"
-
         Args:
-            query: Search query
             as_of_date: ISO timestamp for point-in-time (e.g., "2025-11-01T00:00:00Z")
-            scope_type: Optional scope filter
-            scope_id: Optional scope ID filter
-            memory_types: Optional memory type filters
+            agent_id: Agent whose memories to search
+            type: Optional memory type filters
             tags: Optional tag filters
             limit: Max results
-
-        Returns:
-            Search results valid at the specified point in time
         """
         try:
             from memanto.app.utils.temporal_helpers import parse_iso_timestamp
 
-            # Parse as_of timestamp safely
             as_of_dt = parse_iso_timestamp(as_of_date)
 
-            # Search all memories created before as_of_date
-            results = self.search_memories(
-                query=query,
-                scope_type=scope_type,
-                scope_id=scope_id,
-                memory_types=memory_types,
-                tags=tags,
-                created_before=as_of_date,
-                limit=1000,  # Increased limit to ensure we get more historical context
+            namespaces = self._get_search_namespaces("agent", agent_id)
+            if not namespaces:
+                return {
+                    "results": [],
+                    "total_found": 0,
+                    "as_of_date": as_of_date,
+                    "temporal_mode": "as_of",
+                }
+
+            all_memories = self._fetch_all_memories(namespaces, type=type, tags=tags)
+            all_memories = self._apply_temporal_filter(
+                all_memories, created_before=as_of_date
             )
 
             # Filter to only include memories valid at as_of_date
             valid_memories = []
-            for memory in results.get("results", []):
+            for memory in all_memories:
                 # Skip if expired before as_of_date
                 expires_at = memory.get("expires_at")
                 if expires_at:
@@ -304,7 +297,6 @@ class MemoryReadService:
             return {
                 "results": valid_memories,
                 "total_found": len(valid_memories),
-                "query": query,
                 "as_of_date": as_of_date,
                 "temporal_mode": "as_of",
             }
@@ -315,72 +307,33 @@ class MemoryReadService:
     def search_changed_since(
         self,
         since_date: str,
-        scope_type: str | None = None,
-        scope_id: str | None = None,
-        memory_types: list[str] | None = None,
+        agent_id: str,
+        type: list[str] | None = None,
         tags: list[str] | None = None,
         limit: int = 10,
     ) -> dict[str, Any]:
         """
         Differential retrieval: "What changed recently?"
 
-        Returns memories that were:
-        1. Created after since_date (new memories)
-        2. Updated after since_date (modified memories)
-        3. Superseded after since_date (replaced memories)
-
-        This answers: "What's new/changed since date X?"
+        Returns memories created or updated after since_date.
 
         Args:
             since_date: ISO timestamp for change boundary (e.g., "2025-12-01T00:00:00Z")
-            scope_type: Optional scope filter
-            scope_id: Optional scope ID filter
-            memory_types: Optional memory type filters
+            agent_id: Agent whose memories to search
+            type: Optional memory type filters
             tags: Optional tag filters
             limit: Max results
-
-        Returns:
-            Memories that changed after the specified date
         """
         try:
-            from memanto.app.constants import MemoryType
             from memanto.app.utils.temporal_helpers import parse_iso_timestamp
 
-            # Parse since timestamp safely
             since_dt = parse_iso_timestamp(since_date)
 
-            # Get all memories (we'll filter by timestamps)
-            namespaces = self._get_search_namespaces(scope_type, scope_id)
+            namespaces = self._get_search_namespaces("agent", agent_id)
             if not namespaces:
                 return {"results": [], "total_found": 0, "since_date": since_date}
 
-            # Gather memory types to iterate over for recursive fetching
-            types_to_fetch = memory_types
-            if not types_to_fetch:
-                import typing
-
-                types_to_fetch = list(typing.get_args(MemoryType))
-
-            search_items = []
-
-            # Fetch iteratively by specific memory_type precise metadata filtering
-            # Each query gives up to 100 results, yielding a total far beyond the base 100-limit.
-            for mem_type in types_to_fetch:
-                enhanced_query = self._build_filtered_query(
-                    query="*",  # Match all
-                    memory_types=[mem_type],
-                    tags=tags,
-                )
-                try:
-                    search_result = self.client.similarity_search.query(
-                        query=enhanced_query, namespaces=namespaces, top_k=100
-                    )
-                    search_items.extend(search_result.get("results", []))
-                except Exception:
-                    pass  # Ignore if a specific memory type causes an issue
-
-            # Format results
-            all_memories = [self._format_memory_item(item) for item in search_items]
+            all_memories = self._fetch_all_memories(namespaces, type=type, tags=tags)
 
             # Filter to only changed memories
             changed_memories = []
@@ -434,100 +387,97 @@ class MemoryReadService:
         except Exception as e:
             raise MemoryError(f"Failed to search changed memories: {e}")
 
-    def search_current_only(
+    def search_recent(
         self,
-        query: str,
-        scope_type: str | None = None,
-        scope_id: str | None = None,
-        memory_types: list[str] | None = None,
-        tags: list[str] | None = None,
+        agent_id: str,
+        type: list[str] | None = None,
         limit: int = 10,
     ) -> dict[str, Any]:
         """
-        Current state query: "What's the current state?" with supersession awareness
-
-        Returns only memories that are:
-        1. NOT superseded (no superseded_by field or status != 'superseded')
-        2. NOT expired (no expires_at or expires_at > now)
-        3. Active status
-
-        This answers: "What is currently true?" (ignoring historical/superseded data)
+        Retrieve the most recently stored memories, sorted by created_at descending.
 
         Args:
-            query: Search query
-            scope_type: Optional scope filter
-            scope_id: Optional scope ID filter
-            memory_types: Optional memory type filters
-            tags: Optional tag filters
-            limit: Max results
-
-        Returns:
-            Only current, non-superseded memories
+            agent_id: Agent whose memories to search
+            type: Optional memory type filters
+            limit: Max results to return
         """
         try:
             from memanto.app.utils.temporal_helpers import parse_iso_timestamp
 
-            # Search all memories
-            results = self.search_memories(
-                query=query,
-                scope_type=scope_type,
-                scope_id=scope_id,
-                memory_types=memory_types,
-                tags=tags,
-                status_filter=["active"],  # Only active memories
-                limit=1000,  # Increased limit for thorough retrieval
-            )
+            namespaces = self._get_search_namespaces("agent", agent_id)
+            if not namespaces:
+                return {"results": [], "total_found": 0}
 
-            now = datetime.now(timezone.utc)
+            unique_memories = self._fetch_all_memories(namespaces, type=type)
 
-            # Filter to only current (non-superseded, non-expired) memories
-            current_memories = []
-            for memory in results.get("results", []):
-                # Skip superseded memories
-                if memory.get("superseded_by") or memory.get("status") == "superseded":
-                    continue
+            # Sort by created_at descending (most recent first)
+            def _created_sort_key(m: dict[str, Any]) -> str:
+                raw = m.get("created_at")
+                if not raw:
+                    return ""
+                try:
+                    return parse_iso_timestamp(str(raw)).isoformat()
+                except Exception:
+                    return ""
 
-                # Skip expired memories
-                expires_at = memory.get("expires_at")
-                if expires_at:
-                    try:
-                        expires_dt = parse_iso_timestamp(expires_at)
-                        if expires_dt <= now:
-                            continue  # Expired
-                    except (ValueError, AttributeError):
-                        pass
+            unique_memories.sort(key=_created_sort_key, reverse=True)
 
-                # Skip contradicted memories (unless explicitly requested)
-                if memory.get("contradiction_detected"):
-                    # Include but mark as low trust
-                    memory["_warning"] = "contradicted"
-
-                current_memories.append(memory)
-
-            # Sort by computed confidence descending (most trusted first)
-            current_memories.sort(
-                key=lambda m: m.get("computed_confidence", m.get("confidence", 0)),
-                reverse=True,
-            )
-
-            # Apply limit
-            current_memories = current_memories[:limit]
-
-            return {
-                "results": current_memories,
-                "total_found": len(current_memories),
-                "query": query,
-                "temporal_mode": "current_only",
-                "note": "Excludes superseded, expired, and deleted memories",
-            }
+            results = unique_memories[:limit]
+            return {"results": results, "total_found": len(results)}
 
         except Exception as e:
-            raise MemoryError(f"Failed to search current memories: {e}")
+            raise MemoryError(f"Failed to retrieve recent memories: {e}")
+
+    def _fetch_all_memories(
+        self,
+        namespaces: list[str],
+        type: list[str] | None = None,
+        tags: list[str] | None = None,
+    ) -> list[dict[str, Any]]:
+        """
+        List all stored memories across the given namespaces via Moorcheh's
+        documents.fetch_text_data endpoint, applying optional type/tag filters
+        and de-duplicating by id.
+
+        Note: Moorcheh's fetch_text_data currently returns up to 100 items per
+        namespace and does not paginate.
+        """
+        items: list[Any] = []
+        for ns in namespaces:
+            try:
+                result = self.client.documents.fetch_text_data(namespace_name=ns)
+            except Exception:
+                continue
+            if isinstance(result, dict):
+                items.extend(result.get("items", []) or [])
+
+        seen_ids: set[str] = set()
+        memories: list[dict[str, Any]] = []
+        for item in items:
+            # Skip summary chunks — only return real memory documents
+            if isinstance(item, dict) and item.get("is_summary"):
+                continue
+            formatted = self._format_memory_item(item)
+            mid = formatted.get("id")
+            if not mid or mid in seen_ids:
+                continue
+            seen_ids.add(cast(str, mid))
+
+            if type and formatted.get("type") not in type:
+                continue
+            if tags:
+                mem_tags = formatted.get("tags") or []
+                if not any(t in mem_tags for t in tags):
+                    continue
+
+            memories.append(formatted)
+
+        return self._filter_expired_memories(memories)
 
     def _build_filtered_query(
         self,
         query: str,
-        memory_types: list[str] | None = None,
+        type: list[str] | None = None,
         tags: list[str] | None = None,
         min_confidence: float | None = None,
         status_filter: list[str] | None = None,
@@ -546,8 +496,8 @@ class MemoryReadService:
         filter_parts = []
 
         # Add memory type filters
-        if memory_types:
-            for mem_type in memory_types:
+        if type:
+            for mem_type in type:
                 filter_parts.append(f"#memory_type:{mem_type}")
 
         # Add tag filters (keyword syntax)
@@ -734,7 +684,7 @@ class MemoryReadService:
     def _filter_search_results(
         self,
         results: list[dict[str, Any]],
-        memory_types: list[str] | None = None,
+        type: list[str] | None = None,
         tags: list[str] | None = None,
         limit: int = 10,
     ) -> list[dict[str, Any]]:
@@ -747,8 +697,8 @@ class MemoryReadService:
         filtered = results
 
         # Filter by memory types (flat field: memory_type)
-        if memory_types:
-            filtered = [r for r in filtered if r.get("memory_type") in memory_types]
+        if type:
+            filtered = [r for r in filtered if r.get("memory_type") in type]
 
         # Filter by tags (flat field: tags as comma-separated string)
         if tags:

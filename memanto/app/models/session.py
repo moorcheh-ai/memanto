@@ -126,9 +126,6 @@ class AgentCreate(BaseModel):
     description: str | None = Field(
         None, description="Human-readable description of the agent"
     )
-    metadata: dict[str, Any] | None = Field(
-        None, description="Additional agent metadata"
-    )
 
 
 class AgentInfo(BaseModel):
@@ -143,7 +140,6 @@ class AgentInfo(BaseModel):
     memory_count: int = 0
     session_count: int = 0
     status: str = "inactive"
-    metadata: dict[str, Any] | None = None
 
     class Config:
         json_encoders = {datetime: lambda v: v.isoformat()}

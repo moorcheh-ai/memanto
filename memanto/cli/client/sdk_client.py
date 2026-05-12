@@ -180,11 +180,8 @@ class SdkClient:
         session_service = self._get_session_service()
 
         try:
-            # Validate JWT token and API key
-            token_payload = session_service.validate_session(
-                self.session_token,
-                self.api_key,
-            )
+            # Validate JWT token
+            token_payload = session_service.validate_session(self.session_token)
         except (SessionExpiredError, InvalidSessionTokenError):
             # Surface the same specific session errors as the service
             raise
@@ -196,21 +193,15 @@ class SdkClient:
                 f"Session for agent {token_payload.agent_id} not found"
             )
 
-        # Check and auto-renew if near expiry
+        # Check and auto-renew if near expiry. SessionService.renew_session
+        # writes the new token to ~/.memanto/sessions/{agent}.json and
+        # refreshes the active marker, so no extra persistence is needed here.
         renewed = session_service.check_and_auto_renew(
             agent_id=token_payload.agent_id,
-            moorcheh_api_key=self.api_key,
         )
         if renewed:
             session = renewed
             self.session_token = session.session_token
-
-            # Persist the new active session token
-            try:
-                config_manager = ConfigManager()
-                config_manager.set_active_session(self.agent_id, self.session_token)
-            except Exception as e:
-                logger.warning("Failed to persist auto-renewed session token: %s", e)
 
         self._cached_session = session
         return session
@@ -251,7 +242,6 @@ class SdkClient:
             agent_id=agent_id,
             pattern=AgentPattern(pattern),
             description=description,
-            metadata=None,
         )
 
         logger.debug("Creating agent '%s' with pattern '%s'", agent_id, pattern)
@@ -326,7 +316,6 @@ class SdkClient:
         logger.debug("Activating agent '%s' for %s hours", agent_id, duration_hours)
         session = self._get_session_service().create_session(
             agent_id=agent_id,
-            moorcheh_api_key=self.api_key,
             pattern=agent.pattern,
             duration_hours=duration_hours,
         )
@@ -392,29 +381,6 @@ class SdkClient:
             "started_at": session.started_at.isoformat(),
             "expires_at": session.expires_at.isoformat(),
             "time_remaining_seconds": max(0, int(remaining.total_seconds())),
-        }
-
-    def extend_session(self, agent_id: str, hours: int | None = None) -> dict[str, Any]:
-        """
-        Extend session expiration.
-
-        Args:
-            agent_id: Agent whose session to extend.
-            hours: Number of hours to add (default: from config).
-
-        Returns:
-            Dict with updated ``expires_at``.
-        """
-        # Check if we have a valid, non-expired session for this agent
-        self._get_validated_session_for_agent(agent_id)
-
-        logger.debug("Extending session for '%s' by %s hours", agent_id, hours)
-        session = self._get_session_service().extend_session(agent_id, hours)
-        return {
-            "session_id": session.session_id,
-            "agent_id": session.agent_id,
-            "expires_at": session.expires_at.isoformat(),
-            "status": session.status.value,
         }
 
     # Memory Operations
@@ -646,7 +612,7 @@ class SdkClient:
         agent_id: str,
         query: str,
         limit: int | None = None,
-        memory_types: list[str] | None = None,
+        type: list[str] | None = None,
         tags: list[str] | None = None,
         min_confidence: float | None = None,
         created_after: datetime | None = None,
@@ -659,7 +625,7 @@ class SdkClient:
             agent_id: Target agent.
             query: Natural-language search query.
             limit: Max results (1–100, defaults to config).
-            memory_types: Filter by types.
+            type: Filter by types.
             tags: Filter by tags.
             min_confidence: Minimum confidence threshold.
             created_after: Only memories created after this datetime.
@@ -683,7 +649,7 @@ class SdkClient:
             query=query,
             scope_type="agent",
             scope_id=agent_id,
-            memory_types=memory_types,
+            type=type,
             tags=tags,
             min_confidence=min_confidence,
             created_after=created_after.isoformat() if created_after else None,
@@ -701,20 +667,18 @@ class SdkClient:
     def recall_as_of(
         self,
         agent_id: str,
-        query: str,
         as_of: str,
         limit: int | None = None,
-        memory_types: list[str] | None = None,
+        type: list[str] | None = None,
     ) -> dict[str, Any]:
         """
-        Point-in-time recall: what was true at a given moment?
+        Point-in-time recall: what memories existed at a given moment?
 
         Args:
             agent_id: Target agent.
-            query: Search query.
             as_of: ISO-8601 date/datetime string.
             limit: Max results (defaults to config).
-            memory_types: Optional type filter.
+            type: Optional type filter.
 
         Returns:
             Dict with ``memories`` and ``count``.
@@ -726,17 +690,14 @@ class SdkClient:
         self._get_validated_session_for_agent(agent_id)
 
         result = self._get_read_service().search_as_of(
-            query=query,
             as_of_date=as_of,
-            scope_type="agent",
-            scope_id=agent_id,
-            memory_types=memory_types,
+            agent_id=agent_id,
+            type=type,
             limit=limit,
         )
 
         return {
             "agent_id": agent_id,
-            "query": query,
             "as_of_date": as_of,
             "memories": result.get("results", []),
             "count": result.get("total_found", 0),
@@ -747,7 +708,7 @@ class SdkClient:
         agent_id: str,
         since: str,
         limit: int | None = None,
-        memory_types: list[str] | None = None,
+        type: list[str] | None = None,
     ) -> dict[str, Any]:
         """
         Differential retrieval: what changed since a given date?
@@ -756,7 +717,7 @@ class SdkClient:
             agent_id: Target agent.
             since: ISO-8601 date/datetime string.
             limit: Max results (defaults to config).
-            memory_types: Optional type filter.
+            type: Optional type filter.
 
         Returns:
             Dict with ``memories`` and ``count``.
@@ -769,54 +730,14 @@ class SdkClient:
 
         result = self._get_read_service().search_changed_since(
             since_date=since,
-            scope_type="agent",
-            scope_id=agent_id,
-            memory_types=memory_types,
+            agent_id=agent_id,
+            type=type,
             limit=limit,
         )
 
         return {
             "agent_id": agent_id,
             "since_date": since,
-            "memories": result.get("results", []),
-            "count": result.get("total_found", 0),
-        }
-
-    def recall_current(
-        self,
-        agent_id: str,
-        query: str,
-        limit: int | None = None,
-        memory_types: list[str] | None = None,
-    ) -> dict[str, Any]:
-        """
-        Current-state recall (supersession-aware).
-
-        Args:
-            agent_id: Target agent.
-            query: Search query.
-            limit: Max results (defaults to config).
-            memory_types: Optional type filter.
-
-        Returns:
-            Dict with ``memories`` and ``count``.
-        """
-        if limit is None:
-            limit = ConfigManager().get_recall_config()["limit"]
-        # Ensure there is a valid, non-expired session for this agent
-        self._get_validated_session_for_agent(agent_id)
-
-        result = self._get_read_service().search_current_only(
-            query=query,
-            scope_type="agent",
-            scope_id=agent_id,
-            memory_types=memory_types,
-            limit=limit,
-        )
-
-        return {
-            "agent_id": agent_id,
-            "query": query,
             "memories": result.get("results", []),
             "count": result.get("total_found", 0),
         }
@@ -1157,7 +1078,7 @@ class SdkClient:
                     agent_id=agent_id,
                     query="*",
                     limit=limit_per_type,
-                    memory_types=[mem_type],
+                    type=[mem_type],
                 )
                 memories_by_type[mem_type] = result.get("memories", [])
             except Exception:

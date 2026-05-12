@@ -18,7 +18,6 @@ class MemoryWriteService:
     def __init__(self, moorcheh_client: "MoorchehClient"):
         self.client = moorcheh_client
         self._namespace_service = None
-        self._validation_service = None
 
     @property
     def namespace_service(self):
@@ -27,16 +26,6 @@ class MemoryWriteService:
 
             self._namespace_service = NamespaceService(self.client)
         return self._namespace_service
-
-    @property
-    def validation_service(self):
-        if self._validation_service is None:
-            from memanto.app.services.memory_validation_service import (
-                MemoryValidationService,
-            )
-
-            self._validation_service = MemoryValidationService(self.client)
-        return self._validation_service
 
     def store_memory(
         self, memory: MemoryRecord, context: dict[str, Any] | None = None
@@ -320,15 +309,9 @@ class MemoryWriteService:
             if delete_result.get("actual_deletions", 0) == 0:
                 raise MemoryError(f"Failed to delete old version of memory {memory_id}")
 
-            # Step 4: Validate updated memory
-            validation_result = self.validation_service.validate_memory(
-                updated_memory, context
-            )
+            validation_result = {"action": "store", "reason": "MVP direct store"}
 
-            if "memory" in validation_result:
-                updated_memory = validation_result["memory"]
-
-            # Step 5: Upload new version
+            # Step 4: Upload new version
             from typing import cast
 
             from moorcheh_sdk.types.document import Document

@@ -20,7 +20,9 @@ MEMANTO's **hybrid timeline model** combines the reliability of automatic server
 **Example**:
 ```bash
 # Get memories from last 7 days
-curl ".../recall?created_after=2025-12-20T00:00:00Z"
+curl -X POST ".../recall/changed-since" \
+  -H "X-Session-Token: $TOKEN" -H "Content-Type: application/json" \
+  -d '{"since":"2025-12-20T00:00:00Z"}'
 ```
 
 ### Level 2: Semantic Timeline (Optional)
@@ -55,12 +57,11 @@ curl -X POST ".../remember?memory_type=event&title=Phase+H+Complete&..."
 ### Example: Find Recent Major Decisions
 
 ```bash
-# Step 1: Use automatic timestamp to filter (fast, broad)
-curl "http://localhost:8000/api/v2/agents/{agent_id}/recall?\
-query=decision&\
-created_after=2025-12-01T00:00:00Z&\
-limit=20" \
--H "X-Session-Token: {session_token}"
+# Step 1: List decision-type memories changed since Dec 1 (server-side type filter)
+curl -X POST "http://localhost:8000/api/v2/agents/{agent_id}/recall/changed-since" \
+  -H "X-Session-Token: {session_token}" \
+  -H "Content-Type: application/json" \
+  -d '{"since":"2025-12-01T00:00:00Z","type":["decision"],"limit":20}'
 
 # Step 2: Look for semantic timeline tags in results
 # Filter client-side for memories with tags like:
@@ -76,12 +77,11 @@ session_token = "your_session_token_here" # Replace with your actual session tok
 
 # Get last month's decisions
 last_month = (datetime.utcnow() - timedelta(days=30)).isoformat() + 'Z'
-response = requests.get(f"""
-    http://localhost:8000/api/v2/agents/claude_dev/recall?
-    query=decision&
-    created_after={last_month}&
-    limit=50
-""", headers={"X-Session-Token": session_token})
+response = requests.post(
+    "http://localhost:8000/api/v2/agents/claude_dev/recall/changed-since",
+    json={"since": last_month, "type": ["decision"], "limit": 50},
+    headers={"X-Session-Token": session_token},
+)
 
 memories = response.json()['memories']
 
@@ -124,16 +124,16 @@ for i in range(len(milestones) - 1):
     start = milestones[i]['created_at']
     end = milestones[i+1]['created_at']
 
-    activity = requests.get(f"""
-        http://localhost:8000/api/v2/agents/claude_dev/recall?
-        query=*&
-        created_after={start}&
-        created_before={end}&
-        limit=1000
-    """, headers={"X-Session-Token": session_token})
+    activity = requests.post(
+        f"http://localhost:8000/api/v2/agents/claude_dev/recall/changed-since",
+        json={"since": start, "limit": 100},
+        headers={"X-Session-Token": session_token},
+    )
+    # Client-side filter for the upper bound (changed-since has no `until` field)
+    items = [m for m in activity.json()["memories"] if m.get("created_at", "") <= end]
 
     print(f"\nBetween {milestones[i]['title']} and {milestones[i+1]['title']}:")
-    print(f"  Activity: {len(activity.json()['memories'])} memories")
+    print(f"  Activity: {len(items)} memories")
 ```
 
 **Visualization**:
@@ -162,12 +162,11 @@ def generate_weekly_report(agent_id, session_token):
     # Get last week's data using automatic timestamps
     week_ago = (datetime.utcnow() - timedelta(days=7)).isoformat() + 'Z'
 
-    response = requests.get(f"""
-        http://localhost:8000/api/v2/agents/{agent_id}/recall?
-        query=*&
-        created_after={week_ago}&
-        limit=100
-    """, headers={"X-Session-Token": session_token})
+    response = requests.post(
+        f"http://localhost:8000/api/v2/agents/{agent_id}/recall/changed-since",
+        json={"since": week_ago, "limit": 100},
+        headers={"X-Session-Token": session_token},
+    )
 
     memories = response.json()['memories']
 
@@ -236,16 +235,17 @@ if [ -n "$LAST_SESSION" ]; then
     echo "Last session: $LAST_DATE"
     echo "Retrieving activity since then..."
 
-    curl -s "$MEMANTO_URL/api/v2/agents/$AGENT_ID/recall?\
-query=*&\
-created_after=$LAST_DATE&\
-limit=50" -H "X-Session-Token: $SESSION_TOKEN" | python -m json.tool
+    curl -s -X POST "$MEMANTO_URL/api/v2/agents/$AGENT_ID/recall/changed-since" \
+      -H "X-Session-Token: $SESSION_TOKEN" \
+      -H "Content-Type: application/json" \
+      -d "{\"since\":\"$LAST_DATE\",\"limit\":50}" | python -m json.tool
 else
     echo "No previous session found, getting recent context..."
 
-    curl -s "$MEMANTO_URL/api/v2/agents/$AGENT_ID/recall?\
-query=important+context&\
-limit=20" -H "X-Session-Token: $SESSION_TOKEN" | python -m json.tool
+    curl -s -X POST "$MEMANTO_URL/api/v2/agents/$AGENT_ID/recall/recent" \
+      -H "X-Session-Token: $SESSION_TOKEN" \
+      -H "Content-Type: application/json" \
+      -d '{"limit":20}' | python -m json.tool
 fi
 
 # 3. Store new session start (semantic timeline)
@@ -309,7 +309,7 @@ curl -X POST ".../remember?memory_type=event&title=Feature+Complete&tags=timelin
 ### Example: Find Productive Periods
 
 ```python
-def find_productive_periods(agent_id, tenant_id):
+def find_productive_periods(agent_id, session_token):
     """
     Use automatic timestamps to find when agent is most productive,
     then use semantic timeline to understand why.
@@ -317,13 +317,11 @@ def find_productive_periods(agent_id, tenant_id):
 
     # Get last month's activity (automatic)
     last_month = (datetime.utcnow() - timedelta(days=30)).isoformat() + 'Z'
-    response = requests.get(f"""
-        .../recall?
-        tenant_id={tenant_id}&
-        query=*&
-        created_after={last_month}&
-        limit=1000
-    """)
+    response = requests.post(
+        f"http://localhost:8000/api/v2/agents/{agent_id}/recall/changed-since",
+        json={"since": last_month, "limit": 100},
+        headers={"X-Session-Token": session_token},
+    )
 
     memories = response.json()['memories']
 
@@ -364,7 +362,7 @@ def find_productive_periods(agent_id, tenant_id):
 
 1. **Trust automatic timestamps** - They're always there, always accurate
 2. **Add semantic timeline for meaning** - Sessions, milestones, phases
-3. **Use temporal filters first** - Narrow down with `created_after`/`created_before`
+3. **Use temporal endpoints first** - Narrow down with `/recall/changed-since`, `/recall/as-of`, or `/recall/recent`
 4. **Tag consistently** - Use `timeline`, `session-start`, `milestone`, `phase`
 5. **Combine for insights** - Automatic shows WHEN, semantic shows WHY
 
@@ -379,38 +377,43 @@ def find_productive_periods(agent_id, tenant_id):
 
 ## Quick Reference: API Query Patterns
 
+All temporal listings are `POST` with a JSON body. Add `-H "X-Session-Token: $TOKEN"` and `-H "Content-Type: application/json"` to every curl below.
+
 ### Automatic Timestamps Only
 ```bash
 # Last 7 days
-?created_after=2025-12-20T00:00:00Z
+POST /recall/changed-since   {"since":"2025-12-20T00:00:00Z"}
 
-# Date range
-?created_after=2025-12-01T00:00:00Z&created_before=2025-12-31T23:59:59Z
+# Date range — fetch by lower bound, client-filter the upper
+POST /recall/changed-since   {"since":"2025-12-01T00:00:00Z","limit":100}
+# then keep only items with created_at <= "2025-12-31T23:59:59Z"
 
-# Last 24 hours
-?created_after=$(date -d '24 hours ago' -u +%Y-%m-%dT%H:%M:%SZ)
+# Newest N memories regardless of date
+POST /recall/recent          {"limit":50}
+
+# Point-in-time snapshot
+POST /recall/as-of           {"as_of":"2025-12-20T00:00:00Z"}
 ```
 
 ### Semantic Timeline Only
 ```bash
-# Milestones
-?query=milestone&tags=timeline,milestone
+# Milestones (semantic similarity search)
+POST /recall                 {"query":"milestone","limit":20}
 
 # Sessions
-?query=session&tags=timeline,session-start
-
-# Phases
-?query=phase&tags=timeline,phase
+POST /recall                 {"query":"session start","limit":20}
 ```
 
 ### Hybrid (Best)
 ```bash
-# Recent milestones
-?query=milestone&tags=timeline,milestone&created_after=2025-12-01T00:00:00Z
+# Recent decisions — server-side type filter on temporal endpoint
+POST /recall/changed-since   {"since":"2025-12-01T00:00:00Z","type":["decision"]}
 
-# This week's sessions
-?query=session&tags=timeline,session-start&created_after=$(date -d '7 days ago' -u +%Y-%m-%dT%H:%M:%SZ)
+# Newest events (e.g. milestones live in `type:event`)
+POST /recall/recent          {"type":["event"],"limit":20}
 ```
+
+> Tag-based filtering is not exposed on the temporal endpoints; do it client-side after the fetch.
 
 ---
 
@@ -457,18 +460,21 @@ confidence=1.0"
 # tags: [timeline, milestone, authentication] (semantic)
 ```
 
-**Query Later**:
+**Query Later** (all `POST`, all with `X-Session-Token` header):
 ```bash
-# Use automatic timestamp to filter
-curl ".../recall?created_after=2025-12-27T00:00:00Z&limit=50"
+# Use automatic timestamp to list everything since today
+curl -X POST ".../recall/changed-since" -H "Content-Type: application/json" \
+  -d '{"since":"2025-12-27T00:00:00Z","limit":50}'
 # Returns all 4 memories
 
-# Use semantic tags to find milestones
-curl ".../recall?query=milestone&tags=timeline,milestone"
+# Use semantic similarity to find milestones
+curl -X POST ".../recall" -H "Content-Type: application/json" \
+  -d '{"query":"milestone","limit":20}'
 # Returns just the achievement
 
-# Hybrid: Recent milestones
-curl ".../recall?query=milestone&tags=timeline&created_after=2025-12-20T00:00:00Z"
+# Hybrid: newest events (milestones are stored as type=event)
+curl -X POST ".../recall/changed-since" -H "Content-Type: application/json" \
+  -d '{"since":"2025-12-20T00:00:00Z","type":["event"]}'
 # Best of both worlds
 ```
 
@@ -480,7 +486,7 @@ curl ".../recall?query=milestone&tags=timeline&created_after=2025-12-20T00:00:00
 
 **Cause**: Moorcheh's search API doesn't return metadata by default
 **Solution**: Timestamps are in metadata, used for filtering but not always displayed
-**Workaround**: Use temporal filters (`created_after`) to verify they work
+**Workaround**: Use temporal endpoints (`/recall/changed-since`, `/recall/as-of`) to verify they work
 
 ### "My semantic timeline isn't showing up"
 

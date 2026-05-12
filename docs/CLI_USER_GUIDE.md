@@ -142,9 +142,7 @@ memanto answer "How did we implement authentication?"
  ```
  
  **Options:**
- - `--api-key TEXT` - Moorcheh API key (will prompt if not provided)
- - `--server-url TEXT` - MEMANTO server URL (default: localhost)
- - `--server-port INT` - MEMANTO server port (default: 8000)
+- `--version` - Show installed MEMANTO version and exit
  
  **Example:**
  ```bash
@@ -165,7 +163,7 @@ memanto agent create AGENT_ID [OPTIONS]
 - `AGENT_ID` - Unique identifier for the agent
 
 **Options:**
-- `--pattern TEXT` - Agent pattern: tool, chat, research, or custom (default: tool)
+- `--pattern TEXT` - Agent pattern: project, support, or tool (default: tool)
 - `--description TEXT` - Optional description
 
 **Behavior:**
@@ -178,10 +176,10 @@ memanto agent create AGENT_ID [OPTIONS]
 # Create and activate a tool-using agent
 python -m cli.main agent create code-assistant --pattern tool
 
-# Create and activate a research agent with description
+# Create and activate a support agent with description
 memanto agent create researcher \
-  --pattern research \
-  --description "Agent for literature review and research"
+  --pattern support \
+  --description "Agent for customer support and ticket triage"
 ```
 
 #### `agent list` - List All Agents
@@ -196,7 +194,7 @@ memanto agent list
 ┃ Agent ID        ┃ Pattern ┃ Description             ┃ Status   ┃
 ┡━━━━━━━━━━━━━━━━━╇━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━┩
 │ code-assistant  │ tool    │ Code assistant          │ 🟢 Active│
-│ researcher      │ research│ Literature review       │          │
+│ researcher      │ support │ Support assistant       │          │
 └─────────────────┴─────────┴────────────────────────┴──────────┘
 ```
 
@@ -214,7 +212,7 @@ memanto agent activate AGENT_ID [OPTIONS]
 
 **Examples:**
 ```bash
-# Activate with default 4-hour session
+# Activate with default 6-hour session
 python -m cli.main agent activate code-assistant
 
 # Activate with 8-hour session
@@ -227,7 +225,10 @@ memanto agent activate code-assistant --duration-hours 8
 memanto agent deactivate
 ```
 
-Ends the current agent session.
+Clears the active session pointer in local CLI configuration.
+
+> Note: This local CLI action and API session termination are different layers.
+> To explicitly end a server-side API session, call `POST /api/v2/agents/{agent_id}/deactivate`.
 
 #### `agent delete` - Delete Agent
 
@@ -445,22 +446,6 @@ memanto session info
 └────────────────┴────────────────────────────────┘
 ```
 
-#### `session extend` - Extend Session
-
-```bash
-memanto session extend [OPTIONS]
-```
-
-**Options:**
-- `--hours, -h INT` - Hours to extend (default: 6)
-
-**Example:**
-```bash
-python -m cli.main session extend --hours 6
-```
-
----
-
 ### Configuration Commands
 
 #### `config show` - Display Configuration
@@ -532,8 +517,8 @@ memanto answer "What are our code review requirements?"
 ### Research Assistant
 
 ```bash
-# Create and auto-activate research agent
-memanto agent create research-assistant --pattern research
+# Create and auto-activate support agent
+memanto agent create support-assistant --pattern support
 
 # Store research findings
 memanto remember "Paper XYZ shows 30% improvement in model accuracy" \
@@ -585,7 +570,7 @@ answer:
   model: "anthropic.claude-sonnet-4-6"  # LLM used for answer
   temperature: 0.7        # LLM temperature (0.0–1.0)
   answer_limit: 5         # context memories passed to LLM for `answer`
-  threshold: 0.25         # confidence threshold for memory relevance
+  threshold: 0.01         # default threshold for non-kiosk answer calls
 
 # Recall configuration
 recall:
@@ -641,11 +626,9 @@ memanto agent activate <agent-id>
 
 3. **Reconfigure**:
    ```bash
-   memanto --api-key YOUR_KEY
+   # Re-run setup and enter your new key when prompted
+   memanto
    ```
-
-   # (This is only needed if you are using a custom server/endpoint)
-   memanto config set server.url http://your-server:8000
 
 ### API Key Issues
 
@@ -654,8 +637,8 @@ memanto agent activate <agent-id>
 **Solution**:
 ```bash
 # Get new API key from Moorcheh dashboard
-# Reconfigure
-memanto --api-key <new-key>
+# Reconfigure by running setup again
+memanto
 ```
 
 ### Session Expired
@@ -666,9 +649,6 @@ memanto --api-key <new-key>
 ```bash
 # Reactivate the agent
 memanto agent activate <agent-id>
-
-# Or extend existing session (if still valid)
-memanto session extend --hours 6
 ```
 
 ---
@@ -718,9 +698,9 @@ memanto agent create dev --pattern tool
 memanto agent activate dev
 memanto remember "Implemented feature X" --type fact
 
-# Switch to research agent (auto-activates)
+# Switch to support agent (auto-activates)
 memanto agent deactivate
-memanto agent create research --pattern research
+memanto agent create support --pattern support
 memanto remember "Found paper on optimization technique Y" --type fact
 
 # Switch back

@@ -38,21 +38,20 @@ def agent_create(
     ),
     description: str | None = typer.Option(None, help="Agent description"),
 ):
-    """Create a new agent and start a session immediately."""
+    """Create a new agent and activate it immediately."""
     client = get_client()
 
     try:
         client.create_agent(agent_id, pattern, description)
         activation = client.activate_agent(agent_id, 6)
-        config_manager.set_active_session(agent_id, activation["session_token"])
 
         console.print(f"[green]Agent '{agent_id}' created successfully![/green]")
         console.print(f"[dim]Pattern: {pattern}[/dim]")
         if description:
             console.print(f"[dim]Description: {description}[/dim]")
-        console.print("[green]Session started automatically for this agent.[/green]")
+        console.print("[green]Agent activated automatically.[/green]")
         console.print(
-            f"[dim]Session expires: {activation.get('expires_at', 'unknown')}[/dim]"
+            f"[dim]Activation expires: {activation.get('expires_at', 'unknown')}[/dim]"
         )
         console.print(
             '[dim]You can now run: memanto remember "..." and memanto recall "..."[/dim]'
@@ -104,22 +103,19 @@ def agent_list():
 def agent_activate(
     agent_id: str = typer.Argument(..., help="Agent ID to activate"),
     duration_hours: int = typer.Option(
-        6, help="Session duration in hours (default: 6)"
+        6, "--hours", "-h", help="Activation duration in hours (default: 6)"
     ),
 ):
-    """Activate an agent and start a session."""
+    """Activate an agent and start its active session."""
     client = get_client()
 
     try:
         result = client.activate_agent(agent_id, duration_hours)
 
-        # Save session to config
-        config_manager.set_active_session(agent_id, result["session_token"])
-
         console.print(f"[green]OK Agent '{agent_id}' activated![/green]")
-        console.print(f"[dim]Session duration: {duration_hours} hours[/dim]")
+        console.print(f"[dim]Activation duration: {duration_hours} hours[/dim]")
         console.print(
-            f"[dim]Session expires: {result.get('expires_at', 'unknown')}[/dim]"
+            f"[dim]Activation expires: {result.get('expires_at', 'unknown')}[/dim]"
         )
 
     except Exception as e:
@@ -132,11 +128,11 @@ def agent_activate(
 
 @agent_app.command("deactivate")
 def agent_deactivate():
-    """Deactivate the current agent session."""
+    """Deactivate the currently active agent."""
     active_agent_id, _ = config_manager.get_active_session()
 
     if not active_agent_id:
-        console.print("[yellow]No active agent session[/yellow]")
+        console.print("[yellow]No active agent[/yellow]")
         return
 
     config_manager.clear_active_session()
@@ -280,7 +276,7 @@ def agent_bootstrap(
 
     # Helper: fetch memories safely
     def _fetch(
-        query: str, memory_types: list[str] | None = None, limit: int = 10
+        query: str, type: list[str] | None = None, limit: int = 10
     ) -> list[dict[str, Any]]:
         """Fetch memories via recall, return list or empty on error."""
         try:
@@ -288,7 +284,7 @@ def agent_bootstrap(
                 agent_id=agent_id,
                 query=query,
                 limit=limit,
-                memory_types=memory_types,
+                type=type,
             )
             return cast(list[dict[str, Any]], result.get("memories", []))
         except Exception:
@@ -307,7 +303,7 @@ def agent_bootstrap(
     }
     type_samples: dict[str, list] = {}
     for mem_type, query in type_queries.items():
-        type_samples[mem_type] = _fetch(query, memory_types=[mem_type], limit=5)
+        type_samples[mem_type] = _fetch(query, type=[mem_type], limit=5)
 
     # Deduplicate all memories
     all_memories_map: dict[str, dict] = {}

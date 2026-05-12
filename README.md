@@ -121,10 +121,10 @@ Use memory types to categorize what you store so retrieval is cleaner and more c
 | Agent lifecycle management | `memanto agent ...` | Create/list/delete agents, activate/deactivate sessions, and run `agent bootstrap` for an intelligence snapshot. |
 | Memory capture at scale | `memanto remember` | Store single memories with metadata or batch-ingest up to 100 records from JSON. |
 | File upload to memory | `memanto upload` | Upload documents (.pdf, .docx, .xlsx, .json, .txt, .csv, .md) directly into an agent's memory namespace — content becomes instantly searchable via `recall`. |
-| Advanced retrieval modes | `memanto recall` | Run standard search plus temporal queries (`--as-of`, `--changed-since`, `--current-only`) with filters. |
+| Advanced retrieval modes | `memanto recall` | Run standard search plus temporal queries (`--as-of`, `--changed-since`) with filters. |
 | Grounded QA over memory | `memanto answer` | Generate RAG answers using retrieved memory context. |
 | Daily intelligence workflows | `memanto daily-summary`, `memanto conflicts` | Generate summaries, detect contradictions, and resolve conflicts interactively. |
-| Session and automation controls | `memanto session ...`, `memanto schedule ...` | Inspect/extend sessions and enable scheduled daily summary runs. |
+| Session and automation controls | `memanto session ...`, `memanto schedule ...` | Inspect sessions and enable scheduled daily summary runs. |
 | Memory file pipelines | `memanto memory export`, `memanto memory sync` | Export structured memory markdown and sync `MEMORY.md` into projects. |
 | Configuration inspection | `memanto config show` | Inspect API key status, active agent/session, server settings, and schedule time. |
 | Multi-agent ecosystem integration | `memanto connect ...` | Connect/remove/list integrations for Claude Code, Codex, Cursor, Windsurf, Antigravity, Gemini CLI, Cline, Continue, OpenCode, Goose, Roo, GitHub Copilot, and Augment (local or global). |
@@ -155,24 +155,23 @@ By default, call the endpoints on your local server (for example: `"http://127.0
 - `POST /api/v2/agents` - Create a new agent namespace
 - `GET /api/v2/agents` - List all available agents
 - `GET /api/v2/agents/{agent_id}` - Get metadata for a specific agent
-- `DELETE /api/v2/agents/{agent_id}` - Delete an agent and all its memories
+- `DELETE /api/v2/agents/{agent_id}` - Delete local agent metadata (`?delete-backup-too=true` also deletes Moorcheh namespace backup)
 
 ### Session Management
 - `POST /api/v2/agents/{agent_id}/activate` - Start a session (returns a 6-hour JWT `session_token`)
 - `POST /api/v2/agents/{agent_id}/deactivate` - Manually end a session
-- `GET /api/v2/session/current` - Check the status/validity of the current session
-- `POST /api/v2/session/extend` - Extend the session expiration time
+- `GET /api/v2/agents/{agent_id}/status` - Check active session status for an agent
 
 ### Memory Operations
 - `POST /api/v2/agents/{agent_id}/remember` - Store a new memory into the agent's semantic database
 - `POST /api/v2/agents/{agent_id}/batch-remember` - Batch-store up to 100 memories in one request
 - `POST /api/v2/agents/{agent_id}/upload-file` - Upload a file (.pdf, .docx, .xlsx, .json, .txt, .csv, .md) — content is chunked and made searchable
-- `GET /api/v2/agents/{agent_id}/recall` - Run an exact semantic search against the agent's memories
+- `POST /api/v2/agents/{agent_id}/recall` - Run an exact semantic search against the agent's memories
 - `POST /api/v2/agents/{agent_id}/answer` - Generate a grounded RAG answer based on the agent's memories
 
 **Authentication Required:**
-- `Authorization: Bearer {moorcheh_api_key}` header
-- `X-Session-Token: {session_token}` header (for Session & Memory operations)
+- Server-side `MOORCHEH_API_KEY` must be configured in MEMANTO
+- `X-Session-Token: {session_token}` header (for session-scoped and memory operations)
 
 ---
 

@@ -60,9 +60,9 @@ MEMANTO v2 introduces a **session-based authentication model** that eliminates t
                            │
                            ▼
 ┌─────────────────────────────────────────────────────────────┐
-│ Agent operations use session token                          │
+│ Agent operations use API key + session token               │
 │ POST /api/v2/agents/{agent_id}/remember                    │
-│ Auth: Bearer {session_token}                                │
+│ Auth: Bearer {moorcheh_api_key} + X-Session-Token          │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -111,6 +111,11 @@ User B (API Key: key_xyz789)
 
 **File-based storage** (v1): `~/.memanto/sessions/`
 
+> Important: CLI local session state and API server session are related but distinct.
+> - CLI stores local "active session" pointers for convenience.
+> - API enforces actual server-side session lifecycle and token validity.
+> - Clearing local CLI state does not, by itself, guarantee server session termination.
+
 ```
 ~/.memanto/
 ├── config.yaml                      # Main configuration
@@ -145,17 +150,12 @@ User B (API Key: key_xyz789)
 #### Create Agent
 ```http
 POST /api/v2/agents
-Authorization: Bearer {moorcheh_api_key}
 Content-Type: application/json
 
 {
   "agent_id": "customer-support",
   "pattern": "support",
-  "description": "Customer support AI agent",
-  "metadata": {
-    "real_agent_type": "claude-3.5-sonnet",
-    "owner": "user@company.com"
-  }
+  "description": "Customer support AI agent"
 }
 
 Response:
@@ -171,7 +171,6 @@ Response:
 #### List Agents
 ```http
 GET /api/v2/agents
-Authorization: Bearer {moorcheh_api_key}
 
 Response:
 {
@@ -196,18 +195,26 @@ All memory operations now require the `X-Session-Token` header and use the `/api
 
 ```bash
 # Store memory in agent's session
-curl -X POST "http://localhost:8000/api/v2/agents/my-agent/remember?content=..." \
-  -H "X-Session-Token: eyJhbGciOiJIUzI1..."
+curl -X POST "http://localhost:8000/api/v2/agents/my-agent/remember" \
+  -H "X-Session-Token: eyJhbGciOiJIUzI1..." \
+  -H "Content-Type: application/json" \
+  -d '{
+    "content": "Customer prefers concise responses",
+    "type": "preference"
+  }'
 
 # Ask a question
-curl -X POST "http://localhost:8000/api/v2/agents/my-agent/answer?question=..." \
-  -H "X-Session-Token: eyJhbGciOiJIUzI1..."
+curl -X POST "http://localhost:8000/api/v2/agents/my-agent/answer" \
+  -H "X-Session-Token: eyJhbGciOiJIUzI1..." \
+  -H "Content-Type: application/json" \
+  -d '{
+    "question": "How should I respond to this customer?"
+  }'
 ```
 
 #### Activate Agent (Start Session)
 ```http
 POST /api/v2/agents/{agent_id}/activate
-Authorization: Bearer {moorcheh_api_key}
 
 Response:
 {
@@ -223,7 +230,6 @@ Response:
 #### Deactivate Agent (End Session)
 ```http
 POST /api/v2/agents/{agent_id}/deactivate
-Authorization: Bearer {session_token}
 
 Response:
 {
@@ -241,7 +247,7 @@ Response:
 #### Remember
 ```http
 POST /api/v2/agents/{agent_id}/remember
-Authorization: Bearer {session_token}
+X-Session-Token: {session_token}
 
 Parameters:
   memory_type: str
@@ -263,15 +269,16 @@ Response:
 
 #### Recall
 ```http
-GET /api/v2/agents/{agent_id}/recall
-Authorization: Bearer {session_token}
+POST /api/v2/agents/{agent_id}/recall
+X-Session-Token: {session_token}
+Content-Type: application/json
 
-Parameters:
-  query: str
-  limit: int = 10
-  created_after: str = None (ISO 8601)
-  created_before: str = None (ISO 8601)
-  memory_types: str = None (comma-separated)
+Body:
+{
+  "query": "customer preferences",
+  "limit": 10,
+  "type": ["preference"]
+}
 
 Response:
 {
@@ -285,10 +292,13 @@ Response:
 #### Answer (RAG)
 ```http
 POST /api/v2/agents/{agent_id}/answer
-Authorization: Bearer {session_token}
+X-Session-Token: {session_token}
 
 Parameters:
   question: str
+  ai_model: str (optional)
+  kiosk_mode: bool (optional)
+  threshold: float (optional, only used when kiosk_mode=true; defaults to 0.10 in kiosk mode)
 
 Response:
 {
@@ -307,14 +317,10 @@ Response:
 ### 1. API Key Protection
 
 ```python
-# NEVER store API key in session token plaintext
-# NEVER log API key
-# NEVER expose API key in responses
-
-# Store API key:
-# - Encrypted in config file
-# - In memory during CLI session
-# - Hash in session token for validation
+# Server key is owned by MEMANTO (MOORCHEH_API_KEY).
+# NEVER expose MOORCHEH_API_KEY in request/response payloads.
+# NEVER log MOORCHEH_API_KEY.
+# Session tokens remain scoped credentials for runtime operations.
 ```
 
 ### 2. Session Validation
@@ -439,12 +445,14 @@ memanto:
 
 | Endpoint | Header Required | Description |
 |----------|-----------------|-------------|
-| `POST /api/v2/agents` | `Authorization` | Create a new agent namespace |
-| `POST /api/v2/agents/{id}/activate` | `Authorization` | Start session, get token |
+| `POST /api/v2/agents` | Server `MOORCHEH_API_KEY` | Create a new agent namespace |
+| `DELETE /api/v2/agents/{id}?delete-backup-too={true|false}` | Server `MOORCHEH_API_KEY` | Delete local agent; `true` also deletes Moorcheh namespace backup |
+| `POST /api/v2/agents/{id}/activate` | Server `MOORCHEH_API_KEY` | Start session, get token |
+| `POST /api/v2/agents/{id}/deactivate` | Server `MOORCHEH_API_KEY` | End the current agent session |
+| `GET /api/v2/agents/{id}/status` | `X-Session-Token` | Get active agent status |
 | `POST /api/v2/agents/{id}/remember` | `X-Session-Token` | Store memory in session |
-| `GET /api/v2/agents/{id}/recall` | `X-Session-Token` | Search session memories |
+| `POST /api/v2/agents/{id}/recall` | `X-Session-Token` | Search session memories |
 | `POST /api/v2/agents/{id}/answer` | `X-Session-Token` | Ask question over session memories |
-| `POST /api/v2/session/extend` | `X-Session-Token` | Extend expiration time |
 
 ---
 

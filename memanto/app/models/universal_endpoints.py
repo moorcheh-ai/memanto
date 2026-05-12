@@ -8,7 +8,7 @@ from typing import Any
 from pydantic import BaseModel, Field
 
 
-# POST /v1/memory/explain models
+# Universal memory explain models
 class MemoryExplainRequest(BaseModel):
     scope: dict[str, str] = Field(..., description="Memory scope to explain")
     query: str = Field(..., description="Query that was executed")
@@ -44,7 +44,7 @@ class MemoryExplainResponse(BaseModel):
     )
 
 
-# POST /v1/memory/supersede models
+# Universal memory supersede models
 class MemorySupersedeRequest(BaseModel):
     memory_id: str = Field(..., description="Memory ID to supersede (mark inactive)")
     superseding_memory: dict[str, Any] = Field(
@@ -61,7 +61,7 @@ class MemorySupersedeResponse(BaseModel):
     status: str = "superseded"
 
 
-# GET /v1/memory/export models
+# Universal memory export models
 class MemoryExportRequest(BaseModel):
     scope: dict[str, str] = Field(..., description="Scope to export")
     format: str = Field("json", description="Export format: json, csv, jsonl")

@@ -40,21 +40,48 @@ def mock_all_clients():
     client.session_token = "test-token"
 
     patches = []
+    # Patch get_client and config_manager independently — not every command
+    # module imports both, and a missing attribute on one must not skip the
+    # other (which previously left config_manager unmocked in modules like
+    # `session.py` that only use config_manager).
     for module in COMMAND_MODULES:
         try:
-            # Patch get_client
             p = patch(f"{module}.get_client", return_value=client)
             p.start()
             patches.append(p)
+        except (ImportError, AttributeError):
+            pass
 
-            # Also patch config_manager to avoid real disk IO
+        try:
             p_cfg = patch(f"{module}.config_manager")
             mock_cfg = p_cfg.start()
             mock_cfg.get_api_key.return_value = "test-api-key"
             mock_cfg.get_active_session.return_value = ("test-agent", "test-token")
+            mock_cfg.get_server_config.return_value = {
+                "url": "localhost",
+                "port": 8000,
+                "auto_start": False,
+            }
+            mock_cfg.get_session_config.return_value = {
+                "default_duration_hours": 6,
+                "auto_renew_enabled": True,
+            }
+            mock_cfg.get_cli_config.return_value = {
+                "interactive_mode": True,
+                "smart_parse": True,
+            }
+            mock_cfg.get_answer_config.return_value = {
+                "model": "anthropic.claude-sonnet-4-6",
+                "temperature": 0.7,
+                "answer_limit": 15,
+                "threshold": 0.01,
+            }
+            mock_cfg.get_recall_config.return_value = {"limit": 10}
+            mock_cfg.get_schedule_time.return_value = "23:55"
+            mock_cfg.config_dir = "/tmp/.memanto"
             patches.append(p_cfg)
         except (ImportError, AttributeError):
-            continue
+            pass
 
     # Specialized patches for connect module utilities
     p_la = patch("memanto.cli.commands.connect.list_agents", return_value=[])
@@ -128,7 +155,7 @@ class TestMEMANTOCLI:
         assert result.exit_code == 0
         assert "test-agent" in result.stdout
         assert "created successfully" in result.stdout.lower()
-        assert "session started automatically" in result.stdout.lower()
+        assert "agent activated automatically" in result.stdout.lower()
         mock_all_clients.activate_agent.assert_called_once_with("test-agent", 6)
 
     def test_agent_list(self, mock_all_clients):
@@ -220,7 +247,8 @@ class TestMEMANTOCLI:
 
         result = runner.invoke(app, ["session", "info"])
         assert result.exit_code == 0
-        assert "test-agent" in result.stdout
+        assert "Active Agent" in result.stdout
+        assert "Session Token" in result.stdout
 
     def test_agent_deactivate(self, mock_all_clients):
         """Test 'memanto agent deactivate'"""
@@ -285,15 +313,6 @@ class TestMEMANTOCLI:
         result = runner.invoke(app, ["agent", "bootstrap"])
         assert result.exit_code == 0
         assert "Intelligence Snapshot" in result.stdout
-
-    def test_session_extend(self, mock_all_clients):
-        """Test 'memanto session extend'"""
-        mock_all_clients.extend_session.return_value = {
-            "expires_at": "2026-03-19T22:00:00Z"
-        }
-        result = runner.invoke(app, ["session", "extend", "--hours", "2"])
-        assert result.exit_code == 0
-        assert "extended" in result.stdout.lower()
 
     def test_memory_batch_remember(self, mock_all_clients, tmp_path):
         """Test 'memanto remember --batch'"""

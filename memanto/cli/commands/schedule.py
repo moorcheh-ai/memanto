@@ -50,12 +50,13 @@ def schedule_status():
 
     manager = ScheduleManager()
     result = manager.get_status()
+    configured_time = config_manager.get_schedule_time()
 
     if result.get("enabled"):
         console.print(
             Panel(
                 f"[green]Daily Summary Automation: ENABLED[/green]\n\n"
-                f"[dim]Time: 23:59 local time daily[/dim]\n"
+                f"[dim]Time: {configured_time} local time daily[/dim]\n"
                 f"[dim]Command: {manager.python_exe} ... daily-summary[/dim]",
                 title="Schedule Status",
                 border_style=SUCCESS,

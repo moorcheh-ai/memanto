@@ -626,7 +626,6 @@ memanto answer "question"
 memanto agent create my-agent       # Create and auto-activate
 memanto agent activate my-agent     # Activate existing
 memanto session info
-memanto session extend --hours 6
 ```
 
 ### Python Integration

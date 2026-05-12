@@ -130,6 +130,9 @@ class Settings(BaseSettings):
     AUTO_PARSE_ENABLED: bool = True
     USE_LLM_FALLBACK: bool = False
 
+    # UI Mode
+    MEMANTO_UI_MODE: bool = False
+
     model_config = SettingsConfigDict(
         env_file=".env", case_sensitive=True, extra="ignore"
     )

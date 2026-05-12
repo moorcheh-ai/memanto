@@ -207,26 +207,23 @@ class ConfigManager:
         """Set daily summary + conflict time."""
         self.set("schedule_time", time_str)
 
-    # Active session tracking
+    # Active session tracking — sourced from SessionService (~/.memanto/sessions/).
+    # CLI and API server both go through here so they always agree.
 
     def get_active_session(self) -> tuple[str | None, str | None]:
-        """Get active agent ID and session token."""
-        data = self.load_yaml()
-        return data.get("active_agent_id"), data.get("active_session_token")
+        """Return (agent_id, session_token) for the active session, or (None, None)."""
+        from memanto.app.services.session_service import get_session_service
 
-    def set_active_session(self, agent_id: str, session_token: str) -> None:
-        """Set active session."""
-        data = self.load_yaml()
-        data["active_agent_id"] = agent_id
-        data["active_session_token"] = session_token
-        self.save_yaml(data)
+        session = get_session_service().get_active_session()
+        if session is None:
+            return None, None
+        return session.agent_id, session.session_token
 
     def clear_active_session(self) -> None:
-        """Clear active session."""
-        data = self.load_yaml()
-        data.pop("active_agent_id", None)
-        data.pop("active_session_token", None)
-        self.save_yaml(data)
+        """Clear the active-session marker."""
+        from memanto.app.services.session_service import get_session_service
+
+        get_session_service().clear_active_session()
 
     def set_server_config(self, url: str, port: int) -> None:
         """Set fallback server configuration."""

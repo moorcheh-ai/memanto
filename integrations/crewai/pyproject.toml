@@ -1,0 +1,28 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "memanto-crewai"
+version = "0.1.0"
+description = "CrewAI tools and integration for Memanto's persistent memory"
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.10,<4"
+authors = [
+    { name = "Memanto", email = "info@memanto.ai" }
+]
+dependencies = [
+    "crewai>=0.80.0",
+    "memanto>=0.1.0",
+    "pydantic>=2.0.0",
+    "python-dotenv>=1.0.0"
+]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["memanto_crewai"]

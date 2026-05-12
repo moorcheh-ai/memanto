@@ -7,6 +7,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from httpx import ASGITransport, AsyncClient
 
+from memanto.app.config import settings
 from memanto.app.main import app
 
 # Set test environment
@@ -25,29 +26,28 @@ def test_env_setup():
         patch("memanto.app.services.agent_service.Path.home", return_value=temp_path),
         patch("memanto.app.services.session_service.Path.home", return_value=temp_path),
     ):
-        # Manually update singletons/global instances
         from memanto.app.routes.sessions import agent_service
-        from memanto.app.services.session_service import get_session_service
+        from memanto.app.services import session_service as session_service_mod
 
-        session_service = get_session_service()
+        # Force a fresh SessionService bound to the patched Path.home so the
+        # singleton's sessions_dir always points inside this test's temp dir.
+        session_service_mod._session_service = None
+        session_service = session_service_mod.get_session_service()
 
-        # Save original dirs
         orig_agent_dir = agent_service.agents_dir
-        orig_session_dir = session_service.sessions_dir
-
-        # Set to temp
         agent_service.agents_dir = temp_path / ".memanto" / "agents"
-        session_service.sessions_dir = temp_path / ".memanto" / "sessions"
 
         agent_service.agents_dir.mkdir(parents=True, exist_ok=True)
         session_service.sessions_dir.mkdir(parents=True, exist_ok=True)
 
-        yield temp_path
-
-        # Cleanup
-        agent_service.agents_dir = orig_agent_dir
-        session_service.sessions_dir = orig_session_dir
-        shutil.rmtree(temp_dir)
+        try:
+            yield temp_path
+        finally:
+            agent_service.agents_dir = orig_agent_dir
+            # Drop the temp-bound singleton so later tests rebuild it against
+            # the real Path.home() instead of inheriting a deleted temp dir.
+            session_service_mod._session_service = None
+            shutil.rmtree(temp_dir, ignore_errors=True)
 
 
 @pytest.fixture
@@ -154,6 +154,29 @@ class TestMEMANTOAPI:
         data = response.json()
         assert data["agent_id"] == self.TEST_AGENT_ID
         assert "namespace" in data
+        assert "metadata" not in data
+
+    @pytest.mark.asyncio
+    async def test_create_agent_without_authorization_header(self, client):
+        """Test creating a new agent using server-configured API key"""
+        payload = {
+            "agent_id": "server-key-agent",
+            "pattern": "support",
+        }
+        response = await client.post("/api/v2/agents", json=payload)
+        assert response.status_code == 201
+        assert response.json()["agent_id"] == "server-key-agent"
+
+    @pytest.mark.asyncio
+    async def test_create_agent_fails_when_server_key_missing(self, client):
+        """Test failure when server API key is not configured"""
+        payload = {
+            "agent_id": "missing-key-agent",
+            "pattern": "support",
+        }
+        with patch.object(settings, "MOORCHEH_API_KEY", ""):
+            response = await client.post("/api/v2/agents", json=payload)
+        assert response.status_code == 500
 
     @pytest.mark.asyncio
     async def test_list_agents(self, client, auth_headers):
@@ -162,6 +185,8 @@ class TestMEMANTOAPI:
         assert response.status_code == 200
         data = response.json()
         assert "agents" in data
+        if data["agents"]:
+            assert "metadata" not in data["agents"][0]
 
     @pytest.mark.asyncio
     async def test_activate_session(self, client, auth_headers):
@@ -248,6 +273,61 @@ class TestMEMANTOAPI:
 
         assert response.status_code == 200
         assert "mocked answer" in response.json()["answer"]
+        call_kwargs = mock_moorcheh.answer.generate.call_args.kwargs
+        assert "threshold" not in call_kwargs
+
+    @pytest.mark.asyncio
+    async def test_answer_with_kiosk_mode_uses_default_threshold(
+        self, client, auth_headers, mock_moorcheh
+    ):
+        """Test kiosk mode applies default threshold when omitted."""
+        await client.post(
+            "/api/v2/agents",
+            headers=auth_headers,
+            json={"agent_id": self.TEST_AGENT_ID},
+        )
+        activate_resp = await client.post(
+            f"/api/v2/agents/{self.TEST_AGENT_ID}/activate", headers=auth_headers
+        )
+        token = activate_resp.json()["session_token"]
+
+        headers = {**auth_headers, "X-Session-Token": token}
+        payload = {"question": "What is being tested?", "kiosk_mode": True}
+        response = await client.post(
+            f"/api/v2/agents/{self.TEST_AGENT_ID}/answer", headers=headers, json=payload
+        )
+
+        assert response.status_code == 200
+        call_kwargs = mock_moorcheh.answer.generate.call_args.kwargs
+        assert call_kwargs["threshold"] == 0.10
+
+    @pytest.mark.asyncio
+    async def test_answer_accepts_ai_model_field(
+        self, client, auth_headers, mock_moorcheh
+    ):
+        """Test ai_model request field maps to answer.generate ai_model."""
+        await client.post(
+            "/api/v2/agents",
+            headers=auth_headers,
+            json={"agent_id": self.TEST_AGENT_ID},
+        )
+        activate_resp = await client.post(
+            f"/api/v2/agents/{self.TEST_AGENT_ID}/activate", headers=auth_headers
+        )
+        token = activate_resp.json()["session_token"]
+
+        headers = {**auth_headers, "X-Session-Token": token}
+        payload = {
+            "question": "What is being tested?",
+            "ai_model": "anthropic.claude-sonnet-4-6",
+        }
+        response = await client.post(
+            f"/api/v2/agents/{self.TEST_AGENT_ID}/answer", headers=headers, json=payload
+        )
+
+        assert response.status_code == 200
+        call_kwargs = mock_moorcheh.answer.generate.call_args.kwargs
+        assert call_kwargs["ai_model"] == "anthropic.claude-sonnet-4-6"
 
     @pytest.mark.asyncio
     async def test_recall_with_session(self, client, auth_headers, mock_moorcheh):
@@ -271,15 +351,42 @@ class TestMEMANTOAPI:
 
         # Query
         headers = {**auth_headers, "X-Session-Token": token}
-        params = {"query": "test query", "limit": 1}
-        response = await client.get(
+        payload = {"query": "test query", "limit": 1}
+        response = await client.post(
             f"/api/v2/agents/{self.TEST_AGENT_ID}/recall",
             headers=headers,
-            params=params,
+            json=payload,
         )
 
         assert response.status_code == 200
         assert len(response.json()["memories"]) == 1
+
+    @pytest.mark.asyncio
+    async def test_recall_accepts_type_filter(
+        self, client, auth_headers, mock_moorcheh
+    ):
+        """Test recall request uses 'type' field for memory filters."""
+        await client.post(
+            "/api/v2/agents",
+            headers=auth_headers,
+            json={"agent_id": self.TEST_AGENT_ID},
+        )
+        activate_resp = await client.post(
+            f"/api/v2/agents/{self.TEST_AGENT_ID}/activate", headers=auth_headers
+        )
+        token = activate_resp.json()["session_token"]
+
+        headers = {**auth_headers, "X-Session-Token": token}
+        payload = {"query": "test query", "type": ["fact"]}
+        response = await client.post(
+            f"/api/v2/agents/{self.TEST_AGENT_ID}/recall",
+            headers=headers,
+            json=payload,
+        )
+
+        assert response.status_code == 200
+        call_kwargs = mock_moorcheh.similarity_search.query.call_args.kwargs
+        assert "memory_type:fact" in call_kwargs["query"]
 
     @pytest.mark.asyncio
     async def test_get_agent(self, client, auth_headers):
@@ -293,16 +400,38 @@ class TestMEMANTOAPI:
             f"/api/v2/agents/{self.TEST_AGENT_ID}", headers=auth_headers
         )
         assert response.status_code == 200
-        assert response.json()["agent_id"] == self.TEST_AGENT_ID
+        data = response.json()
+        assert data["agent_id"] == self.TEST_AGENT_ID
+        assert "metadata" not in data
 
     @pytest.mark.asyncio
-    async def test_delete_agent(self, client, auth_headers):
+    async def test_delete_agent(self, client, auth_headers, mock_moorcheh):
         """Test deleting agent"""
         await client.post(
             "/api/v2/agents", headers=auth_headers, json={"agent_id": "to-delete"}
         )
         response = await client.delete("/api/v2/agents/to-delete", headers=auth_headers)
         assert response.status_code == 200
+        mock_moorcheh.namespaces.delete.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_delete_agent_with_backup_delete(
+        self, client, auth_headers, mock_moorcheh
+    ):
+        """Test deleting agent including Moorcheh backup deletion."""
+        await client.post(
+            "/api/v2/agents",
+            headers=auth_headers,
+            json={"agent_id": "to-delete-remote"},
+        )
+        response = await client.delete(
+            "/api/v2/agents/to-delete-remote?delete-backup-too=true",
+            headers=auth_headers,
+        )
+        assert response.status_code == 200
+        mock_moorcheh.namespaces.delete.assert_called_once_with(
+            namespace_name="memanto_agent_to-delete-remote"
+        )
 
     @pytest.mark.asyncio
     async def test_deactivate_agent(self, client, auth_headers):
@@ -312,12 +441,14 @@ class TestMEMANTOAPI:
             headers=auth_headers,
             json={"agent_id": self.TEST_AGENT_ID},
         )
-        await client.post(
+        activate_resp = await client.post(
             f"/api/v2/agents/{self.TEST_AGENT_ID}/activate", headers=auth_headers
         )
+        token = activate_resp.json()["session_token"]
+        headers = {**auth_headers, "X-Session-Token": token}
 
         response = await client.post(
-            f"/api/v2/agents/{self.TEST_AGENT_ID}/deactivate", headers=auth_headers
+            f"/api/v2/agents/{self.TEST_AGENT_ID}/deactivate", headers=headers
         )
         assert response.status_code == 200
         data = response.json()
@@ -325,42 +456,23 @@ class TestMEMANTOAPI:
         assert "ended_at" in data
 
     @pytest.mark.asyncio
-    async def test_current_session_info(self, client, auth_headers):
-        """Test getting current session info"""
+    async def test_global_status(self, client, auth_headers):
+        """Test GET /api/v2/status returns active session info without auth params"""
         await client.post(
             "/api/v2/agents",
             headers=auth_headers,
             json={"agent_id": self.TEST_AGENT_ID},
         )
-        activate_resp = await client.post(
-            f"/api/v2/agents/{self.TEST_AGENT_ID}/activate", headers=auth_headers
-        )
-        token = activate_resp.json()["session_token"]
-
-        headers = {**auth_headers, "X-Session-Token": token}
-        response = await client.get("/api/v2/session/current", headers=headers)
-        assert response.status_code == 200
-        assert response.json()["agent_id"] == self.TEST_AGENT_ID
-
-    @pytest.mark.asyncio
-    async def test_extend_session_api(self, client, auth_headers):
-        """Test extending session"""
         await client.post(
-            "/api/v2/agents",
-            headers=auth_headers,
-            json={"agent_id": self.TEST_AGENT_ID},
-        )
-        activate_resp = await client.post(
             f"/api/v2/agents/{self.TEST_AGENT_ID}/activate", headers=auth_headers
         )
-        token = activate_resp.json()["session_token"]
 
-        headers = {**auth_headers, "X-Session-Token": token}
-        response = await client.post(
-            "/api/v2/session/extend", headers=headers, params={"additional_hours": 4}
-        )
+        response = await client.get("/api/v2/status")
         assert response.status_code == 200
-        assert "expires_at" in response.json()
+        data = response.json()
+        assert data["agent_id"] == self.TEST_AGENT_ID
+        assert "session_id" in data
+        assert "time_remaining_seconds" in data
 
     @pytest.mark.asyncio
     async def test_remember_body_type_is_respected(
@@ -390,14 +502,15 @@ class TestMEMANTOAPI:
         )
 
         assert response.status_code == 200
-        assert response.json()["type"] == "fact"
+        assert "type" not in response.json()
+        uploaded_doc = mock_moorcheh.documents.upload.call_args.kwargs["documents"][0]
+        assert uploaded_doc["memory_type"] == "fact"
 
     @pytest.mark.asyncio
-    async def test_list_sessions_api(self, client, auth_headers):
-        """Test listing all sessions"""
-        response = await client.get("/api/v2/sessions", headers=auth_headers)
-        assert response.status_code == 200
-        assert isinstance(response.json(), list)
+    async def test_global_status_no_active_session(self, client):
+        """Test GET /api/v2/status returns 404 when no session is active"""
+        response = await client.get("/api/v2/status")
+        assert response.status_code == 404
 
     @pytest.mark.asyncio
     async def test_batch_remember_api(self, client, auth_headers, mock_moorcheh):
@@ -432,7 +545,7 @@ class TestMEMANTOAPI:
 
     @pytest.mark.asyncio
     async def test_recall_temporal_api(self, client, auth_headers, mock_moorcheh):
-        """Test temporal recall modes"""
+        """Test temporal recall modes (POST + JSON body)"""
         await client.post(
             "/api/v2/agents",
             headers=auth_headers,
@@ -444,44 +557,174 @@ class TestMEMANTOAPI:
         token = activate_resp.json()["session_token"]
         headers = {**auth_headers, "X-Session-Token": token}
 
-        # 1. As-of recall
         mock_moorcheh.similarity_search.query.return_value = {
             "results": [],
             "total_found": 0,
         }
-        response = await client.get(
+        mock_moorcheh.documents.fetch_text_data.return_value = {
+            "status": "ok",
+            "items": [],
+        }
+
+        # 1. As-of recall — date-only input defaults to end of day
+        response = await client.post(
             f"/api/v2/agents/{self.TEST_AGENT_ID}/recall/as-of",
             headers=headers,
-            params={"query": "test", "as_of": "2025-01-01T00:00:00Z"},
+            json={"as_of": "2025-01-01"},
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["temporal_mode"] == "as_of"
+        assert "2025-01-01T23:59:59" in data["as_of_date"]
+
+        # 2. As-of recall — full ISO datetime
+        response = await client.post(
+            f"/api/v2/agents/{self.TEST_AGENT_ID}/recall/as-of",
+            headers=headers,
+            json={"as_of": "2025-06-15T12:00:00Z"},
         )
         assert response.status_code == 200
         assert response.json()["temporal_mode"] == "as_of"
 
-        # 2. Changed-since recall
-        mock_moorcheh.similarity_search.query.return_value = {
-            "results": [],
-            "total_found": 0,
-        }
-        response = await client.get(
+        # 3. Changed-since recall — date-only input defaults to start of day
+        response = await client.post(
             f"/api/v2/agents/{self.TEST_AGENT_ID}/recall/changed-since",
             headers=headers,
-            params={"since": "2025-01-01T00:00:00Z"},
+            json={"since": "2025-01-01"},
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["temporal_mode"] == "changed_since"
+        assert "2025-01-01T00:00:00" in data["since_date"]
+
+        # 4. Changed-since recall — full ISO datetime, no query
+        response = await client.post(
+            f"/api/v2/agents/{self.TEST_AGENT_ID}/recall/changed-since",
+            headers=headers,
+            json={"since": "2025-01-01T00:00:00Z"},
         )
         assert response.status_code == 200
         assert response.json()["temporal_mode"] == "changed_since"
 
-        # 3. Current-only recall
+    @pytest.mark.asyncio
+    async def test_recall_recent_api(self, client, auth_headers, mock_moorcheh):
+        """Test recall/recent returns newest memories sorted by created_at"""
+        await client.post(
+            "/api/v2/agents",
+            headers=auth_headers,
+            json={"agent_id": self.TEST_AGENT_ID},
+        )
+        activate_resp = await client.post(
+            f"/api/v2/agents/{self.TEST_AGENT_ID}/activate", headers=auth_headers
+        )
+        token = activate_resp.json()["session_token"]
+        headers = {**auth_headers, "X-Session-Token": token}
+
         mock_moorcheh.similarity_search.query.return_value = {
-            "results": [],
-            "total_found": 0,
+            "results": [
+                {
+                    "id": "m1",
+                    "metadata": {
+                        "created_at": "2025-06-01T10:00:00",
+                        "memory_type": "fact",
+                    },
+                    "text": "fact one",
+                },
+                {
+                    "id": "m2",
+                    "metadata": {
+                        "created_at": "2025-05-01T08:00:00",
+                        "memory_type": "fact",
+                    },
+                    "text": "fact two",
+                },
+            ],
+            "total_found": 2,
         }
-        response = await client.get(
-            f"/api/v2/agents/{self.TEST_AGENT_ID}/recall/current",
+
+        # No body required — all fields optional
+        response = await client.post(
+            f"/api/v2/agents/{self.TEST_AGENT_ID}/recall/recent",
             headers=headers,
-            params={"query": "test"},
+            json={},
         )
         assert response.status_code == 200
-        assert response.json()["temporal_mode"] == "current_only"
+        data = response.json()
+        assert data["temporal_mode"] == "recent"
+        assert "memories" in data
+        assert "count" in data
+
+        # With limit and type filter
+        response = await client.post(
+            f"/api/v2/agents/{self.TEST_AGENT_ID}/recall/recent",
+            headers=headers,
+            json={"limit": 5, "type": ["fact"]},
+        )
+        assert response.status_code == 200
+        assert response.json()["temporal_mode"] == "recent"
+
+    @pytest.mark.asyncio
+    async def test_conflicts_list_api(self, client, auth_headers):
+        """Test listing conflicts via API."""
+        await client.post(
+            "/api/v2/agents",
+            headers=auth_headers,
+            json={"agent_id": self.TEST_AGENT_ID},
+        )
+        activate_resp = await client.post(
+            f"/api/v2/agents/{self.TEST_AGENT_ID}/activate", headers=auth_headers
+        )
+        token = activate_resp.json()["session_token"]
+        headers = {**auth_headers, "X-Session-Token": token}
+
+        with patch("memanto.app.routes.memory.DirectClient") as mock_client_cls:
+            mock_client = mock_client_cls.return_value
+            mock_client.list_conflicts.return_value = [
+                {"type": "conflict", "id": "c-1"}
+            ]
+
+            response = await client.get(
+                f"/api/v2/agents/{self.TEST_AGENT_ID}/conflicts",
+                headers=headers,
+                params={"date": "2026-05-08"},
+            )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["count"] == 1
+        assert data["conflicts"][0]["id"] == "c-1"
+
+    @pytest.mark.asyncio
+    async def test_conflicts_resolve_api(self, client, auth_headers):
+        """Test resolving conflicts via API."""
+        await client.post(
+            "/api/v2/agents",
+            headers=auth_headers,
+            json={"agent_id": self.TEST_AGENT_ID},
+        )
+        activate_resp = await client.post(
+            f"/api/v2/agents/{self.TEST_AGENT_ID}/activate", headers=auth_headers
+        )
+        token = activate_resp.json()["session_token"]
+        headers = {**auth_headers, "X-Session-Token": token}
+
+        with patch("memanto.app.routes.memory.DirectClient") as mock_client_cls:
+            mock_client = mock_client_cls.return_value
+            mock_client.resolve_conflict.return_value = {
+                "status": "resolved",
+                "action": "keep_new",
+            }
+
+            response = await client.post(
+                f"/api/v2/agents/{self.TEST_AGENT_ID}/conflicts/resolve",
+                headers=headers,
+                json={"date": "2026-05-08", "conflict_index": 0, "action": "keep_new"},
+            )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["status"] == "resolved"
+        assert data["action"] == "keep_new"
 
     @pytest.mark.asyncio
     async def test_upload_file_with_session(self, client, auth_headers, mock_moorcheh):

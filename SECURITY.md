@@ -115,7 +115,8 @@ Before making your repository public:
 MEMANTO implements multiple security layers:
 
 ### 1. Authentication & Authorization
-- Bearer token authentication required for all endpoints (except `/health`)
+- Server-owned `MOORCHEH_API_KEY` required at startup for backend access
+- Client `X-Session-Token` required for session-scoped and memory endpoints
 - Tenant ID derived from authenticated principal (never from request body)
 - Multi-tenant isolation enforced at namespace level
 

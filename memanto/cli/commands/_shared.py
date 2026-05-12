@@ -59,7 +59,7 @@ config_manager = ConfigManager()
 
 # Create subcommands
 agent_app = typer.Typer(help="Agent management commands")
-session_app = typer.Typer(help="Session management commands")
+session_app = typer.Typer(help="Legacy aliases for agent activation commands")
 config_app = typer.Typer(help="Configuration commands")
 schedule_app = typer.Typer(help="Daily summary scheduling commands")
 memory_app = typer.Typer(help="Memory management commands")
@@ -121,12 +121,9 @@ def get_client() -> SdkClient:
                     expires_at = datetime.fromisoformat(expires_at_str)
 
                     if datetime.utcnow() > expires_at:
-                        # Silently revive the session
-                        new_data = client.activate_agent(active_agent_id)
-                        client.session_token = new_data["session_token"]
-                        config_manager.set_active_session(
-                            active_agent_id, client.session_token
-                        )
+                        # Silently revive the session — activate_agent updates
+                        # SessionService state and the client's own token.
+                        client.activate_agent(active_agent_id)
             except Exception:
                 pass  # Fall back to letting the underlying request fail if something is malformed
 
