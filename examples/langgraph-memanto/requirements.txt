@@ -1,0 +1,6 @@
+langgraph>=0.2.0
+langchain-core>=0.3.0
+langchain-openai>=0.2.0
+memanto>=0.1.0
+httpx>=0.27.0
+rich>=13.0.0
