@@ -45,14 +45,13 @@ python main.py
 
 ### Cross-Session Demo
 
+![Cross-Session Memory Demo](demo.gif)
+
 The demo (`demo.py`) runs two fully independent sessions:
 
 **Session 1 ("Yesterday")** — The user discusses their LLM inference optimization research, shares experimental results, tool preferences, and deadlines. Memanto silently stores these as typed memories.
 
 **Session 2 ("Today")** — A completely new `ResearchMentor` instance with zero shared state. The user asks "What was I working on?" and "What results did I get?" — answered entirely from Memanto's persistent memory.
-
-<!-- TODO: Record demo.py and add GIF link below -->
-<!-- ![Demo GIF](demo.gif) -->
 
 ### Programmatic Usage
 
