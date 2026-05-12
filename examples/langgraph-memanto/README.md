@@ -1,49 +1,72 @@
-# 🧠 Memanto + LangGraph: Giving Your Graph a Permanent Brain
+# LangGraph + Memanto Integration: A Persistent Brain for Your Agent
 
-This example demonstrates how to integrate [Memanto](https://github.com/Moorcheh-AI/memanto) as a long-term memory layer for a [LangGraph](https://langchain.github.io/langgraph/) agent. It addresses the challenge of maintaining conversational context and factual recall across disjointed sessions, ensuring your agent "remembers" information from "yesterday" that isn't explicitly part of the current thread's state.
+This example demonstrates how to integrate [Memanto](https://memanto.ai) as a long-term memory solution for a [LangGraph](https://langchain-langgraph.github.io/langgraph/) agent. This allows your agent to store and retrieve "memories" that persist across different sessions, giving it a permanent brain beyond the immediate conversational state.
 
-## ✨ Features
+## 🧠 How it Works
 
-*   **Cross-Session Recall**: The agent remembers facts and preferences learned in previous interactions, even after the application restarts or new conversations begin.
-*   **LLM-Powered Fact Extraction**: Uses a Large Language Model (LLM) to extract important, self-contained facts from conversations for long-term storage in Memanto.
-*   **Contextual Retrieval**: Dynamically queries Memanto based on current user input to provide relevant past information to the LLM for informed responses.
-*   **Clean LangGraph Workflow**: A straightforward graph structure demonstrating the memory integration points.
+The agent acts as a simple fact-storing and retrieval assistant:
 
-## 🛠️ Setup
+1.  **Remember Facts**: When you tell the agent to "Remember: <fact>", it stores that fact in Memanto.
+2.  **Retrieve & Respond**: When you ask a question, the agent queries Memanto for relevant past information and uses those memories to formulate its response.
 
-1.  **Clone the repository (if you haven't already):**
-    ```bash
-    git clone https://github.com/your-org/your-repo.git
-    cd your-repo
+Crucially, the Memanto integration ensures that these stored facts are available even if the agent script is restarted, demonstrating **cross-session recall**.
+
+### Mock Memanto Client
+
+For ease of demonstration and to avoid requiring a running Memanto service, this example uses a `PersistentMemantoClient` mock. This mock client saves and loads memories from a local `memanto_data.json` file, effectively simulating the persistence and retrieval capabilities of a real Memanto instance. In a production environment, you would replace this mock with the official Memanto client.
+
+## 🚀 Getting Started
+
+### 1. Fork and Clone
+
+First, fork this repository and clone your fork:
+
+```bash
+git clone YOUR_FORK_URL
+cd YOUR_FORK_URL/examples/langgraph-memanto
+```
+
+### 2. Install Dependencies
+
+Install the required Python packages:
+
+```bash
+pip install -r requirements.txt
+```
+
+### 3. Run the Agent
+
+Execute the agent script:
+
+```bash
+python agent.py
+```
+
+## ✨ Demonstration
+
+Once running, you can interact with the agent:
+
+1.  **Store a memory:**
     ```
-2.  **Navigate to the example directory:**
-    ```bash
-    cd examples/langgraph-memanto
+    You: Remember: The capital of France is Paris.
+    Agent: Okay, I've remembered: 'The capital of France is Paris.'.
     ```
-3.  **Install dependencies:**
-    ```bash
-    pip install -r requirements.txt
+2.  **Ask a question:**
     ```
-4.  **Set your OpenAI API Key:**
-    The agent uses `langchain-openai` for its LLM. Ensure your `OPENAI_API_KEY` is set as an environment variable:
-    ```bash
-    export OPENAI_API_KEY="sk-..."
+    You: What is the capital of France?
+    Agent: Based on what I recall:
+    - The capital of France is Paris.
+    Regarding your question: 'What is the capital of France?'
+    I can try to use these memories to help.
     ```
-    (Replace `sk-...` with your actual OpenAI API Key)
+3.  **Demonstrate Cross-Session Recall:**
+    *   Exit the `agent.py` script (`exit`).
+    *   Run `python agent.py` again.
+    *   Ask the same question: `What is the capital of France?`
+    *   The agent will still recall the fact, because it was loaded from `memanto_data.json`.
 
-## 🚀 How to Run
+---
 
-1.  **Execute the agent script:**
-    ```bash
-    python agent.py
-    ```
+## 🎥 Video/GIF Demonstration
 
-Observe the console output. You'll see:
-*   **Session 1**: The agent learns new facts (e.g., your name, hobbies).
-*   **Session 2 (Same App Run)**: The agent uses its current LangGraph state to answer.
-*   **New, Disjointed Session**: This simulates restarting the agent entirely. The agent will recall facts from Session 1, demonstrating Memanto's cross-session memory capabilities.
-*   Memanto creates a local database directory named `./memanto_langgraph_db` to persist its memories.
-
-## 📺 Demonstration
-
-*(Link to a 30-second GIF or video demonstrating cross-session recall will go here)*
+[Link to your 30-second GIF or video demonstrating the agent's functionality, especially cross-session recall.]

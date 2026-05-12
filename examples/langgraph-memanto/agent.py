@@ -1,225 +1,212 @@
+import json
 import os
-from memanto import Memanto
-from langchain_openai import ChatOpenAI
-from langchain_core.messages import BaseMessage, HumanMessage, AIMessage, SystemMessage
-from langchain_core.prompts import ChatPromptTemplate
-from typing import List, Dict, TypedDict
+from typing import List, Dict, Optional, TypedDict, Any
+from uuid import uuid4
 
 from langgraph.graph import StateGraph, END
+from langchain_core.messages import BaseMessage, HumanMessage, AIMessage
 
-# --- Memanto Setup ---
-# Initializes Memanto to store agent memories persistently.
-# The unique collection name ensures memories are specific to this agent
-# and are saved to the specified local database path.
-MEMANTO_DB_PATH = "./memanto_langgraph_db"
-memanto = Memanto(db_path=MEMANTO_DB_PATH, collection_name="langgraph_agent_memories")
+# --- Mock Memanto Client for Demonstration ---
+# In a real scenario, you would replace this with the actual Memanto client library.
+# This mock client persists memories to a local JSON file to demonstrate
+# cross-session recall without requiring a running Memanto service.
+class PersistentMemantoClient:
+    def __init__(self, storage_file="memanto_data.json"):
+        self.storage_file = storage_file
+        self.memories: Dict[str, Any] = self._load_memories()
+        print(f"MemantoClient initialized. Memories loaded from {self.storage_file}.")
 
-# --- LangChain/LangGraph Setup ---
-# Ensure OPENAI_API_KEY is set as an environment variable.
-# For local testing, you might use `export OPENAI_API_KEY="your_key_here"`
-if not os.getenv("OPENAI_API_KEY"):
-    raise ValueError("OPENAI_API_KEY environment variable not set. Please set it to your OpenAI API key.")
-llm = ChatOpenAI(model="gpt-4o-mini", temperature=0)
+    def _load_memories(self) -> Dict[str, Any]:
+        if os.path.exists(self.storage_file):
+            try:
+                with open(self.storage_file, 'r') as f:
+                    return json.load(f)
+            except json.JSONDecodeError:
+                print(f"WARNING: Could not decode {self.storage_file}. Starting with empty memories.")
+                return {"memories": []}
+        return {"memories": []}
 
-# --- Graph State Definition ---
-# Defines the structure of the state that flows through the LangGraph.
+    def _save_memories(self):
+        with open(self.storage_file, 'w') as f:
+            json.dump(self.memories, f, indent=2)
+
+    def add_memory(self, content: str, metadata: Optional[Dict[str, Any]] = None) -> str:
+        memory_id = str(uuid4())
+        memory = {"id": memory_id, "content": content, "metadata": metadata or {}}
+        self.memories["memories"].append(memory)
+        self._save_memories()
+        print(f"[Memanto] Stored memory (ID: {memory_id}): '{content}'")
+        return memory_id
+
+    def retrieve_memory(self, query: str, top_k: int = 2) -> List[Dict[str, Any]]:
+        retrieved = []
+        query_lower = query.lower()
+        # Simple keyword-based retrieval. Real Memanto would use embeddings and vector search.
+        for mem in self.memories["memories"]:
+            if query_lower in mem["content"].lower():
+                retrieved.append(mem)
+        
+        # Limit to top_k, returning just the content for simplicity in the agent response.
+        retrieved_contents = [mem["content"] for mem in retrieved[:top_k]]
+        print(f"[Memanto] Retrieved {len(retrieved_contents)} memories for query '{query}': {retrieved_contents}")
+        return retrieved_contents
+
+    def clear_all_memories(self):
+        self.memories = {"memories": []}
+        self._save_memories()
+        print("[Memanto] All memories cleared.")
+
+
+# --- LangGraph State Definition ---
 class AgentState(TypedDict):
-    messages: List[BaseMessage]  # Stores the conversation history for the current session.
-    retrieved_memories: List[str]  # Stores memories retrieved from Memanto for the current turn.
+    """
+    Represents the state of our graph.
+    """
+    input_message: str  # The current input from the user
+    memories_retrieved: List[str]  # Relevant memories retrieved from Memanto
+    new_fact_to_store: Optional[str] # A fact identified to be stored in Memanto
+    response: str # The agent's final response
+    action: str # Determines the next step: "store_fact" or "answer_question"
+
 
 # --- Graph Nodes ---
 
-def retrieve_memories(state: AgentState) -> Dict:
+def retrieve_memories_node(state: AgentState, memanto_client: PersistentMemantoClient) -> AgentState:
     """
-    Queries Memanto for relevant past information based on the latest user message.
-    This helps provide context from previous interactions that isn't in the current session's state.
+    Retrieves relevant memories from Memanto based on the current input message.
+    This provides context from long-term memory to the current session.
     """
-    messages = state["messages"]
-    # Identify the latest human message to use as a query for Memanto.
-    latest_user_message = messages[-1].content if messages and isinstance(messages[-1], HumanMessage) else ""
+    print("---NODE: retrieve_memories_node---")
+    query = state["input_message"]
+    memories = memanto_client.retrieve_memory(query)
+    return {"memories_retrieved": memories}
 
-    if not latest_user_message:
-        return {"retrieved_memories": []}
-
-    # Retrieve top 3 most relevant facts from Memanto.
-    relevant_facts = memanto.query(latest_user_message, top_k=3)
-    retrieved_memory_texts = [fact.text for fact in relevant_facts]
-
-    print(f"\n--- Retrieved Memories from Memanto: {retrieved_memory_texts} ---")
-    return {"retrieved_memories": retrieved_memory_texts}
-
-def generate_response(state: AgentState) -> Dict:
+def decide_action_node(state: AgentState) -> AgentState:
     """
-    Generates an AI response using the LLM, incorporating retrieved memories
-    and the ongoing conversation history.
+    Analyzes the input message to decide if the agent should store a new fact
+    or answer a question. This is a routing decision based on user intent.
     """
-    messages = state["messages"]
-    retrieved_memories = state["retrieved_memories"]
+    print("---NODE: decide_action_node---")
+    input_msg = state["input_message"]
+    new_fact = None
+    action = "answer_question" # Default action
 
-    # Format retrieved memories into a context string for the LLM.
-    memory_context_str = ""
-    if retrieved_memories:
-        memory_context_str = "\nRelevant past memories:\n" + "\n".join([f"- {m}" for m in retrieved_memories])
-
-    # Construct the full system instruction that integrates the retrieved memories.
-    system_instruction_content = (
-        "You are a helpful assistant. Use the provided context and conversation history to answer questions. "
-        "If you don't know the answer based on the given information, state that you don't know. "
-        "Keep your responses concise and directly address the user's query."
-        f"{memory_context_str}"
-    )
-
-    # All messages are passed to the ChatPromptTemplate, starting with the system instruction.
-    full_llm_messages = [SystemMessage(content=system_instruction_content)] + messages
-
-    # Invoke the LLM with the full conversation history and system instruction.
-    chain = ChatPromptTemplate.from_messages(full_llm_messages) | llm
-    response = chain.invoke({})  # Input is not needed as all context is in `full_llm_messages`
-
-    print(f"--- Generated AI Response: {response.content} ---")
-    # Add the AI's response to the conversation history.
-    return {"messages": messages + [AIMessage(content=response.content)]}
-
-def store_memories(state: AgentState) -> Dict:
-    """
-    Analyzes the entire conversation history to extract and store new, important facts
-    into Memanto. This node is critical for achieving cross-session recall.
-    """
-    messages = state["messages"]
-    # Convert BaseMessage objects to a readable string format for fact extraction by LLM.
-    conversation_history = "\n".join([f"{type(msg).__name__}: {msg.content}" for msg in messages])
-
-    # Use an LLM to identify self-contained facts that should be remembered long-term.
-    fact_extraction_prompt = ChatPromptTemplate.from_messages(
-        [
-            ("system",
-             "You are an expert at identifying and extracting important, self-contained facts "
-             "from a conversation that an AI assistant should remember long-term about the user or their preferences. "
-             "Output each distinct fact on a new line, prefixed with a hyphen. "
-             "If no new, important facts are present, output 'No new facts.' "
-             "Examples of facts: '- User's name is John.', '- User lives in New York.', '- User's favorite color is blue.'\n\n"
-             "Conversation history:\n{conversation}"
-            ),
-            ("human", "Extract any new, important facts from the above conversation that should be stored for long-term memory.")
-        ]
-    )
-
-    extraction_chain = fact_extraction_prompt | llm
-    extracted_facts_raw = extraction_chain.invoke({"conversation": conversation_history}).content
-
-    if extracted_facts_raw and extracted_facts_raw.strip().lower() != "no new facts.":
-        # Parse the extracted facts, ensuring they start with a hyphen.
-        facts_to_store = [
-            fact.strip() for fact in extracted_facts_raw.split('\n')
-            if fact.strip().startswith('-') and len(fact.strip()) > 1
-        ]
-        for fact_text in facts_to_store:
-            clean_fact = fact_text[1:].strip()  # Remove the hyphen prefix.
-            memanto.add_fact(clean_fact, metadata={"source": "llm_extracted_fact"})
-            print(f"--- Stored memory: {clean_fact} ---")
+    if input_msg.lower().startswith("remember:"):
+        new_fact = input_msg[len("remember:"):].strip()
+        action = "store_fact"
+        print(f"Decided action: STORE FACT. New fact: '{new_fact}'")
     else:
-        print("--- No new facts extracted for long-term storage. ---")
+        print("Decided action: ANSWER QUESTION.")
 
-    # The messages state remains unchanged in this node.
-    return {"messages": messages}
+    return {"new_fact_to_store": new_fact, "action": action}
 
-# --- Build the LangGraph ---
-workflow = StateGraph(AgentState)
+def store_fact_node(state: AgentState, memanto_client: PersistentMemantoClient) -> AgentState:
+    """
+    Stores the identified new fact into Memanto's long-term memory.
+    """
+    print("---NODE: store_fact_node---")
+    fact = state["new_fact_to_store"]
+    if fact:
+        memanto_client.add_memory(fact, metadata={"source": "user_input"})
+        response = f"Okay, I've remembered: '{fact}'."
+    else:
+        response = "I was supposed to store a fact, but no fact was provided." # This path should generally not be taken.
+    return {"response": response, "new_fact_to_store": None} # Clear fact after storing
 
-# Add nodes to the graph representing different steps in the agent's process.
-workflow.add_node("retrieve_memories", retrieve_memories)
-workflow.add_node("generate_response", generate_response)
-workflow.add_node("store_memories", store_memories)
+def answer_question_node(state: AgentState) -> AgentState:
+    """
+    Generates a response to a question, incorporating retrieved memories
+    to provide an informed answer. In a real application, an LLM would
+    process these memories and the query to generate a more sophisticated response.
+    """
+    print("---NODE: answer_question_node---")
+    query = state["input_message"]
+    memories = state["memories_retrieved"]
 
-# Set the starting point for the graph.
-workflow.set_entry_point("retrieve_memories")
+    response_parts = []
+    if memories:
+        response_parts.append("Based on what I recall:")
+        for i, mem in enumerate(memories):
+            response_parts.append(f"- {mem}")
+        response_parts.append(f"Regarding your question: '{query}'")
+        response_parts.append("I can try to use these memories to help.")
+    else:
+        response_parts.append(f"I don't recall anything specific related to '{query}'.")
+        response_parts.append("Is there something you'd like me to remember?")
 
-# Define the flow of execution between nodes.
-workflow.add_edge("retrieve_memories", "generate_response")
-workflow.add_edge("generate_response", "store_memories")
-workflow.add_edge("store_memories", END)  # End of a single turn after storing memories.
+    response = "\n".join(response_parts)
+    return {"response": response}
 
-app = workflow.compile()
+# --- Graph Builder ---
 
-# --- Example Usage to Demonstrate Cross-Session Recall ---
+def create_memanto_langgraph_agent(memanto_client: PersistentMemantoClient):
+    workflow = StateGraph(AgentState)
+
+    # Define the nodes for our agent's workflow
+    workflow.add_node("retrieve_memories", lambda state: retrieve_memories_node(state, memanto_client))
+    workflow.add_node("decide_action", decide_action_node)
+    workflow.add_node("store_fact", lambda state: store_fact_node(state, memanto_client))
+    workflow.add_node("answer_question", answer_question_node)
+
+    # Set the starting point of the graph
+    workflow.set_entry_point("retrieve_memories")
+
+    # Connect the nodes. After retrieving memories, decide what action to take.
+    workflow.add_edge("retrieve_memories", "decide_action")
+
+    # Use a conditional edge to route based on the 'action' determined by 'decide_action_node'
+    workflow.add_conditional_edges(
+        "decide_action",
+        lambda state: state["action"], # This function determines the next node based on the 'action' key in the state
+        {
+            "store_fact": "store_fact", # If action is "store_fact", go to 'store_fact' node
+            "answer_question": "answer_question", # If action is "answer_question", go to 'answer_question' node
+        },
+    )
+
+    # Both 'store_fact' and 'answer_question' nodes are terminal points for this graph run
+    workflow.add_edge("store_fact", END)
+    workflow.add_edge("answer_question", END)
+
+    return workflow.compile()
+
+# --- Main Execution ---
 if __name__ == "__main__":
-    print("--- Welcome to the Memanto-powered LangGraph Agent! ---")
-    print("This agent stores and retrieves facts across different conversation sessions.")
-    print("The Memanto database is saved locally at './memanto_langgraph_db'.")
+    # Initialize the mock Memanto client. This client will save/load memories
+    # from 'memanto_data.json' in the current directory.
+    memanto_client = PersistentMemantoClient(storage_file="memanto_data.json")
 
-    # Optional: Clear previous memories for a clean run if desired.
-    # Uncomment the following lines to start with a fresh memory database each time.
-    # from shutil import rmtree
-    # if os.path.exists(MEMANTO_DB_PATH):
-    #     rmtree(MEMANTO_DB_PATH)
-    #     print(f"--- Cleared existing Memanto database at {MEMANTO_DB_PATH} ---")
-    #     # Re-initialize memanto after deleting the directory
-    #     memanto = Memanto(db_path=MEMANTO_DB_PATH, collection_name="langgraph_agent_memories")
+    # Uncomment the line below during development if you want to clear all
+    # previously stored memories for a fresh start.
+    # memanto_client.clear_all_memories()
 
-    print("\n--- Session 1: Introducing new facts ---")
-    # User introduces personal information. These facts should be stored by `store_memories`.
-    inputs1 = {"messages": [HumanMessage(content="Hello, my name is Alice. I love hiking in the mountains and my favorite animal is a cat.")]}
-    final_state1 = {}
-    for s in app.stream(inputs1):
-        if "__end__" in s:
-            final_state1 = s["__end__"]
-    if final_state1 and final_state1.get('messages') and len(final_state1['messages']) > 0:
-        print(f"Agent's final response in Session 1: {final_state1['messages'][-1].content}")
-    else:
-        print("Agent's final response in Session 1: No response generated or error occurred.")
+    # Create and compile the agent graph
+    agent_executor = create_memanto_langgraph_agent(memanto_client)
 
+    print("\n--- LangGraph + Memanto Agent Demo ---")
+    print("Type 'Remember: <fact>' to store a memory.")
+    print("Type any question to retrieve related memories and get a response.")
+    print("Type 'exit' to quit.\n")
 
-    print("\n--- Session 2: Asking a question within the same logical run ---")
-    # Agent should recall from the previous turn *within the current LangGraph execution*.
-    inputs2 = {"messages": [HumanMessage(content="What is my name?")]}
-    final_state2 = {}
-    for s in app.stream(inputs2):
-        if "__end__" in s:
-            final_state2 = s["__end__"]
-    if final_state2 and final_state2.get('messages') and len(final_state2['messages']) > 0:
-        print(f"Agent's final response in Session 2: {final_state2['messages'][-1].content}")
-    else:
-        print("Agent's final response in Session 2: No response generated or error occurred.")
+    while True:
+        user_input = input("You: ")
+        if user_input.lower() == 'exit':
+            break
 
+        # Define the initial state for each new interaction with the agent
+        initial_state = {
+            "input_message": user_input,
+            "memories_retrieved": [],
+            "new_fact_to_store": None,
+            "response": "",
+            "action": "" # Will be set by decide_action_node
+        }
 
-    print("\n--- Simulating a NEW, disjointed session (e.g., agent restarted, days later) ---")
-    print("The agent should now recall facts from Session 1 via Memanto, despite starting with a fresh LangGraph state.")
+        # Invoke the agent graph with the initial state
+        # The stream method can also be used for step-by-step execution.
+        final_state = agent_executor.invoke(initial_state)
 
-    # Ask questions that rely on previously stored memories.
-    # The LangGraph `AgentState` starts fresh, but Memanto provides the long-term memory.
-    inputs_new_session_1 = {"messages": [HumanMessage(content="What is my favorite animal?")]}
-    print("Querying agent for favorite animal...")
-    final_state_ns1 = {}
-    for s in app.stream(inputs_new_session_1):
-        if "__end__" in s:
-            final_state_ns1 = s["__end__"]
-    if final_state_ns1 and final_state_ns1.get('messages') and len(final_state_ns1['messages']) > 0:
-        print(f"Agent's final response in New Session 1: {final_state_ns1['messages'][-1].content}")
-    else:
-        print("Agent's final response in New Session 1: No response generated or error occurred.")
+        # Print the agent's final response
+        print(f"Agent: {final_state['response']}\n")
 
-
-    inputs_new_session_2 = {"messages": [HumanMessage(content="What do I love doing?")]}
-    print("Querying agent for hobby...")
-    final_state_ns2 = {}
-    for s in app.stream(inputs_new_session_2):
-        if "__end__" in s:
-            final_state_ns2 = s["__end__"]
-    if final_state_ns2 and final_state_ns2.get('messages') and len(final_state_ns2['messages']) > 0:
-        print(f"Agent's final response in New Session 2: {final_state_ns2['messages'][-1].content}")
-    else:
-        print("Agent's final response in New Session 2: No response generated or error occurred.")
-
-    inputs_new_session_3 = {"messages": [HumanMessage(content="Remind me, what is my name?")]}
-    print("Querying agent for name again...")
-    final_state_ns3 = {}
-    for s in app.stream(inputs_new_session_3):
-        if "__end__" in s:
-            final_state_ns3 = s["__end__"]
-    if final_state_ns3 and final_state_ns3.get('messages') and len(final_state_ns3['messages']) > 0:
-        print(f"Agent's final response in New Session 3: {final_state_ns3['messages'][-1].content}")
-    else:
-        print("Agent's final response in New Session 3: No response generated or error occurred.")
-
-    print("\n--- End of Demonstration ---")
-    print("You can inspect the './memanto_langgraph_db' directory to see the persistent memory storage.")
+    print("Demo ended. Current memories are saved in memanto_data.json.")
