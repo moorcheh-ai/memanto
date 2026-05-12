@@ -1,304 +1,225 @@
 """
-Agent: LangGraph + Memanto Integration
+LangGraph agent with Memanto-powered long-term memory.
 
-A LangGraph customer support agent that uses Memanto as its
-long-term memory layer for cross-session recall.
+This agent has access to three custom tools wrapping Memanto's primitives:
+  - remember(content, memory_type)  → stores a memory
+  - recall(query)                   → searches memories
+  - answer(question)                → grounded answer from memory
+
+The agent's state is intentionally minimal — Memanto handles persistence
+so the agent can forget across sessions and still recall "yesterday's" facts.
 """
 
-import logging
-import os
-from typing import Any, Literal, Optional
+from __future__ import annotations
 
-import requests
+import os
+from typing import Annotated, Any, Literal
+
 from dotenv import load_dotenv
-from langgraph.graph import END, StateGraph
-from langgraph.graph.state import CompiledStateGraph
-from typing_extensions import TypedDict
+from langchain_core.messages import AIMessage, BaseMessage, HumanMessage, SystemMessage
+from langchain_core.tools import tool
+from langchain_openai import ChatOpenAI
+from langgraph.checkpoint.memory import MemorySaver
+from langgraph.graph import END, StateGraph, MessagesState
+from langgraph.prebuilt import ToolNode, tools_condition
+
+from memanto_client import MemantoClient, MemantoConfig
 
 load_dotenv()
 
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger("langgraph-memanto")
-
-# ── Types ────────────────────────────────────────────────────────────────────
+# ── Memanto client (shared by tools) ───────────────────────────────
+_memanto: MemantoClient | None = None
 
 
-class AgentState(TypedDict):
-    """The state passed between LangGraph nodes."""
-
-    messages: list[dict[str, str]]
-    user_id: str
-    session_id: str
-    memories_recalled: list[dict[str, Any]]
-    new_memories: list[dict[str, Any]]
-    output: str
+def get_memanto() -> MemantoClient:
+    global _memanto
+    if _memanto is None:
+        config = MemantoConfig(api_key=os.getenv("MOORCHEH_API_KEY", ""))
+        _memanto = MemantoClient(config)
+        _memanto.activate_session()
+    return _memanto
 
 
-# ── Memanto Memory Client ────────────────────────────────────────────────────
+# ── Tool definitions (wrapping Memanto primitives) ─────────────────
 
 
-class MemantoMemory:
-    """Long-term memory backed by Memanto REST API.
+@tool
+def remember_tool(content: str, memory_type: str = "fact") -> str:
+    """Store a memory so the agent can recall it later — even in a new session.
 
-    This client wraps Memanto's three core primitives:
-    - remember()  → store a memory
-    - recall()    → semantic search over memories
-    - answer()    → LLM-grounded response from memory
+    Memory types: instruction, fact, decision, goal, commitment, preference,
+    relationship, context, event, learning, observation, artifact, error.
 
-    Memanto stores memories outside the LangGraph state, so they
-    persist across sessions — enabling true cross-session recall.
+    Args:
+        content: What to remember (e.g., "User prefers concise answers").
+        memory_type: Semantic category for the memory.
+
+    Returns:
+        Confirmation message.
     """
-
-    def __init__(
-        self,
-        base_url: str = "http://localhost:8000",
-        api_key: str | None = None,
-    ):
-        self.base_url = os.environ.get("MEMANTO_BASE_URL", base_url).rstrip("/")
-        self.api_key = api_key or os.environ.get("MOORCHEH_API_KEY", "")
-        self._session_token: str | None = None
-        self._agent_id: str | None = None
-
-    # ------------------------------------------------------------------
-    # Agent lifecycle
-    # ------------------------------------------------------------------
-
-    def create_agent(self, name: str = "langgraph-agent") -> str:
-        """Register an agent with Memanto and get its ID."""
-        resp = requests.post(
-            f"{self.base_url}/api/v2/agents",
-            json={
-                "name": name,
-                "description": "LangGraph agent with Memanto long-term memory",
-            },
-            headers={"X-API-Key": self.api_key},
-            timeout=30,
-        )
-        resp.raise_for_status()
-        data = resp.json()
-        self._agent_id = data["agent_id"]
-        logger.info("Created Memanto agent: %s", self._agent_id)
-        return self._agent_id
-
-    def activate_agent(self) -> str:
-        """Start a session and get a session token."""
-        assert self._agent_id, "Create the agent first with create_agent()"
-        resp = requests.post(
-            f"{self.base_url}/api/v2/agents/{self._agent_id}/activate",
-            headers={"X-API-Key": self.api_key},
-            timeout=30,
-        )
-        resp.raise_for_status()
-        data = resp.json()
-        self._session_token = data["session_token"]
-        logger.info("Activated agent, got session token")
-        return self._session_token
-
-    # ------------------------------------------------------------------
-    # Memory primitives
-    # ------------------------------------------------------------------
-
-    def remember(
-        self,
-        content: str,
-        memory_type: str = "fact",
-        title: str | None = None,
-        confidence: float = 0.9,
-        tags: list[str] | None = None,
-    ) -> str:
-        """Store a memory. Returns the memory ID."""
-        assert self._session_token, "Activate the agent first"
-        payload: dict[str, Any] = {
-            "type": memory_type,
-            "title": title or content[:80],
-            "content": content,
-            "confidence": confidence,
-        }
-        if tags:
-            payload["tags"] = tags
-
-        resp = requests.post(
-            f"{self.base_url}/api/v2/agents/{self._agent_id}/remember",
-            headers={
-                "X-Session-Token": self._session_token,
-                "Content-Type": "application/json",
-            },
-            json=payload,
-            timeout=30,
-        )
-        resp.raise_for_status()
-        result = resp.json()
-        memory_id = result.get("id", "")
-        logger.info("Remembered [%s]: %s", memory_type, content[:60])
-        return memory_id
-
-    def recall(
-        self,
-        query: str,
-        limit: int = 5,
-        memory_types: list[str] | None = None,
-    ) -> list[dict[str, Any]]:
-        """Retrieve memories by semantic similarity. The core of cross-session recall!"""
-        assert self._session_token, "Activate the agent first"
-        payload: dict[str, Any] = {"query": query, "limit": limit}
-        if memory_types:
-            payload["type"] = memory_types
-
-        resp = requests.post(
-            f"{self.base_url}/api/v2/agents/{self._agent_id}/recall",
-            headers={
-                "X-Session-Token": self._session_token,
-                "Content-Type": "application/json",
-            },
-            json=payload,
-            timeout=30,
-        )
-        resp.raise_for_status()
-        result = resp.json()
-        memories = result.get("results", [])
-        logger.info("Recalled %d memories for: %s", len(memories), query[:50])
-        return memories
-
-    def answer(self, query: str) -> str:
-        """Get an LLM-grounded answer synthesized from your memories."""
-        assert self._session_token, "Activate the agent first"
-        resp = requests.post(
-            f"{self.base_url}/api/v2/agents/{self._agent_id}/answer",
-            headers={
-                "X-Session-Token": self._session_token,
-                "Content-Type": "application/json",
-            },
-            json={"query": query},
-            timeout=30,
-        )
-        resp.raise_for_status()
-        result = resp.json()
-        return result.get("answer", "")
-
-    def close(self):
-        """Clean up session."""
-        self._session_token = None
+    result = get_memanto().remember(content, memory_type=memory_type)
+    return f"✅ Remembered ({memory_type}): {content}"
 
 
-# ── LangGraph Nodes ──────────────────────────────────────────────────────────
+@tool
+def recall_tool(query: str, top_k: int = 5) -> str:
+    """Search the agent's long-term memory for information relevant to a query.
 
+    Args:
+        query: Natural language search query.
+        top_k: How many memories to return (max 20).
 
-def recall_memories(state: AgentState, memory: MemantoMemory) -> dict:
-    """Retrieve relevant memories from Memanto for the current conversation."""
-    query = state["messages"][-1]["content"] if state["messages"] else ""
-    memories = memory.recall(query=query, limit=5)
-
-    return {
-        "memories_recalled": [
-            {
-                "content": m.get("content", ""),
-                "type": m.get("memory_type", "unknown"),
-                "confidence": m.get("confidence", 0.0),
-                "created_at": m.get("created_at", ""),
-            }
-            for m in memories
-        ]
-    }
-
-
-def process_with_memories(state: AgentState) -> dict:
-    """Simulate processing user input with recalled context.
-
-    In a production system, this would be an LLM call with:
-      system_prompt + recalled_memories + user_message → response
-
-    Here we demonstrate the architecture pattern clearly.
+    Returns:
+        Formatted memory entries.
     """
-    memories = state["memories_recalled"]
-    user_msg = state["messages"][-1]["content"] if state["messages"] else ""
+    results = get_memanto().recall(query, top_k=top_k)
+    if not results:
+        return "No relevant memories found."
 
-    # Build context from recalled memories
-    memory_context = ""
-    if memories:
-        memory_lines = []
-        for m in memories:
-            memory_lines.append(
-                f"  - [{m['type']}] (confidence: {m['confidence']:.0%}): {m['content']}"
-            )
-        memory_context = "I recall from past sessions:\n" + "\n".join(memory_lines)
-
-    # Simulated response (in production, use an LLM call here)
-    if memory_context:
-        output = (
-            f"[RECALLING MEMORIES FROM PREVIOUS SESSION]\n{memory_context}\n\n"
-            f"Based on what I know about you and what you just said "
-            f"('{user_msg[:50]}...'), I can help with that!"
-        )
-    else:
-        output = (
-            f"[NO PRIOR MEMORIES — This is the first session]\n"
-            f"You said: '{user_msg[:60]}...'\n"
-            f"Let me learn about you so I can help better next time!"
-        )
-
-    return {"output": output}
+    lines = ["📚 Memories found:\n"]
+    for i, r in enumerate(results, 1):
+        content = r.get("content", r.get("text", ""))
+        mem_type = r.get("type", "unknown")
+        conf = r.get("confidence", "?")
+        ts = r.get("created_at", r.get("timestamp", ""))[:19]
+        lines.append(f"  [{i}] ({mem_type}, confidence: {conf}) {content}")
+        lines.append(f"       stored: {ts}")
+    return "\n".join(lines)
 
 
-def store_memories(state: AgentState, memory: MemantoMemory) -> dict:
-    """Extract important information and store as memories.
+@tool
+def answer_tool(question: str) -> str:
+    """Ask a question and get a grounded answer generated from stored memories.
 
-    In production, this would use an LLM to extract structured memories.
-    Here we extract key facts from the conversation.
+    Unlike recall_tool which returns raw memory entries, this generates a
+    natural answer using the memories as context (built-in RAG).
+
+    Args:
+        question: The question to answer using memory context.
+
+    Returns:
+        A natural language answer.
     """
-    user_msg = state["messages"][-1]["content"] if state["messages"] else ""
-    new_ids = []
-
-    # Extract facts from user messages (simulated — use LLM extraction in prod)
-    fact_prefixes = [
-        "my name is",
-        "i am",
-        "i like",
-        "i prefer",
-        "i need",
-        "my email",
-        "i work",
-    ]
-
-    msg_lower = user_msg.lower()
-    for prefix in fact_prefixes:
-        if prefix in msg_lower:
-            idx = msg_lower.index(prefix)
-            fact = user_msg[idx : idx + 100].split(".")[0].strip()
-            mid = memory.remember(
-                content=fact,
-                memory_type="fact" if "name" in prefix or "email" in prefix else "preference",
-                confidence=0.85,
-                tags=["extracted", "user-profile"],
-            )
-            new_ids.append(mid)
-
-    return {"new_memories": [{"id": mid} for mid in new_ids]}
+    answer = get_memanto().answer(question)
+    return answer
 
 
-# ── Graph Construction ───────────────────────────────────────────────────────
+# ── LangGraph agent setup ──────────────────────────────────────────
+
+tools = [remember_tool, recall_tool, answer_tool]
+tool_node = ToolNode(tools)
+
+# Use a capable LLM — prefer gpt-4o-mini or any model with tool-calling
+llm = ChatOpenAI(
+    model=os.getenv("OPENAI_MODEL", "gpt-4o-mini"),
+    temperature=0.3,
+).bind_tools(tools)
 
 
-def build_agent(memory: MemantoMemory) -> CompiledStateGraph:
-    """Build the LangGraph agent with Memanto memory integration."""
+AGENT_SYSTEM_PROMPT = """\
+You are a helpful AI assistant with access to **Memanto**, a persistent long-term memory system.
 
-    # Wrapper functions to inject the memory client
-    def _recall(state: AgentState) -> dict:
-        return recall_memories(state, memory)
+You have three memory tools:
+1. **remember** — Store important information users share about themselves.
+2. **recall** — Search your memories for relevant context.
+3. **answer** — Ask a grounded question about stored memories.
 
-    def _store(state: AgentState) -> dict:
-        return store_memories(state, memory)
+**Guidelines:**
+- Always search memory first before answering personal questions.
+- Store user preferences, facts, goals, and commitments proactively.
+- Use memory types: `preference` for likes/dislikes, `fact` for personal info,
+  `goal` for objectives, `decision` for choices made.
+- When a user returns in a new session, recall their context automatically.
+"""
 
-    workflow = StateGraph(AgentState)
 
-    # Nodes
-    workflow.add_node("recall_memories", _recall)
-    workflow.add_node("process", process_with_memories)
-    workflow.add_node("store_memories", _store)
+def call_agent(state: MessagesState) -> dict[str, list[BaseMessage]]:
+    """Invoke the LLM with system prompt and conversation history."""
+    messages = [SystemMessage(content=AGENT_SYSTEM_PROMPT), *state["messages"]]
+    response = llm.invoke(messages)
+    return {"messages": [response]}
 
-    # Edges
-    workflow.set_entry_point("recall_memories")
-    workflow.add_edge("recall_memories", "process")
-    workflow.add_edge("process", "store_memories")
-    workflow.add_edge("store_memories", END)
 
-    return workflow.compile()
+def should_continue(state: MessagesState) -> Literal["tools", END]:
+    """Route to tools if LLM called a tool, otherwise end."""
+    last = state["messages"][-1]
+    if hasattr(last, "tool_calls") and last.tool_calls:
+        return "tools"
+    return END
+
+
+# ── Build the graph ────────────────────────────────────────────────
+
+def build_agent() -> StateGraph:
+    """Construct the LangGraph agent with Memanto memory tools."""
+    workflow = StateGraph(MessagesState)
+
+    workflow.add_node("agent", call_agent)
+    workflow.add_node("tools", tool_node)
+
+    workflow.set_entry_point("agent")
+    workflow.add_conditional_edges("agent", should_continue)
+    workflow.add_edge("tools", "agent")
+
+    return workflow
+
+
+def run_agent(
+    message: str,
+    checkpointer: MemorySaver | None = None,
+    thread_id: str = "default",
+) -> list[BaseMessage]:
+    """Run the agent on a single user message.
+
+    Args:
+        message: User's input message.
+        checkpointer: LangGraph MemorySaver for in-session state (NOT long-term).
+        thread_id: Thread ID for session tracking.
+
+    Returns:
+        All messages produced in this turn.
+    """
+    graph = build_agent().compile(checkpointer=checkpointer or MemorySaver())
+    config = {"configurable": {"thread_id": thread_id}}
+
+    output = graph.invoke(
+        {"messages": [HumanMessage(content=message)]},
+        config=config,
+    )
+    return output["messages"]
+
+
+def cleanup() -> None:
+    """Deactivate the Memanto session."""
+    global _memanto
+    if _memanto:
+        try:
+            _memanto.deactivate_session()
+        except Exception:
+            pass
+        _memanto.close()
+        _memanto = None
+
+
+# ── Quick test ─────────────────────────────────────────────────────
+
+if __name__ == "__main__":
+    print("🧠 LangGraph + Memanto Agent\n")
+    print("Type 'quit' to exit.\n")
+
+    from langgraph.checkpoint.memory import MemorySaver
+
+    checkpointer = MemorySaver()
+    thread = "demo-session"
+
+    while True:
+        user_input = input("You: ")
+        if user_input.lower() in ("quit", "exit", "q"):
+            break
+
+        messages = run_agent(user_input, checkpointer=checkpointer, thread_id=thread)
+        for msg in messages:
+            if isinstance(msg, AIMessage) and msg.content:
+                print(f"\nAgent: {msg.content}\n")
+
+    cleanup()
