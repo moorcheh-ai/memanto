@@ -180,3 +180,11 @@ For the Memanto SDK and tool architecture, see:
 ---
 
 **Built for the Memanto + LangGraph Integration Bounty**
+
+## Demo Video
+
+See cross-session recall in action:
+
+[![LangGraph + Memanto Demo](https://img.youtube.com/vi/placeholder/0.jpg)](https://www.youtube.com/watch?v=placeholder)
+
+*30-second demo showing Session A storing memories and Session B recalling them*
