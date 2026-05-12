@@ -59,6 +59,17 @@ setup.teardown("my-agent")
 
 ---
 
+## Demo / Cross-Session Example
+
+See [`examples/langgraph-memanto/`](../../examples/langgraph-memanto/) for a complete cross-session memory demo:
+
+1. `run_research.py` — stores research findings in Session 1
+2. `run_recall.py` — recalls those findings in Session 2 (cross-session persistence)
+
+A 30-second demo GIF is available in the example README.
+
+---
+
 ## Payment / Bounty Wallets
 
 - **EVM (ETH, BASE, etc.):** `0x04836c595d9633abeb120b7b68f57e6e834b0c6c`

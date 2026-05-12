@@ -11,7 +11,7 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from langgraph.tool import BaseTool
+from langchain_core.tools import BaseTool
 from pydantic import BaseModel, Field
 
 from memanto.cli.client.sdk_client import SdkClient
