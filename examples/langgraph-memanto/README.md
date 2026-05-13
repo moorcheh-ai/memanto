@@ -1,28 +1,31 @@
 # LangGraph + Memanto Integration
 
-This example demonstrates how to use Memanto as a long-term memory layer for a LangGraph agent, allowing the agent to recall information across different sessions.
+This example demonstrates how to use Memanto as a long-term memory layer for a LangGraph agent, enabling cross-session recall.
 
 ## Features
-- Cross-session recall using Memanto.
-- Automatic fact extraction and storage.
-- Integration with LangGraph state management.
+- **Cross-Session Recall**: The agent remembers user preferences and facts across different session IDs.
+- **LangGraph Workflow**: Implements a retrieve-reason-store loop.
+- **Memanto Integration**: Uses Memanto for storing and retrieving memories outside of the standard LangGraph state.
 
 ## Setup
-
-1. Install dependencies:
+1. Start the Memanto server.
+2. Install dependencies:
    ```bash
    pip install -r requirements.txt
    ```
-
-2. Set your OpenAI API key:
+3. Set your OpenAI API Key:
    ```bash
    export OPENAI_API_KEY='your-api-key'
    ```
-
-3. Run the example:
+4. Run the example:
    ```bash
    python main.py
    ```
 
+## Workflow
+1. **Retrieve**: Searches Memanto for memories relevant to the current user and query.
+2. **Model**: The LLM generates a response using the retrieved memories.
+3. **Store**: New information is stored back into Memanto for future sessions.
+
 ## Demo
-![Demo GIF](https://via.placeholder.com/600x400?text=Agent+Memory+Demo)
+![Demo GIF](https://via.placeholder.com/300x200?text=Agent+Demo+GIF)
