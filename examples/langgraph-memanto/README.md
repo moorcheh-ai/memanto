@@ -74,13 +74,13 @@ command using it in a separate session.
 
 ```text
 examples/langgraph-memanto/
-├── README.md
-├── .env.example
-├── requirements.txt
-├── client_factory.py
-├── memory_adapter.py
-├── workflow.py
-├── run_seed_session.py
-├── run_recall_session.py
-└── demo-script.md
++-- README.md
++-- .env.example
++-- requirements.txt
++-- client_factory.py
++-- memory_adapter.py
++-- workflow.py
++-- run_seed_session.py
++-- run_recall_session.py
++-- demo-script.md
 ```
