@@ -1,3 +1,4 @@
 langgraph
-langchain-core
-pydantic
+langchain
+langchain-openai
+memanto
