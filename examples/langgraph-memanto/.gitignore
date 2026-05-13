@@ -1,0 +1,4 @@
+.memanto-preview/
+.env
+__pycache__/
+*.pyc
