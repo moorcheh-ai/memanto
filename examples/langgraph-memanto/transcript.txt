@@ -1,0 +1,18 @@
+SESSION A — store durable research context
+Research mentor response
+Question: Remember Ava is researching privacy-preserving AI assistants and prefers concise implementation checklists.
+
+Durable Memanto context used:
+No durable memories found.
+
+Next step: keep new user/project facts in Memanto so the next LangGraph run starts with durable context instead of an empty state.
+Stored memory id: offline-1
+
+SESSION B — new graph run, recall durable context
+Research mentor response
+Question: What do you remember about Ava's research preferences?
+
+Durable Memanto context used:
+- Research preference captured by LangGraph: Ava is researching privacy-preserving AI assistants and prefers concise implementation checklists [langgraph, research-mentor, cross-session]
+
+Next step: keep new user/project facts in Memanto so the next LangGraph run starts with durable context instead of an empty state.
