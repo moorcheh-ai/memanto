@@ -1,0 +1,6 @@
+# Memanto + LangGraph: Multi-Agent Cognitive Architecture Example
+memanto>=0.1.0
+langgraph>=1.0.0
+langchain-core>=0.3.0
+httpx>=0.25.0
+python-dotenv>=1.0.0
