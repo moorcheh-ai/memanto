@@ -1,46 +1,57 @@
-# LangGraph + Memanto Integration
+# LangGraph + Memanto: Long-Term Memory for Stateful Agents
 
-This example demonstrates a **LangGraph stateful agent** using **Memanto** as its persistent, long-term memory layer — with cross-session recall that survives across runs, days, and agent restarts.
-
-> **The Challenge:** LangGraph is great for stateful agents, but its built-in state is ephemeral — lost when the graph finishes. Memanto fills that gap: an active memory agent with `remember`, `recall`, and `answer` primitives that give LangGraph agents a **permanent brain**.
-
-![LangGraph + Memanto Demo](https://via.placeholder.com/800x450.png?text=LangGraph+Memanto+Demo+%7C+30s+GIF) <!-- Replace with your 30-second screen recording link -->
+This example demonstrates how to use **Memanto** as the long-term memory layer for a [LangGraph](https://langchain-ai.github.io/langgraph/) agent — giving your graph a "permanent brain" that persists across sessions, conversations, and agent restarts.
 
 ## What This Demonstrates
 
-- **Cross-session recall** — Run the agent today, run it tomorrow, it remembers everything
-- **Typed semantic memory** — Preferences, facts, decisions, events each stored with type metadata
-- **LangGraph state machine** — A structured support agent with conditional routing
-- **Provenance + confidence** — Every memory knows where it came from and how confident we are
+| Capability | How It Works |
+|---|---|
+| **Cross-session recall** | The agent remembers facts, preferences, and decisions from earlier sessions that aren't in the current LangGraph state |
+| **Typed semantic memory** | Memories are stored with semantic types (fact, preference, decision, etc.) for cleaner retrieval |
+| **Memory-grounded answers** | The agent uses Memanto's `answer` endpoint to generate responses grounded in stored memories |
+| **No indexing delay** | Memories are searchable the instant they're stored — zero ingestion latency |
 
 ## Architecture
 
 ```
-┌─────────────────────────────────────────────────┐
-│               LangGraph Agent                    │
-│  ┌──────────┐    ┌──────────┐    ┌──────────┐  │
-│  │  Router  │───▶│  Process │───▶│  Respond │  │
-│  └──────────┘    └──────────┘    └──────────┘  │
-│        │              │               │          │
-│        ▼              ▼               ▼          │
-│  ┌─────────────────────────────────────────┐    │
-│  │          Memanto (CLI/REST)              │    │
-│  │  remember / recall / answer primitives   │    │
-│  └─────────────────────────────────────────┘    │
-│                         │                        │
-│                         ▼                        │
-│              ┌─────────────────────┐             │
-│              │  Moorcheh Engine    │             │
-│              │  (no-indexing DB)   │             │
-│              └─────────────────────┘             │
-└─────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────┐
+│                    LangGraph Agent                       │
+│                                                          │
+│   ┌──────────┐    ┌─────────────┐    ┌──────────────┐   │
+│   │  User     │───▶│  Think      │───▶│  Remember /  │   │
+│   │  Input    │    │  (LLM)      │    │  Recall      │   │
+│   └──────────┘    └─────────────┘    └──────┬───────┘   │
+│                                              │           │
+│                                              ▼           │
+│                                      ┌──────────────┐   │
+│                                      │  Respond     │   │
+│                                      │  to User     │   │
+│                                      └──────────────┘   │
+└──────────────────────────────────────────────────────────┘
+                        │
+                        ▼
+       ┌──────────────────────────────────────┐
+       │          Memanto REST API             │
+       │  (localhost:8000 or remote server)    │
+       │                                       │
+       │  POST /api/v2/agents/{id}/remember    │
+       │  POST /api/v2/agents/{id}/recall      │
+       │  POST /api/v2/agents/{id}/answer      │
+       └──────────────────────────────────────┘
+                        │
+                        ▼
+       ┌──────────────────────────────────────┐
+       │          Moorcheh SDK                 │
+       │  (No-index semantic search engine)   │
+       └──────────────────────────────────────┘
 ```
 
 ## Prerequisites
 
 - Python 3.10+
 - A [Moorcheh API key](https://console.moorcheh.ai/api-keys) (free tier: 100K ops/month)
-- An [OpenRouter API key](https://openrouter.ai/keys) (for LangGraph's LLM)
+- A running Memanto server (or use Memanto CLI)
+- An LLM API key (OpenAI, Anthropic, etc.) for LangGraph
 
 ## Setup
 
@@ -54,54 +65,63 @@ pip install -r requirements.txt
 
 # 3. Configure API keys
 cp .env.example .env
-# Edit .env — add your MOORCHEH_API_KEY and OPENROUTER_API_KEY
+# Edit .env to add your MOORCHEH_API_KEY, LLM_API_KEY, and MEMANTO_URL
 ```
 
-## Step-by-Step Demo
+## Running the Example
 
-### Phase 1: Store Customer Profile (Session A)
+### Step 1: Start Memanto Server
+```bash
+# Install and start Memanto
+pip install memanto
+memanto server start
+```
+Or use a hosted Memanto instance at your MEMANTO_URL.
+
+### Step 2: Run Cross-Session Demo
+This demo proves memories persist across sessions:
 
 ```bash
-python run_customer_service.py
+# Session 1 — Store memories as a customer support agent
+python run_customer_support.py --session 1
+
+# Session 2 — Start a new conversation, agent recalls past interactions
+python run_customer_support.py --session 2
+
+# Full cross-session pipeline
+python run_cross_session.py
 ```
 
-The agent greets the customer, learns their preferences and facts, and stores them as typed memories in Memanto.
+## How It Works
 
-### Phase 2: Cross-Session Recall (Session B — full restart)
+### Memory Client (`langgraph_memanto/memory_client.py`)
+A lightweight HTTP client that communicates with the Memanto REST API. All operations go through:
+- `remember()` — store a typed memory (fact, preference, decision, etc.)
+- `recall()` — search memories by semantic relevance
+- `answer()` — get an LLM-grounded response from your memories
 
-```bash
-python run_followup.py
-```
+### LangGraph Agent (`langgraph_memanto/agent.py`)
+A stateful LangGraph workflow with three nodes:
+1. **Think** — The LLM decides what to remember or recall
+2. **Memory** — Stores/retrieves memories via Memanto
+3. **Respond** — Generates the user-facing response
 
-The agent starts fresh (new LangGraph state) but recalls everything from Session A via Memanto. This **proves** cross-session persistence.
-
-### Phase 3: Full Pipeline
-
-```bash
-python run_full_pipeline.py
-```
-
-Runs both phases in one script for quick testing.
+### State (`langgraph_memanto/state.py`)
+Extends LangGraph's built-in state with Memanto agent/session fields for seamless memory integration.
 
 ## File Structure
 
-```text
-examples/langgraph-memanto/
-├── README.md                    # This file
-├── requirements.txt             # Python dependencies
-├── .env.example                 # API key template
-├── agent.py                     # LangGraph graph + nodes
-├── memory.py                    # Memanto wrapper (CLI-based)
-├── run_customer_service.py      # Session A: store profile
-├── run_followup.py              # Session B: cross-session recall
-└── run_full_pipeline.py         # Full pipeline runner
 ```
-
-## Social Traction
-
-⭐ [Star the Memanto repo](https://github.com/moorcheh-ai/memanto) to help reach 1,000 stars!
-
-After running the demo:
-1. Record a 30-second screen recording showing cross-session recall
-2. Post it on X/LinkedIn/Reddit with **#Memanto** and **@moorcheh-ai**
-3. Link your post in this PR description
+examples/langgraph-memanto/
+├── README.md                         # This file
+├── requirements.txt                  # Python dependencies
+├── .env.example                      # API key template
+├── run_customer_support.py           # Customer support agent demo
+├── run_cross_session.py              # Cross-session recall demo
+└── langgraph_memanto/
+    ├── __init__.py
+    ├── agent.py                      # LangGraph agent definition
+    ├── memory_client.py              # Memanto REST API client
+    ├── nodes.py                      # LangGraph graph nodes
+    └── state.py                      # State type definitions
+```
