@@ -1,1 +1,0 @@
-# MEMANTO Web UI Routes

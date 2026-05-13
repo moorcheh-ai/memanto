@@ -1,1 +1,0 @@
-# MEMANTO Integration Tests

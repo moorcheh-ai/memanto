@@ -1,6 +1,0 @@
-# Phase G Integration Testing Dependencies
-pytest>=7.0.0
-pytest-asyncio>=0.21.0
-pytest-timeout>=2.1.0
-httpx>=0.24.0
-requests>=2.28.0
