@@ -1,3 +1,4 @@
+-e ../../integrations/langgraph-memanto
 memanto>=0.1.0
 langgraph>=0.1.0
 langgraph-sdk>=0.1.0

@@ -32,6 +32,7 @@ The demo flow:
 python -m venv venv
 source venv/bin/activate  # Windows: venv\Scripts\activate
 pip install -r requirements.txt
+# (Installs external deps + local package: ../../integrations/langgraph-memanto)
 cp .env.example .env
 # Edit .env and add your MOORCHEH_API_KEY
 ```

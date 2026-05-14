@@ -66,7 +66,7 @@ See [`examples/langgraph-memanto/`](../../examples/langgraph-memanto/) for a com
 1. `run_research.py` — stores research findings in Session 1
 2. `run_recall.py` — recalls those findings in Session 2 (cross-session persistence)
 
-A 30-second demo GIF is available in the example README.
+A 30-second demo GIF/video placeholder is noted in the example README (will be attached there once recorded).
 
 ---
 
