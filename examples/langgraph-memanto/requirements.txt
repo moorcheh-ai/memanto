@@ -1,0 +1,4 @@
+langgraph>=0.0.50
+langchain-core>=0.1.0
+memanto>=1.0.0
+python-dotenv>=1.0.0
