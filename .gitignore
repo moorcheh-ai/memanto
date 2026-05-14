@@ -36,9 +36,13 @@ MANIFEST
 # Virtual environments
 venv/
 .venv/
+.example-venv/
 ENV/
 env/
 .env/
+.uv-cache/
+.uv-python/
+.memanto/
 
 # IDEs
 .vscode/

@@ -131,6 +131,11 @@ Use memory types to categorize what you store so retrieval is cleaner and more c
 
 Additional setup guides are available at the Moorcheh [YouTube channel](https://www.youtube.com/@moorchehai/videos).
 
+### Example Integrations
+
+- [CrewAI + Memanto](./examples/crewai-memory/README.md) - multi-agent shared memory with persistent research and writing workflows
+- [LangGraph + Memanto](./examples/langgraph-memanto/README.md) - cross-session customer memory using LangGraph state orchestration plus Memanto long-term recall
+
 ---
 
 ## 🎯 REST API Endpoints
