@@ -1,59 +1,41 @@
-import os
-from typing import Annotated, TypedDict, List
+from typing import Annotated, TypedDict
 from langgraph.graph import StateGraph, END
 from langgraph.graph.message import add_messages
+from langgraph.prebuilt import ToolNode
 from langchain_openai import ChatOpenAI
-from langchain_core.messages import BaseMessage, HumanMessage
-from memanto.cli.client import MemantoClient
+from langchain_core.tools import tool
+from memanto.cli.client.sdk_client import SdkClient
 
-class AgentState(TypedDict):
-    messages: Annotated[List[BaseMessage], add_messages]
-    user_id: str
-    session_id: str
-    memories: str
+AGENT_ID = "langgraph-memanto-permanent-brain"
+sdk = SdkClient()
 
-client = MemantoClient()
-llm = ChatOpenAI(model="gpt-4o")
+@tool
+def store_memory(fact: str):
+    """Store a piece of information for long-term recall across sessions."""
+    return sdk.create_memory(agent_id=AGENT_ID, content=fact)
 
-def retrieve_memories(state: AgentState):
-    user_id = state["user_id"]
-    last_message = state["messages"][-1].content
-    memories = client.search_memories(user_id=user_id, query=last_message)
-    return {"memories": memories}
+@tool
+def retrieve_memory(query: str):
+    """Retrieve relevant long-term memories based on a query."""
+    return sdk.search_memories(agent_id=AGENT_ID, query=query)
 
-def call_model(state: AgentState):
-    messages = state["messages"]
-    memories = state["memories"]
-    
-    system_prompt = (
-        "You are a personalized research assistant. "
-        "Use the provided long-term memories to personalize your response. "
-        f"Relevant Memories: {memories}"
-    )
-    
-    prompt = [("system", system_prompt)]
-    for m in messages:
-        role = "user" if isinstance(m, HumanMessage) else "assistant"
-        prompt.append((role, m.content))
-    
-    response = llm.invoke(prompt)
+tools = [store_memory, retrieve_memory]
+model = ChatOpenAI(model="gpt-4o").bind_tools(tools)
+
+class State(TypedDict):
+    messages: Annotated[list, add_messages]
+
+def call_model(state: State):
+    response = model.invoke(state["messages"])
     return {"messages": [response]}
 
-def store_memory(state: AgentState):
-    user_id = state["user_id"]
-    last_user_msg = next((m for m in reversed(state["messages"]) if isinstance(m, HumanMessage)), None)
-    if last_user_msg:
-        client.store_memory(user_id=user_id, content=last_user_msg.content)
-    return {"messages": []}
-
-workflow = StateGraph(AgentState)
-workflow.add_node("retrieve", retrieve_memories)
-workflow.add_node("model", call_model)
-workflow.add_node("store", store_memory)
-
-workflow.set_entry_point("retrieve")
-workflow.add_edge("retrieve", "model")
-workflow.add_edge("model", "store")
-workflow.add_edge("store", END)
-
+workflow = StateGraph(State)
+workflow.add_node("agent", call_model)
+workflow.add_node("tools", ToolNode(tools))
+workflow.set_entry_point("agent")
+workflow.add_conditional_edges(
+    "agent", 
+    lambda x: "tools" if x["messages"][-1].tool_calls else END
+)
+workflow.add_edge("tools", "agent")
 app = workflow.compile()
