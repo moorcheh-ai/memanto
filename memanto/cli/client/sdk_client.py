@@ -42,7 +42,7 @@ __all__ = ["SdkClient"]
 # Constants
 _MAX_BATCH_SIZE = 100
 _MAX_TITLE_LENGTH = 100
-_MAX_CONTENT_LENGTH = 500
+_MAX_CONTENT_LENGTH = 10000
 
 
 class SdkClient:

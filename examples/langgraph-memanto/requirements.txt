@@ -1,0 +1,6 @@
+langgraph>=1.1.6
+langchain-core>=0.1
+langchain-openai
+memanto
+pydantic>=2.7.4
+httpx
