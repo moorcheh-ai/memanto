@@ -4,6 +4,11 @@ This example shows a LangGraph support workflow using Memanto as memory outside 
 
 ## Demo
 
+The 30-second GIF below walks through the two-session flow: session 1 stores a
+support preference through the Memanto adapter, and session 2 recalls it from a
+fresh LangGraph invocation. Open the media directly at
+[`assets/langgraph-memanto-demo.gif`](./assets/langgraph-memanto-demo.gif).
+
 ![LangGraph + Memanto cross-session demo](./assets/langgraph-memanto-demo.gif)
 
 ```mermaid
