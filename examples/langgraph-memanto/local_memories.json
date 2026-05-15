@@ -1,0 +1,182 @@
+[
+  {
+    "id": "local_1",
+    "agent_id": "fitness-coach-agent",
+    "type": "fact",
+    "title": "Upper body workout preference",
+    "content": "Client prefers push/pull split with 4 exercises per session, 3 sets of 10-12 reps",
+    "confidence": 0.9,
+    "tags": [],
+    "created_at": "2026-05-16T01:44:02.204362"
+  },
+  {
+    "id": "local_2",
+    "agent_id": "fitness-coach-agent",
+    "type": "preference",
+    "title": "Dietary restriction: dairy-free",
+    "content": "Client is lactose intolerant. Replace whey protein with pea protein. No milk-based shakes.",
+    "confidence": 0.9,
+    "tags": [],
+    "created_at": "2026-05-16T01:44:02.204362"
+  },
+  {
+    "id": "local_3",
+    "agent_id": "fitness-coach-agent",
+    "type": "fact",
+    "title": "Shoulder injury history",
+    "content": "Client has mild rotator cuff issue in right shoulder. Avoid overhead press above 90 degrees. Use light lateral raises only.",
+    "confidence": 0.9,
+    "tags": [],
+    "created_at": "2026-05-16T01:44:02.206357"
+  },
+  {
+    "id": "local_4",
+    "agent_id": "fitness-coach-agent",
+    "type": "goal",
+    "title": "12-week fat loss target",
+    "content": "Goal: lose 8kg body fat while maintaining muscle mass. Target: 1800 kcal/day with 150g protein.",
+    "confidence": 0.9,
+    "tags": [],
+    "created_at": "2026-05-16T01:44:02.206357"
+  },
+  {
+    "id": "local_5",
+    "agent_id": "fitness-coach-agent",
+    "type": "preference",
+    "title": "Workout time preference",
+    "content": "Client prefers morning workouts at 6:30 AM, 4 days per week (Mon/Tue/Thu/Fri).",
+    "confidence": 0.9,
+    "tags": [],
+    "created_at": "2026-05-16T01:44:02.207355"
+  },
+  {
+    "id": "local_6",
+    "agent_id": "fitness-coach-agent",
+    "type": "fact",
+    "title": "Current stats",
+    "content": "Weight: 85kg, Body fat: 22%, Bench: 80kg, Squat: 110kg, Deadlift: 140kg. Measured 2026-05-10.",
+    "confidence": 0.9,
+    "tags": [],
+    "created_at": "2026-05-16T01:44:02.208352"
+  },
+  {
+    "id": "local_7",
+    "agent_id": "blog-writer-agent",
+    "type": "fact",
+    "title": "Target audience: CTOs and engineering leaders",
+    "content": "Readers are CTOs and VP Eng at Series B-D startups. They care about scalability, team velocity, and cost efficiency. Technical depth expected.",
+    "confidence": 0.9,
+    "tags": [],
+    "created_at": "2026-05-16T01:44:02.209350"
+  },
+  {
+    "id": "local_8",
+    "agent_id": "blog-writer-agent",
+    "type": "preference",
+    "title": "Writing tone: authoritative but approachable",
+    "content": "Use active voice. Avoid buzzwords. Lead with data. Include at least one code snippet or architecture diagram per article.",
+    "confidence": 0.9,
+    "tags": [],
+    "created_at": "2026-05-16T01:44:02.210347"
+  },
+  {
+    "id": "local_9",
+    "agent_id": "blog-writer-agent",
+    "type": "fact",
+    "title": "Published: 'Why Monoliths Beat Microservices in 2026'",
+    "content": "Published May 10, 2026. Key points: 78% of startups over-engineer early, monoliths reduce infra costs 3x, team velocity 2x faster with monolith.",
+    "confidence": 0.9,
+    "tags": [],
+    "created_at": "2026-05-16T01:44:02.211344"
+  },
+  {
+    "id": "local_10",
+    "agent_id": "blog-writer-agent",
+    "type": "fact",
+    "title": "Published: 'The Real Cost of Kubernetes'",
+    "content": "Published April 28, 2026. Average startup spends $4,200/month on k8s infra vs $800 on managed services. Hidden cost: 15 eng-hours/week maintenance.",
+    "confidence": 0.9,
+    "tags": [],
+    "created_at": "2026-05-16T01:44:02.212341"
+  },
+  {
+    "id": "local_11",
+    "agent_id": "blog-writer-agent",
+    "type": "preference",
+    "title": "Overused phrases to avoid",
+    "content": "Avoid: 'game-changer', 'revolutionary', 'in today's fast-paced world', 'unprecedented'. These appeared in 3 articles already.",
+    "confidence": 0.9,
+    "tags": [],
+    "created_at": "2026-05-16T01:44:02.213338"
+  },
+  {
+    "id": "local_12",
+    "agent_id": "blog-writer-agent",
+    "type": "decision",
+    "title": "Content calendar: Q2 2026",
+    "content": "May: observability deep-dive. June: AI/LLM cost optimization. July: team structure for platform engineering. Publish every Thursday.",
+    "confidence": 0.9,
+    "tags": [],
+    "created_at": "2026-05-16T01:44:02.214336"
+  },
+  {
+    "id": "local_13",
+    "agent_id": "travel-planner-agent",
+    "type": "fact",
+    "title": "Visa: Japan tourist e-Visa",
+    "content": "Japan e-Visa available for 90-day tourism. Apply online 2 weeks before. Cost: $30. Requires: passport scan, photo, itinerary, hotel booking.",
+    "confidence": 0.9,
+    "tags": [],
+    "created_at": "2026-05-16T01:44:02.215334"
+  },
+  {
+    "id": "local_14",
+    "agent_id": "travel-planner-agent",
+    "type": "preference",
+    "title": "Hotel preference: boutique under $200",
+    "content": "Prefers boutique hotels with local character, under $200/night. Must have: WiFi, breakfast included, walking distance to metro.",
+    "confidence": 0.9,
+    "tags": [],
+    "created_at": "2026-05-16T01:44:02.217328"
+  },
+  {
+    "id": "local_15",
+    "agent_id": "travel-planner-agent",
+    "type": "fact",
+    "title": "Trip: Tokyo May 2026",
+    "content": "7-day Tokyo trip May 15-22. Hotel: Hotel Graphy Nezu ($145/night). Highlights: teamLab Borderless, Tsukiji market, Akihabara. Budget used: $2,100.",
+    "confidence": 0.9,
+    "tags": [],
+    "created_at": "2026-05-16T01:44:02.218325"
+  },
+  {
+    "id": "local_16",
+    "agent_id": "travel-planner-agent",
+    "type": "preference",
+    "title": "Budget rule: daily max $300",
+    "content": "Daily budget: $300 max (hotel + food + transport + activities). Emergency buffer: $50/day for unexpected.",
+    "confidence": 0.9,
+    "tags": [],
+    "created_at": "2026-05-16T01:44:02.219322"
+  },
+  {
+    "id": "local_17",
+    "agent_id": "travel-planner-agent",
+    "type": "fact",
+    "title": "Flight preference: direct only, aisle seat",
+    "content": "Always book direct flights. Aisle seat preferred (right side). Check-in 24h before. Carry-on only for trips under 5 days.",
+    "confidence": 0.9,
+    "tags": [],
+    "created_at": "2026-05-16T01:44:02.220320"
+  },
+  {
+    "id": "local_18",
+    "agent_id": "travel-planner-agent",
+    "type": "fact",
+    "title": "Solo travel safety tips",
+    "content": "Share live location with 2 contacts. Keep digital copy of passport. Travel insurance with medical evac required. Register with embassy for trips over 14 days.",
+    "confidence": 0.9,
+    "tags": [],
+    "created_at": "2026-05-16T01:44:02.221318"
+  }
+]
