@@ -84,6 +84,8 @@ python run_session_two.py
 
 ## Demo Video
 
+![LangGraph + Memanto cross-session memory demo](./demo.gif)
+
 Record the two commands above with any terminal recorder. A 30-second clip can
 show:
 
