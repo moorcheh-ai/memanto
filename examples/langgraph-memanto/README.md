@@ -75,6 +75,10 @@ Expected behavior:
 
 ## Record a 30-Second Demo
 
+Demo video: https://github.com/user-attachments/assets/97e73bca-e491-4d3c-a31f-87f99d165515
+
+Social post: https://x.com/al_faturachman/status/2055406413346992281?s=46
+
 Suggested flow:
 
 1. Show `python demo_day1.py` storing the memories.
@@ -82,8 +86,6 @@ Suggested flow:
 3. Run `python demo_day2.py`.
 4. Highlight that day 2 recalls the Enterprise plan, Europe/London timezone,
    dark dashboard preference, and Tuesday follow-up.
-
-Add the video or GIF link to your PR description for bounty review.
 
 ## Files
 
