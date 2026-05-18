@@ -23,8 +23,6 @@ Session B (days later): NEW Python process → recall_node auto-loads → agent 
 - 🤖 Reddit: https://www.reddit.com/user/MitchelleCm7/comments/1tgzf1x/i_gave_langgraph_persistent_crosssession_memory/
 - 🤖 Reddit: https://www.reddit.com/r/OpenAssistant/comments/1tgzox5/i_gave_langgraph_persistent_crosssession_memory/
 - 🤖 Reddit: https://www.reddit.com/r/aivideos/comments/1th01a2/i_gave_langgraph_persistent_crosssession_memory/
-- 🤖 Reddit: https://www.reddit.com/r/OpenAssistant/comments/1tgzox5/i_gave_langgraph_persistent_crosssession_memory/
-- 🤖 Reddit: https://www.reddit.com/r/aivideos/comments/1th01a2/i_gave_langgraph_persistent_crosssession_memory/
 
 ---
 
@@ -195,4 +193,4 @@ langgraph-memanto/
 | `/api/v2/agents/{id}/activate` | POST | Start session → token |
 | `/api/v2/agents/{id}/remember` | POST | Store memory (facts, preferences, corrections) |
 | `/api/v2/agents/{id}/recall` | GET | Semantic search (natural language query) |
-| `/api/v2/agents/{id}/answer` | POST | RAG answer over stored memories |s
+| `/api/v2/agents/{id}/answer` | POST | RAG answer over stored memories |
