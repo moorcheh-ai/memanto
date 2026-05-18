@@ -220,7 +220,7 @@ If you use MEMANTO in your research, please cite:
       url={https://arxiv.org/abs/2604.22085}, 
 }
 ```
-
+Minor update 
 ---
 
 ## 📞 Support & Documentation
