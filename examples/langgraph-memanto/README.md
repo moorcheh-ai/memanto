@@ -18,9 +18,8 @@ Session B (days later): NEW Python process → recall_node auto-loads → agent 
 *Session A stores facts → Session B (completely new Python process) auto-recalls via `recall_node`*
 
 ## 📣 Social Posts
-
-- 🐦 X/Twitter: <https://x.com/chidinmaonyenwe/status/2054728913558077858>
-- 🤖 Reddit: *(post coming soon)*
+- 🐦 X/Twitter: https://x.com/chidinmaonyenwe/status/2054728913558077858
+- 🤖 Reddit: https://www.reddit.com/user/MitchelleCm7/comments/1tgzf1x/i_gave_langgraph_persistent_crosssession_memory/
 
 ---
 
