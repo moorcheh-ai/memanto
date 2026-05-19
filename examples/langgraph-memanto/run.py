@@ -33,27 +33,18 @@ BANNER = """
 
 def run_mock():
     """Fully offline demo — record this for Asciinema."""
-    import json
-    import time
-    import uuid as _uuid
-
-    DB_FILE = ".mock_memanto_db.json"
+    import time, uuid as _uuid
 
     db = {}
-    if os.path.exists(DB_FILE):
-        with open(DB_FILE) as f:
-            db = json.load(f)
 
     def store(content, mtype="fact"):
         mid = f"mem_{_uuid.uuid4().hex[:8]}"
         db[mid] = {"id": mid, "content": content, "type": mtype}
-        with open(DB_FILE, 'w') as f:
-            json.dump(db, f)
         return mid
 
     def recall(query):
         return list(db.values())[:3]
-        
+
     print(BANNER)
     print("\n  Mode: 🟡 MOCK (offline — safe to record)\n")
 
@@ -110,10 +101,11 @@ def run_mock():
     print("─" * 60)
     print("  CONTRADICTION CORRECTION  –  Updating an outdated fact")
     print("─" * 60)
+    old_id = stored[0]
     old_fact = "~1000 physical qubits per logical qubit"
     new_fact = "Recent Google research suggests ~100 physical qubits per logical qubit with new codes (2025)."
-    print(f"\n  ⚠️  Outdated fact: {old_fact}")
-    print(f"  🔄 Storing corrected fact as new memory...")
+    print(f"\n  ⚠️  Outdated: {old_fact}")
+    print(f"  🔄 Correcting [{old_id}]...")
     time.sleep(0.5)
     import uuid as _u
     new_id = f"mem_{_u.uuid4().hex[:8]}"
@@ -122,8 +114,8 @@ def run_mock():
         "metadata": {"previous_content": old_fact, "correction": True}
     }
     print(f"  ✅ New corrected memory stored: [{new_id}]")
-    print(f"     New fact: {new_fact}")
     print(f"     └─ Old fact preserved in metadata.previous_content of [{new_id}]")
+
     print(f"\n{'─'*60}")
     print("  ✨  Demo complete!")
     print("  💾  All memories persist in Memanto — recall them in any future session.")
@@ -169,7 +161,7 @@ def run_live(session_type: str, args):
             if user_input.lower() in ("quit","exit","q"):
                 break
             messages.append(HumanMessage(content=user_input))
-            state = {"messages": messages, "session_id": session_id, "memory_context": ""}
+            state = {"messages": messages, "session_id": session_id}
             result = graph.invoke(state)
             last = result["messages"][-1]
             print(f"\n  🤖 Agent: {last.content}\n")
@@ -180,7 +172,7 @@ def run_live(session_type: str, args):
         for prompt in prompts:
             print(f"  👤 User: {prompt}")
             messages.append(HumanMessage(content=prompt))
-            state = {"messages": messages, "session_id": session_id, "memory_context": ""}
+            state = {"messages": messages, "session_id": session_id}
             result = graph.invoke(state)
             last = result["messages"][-1]
             print(f"  🤖 Agent: {last.content}\n")
