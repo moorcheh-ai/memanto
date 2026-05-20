@@ -45,6 +45,20 @@ wrapper = importlib.util.module_from_spec(wrapper_spec)
 sys.modules["run_skill_with_memory"] = wrapper
 wrapper_spec.loader.exec_module(wrapper)
 
+BENCHMARK_PATH = (
+    Path(__file__).resolve().parents[1]
+    / "examples"
+    / "claudecode-skills-memanto"
+    / "productivity_benchmark.py"
+)
+benchmark_spec = importlib.util.spec_from_file_location(
+    "productivity_benchmark", BENCHMARK_PATH
+)
+assert benchmark_spec and benchmark_spec.loader
+benchmark = importlib.util.module_from_spec(benchmark_spec)
+sys.modules["productivity_benchmark"] = benchmark
+benchmark_spec.loader.exec_module(benchmark)
+
 HOOK_MANIFEST_PATH = (
     Path(__file__).resolve().parents[1]
     / "examples"
@@ -260,3 +274,13 @@ def test_wrapper_exports_recalled_context_to_child_command(tmp_path, capsys) -> 
     assert status == 0
     assert "Relevant prior engineering decisions" in captured.out
     assert "Keep invoice retry tests deterministic" in captured.out
+
+
+def test_productivity_benchmark_measures_repeated_instruction_reduction(tmp_path) -> None:
+    result = benchmark.run_benchmark(tmp_path / "benchmark-memory.jsonl")
+
+    assert result["skill_runs"] == 3
+    assert result["stored_memories"] >= 6
+    assert result["baseline_repeated_prompts"] == 2
+    assert result["memanto_reused_prompts"] == 2
+    assert result["repeated_instruction_reduction"] == 1.0

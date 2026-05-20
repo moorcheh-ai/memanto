@@ -56,6 +56,24 @@ python examples/claudecode-skills-memanto/validate.py
 
 The preview backend is intentionally small and file-based. It is not a replacement for Memanto; it exists so reviewers can inspect the skill lifecycle before wiring real credentials.
 
+## Productivity Benchmark
+
+The bounty's core metric is fewer repeated instructions across `/grill-with-docs`, `/tdd`, and `/handoff`. `productivity_benchmark.py` runs a deterministic local scenario where the first skill stores auth-session decisions and later skills retrieve them instead of requiring the developer to repeat the same constraints.
+
+```bash
+python examples/claudecode-skills-memanto/productivity_benchmark.py
+```
+
+Expected output:
+
+```text
+skill_runs=3
+stored_memories=6
+baseline_repeated_prompts=2
+memanto_reused_prompts=2
+repeated_instruction_reduction=100%
+```
+
 ## Wrapper Usage
 
 `run_skill_with_memory.py` demonstrates a lightweight wrapper around any command:
