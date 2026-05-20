@@ -177,6 +177,7 @@ python skill_memory.py post-skill --run-json run.json
 - `test_skill_memory.py`: focused unit tests
 - `productivity_benchmark.py`: three-session benchmark showing repeated
   instruction reduction across `/grill-with-docs`, `/tdd`, and `/handoff`
+- `benchmark_report.md`: checked-in output from the credential-free benchmark
 - `demo_transcript.md`: reviewable proof of cross-skill recall
 - `demo_terminal.svg`: terminal-style visual proof of first-run storage and
   later-skill recall

@@ -39,6 +39,9 @@ The benchmark reports 100% repeated-instruction reduction across:
 /grill-with-docs -> /tdd -> /handoff
 ```
 
+`benchmark_report.md` mirrors the credential-free benchmark output so reviewers
+can inspect the result without running any private services.
+
 ## Reddit-Style Technical Summary
 
 I tried solving context fragmentation between small, single-purpose developer
