@@ -12,6 +12,7 @@ EXAMPLE_PATH = (
 
 
 def load_example_module():
+    """Load the Claude Code skills example as an isolated test module."""
     spec = importlib.util.spec_from_file_location(
         "skill_memory_hook_example", EXAMPLE_PATH
     )
@@ -23,6 +24,7 @@ def load_example_module():
 
 
 def test_format_memory_block_wraps_recalled_constraints():
+    """Verify recalled memories are wrapped in the prompt handoff block."""
     module = load_example_module()
 
     block = module.format_memory_block("- Use queue workers for retries.")
@@ -33,6 +35,7 @@ def test_format_memory_block_wraps_recalled_constraints():
 
 
 def test_extract_memory_candidates_redacts_api_keys():
+    """Verify extracted transcript memories omit sensitive credential text."""
     module = load_example_module()
 
     payloads = module.extract_memory_candidates(
@@ -55,6 +58,7 @@ def test_extract_memory_candidates_redacts_api_keys():
 
 
 def test_dry_run_before_never_requires_memanto_credentials(capsys):
+    """Verify dry-run recall works without a configured Memanto command."""
     module = load_example_module()
 
     exit_code = module.main(
@@ -75,12 +79,14 @@ def test_dry_run_before_never_requires_memanto_credentials(capsys):
 
 
 def test_normalize_wrapped_command_strips_separator():
+    """Verify argparse remainder separators are removed before execution."""
     module = load_example_module()
 
     assert module.normalize_wrapped_command(["--", "pytest", "-q"]) == ["pytest", "-q"]
 
 
 def test_normalize_wrapped_command_rejects_empty_after_separator():
+    """Verify wrapper invocation fails clearly when no command remains."""
     module = load_example_module()
 
     try:
@@ -92,10 +98,12 @@ def test_normalize_wrapped_command_rejects_empty_after_separator():
 
 
 def test_command_run_redacts_printed_command_output(monkeypatch, capsys):
+    """Verify wrapped command output is redacted before it is printed."""
     module = load_example_module()
     called = {"run": False}
 
     def fake_run(command, text, capture_output, check):
+        """Return deterministic command output containing a fake secret."""
         called["run"] = True
         assert command == ["memanto-demo"]
         return SimpleNamespace(
