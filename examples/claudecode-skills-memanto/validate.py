@@ -6,6 +6,11 @@ from pathlib import Path
 from claude_skill_memory import handle_hook_event
 
 
+def require(condition: bool, message: str) -> None:
+    if not condition:
+        raise RuntimeError(message)
+
+
 def main() -> int:
     with tempfile.TemporaryDirectory() as tmpdir:
         store = Path(tmpdir) / "memory.jsonl"
@@ -32,10 +37,16 @@ def main() -> int:
             store,
         )
         context = recalled["hookSpecificOutput"]["additionalContext"]
-        assert stored["stored"] == 3
-        assert "Redis streams" in context
-        assert "pytest fixtures" in context
-        assert "generated SDK clients" in context
+        require(
+            stored.get("stored") == 3,
+            f"expected 3 stored memories, got {stored.get('stored')}",
+        )
+        for expected in (
+            "Redis streams",
+            "pytest fixtures",
+            "generated SDK clients",
+        ):
+            require(expected in context, f"missing recalled context: {expected}")
     print("credential-free Claude Code hook validation passed")
     return 0
 

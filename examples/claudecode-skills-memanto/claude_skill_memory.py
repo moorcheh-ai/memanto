@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import logging
 import os
 import re
 import sys
@@ -25,6 +26,8 @@ MEMORY_PATTERNS = [
     ("instruction", re.compile(r"(?im)^\s*(?:always|never|avoid|must)\s+(.+)$")),
     ("context", re.compile(r"(?im)^\s*(?:in this repo|convention:|note:)\s+(.+)$")),
 ]
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
@@ -54,7 +57,7 @@ def distill_memories(
 
     for kind, pattern in MEMORY_PATTERNS:
         for match in pattern.finditer(redacted):
-            text = match.group(0).strip()
+            text = match.group(1).strip()
             if not text.endswith("."):
                 text += "."
             key = (kind, text.lower())
@@ -82,8 +85,15 @@ def load_records(store_path: str | Path) -> list[MemoryRecord]:
     for line in path.read_text().splitlines():
         if not line.strip():
             continue
-        data = json.loads(line)
-        records.append(MemoryRecord(**data))
+        try:
+            data = json.loads(line)
+            records.append(MemoryRecord(**data))
+        except (json.JSONDecodeError, TypeError, ValueError) as exc:
+            logger.warning(
+                "Skipping malformed memory record in %s: %s",
+                path,
+                exc,
+            )
     return records
 
 
@@ -126,8 +136,16 @@ def sync_records_to_memanto(records: list[MemoryRecord]) -> int:
             pattern="hook",
             description="Claude Code developer skills engineering memory",
         )
-    except Exception:
-        pass
+    except Exception as exc:
+        message = str(exc).lower()
+        if "already" not in message and "exist" not in message and "409" not in message:
+            logger.warning(
+                "Memanto agent creation failed for %s with %s: %s",
+                agent_id,
+                type(exc).__name__,
+                exc,
+            )
+            raise
     client.activate_agent(agent_id, duration_hours=8)
 
     synced = 0
@@ -166,14 +184,12 @@ def recall_context(
     cwd = str(event.get("cwd") or "")
     tool_input = event.get("tool_input") or {}
     path_hint = str(tool_input.get("file_path") or tool_input.get("path") or "")
-    ranked = sorted(
-        load_records(store_path),
-        key=lambda record: score_record(record, prompt, cwd, path_hint),
-        reverse=True,
-    )
-    selected = [
-        record for record in ranked if score_record(record, prompt, cwd, path_hint) > 0
-    ][:limit]
+    scored = [
+        (score_record(record, prompt, cwd, path_hint), record)
+        for record in load_records(store_path)
+    ]
+    scored.sort(key=lambda pair: pair[0], reverse=True)
+    selected = [record for score, record in scored if score > 0][:limit]
 
     if not selected:
         return ""
