@@ -272,6 +272,25 @@ def store_completed_run(run: SkillRun, backend: MemoryBackend) -> int:
     return len(memories)
 
 
+def build_backend(backend_name: str, store: str | Path | None = None) -> MemoryBackend:
+    """Construct the configured backend shared by hooks and wrappers."""
+    if backend_name == "local-jsonl":
+        return LocalJsonlBackend(
+            Path(
+                store
+                or os.environ.get(
+                    "MEMANTO_SKILLS_STORE",
+                    str(Path(".memanto-skills-preview.jsonl")),
+                )
+            )
+        )
+    if backend_name == "memanto-sdk":
+        return MemantoSdkBackend(os.environ.get("MEMANTO_AGENT_ID"))
+    if backend_name == "memanto-cli":
+        return MemantoCliBackend(os.environ.get("MEMANTO_EXECUTABLE", "memanto"))
+    raise ValueError(f"Unsupported backend: {backend_name}")
+
+
 def _compact(text: str, max_chars: int = 1200) -> str:
     stripped = " ".join(text.split())
     if len(stripped) <= max_chars:
@@ -331,12 +350,7 @@ def main(argv: list[str] | None = None) -> int:
         )
 
     args = parser.parse_args(argv)
-    if args.backend == "local-jsonl":
-        backend: MemoryBackend = LocalJsonlBackend(Path(args.store))
-    elif args.backend == "memanto-sdk":
-        backend = MemantoSdkBackend(os.environ.get("MEMANTO_AGENT_ID"))
-    else:
-        backend = MemantoCliBackend(os.environ.get("MEMANTO_EXECUTABLE", "memanto"))
+    backend = build_backend(args.backend, args.store)
     run = _build_run(args)
 
     if args.command == "pre":

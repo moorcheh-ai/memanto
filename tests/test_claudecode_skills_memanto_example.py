@@ -33,6 +33,18 @@ adapter = importlib.util.module_from_spec(adapter_spec)
 sys.modules["mattpocock_adapter"] = adapter
 adapter_spec.loader.exec_module(adapter)
 
+WRAPPER_PATH = (
+    Path(__file__).resolve().parents[1]
+    / "examples"
+    / "claudecode-skills-memanto"
+    / "run_skill_with_memory.py"
+)
+wrapper_spec = importlib.util.spec_from_file_location("run_skill_with_memory", WRAPPER_PATH)
+assert wrapper_spec and wrapper_spec.loader
+wrapper = importlib.util.module_from_spec(wrapper_spec)
+sys.modules["run_skill_with_memory"] = wrapper
+wrapper_spec.loader.exec_module(wrapper)
+
 HOOK_MANIFEST_PATH = (
     Path(__file__).resolve().parents[1]
     / "examples"
@@ -119,6 +131,23 @@ def test_local_jsonl_backend_round_trips_memory(tmp_path) -> None:
     assert memories == ["Keep billing retry delays deterministic in tests."]
 
 
+def test_build_backend_uses_local_jsonl_store(tmp_path) -> None:
+    store = tmp_path / "memory.jsonl"
+    backend = hook.build_backend("local-jsonl", store)
+
+    backend.remember(
+        content="Use a wrapper environment variable for recalled skill context.",
+        memory_type="decision",
+        title="wrapper context",
+        tags=["skill:tdd"],
+        confidence=0.88,
+    )
+
+    assert backend.recall("wrapper skill context") == [
+        "Use a wrapper environment variable for recalled skill context."
+    ]
+
+
 def test_sdk_recall_extractor_reads_memory_content() -> None:
     result = {
         "memories": [
@@ -164,3 +193,43 @@ def test_static_hook_manifest_covers_named_skills() -> None:
         assert "post" in entry["memory"]["after"]
         assert "$SKILL_TASK" in entry["memory"]["before"]
         assert "$TRANSCRIPT_FILE" in entry["memory"]["after"]
+
+
+def test_wrapper_exports_recalled_context_to_child_command(tmp_path, capsys) -> None:
+    store = tmp_path / "memory.jsonl"
+    backend = hook.LocalJsonlBackend(store)
+    backend.remember(
+        content="Keep invoice retry tests deterministic across sessions.",
+        memory_type="decision",
+        title="invoice retry tests",
+        tags=["skill:tdd", "file:retries.ts"],
+        confidence=0.91,
+    )
+
+    child = (
+        "import os; "
+        "print(os.environ.get('MEMANTO_SKILL_CONTEXT', '').splitlines()[1])"
+    )
+    status = wrapper.main(
+        [
+            "--skill",
+            "tdd",
+            "--task",
+            "invoice retry tests",
+            "--file",
+            "src/billing/retries.ts",
+            "--backend",
+            "local-jsonl",
+            "--store",
+            str(store),
+            "--",
+            sys.executable,
+            "-c",
+            child,
+        ]
+    )
+
+    captured = capsys.readouterr()
+    assert status == 0
+    assert "Relevant prior engineering decisions" in captured.out
+    assert "Keep invoice retry tests deterministic" in captured.out

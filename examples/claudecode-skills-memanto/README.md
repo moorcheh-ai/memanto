@@ -68,7 +68,18 @@ python examples/claudecode-skills-memanto/run_skill_with_memory.py \
   -- python -m pytest tests/test_auth.py
 ```
 
-In a real Claude Code skill runner, wire the `pre` output into the generated prompt and pipe the skill transcript to `post` when the command finishes.
+The wrapper uses the same backend selector as the direct hook:
+
+```bash
+python examples/claudecode-skills-memanto/run_skill_with_memory.py \
+  --backend local-jsonl \
+  --store .memanto-skills-preview.jsonl \
+  --skill tdd \
+  --task "Add retry-policy tests" \
+  -- python -m pytest tests/test_retries.py
+```
+
+When recalled memory exists, the wrapper prints the prompt block and also sets `MEMANTO_SKILL_CONTEXT` for the child command. Skill runners can either append the printed block to the prompt or read the environment variable before invoking their model/tool flow. After the command exits, stdout and stderr are summarized through the `post` memory path.
 
 ## mattpocock/skills Adapter
 
