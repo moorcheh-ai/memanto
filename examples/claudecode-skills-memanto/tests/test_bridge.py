@@ -3,8 +3,12 @@ import unittest
 from pathlib import Path
 
 from bridge import (
+    MEMORY_TYPES,
     LocalJsonBackend,
+    MemantoSdkBackend,
+    Memory,
     distill_transcript,
+    memory_from_sdk_result,
     render_context,
 )
 from productivity_check import EXPECTED_CONTEXT, run_productivity_check
@@ -106,6 +110,64 @@ $ pytest tests/test_api.py
             report,
         )
         self.assertIn("Rendered context block", report)
+
+    def test_sdk_backend_uses_memanto_client_interface(self) -> None:
+        class FakeSdkClient:
+            def __init__(self) -> None:
+                self.remember_calls = []
+                self.recall_calls = []
+
+            def remember(self, **kwargs):
+                self.remember_calls.append(kwargs)
+                return {"memory_id": "mem-1"}
+
+            def recall(self, **kwargs):
+                self.recall_calls.append(kwargs)
+                return {
+                    "memories": [
+                        {
+                            "content": "Decision: Keep route responses stable.",
+                            "type": "decision",
+                            "source": "skill:tdd",
+                            "tags": ["tdd", "routes"],
+                        }
+                    ]
+                }
+
+        client = FakeSdkClient()
+        backend = MemantoSdkBackend(
+            api_key="test-key",
+            agent_id="claudecode-skills",
+            client=client,
+        )
+        backend.remember(
+            Memory(
+                content="Decision: Keep route responses stable.",
+                memory_type="decision",
+                source="skill:tdd",
+                tags=["tdd", "routes"],
+            )
+        )
+        recalled = backend.recall("route response stability", limit=3)
+
+        self.assertEqual(client.remember_calls[0]["agent_id"], "claudecode-skills")
+        self.assertEqual(client.remember_calls[0]["provenance"], "inferred")
+        self.assertEqual(client.recall_calls[0]["type"], list(MEMORY_TYPES))
+        self.assertEqual(recalled[0].memory_type, "decision")
+        self.assertIn("route responses stable", recalled[0].content)
+
+    def test_sdk_result_parser_handles_metadata_content(self) -> None:
+        memory = memory_from_sdk_result(
+            {
+                "metadata": {"content": "Preference: Avoid new dependencies."},
+                "memory_type": "preference",
+            }
+        )
+
+        self.assertIsNotNone(memory)
+        assert memory is not None
+        self.assertEqual(memory.memory_type, "preference")
+        self.assertIn("Avoid new dependencies", memory.content)
 
 
 if __name__ == "__main__":

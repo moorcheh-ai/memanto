@@ -14,6 +14,8 @@ The integration is intentionally small and reviewer-safe:
 - `local` backend stores memories in JSON so the demo works without credentials.
 - `memanto` backend shells out to the real Memanto CLI for live recall and
   remember operations.
+- `sdk` backend calls Memanto's in-repo `SdkClient` directly for apps that want
+  the live Moorcheh path without shelling out to a subprocess.
 
 ## What The Bridge Solves
 
@@ -125,6 +127,32 @@ python bridge.py --backend memanto before \
 The live backend keeps the same public interface as the local backend, but
 persists and recalls memories through the configured Memanto CLI.
 
+## Direct SDK Mode
+
+If your integration runs inside a Python process and should avoid shelling out
+to the CLI, use the direct SDK backend:
+
+```bash
+export MOORCHEH_API_KEY="mch_..."
+export MEMANTO_AGENT_ID="claudecode-skills"
+
+python bridge.py --backend sdk after \
+  --skill grill-with-docs \
+  --task "review API pagination design" \
+  --path docs/api-pagination.md \
+  --transcript demo/session-one-transcript.md
+
+python bridge.py --backend sdk before \
+  --skill tdd \
+  --task "add pagination tests" \
+  --path tests/test_api.py
+```
+
+SDK mode uses `memanto.cli.client.sdk_client.SdkClient` directly, activates the
+configured agent, stores typed memories through `client.remember(...)`, and
+recalls through `client.recall(...)`. The local mode remains the default so
+reviewers can validate the example without credentials.
+
 ## Shell Hook
 
 Wrap a command with the skill lifecycle:
@@ -144,6 +172,7 @@ CLI and Moorcheh API key.
 python -m py_compile bridge.py
 python -m py_compile skills_manifest.py
 PYTHONPATH=. python -m unittest discover -s tests
+ruff check .
 python bridge.py --backend local --store demo/memory.json after \
   --skill grill-with-docs \
   --task "review API pagination design" \

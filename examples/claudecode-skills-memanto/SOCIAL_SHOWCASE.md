@@ -28,6 +28,8 @@ The bridge:
 - after hook distills the transcript into typed memories
 - local JSON backend lets reviewers run it without credentials
 - live Memanto CLI backend keeps the same interface for real persistent memory
+- direct SDK backend uses Memanto's in-repo `SdkClient` for Python apps that
+  should avoid shelling out to the CLI
 - mattpocock/skills manifest reader lists installed skill names from .claude-plugin/plugin.json
 
 The productivity check proves the later /tdd run recovers:

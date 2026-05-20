@@ -7,6 +7,8 @@ The bridge has two execution modes:
   without credentials.
 * ``memanto`` shells out to the installed ``memanto`` CLI and uses the active
   Memanto agent configured in the user's environment.
+* ``sdk`` calls Memanto's in-repo ``SdkClient`` directly for applications that
+  want to bypass shell commands while still using the real Moorcheh backend.
 
 Both modes expose the same before/after lifecycle used by Claude Code skills:
 query relevant engineering memories before a skill starts, then distill the
@@ -140,6 +142,71 @@ class MemantoCliBackend:
         ][:limit]
 
 
+class MemantoSdkBackend:
+    def __init__(
+        self,
+        *,
+        api_key: str,
+        agent_id: str,
+        client: object | None = None,
+    ) -> None:
+        if not api_key.strip():
+            raise SystemExit(
+                "MOORCHEH_API_KEY is required for `--backend sdk`. "
+                "Use `--backend local` for the reviewer-safe preview."
+            )
+        if not agent_id.strip():
+            raise SystemExit(
+                "MEMANTO_AGENT_ID or `--agent-id` is required for `--backend sdk`."
+            )
+        self.agent_id = agent_id
+        self.client = client or self._build_client(api_key, agent_id)
+
+    @staticmethod
+    def _build_client(api_key: str, agent_id: str) -> object:
+        try:
+            from memanto.cli.client.sdk_client import SdkClient
+        except ImportError as exc:
+            raise SystemExit(
+                "Memanto SdkClient is not importable. Run this example from a "
+                "Memanto checkout or install the memanto package."
+            ) from exc
+
+        client = SdkClient(api_key=api_key)
+        try:
+            client.activate_agent(agent_id)
+        except Exception as exc:
+            raise SystemExit(
+                f"Could not activate Memanto agent `{agent_id}` for SDK mode. "
+                "Create or configure the agent first, or use `--backend local`."
+            ) from exc
+        return client
+
+    def remember(self, memory: Memory) -> None:
+        self.client.remember(
+            agent_id=self.agent_id,
+            memory_type=memory.memory_type,
+            title=memory.content[:100],
+            content=memory.content,
+            confidence=memory.confidence,
+            tags=memory.tags,
+            source=memory.source,
+            provenance="inferred",
+        )
+
+    def recall(self, query: str, limit: int) -> list[Memory]:
+        result = self.client.recall(
+            agent_id=self.agent_id,
+            query=query,
+            limit=limit,
+            type=list(MEMORY_TYPES),
+        )
+        raw_memories = result.get("memories", []) if isinstance(result, dict) else []
+        return [memory for memory in map(memory_from_sdk_result, raw_memories) if memory][
+            :limit
+        ]
+
+
 def run(
     cmd: list[str],
     *,
@@ -170,7 +237,43 @@ def tokenize(text: str) -> set[str]:
 def select_backend(args: argparse.Namespace) -> Backend:
     if args.backend == "local":
         return LocalJsonBackend(Path(args.store))
+    if args.backend == "sdk":
+        return MemantoSdkBackend(
+            api_key=args.moorcheh_api_key,
+            agent_id=args.agent_id,
+        )
     return MemantoCliBackend(args.memanto_command)
+
+
+def memory_from_sdk_result(raw: object) -> Memory | None:
+    if not isinstance(raw, dict):
+        return None
+    content = str(
+        raw.get("content")
+        or raw.get("text")
+        or raw.get("memory")
+        or raw.get("document")
+        or ""
+    ).strip()
+    if not content:
+        metadata = raw.get("metadata")
+        if isinstance(metadata, dict):
+            content = str(metadata.get("content") or metadata.get("text") or "").strip()
+    if not content:
+        return None
+
+    memory_type = str(raw.get("type") or raw.get("memory_type") or "context")
+    if memory_type not in MEMORY_TYPES:
+        memory_type = "context"
+    source = str(raw.get("source") or "memanto-sdk")
+    raw_tags = raw.get("tags", [])
+    tags = [str(tag) for tag in raw_tags] if isinstance(raw_tags, list) else []
+    return Memory(
+        content=content,
+        memory_type=memory_type,
+        source=source,
+        tags=tags or ["live", "sdk"],
+    )
 
 
 def infer_tags(skill: str, task: str, paths: list[str]) -> list[str]:
@@ -331,9 +434,23 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description="Memanto bridge for Claude Code skill lifecycle hooks."
     )
-    parser.add_argument("--backend", choices=["local", "memanto"], default="local")
+    parser.add_argument(
+        "--backend",
+        choices=["local", "memanto", "sdk"],
+        default=os.environ.get("MEMANTO_SKILL_BACKEND", "local"),
+    )
     parser.add_argument("--store", default=str(DEFAULT_STORE))
     parser.add_argument("--memanto-command", default=os.environ.get("MEMANTO_CLI", "memanto"))
+    parser.add_argument(
+        "--moorcheh-api-key",
+        default=os.environ.get("MOORCHEH_API_KEY", ""),
+        help="Moorcheh API key for the direct SDK backend.",
+    )
+    parser.add_argument(
+        "--agent-id",
+        default=os.environ.get("MEMANTO_AGENT_ID", "claudecode-skills"),
+        help="Memanto agent id for the direct SDK backend.",
+    )
 
     subparsers = parser.add_subparsers(dest="command", required=True)
 
