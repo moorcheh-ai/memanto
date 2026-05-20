@@ -66,3 +66,5 @@ This lets a later `/tdd`, `/handoff`, or `/grill-with-docs` invocation retrieve 
 ## Offline Testability
 
 The hook depends on a small `MemoryBackend` protocol. Tests use an in-memory fake backend, so the example can be reviewed and verified without a Moorcheh API key or network access.
+
+See `demo-transcript.md` for a concrete before/after run that stores a skill decision and injects it into a later skill prompt.
