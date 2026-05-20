@@ -38,6 +38,19 @@ The `before` command writes a concise context block to
 `.memanto-skill-memory/injected-context.md`. Paste or include that block in the
 next skill prompt so later skills inherit relevant architectural decisions.
 
+For a full lifecycle wrapper, put the target command after `--`:
+
+```bash
+python examples/claudecode-skills-memanto/skill_memory.py wrap \
+  --skill tdd \
+  --task "Implement API client retry handling" \
+  --paths "src/api/client.ts" \
+  -- python -c "print('Decision: keep retries in the transport adapter')"
+```
+
+The wrapper recalls memory, runs the command, captures the transcript, and
+stores durable decisions from the result.
+
 ## What it captures
 
 The bridge looks for durable engineering signals such as:
@@ -56,6 +69,7 @@ credentials.
 ## Files
 
 - `skill_memory.py` - before/after hook wrapper.
+- `validate.py` - credential-free smoke test for reviewers.
 - `skills/memanto-memory-bridge/SKILL.md` - Claude Code skill glue.
 - `demo/demo-transcript.md` - sample two-skill walkthrough.
 - `sample-output/injected-context.md` - example injected memory block.

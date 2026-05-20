@@ -252,6 +252,57 @@ def command_after(args: argparse.Namespace) -> int:
     return 0
 
 
+def command_wrap(args: argparse.Namespace) -> int:
+    if args.command and args.command[0] == "--":
+        args.command = args.command[1:]
+    if not args.command:
+        print("wrap requires a command after --", file=sys.stderr)
+        return 2
+
+    before_args = argparse.Namespace(
+        skill=args.skill,
+        task=args.task,
+        paths=args.paths,
+        agent=args.agent,
+    )
+    command_before(before_args)
+
+    transcript_path = Path(args.transcript)
+    transcript_path.parent.mkdir(parents=True, exist_ok=True)
+    result = subprocess.run(
+        args.command,
+        check=False,
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    )
+
+    transcript = [
+        f"# Skill transcript: {args.skill}",
+        "",
+        f"Task: {args.task}",
+        f"Command: {' '.join(args.command)}",
+        "",
+        "## stdout",
+        result.stdout.strip(),
+        "",
+        "## stderr",
+        result.stderr.strip(),
+        "",
+    ]
+    transcript_path.write_text("\n".join(transcript), encoding="utf-8")
+
+    after_args = argparse.Namespace(
+        skill=args.skill,
+        task=args.task,
+        paths=args.paths,
+        transcript=str(transcript_path),
+        agent=args.agent,
+    )
+    command_after(after_args)
+    return result.returncode
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     subparsers = parser.add_subparsers(dest="command", required=True)
@@ -270,6 +321,15 @@ def build_parser() -> argparse.ArgumentParser:
     after.add_argument("--transcript", required=True)
     after.add_argument("--agent", default=DEFAULT_AGENT)
     after.set_defaults(func=command_after)
+
+    wrap = subparsers.add_parser("wrap", help="run a skill command with memory hooks")
+    wrap.add_argument("--skill", required=True)
+    wrap.add_argument("--task", required=True)
+    wrap.add_argument("--paths", nargs="*", default=[])
+    wrap.add_argument("--transcript", default=str(STATE_DIR / "session.md"))
+    wrap.add_argument("--agent", default=DEFAULT_AGENT)
+    wrap.add_argument("command", nargs=argparse.REMAINDER)
+    wrap.set_defaults(func=command_wrap)
 
     return parser
 
