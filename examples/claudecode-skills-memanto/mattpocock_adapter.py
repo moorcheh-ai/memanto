@@ -4,10 +4,12 @@ from __future__ import annotations
 
 import argparse
 import json
+import shutil
 import shlex
 from pathlib import Path
 
 DEFAULT_SKILLS = ("/grill-with-docs", "/tdd", "/handoff")
+SUPPORT_SCRIPT = Path(__file__).with_name("skill_memory.py")
 
 
 def wrapper_script(skill: str, target_command: str) -> str:
@@ -55,6 +57,7 @@ exit "$STATUS"
 def generate(args: argparse.Namespace) -> int:
     output_dir = Path(args.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(SUPPORT_SCRIPT, output_dir / SUPPORT_SCRIPT.name)
     manifest = {}
     for skill in args.skills:
         name = skill.strip("/").replace("/", "-")

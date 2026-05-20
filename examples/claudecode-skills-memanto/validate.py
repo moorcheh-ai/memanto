@@ -37,6 +37,19 @@ def main() -> int:
         )
         if "grill-with-docs" not in manifest or not any(wrappers.iterdir()):
             raise AssertionError("wrapper generation did not create skill adapters")
+        wrapper = wrappers / "tdd-with-memanto"
+        if not wrapper.exists():
+            raise AssertionError("expected tdd wrapper was not generated")
+        temp_path = Path(temp)
+        wrapper_output = run(
+            [str(wrapper), "wrapper execution stores durable auth context"],
+            cwd=temp_path,
+        )
+        if "Stored" not in wrapper_output:
+            raise AssertionError("generated wrapper did not complete memory lifecycle")
+        run_files = list((temp_path / ".memanto-skill-memory" / "runs").glob("*.json"))
+        if not run_files:
+            raise AssertionError("generated wrapper did not persist a skill run JSON")
     print("credential-free validation passed")
     return 0
 

@@ -325,11 +325,12 @@ def classify_memory(sentence: str) -> str:
 
 
 def split_signal(text: str) -> list[str]:
-    normalized = re.sub(r"\s+", " ", text).strip()
-    if not normalized:
+    stripped = text.strip()
+    if not stripped:
         return []
-    candidates = re.split(r"(?<=[.!?])\s+|(?:\n\s*[-*]\s+)", normalized)
-    return [candidate.strip(" -") for candidate in candidates if len(candidate.strip()) >= 24]
+    candidates = re.split(r"(?<=[.!?])\s+|\n\s*[-*]\s+", stripped)
+    normalized = [re.sub(r"\s+", " ", candidate).strip(" -") for candidate in candidates]
+    return [candidate for candidate in normalized if len(candidate) >= 24]
 
 
 def extract_memories(run: SkillRun, max_items: int = 6) -> list[EngineeringMemory]:

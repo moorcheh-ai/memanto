@@ -56,7 +56,9 @@ This creates executable wrappers for:
 - `handoff-with-memanto`
 
 Each wrapper recalls context before running the target command, captures the
-command output, and stores distilled memories afterward.
+command output, and stores distilled memories afterward. The generator also
+copies the helper script into the wrapper directory, so the wrappers remain
+executable when they are placed on `PATH`.
 
 ## Live Memanto Mode
 
@@ -147,7 +149,8 @@ python skill_memory.py post-skill --run-json run.json
 - `skill_memory.py`: extraction, local backend, optional Memanto CLI backend,
   `pre-skill`, `post-skill`, and demo commands
 - `mattpocock_adapter.py`: wrapper generator for slash-command style skills
-- `validate.py`: no-credential validation script
+- `validate.py`: no-credential validation script, including generated wrapper
+  execution
 - `test_skill_memory.py`: focused unit tests
 - `demo_transcript.md`: reviewable proof of cross-skill recall
 

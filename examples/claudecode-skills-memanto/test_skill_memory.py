@@ -17,6 +17,7 @@ from skill_memory import (
     SkillRun,
     extract_memories,
     render_injected_context,
+    split_signal,
 )
 
 
@@ -107,6 +108,16 @@ class SkillMemoryTests(unittest.TestCase):
         self.assertEqual(len(memories), 2)
         self.assertEqual(memories[0].memory_type, "decision")
         self.assertEqual(memories[1].memory_type, "preference")
+
+    def test_split_signal_preserves_bulleted_skill_output(self) -> None:
+        signals = split_signal(
+            "Decision summary:\n"
+            "- Decision: keep auth middleware stateless for tenant isolation.\n"
+            "- Must: avoid global mutable caches in parallel tests.\n"
+        )
+        self.assertEqual(len(signals), 2)
+        self.assertIn("Decision: keep auth middleware stateless", signals[0])
+        self.assertIn("avoid global mutable caches", signals[1])
 
     def test_local_backend_ranks_by_query_overlap(self) -> None:
         with tempfile.TemporaryDirectory() as temp:
