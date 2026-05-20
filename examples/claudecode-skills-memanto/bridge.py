@@ -296,15 +296,14 @@ def wrap(skill: str, target: str, transcript: str = "") -> dict[str, Any]:
 # ── Benchmark ────────────────────────────────────────────────────
 
 def benchmark() -> dict[str, Any]:
-    """Simulate multi-skill workflow on the same target and measure context reuse."""
+    """Simulate multi-skill workflow and measure cross-skill context transfer."""
     print("=== Memanto Skill Memory Bridge — Productivity Benchmark ===\n")
 
-    # All skills target the same file — realistic workflow
     target = "src/auth.ts"
     skills = [
         ("/grill-with-docs", target, "Decision: Use OAuth 2.1 with PKCE. Prefer JWT over sessions. Must support MFA."),
-        ("/tdd", target, "Added 12 unit tests for OAuth flow. Edge cases: expired tokens, rate limiting, MFA enrollment."),
-        ("/handoff", target, "Auth module complete. Token refresh stored. Next: session management, logout flow."),
+        ("/tdd", target, "Added 12 unit tests for OAuth flow. Edge cases: expired tokens, rate limiting."),
+        ("/handoff", target, "Auth module complete. Token refresh stored. Next: session management."),
     ]
 
     memories_stored = 0
@@ -313,26 +312,42 @@ def benchmark() -> dict[str, Any]:
     for skill, target_path, transcript in skills:
         print(f"--- {skill} {target_path} ---")
         ctx = _inject_context(target_path, skill)
+
         if ctx:
             contexts_found += 1
+            preview = ctx[:120].replace("\n", " | ")
+            print(f"  pre : FOUND ({len(ctx)} chars) — {preview}...")
+        else:
+            print(f"  pre : NONE (no prior context yet)")
+
         mid = post(skill, target_path, transcript)
         if mid:
             memories_stored += 1
+        print(f"  post: stored = {bool(mid)}")
         print()
 
-    # First skill never has context, remaining should
-    effective_contexts = contexts_found
-    reducible_runs = max(1, (len(skills) - 1))
-    reduction = min(100, round((effective_contexts / reducible_runs) * 100))
+    # A run is "reducible" if context existed from prior skills.
+    # The first run never has context; subsequent runs should find it.
+    reducible = len(skills) - 1
+    reduction = round((contexts_found / reducible) * 100) if reducible > 0 else 0
 
-    result = {
+    print("--- Summary ---")
+    print(f"  Total runs            : {len(skills)}")
+    print(f"  Reducible runs        : {reducible} (runs 2-N that should reuse context)")
+    print(f"  Context hits          : {contexts_found}")
+    print(f"  Memories stored       : {memories_stored}")
+    mode = "local (keyword search)" if BACKEND.strip().lower() == "local" else "live (Memanto.answer() LLM)"
+    print(f"  Backend               : {mode}")
+    print(f"  Reduction             : {contexts_found}/{reducible} = {reduction}%")
+    print(f"\n=== Repeated instruction reduction: {reduction}% ===")
+
+    return {
         "skill_runs": len(skills),
         "memories_stored": memories_stored,
         "contexts_found": contexts_found,
+        "reducible_runs": reducible,
         "repeated_instruction_reduction_pct": reduction,
     }
-    print(f"=== Result: {reduction}% reduction in repeated instructions ===")
-    return result
 
 
 # ── Validate ─────────────────────────────────────────────────────
