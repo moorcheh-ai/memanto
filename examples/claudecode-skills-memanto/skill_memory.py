@@ -311,7 +311,9 @@ def classify_memory(sentence: str) -> str:
     lowered = sentence.lower()
     if any(word in lowered for word in ("failed", "traceback", "exception", "crash")):
         return "error"
-    if any(word in lowered for word in ("prefer", "always", "avoid", "must", "never")):
+    if any(word in lowered for word in ("prefer", "preference", "convention")):
+        return "preference"
+    if any(word in lowered for word in ("always", "avoid", "must", "never")):
         return "instruction"
     if any(word in lowered for word in ("decision", "decided", "choose", "selected", "architecture")):
         return "decision"
