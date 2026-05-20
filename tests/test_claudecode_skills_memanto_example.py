@@ -132,3 +132,44 @@ def test_command_run_redacts_printed_command_output(monkeypatch, capsys):
     assert called["run"] is True
     assert "sk-supersecrettoken" not in output
     assert "[REDACTED_SECRET]" in output
+
+
+def test_ensure_agent_creates_and_activates_missing_agent(monkeypatch):
+    """Verify missing agents are created and activated before CLI memory use."""
+    module = load_example_module()
+    calls = []
+
+    def fake_run_process(args, input_text=None):
+        calls.append(args)
+        if args[1:3] == ["agent", "activate"] and len(calls) == 1:
+            raise RuntimeError("agent not found: claudecode-skills")
+        return "ok"
+
+    monkeypatch.setattr(module, "run_process", fake_run_process)
+
+    module.ensure_agent("claudecode-skills", ["memanto"], dry_run=False)
+
+    assert [args[1:3] for args in calls] == [
+        ["agent", "activate"],
+        ["agent", "create"],
+        ["agent", "activate"],
+    ]
+
+
+def test_ensure_agent_propagates_non_missing_errors(monkeypatch):
+    """Verify permission errors do not fall through into agent creation."""
+    module = load_example_module()
+
+    def fake_run_process(args, input_text=None):
+        if args[1:3] == ["agent", "activate"]:
+            raise RuntimeError("permission denied")
+        raise AssertionError("agent create must not run after permission failure")
+
+    monkeypatch.setattr(module, "run_process", fake_run_process)
+
+    try:
+        module.ensure_agent("claudecode-skills", ["memanto"], dry_run=False)
+    except RuntimeError as error:
+        assert "permission denied" in str(error)
+    else:
+        raise AssertionError("expected RuntimeError")

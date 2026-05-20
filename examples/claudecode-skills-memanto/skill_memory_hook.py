@@ -160,7 +160,9 @@ def ensure_agent(agent_id: str, memanto: Sequence[str], dry_run: bool) -> None:
 
     try:
         run_process([*memanto, "agent", "activate", agent_id])
-    except RuntimeError:
+    except RuntimeError as error:
+        if not _is_missing_agent_error(str(error)):
+            raise
         run_process(
             [
                 *memanto,
@@ -173,6 +175,26 @@ def ensure_agent(agent_id: str, memanto: Sequence[str], dry_run: bool) -> None:
                 "Shared memory for Claude Code skill executions",
             ]
         )
+        run_process([*memanto, "agent", "activate", agent_id])
+
+
+def _is_missing_agent_error(message: str) -> bool:
+    """Return true only for errors that indicate the target agent is absent."""
+
+    lowered = message.lower()
+    agent_context = "agent" in lowered
+    if "404" in lowered and agent_context:
+        return True
+    if "does not exist" in lowered and agent_context:
+        return True
+    return any(
+        marker in lowered
+        for marker in (
+            "agent not found",
+            "no such agent",
+            "unknown agent",
+        )
+    )
 
 
 def recall_memories(
