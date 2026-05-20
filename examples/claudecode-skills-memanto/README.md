@@ -178,8 +178,14 @@ python skill_memory.py post-skill --run-json run.json
 - `productivity_benchmark.py`: three-session benchmark showing repeated
   instruction reduction across `/grill-with-docs`, `/tdd`, and `/handoff`
 - `demo_transcript.md`: reviewable proof of cross-skill recall
+- `demo_terminal.svg`: terminal-style visual proof of first-run storage and
+  later-skill recall
 - `SOCIAL_SHOWCASE.md`: optional share-ready technical summary and post copy
   for the bounty's community-engagement path
+
+## Visual Demo
+
+![Terminal demo showing Memanto recall between skills](demo_terminal.svg)
 
 ## Review Notes
 

@@ -27,6 +27,12 @@ python examples/claudecode-skills-memanto/validate.py
 python examples/claudecode-skills-memanto/productivity_benchmark.py
 ```
 
+Visual proof is included at:
+
+```text
+examples/claudecode-skills-memanto/demo_terminal.svg
+```
+
 The benchmark reports 100% repeated-instruction reduction across:
 
 ```text
@@ -75,4 +81,3 @@ python examples/claudecode-skills-memanto/mattpocock_adapter.py \
   --output-dir /tmp/memanto-skill-wrappers \
   --target-command claude
 ```
-

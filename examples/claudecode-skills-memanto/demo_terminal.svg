@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="920" height="430" viewBox="0 0 920 430" role="img" aria-labelledby="title desc">
+  <title id="title">Memanto Claude Code skills memory demo</title>
+  <desc id="desc">A terminal-style showcase of a first skill storing memories and a later skill recalling them.</desc>
+  <rect width="920" height="430" rx="16" fill="#0f172a"/>
+  <rect x="24" y="24" width="872" height="382" rx="12" fill="#111827" stroke="#334155"/>
+  <circle cx="54" cy="52" r="7" fill="#ef4444"/>
+  <circle cx="78" cy="52" r="7" fill="#f59e0b"/>
+  <circle cx="102" cy="52" r="7" fill="#22c55e"/>
+  <text x="132" y="57" fill="#94a3b8" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="15">claudecode-skills-memanto</text>
+  <text x="48" y="102" fill="#38bdf8" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="17">$ /grill-with-docs --task "Review auth plan"</text>
+  <text x="48" y="136" fill="#cbd5e1" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="17">MEMANTO_SKILL_CONTEXT:</text>
+  <text x="72" y="166" fill="#94a3b8" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="16">- No relevant prior engineering memories found.</text>
+  <text x="48" y="202" fill="#22c55e" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="17">Stored 4 typed memories</text>
+  <text x="72" y="232" fill="#cbd5e1" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="16">decision, instruction, preference, artifact</text>
+  <text x="48" y="282" fill="#38bdf8" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="17">$ /tdd --files services/api/auth.py</text>
+  <text x="48" y="316" fill="#cbd5e1" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="17">MEMANTO_SKILL_CONTEXT:</text>
+  <text x="72" y="346" fill="#f8fafc" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="16">- Keep auth middleware stateless.</text>
+  <text x="72" y="374" fill="#f8fafc" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="16">- Reuse server-side validation helpers for auth files.</text>
+</svg>
