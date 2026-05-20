@@ -61,6 +61,10 @@ command output, and stores distilled memories afterward. The generator also
 copies the helper script into the wrapper directory, so the wrappers remain
 executable when they are placed on `PATH`.
 
+Wrappers print the recalled context for transparency and export the same block
+as `MEMANTO_SKILL_CONTEXT`, letting child processes consume the prompt-ready
+constraints directly instead of scraping terminal output.
+
 ## Live Memanto Mode
 
 Install and configure Memanto:

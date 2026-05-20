@@ -22,10 +22,12 @@ TASK="${{*:-Run {skill}}}"
 RUN_DIR="${{SKILL_MEMORY_RUN_DIR:-.memanto-skill-memory/runs}}"
 mkdir -p "$RUN_DIR"
 
-python "$(dirname "$0")/skill_memory.py" pre-skill \\
+SKILL_CONTEXT="$(python "$(dirname "$0")/skill_memory.py" pre-skill \\
   --skill {quoted_skill} \\
   --task "$TASK" \\
-  --cwd "$PWD"
+  --cwd "$PWD")"
+export MEMANTO_SKILL_CONTEXT="$SKILL_CONTEXT"
+printf '%s\\n' "$SKILL_CONTEXT"
 
 OUTPUT_FILE="$(mktemp)"
 set +e

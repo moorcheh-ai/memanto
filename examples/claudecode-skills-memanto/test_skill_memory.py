@@ -9,6 +9,7 @@ from unittest.mock import Mock, patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
+from mattpocock_adapter import wrapper_script
 from productivity_benchmark import run_benchmark
 from skill_memory import (
     EngineeringMemory,
@@ -224,6 +225,12 @@ class SkillMemoryTests(unittest.TestCase):
         self.assertEqual(metrics["baseline_repeated_instructions"], 6)
         self.assertEqual(metrics["memanto_injected_constraints"], 6)
         self.assertEqual(metrics["repeated_instruction_reduction_pct"], 100.0)
+
+    def test_generated_wrapper_exports_skill_context_for_child_processes(self) -> None:
+        script = wrapper_script("/tdd", "claude")
+        self.assertIn("export MEMANTO_SKILL_CONTEXT", script)
+        self.assertIn("printf '%s\\n' \"$SKILL_CONTEXT\"", script)
+        self.assertIn("pre-skill", script)
 
 
 if __name__ == "__main__":
