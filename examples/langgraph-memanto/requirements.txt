@@ -2,3 +2,6 @@ langgraph
 langchain
 langchain-openai
 memanto
+langgraph>=0.0.30
+langchain-openai
+pydantic>=2.0.0
