@@ -292,6 +292,28 @@ def test_mattpocock_adapter_builds_memory_aware_skill_spec() -> None:
     assert "skill prompt" in spec.prompt_prefix
 
 
+def test_mattpocock_adapter_writes_command_wrappers(tmp_path) -> None:
+    paths = adapter.write_command_wrappers(
+        tmp_path / "commands",
+        task="Prepare memory-aware skills",
+        files=["src/billing/retries.ts"],
+        backend="local-jsonl",
+        store="/tmp/memory.jsonl",
+    )
+
+    assert sorted(path.name for path in paths) == [
+        "grill-with-docs.md",
+        "handoff.md",
+        "tdd.md",
+    ]
+    tdd_wrapper = (tmp_path / "commands" / "tdd.md").read_text(encoding="utf-8")
+    assert tdd_wrapper.startswith("# /tdd")
+    assert "memanto_skills_hook.py" in tdd_wrapper
+    assert "--backend" in tdd_wrapper
+    assert "$TRANSCRIPT_FILE" in tdd_wrapper
+    assert "src/billing/retries.ts" in tdd_wrapper
+
+
 def test_static_hook_manifest_covers_named_skills() -> None:
     manifest = json.loads(HOOK_MANIFEST_PATH.read_text(encoding="utf-8"))
 

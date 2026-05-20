@@ -95,6 +95,37 @@ def main() -> int:
         if not expected_adapter:
             raise AssertionError(adapter_output)
 
+        wrappers_dir = Path(tmp) / "commands"
+        install_output = run_command(
+            [
+                sys.executable,
+                str(ADAPTER),
+                "install",
+                "--backend",
+                "local-jsonl",
+                "--store",
+                store,
+                "--output-dir",
+                str(wrappers_dir),
+                "--task",
+                "Prepare memory-aware Claude Code skills",
+                "--file",
+                "src/billing/retries.ts",
+            ]
+        )
+        written = json.loads(install_output)
+        if len(written) != 3:
+            raise AssertionError(install_output)
+        wrapper_text = (wrappers_dir / "tdd.md").read_text(encoding="utf-8")
+        expected_wrapper = (
+            "# /tdd" in wrapper_text
+            and "memanto_skills_hook.py" in wrapper_text
+            and "$TRANSCRIPT_FILE" in wrapper_text
+            and "--backend" in wrapper_text
+        )
+        if not expected_wrapper:
+            raise AssertionError(wrapper_text)
+
         manifest = json.loads(HOOK_MANIFEST.read_text(encoding="utf-8"))
         for skill in ("grill-with-docs", "tdd", "handoff"):
             entry = manifest["skills"][skill]
