@@ -61,6 +61,20 @@ command output, and stores distilled memories afterward. The generator also
 copies the helper script into the wrapper directory, so the wrappers remain
 executable when they are placed on `PATH`.
 
+If you have a checkout of `mattpocock/skills`, point the adapter at the real
+skills tree and it will generate wrappers for every discovered `SKILL.md`:
+
+```bash
+git clone https://github.com/mattpocock/skills.git .memanto-skill-memory/mattpocock-skills
+python mattpocock_adapter.py \
+  --skills-dir .memanto-skill-memory/mattpocock-skills/skills \
+  --output-dir .memanto-skill-memory/bin \
+  --target-command claude
+```
+
+This keeps the demo aligned with the upstream skills repository while still
+letting reviewers run the default three-skill path without network access.
+
 Wrappers print the recalled context for transparency and export the same block
 as `MEMANTO_SKILL_CONTEXT`, letting child processes consume the prompt-ready
 constraints directly instead of scraping terminal output.

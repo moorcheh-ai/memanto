@@ -47,6 +47,26 @@ def main() -> int:
         )
         if "grill-with-docs" not in manifest or not any(wrappers.iterdir()):
             raise AssertionError("wrapper generation did not create skill adapters")
+        skills_checkout = Path(temp) / "mattpocock-skills" / "skills"
+        (skills_checkout / "engineering" / "diagnose").mkdir(parents=True)
+        (skills_checkout / "engineering" / "diagnose" / "SKILL.md").write_text(
+            "name: diagnose\nUse for disciplined debugging.\n",
+            encoding="utf-8",
+        )
+        discovered = run(
+            [
+                sys.executable,
+                "mattpocock_adapter.py",
+                "--output-dir",
+                str(Path(temp) / "discovered-bin"),
+                "--target-command",
+                "printf",
+                "--skills-dir",
+                str(skills_checkout),
+            ]
+        )
+        if "/diagnose" not in discovered:
+            raise AssertionError("mattpocock-style skill discovery failed")
         wrapper = wrappers / "tdd-with-memanto"
         if not wrapper.exists():
             raise AssertionError("expected tdd wrapper was not generated")

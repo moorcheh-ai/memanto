@@ -12,6 +12,28 @@ DEFAULT_SKILLS = ("/grill-with-docs", "/tdd", "/handoff")
 SUPPORT_SCRIPT = Path(__file__).with_name("skill_memory.py")
 
 
+def _metadata_value(skill_file: Path, key: str) -> str | None:
+    prefix = f"{key}:"
+    for line in skill_file.read_text(encoding="utf-8").splitlines()[:40]:
+        if line.lower().startswith(prefix):
+            return line.split(":", 1)[1].strip()
+    return None
+
+
+def discover_skills(skills_dir: Path) -> list[str]:
+    """Discover slash-command names from a mattpocock/skills-style tree."""
+    discovered: list[str] = []
+    for skill_file in sorted(skills_dir.rglob("SKILL.md")):
+        if any(
+            part.startswith(".") for part in skill_file.relative_to(skills_dir).parts
+        ):
+            continue
+        name = _metadata_value(skill_file, "name") or skill_file.parent.name
+        command = name if name.startswith("/") else f"/{name}"
+        discovered.append(command)
+    return discovered
+
+
 def wrapper_script(skill: str, target_command: str) -> str:
     quoted_skill = shlex.quote(skill)
     quoted_target = shlex.quote(target_command)
@@ -92,7 +114,12 @@ def generate(args: argparse.Namespace) -> int:
     output_dir.mkdir(parents=True, exist_ok=True)
     shutil.copy2(SUPPORT_SCRIPT, output_dir / SUPPORT_SCRIPT.name)
     manifest = {}
-    for skill in args.skills:
+    skills = args.skills
+    if args.skills_dir:
+        skills = discover_skills(Path(args.skills_dir))
+        if not skills:
+            raise SystemExit(f"no SKILL.md files found under {args.skills_dir}")
+    for skill in skills:
         name = skill.strip("/").replace("/", "-")
         path = output_dir / f"{name}-with-memanto"
         path.write_text(wrapper_script(skill, args.target_command), encoding="utf-8")
@@ -106,6 +133,13 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output-dir", default=".memanto-skill-memory/bin")
     parser.add_argument("--target-command", default="claude")
+    parser.add_argument(
+        "--skills-dir",
+        help=(
+            "Discover every SKILL.md in a mattpocock/skills-style checkout "
+            "instead of using the default demo skills."
+        ),
+    )
     parser.add_argument("--skills", nargs="*", default=list(DEFAULT_SKILLS))
     args = parser.parse_args()
     return generate(args)

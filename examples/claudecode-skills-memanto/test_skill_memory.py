@@ -9,7 +9,7 @@ from unittest.mock import Mock, patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from mattpocock_adapter import wrapper_script
+from mattpocock_adapter import discover_skills, wrapper_script
 from productivity_benchmark import run_benchmark
 from skill_memory import (
     EngineeringMemory,
@@ -237,6 +237,33 @@ class SkillMemoryTests(unittest.TestCase):
         self.assertIn("SKILL_MEMORY_FILES", script)
         self.assertIn('--files "${SKILL_FILES[@]}"', script)
         self.assertIn('"files": files', script)
+
+    def test_discovers_mattpocock_style_skill_tree(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp) / "skills"
+            tdd = root / "engineering" / "tdd"
+            handoff = root / "productivity" / "handoff"
+            hidden = root / ".internal" / "skip-me"
+            tdd.mkdir(parents=True)
+            handoff.mkdir(parents=True)
+            hidden.mkdir(parents=True)
+            tdd.joinpath("SKILL.md").write_text(
+                "name: tdd\nUse when writing tests.\n",
+                encoding="utf-8",
+            )
+            handoff.joinpath("SKILL.md").write_text(
+                "# Handoff\n",
+                encoding="utf-8",
+            )
+            hidden.joinpath("SKILL.md").write_text(
+                "name: skip-me\n",
+                encoding="utf-8",
+            )
+
+            self.assertEqual(
+                discover_skills(root),
+                ["/tdd", "/handoff"],
+            )
 
 
 if __name__ == "__main__":
