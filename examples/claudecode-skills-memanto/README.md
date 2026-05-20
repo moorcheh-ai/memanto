@@ -80,6 +80,9 @@ It performs the same two-skill local flow and fails if a later `/tdd` run does
 not recover the architectural decision, response-compatibility rule,
 dependency-light preference, and pytest command without repeated instructions.
 
+For share-ready X, LinkedIn, or Reddit copy, see
+[`SOCIAL_SHOWCASE.md`](SOCIAL_SHOWCASE.md).
+
 ## mattpocock/skills Manifest Check
 
 The upstream `mattpocock/skills` repo lists runnable skills in
@@ -162,6 +165,7 @@ examples/claudecode-skills-memanto/
 ├── bridge.py
 ├── skills_manifest.py
 ├── productivity_check.py
+├── SOCIAL_SHOWCASE.md
 ├── run_offline_demo.sh
 ├── skill_memory_hook.sh
 ├── demo/
