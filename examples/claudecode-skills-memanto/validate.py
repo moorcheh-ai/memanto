@@ -11,6 +11,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
 HOOK = ROOT / "memanto_skills_hook.py"
+ADAPTER = ROOT / "mattpocock_adapter.py"
 
 
 def run_command(args: list[str]) -> str:
@@ -67,6 +68,30 @@ def main() -> int:
         )
         if not expected:
             raise AssertionError(pre_output)
+
+        adapter_output = run_command(
+            [
+                sys.executable,
+                str(ADAPTER),
+                "handoff",
+                "--backend",
+                "local-jsonl",
+                "--store",
+                store,
+                "--task",
+                "Prepare a billing retry handoff",
+                "--file",
+                "src/billing/retries.ts",
+            ]
+        )
+        expected_adapter = (
+            '"/handoff"' in adapter_output
+            and '"pre_hook"' in adapter_output
+            and '"post_hook"' in adapter_output
+            and "mattpocock-skills" in adapter_output
+        )
+        if not expected_adapter:
+            raise AssertionError(adapter_output)
 
     print("local-jsonl validation passed")
     return 0

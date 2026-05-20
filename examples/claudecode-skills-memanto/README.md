@@ -61,6 +61,18 @@ python examples/claudecode-skills-memanto/run_skill_with_memory.py \
 
 In a real Claude Code skill runner, wire the `pre` output into the generated prompt and pipe the skill transcript to `post` when the command finishes.
 
+## mattpocock/skills Adapter
+
+`mattpocock_adapter.py` prints a small JSON command contract for the named skills in the bounty: `/grill-with-docs`, `/tdd`, and `/handoff`.
+
+```bash
+python examples/claudecode-skills-memanto/mattpocock_adapter.py handoff \
+  --task "Prepare the billing retry handoff" \
+  --file src/billing/retries.ts
+```
+
+The emitted `pre_hook` recalls relevant engineering memory before the skill starts. The emitted `post_hook` stores the completed skill transcript afterward, so a later skill can reuse the same architectural decisions.
+
 ## What Gets Remembered
 
 The stored memory includes:

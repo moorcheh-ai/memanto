@@ -18,6 +18,20 @@ hook = importlib.util.module_from_spec(spec)
 sys.modules["memanto_skills_hook"] = hook
 spec.loader.exec_module(hook)
 
+ADAPTER_PATH = (
+    Path(__file__).resolve().parents[1]
+    / "examples"
+    / "claudecode-skills-memanto"
+    / "mattpocock_adapter.py"
+)
+adapter_spec = importlib.util.spec_from_file_location(
+    "mattpocock_adapter", ADAPTER_PATH
+)
+assert adapter_spec and adapter_spec.loader
+adapter = importlib.util.module_from_spec(adapter_spec)
+sys.modules["mattpocock_adapter"] = adapter
+adapter_spec.loader.exec_module(adapter)
+
 
 class FakeBackend:
     def __init__(self) -> None:
@@ -95,3 +109,20 @@ def test_local_jsonl_backend_round_trips_memory(tmp_path) -> None:
     memories = backend.recall("tdd billing retries", limit=3)
 
     assert memories == ["Keep billing retry delays deterministic in tests."]
+
+
+def test_mattpocock_adapter_builds_memory_aware_skill_spec() -> None:
+    spec = adapter.build_skill_spec(
+        "grill-with-docs",
+        task="Review billing retry architecture",
+        files=["src/billing/retries.ts"],
+        backend="local-jsonl",
+        store="/tmp/memory.jsonl",
+    )
+
+    assert spec.command == "/grill-with-docs"
+    assert "pre" in spec.pre_hook
+    assert "post" in spec.post_hook
+    assert "--store" in spec.pre_hook
+    assert "src/billing/retries.ts" in spec.post_hook
+    assert "skill prompt" in spec.prompt_prefix
