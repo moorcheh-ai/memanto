@@ -2,7 +2,7 @@
 
 This directory contains a real-world example of CrewAI agents using **Memanto** as their shared, persistent memory layer. Two agents collaborate through a semantic memory database that survives across sessions, agents, and runs.
 
-> **Note**: The core integration tools used in this example are published to PyPI as `memanto-crewai`. For deep documentation on the architecture, setup instructions, and API details of the integration itself, please read the [memanto-crewai package README](../../integrations/crewai/README.md).
+> **Note**: The core integration tools used in this example are published to PyPI as `crewai-memanto`. For deep documentation on the architecture, setup instructions, and API details of the integration itself, please read the [crewai-memanto package README](../../integrations/crewai/README.md).
 
 ## Architecture
 
@@ -52,7 +52,7 @@ python run_contradiction.py
 ```text
 examples/crewai-memory/
 ├── README.md              # This file
-├── requirements.txt       # Python dependencies (includes memanto-crewai)
+├── requirements.txt       # Python dependencies (includes crewai-memanto)
 ├── .env.example           # API key template
 ├── agents.py              # Research Agent + Writer Agent definitions
 ├── tasks.py               # Task definitions

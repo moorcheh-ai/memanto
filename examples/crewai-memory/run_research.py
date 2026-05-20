@@ -16,8 +16,8 @@ import os
 import sys
 
 from crew import build_research_crew
+from crewai_memanto import MemantoSetup
 from dotenv import load_dotenv
-from memanto_crewai import MemantoSetup
 
 AGENT_ID = "crewai-research-team"
 TOPIC = "AI agent frameworks"
@@ -55,7 +55,7 @@ def main() -> None:
         print(f"\n{'=' * 60}")
         print("  Research Complete!")
         print(f"{'=' * 60}")
-        print(f"\nResult:\n{result.raw}")
+        print(f"\nResult:\n{result}")
         print(
             "\nMemories are now stored in Memanto. Run `python run_writer.py` "
             "to see the Writer Agent retrieve them in a separate session."

@@ -5,7 +5,7 @@ This package provides [CrewAI](https://github.com/joaomdmoura/crewai) tools for 
 ## Installation
 
 ```bash
-pip install memanto-crewai
+pip install crewai-memanto
 ```
 
 ---
@@ -117,7 +117,7 @@ crew = Crew(
 
 ```python
 from memanto.cli.client.sdk_client import SdkClient
-from memanto_crewai import MemantoSetup, create_memanto_tools
+from crewai_memanto import MemantoSetup, create_memanto_tools
 
 # 1. Set up Memanto (one-time per session)
 setup = MemantoSetup(api_key="your-moorcheh-key")

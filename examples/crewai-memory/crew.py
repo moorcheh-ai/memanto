@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from agents import create_research_agent, create_writer_agent
 from crewai import Crew, Process
-from memanto_crewai import create_memanto_tools
+from crewai_memanto import create_memanto_tools
 from tasks import create_research_task, create_writing_task
 
 from memanto.cli.client.sdk_client import SdkClient
