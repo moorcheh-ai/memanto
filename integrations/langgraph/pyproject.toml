@@ -1,0 +1,12 @@
+[project]
+name = "memanto-langgraph"
+version = "0.1.0"
+description = "Native Memanto persistence for LangGraph"
+dependencies = [
+    "langgraph>=0.0.30",
+    "memanto>=0.1.0"
+]
+
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
