@@ -263,6 +263,8 @@ def normalize_wrapped_command(command: Sequence[str]) -> list[str]:
 
 
 def command_before(args: argparse.Namespace) -> int:
+    """Handle the ``before`` subcommand by printing recalled memories."""
+
     block = recall_memories(
         skill_name=args.skill_name,
         task=args.task,
@@ -276,6 +278,8 @@ def command_before(args: argparse.Namespace) -> int:
 
 
 def command_after(args: argparse.Namespace) -> int:
+    """Handle the ``after`` subcommand by storing transcript-derived memories."""
+
     transcript = read_transcript(args.transcript_file, args.summary)
     payloads = extract_memory_candidates(
         skill_name=args.skill_name,
@@ -295,6 +299,8 @@ def command_after(args: argparse.Namespace) -> int:
 
 
 def command_run(args: argparse.Namespace) -> int:
+    """Run a wrapped command between memory recall and memory writeback."""
+
     command = normalize_wrapped_command(args.command)
 
     context_block = recall_memories(
@@ -334,6 +340,8 @@ def command_run(args: argparse.Namespace) -> int:
 
 
 def build_parser() -> argparse.ArgumentParser:
+    """Create the CLI argument parser."""
+
     parser = argparse.ArgumentParser(
         description="Memanto memory hook for Claude Code skill executions."
     )
@@ -346,6 +354,8 @@ def build_parser() -> argparse.ArgumentParser:
     subparsers = parser.add_subparsers(dest="command_name", required=True)
 
     def add_common(subparser: argparse.ArgumentParser) -> None:
+        """Attach common skill metadata options to a subcommand."""
+
         subparser.add_argument("--skill-name", required=True)
         subparser.add_argument("--task", required=True)
         subparser.add_argument("--path")
@@ -371,6 +381,8 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def main(argv: Sequence[str] | None = None) -> int:
+    """Parse arguments and dispatch to the selected subcommand."""
+
     parser = build_parser()
     args = parser.parse_args(argv)
     try:
