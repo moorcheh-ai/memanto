@@ -5,6 +5,8 @@ The module keeps the integration small on purpose:
 - local preview mode is deterministic and credential-free for reviewers
 - Memanto CLI mode can be used when the developer has already configured the
   standard `memanto` command with Moorcheh credentials
+- Memanto SDK mode uses the repository's Python package directly when
+  credentials and an active agent/session are available
 """
 
 from __future__ import annotations
@@ -22,6 +24,7 @@ from typing import Iterable, Protocol
 
 MEMORY_ENV = "MEMANTO_SKILLS_MEMORY"
 BACKEND_ENV = "MEMANTO_SKILLS_BACKEND"
+AGENT_ENV = "MEMANTO_SKILLS_AGENT_ID"
 
 
 @dataclass
@@ -110,6 +113,57 @@ class MemantoCliMemoryStore:
         return memories[:limit]
 
 
+class MemantoSdkMemoryStore:
+    """Adapter that uses the Memanto Python package directly."""
+
+    def __init__(self, agent_id: str | None = None) -> None:
+        from memanto.cli.client.sdk_client import SdkClient
+        from memanto.cli.config.manager import ConfigManager
+
+        self.config_manager = ConfigManager()
+        api_key = self.config_manager.get_api_key()
+        if not api_key:
+            raise RuntimeError(
+                "Memanto is not configured. Run `memanto` or set up a Moorcheh API key."
+            )
+
+        active_agent_id, active_session_token = self.config_manager.get_active_session()
+        self.agent_id = agent_id or os.getenv(AGENT_ENV) or active_agent_id
+        if not self.agent_id:
+            raise RuntimeError(
+                "No active Memanto agent. Run `memanto agent activate <agent-id>` "
+                f"or set {AGENT_ENV}."
+            )
+
+        self.client = SdkClient(api_key)
+        self.client.agent_id = self.agent_id
+        self.client.session_token = active_session_token
+
+    def remember(self, record: MemoryRecord) -> None:
+        self.client.remember(
+            agent_id=self.agent_id,
+            memory_type="decision",
+            title=_title_for(record),
+            content=_format_record(record),
+            confidence=0.9,
+            tags=["claudecode-skills", record.skill_name.strip("/")],
+            source=record.skill_name,
+            provenance="inferred",
+        )
+
+    def recall(self, query: str, limit: int = 5) -> list[MemoryRecord]:
+        result = self.client.recall(
+            agent_id=self.agent_id,
+            query=query,
+            limit=limit,
+            type=["decision", "preference", "instruction", "context"],
+        )
+        return [
+            _record_from_memanto_payload(memory, query)
+            for memory in result.get("memories", [])
+        ][:limit]
+
+
 class SkillMemoryHook:
     """Lifecycle hook that bridges skill execution and durable memory."""
 
@@ -188,6 +242,8 @@ class SkillMemoryHook:
 
 def build_memory_store() -> MemoryStore:
     backend = os.getenv(BACKEND_ENV, "local-preview").strip().lower()
+    if backend in {"memanto-sdk", "memanto"}:
+        return MemantoSdkMemoryStore()
     if backend == "memanto-cli":
         return MemantoCliMemoryStore()
     return LocalPreviewMemoryStore()
@@ -226,6 +282,21 @@ def _format_record(record: MemoryRecord) -> str:
     )
 
 
+def _record_from_memanto_payload(payload: dict[str, object], query: str) -> MemoryRecord:
+    text = str(payload.get("content") or payload.get("text") or "").strip()
+    return MemoryRecord(
+        text=text,
+        skill_name=str(payload.get("source") or "memanto-sdk"),
+        task=query,
+        created_at=str(payload.get("created_at") or datetime.now(timezone.utc).isoformat()),
+    )
+
+
+def _title_for(record: MemoryRecord) -> str:
+    title = record.text.replace("\n", " ").strip()
+    return title[:97] + "..." if len(title) > 100 else title
+
+
 def _first_meaningful_sentence(text: str) -> str:
     for raw_line in text.splitlines():
         line = raw_line.strip()
@@ -257,9 +328,9 @@ def _dedupe(items: Iterable[str]) -> list[str]:
 __all__ = [
     "LocalPreviewMemoryStore",
     "MemantoCliMemoryStore",
+    "MemantoSdkMemoryStore",
     "MemoryRecord",
     "SkillMemoryHook",
     "build_memory_store",
     "distill_engineering_memories",
 ]
-

@@ -8,6 +8,8 @@ The example is intentionally reviewable without private credentials:
 
 - `local-preview` mode stores memories in a local JSONL file and uses a
   deterministic token-overlap recall strategy.
+- `memanto-sdk` mode uses Memanto's Python package directly through the
+  repository's `SdkClient` and active agent/session configuration.
 - `memanto-cli` mode can be enabled when `memanto` is configured with a
   Moorcheh API key in the developer's environment.
 
@@ -53,8 +55,20 @@ Use a configured Memanto CLI instead of the local preview:
 MEMANTO_SKILLS_BACKEND=memanto-cli python demo.py
 ```
 
+Use the Memanto Python package directly after configuring an API key and active
+agent/session:
+
+```bash
+memanto
+memanto agent activate <agent-id>
+MEMANTO_SKILLS_BACKEND=memanto-sdk python demo.py
+```
+
 `memanto-cli` mode expects the repository's normal Memanto CLI setup to already
 be complete, including a Moorcheh API key and active agent/session.
+`memanto-sdk` mode uses the same configured API key and session through
+`memanto.cli.client.sdk_client.SdkClient`. If no active agent is configured, set
+`MEMANTO_SKILLS_AGENT_ID=<agent-id>`.
 
 ## Integration Pattern
 
@@ -95,6 +109,5 @@ The hook captures durable memories such as:
 ## Review Notes
 
 The local preview exists so reviewers can validate the workflow without secrets
-or hosted services. The same lifecycle interface can use Memanto through the CLI
-adapter once credentials are configured.
-
+or hosted services. The same lifecycle interface can use Memanto through the SDK
+or CLI adapter once credentials are configured.
