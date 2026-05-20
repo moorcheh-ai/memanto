@@ -1,0 +1,2 @@
+# The offline demo uses only Python's standard library.
+# Optional live mode uses the repository's memanto package and MOORCHEH_API_KEY.

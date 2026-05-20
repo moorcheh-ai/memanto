@@ -60,6 +60,8 @@ coverage.xml
 *.cover
 *.log
 .pytest_cache/
+.memanto-local/
+**/.memanto-local/
 
 # Jupyter Notebook
 .ipynb_checkpoints

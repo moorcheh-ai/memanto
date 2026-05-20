@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="980" height="420" viewBox="0 0 980 420" role="img" aria-labelledby="title desc">
+  <title id="title">Claude Code Skills + Memanto terminal demo</title>
+  <desc id="desc">A terminal transcript showing a first skill run storing memories and a later skill run receiving injected context.</desc>
+  <rect width="980" height="420" rx="12" fill="#0f172a"/>
+  <rect x="0" y="0" width="980" height="38" rx="12" fill="#111827"/>
+  <circle cx="22" cy="19" r="6" fill="#ef4444"/>
+  <circle cx="44" cy="19" r="6" fill="#f59e0b"/>
+  <circle cx="66" cy="19" r="6" fill="#22c55e"/>
+  <text x="24" y="74" fill="#e5e7eb" font-family="Menlo, Consolas, monospace" font-size="18">$ python run_demo.py --backend local --reset</text>
+  <text x="24" y="112" fill="#93c5fd" font-family="Menlo, Consolas, monospace" font-size="18">== Session 1: /grill-with-docs ==</text>
+  <text x="24" y="145" fill="#e5e7eb" font-family="Menlo, Consolas, monospace" font-size="18">MEMANTO_SKILL_CONTEXT:</text>
+  <text x="24" y="174" fill="#e5e7eb" font-family="Menlo, Consolas, monospace" font-size="18">- No relevant prior engineering memories found.</text>
+  <text x="24" y="207" fill="#86efac" font-family="Menlo, Consolas, monospace" font-size="18">Stored 3 memories</text>
+  <text x="24" y="254" fill="#93c5fd" font-family="Menlo, Consolas, monospace" font-size="18">== Session 2: /tdd ==</text>
+  <text x="24" y="287" fill="#e5e7eb" font-family="Menlo, Consolas, monospace" font-size="18">MEMANTO_SKILL_CONTEXT:</text>
+  <text x="24" y="316" fill="#fde68a" font-family="Menlo, Consolas, monospace" font-size="18">- [decision] Prefer server-side validation helpers...</text>
+  <text x="24" y="345" fill="#e5e7eb" font-family="Menlo, Consolas, monospace" font-size="18">  recalled from /grill-with-docs, not repeated by the user</text>
+  <text x="24" y="374" fill="#fde68a" font-family="Menlo, Consolas, monospace" font-size="18">- [preference] Keep PRs small enough for obvious ownership.</text>
+</svg>
