@@ -7,6 +7,7 @@ from bridge import (
     distill_transcript,
     render_context,
 )
+from productivity_check import EXPECTED_CONTEXT, run_productivity_check
 from skills_manifest import load_skill_entries, parse_frontmatter, render_markdown
 
 
@@ -95,6 +96,16 @@ $ pytest tests/test_api.py
 
     def test_parse_frontmatter_without_metadata_is_empty(self) -> None:
         self.assertEqual(parse_frontmatter("# No metadata\n"), {})
+
+    def test_productivity_check_recovers_expected_context(self) -> None:
+        exit_code, report = run_productivity_check()
+
+        self.assertEqual(exit_code, 0)
+        self.assertIn(
+            f"Repeated instructions avoided: {len(EXPECTED_CONTEXT)} / {len(EXPECTED_CONTEXT)}",
+            report,
+        )
+        self.assertIn("Rendered context block", report)
 
 
 if __name__ == "__main__":

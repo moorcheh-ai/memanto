@@ -70,6 +70,16 @@ constraints from the first transcript, including the Postgres choice,
 backwards-compatibility rule, dependency-light preference, and useful pytest
 command.
 
+To score the productivity goal directly, run:
+
+```bash
+python productivity_check.py
+```
+
+It performs the same two-skill local flow and fails if a later `/tdd` run does
+not recover the architectural decision, response-compatibility rule,
+dependency-light preference, and pytest command without repeated instructions.
+
 ## mattpocock/skills Manifest Check
 
 The upstream `mattpocock/skills` repo lists runnable skills in
@@ -140,6 +150,7 @@ python bridge.py --backend local --store demo/memory.json before \
   --skill tdd \
   --task "add pagination tests" \
   --path tests/test_api.py
+python productivity_check.py
 ```
 
 ## Files
@@ -150,6 +161,7 @@ examples/claudecode-skills-memanto/
 ├── .env.example
 ├── bridge.py
 ├── skills_manifest.py
+├── productivity_check.py
 ├── run_offline_demo.sh
 ├── skill_memory_hook.sh
 ├── demo/
