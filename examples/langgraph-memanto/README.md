@@ -66,3 +66,4 @@ python -m py_compile graph.py memory_store.py run_demo.py validate_offline.py ma
 - Cross-session recall: `support-today` recalls memories written by `support-yesterday`
 - Clean single-folder implementation
 - 30-second demo media in README
+- Share-ready post copy and validation summary: `SOCIAL_SHOWCASE.md`
