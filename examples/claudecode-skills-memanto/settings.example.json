@@ -1,0 +1,34 @@
+{
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python examples/claudecode-skills-memanto/claude_skill_memory.py --store .claude-memanto-memory.jsonl"
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python examples/claudecode-skills-memanto/claude_skill_memory.py --store .claude-memanto-memory.jsonl"
+          }
+        ]
+      }
+    ],
+    "UserPromptExpansion": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python examples/claudecode-skills-memanto/claude_skill_memory.py --store .claude-memanto-memory.jsonl"
+          }
+        ]
+      }
+    ]
+  }
+}
