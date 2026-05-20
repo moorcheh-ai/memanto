@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import argparse
 import json
-import shutil
 import shlex
+import shutil
 from pathlib import Path
 
 DEFAULT_SKILLS = ("/grill-with-docs", "/tdd", "/handoff")
@@ -33,7 +33,7 @@ set +e
 STATUS=${{PIPESTATUS[0]}}
 set -e
 
-RUN_JSON="$RUN_DIR/{skill.strip('/').replace('/', '-')}-$(date -u +%Y%m%dT%H%M%SZ).json"
+RUN_JSON="$RUN_DIR/{skill.strip("/").replace("/", "-")}-$(date -u +%Y%m%dT%H%M%SZ).json"
 python - "$RUN_JSON" {quoted_skill} "$TASK" "$PWD" "$OUTPUT_FILE" <<'PY'
 import json
 import sys

@@ -41,6 +41,7 @@ Run validation:
 ```bash
 python validate.py
 python -m unittest test_skill_memory.py
+python productivity_benchmark.py
 ```
 
 Generate wrappers for mattpocock-style skills:
@@ -152,6 +153,8 @@ python skill_memory.py post-skill --run-json run.json
 - `validate.py`: no-credential validation script, including generated wrapper
   execution
 - `test_skill_memory.py`: focused unit tests
+- `productivity_benchmark.py`: three-session benchmark showing repeated
+  instruction reduction across `/grill-with-docs`, `/tdd`, and `/handoff`
 - `demo_transcript.md`: reviewable proof of cross-skill recall
 
 ## Review Notes

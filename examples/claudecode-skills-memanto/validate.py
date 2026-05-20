@@ -7,12 +7,13 @@ import sys
 import tempfile
 from pathlib import Path
 
-
 ROOT = Path(__file__).resolve().parent
 
 
 def run(command: list[str], cwd: Path = ROOT) -> str:
-    completed = subprocess.run(command, cwd=cwd, text=True, capture_output=True, check=True)
+    completed = subprocess.run(
+        command, cwd=cwd, text=True, capture_output=True, check=True
+    )
     return completed.stdout
 
 
@@ -20,9 +21,18 @@ def main() -> int:
     with tempfile.TemporaryDirectory() as temp:
         memory_file = Path(temp) / "memory.json"
         demo_output = run(
-            [sys.executable, "skill_memory.py", "demo", "--memory-file", str(memory_file)]
+            [
+                sys.executable,
+                "skill_memory.py",
+                "demo",
+                "--memory-file",
+                str(memory_file),
+            ]
         )
-        if "stateless" not in demo_output or "auth module owns token parsing" not in demo_output:
+        if (
+            "stateless" not in demo_output
+            or "auth module owns token parsing" not in demo_output
+        ):
             raise AssertionError("demo did not recall the prior engineering decision")
         wrappers = Path(temp) / "bin"
         manifest = run(
@@ -50,6 +60,9 @@ def main() -> int:
         run_files = list((temp_path / ".memanto-skill-memory" / "runs").glob("*.json"))
         if not run_files:
             raise AssertionError("generated wrapper did not persist a skill run JSON")
+        benchmark_output = run([sys.executable, "productivity_benchmark.py"])
+        if '"repeated_instruction_reduction_pct": 100.0' not in benchmark_output:
+            raise AssertionError("productivity benchmark did not show full recall")
     print("credential-free validation passed")
     return 0
 

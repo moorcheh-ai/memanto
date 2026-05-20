@@ -1,14 +1,15 @@
 from __future__ import annotations
 
 import json
+import sys
 import tempfile
 import unittest
 from pathlib import Path
-import sys
 from unittest.mock import Mock, patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
+from productivity_benchmark import run_benchmark
 from skill_memory import (
     EngineeringMemory,
     LocalJsonBackend,
@@ -213,6 +214,16 @@ class SkillMemoryTests(unittest.TestCase):
         backend.client = Mock()
         backend.client.answer.return_value = {"answer": "No relevant memories found."}
         self.assertIsNone(backend._synthesize_constraints("new task", limit=4))
+
+    def test_productivity_benchmark_reports_instruction_reduction(self) -> None:
+        metrics = run_benchmark()
+        self.assertEqual(
+            metrics["skill_sequence"],
+            ["/grill-with-docs", "/tdd", "/handoff"],
+        )
+        self.assertEqual(metrics["baseline_repeated_instructions"], 6)
+        self.assertEqual(metrics["memanto_injected_constraints"], 6)
+        self.assertEqual(metrics["repeated_instruction_reduction_pct"], 100.0)
 
 
 if __name__ == "__main__":

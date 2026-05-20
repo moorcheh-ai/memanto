@@ -13,10 +13,11 @@ import os
 import re
 import subprocess
 import sys
+from collections.abc import Iterable
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Iterable, Protocol
+from typing import Protocol
 
 MEMORY_TYPES = {
     "artifact",
@@ -50,7 +51,7 @@ def utc_now() -> str:
 
 
 def tokenize(text: str) -> set[str]:
-    return {token for token in re.findall(r"[a-z0-9][a-z0-9_-]{2,}", text.lower())}
+    return set(re.findall(r"[a-z0-9][a-z0-9_-]{2,}", text.lower()))
 
 
 @dataclass
@@ -64,7 +65,7 @@ class SkillRun:
     files: list[str] = field(default_factory=list)
 
     @classmethod
-    def from_json(cls, path: Path) -> "SkillRun":
+    def from_json(cls, path: Path) -> SkillRun:
         payload = json.loads(path.read_text(encoding="utf-8"))
         return cls(
             skill=str(payload["skill"]),
@@ -97,11 +98,9 @@ class EngineeringMemory:
 
 
 class MemoryBackend(Protocol):
-    def remember(self, memory: EngineeringMemory) -> None:
-        ...
+    def remember(self, memory: EngineeringMemory) -> None: ...
 
-    def recall(self, query: str, limit: int) -> list[EngineeringMemory]:
-        ...
+    def recall(self, query: str, limit: int) -> list[EngineeringMemory]: ...
 
 
 class LocalJsonBackend:
@@ -315,7 +314,10 @@ def classify_memory(sentence: str) -> str:
         return "preference"
     if any(word in lowered for word in ("always", "avoid", "must", "never")):
         return "instruction"
-    if any(word in lowered for word in ("decision", "decided", "choose", "selected", "architecture")):
+    if any(
+        word in lowered
+        for word in ("decision", "decided", "choose", "selected", "architecture")
+    ):
         return "decision"
     if any(word in lowered for word in ("bug", "error", "fails", "regression")):
         return "learning"
@@ -329,7 +331,9 @@ def split_signal(text: str) -> list[str]:
     if not stripped:
         return []
     candidates = re.split(r"(?<=[.!?])\s+|\n\s*[-*]\s+", stripped)
-    normalized = [re.sub(r"\s+", " ", candidate).strip(" -") for candidate in candidates]
+    normalized = [
+        re.sub(r"\s+", " ", candidate).strip(" -") for candidate in candidates
+    ]
     return [candidate for candidate in normalized if len(candidate) >= 24]
 
 
@@ -368,7 +372,9 @@ def render_injected_context(memories: list[EngineeringMemory]) -> str:
 
 def pre_skill(args: argparse.Namespace) -> int:
     backend = build_backend()
-    query = " ".join(part for part in [args.skill, args.task, args.cwd, *args.files] if part)
+    query = " ".join(
+        part for part in [args.skill, args.task, args.cwd, *args.files] if part
+    )
     print(render_injected_context(backend.recall(query, args.limit)))
     return 0
 
@@ -408,7 +414,9 @@ def parser() -> argparse.ArgumentParser:
     root = argparse.ArgumentParser(description=__doc__)
     subcommands = root.add_subparsers(required=True)
 
-    pre = subcommands.add_parser("pre-skill", help="Print context to inject before a skill")
+    pre = subcommands.add_parser(
+        "pre-skill", help="Print context to inject before a skill"
+    )
     pre.add_argument("--skill", required=True)
     pre.add_argument("--task", required=True)
     pre.add_argument("--cwd", default=".")
