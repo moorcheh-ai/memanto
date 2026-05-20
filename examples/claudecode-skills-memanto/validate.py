@@ -7,11 +7,15 @@ from claude_skill_memory import handle_hook_event
 
 
 def require(condition: bool, message: str) -> None:
+    """Raise a clear validation error when an expected condition is false."""
+
     if not condition:
         raise RuntimeError(message)
 
 
 def main() -> int:
+    """Exercise the credential-free hook flow end to end."""
+
     with tempfile.TemporaryDirectory() as tmpdir:
         store = Path(tmpdir) / "memory.jsonl"
         stored = handle_hook_event(

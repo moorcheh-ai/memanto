@@ -32,6 +32,8 @@ logger = logging.getLogger(__name__)
 
 @dataclass(frozen=True)
 class MemoryRecord:
+    """One distilled engineering memory captured from a Claude Code hook run."""
+
     kind: str
     text: str
     cwd: str
@@ -41,6 +43,8 @@ class MemoryRecord:
 
 
 def redact_secrets(text: str) -> str:
+    """Replace common API keys and tokens before storing transcript-derived text."""
+
     redacted = text
     for pattern in SECRET_PATTERNS:
         redacted = pattern.sub("[REDACTED]", redacted)
@@ -50,6 +54,8 @@ def redact_secrets(text: str) -> str:
 def distill_memories(
     transcript: str, cwd: str, skill: str = "unknown"
 ) -> list[MemoryRecord]:
+    """Extract durable decisions, preferences, instructions, and context notes."""
+
     redacted = redact_secrets(transcript)
     memories: list[MemoryRecord] = []
     seen: set[tuple[str, str]] = set()
@@ -77,6 +83,8 @@ def distill_memories(
 
 
 def load_records(store_path: str | Path) -> list[MemoryRecord]:
+    """Read valid JSONL memory records while skipping malformed local entries."""
+
     path = Path(store_path)
     if not path.exists():
         return []
@@ -98,6 +106,8 @@ def load_records(store_path: str | Path) -> list[MemoryRecord]:
 
 
 def append_records(store_path: str | Path, records: list[MemoryRecord]) -> None:
+    """Append new memory records to the JSONL store without duplicating entries."""
+
     path = Path(store_path)
     path.parent.mkdir(parents=True, exist_ok=True)
     existing = {
@@ -165,6 +175,8 @@ def sync_records_to_memanto(records: list[MemoryRecord]) -> int:
 
 
 def score_record(record: MemoryRecord, prompt: str, cwd: str, path_hint: str) -> int:
+    """Score whether a stored memory is relevant to the current prompt event."""
+
     haystack = f"{prompt} {path_hint}".lower()
     score = 0
     if record.cwd == cwd:
@@ -180,6 +192,8 @@ def score_record(record: MemoryRecord, prompt: str, cwd: str, path_hint: str) ->
 def recall_context(
     event: dict[str, Any], store_path: str | Path, limit: int = 6
 ) -> str:
+    """Render the most relevant stored memories as Claude Code hook context."""
+
     prompt = str(event.get("prompt") or event.get("user_prompt") or "")
     cwd = str(event.get("cwd") or "")
     tool_input = event.get("tool_input") or {}
@@ -202,6 +216,8 @@ def recall_context(
 
 
 def handle_hook_event(event: dict[str, Any], store_path: str | Path) -> dict[str, Any]:
+    """Route Claude Code hook events to memory storage or context injection."""
+
     name = event.get("hook_event_name") or event.get("event")
     cwd = str(event.get("cwd") or "")
     skill = str(event.get("skill") or event.get("command") or "unknown")
@@ -231,6 +247,8 @@ def handle_hook_event(event: dict[str, Any], store_path: str | Path) -> dict[str
 
 
 def main(argv: list[str] | None = None) -> int:
+    """Run the hook handler from stdin or an event JSON file."""
+
     parser = argparse.ArgumentParser(description="Claude Code skills Memanto hook demo")
     parser.add_argument("--store", default=".claude-memanto-memory.jsonl")
     parser.add_argument(
