@@ -37,6 +37,16 @@ python examples/claudecode-skills-memanto/memanto_skills_hook.py post \
   --transcript-file /tmp/skill-transcript.txt
 ```
 
+## Credential-Free Preview
+
+Reviewers can validate the lifecycle without a Moorcheh API key by using the local JSONL backend:
+
+```bash
+python examples/claudecode-skills-memanto/validate.py
+```
+
+The preview backend is intentionally small and file-based. It is not a replacement for Memanto; it exists so reviewers can inspect the skill lifecycle before wiring real credentials.
+
 ## Wrapper Usage
 
 `run_skill_with_memory.py` demonstrates a lightweight wrapper around any command:

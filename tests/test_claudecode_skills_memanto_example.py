@@ -80,3 +80,18 @@ def test_post_hook_stores_typed_decision_memory() -> None:
     assert "bounded retries" in memory["content"]
     assert "skill:handoff" in memory["tags"]
     assert "file:retries.ts" in memory["tags"]
+
+
+def test_local_jsonl_backend_round_trips_memory(tmp_path) -> None:
+    backend = hook.LocalJsonlBackend(tmp_path / "memory.jsonl")
+    backend.remember(
+        content="Keep billing retry delays deterministic in tests.",
+        memory_type="decision",
+        title="billing retries",
+        tags=["skill:tdd", "file:retries.ts"],
+        confidence=0.9,
+    )
+
+    memories = backend.recall("tdd billing retries", limit=3)
+
+    assert memories == ["Keep billing retry delays deterministic in tests."]

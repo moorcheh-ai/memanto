@@ -102,6 +102,51 @@ class MemantoCliBackend:
         subprocess.run(args, check=True)
 
 
+class LocalJsonlBackend:
+    """Credential-free backend for demos and reviewer validation."""
+
+    def __init__(self, path: Path) -> None:
+        self.path = path
+
+    def recall(self, query: str, limit: int = DEFAULT_LIMIT) -> list[str]:
+        if not self.path.exists():
+            return []
+        query_terms = {term.lower() for term in query.split() if len(term) > 2}
+        scored: list[tuple[int, str]] = []
+        for line in self.path.read_text(encoding="utf-8").splitlines():
+            if not line.strip():
+                continue
+            record = json.loads(line)
+            content = str(record.get("content", ""))
+            haystack = " ".join(
+                [content, str(record.get("title", "")), " ".join(record.get("tags", []))]
+            ).lower()
+            score = sum(1 for term in query_terms if term in haystack)
+            if score:
+                scored.append((score, content))
+        scored.sort(key=lambda item: item[0], reverse=True)
+        return [content for _, content in scored[:limit]]
+
+    def remember(
+        self,
+        content: str,
+        memory_type: str,
+        title: str,
+        tags: list[str],
+        confidence: float,
+    ) -> None:
+        self.path.parent.mkdir(parents=True, exist_ok=True)
+        record = {
+            "content": content,
+            "memory_type": memory_type,
+            "title": title,
+            "tags": tags,
+            "confidence": confidence,
+        }
+        with self.path.open("a", encoding="utf-8") as handle:
+            handle.write(json.dumps(record, sort_keys=True) + "\n")
+
+
 def _extract_cli_memory_lines(output: str) -> list[str]:
     """Keep the useful text from rich CLI output without depending on styling."""
     lines: list[str] = []
@@ -213,9 +258,25 @@ def main(argv: list[str] | None = None) -> int:
         command_parser.add_argument("--metadata")
         command_parser.add_argument("--transcript")
         command_parser.add_argument("--transcript-file")
+        command_parser.add_argument(
+            "--backend",
+            choices=("memanto-cli", "local-jsonl"),
+            default=os.environ.get("MEMANTO_SKILLS_BACKEND", "memanto-cli"),
+        )
+        command_parser.add_argument(
+            "--store",
+            default=os.environ.get(
+                "MEMANTO_SKILLS_STORE",
+                str(Path(".memanto-skills-preview.jsonl")),
+            ),
+            help="JSONL path used by --backend local-jsonl.",
+        )
 
     args = parser.parse_args(argv)
-    backend = MemantoCliBackend(os.environ.get("MEMANTO_EXECUTABLE", "memanto"))
+    if args.backend == "local-jsonl":
+        backend: MemoryBackend = LocalJsonlBackend(Path(args.store))
+    else:
+        backend = MemantoCliBackend(os.environ.get("MEMANTO_EXECUTABLE", "memanto"))
     run = _build_run(args)
 
     if args.command == "pre":
