@@ -29,6 +29,7 @@ The example is intentionally reviewable without private credentials:
 | File | Purpose |
 | --- | --- |
 | `skill_memory.py` | Memory store adapters and the reusable skill lifecycle hook. |
+| `run_skill_with_memory.py` | CLI wrapper for running a skill command with memory injection/capture. |
 | `demo.py` | Two-session demo that simulates separate skill executions. |
 | `validate.py` | Credential-free regression check for the demo behavior. |
 | `demo-transcript.md` | Expected demo output for quick review. |
@@ -41,6 +42,16 @@ Run the credential-free preview:
 cd examples/claudecode-skills-memanto
 python validate.py
 python demo.py
+```
+
+Wrap a real command with recalled memory:
+
+```bash
+python run_skill_with_memory.py \
+  --skill /tdd \
+  --task "Add tests for invoice retry scheduling" \
+  --file billing/retry.py \
+  -- python -m pytest tests/billing/test_retry.py -q
 ```
 
 Use a custom local memory path:
