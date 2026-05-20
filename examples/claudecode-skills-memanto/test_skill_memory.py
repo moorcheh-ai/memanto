@@ -7,6 +7,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
+from mattpocock_adapter import write_wrappers
 from run_demo import DemoResult, write_benchmark_report
 from skill_memory import (
     LocalJsonBackend,
@@ -57,6 +58,27 @@ class SkillMemoryTests(unittest.TestCase):
 
             self.assertIn("server-side validation helpers", injected)
 
+    def test_before_skill_includes_grounded_answer(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            backend = LocalJsonBackend(Path(tmpdir) / "memory.jsonl")
+            after_skill(
+                backend,
+                "/grill-with-docs",
+                "review form architecture",
+                "Decision: Prefer server-side validation helpers.",
+                ["docs/forms.md"],
+            )
+
+            injected = before_skill(
+                backend,
+                "/tdd",
+                "write tests for server-side form validation",
+                ["tests/test_forms.py"],
+            )
+
+            self.assertIn("[memanto-answer]", injected)
+            self.assertIn("Apply remembered context", injected)
+
     def test_before_skill_reports_empty_context(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             backend = LocalJsonBackend(Path(tmpdir) / "memory.jsonl")
@@ -92,6 +114,14 @@ class SkillMemoryTests(unittest.TestCase):
             content = report.read_text(encoding="utf-8")
             self.assertIn("Repeated instructions avoided | 1", content)
             self.assertIn("Repeated-instruction reduction | 100%", content)
+
+    def test_generated_wrapper_exports_memanto_context(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            wrappers = write_wrappers(["/tdd"], Path(tmpdir))
+            wrapper = wrappers[0].read_text(encoding="utf-8")
+
+            self.assertIn("MEMANTO_SKILL_CONTEXT=\"$(python", wrapper)
+            self.assertIn("export MEMANTO_SKILL_CONTEXT", wrapper)
 
 
 if __name__ == "__main__":

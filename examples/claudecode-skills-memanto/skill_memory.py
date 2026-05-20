@@ -51,6 +51,9 @@ class MemoryBackend(Protocol):
     def recall(self, query: str, limit: int = 5) -> list[SkillMemory]:
         """Return memories relevant to a new skill invocation."""
 
+    def answer(self, question: str, limit: int = 5) -> str | None:
+        """Return grounded guidance from remembered context when available."""
+
 
 class LocalJsonBackend:
     """Credential-free backend for tests, demos, and reviewer validation."""
@@ -89,6 +92,12 @@ class LocalJsonBackend:
                 scored.append((score, memory))
         scored.sort(key=lambda item: (item[0], item[1].created_at), reverse=True)
         return [memory for _, memory in scored[:limit]]
+
+    def answer(self, question: str, limit: int = 5) -> str | None:
+        memories = self.recall(question, limit=limit)
+        if not memories:
+            return None
+        return "Apply remembered context: " + " ".join(memory.content for memory in memories[:2])
 
     def _read(self) -> list[dict[str, object]]:
         if not self.path.exists():
@@ -151,6 +160,19 @@ class MemantoSdkBackend:
             )
         return memories
 
+    def answer(self, question: str, limit: int = 5) -> str | None:
+        result = self.client.answer(
+            self.agent_id,
+            question=question,
+            limit=limit,
+            header_prompt=(
+                "Answer as a concise engineering constraint for the next Claude Code "
+                "skill invocation. Use only remembered facts."
+            ),
+        )
+        answer = str(result.get("answer", "")).strip()
+        return answer or None
+
 
 def backend_from_args(args: argparse.Namespace) -> MemoryBackend:
     if args.backend == "memanto":
@@ -167,6 +189,7 @@ def before_skill(
     prompt: str,
     paths: list[str],
     limit: int = 5,
+    include_answer: bool = True,
 ) -> str:
     query = " ".join([skill, prompt, *paths])
     memories = backend.recall(query, limit=limit)
@@ -174,6 +197,9 @@ def before_skill(
         return "MEMANTO_SKILL_CONTEXT:\n- No relevant prior engineering memories found."
 
     lines = ["MEMANTO_SKILL_CONTEXT:"]
+    answer = backend.answer(query, limit=limit) if include_answer else None
+    if answer:
+        lines.append(f"- [memanto-answer] {answer}")
     for memory in memories:
         tags = ", ".join(memory.tags) if memory.tags else "untagged"
         lines.append(f"- [{memory.type}] {memory.title} ({tags})")
@@ -280,7 +306,7 @@ def _tags(skill: str, prompt: str, paths: list[str]) -> list[str]:
             raw.append(parsed.parts[0])
         if parsed.stem:
             raw.append(parsed.stem)
-    raw.extend(term for term in _terms(prompt) if len(term) > 5)
+    raw.extend(term for term in sorted(_terms(prompt)) if len(term) > 5)
     tags = []
     for tag in raw:
         cleaned = re.sub(r"[^a-zA-Z0-9_-]+", "-", tag.lower()).strip("-")
@@ -319,6 +345,7 @@ def build_parser() -> argparse.ArgumentParser:
     before.add_argument("--skill", required=True)
     before.add_argument("--prompt", required=True)
     before.add_argument("--path", action="append", default=[])
+    before.add_argument("--no-answer", action="store_true")
 
     after = subparsers.add_parser("after")
     after.add_argument("--skill", required=True)
@@ -334,7 +361,15 @@ def main() -> int:
     backend = backend_from_args(args)
 
     if args.command == "before":
-        print(before_skill(backend, args.skill, args.prompt, args.path))
+        print(
+            before_skill(
+                backend,
+                args.skill,
+                args.prompt,
+                args.path,
+                include_answer=not args.no_answer,
+            )
+        )
         return 0
 
     transcript = _read_text_arg(args.transcript)

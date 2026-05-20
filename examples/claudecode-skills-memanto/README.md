@@ -10,6 +10,8 @@ The example is reviewer-safe by default:
 - `local` backend stores JSONL memories under `.memanto-local/`
 - `memanto` backend uses `memanto.cli.client.sdk_client.SdkClient` when
   `MOORCHEH_API_KEY` is configured
+- live mode uses Memanto's `remember`, `recall`, and `answer` primitives:
+  `answer` adds a short grounded engineering constraint before the next skill
 - no private API keys, prompts, or terminal transcripts are required for the
   offline demo
 
@@ -53,7 +55,8 @@ The wrapper has two lifecycle hooks.
 
 1. Builds a retrieval query from the skill name, prompt, and touched paths.
 2. Recalls matching Memanto memories.
-3. Emits a short injected context block for the skill prompt.
+3. Asks Memanto for a concise grounded answer from the same remembered context.
+4. Emits a short injected context block for the skill prompt.
 
 `after_skill(skill_name, user_prompt, transcript, paths)`:
 
@@ -99,5 +102,8 @@ python mattpocock_adapter.py --skills /grill-with-docs /tdd /handoff --out .skil
 ```
 
 Each generated wrapper delegates to `skill_memory.py before` and
-`skill_memory.py after` around the real command. In a production setup, replace
-the placeholder `echo` with the actual skill executable.
+`skill_memory.py after` around the real command. The wrapper exports
+`MEMANTO_SKILL_CONTEXT` before invoking the child process, so real skill
+executables can read the injected context from the environment as well as
+stdout. In a production setup, replace the placeholder `echo` with the actual
+skill executable.

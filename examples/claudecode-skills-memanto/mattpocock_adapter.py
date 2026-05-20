@@ -15,7 +15,9 @@ SKILL_NAME={skill_name}
 PROMPT="${{*:-}}"
 TRANSCRIPT_FILE="$(mktemp)"
 
-python "$(dirname "$0")/../skill_memory.py" before --skill "$SKILL_NAME" --prompt "$PROMPT"
+MEMANTO_SKILL_CONTEXT="$(python "$(dirname "$0")/../skill_memory.py" before --skill "$SKILL_NAME" --prompt "$PROMPT")"
+export MEMANTO_SKILL_CONTEXT
+printf '%s\n' "$MEMANTO_SKILL_CONTEXT"
 
 # Replace this echo with the real skill executable, for example:
 # claude "$SKILL_NAME $PROMPT"
