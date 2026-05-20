@@ -1,6 +1,7 @@
 import importlib.util
 import sys
 from pathlib import Path
+from types import SimpleNamespace
 
 EXAMPLE_PATH = (
     Path(__file__).resolve().parents[1]
@@ -71,3 +72,52 @@ def test_dry_run_before_never_requires_memanto_credentials(capsys):
     assert exit_code == 0
     assert "<memanto-engineering-memory>" in output
     assert "small vertical slices" in output
+
+
+def test_normalize_wrapped_command_strips_separator():
+    module = load_example_module()
+
+    assert module.normalize_wrapped_command(["--", "pytest", "-q"]) == ["pytest", "-q"]
+
+
+def test_normalize_wrapped_command_rejects_empty_after_separator():
+    module = load_example_module()
+
+    try:
+        module.normalize_wrapped_command(["--"])
+    except ValueError as error:
+        assert "Provide a command after --" in str(error)
+    else:
+        raise AssertionError("Expected ValueError for an empty wrapped command")
+
+
+def test_command_run_redacts_printed_command_output(monkeypatch, capsys):
+    module = load_example_module()
+
+    def fake_run(command, text, capture_output, check):
+        assert command == ["memanto-demo"]
+        return SimpleNamespace(
+            returncode=0,
+            stdout="Decision: generated sk-supersecrettoken123456789\n",
+            stderr="",
+        )
+
+    monkeypatch.setattr(module.subprocess, "run", fake_run)
+
+    exit_code = module.main(
+        [
+            "run",
+            "--skill-name",
+            "memory",
+            "--task",
+            "demo",
+            "--dry-run",
+            "--",
+            "memanto-demo",
+        ]
+    )
+
+    output = capsys.readouterr().out
+    assert exit_code == 0
+    assert "sk-supersecrettoken" not in output
+    assert "[REDACTED_SECRET]" in output

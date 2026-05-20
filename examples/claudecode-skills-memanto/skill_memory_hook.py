@@ -251,6 +251,17 @@ def read_transcript(path: str | None, inline_summary: str | None) -> str:
     return "\n\n".join(chunks)
 
 
+def normalize_wrapped_command(command: Sequence[str]) -> list[str]:
+    """Drop argparse's optional ``--`` separator before command execution."""
+
+    normalized = list(command)
+    if normalized and normalized[0] == "--":
+        normalized = normalized[1:]
+    if not normalized:
+        raise ValueError("Provide a command after --, for example: -- pytest -q")
+    return normalized
+
+
 def command_before(args: argparse.Namespace) -> int:
     block = recall_memories(
         skill_name=args.skill_name,
@@ -284,8 +295,7 @@ def command_after(args: argparse.Namespace) -> int:
 
 
 def command_run(args: argparse.Namespace) -> int:
-    if not args.command:
-        raise ValueError("Provide a command after --, for example: -- pytest -q")
+    command = normalize_wrapped_command(args.command)
 
     context_block = recall_memories(
         skill_name=args.skill_name,
@@ -298,16 +308,17 @@ def command_run(args: argparse.Namespace) -> int:
     print(context_block)
     print("\n--- skill command output ---")
 
-    completed = subprocess.run(args.command, text=True, capture_output=True, check=False)
-    command_output = "\n".join(
+    completed = subprocess.run(command, text=True, capture_output=True, check=False)
+    command_output_raw = "\n".join(
         part for part in [completed.stdout, completed.stderr] if part
     )
+    command_output = redact_secrets(command_output_raw)
     print(command_output)
 
     payloads = extract_memory_candidates(
         skill_name=args.skill_name,
         task=args.task,
-        transcript=command_output,
+        transcript=command_output_raw,
         path=args.path,
     )
     print("\n--- memanto writeback ---")
