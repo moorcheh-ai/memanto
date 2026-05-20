@@ -93,8 +93,10 @@ def test_normalize_wrapped_command_rejects_empty_after_separator():
 
 def test_command_run_redacts_printed_command_output(monkeypatch, capsys):
     module = load_example_module()
+    called = {"run": False}
 
     def fake_run(command, text, capture_output, check):
+        called["run"] = True
         assert command == ["memanto-demo"]
         return SimpleNamespace(
             returncode=0,
@@ -119,5 +121,6 @@ def test_command_run_redacts_printed_command_output(monkeypatch, capsys):
 
     output = capsys.readouterr().out
     assert exit_code == 0
+    assert called["run"] is True
     assert "sk-supersecrettoken" not in output
     assert "[REDACTED_SECRET]" in output
