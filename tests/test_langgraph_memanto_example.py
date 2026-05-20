@@ -61,6 +61,52 @@ def test_graph_state_starts_without_memory_but_reply_uses_recalled_memory(tmp_pa
     assert "CSV" in final_state["reply"]
 
 
+def test_file_backend_ranks_format_preference_above_generic_memory(tmp_path):
+    module = load_example_module()
+    backend = module.FileMemoryBackend(tmp_path / "memory.jsonl")
+    backend.remember("initech", "Initech wants short replies.")
+    backend.remember("initech", "Initech prefers CSV invoice exports.")
+
+    recalled = backend.recall("initech", "Which format should I use?")
+
+    assert "CSV" in recalled
+
+
+def test_memanto_agent_creation_only_runs_for_missing_agent(monkeypatch):
+    module = load_example_module()
+    backend = module.MemantoCliBackend(agent_id="demo", memanto_bin="memanto")
+    calls = []
+
+    def fake_run(args):
+        calls.append(args)
+        if args[1:3] == ["agent", "activate"]:
+            raise RuntimeError("agent not found: demo")
+        return "created"
+
+    monkeypatch.setattr(backend, "_run", fake_run)
+
+    backend._ensure_agent()
+
+    assert calls[1][1:3] == ["agent", "create"]
+
+
+def test_memanto_agent_activation_propagates_non_missing_errors(monkeypatch):
+    module = load_example_module()
+    backend = module.MemantoCliBackend(agent_id="demo", memanto_bin="memanto")
+
+    def fake_run(args):
+        raise RuntimeError("permission denied")
+
+    monkeypatch.setattr(backend, "_run", fake_run)
+
+    try:
+        backend._ensure_agent()
+    except RuntimeError as error:
+        assert "permission denied" in str(error)
+    else:
+        raise AssertionError("expected RuntimeError")
+
+
 def test_seed_and_ask_cli_flow_with_file_backend(tmp_path, capsys):
     module = load_example_module()
     memory_path = tmp_path / "memory.jsonl"

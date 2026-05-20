@@ -10,13 +10,20 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import shutil
 import subprocess
 import sys
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
+from difflib import SequenceMatcher
 from pathlib import Path
-from typing import NotRequired, Protocol, TypedDict
+from typing import Protocol, TypedDict
+
+try:
+    from typing import NotRequired
+except ImportError:
+    from typing_extensions import NotRequired
 
 DEFAULT_AGENT_ID = "langgraph-support-demo"
 DEFAULT_MEMORY_PATH = ".langgraph-memanto-demo.jsonl"
@@ -65,7 +72,7 @@ class FileMemoryBackend:
         return memory_id
 
     def recall(self, customer_id: str, query: str) -> str:
-        query_terms = {term.lower() for term in query.split() if len(term) > 2}
+        query_terms = _expand_query_terms(_tokenize(query))
         candidates = [
             row["content"]
             for row in self._read_rows()
@@ -74,9 +81,14 @@ class FileMemoryBackend:
         if not candidates:
             return ""
 
-        def score(content: str) -> int:
-            lowered = content.lower()
-            return sum(1 for term in query_terms if term in lowered)
+        def score(content: str) -> float:
+            content_terms = _tokenize(content)
+            overlap = len(query_terms & content_terms)
+            return overlap + SequenceMatcher(
+                None,
+                " ".join(sorted(query_terms)),
+                " ".join(sorted(content_terms)),
+            ).ratio()
 
         return max(candidates, key=score)
 
@@ -133,7 +145,9 @@ class MemantoCliBackend:
     def _ensure_agent(self) -> None:
         try:
             self._run([*self._command(), "agent", "activate", self.agent_id])
-        except RuntimeError:
+        except RuntimeError as error:
+            if not _is_missing_agent_error(str(error)):
+                raise
             self._run(
                 [
                     *self._command(),
@@ -166,6 +180,32 @@ class MemantoCliBackend:
         if completed.returncode != 0:
             raise RuntimeError(output or f"Command failed: {' '.join(args)}")
         return output
+
+
+def _tokenize(text: str) -> set[str]:
+    return {term.lower() for term in re.findall(r"[A-Za-z0-9]+", text) if len(term) > 2}
+
+
+def _expand_query_terms(terms: set[str]) -> set[str]:
+    expanded = set(terms)
+    if {"format", "export", "exports"} & expanded:
+        expanded.update({"csv", "json", "pdf", "xlsx", "export", "exports"})
+    return expanded
+
+
+def _is_missing_agent_error(message: str) -> bool:
+    lowered = message.lower()
+    return any(
+        marker in lowered
+        for marker in (
+            "agent not found",
+            "not found",
+            "does not exist",
+            "no such agent",
+            "unknown agent",
+            "404",
+        )
+    )
 
 
 def recall_customer_memory(

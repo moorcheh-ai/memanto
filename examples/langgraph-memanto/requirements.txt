@@ -1,1 +1,4 @@
-langgraph>=0.2.0
+langgraph>=1.2.0
+langgraph-checkpoint>=4.0.0
+langgraph-checkpoint-sqlite>=3.0.1
+typing_extensions>=4.0.0
