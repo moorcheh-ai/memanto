@@ -88,7 +88,15 @@ and `pre-skill` calls:
 
 ```python
 SdkClient.recall(agent_id=MEMANTO_AGENT_ID, query="<skill task and file context>")
+SdkClient.answer(
+    agent_id=MEMANTO_AGENT_ID,
+    question="Which recalled engineering constraints should be injected here?",
+)
 ```
+
+The `answer` step asks Memanto's retrieval-backed LLM layer to synthesize the
+recalled memories into a short prompt-ready constraint block, so later skills
+receive useful context without replaying full transcripts.
 
 There is also a CLI fallback:
 
@@ -147,5 +155,5 @@ python skill_memory.py post-skill --run-json run.json
 
 The local backend is intentionally simple and deterministic so reviewers can
 inspect the lifecycle without provisioning a Moorcheh key. The live backend is
-kept behind `SKILL_MEMORY_BACKEND=memanto`, so the same example can be used with
-real Memanto memory once credentials are configured.
+kept behind `SKILL_MEMORY_BACKEND=memanto-sdk`, so the same example can be used
+with real Memanto memory once credentials are configured.

@@ -73,6 +73,18 @@ class SkillMemoryTests(unittest.TestCase):
         self.assertIn("Memanto recalled", rendered)
         self.assertIn("dashboard.tsx", rendered)
 
+    def test_error_outputs_are_stored_as_error_memories(self) -> None:
+        memory = extract_memories(
+            SkillRun(
+                skill="/tdd",
+                task="Fix queue worker tests",
+                output="Traceback: worker retry policy failed with a timeout exception.",
+                files=["workers/retry.py"],
+            )
+        )[0]
+        self.assertEqual(memory.memory_type, "error")
+        self.assertGreaterEqual(memory.confidence, 0.8)
+
 
 if __name__ == "__main__":
     unittest.main()

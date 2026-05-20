@@ -2,7 +2,7 @@
 
 The example is intentionally dependency-light. It runs in a local preview mode
 for reviewers without credentials, and can delegate storage/retrieval to the
-`memanto` CLI when `SKILL_MEMORY_BACKEND=memanto` is set.
+`memanto` CLI when `SKILL_MEMORY_BACKEND=memanto-cli` is set.
 """
 
 from __future__ import annotations
@@ -20,14 +20,28 @@ from typing import Iterable, Protocol
 
 MEMORY_TYPES = {
     "artifact",
+    "commitment",
     "context",
     "decision",
+    "error",
+    "event",
     "fact",
     "goal",
     "instruction",
     "learning",
     "observation",
     "preference",
+    "relationship",
+}
+
+MEMORY_TYPE_CONFIDENCE = {
+    "instruction": 0.9,
+    "decision": 0.88,
+    "preference": 0.84,
+    "learning": 0.82,
+    "error": 0.8,
+    "context": 0.76,
+    "observation": 0.7,
 }
 
 
@@ -138,7 +152,12 @@ class LocalJsonBackend:
 
 
 class MemantoSdkBackend:
-    """Optional live backend that uses Memanto's Python SDK client."""
+    """Optional live backend that uses Memanto's Python SDK client.
+
+    Recall includes an extra RAG synthesis step through Memanto's answer API.
+    That keeps the injected skill context concise while still letting Memanto's
+    retrieval engine decide which prior engineering memories matter.
+    """
 
     def __init__(self, agent_id: str | None = None) -> None:
         from memanto.cli.client.sdk_client import SdkClient
@@ -174,10 +193,17 @@ class MemantoSdkBackend:
             confidence=memory.confidence,
             tags=["claude-code-skill", memory.skill.strip("/")],
             source="claudecode-skills-memanto",
+            provenance="explicit_statement",
         )
 
     def recall(self, query: str, limit: int) -> list[EngineeringMemory]:
-        result = self.client.recall(agent_id=self.agent_id, query=query, limit=limit)
+        result = self.client.recall(
+            agent_id=self.agent_id,
+            query=query,
+            limit=limit,
+            type=["decision", "instruction", "preference", "learning", "context"],
+            min_confidence=0.6,
+        )
         recalled: list[EngineeringMemory] = []
         for item in result.get("memories", []):
             content = (
@@ -197,7 +223,47 @@ class MemantoSdkBackend:
                     confidence=float(item.get("confidence", 0.6) or 0.6),
                 )
             )
+        synthesized = self._synthesize_constraints(query, limit)
+        if synthesized:
+            recalled.insert(0, synthesized)
         return recalled
+
+    def _synthesize_constraints(
+        self, query: str, limit: int
+    ) -> EngineeringMemory | None:
+        try:
+            response = self.client.answer(
+                agent_id=self.agent_id,
+                question=(
+                    "For this Claude Code skill invocation, return only concise "
+                    "engineering constraints that should be injected into the "
+                    f"prompt. Current invocation: {query}"
+                ),
+                limit=limit,
+                temperature=0,
+                header_prompt=(
+                    "You are preparing prompt context for a coding skill. "
+                    "Use only relevant stored Memanto memories."
+                ),
+                footer_prompt=(
+                    "Return 3-6 terse bullets. Omit generic advice and omit "
+                    "anything not supported by the retrieved memories."
+                ),
+            )
+        except Exception:
+            return None
+        answer = str(response.get("answer", "")).strip()
+        if not answer or "no relevant" in answer.lower():
+            return None
+        return EngineeringMemory(
+            text=answer[:420],
+            memory_type="context",
+            skill="memanto-sdk-answer",
+            task=query,
+            cwd=".",
+            files=[],
+            confidence=0.86,
+        )
 
 
 class MemantoCliBackend:
@@ -243,6 +309,8 @@ def build_backend() -> MemoryBackend:
 
 def classify_memory(sentence: str) -> str:
     lowered = sentence.lower()
+    if any(word in lowered for word in ("failed", "traceback", "exception", "crash")):
+        return "error"
     if any(word in lowered for word in ("prefer", "always", "avoid", "must", "never")):
         return "instruction"
     if any(word in lowered for word in ("decision", "decided", "choose", "selected", "architecture")):
@@ -277,6 +345,7 @@ def extract_memories(run: SkillRun, max_items: int = 6) -> list[EngineeringMemor
                 task=run.task,
                 cwd=run.cwd,
                 files=run.files,
+                confidence=MEMORY_TYPE_CONFIDENCE.get(memory_type, 0.74),
             )
         )
         if len(memories) >= max_items:
