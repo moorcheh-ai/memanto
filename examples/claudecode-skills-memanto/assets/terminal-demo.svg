@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1120" height="680" viewBox="0 0 1120 680" role="img" aria-labelledby="title desc">
+  <title id="title">Memanto Claude Code skills memory bridge demo</title>
+  <desc id="desc">A terminal-style demo showing before, after, and later skill runs sharing engineering memory through Memanto.</desc>
+  <rect width="1120" height="680" rx="18" fill="#101418"/>
+  <rect x="28" y="28" width="1064" height="624" rx="14" fill="#161b22" stroke="#30363d" stroke-width="2"/>
+  <circle cx="62" cy="61" r="8" fill="#ff5f56"/>
+  <circle cx="88" cy="61" r="8" fill="#ffbd2e"/>
+  <circle cx="114" cy="61" r="8" fill="#27c93f"/>
+  <text x="148" y="67" font-family="Consolas, Menlo, monospace" font-size="18" fill="#c9d1d9">claudecode-skills-memanto demo</text>
+
+  <text x="54" y="118" font-family="Consolas, Menlo, monospace" font-size="18" fill="#7ee787">$ python skill_memory_hook.py before --skill-name grill-with-docs --task "Design billing importer" --dry-run</text>
+  <text x="54" y="154" font-family="Consolas, Menlo, monospace" font-size="18" fill="#c9d1d9">&lt;memanto-engineering-memory&gt;</text>
+  <text x="82" y="184" font-family="Consolas, Menlo, monospace" font-size="18" fill="#d2a8ff">- Prefer importer retries in the queue worker, not the HTTP handler.</text>
+  <text x="82" y="214" font-family="Consolas, Menlo, monospace" font-size="18" fill="#d2a8ff">- Billing import tests must use fixture IDs, not production account names.</text>
+  <text x="54" y="244" font-family="Consolas, Menlo, monospace" font-size="18" fill="#c9d1d9">&lt;/memanto-engineering-memory&gt;</text>
+
+  <line x1="54" y1="282" x2="1066" y2="282" stroke="#30363d" stroke-width="2"/>
+
+  <text x="54" y="326" font-family="Consolas, Menlo, monospace" font-size="18" fill="#7ee787">$ python skill_memory_hook.py after --skill-name grill-with-docs --transcript-file sample_transcript.md --dry-run</text>
+  <text x="54" y="362" font-family="Consolas, Menlo, monospace" font-size="18" fill="#c9d1d9">[dry-run] artifact: grill-with-docs: task outcome</text>
+  <text x="82" y="392" font-family="Consolas, Menlo, monospace" font-size="18" fill="#ffa657">Distilled outcome:</text>
+  <text x="110" y="422" font-family="Consolas, Menlo, monospace" font-size="18" fill="#d2a8ff">- Decision: importer retries should happen in the queue worker.</text>
+  <text x="110" y="452" font-family="Consolas, Menlo, monospace" font-size="18" fill="#d2a8ff">- Preference: keep generated handoff notes short and focused.</text>
+
+  <line x1="54" y1="490" x2="1066" y2="490" stroke="#30363d" stroke-width="2"/>
+
+  <text x="54" y="534" font-family="Consolas, Menlo, monospace" font-size="18" fill="#7ee787">$ python skill_memory_hook.py run --skill-name tdd --task "Add retry support" --dry-run -- pytest -q</text>
+  <text x="54" y="570" font-family="Consolas, Menlo, monospace" font-size="18" fill="#c9d1d9">1. inject recalled constraints before the skill command</text>
+  <text x="54" y="600" font-family="Consolas, Menlo, monospace" font-size="18" fill="#c9d1d9">2. execute the command</text>
+  <text x="54" y="630" font-family="Consolas, Menlo, monospace" font-size="18" fill="#c9d1d9">3. store the distilled outcome back into Memanto for the next session</text>
+</svg>
