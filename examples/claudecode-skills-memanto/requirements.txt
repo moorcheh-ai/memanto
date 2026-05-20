@@ -1,0 +1,3 @@
+# Required for live Memanto API mode
+# Not required for local preview mode (LOCAL_PREVIEW=true)
+memanto>=0.1.0
