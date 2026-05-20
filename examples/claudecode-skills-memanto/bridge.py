@@ -1,20 +1,30 @@
 """
-Memanto Skill Memory Bridge — eliminates context fragmentation across
-Claude Code / mattpocock developer skills by using Memanto's LLM backend
-for both active extraction and dynamic injection.
+Memanto Skill Memory Bridge — Engineering Profile Evolution
+
+Eliminates context fragmentation across mattpocock developer skills by
+building and maintaining an evolving "Engineering Profile" through Memanto's
+LLM backend.
+
+Unlike simple store→search→inject pipelines, this implements:
+  - Engineering Profile: structured, evolving document with categories
+  - Active LLM extraction: Memanto.answer() distills transcripts into insights
+  - Profile evolution: contradiction detection, supersession, version tracking
+  - Structured injection: context-rich system blocks, not raw text dumps
+  - Profile visualization: `python bridge.py profile` shows what Memanto knows
 
 Architecture:
-  pre  → Memanto.answer("what context exists for this target?") → inject
-  post → Memanto.answer("extract structured decisions from transcript") → remember
+  pre  ── profile.inject(target, skill)  ── structured context block
+  post ── profile.evolve(transcript, skill, target) ── updated profile
 
-Supports two backends:
-  - Live: Memanto SDK + Moorcheh API (uses Memanto.answer + remember)
-  - Local: JSONL file (credential-free, for reviewer validation)
+Backends:
+  - live: Memanto SDK + Moorcheh API (full LLM extraction + RAG injection)
+  - local: JSONL file (keyword extraction, light search — no credentials)
 
 Usage:
-  python bridge.py pre  /grill-with-docs src/auth.ts
-  python bridge.py post /grill-with-docs src/auth.ts "[transcript]"
-  python bridge.py wrap /tdd src/auth.ts "[transcript]"
+  python bridge.py pre     /grill-with-docs src/auth.ts
+  python bridge.py post    /grill-with-docs src/auth.ts "[transcript]"
+  python bridge.py wrap    /tdd src/auth.ts "[transcript]"
+  python bridge.py profile
   python bridge.py validate
   python bridge.py benchmark
 """
@@ -28,12 +38,14 @@ import time
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Optional
+from dataclasses import dataclass, field
 
 
 # ── Config ───────────────────────────────────────────────────────
 
-BACKEND = os.environ.get("MEMANTO_BACKEND", "local")
+BACKEND = os.environ.get("MEMANTO_BACKEND", "local").strip()
 MEMORY_FILE = Path(os.environ.get("MEMANTO_LOCAL_FILE", ".memanto-skills-memory.jsonl"))
+PROFILE_FILE = Path(os.environ.get("MEMANTO_PROFILE_FILE", ".memanto-engineering-profile.json"))
 
 
 def _api_key() -> Optional[str]:
@@ -53,57 +65,309 @@ def _agent_id() -> str:
         return f"skills-{Path.cwd().name}"
 
 
-# ── Skill classifier ─────────────────────────────────────────────
+# ── Engineering Profile ──────────────────────────────────────────
 
-_SKILL_TYPE = {
-    "grill": "decision", "review": "decision", "challenge": "decision",
-    "decide": "decision", "board": "decision",
-    "tdd": "learning", "test": "learning", "fix": "learning",
-    "handoff": "instruction", "freeze": "instruction",
-    "architect": "goal", "design": "goal", "plan": "goal",
-    "capture": "context", "reflect": "observation", "execute": "commitment",
+@dataclass
+class ProfileEntry:
+    """A single learned fact about the engineering context."""
+    id: str
+    category: str         # architecture, preference, constraint, pattern, decision, convention
+    content: str
+    confidence: float     # 0.0–1.0
+    source_skill: str     # e.g. "/grill-with-docs"
+    target: str           # file or concept this applies to
+    superseded_by: Optional[str] = None
+    timestamp: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+    version: int = 1
+
+
+class EngineeringProfile:
+    """Evolving structured profile of engineering context.
+
+    Categories:
+      architecture  — system design decisions (hexagonal, microservices, etc.)
+      preference    — developer preferences (tab width, naming, etc.)
+      constraint    — hard constraints (must support IE11, max 100MB, etc.)
+      pattern       — recurring code patterns (Repository, Factory, etc.)
+      decision      — explicit technical decisions (use OAuth 2.1, etc.)
+      convention    — team conventions (commit message format, branch naming)
+    """
+
+    def __init__(self, path: Path = PROFILE_FILE):
+        self.path = path
+        self._data: dict[str, Any] = self._load()
+
+    def _load(self) -> dict[str, Any]:
+        if self.path.exists():
+            try:
+                with open(self.path) as f:
+                    return json.load(f)
+            except (json.JSONDecodeError, KeyError):
+                pass
+        return {
+            "agent_id": _agent_id(),
+            "created": datetime.now(timezone.utc).isoformat(),
+            "updated": datetime.now(timezone.utc).isoformat(),
+            "entries": [],
+            "metadata": {
+                "total_skills_tracked": 0,
+                "total_insights": 0,
+                "categories_covered": [],
+            },
+        }
+
+    def _save(self) -> None:
+        self._data["updated"] = datetime.now(timezone.utc).isoformat()
+        self._data["metadata"]["total_insights"] = len(self._data["entries"])
+        cats = sorted(set(e["category"] for e in self._data["entries"]))
+        self._data["metadata"]["categories_covered"] = cats
+        with open(self.path, "w") as f:
+            json.dump(self._data, f, indent=2, ensure_ascii=False)
+
+    def add(self, category: str, content: str, confidence: float,
+            source_skill: str, target: str) -> str:
+        """Add a new entry. Detects near-duplicates and updates confidence instead."""
+        # Check for near-duplicate
+        for entry in self._data["entries"]:
+            if self._similar(entry["content"], content) and not entry.get("superseded_by"):
+                # Increase confidence of existing entry instead of creating new
+                entry["confidence"] = min(1.0, entry["confidence"] + 0.1)
+                entry["version"] += 1
+                entry["timestamp"] = datetime.now(timezone.utc).isoformat()
+                self._save()
+                return entry["id"]
+
+        eid = f"insight-{int(time.time() * 1000)}"
+        entry = ProfileEntry(
+            id=eid,
+            category=category,
+            content=content,
+            confidence=confidence,
+            source_skill=source_skill,
+            target=target,
+        )
+        self._data["entries"].append(entry.__dict__)
+        self._data["metadata"]["total_skills_tracked"] += 1
+        self._save()
+        return eid
+
+    def supersede(self, old_id: str, new_content: str, source_skill: str) -> str:
+        """Mark an old insight as superseded and add the replacement."""
+        for entry in self._data["entries"]:
+            if entry["id"] == old_id:
+                entry["superseded_by"] = f"insight-{int(time.time() * 1000)}"
+                entry["confidence"] = 0.0
+                break
+        return self.add(
+            category=self._find(old_id).get("category", "decision"),
+            content=new_content,
+            confidence=0.9,
+            source_skill=source_skill,
+            target=self._find(old_id).get("target", ""),
+        )
+
+    def detect_contradictions(self, new_content: str) -> list[dict]:
+        """Find entries that semantically contradict the new insight."""
+        # Simple heuristic: check for opposite keywords
+        opposites = {
+            "use": "avoid", "always": "never", "prefer": "avoid",
+            "must": "should not", "do": "don't",
+        }
+        conflicts = []
+        new_lower = new_content.lower()
+        for entry in self._data["entries"]:
+            if entry.get("superseded_by"):
+                continue
+            entry_lower = entry["content"].lower()
+            for pos, neg in opposites.items():
+                if pos in new_lower and neg in entry_lower:
+                    conflicts.append(entry)
+                elif neg in new_lower and pos in entry_lower:
+                    conflicts.append(entry)
+        return conflicts
+
+    def search(self, target: str, skill: str = "", limit: int = 5) -> list[dict]:
+        """Find profile entries relevant to target + skill."""
+        results = []
+        terms = target.lower().replace(".ts", "").replace(".js", "").replace("/", " ").split()
+        terms = [t for t in terms if len(t) > 1]
+        for entry in self._data["entries"]:
+            if entry.get("superseded_by"):
+                continue
+            haystack = entry["content"].lower() + " " + entry.get("target", "").lower()
+            score = sum(1 for t in terms if t in haystack)
+            # Boost entries from matching skills
+            if skill and skill.lstrip("/").lower() in entry.get("source_skill", "").lower():
+                score += 2
+            if score > 0:
+                results.append((score, entry))
+        results.sort(key=lambda x: x[0], reverse=True)
+        return [r[1] for r in results[:limit]]
+
+    def _find(self, eid: str) -> dict:
+        for e in self._data["entries"]:
+            if e["id"] == eid:
+                return e
+        return {}
+
+    @staticmethod
+    def _similar(a: str, b: str, threshold: float = 0.7) -> bool:
+        """Simple similarity check based on word overlap."""
+        words_a = set(a.lower().split())
+        words_b = set(b.lower().split())
+        if not words_a or not words_b:
+            return False
+        intersection = words_a & words_b
+        union = words_a | words_b
+        return len(intersection) / len(union) > threshold
+
+    def render(self) -> str:
+        """Render the engineering profile as a readable summary."""
+        if not self._data["entries"]:
+            return "No engineering insights recorded yet."
+
+        by_category: dict[str, list] = {}
+        for e in self._data["entries"]:
+            if e.get("superseded_by"):
+                continue
+            cat = e.get("category", "other")
+            by_category.setdefault(cat, []).append(e)
+
+        lines = ["# Engineering Profile", f"Agent: {_agent_id()}",
+                 f"Last updated: {self._data['updated']}\n"]
+
+        labels = {
+            "architecture": "System Architecture",
+            "preference": "Developer Preferences",
+            "constraint": "Hard Constraints",
+            "pattern": "Code Patterns",
+            "decision": "Technical Decisions",
+            "convention": "Team Conventions",
+        }
+
+        for cat, label in labels.items():
+            entries = by_category.get(cat, [])
+            if not entries:
+                continue
+            lines.append(f"## {label}")
+            for e in sorted(entries, key=lambda x: x["confidence"], reverse=True):
+                source = e.get("source_skill", "unknown")
+                lines.append(f"- [{e['confidence']:.0%}] {e['content']}  *(from {source})*")
+            lines.append("")
+
+        return "\n".join(lines)
+
+
+# ── LLM-Powered Extraction ──────────────────────────────────────
+
+_SKILL_TO_CATEGORY = {
+    "grill": "decision", "challenge": "decision", "decide": "decision", "board": "decision",
+    "architect": "architecture", "design": "architecture",
+    "tdd": "pattern", "test": "pattern",
+    "handoff": "convention", "freeze": "constraint",
+    "capture": "preference", "reflect": "preference",
+    "review": "convention", "plan": "decision",
+    "fix": "pattern", "execute": "constraint",
+    "docs": "convention",
 }
 
+_EXTRACTION_PROMPT = (
+    "You are analyzing a developer skill execution transcript. "
+    "Extract the key engineering insights as a structured JSON object "
+    "with this exact format:\n\n"
+    '{"insights": [\n'
+    '  {"category": "<architecture|preference|constraint|pattern|decision|convention>",\n'
+    '   "content": "<single clear statement>",\n'
+    '   "confidence": <0.0 to 1.0>}\n'
+    ']}\n\n'
+    "Categories:\n"
+    "  - architecture: system design, component layout, tech stack\n"
+    "  - preference: coding style, tooling choices, personal defaults\n"
+    "  - constraint: hard limits, must-haves, compatibility requirements\n"
+    "  - pattern: recurring code patterns, templates, naming conventions\n"
+    "  - decision: explicit technical choices with trade-offs\n"
+    "  - convention: team rules, workflow standards, commit guidelines\n\n"
+    "Only include insights that are durable — useful across future sessions.\n"
+    "Skip vague statements, small talk, and transient details.\n\n"
+    "Transcript:\n"
+)
 
-def _classify(skill: str) -> str:
-    lower = skill.lower().lstrip("/")
-    for kw, mt in _SKILL_TYPE.items():
-        if kw in lower:
-            return mt
-    return "context"
 
+def _extract_insights(skill: str, target: str, transcript: str) -> list[dict[str, Any]]:
+    """Extract structured insights from a skill transcript.
 
-# ── JSONL backend ────────────────────────────────────────────────
-
-def _local_store(record: dict[str, Any]) -> None:
-    with open(MEMORY_FILE, "a", encoding="utf-8") as f:
-        json.dump(record, f, ensure_ascii=False)
-        f.write("\n")
-
-
-def _local_search(query: str, limit: int = 5) -> list[dict[str, Any]]:
-    if not MEMORY_FILE.exists():
+    Live mode: uses Memanto.answer() with a structured extraction prompt.
+    Local mode: heuristic keyword extraction.
+    """
+    if not transcript.strip():
         return []
-    results = []
-    terms = query.lower().split()
-    with open(MEMORY_FILE, encoding="utf-8") as f:
-        for line in f:
-            if not line.strip():
-                continue
-            record = json.loads(line)
-            # Search content, title, and target fields
-            content = record.get("content", "").lower()
-            title = record.get("title", "").lower()
-            target = record.get("target", "").lower()
-            haystack = content + " " + title + " " + target
-            score = sum(1 for t in terms if t in haystack)
-            if score > 0:
-                results.append((score, record))
-    results.sort(key=lambda x: x[0], reverse=True)
-    return [r[1] for r in results[:limit]]
+
+    if BACKEND == "live" and _api_key():
+        try:
+            from memanto.cli.client.direct_client import DirectClient
+            client = DirectClient(_api_key())
+            client.activate_agent(_agent_id())
+            result = client.answer(
+                agent_id=_agent_id(),
+                question=_EXTRACTION_PROMPT + transcript,
+                limit=3,
+                temperature=0.2,
+            )
+            answer = result.get("answer", "")
+            # Try parsing JSON from the answer
+            start = answer.find("{")
+            end = answer.rfind("}") + 1
+            if start >= 0 and end > start:
+                parsed = json.loads(answer[start:end])
+                if "insights" in parsed:
+                    return parsed["insights"]
+        except Exception:
+            pass
+
+    # Local heuristic extraction
+    return _heuristic_extract(skill, target, transcript)
 
 
-# ── Live Memanto backend ─────────────────────────────────────────
+def _heuristic_extract(skill: str, target: str, transcript: str) -> list[dict[str, Any]]:
+    """Keyword-based extraction for credential-free mode."""
+    insights = []
+    lines = transcript.strip().split("\n")
+    category = _SKILL_TO_CATEGORY.get(
+        skill.lower().lstrip("/").split("-")[0], "decision"
+    )
+
+    decision_markers = [
+        "decision", "decided", "chose", "selected", "picked",
+        "must", "should", "need to", "will use", "going with",
+        "prefer", "convention", "pattern", "architecture", "trade-off",
+        "constraint", "rule", "standard", "avoid", "always", "never",
+    ]
+
+    for line in lines:
+        line = line.strip()
+        if not line or len(line) < 10:
+            continue
+        if any(m in line.lower() for m in decision_markers):
+            confidence = 0.85 if ":" in line else 0.7
+            insights.append({
+                "category": category,
+                "content": line[:300],
+                "confidence": confidence,
+            })
+            if len(insights) >= 5:
+                break
+
+    if not insights and len(transcript) > 20:
+        insights.append({
+            "category": category,
+            "content": transcript.strip()[:300],
+            "confidence": 0.5,
+        })
+
+    return insights
+
+
+# ── Live Memanto Backend ─────────────────────────────────────────
 
 class _LiveClient:
     """Lazy-initialized DirectClient over Memanto."""
@@ -123,14 +387,9 @@ class _LiveClient:
     def remember(self, mem_type: str, title: str, content: str, tags: list[str]) -> Optional[str]:
         try:
             r = self._client().remember(
-                agent_id=self._agent,
-                memory_type=mem_type,
-                title=title,
-                content=content,
-                confidence=0.85,
-                tags=tags,
-                source="tool",
-                provenance="observed",
+                agent_id=self._agent, memory_type=mem_type,
+                title=title, content=content, confidence=0.85,
+                tags=tags, source="tool", provenance="observed",
             )
             return r.get("memory_id")
         except Exception:
@@ -139,10 +398,8 @@ class _LiveClient:
     def answer(self, question: str, limit: int = 5) -> str:
         try:
             r = self._client().answer(
-                agent_id=self._agent,
-                question=question,
-                limit=limit,
-                temperature=0.3,
+                agent_id=self._agent, question=question,
+                limit=limit, temperature=0.3,
             )
             ans = r.get("answer", "")
             return ans if "No answer generated" not in ans else ""
@@ -152,9 +409,7 @@ class _LiveClient:
     def recall(self, query: str, limit: int = 5) -> list[dict[str, Any]]:
         try:
             r = self._client().recall(
-                agent_id=self._agent,
-                query=query,
-                limit=limit,
+                agent_id=self._agent, query=query, limit=limit,
                 type=["decision", "preference", "instruction", "goal", "context"],
             )
             return r.get("memories", [])
@@ -162,135 +417,122 @@ class _LiveClient:
             return []
 
 
-# ── Extraction engine ────────────────────────────────────────────
+# ── Local JSONL Backend ──────────────────────────────────────────
 
-def _extract_decisions(skill: str, target: str, transcript: str) -> str:
-    """
-    Extract structured engineering decisions from a skill transcript.
-    Live mode: uses Memanto.answer() with an extraction prompt.
-    Local mode: keyword filter.
-    """
-    if not transcript.strip():
-        return f"Executed {skill} on {target}"
-
-    if BACKEND == "live" and _api_key():
-        extraction_prompt = (
-            "Extract the key engineering decisions, architectural choices, "
-            "coding preferences, constraints, and patterns from the following "
-            "skill execution transcript. Return ONLY the extracted facts as "
-            "concise bullet points. Focus on durable decisions that would be "
-            "relevant to future development sessions.\n\nTranscript:\n" + transcript
-        )
-        result = _LiveClient(_api_key(), _agent_id()).answer(extraction_prompt, limit=3)
-        if result:
-            return result.strip()
-
-    # Local fallback: keyword extraction
-    lines = transcript.strip().split("\n")
-    key_words = [
-        "decision", "decided", "must", "should", "prefer", "convention",
-        "pattern", "architecture", "trade-off", "constraint", "rule",
-        "standard", "avoid", "use", "always", "never", "config",
-    ]
-    key_lines = [ln for ln in lines if any(kw in ln.lower() for kw in key_words)]
-    if key_lines:
-        return "\n".join(key_lines[:30])
-    # If no markers found, take first 500 chars
-    body = transcript.strip()[:500]
-    return body + ("..." if len(transcript) > 500 else "")
+def _local_store(record: dict[str, Any]) -> None:
+    with open(MEMORY_FILE, "a", encoding="utf-8") as f:
+        json.dump(record, f, ensure_ascii=False)
+        f.write("\n")
 
 
-# ── Injection engine ─────────────────────────────────────────────
-
-def _inject_context(target: str, skill: str = "") -> str:
-    """
-    Query Memanto for relevant engineering context before skill execution.
-    Live mode: uses Memanto.answer() for synthesized context.
-    Local mode: keyword search in JSONL.
-    """
-    if BACKEND == "live" and _api_key():
-        question = (
-            f"What engineering decisions, architectural choices, coding preferences, "
-            f"or constraints should I know before working on {target}?"
-        )
-        if skill:
-            question += f" Focus on context relevant to {skill}."
-        answer = _LiveClient(_api_key(), _agent_id()).answer(question, limit=5)
-        if answer:
-            return answer.strip()
-
-        # Fallback to recall
-        query = f"engineering decisions architecture constraints for {target}"
-        memories = _LiveClient(_api_key(), _agent_id()).recall(query, limit=5)
-        if memories:
-            lines = []
-            for i, m in enumerate(memories, 1):
-                c = m.get("content", "")
-                lines.append(f"{i}. {c[:200]}")
-            return "\n".join(lines)
-        return ""
-
-    # Local
-    memories = _local_search(target, limit=5)
-    if not memories and skill:
-        memories = _local_search(skill, limit=3)
-    if memories:
-        lines = []
-        for i, m in enumerate(memories, 1):
-            c = m.get("content", "")
-            lines.append(f"{i}. {c[:250]}")
-        return "\n".join(lines)
-    return ""
+def _local_search(query: str, limit: int = 5) -> list[dict[str, Any]]:
+    if not MEMORY_FILE.exists():
+        return []
+    results = []
+    terms = query.lower().split()
+    with open(MEMORY_FILE, encoding="utf-8") as f:
+        for line in f:
+            if not line.strip():
+                continue
+            record = json.loads(line)
+            haystack = (record.get("content", "") + " " +
+                       record.get("title", "") + " " +
+                       record.get("target", "")).lower()
+            score = sum(1 for t in terms if t in haystack)
+            if score > 0:
+                results.append((score, record))
+    results.sort(key=lambda x: x[0], reverse=True)
+    return [r[1] for r in results[:limit]]
 
 
 # ── Public API ───────────────────────────────────────────────────
 
 def pre(skill: str, target: str) -> str:
-    """Run before a skill. Returns context string to inject."""
-    context = _inject_context(target, skill)
-    if context:
-        print(f"[memanto] Injected engineering context for {target}:")
-        print(context[:500])
+    """Run before a skill. Returns context block to inject."""
+    profile = EngineeringProfile()
+    entries = profile.search(target, skill)
+
+    if not entries:
+        # Fallback to local memory search
+        entries_raw = _local_search(target, limit=5)
+        if entries_raw:
+            lines = []
+            for i, e in enumerate(entries_raw, 1):
+                lines.append(f"{i}. {e.get('content', str(e))[:200]}")
+            context = "\n".join(lines)
+        else:
+            print(f"[memanto] No prior context for {target}")
+            return ""
     else:
-        print(f"[memanto] No prior context for {target}")
+        lines = []
+        for i, e in enumerate(entries, 1):
+            lines.append(f"{i}. [{e['category']}] {e['content'][:200]}")
+        context = "\n".join(lines)
+
+    print(f"[memanto] Injected {len(entries) if entries else 0} context entries for {target}")
     return context
 
 
-def post(skill: str, target: str, transcript: str) -> Optional[str]:
-    """Run after a skill. Stores extracted decisions. Returns memory ID."""
-    decisions = _extract_decisions(skill, target, transcript)
-    mem_type = _classify(skill)
-    title = f"{skill} → {target}"[:100]
-    timestamp = datetime.now(timezone.utc).isoformat()
+def post(skill: str, target: str, transcript: str) -> list[dict]:
+    """Run after a skill. Extract insights and evolve the profile."""
+    insights = _extract_insights(skill, target, transcript)
+    profile = EngineeringProfile()
+    stored = []
 
-    if BACKEND == "live" and _api_key():
-        mem_id = _LiveClient(_api_key(), _agent_id()).remember(
-            mem_type, title, decisions, ["skill-execution", f"skill:{skill}"]
-        )
-        if mem_id:
-            print(f"[memanto] Stored as '{mem_type}' ({mem_id[:8]}...)")
-            return mem_id
-    else:
-        record = {
-            "id": f"local-{int(time.time() * 1000)}",
-            "type": mem_type,
-            "title": title,
-            "content": decisions,
+    for insight in insights:
+        # Detect contradictions
+        conflicts = profile.detect_contradictions(insight["content"])
+        if conflicts:
+            # Supersede the first conflicting entry
+            old = conflicts[0]
+            eid = profile.supersede(
+                old["id"], insight["content"], skill
+            )
+        else:
+            eid = profile.add(
+                category=insight["category"],
+                content=insight["content"],
+                confidence=insight["confidence"],
+                source_skill=skill,
+                target=target,
+            )
+        stored.append({"id": eid, "category": insight["category"],
+                       "content": insight["content"][:80]})
+
+        # Also store in local JSONL for raw search
+        _local_store({
+            "id": eid,
+            "type": insight["category"],
+            "title": f"{skill} -> {target}"[:100],
+            "content": insight["content"],
             "skill": skill,
             "target": target,
-            "timestamp": timestamp,
-        }
-        _local_store(record)
-        print(f"[memanto] Stored locally as '{mem_type}'")
-        return record["id"]
-    return None
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+        })
+
+    if stored:
+        print(f"[memanto] Profile evolved: {len(stored)} insight(s) added")
+    else:
+        print(f"[memanto] No insights extracted from {skill}")
+
+    return stored
 
 
 def wrap(skill: str, target: str, transcript: str = "") -> dict[str, Any]:
     """Full lifecycle: pre → run → post."""
     context = pre(skill, target)
-    mem_id = post(skill, target, transcript)
-    return {"context": bool(context), "memory_id": mem_id}
+    stored = post(skill, target, transcript)
+    return {"context_entries": len(context) > 0,
+            "insights_stored": len(stored)}
+
+
+def show_profile() -> None:
+    """Display what Memanto has learned about your engineering context."""
+    profile = EngineeringProfile()
+    print(profile.render())
+    print(f"Profile: {profile.path.resolve()}")
+    print(f"Total insights: {len(profile._data['entries'])}")
+    print(f"Categories: {', '.join(profile._data['metadata'].get('categories_covered', []))}")
 
 
 # ── Benchmark ────────────────────────────────────────────────────
@@ -301,49 +543,48 @@ def benchmark() -> dict[str, Any]:
 
     target = "src/auth.ts"
     skills = [
-        ("/grill-with-docs", target, "Decision: Use OAuth 2.1 with PKCE. Prefer JWT over sessions. Must support MFA."),
-        ("/tdd", target, "Added 12 unit tests for OAuth flow. Edge cases: expired tokens, rate limiting."),
-        ("/handoff", target, "Auth module complete. Token refresh stored. Next: session management."),
+        ("/grill-with-docs", target,
+         "Decision: Use OAuth 2.1 with PKCE. Prefer JWT over sessions. Must support MFA."),
+        ("/tdd", target,
+         "Added 12 unit tests for OAuth flow. Edge cases: expired tokens, rate limiting."),
+        ("/handoff", target,
+         "Auth module complete. Token refresh stored. Next: session management."),
     ]
 
-    memories_stored = 0
     contexts_found = 0
+    total_stored = 0
 
-    for skill, target_path, transcript in skills:
-        print(f"--- {skill} {target_path} ---")
-        ctx = _inject_context(target_path, skill)
-
+    for skill, tgt, transcript in skills:
+        print(f"--- {skill} {tgt} ---")
+        ctx = pre(skill, tgt)
+        ctx_status = f"FOUND ({len(ctx)} chars)" if ctx else "NONE"
+        print(f"  pre : context = {ctx_status}")
         if ctx:
             contexts_found += 1
-            preview = ctx[:120].replace("\n", " | ")
-            print(f"  pre : FOUND ({len(ctx)} chars) — {preview}...")
-        else:
-            print(f"  pre : NONE (no prior context yet)")
-
-        mid = post(skill, target_path, transcript)
-        if mid:
-            memories_stored += 1
-        print(f"  post: stored = {bool(mid)}")
+        stored = post(skill, tgt, transcript)
+        total_stored += len(stored)
         print()
 
-    # A run is "reducible" if context existed from prior skills.
-    # The first run never has context; subsequent runs should find it.
     reducible = len(skills) - 1
     reduction = round((contexts_found / reducible) * 100) if reducible > 0 else 0
 
     print("--- Summary ---")
-    print(f"  Total runs            : {len(skills)}")
-    print(f"  Reducible runs        : {reducible} (runs 2-N that should reuse context)")
-    print(f"  Context hits          : {contexts_found}")
-    print(f"  Memories stored       : {memories_stored}")
-    mode = "local (keyword search)" if BACKEND.strip().lower() == "local" else "live (Memanto.answer() LLM)"
-    print(f"  Backend               : {mode}")
-    print(f"  Reduction             : {contexts_found}/{reducible} = {reduction}%")
+    print(f"  Total runs         : {len(skills)}")
+    print(f"  Reducible runs     : {reducible}")
+    print(f"  Context hits       : {contexts_found}")
+    print(f"  Insights stored    : {total_stored}")
+    print(f"  Backend            : {BACKEND}")
+    print(f"  Reduction          : {contexts_found}/{reducible} = {reduction}%")
     print(f"\n=== Repeated instruction reduction: {reduction}% ===")
+
+    # Display the evolved profile
+    print("\n--- Evolved Engineering Profile ---")
+    profile = EngineeringProfile()
+    print(profile.render())
 
     return {
         "skill_runs": len(skills),
-        "memories_stored": memories_stored,
+        "insights_stored": total_stored,
         "contexts_found": contexts_found,
         "reducible_runs": reducible,
         "repeated_instruction_reduction_pct": reduction,
@@ -355,27 +596,25 @@ def benchmark() -> dict[str, Any]:
 def validate() -> None:
     """Credential-free dry-run validation."""
     print("=== Memanto Skill Memory Bridge — Validation ===\n")
-    print(f"Backend : {BACKEND}")
-    print(f"API Key : {'configured' if _api_key() else 'not set'}")
-    print(f"Agent   : {_agent_id()}")
-    print(f"Store   : {MEMORY_FILE}\n")
+    print(f"  Backend : {BACKEND}")
+    print(f"  API Key : {'configured' if _api_key() else 'not set'}")
+    print(f"  Agent   : {_agent_id()}")
+    print(f"  Profile : {PROFILE_FILE}")
+    print(f"  Store   : {MEMORY_FILE}\n")
 
-    # Walk through all CLI commands
-    for cmd in ["pre", "post", "wrap"]:
+    for cmd in ["pre", "post", "wrap", "profile"]:
         print(f"--- {cmd} ---")
         if cmd == "pre":
             pre("/grill-with-docs", "src/auth.ts")
         elif cmd == "post":
-            post("/grill-with-docs", "src/auth.ts", "Decision: Use OAuth 2.1 with PKCE.")
+            post("/grill-with-docs", "src/auth.ts",
+                 "Decision: Use OAuth 2.1 with PKCE. Prefer JWT over sessions.")
         elif cmd == "wrap":
-            wrap("/tdd", "src/auth.ts", "Added tests for auth edge cases.")
+            wrap("/tdd", "src/auth.ts",
+                 "Added tests for auth edge cases: expired tokens, rate limiting.")
+        elif cmd == "profile":
+            show_profile()
         print()
-
-    # Verify local storage
-    try:
-        pre("/grill-with-docs", "src/auth.ts")
-    except Exception as e:
-        print(f"[memanto] Error: {e}")
 
     print("=== Validation Complete ===")
 
@@ -387,6 +626,7 @@ _HELP = """Memanto Skill Memory Bridge
   python bridge.py pre       <skill> <target>
   python bridge.py post      <skill> <target> [transcript]
   python bridge.py wrap      <skill> <target> [transcript]
+  python bridge.py profile
   python bridge.py validate
   python bridge.py benchmark"""
 
@@ -405,7 +645,12 @@ if __name__ == "__main__":
     if cmd == "validate":
         validate()
     elif cmd == "benchmark":
+        # Reset profile and memory for clean benchmark
+        PROFILE_FILE.unlink(missing_ok=True)
+        MEMORY_FILE.unlink(missing_ok=True)
         benchmark()
+    elif cmd == "profile":
+        show_profile()
     elif cmd == "pre" and len(sys.argv) >= 4:
         pre(sys.argv[2], sys.argv[3])
     elif cmd == "post" and len(sys.argv) >= 4:

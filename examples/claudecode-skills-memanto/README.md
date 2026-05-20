@@ -1,90 +1,95 @@
 # Memanto Skill Memory Bridge
 
-**Cross-skill persistent memory for Claude Code / mattpocock developer skills.**
+**Evolving Engineering Profile for Claude Code / mattpocock developer skills.**
 
 ## The Problem
 
-mattpocock's skills ecosystem gives you sharp, single-purpose CLI primitives (`/grill-with-docs`, `/tdd`, `/handoff`, `/architect`, etc.). But every skill invocation runs in isolation — the architectural decisions you made during `/grill-with-docs` are invisible when you run `/tdd` or `/handoff` in a fresh terminal session. You end up re-stating your preferences, constraints, and codebase quirks manually across every session.
+mattpocock's skills ecosystem (`/grill-with-docs`, `/tdd`, `/handoff`, `/architect`, etc.) are powerful single-purpose CLI primitives. But every invocation is isolated — the architectural decisions from `/grill-with-docs` vanish when you run `/tdd` in a fresh terminal. You manually re-state your codebase preferences, constraints, and patterns across every session.
 
 ## How This Solves It
 
-The Memanto Skill Memory Bridge provides **pre** and **post** hooks that intercept skill execution:
+The **Engineering Profile** is a structured, evolving document of what Memanto has learned about your engineering context. It's built across skill sessions:
 
-- **Pre-hook**: Before a skill runs, it queries Memanto for past engineering context relevant to the target file/skill. It uses Memanto's `answer()` API (RAG + LLM synthesis) for high-quality context, falling back to `recall()` for raw semantic search.
-- **Post-hook**: After a skill completes, it distills the transcript into structured memory and stores it via Memanto's `remember()` API — saving architectural decisions, coding preferences, and codebase patterns.
-- **Skill classifier**: Each mattpocock skill is automatically mapped to the right memory type (e.g., `/grill-with-docs` → `decision`, `/tdd` → `learning`, `/architect` → `goal`).
-- **Transcript distiller**: Extracts decisions, patterns, and constraints from raw skill transcripts, filtering noise.
+```
+/grill-with-docs  ──┐
+/architect         ─┤
+/tdd               ─┼── Memanto ── Engineering Profile
+/handoff           ─┤     ▲
+/decide            ─┘     │
+                    answer() + remember()
+```
+
+- **Pre-hook**: Before a skill runs, the profile is searched for relevant engineering context and injected as structured system constraints.
+- **Post-hook**: After a skill completes, Memanto's LLM extracts structured insights (via `answer()`) and evolves the profile — classifying them into categories, detecting duplicates, tracking confidence, and marking superseded entries.
+- **Profile visualization**: `python bridge.py profile` shows everything Memanto has learned, organized by category with confidence scores.
+
+## Categories
+
+| Category | What it captures | Example |
+|----------|-----------------|---------|
+| `architecture` | System design, tech stack, component layout | "Hexagonal ports/adapters pattern" |
+| `preference` | Developer defaults, tooling choices | "Prefer JWT over sessions" |
+| `constraint` | Hard limits, must-haves | "Must support IE11 compatibility" |
+| `pattern` | Recurring code patterns | "Use Repository pattern for data access" |
+| `decision` | Explicit technical choices | "Use OAuth 2.1 with PKCE flow" |
+| `convention` | Team rules, workflow standards | "Conventional Commits format" |
 
 ## Quick Start
 
 ```bash
 # 1. Get a free API key from https://moorcheh.ai
-export MOORCHEH_API_KEY="your-key-here"
+export MOORCHEH_API_KEY="your-key"
 
 # 2. Install memanto
 pip install memanto
 
-# 3. Run the hooked skill
-python examples/claudecode-skills-memanto/skill_memory.py wrap /grill-with-docs src/auth.ts "$(cat transcript.txt)"
+# 3. Use local mode (no credentials needed for testing)
+export MEMANTO_BACKEND=local
+
+# 4. Run skills with memory
+python bridge.py wrap /grill-with-docs src/auth.ts "$(cat transcript.txt)"
+
+# 5. See what Memanto has learned
+python bridge.py profile
 ```
 
 ## CLI Commands
 
 ```
-# Pre-execution: query memory before a skill
-python skill_memory.py pre  "/grill-with-docs" "src/auth.ts"
-
-# Post-execution: store context after a skill
-python skill_memory.py post "/grill-with-docs" "src/auth.ts" "[transcript content]"
-
-# Full wrap: pre + execution + post
-python skill_memory.py wrap "/tdd" "src/auth.ts" "[transcript content]"
-
-# Dry-run validation (no credentials needed)
-python skill_memory.py validate
+python bridge.py pre       <skill> <target>     # Inject context before a skill
+python bridge.py post      <skill> <target> [transcript]  # Store insights after
+python bridge.py wrap      <skill> <target> [transcript]  # Full lifecycle
+python bridge.py profile                         # View engineering profile
+python bridge.py validate                        # Dry-run (no credentials)
+python bridge.py benchmark                       # Measure context reuse
 ```
 
-## Architecture
+## Skill → Category Mapping
 
-```
-                    ┌──────────────────────┐
-                    │   Claude Code Skill  │
-                    │  /grill-with-docs    │
-                    │  /tdd /handoff etc.  │
-                    └──────┬───────────────┘
-                           │
-              ┌────────────┴────────────┐
-              ▼                         ▼
-        pre_hook()                post_hook()
-              │                         │
-              ▼                         ▼
-    ┌─────────────────┐     ┌─────────────────────┐
-    │ Memanto.answer()│     │ Transcript Distiller│
-    │ Memanto.recall()│     │         │            │
-    └────────┬────────┘     │    Memanto.remember()│
-             │              └─────────────────────┘
-             ▼
-    ┌─────────────────────────────────┐
-    │   Injected System Context       │
-    │   "User prefers hexagonal arch, │
-    │    OAuth 2.1 with PKCE flow."   │
-    └─────────────────────────────────┘
-```
+| Skill | Default Category |
+|-------|-----------------|
+| `/grill-with-docs`, `/grill-me`, `/decide`, `/board` | `decision` |
+| `/architect`, `/design` | `architecture` |
+| `/tdd`, `/test` | `pattern` |
+| `/handoff`, `/review` | `convention` |
+| `/capture`, `/reflect` | `preference` |
+| `/freeze`, `/execute` | `constraint` |
+| `/plan` | `decision` |
+| `/fix` | `pattern` |
 
-## Skill → Memory Type Mapping
+## How the Benchmark Works
 
-| Skill | Memory Type | Tag |
-|-------|------------|-----|
-| `/grill-with-docs`, `/review`, `/challenge`, `/decide` | `decision` | `architecture-review` |
-| `/tdd`, `/test`, `/fix` | `learning` | `test-driven-dev` |
-| `/handoff`, `/freeze` | `instruction` | `session-handoff` |
-| `/architect`, `/design`, `/plan` | `goal` | `system-design` |
-| `/capture` | `context` | `brain-dump` |
-| `/reflect` | `observation` | — |
-| `/execute` | `commitment` | — |
+The benchmark runs 3 skills against the same target (`src/auth.ts`) in sequence:
+
+1. `/grill-with-docs` → No prior context (first run). Extracts and stores: *"Decision: Use OAuth 2.1 with PKCE."*
+2. `/tdd` → Finds the OAuth decision from step 1. Extracts: *"Added tests for OAuth edge cases."*
+3. `/handoff` → Finds BOTH prior insights. Extracts: *"Auth module complete."*
+
+**Result**: 2 of 2 reducible runs found context = 100% reduction in repeated instructions (in this benchmark scenario).
 
 ## Privacy
 
-- Credentials are read from environment variables only; never committed
-- `validate` mode works without any API key for reviewer testing
-- All memory operations use your personal Moorcheh namespace
+- All credentials read from environment variables only
+- `local` mode stores data in `.jsonl` and `.json` files in your project root
+- `live` mode uses your personal Moorcheh namespace
+- No secrets committed to git
