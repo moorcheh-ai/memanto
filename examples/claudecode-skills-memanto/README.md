@@ -65,6 +65,10 @@ Wrappers print the recalled context for transparency and export the same block
 as `MEMANTO_SKILL_CONTEXT`, letting child processes consume the prompt-ready
 constraints directly instead of scraping terminal output.
 
+Set `SKILL_MEMORY_FILES` to a space-separated list of touched files when the
+caller has that context. The wrappers pass those paths into both recall and
+storage so later skills can retrieve decisions by file or module.
+
 ## Live Memanto Mode
 
 Install and configure Memanto:

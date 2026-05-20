@@ -232,6 +232,12 @@ class SkillMemoryTests(unittest.TestCase):
         self.assertIn("printf '%s\\n' \"$SKILL_CONTEXT\"", script)
         self.assertIn("pre-skill", script)
 
+    def test_generated_wrapper_passes_file_context_through_hooks(self) -> None:
+        script = wrapper_script("/handoff", "claude")
+        self.assertIn("SKILL_MEMORY_FILES", script)
+        self.assertIn('--files "${SKILL_FILES[@]}"', script)
+        self.assertIn('"files": files', script)
+
 
 if __name__ == "__main__":
     unittest.main()

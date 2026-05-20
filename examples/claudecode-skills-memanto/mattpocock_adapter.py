@@ -20,12 +20,26 @@ set -euo pipefail
 
 TASK="${{*:-Run {skill}}}"
 RUN_DIR="${{SKILL_MEMORY_RUN_DIR:-.memanto-skill-memory/runs}}"
+SKILL_FILES=()
+HAS_SKILL_FILES=0
+if [[ -n "${{SKILL_MEMORY_FILES:-}}" ]]; then
+  IFS=' ' read -r -a SKILL_FILES <<< "$SKILL_MEMORY_FILES"
+  HAS_SKILL_FILES=1
+fi
 mkdir -p "$RUN_DIR"
 
-SKILL_CONTEXT="$(python "$(dirname "$0")/skill_memory.py" pre-skill \\
-  --skill {quoted_skill} \\
-  --task "$TASK" \\
-  --cwd "$PWD")"
+if [[ "$HAS_SKILL_FILES" -eq 1 ]]; then
+  SKILL_CONTEXT="$(python "$(dirname "$0")/skill_memory.py" pre-skill \\
+    --skill {quoted_skill} \\
+    --task "$TASK" \\
+    --cwd "$PWD" \\
+    --files "${{SKILL_FILES[@]}}")"
+else
+  SKILL_CONTEXT="$(python "$(dirname "$0")/skill_memory.py" pre-skill \\
+    --skill {quoted_skill} \\
+    --task "$TASK" \\
+    --cwd "$PWD")"
+fi
 export MEMANTO_SKILL_CONTEXT="$SKILL_CONTEXT"
 printf '%s\\n' "$SKILL_CONTEXT"
 
@@ -36,7 +50,23 @@ STATUS=${{PIPESTATUS[0]}}
 set -e
 
 RUN_JSON="$RUN_DIR/{skill.strip("/").replace("/", "-")}-$(date -u +%Y%m%dT%H%M%SZ).json"
-python - "$RUN_JSON" {quoted_skill} "$TASK" "$PWD" "$OUTPUT_FILE" <<'PY'
+if [[ "$HAS_SKILL_FILES" -eq 1 ]]; then
+  python - "$RUN_JSON" {quoted_skill} "$TASK" "$PWD" "$OUTPUT_FILE" "${{SKILL_FILES[@]}}" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+run_json, skill, task, cwd, output_file, *files = sys.argv[1:]
+Path(run_json).write_text(json.dumps({{
+    "skill": skill,
+    "task": task,
+    "cwd": cwd,
+    "files": files,
+    "output": Path(output_file).read_text(encoding="utf-8", errors="replace"),
+}}, indent=2) + "\\n", encoding="utf-8")
+PY
+else
+  python - "$RUN_JSON" {quoted_skill} "$TASK" "$PWD" "$OUTPUT_FILE" <<'PY'
 import json
 import sys
 from pathlib import Path
@@ -50,6 +80,7 @@ Path(run_json).write_text(json.dumps({{
     "output": Path(output_file).read_text(encoding="utf-8", errors="replace"),
 }}, indent=2) + "\\n", encoding="utf-8")
 PY
+fi
 
 python "$(dirname "$0")/skill_memory.py" post-skill --run-json "$RUN_JSON"
 exit "$STATUS"
