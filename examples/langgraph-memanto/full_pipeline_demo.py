@@ -1,37 +1,31 @@
+import asyncio
 import os
-from examples.langgraph_memanto.agent import create_memanto_graph
-from langchain_core.messages import HumanMessage
+from agent import MemantoBrain, create_graph
 
-def run_demo():
-    AGENT_ID = "langgraph_persistence_demo_v1"
+async def run_session(session_id: str, user_input: str, api_key: str, agent_id: str):
+    print(f"--- Starting Session {session_id} ---")
+    brain = MemantoBrain(api_key, agent_id)
+    graph = create_graph(brain)
     
-    # Session 1: Store knowledge in Thread A
-    print("--- Session 1: Thread A ---")
-    graph_s1 = create_memanto_graph(AGENT_ID)
-    config_a = {"configurable": {"thread_id": "thread_a"}}
-    
-    input_s1 = {"messages": [HumanMessage(content="My name is Alice")], "user_id": "user_1"}
-    graph_s1.invoke(input_s1, config_a)
-    print("Stored Alice in Thread A")
+    inputs = {"messages": [{"role": "user", "content": user_input}], "user_id": "user_123", "memories": []}
+    result = await graph.ainvoke(inputs)
+    print(f"Response: {result['messages'][-1].content}\n")
 
-    # Session 2: Store knowledge in Thread B
-    print("\n--- Session 2: Thread B ---")
-    graph_s2 = create_memanto_graph(AGENT_ID)
-    config_b = {"configurable": {"thread_id": "thread_b"}}
+async def main():
+    api_key = os.getenv("MEMANTO_API_KEY")
+    agent_id = "architect_demo_agent_001"
     
-    input_s2 = {"messages": [HumanMessage(content="My name is Bob")], "user_id": "user_2"}
-    graph_s2.invoke(input_s2, config_b)
-    print("Stored Bob in Thread B")
+    if not api_key:
+        print("Missing MEMANTO_API_KEY")
+        return
 
-    # Session 3: Recall Thread A (Cross-process simulation)
-    print("\n--- Session 3: Cross-Process Recall Thread A ---")
-    graph_s3 = create_memanto_graph(AGENT_ID)
-    state_a = graph_s3.get_state(config_a)
-    print(f"Recovered state for Thread A: {state_a.values['messages'][-1].content}")
+    # Session 1: Ingest a fact
+    await run_session("1", "My favorite color is Obsidian Blue.", api_key, agent_id)
     
-    # Session 4: Recall Thread B
-    state_b = graph_s3.get_state(config_b)
-    print(f"Recovered state for Thread B: {state_b.values['messages'][-1].content}")
+    print("!!! SIMULATING PROCESS KILL / SESSION RESET !!!\n")
+    
+    # Session 2: Recall the fact in a fresh environment
+    await run_session("2", "Do you remember my favorite color?", api_key, agent_id)
 
 if __name__ == "__main__":
-    run_demo()
+    asyncio.run(main())
