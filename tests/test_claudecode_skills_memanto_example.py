@@ -116,6 +116,33 @@ def test_post_hook_stores_typed_decision_memory() -> None:
     assert "file:retries.ts" in memory["tags"]
 
 
+def test_post_hook_extracts_multiple_typed_memories() -> None:
+    backend = FakeBackend()
+    run = hook.SkillRun(
+        skill="grill-with-docs",
+        task="Review auth session design",
+        files=("src/auth/session.ts",),
+        transcript=(
+            "Decision: keep refresh tokens server-side only. "
+            "Preference: test session expiry at the service boundary. "
+            "Never: log raw tokens in debug output."
+        ),
+    )
+
+    stored = hook.store_completed_run(run, backend)
+
+    assert stored == 3
+    assert [memory["memory_type"] for memory in backend.stored] == [
+        "decision",
+        "preference",
+        "instruction",
+    ]
+    assert "server-side only" in backend.stored[0]["content"]
+    assert "service boundary" in backend.stored[1]["content"]
+    assert "raw tokens" in backend.stored[2]["content"]
+    assert backend.stored[2]["confidence"] == 0.9
+
+
 def test_local_jsonl_backend_round_trips_memory(tmp_path) -> None:
     backend = hook.LocalJsonlBackend(tmp_path / "memory.jsonl")
     backend.remember(

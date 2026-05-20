@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import subprocess
 import sys
 from dataclasses import dataclass, field
@@ -14,6 +15,13 @@ from typing import Protocol
 
 
 DEFAULT_LIMIT = 5
+MEMORY_PATTERNS: tuple[tuple[str, str, float, re.Pattern[str]], ...] = (
+    ("decision", "Decision", 0.88, re.compile(r"\b(?:decision|decided):\s*(.+)", re.I)),
+    ("preference", "Preference", 0.82, re.compile(r"\b(?:preference|prefer):\s*(.+)", re.I)),
+    ("instruction", "Constraint", 0.9, re.compile(r"\b(?:must|never|always):\s*(.+)", re.I)),
+    ("context", "Quirk", 0.76, re.compile(r"\b(?:quirk|caveat|gotcha):\s*(.+)", re.I)),
+    ("context", "Trade-off", 0.74, re.compile(r"\b(?:trade-?off):\s*(.+)", re.I)),
+)
 
 
 class MemoryBackend(Protocol):
@@ -242,20 +250,60 @@ def summarize_transcript(run: SkillRun) -> list[dict[str, object]]:
     tags = ["claude-code-skills", f"skill:{run.skill}"]
     tags.extend(f"file:{Path(path).name}" for path in run.files[:5])
 
-    summary = (
+    memories = _extract_structured_memories(run, transcript, tags)
+    if memories:
+        return memories
+
+    return [_build_memory(run, transcript, "decision", "Skill outcome", tags, 0.78)]
+
+
+def _extract_structured_memories(
+    run: SkillRun,
+    transcript: str,
+    tags: list[str],
+) -> list[dict[str, object]]:
+    memories: list[dict[str, object]] = []
+    seen: set[tuple[str, str]] = set()
+    for sentence in re.split(r"(?<=[.!?])\s+|\n+", transcript):
+        sentence = sentence.strip(" -\t")
+        if not sentence:
+            continue
+        for memory_type, label, confidence, pattern in MEMORY_PATTERNS:
+            match = pattern.search(sentence)
+            if not match:
+                continue
+            detail = _compact(match.group(1).strip(), max_chars=420)
+            if not detail:
+                continue
+            key = (memory_type, detail.lower())
+            if key in seen:
+                continue
+            seen.add(key)
+            memories.append(_build_memory(run, detail, memory_type, label, tags, confidence))
+            break
+    return memories[:DEFAULT_LIMIT]
+
+
+def _build_memory(
+    run: SkillRun,
+    detail: str,
+    memory_type: str,
+    label: str,
+    tags: list[str],
+    confidence: float,
+) -> dict[str, object]:
+    files = ", ".join(run.files) or "not specified"
+    content = (
         f"Skill `{run.skill}` handled task `{run.task}`. "
-        f"Files in scope: {', '.join(run.files) or 'not specified'}. "
-        f"Outcome and decisions: {transcript}"
+        f"Files in scope: {files}. {label}: {detail}"
     )
-    return [
-        {
-            "content": summary,
-            "memory_type": "decision",
-            "title": f"{run.skill}: {run.task[:72]}",
-            "tags": tags,
-            "confidence": 0.78,
-        }
-    ]
+    return {
+        "content": content,
+        "memory_type": memory_type,
+        "title": f"{run.skill}: {label.lower()} for {run.task[:54]}",
+        "tags": tags,
+        "confidence": confidence,
+    }
 
 
 def store_completed_run(run: SkillRun, backend: MemoryBackend) -> int:

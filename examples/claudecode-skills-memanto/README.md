@@ -109,7 +109,9 @@ The stored memory includes:
 - the skill name,
 - the task,
 - files in scope,
-- the transcript summary,
+- structured transcript findings such as `Decision:`, `Preference:`, `Must:`,
+  `Never:`, `Quirk:`, `Caveat:`, and `Trade-off:` lines when present,
+- a fallback transcript summary when no structured finding is present,
 - tags for `claude-code-skills`, the skill name, and touched files.
 
 This lets a later `/tdd`, `/handoff`, or `/grill-with-docs` invocation retrieve project-specific decisions without the developer repeating architectural constraints.
