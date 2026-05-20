@@ -60,6 +60,18 @@ def extract_memories(state: SupportState, store: MemoryStore) -> SupportState:
             )
         )
 
+    if "escalation" in message.lower() or "ada" in message.lower():
+        memories.append(
+            Memory(
+                memory_type="instruction",
+                title="Support escalation owner",
+                content="Riley wants support escalations routed to Ada in support ops.",
+                confidence=0.89,
+                tags=["support", "escalation", "ada", "riley"],
+                source_session=session_id,
+            )
+        )
+
     stored = [store.remember(agent_id, memory) for memory in memories]
     return {**state, "stored_memory_ids": stored}
 

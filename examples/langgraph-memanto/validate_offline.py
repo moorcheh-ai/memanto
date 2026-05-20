@@ -7,6 +7,7 @@ EXPECTED_TERMS = [
     "Friday",
     "purchase order",
     "May 28",
+    "Ada",
 ]
 
 

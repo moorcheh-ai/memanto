@@ -9,11 +9,12 @@ from memory_store import LocalJsonMemoryStore, build_memory_store
 YESTERDAY_MESSAGE = (
     "I am Riley. Please remember that I use the Northstar dashboard theme, "
     "invoices should arrive every Friday with the purchase order in the "
-    "subject, and our migration launches on May 28."
+    "subject, our migration launches on May 28, and support escalations "
+    "should go to Ada in support ops."
 )
 TODAY_MESSAGE = (
     "Fresh thread: what should you remember about Riley's dashboard, invoices, "
-    "and migration?"
+    "migration, and support escalations?"
 )
 
 

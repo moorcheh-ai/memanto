@@ -8,7 +8,10 @@ This example shows Memanto acting as the durable memory layer for a LangGraph su
 
 - Memory is outside LangGraph state: the second run receives no previous messages.
 - The validator checks the memory boundary: every recalled memory must come from `support-yesterday`, not `support-today`.
-- It runs without credentials through a local JSON backend, then can switch to the live Memanto SDK with `MEMANTO_LANGGRAPH_BACKEND=memanto`.
+- It runs without credentials through a local JSON backend, then can switch to the
+  live Memanto SDK with `MEMANTO_LANGGRAPH_BACKEND=memanto`.
+- SDK mode activates the configured agent before `remember` and `recall`, matching
+  the session contract of `memanto.cli.client.sdk_client.SdkClient`.
 
 ## Run Offline
 
@@ -22,7 +25,7 @@ Expected validation:
 
 ```text
 offline validation passed
-recalled_memories=3
+recalled_memories=4
 state_boundary=passed
 ```
 
@@ -64,6 +67,7 @@ python -m py_compile graph.py memory_store.py run_demo.py validate_offline.py ma
 
 - Path: `examples/langgraph-memanto`
 - Cross-session recall: `support-today` recalls memories written by `support-yesterday`
+- Live SDK path: activates the configured agent before storing or recalling
 - Clean single-folder implementation
 - 30-second demo media in README
 - Share-ready post copy and validation summary: `SOCIAL_SHOWCASE.md`

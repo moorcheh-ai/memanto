@@ -72,12 +72,22 @@ class LocalJsonMemoryStore:
 class MemantoSdkMemoryStore:
     """Live Memanto adapter using the repository's SdkClient."""
 
-    def __init__(self, api_key: str) -> None:
-        from memanto.cli.client.sdk_client import SdkClient
+    def __init__(self, api_key: str, client: object | None = None) -> None:
+        if client is None:
+            from memanto.cli.client.sdk_client import SdkClient
 
-        self.client = SdkClient(api_key)
+            client = SdkClient(api_key)
+        self.client = client
+        self._active_agent_id: str | None = None
+
+    def _ensure_agent(self, agent_id: str) -> None:
+        if self._active_agent_id == agent_id:
+            return
+        self.client.activate_agent(agent_id)
+        self._active_agent_id = agent_id
 
     def remember(self, agent_id: str, memory: Memory) -> str:
+        self._ensure_agent(agent_id)
         result = self.client.remember(
             agent_id=agent_id,
             memory_type=memory.memory_type,
@@ -91,20 +101,38 @@ class MemantoSdkMemoryStore:
         return str(result["memory_id"])
 
     def recall(self, agent_id: str, query: str, limit: int = 5) -> list[Memory]:
+        self._ensure_agent(agent_id)
         result = self.client.recall(agent_id=agent_id, query=query, limit=limit)
-        memories = []
-        for item in result.get("memories", []):
-            memories.append(
-                Memory(
-                    memory_type=item.get("type", "fact"),
-                    title=item.get("title", "Untitled"),
-                    content=item.get("content", ""),
-                    confidence=float(item.get("confidence", 0.8)),
-                    tags=list(item.get("tags", [])),
-                    source_session=str(item.get("source", "memanto")),
-                )
-            )
-        return memories
+        return [
+            memory
+            for memory in map(memory_from_sdk_result, result.get("memories", []))
+            if memory
+        ][:limit]
+
+
+def memory_from_sdk_result(item: object) -> Memory | None:
+    if not isinstance(item, dict):
+        return None
+    content = str(item.get("content") or item.get("text") or "").strip()
+    if not content:
+        metadata = item.get("metadata")
+        if isinstance(metadata, dict):
+            content = str(metadata.get("content") or metadata.get("text") or "").strip()
+    if not content:
+        return None
+
+    source = str(item.get("source", "memanto"))
+    if source.startswith("langgraph:"):
+        source = source.split(":", 1)[1]
+    tags = item.get("tags", [])
+    return Memory(
+        memory_type=str(item.get("type") or item.get("memory_type") or "fact"),
+        title=str(item.get("title") or "Untitled"),
+        content=content,
+        confidence=float(item.get("confidence", 0.8)),
+        tags=[str(tag) for tag in tags] if isinstance(tags, list) else [],
+        source_session=source,
+    )
 
 
 def build_memory_store(backend: str | None = None) -> MemoryStore:
