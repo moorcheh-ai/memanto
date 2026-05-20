@@ -12,6 +12,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
 SCRIPT = ROOT / "skill_memory.py"
+ADAPTER = ROOT / "mattpocock_adapter.py"
 
 
 def run(command: list[str], cwd: Path) -> str:
@@ -101,6 +102,23 @@ def main() -> int:
                 ],
                 workdir,
             )
+
+        generated = workdir / "commands"
+        run([sys.executable, str(ADAPTER), "--output", str(generated)], workdir)
+        expected = [
+            generated / "grill-with-docs-memory.md",
+            generated / "tdd-memory.md",
+            generated / "handoff-memory.md",
+        ]
+        missing_files = [str(path) for path in expected if not path.exists()]
+        if missing_files:
+            raise AssertionError(f"Missing generated wrappers: {missing_files}")
+
+        wrapper_text = (generated / "grill-with-docs-memory.md").read_text(
+            encoding="utf-8"
+        )
+        if "/grill-with-docs" not in wrapper_text or "skill_memory.py before" not in wrapper_text:
+            raise AssertionError("Generated wrapper is missing source skill hooks")
 
     print("credential-free validation passed")
     return 0

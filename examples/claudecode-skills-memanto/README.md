@@ -51,6 +51,18 @@ python examples/claudecode-skills-memanto/skill_memory.py wrap \
 The wrapper recalls memory, runs the command, captures the transcript, and
 stores durable decisions from the result.
 
+To generate command wrappers for the common `mattpocock/skills` commands:
+
+```bash
+python examples/claudecode-skills-memanto/mattpocock_adapter.py \
+  --output .claude/commands
+```
+
+This creates reviewable command files such as `grill-with-docs-memory.md`,
+`tdd-memory.md`, and `handoff-memory.md`. Each wrapper tells the agent to recall
+Memanto context before invoking the source skill and store durable decisions
+after it completes.
+
 ## What it captures
 
 The bridge looks for durable engineering signals such as:
@@ -69,6 +81,8 @@ credentials.
 ## Files
 
 - `skill_memory.py` - before/after hook wrapper.
+- `mattpocock_adapter.py` - generates Claude command wrappers for common
+  `mattpocock/skills` workflows.
 - `validate.py` - credential-free smoke test for reviewers.
 - `skills/memanto-memory-bridge/SKILL.md` - Claude Code skill glue.
 - `demo/demo-transcript.md` - sample two-skill walkthrough.
