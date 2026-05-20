@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="920" height="520" viewBox="0 0 920 520" role="img" aria-labelledby="title desc">
+  <title id="title">Claude Code skills Memanto offline demo</title>
+  <desc id="desc">Terminal-style screenshot showing a first skill run storing memories and a second skill run recalling them.</desc>
+  <rect width="920" height="520" rx="10" fill="#101419"/>
+  <rect x="0" y="0" width="920" height="34" rx="10" fill="#202832"/>
+  <circle cx="22" cy="17" r="6" fill="#ff5f57"/>
+  <circle cx="44" cy="17" r="6" fill="#ffbd2e"/>
+  <circle cx="66" cy="17" r="6" fill="#28c840"/>
+  <text x="84" y="22" fill="#c7d0dc" font-family="SFMono-Regular, Consolas, monospace" font-size="13">examples/claudecode-skills-memanto</text>
+
+  <g font-family="SFMono-Regular, Consolas, monospace" font-size="15">
+    <text x="28" y="68" fill="#7dd3fc">$ ./run_offline_demo.sh</text>
+    <text x="28" y="104" fill="#e6edf3">Stored 5 memory item(s) for skill `grill-with-docs`.</text>
+    <text x="48" y="132" fill="#a7f3d0">- decision: Use PostgreSQL for durable project state.</text>
+    <text x="48" y="160" fill="#a7f3d0">- instruction: Preserve backwards-compatible API fields.</text>
+    <text x="48" y="188" fill="#a7f3d0">- preference: Keep service code dependency-light.</text>
+    <text x="48" y="216" fill="#a7f3d0">- artifact: Added docs/api-pagination.md handoff notes.</text>
+    <text x="48" y="244" fill="#a7f3d0">- learning: pytest tests/test_api.py</text>
+
+    <text x="28" y="300" fill="#e6edf3">Memanto context for this skill run:</text>
+    <text x="28" y="328" fill="#e6edf3">Task: add pagination tests</text>
+    <text x="28" y="372" fill="#facc15">Apply remembered engineering constraints when relevant:</text>
+    <text x="48" y="400" fill="#c7d0dc">1. Useful command for grill-with-docs: pytest tests/test_api.py</text>
+    <text x="48" y="428" fill="#c7d0dc">2. Artifact: Added pagination notes for the next skill run.</text>
+    <text x="48" y="456" fill="#c7d0dc">3. Preference: Keep service code dependency-light.</text>
+    <text x="48" y="484" fill="#c7d0dc">4. Constraint: API changes must preserve response fields.</text>
+  </g>
+</svg>
