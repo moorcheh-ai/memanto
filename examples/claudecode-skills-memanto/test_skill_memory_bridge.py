@@ -36,6 +36,7 @@ def test_distiller_extracts_typed_engineering_memories() -> None:
         "instruction",
     ]
     assert "repository-local adapter" in memories[0].content
+    assert memories[2].content == "Avoid storing secrets or raw hidden prompts."
     assert all("tdd" in memory.tags for memory in memories)
 
 

@@ -21,6 +21,19 @@ python examples/claudecode-skills-memanto/run_demo.py
 The demo uses a local JSONL backend so reviewers can validate cross-session
 recall without a Moorcheh API key.
 
+To inspect the memories that would be available to later skill runs:
+
+```bash
+python examples/claudecode-skills-memanto/run_demo.py \
+  --memory-file /tmp/memanto-skills-demo.jsonl
+cat /tmp/memanto-skills-demo.jsonl
+```
+
+The second and third skill executions print `Relevant Memanto memories:` before
+running. That is the practical productivity gain: each isolated command starts
+with the project decisions and constraints learned by earlier skills, without
+asking the user to repeat them in every prompt.
+
 ## Use Real Memanto
 
 Install and configure Memanto first:
@@ -53,6 +66,18 @@ This creates `.claude/commands/*-with-memanto.md` wrappers for:
 
 The generated files are intentionally small. They keep the original skills as
 the source of truth while adding Memanto recall and storage around each run.
+
+## Review Checklist
+
+- Run the demo once and confirm later skills receive `MEMANTO_SKILL_CONTEXT`.
+- Inspect the JSONL file and confirm only durable decisions, preferences,
+  instructions, and observations are stored.
+- Run the tests to cover recall scoring, transcript distillation, context
+  injection, and child-process exit handling.
+
+```bash
+python -m pytest examples/claudecode-skills-memanto/test_skill_memory_bridge.py -q
+```
 
 ## Safety Boundary
 

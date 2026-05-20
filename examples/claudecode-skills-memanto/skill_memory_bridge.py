@@ -178,6 +178,11 @@ class TranscriptDistiller:
                 if not match:
                     continue
                 content = _clean_sentence(match.group(1))
+                lowered_line = line.lower()
+                if lowered_line.startswith("avoid"):
+                    content = f"Avoid {_lower_first(content)}"
+                elif lowered_line.startswith("never"):
+                    content = f"Never {_lower_first(content)}"
                 if len(content) < 12 or content.lower() in seen:
                     continue
                 seen.add(content.lower())
@@ -256,6 +261,10 @@ def _tokenize(value: str) -> set[str]:
 def _clean_sentence(value: str) -> str:
     value = re.sub(r"\s+", " ", value).strip()
     return value[:1].upper() + value[1:]
+
+
+def _lower_first(value: str) -> str:
+    return value[:1].lower() + value[1:]
 
 
 def main(argv: list[str] | None = None) -> int:

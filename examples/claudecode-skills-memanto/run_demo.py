@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import argparse
 import os
 import sys
 import tempfile
@@ -10,16 +11,37 @@ from pathlib import Path
 from skill_memory_bridge import LocalJsonlBackend, SkillMemoryBridge
 
 
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(
+        description="Run the credential-free Claude Code skills + Memanto demo.",
+    )
+    parser.add_argument(
+        "--memory-file",
+        type=Path,
+        default=None,
+        help="Write demo memories to this JSONL file for review.",
+    )
+    parser.add_argument(
+        "--keep-memory",
+        action="store_true",
+        help="Keep the temporary JSONL memory file after the demo exits.",
+    )
+    return parser.parse_args()
+
+
 def main() -> int:
+    args = parse_args()
     configured_file = os.getenv("MEMANTO_SKILLS_MEMORY_FILE")
     cleanup = False
-    if configured_file:
+    if args.memory_file:
+        demo_file = args.memory_file
+    elif configured_file:
         demo_file = Path(configured_file)
     else:
         handle = tempfile.NamedTemporaryFile(prefix="memanto-skills-", suffix=".jsonl")
         demo_file = Path(handle.name)
         handle.close()
-        cleanup = True
+        cleanup = not args.keep_memory
 
     bridge = SkillMemoryBridge(LocalJsonlBackend(demo_file))
     base = [sys.executable, str(Path(__file__).with_name("demo_skills.py"))]
@@ -35,6 +57,8 @@ def main() -> int:
             return status
 
     print(f"\nMemory file: {demo_file}")
+    if not cleanup:
+        print("Inspect the JSONL file to see the durable memories stored by each run.")
     if cleanup:
         demo_file.unlink(missing_ok=True)
     return 0
