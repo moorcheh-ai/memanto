@@ -84,6 +84,8 @@ credentials.
 - `mattpocock_adapter.py` - generates Claude command wrappers for common
   `mattpocock/skills` workflows.
 - `validate.py` - credential-free smoke test for reviewers.
+- `test_skill_memory.py` - stdlib unit tests for the preview bridge and wrapper
+  generator.
 - `skills/memanto-memory-bridge/SKILL.md` - Claude Code skill glue.
 - `demo/demo-transcript.md` - sample two-skill walkthrough.
 - `sample-output/injected-context.md` - example injected memory block.
