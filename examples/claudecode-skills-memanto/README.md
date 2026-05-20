@@ -32,6 +32,7 @@ The example is intentionally reviewable without private credentials:
 | `run_skill_with_memory.py` | CLI wrapper for running a skill command with memory injection/capture. |
 | `demo.py` | Two-session demo that simulates separate skill executions. |
 | `validate.py` | Credential-free regression check for the demo behavior. |
+| `test_skill_memory.py` | Stdlib tests that avoid repository-level pytest dependencies. |
 | `demo-transcript.md` | Expected demo output for quick review. |
 
 ## Quick Start
@@ -42,6 +43,7 @@ Run the credential-free preview:
 cd examples/claudecode-skills-memanto
 python validate.py
 python demo.py
+python -m unittest test_skill_memory.py
 ```
 
 Wrap a real command with recalled memory:
