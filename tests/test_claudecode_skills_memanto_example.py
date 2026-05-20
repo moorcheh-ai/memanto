@@ -19,6 +19,7 @@ from skill_memory import (  # noqa: E402
     SkillMemoryHook,
     build_memory_store,
 )
+from mattpocock_adapter import DEFAULT_SKILLS, command_payload, write_command_specs  # noqa: E402
 
 
 def test_local_preview_reuses_cross_skill_memory(tmp_path: Path) -> None:
@@ -169,3 +170,17 @@ def test_runner_wraps_command_with_local_memory(tmp_path: Path) -> None:
     assert "Relevant prior engineering memory from Memanto" in result.stdout
     assert "billing/retry.py" in result.stdout
     assert "wrapped command ran" in result.stdout
+
+
+def test_mattpocock_adapter_writes_memory_aware_command_specs(tmp_path: Path) -> None:
+    written = write_command_specs(tmp_path)
+
+    assert sorted(path.name for path in written) == [
+        "grill-with-docs.md",
+        "handoff.md",
+        "tdd.md",
+    ]
+    tdd_command = (tmp_path / "tdd.md").read_text(encoding="utf-8")
+    assert "run_skill_with_memory.py" in tdd_command
+    assert "--skill /tdd" in tdd_command
+    assert command_payload(DEFAULT_SKILLS[0])["backend_env"] == "MEMANTO_SKILLS_BACKEND"

@@ -30,6 +30,7 @@ The example is intentionally reviewable without private credentials:
 | --- | --- |
 | `skill_memory.py` | Memory store adapters and the reusable skill lifecycle hook. |
 | `run_skill_with_memory.py` | CLI wrapper for running a skill command with memory injection/capture. |
+| `mattpocock_adapter.py` | Generates Memanto-aware command specs for mattpocock-style developer skills. |
 | `demo.py` | Two-session demo that simulates separate skill executions. |
 | `validate.py` | Credential-free regression check for the demo behavior. |
 | `test_skill_memory.py` | Stdlib tests that avoid repository-level pytest dependencies. |
@@ -54,6 +55,14 @@ python run_skill_with_memory.py \
   --task "Add tests for invoice retry scheduling" \
   --file billing/retry.py \
   -- python -m pytest tests/billing/test_retry.py -q
+```
+
+Generate Claude Code command specs for the mattpocock-style skills used in
+the challenge:
+
+```bash
+python mattpocock_adapter.py --json
+python mattpocock_adapter.py --write .claude/commands
 ```
 
 Use a custom local memory path:
@@ -118,6 +127,14 @@ The hook captures durable memories such as:
 - file-specific constraints
 - validation commands
 - handoff notes
+
+## Matt Pocock Skill Wrappers
+
+`mattpocock_adapter.py` maps `/grill-with-docs`, `/tdd`, and `/handoff` to
+Memanto-aware Claude Code command specs. Each generated command keeps the
+underlying skill command separate while wrapping it with `run_skill_with_memory.py`,
+so prior decisions are injected through `MEMANTO_SKILL_CONTEXT` before the
+command runs and the transcript is captured afterward.
 
 ## Review Notes
 

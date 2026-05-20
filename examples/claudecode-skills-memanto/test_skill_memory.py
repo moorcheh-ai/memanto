@@ -9,6 +9,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
+from mattpocock_adapter import DEFAULT_SKILLS, command_payload, write_command_specs
 from skill_memory import LocalPreviewMemoryStore, SkillMemoryHook
 
 
@@ -77,6 +78,20 @@ Preference: Use fake clock fixtures for retry tests.
             self.assertIn("Relevant prior engineering memory from Memanto", result.stdout)
             self.assertIn("billing/retry.py", result.stdout)
             self.assertIn("wrapped command ran", result.stdout)
+
+    def test_mattpocock_adapter_generates_memory_aware_commands(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            written = write_command_specs(tmpdir)
+            self.assertEqual(len(written), 3)
+            command_text = (Path(tmpdir) / "tdd.md").read_text(encoding="utf-8")
+
+            self.assertIn("run_skill_with_memory.py", command_text)
+            self.assertIn("--skill /tdd", command_text)
+            self.assertEqual(
+                command_payload(DEFAULT_SKILLS[0])["memory_env"],
+                "MEMANTO_SKILLS_MEMORY",
+            )
+            self.assertEqual(DEFAULT_SKILLS[2].name, "/handoff")
 
 
 if __name__ == "__main__":
