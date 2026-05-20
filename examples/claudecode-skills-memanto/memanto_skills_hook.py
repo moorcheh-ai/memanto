@@ -102,6 +102,49 @@ class MemantoCliBackend:
         subprocess.run(args, check=True)
 
 
+class MemantoSdkBackend:
+    """Backend that uses Memanto's Python SDK client directly."""
+
+    def __init__(self, agent_id: str | None = None) -> None:
+        from memanto.cli.commands._shared import get_client
+
+        self.client = get_client()
+        self.agent_id = agent_id or self.client.agent_id
+        if not self.agent_id:
+            raise ValueError(
+                "No active Memanto agent. Run `memanto agent create` or pass "
+                "MEMANTO_AGENT_ID."
+            )
+
+    def recall(self, query: str, limit: int = DEFAULT_LIMIT) -> list[str]:
+        result = self.client.recall(
+            agent_id=self.agent_id,
+            query=query,
+            limit=limit,
+            type=["decision"],
+        )
+        return _extract_sdk_memory_lines(result)
+
+    def remember(
+        self,
+        content: str,
+        memory_type: str,
+        title: str,
+        tags: list[str],
+        confidence: float,
+    ) -> None:
+        self.client.remember(
+            agent_id=self.agent_id,
+            memory_type=memory_type,
+            title=title,
+            content=content,
+            confidence=confidence,
+            tags=tags,
+            source="claudecode-skills-memanto",
+            provenance="inferred",
+        )
+
+
 class LocalJsonlBackend:
     """Credential-free backend for demos and reviewer validation."""
 
@@ -157,6 +200,21 @@ def _extract_cli_memory_lines(output: str) -> list[str]:
         if "Memory " in line and "Score:" in line:
             continue
         lines.append(line)
+    return lines[:DEFAULT_LIMIT]
+
+
+def _extract_sdk_memory_lines(result: dict[str, object]) -> list[str]:
+    memories = result.get("memories", [])
+    if not isinstance(memories, list):
+        return []
+
+    lines: list[str] = []
+    for memory in memories:
+        if not isinstance(memory, dict):
+            continue
+        content = memory.get("content")
+        if isinstance(content, str) and content.strip():
+            lines.append(content.strip())
     return lines[:DEFAULT_LIMIT]
 
 
@@ -260,7 +318,7 @@ def main(argv: list[str] | None = None) -> int:
         command_parser.add_argument("--transcript-file")
         command_parser.add_argument(
             "--backend",
-            choices=("memanto-cli", "local-jsonl"),
+            choices=("memanto-sdk", "memanto-cli", "local-jsonl"),
             default=os.environ.get("MEMANTO_SKILLS_BACKEND", "memanto-cli"),
         )
         command_parser.add_argument(
@@ -275,6 +333,8 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     if args.backend == "local-jsonl":
         backend: MemoryBackend = LocalJsonlBackend(Path(args.store))
+    elif args.backend == "memanto-sdk":
+        backend = MemantoSdkBackend(os.environ.get("MEMANTO_AGENT_ID"))
     else:
         backend = MemantoCliBackend(os.environ.get("MEMANTO_EXECUTABLE", "memanto"))
     run = _build_run(args)

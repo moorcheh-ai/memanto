@@ -89,7 +89,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--file", action="append", default=[])
     parser.add_argument(
         "--backend",
-        choices=("memanto-cli", "local-jsonl"),
+        choices=("memanto-sdk", "memanto-cli", "local-jsonl"),
         default="memanto-cli",
     )
     parser.add_argument("--store")

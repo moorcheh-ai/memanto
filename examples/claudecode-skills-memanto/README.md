@@ -16,6 +16,15 @@ memanto agent create claude-code-skills
 
 The active Memanto agent is used by the hook. A Moorcheh API key must already be configured through `memanto` setup.
 
+For production wiring, use the SDK backend so the hook talks to Memanto through the in-process Python client:
+
+```bash
+export MEMANTO_SKILLS_BACKEND=memanto-sdk
+export MEMANTO_AGENT_ID=claude-code-skills
+```
+
+If `MEMANTO_AGENT_ID` is omitted, the hook uses the active agent from the local Memanto CLI configuration. The `memanto-cli` backend remains available for environments that prefer shelling out to the installed CLI.
+
 ## Direct Hook Usage
 
 Before running a skill:

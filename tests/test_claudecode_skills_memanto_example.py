@@ -119,6 +119,24 @@ def test_local_jsonl_backend_round_trips_memory(tmp_path) -> None:
     assert memories == ["Keep billing retry delays deterministic in tests."]
 
 
+def test_sdk_recall_extractor_reads_memory_content() -> None:
+    result = {
+        "memories": [
+            {"content": "Prefer service-level retry tests."},
+            {"content": "Preserve idempotency keys."},
+            {"content": ""},
+            {"title": "missing content"},
+        ]
+    }
+
+    memories = hook._extract_sdk_memory_lines(result)
+
+    assert memories == [
+        "Prefer service-level retry tests.",
+        "Preserve idempotency keys.",
+    ]
+
+
 def test_mattpocock_adapter_builds_memory_aware_skill_spec() -> None:
     spec = adapter.build_skill_spec(
         "grill-with-docs",
