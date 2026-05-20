@@ -5,7 +5,7 @@ This example shows how Memanto can act as a persistent engineering memory layer 
 The hook has two phases:
 
 - `pre`: recall relevant engineering decisions before a skill starts and print a compact context block that can be appended to the skill prompt.
-- `post`: read the completed skill transcript, distill durable engineering context, and store it in Memanto as typed `decision` memory.
+- `post`: read the completed skill transcript, use Memanto's backend LLM to distill durable engineering context when the SDK backend is active, and store typed memories back into Memanto. Local review falls back to deterministic structured extraction.
 
 ## Setup
 
@@ -24,6 +24,8 @@ export MEMANTO_AGENT_ID=claude-code-skills
 ```
 
 If `MEMANTO_AGENT_ID` is omitted, the hook uses the active agent from the local Memanto CLI configuration. The `memanto-cli` backend remains available for environments that prefer shelling out to the installed CLI.
+
+In SDK mode, the `post` hook asks Memanto to extract durable `decision`, `preference`, `instruction`, and `context` memories from the skill transcript before calling `remember`. If the SDK cannot provide an answer, the hook falls back to the local structured extractor used by the credential-free preview.
 
 ## Direct Hook Usage
 
@@ -127,6 +129,7 @@ The stored memory includes:
 - the skill name,
 - the task,
 - files in scope,
+- Memanto SDK-distilled memories from the completed transcript when `MEMANTO_SKILLS_BACKEND=memanto-sdk`,
 - structured transcript findings such as `Decision:`, `Preference:`, `Must:`,
   `Never:`, `Quirk:`, `Caveat:`, and `Trade-off:` lines when present,
 - a fallback transcript summary when no structured finding is present,

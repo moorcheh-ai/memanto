@@ -97,6 +97,20 @@ class FakeBackend:
         )
 
 
+class FakeDistillingBackend(FakeBackend):
+    def distill_transcript(self, run: hook.SkillRun) -> list[dict[str, object]]:
+        assert run.skill == "handoff"
+        return [
+            {
+                "content": "Use the repository service layer for billing retries.",
+                "memory_type": "decision",
+                "title": "billing retry layer",
+                "tags": ["claude-code-skills", "skill:handoff"],
+                "confidence": 0.93,
+            }
+        ]
+
+
 def test_pre_hook_formats_recalled_engineering_memory() -> None:
     run = hook.SkillRun(
         skill="tdd",
@@ -155,6 +169,60 @@ def test_post_hook_extracts_multiple_typed_memories() -> None:
     assert "service boundary" in backend.stored[1]["content"]
     assert "raw tokens" in backend.stored[2]["content"]
     assert backend.stored[2]["confidence"] == 0.9
+
+
+def test_post_hook_prefers_backend_llm_distillation() -> None:
+    backend = FakeDistillingBackend()
+    run = hook.SkillRun(
+        skill="handoff",
+        task="Summarize billing retry implementation",
+        files=("src/billing/retries.ts",),
+        transcript="Implemented retries without a structured decision prefix.",
+    )
+
+    stored = hook.store_completed_run(run, backend)
+
+    assert stored == 1
+    assert backend.stored[0]["title"] == "billing retry layer"
+    assert "repository service layer" in backend.stored[0]["content"]
+    assert backend.stored[0]["confidence"] == 0.93
+
+
+def test_sdk_answer_parser_accepts_json_wrapped_in_text() -> None:
+    answer = """
+    Here is the distilled output:
+    {
+      "memories": [
+        {
+          "type": "instruction",
+          "title": "token logging",
+          "content": "Never log raw OAuth tokens in debug traces.",
+          "confidence": 1.4
+        }
+      ]
+    }
+    """
+    run = hook.SkillRun(
+        skill="grill-with-docs",
+        task="Review OAuth refresh flow",
+        files=("src/auth/oauth.ts",),
+    )
+
+    memories = hook._parse_distilled_memories(run, answer)
+
+    assert memories == [
+        {
+            "content": "Never log raw OAuth tokens in debug traces.",
+            "memory_type": "instruction",
+            "title": "token logging",
+            "tags": [
+                "claude-code-skills",
+                "skill:grill-with-docs",
+                "file:oauth.ts",
+            ],
+            "confidence": 1.0,
+        }
+    ]
 
 
 def test_local_jsonl_backend_round_trips_memory(tmp_path) -> None:
