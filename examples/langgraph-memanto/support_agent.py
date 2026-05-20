@@ -160,6 +160,7 @@ class MemantoCliBackend:
                     "LangGraph support demo memory",
                 ]
             )
+            self._run([*self._command(), "agent", "activate", self.agent_id])
 
     def _command(self) -> list[str]:
         if self.memanto_bin:
@@ -195,15 +196,17 @@ def _expand_query_terms(terms: set[str]) -> set[str]:
 
 def _is_missing_agent_error(message: str) -> bool:
     lowered = message.lower()
+    agent_context = "agent" in lowered
+    if "404" in lowered and agent_context:
+        return True
+    if "does not exist" in lowered and agent_context:
+        return True
     return any(
         marker in lowered
         for marker in (
             "agent not found",
-            "not found",
-            "does not exist",
             "no such agent",
             "unknown agent",
-            "404",
         )
     )
 

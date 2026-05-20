@@ -79,7 +79,7 @@ def test_memanto_agent_creation_only_runs_for_missing_agent(monkeypatch):
 
     def fake_run(args):
         calls.append(args)
-        if args[1:3] == ["agent", "activate"]:
+        if args[1:3] == ["agent", "activate"] and len(calls) == 1:
             raise RuntimeError("agent not found: demo")
         return "created"
 
@@ -87,7 +87,11 @@ def test_memanto_agent_creation_only_runs_for_missing_agent(monkeypatch):
 
     backend._ensure_agent()
 
-    assert calls[1][1:3] == ["agent", "create"]
+    assert [args[1:3] for args in calls] == [
+        ["agent", "activate"],
+        ["agent", "create"],
+        ["agent", "activate"],
+    ]
 
 
 def test_memanto_agent_activation_propagates_non_missing_errors(monkeypatch):
@@ -95,7 +99,9 @@ def test_memanto_agent_activation_propagates_non_missing_errors(monkeypatch):
     backend = module.MemantoCliBackend(agent_id="demo", memanto_bin="memanto")
 
     def fake_run(args):
-        raise RuntimeError("permission denied")
+        if args[1:3] == ["agent", "activate"]:
+            raise RuntimeError("permission denied")
+        raise AssertionError("agent create must not run after permission failure")
 
     monkeypatch.setattr(backend, "_run", fake_run)
 
