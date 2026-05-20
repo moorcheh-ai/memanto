@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import importlib.util
+import json
 import sys
 from pathlib import Path
 
@@ -31,6 +32,13 @@ assert adapter_spec and adapter_spec.loader
 adapter = importlib.util.module_from_spec(adapter_spec)
 sys.modules["mattpocock_adapter"] = adapter
 adapter_spec.loader.exec_module(adapter)
+
+HOOK_MANIFEST_PATH = (
+    Path(__file__).resolve().parents[1]
+    / "examples"
+    / "claudecode-skills-memanto"
+    / "claude-code-hooks.example.json"
+)
 
 
 class FakeBackend:
@@ -126,3 +134,15 @@ def test_mattpocock_adapter_builds_memory_aware_skill_spec() -> None:
     assert "--store" in spec.pre_hook
     assert "src/billing/retries.ts" in spec.post_hook
     assert "skill prompt" in spec.prompt_prefix
+
+
+def test_static_hook_manifest_covers_named_skills() -> None:
+    manifest = json.loads(HOOK_MANIFEST_PATH.read_text(encoding="utf-8"))
+
+    assert sorted(manifest["skills"]) == ["grill-with-docs", "handoff", "tdd"]
+    for skill, entry in manifest["skills"].items():
+        assert entry["command"] == f"/{skill}"
+        assert "pre" in entry["memory"]["before"]
+        assert "post" in entry["memory"]["after"]
+        assert "$SKILL_TASK" in entry["memory"]["before"]
+        assert "$TRANSCRIPT_FILE" in entry["memory"]["after"]

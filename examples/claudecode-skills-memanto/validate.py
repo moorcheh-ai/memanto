@@ -6,12 +6,14 @@ from __future__ import annotations
 import subprocess
 import sys
 import tempfile
+import json
 from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parent
 HOOK = ROOT / "memanto_skills_hook.py"
 ADAPTER = ROOT / "mattpocock_adapter.py"
+HOOK_MANIFEST = ROOT / "claude-code-hooks.example.json"
 
 
 def run_command(args: list[str]) -> str:
@@ -92,6 +94,18 @@ def main() -> int:
         )
         if not expected_adapter:
             raise AssertionError(adapter_output)
+
+        manifest = json.loads(HOOK_MANIFEST.read_text(encoding="utf-8"))
+        for skill in ("grill-with-docs", "tdd", "handoff"):
+            entry = manifest["skills"][skill]
+            if entry["command"] != f"/{skill}":
+                raise AssertionError(entry)
+            before = entry["memory"]["before"]
+            after = entry["memory"]["after"]
+            if "pre" not in before or "post" not in after:
+                raise AssertionError(entry)
+            if "$SKILL_TASK" not in before or "$TRANSCRIPT_FILE" not in after:
+                raise AssertionError(entry)
 
     print("local-jsonl validation passed")
     return 0

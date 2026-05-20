@@ -1,0 +1,92 @@
+{
+  "description": "Example memory hook wiring for command-oriented Claude Code skills.",
+  "skills": {
+    "grill-with-docs": {
+      "command": "/grill-with-docs",
+      "memory": {
+        "before": [
+          "python",
+          "examples/claudecode-skills-memanto/memanto_skills_hook.py",
+          "pre",
+          "--skill",
+          "grill-with-docs",
+          "--task",
+          "$SKILL_TASK",
+          "--metadata",
+          "{\"adapter\":\"mattpocock-skills\",\"command\":\"/grill-with-docs\"}"
+        ],
+        "after": [
+          "python",
+          "examples/claudecode-skills-memanto/memanto_skills_hook.py",
+          "post",
+          "--skill",
+          "grill-with-docs",
+          "--task",
+          "$SKILL_TASK",
+          "--transcript-file",
+          "$TRANSCRIPT_FILE",
+          "--metadata",
+          "{\"adapter\":\"mattpocock-skills\",\"command\":\"/grill-with-docs\"}"
+        ]
+      }
+    },
+    "handoff": {
+      "command": "/handoff",
+      "memory": {
+        "before": [
+          "python",
+          "examples/claudecode-skills-memanto/memanto_skills_hook.py",
+          "pre",
+          "--skill",
+          "handoff",
+          "--task",
+          "$SKILL_TASK",
+          "--metadata",
+          "{\"adapter\":\"mattpocock-skills\",\"command\":\"/handoff\"}"
+        ],
+        "after": [
+          "python",
+          "examples/claudecode-skills-memanto/memanto_skills_hook.py",
+          "post",
+          "--skill",
+          "handoff",
+          "--task",
+          "$SKILL_TASK",
+          "--transcript-file",
+          "$TRANSCRIPT_FILE",
+          "--metadata",
+          "{\"adapter\":\"mattpocock-skills\",\"command\":\"/handoff\"}"
+        ]
+      }
+    },
+    "tdd": {
+      "command": "/tdd",
+      "memory": {
+        "before": [
+          "python",
+          "examples/claudecode-skills-memanto/memanto_skills_hook.py",
+          "pre",
+          "--skill",
+          "tdd",
+          "--task",
+          "$SKILL_TASK",
+          "--metadata",
+          "{\"adapter\":\"mattpocock-skills\",\"command\":\"/tdd\"}"
+        ],
+        "after": [
+          "python",
+          "examples/claudecode-skills-memanto/memanto_skills_hook.py",
+          "post",
+          "--skill",
+          "tdd",
+          "--task",
+          "$SKILL_TASK",
+          "--transcript-file",
+          "$TRANSCRIPT_FILE",
+          "--metadata",
+          "{\"adapter\":\"mattpocock-skills\",\"command\":\"/tdd\"}"
+        ]
+      }
+    }
+  }
+}

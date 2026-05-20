@@ -73,6 +73,15 @@ python examples/claudecode-skills-memanto/mattpocock_adapter.py handoff \
 
 The emitted `pre_hook` recalls relevant engineering memory before the skill starts. The emitted `post_hook` stores the completed skill transcript afterward, so a later skill can reuse the same architectural decisions.
 
+## Global Hook Manifest
+
+`claude-code-hooks.example.json` is a copyable hook manifest for runners that prefer static configuration over generating specs at runtime. Each supported skill has:
+
+- `memory.before`: runs `memanto_skills_hook.py pre` and injects recalled decisions into the prompt.
+- `memory.after`: runs `memanto_skills_hook.py post` with `$TRANSCRIPT_FILE` after the skill completes.
+
+The placeholders `$SKILL_TASK` and `$TRANSCRIPT_FILE` are intentionally runner-provided so the same manifest can be used by different Claude Code skill wrappers.
+
 ## What Gets Remembered
 
 The stored memory includes:
