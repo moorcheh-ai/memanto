@@ -84,9 +84,9 @@ python examples/langgraph-memanto/support_agent.py ask \
   --message "How should I export this month's invoices?"
 ```
 
-## Social showcase placeholder
+## Public showcase
 
-Public video/thread link: `TODO_ADD_PUBLIC_REDDIT_X_OR_LINKEDIN_LINK`
+Public demo page: https://memanto-langgraph-memory-showcase.netlify.app/
 
 ## Validation
 
