@@ -107,16 +107,26 @@ The hook returns JSON with:
 
 ## SDK Mode
 
-Set a Moorcheh API key and use the SDK backend:
+Install Memanto with its runtime dependencies, then set a Moorcheh API key and
+use the SDK backend:
 
 ```bash
+python3 -m pip install memanto
 export MOORCHEH_API_KEY="..."
-python3 examples/claudecode-skills-memanto/claude_memory_hooks.py benchmark
+
+printf '%s' '{
+  "hook_event_name": "UserPromptSubmit",
+  "session_id": "demo-sdk",
+  "cwd": "/repo/clinicpulse",
+  "prompt": "/tdd prepare public PR"
+}' | python3 examples/claudecode-skills-memanto/claude_memory_hooks.py inject \
+  --backend sdk
 ```
 
 Then adapt `settings.example.json` into your Claude Code project or user
 settings file. The SDK backend creates or activates the `claude-code-skills`
-Memanto agent and stores memories through the normal Memanto client.
+Memanto agent and stores memories through the normal Memanto client. The source
+checkout's local validation mode does not require package installation.
 
 ## Hook Strategy
 

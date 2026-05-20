@@ -1,9 +1,11 @@
 import io
 import json
+import os
 import tempfile
 import unittest
 from contextlib import redirect_stdout
 from pathlib import Path
+from unittest.mock import patch
 
 from claude_memory_hooks import (
     HookEvent,
@@ -117,6 +119,28 @@ class HookContextTest(unittest.TestCase):
 
 
 class CaptureTest(unittest.TestCase):
+    def test_capture_uses_stop_last_assistant_message_without_transcript(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            store = LocalMemoryStore(Path(temp_dir) / "memory.jsonl")
+            event = HookEvent.from_dict(
+                {
+                    "hook_event_name": "Stop",
+                    "session_id": "s-stop",
+                    "cwd": "/repo/app",
+                    "last_assistant_message": "Decision: keep route data behind loader contracts.",
+                }
+            )
+
+            stored = capture_memories(event, store)
+
+            self.assertEqual(stored, 1)
+            self.assertIn(
+                "loader contracts",
+                store.search("route loader contracts", cwd="/repo/app", limit=1)[0][
+                    "content"
+                ],
+            )
+
     def test_capture_reads_transcript_and_stores_distilled_memories(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             transcript = Path(temp_dir) / "transcript.jsonl"
@@ -170,6 +194,26 @@ class CaptureTest(unittest.TestCase):
 
 
 class CliTest(unittest.TestCase):
+    def test_cli_sdk_backend_explains_missing_memanto_install(self):
+        event = {
+            "hook_event_name": "UserPromptSubmit",
+            "session_id": "new",
+            "cwd": "/repo/app",
+            "prompt": "Use prior memory",
+        }
+
+        with (
+            patch.dict(os.environ, {"MOORCHEH_API_KEY": "fake"}),
+            patch(
+                "claude_memory_hooks.SdkMemoryStore",
+                side_effect=ModuleNotFoundError("memanto"),
+            ),
+            self.assertRaises(SystemExit) as error,
+        ):
+            main(["inject", "--backend", "sdk"], stdin=json.dumps(event))
+
+        self.assertIn("Install Memanto", str(error.exception))
+
     def test_cli_inject_outputs_json_context(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             store_path = Path(temp_dir) / "memory.jsonl"

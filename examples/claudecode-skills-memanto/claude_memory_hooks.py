@@ -91,6 +91,7 @@ class HookEvent:
             _coerce_optional_str(self.payload.get("command_args")) or "",
             _coerce_optional_str(self.payload.get("tool_name")) or "",
             _extract_text(self.payload.get("summary")),
+            _extract_text(self.payload.get("last_assistant_message")),
             _extract_text(self.payload.get("tool_input")),
             _extract_text(self.payload.get("tool_response")),
             _extract_text(self.payload.get("tool_calls")),
@@ -451,7 +452,14 @@ def _store_from_args(args: argparse.Namespace) -> MemoryStore:
         api_key = os.getenv("MOORCHEH_API_KEY")
         if not api_key:
             raise SystemExit("MOORCHEH_API_KEY is required for --backend sdk")
-        return SdkMemoryStore(api_key=api_key, agent_id=args.agent_id)
+        try:
+            return SdkMemoryStore(api_key=api_key, agent_id=args.agent_id)
+        except ModuleNotFoundError as exc:
+            raise SystemExit(
+                "Install Memanto with its runtime dependencies before using "
+                "--backend sdk. Local reviewer mode is available with "
+                "--backend local."
+            ) from exc
     return LocalMemoryStore(args.store)
 
 
