@@ -56,6 +56,8 @@ class FileMemoryBackend:
     path: Path
 
     def remember(self, customer_id: str, content: str) -> str:
+        """Append one customer memory row to the local JSONL store."""
+
         self.path.parent.mkdir(parents=True, exist_ok=True)
         rows = self._read_rows()
         memory_id = f"file-{len(rows) + 1}"
@@ -72,6 +74,8 @@ class FileMemoryBackend:
         return memory_id
 
     def recall(self, customer_id: str, query: str) -> str:
+        """Return the best matching local memory for the customer query."""
+
         query_terms = _expand_query_terms(_tokenize(query))
         candidates = [
             row["content"]
@@ -82,6 +86,8 @@ class FileMemoryBackend:
             return ""
 
         def score(content: str) -> float:
+            """Rank candidate text by token overlap and string similarity."""
+
             content_terms = _tokenize(content)
             overlap = len(query_terms & content_terms)
             return overlap + SequenceMatcher(
@@ -93,6 +99,8 @@ class FileMemoryBackend:
         return max(candidates, key=score)
 
     def _read_rows(self) -> list[dict[str, str]]:
+        """Load memory rows from the JSONL store if it exists."""
+
         if not self.path.exists():
             return []
         rows: list[dict[str, str]] = []
@@ -111,6 +119,8 @@ class MemantoCliBackend:
     memanto_bin: str | None = None
 
     def remember(self, customer_id: str, content: str) -> str:
+        """Persist one customer memory through the Memanto CLI."""
+
         self._ensure_agent()
         output = self._run(
             [
@@ -132,6 +142,8 @@ class MemantoCliBackend:
         return output.strip().splitlines()[-1] if output.strip() else "memanto-memory"
 
     def recall(self, customer_id: str, query: str) -> str:
+        """Recall customer memory through the Memanto CLI."""
+
         self._ensure_agent()
         output = self._run(
             [
@@ -143,6 +155,8 @@ class MemantoCliBackend:
         return output.strip()
 
     def _ensure_agent(self) -> None:
+        """Activate the demo agent, creating it only when it is missing."""
+
         try:
             self._run([*self._command(), "agent", "activate", self.agent_id])
         except RuntimeError as error:
@@ -163,6 +177,8 @@ class MemantoCliBackend:
             self._run([*self._command(), "agent", "activate", self.agent_id])
 
     def _command(self) -> list[str]:
+        """Resolve the Memanto command invocation for subprocess calls."""
+
         if self.memanto_bin:
             return [self.memanto_bin]
         found = shutil.which("memanto")
@@ -171,6 +187,8 @@ class MemantoCliBackend:
         return [sys.executable, "-m", "memanto"]
 
     def _run(self, args: Sequence[str]) -> str:
+        """Run a Memanto command and return its combined output."""
+
         completed = subprocess.run(
             list(args),
             text=True,
@@ -184,10 +202,14 @@ class MemantoCliBackend:
 
 
 def _tokenize(text: str) -> set[str]:
+    """Normalize text into lower-case alphanumeric search terms."""
+
     return {term.lower() for term in re.findall(r"[A-Za-z0-9]+", text) if len(term) > 2}
 
 
 def _expand_query_terms(terms: set[str]) -> set[str]:
+    """Add simple domain synonyms used by the support export demo."""
+
     expanded = set(terms)
     if {"format", "export", "exports"} & expanded:
         expanded.update({"csv", "json", "pdf", "xlsx", "export", "exports"})
@@ -195,6 +217,8 @@ def _expand_query_terms(terms: set[str]) -> set[str]:
 
 
 def _is_missing_agent_error(message: str) -> bool:
+    """Identify Memanto CLI errors that mean the requested agent is absent."""
+
     lowered = message.lower()
     agent_context = "agent" in lowered
     if "404" in lowered and agent_context:
@@ -262,6 +286,8 @@ def build_langgraph_runner(
     except ImportError:
 
         def fallback_runner(state: SupportState) -> SupportState:
+            """Execute the graph nodes sequentially when LangGraph is absent."""
+
             next_state: SupportState = dict(state)
             next_state.update(
                 recall_customer_memory(next_state, memory_backend=memory_backend)
@@ -291,18 +317,24 @@ def build_langgraph_runner(
     compiled_graph = graph.compile()
 
     def langgraph_runner(state: SupportState) -> SupportState:
+        """Invoke the compiled LangGraph with the provided support state."""
+
         return compiled_graph.invoke(state)
 
     return langgraph_runner
 
 
 def build_backend(args: argparse.Namespace) -> MemoryBackend:
+    """Create the configured memory backend from parsed CLI options."""
+
     if args.backend == "memanto":
         return MemantoCliBackend(agent_id=args.agent_id, memanto_bin=args.memanto_bin)
     return FileMemoryBackend(Path(args.memory_path))
 
 
 def command_seed(args: argparse.Namespace) -> int:
+    """Handle the seed subcommand for adding a customer memory."""
+
     backend = build_backend(args)
     memory_id = backend.remember(args.customer_id, args.fact)
     print(f"seeded memory {memory_id} for {args.customer_id}")
@@ -310,6 +342,8 @@ def command_seed(args: argparse.Namespace) -> int:
 
 
 def command_ask(args: argparse.Namespace) -> int:
+    """Handle the ask subcommand by running the support graph."""
+
     backend = build_backend(args)
     runner = build_langgraph_runner(backend)
     final_state = runner(
@@ -324,6 +358,8 @@ def command_ask(args: argparse.Namespace) -> int:
 
 
 def build_parser() -> argparse.ArgumentParser:
+    """Build the CLI argument parser for the demo."""
+
     parser = argparse.ArgumentParser(
         description="LangGraph support-agent demo with Memanto memory."
     )
@@ -348,6 +384,8 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def main(argv: Sequence[str] | None = None) -> int:
+    """Parse CLI arguments and dispatch to the selected subcommand."""
+
     parser = build_parser()
     args = parser.parse_args(argv)
     try:
