@@ -60,6 +60,8 @@ The offline mode is included for local development only. The actual integration 
 
 The PR includes `demo.gif`, which shows the offline smoke-test flow:
 
+![LangGraph Memanto cross-session recall demo](demo.gif)
+
 ```bash
 python run_cross_session_demo.py --offline --reset-offline-store
 ```
