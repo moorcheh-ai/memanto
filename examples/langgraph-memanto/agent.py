@@ -1,51 +1,54 @@
-import operator
-from typing import Annotated, TypedDict, Union
+import os
+from typing import Annotated, TypedDict
 from langchain_openai import ChatOpenAI
+from langchain_core.tools import tool
 from langgraph.graph import StateGraph, END
-from integrations.langgraph.memanto_manager import MemantoMemoryManager, MemorySyncSchema
+from langgraph.prebuilt import ToolNode
+from memanto.cli.client.sdk_client import SdkClient
+
+# Global Config
+AGENT_ID = os.getenv("MEMANTO_AGENT_ID", "langgraph-permanent-brain-001")
+sdk = SdkClient()
+
+@tool
+def recall_memory(query: str):
+    """Recall specific historical facts about the user or previous interactions."""
+    results = sdk.search(agent_id=AGENT_ID, query=query)
+    return results
+
+@tool
+def remember_fact(fact: str):
+    """Persist a new fact or preference to long-term memory."""
+    sdk.store(agent_id=AGENT_ID, key=f"fact_{hash(fact)}", value=fact)
+    return "Fact stored in permanent memory."
 
 class AgentState(TypedDict):
-    messages: Annotated[list, operator.add]
-    user_id: str
-    memories: list
+    messages: Annotated[list, "The conversation history"]
+    memory_extracted: bool
 
-class MemantoBrain:
-    def __init__(self, api_key: str, agent_id: str):
-        self.llm = ChatOpenAI(model="gpt-4-turbo-preview", temperature=0)
-        self.memory_manager = MemantoMemoryManager(agent_id, api_key)
-        self.structured_llm = self.llm.with_structured_output(MemorySyncSchema)
+tools = [recall_memory, remember_fact]
+tool_node = ToolNode(tools)
+model = ChatOpenAI(model="gpt-4-turbo").bind_tools(tools)
 
-    async def call_model(self, state: AgentState):
-        # Recall relevant memories for the current context
-        # In a production system, this would use a semantic search over keys
-        context = await self.memory_manager.recall("user_profile") or "No prior knowledge."
-        
-        system_prompt = f"Long-term Memory: {context}\n\nAssist the user based on state and memory."
-        messages = [{"role": "system", "content": system_prompt}] + state["messages"]
-        
-        response = await self.llm.ainvoke(messages)
-        return {"messages": [response]}
+def call_model(state: AgentState):
+    response = model.invoke(state["messages"])
+    return {"messages": [response]}
 
-    async def memory_sync_node(self, state: AgentState):
-        last_message = state["messages"][-1].content
-        # Autonomous determination of fact-worthiness
-        decision = await self.structured_llm.ainvoke(
-            f"Analyze this message for permanent facts about the user: {last_message}"
-        )
-        
-        if decision.should_store and decision.key and decision.value:
-            await self.memory_manager.remember(decision.key, decision.value)
-            
-        return {"messages": []}
+def memory_classifier(state: AgentState):
+    # Determine if the last message contains a fact worth persisting
+    last_msg = state["messages"][-1].content
+    if "remember" in last_msg.lower() or "I like" in last_msg:
+        return "tools"
+    return END
 
-def create_graph(brain: MemantoBrain):
-    workflow = StateGraph(AgentState)
-    
-    workflow.add_node("agent", brain.call_model)
-    workflow.add_node("memory_sync", brain.memory_sync_node)
-    
-    workflow.set_entry_point("agent")
-    workflow.add_edge("agent", "memory_sync")
-    workflow.add_edge("memory_sync", END)
-    
-    return workflow.compile()
+workflow = StateGraph(AgentState)
+workflow.add_node("agent", call_model)
+workflow.add_node("tools", tool_node)
+
+workflow.set_entry_point("agent")
+workflow.add_edge("agent", "tools")
+workflow.add_edge("tools", "agent")
+
+# This allows the LLM to decide if we loop back or end
+# based on the memory classification logic
+# In a full pipeline, this would be a conditional edge
