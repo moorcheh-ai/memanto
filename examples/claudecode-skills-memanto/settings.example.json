@@ -1,0 +1,24 @@
+{
+  "hooks": {
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python examples/claudecode-skills-memanto/skill_memory_bridge/cli.py pre"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python examples/claudecode-skills-memanto/skill_memory_bridge/cli.py post"
+          }
+        ]
+      }
+    ]
+  }
+}

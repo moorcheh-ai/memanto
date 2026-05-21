@@ -1,0 +1,5 @@
+.tmp/
+__pycache__/
+*/__pycache__/
+validation-memory.json
+.memanto-skills-memory.json
