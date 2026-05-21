@@ -232,3 +232,21 @@ Have questions or feedback? We're here to help:
 ---
 
 **MIT License**
+
+## 🧠 Permanent Brain Integration (LangGraph)
+
+### Architecture Flow
+mermaid
+sequenceDiagram
+    participant SG as StateGraph
+    participant CPS as MemantoCheckpointSaver
+    participant SMC as SemanticMemoryController
+    participant SDK as Memanto SDK
+    
+    SG->>SMC: Process input for semantic value
+    SMC->>SMC: LLM Gating (Fact/Preference/Goal?)
+    SMC->>SDK: store_semantic_memory()
+    SG->>CPS: save_checkpoint(thread_id, state)
+    CPS->>SDK: store_state_payload(thread_id, payload)
+    Note over SG, SDK: Cross-Thread Memory Sync Complete
+

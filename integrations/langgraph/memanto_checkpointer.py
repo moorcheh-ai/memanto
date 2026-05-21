@@ -1,65 +1,61 @@
 import json
-from typing import Any, Dict, Optional
-from langgraph.checkpoint.base import BaseCheckpointSaver, Checkpoint, CheckpointMetadata
+from typing import Any, Dict, Optional, List
+from langgraph.checkpoint.base import BaseCheckpointSaver, Checkpoint, CheckpointTuple
 from memanto.cli.client.sdk_client import SdkClient
 
-class MemantoCheckpointer(BaseCheckpointSaver):
-    def __init__(self, sdk_client: SdkClient, agent_id: str):
+class MemantoCheckpointSaver(BaseCheckpointSaver):
+    def __init__(self, api_key: str, agent_id: str):
         super().__init__()
-        self.sdk = sdk_client
+        self.client = SdkClient(api_key=api_key)
         self.agent_id = agent_id
 
-    def put(self, config: Dict[str, Any], checkpoint: Checkpoint, metadata: CheckpointMetadata) -> Dict[str, Any]:
-        thread_id = config["configurable"].get("thread_id")
-        checkpoint_id = checkpoint["id"]
-        
-        payload = {
+    def put(
+        self,
+        config: Dict[str, Any],
+        checkpoint: Checkpoint,
+        metadata: Dict[str, Any],
+        new_versions: Any,
+    ) -> Dict[str, Any]:
+        thread_id = config["configurable"]["thread_id"]
+        checkpoint_payload = {
             "checkpoint": checkpoint,
-            "metadata": metadata
+            "metadata": metadata,
+            "versions": new_versions
         }
         
-        storage_key = f"checkpoint_{thread_id}_{checkpoint_id}"
-        self.sdk.store(
-            agent_id=self.agent_id,
-            key=storage_key,
-            value=json.dumps(payload)
-        )
+        # We use the Memanto SDK to store the state as a high-priority memory object 
+        # linked to the thread_id namespace
+        storage_key = f"checkpoint:{thread_id}"
+        content = json.dumps(checkpoint_payload)
         
-        # Update the latest pointer for the thread
-        self.sdk.store(
-            agent_id=self.agent_id,
-            key=f"latest_{thread_id}",
-            value=checkpoint_id
-        )
+        # store using the SDK's remember functionality specifically for state persistence
+        self.client.remember(self.agent_id, f"{storage_key} | {content}")
         
         return config
 
-    def get(self, config: Dict[str, Any]) -> Optional[Checkpoint]:
-        thread_id = config["configurable"].get("thread_id")
-        checkpoint_id = config["configurable"].get("checkpoint_id")
+    def get_tuple(self, config: Dict[str, Any]) -> Optional[CheckpointTuple]:
+        thread_id = config["configurable"]["thread_id"]
+        storage_key = f"checkpoint:{thread_id}"
         
-        if not checkpoint_id:
-            checkpoint_id = self.sdk.recall(
-                agent_id=self.agent_id, 
-                key=f"latest_{thread_id}"
-            )
-            
-        if not checkpoint_id:
+        memories = self.client.recall(self.agent_id, query=storage_key)
+        if not memories:
             return None
             
-        storage_key = f"checkpoint_{thread_id}_{checkpoint_id}"
-        raw_value = self.sdk.recall(
-            agent_id=self.agent_id, 
-            key=storage_key
+        # Extract the payload from the stored string
+        raw_content = memories[0]["content"].split(" | ", 1)[1]
+        payload = json.loads(raw_content)
+        
+        return CheckpointTuple(
+            config=config,
+            checkpoint=payload["checkpoint"],
+            metadata=payload["metadata"],
+            parent_config=None # Simplified for PoC
         )
-        
-        if not raw_value:
-            return None
-            
-        payload = json.loads(raw_value)
-        return payload["checkpoint"]
 
-    def list(self, config: Dict[str, Any], filter: Optional[Dict[str, Any]] = None):
-        # Memanto SDK currently optimizes for key-value retrieval; 
-        # implementation depends on SDK support for prefix searching.
+    def list(
+        self,
+        config: Optional[Dict[str, Any]],
+        filter: Optional[Dict[str, Any]],
+    ) -> Any:
+        # Simplified implementation for persistence proof
         return []
