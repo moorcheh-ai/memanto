@@ -29,9 +29,11 @@ def _load_graph():
     langgraph_graph_module.StateGraph = object
     previous_langgraph = sys.modules.get("langgraph")
     previous_langgraph_graph = sys.modules.get("langgraph.graph")
+    previous_memory_adapter = sys.modules.get("memory_adapter")
     sys.modules["langgraph"] = langgraph_module
     sys.modules["langgraph.graph"] = langgraph_graph_module
-    sys.path.insert(0, str(_example_dir()))
+    inserted_path = str(_example_dir())
+    sys.path.insert(0, inserted_path)
     try:
         module_path = _example_dir() / "graph.py"
         spec = importlib.util.spec_from_file_location(
@@ -43,7 +45,8 @@ def _load_graph():
         spec.loader.exec_module(module)
         return module
     finally:
-        sys.path.pop(0)
+        if inserted_path in sys.path:
+            sys.path.remove(inserted_path)
         if previous_langgraph is None:
             sys.modules.pop("langgraph", None)
         else:
@@ -52,6 +55,10 @@ def _load_graph():
             sys.modules.pop("langgraph.graph", None)
         else:
             sys.modules["langgraph.graph"] = previous_langgraph_graph
+        if previous_memory_adapter is None:
+            sys.modules.pop("memory_adapter", None)
+        else:
+            sys.modules["memory_adapter"] = previous_memory_adapter
 
 
 def test_local_json_memory_persists_and_recalls(tmp_path):
