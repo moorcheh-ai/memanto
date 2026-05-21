@@ -4,6 +4,13 @@ This example shows a LangGraph customer-support workflow using Memanto as the lo
 
 30-second demo GIF: [demo.gif](demo.gif)
 
+The demo follows one customer across two independent sessions:
+
+1. `session-one` stores order `AR-8841` and the preference for replacement units before refunds.
+2. The graph writes those facts only through the memory adapter.
+3. `session-two` starts with a different `thread_id` and a fresh store instance.
+4. The support agent recalls the previous order and preference from durable memory.
+
 ## What This Demonstrates
 
 - **Cross-session recall**: a fresh graph invocation recalls details from a previous run.
@@ -27,6 +34,8 @@ MemantoMemoryStore or LocalJsonMemoryStore
 ```
 
 The graph intentionally has no checkpointer. Durable facts live in Memanto or the local preview file, not in LangGraph state.
+
+This keeps the example focused on the memory boundary: LangGraph owns the current workflow state, while Memanto owns cross-session recall.
 
 ## Setup
 
