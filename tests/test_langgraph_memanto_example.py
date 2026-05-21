@@ -13,6 +13,8 @@ DEMO_GIF_PATH = EXAMPLE_PATH.parent / "assets" / "cross-session-demo.gif"
 
 
 def load_example_module():
+    """Load the LangGraph Memanto example module from its file path."""
+
     spec = importlib.util.spec_from_file_location(
         "langgraph_memanto_example", EXAMPLE_PATH
     )
@@ -24,6 +26,8 @@ def load_example_module():
 
 
 def test_file_backend_recalls_memory_from_previous_session(tmp_path):
+    """Verify a fresh graph run can use memory seeded in a previous session."""
+
     module = load_example_module()
     memory_path = tmp_path / "memory.jsonl"
     backend = module.FileMemoryBackend(memory_path)
@@ -44,6 +48,8 @@ def test_file_backend_recalls_memory_from_previous_session(tmp_path):
 
 
 def test_graph_state_starts_without_memory_but_reply_uses_recalled_memory(tmp_path):
+    """Show that recalled memory is external to the initial graph state."""
+
     module = load_example_module()
     backend = module.FileMemoryBackend(tmp_path / "memory.jsonl")
     backend.remember("globex", "Globex wants brief replies and CSV attachments.")
@@ -62,6 +68,8 @@ def test_graph_state_starts_without_memory_but_reply_uses_recalled_memory(tmp_pa
 
 
 def test_file_backend_ranks_format_preference_above_generic_memory(tmp_path):
+    """Prefer format-specific customer memory over generic support notes."""
+
     module = load_example_module()
     backend = module.FileMemoryBackend(tmp_path / "memory.jsonl")
     backend.remember("initech", "Initech wants short replies.")
@@ -73,11 +81,15 @@ def test_file_backend_ranks_format_preference_above_generic_memory(tmp_path):
 
 
 def test_memanto_agent_creation_only_runs_for_missing_agent(monkeypatch):
+    """Create and activate the demo agent only when activation reports missing."""
+
     module = load_example_module()
     backend = module.MemantoCliBackend(agent_id="demo", memanto_bin="memanto")
     calls = []
 
     def fake_run(args):
+        """Record Memanto CLI calls and simulate a missing first activation."""
+
         calls.append(args)
         if args[1:3] == ["agent", "activate"] and len(calls) == 1:
             raise RuntimeError("agent not found: demo")
@@ -95,10 +107,14 @@ def test_memanto_agent_creation_only_runs_for_missing_agent(monkeypatch):
 
 
 def test_memanto_agent_activation_propagates_non_missing_errors(monkeypatch):
+    """Do not create an agent when activation fails for a non-missing reason."""
+
     module = load_example_module()
     backend = module.MemantoCliBackend(agent_id="demo", memanto_bin="memanto")
 
     def fake_run(args):
+        """Fail activation and assert creation is not attempted afterward."""
+
         if args[1:3] == ["agent", "activate"]:
             raise RuntimeError("permission denied")
         raise AssertionError("agent create must not run after permission failure")
@@ -114,6 +130,8 @@ def test_memanto_agent_activation_propagates_non_missing_errors(monkeypatch):
 
 
 def test_seed_and_ask_cli_flow_with_file_backend(tmp_path, capsys):
+    """Exercise the seed and ask CLI commands with the no-credential backend."""
+
     module = load_example_module()
     memory_path = tmp_path / "memory.jsonl"
 
@@ -151,6 +169,8 @@ def test_seed_and_ask_cli_flow_with_file_backend(tmp_path, capsys):
 
 
 def test_readme_links_demo_gif_required_by_bounty():
+    """Ensure the README links a real GIF demo for the bounty media requirement."""
+
     readme = README_PATH.read_text(encoding="utf-8")
 
     assert "./assets/cross-session-demo.gif" in readme
