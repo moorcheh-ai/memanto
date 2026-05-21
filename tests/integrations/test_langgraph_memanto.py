@@ -1,44 +1,43 @@
 import pytest
-import os
-from integrations.langgraph.memanto_checkpointer import MemantoCheckpointSaver
-from integrations.langgraph.memanto_manager import MemantoSemanticManager
+from integrations.langgraph import MemantoSaver, MemantoOCCError
+from memanto.cli.client.sdk_client import SdkClient
 
-@pytest.fixture
-def memanto_config():
-    return {
-        "api_key": os.getenv("MEMANTO_API_KEY", "test_key"),
-        "agent_id": "test_agent_rigor"
-    }
+def test_cross_thread_persistence():
+    agent_id = "test_agent_cross_thread"
+    client = SdkClient()
+    saver = MemantoSaver(agent_id=agent_id)
+    
+    # Write to Thread A
+    config_a = {"configurable": {"thread_id": "thread_a"}}
+    checkpoint_a = {"id": "1", "data": "state_a"}
+    saver.put(config_a, checkpoint_a, {}, None)
+    
+    # Assert it's in Memanto
+    raw = client.get_memory(agent_id, "checkpoint:thread_a:1")
+    assert raw is not None
+    assert raw["checkpoint"]["data"] == "state_a"
 
-def test_checkpoint_persistence(memanto_config):
-    saver = MemantoCheckpointSaver(memanto_config["api_key"], memanto_config["agent_id"])
-    config = {"configurable": {"thread_id": "test_thread_1"}}
-    checkpoint = {"state": "test_value"}
-    metadata = {"source": "pytest"}
+def test_occ_collision():
+    agent_id = "test_agent_occ"
+    saver = MemantoSaver(agent_id=agent_id)
     
-    saver.put(config, checkpoint, metadata, new_versions={})
-    result = saver.get_tuple(config)
+    config = {"configurable": {"thread_id": "occ_thread"}}
+    checkpoint = {"id": "1", "data": "initial"}
     
-    assert result is not None
-    assert result.checkpoint == checkpoint
-
-def test_semantic_gate_filtering(memanto_config):
-    manager = MemantoSemanticManager(memanto_config["agent_id"], memanto_config["api_key"])
+    # First save
+    saver.put(config, checkpoint, {}, None)
     
-    # Should be ignored
-    assert manager.process_and_store("Hello, how are you?") is False
+    # Simulate a stale state object with version 0 (should be 1 now)
+    from integrations.langgraph.memanto_checkpoint import CheckpointState
+    stale_state = CheckpointState(
+        thread_id="occ_thread",
+        checkpoint_id="1",
+        checkpoint=checkpoint,
+        version=0 
+    )
     
-    # Should be stored
-    assert manager.process_and_store("My goal is to become a Senior Systems Architect by 2025.") is True
-
-def test_optimistic_locking_collision(memanto_config):
-    manager = MemantoSemanticManager(memanto_config["agent_id"], memanto_config["api_key"])
-    content = "Unique preference for testing locking"
+    from integrations.langgraph.memanto_manager import MemantoStateManager
+    manager = MemantoStateManager(agent_id)
     
-    # Rapid sequential updates
-    manager.safe_remember(content)
-    # This second call should be mitigated by the timestamp check in safe_remember
-    manager.safe_remember(content) 
-    
-    # If the SDK doesn't crash and the logic returns, the primitive is functioning
-    assert True
+    with pytest.raises(MemantoOCCError):
+        manager.save_state(stale_state)

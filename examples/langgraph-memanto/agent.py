@@ -1,54 +1,56 @@
-import os
 from typing import Annotated, TypedDict
 from langchain_openai import ChatOpenAI
 from langchain_core.tools import tool
-from langgraph.graph import StateGraph, END
+from langgraph.graph import StateGraph, START, END
+from langgraph.graph.message import add_messages
 from langgraph.prebuilt import ToolNode
 from memanto.cli.client.sdk_client import SdkClient
-
-# Global Config
-AGENT_ID = os.getenv("MEMANTO_AGENT_ID", "langgraph-permanent-brain-001")
-sdk = SdkClient()
-
-@tool
-def recall_memory(query: str):
-    """Recall specific historical facts about the user or previous interactions."""
-    results = sdk.search(agent_id=AGENT_ID, query=query)
-    return results
-
-@tool
-def remember_fact(fact: str):
-    """Persist a new fact or preference to long-term memory."""
-    sdk.store(agent_id=AGENT_ID, key=f"fact_{hash(fact)}", value=fact)
-    return "Fact stored in permanent memory."
+from integrations.langgraph import MemantoSaver
 
 class AgentState(TypedDict):
-    messages: Annotated[list, "The conversation history"]
-    memory_extracted: bool
+    messages: Annotated[list, add_messages]
+    user_id: str
 
-tools = [recall_memory, remember_fact]
-tool_node = ToolNode(tools)
-model = ChatOpenAI(model="gpt-4-turbo").bind_tools(tools)
+# --- Semantic Memory Toolkit ---
+class MemantoToolkit:
+    def __init__(self, agent_id: str):
+        self.client = SdkClient()
+        self.agent_id = agent_id
 
-def call_model(state: AgentState):
-    response = model.invoke(state["messages"])
-    return {"messages": [response]}
+    def get_tools(self):
+        @tool
+        def store_user_preference(preference: str):
+            """Store a permanent fact or preference about the user."""
+            self.client.save_memory(self.agent_id, "user_prefs", preference)
+            return "Preference saved to permanent brain."
 
-def memory_classifier(state: AgentState):
-    # Determine if the last message contains a fact worth persisting
-    last_msg = state["messages"][-1].content
-    if "remember" in last_msg.lower() or "I like" in last_msg:
-        return "tools"
-    return END
+        @tool
+        def retrieve_user_preference(query: str):
+            """Retrieve a permanent fact or preference about the user."""
+            result = self.client.get_memory(self.agent_id, "user_prefs")
+            return f"Found in memory: {result}" if result else "No relevant preference found."
 
-workflow = StateGraph(AgentState)
-workflow.add_node("agent", call_model)
-workflow.add_node("tools", tool_node)
+        return [store_user_preference, retrieve_user_preference]
 
-workflow.set_entry_point("agent")
-workflow.add_edge("agent", "tools")
-workflow.add_edge("tools", "agent")
+def create_graph(agent_id: str):
+    llm = ChatOpenAI(model="gpt-4o")
+    toolkit = MemantoToolkit(agent_id)
+    tools = toolkit.get_tools()
+    
+    llm_with_tools = llm.bind_tools(tools)
+    
+    def call_model(state: AgentState):
+        response = llm_with_tools.invoke(state["messages"])
+        return {"messages": [response]}
 
-# This allows the LLM to decide if we loop back or end
-# based on the memory classification logic
-# In a full pipeline, this would be a conditional edge
+    workflow = StateGraph(AgentState)
+    workflow.add_node("agent", call_model)
+    workflow.add_node("tools", ToolNode(tools))
+    
+    workflow.add_edge(START, "agent")
+    workflow.add_conditional_edges("agent", lambda x: "tools" if x["messages"][-1].tool_calls else END)
+    workflow.add_edge("tools", "agent")
+    
+    # NATIVE PERSISTENCE: Memanto as the checkpointer
+    memanto_saver = MemantoSaver(agent_id=agent_id)
+    return workflow.compile(checkpointer=memanto_saver)

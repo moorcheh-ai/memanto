@@ -1,4 +1,4 @@
-langgraph==0.0.30
-langchain-openai==0.0.2
-pydantic==2.5.2
+langgraph
+langchain-openai
+pydantic>=2.0.0
 memanto
