@@ -56,7 +56,12 @@ python run_cross_session_demo.py --offline
 
 The offline mode is included for local development only. The actual integration path uses `MOORCHEH_API_KEY` and Memanto's SDK client.
 
-## Demo Video
+## Demo GIF
 
-Record the terminal output from `python run_cross_session_demo.py` and include the video or GIF link in your PR description.
+The PR includes `demo.gif`, which shows the offline smoke-test flow:
 
+```bash
+python run_cross_session_demo.py --offline --reset-offline-store
+```
+
+The video highlights session 1 storing a preference and session 2 recalling it from Memanto-backed memory after the LangGraph state has been reset.

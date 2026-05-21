@@ -1,0 +1,14 @@
+LangGraph + Memanto cross-session memory demo
+
+Session 1 stores a durable preference:
+  User alex: I prefer concise answers and dark mode.
+  Recalled memories: none
+  Stored preference: concise answers and dark mode
+
+Session 2 starts from a fresh LangGraph state:
+  User alex: What dashboard style should you use for me?
+  Recalled memory: User alex prefers concise answers and dark mode.
+  Response: keep the dashboard concise and use dark-mode-friendly defaults.
+
+Validation:
+  python run_cross_session_demo.py --offline --reset-offline-store
