@@ -40,6 +40,12 @@ copy .env.example .env
 
 For live Memanto mode, edit `.env` and set `MOORCHEH_API_KEY`.
 
+Dependency note: `requirements.txt` excludes `pyjwt==2.12.1` because that
+resolved version has been flagged by OSV as `PYSEC-2025-183` in dependency
+scans. This example does not decode JWTs directly; live SDK integrations should
+still keep JWT dependencies updated and avoid accepting untrusted algorithms or
+keys.
+
 ## Run the Demo
 
 Offline preview, no secrets required:

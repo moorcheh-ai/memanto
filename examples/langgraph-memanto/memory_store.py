@@ -78,7 +78,10 @@ class LocalJsonMemoryStore:
         if not self.path.exists():
             return []
         with self.path.open("r", encoding="utf-8") as handle:
-            loaded = json.load(handle)
+            try:
+                loaded = json.load(handle)
+            except json.JSONDecodeError as exc:
+                raise ValueError(f"Invalid memory store JSON at {self.path}") from exc
         if not isinstance(loaded, list):
             raise ValueError(f"Expected a list of memories in {self.path}")
         return loaded
@@ -122,6 +125,7 @@ class MemantoMemoryStore:
         content: str,
         tags: list[str] | None = None,
     ) -> dict[str, Any]:
+        _validate_memory(memory_type, title, content)
         return self.client.remember(
             agent_id=self.agent_id,
             memory_type=memory_type,

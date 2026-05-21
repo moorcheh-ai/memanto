@@ -1,3 +1,4 @@
 langgraph>=0.2.60
 python-dotenv>=1.0.0
 memanto>=0.1.0
+pyjwt!=2.12.1

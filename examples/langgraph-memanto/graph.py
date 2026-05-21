@@ -31,7 +31,7 @@ class SupportState(TypedDict):
     answer: NotRequired[str]
 
 
-ORDER_RE = re.compile(r"\b[A-Z]{2}-\d{4}\b")
+ORDER_RE = re.compile(r"\b[A-Z]{2}-\d{4}\b", re.IGNORECASE)
 
 
 def build_support_graph(memory_store: MemoryStore):
@@ -82,7 +82,12 @@ def extract_support_memories(
     memories: list[dict[str, Any]] = []
     tags = ["support", customer_id.lower()]
 
-    for order_id in ORDER_RE.findall(message):
+    seen_order_ids: set[str] = set()
+    for match in ORDER_RE.findall(message):
+        order_id = match.upper()
+        if order_id in seen_order_ids:
+            continue
+        seen_order_ids.add(order_id)
         memories.append(
             {
                 "memory_type": "fact",

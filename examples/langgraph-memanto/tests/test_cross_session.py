@@ -2,8 +2,10 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from graph import build_support_graph
-from memory_store import LocalJsonMemoryStore
+import pytest
+
+from graph import build_support_graph, extract_support_memories
+from memory_store import LocalJsonMemoryStore, MemantoMemoryStore
 
 
 def test_local_store_persists_memories_across_instances(tmp_path: Path) -> None:
@@ -56,3 +58,33 @@ def test_graph_recalls_memanto_memory_without_thread_state(tmp_path: Path) -> No
     assert session_two["recalled_memories"]
     assert "AR-8841" in session_two["answer"]
     assert "replacement" in session_two["answer"].lower()
+
+
+def test_order_ids_are_case_insensitive_and_canonical() -> None:
+    memories = extract_support_memories(
+        "maya",
+        "Please remember order ab-1234 and duplicate AB-1234.",
+    )
+
+    order_memories = [memory for memory in memories if memory["memory_type"] == "fact"]
+
+    assert len(order_memories) == 1
+    assert order_memories[0]["title"] == "maya order AB-1234"
+    assert order_memories[0]["content"] == "maya referenced order AB-1234."
+
+
+def test_local_store_reports_malformed_json(tmp_path: Path) -> None:
+    memory_file = tmp_path / "broken.json"
+    memory_file.write_text("{not-json", encoding="utf-8")
+
+    store = LocalJsonMemoryStore(memory_file)
+
+    with pytest.raises(ValueError, match="Invalid memory store JSON"):
+        store.recall("anything")
+
+
+def test_memanto_store_validates_memory_inputs_before_sdk_call() -> None:
+    store = object.__new__(MemantoMemoryStore)
+
+    with pytest.raises(ValueError, match="Invalid memory_type"):
+        store.remember(memory_type="invalid", title="Title", content="Content")
