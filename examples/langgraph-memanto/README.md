@@ -23,7 +23,7 @@ pip install -r requirements.txt
 cp .env.example .env
 ```
 
-Add your Moorcheh API key to `.env`:
+Add your Moorcheh API key and Memanto agent ID to `.env`:
 
 ```bash
 MOORCHEH_API_KEY=your_moorcheh_api_key_here
@@ -55,7 +55,7 @@ python run_full_demo.py
 
 ## No-key dry run
 
-If you want to inspect the LangGraph flow before connecting a Moorcheh key, set:
+If you want to inspect the LangGraph flow before connecting a Moorcheh key, add these to `.env` or export them in your shell:
 
 ```bash
 MEMANTO_DRY_RUN=true

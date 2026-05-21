@@ -11,8 +11,8 @@ from memory_adapter import create_memory_client
 def main() -> None:
     load_dotenv()
     memory = create_memory_client()
-    memory.setup()
     try:
+        memory.setup()
         graph = build_support_memory_graph(memory)
         result = graph.invoke({"session": "day1"})
         print("Day 1 memories stored in Memanto")

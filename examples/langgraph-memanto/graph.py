@@ -35,7 +35,9 @@ def build_support_memory_graph(memory: MemoryClient):
     workflow = StateGraph(SupportState)
 
     workflow.add_node("collect_customer_context", _collect_customer_context)
-    workflow.add_node("persist_memories", lambda state: _persist_memories(state, memory))
+    workflow.add_node(
+        "persist_memories", lambda state: _persist_memories(state, memory)
+    )
     workflow.add_node("session_boundary", _session_boundary)
     workflow.add_node("recall_context", lambda state: _recall_context(state, memory))
     workflow.add_node("draft_followup", _draft_followup)
@@ -100,7 +102,11 @@ def _collect_customer_context(state: SupportState) -> SupportState:
             "tags": ["support", "analytics", "langgraph-demo"],
         },
     ]
-    return {"customer_name": customer_name, "ticket_id": ticket_id, "day1_memories": memories}
+    return {
+        "customer_name": customer_name,
+        "ticket_id": ticket_id,
+        "day1_memories": memories,
+    }
 
 
 def _persist_memories(state: SupportState, memory: MemoryClient) -> SupportState:
@@ -127,7 +133,12 @@ def _session_boundary(state: SupportState) -> SupportState:
         "session_note",
         "The graph is now acting as a later session with only a recall query.",
     )
-    return {"session_note": note}
+    return {
+        "customer_name": "",
+        "ticket_id": "",
+        "day1_memories": [],
+        "session_note": note,
+    }
 
 
 def _recall_context(state: SupportState, memory: MemoryClient) -> SupportState:
@@ -151,7 +162,6 @@ def _draft_followup(state: SupportState) -> SupportState:
     response = (
         "Follow-up for Maya: keep the reply concise, include dark-mode dashboard "
         "screenshots, avoid marketing copy, and confirm the refund escalation "
-        "before Friday noon. Context used: "
-        + " ".join(facts)
+        "before Friday noon. Context used: " + " ".join(facts)
     )
     return {"final_response": response}

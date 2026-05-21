@@ -174,7 +174,11 @@ class LocalJsonMemory:
     def _load(self) -> list[dict[str, Any]]:
         if not self.path.exists():
             return []
-        return json.loads(self.path.read_text(encoding="utf-8"))
+        try:
+            loaded = json.loads(self.path.read_text(encoding="utf-8"))
+        except (json.JSONDecodeError, UnicodeDecodeError):
+            return []
+        return loaded if isinstance(loaded, list) else []
 
 
 def create_memory_client() -> MemoryClient:
