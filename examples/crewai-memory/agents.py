@@ -14,7 +14,7 @@ from crewai.tools import BaseTool
 def create_research_agent(
     remember_tool: BaseTool,
     recall_tool: BaseTool,
-    llm: str = "openrouter/tencent/hy3-preview:free",
+    llm: str = "openrouter/baidu/cobuddy:free",
 ) -> Agent:
     """Create the Senior Market Research Analyst agent."""
     return Agent(
@@ -41,7 +41,7 @@ def create_research_agent(
 def create_writer_agent(
     recall_tool: BaseTool,
     answer_tool: BaseTool,
-    llm: str = "openrouter/tencent/hy3-preview:free",
+    llm: str = "openrouter/baidu/cobuddy:free",
 ) -> Agent:
     """Create the Technical Briefing Writer agent."""
     return Agent(
