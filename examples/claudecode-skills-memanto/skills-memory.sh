@@ -120,15 +120,28 @@ cmd_remember() {
  local text="${1:-}"
  local tag="general"
 
-  if [ -z "$text" ]; then
-    log_warn "Usage: skills-memory.sh remember <summary> [--tag <category>]"
-    return 1
-  fi
+ if [ -z "$text" ]; then
+ log_warn "Usage: skills-memory.sh remember <summary> [--tag <category>]"
+ return 1
+ fi
 
-  # Parse --tag option
-  if [ "${3:-}" = "--tag" ] && [ -n "${4:-}" ]; then
-    tag="$4"
-  fi
+ # Parse --tag option (supports: remember "text" --tag security OR remember "text" --tag security)
+ shift || true
+ while [ "$#" -gt 0 ]; do
+ case "$1" in
+ --tag)
+ tag="${2:-}"
+ if [ -z "$tag" ]; then
+ log_warn "Missing value for --tag"
+ return 1
+ fi
+ shift 2
+ ;;
+ *)
+ shift
+ ;;
+ esac
+ done
 
   # Auto-tag based on content heuristics
   local lower
