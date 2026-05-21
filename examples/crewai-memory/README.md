@@ -12,7 +12,8 @@ This directory contains a real-world example of CrewAI agents using **Memanto** 
 
 - **Cross-agent memory sharing**: A Research Agent stores findings that a Writer Agent retrieves
 - **Cross-session persistence**: Run the researcher today, run the writer tomorrow -- memories persist
-- **Typed semantic memory**: 13 memory types (fact, observation, decision, etc.) with confidence scoring
+- **Typed semantic memory**: 13 memory types (fact, observation, decision, etc.) are baked directly into the tool schema so the agent categorizes memory autonomously.
+- **AI-driven confidence scoring**: Agents are forced to evaluate their own certainty (0.0 - 1.0) before saving a memory.
 - **Contradictory memory handling**: Detect and resolve conflicting facts (bonus)
 
 ## Prerequisites

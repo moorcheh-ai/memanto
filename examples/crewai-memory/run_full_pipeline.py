@@ -33,7 +33,7 @@ def main() -> None:
         )
         sys.exit(1)
 
-    llm = os.environ.get("CREWAI_LLM", "openrouter/tencent/hy3-preview:free")
+    llm = os.environ.get("CREWAI_LLM", "openrouter/baidu/cobuddy:free")
 
     # Set up Memanto
     setup = MemantoSetup(api_key)

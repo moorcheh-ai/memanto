@@ -19,7 +19,7 @@ def build_research_crew(
     client: SdkClient,
     agent_id: str,
     topic: str = "AI agent frameworks",
-    llm: str = "openrouter/tencent/hy3-preview:free",
+    llm: str = "openrouter/baidu/cobuddy:free",
 ) -> Crew:
     """Build a crew with only the Research Agent."""
     tools = create_memanto_tools(client, agent_id)
@@ -39,7 +39,7 @@ def build_writer_crew(
     client: SdkClient,
     agent_id: str,
     topic: str = "AI agent frameworks",
-    llm: str = "openrouter/tencent/hy3-preview:free",
+    llm: str = "openrouter/baidu/cobuddy:free",
 ) -> Crew:
     """Build a crew with only the Writer Agent."""
     tools = create_memanto_tools(client, agent_id)
@@ -59,7 +59,7 @@ def build_full_crew(
     client: SdkClient,
     agent_id: str,
     topic: str = "AI agent frameworks",
-    llm: str = "openrouter/tencent/hy3-preview:free",
+    llm: str = "openrouter/baidu/cobuddy:free",
 ) -> Crew:
     """Build the full pipeline: Research Agent -> Writer Agent."""
     tools = create_memanto_tools(client, agent_id)
