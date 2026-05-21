@@ -91,7 +91,11 @@ class LocalJsonMemoryStore:
 
     def setup(self) -> None:
         if self.path.exists():
-            self._records = json.loads(self.path.read_text())
+            try:
+                data = json.loads(self.path.read_text(encoding="utf-8"))
+            except json.JSONDecodeError:
+                data = []
+            self._records = data if isinstance(data, list) else []
         else:
             self._records = []
 
@@ -104,7 +108,10 @@ class LocalJsonMemoryStore:
                 "content": f"User {user_id}: {content}",
             }
         )
-        self.path.write_text(json.dumps(self._records, indent=2) + "\n")
+        self.path.write_text(
+            json.dumps(self._records, indent=2) + "\n",
+            encoding="utf-8",
+        )
 
     def recall(self, user_id: str, query: str, limit: int = 5) -> list[MemoryHit]:
         query_terms = {part.strip(".,?!").lower() for part in query.split()}
@@ -141,4 +148,3 @@ def build_memory_store(offline: bool = False) -> MemoryStore:
         )
     agent_id = os.environ.get("MEMANTO_AGENT_ID", "langgraph-support-demo")
     return MemantoMemoryStore(api_key=api_key, agent_id=agent_id)
-

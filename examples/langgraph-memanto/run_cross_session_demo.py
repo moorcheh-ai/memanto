@@ -11,8 +11,8 @@ from support_graph import run_support_turn
 
 def run_isolated_session(user_id: str, message: str, offline: bool):
     memory_store = build_memory_store(offline=offline)
-    memory_store.setup()
     try:
+        memory_store.setup()
         return run_support_turn(memory_store, user_id=user_id, message=message)
     finally:
         memory_store.close()
@@ -75,4 +75,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

@@ -21,8 +21,8 @@ def main() -> None:
 
     load_dotenv()
     memory_store = build_memory_store(offline=args.offline)
-    memory_store.setup()
     try:
+        memory_store.setup()
         result = run_support_turn(memory_store, user_id=args.user, message=args.message)
     finally:
         memory_store.close()
@@ -44,4 +44,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-
