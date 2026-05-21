@@ -63,6 +63,13 @@ python run_demo.py --backend local --mode recall
 
 The recall run uses a fresh `thread_id` and a new store instance. It can only answer with the previous order and replacement preference if the memory layer persisted them.
 
+## Reviewer Checklist
+
+- Session one stores order `AR-8841` and the replacement-before-refund preference through `memory_store.remember(...)`.
+- Session two uses `thread_id="session-two"` and a new `LocalJsonMemoryStore` instance pointed at the same memory file.
+- LangGraph has no checkpointer in this example; the recalled facts can only come from Memanto or the local preview memory adapter.
+- `validate_offline.py` fails if no memory file is created, if no durable memories are recalled, or if the final answer misses the stored order/preference facts.
+
 ## Validate
 
 ```bash
@@ -74,6 +81,8 @@ Expected result:
 
 ```text
 offline validation passed
+session-one stored durable order and preference memories
+session-two used a fresh thread and recalled AR-8841 + replacement preference
 ```
 
 ## Files
