@@ -301,15 +301,20 @@ def build_langgraph_runner(
         return fallback_runner
 
     graph = StateGraph(SupportState)
-    graph.add_node(
-        "recall_memory",
-        lambda state: recall_customer_memory(state, memory_backend=memory_backend),
-    )
+
+    def recall_memory_node(state: SupportState) -> dict[str, str]:
+        """Run the recall node with the configured memory backend."""
+
+        return recall_customer_memory(state, memory_backend=memory_backend)
+
+    def persist_learning_node(state: SupportState) -> dict[str, str]:
+        """Run the persistence node with the configured memory backend."""
+
+        return persist_new_learning(state, memory_backend=memory_backend)
+
+    graph.add_node("recall_memory", recall_memory_node)
     graph.add_node("draft_reply", draft_support_reply)
-    graph.add_node(
-        "persist_learning",
-        lambda state: persist_new_learning(state, memory_backend=memory_backend),
-    )
+    graph.add_node("persist_learning", persist_learning_node)
     graph.add_edge(START, "recall_memory")
     graph.add_edge("recall_memory", "draft_reply")
     graph.add_edge("draft_reply", "persist_learning")
