@@ -39,7 +39,11 @@ preview_remember() {
   mkdir -p "$PREVIEW_DIR"
   local ts
   ts=$(date -u +%Y-%m-%dT%H:%M:%SZ)
-  local entry="{\"timestamp\":\"$ts\",\"tag\":\"$tag\",\"memory\":\"$text\"}"
+  local escaped_text
+  escaped_text=$(printf '%s' "$text" | python3 -c 'import sys,json; print(json.dumps(sys.stdin.read().strip())[1:-1])')
+  local escaped_tag
+  escaped_tag=$(printf '%s' "$tag" | python3 -c 'import sys,json; print(json.dumps(sys.stdin.read().strip())[1:-1])')
+  local entry="{\"timestamp\":\"$ts\",\"tag\":\"$escaped_tag\",\"memory\":\"$escaped_text\"}"
   echo "$entry" >> "$PREVIEW_DIR/memories.jsonl"
   log_ok "[preview] Memory stored locally ($tag)"
 }
@@ -113,8 +117,8 @@ cmd_recall() {
 
 # --- Remember: store distilled engineering decision after skill ---
 cmd_remember() {
-  local text="${1:-}"
-  local tag="${2:-general}"
+ local text="${1:-}"
+ local tag="general"
 
   if [ -z "$text" ]; then
     log_warn "Usage: skills-memory.sh remember <summary> [--tag <category>]"
@@ -206,15 +210,15 @@ cmd_wrap() {
   topic=$(echo "$skill_cmd" | sed 's/[^a-zA-Z0-9 ]/ /g' | tr -s ' ' | cut -c1-80)
 
   # Phase 1: Pre-skill — recall relevant memories
-  log_info "=== Pre-skill: Recalling engineering context ==="
-  local memories
-  memories=$(cmd_recall "$topic" 2>&1) || true
+ log_info "=== Pre-skill: Recalling engineering context ==="
+ cmd_recall "$topic" 2>&1 || true
 
-  # Phase 2: Execute skill
-  log_info "=== Executing skill ==="
-  local output
-  output=$(eval "$skill_cmd" 2>&1) || true
-  echo "$output"
+ # Phase 2: Execute skill
+ log_info "=== Executing skill ==="
+ local output
+ local skill_status=0
+ output=$(eval "$skill_cmd" 2>&1) || skill_status=$?
+ echo "$output"
 
   # Phase 3: Post-skill — distill and store
   log_info "=== Post-skill: Distilling engineering decisions ==="
@@ -245,20 +249,41 @@ cmd_daily() {
   }
 }
 
+# --- Distill-and-remember: distill raw output then store (for PostToolUse hooks) ---
+cmd_distill_and_remember() {
+  local raw_output="${1:-}"
+
+  if [ -z "$raw_output" ]; then
+    return 0
+  fi
+
+  local distilled
+  distilled=$(distill_output "$raw_output")
+
+  if [ -n "$distilled" ]; then
+    while IFS= read -r line; do
+      [ -n "$line" ] && cmd_remember "$line" 2>&1 || true
+    done <<< "$distilled"
+    log_ok "Distilled engineering decisions stored"
+  fi
+}
+
 # --- Main ---
 case "${1:-help}" in
-  recall)   shift; cmd_recall "$@" ;;
-  remember) shift; cmd_remember "$@" ;;
-  wrap)     shift; cmd_wrap "$@" ;;
-  daily)    shift; cmd_daily "$@" ;;
+ recall) shift; cmd_recall "$@" ;;
+ remember) shift; cmd_remember "$@" ;;
+ distill-and-remember) shift; cmd_distill_and_remember "$@" ;;
+ wrap) shift; cmd_wrap "$@" ;;
+ daily) shift; cmd_daily "$@" ;;
   help|--help|-h)
     echo "skills-memory.sh — Cross-session engineering memory for Claude Code skills"
     echo ""
-    echo "Commands:"
-    echo "  recall <topic>           Inject relevant memories before a skill"
-    echo "  remember <summary> [tag] Store an engineering decision after a skill"
-    echo "  wrap <skill-command>     Full pre/post lifecycle wrapper"
-    echo "  daily                    Daily engineering summary"
+ echo "Commands:"
+ echo " recall <topic> Inject relevant memories before a skill"
+ echo " remember <summary> [tag] Store an engineering decision after a skill"
+ echo " distill-and-remember <raw> Distill raw output and store decisions (for hooks)"
+ echo " wrap <skill-command> Full pre/post lifecycle wrapper"
+ echo " daily Daily engineering summary"
     echo ""
     echo "Environment:"
     echo "  MEMANTO_PREVIEW=1        Local preview mode (no API key needed)"

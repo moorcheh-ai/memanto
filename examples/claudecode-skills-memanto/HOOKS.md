@@ -14,7 +14,7 @@ Add this to your Claude Code hooks settings file (`~/.claude/hooks.json` or your
     "PostToolUse": [
       {
         "matcher": "Bash",
-        "command": "bash /path/to/examples/claudecode-skills-memanto/skills-memory.sh remember \"$CLAUDE_TOOL_OUTPUT\" --tag auto"
+        "command": "bash /path/to/examples/claudecode-skills-memanto/skills-memory.sh distill-and-remember \"$CLAUDE_TOOL_OUTPUT\""
       }
     ]
   }
@@ -27,7 +27,7 @@ Replace `/path/to/` with the actual location of the `skills-memory.sh` script in
 
 1. **PreToolUse** — Before every Bash command Claude Code runs, the hook calls `memanto recall` with the command context. This injects relevant engineering memories into the session.
 
-2. **PostToolUse** — After every Bash command completes, the hook calls `memanto remember` with the output. The distillation logic extracts engineering decisions automatically.
+2. **PostToolUse** — After every Bash command completes, the hook calls `distill-and-remember` which extracts engineering decisions from the raw tool output before storing. This avoids persisting sensitive or noisy raw output.
 
 ## Alternative: Manual skill wrapping
 

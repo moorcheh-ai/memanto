@@ -59,7 +59,7 @@ memanto daily-summary
 
 ## Architecture
 
-```
+```text
 ┌──────────────────────────────────────────────┐
 │              Claude Code Session              │
 │                                              │
