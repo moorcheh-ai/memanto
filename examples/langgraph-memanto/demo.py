@@ -28,6 +28,7 @@ warnings.filterwarnings("ignore", message=r".*allowed_objects.*")
 
 
 def planner_node(state: dict[str, Any]) -> dict[str, Any]:
+    """Plan a payment milestone and emit memories worth persisting."""
     context = state.get("memanto_context") or "No durable memory recalled yet."
     print("Planner received memory context:")
     print(context)
@@ -56,6 +57,7 @@ def planner_node(state: dict[str, Any]) -> dict[str, Any]:
 
 
 def answer_node(state: dict[str, Any]) -> dict[str, Any]:
+    """Print an answer that uses recalled memory context."""
     context = state.get("memanto_context") or "No durable memory found."
     answer = "Recovered long-term context:\n" + context
     print(answer)
@@ -140,6 +142,7 @@ def run_with_langgraph(memory: MemantoGraphMemory) -> dict[str, Any]:
 
 
 def main() -> None:
+    """Select a backend and run the two-session demo."""
     if os.getenv("MEMANTO_LANGGRAPH_BACKEND", "local").strip().lower() != "cli":
         STORE_PATH.unlink(missing_ok=True)
 

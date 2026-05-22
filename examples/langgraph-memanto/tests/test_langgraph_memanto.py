@@ -16,7 +16,10 @@ SPEC.loader.exec_module(module)
 
 
 class LangGraphMemantoTests(unittest.TestCase):
+    """Unit tests for the LangGraph Memanto example adapter."""
+
     def test_jsonl_backend_remembers_and_recalls_across_instances(self) -> None:
+        """Local memory persists and can be recalled by a new backend instance."""
         path = Path(self._testMethodName + ".jsonl")
         self.addCleanup(lambda: path.unlink(missing_ok=True))
 
@@ -37,6 +40,7 @@ class LangGraphMemantoTests(unittest.TestCase):
         self.assertEqual(hits[0].type, "decision")
 
     def test_inject_context_adds_recalled_memories_without_mutating_state(self) -> None:
+        """Context injection returns a copied state with structured recall hits."""
         path = Path(self._testMethodName + ".jsonl")
         self.addCleanup(lambda: path.unlink(missing_ok=True))
         backend = module.JsonlMemoryBackend(path)
@@ -62,6 +66,7 @@ class LangGraphMemantoTests(unittest.TestCase):
         self.assertEqual(len(hydrated["memanto_hits"]), 1)
 
     def test_wrap_node_recalls_before_and_stores_marked_node_output(self) -> None:
+        """Wrapped nodes see recalled context and store marked output lines."""
         path = Path(self._testMethodName + ".jsonl")
         self.addCleanup(lambda: path.unlink(missing_ok=True))
         backend = module.JsonlMemoryBackend(path)
@@ -98,6 +103,7 @@ class LangGraphMemantoTests(unittest.TestCase):
         self.assertEqual(hits[0].type, "decision")
 
     def test_remember_node_accepts_structured_memory_payloads(self) -> None:
+        """The remember node handles explicit structured memory dictionaries."""
         path = Path(self._testMethodName + ".jsonl")
         self.addCleanup(lambda: path.unlink(missing_ok=True))
         backend = module.JsonlMemoryBackend(path)
@@ -121,6 +127,7 @@ class LangGraphMemantoTests(unittest.TestCase):
         self.assertEqual(hits[0].type, "preference")
 
     def test_secret_redaction_before_storage(self) -> None:
+        """Obvious token-like secrets are redacted before JSONL persistence."""
         path = Path(self._testMethodName + ".jsonl")
         self.addCleanup(lambda: path.unlink(missing_ok=True))
         backend = module.JsonlMemoryBackend(path)

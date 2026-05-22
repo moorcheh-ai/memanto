@@ -114,6 +114,7 @@ class MemoryHit:
 
     @classmethod
     def from_row(cls, row: Mapping[str, Any], score: float = 0.0) -> "MemoryHit":
+        """Build a normalized hit from a backend storage row."""
         tags = tuple(str(tag) for tag in row.get("tags", []) if tag)
         return cls(
             id=str(row.get("id", "")),
@@ -128,6 +129,7 @@ class MemoryHit:
         )
 
     def to_dict(self) -> dict[str, Any]:
+        """Return a JSON-serializable representation for LangGraph state."""
         return asdict(self)
 
 
@@ -178,6 +180,7 @@ class JsonlMemoryBackend:
     """
 
     def __init__(self, path: str | Path):
+        """Use *path* as the JSONL file that stores local memories."""
         self.path = Path(path)
 
     def remember(
@@ -190,6 +193,7 @@ class JsonlMemoryBackend:
         source: str = "langgraph",
         provenance: str = "explicit_statement",
     ) -> str:
+        """Append one deduplicated, redacted memory to the JSONL store."""
         normalized = normalize_text(redact_secrets(content))
         if not normalized:
             return ""
@@ -226,6 +230,7 @@ class JsonlMemoryBackend:
         memory_types: set[str] | None = None,
         tags: set[str] | None = None,
     ) -> list[MemoryHit]:
+        """Search local memories with deterministic token-overlap scoring."""
         query_tokens = tokenize(query)
         tag_filter = {normalize_tag(tag) for tag in tags or set()}
         type_filter = {normalize_memory_type(item) for item in memory_types or set()}
@@ -259,6 +264,7 @@ class JsonlMemoryBackend:
         return hits[: max(0, limit)]
 
     def _load_rows(self) -> list[dict[str, Any]]:
+        """Read valid JSONL memory rows, skipping blank or corrupt lines."""
         if not self.path.exists():
             return []
 
@@ -301,6 +307,7 @@ class MemantoCliBackend:
         source: str = "langgraph",
         provenance: str = "explicit_statement",
     ) -> str:
+        """Persist one memory through the installed Memanto CLI."""
         self.ensure_agent()
         args = [
             "memanto",
@@ -333,6 +340,7 @@ class MemantoCliBackend:
         memory_types: set[str] | None = None,
         tags: set[str] | None = None,
     ) -> list[MemoryHit]:
+        """Recall memories through the CLI and normalize the console output."""
         self.ensure_agent()
         args = ["memanto", "recall", query, "--limit", str(limit)]
         if memory_types and len(memory_types) == 1:
@@ -358,6 +366,7 @@ class MemantoCliBackend:
         ]
 
     def ensure_agent(self) -> None:
+        """Create or activate the configured Memanto agent once per process."""
         if self._activated:
             return
         if not shutil.which("memanto"):
@@ -374,6 +383,7 @@ class MemantoCliBackend:
     def _run(
         self, args: Sequence[str], check: bool = True
     ) -> subprocess.CompletedProcess[str]:
+        """Run a Memanto CLI command with timeout and optional error checking."""
         result = subprocess.run(
             list(args),
             capture_output=True,
@@ -411,6 +421,7 @@ class MemantoGraphMemory:
         self.recall_memory_types = recall_memory_types
 
     def recall_for_state(self, state: Mapping[str, Any]) -> list[MemoryHit]:
+        """Build a recall query from state and retrieve matching memories."""
         query = build_recall_query(state)
         if not query:
             return []
@@ -421,6 +432,7 @@ class MemantoGraphMemory:
         )
 
     def inject_context(self, state: Mapping[str, Any]) -> dict[str, Any]:
+        """Return a copy of state with formatted recall context injected."""
         hits = self.recall_for_state(state)
         next_state = dict(state)
         next_state[self.context_key] = format_memory_context(hits)
@@ -428,6 +440,7 @@ class MemantoGraphMemory:
         return next_state
 
     def recall_node(self, state: Mapping[str, Any]) -> dict[str, Any]:
+        """LangGraph node that emits only the memory context update."""
         hydrated = self.inject_context(state)
         return {
             self.context_key: hydrated[self.context_key],
@@ -435,6 +448,7 @@ class MemantoGraphMemory:
         }
 
     def remember_node(self, state: Mapping[str, Any]) -> dict[str, Any]:
+        """LangGraph node that stores explicit memories from state."""
         saved_ids = self.store_from_state(state, node_name="memanto_remember")
         return {"memanto_saved": len(saved_ids), "memanto_saved_ids": saved_ids}
 
@@ -442,6 +456,7 @@ class MemantoGraphMemory:
         self, node: Callable[..., Mapping[str, Any]], node_name: str | None = None
     ) -> Callable[..., Mapping[str, Any]]:
         def wrapped(state: Mapping[str, Any], *args: Any, **kwargs: Any) -> Mapping[str, Any]:
+            """Inject recalled context before a node and store memories after it."""
             hydrated = self.inject_context(state)
             result = node(hydrated, *args, **kwargs)
             if isinstance(result, Mapping):
@@ -454,6 +469,7 @@ class MemantoGraphMemory:
         return wrapped
 
     def build_recall_messages(self, state: Mapping[str, Any]) -> list[dict[str, str]]:
+        """Return a system-message payload for chat-model prompts."""
         context = self.inject_context(state).get(self.context_key, "")
         if not context:
             return []
@@ -462,6 +478,7 @@ class MemantoGraphMemory:
     def store_from_state(
         self, state: Mapping[str, Any], node_name: str | None = None
     ) -> list[str]:
+        """Extract and persist memory candidates from LangGraph state."""
         saved_ids: list[str] = []
         seen: set[str] = set()
         source = node_name or self.agent_id
@@ -503,6 +520,7 @@ def make_backend_from_env(
 
 
 def build_recall_query(state: Mapping[str, Any]) -> str:
+    """Build a compact recall query from task fields and the latest user turn."""
     parts: list[str] = []
     for key in ("query", "question", "task", "goal", "input"):
         value = state.get(key)
@@ -525,6 +543,7 @@ def build_recall_query(state: Mapping[str, Any]) -> str:
 def extract_memory_candidates(
     state: Mapping[str, Any], source: str = "langgraph"
 ) -> list[MemoryCandidate]:
+    """Collect explicit memory candidates from state fields and messages."""
     candidates: list[MemoryCandidate] = []
 
     for key, default_type in TYPED_STATE_KEYS.items():
@@ -545,6 +564,7 @@ def extract_memory_candidates(
 
 
 def iter_candidate_values(value: Any) -> Iterable[Any]:
+    """Yield candidate-like values from strings, mappings, or sequences."""
     if value is None:
         return []
     if isinstance(value, (str, bytes)):
@@ -561,6 +581,7 @@ def iter_candidate_values(value: Any) -> Iterable[Any]:
 def coerce_candidate(
     value: Any, default_type: str = "fact", source: str = "langgraph"
 ) -> MemoryCandidate | None:
+    """Normalize a raw state item into a typed memory candidate."""
     if isinstance(value, Mapping):
         content = value.get("content") or value.get("text") or value.get("memory")
         if not content:
@@ -594,6 +615,7 @@ def coerce_candidate(
 
 
 def extract_marked_candidates(text: str, source: str = "langgraph") -> list[MemoryCandidate]:
+    """Parse marked lines such as ``Decision: ...`` into candidates."""
     candidates: list[MemoryCandidate] = []
     for line in text.splitlines():
         match = MARKED_LINE_RE.match(line.strip())
@@ -615,6 +637,7 @@ def extract_marked_candidates(text: str, source: str = "langgraph") -> list[Memo
 
 
 def format_memory_context(hits: Sequence[MemoryHit]) -> str:
+    """Render recall hits as prompt-ready LangGraph context."""
     if not hits:
         return ""
     lines = [
@@ -629,6 +652,7 @@ def format_memory_context(hits: Sequence[MemoryHit]) -> str:
 
 
 def message_content(message: Any) -> str:
+    """Read message content from dict-like or LangChain-style messages."""
     if isinstance(message, Mapping):
         content = message.get("content", "")
     else:
@@ -648,12 +672,14 @@ def message_content(message: Any) -> str:
 
 
 def message_role(message: Any) -> str:
+    """Read a role/type field from dict-like or object-style messages."""
     if isinstance(message, Mapping):
         return str(message.get("role") or message.get("type") or "")
     return str(getattr(message, "role", getattr(message, "type", "")))
 
 
 def dedupe_candidates(candidates: Sequence[MemoryCandidate]) -> list[MemoryCandidate]:
+    """Remove duplicate candidates while preserving input order."""
     deduped: list[MemoryCandidate] = []
     seen: set[tuple[str, str]] = set()
     for candidate in candidates:
@@ -670,6 +696,7 @@ def dedupe_candidates(candidates: Sequence[MemoryCandidate]) -> list[MemoryCandi
 
 
 def strip_marker(text: str) -> tuple[str | None, str]:
+    """Strip a memory-type marker from one line of text if present."""
     match = MARKED_LINE_RE.match(text)
     if not match:
         return None, text
@@ -678,11 +705,13 @@ def strip_marker(text: str) -> tuple[str | None, str]:
 
 
 def stable_memory_id(source: str, content: str) -> str:
+    """Create a deterministic short id for local-memory deduplication."""
     payload = f"{source.strip().lower()}::{normalize_text(content).lower()}"
     return hashlib.sha256(payload.encode("utf-8")).hexdigest()[:16]
 
 
 def score_text(query_tokens: set[str], memory_tokens: set[str]) -> float:
+    """Score token overlap between a recall query and stored memory text."""
     if not query_tokens or not memory_tokens:
         return 0.0
     overlap = query_tokens.intersection(memory_tokens)
@@ -694,23 +723,28 @@ def score_text(query_tokens: set[str], memory_tokens: set[str]) -> float:
 
 
 def tokenize(text: str) -> set[str]:
+    """Tokenize text for lightweight local recall."""
     return {token.lower() for token in TOKEN_RE.findall(text)}
 
 
 def normalize_memory_type(memory_type: str) -> str:
+    """Return a valid Memanto memory type, falling back to ``fact``."""
     normalized = normalize_tag(memory_type)
     return normalized if normalized in VALID_MEMORY_TYPES else "fact"
 
 
 def normalize_tag(tag: str) -> str:
+    """Convert free-form tag text into a stable slug."""
     return re.sub(r"[^a-zA-Z0-9_-]+", "-", str(tag).strip().lower()).strip("-")
 
 
 def normalize_text(text: str) -> str:
+    """Collapse whitespace and trim surrounding space."""
     return re.sub(r"\s+", " ", text or "").strip()
 
 
 def make_title(content: str, limit: int = 72) -> str:
+    """Create a compact display title for stored memory content."""
     content = normalize_text(content)
     if len(content) <= limit:
         return content
@@ -718,6 +752,7 @@ def make_title(content: str, limit: int = 72) -> str:
 
 
 def redact_secrets(text: str) -> str:
+    """Mask obvious API keys, tokens, passwords, and ``sk-`` style secrets."""
     redacted = text
     for pattern in SECRET_PATTERNS:
         redacted = pattern.sub(replace_secret_match, redacted)
@@ -725,12 +760,14 @@ def redact_secrets(text: str) -> str:
 
 
 def replace_secret_match(match: re.Match[str]) -> str:
+    """Replace only the secret value when the regex exposes one."""
     if match.lastindex and match.lastindex >= 2:
         return match.group(0).replace(match.group(2), "[REDACTED]")
     return "[REDACTED]"
 
 
 def strip_ansi(text: str) -> str:
+    """Remove ANSI color/control sequences from CLI output."""
     return ANSI_RE.sub("", text or "")
 
 
