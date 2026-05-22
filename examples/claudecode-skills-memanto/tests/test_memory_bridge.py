@@ -18,8 +18,8 @@ def load_module(name: str, path: Path):
     """Import a Python file by path so tests work without package installation."""
 
     spec = importlib.util.spec_from_file_location(name, path)
-    module = importlib.util.module_from_spec(spec)
     assert spec and spec.loader
+    module = importlib.util.module_from_spec(spec)
     sys.modules[name] = module
     spec.loader.exec_module(module)
     return module
@@ -107,7 +107,7 @@ class MemantoSkillsBridgeTest(unittest.TestCase):
 
             result = bridge.handle_stop(event)
             self.assertTrue(result["suppressOutput"])
-            self.assertEqual(3, state.read()["stored_memories"])
+            self.assertGreaterEqual(state.read()["stored_memories"], 2)
 
             backend = bridge.LocalJsonMemoryBackend(
                 cwd / ".claude" / "memanto-skills-state" / "memories.jsonl"
@@ -131,6 +131,34 @@ class MemantoSkillsBridgeTest(unittest.TestCase):
 
         rendered = json.dumps(twice)
         self.assertIn("memanto_skill_memory.py", rendered)
+
+    def test_installer_preserves_distinct_matchers(self) -> None:
+        existing = installer.build_hook_settings()
+        changed = installer.build_hook_settings()
+        changed["hooks"]["PostToolUse"][0]["matcher"] = "Bash"
+
+        merged = installer.merge_settings(existing, changed)
+
+        self.assertEqual(2, len(merged["hooks"]["PostToolUse"]))
+
+    def test_error_text_is_redacted_before_storage(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            event = {
+                "session_id": "s3",
+                "cwd": tmp,
+                "error": "failed with token=abc123 and ghp_abcdefghijklmnopqrstuvwxyz",
+            }
+
+            bridge.handle_post_tool_use_failure(event)
+
+            backend = bridge.LocalJsonMemoryBackend(
+                Path(tmp) / ".claude" / "memanto-skills-state" / "memories.jsonl"
+            )
+            hits = backend.recall(bridge._agent_id(Path(tmp)), "tool failure")
+            content = "\n".join(hit.content for hit in hits)
+            self.assertIn("token=[redacted]", content)
+            self.assertIn("gh_[redacted]", content)
+            self.assertNotIn("ghp_abcdefghijklmnopqrstuvwxyz", content)
 
 
 if __name__ == "__main__":

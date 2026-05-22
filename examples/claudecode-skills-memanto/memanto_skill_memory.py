@@ -341,12 +341,15 @@ def handle_post_tool_use_failure(event: dict[str, Any]) -> dict[str, Any]:
     context = _context(event)
     state = HookState(context["state_dir"], context["session_id"])
     state.append("failures", summarize_tool_event(event))
-    error_text = str(event.get("error") or "")
+    error_text = _redact_sensitive(str(event.get("error") or ""))
     if error_text:
         memory = MemoryCandidate(
             type="error",
             title="Claude Code tool failure",
-            content=f"Tool failure during a skills workflow: {error_text}",
+            content=(
+                "Tool failure during a skills workflow: "
+                f"{_truncate(error_text, 500)}"
+            ),
             confidence=0.85,
             tags=["claude-code", "tool-failure", "mattpocock-skills"],
         )
@@ -573,7 +576,9 @@ def summarize_tool_event(event: dict[str, Any]) -> dict[str, Any]:
     if files:
         summary_bits.append("files=" + ",".join(files[:5]))
     if event.get("error"):
-        summary_bits.append("error=" + _truncate(str(event.get("error")), 160))
+        summary_bits.append(
+            "error=" + _truncate(_redact_sensitive(str(event.get("error"))), 160)
+        )
 
     return {
         "kind": kind,
@@ -679,13 +684,13 @@ def _looks_like_verification(command: str) -> bool:
 def _durable_sentences(text: str) -> list[str]:
     """Split free text into sentence-sized candidates worth remembering."""
 
-    clean = re.sub(r"\s+", " ", text).strip()
+    clean = text.strip()
     if not clean:
         return []
     raw = re.split(r"(?<=[.!?])\s+|(?:\n\s*[-*]\s+)", clean)
     candidates = []
     for sentence in raw:
-        sentence = sentence.strip(" -")
+        sentence = re.sub(r"\s+", " ", sentence).strip(" -")
         if 20 <= len(sentence) <= 700 and classify_sentence(sentence):
             candidates.append(sentence)
     return candidates[:8]
@@ -742,6 +747,21 @@ def _tokens(text: str) -> set[str]:
     }
 
 
+def _redact_sensitive(text: str) -> str:
+    """Mask common secret shapes before durable storage."""
+
+    patterns = [
+        (r"gh[pousr]_[A-Za-z0-9_]{20,}", "gh_[redacted]"),
+        (r"sk-[A-Za-z0-9_-]{20,}", "sk-[redacted]"),
+        (r"(?i)(api[_-]?key|token|secret|password)=\S+", r"\1=[redacted]"),
+        (r"(?i)(authorization:\s*bearer\s+)\S+", r"\1[redacted]"),
+    ]
+    redacted = text
+    for pattern, replacement in patterns:
+        redacted = re.sub(pattern, replacement, redacted)
+    return redacted
+
+
 def _fingerprint(*parts: str) -> str:
     """Build a stable SHA-1 digest for normalized text parts."""
 
@@ -781,7 +801,8 @@ def _env_int(name: str, default: int) -> int:
     """Read an integer environment variable with a safe default."""
 
     try:
-        return int(os.environ.get(name, default))
+        value = int(os.environ.get(name, default))
+        return value if value > 0 else default
     except ValueError:
         return default
 

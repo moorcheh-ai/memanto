@@ -100,21 +100,24 @@ def install(project_dir: Path, python_command: str, dry_run: bool = False) -> di
 def _group_exists(groups: list[dict[str, Any]], wanted: dict[str, Any]) -> bool:
     """Return True when an equivalent hook command is already present."""
 
-    wanted_command = _command_signature(wanted)
+    wanted_command = _group_signature(wanted)
     for group in groups:
-        if _command_signature(group) == wanted_command:
+        if _group_signature(group) == wanted_command:
             return True
     return False
 
 
-def _command_signature(group: dict[str, Any]) -> tuple[str, tuple[str, ...]]:
-    """Extract the command and args that identify a hook group."""
+def _group_signature(group: dict[str, Any]) -> str:
+    """Build a stable signature for the hook group shape."""
 
-    hooks = group.get("hooks") or []
-    if not hooks:
-        return ("", ())
-    first = hooks[0]
-    return (str(first.get("command") or ""), tuple(first.get("args") or []))
+    return json.dumps(
+        {
+            "matcher": group.get("matcher"),
+            "hooks": group.get("hooks") or [],
+        },
+        sort_keys=True,
+        separators=(",", ":"),
+    )
 
 
 def _load_json(path: Path) -> dict[str, Any]:

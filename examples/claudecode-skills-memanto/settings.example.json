@@ -17,6 +17,23 @@
         ]
       }
     ],
+    "UserPromptExpansion": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python",
+            "args": [
+              ".claude/hooks/memanto_skill_memory.py",
+              "--hook",
+              "UserPromptExpansion"
+            ],
+            "timeout": 10,
+            "statusMessage": "Recalling Memanto memory"
+          }
+        ]
+      }
+    ],
     "PostToolUse": [
       {
         "matcher": "Bash|Edit|Write|MultiEdit",
@@ -35,6 +52,24 @@
         ]
       }
     ],
+    "PostToolUseFailure": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python",
+            "args": [
+              ".claude/hooks/memanto_skill_memory.py",
+              "--hook",
+              "PostToolUseFailure"
+            ],
+            "timeout": 5,
+            "statusMessage": "Capturing skill failure"
+          }
+        ]
+      }
+    ],
     "Stop": [
       {
         "hooks": [
@@ -48,6 +83,23 @@
             ],
             "timeout": 12,
             "statusMessage": "Storing Memanto skill memory"
+          }
+        ]
+      }
+    ],
+    "PostCompact": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python",
+            "args": [
+              ".claude/hooks/memanto_skill_memory.py",
+              "--hook",
+              "PostCompact"
+            ],
+            "timeout": 8,
+            "statusMessage": "Storing compact summary"
           }
         ]
       }
