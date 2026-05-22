@@ -309,10 +309,11 @@ class MemantoCliBackend:
     ) -> str:
         """Persist one memory through the installed Memanto CLI."""
         self.ensure_agent()
+        payload = normalize_text(redact_secrets(content))
         args = [
             "memanto",
             "remember",
-            normalize_text(redact_secrets(content)),
+            payload,
             "--type",
             normalize_memory_type(memory_type),
             "--confidence",
@@ -328,7 +329,7 @@ class MemantoCliBackend:
             args.extend(["--tags", ",".join(normalize_tag(tag) for tag in tags)])
 
         result = self._run(args)
-        digest = stable_memory_id(memory_type, content)
+        digest = stable_memory_id(memory_type, payload)
         stdout = strip_ansi(result.stdout)
         match = re.search(r"Memory ID:\s*([A-Za-z0-9_.:-]+)", stdout)
         return match.group(1) if match else digest
