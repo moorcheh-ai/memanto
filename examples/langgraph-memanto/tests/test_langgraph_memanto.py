@@ -9,7 +9,8 @@ from pathlib import Path
 MODULE_PATH = Path(__file__).resolve().parents[1] / "langgraph_memanto.py"
 SPEC = importlib.util.spec_from_file_location("langgraph_memanto", MODULE_PATH)
 module = importlib.util.module_from_spec(SPEC)
-assert SPEC and SPEC.loader
+if not SPEC or not SPEC.loader:
+    raise ImportError(f"Failed to load module spec from {MODULE_PATH}")
 sys.modules[SPEC.name] = module
 SPEC.loader.exec_module(module)
 
