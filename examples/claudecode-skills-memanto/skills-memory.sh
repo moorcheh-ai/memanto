@@ -133,15 +133,16 @@ cmd_remember() {
  fi
 
  # Parse --tag option (supports: remember "text" --tag security)
- shift || true
+ # Shift past the first positional arg (text), then process flags
+ shift
  while [ "$#" -gt 0 ]; do
  case "$1" in
  --tag)
- tag="${2:-}"
- if [ -z "$tag" ]; then
+ if [ -z "${2:-}" ]; then
  log_warn "Missing value for --tag"
  return 1
  fi
+ tag="$2"
  shift 2
  ;;
  *)
