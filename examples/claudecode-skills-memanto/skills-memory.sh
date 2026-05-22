@@ -137,9 +137,10 @@ cmd_remember() {
  fi
  shift 2
  ;;
- *)
- shift
- ;;
+  *)
+    log_warn "Unknown argument: $1"
+    return 1
+    ;;
  esac
  done
 
