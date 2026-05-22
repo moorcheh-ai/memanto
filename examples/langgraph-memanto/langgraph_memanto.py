@@ -200,7 +200,7 @@ class JsonlMemoryBackend:
 
         memory_type = normalize_memory_type(memory_type)
         tags_tuple = tuple(sorted({normalize_tag(tag) for tag in tags or [] if tag}))
-        memory_id = stable_memory_id(source, normalized)
+        memory_id = stable_memory_id(memory_type, normalized)
 
         existing_ids = {str(row.get("id", "")) for row in self._load_rows()}
         if memory_id in existing_ids:
@@ -328,7 +328,7 @@ class MemantoCliBackend:
             args.extend(["--tags", ",".join(normalize_tag(tag) for tag in tags)])
 
         result = self._run(args)
-        digest = stable_memory_id(source or self.agent_id, content)
+        digest = stable_memory_id(memory_type, content)
         stdout = strip_ansi(result.stdout)
         match = re.search(r"Memory ID:\s*([A-Za-z0-9_.:-]+)", stdout)
         return match.group(1) if match else digest
@@ -572,7 +572,11 @@ def iter_candidate_values(value: Any) -> Iterable[Any]:
     if isinstance(value, Mapping):
         if any(key in value for key in ("content", "text", "memory")):
             return [value]
-        return value.values()
+        return [
+            {"content": f"{key}: {item}"}
+            for key, item in value.items()
+            if item is not None
+        ]
     if isinstance(value, Iterable):
         return value
     return [value]
@@ -704,9 +708,9 @@ def strip_marker(text: str) -> tuple[str | None, str]:
     return MARKER_TO_TYPE.get(marker.lower(), "fact"), normalize_text(content)
 
 
-def stable_memory_id(source: str, content: str) -> str:
-    """Create a deterministic short id for local-memory deduplication."""
-    payload = f"{source.strip().lower()}::{normalize_text(content).lower()}"
+def stable_memory_id(memory_type: str, content: str) -> str:
+    """Create a deterministic id from memory type and normalized content."""
+    payload = f"{normalize_memory_type(memory_type)}::{normalize_text(content).lower()}"
     return hashlib.sha256(payload.encode("utf-8")).hexdigest()[:16]
 
 

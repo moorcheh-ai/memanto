@@ -65,6 +65,40 @@ class LangGraphMemantoTests(unittest.TestCase):
         self.assertIn("status updates should be concise", hydrated["memanto_context"])
         self.assertEqual(len(hydrated["memanto_hits"]), 1)
 
+    def test_jsonl_backend_dedupes_same_memory_across_sources(self) -> None:
+        """The same typed content is not duplicated when sources differ."""
+        path = Path(self._testMethodName + ".jsonl")
+        self.addCleanup(lambda: path.unlink(missing_ok=True))
+        backend = module.JsonlMemoryBackend(path)
+
+        first_id = backend.remember(
+            "Fact: The billing queue uses Redis Streams.",
+            memory_type="fact",
+            source="planner",
+        )
+        second_id = backend.remember(
+            "Fact: The billing queue uses Redis Streams.",
+            memory_type="fact",
+            source="writer",
+        )
+        rows = path.read_text(encoding="utf-8").strip().splitlines()
+
+        self.assertEqual(first_id, second_id)
+        self.assertEqual(len(rows), 1)
+
+    def test_mapping_state_memories_preserve_keys(self) -> None:
+        """Dict-shaped state keeps keys in stored memory content."""
+        path = Path(self._testMethodName + ".jsonl")
+        self.addCleanup(lambda: path.unlink(missing_ok=True))
+        backend = module.JsonlMemoryBackend(path)
+        memory = module.MemantoGraphMemory(backend, recall_limit=2)
+
+        update = memory.remember_node({"facts": {"timezone": "PST", "approved": True}})
+        hits = backend.recall("timezone PST", limit=1)
+
+        self.assertEqual(update["memanto_saved"], 2)
+        self.assertEqual(hits[0].content, "timezone: PST")
+
     def test_wrap_node_recalls_before_and_stores_marked_node_output(self) -> None:
         """Wrapped nodes see recalled context and store marked output lines."""
         path = Path(self._testMethodName + ".jsonl")
