@@ -16,12 +16,24 @@ from memanto.app.services.memory_export_service import MEMORY_TYPE_ORDER
 
 @dataclass(frozen=True)
 class MemoryRule:
+    """Rule pattern and weight used for memory type classification."""
+
     pattern: re.Pattern[str]
     score: int
 
 
 class MemoryParsingService:
+    """Classify memories into supported memory types before storage."""
+
     MIN_RULE_SCORE: ClassVar[int] = 3
+    STRONG_FACT_PATTERNS: ClassVar[list[re.Pattern[str]]] = [
+        re.compile(pattern, re.IGNORECASE)
+        for pattern in [
+            r"https?://[^\s<>()\[\]{},;:\"']*[^\s<>()\[\]{},;:\"'.,!?]",
+            r"\b(?:endpoint|url|api key|path|email|phone|address)\b",
+            r"\b(?:is|are|was|were)\b",
+        ]
+    ]
 
     # Tie-break toward durable, user-actionable memories when multiple weak
     # signals appear in the same sentence.
@@ -209,10 +221,13 @@ class MemoryParsingService:
                     5,
                 ),
                 (
-                    r"\b[\w./-]+\.(?:py|md|txt|json|yaml|yml|csv|xlsx|pdf|pptx|png|jpg|jpeg|html|css|js|ts|tsx)\b",
+                    r"(?<![\w./-])[\w.-]+(?:/[\w.-]+)*\.(?:py|md|txt|json|yaml|yml|csv|xlsx|pdf|pptx|png|jpg|jpeg|html|css|js|ts|tsx)(?![\w.-])",
                     5,
                 ),
-                (r"https?://\S+", 4),
+                (
+                    r"https?://[^\s<>()\[\]{},;:\"']*[^\s<>()\[\]{},;:\"'.,!?]",
+                    4,
+                ),
             ]
         ],
         "fact": [
@@ -245,12 +260,13 @@ class MemoryParsingService:
         - Use rule-based classification
         """
 
-        # 1. Config check
-        if not settings.AUTO_PARSE_ENABLED:
+        # 1. Respect existing type
+        if memory.type:
             return memory
 
-        # 2. Respect existing type
-        if memory.type:
+        # 2. Config check
+        if not settings.AUTO_PARSE_ENABLED:
+            memory.type = cast(MemoryType, "fact")
             return memory
 
         # 3. Rule-based detection
@@ -262,10 +278,14 @@ class MemoryParsingService:
 
         if detected and detected in MEMORY_TYPE_ORDER:
             memory.type = cast(MemoryType, detected)
+        else:
+            memory.type = cast(MemoryType, "fact")
 
         return memory
 
     def _rule_based(self, text: str) -> str | None:
+        """Return the highest-scoring rule-based type for text, if confident."""
+
         if not text:
             return None
         normalized = re.sub(r"\s+", " ", text).strip()
@@ -278,15 +298,8 @@ class MemoryParsingService:
         if set(scores.keys()) == {"fact"}:
             fact_score = scores.get("fact", 0)
 
-            # allow strong fact signals
-            strong_fact_patterns = [
-                r"https?://\S+",
-                r"\b(?:endpoint|url|api key|path|email|phone|address)\b",
-                r"\b(?:is|are|was|were)\b",
-            ]
-
             if fact_score < 4 and not any(
-                re.search(p, text, re.IGNORECASE) for p in strong_fact_patterns
+                pattern.search(text) for pattern in self.STRONG_FACT_PATTERNS
             ):
                 return None
         if not scores:
@@ -314,6 +327,8 @@ class MemoryParsingService:
         return detected
 
     def _score_types(self, text: str) -> dict[str, int]:
+        """Calculate cumulative rule scores for every matched memory type."""
+
         scores: dict[str, int] = {}
         for memory_type, rules in self.RULES.items():
             score = sum(rule.score for rule in rules if rule.pattern.search(text))

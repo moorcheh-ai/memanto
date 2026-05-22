@@ -44,7 +44,7 @@ def test_no_override_existing_type():
 
 
 # 3. Config disabled
-def test_auto_parse_disabled(monkeypatch):
+def test_auto_parse_disabled_uses_default_type(monkeypatch):
     monkeypatch.setattr(settings, "AUTO_PARSE_ENABLED", False)
 
     parser = MemoryParsingService()
@@ -53,7 +53,7 @@ def test_auto_parse_disabled(monkeypatch):
 
     parser.parse_memory(memory)
 
-    assert memory.type is None
+    assert memory.type == "fact"
 
     monkeypatch.setattr(settings, "AUTO_PARSE_ENABLED", True)
 
@@ -141,11 +141,11 @@ def test_richer_lexical_coverage_for_common_scenarios():
         assert memory.type == expected_type
 
 
-def test_unrelated_text_does_not_fall_back_to_fact():
+def test_unrelated_text_falls_back_to_default_fact():
     parser = MemoryParsingService()
 
     memory = make_memory("random unrelated words here")
 
     parser.parse_memory(memory)
 
-    assert memory.type is None
+    assert memory.type == "fact"

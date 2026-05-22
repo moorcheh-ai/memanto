@@ -15,12 +15,18 @@ from memanto.app.utils.ids import generate_memory_id
 
 
 class MemoryWriteService:
+    """Persist memory records to Moorcheh-backed namespaces."""
+
     def __init__(self, moorcheh_client: "MoorchehClient"):
+        """Initialize the service with a Moorcheh client."""
+
         self.client = moorcheh_client
         self._namespace_service = None
 
     @property
     def namespace_service(self):
+        """Lazily create the namespace service used for memory scopes."""
+
         if self._namespace_service is None:
             from memanto.app.services.namespace_service import NamespaceService
 

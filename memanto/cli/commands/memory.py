@@ -163,7 +163,7 @@ def remember(
 
         console.print("[green]Memory stored successfully![/green]")
         console.print(f"[dim]Memory ID: {result.get('memory_id', 'unknown')}[/dim]")
-        parsed_type = result.get("type") or memory_type
+        parsed_type = result.get("type") or memory_type or "fact"
         console.print(f"[dim]Type: {parsed_type} | Confidence: {confidence}[/dim]")
         console.print(f"[dim]Completed in {elapsed:.2f}s[/dim]")
 
@@ -294,6 +294,8 @@ def recall(
 
     # CLI-side validation for timestamps to fail fast with a clear error
     def _validate_and_parse_timestamp(ts: str, flag_name: str) -> str:
+        """Normalize an ISO or relative timestamp passed to a temporal flag."""
+
         if not ts:
             return ts
 
@@ -747,6 +749,8 @@ def conflicts(
 
         # Prompt options with recommendation markers
         def _opt(key, label, rec_val, current_rec=rec):
+            """Print a conflict-resolution choice with its recommendation marker."""
+
             marker = " [green]<< recommended[/green]" if current_rec == rec_val else ""
             console.print(f"  [{BRIGHT}][{key}][/{BRIGHT}] {label}{marker}")
 

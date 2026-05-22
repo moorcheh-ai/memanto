@@ -80,8 +80,8 @@ class MemoryRecord(BaseModel):
         Moorcheh stores metadata as flat fields on the document, which enables
         powerful filtering using the # syntax (e.g., #memory_type:fact #confidence>0.8)
         """
-        memory_type = self.type
-        display_type = memory_type or "unclassified"
+        memory_type = self.type or "fact"
+        display_type = memory_type
 
         # Format text as standardized card for semantic search
         text = f"[{display_type.upper()}] {self.title}\n\n{self.content}"

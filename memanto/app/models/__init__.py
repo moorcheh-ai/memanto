@@ -12,6 +12,8 @@ from memanto.app.constants import MemoryType, ScopeType, SourceType, StatusType
 
 # Request Models
 class MemoryStoreRequest(BaseModel):
+    """Request body for storing a single memory."""
+
     type: MemoryType
     title: str = Field(max_length=100)
     content: str = Field(max_length=10000)
@@ -56,7 +58,7 @@ class BatchRememberItem(BaseModel):
     """Single memory item in a batch-remember request"""
 
     content: str = Field(..., max_length=10000, description="Memory content")
-    type: str | None = Field(
+    type: MemoryType | None = Field(
         None,
         description="Memory type. Omit to auto-parse.",
     )
@@ -225,6 +227,8 @@ class ConversationCompressionRequest(BaseModel):
 
 # Response Models
 class MemoryResponse(BaseModel):
+    """Memory record returned by the API."""
+
     id: str
     type: MemoryType
     title: str
@@ -296,6 +300,8 @@ class MemoryAnswerResponse(BaseModel):
 
 
 class NamespaceResponse(BaseModel):
+    """Response returned after creating or fetching a namespace."""
+
     namespace: str
     scope_type: ScopeType
     scope_id: str
@@ -330,6 +336,8 @@ class CompressionResponse(BaseModel):
 
 
 class ErrorResponse(BaseModel):
+    """Error response returned by API endpoints."""
+
     error: str
     message: str
     details: dict[str, Any] | None = None
