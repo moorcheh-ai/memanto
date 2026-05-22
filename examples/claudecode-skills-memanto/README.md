@@ -19,11 +19,16 @@ others.
 
 - Python 3.10+
 - `memanto` installed and configured
+- A [Moorcheh API key](https://console.moorcheh.ai/api-keys) available as
+  `MOORCHEH_API_KEY`
 - A Memanto agent created and activated
 - Any agent CLI command that can run your skill
 
 ```bash
 pip install memanto
+cp .env.example .env
+# Edit .env and set MOORCHEH_API_KEY, or export it in your shell:
+export MOORCHEH_API_KEY="your-moorcheh-api-key"
 memanto
 memanto agent create claudecode-skills
 memanto agent activate claudecode-skills
