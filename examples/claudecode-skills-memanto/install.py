@@ -33,6 +33,8 @@ def build_hook_settings(
     script_path: str = ".claude/hooks/memanto_skill_memory.py",
     python_command: str = "python",
 ) -> dict[str, Any]:
+    """Build the Claude Code settings fragment for all supported hooks."""
+
     hooks: dict[str, list[dict[str, Any]]] = {}
     for event, config in HOOK_EVENTS.items():
         handler = {
@@ -50,6 +52,8 @@ def build_hook_settings(
 
 
 def merge_settings(existing: dict[str, Any], addition: dict[str, Any]) -> dict[str, Any]:
+    """Merge hook settings without duplicating existing Memanto hook groups."""
+
     merged = dict(existing)
     hooks = dict(merged.get("hooks") or {})
     for event, groups in addition.get("hooks", {}).items():
@@ -63,6 +67,8 @@ def merge_settings(existing: dict[str, Any], addition: dict[str, Any]) -> dict[s
 
 
 def install(project_dir: Path, python_command: str, dry_run: bool = False) -> dict[str, Any]:
+    """Copy the hook script and merge settings into a Claude Code project."""
+
     project_dir = project_dir.resolve()
     source_script = Path(__file__).with_name("memanto_skill_memory.py")
     target_dir = project_dir / ".claude" / "hooks"
@@ -92,6 +98,8 @@ def install(project_dir: Path, python_command: str, dry_run: bool = False) -> di
 
 
 def _group_exists(groups: list[dict[str, Any]], wanted: dict[str, Any]) -> bool:
+    """Return True when an equivalent hook command is already present."""
+
     wanted_command = _command_signature(wanted)
     for group in groups:
         if _command_signature(group) == wanted_command:
@@ -100,6 +108,8 @@ def _group_exists(groups: list[dict[str, Any]], wanted: dict[str, Any]) -> bool:
 
 
 def _command_signature(group: dict[str, Any]) -> tuple[str, tuple[str, ...]]:
+    """Extract the command and args that identify a hook group."""
+
     hooks = group.get("hooks") or []
     if not hooks:
         return ("", ())
@@ -108,6 +118,8 @@ def _command_signature(group: dict[str, Any]) -> tuple[str, tuple[str, ...]]:
 
 
 def _load_json(path: Path) -> dict[str, Any]:
+    """Load a JSON object from disk, returning an empty object when absent."""
+
     if not path.exists():
         return {}
     try:
@@ -120,6 +132,8 @@ def _load_json(path: Path) -> dict[str, Any]:
 
 
 def main(argv: list[str] | None = None) -> int:
+    """CLI entrypoint for installing or previewing the hook configuration."""
+
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--project-dir", default=".", help="Target Claude Code project")
     parser.add_argument("--python", default="python", help="Python executable for hooks")

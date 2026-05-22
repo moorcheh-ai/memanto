@@ -15,6 +15,8 @@ INSTALL_PATH = Path(__file__).resolve().parents[1] / "install.py"
 
 
 def load_module(name: str, path: Path):
+    """Import a Python file by path so tests work without package installation."""
+
     spec = importlib.util.spec_from_file_location(name, path)
     module = importlib.util.module_from_spec(spec)
     assert spec and spec.loader
@@ -28,6 +30,8 @@ installer = load_module("memanto_install", INSTALL_PATH)
 
 
 class MemantoSkillsBridgeTest(unittest.TestCase):
+    """Integration-style tests for the credential-free bridge workflow."""
+
     def test_local_backend_stores_and_recalls_relevant_memory(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             backend = bridge.LocalJsonMemoryBackend(Path(tmp) / "memories.jsonl")

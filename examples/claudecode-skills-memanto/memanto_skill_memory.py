@@ -61,6 +61,8 @@ SKILL_QUERY_HINTS = {
 
 @dataclass
 class MemoryCandidate:
+    """A durable item ready to be stored in a Memanto-compatible backend."""
+
     content: str
     type: str = "context"
     title: str | None = None
@@ -72,6 +74,8 @@ class MemoryCandidate:
 
 @dataclass
 class MemoryHit:
+    """A recalled memory row normalized for context injection."""
+
     content: str
     type: str = "context"
     title: str | None = None
@@ -288,6 +292,8 @@ class HookState:
 
 
 def handle_user_prompt_submit(event: dict[str, Any]) -> dict[str, Any]:
+    """Recall relevant durable memory before Claude starts a skill run."""
+
     context = _context(event)
     prompt = str(event.get("prompt") or "")
     skill = detect_skill(event)
@@ -321,6 +327,8 @@ def handle_user_prompt_submit(event: dict[str, Any]) -> dict[str, Any]:
 
 
 def handle_post_tool_use(event: dict[str, Any]) -> dict[str, Any]:
+    """Record successful tool activity for later Stop-time summarization."""
+
     context = _context(event)
     state = HookState(context["state_dir"], context["session_id"])
     state.append("tools", summarize_tool_event(event))
@@ -328,6 +336,8 @@ def handle_post_tool_use(event: dict[str, Any]) -> dict[str, Any]:
 
 
 def handle_post_tool_use_failure(event: dict[str, Any]) -> dict[str, Any]:
+    """Persist a lightweight failure trail when a Claude Code tool fails."""
+
     context = _context(event)
     state = HookState(context["state_dir"], context["session_id"])
     state.append("failures", summarize_tool_event(event))
@@ -345,6 +355,8 @@ def handle_post_tool_use_failure(event: dict[str, Any]) -> dict[str, Any]:
 
 
 def handle_stop(event: dict[str, Any]) -> dict[str, Any]:
+    """Distill durable memories from a completed Claude Code skill run."""
+
     context = _context(event)
     state = HookState(context["state_dir"], context["session_id"])
     data = state.read()
@@ -370,6 +382,8 @@ def handle_stop(event: dict[str, Any]) -> dict[str, Any]:
 
 
 def handle_post_compact(event: dict[str, Any]) -> dict[str, Any]:
+    """Store Claude Code compact summaries as project memory."""
+
     context = _context(event)
     summary = str(event.get("compact_summary") or "").strip()
     if summary:
@@ -394,6 +408,8 @@ def extract_memories(
     cwd: Path,
     skill: str,
 ) -> list[MemoryCandidate]:
+    """Extract typed durable memories from prompt, response, and tool activity."""
+
     text = "\n".join([prompt, assistant])
     tags = ["claude-code", "mattpocock-skills", _tag(skill), _tag(cwd.name)]
     candidates: list[MemoryCandidate] = []
@@ -471,6 +487,8 @@ def extract_memories(
 
 
 def classify_sentence(sentence: str) -> str | None:
+    """Map a sentence to the Memanto memory type it appears to express."""
+
     lower = sentence.lower()
     if any(marker in lower for marker in ["always ", "never ", "must ", "do not "]):
         return "instruction"
@@ -491,6 +509,8 @@ def classify_sentence(sentence: str) -> str | None:
 
 
 def detect_skill(event: dict[str, Any]) -> str | None:
+    """Detect a mattpocock skill name from the hook event text."""
+
     haystack = " ".join(
         str(event.get(key) or "")
         for key in ("prompt", "command_name", "last_assistant_message")
@@ -506,6 +526,8 @@ def detect_skill(event: dict[str, Any]) -> str | None:
 
 
 def build_recall_query(prompt: str, skill: str | None) -> str:
+    """Expand a user prompt with skill-specific recall hints."""
+
     base = prompt.strip()
     if skill and skill in SKILL_QUERY_HINTS:
         return f"{base}\n{SKILL_QUERY_HINTS[skill]}"
@@ -513,6 +535,8 @@ def build_recall_query(prompt: str, skill: str | None) -> str:
 
 
 def format_additional_context(hits: list[MemoryHit], skill: str | None) -> str:
+    """Render recalled memories as Claude Code additionalContext text."""
+
     if not hits:
         return ""
     label = f"/{skill}" if skill else "this Claude Code turn"
@@ -527,6 +551,8 @@ def format_additional_context(hits: list[MemoryHit], skill: str | None) -> str:
 
 
 def summarize_tool_event(event: dict[str, Any]) -> dict[str, Any]:
+    """Normalize a Claude Code tool event into a compact state record."""
+
     tool_name = str(event.get("tool_name") or "unknown")
     tool_input = event.get("tool_input") or {}
     tool_response = event.get("tool_response") or {}
@@ -559,6 +585,8 @@ def summarize_tool_event(event: dict[str, Any]) -> dict[str, Any]:
 
 
 def _context(event: dict[str, Any]) -> dict[str, Any]:
+    """Resolve filesystem, session, agent, and backend details for a hook event."""
+
     cwd = Path(str(event.get("cwd") or os.getcwd())).resolve()
     state_dir = _state_dir(cwd)
     agent_id = os.environ.get("MEMANTO_AGENT_ID") or _agent_id(cwd)
@@ -572,6 +600,8 @@ def _context(event: dict[str, Any]) -> dict[str, Any]:
 
 
 def _backend(state_dir: Path) -> MemoryBackend:
+    """Choose the live Memanto CLI backend or credential-free local backend."""
+
     mode = os.environ.get("MEMANTO_SKILLS_BACKEND", "auto").lower()
     if mode == "cli" or (
         mode == "auto"
@@ -583,6 +613,8 @@ def _backend(state_dir: Path) -> MemoryBackend:
 
 
 def _state_dir(cwd: Path) -> Path:
+    """Return the scratch directory used for local state and preview memory."""
+
     override = os.environ.get("MEMANTO_SKILLS_STATE_DIR")
     if override:
         return Path(override).expanduser().resolve()
@@ -590,6 +622,8 @@ def _state_dir(cwd: Path) -> Path:
 
 
 def _agent_id(cwd: Path) -> str:
+    """Create a stable project-scoped default Memanto agent id."""
+
     digest = hashlib.sha1(str(cwd).encode("utf-8")).hexdigest()[:10]
     return f"claude-skills-{_tag(cwd.name)}-{digest}"
 
@@ -599,6 +633,8 @@ def _extract_files(
     tool_input: Any,
     tool_response: Any,
 ) -> list[str]:
+    """Find file paths mentioned by common Claude Code tool payloads."""
+
     files: set[str] = set()
     for payload in (tool_input, tool_response):
         if not isinstance(payload, dict):
@@ -620,6 +656,8 @@ def _extract_files(
 
 
 def _looks_like_verification(command: str) -> bool:
+    """Return True when a shell command appears to run checks or tests."""
+
     lower = command.lower()
     return any(
         marker in lower
@@ -639,6 +677,8 @@ def _looks_like_verification(command: str) -> bool:
 
 
 def _durable_sentences(text: str) -> list[str]:
+    """Split free text into sentence-sized candidates worth remembering."""
+
     clean = re.sub(r"\s+", " ", text).strip()
     if not clean:
         return []
@@ -652,6 +692,8 @@ def _durable_sentences(text: str) -> list[str]:
 
 
 def _dedupe_candidates(candidates: list[MemoryCandidate]) -> list[MemoryCandidate]:
+    """Drop duplicate memory candidates while preserving original order."""
+
     seen: set[str] = set()
     result: list[MemoryCandidate] = []
     for candidate in candidates:
@@ -664,6 +706,8 @@ def _dedupe_candidates(candidates: list[MemoryCandidate]) -> list[MemoryCandidat
 
 
 def _score(query_tokens: set[str], memory_tokens: set[str]) -> float:
+    """Compute a small deterministic token-overlap relevance score."""
+
     if not query_tokens or not memory_tokens:
         return 0.0
     overlap = query_tokens & memory_tokens
@@ -673,6 +717,8 @@ def _score(query_tokens: set[str], memory_tokens: set[str]) -> float:
 
 
 def _tokens(text: str) -> set[str]:
+    """Tokenize text for local preview recall scoring."""
+
     stop = {
         "the",
         "and",
@@ -697,20 +743,28 @@ def _tokens(text: str) -> set[str]:
 
 
 def _fingerprint(*parts: str) -> str:
+    """Build a stable SHA-1 digest for normalized text parts."""
+
     normalized = "\n".join(re.sub(r"\s+", " ", part).strip().lower() for part in parts)
     return hashlib.sha1(normalized.encode("utf-8")).hexdigest()
 
 
 def _safe_id(value: str) -> str:
+    """Convert an arbitrary session id into a safe filename stem."""
+
     return re.sub(r"[^a-zA-Z0-9_.-]", "_", value)[:120] or "session"
 
 
 def _tag(value: str) -> str:
+    """Convert a free-form label into a lowercase Memanto tag."""
+
     tag = re.sub(r"[^a-z0-9]+", "-", value.lower()).strip("-")
     return tag or "general"
 
 
 def _truncate(text: str, limit: int) -> str:
+    """Collapse whitespace and shorten text to a display-safe length."""
+
     text = re.sub(r"\s+", " ", text).strip()
     if len(text) <= limit:
         return text
@@ -718,10 +772,14 @@ def _truncate(text: str, limit: int) -> str:
 
 
 def _make_title(content: str) -> str:
+    """Create a compact memory title from content."""
+
     return _truncate(content, 96)
 
 
 def _env_int(name: str, default: int) -> int:
+    """Read an integer environment variable with a safe default."""
+
     try:
         return int(os.environ.get(name, default))
     except ValueError:
@@ -729,6 +787,8 @@ def _env_int(name: str, default: int) -> int:
 
 
 def _read_event() -> dict[str, Any]:
+    """Read and validate a Claude Code hook JSON object from stdin."""
+
     raw = sys.stdin.read()
     if not raw.strip():
         return {}
@@ -742,6 +802,8 @@ def _read_event() -> dict[str, Any]:
 
 
 def dispatch(hook_name: str, event: dict[str, Any]) -> dict[str, Any]:
+    """Route a hook event name to its handler."""
+
     handlers = {
         "UserPromptSubmit": handle_user_prompt_submit,
         "UserPromptExpansion": handle_user_prompt_submit,
@@ -757,6 +819,8 @@ def dispatch(hook_name: str, event: dict[str, Any]) -> dict[str, Any]:
 
 
 def main(argv: list[str] | None = None) -> int:
+    """CLI entrypoint used by Claude Code hook commands."""
+
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--hook", required=True, help="Claude Code hook event name")
     parser.add_argument(
