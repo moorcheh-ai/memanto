@@ -14,7 +14,7 @@ Add this to your Claude Code hooks settings file (`~/.claude/hooks.json` or your
     "PostToolUse": [
       {
         "matcher": "Bash",
-        "command": "bash /path/to/examples/claudecode-skills-memanto/skills-memory.sh distill-and-remember \"$CLAUDE_TOOL_OUTPUT\""
+        "command": "bash /path/to/examples/claudecode-skills-memanto/skills-memory.sh distill-and-remember \"$(echo \"$CLAUDE_TOOL_OUTPUT\" | head -c 4000)\""
       }
     ]
   }

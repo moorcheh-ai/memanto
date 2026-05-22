@@ -132,7 +132,7 @@ cmd_remember() {
  return 1
  fi
 
- # Parse --tag option (supports: remember "text" --tag security OR remember "text" --tag security)
+ # Parse --tag option (supports: remember "text" --tag security)
  shift || true
  while [ "$#" -gt 0 ]; do
  case "$1" in
@@ -144,10 +144,10 @@ cmd_remember() {
  fi
  shift 2
  ;;
-  *)
-    log_warn "Unknown argument: $1"
-    return 1
-    ;;
+ *)
+ log_warn "Unknown argument: $1"
+ return 1
+ ;;
  esac
  done
 
@@ -232,7 +232,11 @@ cmd_wrap() {
 
   # Phase 1: Pre-skill — recall relevant memories
  log_info "=== Pre-skill: Recalling engineering context ==="
- cmd_recall "$topic" 2>&1 || true
+ local recalled_context
+ recalled_context=$(cmd_recall "$topic" 2>&1) || true
+ if [ -n "$recalled_context" ]; then
+ echo "$recalled_context"
+ fi
 
  # Phase 2: Execute skill
  log_info "=== Executing skill ==="
