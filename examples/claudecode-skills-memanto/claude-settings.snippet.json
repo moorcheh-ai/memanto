@@ -1,0 +1,26 @@
+{
+  "hooks": {
+    "UserPromptSubmit": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 examples/claudecode-skills-memanto/skill_memory_bridge.py inject --skill claude-code --task \"$CLAUDE_USER_PROMPT\" --cwd \"$PWD\""
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 examples/claudecode-skills-memanto/skill_memory_bridge.py run-skill --skill claude-code --task \"$CLAUDE_USER_PROMPT\" --cwd \"$PWD\" --output \"$(cat)\""
+          }
+        ]
+      }
+    ]
+  }
+}
