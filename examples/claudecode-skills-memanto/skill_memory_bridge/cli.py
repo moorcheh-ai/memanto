@@ -6,9 +6,9 @@ import argparse
 import json
 import sys
 
-try:
+if __package__:
     from .bridge import SkillEvent, SkillMemoryBridge, build_backend_from_env, run_wrapped_command
-except ImportError:
+else:
     from bridge import SkillEvent, SkillMemoryBridge, build_backend_from_env, run_wrapped_command
 
 

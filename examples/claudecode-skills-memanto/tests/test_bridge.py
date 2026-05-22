@@ -141,7 +141,14 @@ def test_oversized_first_memory_is_skipped(tmp_path: Path) -> None:
                 project="api",
                 skill="/handoff",
                 tags=["repository"],
-            )
+            ),
+            bridge_module.MemoryRecord(
+                title="fits",
+                content="Prefer repository adapters for write paths.",
+                project="api",
+                skill="/handoff",
+                tags=["repository"],
+            ),
         ]
     )
 
@@ -150,7 +157,8 @@ def test_oversized_first_memory_is_skipped(tmp_path: Path) -> None:
         max_chars=80,
     )
 
-    assert context == ""
+    assert "Prefer repository adapters for write paths." in context
+    assert "Always use repository adapters" not in context
 
 
 def test_context_escapes_memory_wrapper_breakout(tmp_path: Path) -> None:
