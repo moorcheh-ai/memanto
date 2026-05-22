@@ -1,0 +1,56 @@
+{
+  "hooks": {
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python",
+            "args": [
+              ".claude/hooks/memanto_skill_memory.py",
+              "--hook",
+              "UserPromptSubmit"
+            ],
+            "timeout": 10,
+            "statusMessage": "Recalling Memanto memory"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Bash|Edit|Write|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python",
+            "args": [
+              ".claude/hooks/memanto_skill_memory.py",
+              "--hook",
+              "PostToolUse"
+            ],
+            "timeout": 5,
+            "statusMessage": "Capturing skill tool context"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python",
+            "args": [
+              ".claude/hooks/memanto_skill_memory.py",
+              "--hook",
+              "Stop"
+            ],
+            "timeout": 12,
+            "statusMessage": "Storing Memanto skill memory"
+          }
+        ]
+      }
+    ]
+  }
+}
