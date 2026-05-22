@@ -1,16 +1,19 @@
 """Memanto integration for LangGraph agents.
 
-Provides persistent memory operations (remember, recall, answer) 
+Provides persistent memory operations (remember, recall, answer)
 that can be used as LangGraph state modifiers or tools.
 """
 
 from __future__ import annotations
 
+import logging
 import os
 from typing import Any, Dict, List, Optional
 
 # Use Memanto's direct client (zero-dependency, lightweight)
-from memanto.cli.client.direct_client import MoorchehClient
+from memanto.cli.client.direct_client import DirectClient
+
+logger = logging.getLogger(__name__)
 
 
 class LangGraphMemantoMemory:
@@ -18,6 +21,8 @@ class LangGraphMemantoMemory:
     
     def __init__(self, api_key: Optional[str] = None, agent_id: str = "langgraph-demo"):
         """Initialize Memanto memory for a LangGraph agent.
+        
+        Automatically creates and activates the agent session if needed.
         
         Args:
             api_key: Moorcheh API key (defaults to MOORCHEH_API_KEY env var)
@@ -31,7 +36,30 @@ class LangGraphMemantoMemory:
             )
         
         self.agent_id = agent_id
-        self.client = MoorchehClient(api_key=self.api_key)
+        self.client = DirectClient(api_key=self.api_key)
+        
+        # Ensure agent exists and session is active
+        self._ensure_agent_ready()
+    
+    def _ensure_agent_ready(self) -> None:
+        """Create agent if missing and activate a session."""
+        try:
+            self.client.get_agent(self.agent_id)
+        except Exception:
+            logger.info("Creating Memanto agent '%s'", self.agent_id)
+            self.client.create_agent(
+                agent_id=self.agent_id,
+                pattern="tool",
+                description=f"LangGraph persistent memory agent: {self.agent_id}",
+            )
+        
+        # Activate session for memory operations
+        try:
+            self.client.activate_agent(self.agent_id)
+            logger.info("Activated Memanto session for agent '%s'", self.agent_id)
+        except Exception as e:
+            logger.warning("Failed to activate agent session: %s", e)
+            raise
     
     def remember(
         self, 
@@ -112,7 +140,7 @@ class LangGraphMemantoMemory:
         result = self.client.answer(
             agent_id=self.agent_id,
             question=question,
-            **kwargs
+            **kwargs,
         )
         return result.get("answer", "No answer generated.")
     
