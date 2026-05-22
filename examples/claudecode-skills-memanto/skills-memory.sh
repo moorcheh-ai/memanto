@@ -39,12 +39,16 @@ preview_remember() {
   mkdir -p "$PREVIEW_DIR"
   local ts
   ts=$(date -u +%Y-%m-%dT%H:%M:%SZ)
-  local escaped_text
-  escaped_text=$(printf '%s' "$text" | python3 -c 'import sys,json; print(json.dumps(sys.stdin.read().strip())[1:-1])')
-  local escaped_tag
-  escaped_tag=$(printf '%s' "$tag" | python3 -c 'import sys,json; print(json.dumps(sys.stdin.read().strip())[1:-1])')
-  local entry="{\"timestamp\":\"$ts\",\"tag\":\"$escaped_tag\",\"memory\":\"$escaped_text\"}"
-  echo "$entry" >> "$PREVIEW_DIR/memories.jsonl"
+  TS="$ts" TAG="$tag" MEMORY="$text" python3 - <<'PY' >> "$PREVIEW_DIR/memories.jsonl"
+import json
+import os
+
+print(json.dumps({
+    "timestamp": os.environ["TS"],
+    "tag": os.environ["TAG"],
+    "memory": os.environ["MEMORY"],
+}))
+PY
   log_ok "[preview] Memory stored locally ($tag)"
 }
 
@@ -56,18 +60,21 @@ preview_recall() {
   fi
   log_info "[preview] Searching memories for: $query"
   # Simple keyword search in preview mode
-  python3 -c "
-import json, sys, re
-query = '$query'.lower()
+  QUERY="$query" JSONL_PATH="$PREVIEW_DIR/memories.jsonl" python3 - <<'PY'
+import json
+import os
+
+query = os.environ['QUERY'].lower()
 terms = set(query.split())
 results = []
 try:
-    with open('$PREVIEW_DIR/memories.jsonl') as f:
+    with open(os.environ['JSONL_PATH']) as f:
         for line in f:
             line = line.strip()
-            if not line: continue
+            if not line:
+                continue
             entry = json.loads(line)
-            text = entry.get('memory','').lower()
+            text = entry.get('memory', '').lower()
             score = sum(1 for t in terms if t in text)
             if score > 0:
                 results.append((score, entry))
@@ -76,10 +83,10 @@ except FileNotFoundError:
 results.sort(key=lambda x: -x[0])
 if results:
     for score, entry in results[:5]:
-        print(f'  [{score} matches] [{entry.get(\"tag\",\"?\")}] {entry[\"memory\"][:120]}')
+        print(f'  [{score} matches] [{entry.get("tag", "?")}] {entry["memory"][:120]}')
 else:
     print('  No matching memories found')
-"
+PY
 }
 
 # --- Recall: inject relevant memories before skill execution ---
@@ -247,6 +254,8 @@ cmd_wrap() {
   else
     log_info "No extractable engineering decisions found in output"
   fi
+
+  return "$skill_status"
 }
 
 # --- Daily: summary of today's engineering activity ---
@@ -294,7 +303,7 @@ case "${1:-help}" in
     echo ""
  echo "Commands:"
  echo " recall <topic> Inject relevant memories before a skill"
- echo " remember <summary> [tag] Store an engineering decision after a skill"
+ echo " remember <summary> [--tag <category>] Store an engineering decision after a skill"
  echo " distill-and-remember <raw> Distill raw output and store decisions (for hooks)"
  echo " wrap <skill-command> Full pre/post lifecycle wrapper"
  echo " daily Daily engineering summary"
