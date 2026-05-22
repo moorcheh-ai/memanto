@@ -110,6 +110,17 @@ def _clean_line(line: str) -> str:
     return line.strip()
 
 
+def _safe_context_line(value: str) -> str:
+    value = re.sub(r"[\r\n\t]+", " ", value)
+    value = re.sub(r"\s+", " ", value).strip()
+    return re.sub(
+        r"</\s*memanto_memory_context\s*>",
+        r"<\/memanto_memory_context>",
+        value,
+        flags=re.IGNORECASE,
+    )
+
+
 class LocalMemoryStore:
     """Deterministic JSON memory store for demos and tests."""
 
@@ -157,8 +168,10 @@ class LocalMemoryStore:
         used = 0
         for _, record in sorted(scored, key=lambda pair: pair[0], reverse=True):
             next_size = len(record.content) + 4
-            if used + next_size > max_chars and selected:
-                break
+            if used + next_size > max_chars:
+                if selected:
+                    break
+                continue
             selected.append(record)
             used += next_size
             if len(selected) >= limit:
@@ -206,8 +219,10 @@ class MemantoBackend:
             content = str(item.get("content") or item.get("text") or "")
             if not content:
                 continue
-            if used + len(content) > max_chars and records:
-                break
+            if used + len(content) > max_chars:
+                if records:
+                    break
+                continue
             records.append(
                 MemoryRecord(
                     title=str(item.get("title") or "Memanto memory"),
@@ -243,7 +258,7 @@ class SkillMemoryBridge:
         if not records:
             return ""
         lines = ["<memanto_memory_context>"]
-        lines.extend(f"- {record.content}" for record in records)
+        lines.extend(f"- {_safe_context_line(record.content)}" for record in records)
         lines.append("</memanto_memory_context>")
         return "\n".join(lines)
 

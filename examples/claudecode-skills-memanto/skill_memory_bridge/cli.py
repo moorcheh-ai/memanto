@@ -6,7 +6,10 @@ import argparse
 import json
 import sys
 
-from bridge import SkillEvent, SkillMemoryBridge, build_backend_from_env, run_wrapped_command
+try:
+    from .bridge import SkillEvent, SkillMemoryBridge, build_backend_from_env, run_wrapped_command
+except ImportError:
+    from bridge import SkillEvent, SkillMemoryBridge, build_backend_from_env, run_wrapped_command
 
 
 def _read_event(path: str | None) -> SkillEvent:

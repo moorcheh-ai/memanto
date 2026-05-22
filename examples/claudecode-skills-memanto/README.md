@@ -61,11 +61,13 @@ python -m pytest examples/claudecode-skills-memanto/tests -q
 
 ## Claude Code hook setup
 
-Copy the example settings into your Claude Code settings file, then adjust paths for your machine:
+Copy the example settings beside your Claude Code settings file, then merge the hook entries into your existing settings after adjusting paths for your machine:
 
 ```bash
-cp examples/claudecode-skills-memanto/settings.example.json ~/.claude/settings.json
+cp examples/claudecode-skills-memanto/settings.example.json ~/.claude/settings.memanto.example.json
 ```
+
+Do not overwrite an existing `~/.claude/settings.json` unless you have backed it up first.
 
 The important parts are:
 
