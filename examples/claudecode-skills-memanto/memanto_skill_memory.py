@@ -27,6 +27,8 @@ DEFAULT_CONTEXT_FILE = Path(
 
 @dataclass
 class SkillRun:
+    """Captured metadata and output for one wrapped skill execution."""
+
     skill: str
     task: str
     command: list[str]
@@ -40,10 +42,14 @@ class SkillRun:
 
 
 def utc_now() -> str:
+    """Return the current UTC timestamp in ISO-8601 format."""
+
     return datetime.now(timezone.utc).isoformat()
 
 
 def run_process(command: Sequence[str], cwd: Path | None = None) -> subprocess.CompletedProcess[str]:
+    """Run a subprocess and capture text output without raising on failure."""
+
     return subprocess.run(
         list(command),
         cwd=str(cwd) if cwd else None,
@@ -58,12 +64,16 @@ def memanto_command(
     *,
     dry_run: bool,
 ) -> subprocess.CompletedProcess[str]:
+    """Run a Memanto CLI command, or simulate success during dry-run mode."""
+
     if dry_run:
         return subprocess.CompletedProcess(["memanto", *args], 0, "", "")
     return run_process(["memanto", *args])
 
 
 def build_recall_query(skill: str, task: str, cwd: Path) -> str:
+    """Build a broad memory search query for the current skill and project."""
+
     project = cwd.name
     return (
         f"{project} {skill} {task} architecture decisions coding preferences "
@@ -79,6 +89,8 @@ def recall_context(
     cwd: Path,
     dry_run: bool,
 ) -> str:
+    """Recall relevant Memanto memories to inject before a skill starts."""
+
     query = build_recall_query(skill, task, cwd)
     args = ["recall", query, "--limit", "12"]
     if agent_id:
@@ -98,6 +110,8 @@ def recall_context(
 
 
 def write_context_file(path: Path, run: SkillRun) -> None:
+    """Write recalled memories and usage guidance for the wrapped agent."""
+
     path.write_text(
         "\n".join(
             [
@@ -124,6 +138,8 @@ def write_context_file(path: Path, run: SkillRun) -> None:
 
 
 def redact(text: str) -> str:
+    """Remove common secret-looking values before storing transcript excerpts."""
+
     patterns = [
         r"(?i)(api[_-]?key|token|secret|password)\s*[:=]\s*['\"]?[^'\"\s]+",
         r"(?i)(authorization:\s*bearer\s+)[A-Za-z0-9._~+/=-]+",
@@ -135,6 +151,8 @@ def redact(text: str) -> str:
 
 
 def infer_summary(run: SkillRun) -> str:
+    """Create a compact memory summary from the captured skill transcript."""
+
     transcript = "\n".join([run.stdout, run.stderr])
     cleaned = redact(transcript)
     lines = [line.strip() for line in cleaned.splitlines() if line.strip()]
@@ -164,6 +182,8 @@ def infer_summary(run: SkillRun) -> str:
 
 
 def memory_type_for_run(run: SkillRun) -> str:
+    """Choose a Memanto memory type that matches the run outcome and skill."""
+
     if run.exit_code and run.exit_code != 0:
         return "error"
     lowered = f"{run.skill} {run.task}".lower()
@@ -180,6 +200,8 @@ def store_summary(
     agent_id: str | None,
     dry_run: bool,
 ) -> subprocess.CompletedProcess[str]:
+    """Store the inferred post-run summary back into Memanto."""
+
     summary = infer_summary(run)
     tags = ",".join(
         tag
@@ -210,6 +232,8 @@ def store_summary(
 
 
 def write_transcript(run_dir: Path, run: SkillRun) -> Path:
+    """Persist the complete run record as a local JSON transcript."""
+
     run_dir.mkdir(parents=True, exist_ok=True)
     stamp = run.started_at.replace(":", "").replace("+", "Z")
     safe_skill = re.sub(r"[^A-Za-z0-9_.-]+", "-", run.skill).strip("-")
@@ -229,6 +253,8 @@ def execute_skill_with_memory(
     context_file: Path = DEFAULT_CONTEXT_FILE,
     dry_run: bool = False,
 ) -> tuple[SkillRun, Path, subprocess.CompletedProcess[str]]:
+    """Execute a command with pre-run recall and post-run memory writeback."""
+
     cwd = (cwd or Path.cwd()).resolve()
     run = SkillRun(
         skill=skill,
@@ -262,6 +288,8 @@ def execute_skill_with_memory(
 
 
 def build_parser() -> argparse.ArgumentParser:
+    """Build the command-line parser for the example wrapper."""
+
     parser = argparse.ArgumentParser(
         description="Run an agent skill command with Memanto recall and writeback."
     )
@@ -276,6 +304,8 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def main(argv: Sequence[str] | None = None) -> int:
+    """CLI entry point for running a skill command with Memanto memory hooks."""
+
     parser = build_parser()
     args = parser.parse_args(argv)
     command = args.command
