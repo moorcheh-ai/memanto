@@ -94,10 +94,12 @@ class LangGraphMemantoTests(unittest.TestCase):
         memory = module.MemantoGraphMemory(backend, recall_limit=2)
 
         update = memory.remember_node({"facts": {"timezone": "PST", "approved": True}})
-        hits = backend.recall("timezone PST", limit=1)
+        hits = backend.recall("timezone PST approved true", limit=5)
 
         self.assertEqual(update["memanto_saved"], 2)
-        self.assertEqual(hits[0].content, "timezone: PST")
+        contents = {hit.content for hit in hits}
+        self.assertIn("timezone: PST", contents)
+        self.assertIn("approved: True", contents)
 
     def test_wrap_node_recalls_before_and_stores_marked_node_output(self) -> None:
         """Wrapped nodes see recalled context and store marked output lines."""
