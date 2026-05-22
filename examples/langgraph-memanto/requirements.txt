@@ -1,0 +1,6 @@
+memanto>=0.1.1
+langgraph>=0.2.0
+langgraph-prebuilt>=0.1.0
+langchain-core>=0.3.0
+langchain-openai>=0.3.0
+pydantic>=2.0
