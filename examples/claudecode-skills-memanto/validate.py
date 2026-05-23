@@ -89,13 +89,17 @@ def test_unknown_command():
 def test_empty_recall():
     """Recall with no stored memories should not crash."""
     clean_dir = tempfile.mkdtemp(prefix="memanto-clean-")
-    env = {"HOME": clean_dir, "MEMANTO_PREVIEW": "1", "MEMANTO_AGENT": "clean-agent"}
-    r = subprocess.run(
-        ["bash", SCRIPT, "recall", "nothing"],
-        capture_output=True, text=True, env=env, timeout=10
-    )
-    assert r.returncode == 0, f"empty recall crashed: {r.stderr}"
-    print("  PASS: empty recall")
+    try:
+        env = {"HOME": clean_dir, "MEMANTO_PREVIEW": "1", "MEMANTO_AGENT": "clean-agent"}
+        r = subprocess.run(
+            ["bash", SCRIPT, "recall", "nothing"],
+            capture_output=True, text=True, env=env, timeout=10
+        )
+        assert r.returncode == 0, f"empty recall crashed: {r.stderr}"
+        print("  PASS: empty recall")
+    finally:
+        import shutil
+        shutil.rmtree(clean_dir, ignore_errors=True)
 
 def main():
     print(f"Validating skills-memory.sh (preview mode)")
