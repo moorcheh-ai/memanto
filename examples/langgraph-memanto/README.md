@@ -19,10 +19,6 @@ Session B (days later): NEW Python process → recall_node auto-loads → agent 
 
 ## 📣 Social Posts
 - 🐦 X/Twitter: https://x.com/chidinmaonyenwe/status/2054728913558077858
-- 💼 LinkedIn: https://www.linkedin.com/posts/chukwuagozie-obidike-66360b372_reddit-the-heart-of-the-internet-activity-7462241931507699712-dJhj
-- 🤖 Reddit: https://www.reddit.com/user/MitchelleCm7/comments/1tgzf1x/i_gave_langgraph_persistent_crosssession_memory/
-- 🤖 Reddit: https://www.reddit.com/r/OpenAssistant/comments/1tgzox5/i_gave_langgraph_persistent_crosssession_memory/
-- 🤖 Reddit: https://www.reddit.com/r/aivideos/comments/1th01a2/i_gave_langgraph_persistent_crosssession_memory/
 
 ---
 
