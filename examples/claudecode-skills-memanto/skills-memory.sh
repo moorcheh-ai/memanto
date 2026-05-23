@@ -34,22 +34,22 @@ log_error() { echo -e "${RED}[memanto-bridge]${NC} $*"; }
 
 # --- Preview mode fallback (no API key needed) ---
 preview_remember() {
-  local text="$1"
-  local tag="${2:-general}"
-  mkdir -p "$PREVIEW_DIR"
-  local ts
-  ts=$(date -u +%Y-%m-%dT%H:%M:%SZ)
-  TS="$ts" TAG="$tag" MEMORY="$text" python3 - <<'PY' >> "$PREVIEW_DIR/memories.jsonl"
+ local text="$1"
+ local tag="${2:-general}"
+ mkdir -p "$PREVIEW_DIR"
+ local ts
+ ts=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+ TS="$ts" TAG="$tag" MEMORY="$text" python3 - <<'PY' >> "$PREVIEW_DIR/memories.jsonl"
 import json
 import os
 
 print(json.dumps({
-    "timestamp": os.environ["TS"],
-    "tag": os.environ["TAG"],
-    "memory": os.environ["MEMORY"],
-}))
+ "timestamp": os.environ["TS"],
+ "tag": os.environ["TAG"],
+ "memory": os.environ["MEMORY"],
+}, ensure_ascii=False))
 PY
-  log_ok "[preview] Memory stored locally ($tag)"
+ log_ok "[preview] Memory stored locally ($tag)"
 }
 
 preview_recall() {
@@ -122,33 +122,33 @@ cmd_recall() {
   fi
 }
 
-# --- Remember: store distilled engineering decision after skill ---
+# --- Remember: store distilled engineering decision after skill ---#
 cmd_remember() {
  local text="${1:-}"
  local tag="general"
 
  if [ -z "$text" ]; then
- log_warn "Usage: skills-memory.sh remember <summary> [--tag <category>]"
- return 1
+  log_warn "Usage: skills-memory.sh remember <summary> [--tag <category>]"
+  return 1
  fi
 
  # Parse --tag option (supports: remember "text" --tag security)
- # Shift past the first positional arg (text), then process flags
+ # Process remaining args after the first positional (text)
  shift
  while [ "$#" -gt 0 ]; do
  case "$1" in
  --tag)
- if [ -z "${2:-}" ]; then
- log_warn "Missing value for --tag"
- return 1
- fi
- tag="$2"
- shift 2
- ;;
+  if [ -z "${2:-}" ]; then
+  log_warn "Missing value for --tag"
+  return 1
+  fi
+  tag="$2"
+  shift 2
+  ;;
  *)
- log_warn "Unknown argument: $1"
- return 1
- ;;
+  log_warn "Unknown argument: $1"
+  return 1
+  ;;
  esac
  done
 
@@ -236,7 +236,7 @@ cmd_wrap() {
  local recalled_context
  recalled_context=$(cmd_recall "$topic" 2>&1) || true
  if [ -n "$recalled_context" ]; then
- echo "$recalled_context"
+ echo "$recalled_context" >&2
  fi
 
  # Phase 2: Execute skill

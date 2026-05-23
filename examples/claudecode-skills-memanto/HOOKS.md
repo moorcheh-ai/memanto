@@ -11,11 +11,16 @@ Add this to your Claude Code hooks settings file (`~/.claude/hooks.json` or your
         "command": "bash /path/to/examples/claudecode-skills-memanto/skills-memory.sh recall \"$CLAUDE_TOOL_INPUT\""
       }
     ],
-    "PostToolUse": [
-      {
-        "matcher": "Bash",
-        "command": "bash /path/to/examples/claudecode-skills-memanto/skills-memory.sh distill-and-remember \"$(echo \"$CLAUDE_TOOL_OUTPUT\" | head -c 4000)\""
-      }
+ "PostToolUse": [
+ {
+ "matcher": "Bash",
+ "command": "bash /path/to/examples/claudecode-skills-memanto/skills-memory.sh distill-and-remember \"$(echo \"$CLAUDE_TOOL_OUTPUT\" | head -c 4000)\""
+ }
+ ],
+ "Stop": [
+ {
+ "command": "bash /path/to/examples/claudecode-skills-memanto/skills-memory.sh distill-and-remember \"$(cat /tmp/claude-session-output.txt 2>/dev/null | head -c 8000)\""
+ }
     ]
   }
 }

@@ -58,11 +58,13 @@ def test_wrap_lifecycle():
     print("  PASS: wrap lifecycle")
 
 def test_explicit_tag():
-    """Verify --tag flag parsing works correctly (not setting tag to '--tag')."""
-    r = run(["remember", "Security decision: use HTTPS only", "--tag", "security"])
-    assert r.returncode == 0, f"remember --tag failed: {r.stderr}"
-    assert "security" in r.stdout.lower(), f"--tag not parsed correctly: {r.stdout}"
-    print("  PASS: explicit --tag flag")
+ """Verify --tag flag parsing works correctly (not setting tag to '--tag')."""
+ r = run(["remember", "Security decision: use HTTPS only", "--tag", "security"])
+ assert r.returncode == 0, f"remember --tag failed: {r.stderr}"
+ # Verify the tag 'security' appears in output (not literal '--tag')
+ assert "security" in r.stdout.lower(), f"--tag not parsed correctly: {r.stdout}"
+ assert "--tag" not in r.stdout, f"--tag literal leaked into output: {r.stdout}"
+ print(" PASS: explicit --tag flag")
 
 def test_daily_summary():
     """Test daily summary in preview mode."""
