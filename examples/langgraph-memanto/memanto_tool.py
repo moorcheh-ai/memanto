@@ -153,7 +153,7 @@ class MemantoTool:
 
         Args:
             query: Search query for semantic retrieval
-            limit: Maximum number of memories to return
+            limit: Maximum number of memories to return (1-20)
             memory_types: Filter by memory types
             min_confidence: Filter by minimum confidence score
 

@@ -170,3 +170,7 @@ langgraph-customer-support/
 ## 📜 License
 
 MIT
+
+## Demo
+
+> **Demo GIF/video pending** - See the Quick Start section below to run the example locally.
