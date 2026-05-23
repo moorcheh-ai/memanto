@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 """Tests for the Claude Code Skills + Memanto Memory Integration."""
 
-import io
 import json
 import os
 import sys

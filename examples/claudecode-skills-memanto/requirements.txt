@@ -1,2 +1,2 @@
-moorcheh-sdk>=1.3.0
+moorcheh-sdk>=1.3.5
 pytest>=7.0.0

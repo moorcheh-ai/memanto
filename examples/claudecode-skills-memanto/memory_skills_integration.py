@@ -23,6 +23,7 @@ import json
 import os
 import subprocess
 import sys
+from typing import Optional
 import time
 from datetime import datetime, timezone
 from typing import Optional
@@ -30,7 +31,7 @@ from typing import Optional
 # --- Memanto Client Setup ---
 
 
-def _get_client():
+def _get_client() -> Optional["MoorchehClient"]:
     """Initialize MoorchehClient from env."""
     api_key = os.environ.get("MOORCHEH_API_KEY")
     if not api_key:
@@ -159,7 +160,11 @@ def find_skill_path(skill_name: str) -> Optional[str]:
 
 
 def summarize_skill_output(stdout: str, stderr: str, max_chars: int = 500):
-    """Summarize skill output into a memory-worthy snippet."""
+    """Summarize skill output into a memory-worthy snippet.
+
+    TODO: Wire into main() when real skill execution (not simulated) is implemented.
+    Currently main() simulates execution; this helper is kept for future real execution.
+    """
     parts = []
     if stdout:
         parts.append(f"STDOUT: {stdout[:max_chars]}")
