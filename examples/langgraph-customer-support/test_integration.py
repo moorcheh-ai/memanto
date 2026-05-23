@@ -53,7 +53,7 @@ class MockMemantoTool:
         for m in self._memories:
             if memory_types and m["type"] not in memory_types:
                 continue
-            if min_confidence and m["confidence"] < min_confidence:
+            if min_confidence is not None and m["confidence"] < min_confidence:
                 continue
             # Simple keyword matching for mock
             if any(word.lower() in m["content"].lower() for word in query.split()):
