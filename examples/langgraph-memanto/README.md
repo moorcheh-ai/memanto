@@ -63,13 +63,13 @@ python run_agent.py --session followup-2026-05-23
 
 - Python 3.10+
 - A [Moorcheh API key](https://console.moorcheh.ai/api-keys) (free tier: 100K ops/month)
-- An OpenAI or OpenRouter API key (for the LangGraph LLM)
+- An OpenAI API key (for the LangGraph LLM)
 
 ## Setup
 
 ```bash
 python -m venv venv
-source venv/bin activate
+source venv/bin/activate
 pip install -r requirements.txt
 cp .env.example .env
 # Edit .env and add your MOORCHEH_API_KEY and OPENAI_API_KEY

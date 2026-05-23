@@ -10,6 +10,8 @@ Workflow:
 """
 
 import os
+import logging
+logger = logging.getLogger(__name__)
 import json
 from typing import Any, TypedDict, Annotated
 from datetime import datetime
@@ -64,7 +66,11 @@ def evaluate_node(state: AgentState, *, memanto: MemantoTool) -> dict:
     notes = state.get("research_notes", [])
 
     # 1. Recall relevant memories from previous sessions
-    recalled = memanto.recall(query=query, limit=5)
+    try:
+        recalled = memanto.recall(query=query, limit=5)
+    except Exception as e:
+        logger.warning("Memanto recall failed in evaluate node: %s", e)
+        recalled = []
 
     # 2. Store new findings as typed memories
     new_memories = []
