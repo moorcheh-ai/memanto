@@ -7,6 +7,9 @@ integrate with LangGraph's tool interface.
 
 import os
 import json
+import logging
+logger = logging.getLogger(__name__)
+
 from datetime import datetime
 from typing import Any
 

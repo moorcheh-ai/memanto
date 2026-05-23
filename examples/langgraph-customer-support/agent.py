@@ -17,7 +17,8 @@ Key Feature: Cross-Session Recall
 
 import os
 import json
-from typing import Any, TypedDict
+import logging
+from typing import Any, TypedDict, Literal
 from datetime import datetime
 
 from langgraph.graph import StateGraph, END
@@ -25,6 +26,14 @@ from langchain_openai import ChatOpenAI
 from langchain_core.messages import HumanMessage, SystemMessage
 
 from memanto_tool import MemantoTool
+
+logger = logging.getLogger(__name__)
+
+
+# ─── Allowed enum values ──────────────────────────────────────
+
+SEVERITY_LEVELS = {"low", "medium", "high", "critical"}
+CATEGORIES = {"billing", "technical", "account", "feature_request", "general"}
 
 
 # ─── Graph State ───────────────────────────────────────────────
@@ -102,6 +111,16 @@ def triage_node(state: SupportState, *, llm: ChatOpenAI, memanto: MemantoTool) -
     except json.JSONDecodeError:
         classification = {"severity": "medium", "category": "general"}
 
+    # Clamp classification to allowed values
+    severity = classification.get("severity", "medium")
+    category = classification.get("category", "general")
+    if severity not in SEVERITY_LEVELS:
+        logger.warning("LLM returned unknown severity '%s', defaulting to 'medium'", severity)
+        severity = "medium"
+    if category not in CATEGORIES:
+        logger.warning("LLM returned unknown category '%s', defaulting to 'general'", category)
+        category = "general"
+
     # 4. Store this triage event as a memory
     try:
         memanto.remember(
@@ -109,14 +128,14 @@ def triage_node(state: SupportState, *, llm: ChatOpenAI, memanto: MemantoTool) -
             title=f"Ticket triage: {customer_id}",
             memory_type="event",
             confidence=0.95,
-            tags=["triage", customer_id, classification.get("category", "general")],
+            tags=["triage", customer_id, category],
         )
-    except Exception:
-        pass  # Don't block triage on memory failure
+    except Exception as e:
+        logger.warning("Failed to store triage memory: %s", e)
 
     return {
-        "severity": classification.get("severity", "medium"),
-        "category": classification.get("category", "general"),
+        "severity": severity,
+        "category": category,
         "customer_history": customer_history,
         "similar_issues": similar_issues,
     }
@@ -171,8 +190,8 @@ def investigate_node(state: SupportState, *, llm: ChatOpenAI, memanto: MemantoTo
                 confidence=0.80,
                 tags=["investigation", state.get("customer_id", "unknown"), category],
             )
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning("Failed to store investigation memory #%d: %s", i, e)
 
     return {"investigation_notes": notes}
 
@@ -182,7 +201,6 @@ def resolve_node(state: SupportState, *, llm: ChatOpenAI, memanto: MemantoTool) 
     message = state["message"]
     notes = state.get("investigation_notes", [])
     similar_issues = state.get("similar_issues", [])
-    customer_history = state.get("customer_history", [])
     severity = state.get("severity", "medium")
 
     # Build context
@@ -222,8 +240,8 @@ def resolve_node(state: SupportState, *, llm: ChatOpenAI, memanto: MemantoTool) 
             tags=["resolution", state.get("customer_id", "unknown"),
                   state.get("category", "general")],
         )
-    except Exception:
-        pass
+    except Exception as e:
+        logger.warning("Failed to store resolution memory: %s", e)
 
     # Store customer preference if severity was high
     if severity in ("high", "critical"):
@@ -236,8 +254,8 @@ def resolve_node(state: SupportState, *, llm: ChatOpenAI, memanto: MemantoTool) 
                 confidence=0.85,
                 tags=["high_severity", state.get("customer_id", "unknown")],
             )
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning("Failed to store high-severity memory: %s", e)
 
     return {"resolution": resolution}
 
@@ -277,8 +295,8 @@ def follow_up_node(state: SupportState, *, llm: ChatOpenAI, memanto: MemantoTool
                 confidence=0.95,
                 tags=["follow_up", customer_id, severity],
             )
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning("Failed to store follow-up commitment: %s", e)
 
     return {"follow_up": follow_up}
 
@@ -363,10 +381,19 @@ def create_agent(
 
     Returns:
         Compiled LangGraph agent
+
+    Raises:
+        ValueError: If MOORCHEH_API_KEY or OPENAI_API_KEY is not provided
     """
+    oai_key = openai_api_key or os.environ.get("OPENAI_API_KEY")
+    if not oai_key:
+        raise ValueError(
+            "OPENAI_API_KEY is required. Set it in .env or pass openai_api_key."
+        )
+
     llm = ChatOpenAI(
         model=model,
-        api_key=openai_api_key or os.environ.get("OPENAI_API_KEY"),
+        api_key=oai_key,
         temperature=0.3,
     )
 

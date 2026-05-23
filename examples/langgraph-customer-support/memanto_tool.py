@@ -7,6 +7,7 @@ integrate with LangGraph's tool interface.
 
 import os
 import json
+import logging
 from datetime import datetime
 from typing import Any
 
@@ -19,6 +20,7 @@ try:
 except ImportError:
     MoorchehClient = None
 
+logger = logging.getLogger(__name__)
 
 # Valid memory types from Memanto
 MEMORY_TYPES = [
@@ -81,8 +83,15 @@ class MemantoTool:
                     namespace_name=self._namespace,
                     source_type="semantic",
                 )
-            except Exception:
-                pass  # Namespace may already exist (race condition)
+            except Exception as e:
+                # Only pass on "already exists" conflicts; re-raise genuine errors
+                err_msg = str(e).lower()
+                if "already" in err_msg or "conflict" in err_msg or "409" in err_msg:
+                    logger.debug("Namespace %s already exists (race condition), continuing",
+                                 self._namespace)
+                else:
+                    logger.warning("Failed to create namespace %s: %s", self._namespace, e)
+                    # Continue — namespace may have been created by a parallel session
 
     def remember(
         self,
@@ -150,13 +159,16 @@ class MemantoTool:
 
         Args:
             query: Search query for semantic retrieval
-            limit: Maximum number of memories to return
+            limit: Maximum number of memories to return (1-20)
             memory_types: Filter by memory types
             min_confidence: Filter by minimum confidence score
 
         Returns:
             List of memory dicts with content, type, confidence, and timestamp
         """
+        # Clamp limit to valid range
+        limit = max(1, min(20, limit))
+
         kwargs = {
             "query": query,
             "scope_type": self.scope_type,
@@ -209,7 +221,8 @@ class MemantoTool:
                 "sources": result.get("sources", []),
                 "confidence": result.get("confidence", 0.0),
             }
-        except Exception:
+        except Exception as e:
+            logger.warning("Memanto answer() failed, falling back to recall: %s", e)
             # Fallback: recall + format manually
             memories = self.recall(query, limit=3)
             if not memories:
