@@ -32,7 +32,7 @@ Replace `/path/to/` with the actual location of the `skills-memory.sh` script in
 
 1. **PreToolUse** — Before every Bash command Claude Code runs, the hook calls `memanto recall` with the command context. This injects relevant engineering memories into the session.
 
-2. **PostToolUse** — After every Bash command completes, the hook calls `distill-and-remember` which extracts engineering decisions from the raw tool output before storing. This avoids persisting sensitive or noisy raw output.
+2. **PostToolUse** — After every Bash command completes, the hook truncates output to 4KB, then calls `distill-and-remember` which extracts engineering decisions from the raw tool output before storing. This avoids persisting sensitive or noisy raw output. The distillation step (not raw persistence) ensures only structured decisions are stored.
 
 ## Alternative: Manual skill wrapping
 
