@@ -26,7 +26,8 @@ def main():
         import ast
         for fname in ["memanto_client.py", "tools.py", "graph.py", "run.py"]:
             path = os.path.join(os.path.dirname(__file__), fname)
-            ast.parse(open(path, encoding="utf-8").read())
+            with open(path, encoding="utf-8") as fh:
+                ast.parse(fh.read())
             print(f"  ✅ {fname} — valid syntax")
     except Exception as e:
         print(f"  ❌ Import check failed: {e}")

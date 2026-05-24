@@ -70,11 +70,15 @@ class MeMantoClient:
     def _activate(self):
         try:
             r = self._http.post(self._aurl("/activate"), json={}, timeout=10)
-            if r.ok:
-                self._token = r.json().get("session_token")
-                logger.info("Activated Memanto session for %s", self.agent_id)
+            r.raise_for_status()
+            token = r.json().get("session_token")
+            if not token:
+                raise ValueError("Activation succeeded but session_token was empty")
+            self._token = token
+            logger.info("Activated Memanto session for %s", self.agent_id)
         except Exception as exc:
             logger.error("Activation failed: %s", exc)
+            raise
 
     def _request_with_retry(self, method, url, **kwargs):
         response = method(url, **kwargs)
