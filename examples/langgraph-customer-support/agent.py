@@ -116,6 +116,8 @@ def triage_node(state: SupportState, *, llm: ChatOpenAI, memanto: MemantoTool) -
     category_raw = classification.get("category", "general")
     severity = str(severity_raw).strip().lower()
     category = str(category_raw).strip().lower()
+    # Normalize common separator variants (e.g. "feature request" -> "feature_request")
+    category = category.replace(" ", "_").replace("-", "_")
     if severity not in SEVERITY_LEVELS:
         logger.warning("LLM returned unknown severity '%s', defaulting to 'medium'", severity_raw)
         severity = "medium"
