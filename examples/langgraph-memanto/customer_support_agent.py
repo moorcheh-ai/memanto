@@ -33,7 +33,7 @@ def create_support_agent():
     # Initialize LLM (works with any OpenAI-compatible provider)
     llm = ChatOpenAI(
         model="gpt-4o-mini",
-        api_key=os.getenv("OPENAI_API_KEY", "dummy-key"),
+        api_key=os.environ["OPENAI_API_KEY"],
         base_url=os.getenv("OPENAI_BASE_URL", "https://api.openai.com/v1"),
     )
     
@@ -109,7 +109,7 @@ CRITICAL INSTRUCTIONS:
         if any(w in last_user_msg.lower() for w in ["prefer", "like", "want", "need"]):
             memory.remember(
                 content=f"User {state['user_id']} preference: {last_user_msg}",
-                memory_type="decision",
+                memory_type="preference",
                 confidence=0.85,
                 tags=["preference", state["user_id"]]
             )
@@ -118,7 +118,7 @@ CRITICAL INSTRUCTIONS:
         if any(w in last_user_msg.lower() for w in ["bug", "error", "issue", "problem", "broken", "not working"]):
             memory.remember(
                 content=f"User {state['user_id']} issue: {last_user_msg}",
-                memory_type="fact",
+                memory_type="issue",
                 confidence=0.95,
                 tags=["issue", state["user_id"]]
             )

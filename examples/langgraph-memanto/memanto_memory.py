@@ -85,6 +85,8 @@ class LangGraphMemantoMemory:
         """
         if title is None:
             title = content[:100] + ("..." if len(content) > 100 else "")
+        if not 0.0 <= confidence <= 1.0:
+            raise ValueError("confidence must be between 0.0 and 1.0")
         
         return self.client.remember(
             agent_id=self.agent_id,

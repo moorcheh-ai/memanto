@@ -11,7 +11,7 @@ This example demonstrates how to use **Memanto** as the long-term memory layer f
 
 ## Architecture
 
-```
+```text
 User Query → LangGraph Agent → Memanto Recall (context) → LLM Response
                     ↓
             Memanto Remember (new info)
@@ -39,7 +39,7 @@ export OPENAI_API_KEY="your-key-here"  # or any OpenAI-compatible provider
 python customer_support_agent.py
 ```
 
-This runs an interactive customer support agent that:
+This runs a scripted multi-turn customer support agent that:
 1. Remembers your product preferences
 2. Recalls past issues you've reported
 3. Builds a knowledge graph of your relationship with the service
