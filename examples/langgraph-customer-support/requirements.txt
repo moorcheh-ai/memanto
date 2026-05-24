@@ -1,5 +1,5 @@
-langgraph>=0.2.28
-langchain>=0.3.0
+langgraph>=1.0.10
+langchain>=0.3.30
 langchain-openai>=0.2.0
 moorcheh-sdk>=0.2.0
 python-dotenv>=1.0.0

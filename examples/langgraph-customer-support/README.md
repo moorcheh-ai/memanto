@@ -24,7 +24,7 @@ A LangGraph-powered **customer support agent** that uses **Memanto** as its long
 │  │remember│                                                    │
 │  └────────┘                                                    │
 └──────────────────────────────────────────────────────────────────┘
-```text
+```
 
 ## ✨ What This Demonstrates
 
@@ -67,7 +67,7 @@ python run_agent.py --customer cust-123 --message "My payment keeps failing with
 
 📩 Follow-up:
 Hi there! We've resolved your payment timeout issue...
-```text
+```
 
 ### Session 2 (Tuesday): Different customer, same issue
 
@@ -87,7 +87,7 @@ python run_agent.py --customer cust-456 --message "Getting timeout when trying t
 Based on a previous resolution from yesterday: The payment timeout was
 caused by an exhausted connection pool. We increased it from 10 to 50.
 Since this is recurring, we're adding a health check monitor...
-```text
+```
 
 **The agent explicitly references the previous session's resolution** — that's the permanent brain in action.
 
@@ -106,7 +106,7 @@ source venv/bin/activate
 pip install -r requirements.txt
 cp .env.example .env
 # Edit .env and add your MOORCHEH_API_KEY and OPENAI_API_KEY
-```text
+```
 
 ### Run
 
@@ -116,7 +116,7 @@ python run_agent.py --customer cust-123 --message "My payment failed"
 
 # Interactive mode (process multiple tickets)
 python run_agent.py
-```text
+```
 
 ### Test
 
@@ -137,7 +137,7 @@ test_integration.py::TestCustomerSupportAgent::test_high_severity_creates_commit
 test_integration.py::TestCustomerSupportAgent::test_complete_workflow_produces_all_outputs PASSED
 test_integration.py::TestCrossSessionRecallIsolation::test_memories_persist_across_independent_graphs PASSED
 ==================== 7 passed in 0.12s ====================
-```text
+```
 
 ## 🔑 Why This Matters
 

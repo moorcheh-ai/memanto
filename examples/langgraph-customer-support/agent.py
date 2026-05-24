@@ -111,14 +111,16 @@ def triage_node(state: SupportState, *, llm: ChatOpenAI, memanto: MemantoTool) -
     except json.JSONDecodeError:
         classification = {"severity": "medium", "category": "general"}
 
-    # Clamp classification to allowed values
-    severity = classification.get("severity", "medium")
-    category = classification.get("category", "general")
+    # Normalize and clamp classification to allowed values
+    severity_raw = classification.get("severity", "medium")
+    category_raw = classification.get("category", "general")
+    severity = str(severity_raw).strip().lower()
+    category = str(category_raw).strip().lower()
     if severity not in SEVERITY_LEVELS:
-        logger.warning("LLM returned unknown severity '%s', defaulting to 'medium'", severity)
+        logger.warning("LLM returned unknown severity '%s', defaulting to 'medium'", severity_raw)
         severity = "medium"
     if category not in CATEGORIES:
-        logger.warning("LLM returned unknown category '%s', defaulting to 'general'", category)
+        logger.warning("LLM returned unknown category '%s', defaulting to 'general'", category_raw)
         category = "general"
 
     # 4. Store this triage event as a memory

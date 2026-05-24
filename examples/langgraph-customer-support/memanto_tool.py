@@ -212,9 +212,9 @@ class MemantoTool:
         """
         try:
             # Use Memanto's answer endpoint
-            result = self.client.answer(
-                namespace_name=self._namespace,
-                question=query,
+            result = self.client.answer.generate(
+                namespace=self._namespace,
+                query=query,
             )
             return {
                 "answer": result.get("answer", ""),
