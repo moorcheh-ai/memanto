@@ -4,7 +4,7 @@ A LangGraph-powered research assistant agent that uses **Memanto** as its long-t
 
 ## Architecture
 
-```
+```text
 ┌─────────────────────────────────────────────────────────────┐
 │                    LangGraph Workflow                        │
 │                                                              │
@@ -36,7 +36,7 @@ A LangGraph-powered research assistant agent that uses **Memanto** as its long-t
 ```bash
 python run_agent.py --session research-2026-05-22
 ```
-```
+```text
 🔍 Researching: quantum computing error correction...
 📝 [REMEMBER] Stored: fact — "Surface codes are the leading QECC approach" (confidence: 0.92)
 📝 [REMEMBER] Stored: decision — "Prioritize topological QC over gate-based for fault tolerance" (confidence: 0.85)
@@ -48,7 +48,7 @@ python run_agent.py --session research-2026-05-22
 ```bash
 python run_agent.py --session followup-2026-05-23
 ```
-```
+```text
 🔍 Researching: latest quantum error correction advances...
 🔎 [RECALL] Found 3 memories from previous session:
   - fact: "Surface codes are the leading QECC approach" (conf: 0.92, 2026-05-22)
@@ -63,7 +63,7 @@ python run_agent.py --session followup-2026-05-23
 
 - Python 3.10+
 - A [Moorcheh API key](https://console.moorcheh.ai/api-keys) (free tier: 100K ops/month)
-- An OpenAI API key (for the LangGraph LLM)
+- An OpenAI API key (for the LangGraph LLM — OpenAI-compatible models only)
 
 ## Setup
 

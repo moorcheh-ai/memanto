@@ -191,16 +191,25 @@ def create_agent(
     Args:
         moorcheh_api_key: Moorcheh API key (or set MOORCHEH_API_KEY env var)
         openai_api_key: OpenAI API key (or set OPENAI_API_KEY env var)
-        model: LLM model to use
+        model: LLM model to use (OpenAI-compatible models only)
         agent_id: Unique agent identifier for Memanto
         scope_id: Memory scope for isolation
 
     Returns:
         Compiled LangGraph agent
+
+    Raises:
+        ValueError: If MOORCHEH_API_KEY or OPENAI_API_KEY is not provided
     """
+    oai_key = openai_api_key or os.environ.get("OPENAI_API_KEY")
+    if not oai_key:
+        raise ValueError(
+            "OPENAI_API_KEY is required. Set it in .env or pass openai_api_key."
+        )
+
     llm = ChatOpenAI(
         model=model,
-        api_key=openai_api_key or os.environ.get("OPENAI_API_KEY"),
+        api_key=oai_key,
         temperature=0.3,
     )
 

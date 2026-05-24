@@ -84,8 +84,12 @@ class MemantoTool:
                     namespace_name=self._namespace,
                     source_type="semantic",
                 )
-            except Exception:
-                pass  # Namespace may already exist (race condition)
+            except Exception as e:
+                err_msg = str(e).lower()
+                if "already" in err_msg or "conflict" in err_msg or "409" in err_msg:
+                    logger.debug("Namespace %s already exists (race condition)", self._namespace)
+                else:
+                    logger.warning("Failed to create namespace %s: %s", self._namespace, e)
 
     def remember(
         self,
@@ -160,6 +164,9 @@ class MemantoTool:
         Returns:
             List of memory dicts with content, type, confidence, and timestamp
         """
+        # Clamp limit to valid range
+        limit = max(1, min(20, limit))
+
         kwargs = {
             "query": query,
             "scope_type": self.scope_type,
@@ -212,7 +219,8 @@ class MemantoTool:
                 "sources": result.get("sources", []),
                 "confidence": result.get("confidence", 0.0),
             }
-        except Exception:
+        except Exception as e:
+            logger.warning("Memanto answer() failed, falling back to recall: %s", e)
             # Fallback: recall + format manually
             memories = self.recall(query, limit=3)
             if not memories:
