@@ -100,7 +100,7 @@ def make_recall_node(client):
         )
 
         return {
-            "messages": [SystemMessage(content=combined_system_prompt)]
+            "messages": [SystemMessage(id="memanto_context", content=combined_system_prompt)]
         }
 
     return recall_node
