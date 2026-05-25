@@ -119,7 +119,7 @@ class MemoryParsingService:
                     r"\b(?:assign|assigned|responsible for|owner is|by tomorrow|by eod|by end of day)\b",
                     4,
                 ),
-                (r"\b(?:remind me to|don't forget to|need a reminder)\b", 5),
+                (r"\b(?:remind me to|don't forget to|need a reminder)\b", 6),
             ]
         ],
         "event": [
@@ -157,14 +157,20 @@ class MemoryParsingService:
             MemoryRule(re.compile(pattern, re.IGNORECASE), score)
             for pattern, score in [
                 (
-                    r"\b(?:error|failed|failure|bug|exception|traceback|crash|outage|incident)\b",
+                    r"\b(?:errors?|fail(?:s|ed|ing|ure)?|bugs?|exceptions?|tracebacks?|crash(?:e[ds]|ing)?|outages?|incidents?)\b",
                     5,
                 ),
+                # CamelCase exception/error class names, e.g. NullPointerException,
+                # ValueError. Case-sensitive so it does not match words like "mirror".
+                (r"(?-i:[A-Z][A-Za-z0-9]*(?:Exception|Error))\b", 5),
                 (
-                    r"\b(?:broken|regression|doesn't work|does not work|not working|timed out|timeout)\b",
+                    r"\b(?:broken|broke|breaks|breaking|regressions?|doesn't work|does not work|not working|timed out|timeouts?)\b",
                     4,
                 ),
-                (r"\b(?:blocked by|problem|issue|wrong|incorrect|misclassified)\b", 3),
+                (
+                    r"\b(?:blocked by|problems?|issues?|wrong|incorrect|misclassified)\b",
+                    3,
+                ),
             ]
         ],
         "relationship": [
@@ -252,12 +258,13 @@ class MemoryParsingService:
 
     def parse_memory(self, memory: MemoryRecord) -> MemoryRecord:
         """
-        Auto-detect memory type.
+        Auto-detect and assign a memory type.
 
         Rules:
-        - Skip if disabled
-        - Do not override existing type
-        - Use rule-based classification
+        - Respect an explicit type if one is already set.
+        - Skip detection entirely when auto-parsing is disabled.
+        - Fall back to ``"fact"`` when classification is inconclusive, so a
+          memory is never stored without a type.
         """
 
         # 1. Respect existing type
@@ -269,12 +276,8 @@ class MemoryParsingService:
             memory.type = cast(MemoryType, "fact")
             return memory
 
-        # 3. Rule-based detection
+        # 3. Rule-based detection (deterministic)
         detected = self._rule_based(memory.content)
-
-        # 4. LLM fallback (only if rule-based fails and enabled)
-        if not detected and settings.USE_LLM_FALLBACK:
-            detected = self._llm_fallback(memory.content)
 
         if detected and detected in MEMORY_TYPE_ORDER:
             memory.type = cast(MemoryType, detected)
@@ -284,7 +287,13 @@ class MemoryParsingService:
         return memory
 
     def _rule_based(self, text: str) -> str | None:
-        """Return the highest-scoring rule-based type for text, if confident."""
+        """Return the best rule-based type for *text*, or None if not confident.
+
+        Classification favours the single strongest signal (the ``max`` of the
+        matched rule scores) over the raw sum, so a decisive intent phrase such
+        as "remind me to" outranks several weaker topical keywords. The
+        cumulative score and canonical priority act only as tie-breakers.
+        """
 
         if not text:
             return None
@@ -293,53 +302,52 @@ class MemoryParsingService:
         if len(normalized.split()) < 3:
             return None
         scores = self._score_types(normalized)
-        # If only "fact" is detected with weak signal, treat as unknown
-        # BUT allow strong factual patterns (like URLs, endpoints, "is/are" statements)
-        if set(scores.keys()) == {"fact"}:
-            fact_score = scores.get("fact", 0)
-
-            if fact_score < 4 and not any(
-                pattern.search(text) for pattern in self.STRONG_FACT_PATTERNS
-            ):
-                return None
         if not scores:
             return None
 
-        # pick best candidate
-        detected, score = max(
-            scores.items(),
-            key=lambda item: (item[1], -self.TYPE_PRIORITY.get(item[0], 999)),
-        )
-
-        # reject low-confidence
-        if score < self.MIN_RULE_SCORE:
-            return None
-
-        # refined ambiguity guard:
-        # only block when signals are weak and very close
-        sorted_scores = sorted(scores.values(), reverse=True)
-        if len(sorted_scores) > 1:
-            second_score = sorted_scores[1]
-            # allow strong signals (score >= 4) to pass even if tied
-            if (score - second_score) <= 1 and score < 4:
+        # If only "fact" matched with a weak signal, treat as unknown unless a
+        # strong factual pattern (URL, endpoint, "is/are" statement) is present.
+        if set(scores) == {"fact"}:
+            _, fact_max = scores["fact"]
+            if fact_max < 4 and not any(
+                pattern.search(text) for pattern in self.STRONG_FACT_PATTERNS
+            ):
                 return None
 
-        return detected
+        ranked = sorted(
+            scores.items(),
+            key=lambda item: (
+                item[1][1],  # strongest single signal
+                item[1][0],  # cumulative score
+                -self.TYPE_PRIORITY.get(item[0], 999),
+            ),
+            reverse=True,
+        )
 
-    def _score_types(self, text: str) -> dict[str, int]:
-        """Calculate cumulative rule scores for every matched memory type."""
+        best_type, (best_total, best_max) = ranked[0]
 
-        scores: dict[str, int] = {}
+        # Reject low-confidence matches (no sufficiently strong single signal).
+        if best_max < self.MIN_RULE_SCORE:
+            return None
+
+        # Ambiguity guard: only block when the top two signals are weak and tied.
+        if len(ranked) > 1:
+            _, (second_total, second_max) = ranked[1]
+            if (
+                best_max < 4
+                and best_max == second_max
+                and (best_total - second_total) <= 1
+            ):
+                return None
+
+        return best_type
+
+    def _score_types(self, text: str) -> dict[str, tuple[int, int]]:
+        """Return ``{type: (cumulative_score, strongest_single_score)}`` per match."""
+
+        scores: dict[str, tuple[int, int]] = {}
         for memory_type, rules in self.RULES.items():
-            score = sum(rule.score for rule in rules if rule.pattern.search(text))
-            if score:
-                scores[memory_type] = score
+            matched = [rule.score for rule in rules if rule.pattern.search(text)]
+            if matched:
+                scores[memory_type] = (sum(matched), max(matched))
         return scores
-
-    # LLM fallback (optional, disabled by default for low token usage)
-    def _llm_fallback(self, text: str) -> str | None:
-        """Fallback using LLM when rule-based fails.
-        Placeholder for now. Keep rule parsing deterministic until the LLM
-        design supports structured output, multi-label signals, and validation.
-        """
-        return None

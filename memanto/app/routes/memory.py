@@ -201,6 +201,8 @@ async def remember(
             "status": "queued",
             "provenance": request.provenance,
             "confidence": request.confidence,
+            # Resolved memory type (auto-parsed when not explicitly provided)
+            "type": result.get("type"),
             # "computed_confidence": trust_score["computed_confidence"],
             # "trust_level": trust_score["trust_level"]
         }

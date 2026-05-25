@@ -128,7 +128,6 @@ class Settings(BaseSettings):
 
     # Auto Parsing Configuration
     AUTO_PARSE_ENABLED: bool = True
-    USE_LLM_FALLBACK: bool = False
 
     # UI Mode
     MEMANTO_UI_MODE: bool = False

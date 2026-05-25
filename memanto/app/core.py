@@ -81,10 +81,9 @@ class MemoryRecord(BaseModel):
         powerful filtering using the # syntax (e.g., #memory_type:fact #confidence>0.8)
         """
         memory_type = self.type or "fact"
-        display_type = memory_type
 
         # Format text as standardized card for semantic search
-        text = f"[{display_type.upper()}] {self.title}\n\n{self.content}"
+        text = f"[{memory_type.upper()}] {self.title}\n\n{self.content}"
         if self.tags:
             text += f"\n\nTags: {', '.join(self.tags)}"
 

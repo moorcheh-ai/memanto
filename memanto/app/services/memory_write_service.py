@@ -22,6 +22,7 @@ class MemoryWriteService:
 
         self.client = moorcheh_client
         self._namespace_service = None
+        self._parser = MemoryParsingService()
 
     @property
     def namespace_service(self):
@@ -48,8 +49,7 @@ class MemoryWriteService:
             memory.updated_at = now
 
             # Auto parse memory type
-            parser = MemoryParsingService()
-            memory = parser.parse_memory(memory)
+            memory = self._parser.parse_memory(memory)
 
             # Add namespace
             namespace = memory.get_scope().to_namespace()
@@ -118,7 +118,6 @@ class MemoryWriteService:
             # Enforce server-side timestamps for batch (single timestamp for all)
             now = datetime.utcnow()
 
-            parser = MemoryParsingService()
             for memory in memories:
                 try:
                     # Generate ID if not provided
@@ -129,7 +128,7 @@ class MemoryWriteService:
                     memory.created_at = now
                     memory.updated_at = now
 
-                    memory = parser.parse_memory(memory)
+                    memory = self._parser.parse_memory(memory)
 
                     # Add namespace
                     namespace = memory.get_scope().to_namespace()

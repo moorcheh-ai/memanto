@@ -69,25 +69,6 @@ def test_fallback_to_fact():
     assert memory.type == "fact"
 
 
-# 5. LLM fallback is triggered
-def test_llm_fallback_triggered(monkeypatch):
-    monkeypatch.setattr(settings, "USE_LLM_FALLBACK", True)
-
-    parser = MemoryParsingService()
-
-    # mock fallback method
-    def mock_llm(text):
-        return "context"
-
-    monkeypatch.setattr(parser, "_llm_fallback", mock_llm)
-
-    memory = make_memory("qwerty asdf zxczzx 123123")
-
-    parser.parse_memory(memory)
-
-    assert memory.type == "context"
-
-
 def test_boundary_matching_avoids_substring_false_positive():
     parser = MemoryParsingService()
 
@@ -149,3 +130,33 @@ def test_unrelated_text_falls_back_to_default_fact():
     parser.parse_memory(memory)
 
     assert memory.type == "fact"
+
+
+def test_detect_error_with_inflected_and_camelcase_signals():
+    parser = MemoryParsingService()
+
+    memory = make_memory("The app crashed with a NullPointerException during upload")
+
+    parser.parse_memory(memory)
+
+    assert memory.type == "error"
+
+
+def test_learning_intent_beats_topical_error_terms():
+    parser = MemoryParsingService()
+
+    memory = make_memory("I learned that caching fixed the timeout issue")
+
+    parser.parse_memory(memory)
+
+    assert memory.type == "learning"
+
+
+def test_reminder_intent_beats_artifact_mention():
+    parser = MemoryParsingService()
+
+    memory = make_memory("Remind me to email the report.pdf to the manager tomorrow")
+
+    parser.parse_memory(memory)
+
+    assert memory.type == "commitment"
