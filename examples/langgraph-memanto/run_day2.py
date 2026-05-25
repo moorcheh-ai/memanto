@@ -8,11 +8,14 @@ from memory_client import build_client
 
 
 class RecallState(TypedDict):
+    """LangGraph state for recalling a stored support preference."""
+
     question: str
     recalled_preference: str
 
 
 def recall_preference(state: RecallState) -> RecallState:
+    """Recall the Day 1 preference from Memanto."""
     client, agent_id = build_client()
     try:
         result = client.recall(
@@ -34,6 +37,7 @@ def recall_preference(state: RecallState) -> RecallState:
 
 
 def answer_user(state: RecallState) -> RecallState:
+    """Format the recalled preference for the demo output."""
     if state["recalled_preference"].startswith("No preference"):
         return state
 
@@ -44,6 +48,7 @@ def answer_user(state: RecallState) -> RecallState:
 
 
 def build_graph():
+    """Build the Day 2 graph that recalls and answers from memory."""
     graph = StateGraph(RecallState)
     graph.add_node("recall_preference", recall_preference)
     graph.add_node("answer_user", answer_user)
@@ -54,6 +59,7 @@ def build_graph():
 
 
 def main() -> None:
+    """Run the Day 2 graph."""
     app = build_graph()
     result = app.invoke(
         {

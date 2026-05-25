@@ -18,9 +18,12 @@ cd examples/langgraph-memanto
 python -m venv .venv
 source .venv/bin/activate  # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
-cp ../crewai-memory/.env.example .env
+cp .env.example .env
 # Edit .env and set MOORCHEH_API_KEY
 ```
+
+`requirements.txt` installs this checkout's `memanto` package in editable mode,
+then pins the external demo dependencies for repeatable runs.
 
 ## Run the two-session demo
 
@@ -54,6 +57,9 @@ python verify_recall.py
 - Uses `MEMANTO_AGENT_ID` env var (default: `langgraph-support-agent`) to keep a stable memory namespace across runs.
 - If Day 2 says "No preference found," run Day 1 first with the same `MEMANTO_AGENT_ID`.
 
-## Demo artifact placeholder
+## Demo
 
-A short terminal GIF/video can be attached in the PR, showing `run_day1.py` then `run_day2.py` in separate sessions.
+![LangGraph + Memanto cross-session recall demo](demo.gif)
+
+The demo shows `python run_day1.py` storing the preference, then a separate
+`python run_day2.py` session recalling it from Memanto.

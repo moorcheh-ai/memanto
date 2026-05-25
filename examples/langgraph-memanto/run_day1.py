@@ -8,17 +8,21 @@ from memory_client import build_client
 
 
 class SupportState(TypedDict):
+    """LangGraph state for collecting and storing a support preference."""
+
     user_message: str
     preference: str
 
 
 def extract_preference(state: SupportState) -> SupportState:
+    """Extract a deterministic preference for the reproducible demo."""
     # Deterministic extraction for a reproducible, low-friction demo.
     state["preference"] = "User prefers concise bullet updates at 9 AM local time"
     return state
 
 
 def persist_preference(state: SupportState) -> SupportState:
+    """Persist the extracted preference into Memanto."""
     client, agent_id = build_client()
     try:
         client.remember(
@@ -37,6 +41,7 @@ def persist_preference(state: SupportState) -> SupportState:
 
 
 def build_graph():
+    """Build the Day 1 graph that stores the user's preference."""
     graph = StateGraph(SupportState)
     graph.add_node("extract_preference", extract_preference)
     graph.add_node("persist_preference", persist_preference)
@@ -47,6 +52,7 @@ def build_graph():
 
 
 def main() -> None:
+    """Run the Day 1 graph."""
     app = build_graph()
     result = app.invoke(
         {

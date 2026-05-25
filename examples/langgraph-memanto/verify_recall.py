@@ -1,11 +1,12 @@
 from __future__ import annotations
 
+from pathlib import Path
 import subprocess
 import sys
 
 
-
 def run(script: str) -> str:
+    """Run a demo script and return its stdout."""
     proc = subprocess.run(
         [sys.executable, script],
         capture_output=True,
@@ -17,10 +18,11 @@ def run(script: str) -> str:
     return proc.stdout
 
 
-
 def main() -> None:
-    day1_out = run("run_day1.py")
-    day2_out = run("run_day2.py")
+    """Verify Day 1 memory storage is recalled by the Day 2 graph."""
+    base_dir = Path(__file__).resolve().parent
+    day1_out = run(str(base_dir / "run_day1.py"))
+    day2_out = run(str(base_dir / "run_day2.py"))
 
     print("=== day1 ===")
     print(day1_out.strip())
