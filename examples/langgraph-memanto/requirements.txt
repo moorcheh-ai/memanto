@@ -1,3 +1,3 @@
 -e ../..
-langgraph==0.6.11
+langgraph==1.0.10
 python-dotenv==1.2.1

@@ -4,15 +4,34 @@ from pathlib import Path
 import subprocess
 import sys
 
+DEFAULT_TIMEOUT_SECONDS = 90
 
-def run(script: str) -> str:
+
+def _decode_output(value) -> str:
+    if value is None:
+        return ""
+    if isinstance(value, bytes):
+        return value.decode("utf-8", errors="replace")
+    return value
+
+
+def run(script: str, timeout_seconds: int = DEFAULT_TIMEOUT_SECONDS) -> str:
     """Run a demo script and return its stdout."""
-    proc = subprocess.run(
-        [sys.executable, script],
-        capture_output=True,
-        text=True,
-        check=False,
-    )
+    try:
+        proc = subprocess.run(
+            [sys.executable, script],
+            capture_output=True,
+            text=True,
+            check=False,
+            timeout=timeout_seconds,
+        )
+    except subprocess.TimeoutExpired as exc:
+        stdout = _decode_output(exc.stdout)
+        stderr = _decode_output(exc.stderr)
+        raise RuntimeError(
+            f"{script} timed out after {timeout_seconds} seconds:\n{stdout}\n{stderr}"
+        ) from exc
+
     if proc.returncode != 0:
         raise RuntimeError(f"{script} failed:\n{proc.stdout}\n{proc.stderr}")
     return proc.stdout
