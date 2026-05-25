@@ -73,7 +73,9 @@ def main(argv=None) -> int:
     args = parser.parse_args(argv)
 
     hermes_home = (
-        Path(args.hermes_home).expanduser() if args.hermes_home else _default_hermes_home()
+        Path(args.hermes_home).expanduser()
+        if args.hermes_home
+        else _default_hermes_home()
     )
     try:
         target = install(hermes_home, force=args.force)

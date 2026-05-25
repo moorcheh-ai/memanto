@@ -31,20 +31,25 @@ import logging
 import os
 import re
 import threading
+import time
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 try:  # resolved against the host Hermes at runtime
     from agent.memory_provider import MemoryProvider
 except Exception:  # pragma: no cover - running outside a Hermes runtime
+
     class MemoryProvider:  # type: ignore[no-redef]
         """Minimal stand-in so this module imports without a Hermes install."""
+
 
 try:  # resolved against the host Hermes at runtime
     from tools.registry import tool_error
 except Exception:  # pragma: no cover - running outside a Hermes runtime
+
     def tool_error(message: str) -> str:  # type: ignore[misc]
         return json.dumps({"error": message})
+
 
 logger = logging.getLogger(__name__)
 
@@ -59,13 +64,25 @@ _CAPTURE_CONFIDENCE = 0.6
 _MIN_CAPTURE_LENGTH = 10
 _MAX_TITLE_LENGTH = 100
 _MAX_AGENT_ID_LENGTH = 64
+_ACTIVATION_RETRY_COOLDOWN = 60.0
 
 # Memory taxonomy mirrored from memanto.app.constants.VALID_MEMORY_TYPES so the
 # tool schema matches what the backend validates. Kept as a literal list to
 # avoid importing memanto at module-import time.
 _VALID_MEMORY_TYPES = (
-    "fact", "preference", "goal", "decision", "artifact", "learning", "event",
-    "instruction", "relationship", "context", "observation", "commitment", "error",
+    "fact",
+    "preference",
+    "goal",
+    "decision",
+    "artifact",
+    "learning",
+    "event",
+    "instruction",
+    "relationship",
+    "context",
+    "observation",
+    "commitment",
+    "error",
 )
 
 _TRIVIAL_RE = re.compile(
@@ -75,6 +92,7 @@ _TRIVIAL_RE = re.compile(
 _CONTEXT_STRIP_RE = re.compile(
     r"<memanto-memory>[\s\S]*?</memanto-memory>\s*", re.DOTALL
 )
+_RECALL_TAG_RE = re.compile(r"</?memanto-memory>", re.IGNORECASE)
 
 
 def _resolve_hermes_home() -> str:
@@ -145,7 +163,9 @@ def _load_memanto_config(hermes_home: str) -> dict:
 
     # agent_id is kept raw here — the {identity} template is resolved (and the
     # result sanitized) in initialize() once agent_identity is known.
-    config["agent_id"] = str(config.get("agent_id") or _DEFAULT_AGENT_ID).strip() or _DEFAULT_AGENT_ID
+    config["agent_id"] = (
+        str(config.get("agent_id") or _DEFAULT_AGENT_ID).strip() or _DEFAULT_AGENT_ID
+    )
     pattern = str(config.get("pattern") or _DEFAULT_PATTERN).strip().lower()
     config["pattern"] = pattern if pattern in _VALID_PATTERNS else _DEFAULT_PATTERN
     config["auto_recall"] = _as_bool(config.get("auto_recall"), True)
@@ -153,17 +173,26 @@ def _load_memanto_config(hermes_home: str) -> dict:
     config["auto_create"] = _as_bool(config.get("auto_create"), True)
     config["mirror_memory_writes"] = _as_bool(config.get("mirror_memory_writes"), True)
     try:
-        config["max_recall_results"] = max(1, min(100, int(config.get("max_recall_results", _DEFAULT_MAX_RECALL_RESULTS))))
+        config["max_recall_results"] = max(
+            1,
+            min(
+                100, int(config.get("max_recall_results", _DEFAULT_MAX_RECALL_RESULTS))
+            ),
+        )
     except Exception:
         config["max_recall_results"] = _DEFAULT_MAX_RECALL_RESULTS
     if config.get("min_confidence") is not None:
         try:
-            config["min_confidence"] = max(0.0, min(1.0, float(config["min_confidence"])))
+            config["min_confidence"] = max(
+                0.0, min(1.0, float(config["min_confidence"]))
+            )
         except Exception:
             config["min_confidence"] = None
     if config.get("session_duration_hours") is not None:
         try:
-            config["session_duration_hours"] = max(1, min(24 * 30, int(config["session_duration_hours"])))
+            config["session_duration_hours"] = max(
+                1, min(24 * 30, int(config["session_duration_hours"]))
+            )
         except Exception:
             config["session_duration_hours"] = None
     return config
@@ -180,7 +209,9 @@ def _save_memanto_config(values: dict, hermes_home: str) -> None:
         except Exception:
             existing = {}
     existing.update(values)
-    config_path.write_text(json.dumps(existing, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    config_path.write_text(
+        json.dumps(existing, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+    )
 
 
 def _clean_text_for_capture(text: str) -> str:
@@ -191,7 +222,7 @@ def _is_trivial_message(text: str) -> bool:
     return bool(_TRIVIAL_RE.match((text or "").strip()))
 
 
-def _memory_score(raw: dict) -> Optional[float]:
+def _memory_score(raw: dict) -> float | None:
     """Coalesce the score key Memanto uses across endpoints."""
     score = raw.get("score")
     if score is None:
@@ -202,11 +233,12 @@ def _memory_score(raw: dict) -> Optional[float]:
         return None
 
 
-def _format_recall_block(memories: List[dict], max_results: int) -> str:
+def _format_recall_block(memories: list[dict], max_results: int) -> str:
     """Render recall hits into a context block for prefetch injection."""
     lines = []
     for item in (memories or [])[:max_results]:
         content = (item.get("content") or item.get("title") or "").strip()
+        content = _RECALL_TAG_RE.sub("", content).strip()
         if not content:
             continue
         prefix_bits = []
@@ -233,12 +265,21 @@ class _MemantoClient:
 
     Mirrors the MCP integration's lifecycle: ensure the agent exists (creating
     it on first use when ``auto_create``) and activate a session once, lazily,
-    guarded by a lock. A permanent-for-session failure flag stops us from
-    re-hitting the network on every turn when the backend is unreachable.
+    guarded by a lock. After a failed activation we back off for a short
+    cooldown (``_ACTIVATION_RETRY_COOLDOWN``) so a transient backend blip does
+    not poison the client for the whole run, while still avoiding a network hit
+    on every turn.
     """
 
-    def __init__(self, api_key: str, agent_id: str, *, pattern: str = "tool",
-                 auto_create: bool = True, session_duration_hours: Optional[int] = None):
+    def __init__(
+        self,
+        api_key: str,
+        agent_id: str,
+        *,
+        pattern: str = "tool",
+        auto_create: bool = True,
+        session_duration_hours: int | None = None,
+    ):
         from memanto.cli.client.sdk_client import SdkClient
 
         self._agent_id = agent_id
@@ -248,7 +289,7 @@ class _MemantoClient:
         self._client = SdkClient(api_key=api_key)
         self._lock = threading.Lock()
         self._ready = False
-        self._failed = False
+        self._retry_after = 0.0
 
     @property
     def agent_id(self) -> str:
@@ -260,12 +301,15 @@ class _MemantoClient:
         with self._lock:
             if self._ready:
                 return
-            if self._failed:
-                raise RuntimeError("Memanto session activation previously failed this session")
+            if time.monotonic() < self._retry_after:
+                raise RuntimeError(
+                    "Memanto session activation is cooling down after a recent failure"
+                )
             from memanto.app.utils.errors import (
                 AgentAlreadyExistsError,
                 AgentNotFoundError,
             )
+
             try:
                 try:
                     self._client.get_agent(self._agent_id)
@@ -285,13 +329,22 @@ class _MemantoClient:
                     duration_hours=self._session_duration_hours,
                 )
                 self._ready = True
+                self._retry_after = 0.0
             except Exception:
-                self._failed = True
+                self._retry_after = time.monotonic() + _ACTIVATION_RETRY_COOLDOWN
                 raise
 
-    def remember(self, *, memory_type: str, title: str, content: str,
-                 confidence: float, tags: Optional[List[str]] = None,
-                 source: str = "hermes", provenance: str = "explicit_statement") -> dict:
+    def remember(
+        self,
+        *,
+        memory_type: str,
+        title: str,
+        content: str,
+        confidence: float,
+        tags: list[str] | None = None,
+        source: str = "hermes",
+        provenance: str = "explicit_statement",
+    ) -> dict:
         self.ensure_session()
         return self._client.remember(
             agent_id=self._agent_id,
@@ -304,8 +357,14 @@ class _MemantoClient:
             provenance=provenance,
         )
 
-    def recall(self, query: str, *, limit: int, type: Optional[List[str]] = None,
-               min_confidence: Optional[float] = None) -> List[dict]:
+    def recall(
+        self,
+        query: str,
+        *,
+        limit: int,
+        type: list[str] | None = None,
+        min_confidence: float | None = None,
+    ) -> list[dict]:
         self.ensure_session()
         result = self._client.recall(
             agent_id=self._agent_id,
@@ -316,7 +375,7 @@ class _MemantoClient:
         )
         return result.get("memories", [])
 
-    def answer(self, question: str, *, limit: Optional[int] = None) -> dict:
+    def answer(self, question: str, *, limit: int | None = None) -> dict:
         self.ensure_session()
         return self._client.answer(
             agent_id=self._agent_id,
@@ -333,14 +392,24 @@ REMEMBER_SCHEMA = {
     "parameters": {
         "type": "object",
         "properties": {
-            "content": {"type": "string", "description": "The memory itself — one atomic, self-contained statement."},
+            "content": {
+                "type": "string",
+                "description": "The memory itself — one atomic, self-contained statement.",
+            },
             "type": {
                 "type": "string",
                 "enum": list(_VALID_MEMORY_TYPES),
                 "description": "Semantic memory type. Use 'preference' for likes/styles, 'fact' for stable claims, 'decision' for choices, 'goal' for objectives, 'instruction' for directives.",
             },
-            "tags": {"type": "array", "items": {"type": "string"}, "description": "Optional lowercase tags for later filtering."},
-            "confidence": {"type": "number", "description": "How sure you are this is true, 0.0-1.0. Use 1.0 only for explicit statements."},
+            "tags": {
+                "type": "array",
+                "items": {"type": "string"},
+                "description": "Optional lowercase tags for later filtering.",
+            },
+            "confidence": {
+                "type": "number",
+                "description": "How sure you are this is true, 0.0-1.0. Use 1.0 only for explicit statements.",
+            },
         },
         "required": ["content"],
     },
@@ -352,8 +421,14 @@ RECALL_SCHEMA = {
     "parameters": {
         "type": "object",
         "properties": {
-            "query": {"type": "string", "description": "Natural-language search query."},
-            "limit": {"type": "integer", "description": "Maximum results to return, 1 to 100."},
+            "query": {
+                "type": "string",
+                "description": "Natural-language search query.",
+            },
+            "limit": {
+                "type": "integer",
+                "description": "Maximum results to return, 1 to 100.",
+            },
             "type": {
                 "type": "array",
                 "items": {"type": "string", "enum": list(_VALID_MEMORY_TYPES)},
@@ -370,8 +445,14 @@ ANSWER_SCHEMA = {
     "parameters": {
         "type": "object",
         "properties": {
-            "question": {"type": "string", "description": "The question to answer from memory."},
-            "limit": {"type": "integer", "description": "Number of context memories to retrieve, 1 to 100."},
+            "question": {
+                "type": "string",
+                "description": "The question to answer from memory.",
+            },
+            "limit": {
+                "type": "integer",
+                "description": "Number of context memories to retrieve, 1 to 100.",
+            },
         },
         "required": ["question"],
     },
@@ -384,19 +465,19 @@ class MemantoMemoryProvider(MemoryProvider):
     def __init__(self):
         self._config = _default_config()
         self._api_key = ""
-        self._client: Optional[_MemantoClient] = None
+        self._client: _MemantoClient | None = None
         self._agent_id = "hermes"
         self._hermes_home = ""
         self._auto_recall = True
         self._auto_capture = True
         self._mirror_memory_writes = True
         self._max_recall_results = _DEFAULT_MAX_RECALL_RESULTS
-        self._min_confidence: Optional[float] = None
+        self._min_confidence: float | None = None
         self._write_enabled = True
         self._active = False
-        self._warmup_thread: Optional[threading.Thread] = None
-        self._sync_thread: Optional[threading.Thread] = None
-        self._write_thread: Optional[threading.Thread] = None
+        self._warmup_thread: threading.Thread | None = None
+        self._sync_thread: threading.Thread | None = None
+        self._write_thread: threading.Thread | None = None
 
     @property
     def name(self) -> str:
@@ -432,12 +513,15 @@ class MemantoMemoryProvider(MemoryProvider):
 
     def save_config(self, values, hermes_home):
         sanitized = dict(values or {})
+        sanitized.pop("api_key", None)
         # Keep the {identity} template intact; only sanitize concrete ids.
         if "agent_id" in sanitized and "{identity}" not in str(sanitized["agent_id"]):
             sanitized["agent_id"] = _sanitize_agent_id(str(sanitized["agent_id"]))
         if "pattern" in sanitized:
             pattern = str(sanitized["pattern"]).strip().lower()
-            sanitized["pattern"] = pattern if pattern in _VALID_PATTERNS else _DEFAULT_PATTERN
+            sanitized["pattern"] = (
+                pattern if pattern in _VALID_PATTERNS else _DEFAULT_PATTERN
+            )
         _save_memanto_config(sanitized, hermes_home)
 
     def initialize(self, session_id: str, **kwargs) -> None:
@@ -447,7 +531,9 @@ class MemantoMemoryProvider(MemoryProvider):
 
         # Resolve the agent id: env override > config, with {identity} template.
         identity = kwargs.get("agent_identity", "default") or "default"
-        raw_id = os.environ.get("MEMANTO_AGENT_ID", "").strip() or self._config["agent_id"]
+        raw_id = (
+            os.environ.get("MEMANTO_AGENT_ID", "").strip() or self._config["agent_id"]
+        )
         self._agent_id = _sanitize_agent_id(raw_id.replace("{identity}", identity))
 
         self._auto_recall = self._config["auto_recall"]
@@ -503,7 +589,12 @@ class MemantoMemoryProvider(MemoryProvider):
         )
 
     def prefetch(self, query: str, *, session_id: str = "") -> str:
-        if not self._active or not self._auto_recall or not self._client or not query.strip():
+        if (
+            not self._active
+            or not self._auto_recall
+            or not self._client
+            or not query.strip()
+        ):
             return ""
         try:
             memories = self._client.recall(
@@ -516,22 +607,37 @@ class MemantoMemoryProvider(MemoryProvider):
             logger.debug("Memanto prefetch failed", exc_info=True)
             return ""
 
-    def sync_turn(self, user_content: str, assistant_content: str, *, session_id: str = "") -> None:
-        if not self._active or not self._auto_capture or not self._write_enabled or not self._client:
+    def sync_turn(
+        self, user_content: str, assistant_content: str, *, session_id: str = ""
+    ) -> None:
+        if (
+            not self._active
+            or not self._auto_capture
+            or not self._write_enabled
+            or not self._client
+        ):
             return
+        client = self._client
         clean_user = _clean_text_for_capture(user_content)
         clean_assistant = _clean_text_for_capture(assistant_content)
-        if len(clean_user) < _MIN_CAPTURE_LENGTH or len(clean_assistant) < _MIN_CAPTURE_LENGTH:
+        if (
+            len(clean_user) < _MIN_CAPTURE_LENGTH
+            or len(clean_assistant) < _MIN_CAPTURE_LENGTH
+        ):
             return
         if _is_trivial_message(clean_user):
             return
 
-        title = clean_user[:_MAX_TITLE_LENGTH - 3] + "..." if len(clean_user) > _MAX_TITLE_LENGTH else clean_user
+        title = (
+            clean_user[: _MAX_TITLE_LENGTH - 3] + "..."
+            if len(clean_user) > _MAX_TITLE_LENGTH
+            else clean_user
+        )
         content = f"User: {clean_user}\n\nAssistant: {clean_assistant}"
 
         def _run():
             try:
-                self._client.remember(
+                client.remember(
                     memory_type="event",
                     title=title,
                     content=content,
@@ -545,22 +651,39 @@ class MemantoMemoryProvider(MemoryProvider):
 
         if self._sync_thread and self._sync_thread.is_alive():
             self._sync_thread.join(timeout=2.0)
-        self._sync_thread = threading.Thread(target=_run, daemon=True, name="memanto-sync")
+        self._sync_thread = threading.Thread(
+            target=_run, daemon=True, name="memanto-sync"
+        )
         self._sync_thread.start()
 
-    def on_memory_write(self, action: str, target: str, content: str,
-                        metadata: Optional[Dict[str, Any]] = None) -> None:
-        if not self._active or not self._write_enabled or not self._mirror_memory_writes or not self._client:
+    def on_memory_write(
+        self,
+        action: str,
+        target: str,
+        content: str,
+        metadata: dict[str, Any] | None = None,
+    ) -> None:
+        if (
+            not self._active
+            or not self._write_enabled
+            or not self._mirror_memory_writes
+            or not self._client
+        ):
             return
         if action != "add" or not (content or "").strip():
             return
+        client = self._client
         clean = content.strip()
-        title = clean[:_MAX_TITLE_LENGTH - 3] + "..." if len(clean) > _MAX_TITLE_LENGTH else clean
+        title = (
+            clean[: _MAX_TITLE_LENGTH - 3] + "..."
+            if len(clean) > _MAX_TITLE_LENGTH
+            else clean
+        )
         mem_type = "preference" if target == "user" else _detect_memory_type(clean)
 
         def _run():
             try:
-                self._client.remember(
+                client.remember(
                     memory_type=mem_type,
                     title=title,
                     content=clean,
@@ -574,7 +697,9 @@ class MemantoMemoryProvider(MemoryProvider):
 
         if self._write_thread and self._write_thread.is_alive():
             self._write_thread.join(timeout=2.0)
-        self._write_thread = threading.Thread(target=_run, daemon=False, name="memanto-memory-write")
+        self._write_thread = threading.Thread(
+            target=_run, daemon=False, name="memanto-memory-write"
+        )
         self._write_thread.start()
 
     def shutdown(self) -> None:
@@ -586,7 +711,7 @@ class MemantoMemoryProvider(MemoryProvider):
 
     # -- Tools ----------------------------------------------------------------
 
-    def get_tool_schemas(self) -> List[Dict[str, Any]]:
+    def get_tool_schemas(self) -> list[dict[str, Any]]:
         return [REMEMBER_SCHEMA, RECALL_SCHEMA, ANSWER_SCHEMA]
 
     def _tool_remember(self, args: dict) -> str:
@@ -604,7 +729,11 @@ class MemantoMemoryProvider(MemoryProvider):
         except (TypeError, ValueError):
             confidence = _DEFAULT_CONFIDENCE
         confidence = max(0.0, min(1.0, confidence))
-        title = content[:_MAX_TITLE_LENGTH - 3] + "..." if len(content) > _MAX_TITLE_LENGTH else content
+        title = (
+            content[: _MAX_TITLE_LENGTH - 3] + "..."
+            if len(content) > _MAX_TITLE_LENGTH
+            else content
+        )
         try:
             result = self._client.remember(
                 memory_type=mem_type,
@@ -615,12 +744,14 @@ class MemantoMemoryProvider(MemoryProvider):
                 source="hermes-tool",
                 provenance="explicit_statement",
             )
-            return json.dumps({
-                "saved": True,
-                "memory_id": result.get("memory_id"),
-                "agent_id": self._agent_id,
-                "type": mem_type,
-            })
+            return json.dumps(
+                {
+                    "saved": True,
+                    "memory_id": result.get("memory_id"),
+                    "agent_id": self._agent_id,
+                    "type": mem_type,
+                }
+            )
         except Exception as exc:
             return tool_error(f"Failed to store memory: {exc}")
 
@@ -629,7 +760,16 @@ class MemantoMemoryProvider(MemoryProvider):
         if not query:
             return tool_error("query is required")
         try:
-            limit = max(1, min(100, int(args.get("limit", self._max_recall_results) or self._max_recall_results)))
+            limit = max(
+                1,
+                min(
+                    100,
+                    int(
+                        args.get("limit", self._max_recall_results)
+                        or self._max_recall_results
+                    ),
+                ),
+            )
         except (TypeError, ValueError):
             limit = self._max_recall_results
         type_filter = args.get("type")
@@ -637,11 +777,14 @@ class MemantoMemoryProvider(MemoryProvider):
             type_filter = [type_filter]
         try:
             memories = self._client.recall(
-                query, limit=limit, type=type_filter, min_confidence=self._min_confidence
+                query,
+                limit=limit,
+                type=type_filter,
+                min_confidence=self._min_confidence,
             )
             formatted = []
             for item in memories:
-                entry: Dict[str, Any] = {
+                entry: dict[str, Any] = {
                     "id": item.get("id"),
                     "type": item.get("type"),
                     "content": item.get("content") or item.get("title", ""),
@@ -667,15 +810,17 @@ class MemantoMemoryProvider(MemoryProvider):
         try:
             result = self._client.answer(question, limit=limit)
             sources = result.get("sources", []) or []
-            return json.dumps({
-                "answer": result.get("answer", ""),
-                "sources": sources,
-                "count": len(sources),
-            })
+            return json.dumps(
+                {
+                    "answer": result.get("answer", ""),
+                    "sources": sources,
+                    "count": len(sources),
+                }
+            )
         except Exception as exc:
             return tool_error(f"Answer failed: {exc}")
 
-    def handle_tool_call(self, tool_name: str, args: Dict[str, Any], **kwargs) -> str:
+    def handle_tool_call(self, tool_name: str, args: dict[str, Any], **kwargs) -> str:
         if not self._active or not self._client:
             return tool_error("Memanto is not configured")
         if tool_name == "memanto_remember":
