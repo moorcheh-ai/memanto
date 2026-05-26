@@ -175,8 +175,10 @@ class MeMantoClient:
         Returns list of memory dicts ordered by relevance.
         """
         body: Dict = {"q": query, "limit": limit}
-        if memory_type:
+        if memory_type in VALID_MEMORY_TYPES:
             body["type"] = memory_type
+        elif memory_type:
+            logger.warning("unsupported recall memory_type=%s; omitting filter", memory_type)
         try:
             r = self._request(
                 self._http.post,
