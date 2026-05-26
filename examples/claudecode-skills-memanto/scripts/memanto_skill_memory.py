@@ -27,7 +27,13 @@ def run_or_preview(command: MemoryCommand, dry_run: bool) -> int:
     if dry_run:
         print(command.display())
         return 0
-    completed = subprocess.run(command.args, check=False)
+    try:
+        completed = subprocess.run(command.args, check=False)
+    except FileNotFoundError:
+        print(
+            f"Error: memanto CLI was not found while running: {command.display()}",
+        )
+        return 127
     return completed.returncode
 
 

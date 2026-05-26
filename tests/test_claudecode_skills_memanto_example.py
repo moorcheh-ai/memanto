@@ -9,12 +9,13 @@ README = EXAMPLE_DIR / "README.md"
 SKILL = EXAMPLE_DIR / "skills" / "memanto-project-memory" / "SKILL.md"
 
 
-def run_script(*args: str) -> subprocess.CompletedProcess[str]:
+def run_script(*args: str, timeout: int = 30) -> subprocess.CompletedProcess[str]:
     return subprocess.run(
         [sys.executable, str(SCRIPT), *args],
         check=False,
         capture_output=True,
         text=True,
+        timeout=timeout,
     )
 
 
