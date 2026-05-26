@@ -143,6 +143,8 @@ def run_skill(skill_name: str, skill_args: list[str]) -> None:
         sys.exit(1)
 
     post_hook(skill_name, output)
+    if proc.returncode != 0:
+        sys.exit(proc.returncode)
 
 
 def main() -> None:
