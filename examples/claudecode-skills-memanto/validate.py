@@ -5,14 +5,17 @@ validate.py — Smoke tests for the Claude Code Skills × Memanto bridge
 Run: python3 validate.py
 """
 
+import atexit
 import json
 import os
+import shutil
 import subprocess
 import sys
 import tempfile
 
 SCRIPT = os.path.join(os.path.dirname(__file__), "skills-memory.sh")
 PREVIEW_DIR = tempfile.mkdtemp(prefix="memanto-test-")
+atexit.register(shutil.rmtree, PREVIEW_DIR, ignore_errors=True)
 
 def run(cmd, env_extra=None):
     env = os.environ.copy()
@@ -42,35 +45,35 @@ def test_remember_and_recall():
     assert r.returncode == 0, f"recall failed: {r.stderr}"
     assert "JWT" in r.stdout or "matches" in r.stdout, f"recall didn't find JWT: {r.stdout}"
 
-    print("  PASS: remember + recall")
+    print(" PASS: remember + recall")
 
 def test_auto_tagging():
     """Verify auto-tagging based on content heuristics."""
     r = run(["remember", "Architecture uses hexagonal design pattern"])
     assert r.returncode == 0
     assert "architecture" in r.stdout.lower(), f"auto-tag failed: {r.stdout}"
-    print("  PASS: auto-tagging")
+    print(" PASS: auto-tagging")
 
 def test_wrap_lifecycle():
     """Test the full wrap lifecycle with a simple command."""
     r = run(["wrap", "echo 'Using Next.js 15 App Router for the frontend'"])
     assert r.returncode == 0, f"wrap failed: {r.stderr}"
-    print("  PASS: wrap lifecycle")
+    print(" PASS: wrap lifecycle")
 
 def test_explicit_tag():
- """Verify --tag flag parsing works correctly (not setting tag to '--tag')."""
- r = run(["remember", "Security decision: use HTTPS only", "--tag", "security"])
- assert r.returncode == 0, f"remember --tag failed: {r.stderr}"
- # Verify the tag 'security' appears in output (not literal '--tag')
- assert "security" in r.stdout.lower(), f"--tag not parsed correctly: {r.stdout}"
- assert "--tag" not in r.stdout, f"--tag literal leaked into output: {r.stdout}"
- print(" PASS: explicit --tag flag")
+    """Verify --tag flag parsing works correctly (not setting tag to '--tag')."""
+    r = run(["remember", "Security decision: use HTTPS only", "--tag", "security"])
+    assert r.returncode == 0, f"remember --tag failed: {r.stderr}"
+    # Verify the tag 'security' appears in output (not literal '--tag')
+    assert "security" in r.stdout.lower(), f"--tag not parsed correctly: {r.stdout}"
+    assert "--tag" not in r.stdout, f"--tag literal leaked into output: {r.stdout}"
+    print(" PASS: explicit --tag flag")
 
 def test_daily_summary():
     """Test daily summary in preview mode."""
     r = run(["daily"])
     assert r.returncode == 0
-    print("  PASS: daily summary")
+    print(" PASS: daily summary")
 
 def test_help():
     """Test help output."""
@@ -78,13 +81,13 @@ def test_help():
     assert r.returncode == 0
     assert "recall" in r.stdout
     assert "remember" in r.stdout
-    print("  PASS: help")
+    print(" PASS: help")
 
 def test_unknown_command():
     """Test error on unknown command."""
     r = run(["foobar"])
     assert r.returncode != 0
-    print("  PASS: unknown command rejected")
+    print(" PASS: unknown command rejected")
 
 def test_empty_recall():
     """Recall with no stored memories should not crash."""
@@ -96,9 +99,8 @@ def test_empty_recall():
             capture_output=True, text=True, env=env, timeout=10
         )
         assert r.returncode == 0, f"empty recall crashed: {r.stderr}"
-        print("  PASS: empty recall")
+        print(" PASS: empty recall")
     finally:
-        import shutil
         shutil.rmtree(clean_dir, ignore_errors=True)
 
 def main():
@@ -124,18 +126,14 @@ def main():
             t()
             passed += 1
         except AssertionError as e:
-            print(f"  FAIL: {t.__name__}: {e}")
+            print(f" FAIL: {t.__name__}: {e}")
             failed += 1
         except Exception as e:
-            print(f"  ERROR: {t.__name__}: {e}")
+            print(f" ERROR: {t.__name__}: {e}")
             failed += 1
 
     print()
     print(f"Results: {passed} passed, {failed} failed")
-
-    # Cleanup
-    import shutil
-    shutil.rmtree(PREVIEW_DIR, ignore_errors=True)
 
     sys.exit(1 if failed else 0)
 
