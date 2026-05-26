@@ -93,19 +93,21 @@ memanto-skills run grill-with-docs -- --file src/main.py
 
 ### Pre-hook (`memanto-skills pre <skill>`)
 
-1. Calls `memanto memory export` to retrieve stored engineering decisions
-2. Formats them as a compact context block
-3. Prints to stdout for piping into the skill prompt
+1. Calls `memanto memory export` with a `--query` parameter specific to the skill name
+2. Retrieves stored engineering decisions related to that skill
+3. Formats them as a compact context block
+4. Prints to stdout for piping into the skill prompt
 
 ### Post-hook (`memanto-skills post <skill>`)
 
 1. Reads the skill transcript from stdin
-2. Stores a summary as a memory via Memanto
-3. Future pre-hooks will recall this decision
+2. Writes a summary to a temp file
+3. Calls `memanto memory import` to persist the decision summary as a typed memory
+4. Future pre-hooks will recall this decision
 
 ### Full run (`memanto-skills run <skill> -- <args>`)
 
-1. Pre-hook: recall relevant context
+1. Pre-hook: recall relevant context (with API key check)
 2. Execute the skill with original arguments
 3. Post-hook: store new decisions
 
