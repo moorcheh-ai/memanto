@@ -5,7 +5,7 @@ memory across terminal sessions.
 
 Phases:
   - pre:  Recall relevant engineering context before a skill starts.
-  - post: Distill decisions from the completed skill and persist them.
+  - post: Persist decisions from the completed skill into Memanto.
   - run:  pre + skill execution + post in one command.
 
 Usage:
@@ -14,7 +14,6 @@ Usage:
   memanto-skills run <skill_name> -- <skill_args...>
 """
 
-import json
 import os
 import subprocess
 import sys
@@ -45,58 +44,80 @@ def _ensure_api_key() -> str:
 def pre_hook(skill_name: str) -> None:
     """Pre-skill hook: recall relevant engineering context.
 
-    Queries Memanto for memories related to the skill being executed
-    and prints a compact context block that can be appended to the
-    skill prompt.
+    Uses `memanto recall` to search for memories related to the skill
+    being executed. If recall fails or returns nothing, falls back to
+    exporting all memories as a baseline context.
     """
     _ensure_api_key()
     agent_id = MEMANTO_AGENT_ID
 
+    query = f"engineering decisions about {skill_name}"
     try:
         result = subprocess.run(
-            ["memanto", "memory", "export", "--agent", agent_id,
-             "--limit", "10", "--query", f"engineering decisions related to {skill_name}"],
+            ["memanto", "recall", query, "--agent", agent_id],
             capture_output=True, text=True, timeout=15,
         )
-        context = result.stdout.strip()[:CONTEXT_LIMIT] if result.stdout else ""
-    except (subprocess.TimeoutExpired, FileNotFoundError) as e:
-        context = ""
+        if result.returncode == 0 and result.stdout.strip():
+            context = result.stdout.strip()[:CONTEXT_LIMIT]
+            print(f"--- Memanto Context for '{skill_name}' ---")
+            print(context)
+            print("--- End Memanto Context ---")
+            return
+    except (subprocess.TimeoutExpired, FileNotFoundError):
+        pass
 
-    if context:
-        print(f"--- Memanto Context for '{skill_name}' ---")
-        print(context)
-        print("--- End Memanto Context ---")
-    else:
-        print("# No relevant engineering context found.")
+    # Fallback: export all memories if targeted recall fails
+    try:
+        result = subprocess.run(
+            ["memanto", "memory", "export", "--agent", agent_id, "--limit", "10"],
+            capture_output=True, text=True, timeout=15,
+        )
+        if result.returncode == 0 and result.stdout.strip():
+            context = result.stdout.strip()[:CONTEXT_LIMIT]
+            if context:
+                print(f"--- Memanto Context for '{skill_name}' ---")
+                print(context)
+                print("--- End Memanto Context ---")
+                return
+    except (subprocess.TimeoutExpired, FileNotFoundError):
+        pass
+
+    print("# No relevant engineering context found.")
 
 
 def post_hook(skill_name: str, transcript: str) -> None:
     """Post-skill hook: persist engineering decisions.
 
-    Extracts key decisions from the skill transcript and stores them
-    as Memanto memories for future recall.
+    Stores a decision summary as a Memanto memory using `memanto remember`.
+    Uses a securely-generated temp file for the memory content.
     """
     _ensure_api_key()
     agent_id = MEMANTO_AGENT_ID
 
     summary = f"Skill '{skill_name}' completed.\n{transcript[:2000]}"
+    tmp_path = None
 
     try:
-        path = "/tmp/memanto_skill_summary.md"
-        with open(path, "w") as f:
+        # Write summary to a secure temp file
+        with tempfile.NamedTemporaryFile(
+            mode="w", suffix=".md", prefix="memanto_skill_", delete=False
+        ) as f:
             f.write(summary)
+            tmp_path = Path(f.name)
 
         result = subprocess.run(
-            ["memanto", "memory", "import", path, "--agent", agent_id,
-             "--type", "decision"],
+            ["memanto", "remember", str(tmp_path), "--agent", agent_id],
             capture_output=True, text=True, timeout=15,
         )
         if result.returncode == 0:
             print(f"# Engineering context from '{skill_name}' stored in Memanto.")
         else:
-            print(f"# Warning: Failed to store context: {result.stderr.strip()}")
+            print(f"# Warning: Failed to store context: {result.stderr.strip()[:200]}")
     except (subprocess.TimeoutExpired, FileNotFoundError) as e:
-        print("# Warning: Memanto not available, context not stored.")
+        print(f"# Warning: Memanto not available, context not stored: {e}")
+    finally:
+        if tmp_path and tmp_path.exists():
+            tmp_path.unlink()
 
 
 def run_skill(skill_name: str, skill_args: list[str]) -> None:
