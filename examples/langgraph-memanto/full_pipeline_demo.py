@@ -1,34 +1,37 @@
-import os
+import uuid
+from memanto.cli.client.sdk_client import SdkClient
+from integrations.langgraph.memanto_checkpointer import MemantoCheckpointSaver
+from integrations.langgraph.memanto_manager import MemoryManager
 from examples.langgraph_memanto.agent import create_graph
 
-def run_cross_process_demo():
-    AGENT_ID = "bounty_agent_001"
+def run_demo():
+    agent_id = "prod_agent_001"
+    thread_id = str(uuid.uuid4())
+    sdk = SdkClient()
     
-    # Session 1: Teach the agent something
-    print("\n--- Session 1: Learning ---")
-    graph_s1 = create_graph(AGENT_ID)
-    config_1 = {"configurable": {"thread_id": "user_abc", "checkpoint_id": "cp1"}}
+    # Setup Infrastructure
+    saver = MemantoCheckpointSaver(sdk, agent_id)
+    manager = MemoryManager(sdk, agent_id)
     
-    inputs_1 = {
-        "messages": [("user", "My favorite color is Crimson. Remember that.")],
-        "user_id": "user_abc"
-    }
+    # Seed a long-term memory
+    manager.store_memory("User prefers Python over JavaScript", "preference")
     
-    for event in graph_s1.stream(inputs_1, config=config_1):
-        print(event)
-
-    # Session 2: New process/instance, retrieve from Memanto
-    print("\n--- Session 2: Recall (New Instance) ---")
-    graph_s2 = create_graph(AGENT_ID)
-    config_2 = {"configurable": {"thread_id": "user_abc", "checkpoint_id": "cp1"}}
+    graph = create_graph(saver)
+    config = {"configurable": {"thread_id": thread_id}}
     
-    inputs_2 = {
-        "messages": [("user", "What is my favorite color?")],
-        "user_id": "user_abc"
-    }
+    # Session 1: Initial Interaction
+    input_1 = {"messages": [("user", "What language should I use?")], "agent_id": agent_id}
+    output_1 = graph.invoke(input_1, config)
+    print(f"Session 1 Response: {output_1['messages'][-1].content}")
     
-    for event in graph_s2.stream(inputs_2, config=config_2):
-        print(event)
+    # Session 2: Cross-process persistence check
+    # Re-instantiating graph and saver to simulate new process
+    new_saver = MemantoCheckpointSaver(sdk, agent_id)
+    new_graph = create_graph(new_saver)
+    
+    input_2 = {"messages": [("user", "Remind me of my preference.")], "agent_id": agent_id}
+    output_2 = new_graph.invoke(input_2, config)
+    print(f"Session 2 Response: {output_2['messages'][-1].content}")
 
 if __name__ == "__main__":
-    run_cross_process_demo()
+    run_demo()

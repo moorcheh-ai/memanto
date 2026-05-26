@@ -1,43 +1,51 @@
 import pytest
-from integrations.langgraph import MemantoSaver, MemantoOCCError
+from unittest.mock import MagicMock
 from memanto.cli.client.sdk_client import SdkClient
+from integrations.langgraph.memanto_checkpointer import MemantoCheckpointSaver
+from integrations.langgraph.memanto_manager import MemoryManager
+from integrations.langgraph.memanto_checkpoint import MemoryWrapper
 
-def test_cross_thread_persistence():
-    agent_id = "test_agent_cross_thread"
-    client = SdkClient()
-    saver = MemantoSaver(agent_id=agent_id)
-    
-    # Write to Thread A
-    config_a = {"configurable": {"thread_id": "thread_a"}}
-    checkpoint_a = {"id": "1", "data": "state_a"}
-    saver.put(config_a, checkpoint_a, {}, None)
-    
-    # Assert it's in Memanto
-    raw = client.get_memory(agent_id, "checkpoint:thread_a:1")
-    assert raw is not None
-    assert raw["checkpoint"]["data"] == "state_a"
+@pytest.fixture
+def mock_sdk():
+    sdk = MagicMock(spec=SdkClient)
+    sdk.get_session_state.return_value = {"version_id": 1, "state": {}}
+    sdk.update_session_state.return_value = True
+    return sdk
 
-def test_occ_collision():
-    agent_id = "test_agent_occ"
-    saver = MemantoSaver(agent_id=agent_id)
+def test_occ_success(mock_sdk):
+    saver = MemantoCheckpointSaver(mock_sdk, "test_agent")
+    config = {"configurable": {"thread_id": "test_thread"}}
     
-    config = {"configurable": {"thread_id": "occ_thread"}}
-    checkpoint = {"id": "1", "data": "initial"}
+    result = saver.put(config, {"data": "val"}, {})
+    assert result == config
+    mock_sdk.update_session_state.assert_called_once()
+
+def test_occ_retry_on_conflict(mock_sdk):
+    # Simulate version mismatch first, then success
+    mock_sdk.get_session_state.side_effect = [
+        {"version_id": 2}, # Read 1
+        {"version_id": 1}, # Read 2 (Retry)
+    ]
+    mock_sdk.update_session_state.side_effect = [False, True]
     
-    # First save
-    saver.put(config, checkpoint, {}, None)
+    saver = MemantoCheckpointSaver(mock_sdk, "test_agent")
+    config = {"configurable": {"thread_id": "test_thread"}}
     
-    # Simulate a stale state object with version 0 (should be 1 now)
-    from integrations.langgraph.memanto_checkpoint import CheckpointState
-    stale_state = CheckpointState(
-        thread_id="occ_thread",
-        checkpoint_id="1",
-        checkpoint=checkpoint,
-        version=0 
-    )
+    result = saver.put(config, {"data": "val"}, {})
+    assert result == config
+    assert mock_sdk.update_session_state.call_count == 2
+
+def test_memory_manager_type_validation(mock_sdk):
+    manager = MemoryManager(mock_sdk, "test_agent")
     
-    from integrations.langgraph.memanto_manager import MemantoStateManager
-    manager = MemantoStateManager(agent_id)
-    
-    with pytest.raises(MemantoOCCError):
-        manager.save_state(stale_state)
+    with pytest.raises(ValueError):
+        manager.store_memory("Invalid", "non_existent_type")
+        
+    manager.store_memory("Valid", "preference")
+    mock_sdk.save_semantic_memory.assert_called_once()
+
+def test_memory_wrapper_serialization():
+    wrapper = MemoryWrapper(content="Test", memory_type="fact")
+    json_data = wrapper.model_dump_json()
+    reconstructed = MemoryWrapper.model_validate_json(json_data)
+    assert reconstructed.content == "Test"

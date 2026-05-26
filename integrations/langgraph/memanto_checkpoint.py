@@ -1,13 +1,23 @@
-from pydantic import BaseModel, Field
-from typing import Any, Dict, Optional
+from typing import TypeVar, Generic, Annotated, Dict, Any, Optional
+from pydantic import BaseModel, Field, ConfigDict
+from datetime import datetime
 
-class CheckpointState(BaseModel):
-    thread_id: str
-    checkpoint_id: str
-    checkpoint: Dict[str, Any]
+T = TypeVar("T")
+
+class MemoryWrapper(BaseModel, Generic[T]):
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+    
+    content: T
+    memory_type: str
+    timestamp: datetime = Field(default_factory=datetime.utcnow)
+    version_id: int = 1
     metadata: Dict[str, Any] = Field(default_factory=dict)
-    version: int = 0
 
-class MemantoOCCError(Exception):
-    """Raised when a concurrent modification is detected."""
-    pass
+class GraphState(BaseModel):
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+    
+    agent_id: str
+    thread_id: str
+    messages: list = Field(default_factory=list)
+    semantic_memories: list[MemoryWrapper] = Field(default_factory=list)
+    iteration: int = 0
