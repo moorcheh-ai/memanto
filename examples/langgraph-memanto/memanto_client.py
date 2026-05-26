@@ -112,13 +112,13 @@ class MeMantoClient:
             return {"id": None, "content": content, "error": str(exc)}
 
     def recall(self, query: str, limit: int = 5, memory_type: Optional[str] = None) -> List[Dict]:
-        params = {"q": query, "limit": limit}
+        payload: dict = {"q": query, "limit": limit}
         if memory_type:
-            params["type"] = memory_type
+            payload["type"] = memory_type
         try:
             r = self._request_with_retry(
-                self._http.get, self._aurl("/recall"),
-                params=params, headers=self._headers(), timeout=15)
+                self._http.post, self._aurl("/recall"),
+                json=payload, headers=self._headers(), timeout=15)
             r.raise_for_status()
             return r.json().get("memories", [])
         except Exception as exc:
