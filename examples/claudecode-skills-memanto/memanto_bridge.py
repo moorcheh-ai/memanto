@@ -171,17 +171,17 @@ class MeMantoClient:
         memory_type: Optional[str] = None,
     ) -> List[Dict]:
         """
-        Semantic search via GET /recall.
+        Semantic search via POST /recall (parameters in JSON body).
         Returns list of memory dicts ordered by relevance.
         """
-        params: Dict = {"q": query, "limit": limit}
+        body: Dict = {"q": query, "limit": limit}
         if memory_type:
-            params["type"] = memory_type
+            body["type"] = memory_type
         try:
             r = self._request(
-                self._http.get,
+                self._http.post,
                 self._aurl("/recall"),
-                params=params,
+                json=body,
                 headers=self._headers(),
                 timeout=15,
             )
