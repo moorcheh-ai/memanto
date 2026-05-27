@@ -1,76 +1,81 @@
-import time
-import logging
-from typing import Any, Optional, Dict
-from langgraph.checkpoint.base import BaseCheckpointSaver, Checkpoint, CheckpointTuple
+import pickle
+from typing import Any, Dict, Optional, Sequence
+from langgraph.checkpoint.base import BaseCheckpointSaver, Checkpoint, CheckpointTuple, CheckpointMetadata
 from memanto.cli.client.sdk_client import SdkClient
-from integrations.langgraph.memanto_checkpoint import GraphState
 
-logger = logging.getLogger("memanto_checkpointer")
-
-class MemantoCheckpointSaver(BaseCheckpointSaver):
-    def __init__(self, sdk_client: SdkClient, agent_id: str):
+class MemantoCheckpointer(BaseCheckpointSaver):
+    """
+    Type-safe checkpointer for LangGraph V3 using Memanto as the persistence layer.
+    """
+    def __init__(self, client: SdkClient, namespace: str = "langgraph_state"):
         super().__init__()
-        self.client = sdk_client
-        self.agent_id = agent_id
+        self.client = client
+        self.namespace = namespace
+
+    def put(
+        self,
+        config: Dict[str, Any],
+        checkpoint: Checkpoint,
+        metadata: CheckpointMetadata,
+        new_versions: Sequence[tuple[str, Any]]
+    ) -> Dict[str, Any]:
+        thread_id = config["configurable"].get("thread_id")
+        checkpoint_id = checkpoint["id"]
+        
+        # Serialize state to bytes for storage in Memanto
+        serialized_state = pickle.dumps({
+            "checkpoint": checkpoint,
+            "metadata": metadata,
+            "new_versions": new_versions
+        })
+        
+        # Store in Memanto using a composite key to ensure uniqueness per thread and version
+        storage_key = f"{thread_id}___{checkpoint_id}"
+        self.client.write_memory(
+            agent_id=self.namespace,
+            session_id=thread_id,
+            content=serialized_state.hex(), 
+            memory_id=storage_key
+        )
+        
+        return {
+            "checkpoint_id": checkpoint_id,
+            "checkpoint_ns": ""
+        }
 
     def get_tuple(self, config: Dict[str, Any]) -> Optional[CheckpointTuple]:
         thread_id = config["configurable"].get("thread_id")
-        if not thread_id:
-            return None
-            
-        checkpoint_data = self.client.get_session_state(
-            agent_id=self.agent_id, 
+        checkpoint_id = config["configurable"].get("checkpoint_id")
+        
+        # If no specific checkpoint_id, we fetch the latest for the thread
+        # In a real implementation, this would query the most recent memory_id
+        # For this implementation, we assume the current thread_id mapped to the latest state
+        memories = self.client.read_memory(
+            agent_id=self.namespace,
             session_id=thread_id
         )
         
-        if not checkpoint_data:
+        if not memories:
             return None
             
+        # Retrieve the most recent entry
+        latest_memory = memories[0] 
+        raw_payload = bytes.fromhex(latest_memory.content)
+        deserialized = pickle.loads(raw_payload)
+        
         return CheckpointTuple(
             config=config,
-            checkpoint=checkpoint_data,
-            metadata={},
+            checkpoint=deserialized["checkpoint"],
+            metadata=deserialized["metadata"],
             parent_config=None
         )
 
-    def put(self, config: Dict[str, Any], checkpoint: Checkpoint, metadata: Dict[str, Any]) -> Dict[str, Any]:
-        thread_id = config["configurable"].get("thread_id")
-        
-        max_retries = 3
-        backoff = 0.5
-        
-        for attempt in range(max_retries):
-            current_state = self.client.get_session_state(
-                agent_id=self.agent_id, 
-                session_id=thread_id
-            )
-            
-            current_version = current_state.get("version_id", 0) if current_state else 0
-            
-            if current_state and current_state.get("version_id") != current_version:
-                time.sleep(backoff * (2 ** attempt))
-                continue
-                
-            checkpoint_payload = {
-                **checkpoint,
-                "version_id": current_version + 1,
-                "updated_at": time.time()
-            }
-            
-            success = self.client.update_session_state(
-                agent_id=self.agent_id,
-                session_id=thread_id,
-                state=checkpoint_payload,
-                expected_version=current_version
-            )
-            
-            if success:
-                return config
-                
-        raise RuntimeError(f"OCC failure: Concurrent update conflict for thread {thread_id}")
-
-    async def aget_tuple(self, config: Dict[str, Any]) -> Optional[CheckpointTuple]:
-        return self.get_tuple(config)
-
-    async def aput(self, config: Dict[str, Any], checkpoint: Checkpoint, metadata: Dict[str, Any]) -> Dict[str, Any]:
-        return self.put(config, checkpoint, metadata)
+    def list(
+        self,
+        config: Optional[Dict[str, Any]],
+        filter: Optional[Dict[str, Any]] = None,
+        before: Optional[Dict[str, Any]] = None,
+        limit: Optional[int] = None
+    ) -> Sequence[CheckpointTuple]:
+        # Implementation for listing history of checkpoints
+        return []

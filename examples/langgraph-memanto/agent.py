@@ -1,38 +1,49 @@
-from typing import Annotated
-from typing_extensions import TypedDict
+from typing import Annotated, TypedDict
 from langgraph.graph import StateGraph, START, END
 from langgraph.graph.message import add_messages
-from integrations.langgraph.memanto_checkpoint import GraphState
-from integrations.langgraph.memanto_manager import MemoryManager
-from memanto.cli.client.sdk_client import SdkClient
+from langchain_core.tools import tool
+from integrations.langgraph.memanto_manager import MemantoGraphManager
 
-class State(TypedDict):
+# Type-safe state definition
+class AgentState(TypedDict):
     messages: Annotated[list, add_messages]
-    semantic_memories: list
-    agent_id: str
+    user_id: str
+    context_summary: str
 
-def memory_node(state: State, config: dict):
-    sdk = SdkClient()
-    manager = MemoryManager(sdk, state["agent_id"])
-    
-    last_message = state["messages"][-1].content
-    memories = manager.recall_memories(last_message)
-    
-    return {"semantic_memories": memories}
+# Define bound tools using SdkClient
+def create_memanto_tools(sdk_client):
+    @tool
+    def store_user_preference(preference: str, user_id: str):
+        """Store a specific user preference in long-term memory."""
+        sdk_client.write_memory(
+            agent_id="USER_PROFILES",
+            session_id=user_id,
+            content=preference
+        )
+        return f"Preference stored for {user_id}"
 
-def agent_node(state: State):
-    context = "\n".join([m.content for m in state["semantic_memories"]])
-    # Simulated LLM Logic
-    response = f"Processed with memory: {context[:50]}..."
-    return {"messages": [("assistant", response)]}
+    @tool
+    def recall_user_preference(user_id: str):
+        """Recall user preferences from long-term memory."""
+        memories = sdk_client.read_memory(
+            agent_id="USER_PROFILES",
+            session_id=user_id
+        )
+        return memories[0].content if memories else "No preferences found."
 
-def create_graph(checkpointer):
-    workflow = StateGraph(State)
-    workflow.add_node("memory", memory_node)
-    workflow.add_node("agent", agent_node)
+    return [store_user_preference, recall_user_preference]
+
+def call_model(state: AgentState, config):
+    # Mock model logic to demonstrate state transition
+    last_message = state["messages"][-1]
+    return {"messages": [("assistant", f"Processed: {last_message.content}")]}
+
+def create_graph(manager: MemantoGraphManager):
+    workflow = StateGraph(AgentState)
     
-    workflow.add_edge(START, "memory")
-    workflow.add_edge("memory", "agent")
+    workflow.add_node("agent", call_model)
+    workflow.add_edge(START, "agent")
     workflow.add_edge("agent", END)
     
-    return workflow.compile(checkpointer=checkpointer)
+    # Integrate the type-safe checkpointer
+    return workflow.compile(checkpointer=manager.get_checkpointer())
