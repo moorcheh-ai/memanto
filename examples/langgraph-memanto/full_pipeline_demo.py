@@ -1,67 +1,68 @@
 import os
-from typing import Annotated, TypedDict
+from typing import TypedDict, Annotated
 from langgraph.graph import StateGraph, END
-from langgraph.graph.message import add_messages
-from integrations.langgraph.memanto_checkpointer import MemantoCheckpointer
-from integrations.langgraph.memanto_manager import MemantoMemoryManager, MemoryType
+from langgraph.checkpoint.memory import MemorySaver
+from memanto.cli.client.sdk_client import SdkClient
+from integrations.langgraph.schema import LangGraphMemantoState, MemoryType, MemantoMemoryEntry
+from integrations.langgraph.coordinator import MemantoCoordinator
+from integrations.langgraph.tools import create_memanto_tools
+
+# Global Config
+AGENT_ID = "arch-system-001"
+sdk = SdkClient()
+coordinator = MemantoCoordinator(sdk)
 
 class AgentState(TypedDict):
-    messages: Annotated[list, add_messages]
-    global_goals: list
-    current_phase: str
+    memanto: LangGraphMemantoState
+    messages: Annotated[list, lambda x, y: x + y]
 
-def researcher(state: AgentState):
-    # Simulated research logic
-    return {"messages": [("assistant", "Research complete: Memanto V3 is type-safe.")], "current_phase": "critic"}
+def memory_recall_node(state: AgentState):
+    query = state["messages"][-1] if state["messages"] else ""
+    updated_memanto = coordinator.synchronize_memory(state["memanto"], query)
+    return {"memanto": updated_memanto}
 
-def critic(state: AgentState):
-    # Simulated critic logic
-    return {"messages": [("assistant", "Critique: Add OCC logic to the checkpointer.")], "current_phase": "writer"}
+def agent_node(state: AgentState):
+    # Logic to simulate LLM deciding to store memory
+    last_msg = state["messages"][-1]
+    if "remember" in last_msg.lower():
+        entry = MemantoMemoryEntry(
+            content=last_msg, 
+            memory_type=MemoryType.FACT, 
+            agent_id=AGENT_ID
+        )
+        state["memanto"].pending_persistence.append(entry)
+    return {"messages": ["Processed request"]}
 
-def writer(state: AgentState):
-    # Simulated writer logic
-    return {"messages": [("assistant", "Final Report: Implementation of OCC in MemantoBridge finished.")], "current_phase": "end"}
+def memory_persist_node(state: AgentState):
+    updated_memanto = coordinator.commit_persistence(state["memanto"])
+    return {"memanto": updated_memanto}
 
-def supervisor(state: AgentState):
-    if state["current_phase"] == "critic": return "critic"
-    if state["current_phase"] == "writer": return "writer"
-    return "researcher"
+workflow = StateGraph(AgentState)
+workflow.add_node("recall", memory_recall_node)
+workflow.add_node("agent", agent_node)
+workflow.add_node("persist", memory_persist_node)
 
-# Configuration
-AGENT_ID = "super_agent_001"
-API_KEY = os.getenv("MEMANTO_API_KEY", "test_key")
+workflow.set_entry_point("recall")
+workflow.add_edge("recall", "agent")
+workflow.add_edge("agent", "persist")
+workflow.add_edge("persist", END)
 
-# Initialize Native Persistence
-checkpointer = MemantoCheckpointer(agent_id=AGENT_ID, api_key=API_KEY)
-memory_manager = MemantoMemoryManager(agent_id=AGENT_ID, api_key=API_KEY)
+app = workflow.compile(checkpointer=MemorySaver())
 
-# Build Graph
-builder = StateGraph(AgentState)
-builder.add_node("researcher", researcher)
-builder.add_node("critic", critic)
-builder.add_node("writer", writer)
-
-builder.set_entry_point("researcher")
-builder.add_edge("researcher", "critic")
-builder.add_edge("critic", "writer")
-builder.add_edge("writer", END)
-
-graph = builder.compile(checkpointer=checkpointer)
-
-def run_cross_session_demo():
-    config = {"configurable": {"thread_id": "session_alpha"}}
-    
-    print("--- Session A: Starting Workflow ---")
-    initial_input = {"messages": [("user", "Analyze Memanto V3")], "global_goals": ["Type Safety"], "current_phase": "researcher"}
-    for event in graph.stream(initial_input, config):
-        print(event)
-
-    print("\n--- System Reboot / Process Restart ---")
-    
-    print("\n--- Session B: Resuming Workflow ---")
-    # No input provided, relying on MemantoCheckpointer to recall state
-    for event in graph.stream(None, config):
-        print(event)
+def run_session(user_input: str, thread_id: str):
+    config = {"configurable": {"thread_id": thread_id}}
+    initial_state = {
+        "memanto": LangGraphMemantoState(agent_id=AGENT_ID),
+        "messages": [user_input]
+    }
+    return app.invoke(initial_state, config)
 
 if __name__ == "__main__":
-    run_cross_session_demo()
+    # Session 1: Ingestion
+    print("--- Session 1: Ingesting Memory ---")
+    run_session("Please remember that the user prefers Python over Java", "session_1")
+    
+    # Session 2: Recall (Cross-process simulation)
+    print("\n--- Session 2: Recalling Memory ---")
+    result = run_session("What is the user's language preference?", "session_2")
+    print(f"Recalled Memories: {result['memanto'].long_term_recall}")
