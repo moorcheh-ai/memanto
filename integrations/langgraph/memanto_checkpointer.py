@@ -1,81 +1,43 @@
 import pickle
 from typing import Any, Dict, Optional, Sequence
-from langgraph.checkpoint.base import BaseCheckpointSaver, Checkpoint, CheckpointTuple, CheckpointMetadata
+from langgraph.checkpoint.base import BaseCheckpointSaver, Checkpoint, CheckpointTuple
 from memanto.cli.client.sdk_client import SdkClient
 
 class MemantoCheckpointer(BaseCheckpointSaver):
-    """
-    Type-safe checkpointer for LangGraph V3 using Memanto as the persistence layer.
-    """
-    def __init__(self, client: SdkClient, namespace: str = "langgraph_state"):
+    def __init__(self, agent_id: str, sdk_client: Optional[SdkClient] = None):
         super().__init__()
-        self.client = client
-        self.namespace = namespace
+        self.agent_id = agent_id
+        self.client = sdk_client or SdkClient()
 
-    def put(
-        self,
-        config: Dict[str, Any],
-        checkpoint: Checkpoint,
-        metadata: CheckpointMetadata,
-        new_versions: Sequence[tuple[str, Any]]
-    ) -> Dict[str, Any]:
-        thread_id = config["configurable"].get("thread_id")
-        checkpoint_id = checkpoint["id"]
+    def put(self, config: Dict[str, Any], checkpoint: Checkpoint, metadata: Dict[str, Any]) -> Dict[str, Any]:
+        # Serialize checkpoint to bytes for storage in Memanto
+        checkpoint_bytes = pickle.dumps(checkpoint)
+        checkpoint_id = config["configurable"].get("thread_id", "default")
         
-        # Serialize state to bytes for storage in Memanto
-        serialized_state = pickle.dumps({
-            "checkpoint": checkpoint,
-            "metadata": metadata,
-            "new_versions": new_versions
-        })
-        
-        # Store in Memanto using a composite key to ensure uniqueness per thread and version
-        storage_key = f"{thread_id}___{checkpoint_id}"
+        storage_key = f"checkpoint_{checkpoint_id}"
         self.client.write_memory(
-            agent_id=self.namespace,
-            session_id=thread_id,
-            content=serialized_state.hex(), 
-            memory_id=storage_key
+            namespace=self.agent_id,
+            key=storage_key,
+            value=checkpoint_bytes.hex() 
         )
-        
-        return {
-            "checkpoint_id": checkpoint_id,
-            "checkpoint_ns": ""
-        }
+        return config
 
     def get_tuple(self, config: Dict[str, Any]) -> Optional[CheckpointTuple]:
-        thread_id = config["configurable"].get("thread_id")
-        checkpoint_id = config["configurable"].get("checkpoint_id")
+        checkpoint_id = config["configurable"].get("thread_id", "default")
+        storage_key = f"checkpoint_{checkpoint_id}"
         
-        # If no specific checkpoint_id, we fetch the latest for the thread
-        # In a real implementation, this would query the most recent memory_id
-        # For this implementation, we assume the current thread_id mapped to the latest state
-        memories = self.client.read_memory(
-            agent_id=self.namespace,
-            session_id=thread_id
-        )
-        
-        if not memories:
+        raw_val = self.client.read_memory(namespace=self.agent_id, key=storage_key)
+        if not raw_val:
             return None
             
-        # Retrieve the most recent entry
-        latest_memory = memories[0] 
-        raw_payload = bytes.fromhex(latest_memory.content)
-        deserialized = pickle.loads(raw_payload)
-        
+        checkpoint = pickle.loads(bytes.fromhex(raw_val))
         return CheckpointTuple(
             config=config,
-            checkpoint=deserialized["checkpoint"],
-            metadata=deserialized["metadata"],
+            checkpoint=checkpoint,
+            metadata={},
             parent_config=None
         )
 
-    def list(
-        self,
-        config: Optional[Dict[str, Any]],
-        filter: Optional[Dict[str, Any]] = None,
-        before: Optional[Dict[str, Any]] = None,
-        limit: Optional[int] = None
-    ) -> Sequence[CheckpointTuple]:
-        # Implementation for listing history of checkpoints
+    def list(self, config: Dict[str, Any], *, filter: Optional[Dict[str, Any]] = None, limit: Optional[int] = None) -> Sequence[CheckpointTuple]:
+        # Basic implementation for listing; usually filtered by thread_id
         return []

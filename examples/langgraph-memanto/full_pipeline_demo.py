@@ -1,43 +1,50 @@
+import sys
 import os
-from integrations.langgraph.memanto_manager import MemantoGraphManager
-from examples.langgraph_memanto.agent import create_graph
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../')))
 
-def run_persistence_test():
-    AGENT_ID = "type_safe_demo_agent"
-    THREAD_ID = "session_123"
-    
-    # --- Process 1: Initial Write ---
-    print("\n--- Process 1: Initializing state ---")
-    manager_1 = MemantoGraphManager(agent_id=AGENT_ID, session_id=THREAD_ID)
-    graph_1 = create_graph(manager_1)
-    
-    config = {"configurable": {"thread_id": THREAD_ID}}
-    initial_input = {"messages": [("user", "Hello, I am Alice")], "user_id": "alice_01", "context_summary": ""}
-    
-    output_1 = graph_1.invoke(initial_input, config)
-    print(f"Process 1 Output: {output_1['messages'][-1].content}")
-    
-    # Simulate process termination by deleting the manager object
-    del manager_1
-    del graph_1
+from typing import TypedDict, Annotated
+from langgraph.graph import StateGraph, START, END
+from langgraph.graph.message import add_messages
+from integrations.langgraph.memanto_checkpointer import MemantoCheckpointer
+from memanto.cli.client.sdk_client import SdkClient
 
-    # --- Process 2: Recall and Resume ---
-    print("\n--- Process 2: Resuming from persisted state ---")
-    manager_2 = MemantoGraphManager(agent_id=AGENT_ID, session_id=THREAD_ID)
-    graph_2 = create_graph(manager_2)
+class State(TypedDict):
+    count: int
+    messages: Annotated[list, add_messages]
+
+def increment_node(state: State):
+    return {"count": state.get("count", 0) + 1, "messages": [("assistant", "Incremented")]}
+
+def create_app():
+    AGENT_ID = "persistence_demo_agent"
+    checkpointer = MemantoCheckpointer(agent_id=AGENT_ID, sdk_client=SdkClient())
+    workflow = StateGraph(State)
+    workflow.add_node("inc", increment_node)
+    workflow.add_edge(START, "inc")
+    workflow.add_edge("inc", END)
+    return workflow.compile(checkpointer=checkpointer)
+
+def run_process(step_name: str, thread_id: str, inputs: dict = None):
+    print(f"--- Running {step_name} ---")
+    app = create_app()
+    config = {"configurable": {"thread_id": thread_id}}
     
-    # Retrieve state using the same thread_id
-    state_snapshot = graph_2.get_state(config)
-    
-    if state_snapshot.values:
-        print(f"Recovered State: {state_snapshot.values['messages'][-1].content}")
+    if inputs:
+        result = app.invoke(inputs, config=config)
     else:
-        raise RuntimeError("State persistence failed: No values recovered in Process 2")
-
-    # Continue interaction
-    follow_up = {"messages": [("user", "Do you remember my name?")]}
-    output_2 = graph_2.invoke(follow_up, config)
-    print(f"Process 2 Final Output: {output_2['messages'][-1].content}")
+        result = app.invoke({}, config=config)
+        
+    print(f"Current Count: {result['count']}")
+    return result
 
 if __name__ == "__main__":
-    run_persistence_test()
+    THREAD = "shared_thread_88"
+    
+    # Process 1: Initialize and increment
+    run_process("Process 1", THREAD, inputs={"count": 0, "messages": []})
+    
+    # Process 2: Simulate new process accessing same thread via Memanto
+    run_process("Process 2", THREAD)
+    
+    # Process 3: Further increment
+    run_process("Process 3", THREAD)
