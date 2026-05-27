@@ -247,6 +247,40 @@ class TestMEMANTOCLI:
         assert result.exit_code != 0
         assert "multiple temporal query modes" in result.stdout
 
+    def test_forget_force(self, mock_all_clients):
+        """Test 'memanto forget --force' deletes a memory without prompting."""
+        mock_all_clients.delete_memory.return_value = {
+            "status": "deleted",
+            "agent_id": "test-agent",
+            "memory_id": "mem-123",
+        }
+
+        result = runner.invoke(app, ["forget", "mem-123", "--force"])
+
+        assert result.exit_code == 0
+        assert "deleted successfully" in result.stdout.lower()
+        assert "mem-123" in result.stdout
+        mock_all_clients.delete_memory.assert_called_once_with(
+            agent_id="test-agent", memory_id="mem-123"
+        )
+
+    def test_forget_cancelled(self, mock_all_clients):
+        """Test 'memanto forget' respects a negative confirmation."""
+        result = runner.invoke(app, ["forget", "mem-123"], input="n\n")
+
+        assert result.exit_code == 0
+        assert "cancelled" in result.stdout.lower()
+        mock_all_clients.delete_memory.assert_not_called()
+
+    def test_forget_not_found(self, mock_all_clients):
+        """Test 'memanto forget' shows a clear client error."""
+        mock_all_clients.delete_memory.side_effect = Exception("Memory not found")
+
+        result = runner.invoke(app, ["forget", "missing-memory", "--force"])
+
+        assert result.exit_code != 0
+        assert "Memory not found" in result.stdout
+
     def test_answer(self, mock_all_clients):
         """Test 'memanto answer'"""
         mock_all_clients.answer.return_value = {
