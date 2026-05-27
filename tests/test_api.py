@@ -655,6 +655,31 @@ class TestMEMANTOAPI:
         assert "missing-memory" in response.json()["detail"]
 
     @pytest.mark.asyncio
+    async def test_delete_memory_rejects_session_agent_mismatch(
+        self, client, auth_headers, mock_moorcheh
+    ):
+        """Deleting through another agent's session is forbidden."""
+        await client.post(
+            "/api/v2/agents",
+            headers=auth_headers,
+            json={"agent_id": self.TEST_AGENT_ID},
+        )
+        activate_resp = await client.post(
+            f"/api/v2/agents/{self.TEST_AGENT_ID}/activate", headers=auth_headers
+        )
+        token = activate_resp.json()["session_token"]
+        headers = {**auth_headers, "X-Session-Token": token}
+
+        response = await client.delete(
+            "/api/v2/agents/other-agent/memories/mem-123",
+            headers=headers,
+        )
+
+        assert response.status_code == 403
+        assert response.json()["detail"]["error"] == "AuthorizationError"
+        mock_moorcheh.documents.delete.assert_not_called()
+
+    @pytest.mark.asyncio
     async def test_recall_temporal_api(self, client, auth_headers, mock_moorcheh):
         """Test temporal recall modes (POST + JSON body)"""
         await client.post(
