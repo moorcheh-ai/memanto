@@ -1,43 +1,95 @@
-import pickle
-from typing import Any, Dict, Optional, Sequence
-from langgraph.checkpoint.base import BaseCheckpointSaver, Checkpoint, CheckpointTuple
+import json
+from typing import Any, Dict, Optional, Iterator
+from langgraph.checkpoint.base import BaseCheckpointSaver, Checkpoint, CheckpointTuple, CheckpointMetadata
 from memanto.cli.client.sdk_client import SdkClient
+from integrations.langgraph.memanto_manager import MemoryType
 
 class MemantoCheckpointer(BaseCheckpointSaver):
-    def __init__(self, agent_id: str, sdk_client: Optional[SdkClient] = None):
+    def __init__(self, agent_id: str, api_key: str):
         super().__init__()
+        self.client = SdkClient(api_key=api_key)
         self.agent_id = agent_id
-        self.client = sdk_client or SdkClient()
 
-    def put(self, config: Dict[str, Any], checkpoint: Checkpoint, metadata: Dict[str, Any]) -> Dict[str, Any]:
-        # Serialize checkpoint to bytes for storage in Memanto
-        checkpoint_bytes = pickle.dumps(checkpoint)
-        checkpoint_id = config["configurable"].get("thread_id", "default")
+    def put(
+        self, 
+        config: Dict[str, Any], 
+        checkpoint: Checkpoint, 
+        metadata: CheckpointMetadata, 
+        new_versions: Dict[str, Any]
+    ) -> Dict[str, Any]:
+        thread_id = config["configurable"]["thread_id"]
         
-        storage_key = f"checkpoint_{checkpoint_id}"
-        self.client.write_memory(
-            namespace=self.agent_id,
-            key=storage_key,
-            value=checkpoint_bytes.hex() 
+        # Optimistic Concurrency Control: Check current version before write
+        existing = self.get_tuple(config)
+        current_version = 0
+        if existing:
+            current_version = existing.checkpoint.get("version", 0)
+
+        if current_version > metadata.get("version", 0):
+            raise RuntimeError(f"State conflict: Current version {current_version} exceeds provided version.")
+
+        serialized_state = json.dumps(checkpoint)
+        
+        # Use SESSION_CONTEXT for LangGraph state persistence
+        self.client.put_memory(
+            agent_id=self.agent_id,
+            memory_type=MemoryType.SESSION_CONTEXT.value,
+            content=serialized_state,
+            metadata={
+                "thread_id": thread_id,
+                "version": metadata.get("version", current_version + 1),
+                "checkpoint_id": checkpoint.get("id")
+            }
         )
-        return config
+        
+        return {
+            "checkpoint_id": checkpoint.get("id"),
+            "checkpoint_ns": config.get("configurable", {}).get("checkpoint_ns", "")
+        }
 
     def get_tuple(self, config: Dict[str, Any]) -> Optional[CheckpointTuple]:
-        checkpoint_id = config["configurable"].get("thread_id", "default")
-        storage_key = f"checkpoint_{checkpoint_id}"
+        thread_id = config["configurable"]["thread_id"]
+        memories = self.client.get_memories(
+            agent_id=self.agent_id,
+            memory_type=MemoryType.SESSION_CONTEXT.value
+        )
         
-        raw_val = self.client.read_memory(namespace=self.agent_id, key=storage_key)
-        if not raw_val:
+        # Filter for the specific thread_id
+        thread_memories = [m for m in memories if m.get("metadata", {}).get("thread_id") == thread_id]
+        if not thread_memories:
             return None
             
-        checkpoint = pickle.loads(bytes.fromhex(raw_val))
+        # Get the most recent version
+        latest = max(thread_memories, key=lambda x: x.get("metadata", {}).get("version", 0))
+        
+        checkpoint = json.loads(latest["content"])
         return CheckpointTuple(
             config=config,
             checkpoint=checkpoint,
-            metadata={},
-            parent_config=None
+            metadata=latest.get("metadata", {}),
+            parent_config=None # Simplified for persistence bridge
         )
 
-    def list(self, config: Dict[str, Any], *, filter: Optional[Dict[str, Any]] = None, limit: Optional[int] = None) -> Sequence[CheckpointTuple]:
-        # Basic implementation for listing; usually filtered by thread_id
-        return []
+    def list(
+        self, 
+        config: Optional[Dict[str, Any]], 
+        *, 
+        filter: Optional[Dict[str, Any]] = None, 
+        before: Optional[Dict[str, Any]] = None, 
+        limit: Optional[int] = None
+    ) -> Iterator[CheckpointTuple]:
+        # Implementation for listing history of states
+        thread_id = config["configurable"]["thread_id"] if config else None
+        memories = self.client.get_memories(
+            agent_id=self.agent_id,
+            memory_type=MemoryType.SESSION_CONTEXT.value
+        )
+        
+        filtered = [m for m in memories if not thread_id or m.get("metadata", {}).get("thread_id") == thread_id]
+        for m in filtered[-limit:] if limit else filtered:
+            yield CheckpointTuple(
+                config=config,
+                checkpoint=json.loads(m["content"]),
+                metadata=m.get("metadata", {}),
+                parent_config=None
+            )

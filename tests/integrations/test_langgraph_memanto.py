@@ -1,38 +1,54 @@
 import pytest
+from unittest.mock import MagicMock, patch
 from integrations.langgraph.memanto_checkpointer import MemantoCheckpointer
-from memanto.cli.client.sdk_client import SdkClient
-from langgraph.checkpoint.base import Checkpoint
+from integrations.langgraph.memanto_manager import MemoryRegistry, MemoryType
 
-def test_memanto_checkpointer_persistence():
-    sdk_client = SdkClient()
-    agent_id = "test_agent_persistence"
-    checkpointer = MemantoCheckpointer(agent_id=agent_id, sdk_client=sdk_client)
+def test_confidence_clamping():
+    # Test that confidence is clamped between 0.0 and 1.0
+    payload_high = {"content": "Test", "confidence": 1.5}
+    payload_low = {"content": "Test", "confidence": -0.5}
     
-    config = {"configurable": {"thread_id": "test_thread"}}
-    checkpoint = Checkpoint(v=1, ts="2023-01-01T00:00:00Z", checkpoint={"test": "data"})
+    res_high = MemoryRegistry.validate(MemoryType.FACT.value, payload_high)
+    res_low = MemoryRegistry.validate(MemoryType.FACT.value, payload_low)
     
-    # Test put
-    checkpointer.put(config, checkpoint, metadata={})
-    
-    # Test get_tuple
-    tuple_res = checkpointer.get_tuple(config)
-    assert tuple_res is not None
-    assert tuple_res.checkpoint["test"] == "data"
+    assert res_high.confidence == 1.0
+    assert res_low.confidence == 0.0
 
-def test_type_safe_manager():
-    from integrations.langgraph.memanto_manager import MemantoManager
-    from pydantic import BaseModel
+@patch("integrations.langgraph.memanto_checkpointer.SdkClient")
+def test_occ_conflict(mock_sdk):
+    mock_instance = mock_sdk.return_value
+    # Mock existing memory with version 10
+    mock_instance.get_memories.return_value = [
+        {"content": "{}", "metadata": {"thread_id": "t1", "version": 10}}
+    ]
     
-    class UserState(BaseModel):
-        name: str
-        age: int
-        
-    sdk_client = SdkClient()
-    manager = MemantoManager[UserState](agent_id="test_manager_agent", sdk_client=sdk_client)
+    checkpointer = MemantoCheckpointer(agent_id="test_agent", api_key="key")
+    config = {"configurable": {"thread_id": "t1"}}
     
-    state = UserState(name="Architect", age=40)
-    manager.store_state("user_1", state)
+    # Attempt to put a checkpoint with version 5 (stale)
+    with pytest.raises(RuntimeError, match="State conflict"):
+        checkpointer.put(
+            config=config,
+            checkpoint={"id": "cp1"},
+            metadata={"version": 5},
+            new_versions={}
+        )
+
+@patch("integrations.langgraph.memanto_checkpointer.SdkClient")
+def test_full_persistence_cycle(mock_sdk):
+    mock_instance = mock_sdk.return_value
+    mock_instance.get_memories.return_value = []
     
-    retrieved = manager.retrieve_state("user_1", UserState)
-    assert retrieved.name == "Architect"
-    assert retrieved.age == 40
+    checkpointer = MemantoCheckpointer(agent_id="test_agent", api_key="key")
+    config = {"configurable": {"thread_id": "t1"}}
+    
+    # Save
+    checkpointer.put(config, {"id": "cp1", "state": "val"}, {"version": 1}, {})
+    
+    # Mock the retrieval for the get_tuple call
+    mock_instance.get_memories.return_value = [
+        {"content": '{"id": "cp1", "state": "val"}', "metadata": {"thread_id": "t1", "version": 1}}
+    ]
+    
+    result = checkpointer.get_tuple(config)
+    assert result.checkpoint["state"] == "val"

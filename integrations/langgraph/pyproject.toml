@@ -1,17 +1,8 @@
-[tool.poetry]
+[project]
 name = "memanto-langgraph"
 version = "0.1.0"
-description = "Long-term memory orchestration for LangGraph"
-authors = ["Senior Architect"]
-
-[tool.poetry.dependencies]
-python = "^3.10"
-langgraph = "^0.0.30"
-langchain = "^0.1.0"
-langchain-openai = "^0.0.2"
-pydantic = "^2.0.0"
-memanto = { path = "../../" }
-
-[build-system]
-requires = ["poetry-core>=1.0.0"]
-build-backend = "poetry.core.masonry.api"
+dependencies = [
+    "langgraph>=0.0.30",
+    "pydantic>=2.0.0",
+    "memanto"
+]
