@@ -52,6 +52,7 @@ class LiveMemantoMemory:
         description: str = "LangGraph support-agent memory demo",
         duration_hours: int = 6,
     ) -> None:
+        """Initialize the SDK client and demo agent metadata."""
         from memanto.cli.client.sdk_client import SdkClient
 
         self.agent_id = agent_id
@@ -60,6 +61,7 @@ class LiveMemantoMemory:
         self.client = SdkClient(api_key=api_key)
 
     def setup(self) -> None:
+        """Create or reuse the demo agent and activate it for the run."""
         try:
             self.client.create_agent(
                 agent_id=self.agent_id,
@@ -76,6 +78,7 @@ class LiveMemantoMemory:
         )
 
     def teardown(self) -> None:
+        """Deactivate the live demo agent when a runner exits."""
         try:
             self.client.deactivate_agent(self.agent_id)
         except Exception:
@@ -90,6 +93,7 @@ class LiveMemantoMemory:
         tags: list[str] | None = None,
         confidence: float = 0.9,
     ) -> dict[str, Any]:
+        """Persist a memory through the Memanto SDK."""
         return self.client.remember(
             agent_id=self.agent_id,
             memory_type=memory_type,
@@ -102,6 +106,7 @@ class LiveMemantoMemory:
         )
 
     def recall(self, *, query: str, limit: int = 5) -> list[dict[str, Any]]:
+        """Recall memories from Memanto and normalize the SDK response."""
         result = self.client.recall(
             agent_id=self.agent_id,
             query=query,
@@ -114,15 +119,18 @@ class LocalJsonMemory:
     """Tiny persistent memory backend for tests and no-key dry runs."""
 
     def __init__(self, *, path: str | Path, agent_id: str) -> None:
+        """Configure the local JSON store path and logical agent id."""
         self.path = Path(path)
         self.agent_id = agent_id
 
     def setup(self) -> None:
+        """Create the JSON store directory and empty list file if missing."""
         self.path.parent.mkdir(parents=True, exist_ok=True)
         if not self.path.exists():
             self.path.write_text("[]\n", encoding="utf-8")
 
     def teardown(self) -> None:
+        """Match the live adapter lifecycle without needing cleanup."""
         return None
 
     def remember(
@@ -134,6 +142,7 @@ class LocalJsonMemory:
         tags: list[str] | None = None,
         confidence: float = 0.9,
     ) -> dict[str, Any]:
+        """Append one memory record to the local JSON store."""
         memories = self._load()
         memory_id = f"local-{uuid.uuid4().hex[:10]}"
         record = {
@@ -153,6 +162,7 @@ class LocalJsonMemory:
         return record
 
     def recall(self, *, query: str, limit: int = 5) -> list[dict[str, Any]]:
+        """Return the highest-overlap local memories for the query terms."""
         query_terms = set(_tokenize(query))
         scored: list[tuple[int, dict[str, Any]]] = []
 
@@ -172,6 +182,7 @@ class LocalJsonMemory:
         return [memory for _, memory in scored[:limit]]
 
     def _load(self) -> list[dict[str, Any]]:
+        """Load stored memories, falling back safely on malformed JSON."""
         if not self.path.exists():
             return []
         try:
@@ -206,4 +217,5 @@ def create_memory_client() -> MemoryClient:
 
 
 def _tokenize(value: str) -> list[str]:
+    """Split text into lower-case alphanumeric search tokens."""
     return re.findall(r"[a-z0-9]+", value.lower())

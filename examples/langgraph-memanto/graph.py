@@ -60,6 +60,7 @@ def build_support_memory_graph(memory: MemoryClient):
 
 
 def _collect_customer_context(state: SupportState) -> SupportState:
+    """Collect day-1 support facts or seed a day-2 recall query."""
     session = state.get("session", "full")
     if session == "day2":
         return {
@@ -110,6 +111,7 @@ def _collect_customer_context(state: SupportState) -> SupportState:
 
 
 def _persist_memories(state: SupportState, memory: MemoryClient) -> SupportState:
+    """Persist collected support facts through the configured memory client."""
     stored_ids: list[str] = []
     for item in state.get("day1_memories", []):
         result = memory.remember(
@@ -125,10 +127,12 @@ def _persist_memories(state: SupportState, memory: MemoryClient) -> SupportState
 
 
 def _after_persist(state: SupportState) -> str:
+    """Route day-1 runs to completion and full demos to recall."""
     return "done" if state.get("session") == "day1" else "continue"
 
 
 def _session_boundary(state: SupportState) -> SupportState:
+    """Clear day-1 graph state before simulating a later support session."""
     note = state.get(
         "session_note",
         "The graph is now acting as a later session with only a recall query.",
@@ -142,6 +146,7 @@ def _session_boundary(state: SupportState) -> SupportState:
 
 
 def _recall_context(state: SupportState, memory: MemoryClient) -> SupportState:
+    """Retrieve relevant support memories for the follow-up response."""
     query = state.get(
         "query",
         "What should the support agent remember about Maya's preferences?",
@@ -150,6 +155,7 @@ def _recall_context(state: SupportState, memory: MemoryClient) -> SupportState:
 
 
 def _draft_followup(state: SupportState) -> SupportState:
+    """Draft a support follow-up using only recalled persistent memories."""
     memories = state.get("retrieved_memories", [])
     if not memories:
         return {

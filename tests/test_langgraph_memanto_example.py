@@ -7,10 +7,12 @@ from pathlib import Path
 
 
 def _example_dir() -> Path:
+    """Return the LangGraph example directory under test."""
     return Path(__file__).resolve().parents[1] / "examples" / "langgraph-memanto"
 
 
 def _load_memory_adapter():
+    """Import the example memory adapter without requiring package install."""
     module_path = _example_dir() / "memory_adapter.py"
     spec = importlib.util.spec_from_file_location(
         "langgraph_memory_adapter", module_path
@@ -23,6 +25,7 @@ def _load_memory_adapter():
 
 
 def _load_graph():
+    """Import the graph with a tiny LangGraph stub for unit-level testing."""
     langgraph_module = types.ModuleType("langgraph")
     langgraph_graph_module = types.ModuleType("langgraph.graph")
     langgraph_graph_module.END = "__end__"
@@ -62,6 +65,7 @@ def _load_graph():
 
 
 def test_local_json_memory_persists_and_recalls(tmp_path):
+    """LocalJsonMemory stores a support fact and recalls it by query terms."""
     memory_adapter = _load_memory_adapter()
     store = tmp_path / "memories.json"
     memory = memory_adapter.LocalJsonMemory(
@@ -85,6 +89,7 @@ def test_local_json_memory_persists_and_recalls(tmp_path):
 
 
 def test_local_json_memory_recovers_from_malformed_store(tmp_path):
+    """Malformed local JSON should not break recall or future writes."""
     memory_adapter = _load_memory_adapter()
     store = tmp_path / "memories.json"
     store.write_text("{not valid json", encoding="utf-8")
@@ -105,6 +110,7 @@ def test_local_json_memory_recovers_from_malformed_store(tmp_path):
 
 
 def test_session_boundary_clears_day1_state():
+    """The simulated session boundary clears day-1 state before recall."""
     graph = _load_graph()
 
     result = graph._session_boundary(
