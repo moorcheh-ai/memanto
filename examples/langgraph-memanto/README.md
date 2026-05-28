@@ -9,7 +9,7 @@ processes.
 
 - A LangGraph assistant that stores durable project decisions in Memanto.
 - A second run that starts with no local graph state and recalls the earlier decision from Memanto.
-- A tiny graph shape that is easy to inspect: recall, decide, persist.
+- A tiny graph shape that is easy to inspect: persist, recall, decide.
 
 The demo uses the same Memanto SDK client used by the existing CrewAI integration.
 
@@ -20,6 +20,7 @@ examples/langgraph-memanto/
 ├── README.md
 ├── requirements.txt
 ├── .env.example
+├── assets/demo.gif
 ├── graph.py
 ├── run_day_1.py
 └── run_day_2.py
@@ -58,7 +59,7 @@ Expected behavior:
 
 ## Demo Recording
 
-Video/GIF link: to be added before this PR is marked ready for review.
+Video/GIF link: [assets/demo.gif](./assets/demo.gif)
 
 ## Recording Checklist
 

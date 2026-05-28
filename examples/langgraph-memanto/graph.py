@@ -60,7 +60,6 @@ class MemantoMemory:
             agent_id=self.agent_id,
             query=query,
             limit=limit,
-            type=["decision", "preference", "fact", "context"],
         )
         memories = result.get("memories", [])
         if not memories:
@@ -116,9 +115,9 @@ def build_graph(memory: MemantoMemory):
     graph.add_node("answer_with_context", answer_with_context)
     graph.add_node("persist_new_memory", persist_new_memory)
 
-    graph.set_entry_point("recall_context")
+    graph.set_entry_point("persist_new_memory")
+    graph.add_edge("persist_new_memory", "recall_context")
     graph.add_edge("recall_context", "answer_with_context")
-    graph.add_edge("answer_with_context", "persist_new_memory")
-    graph.add_edge("persist_new_memory", END)
+    graph.add_edge("answer_with_context", END)
 
     return graph.compile()
