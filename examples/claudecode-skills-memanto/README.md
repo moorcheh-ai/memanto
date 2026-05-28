@@ -12,7 +12,7 @@ The `mattpocock/skills` ecosystem provides sharp, single-purpose command-line pr
 
 Memanto acts as a global, active memory companion that persists across all skill executions. The `SkillMemoryBridge` wraps any skill with two lifecycle hooks:
 
-```
+```text
                  ┌─────────────────────────────────────────────────┐
                  │              Developer Skill Execution           │
                  │                                                  │
@@ -123,7 +123,7 @@ def run_skill(skill_name: str, task: str) -> str:
 
 Running `python demo.py` produces this output (abbreviated):
 
-```
+```text
 SESSION 1: /tdd — Auth Service Rate Limiting
 🧠 [before_skill:tdd] Querying memory...
    No relevant memories found.
@@ -156,7 +156,7 @@ python validate.py
 ```
 
 Expected output:
-```
+```text
   ✅ PASS: Bridge initializes correctly
   ✅ PASS: after_skill() stores memory
   ✅ PASS: before_skill() returns empty when no memories
@@ -171,7 +171,7 @@ Results: 7/7 passed
 
 ## File Structure
 
-```
+```text
 examples/claudecode-skills-memanto/
 ├── skill_memory_bridge.py   # Core bridge: SkillMemoryBridge class
 ├── demo.py                  # Runnable demo (4 simulated skill sessions)
