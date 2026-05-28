@@ -31,8 +31,11 @@ class SkillMemory:
         """Ensure the Memanto agent exists."""
         try:
             self.client.create_agent(agent_id=self.config.agent_id)
-        except Exception:
-            pass  # Agent already exists
+        except Exception as exc:
+            # Agent already exists is fine; propagate real failures
+            msg = str(exc).lower()
+            if "already exist" not in msg and "conflict" not in msg:
+                raise
 
     def capture(
         self,
@@ -67,41 +70,47 @@ class SkillMemory:
         # Extract implicit decisions from summary
         extracted = self.extractor.extract(summary)
 
+        # Honor capture_types config
+        allowed = set(self.config.capture_types)
+
         # Store explicit decisions
-        for decision in (decisions or []) + extracted.get("decisions", []):
-            memory_id = self._store_memory(
-                memory_type="decision",
-                title=f"Decision from /{skill}",
-                content=decision,
-                confidence=0.9,
-                tags=tags,
-                source=skill,
-            )
-            memory_ids.append(memory_id)
+        if "decision" in allowed:
+            for decision in (decisions or []) + extracted.get("decisions", []):
+                memory_id = self._store_memory(
+                    memory_type="decision",
+                    title=f"Decision from /{skill}",
+                    content=decision,
+                    confidence=0.9,
+                    tags=tags,
+                    source=skill,
+                )
+                memory_ids.append(memory_id)
 
         # Store preferences
-        for pref in (preferences or []) + extracted.get("preferences", []):
-            memory_id = self._store_memory(
-                memory_type="preference",
-                title=f"Preference from /{skill}",
-                content=pref,
-                confidence=0.8,
-                tags=tags,
-                source=skill,
-            )
-            memory_ids.append(memory_id)
+        if "preference" in allowed:
+            for pref in (preferences or []) + extracted.get("preferences", []):
+                memory_id = self._store_memory(
+                    memory_type="preference",
+                    title=f"Preference from /{skill}",
+                    content=pref,
+                    confidence=0.8,
+                    tags=tags,
+                    source=skill,
+                )
+                memory_ids.append(memory_id)
 
         # Store facts
-        for fact in (facts or []) + extracted.get("facts", []):
-            memory_id = self._store_memory(
-                memory_type="fact",
-                title=f"Fact from /{skill}",
-                content=fact,
-                confidence=0.95,
-                tags=tags,
-                source=skill,
-            )
-            memory_ids.append(memory_id)
+        if "fact" in allowed:
+            for fact in (facts or []) + extracted.get("facts", []):
+                memory_id = self._store_memory(
+                    memory_type="fact",
+                    title=f"Fact from /{skill}",
+                    content=fact,
+                    confidence=0.95,
+                    tags=tags,
+                    source=skill,
+                )
+                memory_ids.append(memory_id)
 
         return memory_ids
 

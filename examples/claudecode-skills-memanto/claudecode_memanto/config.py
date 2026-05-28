@@ -34,6 +34,7 @@ class MemantoConfig:
 
     def validate(self) -> None:
         """Validate configuration."""
+        self.api_key = self.api_key.strip()
         if not self.api_key:
             raise ValueError(
                 "MOORCHEH_API_KEY is required. Get one at https://console.moorcheh.ai/api-keys"

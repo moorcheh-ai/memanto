@@ -54,6 +54,7 @@ class DecisionExtractor:
 
     def _extract_patterns(self, text: str, patterns: list[str]) -> list[str]:
         """Extract matches for a list of regex patterns."""
+        seen: set[str] = set()
         results = []
         for pattern in patterns:
             matches = re.findall(pattern, text, re.IGNORECASE)
@@ -65,7 +66,8 @@ class DecisionExtractor:
                     result = match.strip()
 
                 # Filter out very short or very long results
-                if 10 < len(result) < 200:
+                if 10 < len(result) < 200 and result not in seen:
+                    seen.add(result)
                     results.append(result)
 
         return results
@@ -81,7 +83,7 @@ class DecisionExtractor:
         """
         # Combine all assistant messages (they contain the decisions)
         assistant_text = " ".join(
-            msg.get("content", "")
+            msg.get("content") or ""
             for msg in messages
             if msg.get("role") == "assistant"
         )
