@@ -13,16 +13,33 @@ Run:
 import os
 import pathlib
 import sys
+import uuid
 
 # Force local for automated validation unless explicitly set to live
 if not os.environ.get("MOORCHEH_API_KEY"):
     os.environ["LOCAL_PREVIEW"] = "true"
+
+# When running against live Memanto, isolate all writes into a dedicated
+# test namespace so the suite never contaminates the user's real
+# Engineering Profile data. Each run uses a unique suffix so concurrent or
+# repeated runs cannot interfere with each other either.
+if os.environ.get("MOORCHEH_API_KEY") and os.environ.get("LOCAL_PREVIEW", "").lower() != "true":
+    # Allow the user to override with an explicit MEMANTO_TEST_NAMESPACE
+    # but otherwise always pick a fresh, scoped namespace.
+    if not os.environ.get("MEMANTO_TEST_NAMESPACE"):
+        os.environ["MEMANTO_TEST_NAMESPACE"] = (
+            f"validate-test-{uuid.uuid4().hex[:8]}"
+        )
+    # Force the bridge to use the test namespace regardless of any
+    # MEMANTO_NAMESPACE the user may have configured for normal use.
+    os.environ["MEMANTO_NAMESPACE"] = os.environ["MEMANTO_TEST_NAMESPACE"]
 
 from skill_memory_bridge import SkillMemoryBridge
 
 PASS = "✅ PASS"
 FAIL = "❌ FAIL"
 TEST_STORE = ".validate_test.jsonl"
+TEST_NAMESPACE = os.environ.get("MEMANTO_TEST_NAMESPACE")
 
 def run_test(name: str, fn) -> bool:
     try:
@@ -106,7 +123,10 @@ def main():
     print("=" * 55)
 
     mode = "LOCAL PREVIEW" if os.environ.get("LOCAL_PREVIEW") == "true" else "LIVE MEMANTO"
-    print(f"\nMode: {mode}\n")
+    print(f"\nMode: {mode}")
+    if TEST_NAMESPACE:
+        print(f"Live test namespace (isolated): {TEST_NAMESPACE}")
+    print()
 
     tests = [
         ("Bridge initializes correctly", test_bridge_initializes),
