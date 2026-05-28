@@ -51,6 +51,7 @@ from __future__ import annotations
 import json
 import os
 import time
+import uuid
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
@@ -122,8 +123,10 @@ class LocalMemoryStore:
         self._memories.append(memory)
 
     def write(self, skill: str, content: str, tags: list[str] | None = None) -> Memory:
+        # Combine ms timestamp with a short uuid4 suffix so rapid writes
+        # within the same millisecond never collide on id.
         memory = Memory(
-            id=f"local-{int(time.time() * 1000)}",
+            id=f"local-{int(time.time() * 1000)}-{uuid.uuid4().hex[:8]}",
             skill=skill,
             content=content,
             timestamp=datetime.now(timezone.utc).isoformat(),
@@ -231,13 +234,21 @@ class SkillMemoryBridge:
 
     def __init__(
         self,
-        namespace: str = "developer-skills",
+        namespace: Optional[str] = None,
         local_store_path: str = ".memanto_local.jsonl",
         verbose: bool = True,
     ):
         self.verbose = verbose
         self._mode: str
         self._store: LocalMemoryStore | LiveMementoStore
+
+        # Resolve namespace: explicit arg > MEMANTO_NAMESPACE env > default.
+        # The .env.example and README advertise MEMANTO_NAMESPACE, so honor it.
+        resolved_namespace = (
+            namespace
+            or os.environ.get("MEMANTO_NAMESPACE")
+            or "developer-skills"
+        )
 
         use_local = (
             os.environ.get("LOCAL_PREVIEW", "").lower() == "true"
@@ -251,11 +262,11 @@ class SkillMemoryBridge:
                 print("🔒 SkillMemoryBridge: LOCAL PREVIEW mode (no API key required)")
                 print(f"   Memory store: {local_store_path}")
         else:
-            self._store = LiveMementoStore(namespace=namespace)
+            self._store = LiveMementoStore(namespace=resolved_namespace)
             self._mode = "live"
             if verbose:
                 print("🌐 SkillMemoryBridge: LIVE MEMANTO mode")
-                print(f"   Namespace: {namespace}")
+                print(f"   Namespace: {resolved_namespace}")
 
     @property
     def mode(self) -> str:
