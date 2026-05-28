@@ -75,7 +75,7 @@ def install(target: Path) -> None:
 
     print("\n✅  Installation complete!\n")
     print("Next steps:")
-    print("  1. pip install memanto requests")
+    print("  1. pip install -r requirements.txt")
     print("  2. export MOORCHEH_API_KEY=mk-...")
     print("  3. memanto serve   # start local Memanto server")
     print()

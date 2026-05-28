@@ -14,12 +14,12 @@ A global memory companion for [mattpocock/skills](https://github.com/mattpocock/
 
 ## 🎬 Demo Video
 
-▶️ **[Watch 30-second demo](REPLACE_WITH_YOUR_LOOM_LINK)**
+▶️ **[Watch 30-second demo](https://github.com/user-attachments/assets/292776a4-c307-4908-8b7d-f9fc044e444e)**
 
 *`/grill-with-docs` stores decisions → `/tdd` in a new session auto-recalls them*
 
 ## 📣 Social Posts
-- 🐦 X/Twitter: REPLACE_WITH_YOUR_X_LINK
+- 🐦 X/Twitter: https://x.com/i/status/2059056551671869471
 
 ---
 

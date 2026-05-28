@@ -56,6 +56,7 @@ class MeMantoClient:
             base_url or os.getenv("MEMANTO_BASE_URL", "http://127.0.0.1:8000")
         ).rstrip("/")
 
+        self.agent_id = agent_id or os.getenv("MEMANTO_AGENT_ID", "skills-companion")
         self.api_key = api_key or os.getenv("MOORCHEH_API_KEY", "")
         if not self.api_key:
             raise ValueError(
@@ -64,7 +65,7 @@ class MeMantoClient:
                 "Get a free key at https://moorcheh.ai"
             )
 
-        self.agent_id = agent_id
+        self.agent_id = agent_id or os.getenv("MEMANTO_AGENT_ID", "skills-companion")
         self._token: Optional[str] = None
 
         self._http = requests.Session()
@@ -158,7 +159,13 @@ class MeMantoClient:
             )
             r.raise_for_status()
             mem = r.json()
-            logger.info("stored id=%s type=%s", mem.get("id"), memory_type)
+            # Server may return memory_id or id
+            if not mem.get("id") and mem.get("memory_id"):
+                mem["id"] = mem["memory_id"]
+            mid = mem.get("id") or mem.get("memory_id")
+            logger.info("stored id=%s type=%s", mid, memory_type)
+            if mid and "id" not in mem:
+                mem["id"] = mid
             return mem
         except Exception as exc:
             logger.error("remember failed: %s", exc)
@@ -174,11 +181,11 @@ class MeMantoClient:
         Semantic search via POST /recall (parameters in JSON body).
         Returns list of memory dicts ordered by relevance.
         """
-        body: Dict = {"q": query, "limit": limit}
+        body: Dict = {"query": query, "limit": limit}
         if memory_type in VALID_MEMORY_TYPES:
-            body["type"] = memory_type
+            body["type"] = [memory_type]
         elif memory_type:
-            logger.warning("unsupported recall memory_type=%s; omitting filter", memory_type)
+            logger.warning("unsupported memory_type=%s; omitting filter", memory_type)
         try:
             r = self._request(
                 self._http.post,
