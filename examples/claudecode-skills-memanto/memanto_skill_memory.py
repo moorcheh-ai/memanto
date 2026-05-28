@@ -29,7 +29,7 @@ MEMORY_PATTERNS: tuple[tuple[str, str], ...] = (
     ("artifact", r"\b(created|updated|wrote|added|changed|removed)\b"),
     ("decision", r"\b(decided|decision|adr|choose|chosen|selected)\b"),
     ("preference", r"\b(prefer|preference|style|convention|always|never)\b"),
-    ("constraint", r"\b(constraint|must|cannot|avoid|required|requirement)\b"),
+    ("instruction", r"\b(constraint|must|cannot|avoid|required|requirement)\b"),
     ("learning", r"\b(learned|because|root cause|lesson|insight)\b"),
 )
 
