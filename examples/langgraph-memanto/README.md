@@ -188,5 +188,5 @@ langgraph-memanto/
 | `/api/v2/agents` | POST | Create agent namespace |
 | `/api/v2/agents/{id}/activate` | POST | Start session → token |
 | `/api/v2/agents/{id}/remember` | POST | Store memory (facts, preferences, corrections) |
-| `/api/v2/agents/{id}/recall` | GET | Semantic search (natural language query) |
+| `/api/v2/agents/{id}/recall` | POST | Semantic search (query in JSON body) |
 | `/api/v2/agents/{id}/answer` | POST | RAG answer over stored memories |

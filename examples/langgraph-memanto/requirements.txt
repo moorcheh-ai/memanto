@@ -1,7 +1,7 @@
-langgraph>=0.2.0
-langchain>=0.3.0
-langchain-openai>=0.2.0
-langchain-core>=0.3.0
-memanto>=0.1.0
-requests>=2.31.0
-python-dotenv>=1.0.0
+langgraph>=1.0.10
+langchain>=0.3.30
+langchain-openai>=1.1.14
+langchain-core>=0.3.85
+memanto>=0.1.2
+requests>=2.33.0
+python-dotenv>=1.2.2

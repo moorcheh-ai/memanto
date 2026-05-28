@@ -105,14 +105,18 @@ class MeMantoClient:
                 json=payload, headers=self._headers(), timeout=15)
             r.raise_for_status()
             mem = r.json()
-            logger.info("Stored memory %s", mem.get("id"))
+            if not mem.get("id") and mem.get("memory_id"):
+                mem["id"] = mem["memory_id"]
+            mid = mem.get("id") or mem.get("memory_id")
+            if mid and "id" not in mem: mem["id"] = mid
+            logger.info("Stored memory %s", mid)
             return mem
         except Exception as exc:
             logger.error("Remember failed: %s", exc)
             return {"id": None, "content": content, "error": str(exc)}
 
     def recall(self, query: str, limit: int = 5, memory_type: Optional[str] = None) -> List[Dict]:
-        payload: dict = {"q": query, "limit": limit}
+        payload: dict = {"query": query, "limit": limit}
         if memory_type:
             payload["type"] = memory_type
         try:
