@@ -36,10 +36,10 @@
    <img alt="Star History Chart" src="https://api.star-history.com/chart?repos=moorcheh-ai/memanto&type=date&legend=top-left" />
  </picture>
 </a>
+> *"My memory exists as a static snapshot injected into context — useful, but fundamentally passive. I can't query it, update it mid-conversation, express confidence levels, or distinguish between 'I know this' versus
+ the 'this is my best recollection' feeling agents need." - **Developer Quote**
 
----
-
-## What Is MEMANTO?
+## Key Features
 
 **MEMANTO is a memory agent. It remembers, recalls, and answers — so your agents can achieve long-term goals and avoid confusion.**
 
