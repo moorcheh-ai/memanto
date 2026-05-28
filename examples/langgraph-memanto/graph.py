@@ -27,7 +27,13 @@ class MemantoMemory:
 
     @classmethod
     def from_env(cls) -> MemantoMemory:
-        api_key = os.environ["MOORCHEH_API_KEY"]
+        api_key = os.getenv("MOORCHEH_API_KEY")
+        if not api_key:
+            raise RuntimeError(
+                "MOORCHEH_API_KEY environment variable is required. "
+                "Copy .env.example to .env and set MOORCHEH_API_KEY to your API key."
+            )
+
         agent_id = os.getenv("MEMANTO_AGENT_ID", "langgraph-memanto-demo")
         client = SdkClient(api_key=api_key)
 
@@ -63,7 +69,7 @@ class MemantoMemory:
         )
         memories = result.get("memories", [])
         if not memories:
-            return "No relevant long-term memories found."
+            return ""
 
         lines = []
         for item in memories:
@@ -85,7 +91,8 @@ def build_graph(memory: MemantoMemory):
     def answer_with_context(state: GraphState) -> GraphState:
         prompt = state["prompt"]
         context = state["recalled_context"]
-        if "No relevant long-term memories found." in context:
+        memory_summary = context or "No relevant long-term memories found."
+        if not context.strip():
             recommendation = (
                 "I do not have a stored long-term decision for this yet. "
                 "Run day 1 first so the graph can persist the project decision."
@@ -99,7 +106,7 @@ def build_graph(memory: MemantoMemory):
             )
         answer = (
             "I checked long-term Memanto memory before answering.\n\n"
-            f"Relevant memory:\n{context}\n\n"
+            f"Relevant memory:\n{memory_summary}\n\n"
             f"Question: {prompt}\n"
             f"Answer: {recommendation}"
         )

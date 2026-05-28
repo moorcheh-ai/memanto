@@ -29,6 +29,7 @@ examples/langgraph-memanto/
 ## Setup
 
 ```bash
+cd examples/langgraph-memanto
 python -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
@@ -42,12 +43,14 @@ Set `MOORCHEH_API_KEY` in `.env`.
 Run day 1 to store a decision:
 
 ```bash
+cd examples/langgraph-memanto
 python run_day_1.py
 ```
 
 Run day 2 in a separate process to prove cross-session recall:
 
 ```bash
+cd examples/langgraph-memanto
 python run_day_2.py
 ```
 

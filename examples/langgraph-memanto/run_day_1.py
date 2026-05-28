@@ -9,22 +9,30 @@ def main() -> None:
         print("Error: MOORCHEH_API_KEY is not set. Copy .env.example to .env first.")
         sys.exit(1)
 
-    memory = MemantoMemory.from_env()
-    app = build_graph(memory)
+    try:
+        memory = MemantoMemory.from_env()
+        app = build_graph(memory)
+    except Exception as exc:
+        print(f"Error initializing Memanto memory: {exc}")
+        sys.exit(1)
 
     decision = (
         "For the customer support assistant, store audit logs in PostgreSQL "
         "because compliance needs SQL retention policies and easy exports."
     )
 
-    result = app.invoke(
-        {
-            "prompt": "Remember the storage decision for audit logs.",
-            "recalled_context": "",
-            "answer": "",
-            "memory_to_store": decision,
-        }
-    )
+    try:
+        result = app.invoke(
+            {
+                "prompt": "Remember the storage decision for audit logs.",
+                "recalled_context": "",
+                "answer": "",
+                "memory_to_store": decision,
+            }
+        )
+    except Exception as exc:
+        print(f"Error running Day 1 demo: {exc}")
+        sys.exit(1)
 
     print("Day 1 complete. Stored decision:")
     print(decision)
