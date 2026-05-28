@@ -24,6 +24,7 @@ from pathlib import Path
 
 DEFAULT_AGENT_ID = "claudecode-skills"
 DEFAULT_LIMIT = 5
+MAX_RECALL_LIMIT = 100
 
 MEMORY_PATTERNS: tuple[tuple[str, str], ...] = (
     ("artifact", r"\b(created|updated|wrote|added|changed|removed)\b"),
@@ -282,7 +283,8 @@ def command_post(args: argparse.Namespace) -> int:
     bridge = MemantoBridge(args.agent, args.memanto_command, args.dry_run)
     for candidate in candidates:
         bridge.remember(candidate, args.skill, args.project)
-        print(f"Stored {candidate.memory_type}: {candidate.content}")
+        action = "Would store" if args.dry_run else "Stored"
+        print(f"{action} {candidate.memory_type}: {candidate.content}")
 
     return 0
 
@@ -293,6 +295,26 @@ def command_demo(args: argparse.Namespace) -> int:
     for candidate in distill_transcript(transcript, args.max_memories):
         print(f"- {candidate.memory_type}: {candidate.content}")
     return 0
+
+
+def bounded_int(min_value: int, max_value: int | None = None):
+    """Return an argparse type that rejects integers outside the given bounds."""
+
+    def parse(value: str) -> int:
+        try:
+            parsed = int(value)
+        except ValueError:
+            raise argparse.ArgumentTypeError("expected an integer")
+
+        if parsed < min_value or (max_value is not None and parsed > max_value):
+            upper = max_value if max_value is not None else "unbounded"
+            raise argparse.ArgumentTypeError(
+                f"expected integer in range [{min_value}, {upper}]"
+            )
+
+        return parsed
+
+    return parse
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -321,7 +343,12 @@ def build_parser() -> argparse.ArgumentParser:
     pre.add_argument("--skill", required=True, help="Skill name, e.g. tdd.")
     pre.add_argument("--task", required=True, help="Current task or user request.")
     pre.add_argument("--project", default=".", help="Project path.")
-    pre.add_argument("--limit", type=int, default=DEFAULT_LIMIT)
+    pre.add_argument(
+        "--limit",
+        type=bounded_int(1, MAX_RECALL_LIMIT),
+        default=DEFAULT_LIMIT,
+        help=f"Maximum number of recalled memories (1-{MAX_RECALL_LIMIT}).",
+    )
     pre.set_defaults(func=command_pre)
 
     post = subparsers.add_parser("post", help="Store memories after a skill ends.")
@@ -329,7 +356,12 @@ def build_parser() -> argparse.ArgumentParser:
     post.add_argument("--project", default=".", help="Project path.")
     post.add_argument("--transcript", help="Path to a skill transcript markdown file.")
     post.add_argument("--summary", help="Short handoff summary to store.")
-    post.add_argument("--max-memories", type=int, default=8)
+    post.add_argument(
+        "--max-memories",
+        type=bounded_int(1),
+        default=8,
+        help="Maximum number of memories to extract; must be positive.",
+    )
     post.set_defaults(func=command_post)
 
     demo = subparsers.add_parser(
@@ -337,7 +369,12 @@ def build_parser() -> argparse.ArgumentParser:
         help="Show extracted memories without calling Memanto.",
     )
     demo.add_argument("transcript", help="Path to a sample transcript.")
-    demo.add_argument("--max-memories", type=int, default=8)
+    demo.add_argument(
+        "--max-memories",
+        type=bounded_int(1),
+        default=8,
+        help="Maximum number of memories to extract; must be positive.",
+    )
     demo.set_defaults(func=command_demo)
 
     return parser
