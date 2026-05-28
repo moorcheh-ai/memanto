@@ -1,14 +1,9 @@
 # LangGraph + Memanto Cross-Session Memory Example
 
-This draft targets the Memanto LangGraph bounty:
-
-https://github.com/moorcheh-ai/memanto/issues/397
-
-It is intended to live at:
-
-```text
-examples/langgraph-memanto/
-```
+This example shows Memanto acting as a long-term memory layer for a
+LangGraph workflow. LangGraph owns the short-lived state for the current run;
+Memanto stores and recalls memories that survive across separate Python
+processes.
 
 ## What It Demonstrates
 
@@ -61,7 +56,11 @@ Expected behavior:
 - Day 2 asks a fresh graph which audit-log storage it should use.
 - The graph recalls the stored decision from Memanto and includes it in the response.
 
-## Video/GIF Checklist
+## Demo Recording
+
+Video/GIF link: to be added before this PR is marked ready for review.
+
+## Recording Checklist
 
 The bounty requires a 30-second GIF or video link. Record:
 
