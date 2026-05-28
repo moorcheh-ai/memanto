@@ -1,9 +1,8 @@
 """
 Memanto - Memory that AI Agents Love!
-"""Memanto - Memory that AI Agents Love!"""
+name = "memanto"
 
-from memanto.core import Memanto
-from memanto.skills import SkillContext, SkillIntegration
+__version__ = "0.1.0"
 
-__all__ = ["Memanto", "SkillContext", "SkillIntegration"]
+
 """
