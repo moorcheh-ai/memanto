@@ -18,6 +18,9 @@
   <a href="https://www.youtube.com/watch?v=vEtOaoweIG4">
     <img src="https://img.shields.io/badge/Setup-Video-FF0000?style=for-the-badge&logo=youtube&logoColor=white" alt="Setup Video">
   </a>
+  <a href="CHALLENGE.md">
+    <img src="https://img.shields.io/badge/Developer%20Skills%20Challenge-🏆-FF6F00?style=for-the-badge&logo=typescript&logoColor=white" alt="Developer Skills Challenge">
+  </a>
 </p>
 
 <p align="center">
@@ -36,6 +39,14 @@
    <img alt="Star History Chart" src="https://api.star-history.com/chart?repos=moorcheh-ai/memanto&type=date&legend=top-left" />
  </picture>
 </a>
+
+---
+
+## 🏆 Developer Skills Challenge with Matt Pocock
+
+We partnered with [Matt Pocock](https://www.mattpocock.com/) — TypeScript educator and creator of Total TypeScript — to create a **developer skills challenge** that tests your ability to build with Memanto.
+
+👉 **See [CHALLENGE.md](CHALLENGE.md) for full details, prizes, and submission instructions.**
 
 ---
 
@@ -198,7 +209,7 @@ By default, call the endpoints on your local server (for example: `"http://127.0
 ### Real Impact
 
 | Feature | Traditional | Moorcheh |
-|---------|------------|----------|
+|---------|------------|---------|
 | Write-to-Search | Minutes | **Instant** |
 | Accuracy | Approximate | **Exact** |
 | Idle Costs | Always running | **Zero** |
