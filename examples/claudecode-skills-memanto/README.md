@@ -18,6 +18,7 @@ examples/claudecode-skills-memanto/
 ├── README.md
 ├── requirements.txt
 ├── .env.example
+├── .gitignore
 ├── memanto_skills.py
 ├── run_session_a.py
 ├── run_session_b.py
@@ -86,6 +87,8 @@ python memanto_skills.py post \
 cd examples/claudecode-skills-memanto
 python -m pytest tests -q
 python -m py_compile memanto_skills.py run_session_a.py run_session_b.py
+ruff check .
+ruff format --check .
 ```
 
 ## Why This Fits The Challenge

@@ -47,13 +47,16 @@ class LocalJsonlBackend:
     def recall(self, query: str, limit: int = 5) -> list[SkillMemory]:
         memories = self._load()
         query_terms = _tokens(query)
+        if not query_terms:
+            return []
+        minimum_score = min(2, len(query_terms))
         scored = []
         for memory in memories:
             haystack = " ".join(
                 [memory.title, memory.content, memory.skill, memory.path_hint]
             )
             score = len(query_terms & _tokens(haystack))
-            if score:
+            if score >= minimum_score:
                 scored.append((score, memory))
         scored.sort(key=lambda item: item[0], reverse=True)
         return [memory for _, memory in scored[:limit]]
@@ -64,7 +67,10 @@ class LocalJsonlBackend:
         memories = []
         for line in self.path.read_text(encoding="utf-8").splitlines():
             if line.strip():
-                memories.append(SkillMemory(**json.loads(line)))
+                try:
+                    memories.append(SkillMemory(**json.loads(line)))
+                except (json.JSONDecodeError, TypeError, ValueError):
+                    continue
         return memories
 
 
@@ -167,8 +173,7 @@ def distill_engineering_memory(
 ) -> SkillMemory:
     """Extract a compact engineering preference from one skill session."""
 
-    text = f"{prompt}\n{transcript}"
-    explicit = _find_explicit_decision(text)
+    explicit = _find_explicit_decision(transcript)
     if explicit:
         title = "Architecture decision"
         content = explicit
