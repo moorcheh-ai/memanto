@@ -20,6 +20,7 @@ examples/langgraph-memanto/
 ├── README.md
 ├── requirements.txt
 ├── .env.example
+├── .gitignore
 ├── assets/demo.gif
 ├── graph.py
 ├── run_day_1.py
@@ -72,6 +73,15 @@ The bounty requires a 30-second GIF or video link. Record:
 2. Close the terminal or start a fresh terminal.
 3. `python run_day_2.py`
 4. Show the recalled memory in the day 2 output.
+
+## Validation
+
+```bash
+cd examples/langgraph-memanto
+python -m py_compile graph.py run_day_1.py run_day_2.py
+ruff check .
+ruff format --check .
+```
 
 ## Notes
 
