@@ -1,160 +1,182 @@
-Looking at the issue description, I need to create an integration layer that allows Memanto to act as a global memory companion across different developer skill executions. The challenge is to solve "Context Fragmentation" where each terminal command is treated as isolated, and instead have Memanto actively listen to and share context between different skill executions.
-
-Based on the repository structure, I can see this is a Python project with a `memanto` directory. I need to create an integration layer that captures the essence of the mattpocock/skills ecosystem integration with Memanto's memory system.
-
 ```diff
+--- a/memanto/__init__.py
++++ b/memanto/__init__.py
+@@ -0,0 +1,6 @@
++"""Memanto - Memory that AI Agents Love."""
++
++from memanto.core import Memanto
++from memanto.skills import SkillIntegration
++
++__all__ = ["Memanto", "SkillIntegration"]
 --- /dev/null
-+++ b/integrations/skills_integration.py
-@@ -1,0 +1,299 @@
-+"""
-+Memanto Skills Integration Layer
++++ b/memanto/core.py
+@@ -0,0 +1,0 @@
++"""Core Memanto memory agent implementation."""
 +
-+This module provides integration between the mattpocock/skills ecosystem and Memanto's memory system,
-+allowing context to persist across different skill executions.
-+"""
-+
-+import os
-+import sys
 +import json
-+import logging
++import hashlib
 +from datetime import datetime
-+from typing import Dict, List, Optional
-+import yaml
-+import argparse
++from pathlib import Path
++from typing import Any, Dict, List, Optional, Callable
++from dataclasses import dataclass, asdict
 +
-+class SkillsMemoryManager:
-+    """Manages memory context across different skill executions."""
-+    
-+    def __init__(self, memory_file: str = ".memanto/skills_context.json"):
-+        """Initialize the skills memory manager."""
-+        self.memory_file = memory_file
-+        self.context_data = self._load_context()
-+        self.logger = logging.getLogger(__name__)
-+        
-+    def _load_context(self) -> Dict:
-+        """Load existing context from file or create new context."""
-+        try:
-+            if os.path.exists(self.memory_file):
-+                with open(self.memory_file, 'r') as f:
-+                    return json.load(f)
-+        except Exception as e:
-+            self.logger.debug(f"Could not load context from {self.memory_file}: {e}")
-+            pass
-+            
-+        return {
-+            "sessions": {},
-+            "developer_preferences": {},
-+            "architectural_decisions": [],
-+            "codebase_insights": {},
-+            "skill_history": []
-+        }
-+        
-+    def _save_context(self):
-+        """Save the current context to file."""
-+        try:
-+            os.makedirs(os.path.dirname(self.memory_file), exist_ok=True)
-+            with open(self.memory_file, 'w') as f:
-+                json.dump(self.context_data, f, indent=2)
-+        except Exception as e:
-+            self.logger.error(f"Failed to save context: {e}")
-+            
-+    def capture_skill_context(self, skill_name: str, context: Dict) -> None:
-+        """Capture context from a skill execution."""
-+        # Record the timestamp of this skill execution
-+        timestamp = datetime.now().isoformat()
-+        
-+        # Add to skill history
-+        self.context_data["skill_history"].append({
-+            "skill": skill_name,
-+            "timestamp": timestamp,
-+            "context": context
-+        })
-+        
-+        # Extract key architectural decisions and preferences
-+        if "preferences" in context:
-+            for key, value in context.get("preferences", {}).items():
-+                self.context_data["developer_preferences"][key] = value
-+                
-+        if "architectural_notes" in context:
-+            self.context_data["architectural_decisions"].extend(
-+                context.get("architectural_notes", [])
-+            )
-+            
-+        self._save_context()
-+        
-+    def get_contextual_memory(self) -> Dict:
-+        """Get accumulated context for prompt injection."""
-+        return {
-+            "architectural_decisions": self.context_data.get("architectural_decisions", []),
-+            "developer_preferences": self.context_data.get("developer_preferences", {}),
-+            "codebase_insights": self.context_data.get("codebase_insights", {})
-+        }
-+        
-+    def get_developer_preferences(self) -> Dict:
-+        """Get developer preferences for consistent coding style."""
-+        return self.context_data.get("developer_preferences", {})
-+        
-+    def get_architectural_decisions(self) -> List:
-+        """Get architectural decisions for context."""
-+        return self.context_data.get("architectural_decisions", [])
-+        
-+    def get_codebase_insights(self) -> Dict:
-+        """Get codebase insights for context."""
-+        return self.context_data.get("codebase_insights", {})
-+        
-+    def get_skill_history(self) -> List:
-+        """Get history of skill executions."""
-+        return self.context_data.get("skill_history", [])
 +
-+def main():
-+    """Main entry point for the skills integration."""
-+    parser = argparse.ArgumentParser(description="Memanto Skills Integration")
-+    parser.add_argument("--skill", help="Skill name being executed")
-+    parser.add_argument("--capture", action="store_true", help="Capture context from this execution")
-+    parser.add_argument("--context", type=str, help="JSON context data from skill execution")
-+    parser.add_argument("--output", type=str, help="Path to save context")
++@dataclass
++class MemoryEntry:
++    """A single memory entry with metadata for retrieval and relevance scoring."""
 +    
-+    args = parser.add_argument
++    content: str
++    source_skill: str
++    memory_type: str  # e.g., 'architectural_decision', 'coding_preference', 'codebase_quirk'
++    timestamp: str
++    session_id: Optional[str] = None
++    tags: Optional[List[str]] = None
++    relevance_score: float = 0.0
++    access_count: int = 0
++    last_accessed: Optional[str] = None
 +    
-+    # Initialize context manager
-+    memory_manager = SkillsMemoryManager()
++    def to_dict(self) -> Dict[str, Any]:
++        return asdict(self)
 +    
-+    if args().capture and args.context:
-+        # Capture context from current skill execution
-+        try:
-+            context_data = json.loads(args().context) if args().context else {}
-+            memory_manager.capture_skill_context(args().skill, context_data)
-+        except json.JSONDecodeError:
-+            print("Invalid JSON context provided", file=sys.stderr)
-+            sys.exit(1)
-+            
-+    # Output current context for prompt injection
-+    if args().output:
-+        context_to_inject = {
-+            "architectural_decisions": memory_manager.get_architectural_decisions(),
-+            "developer_preferences": memory_manager.get_developer_preferences(),
-+            "codebase_insights": memory_manager.get_codebase_insights()
++    @classmethod
++    def from_dict(cls, data: Dict[str, Any]) -> "MemoryEntry":
++        return cls(**{k: v for k, v in data.items() if k in cls.__dataclass_fields__})
++
++
++class MemantoStore:
++    """Persistent storage backend for Memanto memories."""
++    
++    def __init__(self, storage_path: Optional[str] = None):
++        self.storage_path = Path(storage_path or "~/.memanto/memories.json").expanduser()
++        self.storage_path.parent.mkdir(parents=True, exist_ok=True)
++        self._memories: List[MemoryEntry] = []
++        self._load()
++    
++    def _load(self) -> None:
++        """Load memories from persistent storage."""
++        if self.storage_path.exists():
++            try:
++                data = json.loads(self.storage_path.read_text())
++                self._memories = [MemoryEntry.from_dict(m) for m in data.get("memories", [])]
++            except (json.JSONDecodeError, KeyError, TypeError):
++                self._memories = []
++        else:
++            self._memories = []
++    
++    def _save(self) -> None:
++        """Persist memories to storage."""
++        data = {
++            "version": "1.0",
++            "last_updated": datetime.now().isoformat(),
++            "memories": [m.to_dict() for m in self._memories]
 +        }
-+        
-+        try:
-+            with open(args().output, 'w') as f:
-+                json.dump(context_to_inject, f, indent=2)
-+        except Exception as e:
-+            print(f"Error writing to output file: {e}", file=sys.stderr)
-+            sys.exit(1)
++        self.storage_path.write_text(json.dumps(data, indent=2, default=str))
 +    
-+    # Print usage information
-+    if args().skill:
-+        print(f"Context captured from skill: {args().skill}")
-+        print("Current contextual memory:")
-+        print(json.dumps(memory_manager.get_contextual_memory(), indent=2))
-+    else:
-+        print("Skills Integration Manager Active")
-+        print("Usage: memanto-skills [options]")
-+        print("  --skill SKILL_NAME    Name of the skill being executed")
-+        print("  --context CONTEXT       JSON context from skill")
-+        print("  --capture              Capture context from this execution")
-+        print("  --output FILE          Output file for context")
-+        print()
-+        print("Examples:")
-+        print("  memanto-skills --skill /gr
++    def add(self, entry: MemoryEntry) -> None:
++        """Add a new memory entry."""
++        self._memories.append(entry)
++        self._save()
++    
++    def query(
++        self,
++        skill_context: str,
++        memory_types: Optional[List[str]] = None,
++        limit: int = 10,
++        min_relevance: float = 0.0
++    ) -> List[MemoryEntry]:
++        """
++        Query memories relevant to the current skill context.
++        Simple keyword-based relevance scoring for MVP.
++        """
++        skill_context_lower = skill_context.lower()
++        scored = []
++        
++        for memory in self._memories:
++            if memory_types and memory.memory_type not in memory_types:
++                continue
++            
++            # Simple relevance: keyword overlap
++            content_lower = memory.content.lower()
++            skill_words = set(skill_context_lower.split())
++            content_words = set(content_lower.split())
++            overlap = skill_words & content_words
++            
++            if overlap:
++                relevance = len(overlap) / max(len(skill_words), 1)
++            else:
++                relevance = 0.0
++            
++            # Boost recently accessed memories
++            if memory.last_accessed:
++                try:
++                    last_access = datetime.fromisoformat(memory.last_accessed)
++                    days_since = (datetime.now() - last_access).days
++                    relevance += max(0, 0.1 - days_since * 0.001)  # Small decay factor
++                except ValueError:
++                    pass
++            
++            # Boost frequently accessed memories
++            relevance += min(memory.access_count * 0.01, 0.1)
++            
++            if relevance >= min_relevance:
++                memory.relevance_score = relevance
++                scored.append((relevance, memory))
++        
++        # Sort by relevance descending
++        scored.sort(key=lambda x: x[0], reverse=True)
++        results = [m for _, m in scored[:limit]]
++        
++        # Update access metadata
++        for memory in results:
++            memory.access_count += 1
++            memory.last_accessed = datetime.now().isoformat()
++        
++        self._save()
++        return results
++    
++    def get_all(self) -> List[MemoryEntry]:
++        """Return all stored memories."""
++        return self._memories.copy()
++    
++    def clear(self) -> None:
++        """Clear all memories."""
++        self._memories = []
++        self._save()
++
++
++class Memanto:
++    """
++    Active memory companion that persists context across skill executions.
++    
++    Memanto listens to skill inputs/outputs, distills architectural decisions,
++    coding preferences, and codebase quirks, then injects relevant context
++    into subsequent skill executions.
++    """
++    
++    def __init__(self, storage_path: Optional[str] = None):
++        self.store = MemantoStore(storage_path)
++        self._session_id: Optional[str] = None
++    
++    @property
++    def session_id(self) -> Optional[str]:
++        return self._session_id
++    
++    @session_id.setter
++    def session_id(self, value: str) -> None:
++        self._session_id = value
++    
++    def remember(
++        self,
++        content: str,
++        source_skill: str,
++        memory_type: str = "general",
++        tags: Optional[List[str]] = None
++    ) -> MemoryEntry:
++        """
++        Actively store a distilled memory from skill execution.
++        
++        Args:
++            content: The distilled memory content
++            source_skill: Which skill produced this memory
++            memory_type: Category of memory (architectural_decision, coding_preference, etc.)
++            tags: Optional tags for
