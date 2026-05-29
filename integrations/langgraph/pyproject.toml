@@ -1,0 +1,73 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "langgraph-memanto"
+version = "0.1.0"
+description = "LangGraph Store backend and memory tools for Memanto - persistent long-term memory for stateful agents"
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.10,<4"
+authors = [
+    { name = "Memanto", email = "info@memanto.ai" }
+]
+keywords = [
+    "memanto",
+    "moorcheh",
+    "langgraph",
+    "langchain",
+    "agent memory",
+    "semantic memory",
+    "long-term memory",
+    "stateful agents",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+]
+dependencies = [
+    "langgraph>=0.2.0",
+    "memanto>=0.1.0",
+    "pydantic>=2.0.0",
+    "python-dotenv>=1.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.2.0,<9",
+    "pytest-asyncio>=0.21.0",
+    "pytest-mock>=3.12.0,<4",
+    "ruff>=0.14.6,<0.15",
+    "mypy>=1.10.0,<2",
+]
+
+[project.urls]
+Homepage = "https://www.memanto.ai"
+Documentation = "https://docs.memanto.ai"
+Repository = "https://github.com/moorcheh-ai/memanto"
+"Bug Tracker" = "https://github.com/moorcheh-ai/memanto/issues"
+
+[tool.hatch.build.targets.wheel]
+packages = ["langgraph_memanto"]
+
+[tool.ruff]
+target-version = "py310"
+line-length = 88
+
+[tool.ruff.lint]
+select = ["E", "W", "F", "I", "B", "C4", "UP"]
+ignore = ["B904", "E501", "B008", "C901"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
