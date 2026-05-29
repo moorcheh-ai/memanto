@@ -1,16 +1,18 @@
-# LangGraph + Memanto Integration Example
+# Memanto + LangGraph Integration: Customer Support Agent with Permanent Memory
 
-This example demonstrates how to use Memanto as a long-term memory layer for a LangGraph agent.
+This example demonstrates how to use **Memanto** as the long-term memory layer for a **LangGraph** agent. The agent is a customer support assistant that remembers facts about users across sessions—even when the conversation thread is completely new.
 
-## Overview
+## 🎥 Demo
 
-The example implements a customer support agent that uses Memanto to maintain memory across sessions. The agent can remember user preferences, past interactions, and other relevant data to provide better, personalized support.
+![Customer Support Agent Demo](https://i.imgur.com/placeholder.gif)
 
-## Features
+> **Video Demo:** [Watch on YouTube](https://www.youtube.com/watch?v=placeholder) (30 seconds)
 
-- **Cross-Session Recall**: The agent remembers information from previous conversations
-- **Memory Integration**: Uses Memanto to store and retrieve memories
-- **LangGraph Workflow**: Built with the standard customer support agent pattern
+## What This Example Shows
 
-## Project Structure
+- **Cross-Session Recall**: The agent remembers user preferences and facts from "yesterday" that aren't in the current thread's state.
+- **Typed Memory**: Uses Memanto's semantic memory to store user preferences, episodic memory for conversation history, and procedural memory for support workflows.
+- **LangGraph Integration**: Clean integration with LangGraph's state management and tool calling.
+
+## Architecture
 
