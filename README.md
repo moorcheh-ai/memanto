@@ -37,6 +37,9 @@
  </picture>
 </a>
 
+<!-- 👇 新增：Reference to Issue #508 Developer Skills Challenge -->
+> **Note:** This repository participates in the **Memanto + mattpocock Developer Skills Challenge** (see [Issue #508](https://github.com/moorcheh-ai/memanto/issues/508)). The challenge involves extending Memanto's memory capabilities in a creative way. Check the issue for details and contribute!
+
 ---
 
 ## What Is MEMANTO?
@@ -198,7 +201,7 @@ By default, call the endpoints on your local server (for example: `"http://127.0
 ### Real Impact
 
 | Feature | Traditional | Moorcheh |
-|---------|------------|----------|
+|---------|------------|---------|
 | Write-to-Search | Minutes | **Instant** |
 | Accuracy | Approximate | **Exact** |
 | Idle Costs | Always running | **Zero** |
