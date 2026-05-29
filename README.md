@@ -242,3 +242,105 @@ Have questions or feedback? We're here to help:
 ---
 
 **MIT License**
+
+## 🚀 Integrating Memanto with LangGraph: A Customer Support Agent Example
+
+In this example, we demonstrate how to integrate **Memanto** with **LangGraph** to create a customer support agent that maintains long-term memory across sessions. This agent will store user preferences, conversation history, and other relevant information in Memanto, enabling **cross-session recall** and **context-aware responses**.
+
+---
+
+### 🧠 Agent Workflow Overview
+
+The agent will:
+1. Greet the user and ask for their name.
+2. Store the user's name in Memanto with a `user` type.
+3. Ask about their issue and store the issue description.
+4. Retrieve previously stored user preferences (e.g., communication style) to tailor responses.
+5. Provide a solution and store the resolution in Memanto.
+6. End the session and ensure the memory persists for future interactions.
+
+---
+
+### 📦 Code Implementation
+
+Below is a complete example of a customer support agent using LangGraph and Memanto:
+
+```python
+from langgraph import Agent, Message, State
+from langgraph.types import Message as LangMessage
+from memanto import MemantoClient
+
+# Initialize Memanto client
+memanto_client = MemantoClient(api_key="YOUR_API_KEY")
+
+# Define the agent's state
+class SupportAgentState(State):
+    user_name: str = ""
+    issue: str = ""
+    communication_style: str = ""
+
+# Define the agent's behavior
+def handle_message(state: SupportAgentState, message: LangMessage) -> LangMessage:
+    if state.user_name == "":
+        return LangMessage(content=f"Hello! What's your name?")
+    elif state.issue == "":
+        state.issue = message.content
+        memanto_client.remember(
+            content=f"User issue: {state.issue}",
+            type="issue"
+        )
+        return LangMessage(content="Thank you for sharing your issue. How would you like me to communicate with you? (e.g., concise, detailed)")
+    elif state.communication_style == "":
+        state.communication_style = message.content
+        memanto_client.remember(
+            content=f"User communication style: {state.communication_style}",
+            type="preference"
+        )
+        return LangMessage(content="I'll communicate with you in your preferred style. Let's find a solution!")
+    else:
+        # Retrieve user preferences for context-aware response
+        preferences = memanto_client.recall(type="preference")
+        return LangMessage(content=f"Based on your preference for {preferences[0]['content']}, here's a solution to your issue: {state.issue}.")
+
+# Create the agent
+agent = Agent(
+    name="customer_support",
+    state_class=SupportAgentState,
+    message_handler=handle_message
+)
+
+# Example usage
+if __name__ == "__main__":
+    # Start a new session
+    session_token = memanto_client.activate_agent("customer_support")
+    
+    # Simulate user interaction
+    user_messages = [
+        "Hi, my name is Alice.",
+        "I'm having trouble with my account login.",
+        "I prefer concise answers."
+    ]
+    
+    for msg in user_messages:
+        response = agent.respond(msg)
+        print(f"Agent: {response.content}")
+    
+    # End the session
+    memanto_client.deactivate_agent("customer_support")
+```
+
+---
+
+### 📹 Visualizing the Agent in Action
+
+Include a **30-second GIF or video link** in your `README.md` to show the agent in action. For example:
+
+```markdown
+[![Agent in Action](https://example.com/agent.gif)](https://example.com/agent.gif)
+```
+
+---
+
+### 🧠 Why This Matters
+
+This example demonstrates how Memanto can act as a **long-term memory layer** for LangGraph agents, enabling **cross-session recall** and **context-aware interactions**. By storing user preferences and conversation history, the agent can provide more personalized and efficient support, even across multiple sessions.
