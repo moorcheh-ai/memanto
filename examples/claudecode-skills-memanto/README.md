@@ -2,7 +2,7 @@
 
 A global memory companion for [mattpocock/skills](https://github.com/mattpocock/skills) that eliminates **Context Fragmentation** across skill executions.
 
-```
+```text
 /grill-with-docs  →  stores: JWT over sessions, RS256, TypeScript strict
                                         ↓  Memanto  ↓
 /tdd              ←  injects: all past decisions automatically (new session)
