@@ -10,6 +10,7 @@ from support_agent import SupportAgent, run_support_turn
 
 
 def main() -> int:
+    """Run the local or SDK-backed two-session demonstration."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--backend",

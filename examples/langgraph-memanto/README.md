@@ -34,7 +34,10 @@ examples/langgraph-memanto/
 ```bash
 cd examples/langgraph-memanto
 python -m venv .venv
-.venv\Scripts\activate
+# macOS / Linux
+source .venv/bin/activate
+# Windows (PowerShell)
+# .venv\Scripts\Activate.ps1
 pip install -r requirements.txt
 python run_demo.py --backend local --reset-local
 ```
@@ -57,7 +60,10 @@ Cross-session recall verified.
 Use the live backend when you have a Moorcheh API key:
 
 ```bash
-set MOORCHEH_API_KEY=your-key
+# macOS / Linux
+export MOORCHEH_API_KEY=your-key
+# Windows (PowerShell)
+# $env:MOORCHEH_API_KEY="your-key"
 python run_demo.py --backend memanto --agent-id langgraph-support-demo
 ```
 

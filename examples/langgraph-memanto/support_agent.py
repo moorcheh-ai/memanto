@@ -7,7 +7,6 @@ from dataclasses import dataclass
 from typing import TypedDict
 
 from langgraph.graph import END, StateGraph
-
 from memory_backends import Memory, MemoryBackend, stable_memory_id
 
 
@@ -30,6 +29,7 @@ class SupportAgent:
     memory: MemoryBackend
 
     def graph(self):
+        """Compile the support workflow graph."""
         workflow = StateGraph(SupportState)
         workflow.add_node("recall_context", self.recall_context)
         workflow.add_node("draft_response", self.draft_response)
@@ -43,6 +43,7 @@ class SupportAgent:
         return workflow.compile()
 
     def recall_context(self, state: SupportState) -> SupportState:
+        """Recall durable memory relevant to the current support message."""
         query = (
             f"{state['customer_message']} customer identity preference vendor "
             "approval PHI SMS safety support policy"
@@ -51,6 +52,7 @@ class SupportAgent:
         return {**state, "recalled_memories": recalled}
 
     def draft_response(self, state: SupportState) -> SupportState:
+        """Draft a support response from recalled durable context."""
         memories = state["recalled_memories"]
         message = state["customer_message"]
         customer = _first_memory(memories, "relationship")
@@ -79,6 +81,7 @@ class SupportAgent:
         return {**state, "response": response}
 
     def extract_memories(self, state: SupportState) -> SupportState:
+        """Extract durable facts, preferences, and instructions from a turn."""
         message = state["customer_message"]
         session = state["session_label"]
         memories: list[Memory] = []
@@ -140,6 +143,7 @@ class SupportAgent:
         return {**state, "new_memories": memories}
 
     def persist_memories(self, state: SupportState) -> SupportState:
+        """Persist memories extracted from the current turn."""
         ids = [self.memory.remember(memory) for memory in state["new_memories"]]
         return {**state, "persisted_memory_ids": ids}
 
@@ -171,6 +175,7 @@ def _memory(
     content: str,
     tags: list[str],
 ) -> Memory:
+    """Create one stable local memory record."""
     return Memory(
         memory_id=stable_memory_id(source_session, title),
         memory_type=memory_type,
@@ -183,10 +188,12 @@ def _memory(
 
 
 def _first_memory(memories: list[Memory], memory_type: str) -> Memory | None:
+    """Return the first recalled memory of the requested type."""
     return next((memory for memory in memories if memory.memory_type == memory_type), None)
 
 
 def _extract_after(text: str, marker: str) -> str:
+    """Return the text after a marker up to the next period."""
     if marker not in text:
         return text
     value = text.split(marker, 1)[1].split(".", 1)[0]
