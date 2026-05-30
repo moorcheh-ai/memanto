@@ -242,3 +242,5 @@ Have questions or feedback? We're here to help:
 ---
 
 **MIT License**
+
+<!-- fix #397: [BOUNTY $100] 🐜 The Memanto + LangGraph Integration Challeng -->
