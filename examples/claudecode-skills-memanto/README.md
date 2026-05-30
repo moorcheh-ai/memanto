@@ -87,8 +87,10 @@ Add to your Claude Code MCP config:
 
 ```python
 from claudecode_memanto import SkillMemory
+from claudecode_memanto.config import MemantoConfig
 
-memory = SkillMemory(agent_id="claudecode-myproject")
+config = MemantoConfig(agent_id="claudecode-myproject")
+memory = SkillMemory(config=config)
 
 # After skill completes
 memory.capture(
@@ -121,7 +123,7 @@ When a skill finishes, the hook:
 
 When a skill starts, the hook:
 - Queries Memanto for memories relevant to the current skill + file context
-- Filters by confidence (>0.6) and recency
+- Filters by confidence (>=0.6) and recency
 - Formats as a concise system constraint
 - Returns text to prepend to the skill prompt
 

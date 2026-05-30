@@ -61,7 +61,7 @@ def setup_claude_md(project_dir: str = ".") -> bool:
         return True
 
     # Add the Memanto section
-    content += MEMANTO_SECTION
+    content = content.rstrip() + "\n\n" + MEMANTO_SECTION.lstrip()
     claude_md_path.write_text(content)
 
     print(f"✅ Added Memanto section to {claude_md_path}")
@@ -100,8 +100,12 @@ if __name__ == "__main__":
     print("🧠 Setting up Memanto for Claude Code...")
     print("=" * 50)
 
-    setup_claude_md(project_dir)
-    setup_hook_script(project_dir)
+    md_ok = setup_claude_md(project_dir)
+    hook_ok = setup_hook_script(project_dir)
+
+    if not md_ok or not hook_ok:
+        print("\n❌ Setup completed with errors.")
+        sys.exit(1)
 
     print("\n📝 Next steps:")
     print("1. Get a Moorcheh API key: https://console.moorcheh.ai/api-keys")
