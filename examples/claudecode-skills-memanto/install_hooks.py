@@ -12,6 +12,8 @@ SETTINGS_PATH = Path.home() / ".claude" / "settings.json"
 BACKUP_PATH = Path.home() / ".claude" / "settings.json.memanto-backup"
 HOOKS_DIR = Path(__file__).parent.resolve()
 
+_HOOK_SCRIPT = HOOKS_DIR / "claude_hooks.py"
+
 HOOK_DEFINITIONS = {
     "UserPromptSubmit": [
         {
@@ -19,7 +21,7 @@ HOOK_DEFINITIONS = {
             "hooks": [
                 {
                     "type": "command",
-                    "command": f"CLAUDE_HOOK_NAME=UserPromptSubmit python3 {HOOKS_DIR / 'claude_hooks.py'}",
+                    "command": f'CLAUDE_HOOK_NAME=UserPromptSubmit python3 "{_HOOK_SCRIPT}"',
                 }
             ],
         }
@@ -30,7 +32,7 @@ HOOK_DEFINITIONS = {
             "hooks": [
                 {
                     "type": "command",
-                    "command": f"CLAUDE_HOOK_NAME=Stop python3 {HOOKS_DIR / 'claude_hooks.py'}",
+                    "command": f'CLAUDE_HOOK_NAME=Stop python3 "{_HOOK_SCRIPT}"',
                 }
             ],
         }
@@ -41,7 +43,7 @@ HOOK_DEFINITIONS = {
             "hooks": [
                 {
                     "type": "command",
-                    "command": f"CLAUDE_HOOK_NAME=PostToolUse python3 {HOOKS_DIR / 'claude_hooks.py'}",
+                    "command": f'CLAUDE_HOOK_NAME=PostToolUse python3 "{_HOOK_SCRIPT}"',
                 }
             ],
         }

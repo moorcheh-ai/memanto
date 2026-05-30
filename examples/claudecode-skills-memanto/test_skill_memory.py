@@ -146,16 +146,11 @@ class TestFormatMemoryContext(unittest.TestCase):
 class TestPrePostHooks(unittest.TestCase):
     def setUp(self):
         self.tmpdir = tempfile.mkdtemp()
-        # Set env var BEFORE creating backend — works because _get_local_dir() is lazy
-        os.environ["MEMANTO_SKILLS_DATA"] = self.tmpdir
-
-    def tearDown(self):
-        os.environ.pop("MEMANTO_SKILLS_DATA", None)
 
     def test_pre_hook_returns_context(self):
         backend = LocalBackend(data_dir=self.tmpdir)
         backend.store({"type": "decision", "content": "Use PostgreSQL for write model", "tags": ["architecture"]})
-        context = pre_hook("What database should we use?")
+        context = pre_hook("What database should we use?", backend=backend)
         self.assertIsInstance(context, str)
         self.assertIn("PostgreSQL", context)
 
@@ -164,16 +159,18 @@ class TestPrePostHooks(unittest.TestCase):
             "Design the order system",
             "We decided to use event sourcing for orders. Must always use domain events.",
             "grill-with-docs",
+            backend=LocalBackend(data_dir=self.tmpdir),
         )
         self.assertTrue(len(ids) >= 1)
 
     def test_full_lifecycle(self):
-        context1 = pre_hook("/grill-with-docs Design the order system", "grill-with-docs")
+        backend = LocalBackend(data_dir=self.tmpdir)
+        context1 = pre_hook("/grill-with-docs Design the order system", "grill-with-docs", backend=backend)
         self.assertIsInstance(context1, str)
         skill_output = "We decided to use event sourcing for the order module. Must always use aggregate roots."
-        ids = post_hook("/grill-with-docs Design the order system", skill_output, "grill-with-docs")
+        ids = post_hook("/grill-with-docs Design the order system", skill_output, "grill-with-docs", backend=backend)
         self.assertTrue(len(ids) >= 1)
-        context2 = pre_hook("/tdd Implement the Order aggregate", "tdd")
+        context2 = pre_hook("/tdd Implement the Order aggregate", "tdd", backend=backend)
         self.assertIsInstance(context2, str)
         # Verify recalled context actually contains stored decisions/signals
         self.assertIn("event sourcing", context2.lower() + (context1.lower() if context1 else ""))

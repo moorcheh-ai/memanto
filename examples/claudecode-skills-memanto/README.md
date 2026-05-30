@@ -42,7 +42,7 @@ python3 install_hooks.py --status
 | `install_hooks.py` | Idempotent installer for ~/.claude/settings.json |
 | `mattpocock_adapter.py` | CLI adapter with skill manifest and wrapper generation |
 | `validate.py` | Credential-free validation script |
-| `generate_sources.py` | Test data generation script |
+| `generate_sources.py` | Source file validation script |
 | `test_skill_memory.py` | Comprehensive test suite |
 | `README.md` | This file |
 
@@ -88,7 +88,7 @@ Session 3: /handoff "Next session will work on billing"
 
 ## Showcase
 
-Demo: https://github.com/moorcheh-ai/memanto/tree/main/examples/claudecode-skills-memanto
+Demo: <https://github.com/moorcheh-ai/memanto/tree/main/examples/claudecode-skills-memanto>
 
 ## Key Differentiators
 
@@ -109,6 +109,6 @@ Demo: https://github.com/moorcheh-ai/memanto/tree/main/examples/claudecode-skill
 
 ## References
 
-- Bounty issue: #508
-- mattpocock/skills: https://github.com/mattpocock/skills
-- Moorcheh API: https://moorcheh.ai
+- Bounty issue: [#508](https://github.com/moorcheh-ai/memanto/issues/508)
+- mattpocock/skills: <https://github.com/mattpocock/skills>
+- Moorcheh API: <https://moorcheh.ai>

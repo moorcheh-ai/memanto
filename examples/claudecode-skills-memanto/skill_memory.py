@@ -9,7 +9,7 @@ import sys
 from pathlib import Path
 from typing import Any
 
-from memory_backend import LocalBackend, get_backend
+from memory_backend import LocalBackend, MemoryBackend, get_backend
 
 
 # Extraction patterns: (regex, memory_type, confidence)
@@ -121,21 +121,21 @@ def format_memory_context(memories: list[dict[str, Any]], max_chars: int = 2000)
     return result
 
 
-def pre_hook(user_input: str, skill_name: str | None = None) -> str:
+def pre_hook(user_input: str, skill_name: str | None = None, backend: MemoryBackend | None = None) -> str:
     """Called BEFORE a skill executes. Recalls and injects relevant memories."""
     detected_skill = skill_name or extract_skill_name(user_input)
-    backend = get_backend()
+    _backend = backend or get_backend()
 
     query_parts = [user_input[:200]]
     if detected_skill:
         query_parts.append(detected_skill)
     query = " ".join(query_parts)
 
-    memories = backend.recall(query=query, limit=5)
+    memories = _backend.recall(query=query, limit=5)
 
     if detected_skill:
         skill_tags = _SKILL_TAG_MAP.get(detected_skill, [])
-        domain_memories = backend.recall(query=detected_skill, limit=3, tags=skill_tags)
+        domain_memories = _backend.recall(query=detected_skill, limit=3, tags=skill_tags)
         seen_ids = {m.get("id") for m in memories}
         for m in domain_memories:
             if m.get("id") not in seen_ids:
@@ -148,17 +148,17 @@ def pre_hook(user_input: str, skill_name: str | None = None) -> str:
     return context
 
 
-def post_hook(user_input: str, skill_output: str, skill_name: str | None = None) -> list[str]:
+def post_hook(user_input: str, skill_output: str, skill_name: str | None = None, backend: MemoryBackend | None = None) -> list[str]:
     """Called AFTER a skill completes. Extracts and stores engineering signals."""
     detected_skill = skill_name or extract_skill_name(user_input)
-    backend = get_backend()
+    _backend = backend or get_backend()
     full_text = f"{user_input}\n\n{skill_output}"
     signals = extract_signals(full_text, detected_skill)
     signals.extend(extract_from_file_references(full_text, detected_skill))
     memory_ids = []
     for signal in signals:
         try:
-            mid = backend.store(signal)
+            mid = _backend.store(signal)
             memory_ids.append(mid)
         except Exception:
             pass
