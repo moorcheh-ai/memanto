@@ -19,7 +19,7 @@ HOOK_DEFINITIONS = {
             "hooks": [
                 {
                     "type": "command",
-                    "command": f"python3 {HOOKS_DIR / 'claude_hooks.py'}",
+                    "command": f"CLAUDE_HOOK_NAME=UserPromptSubmit python3 {HOOKS_DIR / 'claude_hooks.py'}",
                 }
             ],
         }
@@ -30,7 +30,7 @@ HOOK_DEFINITIONS = {
             "hooks": [
                 {
                     "type": "command",
-                    "command": f"python3 {HOOKS_DIR / 'claude_hooks.py'}",
+                    "command": f"CLAUDE_HOOK_NAME=Stop python3 {HOOKS_DIR / 'claude_hooks.py'}",
                 }
             ],
         }
@@ -41,7 +41,7 @@ HOOK_DEFINITIONS = {
             "hooks": [
                 {
                     "type": "command",
-                    "command": f"python3 {HOOKS_DIR / 'claude_hooks.py'}",
+                    "command": f"CLAUDE_HOOK_NAME=PostToolUse python3 {HOOKS_DIR / 'claude_hooks.py'}",
                 }
             ],
         }

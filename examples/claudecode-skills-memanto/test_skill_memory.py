@@ -157,6 +157,7 @@ class TestPrePostHooks(unittest.TestCase):
         backend.store({"type": "decision", "content": "Use PostgreSQL for write model", "tags": ["architecture"]})
         context = pre_hook("What database should we use?")
         self.assertIsInstance(context, str)
+        self.assertIn("PostgreSQL", context)
 
     def test_post_hook_stores_signals(self):
         ids = post_hook(
@@ -174,6 +175,8 @@ class TestPrePostHooks(unittest.TestCase):
         self.assertTrue(len(ids) >= 1)
         context2 = pre_hook("/tdd Implement the Order aggregate", "tdd")
         self.assertIsInstance(context2, str)
+        # Verify recalled context actually contains stored decisions/signals
+        self.assertIn("event sourcing", context2.lower() + (context1.lower() if context1 else ""))
 
 
 if __name__ == "__main__":
