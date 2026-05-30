@@ -1,4 +1,4 @@
-crewai>=0.80.0
-memanto>=0.1.0
+crewai>=0.80.0,<1.0.0
+memanto>=0.1.0,<1.0.0
 crewai-memanto
-python-dotenv>=1.0.0
+python-dotenv>=1.0.0,<2.0.0
