@@ -19,7 +19,11 @@ class MemoryBackend(Protocol):
     def recall_by_type(self, memory_type: str, limit: int = 10) -> list[dict[str, Any]]: ...
 
 
-_LOCAL_DIR = Path(os.environ.get("MEMANTO_SKILLS_DATA", Path.home() / ".memanto" / "skills-memory"))
+def _get_local_dir() -> Path:
+    """Return the local data directory, evaluated at access time (not import time)."""
+    return Path(os.environ.get("MEMANTO_SKILLS_DATA", str(Path.home() / ".memanto" / "skills-memory")))
+
+
 NEWLINE = chr(10)  # 
 
 
@@ -27,7 +31,7 @@ class LocalBackend:
     """Credential-free local JSONL backend."""
 
     def __init__(self, data_dir: Path | str | None = None) -> None:
-        self.data_dir = Path(data_dir) if data_dir else _LOCAL_DIR
+        self.data_dir = Path(data_dir) if data_dir else _get_local_dir()
         self.data_dir.mkdir(parents=True, exist_ok=True)
         self._store_path = self.data_dir / "memories.jsonl"
 

@@ -42,6 +42,7 @@ python3 install_hooks.py --status
 | `install_hooks.py` | Idempotent installer for ~/.claude/settings.json |
 | `mattpocock_adapter.py` | CLI adapter with skill manifest and wrapper generation |
 | `validate.py` | Credential-free validation script |
+| `generate_sources.py` | Test data generation script |
 | `test_skill_memory.py` | Comprehensive test suite |
 | `README.md` | This file |
 
@@ -62,7 +63,7 @@ The post-hook scans skill I/O for engineering signals:
 
 The pre-hook recalls relevant memories and formats them:
 
-```
+```text
 ## Engineering Memory Context (from Memanto)
 The following are your established engineering decisions and preferences. Honor them.
 
@@ -72,7 +73,7 @@ The following are your established engineering decisions and preferences. Honor 
 
 ### Cross-Session Flow
 
-```
+```text
 Session 1: /grill-with-docs "Design the order system"
   Post-hook: Stores DECISION + INSTRUCTION memories
 
@@ -87,7 +88,7 @@ Session 3: /handoff "Next session will work on billing"
 
 ## Showcase
 
-Demo: https://github.com/fennhelloworld/memanto-skills-demo
+Demo: https://github.com/moorcheh-ai/memanto/tree/main/examples/claudecode-skills-memanto
 
 ## Key Differentiators
 
@@ -109,5 +110,5 @@ Demo: https://github.com/fennhelloworld/memanto-skills-demo
 ## References
 
 - Bounty issue: #508
-- mattpocock/skills: github.com/mattpocock/skills
-- Moorcheh API: moorcheh.ai
+- mattpocock/skills: https://github.com/mattpocock/skills
+- Moorcheh API: https://moorcheh.ai

@@ -146,6 +146,7 @@ class TestFormatMemoryContext(unittest.TestCase):
 class TestPrePostHooks(unittest.TestCase):
     def setUp(self):
         self.tmpdir = tempfile.mkdtemp()
+        # Set env var BEFORE creating backend — works because _get_local_dir() is lazy
         os.environ["MEMANTO_SKILLS_DATA"] = self.tmpdir
 
     def tearDown(self):

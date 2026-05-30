@@ -15,23 +15,35 @@ HOOKS_DIR = Path(__file__).parent.resolve()
 HOOK_DEFINITIONS = {
     "UserPromptSubmit": [
         {
-            "type": "command",
-            "command": f"python3 {HOOKS_DIR / 'claude_hooks.py'}",
-            "env": {"CLAUDE_HOOK_NAME": "UserPromptSubmit"},
+            "matcher": "",
+            "hooks": [
+                {
+                    "type": "command",
+                    "command": f"python3 {HOOKS_DIR / 'claude_hooks.py'}",
+                }
+            ],
         }
     ],
     "Stop": [
         {
-            "type": "command",
-            "command": f"python3 {HOOKS_DIR / 'claude_hooks.py'}",
-            "env": {"CLAUDE_HOOK_NAME": "Stop"},
+            "matcher": "",
+            "hooks": [
+                {
+                    "type": "command",
+                    "command": f"python3 {HOOKS_DIR / 'claude_hooks.py'}",
+                }
+            ],
         }
     ],
     "PostToolUse": [
         {
-            "type": "command",
-            "command": f"python3 {HOOKS_DIR / 'claude_hooks.py'}",
-            "env": {"CLAUDE_HOOK_NAME": "PostToolUse"},
+            "matcher": "",
+            "hooks": [
+                {
+                    "type": "command",
+                    "command": f"python3 {HOOKS_DIR / 'claude_hooks.py'}",
+                }
+            ],
         }
     ],
 }
@@ -50,8 +62,20 @@ def _save_settings(settings: dict) -> None:
         json.dump(settings, f, indent=2)
 
 
+def _is_memanto_hook(entry: dict) -> bool:
+    """Check if a matcher entry contains a memanto hook in its nested hooks list."""
+    for h in entry.get("hooks", []):
+        if "claude_hooks.py" in str(h.get("command", "")):
+            return True
+    # Also support legacy flat format
+    if "claude_hooks.py" in str(entry.get("command", "")):
+        return True
+    return False
+
+
 def install() -> None:
-    if SETTINGS_PATH.exists():
+    # Only backup when no backup exists (avoid overwriting original on repeated runs)
+    if SETTINGS_PATH.exists() and not BACKUP_PATH.exists():
         shutil.copy2(str(SETTINGS_PATH), str(BACKUP_PATH))
         print(f"Backed up existing settings to {BACKUP_PATH}")
     settings = _load_settings()
@@ -59,10 +83,7 @@ def install() -> None:
     installed = 0
     for hook_name, definitions in HOOK_DEFINITIONS.items():
         existing = hooks.get(hook_name, [])
-        memanto_present = any(
-            "claude_hooks.py" in str(h.get("command", ""))
-            for h in existing
-        )
+        memanto_present = any(_is_memanto_hook(h) for h in existing)
         if not memanto_present:
             hooks[hook_name] = existing + definitions
             installed += 1
@@ -78,7 +99,7 @@ def uninstall() -> None:
     removed = 0
     for hook_name in list(hooks.keys()):
         definitions = hooks[hook_name]
-        filtered = [d for d in definitions if "claude_hooks.py" not in str(d.get("command", ""))]
+        filtered = [d for d in definitions if not _is_memanto_hook(d)]
         if len(filtered) < len(definitions):
             hooks[hook_name] = filtered
             removed += 1
@@ -95,10 +116,7 @@ def status() -> None:
     print("=" * 40)
     for hook_name in HOOK_DEFINITIONS:
         existing = hooks.get(hook_name, [])
-        memanto_present = any(
-            "claude_hooks.py" in str(h.get("command", ""))
-            for h in existing
-        )
+        memanto_present = any(_is_memanto_hook(h) for h in existing)
         s = "INSTALLED" if memanto_present else "NOT INSTALLED"
         print(f"  {hook_name}: {s}")
     backend = os.environ.get("MOORCHEH_API_KEY")
