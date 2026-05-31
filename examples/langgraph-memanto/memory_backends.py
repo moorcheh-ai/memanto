@@ -11,6 +11,7 @@ import argparse
 import json
 import re
 import subprocess
+import warnings
 from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
 from pathlib import Path
@@ -91,7 +92,22 @@ class FileMemoryBackend(BaseMemoryBackend):
     def _load(self) -> list[dict[str, str]]:
         if not self.path.exists():
             return []
-        return json.loads(self.path.read_text(encoding="utf-8"))
+        try:
+            return json.loads(self.path.read_text(encoding="utf-8"))
+        except json.JSONDecodeError:
+            warnings.warn(
+                f"Ignoring malformed demo memory file: {self.path}",
+                RuntimeWarning,
+                stacklevel=2,
+            )
+            return []
+        except OSError as exc:
+            warnings.warn(
+                f"Could not read demo memory file {self.path}: {exc}",
+                RuntimeWarning,
+                stacklevel=2,
+            )
+            return []
 
 
 class MemantoCliBackend(BaseMemoryBackend):
@@ -133,12 +149,15 @@ class MemantoCliBackend(BaseMemoryBackend):
         ][:limit]
 
     def _ensure_agent(self) -> None:
-        create = subprocess.run(
-            ["memanto", "agent", "create", self.agent_id],
-            capture_output=True,
-            text=True,
-            check=False,
-        )
+        try:
+            create = subprocess.run(
+                ["memanto", "agent", "create", self.agent_id],
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+        except OSError as exc:
+            raise _missing_memanto_error() from exc
         if create.returncode == 0:
             return
         _run(["memanto", "agent", "activate", self.agent_id])
@@ -162,13 +181,17 @@ def _run(cmd: list[str], *, capture: bool = False) -> str:
             text=True,
             check=True,
         )
-    except FileNotFoundError as exc:
-        raise RuntimeError(
-            "The `memanto` CLI was not found. Run `pip install memanto` and "
-            "`memanto` to configure your Moorcheh API key, or use "
-            "`--backend file` for the offline demo."
-        ) from exc
+    except OSError as exc:
+        raise _missing_memanto_error() from exc
     except subprocess.CalledProcessError as exc:
         detail = exc.stderr.strip() or exc.stdout.strip() or "unknown CLI error"
         raise RuntimeError(f"Memanto CLI command failed: {detail}") from exc
     return result.stdout if capture else ""
+
+
+def _missing_memanto_error() -> RuntimeError:
+    return RuntimeError(
+        "The `memanto` CLI was not found. Run `pip install memanto` and "
+        "`memanto` to configure your Moorcheh API key, or use "
+        "`--backend file` for the offline demo."
+    )

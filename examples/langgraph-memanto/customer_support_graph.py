@@ -31,8 +31,14 @@ def build_customer_support_graph(memory: BaseMemoryBackend):
 
     graph = StateGraph(SupportState)
 
+    def require_question(state: SupportState) -> str:
+        question = state.get("question")
+        if not question:
+            raise ValueError("SupportState requires a non-empty 'question' value.")
+        return question
+
     def recall_memory(state: SupportState) -> SupportState:
-        question = state["question"]
+        question = require_question(state)
         return {
             **state,
             "recalled_memories": memory.recall(question, limit=5),
@@ -56,7 +62,7 @@ def build_customer_support_graph(memory: BaseMemoryBackend):
         return {**state, "response": response}
 
     def store_followup_learning(state: SupportState) -> SupportState:
-        question = state["question"]
+        question = require_question(state)
         if "prefer" not in question.lower():
             return {**state, "stored_learning": ""}
         learning = f"New support preference from latest message: {question}"
