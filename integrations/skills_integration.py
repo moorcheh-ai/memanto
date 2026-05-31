@@ -1,142 +1,160 @@
 """
-Memanto Skills Integration Module
-
-This module provides integration between Memanto and the mattpocock/skills ecosystem,
-allowing Memanto to act as an active memory companion across different skill executions.
+Memanto integration for developer skills ecosystem.
+This module provides context persistence across different skill executions.
 """
 
-import json
 import os
-import sqlite3
+import json
+import hashlib
+from typing import Dict, Any, Optional, List
+from dataclasses import dataclass, asdict
 from datetime import datetime
-from typing import Dict, List, Optional, Any
-from dataclasses import dataclass
 from pathlib import Path
 
-class SkillsIntegration:
+from memanto.core.memory import Memory
+from memanto.core.session import Session
+
+
+@dataclass
+class SkillContext:
+    """Represents the context of a skill execution."""
+    skill_name: str
+    inputs: Dict[str, Any]
+    outputs: Dict[str, Any]
+    timestamp: datetime
+    session_id: str
+    context_hash: str
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "skill_name": self.skill_name,
+            "inputs": self.inputs,
+            "outputs": self.outputs,
+            "timestamp": self.timestamp.isoformat(),
+            "session_id": self.session_id,
+            "context_hash": self.context_hash
+        }
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> 'SkillContext':
+        return cls(
+            skill_name=data["skill_name"],
+            inputs=data["inputs"],
+            outputs=data["outputs"],
+            timestamp=datetime.fromisoformat(data["timestamp"]),
+            session_id=data["session_id"],
+            context_hash=data["context_hash"]
+        )
+
+
+class SkillsMemoryIntegration:
     """
-    Integration layer for Memanto to work with developer skills ecosystem
+    Integration layer that provides persistent memory across developer skill executions.
     """
     
-    def __init__(self, db_path: str = "memanto_skills.db"):
-        self.db_path = db_path
-        self.context_db = None
-        self._init_database()
+    def __init__(self, memory: Memory, session: Session):
+        self.memory = memory
+        self.session = session
+        self.context_file = Path.home() / ".memanto" / "skills_context.json"
+        self.context_file.parent.mkdir(exist_ok=True)
+        
+    def _hash_context(self, inputs: Dict[str, Any], outputs: Dict[str, Any]) -> str:
+        """Create a hash of the context for identification."""
+        context_str = json.dumps({"inputs": inputs, "outputs": outputs}, sort_keys=True)
+        return hashlib.md5(context_str.encode()).hexdigest()
     
-    def _init_database(self):
-        """Initialize the skills context database"""
-        self.context_db = sqlite3.connect(self.db_path)
-        self.context_db.execute('''
-            CREATE TABLE IF NOT EXISTS skill_contexts (
-                id INTEGER PRIMARY KEY,
-                session_id TEXT UNIQUE,
-                skill_name TEXT,
-                context_data TEXT,
-                timestamp DATETIME,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )
-        ''')
-        self.context_db.commit()
-    
-    def store_skill_context(self, session_id: str, skill_name: str, context_data: Dict[str, Any]) -> bool:
+    def store_skill_context(
+        self, 
+        skill_name: str, 
+        inputs: Dict[str, Any], 
+        outputs: Dict[str, Any]
+    ) -> str:
         """
-        Store skill context for later retrieval
-        
-        Args:
-            session_id: Unique identifier for the skill session
-            skill_name: Name of the skill being executed
-            context_data: Context data to store
-            
-        Returns:
-            bool: Success status
-        """
-        try:
-            cursor = self.context_db.cursor()
-            cursor.execute('''
-                INSERT OR REPLACE INTO skill_contexts 
-                (session_id, skill_name, context_data, timestamp) 
-                VALUES (?, ?, ?, CURRENT_TIMESTAMP)
-            ''', (session_id, skill_name, json.dumps(context_data)))
-            self.context_db.commit()
-            return True
-        except Exception as e:
-            print(f"Error storing skill context: {e}")
-            return False
-    
-    def retrieve_skill_context(self, session_id: str) -> Optional[Dict[str, Any]]:
-        """
-        Retrieve stored skill context
-        
-        Args:
-            session_id: Session identifier to retrieve context for
-            
-        Returns:
-            Dict containing context data or None
-        """
-        try:
-            cursor = self.context_db.cursor()
-            cursor.execute('''
-                SELECT context_data FROM skill_contexts 
-                WHERE session_id = ? 
-                ORDER BY created_at DESC 
-                LIMIT 1
-            ''', (session_id,))
-            result = cursor.fetchone()
-            if result:
-                return json.loads(result[0]) if result[0] else None
-            return None
-        except Exception as e:
-            print(f"Error retrieving skill context: {e}")
-            return None
-    
-    def enrich_skill_prompt(self, base_prompt: str, skill_context: Dict[str, Any] = None) -> str:
-        """
-        Enrich a skill prompt with relevant context
-        
-        Args:
-            base_prompt: The original prompt
-            skill_context: Optional existing context to include
-            
-        Returns:
-            Enhanced prompt with context
-        """
-        if not skill_context:
-            return base_prompt
-        
-        # Extract relevant architectural decisions and preferences from context
-        context_items = []
-        if 'architecture_decisions' in skill_context:
-            context_items.append(f"Architecture Decisions: {skill_context['architecture_decisions']}")
-        if 'coding_preferences' in skill_context:
-            context_items.append(f"Coding Preferences: {skill_context['coding_preferences']}")
-        if 'codebase_quirks' in skill_context:
-            context_items.append(f"Codebase Quirks: {skill_context['codebase_quirks']}")
-        
-        if context_items:
-            context_str = "Context Information:\n" + "\n".join(context_items)
-            return f"{context_str}\n\n{base_prompt}"
-        
-        return base_prompt
-    
-    def record_skill_execution(self, skill_name: str, inputs: str, outputs: str):
-        """
-        Record a skill execution with its inputs and outputs
+        Store the context of a skill execution.
         
         Args:
             skill_name: Name of the skill executed
-            inputs: Input data for the skill
-            outputs: Output data from the skill
+            inputs: Input parameters to the skill
+            outputs: Output results from the skill
+            
+        Returns:
+            Context hash identifier
         """
+        context_hash = self._hash_context(inputs, outputs)
+        timestamp = datetime.now()
+        
+        # Store in Memanto memory
         context_data = {
-            'skill_name': skill_name,
-            'inputs': inputs,
-            'outputs': outputs,
-            'timestamp': datetime.now().isoformat()
+            "skill_name": skill_name,
+            "inputs": inputs,
+            "outputs": outputs,
+            "timestamp": timestamp.isoformat(),
+            "context_hash": context_hash
         }
         
-        # Store this execution for context continuity
-        self.store_skill_context(
-            session_id=f"skill_{skill_name}_{datetime.now().timestamp()}",
-            skill_name=skill_name,
-            context_data=context_data
+        self.memory.remember(
+            content=json.dumps(context_data),
+            metadata={
+                "skill_name": skill_name,
+                "context_hash": context_hash,
+                "timestamp": timestamp.isoformat(),
+                "type": "skill_context"
+            },
+            session=self.session
         )
+        
+        return context_hash
+    
+    def recall_relevant_context(self, query: str, limit: int = 5) -> List[Dict[str, Any]]:
+        """
+        Recall relevant context based on a query.
+        
+        Args:
+            query: Query to search for relevant context
+            limit: Maximum number of contexts to return
+            
+        Returns:
+            List of relevant context items
+        """
+        recalled = self.memory.recall(
+            query=query,
+            session=self.session,
+            limit=limit
+        )
+        
+        contexts = []
+        for item in recalled:
+            try:
+                context_data = json.loads(item.content)
+                contexts.append(context_data)
+            except json.JSONDecodeError:
+                continue
+                
+        return contexts
+    
+    def inject_context_into_prompt(self, prompt: str, query: str = None) -> str:
+        """
+        Inject relevant context into a prompt.
+        
+        Args:
+            prompt: Original prompt
+            query: Query to find relevant context (defaults to prompt)
+            
+        Returns:
+            Prompt with injected context
+        """
+        if query is None:
+            query = prompt
+            
+        relevant_contexts = self.recall_relevant_context(query)
+        
+        if not relevant_contexts:
+            return prompt
+            
+        context_section = "\n\n# Previous Context:\n"
+        for ctx in relevant_contexts:
+            context_section += f"## {ctx['skill_name']} ({ctx['timestamp']})\n"
+            context_section += f"Inputs: {ctx['inputs']}\n"
+            context_section += f"Outputs: {ctx['outputs']}\n\n"
+            
+        return f"{prompt}{context_section}"
