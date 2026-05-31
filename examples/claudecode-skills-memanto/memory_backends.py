@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 import json
+import os
 import re
 import subprocess
+import tempfile
 import warnings
 from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
@@ -77,7 +79,7 @@ class FileMemoryBackend(BaseMemoryBackend):
                 tags=tags,
             ).to_json()
         )
-        self.path.write_text(json.dumps(records, indent=2) + "\n", encoding="utf-8")
+        _write_records_atomic(self.path, records)
 
     def recall(self, query: str, *, limit: int = 6) -> list[str]:
         """Rank stored memories by token overlap with the recall query."""
@@ -96,7 +98,15 @@ class FileMemoryBackend(BaseMemoryBackend):
         if not self.path.exists():
             return []
         try:
-            return json.loads(self.path.read_text(encoding="utf-8"))
+            payload = json.loads(self.path.read_text(encoding="utf-8"))
+            if _is_record_list(payload):
+                return payload
+            warnings.warn(
+                f"Ignoring demo memory file with unexpected shape: {self.path}",
+                RuntimeWarning,
+                stacklevel=2,
+            )
+            return []
         except json.JSONDecodeError:
             warnings.warn(
                 f"Ignoring malformed demo memory file: {self.path}",
@@ -208,6 +218,43 @@ class MemantoCliBackend(BaseMemoryBackend):
 def _terms(text: str) -> set[str]:
     """Extract lowercase search terms from a free-form string."""
     return set(re.findall(r"[a-z0-9]{3,}", text.lower()))
+
+
+def _write_records_atomic(path: Path, records: list[dict[str, str]]) -> None:
+    """Write memory records through a same-directory temp file replacement."""
+    payload = json.dumps(records, indent=2) + "\n"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp_name = ""
+    try:
+        with tempfile.NamedTemporaryFile(
+            "w",
+            dir=path.parent,
+            encoding="utf-8",
+            prefix=f".{path.name}.",
+            suffix=".tmp",
+            delete=False,
+        ) as tmp:
+            tmp_name = tmp.name
+            tmp.write(payload)
+            tmp.flush()
+            os.fsync(tmp.fileno())
+        Path(tmp_name).replace(path)
+    except Exception:
+        if tmp_name:
+            Path(tmp_name).unlink(missing_ok=True)
+        raise
+
+
+def _is_record_list(payload: Any) -> bool:
+    """Return whether parsed JSON matches list[dict[str, str]]."""
+    return isinstance(payload, list) and all(
+        isinstance(item, dict)
+        and all(
+            isinstance(key, str) and isinstance(value, str)
+            for key, value in item.items()
+        )
+        for item in payload
+    )
 
 
 def _split_tags(tags: str) -> list[str]:
