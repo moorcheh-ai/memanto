@@ -1,3 +1,7 @@
+<div align="center">
+  <h1>Memanto + LangGraph Integration Examples</h1>
+</div>
+
 <p align="center">
     <a href="https://www.memanto.ai/">
     <img alt="MEMANTO Logo" src="https://github.com/moorcheh-ai/memanto/raw/main/assets/memanto-dark.svg" width="500">
@@ -37,48 +41,36 @@
  </picture>
 </a>
 
----
-
-## What Is MEMANTO?
-
-**MEMANTO is a memory agent. It remembers, recalls, and answers — so your agents can achieve long-term goals and avoid confusion.**
-
-Most memory tools today are passive infrastructure: agents have to query them, parse the results, and figure out what to do next. MEMANTO is built differently. It's an active memory agent designed from the gaps agents themselves named when asked about their memory — three operations (`remember`, `recall`, `answer`) that give your agents persistent context across sessions, with state-of-the-art retrieval and zero ingestion latency.
-
-> *"My memory exists as a static snapshot injected into context — useful, but fundamentally passive. I can't query it, update it mid-conversation, express confidence levels, or distinguish between 'I know this' versus 'I was told this once.'"*
 >
 > — A representative model reply that became MEMANTO's design brief.
 
-We unpacked that into six concrete gaps and built MEMANTO to solve all six.
+## LangGraph Integration Examples
+
+Explore how Memanto acts as the long-term memory layer for LangGraph agents:
+
+- [Customer Support Agent](examples/langgraph-memanto/customer_support/) - An agent that remembers customer interactions across sessions
+- [Research Assistant](examples/langgraph-memanto/research_assistant/) - An agent that builds and references a knowledge base over time
+
+### Key Features Demonstrated
+
+- **Cross-Session Recall**: Agents remember information from previous conversations
+- **Persistent Memory**: Information stored with Memanto persists beyond single graph executions
+- **Temporal Context**: Memories can be queried with time-based relevance
 
 ### The Six Gaps
----
 
-## LangGraph Integration Example
-
-Check out the `examples/langgraph-memanto` folder for a complete example of integrating Memanto with LangGraph to provide long-term memory for your agents.
-
-## What Is MEMANTO?
-
-**MEMANTO is a memory agent. It remembers, recalls, and answers — so your agents can achieve long-term goals and avoid confusion.**
-
+| # | Gap | What MEMANTO does about it |
 Most memory tools today are passive infrastructure: agents have to query them, parse the results, and figure out what to do next. MEMANTO is built differently. It's an active memory agent designed from the gaps agents themselves named when asked about their memory — three operations (`remember`, `recall`, `answer`) that give your agents persistent context across sessions, with state-of-the-art retrieval and zero ingestion latency.
 
 > *"My memory exists as a static snapshot injected into context — useful, but fundamentally passive. I can't query it, update it mid-conversation, express confidence levels, or distinguish between 'I know this' versus 'I was told this once.'"*
 >
 > — A representative model reply that became MEMANTO's design brief.
- 
+
 We unpacked that into six concrete gaps and built MEMANTO to solve all six.
 
 ### The Six Gaps
 
 | # | Gap | What MEMANTO does about it |
-| --- | --- | --- |
-| 1 | **Static injection** | Queryable, not injectable |
-| 2 | **No temporal decay** | Versioning, recency signals, temporal queries |
-| 3 | --- | No provenance |
-| 4 | **Flat memory** | Typed and hierarchical — 13 built-in memory categories |
-| 5 | **No writeback** | Conflict detection, explicit versioning, no silent over
 | --- | --- | --- |
 | 1 | **Static injection** — memory arrives as a blob, not queryable by relevance | Queryable, not injectable |
 | 2 | **No temporal decay** — a preference from 6 months ago weighs the same as yesterday's deadline | Versioning, recency signals, temporal queries |
