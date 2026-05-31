@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import sys
 import tempfile
 import unittest
@@ -16,6 +17,7 @@ from skill_memory import (
     SkillMemoryBridge,
     SkillRun,
     TranscriptDistiller,
+    command_wrap,
 )
 
 
@@ -114,6 +116,57 @@ class SkillMemoryTests(unittest.TestCase):
             lines = store.read_text(encoding="utf-8").splitlines()
 
         self.assertEqual(1, len(lines))
+
+    def test_distiller_ignores_malformed_event_files_field(self) -> None:
+        """Malformed event file metadata does not abort distillation."""
+        run = SkillRun(
+            skill="/handoff",
+            task="Record release note",
+            cwd="/repo",
+            files=[],
+        )
+        memories = TranscriptDistiller().distill(
+            run,
+            "",
+            [{"kind": "decision", "content": "Keep notes short.", "files": None}],
+        )
+
+        self.assertEqual(1, len(memories))
+        self.assertEqual("Keep notes short.", memories[0].content)
+
+    def test_wrap_strips_command_separator(self) -> None:
+        """The CLI wrapper accepts the conventional -- command separator."""
+        old_cwd = os.getcwd()
+        old_store = os.environ.get("MEMANTO_SKILLS_STORE")
+        with tempfile.TemporaryDirectory() as tmp:
+            os.chdir(tmp)
+            os.environ["MEMANTO_SKILLS_STORE"] = str(Path(tmp) / "memory.jsonl")
+            transcript = Path(tmp) / "transcript.txt"
+            try:
+                result = command_wrap(
+                    [
+                        "--skill",
+                        "/tdd",
+                        "--task",
+                        "demo",
+                        "--transcript",
+                        str(transcript),
+                        "--",
+                        sys.executable,
+                        "-c",
+                        "print('wrapped-ok')",
+                    ]
+                )
+            finally:
+                os.chdir(old_cwd)
+                if old_store is None:
+                    os.environ.pop("MEMANTO_SKILLS_STORE", None)
+                else:
+                    os.environ["MEMANTO_SKILLS_STORE"] = old_store
+            transcript_text = transcript.read_text(encoding="utf-8")
+
+        self.assertEqual(0, result)
+        self.assertIn("wrapped-ok", transcript_text)
 
 
 if __name__ == "__main__":

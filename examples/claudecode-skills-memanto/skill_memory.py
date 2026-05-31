@@ -359,7 +359,12 @@ class TranscriptDistiller:
         """Convert one event-tap row into a typed memory."""
         kind = self._type_for_marker(str(event.get("kind", "observation")))
         content = str(event.get("content", "")).strip()
-        files = [str(item) for item in event.get("files", []) if item]
+        raw_files = event.get("files", [])
+        files = (
+            [str(item) for item in raw_files if item]
+            if isinstance(raw_files, list)
+            else []
+        )
         tags = self._base_tags(run) + [normalize_tag(path) for path in files]
         return self._build_memory(run, kind, content, tags, 0.95, "event_tap")
 
@@ -529,6 +534,8 @@ def command_wrap(argv: list[str]) -> int:
     parser.add_argument("command", nargs=argparse.REMAINDER)
     args = parser.parse_args(argv)
 
+    if args.command and args.command[0] == "--":
+        args.command = args.command[1:]
     if not args.command:
         parser.error("command is required after --")
 
