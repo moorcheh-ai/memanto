@@ -1,0 +1,6 @@
+.demo-memanto-skills-memory.jsonl
+.demo-memanto-skill-events.jsonl
+.memanto-skills-memory.jsonl
+.memanto-skill-events.jsonl
+__pycache__/
+tests/__pycache__/
