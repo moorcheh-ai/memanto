@@ -45,7 +45,7 @@ _SKILL_TAG_MAP = {
 
 def extract_skill_name(input_text: str) -> str | None:
     """Extract the skill name from user input."""
-    m = re.search(r"/(\w[\w-]*)", input_text)
+    m = re.search(r"(?:^|\s)/(\w[\w-]*)", input_text)
     if m:
         return m.group(1)
     return os.environ.get("CLAUDE_SKILL_NAME")
@@ -160,8 +160,8 @@ def post_hook(user_input: str, skill_output: str, skill_name: str | None = None,
         try:
             mid = _backend.store(signal)
             memory_ids.append(mid)
-        except Exception:
-            pass
+        except Exception as exc:
+            print(f"[Memanto] Failed to store signal: {exc}", file=sys.stderr)
     return memory_ids
 
 

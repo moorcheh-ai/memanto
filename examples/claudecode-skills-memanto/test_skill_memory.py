@@ -113,6 +113,14 @@ class TestSkillNameDetection(unittest.TestCase):
     def test_no_match(self):
         self.assertIsNone(extract_skill_name("just a regular prompt"))
 
+    def test_file_path_not_matched(self):
+        """File paths like src/auth/login.py should not be detected as skill names."""
+        self.assertIsNone(extract_skill_name("check src/auth/login.py for bugs"))
+
+    def test_slash_after_space(self):
+        """Slash commands after a space boundary should be detected."""
+        self.assertEqual(extract_skill_name("please /tdd implement this"), "tdd")
+
     def test_env_var_override(self):
         os.environ["CLAUDE_SKILL_NAME"] = "tdd"
         try:
