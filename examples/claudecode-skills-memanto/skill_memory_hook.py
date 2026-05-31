@@ -15,6 +15,7 @@ from __future__ import annotations
 import argparse
 import os
 import re
+import shlex
 import subprocess
 import sys
 from dataclasses import dataclass
@@ -56,10 +57,15 @@ def normalize_spaces(value: str) -> str:
 def split_summary(summary: str) -> Iterable[str]:
     """Split prose into candidate clauses while keeping short summaries usable."""
 
-    normalized = normalize_spaces(summary)
-    if not normalized:
+    if not summary.strip():
         return []
-    return [part.strip(" -•") for part in re.split(r"(?:\n|;|\.\s+)", normalized) if part.strip(" -•")]
+
+    clauses: list[str] = []
+    for part in re.split(r"(?:\r?\n|;|\.\s+)", summary):
+        clause = normalize_spaces(part.strip().lstrip("-•* ").strip())
+        if clause:
+            clauses.append(clause)
+    return clauses
 
 
 def classify_clause(clause: str) -> tuple[str, str] | None:
@@ -117,7 +123,7 @@ def run_memanto(args: list[str], *, dry_run: bool) -> str:
 
     command = ["memanto", *args]
     if dry_run:
-        return "DRY-RUN: " + " ".join(command)
+        return "DRY-RUN: " + shlex.join(command)
 
     completed = subprocess.run(
         command,
@@ -152,7 +158,10 @@ def post(args: argparse.Namespace) -> int:
     agent = args.agent or os.environ.get(DEFAULT_AGENT_ENV, DEFAULT_AGENT)
     memories = extract_memories(args.summary)
     if not memories:
-        print("No typed memories found. Prefix durable facts with Decision:, Convention:, Preference:, Gotcha:, Learned:, or Bugfix:.")
+        print(
+            "No typed memories found. Prefix durable facts with Decision(s):, "
+            "Convention(s):, Preference(s):, Gotcha(s):, Learned:, Bugfix:, or Bug:."
+        )
         return 0
 
     for memory in memories:
@@ -182,7 +191,6 @@ def build_parser() -> argparse.ArgumentParser:
 
     parser = argparse.ArgumentParser(description="Persist developer-skill context with Memanto.")
     parser.add_argument("--agent", help=f"Memanto agent id. Defaults to ${DEFAULT_AGENT_ENV} or {DEFAULT_AGENT}.")
-    parser.add_argument("--dry-run", action="store_true", help="Show Memanto CLI calls without executing them.")
     subparsers = parser.add_subparsers(required=True)
 
     pre_parser = subparsers.add_parser("pre", help="Recall context before a skill starts.")

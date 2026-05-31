@@ -1,4 +1,4 @@
-﻿# Claude Code Skills + Memanto
+# Claude Code Skills + Memanto
 
 This example wires Memanto into a command-oriented skills workflow so separate skill runs can share durable engineering context.
 

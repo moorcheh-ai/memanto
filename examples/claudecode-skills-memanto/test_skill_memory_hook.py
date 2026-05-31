@@ -1,4 +1,4 @@
-﻿from skill_memory_hook import extract_memories, normalize_spaces
+from skill_memory_hook import extract_memories, main, normalize_spaces, run_memanto
 
 
 def test_normalize_spaces_collapses_whitespace():
@@ -33,9 +33,39 @@ def test_extract_memories_ignores_untyped_noise():
     assert memories[0].content == "keep adapters thin"
 
 
-def test_main_accepts_subcommand_dry_run(capsys):
-    from skill_memory_hook import main
+def test_extract_memories_handles_semicolons_and_whitespace():
+    memories = extract_memories(
+        "Decision: keep adapters thin; Convention: tests stay near fixtures"
+    )
 
+    assert [memory.content for memory in memories] == [
+        "keep adapters thin",
+        "tests stay near fixtures",
+    ]
+
+
+def test_extract_memories_handles_multiline_bullets():
+    memories = extract_memories(
+        "- Decision: keep ports framework-agnostic\n"
+        "* Preferences: write short review comments\n"
+        "- Bug: stale cache invalidation was fixed"
+    )
+
+    assert [memory.memory_type for memory in memories] == [
+        "decision",
+        "preference",
+        "error",
+    ]
+    assert memories[1].content == "write short review comments"
+
+
+def test_dry_run_preserves_argument_boundaries():
+    output = run_memanto(["recall", "invoice validation rules"], dry_run=True)
+
+    assert "'invoice validation rules'" in output
+
+
+def test_main_accepts_subcommand_dry_run(capsys):
     status = main([
         "post",
         "--skill",
@@ -48,3 +78,4 @@ def test_main_accepts_subcommand_dry_run(capsys):
     captured = capsys.readouterr()
     assert status == 0
     assert "DRY-RUN: memanto remember" in captured.out
+

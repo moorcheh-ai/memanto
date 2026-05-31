@@ -1,4 +1,4 @@
-﻿# Demo transcript
+# Demo transcript
 
 This transcript is designed for a short screen recording.
 
@@ -11,7 +11,7 @@ python skill_memory_hook.py post \
   --dry-run
 ```
 
-Expected output shows three `memanto remember` calls: one decision, one instruction, and one preference.
+Expected output shows three `memanto remember` calls: one decision, one convention, and one preference.
 
 ## Run 2 — a different skill recalls the decision
 
