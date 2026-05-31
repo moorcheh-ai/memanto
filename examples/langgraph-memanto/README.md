@@ -1,41 +1,18 @@
-# Memanto + LangGraph Integration Examples
+# 🧠 LangGraph + Memanto: Permanent Brain for Your Agents
 
-This directory contains examples of using Memanto as the long-term memory layer for LangGraph agents.
+> Give your LangGraph agents a persistent, cross-session memory that survives restarts, new threads, and even complete application redeployments.
 
-## Examples
+[![Demo Video](https://img.shields.io/badge/📹%20Demo%20Video-Watch%20on%20YouTube-FF0000?style=for-the-badge&logo=youtube)](https://www.youtube.com/watch?v=YOUR_VIDEO_ID)
 
-### 1. Customer Support Agent
+![Cross-Session Recall Demo](assets/demo.gif)
 
-A customer support agent that can remember past interactions with customers across different sessions.
+## What This Example Demonstrates
 
-**Key Features:**
-- Remembers customer preferences and past issues
-- References previous conversations when handling new tickets
-- Builds a persistent customer knowledge base
+This example builds a **Customer Support Agent** using LangGraph that uses Memanto as its long-term memory layer. The agent can:
 
-**Directory:** `customer_support/`
+- **Remember** customer preferences, past issues, and resolutions across sessions
+- **Recall** relevant context from previous conversations when a customer returns
+- **Answer** questions using accumulated knowledge, even in brand-new threads
 
-### 2. Research Assistant
+### The Cross-Session Recall Test
 
-A research assistant that builds and references a knowledge base over multiple research sessions.
-
-**Key Features:**
-- Remembers research findings across sessions
-- References previous research when exploring new topics
-- Builds a persistent knowledge graph
-
-**Directory:** `research_assistant/`
-
-## How It Works
-
-These examples demonstrate how Memanto integrates with LangGraph:
-
-1. **Memory Storage**: LangGraph agents use Memanto's `remember` function to store important information
-2. **Memory Retrieval**: Agents use `recall` to retrieve relevant memories based on context
-3. **Cross-Session Persistence**: Memories stored in Memanto persist beyond single graph executions
-4. **Temporal Context**: Agents can query memories with time-based relevance
-
-## Running the Examples
-
-1. Install dependencies:
-   
