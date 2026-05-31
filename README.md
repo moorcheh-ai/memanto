@@ -1,52 +1,5 @@
-# Memanto - Memory that AI Agents Love!
-
-## What Is MEMANTO?
-
-**MEMANTO is a memory agent. It remembers, recalls, and answers — so your agents can achieve long-term goals and avoid confusion.**
-
-Most memory tools today are passive infrastructure: agents have to query them, parse the results, and figure out what to do next. MEMANTO is built differently. It's an active memory agent designed from the gaps agents themselves named when asked about their memory — three operations (`remember`, `recall`, `answer`) that give your agents persistent context across sessions, with state-of-the-art retrieval and zero ingestion latency.
-Versioning, rec: What is the main problem?
-
-The main issue to be addressed is: **The Bounty: The Merged PR with the highest Social Traction Score by June 1st 2026.**
-
-The solution should demonstrate Cross-Session Recall (The agent remembers something from "yesterday" that isn't in the current thread's state). The solution should be in a single folder. A 30-second GIF or video link in the README.md.
-
-## Summary of the problem
-
-The issue describes a LangGraph integration challenge where developers are asked to create a long-term memory layer for LangGraph agents using Memanto. The main requirements are:
-
-1. **Cross-Session Recall**: The agent should remember something from "yesterday" that isn't in the current thread's state
-2. **Clean, documented code** in a single folder
-3. A 30-second GIF or video link in the README.md
-
-The solution should demonstrate:
-
-## The solution
-
-The user is looking for a "memory agent" that can provide persistent context across sessions, with state-of-the-art retrieval and zero ingestion latency.
-
-### The solution
-
-The user is looking for a LangGraph workflow (e.g., a customer support agent or a research assistant) that uses memanto to store and retrieve "memories" outside of the standard LangGraph state.
-The solution should demonstrate Cross-Session Recall (The agent remembers something from "yesterday" that isn't in the current thread's state).
-
-The solution should be in a single folder. A 30-second GIF or video link in the README.md.
-
-The solution should be a complete, documented code that fixes the issue.
-
-## Solution
-
-The solution should be in a single folder. A 30-second GIF or video link in the README.md.
-
-The solution should be in a single folder. A 30-second GIF or video link in the README.md.
-
-The solution should be in a single folder. A 30-second GIF or video link in the README.md.
-
-The solution should be in a single folder. A 30-second GIF or video link in the README.md.
-
-The solution should be in a single folder. A 30-second GIF or video link in the README.md.
-
-The solution should be in a single folder. A 3
+<p align="center">
+    <a href="https://www.memanto.ai/">
     <img alt="MEMANTO Logo" src="https://github.com/moorcheh-ai/memanto/raw/main/assets/memanto-dark.svg" width="500">
     </a>
 </p>
@@ -99,8 +52,33 @@ Most memory tools today are passive infrastructure: agents have to query them, p
 We unpacked that into six concrete gaps and built MEMANTO to solve all six.
 
 ### The Six Gaps
+---
+
+## LangGraph Integration Example
+
+Check out the `examples/langgraph-memanto` folder for a complete example of integrating Memanto with LangGraph to provide long-term memory for your agents.
+
+## What Is MEMANTO?
+
+**MEMANTO is a memory agent. It remembers, recalls, and answers — so your agents can achieve long-term goals and avoid confusion.**
+
+Most memory tools today are passive infrastructure: agents have to query them, parse the results, and figure out what to do next. MEMANTO is built differently. It's an active memory agent designed from the gaps agents themselves named when asked about their memory — three operations (`remember`, `recall`, `answer`) that give your agents persistent context across sessions, with state-of-the-art retrieval and zero ingestion latency.
+
+> *"My memory exists as a static snapshot injected into context — useful, but fundamentally passive. I can't query it, update it mid-conversation, express confidence levels, or distinguish between 'I know this' versus 'I was told this once.'"*
+>
+> — A representative model reply that became MEMANTO's design brief.
+ 
+We unpacked that into six concrete gaps and built MEMANTO to solve all six.
+
+### The Six Gaps
 
 | # | Gap | What MEMANTO does about it |
+| --- | --- | --- |
+| 1 | **Static injection** | Queryable, not injectable |
+| 2 | **No temporal decay** | Versioning, recency signals, temporal queries |
+| 3 | --- | No provenance |
+| 4 | **Flat memory** | Typed and hierarchical — 13 built-in memory categories |
+| 5 | **No writeback** | Conflict detection, explicit versioning, no silent over
 | --- | --- | --- |
 | 1 | **Static injection** — memory arrives as a blob, not queryable by relevance | Queryable, not injectable |
 | 2 | **No temporal decay** — a preference from 6 months ago weighs the same as yesterday's deadline | Versioning, recency signals, temporal queries |
