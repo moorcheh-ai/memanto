@@ -61,15 +61,15 @@ def _first_run_setup() -> None:
         client = MoorchehClient(api_key=api_key_clean)
         try:
             client.documents.get(namespace_name="__memanto_auth_ping__", ids=["1"])
-        except AuthenticationError:
+        except AuthenticationError as e:
             console.print("[red]Invalid Moorcheh API key.[/red]")
-            raise typer.Exit(1)
+            raise typer.Exit(1) from e
         except NamespaceNotFound:
             pass  # Key is valid
         except Exception as e:
             # For other network errors, assume valid or warn, but don't strictly fail setup
             console.print(
-                f"[yellow]Could not fully verify API key (network issue?): {str(e)}[/yellow]"
+                f"[yellow]Could not fully verify API key (network issue?): {e!s}[/yellow]"
             )
     except ImportError:
         pass  # SDK not installed or available, skip verify

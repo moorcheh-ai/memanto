@@ -71,7 +71,7 @@ async def create_agent(
         agent = agent_service.create_agent(agent_create, moorcheh_api_key)
         return agent
     except AgentAlreadyExistsError as e:
-        raise map_error_to_http_exception(e)
+        raise map_error_to_http_exception(e) from e
 
 
 @router.get("/agents", response_model=AgentList)
@@ -142,7 +142,7 @@ async def delete_agent(
             )
         }
     except AgentNotFoundError as e:
-        raise map_error_to_http_exception(e)
+        raise map_error_to_http_exception(e) from e
 
 
 # ============================================================================
@@ -192,7 +192,7 @@ async def activate_agent(
         return session
 
     except Exception as e:
-        raise map_error_to_http_exception(e)
+        raise map_error_to_http_exception(e) from e
 
 
 @router.post("/agents/{agent_id}/deactivate", response_model=SessionSummary)
@@ -218,7 +218,7 @@ async def deactivate_agent(
         summary = get_session_service().end_session(agent_id)
         return summary
     except SessionNotFoundError as e:
-        raise map_error_to_http_exception(e)
+        raise map_error_to_http_exception(e) from e
 
 
 @router.get("/status", response_model=SessionInfo)

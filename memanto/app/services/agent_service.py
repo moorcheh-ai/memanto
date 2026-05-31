@@ -79,8 +79,8 @@ class AgentService:
         except Exception as e:
             # Unexpected error - fail the agent creation
             raise Exception(
-                f"Failed to create namespace '{namespace}' in Moorcheh: {str(e)}"
-            )
+                f"Failed to create namespace '{namespace}' in Moorcheh: {e!s}"
+            ) from e
 
         # Create agent metadata
         agent = AgentInfo(

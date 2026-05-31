@@ -89,9 +89,9 @@ class MoorchehClient:
                     f"Moorcheh API Error {e.code}: {err_json.get('message', body)}"
                 )
             except json.JSONDecodeError:
-                raise Exception(f"Moorcheh API Error {e.code}: {body}")
+                raise Exception(f"Moorcheh API Error {e.code}: {body}") from e
         except Exception as e:
-            raise Exception(f"Moorcheh Connection Error: {e}")
+            raise Exception(f"Moorcheh Connection Error: {e}") from e
 
     @property
     def documents(self):
@@ -1258,7 +1258,7 @@ class DirectClient:
                 memories_by_type[mem_type] = []
 
         export_svc = self._get_export_service()
-        out = output_path if output_path else None
+        out = output_path or None
         written_path = export_svc.write_memory_md(
             agent_id=agent_id,
             memories_by_type=memories_by_type,

@@ -98,7 +98,7 @@ Format the output as a Markdown report:
             )
             summary_text = result.get("answer", "Failed to generate summary.")
         except Exception as e:
-            raise MemoryError(f"AI summarization failed: {str(e)}")
+            raise MemoryError(f"AI summarization failed: {e!s}") from e
 
         if output_path:
             summary_path = Path(output_path)
@@ -202,7 +202,7 @@ Example response format:
             )
             conflict_text = result.get("answer", "[]")
         except Exception as e:
-            raise MemoryError(f"Conflict detection failed: {str(e)}")
+            raise MemoryError(f"Conflict detection failed: {e!s}") from e
 
         # Parse JSON from the AI response
         conflicts_data = []

@@ -43,7 +43,7 @@ class ConfigManager:
         if self.env_file.exists():
             load_dotenv(self.env_file, override=True)
         key = os.environ.get("MOORCHEH_API_KEY", "").strip()
-        return key if key else None
+        return key or None
 
     def set_api_key(self, api_key: str) -> None:
         """Save Moorcheh API key to ~/.memanto/.env."""

@@ -7,9 +7,9 @@ from .tools import (
 )
 
 __all__ = [
-    "MemantoSetup",
-    "MemantoRememberTool",
-    "MemantoRecallTool",
     "MemantoAnswerTool",
+    "MemantoRecallTool",
+    "MemantoRememberTool",
+    "MemantoSetup",
     "create_memanto_tools",
 ]

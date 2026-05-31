@@ -19,73 +19,61 @@ class MemantoError(Exception):
 class ValidationError(MemantoError):
     """Memory validation error"""
 
-    pass
 
 
 class MemoryError(MemantoError):
     """Memory operation error"""
 
-    pass
 
 
 class NamespaceError(MemantoError):
     """Namespace operation error"""
 
-    pass
 
 
 class AuthenticationError(MemantoError):
     """Authentication error"""
 
-    pass
 
 
 class AuthorizationError(MemantoError):
     """Authorization error"""
 
-    pass
 
 
 class SessionError(MemantoError):
     """Session operation error"""
 
-    pass
 
 
 class SessionExpiredError(SessionError):
     """Session has expired"""
 
-    pass
 
 
 class SessionNotFoundError(SessionError):
     """Session not found"""
 
-    pass
 
 
 class InvalidSessionTokenError(SessionError):
     """Invalid session token"""
 
-    pass
 
 
 class AgentError(MemantoError):
     """Agent operation error"""
 
-    pass
 
 
 class AgentNotFoundError(AgentError):
     """Agent not found"""
 
-    pass
 
 
 class AgentAlreadyExistsError(AgentError):
     """Agent already exists"""
 
-    pass
 
 
 def map_error_to_http_exception(error: Exception) -> HTTPException:
@@ -101,7 +89,7 @@ def map_error_to_http_exception(error: Exception) -> HTTPException:
             },
         )
 
-    elif isinstance(error, MemoryError):
+    if isinstance(error, MemoryError):
         return HTTPException(
             status_code=500,
             detail={
@@ -111,7 +99,7 @@ def map_error_to_http_exception(error: Exception) -> HTTPException:
             },
         )
 
-    elif isinstance(error, NamespaceError):
+    if isinstance(error, NamespaceError):
         return HTTPException(
             status_code=400,
             detail={
@@ -121,7 +109,7 @@ def map_error_to_http_exception(error: Exception) -> HTTPException:
             },
         )
 
-    elif isinstance(error, AuthenticationError):
+    if isinstance(error, AuthenticationError):
         return HTTPException(
             status_code=401,
             detail={
@@ -131,7 +119,7 @@ def map_error_to_http_exception(error: Exception) -> HTTPException:
             },
         )
 
-    elif isinstance(error, AuthorizationError):
+    if isinstance(error, AuthorizationError):
         return HTTPException(
             status_code=403,
             detail={
@@ -141,7 +129,7 @@ def map_error_to_http_exception(error: Exception) -> HTTPException:
             },
         )
 
-    elif isinstance(error, SessionExpiredError):
+    if isinstance(error, SessionExpiredError):
         return HTTPException(
             status_code=401,
             detail={
@@ -151,7 +139,7 @@ def map_error_to_http_exception(error: Exception) -> HTTPException:
             },
         )
 
-    elif isinstance(error, SessionNotFoundError):
+    if isinstance(error, SessionNotFoundError):
         return HTTPException(
             status_code=404,
             detail={
@@ -161,7 +149,7 @@ def map_error_to_http_exception(error: Exception) -> HTTPException:
             },
         )
 
-    elif isinstance(error, InvalidSessionTokenError):
+    if isinstance(error, InvalidSessionTokenError):
         return HTTPException(
             status_code=401,
             detail={
@@ -171,7 +159,7 @@ def map_error_to_http_exception(error: Exception) -> HTTPException:
             },
         )
 
-    elif isinstance(error, AgentNotFoundError):
+    if isinstance(error, AgentNotFoundError):
         return HTTPException(
             status_code=404,
             detail={
@@ -181,7 +169,7 @@ def map_error_to_http_exception(error: Exception) -> HTTPException:
             },
         )
 
-    elif isinstance(error, AgentAlreadyExistsError):
+    if isinstance(error, AgentAlreadyExistsError):
         return HTTPException(
             status_code=409,
             detail={
@@ -191,16 +179,15 @@ def map_error_to_http_exception(error: Exception) -> HTTPException:
             },
         )
 
-    else:
-        # Generic server error
-        return HTTPException(
-            status_code=500,
-            detail={
-                "error": "InternalServerError",
-                "message": "An unexpected error occurred",
-                "details": {"original_error": str(error)},
-            },
-        )
+    # Generic server error
+    return HTTPException(
+        status_code=500,
+        detail={
+            "error": "InternalServerError",
+            "message": "An unexpected error occurred",
+            "details": {"original_error": str(error)},
+        },
+    )
 
 
 def create_error_response(

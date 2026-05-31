@@ -19,8 +19,8 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-from research_assistant import build_research_graph  # noqa: E402
 from memanto_langgraph import MemantoSetup  # noqa: E402
+from research_assistant import build_research_graph  # noqa: E402
 
 
 def main() -> None:

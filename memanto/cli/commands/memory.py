@@ -769,11 +769,11 @@ def conflicts(
         if choice == "q":
             console.print("\n[dim]Quitting conflict resolution.[/dim]")
             break
-        elif choice == "s":
+        if choice == "s":
             console.print("[dim]  Skipped.[/dim]\n")
             skipped_count += 1
             continue
-        elif choice not in action_map:
+        if choice not in action_map:
             console.print("[yellow]  Invalid choice, skipping.[/yellow]\n")
             skipped_count += 1
             continue

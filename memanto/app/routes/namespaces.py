@@ -35,7 +35,7 @@ async def create_namespace(
         )
 
     except Exception as e:
-        raise map_error_to_http_exception(e)
+        raise map_error_to_http_exception(e) from e
 
 
 @router.get("/", response_model=NamespaceListResponse)
@@ -48,7 +48,7 @@ async def list_namespaces(client: MoorchehClient = Depends(get_moorcheh_client))
         return NamespaceListResponse(namespaces=namespaces, total=len(namespaces))
 
     except Exception as e:
-        raise map_error_to_http_exception(e)
+        raise map_error_to_http_exception(e) from e
 
 
 @router.delete("/{scope_type}/{scope_id}")
@@ -75,11 +75,10 @@ async def delete_namespace(
 
         if success:
             return {"message": "Namespace deleted successfully"}
-        else:
-            raise HTTPException(status_code=404, detail="Namespace not found")
+        raise HTTPException(status_code=404, detail="Namespace not found")
 
     except Exception as e:
-        raise map_error_to_http_exception(e)
+        raise map_error_to_http_exception(e) from e
 
 
 @router.get("/{scope_type}/{scope_id}/exists")
@@ -107,4 +106,4 @@ async def check_namespace_exists(
         return {"exists": exists}
 
     except Exception as e:
-        raise map_error_to_http_exception(e)
+        raise map_error_to_http_exception(e) from e

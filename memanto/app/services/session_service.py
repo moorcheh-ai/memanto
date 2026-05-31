@@ -167,10 +167,10 @@ class SessionService:
 
             return token
 
-        except jwt.ExpiredSignatureError:
-            raise SessionExpiredError("Session token expired")
+        except jwt.ExpiredSignatureError as e:
+            raise SessionExpiredError("Session token expired") from e
         except jwt.InvalidTokenError as e:
-            raise InvalidSessionTokenError(f"Invalid session token: {str(e)}")
+            raise InvalidSessionTokenError(f"Invalid session token: {e!s}") from e
 
     def get_session(self, agent_id: str) -> Session | None:
         """

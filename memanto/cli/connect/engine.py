@@ -180,23 +180,22 @@ def _inject_into_file(
             updated = re.sub(pattern, section.strip(), existing, flags=re.DOTALL)
             file_path.write_text(updated, encoding="utf-8")
             return f"Updated MEMANTO section in {file_path.name}"
+        # Insert before first ## heading, or append
+        match = re.search(r"^## ", existing, flags=re.MULTILINE)
+        if match:
+            insert_pos = match.start()
+            updated = (
+                existing[:insert_pos].rstrip()
+                + "\n\n"
+                + section.strip()
+                + "\n\n"
+                + existing[insert_pos:]
+            )
         else:
-            # Insert before first ## heading, or append
-            match = re.search(r"^## ", existing, flags=re.MULTILINE)
-            if match:
-                insert_pos = match.start()
-                updated = (
-                    existing[:insert_pos].rstrip()
-                    + "\n\n"
-                    + section.strip()
-                    + "\n\n"
-                    + existing[insert_pos:]
-                )
-            else:
-                updated = existing.rstrip() + "\n\n" + section.strip() + "\n"
-            file_path.write_text(updated, encoding="utf-8")
-            return f"Added MEMANTO section to {file_path.name}"
-    elif create_if_missing:
+            updated = existing.rstrip() + "\n\n" + section.strip() + "\n"
+        file_path.write_text(updated, encoding="utf-8")
+        return f"Added MEMANTO section to {file_path.name}"
+    if create_if_missing:
         file_path.parent.mkdir(parents=True, exist_ok=True)
         file_path.write_text(section.strip() + "\n", encoding="utf-8")
         return f"Created {file_path.name}"
@@ -237,9 +236,8 @@ def _remove_instructions(
         if updated.strip():
             instr_path.write_text(updated, encoding="utf-8")
             return f"Removed MEMANTO section from {instr_path.name}"
-        else:
-            instr_path.unlink()
-            return f"Removed {instr_path.name} (was empty)"
+        instr_path.unlink()
+        return f"Removed {instr_path.name} (was empty)"
 
     return None
 

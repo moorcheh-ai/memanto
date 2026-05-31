@@ -35,7 +35,7 @@ class NamespaceService:
                 # Namespace already exists
                 pass
             else:
-                raise NamespaceError(f"Failed to create namespace: {e}")
+                raise NamespaceError(f"Failed to create namespace: {e}") from e
 
         return namespace
 
@@ -60,7 +60,7 @@ class NamespaceService:
             return memanto_namespaces
 
         except Exception as e:
-            raise NamespaceError(f"Failed to list namespaces: {e}")
+            raise NamespaceError(f"Failed to list namespaces: {e}") from e
 
     def delete_namespace(self, scope_type: ScopeType, scope_id: str) -> bool:
         """Delete a namespace"""
@@ -72,7 +72,7 @@ class NamespaceService:
             return True
 
         except Exception as e:
-            raise NamespaceError(f"Failed to delete namespace: {e}")
+            raise NamespaceError(f"Failed to delete namespace: {e}") from e
 
     def namespace_exists(self, scope_type: ScopeType, scope_id: str) -> bool:
         """Check if namespace exists"""

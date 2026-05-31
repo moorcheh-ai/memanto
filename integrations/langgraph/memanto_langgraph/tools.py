@@ -8,7 +8,6 @@ call to store and retrieve memories across sessions via the Memanto SDK.
 from __future__ import annotations
 
 import logging
-from typing import Any
 
 from langchain_core.tools import StructuredTool
 from pydantic import BaseModel, Field

@@ -45,9 +45,8 @@ class RateLimiter:
         if operation in ["memory_write", "memory_delete"] and scope_id:
             # Per-scope limits
             return f"{operation}:{agent_id}:{scope_id}"
-        else:
-            # Per-agent limits
-            return f"{operation}:{agent_id}"
+        # Per-agent limits
+        return f"{operation}:{agent_id}"
 
     def check_rate_limit(
         self, operation: str, agent_id: str, scope_id: str | None = None

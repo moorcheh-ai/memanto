@@ -114,8 +114,7 @@ def get_client() -> SdkClient:
                     active_session_token, options={"verify_signature": False}
                 )
                 expires_at_str = payload.get("expires_at", "")
-                if expires_at_str.endswith("Z"):
-                    expires_at_str = expires_at_str[:-1]
+                expires_at_str = expires_at_str.removesuffix("Z")
 
                 if expires_at_str:
                     expires_at = datetime.fromisoformat(expires_at_str)

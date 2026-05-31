@@ -7,18 +7,16 @@ to store and retrieve findings across sessions.
 
 from __future__ import annotations
 
-import os
 from typing import Annotated, Any, TypedDict
 
-from langchain_core.messages import AIMessage, BaseMessage, HumanMessage, SystemMessage
+from langchain_core.messages import AIMessage, BaseMessage, SystemMessage
 from langchain_openai import ChatOpenAI
 from langgraph.graph import END, StateGraph
 from langgraph.graph.message import add_messages
 from langgraph.prebuilt import ToolNode
-
-from memanto.cli.client.sdk_client import SdkClient
 from memanto_langgraph import MemantoMemorySaver, create_memanto_tools
 
+from memanto.cli.client.sdk_client import SdkClient
 
 # ---------------------------------------------------------------------------
 # Graph state

@@ -3,7 +3,7 @@ Memory Write Service
 """
 
 from datetime import datetime
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 if TYPE_CHECKING:
     from moorcheh_sdk import MoorchehClient
@@ -43,12 +43,7 @@ class MemoryWriteService:
             # Add namespace
             namespace = memory.get_scope().to_namespace()
 
-            # skip validation for speed
-            ## Validate memory
-            # validation_result = self.validation_service.validate_memory(memory, context)
-            ## Use validated memory if modified
-            # if "memory" in validation_result:
-            #     memory = validation_result["memory"]
+            # skip validation for speed — MVP direct store
             validation_result = {"action": "store", "reason": "MVP direct store"}
 
             from typing import cast
@@ -74,7 +69,7 @@ class MemoryWriteService:
             }
 
         except Exception as e:
-            raise MemoryError(f"Failed to store memory: {e}")
+            raise MemoryError(f"Failed to store memory: {e}") from e
 
     def batch_store_memories(
         self, memories: list[MemoryRecord], context: dict[str, Any] | None = None
@@ -134,12 +129,6 @@ class MemoryWriteService:
                         )
                         continue
 
-                    # skip validation for speed
-                    ## Validate memory
-                    # validation_result = self.validation_service.validate_memory(memory, context)
-                    ## Use validated memory if modified
-                    # if "memory" in validation_result:
-                    #     memory = validation_result["memory"]
                     validation_result = {
                         "action": "store",
                         "reason": "MVP direct store",
@@ -205,7 +194,7 @@ class MemoryWriteService:
             }
 
         except Exception as e:
-            raise MemoryError(f"Failed to batch store memories: {e}")
+            raise MemoryError(f"Failed to batch store memories: {e}") from e
 
     def update_memory(
         self,
@@ -322,7 +311,7 @@ class MemoryWriteService:
             }
 
         except Exception as e:
-            raise MemoryError(f"Failed to update memory: {e}")
+            raise MemoryError(f"Failed to update memory: {e}") from e
 
     def delete_memory(self, memory_id: str, namespace: str) -> bool:
         """Delete memory by ID"""
@@ -340,7 +329,7 @@ class MemoryWriteService:
             return actual_deletions > 0
 
         except Exception as e:
-            raise MemoryError(f"Failed to delete memory: {e}")
+            raise MemoryError(f"Failed to delete memory: {e}") from e
 
     def _ensure_namespace(self, memory: MemoryRecord) -> str:
         """Ensure namespace exists for memory"""

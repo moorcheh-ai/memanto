@@ -153,7 +153,7 @@ def parse_relative_time(relative: str) -> str | None:
 
                 if unit in ["day", "days"]:
                     return get_last_n_days(number)
-                elif unit in ["hour", "hours"]:
+                if unit in ["hour", "hours"]:
                     return get_last_n_hours(number)
             except ValueError:
                 pass

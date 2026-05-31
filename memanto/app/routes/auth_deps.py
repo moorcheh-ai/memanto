@@ -86,4 +86,4 @@ def get_current_session(x_session_token: str | None = Header(None)) -> Session:
         return session
 
     except (SessionExpiredError, SessionNotFoundError, InvalidSessionTokenError) as e:
-        raise map_error_to_http_exception(e)
+        raise map_error_to_http_exception(e) from e

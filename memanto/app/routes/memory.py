@@ -73,7 +73,7 @@ class RecallAsOfRequest(BaseModel):
             except ValueError:
                 raise ValueError(
                     f"Invalid value '{v}'. Use YYYY-MM-DD or ISO 8601 datetime."
-                )
+                ) from None
         raise ValueError(f"Cannot parse as_of from {type(v)}")
 
 
@@ -107,7 +107,7 @@ class RecallChangedSinceRequest(BaseModel):
             except ValueError:
                 raise ValueError(
                     f"Invalid value '{v}'. Use YYYY-MM-DD or ISO 8601 datetime."
-                )
+                ) from None
         raise ValueError(f"Cannot parse since from {type(v)}")
 
 
@@ -206,7 +206,7 @@ async def remember(
         }
 
     except Exception as e:
-        raise map_error_to_http_exception(e)
+        raise map_error_to_http_exception(e) from e
 
 
 @router.post("/{agent_id}/batch-remember")
@@ -290,7 +290,7 @@ async def batch_remember(
         }
 
     except Exception as e:
-        raise map_error_to_http_exception(e)
+        raise map_error_to_http_exception(e) from e
 
 
 @router.post("/{agent_id}/upload-file")
@@ -363,7 +363,7 @@ async def upload_file(
         }
 
     except Exception as e:
-        raise map_error_to_http_exception(e)
+        raise map_error_to_http_exception(e) from e
 
 
 @router.post("/{agent_id}/recall")
@@ -420,7 +420,7 @@ async def recall(
         }
 
     except Exception as e:
-        raise map_error_to_http_exception(e)
+        raise map_error_to_http_exception(e) from e
 
 
 @router.post("/{agent_id}/answer")
@@ -512,7 +512,7 @@ async def answer(
         }
 
     except Exception as e:
-        raise map_error_to_http_exception(e)
+        raise map_error_to_http_exception(e) from e
 
 
 @router.get("/{agent_id}/conflicts")
@@ -551,7 +551,7 @@ async def list_conflicts(
             "count": len(conflicts),
         }
     except Exception as e:
-        raise map_error_to_http_exception(e)
+        raise map_error_to_http_exception(e) from e
 
 
 @router.post("/{agent_id}/conflicts/resolve")
@@ -591,7 +591,7 @@ async def resolve_conflict(
         }
 
     except Exception as e:
-        raise map_error_to_http_exception(e)
+        raise map_error_to_http_exception(e) from e
 
 
 @router.post("/{agent_id}/recall/as-of")
@@ -643,7 +643,7 @@ async def recall_as_of(
         }
 
     except Exception as e:
-        raise map_error_to_http_exception(e)
+        raise map_error_to_http_exception(e) from e
 
 
 @router.post("/{agent_id}/recall/changed-since")
@@ -694,7 +694,7 @@ async def recall_changed_since(
         }
 
     except Exception as e:
-        raise map_error_to_http_exception(e)
+        raise map_error_to_http_exception(e) from e
 
 
 @router.post("/{agent_id}/recall/recent")
@@ -744,4 +744,4 @@ async def recall_recent(
         }
 
     except Exception as e:
-        raise map_error_to_http_exception(e)
+        raise map_error_to_http_exception(e) from e

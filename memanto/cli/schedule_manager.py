@@ -26,22 +26,19 @@ class ScheduleManager:
         """Enable daily scheduling at the given HH:MM time."""
         if self.os_type == "Windows":
             return self._enable_windows(time_str)
-        else:
-            return self._enable_unix(time_str)
+        return self._enable_unix(time_str)
 
     def disable(self) -> dict[str, Any]:
         """Disable daily scheduling"""
         if self.os_type == "Windows":
             return self._disable_windows()
-        else:
-            return self._disable_unix()
+        return self._disable_unix()
 
     def get_status(self) -> dict[str, Any]:
         """Check if scheduling is enabled"""
         if self.os_type == "Windows":
             return self._status_windows()
-        else:
-            return self._status_unix()
+        return self._status_unix()
 
     # Windows Implementation (schtasks)
 
@@ -140,7 +137,7 @@ class ScheduleManager:
                 "message": f"Crontab entry added for {time_str} daily.",
             }
         except Exception as e:
-            return {"status": "error", "message": f"Failed to update crontab: {str(e)}"}
+            return {"status": "error", "message": f"Failed to update crontab: {e!s}"}
 
     def _disable_unix(self) -> dict[str, Any]:
         try:
@@ -163,7 +160,7 @@ class ScheduleManager:
             subprocess.run(["crontab", "-"], input=new_cron, text=True, check=True)
             return {"status": "success", "message": "Crontab entry removed."}
         except Exception as e:
-            return {"status": "error", "message": f"Failed to disable: {str(e)}"}
+            return {"status": "error", "message": f"Failed to disable: {e!s}"}
 
     def _status_unix(self) -> dict[str, Any]:
         try:

@@ -39,8 +39,7 @@ def session_info():
         expires_at_str = payload.get("expires_at")
         if expires_at_str:
             # Handle fromisoformat replacing Z if needed
-            if expires_at_str.endswith("Z"):
-                expires_at_str = expires_at_str[:-1]
+            expires_at_str = expires_at_str.removesuffix("Z")
             expires_at = datetime.fromisoformat(expires_at_str)
             now = datetime.utcnow()
 
