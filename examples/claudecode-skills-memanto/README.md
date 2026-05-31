@@ -64,23 +64,22 @@ python run_cross_skill_demo.py --backend memanto --agent-id claudecode-skills-de
 Wrap skill execution with the bridge:
 
 ```python
-bridge = SkillMemoryBridge(memory_backend)
+from skill_memory_bridge import SkillMemoryBridge, SkillRun
 
-memory_context = bridge.before_skill(
+bridge = SkillMemoryBridge(memory_backend)
+run = SkillRun(
     skill_name="/tdd",
     task="Add tests for invoice webhook idempotency",
     file_paths=["apps/billing/webhooks/stripe.ts"],
 )
 
+memory_context = bridge.before_skill(run)
+
 skill_prompt = f"{memory_context}\n\n{original_skill_prompt}"
 
 result = run_skill(skill_prompt)
 
-bridge.after_skill(
-    skill_name="/tdd",
-    transcript=result.transcript,
-    file_paths=result.files_touched,
-)
+bridge.after_skill(run, result.transcript)
 ```
 
 The bridge deliberately stores only durable engineering facts:
@@ -113,4 +112,3 @@ MEMANTO ENGINEERING MEMORY
 - Preference: Add replay tests before changing webhook behavior.
 - Quirk: Billing timestamps are stored as UTC ISO strings.
 ```
-
