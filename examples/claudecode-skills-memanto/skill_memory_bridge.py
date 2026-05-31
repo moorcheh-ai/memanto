@@ -9,6 +9,8 @@ the same lifecycle against an active `memanto` CLI session.
 from __future__ import annotations
 
 import json
+import logging
+import os
 import re
 import subprocess
 from dataclasses import asdict, dataclass, field
@@ -41,6 +43,9 @@ DECISION_MARKERS = (
     "bug",
     "constraint",
 )
+
+DEFAULT_MEMANTO_CLI_TIMEOUT_SECONDS = 10.0
+logger = logging.getLogger(__name__)
 
 
 def utc_now() -> str:
@@ -151,8 +156,25 @@ class MemantoCliBackend:
     keys directly.
     """
 
-    def __init__(self, memanto_bin: str = "memanto") -> None:
+    def __init__(
+        self,
+        memanto_bin: str = "memanto",
+        timeout_seconds: float | None = None,
+    ) -> None:
         self.memanto_bin = memanto_bin
+        self.timeout_seconds = (
+            timeout_seconds
+            if timeout_seconds is not None
+            else float(
+                os.getenv(
+                    "MEMANTO_CLI_TIMEOUT_SECONDS",
+                    str(DEFAULT_MEMANTO_CLI_TIMEOUT_SECONDS),
+                )
+            )
+        )
+        if self.timeout_seconds <= 0:
+            msg = "timeout_seconds must be greater than 0"
+            raise ValueError(msg)
 
     def remember(self, memory: MemoryRecord) -> None:
         command = [
@@ -172,11 +194,27 @@ class MemantoCliBackend:
             "--provenance",
             memory.provenance,
         ]
-        subprocess.run(command, check=True)
+        try:
+            subprocess.run(command, check=True, timeout=self.timeout_seconds)
+        except subprocess.TimeoutExpired as exc:
+            logger.error("memanto remember timed out after %.1fs", self.timeout_seconds)
+            msg = f"memanto remember timed out after {self.timeout_seconds:.1f}s"
+            raise TimeoutError(msg) from exc
 
     def recall(self, query: str, limit: int = 5) -> list[MemoryRecord]:
         command = [self.memanto_bin, "recall", query, "--limit", str(limit)]
-        result = subprocess.run(command, check=True, capture_output=True, text=True)
+        try:
+            result = subprocess.run(
+                command,
+                check=True,
+                capture_output=True,
+                text=True,
+                timeout=self.timeout_seconds,
+            )
+        except subprocess.TimeoutExpired as exc:
+            logger.error("memanto recall timed out after %.1fs", self.timeout_seconds)
+            msg = f"memanto recall timed out after {self.timeout_seconds:.1f}s"
+            raise TimeoutError(msg) from exc
         return [
             MemoryRecord(
                 memory_type="context",
