@@ -1,8 +1,13 @@
 from __future__ import annotations
 
+import sys
 import tempfile
 import unittest
 from pathlib import Path
+
+EXAMPLE_ROOT = Path(__file__).resolve().parents[1]
+if str(EXAMPLE_ROOT) not in sys.path:
+    sys.path.insert(0, str(EXAMPLE_ROOT))
 
 from skill_memory import (
     DecisionTrailTap,
@@ -16,6 +21,7 @@ from skill_memory import (
 
 class SkillMemoryTests(unittest.TestCase):
     def test_distills_explicit_markers_and_file_tags(self) -> None:
+        """Explicit transcript markers become typed memories."""
         run = SkillRun(
             skill="/grill-with-docs",
             task="Design Stripe webhook flow",
@@ -38,6 +44,7 @@ class SkillMemoryTests(unittest.TestCase):
         self.assertIn("file:app/webhooks/stripe.py", memories[0].tags)
 
     def test_event_tap_captures_mid_session_decision(self) -> None:
+        """The event tap records and clears mid-session decisions."""
         with tempfile.TemporaryDirectory() as tmp:
             event_path = Path(tmp) / "events.jsonl"
             tap = DecisionTrailTap(event_path)
@@ -55,6 +62,7 @@ class SkillMemoryTests(unittest.TestCase):
         self.assertFalse(event_path.exists())
 
     def test_local_backend_recalls_by_file_and_task_terms(self) -> None:
+        """The local backend recalls prior decisions by file overlap."""
         with tempfile.TemporaryDirectory() as tmp:
             store = Path(tmp) / "memory.jsonl"
             backend = LocalJsonlBackend(store)
@@ -87,11 +95,17 @@ class SkillMemoryTests(unittest.TestCase):
         self.assertIn("event_id", context.as_env_block())
 
     def test_duplicate_memories_are_not_rewritten(self) -> None:
+        """Repeated post-skill extraction does not duplicate exact memories."""
         with tempfile.TemporaryDirectory() as tmp:
             store = Path(tmp) / "memory.jsonl"
             backend = LocalJsonlBackend(store)
             bridge = SkillMemoryBridge(backend)
-            run = SkillRun("/handoff", "Record release note", "/repo", [])
+            run = SkillRun(
+                skill="/handoff",
+                task="Record release note",
+                cwd="/repo",
+                files=[],
+            )
             transcript = "DECISION: Keep release notes in docs/releases.md."
 
             bridge.after_skill(run, transcript)

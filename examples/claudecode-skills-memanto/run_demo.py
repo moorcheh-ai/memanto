@@ -30,11 +30,13 @@ SESSION_A_TRANSCRIPT = "\n".join(
 SESSION_B_TRANSCRIPT = """
 /tdd: Write tests for the Stripe webhook path.
 
+DECISION: Cover duplicate event_id delivery as a successful idempotent replay.
 The test module should cover first delivery, duplicate delivery, and lock contention.
 """
 
 
 def run_demo(reset: bool) -> None:
+    """Run a two-session cross-skill memory demo."""
     if reset:
         for path in (STORE, EVENTS):
             if path.exists():
@@ -74,10 +76,15 @@ def run_demo(reset: bool) -> None:
     print()
     print(recalled.as_env_block())
 
-    bridge.after_skill(tdd_run, SESSION_B_TRANSCRIPT)
+    session_b_memories = bridge.after_skill(tdd_run, SESSION_B_TRANSCRIPT)
+    print()
+    print("Memories from second session:")
+    for memory in session_b_memories:
+        print(f"- {memory.memory_type}: {memory.content}")
 
 
 def main() -> None:
+    """Parse demo flags and run the example."""
     parser = argparse.ArgumentParser()
     parser.add_argument("--reset", action="store_true")
     args = parser.parse_args()
