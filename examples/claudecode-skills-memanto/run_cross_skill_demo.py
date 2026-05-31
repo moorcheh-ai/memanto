@@ -8,7 +8,6 @@ from pathlib import Path
 from memory_backends import FileMemoryBackend, MemantoCliBackend
 from skill_memory_bridge import SkillMemoryBridge, SkillRun
 
-
 REVIEW_TRANSCRIPT = """
 /grill-with-docs reviewed the billing webhook plan.
 
@@ -20,6 +19,7 @@ Constraint: Do not persist raw Stripe payloads after signature verification.
 
 
 def parse_args() -> argparse.Namespace:
+    """Parse backend and reset options for the demo runner."""
     parser = argparse.ArgumentParser(
         description="Run the Claude Code skills + Memanto memory bridge demo.",
     )
@@ -31,6 +31,7 @@ def parse_args() -> argparse.Namespace:
 
 
 def main() -> None:
+    """Run two isolated skill sessions that share memory through the bridge."""
     args = parse_args()
     if args.backend == "file" and args.reset:
         Path(args.memory_file).unlink(missing_ok=True)
@@ -70,4 +71,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

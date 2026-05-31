@@ -16,6 +16,8 @@ CLI_TIMEOUT_SECONDS = 30
 
 @dataclass
 class MemoryRecord:
+    """Serializable memory entry used by the offline JSON backend."""
+
     content: str
     memory_type: str = "learning"
     source: str = "claudecode-skills-demo"
@@ -23,6 +25,7 @@ class MemoryRecord:
     created_at: str = ""
 
     def to_json(self) -> dict[str, str]:
+        """Return the JSON-ready record with a creation timestamp filled in."""
         payload = asdict(self)
         payload["created_at"] = payload["created_at"] or datetime.now(
             timezone.utc
@@ -31,6 +34,8 @@ class MemoryRecord:
 
 
 class BaseMemoryBackend:
+    """Minimal storage protocol consumed by the skill memory bridge."""
+
     def remember(
         self,
         content: str,
@@ -38,9 +43,11 @@ class BaseMemoryBackend:
         memory_type: str = "learning",
         tags: str = "claudecode,skills,memanto",
     ) -> None:
+        """Persist a durable memory extracted from a completed skill run."""
         raise NotImplementedError
 
     def recall(self, query: str, *, limit: int = 6) -> list[str]:
+        """Return relevant stored memories for a new skill run query."""
         raise NotImplementedError
 
 
@@ -48,6 +55,7 @@ class FileMemoryBackend(BaseMemoryBackend):
     """Local JSON backend for offline reviewer demos."""
 
     def __init__(self, path: Path, *, source: str = "claudecode-skills-demo") -> None:
+        """Create a file-backed memory store at the supplied path."""
         self.path = path
         self.source = source
 
@@ -58,6 +66,7 @@ class FileMemoryBackend(BaseMemoryBackend):
         memory_type: str = "learning",
         tags: str = "claudecode,skills,memanto",
     ) -> None:
+        """Append one memory record to the demo JSON file."""
         self.path.parent.mkdir(parents=True, exist_ok=True)
         records = self._load()
         records.append(
@@ -71,6 +80,7 @@ class FileMemoryBackend(BaseMemoryBackend):
         self.path.write_text(json.dumps(records, indent=2) + "\n", encoding="utf-8")
 
     def recall(self, query: str, *, limit: int = 6) -> list[str]:
+        """Rank stored memories by token overlap with the recall query."""
         query_terms = _terms(query)
         ranked: list[tuple[int, str]] = []
         for record in self._load():
@@ -82,6 +92,7 @@ class FileMemoryBackend(BaseMemoryBackend):
         return [content for _, content in ranked[:limit]]
 
     def _load(self) -> list[dict[str, str]]:
+        """Load stored records, tolerating missing or malformed demo files."""
         if not self.path.exists():
             return []
         try:
@@ -106,6 +117,7 @@ class MemantoCliBackend(BaseMemoryBackend):
     """Backend that uses the installed Memanto package and CLI session."""
 
     def __init__(self, agent_id: str) -> None:
+        """Bind the backend to a Memanto agent and activate its session."""
         self.agent_id = agent_id
         self._ensure_agent()
 
@@ -116,6 +128,7 @@ class MemantoCliBackend(BaseMemoryBackend):
         memory_type: str = "learning",
         tags: str = "claudecode,skills,memanto",
     ) -> None:
+        """Store a memory through the Memanto SDK with provenance metadata."""
         self._client().remember(
             agent_id=self.agent_id,
             memory_type=memory_type,
@@ -128,6 +141,7 @@ class MemantoCliBackend(BaseMemoryBackend):
         )
 
     def recall(self, query: str, *, limit: int = 6) -> list[str]:
+        """Recall relevant Memanto memories using the SDK response payload."""
         result = self._client().recall(
             agent_id=self.agent_id,
             query=query,
@@ -143,6 +157,7 @@ class MemantoCliBackend(BaseMemoryBackend):
         return recalled[:limit]
 
     def _ensure_agent(self) -> None:
+        """Create or activate the configured Memanto demo agent."""
         try:
             create = subprocess.run(
                 ["memanto", "agent", "create", self.agent_id],
@@ -163,6 +178,7 @@ class MemantoCliBackend(BaseMemoryBackend):
         _run(["memanto", "agent", "activate", self.agent_id])
 
     def _client(self) -> Any:
+        """Build a configured SDK client for the active Memanto session."""
         try:
             from memanto.cli.client.sdk_client import SdkClient
             from memanto.cli.config.manager import ConfigManager
@@ -190,18 +206,22 @@ class MemantoCliBackend(BaseMemoryBackend):
 
 
 def _terms(text: str) -> set[str]:
+    """Extract lowercase search terms from a free-form string."""
     return set(re.findall(r"[a-z0-9]{3,}", text.lower()))
 
 
 def _split_tags(tags: str) -> list[str]:
+    """Split a comma-separated tag list into non-empty tag names."""
     return [tag.strip() for tag in tags.split(",") if tag.strip()]
 
 
 def _memory_title(content: str) -> str:
+    """Create a compact Memanto title from memory content."""
     return content[:47] + "..." if len(content) > 50 else content
 
 
 def _command_detail(stdout: str | bytes | None, stderr: str | bytes | None) -> str:
+    """Return the most helpful text from a completed or timed-out command."""
     for stream in (stderr, stdout):
         if isinstance(stream, bytes):
             stream = stream.decode(errors="replace")
@@ -212,6 +232,7 @@ def _command_detail(stdout: str | bytes | None, stderr: str | bytes | None) -> s
 
 
 def _run(cmd: list[str]) -> str:
+    """Run a Memanto CLI command with bounded execution time."""
     try:
         result = subprocess.run(
             cmd,
@@ -232,6 +253,7 @@ def _run(cmd: list[str]) -> str:
 
 
 def _missing_memanto_error() -> RuntimeError:
+    """Create a consistent error for missing or unconfigured Memanto tooling."""
     return RuntimeError(
         "The `memanto` CLI was not found. Run `pip install memanto` and "
         "`memanto` to configure your Moorcheh API key, or use "

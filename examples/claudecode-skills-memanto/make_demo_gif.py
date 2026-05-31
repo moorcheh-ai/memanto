@@ -6,7 +6,6 @@ from pathlib import Path
 
 from PIL import Image, ImageDraw, ImageFont
 
-
 WIDTH = 1040
 HEIGHT = 640
 BG = (15, 19, 27)
@@ -63,6 +62,7 @@ STEPS = [
 
 
 def main() -> None:
+    """Render the animated walkthrough GIF into the local assets directory."""
     assets_dir = Path(__file__).parent / "assets"
     assets_dir.mkdir(exist_ok=True)
     output = assets_dir / "demo.gif"
@@ -106,6 +106,7 @@ def main() -> None:
 
 
 def _font(size: int) -> ImageFont.FreeTypeFont | ImageFont.ImageFont:
+    """Load a readable system font with a portable default fallback."""
     candidates = [
         "/System/Library/Fonts/SFNS.ttf",
         "/System/Library/Fonts/Supplemental/Arial.ttf",
@@ -120,4 +121,3 @@ def _font(size: int) -> ImageFont.FreeTypeFont | ImageFont.ImageFont:
 
 if __name__ == "__main__":
     main()
-
