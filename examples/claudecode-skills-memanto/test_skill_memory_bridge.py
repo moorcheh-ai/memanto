@@ -104,3 +104,18 @@ def test_memanto_cli_backend_converts_timeout(
 
     with pytest.raises(TimeoutError, match="memanto recall timed out"):
         backend.recall("anything")
+
+
+def test_memanto_cli_backend_converts_remember_timeout(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def fake_run(command: list[str], **kwargs: Any) -> subprocess.CompletedProcess[str]:
+        raise subprocess.TimeoutExpired(command, kwargs["timeout"])
+
+    monkeypatch.setattr(subprocess, "run", fake_run)
+    backend = MemantoCliBackend(timeout_seconds=1.0)
+
+    with pytest.raises(TimeoutError, match="memanto remember timed out after 1.0s"):
+        backend.remember(
+            MemoryRecord(memory_type="decision", title="Choice", content="Use JSONL.")
+        )
