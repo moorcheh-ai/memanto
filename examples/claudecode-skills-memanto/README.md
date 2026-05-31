@@ -29,7 +29,8 @@ examples/claudecode-skills-memanto/
 |-- memory_backends.py
 |-- requirements.txt
 |-- run_cross_skill_demo.py
-`-- skill_memory_bridge.py
+|-- skill_memory_bridge.py
+`-- tests/test_skill_memory_bridge.py
 ```
 
 ## Quick Start
@@ -102,6 +103,12 @@ Run the demo:
 
 ```bash
 python run_cross_skill_demo.py --backend file --reset
+```
+
+Run the focused offline tests:
+
+```bash
+python -m unittest discover -s tests -v
 ```
 
 Expected output includes:

@@ -8,7 +8,7 @@ from dataclasses import dataclass
 from memory_backends import BaseMemoryBackend
 
 MEMORY_LINE = re.compile(
-    r"^(Decision|Preference|Quirk|Constraint|Learning):\s*(.+)$",
+    r"^\s*(Decision|Preference|Quirk|Constraint|Learning):\s*(.+)$",
     flags=re.IGNORECASE | re.MULTILINE,
 )
 
