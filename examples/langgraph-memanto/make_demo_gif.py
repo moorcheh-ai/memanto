@@ -6,7 +6,6 @@ from pathlib import Path
 
 from PIL import Image, ImageDraw, ImageFont
 
-
 WIDTH = 1040
 HEIGHT = 640
 BG = (18, 24, 32)
@@ -65,6 +64,8 @@ STEPS = [
 
 
 def main() -> None:
+    """Render the README demo GIF frames and write the output asset."""
+
     assets_dir = Path(__file__).parent / "assets"
     assets_dir.mkdir(exist_ok=True)
     output = assets_dir / "demo.gif"
@@ -77,14 +78,18 @@ def main() -> None:
         for _ in range(6):
             image = Image.new("RGB", (WIDTH, HEIGHT), BG)
             draw = ImageDraw.Draw(image)
-            draw.rounded_rectangle((44, 44, WIDTH - 44, HEIGHT - 44), radius=18, fill=PANEL)
+            draw.rounded_rectangle(
+                (44, 44, WIDTH - 44, HEIGHT - 44), radius=18, fill=PANEL
+            )
             draw.text((82, 82), "LangGraph + Memanto", font=font, fill=GREEN)
             draw.text((82, 126), f"Step {index}/5: {title}", font=small, fill=TEXT)
             draw.line((82, 174, WIDTH - 82, 174), fill=(64, 78, 94), width=2)
 
             y = 218
             for line in lines:
-                color = BLUE if line.startswith("$") or line.startswith("Memanto") else TEXT
+                color = (
+                    BLUE if line.startswith("$") or line.startswith("Memanto") else TEXT
+                )
                 draw.text((104, y), line, font=small, fill=color)
                 y += 48
 
@@ -108,6 +113,8 @@ def main() -> None:
 
 
 def _font(size: int) -> ImageFont.FreeTypeFont | ImageFont.ImageFont:
+    """Load a readable system font, falling back to Pillow's default."""
+
     candidates = [
         "/System/Library/Fonts/SFNS.ttf",
         "/System/Library/Fonts/Supplemental/Arial.ttf",

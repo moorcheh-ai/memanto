@@ -8,6 +8,8 @@ from memory_backends import BaseMemoryBackend
 
 
 class SupportState(TypedDict, total=False):
+    """State shape passed between nodes in the customer support graph."""
+
     question: str
     recalled_memories: list[str]
     response: str
@@ -32,12 +34,16 @@ def build_customer_support_graph(memory: BaseMemoryBackend):
     graph = StateGraph(SupportState)
 
     def require_question(state: SupportState) -> str:
+        """Read and validate the current customer question."""
+
         question = state.get("question")
         if not question:
             raise ValueError("SupportState requires a non-empty 'question' value.")
         return question
 
     def recall_memory(state: SupportState) -> SupportState:
+        """Attach relevant long-term memories to the graph state."""
+
         question = require_question(state)
         return {
             **state,
@@ -45,6 +51,8 @@ def build_customer_support_graph(memory: BaseMemoryBackend):
         }
 
     def compose_response(state: SupportState) -> SupportState:
+        """Draft a support response from recalled account context."""
+
         memories = state.get("recalled_memories", [])
         if memories:
             context = "\n".join(f"- {item}" for item in memories)
@@ -62,6 +70,8 @@ def build_customer_support_graph(memory: BaseMemoryBackend):
         return {**state, "response": response}
 
     def store_followup_learning(state: SupportState) -> SupportState:
+        """Persist a preference when the latest question teaches one."""
+
         question = require_question(state)
         if "prefer" not in question.lower():
             return {**state, "stored_learning": ""}

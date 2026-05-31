@@ -8,7 +8,6 @@ from pathlib import Path
 from customer_support_graph import build_customer_support_graph
 from memory_backends import build_backend
 
-
 SEED_MEMORIES = [
     (
         "Customer Alex is on the enterprise plan.",
@@ -26,6 +25,8 @@ SEED_MEMORIES = [
 
 
 def parse_args() -> argparse.Namespace:
+    """Parse CLI options for the cross-session demo."""
+
     parser = argparse.ArgumentParser(
         description="Prove cross-session recall with LangGraph and Memanto.",
     )
@@ -54,6 +55,8 @@ def parse_args() -> argparse.Namespace:
 
 
 def main() -> None:
+    """Seed memory in one session, then recall it from a fresh graph run."""
+
     args = parse_args()
     if args.backend == "file" and args.reset:
         Path(args.memory_file).unlink(missing_ok=True)
