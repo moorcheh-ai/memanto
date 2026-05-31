@@ -23,6 +23,7 @@ from typing import Iterable
 
 DEFAULT_AGENT_ENV = "MEMANTO_SKILLS_AGENT"
 DEFAULT_AGENT = "developer-skills"
+DEFAULT_TAG = "developer-skills"
 
 MEMORY_RULES: tuple[tuple[str, str], ...] = (
     ("decision", "decision"),
@@ -176,7 +177,7 @@ def post(args: argparse.Namespace) -> int:
                 "--title",
                 memory.title,
                 "--tag",
-                "developer-skills",
+                DEFAULT_TAG,
                 "--tag",
                 args.skill,
             ],
