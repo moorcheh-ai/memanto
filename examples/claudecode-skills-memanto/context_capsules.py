@@ -43,6 +43,23 @@ KEY_VALUE_SECRET_RE = re.compile(
 )
 
 SECRET_PATTERNS = [
+    (
+        re.compile(r"\b(?:sk_live|sk_test)_[A-Za-z0-9_]{8,}\b", re.IGNORECASE),
+        "<redacted token>",
+    ),
+    (
+        re.compile(r"\bgh[pousr]_[A-Za-z0-9_]{16,}\b", re.IGNORECASE),
+        "<redacted token>",
+    ),
+    (
+        re.compile(
+            r"\b(?=[A-Za-z0-9_./+=:-]{16,}\b)"
+            r"(?=[A-Za-z0-9_./+=:-]*[A-Za-z])"
+            r"(?=[A-Za-z0-9_./+=:-]*\d)[A-Za-z0-9_./+=:-]+\b",
+            re.IGNORECASE,
+        ),
+        "<redacted token>",
+    ),
     (re.compile(r"(?i)\bbearer\s+[A-Za-z0-9_./+=:-]{12,}"), "Bearer <redacted>"),
     (
         re.compile(
@@ -331,7 +348,10 @@ def cmd_capture(args: argparse.Namespace) -> int:
     )
     count = LocalCapsuleStore(Path(args.store)).append_many(capsules)
     if args.sync_memanto:
-        MemantoCliMirror().sync(capsules)
+        try:
+            MemantoCliMirror().sync(capsules)
+        except Exception as exc:
+            print(f"warning: Memanto CLI mirror failed: {exc}", file=sys.stderr)
 
     print(f"stored {count} context capsule(s)")
     for capsule in capsules:

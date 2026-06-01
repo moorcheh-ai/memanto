@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import sys
 from pathlib import Path
 
 from context_capsules import main
@@ -13,7 +14,9 @@ PROJECT = "acme-saas"
 
 def run_step(title: str, args: list[str]) -> None:
     print(f"\n{'=' * 72}\n{title}\n{'=' * 72}")
-    main(args)
+    return_code = main(args)
+    if return_code:
+        sys.exit(return_code)
 
 
 def main_demo() -> None:

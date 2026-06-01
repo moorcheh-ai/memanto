@@ -89,6 +89,17 @@ class ContextCapsuleTests(unittest.TestCase):
         self.assertEqual(redacted, "<redacted private key>")
         self.assertEqual(count, 1)
 
+    def test_standalone_secret_tokens_are_redacted(self) -> None:
+        text = "Rotate sk_live_1234567890abcdef and ghp_1234567890abcdefABCDEF."
+
+        redacted, count = SecretRedactor().redact(text)
+
+        self.assertEqual(
+            redacted,
+            "Rotate <redacted token> and <redacted token>.",
+        )
+        self.assertEqual(count, 2)
+
 
 if __name__ == "__main__":
     unittest.main()
