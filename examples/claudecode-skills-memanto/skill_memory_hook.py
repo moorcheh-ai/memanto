@@ -1,8 +1,9 @@
 """Memanto hook for command-oriented developer skills.
 
-The hook has two phases:
+The hook has three phases:
 
 * ``pre``: recall relevant Memanto context before a skill starts.
+* ``event``: capture a mid-session decision or gotcha while a skill runs.
 * ``post``: extract durable engineering memories from a completed skill summary.
 
 It intentionally depends only on the Python standard library and the installed
