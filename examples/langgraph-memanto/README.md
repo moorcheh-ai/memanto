@@ -91,3 +91,9 @@ Recalled memories:
 - Customer Alex prefers email follow-ups before demos.
 - Invoices for Alex should stay in GBP.
 ```
+
+Run the focused offline tests:
+
+```bash
+python -m unittest discover -s examples/langgraph-memanto/tests -v
+```
