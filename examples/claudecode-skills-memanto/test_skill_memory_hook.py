@@ -2,10 +2,14 @@ from skill_memory_hook import extract_memories, main, normalize_spaces, run_mema
 
 
 def test_normalize_spaces_collapses_whitespace():
+    """Whitespace normalization should preserve words and collapse spacing."""
+
     assert normalize_spaces("  one\n two\t three  ") == "one two three"
 
 
 def test_extract_memories_classifies_typed_summary():
+    """Typed summary clauses should become semantic memory candidates."""
+
     memories = extract_memories(
         "Decision: use hexagonal architecture. "
         "Convention: tests live beside fixtures. "
@@ -26,6 +30,8 @@ def test_extract_memories_classifies_typed_summary():
 
 
 def test_extract_memories_ignores_untyped_noise():
+    """Untyped summary prose should not create noisy memories."""
+
     memories = extract_memories("Ran the command. Decision: keep adapters thin. Done.")
 
     assert len(memories) == 1
@@ -34,6 +40,8 @@ def test_extract_memories_ignores_untyped_noise():
 
 
 def test_extract_memories_handles_semicolons_and_whitespace():
+    """Semicolon-separated typed clauses should be extracted independently."""
+
     memories = extract_memories(
         "Decision: keep adapters thin; Convention: tests stay near fixtures"
     )
@@ -45,6 +53,8 @@ def test_extract_memories_handles_semicolons_and_whitespace():
 
 
 def test_extract_memories_handles_multiline_bullets():
+    """Bullet-prefixed multiline summaries should still classify memories."""
+
     memories = extract_memories(
         "- Decision: keep ports framework-agnostic\n"
         "* Preferences: write short review comments\n"
@@ -60,12 +70,16 @@ def test_extract_memories_handles_multiline_bullets():
 
 
 def test_dry_run_preserves_argument_boundaries():
+    """Dry-run output should quote arguments so boundaries are reviewable."""
+
     output = run_memanto(["recall", "invoice validation rules"], dry_run=True)
 
     assert "'invoice validation rules'" in output
 
 
 def test_main_accepts_subcommand_dry_run(capsys):
+    """The post subcommand should print dry-run remember commands."""
+
     status = main([
         "post",
         "--skill",
@@ -81,6 +95,8 @@ def test_main_accepts_subcommand_dry_run(capsys):
 
 
 def test_main_accepts_mid_session_event_dry_run(capsys):
+    """The event subcommand should save one mid-session memory."""
+
     status = main([
         "event",
         "--skill",
