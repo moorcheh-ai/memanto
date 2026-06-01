@@ -14,6 +14,7 @@ from skill_memory_bridge import (
 
 
 def test_mid_session_decision_is_recalled_by_later_skill(tmp_path: Path) -> None:
+    """Later skills receive decisions captured during an earlier skill."""
     bridge = SkillMemoryBridge(
         LocalJsonlBackend(tmp_path / "memory.jsonl"),
         project_slug="checkout-service",
@@ -49,6 +50,7 @@ def test_mid_session_decision_is_recalled_by_later_skill(tmp_path: Path) -> None
 
 
 def test_unimportant_tool_output_is_not_stored(tmp_path: Path) -> None:
+    """Low-signal tool output is ignored while the run summary is retained."""
     backend = LocalJsonlBackend(tmp_path / "memory.jsonl")
     bridge = SkillMemoryBridge(backend, project_slug="docs")
 
@@ -62,6 +64,7 @@ def test_unimportant_tool_output_is_not_stored(tmp_path: Path) -> None:
 
 
 def test_context_block_reports_empty_memory(tmp_path: Path) -> None:
+    """The context block is explicit when there are no recalled memories."""
     bridge = SkillMemoryBridge(
         LocalJsonlBackend(tmp_path / "memory.jsonl"),
         project_slug="empty",
@@ -75,9 +78,11 @@ def test_context_block_reports_empty_memory(tmp_path: Path) -> None:
 
 
 def test_memanto_cli_backend_uses_timeout(monkeypatch: pytest.MonkeyPatch) -> None:
+    """The CLI adapter forwards configured timeouts to remember and recall."""
     calls: list[dict[str, Any]] = []
 
     def fake_run(command: list[str], **kwargs: Any) -> subprocess.CompletedProcess[str]:
+        """Record subprocess calls without invoking the real Memanto CLI."""
         calls.append({"command": command, **kwargs})
         return subprocess.CompletedProcess(command, 0, stdout="memory", stderr="")
 
@@ -96,7 +101,9 @@ def test_memanto_cli_backend_uses_timeout(monkeypatch: pytest.MonkeyPatch) -> No
 def test_memanto_cli_backend_converts_timeout(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    """Recall timeouts are converted into a backend-neutral TimeoutError."""
     def fake_run(command: list[str], **kwargs: Any) -> subprocess.CompletedProcess[str]:
+        """Simulate a recall command that exceeds its timeout."""
         raise subprocess.TimeoutExpired(command, kwargs["timeout"])
 
     monkeypatch.setattr(subprocess, "run", fake_run)
@@ -109,7 +116,9 @@ def test_memanto_cli_backend_converts_timeout(
 def test_memanto_cli_backend_converts_remember_timeout(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    """Remember timeouts are converted into a backend-neutral TimeoutError."""
     def fake_run(command: list[str], **kwargs: Any) -> subprocess.CompletedProcess[str]:
+        """Simulate a remember command that exceeds its timeout."""
         raise subprocess.TimeoutExpired(command, kwargs["timeout"])
 
     monkeypatch.setattr(subprocess, "run", fake_run)

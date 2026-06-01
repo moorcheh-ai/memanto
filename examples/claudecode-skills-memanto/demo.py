@@ -6,6 +6,7 @@ from skill_memory_bridge import LocalJsonlBackend, SkillMemoryBridge
 
 
 def main() -> None:
+    """Run a two-skill workflow that demonstrates cross-session recall."""
     memory_path = Path(".memanto-demo/skills-memory.jsonl")
     if memory_path.exists():
         memory_path.unlink()

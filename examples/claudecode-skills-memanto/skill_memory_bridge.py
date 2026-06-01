@@ -49,15 +49,19 @@ logger = logging.getLogger(__name__)
 
 
 def utc_now() -> str:
+    """Return a compact UTC timestamp for persisted memory metadata."""
     return datetime.now(timezone.utc).replace(microsecond=0).isoformat()
 
 
 def normalize_tokens(text: str) -> set[str]:
+    """Normalize free text into lowercase tokens for lightweight matching."""
     return {token for token in re.findall(r"[a-z0-9_./-]+", text.lower()) if len(token) > 2}
 
 
 @dataclass
 class MemoryRecord:
+    """Typed memory payload shared by local and CLI-backed storage."""
+
     memory_type: str
     title: str
     content: str
@@ -69,6 +73,7 @@ class MemoryRecord:
     memory_id: str = field(default_factory=lambda: str(uuid4()))
 
     def __post_init__(self) -> None:
+        """Validate fields that should stay portable across backends."""
         if self.memory_type not in MEMORY_TYPES:
             msg = f"Unsupported memory type: {self.memory_type}"
             raise ValueError(msg)
@@ -79,6 +84,8 @@ class MemoryRecord:
 
 @dataclass
 class SkillEvent:
+    """Intermediate skill event that can be promoted into a memory."""
+
     kind: str
     text: str
     files: list[str] = field(default_factory=list)
@@ -89,6 +96,8 @@ class SkillEvent:
 
 @dataclass
 class SkillRun:
+    """In-flight skill invocation with recalled memories and captured events."""
+
     skill_name: str
     prompt: str
     cwd: str
@@ -100,6 +109,8 @@ class SkillRun:
 
 
 class MemoryBackend(Protocol):
+    """Storage contract required by the skill memory bridge."""
+
     def remember(self, memory: MemoryRecord) -> None:
         """Persist a memory."""
 
@@ -111,14 +122,17 @@ class LocalJsonlBackend:
     """Credential-free local backend used by the demo and tests."""
 
     def __init__(self, path: Path) -> None:
+        """Create a JSONL backend rooted at the given file path."""
         self.path = path
         self.path.parent.mkdir(parents=True, exist_ok=True)
 
     def remember(self, memory: MemoryRecord) -> None:
+        """Append one serialized memory record to local JSONL storage."""
         with self.path.open("a", encoding="utf-8") as handle:
             handle.write(json.dumps(asdict(memory), sort_keys=True) + "\n")
 
     def recall(self, query: str, limit: int = 5) -> list[MemoryRecord]:
+        """Rank local memories by token overlap with the recall query."""
         query_tokens = normalize_tokens(query)
         scored: list[tuple[float, MemoryRecord]] = []
 
@@ -136,6 +150,7 @@ class LocalJsonlBackend:
         return [memory for _, memory in scored[:limit]]
 
     def _load(self) -> list[MemoryRecord]:
+        """Load all valid records from local JSONL storage."""
         if not self.path.exists():
             return []
 
@@ -161,6 +176,7 @@ class MemantoCliBackend:
         memanto_bin: str = "memanto",
         timeout_seconds: float | None = None,
     ) -> None:
+        """Configure the CLI adapter and enforce a positive timeout."""
         self.memanto_bin = memanto_bin
         self.timeout_seconds = (
             timeout_seconds
@@ -177,6 +193,7 @@ class MemantoCliBackend:
             raise ValueError(msg)
 
     def remember(self, memory: MemoryRecord) -> None:
+        """Persist a memory by delegating to `memanto remember`."""
         command = [
             self.memanto_bin,
             "remember",
@@ -202,6 +219,7 @@ class MemantoCliBackend:
             raise TimeoutError(msg) from exc
 
     def recall(self, query: str, limit: int = 5) -> list[MemoryRecord]:
+        """Recall memories by delegating to `memanto recall`."""
         command = [self.memanto_bin, "recall", query, "--limit", str(limit)]
         try:
             result = subprocess.run(
@@ -231,6 +249,7 @@ class SkillMemoryBridge:
     """Lifecycle hook that recalls, taps mid-session events, and persists them."""
 
     def __init__(self, backend: MemoryBackend, project_slug: str) -> None:
+        """Bind the bridge to a memory backend and project namespace."""
         self.backend = backend
         self.project_slug = project_slug
 
@@ -241,6 +260,7 @@ class SkillMemoryBridge:
         cwd: str,
         files: list[str] | None = None,
     ) -> SkillRun:
+        """Start a skill run and attach memories relevant to its prompt."""
         files = files or []
         query = self._query_for(skill_name, prompt, cwd, files)
         recalled = self.backend.recall(query, limit=5)
@@ -261,6 +281,7 @@ class SkillMemoryBridge:
         tags: list[str] | None = None,
         confidence: float = 0.8,
     ) -> None:
+        """Capture a mid-session event for later memory extraction."""
         run.events.append(
             SkillEvent(
                 kind=kind,
@@ -272,6 +293,7 @@ class SkillMemoryBridge:
         )
 
     def end_skill(self, run: SkillRun, output_summary: str) -> list[MemoryRecord]:
+        """Persist selected events and a final summary for a completed skill."""
         memories: list[MemoryRecord] = []
         for event in run.events:
             memory = self._event_to_memory(run, event)
@@ -295,6 +317,7 @@ class SkillMemoryBridge:
         return memories
 
     def context_block(self, run: SkillRun) -> str:
+        """Render recalled memories as a compact prompt context block."""
         if not run.recalled_memories:
             return "MEMANTO_CONTEXT: no relevant cross-session memories found."
 
@@ -311,6 +334,7 @@ class SkillMemoryBridge:
     def _event_to_memory(
         self, run: SkillRun, event: SkillEvent
     ) -> MemoryRecord | None:
+        """Convert a captured event into a typed memory when it is useful."""
         if not event.text:
             return None
 
@@ -343,6 +367,7 @@ class SkillMemoryBridge:
         )
 
     def _classify_event(self, event: SkillEvent) -> str:
+        """Map event kind and text cues onto Memanto memory types."""
         text = event.text.lower()
         if event.kind in {"decision", "constraint", "preference", "error"}:
             return {
@@ -362,14 +387,17 @@ class SkillMemoryBridge:
         return "observation"
 
     def _is_memory_worthy(self, text: str) -> bool:
+        """Return whether tool output contains durable decision signals."""
         lowered = text.lower()
         return any(marker in lowered for marker in DECISION_MARKERS)
 
     def _query_for(
         self, skill_name: str, prompt: str, cwd: str, files: list[str]
     ) -> str:
+        """Build a recall query from project, skill, task, and file context."""
         return " ".join([self.project_slug, skill_name, prompt, cwd, *files])
 
     def _title_from(self, event: SkillEvent) -> str:
+        """Derive a concise memory title from the event text."""
         title = re.sub(r"\s+", " ", event.text).strip()
         return title[:76] + "..." if len(title) > 79 else title
