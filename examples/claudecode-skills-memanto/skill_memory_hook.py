@@ -187,6 +187,34 @@ def post(args: argparse.Namespace) -> int:
     return 0
 
 
+def event(args: argparse.Namespace) -> int:
+    """Save one mid-session memory while a skill is still running."""
+
+    agent = args.agent or os.environ.get(DEFAULT_AGENT_ENV, DEFAULT_AGENT)
+    content = normalize_spaces(args.note)
+    output = run_memanto(
+        [
+            "remember",
+            content,
+            "--agent",
+            agent,
+            "--type",
+            args.type,
+            "--title",
+            title_for(args.type, content),
+            "--tag",
+            DEFAULT_TAG,
+            "--tag",
+            args.skill,
+            "--tag",
+            "mid-session",
+        ],
+        dry_run=args.dry_run,
+    )
+    print(output)
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     """Build the command line interface."""
 
@@ -206,6 +234,18 @@ def build_parser() -> argparse.ArgumentParser:
     post_parser.add_argument("--skill", required=True, help="Skill command that produced the summary.")
     post_parser.add_argument("--summary", required=True, help="Concise completed-run summary.")
     post_parser.set_defaults(func=post)
+
+    event_parser = subparsers.add_parser("event", help="Save one mid-session memory during a skill run.")
+    event_parser.add_argument("--dry-run", action="store_true", help="Show Memanto CLI calls without executing them.")
+    event_parser.add_argument("--skill", required=True, help="Skill command currently running.")
+    event_parser.add_argument(
+        "--type",
+        required=True,
+        choices=["decision", "instruction", "preference", "learning", "error"],
+        help="Semantic memory type for this event.",
+    )
+    event_parser.add_argument("--note", required=True, help="Decision, constraint, gotcha, or bugfix to save now.")
+    event_parser.set_defaults(func=event)
 
     return parser
 

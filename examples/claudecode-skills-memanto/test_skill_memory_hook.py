@@ -79,3 +79,22 @@ def test_main_accepts_subcommand_dry_run(capsys):
     assert status == 0
     assert "DRY-RUN: memanto remember" in captured.out
 
+
+def test_main_accepts_mid_session_event_dry_run(capsys):
+    status = main([
+        "event",
+        "--skill",
+        "/apply",
+        "--type",
+        "decision",
+        "--note",
+        "Switched from polling to webhook delivery during implementation.",
+        "--dry-run",
+    ])
+
+    captured = capsys.readouterr()
+    assert status == 0
+    assert "DRY-RUN: memanto remember" in captured.out
+    assert "Switched from polling to webhook delivery" in captured.out
+    assert "--type decision" in captured.out
+

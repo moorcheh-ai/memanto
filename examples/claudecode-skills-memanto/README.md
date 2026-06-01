@@ -7,6 +7,7 @@ It targets workflows such as `/spec`, `/tdd`, `/review`, `/handoff`, or mattpoco
 ## What it demonstrates
 
 - **Global memory before a skill starts**: relevant past decisions are recalled and emitted as a compact context block.
+- **Mid-session capture while work is happening**: important decisions can be saved immediately instead of waiting for the final summary.
 - **Active extraction after a skill ends**: decisions, conventions, preferences, gotchas, and bug fixes from the run summary are saved back to Memanto.
 - **Cross-session recall**: a later skill command can recover the same architectural choices without manual re-prompting.
 - **Zero extra dependencies**: the hook shells out to the existing `memanto` CLI.
@@ -59,6 +60,19 @@ python examples/claudecode-skills-memanto/skill_memory_hook.py post \
 
 The hook stores each extracted memory with a semantic type and tags it with the originating skill.
 
+## Mid-session capture
+
+Some architectural decisions happen between tool calls, before a skill has a final summary. Capture those as soon as they become stable:
+
+```bash
+python examples/claudecode-skills-memanto/skill_memory_hook.py event \
+  --skill "/apply" \
+  --type decision \
+  --note "Use webhook delivery instead of polling for invoice status updates."
+```
+
+The event is saved with the originating skill plus a `mid-session` tag, so a later recall can recover the decision even if the session is interrupted before post-skill capture runs.
+
 ## Dry-run demo without API keys
 
 Use `--dry-run` to see the exact recall/save operations without touching Memanto:
@@ -76,6 +90,7 @@ A skills runner can call this hook in two places:
 
 ```text
 skill starts  -> hook pre  -> inject MEMANTO_CONTEXT -> execute skill
+skill runs    -> hook event -> save stable mid-session decisions
 skill exits   -> summarize -> hook post -> durable Memanto memories
 ```
 
