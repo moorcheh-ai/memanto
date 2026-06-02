@@ -104,3 +104,9 @@ temp/
 
 # Generated version file
 **/_version.py
+
+# Bounty Hunter solver pipeline files
+bounty_context.json
+test_status.json
+pr_status.json
+
