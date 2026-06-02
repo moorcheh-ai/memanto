@@ -60,7 +60,7 @@ preview_recall() {
   fi
   log_info "[preview] Searching memories for: $query"
   # Simple keyword search in preview mode
-  QUERY="$query" JSONL_PATH="$PREVIEW_DIR/memories.jsonl" python3 - <<'PY'
+ QUERY="$query" JSONL_PATH="$PREVIEW_DIR/memories.jsonl" python3 - <<'PY'
 import json
 import os
 
@@ -68,27 +68,27 @@ query = os.environ['QUERY'].lower()
 terms = set(query.split())
 results = []
 try:
- with open(os.environ['JSONL_PATH']) as f:
- for line in f:
- line = line.strip()
- if not line:
- continue
- try:
- entry = json.loads(line)
- except json.JSONDecodeError:
- continue
- text = entry.get('memory', '').lower()
- score = sum(1 for t in terms if t in text)
- if score > 0:
- results.append((score, entry))
+    with open(os.environ['JSONL_PATH']) as f:
+        for line in f:
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                entry = json.loads(line)
+            except json.JSONDecodeError:
+                continue
+            text = entry.get('memory', '').lower()
+            score = sum(1 for t in terms if t in text)
+            if score > 0:
+                results.append((score, entry))
 except FileNotFoundError:
- pass
+    pass
 results.sort(key=lambda x: -x[0])
 if results:
     for score, entry in results[:5]:
-        print(f'  [{score} matches] [{entry.get("tag", "?")}] {entry["memory"][:120]}')
+        print(f' [{score} matches] [{entry.get("tag", "?")}] {entry["memory"][:120]}')
 else:
-    print('  No matching memories found')
+    print(' No matching memories found')
 PY
 }
 
