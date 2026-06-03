@@ -142,15 +142,24 @@ class SkillMemoryBridgeTests(unittest.TestCase):
             memory = FileMemoryBackend(Path(tmp_dir) / "memory.json")
             bridge = SkillMemoryBridge(memory)
             run = SkillRun(
-                skill_name="/custom skill,runner/",
+                skill_name="/Custom skill,runner/v2!!",
                 task="Summarize memory bridge tag handling",
                 file_paths=[],
             )
 
             bridge.after_skill(run, "Learning: Tags should stay comma-safe.")
+            bridge.after_skill(
+                SkillRun(
+                    skill_name=" ///,,, ",
+                    task="Summarize empty skill tag handling",
+                    file_paths=[],
+                ),
+                "Decision: Empty skill tags fall back to base tags.",
+            )
 
             records = json.loads((Path(tmp_dir) / "memory.json").read_text())
-            self.assertEqual(records[0]["tags"], "claudecode,skills,custom-skill-runner")
+            self.assertEqual(records[0]["tags"], "claudecode,skills,custom-skill-runner-v2")
+            self.assertEqual(records[1]["tags"], "claudecode,skills")
 
     def test_malformed_offline_memory_file_recovers_on_write(self) -> None:
         with tempfile.TemporaryDirectory() as tmp_dir:

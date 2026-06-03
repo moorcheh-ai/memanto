@@ -12,6 +12,7 @@ MEMORY_LINE = re.compile(
     r"^\s*(Decision|Preference|Quirk|Constraint|Learning):\s*(.+)$",
     flags=re.IGNORECASE | re.MULTILINE,
 )
+TAG_SEPARATOR = re.compile(r"[^a-z0-9]+")
 
 
 @dataclass
@@ -116,7 +117,7 @@ class SkillMemoryBridge:
 
     def _sanitize_tag(self, value: str) -> str:
         """Normalize user-facing skill names into comma-safe memory tags."""
-        normalized = re.sub(r"[\s,/]+", "-", value.strip())
+        normalized = TAG_SEPARATOR.sub("-", value.strip().lower())
         return normalized.strip("-")
 
     def _memory_type(self, label: str) -> str:
