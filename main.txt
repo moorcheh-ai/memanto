@@ -1,0 +1,190 @@
+/**
+ * 类型安全的 EventEmitter 实现
+ * 支持泛型事件类型、参数类型推断、错误处理和清理
+ */
+
+// 定义事件处理函数的类型
+type EventHandler<T = any> = (data: T) => void;
+
+// 定义事件映射接口
+interface EventMap {
+  [event: string]: any;
+}
+
+/**
+ * 类型安全的事件发射器类
+ * @template T - 事件映射类型，用于类型推断
+ */
+class TypedEventEmitter<T extends EventMap> {
+  // 存储事件处理器，使用 Map 提高性能
+  private handlers: Map<keyof T, Set<EventHandler<any>>> = new Map();
+  
+  // 存储一次性事件处理器
+  private onceHandlers: Map<keyof T, Set<EventHandler<any>>> = new Map();
+
+  /**
+   * 注册事件监听器
+   * @param event - 事件名称
+   * @param handler - 事件处理函数
+   * @throws {Error} 如果 handler 不是函数
+   */
+  on<K extends keyof T>(event: K, handler: EventHandler<T[K]>): void {
+    // 输入验证
+    if (typeof handler !== 'function') {
+      throw new Error('Handler must be a function');
+    }
+
+    // 获取或创建事件处理器集合
+    if (!this.handlers.has(event)) {
+      this.handlers.set(event, new Set());
+    }
+    
+    this.handlers.get(event)!.add(handler);
+  }
+
+  /**
+   * 注册一次性事件监听器
+   * @param event - 事件名称
+   * @param handler - 事件处理函数
+   */
+  once<K extends keyof T>(event: K, handler: EventHandler<T[K]>): void {
+    if (typeof handler !== 'function') {
+      throw new Error('Handler must be a function');
+    }
+
+    if (!this.onceHandlers.has(event)) {
+      this.onceHandlers.set(event, new Set());
+    }
+    
+    this.onceHandlers.get(event)!.add(handler);
+  }
+
+  /**
+   * 移除事件监听器
+   * @param event - 事件名称
+   * @param handler - 要移除的事件处理函数
+   */
+  off<K extends keyof T>(event: K, handler: EventHandler<T[K]>): void {
+    // 从普通处理器中移除
+    const handlers = this.handlers.get(event);
+    if (handlers) {
+      handlers.delete(handler);
+      if (handlers.size === 0) {
+        this.handlers.delete(event);
+      }
+    }
+
+    // 从一次性处理器中移除
+    const onceHandlers = this.onceHandlers.get(event);
+    if (onceHandlers) {
+      onceHandlers.delete(handler);
+      if (onceHandlers.size === 0) {
+        this.onceHandlers.delete(event);
+      }
+    }
+  }
+
+  /**
+   * 触发事件
+   * @param event - 事件名称
+   * @param data - 事件数据
+   */
+  emit<K extends keyof T>(event: K, data: T[K]): void {
+    // 执行普通事件处理器
+    const handlers = this.handlers.get(event);
+    if (handlers) {
+      handlers.forEach(handler => {
+        try {
+          handler(data);
+        } catch (error) {
+          // 错误处理：捕获单个处理器异常，不影响其他处理器
+          console.error(`Error in event handler for "${String(event)}":`, error);
+        }
+      });
+    }
+
+    // 执行一次性事件处理器并清理
+    const onceHandlers = this.onceHandlers.get(event);
+    if (onceHandlers) {
+      onceHandlers.forEach(handler => {
+        try {
+          handler(data);
+        } catch (error) {
+          console.error(`Error in once event handler for "${String(event)}":`, error);
+        }
+      });
+      // 清理一次性处理器
+      this.onceHandlers.delete(event);
+    }
+  }
+
+  /**
+   * 移除所有事件监听器
+   * @param event - 可选，指定要清除的事件
+   */
+  removeAllListeners<K extends keyof T>(event?: K): void {
+    if (event) {
+      this.handlers.delete(event);
+      this.onceHandlers.delete(event);
+    } else {
+      this.handlers.clear();
+      this.onceHandlers.clear();
+    }
+  }
+
+  /**
+   * 获取指定事件的监听器数量
+   * @param event - 事件名称
+   * @returns 监听器数量
+   */
+  listenerCount<K extends keyof T>(event: K): number {
+    const handlers = this.handlers.get(event)?.size || 0;
+    const onceHandlers = this.onceHandlers.get(event)?.size || 0;
+    return handlers + onceHandlers;
+  }
+
+  /**
+   * 获取所有已注册的事件名称
+   * @returns 事件名称数组
+   */
+  eventNames(): (keyof T)[] {
+    const events = new Set<keyof T>();
+    this.handlers.forEach((_, event) => events.add(event));
+    this.onceHandlers.forEach((_, event) => events.add(event));
+    return Array.from(events);
+  }
+}
+
+// 使用示例
+interface AppEvents {
+  userLogin: { userId: string; timestamp: number };
+  dataUpdate: { id: string; value: number };
+  error: { message: string; code: number };
+}
+
+// 创建类型安全的事件发射器实例
+const emitter = new TypedEventEmitter<AppEvents>();
+
+// 注册事件监听器
+const loginHandler = (data: { userId: string; timestamp: number }) => {
+  console.log(`User ${data.userId} logged in at ${data.timestamp}`);
+};
+
+emitter.on('userLogin', loginHandler);
+
+// 注册一次性监听器
+emitter.once('error', (data) => {
+  console.error(`Error ${data.code}: ${data.message}`);
+});
+
+// 触发事件
+emitter.emit('userLogin', { userId: '123', timestamp: Date.now() });
+emitter.emit('error', { message: 'Not found', code: 404 });
+
+// 移除监听器
+emitter.off('userLogin', loginHandler);
+
+// 清理所有监听器
+emitter.removeAllListeners();
+
+export { TypedEventEmitter, EventHandler, EventMap };
