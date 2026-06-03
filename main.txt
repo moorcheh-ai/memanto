@@ -1,0 +1,523 @@
+/**
+ * Memanto & mattpocock 开发者技能挑战
+ * 
+ * 实现一个类型安全的技能匹配系统，用于评估开发者技能组合
+ */
+
+// ============ 类型定义 ============
+
+/**
+ * 技能等级枚举
+ */
+enum SkillLevel {
+  BEGINNER = 'beginner',
+  INTERMEDIATE = 'intermediate',
+  ADVANCED = 'advanced',
+  EXPERT = 'expert'
+}
+
+/**
+ * 技能类别
+ */
+enum SkillCategory {
+  FRONTEND = 'frontend',
+  BACKEND = 'backend',
+  DEVOPS = 'devops',
+  DATABASE = 'database',
+  TESTING = 'testing',
+  TOOLS = 'tools'
+}
+
+/**
+ * 技能接口
+ */
+interface Skill {
+  name: string;
+  level: SkillLevel;
+  category: SkillCategory;
+  yearsOfExperience: number;
+}
+
+/**
+ * 开发者档案
+ */
+interface DeveloperProfile {
+  id: string;
+  name: string;
+  email: string;
+  skills: Skill[];
+  githubUsername?: string;
+  linkedinUrl?: string;
+}
+
+/**
+ * 技能匹配结果
+ */
+interface SkillMatchResult {
+  developer: DeveloperProfile;
+  matchScore: number;
+  matchedSkills: string[];
+  missingSkills: string[];
+  recommendations: string[];
+}
+
+/**
+ * 技能需求
+ */
+interface SkillRequirement {
+  skillName: string;
+  minimumLevel: SkillLevel;
+  minimumYears: number;
+  required: boolean;
+}
+
+/**
+ * 职位需求
+ */
+interface JobRequirement {
+  title: string;
+  description: string;
+  skills: SkillRequirement[];
+  minimumOverallScore: number;
+}
+
+// ============ 核心功能实现 ============
+
+/**
+ * 技能匹配引擎
+ * 负责计算开发者技能与职位需求的匹配度
+ */
+class SkillMatcher {
+  /**
+   * 计算技能等级对应的数值
+   */
+  private getSkillLevelValue(level: SkillLevel): number {
+    const levelValues: Record<SkillLevel, number> = {
+      [SkillLevel.BEGINNER]: 1,
+      [SkillLevel.INTERMEDIATE]: 2,
+      [SkillLevel.ADVANCED]: 3,
+      [SkillLevel.EXPERT]: 4
+    };
+    return levelValues[level];
+  }
+
+  /**
+   * 验证开发者档案的有效性
+   */
+  private validateDeveloperProfile(profile: DeveloperProfile): boolean {
+    if (!profile.id || !profile.name || !profile.email) {
+      console.error(`Invalid developer profile: missing required fields`);
+      return false;
+    }
+    
+    if (!Array.isArray(profile.skills)) {
+      console.error(`Invalid developer profile: skills must be an array`);
+      return false;
+    }
+
+    for (const skill of profile.skills) {
+      if (!skill.name || !skill.level || !skill.category) {
+        console.error(`Invalid skill in profile ${profile.id}: missing required fields`);
+        return false;
+      }
+      if (skill.yearsOfExperience < 0) {
+        console.error(`Invalid skill in profile ${profile.id}: yearsOfExperience cannot be negative`);
+        return false;
+      }
+    }
+
+    return true;
+  }
+
+  /**
+   * 验证职位需求的有效性
+   */
+  private validateJobRequirement(job: JobRequirement): boolean {
+    if (!job.title || !job.description) {
+      console.error(`Invalid job requirement: missing required fields`);
+      return false;
+    }
+
+    if (!Array.isArray(job.skills)) {
+      console.error(`Invalid job requirement: skills must be an array`);
+      return false;
+    }
+
+    if (job.minimumOverallScore < 0 || job.minimumOverallScore > 100) {
+      console.error(`Invalid job requirement: minimumOverallScore must be between 0 and 100`);
+      return false;
+    }
+
+    return true;
+  }
+
+  /**
+   * 计算单个技能的匹配分数
+   */
+  private calculateSkillMatchScore(
+    developerSkill: Skill | undefined,
+    requirement: SkillRequirement
+  ): { score: number; matched: boolean } {
+    if (!developerSkill) {
+      return { score: 0, matched: false };
+    }
+
+    let score = 0;
+    const devLevelValue = this.getSkillLevelValue(developerSkill.level);
+    const reqLevelValue = this.getSkillLevelValue(requirement.minimumLevel);
+
+    // 技能等级匹配
+    if (devLevelValue >= reqLevelValue) {
+      score += 40; // 基础分
+      // 额外加分：超出要求的等级
+      const levelDifference = devLevelValue - reqLevelValue;
+      score += levelDifference * 10;
+    } else {
+      // 等级不足，部分得分
+      score += (devLevelValue / reqLevelValue) * 20;
+    }
+
+    // 经验年限匹配
+    if (developerSkill.yearsOfExperience >= requirement.minimumYears) {
+      score += 30;
+      // 额外加分：超出要求的年限
+      const extraYears = developerSkill.yearsOfExperience - requirement.minimumYears;
+      score += Math.min(extraYears * 5, 20); // 最多额外加20分
+    } else {
+      score += (developerSkill.yearsOfExperience / requirement.minimumYears) * 15;
+    }
+
+    return {
+      score: Math.min(score, 100), // 单个技能最高100分
+      matched: score >= 60 // 60分以上视为匹配
+    };
+  }
+
+  /**
+   * 生成技能提升建议
+   */
+  private generateRecommendations(
+    developer: DeveloperProfile,
+    missingSkills: string[],
+    lowScoreSkills: Array<{ name: string; score: number }>
+  ): string[] {
+    const recommendations: string[] = [];
+
+    for (const skillName of missingSkills) {
+      recommendations.push(`建议学习 ${skillName} 技能，可以通过在线课程或实践项目来提升`);
+    }
+
+    for (const skill of lowScoreSkills) {
+      if (skill.score < 40) {
+        recommendations.push(`建议提升 ${skill.name} 技能水平，当前得分较低（${skill.score.toFixed(1)}分）`);
+      } else {
+        recommendations.push(`继续提升 ${skill.name} 技能，当前得分 ${skill.score.toFixed(1)}分，还有提升空间`);
+      }
+    }
+
+    // 根据开发者现有技能提供个性化建议
+    const hasGitHub = !!developer.githubUsername;
+    if (!hasGitHub) {
+      recommendations.push('建议创建并完善 GitHub 个人主页，展示项目经验');
+    }
+
+    return recommendations;
+  }
+
+  /**
+   * 匹配单个开发者与职位需求
+   */
+  public matchDeveloperToJob(
+    developer: DeveloperProfile,
+    job: JobRequirement
+  ): SkillMatchResult | null {
+    // 输入验证
+    if (!this.validateDeveloperProfile(developer)) {
+      return null;
+    }
+    if (!this.validateJobRequirement(job)) {
+      return null;
+    }
+
+    const matchedSkills: string[] = [];
+    const missingSkills: string[] = [];
+    const lowScoreSkills: Array<{ name: string; score: number }> = [];
+    let totalScore = 0;
+    let totalWeight = 0;
+
+    // 为每个技能需求计算匹配度
+    for (const requirement of job.skills) {
+      const developerSkill = developer.skills.find(
+        s => s.name.toLowerCase() === requirement.skillName.toLowerCase()
+      );
+
+      const result = this.calculateSkillMatchScore(developerSkill, requirement);
+      
+      // 加权计算总分（必需技能权重更高）
+      const weight = requirement.required ? 2 : 1;
+      totalScore += result.score * weight;
+      totalWeight += weight;
+
+      if (result.matched) {
+        matchedSkills.push(requirement.skillName);
+      } else if (!developerSkill) {
+        missingSkills.push(requirement.skillName);
+      } else {
+        lowScoreSkills.push({ name: requirement.skillName, score: result.score });
+      }
+    }
+
+    // 计算最终匹配分数（0-100）
+    const finalScore = totalWeight > 0 
+      ? Math.round((totalScore / (totalWeight * 100)) * 100)
+      : 0;
+
+    // 生成建议
+    const recommendations = this.generateRecommendations(
+      developer,
+      missingSkills,
+      lowScoreSkills
+    );
+
+    return {
+      developer,
+      matchScore: finalScore,
+      matchedSkills,
+      missingSkills,
+      recommendations
+    };
+  }
+
+  /**
+   * 批量匹配开发者与职位需求
+   */
+  public matchMultipleDevelopers(
+    developers: DeveloperProfile[],
+    job: JobRequirement
+  ): SkillMatchResult[] {
+    const results: SkillMatchResult[] = [];
+
+    for (const developer of developers) {
+      const result = this.matchDeveloperToJob(developer, job);
+      if (result) {
+        results.push(result);
+      }
+    }
+
+    // 按匹配分数降序排序
+    return results.sort((a, b) => b.matchScore - a.matchScore);
+  }
+
+  /**
+   * 筛选出符合条件的开发者
+   */
+  public filterQualifiedDevelopers(
+    results: SkillMatchResult[],
+    job: JobRequirement
+  ): SkillMatchResult[] {
+    return results.filter(result => result.matchScore >= job.minimumOverallScore);
+  }
+}
+
+// ============ 使用示例 ============
+
+/**
+ * 创建示例数据并运行匹配
+ */
+function runExample(): void {
+  console.log('=== Memanto & mattpocock 技能匹配系统 ===\n');
+
+  // 创建技能匹配器
+  const matcher = new SkillMatcher();
+
+  // 创建示例开发者
+  const developers: DeveloperProfile[] = [
+    {
+      id: 'dev-001',
+      name: '张三',
+      email: 'zhangsan@example.com',
+      githubUsername: 'zhangsan-dev',
+      skills: [
+        { name: 'TypeScript', level: SkillLevel.ADVANCED, category: SkillCategory.FRONTEND, yearsOfExperience: 4 },
+        { name: 'React', level: SkillLevel.ADVANCED, category: SkillCategory.FRONTEND, yearsOfExperience: 3 },
+        { name: 'Node.js', level: SkillLevel.INTERMEDIATE, category: SkillCategory.BACKEND, yearsOfExperience: 2 },
+        { name: 'PostgreSQL', level: SkillLevel.INTERMEDIATE, category: SkillCategory.DATABASE, yearsOfExperience: 2 }
+      ]
+    },
+    {
+      id: 'dev-002',
+      name: '李四',
+      email: 'lisi@example.com',
+      skills: [
+        { name: 'TypeScript', level: SkillLevel.BEGINNER, category: SkillCategory.FRONTEND, yearsOfExperience: 1 },
+        { name: 'React', level: SkillLevel.INTERMEDIATE, category: SkillCategory.FRONTEND, yearsOfExperience: 2 },
+        { name: 'Python', level: SkillLevel.ADVANCED, category: SkillCategory.BACKEND, yearsOfExperience: 5 }
+      ]
+    },
+    {
+      id: 'dev-003',
+      name: '王五',
+      email: 'wangwu@example.com',
+      linkedinUrl: 'https://linkedin.com/in/wangwu',
+      skills: [
+        { name: 'TypeScript', level: SkillLevel.EXPERT, category: SkillCategory.FRONTEND, yearsOfExperience: 6 },
+        { name: 'React', level: SkillLevel.EXPERT, category: SkillCategory.FRONTEND, yearsOfExperience: 5 },
+        { name: 'Node.js', level: SkillLevel.ADVANCED, category: SkillCategory.BACKEND, yearsOfExperience: 4 },
+        { name: 'PostgreSQL', level: SkillLevel.ADVANCED, category: SkillCategory.DATABASE, yearsOfExperience: 3 },
+        { name: 'Docker', level: SkillLevel.INTERMEDIATE, category: SkillCategory.DEVOPS, yearsOfExperience: 2 }
+      ]
+    }
+  ];
+
+  // 创建职位需求
+  const jobRequirement: JobRequirement = {
+    title: '高级全栈开发工程师',
+    description: '寻找经验丰富的全栈开发者，精通 TypeScript 和 React',
+    minimumOverallScore: 70,
+    skills: [
+      {
+        skillName: 'TypeScript',
+        minimumLevel: SkillLevel.ADVANCED,
+        minimumYears: 3,
+        required: true
+      },
+      {
+        skillName: 'React',
+        minimumLevel: SkillLevel.INTERMEDIATE,
+        minimumYears: 2,
+        required: true
+      },
+      {
+        skillName: 'Node.js',
+        minimumLevel: SkillLevel.INTERMEDIATE,
+        minimumYears: 2,
+        required: false
+      },
+      {
+        skillName: 'PostgreSQL',
+        minimumLevel: SkillLevel.INTERMEDIATE,
+        minimumYears: 1,
+        required: false
+      }
+    ]
+  };
+
+  // 执行匹配
+  console.log(`职位需求: ${jobRequirement.title}\n`);
+  console.log('正在匹配开发者...\n');
+
+  const matchResults = matcher.matchMultipleDevelopers(developers, jobRequirement);
+  const qualifiedDevelopers = matcher.filterQualifiedDevelopers(matchResults, jobRequirement);
+
+  // 输出结果
+  console.log('=== 匹配结果 ===\n');
+  
+  for (const result of matchResults) {
+    console.log(`开发者: ${result.developer.name}`);
+    console.log(`匹配分数: ${result.matchScore}/100`);
+    console.log(`匹配技能: ${result.matchedSkills.join(', ') || '无'}`);
+    console.log(`缺失技能: ${result.missingSkills.join(', ') || '无'}`);
+    console.log('建议:');
+    result.recommendations.forEach((rec, index) => {
+      console.log(`  ${index + 1}. ${rec}`);
+    });
+    console.log(`状态: ${result.matchScore >= jobRequirement.minimumOverallScore ? '✅ 合格' : '❌ 不合格'}`);
+    console.log('---\n');
+  }
+
+  console.log(`\n合格开发者数量: ${qualifiedDevelopers.length}/${developers.length}`);
+  console.log('合格开发者:');
+  qualifiedDevelopers.forEach(dev => {
+    console.log(`  - ${dev.developer.name} (分数: ${dev.matchScore})`);
+  });
+}
+
+// ============ 测试用例 ============
+
+/**
+ * 运行测试用例
+ */
+function runTests(): void {
+  console.log('\n=== 运行测试用例 ===\n');
+  
+  const matcher = new SkillMatcher();
+
+  // 测试1: 边界情况 - 空技能列表
+  console.log('测试1: 空技能列表');
+  const emptySkillDev: DeveloperProfile = {
+    id: 'test-001',
+    name: '测试开发者',
+    email: 'test@example.com',
+    skills: []
+  };
+  const testJob: JobRequirement = {
+    title: '测试职位',
+    description: '测试描述',
+    minimumOverallScore: 50,
+    skills: [
+      { skillName: 'TypeScript', minimumLevel: SkillLevel.INTERMEDIATE, minimumYears: 1, required: true }
+    ]
+  };
+  const emptyResult = matcher.matchDeveloperToJob(emptySkillDev, testJob);
+  console.log(`  结果: ${emptyResult ? `分数 ${emptyResult.matchScore}` : 'null'}`);
+  console.log(`  缺失技能: ${emptyResult?.missingSkills.join(', ')}`);
+  console.log('');
+
+  // 测试2: 边界情况 - 无效的开发者档案
+  console.log('测试2: 无效的开发者档案');
+  const invalidDev = { id: 'test-002', name: '无效开发者' } as DeveloperProfile;
+  const invalidResult = matcher.matchDeveloperToJob(invalidDev, testJob);
+  console.log(`  结果: ${invalidResult === null ? 'null (正确)' : '错误'}`);
+  console.log('');
+
+  // 测试3: 完美匹配
+  console.log('测试3: 完美匹配');
+  const perfectDev: DeveloperProfile = {
+    id: 'test-003',
+    name: '完美开发者',
+    email: 'perfect@example.com',
+    skills: [
+      { name: 'TypeScript', level: SkillLevel.EXPERT, category: SkillCategory.FRONTEND, yearsOfExperience: 5 }
+    ]
+  };
+  const perfectResult = matcher.matchDeveloperToJob(perfectDev, testJob);
+  console.log(`  分数: ${perfectResult?.matchScore}`);
+  console.log(`  匹配技能: ${perfectResult?.matchedSkills.join(', ')}`);
+  console.log('');
+
+  // 测试4: 负值经验年限
+  console.log('测试4: 负值经验年限');
+  const negativeExpDev: DeveloperProfile = {
+    id: 'test-004',
+    name: '负值经验开发者',
+    email: 'negative@example.com',
+    skills: [
+      { name: 'TypeScript', level: SkillLevel.INTERMEDIATE, category: SkillCategory.FRONTEND, yearsOfExperience: -1 }
+    ]
+  };
+  const negativeResult = matcher.matchDeveloperToJob(negativeExpDev, testJob);
+  console.log(`  结果: ${negativeResult === null ? 'null (正确)' : '错误'}`);
+  console.log('');
+
+  console.log('测试完成！');
+}
+
+// ============ 主程序入口 ============
+
+// 运行示例
+runExample();
+
+// 运行测试
+runTests();
+
+// 导出供其他模块使用
+export {
+  SkillLevel,
+  SkillCategory,
+  Skill,
+  DeveloperProfile,
+  SkillMatchResult,
+  SkillRequirement,
+  JobRequirement,
+  SkillMatcher
+};
