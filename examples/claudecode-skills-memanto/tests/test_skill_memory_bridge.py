@@ -13,7 +13,11 @@ EXAMPLE_DIR = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(EXAMPLE_DIR))
 
 from memory_backends import FileMemoryBackend  # noqa: E402
-from skill_memory_bridge import SkillMemoryBridge, SkillRun  # noqa: E402
+from skill_memory_bridge import (  # noqa: E402
+    SkillExecution,
+    SkillMemoryBridge,
+    SkillRun,
+)
 
 
 class SkillMemoryBridgeTests(unittest.TestCase):
@@ -78,6 +82,60 @@ class SkillMemoryBridgeTests(unittest.TestCase):
                     "Constraint: Stripe payloads are discarded after signature checks.",
                 ],
             )
+
+    def test_bridge_wraps_any_skill_executor_with_memory_hooks(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            memory = FileMemoryBackend(Path(tmp_dir) / "memory.json")
+            memory.remember(
+                "Decision: Invoice exports must preserve customer locale settings."
+            )
+            bridge = SkillMemoryBridge(memory)
+            run = SkillRun(
+                skill_name="/handoff",
+                task="Summarize invoice export implementation",
+                file_paths=["apps/billing/invoices/export.ts"],
+                metadata={"project": "billing"},
+            )
+            prompts_seen: list[str] = []
+
+            def fake_executor(prompt: str) -> str:
+                prompts_seen.append(prompt)
+                return "Learning: Invoice exports need a locale regression test."
+
+            result = bridge.run_with_memory(
+                run,
+                "Create a handoff note for the invoice export branch.",
+                fake_executor,
+            )
+
+            self.assertIsInstance(result, SkillExecution)
+            self.assertEqual(prompts_seen, [result.prompt])
+            self.assertIn("MEMANTO ENGINEERING MEMORY", result.prompt)
+            self.assertIn("preserve customer locale", result.prompt)
+            self.assertIn("Create a handoff note", result.prompt)
+            self.assertEqual(
+                result.stored_memories,
+                ["Learning: Invoice exports need a locale regression test."],
+            )
+
+            records = json.loads((Path(tmp_dir) / "memory.json").read_text())
+            self.assertEqual(records[-1]["tags"], "claudecode,skills,handoff")
+
+    def test_metadata_contributes_to_recall_query(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            memory = FileMemoryBackend(Path(tmp_dir) / "memory.json")
+            memory.remember("Decision: Mobile builds use expo-router defaults.")
+            bridge = SkillMemoryBridge(memory)
+            run = SkillRun(
+                skill_name="/tdd",
+                task="Add route tests",
+                file_paths=[],
+                metadata={"framework": "expo-router"},
+            )
+
+            context = bridge.before_skill(run)
+
+            self.assertIn("expo-router defaults", context)
 
     def test_malformed_offline_memory_file_recovers_on_write(self) -> None:
         with tempfile.TemporaryDirectory() as tmp_dir:

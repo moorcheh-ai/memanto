@@ -6,6 +6,7 @@ The bridge has two lifecycle hooks:
 
 - `before_skill(...)`: recall relevant engineering memory and return a concise context block that can be appended to a skill prompt.
 - `after_skill(...)`: extract durable project decisions, coding preferences, and codebase quirks from a completed skill transcript, then store them in Memanto.
+- `run_with_memory(...)`: wrap any existing skill runner callable with both hooks, so teams can drop the bridge around their current `/tdd`, `/handoff`, or custom skill executor without rewriting those skills.
 
 ![Cross-skill memory demo](assets/demo.gif)
 
@@ -62,7 +63,7 @@ python run_cross_skill_demo.py --backend memanto --agent-id claudecode-skills-de
 
 ## Integration Pattern
 
-Wrap skill execution with the bridge:
+Wrap skill execution with the bridge directly:
 
 ```python
 from skill_memory_bridge import SkillMemoryBridge, SkillRun
@@ -81,6 +82,34 @@ skill_prompt = f"{memory_context}\n\n{original_skill_prompt}"
 result = run_skill(skill_prompt)
 
 bridge.after_skill(run, result.transcript)
+```
+
+Or use the executor-agnostic wrapper when you already have a function that runs a skill:
+
+```python
+def run_skill(prompt: str) -> str:
+    # Call your existing Claude Code, shell, or local skill runner here.
+    return "Learning: Invoice export tests should preserve customer locale."
+
+result = bridge.run_with_memory(
+    run,
+    "Create a handoff note for the invoice export branch.",
+    run_skill,
+)
+
+print(result.prompt)
+print(result.stored_memories)
+```
+
+`SkillRun.metadata` can carry project, framework, branch, tenant, or issue identifiers into the recall query without changing the bridge internals:
+
+```python
+run = SkillRun(
+    skill_name="/tdd",
+    task="Add route tests",
+    file_paths=["apps/mobile/app/(tabs)/index.tsx"],
+    metadata={"framework": "expo-router", "project": "mobile-app"},
+)
 ```
 
 The bridge deliberately stores only durable engineering facts:
