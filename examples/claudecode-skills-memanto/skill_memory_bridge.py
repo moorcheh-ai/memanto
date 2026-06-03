@@ -109,10 +109,15 @@ class SkillMemoryBridge:
 
     def _tags_for(self, run: SkillRun) -> tuple[str, ...]:
         """Build stable tags for memories emitted by one skill run."""
-        skill_tag = run.skill_name.strip("/")
+        skill_tag = self._sanitize_tag(run.skill_name)
         if skill_tag:
             return (*self.base_tags, skill_tag)
         return self.base_tags
+
+    def _sanitize_tag(self, value: str) -> str:
+        """Normalize user-facing skill names into comma-safe memory tags."""
+        normalized = re.sub(r"[\s,/]+", "-", value.strip())
+        return normalized.strip("-")
 
     def _memory_type(self, label: str) -> str:
         """Map a transcript label to Memanto's memory type vocabulary."""

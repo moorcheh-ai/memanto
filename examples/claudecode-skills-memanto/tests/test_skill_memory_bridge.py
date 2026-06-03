@@ -137,6 +137,21 @@ class SkillMemoryBridgeTests(unittest.TestCase):
 
             self.assertIn("expo-router defaults", context)
 
+    def test_skill_name_is_sanitized_before_tag_storage(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            memory = FileMemoryBackend(Path(tmp_dir) / "memory.json")
+            bridge = SkillMemoryBridge(memory)
+            run = SkillRun(
+                skill_name="/custom skill,runner/",
+                task="Summarize memory bridge tag handling",
+                file_paths=[],
+            )
+
+            bridge.after_skill(run, "Learning: Tags should stay comma-safe.")
+
+            records = json.loads((Path(tmp_dir) / "memory.json").read_text())
+            self.assertEqual(records[0]["tags"], "claudecode,skills,custom-skill-runner")
+
     def test_malformed_offline_memory_file_recovers_on_write(self) -> None:
         with tempfile.TemporaryDirectory() as tmp_dir:
             path = Path(tmp_dir) / "memory.json"
