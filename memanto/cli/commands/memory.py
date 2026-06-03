@@ -3,6 +3,7 @@ MEMANTO CLI - Memory commands (remember, recall, answer, daily-summary, conflict
 """
 
 import json
+import sys
 import time
 from datetime import datetime
 from pathlib import Path
@@ -54,6 +55,26 @@ def remember(
     batch: str | None = typer.Option(
         None, "--batch", help="Path to JSON file with batch memories (array of objects)"
     ),
+    from_conversation: str | None = typer.Option(
+        None,
+        "--from-conversation",
+        help="Path to JSON conversation messages, or '-' to read from stdin",
+    ),
+    dry_run: bool = typer.Option(
+        False,
+        "--dry-run",
+        help="Preview extracted conversation memories without storing them",
+    ),
+    max_memories: int = typer.Option(
+        20,
+        "--max-memories",
+        help="Maximum memories to extract from a conversation",
+    ),
+    ai_model: str | None = typer.Option(
+        None,
+        "--ai-model",
+        help="Optional model override for conversation extraction",
+    ),
 ):
     """Store a new memory for the active agent.
 
@@ -71,8 +92,86 @@ def remember(
     client = get_client()
     agent_id = active_agent_id
 
+    # Conversation extraction mode
+    if from_conversation:
+        if batch or content:
+            _error(
+                "--from-conversation cannot be combined with CONTENT or --batch.",
+                hint="Use one input mode at a time.",
+            )
+        if max_memories < 1 or max_memories > 100:
+            _error("--max-memories must be between 1 and 100.")
+
+        try:
+            if from_conversation == "-":
+                raw = sys.stdin.read()
+            else:
+                conversation_path = Path(from_conversation)
+                if not conversation_path.exists():
+                    _error(
+                        f"File not found: {from_conversation}",
+                        hint="Provide a valid path to a JSON file.",
+                    )
+                raw = conversation_path.read_text(encoding="utf-8")
+            messages = json.loads(raw)
+        except json.JSONDecodeError as e:
+            _error(
+                f"Invalid JSON: {e}",
+                hint="Conversation file must contain an array of {role, content} objects.",
+            )
+
+        if not isinstance(messages, list):
+            _error("Conversation JSON must contain an array of message objects.")
+
+        try:
+            with console.status(
+                "[cyan]Extracting memories from conversation...", spinner="dots"
+            ):
+                result = client.extract_memories_from_conversation(
+                    agent_id=agent_id,
+                    messages=messages,
+                    dry_run=dry_run,
+                    max_memories=max_memories,
+                    ai_model=ai_model,
+                )
+            elapsed = time.perf_counter() - start
+            candidates = result.get("candidates", [])
+
+            if dry_run:
+                console.print(
+                    f"[yellow]Dry run:[/yellow] extracted {len(candidates)} memory candidate(s)."
+                )
+            else:
+                successful = result.get("successful", 0)
+                failed = result.get("failed", 0)
+                total = result.get("total_submitted", len(candidates))
+                console.print(
+                    f"[green]Stored {successful}/{total} extracted memories[/green]"
+                    + (f" [yellow]({failed} failed)[/yellow]" if failed else "")
+                )
+
+            for i, item in enumerate(candidates, 1):
+                console.print(
+                    Panel(
+                        f"[bold]{item.get('title', 'Untitled')}[/bold]\n\n"
+                        f"{item.get('content', '')}\n\n"
+                        f"[dim]Type: {item.get('type', 'fact')} | "
+                        f"Confidence: {item.get('confidence', 0.8):.2f}[/dim]",
+                        title=f"Candidate {i}",
+                        border_style="yellow" if dry_run else SUCCESS,
+                    )
+                )
+            console.print(f"[dim]Completed in {elapsed:.2f}s[/dim]")
+        except Exception as e:
+            _error(f"Failed to extract memories: {e}")
+
+        return
+
     # Batch mode
     if batch:
+        if dry_run:
+            _error("--dry-run is only supported with --from-conversation.")
+
         batch_path = Path(batch)
         if not batch_path.exists():
             _error(

@@ -89,6 +89,38 @@ class BatchRememberRequest(BaseModel):
     )
 
 
+class ConversationMessage(BaseModel):
+    """Chat-style message used for conversation memory extraction."""
+
+    role: str = Field(..., min_length=1, max_length=50)
+    content: str = Field(..., min_length=1, max_length=10000)
+
+
+class ExtractMemoriesRequest(BaseModel):
+    """Request body for extracting typed memories from conversation turns."""
+
+    messages: list[ConversationMessage] = Field(
+        ...,
+        min_length=1,
+        max_length=200,
+        description="Conversation turns to extract durable memories from",
+    )
+    dry_run: bool = Field(
+        False,
+        description="When true, return candidates without storing them",
+    )
+    max_memories: int = Field(
+        20,
+        ge=1,
+        le=100,
+        description="Maximum candidate memories to extract",
+    )
+    ai_model: str | None = Field(
+        None,
+        description="Optional model override for extraction",
+    )
+
+
 class SupersedeRequest(BaseModel):
     """Request body for supersede endpoint"""
 

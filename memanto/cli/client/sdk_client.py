@@ -559,6 +559,56 @@ class SdkClient:
 
         return result
 
+    def extract_memories_from_conversation(
+        self,
+        agent_id: str,
+        messages: list[dict[str, str]],
+        dry_run: bool = False,
+        max_memories: int = 20,
+        ai_model: str | None = None,
+    ) -> dict[str, Any]:
+        """
+        Extract typed memories from conversation turns.
+
+        Args:
+            agent_id: Target agent.
+            messages: Chat-style messages with ``role`` and ``content``.
+            dry_run: When True, preview candidates without storing.
+            max_memories: Maximum candidates to extract.
+            ai_model: Optional model override for extraction.
+
+        Returns:
+            Dict containing extracted candidates and, when not dry-run, the
+            batch storage result.
+        """
+        session = self._get_validated_session_for_agent(agent_id)
+
+        from memanto.app.services.conversation_memory_extraction_service import (
+            ConversationMemoryExtractionService,
+        )
+
+        service = ConversationMemoryExtractionService(self._get_moorcheh())
+        candidates = service.extract(
+            namespace=session.namespace,
+            messages=messages,
+            max_memories=max_memories,
+            ai_model=ai_model,
+        )
+
+        if dry_run:
+            return {
+                "dry_run": True,
+                "candidates": candidates,
+                "count": len(candidates),
+            }
+
+        result = self.batch_remember(agent_id=agent_id, memories=candidates)
+        return {
+            "dry_run": False,
+            "candidates": candidates,
+            **result,
+        }
+
     def upload_file(self, agent_id: str, file_path: str) -> dict[str, Any]:
         """
         Upload a file directly to the agent's memory namespace.

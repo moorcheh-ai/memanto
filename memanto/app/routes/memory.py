@@ -21,10 +21,14 @@ from memanto.app.models import (
     AnswerRequest,
     BatchRememberRequest,
     ConflictResolveRequest,
+    ExtractMemoriesRequest,
     RememberRequest,
 )
 from memanto.app.models.session import Session
 from memanto.app.routes.auth_deps import get_current_session, get_session_service
+from memanto.app.services.conversation_memory_extraction_service import (
+    ConversationMemoryExtractionService,
+)
 from memanto.app.services.memory_read_service import MemoryReadService
 from memanto.app.services.memory_write_service import MemoryWriteService
 from memanto.app.utils.errors import map_error_to_http_exception
@@ -288,6 +292,108 @@ async def batch_remember(
             "agent_id": agent_id,
             "session_id": session.session_id,
             "namespace": session.namespace,
+            "total_submitted": result["total_submitted"],
+            "successful": result["successful"],
+            "failed": result["failed"],
+            "results": result["results"],
+        }
+
+    except Exception as e:
+        raise map_error_to_http_exception(e)
+
+
+@router.post("/{agent_id}/remember/extract")
+async def extract_memories_from_conversation(
+    agent_id: str,
+    request: ExtractMemoriesRequest = Body(...),
+    session: Session = Depends(get_current_session),
+    client=Depends(get_moorcheh_client),
+):
+    """
+    Extract typed memory candidates from chat-style conversation turns.
+
+    Requires:
+    - X-Session-Token: {session_token}
+
+    When dry_run is true, candidates are returned without writing. Otherwise the
+    candidates are persisted through the same batch memory path used by
+    /batch-remember.
+    """
+    if session.agent_id != agent_id:
+        raise map_error_to_http_exception(
+            Exception(
+                f"Session is for agent '{session.agent_id}', cannot access '{agent_id}'"
+            )
+        )
+
+    try:
+        extraction_service = ConversationMemoryExtractionService(client)
+        candidates = await asyncio.to_thread(
+            extraction_service.extract,
+            namespace=session.namespace,
+            messages=[
+                message.model_dump(mode="json") for message in request.messages
+            ],
+            max_memories=request.max_memories,
+            ai_model=request.ai_model,
+        )
+
+        if request.dry_run:
+            return {
+                "agent_id": agent_id,
+                "session_id": session.session_id,
+                "dry_run": True,
+                "candidates": candidates,
+                "count": len(candidates),
+            }
+
+        write_service = MemoryWriteService(client)
+
+        from typing import cast
+
+        from memanto.app.constants import MemoryType, ProvenanceType
+
+        memory_records = []
+        for item in candidates:
+            memory = MemoryRecord(
+                type=cast(MemoryType, item["type"]),
+                title=item["title"],
+                content=item["content"],
+                scope_type="agent",
+                scope_id=agent_id,
+                actor_id=agent_id,
+                confidence=item["confidence"],
+                tags=["conversation-extract"],
+                source=item["source"],
+                provenance=cast(ProvenanceType, item["provenance"]),
+            )
+            memory_records.append(memory)
+
+        result = await asyncio.to_thread(
+            write_service.batch_store_memories, memory_records
+        )
+
+        session_service = get_session_service()
+        for index, record in enumerate(memory_records):
+            batch_results = result.get("results", [])
+            memory_id = (
+                batch_results[index].get("id")
+                if index < len(batch_results)
+                else None
+            )
+            await asyncio.to_thread(
+                session_service.log_memory_to_session_summary,
+                agent_id=agent_id,
+                session_id=session.session_id,
+                memory_record=record,
+                memory_id=memory_id,
+            )
+
+        return {
+            "agent_id": agent_id,
+            "session_id": session.session_id,
+            "dry_run": False,
+            "candidates": candidates,
             "total_submitted": result["total_submitted"],
             "successful": result["successful"],
             "failed": result["failed"],

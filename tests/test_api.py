@@ -1,3 +1,4 @@
+import json
 import os
 import shutil
 import tempfile
@@ -7,11 +8,11 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from httpx import ASGITransport, AsyncClient
 
+# Set test environment before importing app settings.
+os.environ["MOORCHEH_API_KEY"] = "test-api-key"
+
 from memanto.app.config import settings
 from memanto.app.main import app
-
-# Set test environment
-os.environ["MOORCHEH_API_KEY"] = "test-api-key"
 
 
 @pytest.fixture(autouse=True, scope="function")
@@ -602,6 +603,105 @@ class TestMEMANTOAPI:
         )
         assert response.status_code == 200
         assert response.json()["successful"] == 2
+
+    @pytest.mark.asyncio
+    async def test_extract_memories_from_conversation_dry_run(
+        self, client, auth_headers, mock_moorcheh
+    ):
+        """Conversation extraction can preview candidates without writing."""
+        await client.post(
+            "/api/v2/agents",
+            headers=auth_headers,
+            json={"agent_id": self.TEST_AGENT_ID},
+        )
+        activate_resp = await client.post(
+            f"/api/v2/agents/{self.TEST_AGENT_ID}/activate", headers=auth_headers
+        )
+        assert activate_resp.status_code == 200, activate_resp.text
+        token = activate_resp.json()["session_token"]
+        headers = {**auth_headers, "X-Session-Token": token}
+
+        mock_moorcheh.answer.generate.return_value = {
+            "answer": json.dumps(
+                [
+                    {
+                        "type": "preference",
+                        "title": "Summary style",
+                        "content": "The user prefers concise summaries.",
+                        "confidence": 0.9,
+                    }
+                ]
+            ),
+            "sources": [],
+        }
+
+        response = await client.post(
+            f"/api/v2/agents/{self.TEST_AGENT_ID}/remember/extract",
+            headers=headers,
+            json={
+                "dry_run": True,
+                "messages": [
+                    {"role": "user", "content": "Please keep summaries concise."}
+                ],
+            },
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["dry_run"] is True
+        assert data["count"] == 1
+        assert data["candidates"][0]["type"] == "preference"
+        mock_moorcheh.documents.upload.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_extract_memories_from_conversation_stores_batch(
+        self, client, auth_headers, mock_moorcheh
+    ):
+        """Conversation extraction stores candidates through batch memory writes."""
+        await client.post(
+            "/api/v2/agents",
+            headers=auth_headers,
+            json={"agent_id": self.TEST_AGENT_ID},
+        )
+        activate_resp = await client.post(
+            f"/api/v2/agents/{self.TEST_AGENT_ID}/activate", headers=auth_headers
+        )
+        assert activate_resp.status_code == 200, activate_resp.text
+        token = activate_resp.json()["session_token"]
+        headers = {**auth_headers, "X-Session-Token": token}
+
+        mock_moorcheh.answer.generate.return_value = {
+            "answer": json.dumps(
+                [
+                    {
+                        "type": "fact",
+                        "title": "Test stack",
+                        "content": "The project uses pytest for tests.",
+                        "confidence": 0.88,
+                    }
+                ]
+            ),
+            "sources": [],
+        }
+        mock_moorcheh.documents.upload.return_value = {"status": "success"}
+
+        response = await client.post(
+            f"/api/v2/agents/{self.TEST_AGENT_ID}/remember/extract",
+            headers=headers,
+            json={
+                "messages": [
+                    {"role": "user", "content": "The project uses pytest for tests."}
+                ],
+            },
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["dry_run"] is False
+        assert data["successful"] == 1
+        uploaded_doc = mock_moorcheh.documents.upload.call_args.kwargs["documents"][0]
+        assert uploaded_doc["memory_type"] == "fact"
+        assert uploaded_doc["provenance"] == "inferred"
 
     @pytest.mark.asyncio
     async def test_recall_temporal_api(self, client, auth_headers, mock_moorcheh):

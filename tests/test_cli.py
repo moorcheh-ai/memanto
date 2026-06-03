@@ -360,6 +360,96 @@ class TestMEMANTOCLI:
         assert result.exit_code == 0
         assert "Stored 2/2 memories successfully" in result.stdout
 
+    def test_remember_from_conversation_dry_run(self, mock_all_clients, tmp_path):
+        """Test 'memanto remember --from-conversation --dry-run'"""
+        conversation_file = tmp_path / "messages.json"
+        conversation_file.write_text(
+            json.dumps(
+                [
+                    {"role": "user", "content": "I prefer short PR summaries."},
+                    {"role": "assistant", "content": "I will remember that."},
+                ]
+            )
+        )
+        mock_all_clients.extract_memories_from_conversation.return_value = {
+            "dry_run": True,
+            "candidates": [
+                {
+                    "type": "preference",
+                    "title": "PR summary preference",
+                    "content": "The user prefers short PR summaries.",
+                    "confidence": 0.9,
+                }
+            ],
+            "count": 1,
+        }
+
+        result = runner.invoke(
+            app,
+            ["remember", "--from-conversation", str(conversation_file), "--dry-run"],
+        )
+
+        assert result.exit_code == 0
+        assert "Dry run" in result.stdout
+        assert "PR summary preference" in result.stdout
+        mock_all_clients.extract_memories_from_conversation.assert_called_once()
+        call_kwargs = mock_all_clients.extract_memories_from_conversation.call_args.kwargs
+        assert call_kwargs["dry_run"] is True
+        assert call_kwargs["messages"][0]["role"] == "user"
+
+    def test_remember_from_conversation_stores_extracted_memories(
+        self, mock_all_clients, tmp_path
+    ):
+        """Conversation extraction stores candidates when dry-run is not used."""
+        conversation_file = tmp_path / "messages.json"
+        conversation_file.write_text(
+            json.dumps([{"role": "user", "content": "The project uses pytest."}])
+        )
+        mock_all_clients.extract_memories_from_conversation.return_value = {
+            "dry_run": False,
+            "successful": 1,
+            "total_submitted": 1,
+            "failed": 0,
+            "candidates": [
+                {
+                    "type": "fact",
+                    "title": "Test framework",
+                    "content": "The project uses pytest.",
+                    "confidence": 0.85,
+                }
+            ],
+        }
+
+        result = runner.invoke(
+            app,
+            ["remember", "--from-conversation", str(conversation_file)],
+        )
+
+        assert result.exit_code == 0
+        assert "Stored 1/1 extracted memories" in result.stdout
+        mock_all_clients.extract_memories_from_conversation.assert_called_once()
+
+    def test_remember_from_conversation_rejects_batch_combo(
+        self, mock_all_clients, tmp_path
+    ):
+        """Conversation extraction is mutually exclusive with batch mode."""
+        conversation_file = tmp_path / "messages.json"
+        conversation_file.write_text(json.dumps([{"role": "user", "content": "x"}]))
+
+        result = runner.invoke(
+            app,
+            [
+                "remember",
+                "--from-conversation",
+                str(conversation_file),
+                "--batch",
+                str(conversation_file),
+            ],
+        )
+
+        assert result.exit_code != 0
+        assert "cannot be combined" in result.stdout
+
     def test_daily_summary(self, mock_all_clients):
         """Test 'memanto daily-summary'"""
         mock_all_clients.generate_daily_summary.return_value = {
