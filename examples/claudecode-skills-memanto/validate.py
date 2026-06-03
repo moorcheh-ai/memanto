@@ -103,6 +103,20 @@ def test_empty_recall():
     finally:
         shutil.rmtree(clean_dir, ignore_errors=True)
 
+def test_malformed_jsonl():
+    """Recall should skip malformed JSONL lines gracefully."""
+    # Write a mix of valid and invalid lines
+    os.makedirs(os.path.join(PREVIEW_DIR, ".memanto-preview"), exist_ok=True)
+    jsonl_path = os.path.join(PREVIEW_DIR, ".memanto-preview", "memories.jsonl")
+    with open(jsonl_path, "a") as f:
+        f.write('{"timestamp":"2025-01-01T00:00:00Z","tag":"test","memory":"Valid memory entry about JWT tokens"}\n')
+        f.write('this is not valid json\n')
+        f.write('{"timestamp":"2025-01-01T00:00:00Z","tag":"test","memory":"Another valid entry about database schema"}\n')
+    r = run(["recall", "JWT"])
+    assert r.returncode == 0, f"malformed jsonl recall crashed: {r.stderr}"
+    assert "JWT" in r.stdout or "matches" in r.stdout, f"recall didn't handle malformed JSONL: {r.stdout}"
+    print("  PASS: malformed JSONL handling")
+
 def main():
     print(f"Validating skills-memory.sh (preview mode)")
     print(f"Script: {SCRIPT}")
@@ -112,6 +126,7 @@ def main():
         test_help,
         test_unknown_command,
         test_empty_recall,
+        test_malformed_jsonl,
         test_remember_and_recall,
         test_auto_tagging,
         test_explicit_tag,

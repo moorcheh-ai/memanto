@@ -235,12 +235,8 @@ cmd_wrap() {
   topic=$(echo "$skill_cmd" | sed 's/[^a-zA-Z0-9 ]/ /g' | tr -s ' ' | cut -c1-80)
 
   # Phase 1: Pre-skill — recall relevant memories
- log_info "=== Pre-skill: Recalling engineering context ==="
- local recalled_context
- recalled_context=$(cmd_recall "$topic" 2>&1) || true
- if [ -n "$recalled_context" ]; then
- echo "$recalled_context" >&2
- fi
+  log_info "=== Pre-skill: Recalling engineering context ==="
+  cmd_recall "$topic" || true
 
  # Phase 2: Execute skill
  log_info "=== Executing skill ==="
