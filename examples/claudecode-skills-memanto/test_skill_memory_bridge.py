@@ -1,14 +1,18 @@
 from __future__ import annotations
 
+import os
+import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 from skill_memory_bridge import (
     LocalJsonlBackend,
     MemoryRecord,
     SkillMemoryBridge,
     extract_memories,
+    main,
 )
 
 
@@ -47,6 +51,58 @@ class SkillMemoryBridgeTests(unittest.TestCase):
             )
 
         self.assertIn("Billing actions must run on the server", context)
+
+    def test_bridge_recalls_parent_path_for_child_path(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            memory_file = Path(tmp) / "memories.jsonl"
+            first = SkillMemoryBridge(LocalJsonlBackend(memory_file))
+            first.after_skill(
+                skill_name="/grill-with-docs",
+                paths=["src/features/invoices"],
+                summary="Decision: Invoice totals must be stored in cents.",
+            )
+
+            second = SkillMemoryBridge(LocalJsonlBackend(memory_file))
+            context = second.before_skill(
+                skill_name="/tdd",
+                paths=["src/features/invoices/create-invoice.test.ts"],
+                prompt="Add invoice tests.",
+            )
+
+        self.assertIn("Invoice totals must be stored in cents", context)
+
+    def test_wrap_runs_command_in_requested_cwd(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            workdir = Path(tmp) / "work"
+            workdir.mkdir()
+            memory_file = Path(tmp) / "memories.jsonl"
+            command = (
+                "from pathlib import Path; "
+                "Path('cwd-marker.txt').write_text('ok', encoding='utf-8')"
+            )
+
+            with patch.dict(
+                os.environ,
+                {"MEMANTO_SKILLS_MEMORY_FILE": str(memory_file)},
+            ):
+                return_code = main(
+                    [
+                        "wrap",
+                        "--skill",
+                        "/cwd-test",
+                        "--prompt",
+                        "Run cwd check.",
+                        "--cwd",
+                        str(workdir),
+                        "--",
+                        sys.executable,
+                        "-c",
+                        command,
+                    ]
+                )
+
+            self.assertEqual(return_code, 0)
+            self.assertTrue((workdir / "cwd-marker.txt").exists())
 
     def test_extract_memories_classifies_prefixes(self) -> None:
         memories = extract_memories(

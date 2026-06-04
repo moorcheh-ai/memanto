@@ -38,6 +38,7 @@ Gotcha: Do not introduce Prisma; this SaaS uses better-sqlite3 and hand-written 
         print(f"stored {memory.memory_type}: {memory.content}")
 
     print("\n=== Session 2: /tdd starts later with an unrelated prompt ===")
+    bridge = SkillMemoryBridge(LocalJsonlBackend(MEMORY_FILE))
     context = bridge.before_skill(
         skill_name="/tdd",
         cwd="apps/acme-saas",
@@ -52,9 +53,10 @@ Gotcha: Do not introduce Prisma; this SaaS uses better-sqlite3 and hand-written 
     )
     print(context)
 
-    assert "better-sqlite3" in context
-    assert "db/migrations" in context
-    assert "authorization checks" in context
+    required_context = ("better-sqlite3", "db/migrations", "authorization checks")
+    missing = [item for item in required_context if item not in context]
+    if missing:
+        raise AssertionError(f"Demo context is missing: {', '.join(missing)}")
 
     print("\nDemo passed: the second skill received cross-session context.")
     return 0

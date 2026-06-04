@@ -273,7 +273,7 @@ def extract_memories(
 ) -> list[MemoryRecord]:
     """Distill skill output into typed engineering memories."""
 
-    tags = normalize_tags([skill_name, cwd or "", *(paths or [])])
+    tags = normalize_tags([skill_name, cwd or "", *expand_path_tags(paths or [])])
     memories: list[MemoryRecord] = []
     prefix_types = {
         "anti-pattern": "instruction",
@@ -366,6 +366,20 @@ def normalize_tags(values: list[str]) -> list[str]:
     return sorted(tags)
 
 
+def expand_path_tags(paths: list[str]) -> list[str]:
+    expanded: list[str] = []
+    for raw_path in paths:
+        path_text = raw_path.replace("\\", "/").strip("/")
+        parts = [part for part in path_text.split("/") if part and part != "."]
+        for index in range(1, len(parts) + 1):
+            expanded.append("/".join(parts[:index]))
+        if parts:
+            filename = parts[-1]
+            expanded.append(filename)
+            expanded.append(Path(filename).stem)
+    return normalize_tags(expanded)
+
+
 def render_context(memories: list[MemoryRecord]) -> str:
     if not memories:
         return "MEMANTO_CONTEXT: no relevant memories found."
@@ -395,10 +409,8 @@ class SkillMemoryBridge:
         limit: int = 5,
     ) -> str:
         query = " ".join([skill_name, prompt, cwd or "", " ".join(paths or [])])
-        tags = normalize_tags([skill_name, *(paths or [])])
+        tags = normalize_tags([skill_name, *expand_path_tags(paths or [])])
         memories = self.backend.recall(query, limit=limit, tags=tags or None)
-        if not memories:
-            memories = self.backend.recall(query, limit=limit)
         return render_context(memories)
 
     def after_skill(
@@ -505,7 +517,8 @@ def main(argv: list[str] | None = None) -> int:
         return 0
 
     if args.command == "wrap":
-        if not args.cmd:
+        cmd = args.cmd[1:] if args.cmd[:1] == ["--"] else args.cmd
+        if not cmd:
             print("wrap requires a command after --", file=sys.stderr)
             return 2
         print(
@@ -516,7 +529,12 @@ def main(argv: list[str] | None = None) -> int:
                 paths=paths,
             )
         )
-        result = subprocess.run(args.cmd, capture_output=True, text=True)
+        result = subprocess.run(
+            cmd,
+            capture_output=True,
+            text=True,
+            cwd=args.cwd or None,
+        )
         sys.stdout.write(result.stdout)
         sys.stderr.write(result.stderr)
         bridge.after_skill(

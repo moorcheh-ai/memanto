@@ -1,3 +1,5 @@
 # The default demo path is Python-stdlib only.
 # Install memanto when using MEMANTO_SKILLS_BACKEND=cli for live recall/writeback.
-memanto>=0.1.0
+memanto>=0.1.2
+pyjwt>=2.12.0
+python-multipart>=0.0.27
