@@ -735,7 +735,23 @@ class DirectClient:
         max_memories: int = 20,
         ai_model: str | None = None,
     ) -> dict[str, Any]:
-        """Extract typed memories from conversation turns."""
+        """
+        Extract typed memories from conversation turns.
+
+        Args:
+            agent_id: Target agent.
+            messages: Chat-style messages with ``role`` and ``content`` keys.
+            dry_run: When True, preview extracted candidates without storing them.
+            max_memories: Maximum number of candidate memories to extract.
+            ai_model: Optional model override for extraction.
+
+        Returns:
+            A dictionary containing extracted candidates and, unless ``dry_run``
+            is enabled, the batch storage result.
+
+        Raises:
+            SessionError: If no active session exists for the agent.
+        """
 
         session = self._get_validated_session_for_agent(agent_id)
 
