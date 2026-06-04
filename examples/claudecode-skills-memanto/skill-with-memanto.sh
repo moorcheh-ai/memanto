@@ -14,7 +14,7 @@
 #   3. After the skill completes, stores the summary in Memanto
 #
 # Environment variables (export or put in .env):
-#   MOORCHEH_API_KEY   — required
+#   MEMANTO_API_KEY    — required
 #   MEMANTO_AGENT_ID   — default: claudecode-dev
 #   MEMANTO_CONTEXT_LIMIT — default: 5
 # ──────────────────────────────────────────────────────────────────────
@@ -33,7 +33,7 @@ echo "════════════════════════�
 echo ""
 
 # Step 1: Query Memanto for relevant context
-CONTEXT=$(python -m memanto_skill_hook pre \
+CONTEXT=$(cd "$SCRIPT_DIR" && python -m memanto_skill_hook pre \
     --skill "$SKILL" \
     --file "$FILE" \
     --task "$TASK" 2>/dev/null || true)
@@ -55,9 +55,9 @@ echo ""
 read -r -p "Summary: " SUMMARY
 
 if [ -n "$SUMMARY" ]; then
-    python -m memanto_skill_hook post \
+    (cd "$SCRIPT_DIR" && python -m memanto_skill_hook post \
         --skill "$SKILL" \
         --file "$FILE" \
-        --summary "$SUMMARY" 2>/dev/null
+        --summary "$SUMMARY") 2>/dev/null
     echo "✓ Memory stored in Memanto."
 fi

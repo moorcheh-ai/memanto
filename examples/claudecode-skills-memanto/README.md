@@ -13,7 +13,7 @@ This integration layer hooks into the skill lifecycle to:
 1. **On skill start:** Query Memanto for memories relevant to the current file/task and inject them as context
 2. **On skill complete:** Distill the interaction and store key learnings in Memanto's semantic memory
 
-```
+```text
 ┌──────────────┐     ┌──────────────┐     ┌──────────────┐
 │   /tdd       │     │ /grill-docs  │     │   /handoff   │
 │   skill      │     │   skill      │     │   skill      │
@@ -56,7 +56,7 @@ source venv/bin/activate
 pip install -r requirements.txt
 
 cp .env.example .env
-# Edit .env and add your MOORCHEH_API_KEY
+# Edit .env and add your MEMANTO_API_KEY
 ```
 
 ### 3. Run the Demo
@@ -158,7 +158,7 @@ Memanto's built-in trust system ensures memories are reliable:
 
 ## File Structure
 
-```
+```text
 examples/claudecode-skills-memanto/
 ├── README.md                    # This file
 ├── requirements.txt             # Python dependencies

@@ -52,6 +52,12 @@ def _build_parser() -> argparse.ArgumentParser:
     post.add_argument(
         "--summary", required=True, help="Summary of what the skill produced"
     )
+    post.add_argument(
+        "--format",
+        choices=["text", "json"],
+        default="text",
+        help="Output format (text for humans, json for scripts)",
+    )
 
     return p
 

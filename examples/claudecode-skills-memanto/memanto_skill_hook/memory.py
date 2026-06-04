@@ -58,7 +58,13 @@ class SkillMemoryConfig:
             self.memanto_url = os.getenv(f"{_ENV_PREFIX}URL", "")
         limit = os.getenv(f"{_ENV_PREFIX}CONTEXT_LIMIT")
         if limit:
-            self.context_limit = int(limit)
+            try:
+                self.context_limit = int(limit)
+            except (ValueError, TypeError):
+                logger.warning(
+                    "Invalid MEMANTO_CONTEXT_LIMIT=%r, using default %d",
+                    limit, self.context_limit,
+                )
 
     @property
     def has_server(self) -> bool:
@@ -147,7 +153,7 @@ class SkillMemory:
 
             if not self.config.api_key:
                 raise RuntimeError(
-                    "MOORCHEH_API_KEY is not set. "
+                    "MEMANTO_API_KEY is not set. "
                     "Export it or add it to your .env file."
                 )
             self._sdk_client = MoorchehClient(api_key=self.config.api_key)

@@ -29,6 +29,8 @@ from __future__ import annotations
 import json
 import os
 import sys
+import re
+import tempfile
 from pathlib import Path
 
 from memanto_skill_hook.memory import SkillMemory
@@ -36,16 +38,23 @@ from memanto_skill_hook.memory import SkillMemory
 # ---------------------------------------------------------------------------
 # Hook state file — stores the pre-hook context for the post-hook to consume
 # ---------------------------------------------------------------------------
-_STATE_FILE = Path("/tmp/memanto_hook_state.json")
+_STATE_DIR = Path(tempfile.gettempdir())
+_STATE_PREFIX = "memanto_hook_state_"
+
+
+def _state_file() -> Path:
+    """Return a PID-scoped state file to avoid cross-process collisions."""
+    return _STATE_DIR / f"{_STATE_PREFIX}{os.getpid()}.json"
 
 
 def _save_state(data: dict) -> None:
-    _STATE_FILE.write_text(json.dumps(data))
+    _state_file().write_text(json.dumps(data))
 
 
 def _load_state() -> dict:
-    if _STATE_FILE.exists():
-        return json.loads(_STATE_FILE.read_text())
+    sf = _state_file()
+    if sf.exists():
+        return json.loads(sf.read_text())
     return {}
 
 
@@ -121,6 +130,10 @@ def post_hook() -> None:
         tool_output = " ".join(str(x) for x in tool_output)
     elif not isinstance(tool_output, str):
         tool_output = str(tool_output)
+
+    # Sanitize: strip ANSI escape codes and control characters
+    tool_output = re.sub(r"\x1b\[[0-9;]*[A-Za-z]", "", tool_output)
+    tool_output = re.sub(r"[\x00-\x08\x0b\x0c\x0e-\x1f]", "", tool_output)
 
     # Only store if there's meaningful output
     if len(tool_output.strip()) < 20:
