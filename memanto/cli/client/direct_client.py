@@ -729,6 +729,34 @@ class DirectClient:
 
         return result
 
+    def delete_memory(self, agent_id: str, memory_id: str) -> dict[str, Any]:
+        """
+        Delete a single memory from the active agent namespace.
+
+        Args:
+            agent_id: Target agent.
+            memory_id: Memory document ID to delete.
+
+        Returns:
+            Dict with deletion status metadata.
+
+        Raises:
+            ValueError: If the memory does not exist or was not deleted.
+        """
+        session = self._get_validated_session_for_agent(agent_id)
+        deleted = self._get_write_service().delete_memory(
+            memory_id, session.namespace
+        )
+        if not deleted:
+            raise ValueError(f"Memory '{memory_id}' was not found")
+
+        return {
+            "agent_id": agent_id,
+            "namespace": session.namespace,
+            "memory_id": memory_id,
+            "status": "deleted",
+        }
+
     def recall(
         self,
         agent_id: str,

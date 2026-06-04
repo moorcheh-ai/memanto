@@ -173,6 +173,47 @@ def remember(
 
 
 @app.command()
+def forget(
+    memory_id: str = typer.Argument(..., help="Memory ID to delete"),
+    force: bool = typer.Option(
+        False, "--force", "-f", help="Delete without asking for confirmation"
+    ),
+):
+    """Delete one memory from the active agent."""
+    start = time.perf_counter()
+    active_agent_id, active_session_token = config_manager.get_active_session()
+
+    if not active_agent_id or not active_session_token:
+        _error(
+            "No active agent.", hint="Run 'memanto agent activate <agent-id>' first."
+        )
+
+    if not force:
+        confirmed = typer.confirm(
+            f"Delete memory '{memory_id}' from agent '{active_agent_id}'?"
+        )
+        if not confirmed:
+            console.print("[yellow]Deletion cancelled.[/yellow]")
+            raise typer.Exit(0)
+
+    client = get_client()
+
+    try:
+        with console.status("[cyan]Deleting memory...", spinner="dots"):
+            result = client.delete_memory(
+                agent_id=active_agent_id, memory_id=memory_id
+            )
+        elapsed = time.perf_counter() - start
+
+        console.print("[green]Memory deleted successfully![/green]")
+        console.print(f"[dim]Memory ID: {result.get('memory_id', memory_id)}[/dim]")
+        console.print(f"[dim]Completed in {elapsed:.2f}s[/dim]")
+
+    except Exception as e:
+        _error(f"Failed to delete memory: {e}")
+
+
+@app.command()
 def upload(
     file_path: str = typer.Argument(..., help="Path to the file to upload"),
 ):

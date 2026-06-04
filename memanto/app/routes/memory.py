@@ -299,6 +299,52 @@ async def batch_remember(
         raise map_error_to_http_exception(e)
 
 
+@router.delete("/{agent_id}/memories/{memory_id}")
+async def delete_memory(
+    agent_id: str,
+    memory_id: str,
+    session: Session = Depends(get_current_session),
+    client=Depends(get_moorcheh_client),
+):
+    """
+    Delete one memory from the active agent's namespace (Session-based).
+
+    Requires:
+    - X-Session-Token: {session_token}
+
+    The session must be for the specified agent_id.
+    """
+    if session.agent_id != agent_id:
+        raise map_error_to_http_exception(
+            Exception(
+                f"Session is for agent '{session.agent_id}', cannot access '{agent_id}'"
+            )
+        )
+
+    try:
+        write_service = MemoryWriteService(client)
+        deleted = await asyncio.to_thread(
+            write_service.delete_memory, memory_id, session.namespace
+        )
+        if not deleted:
+            raise HTTPException(
+                status_code=404, detail=f"Memory '{memory_id}' was not found."
+            )
+
+        return {
+            "agent_id": agent_id,
+            "session_id": session.session_id,
+            "namespace": session.namespace,
+            "memory_id": memory_id,
+            "status": "deleted",
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise map_error_to_http_exception(e)
+
+
 @router.post("/{agent_id}/upload-file")
 async def upload_file(
     agent_id: str,

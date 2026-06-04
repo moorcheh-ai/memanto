@@ -209,6 +209,30 @@ class TestMEMANTOCLI:
         assert "stored successfully" in result.stdout.lower()
         assert "mem-123" in result.stdout
 
+    def test_forget_force(self, mock_all_clients):
+        """Test 'memanto forget --force' deletes one memory."""
+        mock_all_clients.delete_memory.return_value = {
+            "memory_id": "mem-123",
+            "status": "deleted",
+        }
+
+        result = runner.invoke(app, ["forget", "mem-123", "--force"])
+
+        assert result.exit_code == 0
+        assert "deleted successfully" in result.stdout.lower()
+        assert "mem-123" in result.stdout
+        mock_all_clients.delete_memory.assert_called_once_with(
+            agent_id="test-agent", memory_id="mem-123"
+        )
+
+    def test_forget_confirmation_declined(self, mock_all_clients):
+        """Test 'memanto forget' can be cancelled before deletion."""
+        result = runner.invoke(app, ["forget", "mem-123"], input="n\n")
+
+        assert result.exit_code == 0
+        assert "cancelled" in result.stdout.lower()
+        mock_all_clients.delete_memory.assert_not_called()
+
     def test_recall(self, mock_all_clients):
         """Test 'memanto recall'"""
         mock_all_clients.recall.return_value = {
