@@ -1,14 +1,18 @@
 import os
 import shutil
 import tempfile
+from datetime import datetime, timedelta
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from httpx import ASGITransport, AsyncClient
 
+from memanto.app.clients.moorcheh import get_moorcheh_client
 from memanto.app.config import settings
 from memanto.app.main import app
+from memanto.app.models.session import Session
+from memanto.app.routes.auth_deps import get_current_session
 
 # Set test environment
 os.environ["MOORCHEH_API_KEY"] = "test-api-key"
@@ -245,6 +249,65 @@ class TestMEMANTOAPI:
 
         assert response.status_code == 200
         assert response.json()["status"] == "queued"
+
+    @pytest.mark.asyncio
+    async def test_delete_memory_with_session(
+        self, client, auth_headers, mock_moorcheh
+    ):
+        """Test deleting one memory with session token."""
+        mock_moorcheh.documents.delete.return_value = {"actual_deletions": 1}
+
+        app.dependency_overrides[get_current_session] = lambda: Session(
+            session_id="sess-test",
+            session_token="token-test",
+            agent_id=self.TEST_AGENT_ID,
+            namespace=f"memanto_agent_{self.TEST_AGENT_ID}",
+            started_at=datetime.utcnow(),
+            expires_at=datetime.utcnow() + timedelta(hours=1),
+        )
+        app.dependency_overrides[get_moorcheh_client] = lambda: mock_moorcheh
+        try:
+            response = await client.delete(
+                f"/api/v2/agents/{self.TEST_AGENT_ID}/memories/mem-123",
+                headers=auth_headers,
+            )
+        finally:
+            app.dependency_overrides.clear()
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["status"] == "deleted"
+        assert data["memory_id"] == "mem-123"
+        mock_moorcheh.documents.delete.assert_called_once_with(
+            namespace_name=f"memanto_agent_{self.TEST_AGENT_ID}", ids=["mem-123"]
+        )
+
+    @pytest.mark.asyncio
+    async def test_delete_memory_returns_404_when_missing(
+        self, client, auth_headers, mock_moorcheh
+    ):
+        """Test deleting a missing memory returns a clear 404."""
+        mock_moorcheh.documents.delete.return_value = {"actual_deletions": 0}
+
+        app.dependency_overrides[get_current_session] = lambda: Session(
+            session_id="sess-test",
+            session_token="token-test",
+            agent_id=self.TEST_AGENT_ID,
+            namespace=f"memanto_agent_{self.TEST_AGENT_ID}",
+            started_at=datetime.utcnow(),
+            expires_at=datetime.utcnow() + timedelta(hours=1),
+        )
+        app.dependency_overrides[get_moorcheh_client] = lambda: mock_moorcheh
+        try:
+            response = await client.delete(
+                f"/api/v2/agents/{self.TEST_AGENT_ID}/memories/missing-memory",
+                headers=auth_headers,
+            )
+        finally:
+            app.dependency_overrides.clear()
+
+        assert response.status_code == 404
+        assert "missing-memory" in response.json()["detail"]
 
     @pytest.mark.asyncio
     async def test_answer_with_session(self, client, auth_headers, mock_moorcheh):
