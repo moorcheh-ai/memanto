@@ -28,12 +28,34 @@ from __future__ import annotations
 
 import json
 import os
-import sys
 import re
+import sys
 import tempfile
+import time
 from pathlib import Path
 
 from memanto_skill_hook.memory import SkillMemory
+
+# ---------------------------------------------------------------------------
+# Secret patterns for sanitization
+# ---------------------------------------------------------------------------
+_SECRET_PATTERNS = [
+    re.compile(r'(?i)\b(api[_-]?key|token|secret|password)\b\s*[:=]\s*\S+'),
+    re.compile(r'ghp_[A-Za-z0-9]{20,}'),
+    re.compile(r'ghu_[A-Za-z0-9]{20,}'),
+    re.compile(r'ghs_[A-Za-z0-9]{20,}'),
+    re.compile(r'sk-[A-Za-z0-9]{20,}'),
+    re.compile(r'-----BEGIN (?:RSA |EC )?PRIVATE KEY-----'),
+]
+
+
+def _sanitize_output(text: str) -> str:
+    """Redact secrets and sensitive patterns before persisting."""
+    redacted = text
+    for pat in _SECRET_PATTERNS:
+        redacted = pat.sub("[REDACTED]", redacted)
+    return redacted
+
 
 # ---------------------------------------------------------------------------
 # Hook state file — stores the pre-hook context for the post-hook to consume
@@ -43,8 +65,8 @@ _STATE_PREFIX = "memanto_hook_state_"
 
 
 def _state_file() -> Path:
-    """Return a PID-scoped state file to avoid cross-process collisions."""
-    return _STATE_DIR / f"{_STATE_PREFIX}{os.getpid()}.json"
+    """Return a PID+timestamp-scoped state file to avoid cross-process collisions."""
+    return _STATE_DIR / f"{_STATE_PREFIX}{os.getpid()}_{int(time.time() * 1000)}.json"
 
 
 def _save_state(data: dict) -> None:
@@ -134,6 +156,9 @@ def post_hook() -> None:
     # Sanitize: strip ANSI escape codes and control characters
     tool_output = re.sub(r"\x1b\[[0-9;]*[A-Za-z]", "", tool_output)
     tool_output = re.sub(r"[\x00-\x08\x0b\x0c\x0e-\x1f]", "", tool_output)
+
+    # Redact secrets before persisting
+    tool_output = _sanitize_output(tool_output)
 
     # Only store if there's meaningful output
     if len(tool_output.strip()) < 20:

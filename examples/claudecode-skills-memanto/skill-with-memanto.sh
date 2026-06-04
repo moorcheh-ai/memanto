@@ -26,6 +26,7 @@ FILE="${2:-}"
 TASK="${3:-}"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+export PYTHONPATH="${SCRIPT_DIR}${PYTHONPATH:+:${PYTHONPATH}}"
 
 echo "═══════════════════════════════════════════════════════════════"
 echo "  Memanto Cross-Skill Memory — Pre-Skill Context"

@@ -49,7 +49,10 @@ class SkillMemoryConfig:
 
     def __post_init__(self) -> None:
         if not self.api_key:
-            self.api_key = os.getenv(f"{_ENV_PREFIX}API_KEY", "")
+            self.api_key = (
+                os.getenv(f"{_ENV_PREFIX}API_KEY")
+                or os.getenv("MOORCHEH_API_KEY", "")
+            )
         if not self.agent_id or self.agent_id == "claudecode-dev":
             self.agent_id = os.getenv(
                 f"{_ENV_PREFIX}AGENT_ID", self.agent_id
@@ -153,7 +156,7 @@ class SkillMemory:
 
             if not self.config.api_key:
                 raise RuntimeError(
-                    "MEMANTO_API_KEY is not set. "
+                    "MEMANTO_API_KEY (or MOORCHEH_API_KEY) is not set. "
                     "Export it or add it to your .env file."
                 )
             self._sdk_client = MoorchehClient(api_key=self.config.api_key)
