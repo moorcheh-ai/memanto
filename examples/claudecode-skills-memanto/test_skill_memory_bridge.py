@@ -39,7 +39,7 @@ class SkillMemoryBridgeTests(unittest.TestCase):
             first = SkillMemoryBridge(LocalJsonlBackend(memory_file))
             first.after_skill(
                 skill_name="/grill-with-docs",
-                paths=["src/app/billing/actions.ts"],
+                paths=["src/app/billing"],
                 summary="Decision: Billing actions must run on the server.",
             )
 
@@ -47,7 +47,7 @@ class SkillMemoryBridgeTests(unittest.TestCase):
             context = second.before_skill(
                 skill_name="/tdd",
                 paths=["src/app/billing/actions.ts"],
-                prompt="Test billing actions.",
+                prompt="How should I format a changelog?",
             )
 
         self.assertIn("Billing actions must run on the server", context)
@@ -66,7 +66,7 @@ class SkillMemoryBridgeTests(unittest.TestCase):
             context = second.before_skill(
                 skill_name="/tdd",
                 paths=["src/features/invoices/create-invoice.test.ts"],
-                prompt="Add invoice tests.",
+                prompt="How should I format a changelog?",
             )
 
         self.assertIn("Invoice totals must be stored in cents", context)

@@ -408,8 +408,11 @@ class SkillMemoryBridge:
         paths: list[str] | None = None,
         limit: int = 5,
     ) -> str:
-        query = " ".join([skill_name, prompt, cwd or "", " ".join(paths or [])])
-        tags = normalize_tags([skill_name, *expand_path_tags(paths or [])])
+        path_tags = expand_path_tags(paths or [])
+        query = " ".join(
+            [skill_name, prompt, cwd or "", " ".join(paths or []), " ".join(path_tags)]
+        )
+        tags = normalize_tags([skill_name, *path_tags])
         memories = self.backend.recall(query, limit=limit, tags=tags or None)
         return render_context(memories)
 
