@@ -120,6 +120,18 @@ class RecallRecentRequest(BaseModel):
     type: list[str] | None = Field(default=None, description="Memory type filters")
 
 
+class MemoryEditRequest(BaseModel):
+    title: str | None = Field(default=None, max_length=100)
+    content: str | None = Field(default=None, max_length=10000)
+    type: str | None = None
+    confidence: float | None = Field(default=None, ge=0.0, le=1.0)
+    tags: list[str] | None = None
+    source: str | None = None
+
+    def to_updates(self) -> dict[str, object]:
+        return self.model_dump(exclude_none=True)
+
+
 @router.post("/{agent_id}/remember")
 async def remember(
     agent_id: str,
@@ -296,6 +308,62 @@ async def batch_remember(
         }
 
     except Exception as e:
+        raise map_error_to_http_exception(e)
+
+
+@router.patch("/{agent_id}/memories/{memory_id}")
+async def edit_memory(
+    agent_id: str,
+    memory_id: str,
+    request: MemoryEditRequest = Body(...),
+    session: Session = Depends(get_current_session),
+    client=Depends(get_moorcheh_client),
+):
+    """
+    Update one memory in the active agent's namespace (Session-based).
+
+    Requires:
+    - X-Session-Token: {session_token}
+
+    The session must be for the specified agent_id.
+    """
+    if session.agent_id != agent_id:
+        raise map_error_to_http_exception(
+            Exception(
+                f"Session is for agent '{session.agent_id}', cannot access '{agent_id}'"
+            )
+        )
+
+    updates = request.to_updates()
+    if not updates:
+        raise HTTPException(
+            status_code=400,
+            detail="Provide at least one field to update.",
+        )
+
+    if content := updates.get("content"):
+        CostGuard.validate_text_length(str(content), "Memory content")
+
+    try:
+        write_service = MemoryWriteService(client)
+        result = await asyncio.to_thread(
+            write_service.update_memory, memory_id, session.namespace, updates
+        )
+        return {
+            "agent_id": agent_id,
+            "session_id": session.session_id,
+            "namespace": session.namespace,
+            "memory_id": memory_id,
+            "status": result.get("status", "updated"),
+            "action": result.get("action", "updated"),
+            "updated_fields": result.get("updated_fields", list(updates.keys())),
+        }
+
+    except Exception as e:
+        if "not found" in str(e).lower():
+            raise HTTPException(
+                status_code=404, detail=f"Memory '{memory_id}' was not found."
+            )
         raise map_error_to_http_exception(e)
 
 

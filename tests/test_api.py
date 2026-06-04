@@ -1,6 +1,7 @@
 import os
 import shutil
 import tempfile
+from datetime import datetime, timedelta
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -9,6 +10,8 @@ from httpx import ASGITransport, AsyncClient
 
 from memanto.app.config import settings
 from memanto.app.main import app
+from memanto.app.models.session import Session
+from memanto.app.routes.auth_deps import get_current_session
 
 # Set test environment
 os.environ["MOORCHEH_API_KEY"] = "test-api-key"
@@ -245,6 +248,67 @@ class TestMEMANTOAPI:
 
         assert response.status_code == 200
         assert response.json()["status"] == "queued"
+
+    @pytest.mark.asyncio
+    async def test_edit_memory_with_session(self, client, auth_headers):
+        """Test updating one memory with session token."""
+        app.dependency_overrides[get_current_session] = lambda: Session(
+            session_id="sess-test",
+            session_token="token-test",
+            agent_id=self.TEST_AGENT_ID,
+            namespace=f"memanto_agent_{self.TEST_AGENT_ID}",
+            started_at=datetime.utcnow(),
+            expires_at=datetime.utcnow() + timedelta(hours=1),
+        )
+        try:
+            with patch("memanto.app.routes.memory.MemoryWriteService") as mock_cls:
+                write_service = mock_cls.return_value
+                write_service.update_memory.return_value = {
+                    "status": "success",
+                    "action": "updated",
+                    "updated_fields": ["title", "content"],
+                }
+
+                response = await client.patch(
+                    f"/api/v2/agents/{self.TEST_AGENT_ID}/memories/mem-123",
+                    headers=auth_headers,
+                    json={"title": "New title", "content": "New content"},
+                )
+        finally:
+            app.dependency_overrides.clear()
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["action"] == "updated"
+        assert data["updated_fields"] == ["title", "content"]
+        write_service.update_memory.assert_called_once_with(
+            "mem-123",
+            f"memanto_agent_{self.TEST_AGENT_ID}",
+            {"title": "New title", "content": "New content"},
+        )
+
+    @pytest.mark.asyncio
+    async def test_edit_memory_rejects_empty_update(self, client, auth_headers):
+        """Test update endpoint requires at least one field."""
+        app.dependency_overrides[get_current_session] = lambda: Session(
+            session_id="sess-test",
+            session_token="token-test",
+            agent_id=self.TEST_AGENT_ID,
+            namespace=f"memanto_agent_{self.TEST_AGENT_ID}",
+            started_at=datetime.utcnow(),
+            expires_at=datetime.utcnow() + timedelta(hours=1),
+        )
+        try:
+            response = await client.patch(
+                f"/api/v2/agents/{self.TEST_AGENT_ID}/memories/mem-123",
+                headers=auth_headers,
+                json={},
+            )
+        finally:
+            app.dependency_overrides.clear()
+
+        assert response.status_code == 400
+        assert "at least one field" in response.json()["detail"]
 
     @pytest.mark.asyncio
     async def test_answer_with_session(self, client, auth_headers, mock_moorcheh):

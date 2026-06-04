@@ -209,6 +209,42 @@ class TestMEMANTOCLI:
         assert "stored successfully" in result.stdout.lower()
         assert "mem-123" in result.stdout
 
+    def test_edit(self, mock_all_clients):
+        """Test 'memanto edit' updates selected memory fields."""
+        mock_all_clients.update_memory.return_value = {
+            "memory_id": "mem-123",
+            "status": "success",
+            "updated_fields": ["title", "tags"],
+        }
+
+        result = runner.invoke(
+            app,
+            [
+                "edit",
+                "mem-123",
+                "--title",
+                "Updated title",
+                "--tags",
+                "alpha,beta",
+            ],
+        )
+
+        assert result.exit_code == 0
+        assert "updated successfully" in result.stdout.lower()
+        mock_all_clients.update_memory.assert_called_once_with(
+            agent_id="test-agent",
+            memory_id="mem-123",
+            updates={"title": "Updated title", "tags": ["alpha", "beta"]},
+        )
+
+    def test_edit_requires_field(self, mock_all_clients):
+        """Test 'memanto edit' rejects an empty update."""
+        result = runner.invoke(app, ["edit", "mem-123"])
+
+        assert result.exit_code != 0
+        assert "No update fields provided" in result.stdout
+        mock_all_clients.update_memory.assert_not_called()
+
     def test_recall(self, mock_all_clients):
         """Test 'memanto recall'"""
         mock_all_clients.recall.return_value = {
