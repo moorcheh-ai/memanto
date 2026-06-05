@@ -1,0 +1,6 @@
+memanto
+mem0-ai
+openai
+numpy
+tiktoken
+tabulate
