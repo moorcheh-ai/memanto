@@ -1,0 +1,18 @@
+[
+  {
+    "system": "memanto",
+    "num_queries": 8,
+    "avg_relevance": 62.88,
+    "avg_completeness": 62.88,
+    "combined_score": 62.88,
+    "avg_latency_ms": 1905.57
+  },
+  {
+    "system": "mem0",
+    "num_queries": 8,
+    "avg_relevance": 54.75,
+    "avg_completeness": 54.75,
+    "combined_score": 54.75,
+    "avg_latency_ms": 0.02
+  }
+]
