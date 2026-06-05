@@ -9,6 +9,10 @@ You must follow these steps strictly when interviewing the developer:
 
 ## Phase 1: Context Injection (Session Start Hook)
 Before starting the interview:
+> **Note:** The command below uses a path relative to your **project root** (not this skill file's
+> location). Make sure you have completed **Step 4** of the setup in
+> `examples/claudecode-skills-memanto/README.md` so that
+> `examples/claudecode-skills-memanto/skills_hook.py` exists at your project root.
 1. Run the Memanto startup hook command to retrieve past architectural rules, project structures, and developer constraints:
    ```bash
    python examples/claudecode-skills-memanto/skills_hook.py start --skill grill-with-docs --task "$ARGUMENTS"

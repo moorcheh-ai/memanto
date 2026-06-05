@@ -9,6 +9,10 @@ You must follow these steps strictly whenever this skill is invoked:
 
 ## Phase 1: Context Injection (Session Start Hook)
 Before making any changes to the codebase:
+> **Note:** The command below uses a path relative to your **project root** (not this skill file's
+> location). Make sure you have completed **Step 4** of the setup in
+> `examples/claudecode-skills-memanto/README.md` so that
+> `examples/claudecode-skills-memanto/skills_hook.py` exists at your project root.
 1. Run the Memanto startup hook command to retrieve existing guidelines, developer preferences, and design decisions relevant to the task:
    ```bash
    python examples/claudecode-skills-memanto/skills_hook.py start --skill tdd --task "$ARGUMENTS"
