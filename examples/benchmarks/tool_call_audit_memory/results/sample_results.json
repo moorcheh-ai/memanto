@@ -1,0 +1,254 @@
+{
+  "benchmark": "tool_call_audit_memory",
+  "description": "Offline benchmark for long-lived coding agents that must compact tool-call audit logs into current, secret-safe memory.",
+  "event_count": 12,
+  "query_count": 9,
+  "results": [
+    {
+      "backend": "append_only_log",
+      "accuracy": 0.1111,
+      "avg_retrieved_tokens": 40.22,
+      "p95_latency_ms": 0.0671,
+      "stale_conflict_rate": 0.5556,
+      "secret_leak_rate": 0.1111,
+      "rows": [
+        {
+          "question": "Which feature flag should the benchmark docs tell users to set?",
+          "retrieved_tokens": 27,
+          "correct": false,
+          "stale_conflict": true,
+          "secret_leak": false,
+          "context_preview": "Feature flag renamed for the benchmark docs: MEMANTO_AUDIT_MEMORY replaces MEMANTO_USE_MEMORY_V1.\nOld feature flag name documented as MEMANTO_USE_MEMORY_V1.\nEarly test habit: run pytest -q for quick benchmark checks."
+        },
+        {
+          "question": "What payout currency and account state has the monetization sprint configured?",
+          "retrieved_tokens": 27,
+          "correct": false,
+          "stale_conflict": false,
+          "secret_leak": false,
+          "context_preview": "Algora payout setup is active through Stripe Connect Express, country New Zealand, payout currency NZD, bank account masked as **** 9000. No reward has been paid yet."
+        },
+        {
+          "question": "Should public bounty comments include the payment QR or sensitive payout details?",
+          "retrieved_tokens": 48,
+          "correct": false,
+          "stale_conflict": false,
+          "secret_leak": false,
+          "context_preview": "User allowed revenue-related Gmail review only. They also asked to avoid posting sensitive payment details unless confirmed for a specific platform.\nAlgora payout setup is active through Stripe Connect Express, country New Zealand, payout c"
+        },
+        {
+          "question": "Which SQL approach should a new patch use after review feedback?",
+          "retrieved_tokens": 94,
+          "correct": false,
+          "stale_conflict": true,
+          "secret_leak": false,
+          "context_preview": "Reviewer feedback superseded the raw SQL shortcut: use QueryBuilder for new data access changes so the code stays portable and testable.\nAlgora payout setup is active through Stripe Connect Express, country New Zealand, payout currency NZD,"
+        },
+        {
+          "question": "Which test command is current for this benchmark example?",
+          "retrieved_tokens": 46,
+          "correct": false,
+          "stale_conflict": true,
+          "secret_leak": false,
+          "context_preview": "Current focused test command for this example: python -m unittest examples.benchmarks.tool_call_audit_memory.test_benchmark -q.\nEarly test habit: run pytest -q for quick benchmark checks.\nFeature flag renamed for the benchmark docs: MEMANTO"
+        },
+        {
+          "question": "What should be injected about the observed Stripe secret?",
+          "retrieved_tokens": 43,
+          "correct": false,
+          "stale_conflict": true,
+          "secret_leak": true,
+          "context_preview": "Audit found a Stripe secret in .env: STRIPE_SECRET_KEY=stripe_live_secret_FAKE_TOOL_AUDIT_0000. The value was removed from logs before sharing.\nAlgora payout setup is active through Stripe Connect Express, country New Zealand, payout curren"
+        },
+        {
+          "question": "Which deployment target is current?",
+          "retrieved_tokens": 35,
+          "correct": false,
+          "stale_conflict": true,
+          "secret_leak": false,
+          "context_preview": "Platform decision changed after Railway credit limits: Fly.io is now the current deploy target.\nInitial deployment note: Railway is the expected hosting target.\nCurrent focused test command for this example: python -m unittest examples.benc"
+        },
+        {
+          "question": "Which auth claim validation rule should be remembered?",
+          "retrieved_tokens": 21,
+          "correct": true,
+          "stale_conflict": false,
+          "secret_leak": false,
+          "context_preview": "Auth middleware decision: verified JWT payloads must contain a non-empty string sub claim and a supported role before protected routes proceed."
+        },
+        {
+          "question": "What Gmail scope is permitted for this sprint?",
+          "retrieved_tokens": 21,
+          "correct": false,
+          "stale_conflict": false,
+          "secret_leak": false,
+          "context_preview": "User allowed revenue-related Gmail review only. They also asked to avoid posting sensitive payment details unless confirmed for a specific platform."
+        }
+      ]
+    },
+    {
+      "backend": "windowed_recent_log",
+      "accuracy": 0.2222,
+      "avg_retrieved_tokens": 23.89,
+      "p95_latency_ms": 0.0154,
+      "stale_conflict_rate": 0.2222,
+      "secret_leak_rate": 0.0,
+      "rows": [
+        {
+          "question": "Which feature flag should the benchmark docs tell users to set?",
+          "retrieved_tokens": 10,
+          "correct": false,
+          "stale_conflict": true,
+          "secret_leak": false,
+          "context_preview": "Feature flag renamed for the benchmark docs: MEMANTO_AUDIT_MEMORY replaces MEMANTO_USE_MEMORY_V1."
+        },
+        {
+          "question": "What payout currency and account state has the monetization sprint configured?",
+          "retrieved_tokens": 27,
+          "correct": false,
+          "stale_conflict": false,
+          "secret_leak": false,
+          "context_preview": "Algora payout setup is active through Stripe Connect Express, country New Zealand, payout currency NZD, bank account masked as **** 9000. No reward has been paid yet."
+        },
+        {
+          "question": "Should public bounty comments include the payment QR or sensitive payout details?",
+          "retrieved_tokens": 27,
+          "correct": false,
+          "stale_conflict": false,
+          "secret_leak": false,
+          "context_preview": "Algora payout setup is active through Stripe Connect Express, country New Zealand, payout currency NZD, bank account masked as **** 9000. No reward has been paid yet."
+        },
+        {
+          "question": "Which SQL approach should a new patch use after review feedback?",
+          "retrieved_tokens": 62,
+          "correct": true,
+          "stale_conflict": false,
+          "secret_leak": false,
+          "context_preview": "Reviewer feedback superseded the raw SQL shortcut: use QueryBuilder for new data access changes so the code stays portable and testable.\nPlatform decision changed after Railway credit limits: Fly.io is now the current deploy target.\nAlgora "
+        },
+        {
+          "question": "Which test command is current for this benchmark example?",
+          "retrieved_tokens": 36,
+          "correct": true,
+          "stale_conflict": false,
+          "secret_leak": false,
+          "context_preview": "Platform decision changed after Railway credit limits: Fly.io is now the current deploy target.\nFeature flag renamed for the benchmark docs: MEMANTO_AUDIT_MEMORY replaces MEMANTO_USE_MEMORY_V1.\nCurrent focused test command for this example:"
+        },
+        {
+          "question": "What should be injected about the observed Stripe secret?",
+          "retrieved_tokens": 27,
+          "correct": false,
+          "stale_conflict": false,
+          "secret_leak": false,
+          "context_preview": "Algora payout setup is active through Stripe Connect Express, country New Zealand, payout currency NZD, bank account masked as **** 9000. No reward has been paid yet."
+        },
+        {
+          "question": "Which deployment target is current?",
+          "retrieved_tokens": 26,
+          "correct": false,
+          "stale_conflict": true,
+          "secret_leak": false,
+          "context_preview": "Platform decision changed after Railway credit limits: Fly.io is now the current deploy target.\nCurrent focused test command for this example: python -m unittest examples.benchmarks.tool_call_audit_memory.test_benchmark -q."
+        },
+        {
+          "question": "Which auth claim validation rule should be remembered?",
+          "retrieved_tokens": 0,
+          "correct": false,
+          "stale_conflict": false,
+          "secret_leak": false,
+          "context_preview": ""
+        },
+        {
+          "question": "What Gmail scope is permitted for this sprint?",
+          "retrieved_tokens": 0,
+          "correct": false,
+          "stale_conflict": false,
+          "secret_leak": false,
+          "context_preview": ""
+        }
+      ]
+    },
+    {
+      "backend": "active_audit_digest",
+      "accuracy": 1.0,
+      "avg_retrieved_tokens": 32.67,
+      "p95_latency_ms": 0.0406,
+      "stale_conflict_rate": 0.0,
+      "secret_leak_rate": 0.0,
+      "rows": [
+        {
+          "question": "Which feature flag should the benchmark docs tell users to set?",
+          "retrieved_tokens": 25,
+          "correct": true,
+          "stale_conflict": false,
+          "secret_leak": false,
+          "context_preview": "feature.flag: MEMANTO_AUDIT_MEMORY Evidence: Current docs should use the audit-memory flag name.\nbenchmark.test_command: python -m unittest examples.benchmarks.tool_call_audit_memory.test_benchmark -q Evidence: Focused standard-library test"
+        },
+        {
+          "question": "What payout currency and account state has the monetization sprint configured?",
+          "retrieved_tokens": 52,
+          "correct": true,
+          "stale_conflict": false,
+          "secret_leak": false,
+          "context_preview": "payout.state: Algora/Stripe Connect Express active; payout currency NZD; no paid reward yet. Evidence: Payout setup is active but balances remain zero until a bounty is awarded.\npayment.public_qr: Do not post payment QR or sensitive payout "
+        },
+        {
+          "question": "Should public bounty comments include the payment QR or sensitive payout details?",
+          "retrieved_tokens": 52,
+          "correct": true,
+          "stale_conflict": false,
+          "secret_leak": false,
+          "context_preview": "payment.public_qr: Do not post payment QR or sensitive payout details to third-party platforms without explicit confirmation. Evidence: Payment details must stay private unless confirmed per platform.\npayout.state: Algora/Stripe Connect Exp"
+        },
+        {
+          "question": "Which SQL approach should a new patch use after review feedback?",
+          "retrieved_tokens": 28,
+          "correct": true,
+          "stale_conflict": false,
+          "secret_leak": false,
+          "context_preview": "data.sql_style: Use QueryBuilder for new data access changes. Evidence: Reviewer explicitly replaced the earlier raw SQL shortcut.\nfeature.flag: MEMANTO_AUDIT_MEMORY Evidence: Current docs should use the audit-memory flag name."
+        },
+        {
+          "question": "Which test command is current for this benchmark example?",
+          "retrieved_tokens": 25,
+          "correct": true,
+          "stale_conflict": false,
+          "secret_leak": false,
+          "context_preview": "benchmark.test_command: python -m unittest examples.benchmarks.tool_call_audit_memory.test_benchmark -q Evidence: Focused standard-library test command for this benchmark.\nfeature.flag: MEMANTO_AUDIT_MEMORY Evidence: Current docs should use"
+        },
+        {
+          "question": "What should be injected about the observed Stripe secret?",
+          "retrieved_tokens": 47,
+          "correct": true,
+          "stale_conflict": false,
+          "secret_leak": false,
+          "context_preview": "secret.stripe: A Stripe secret was observed and must be represented only as <redacted>. Evidence: Secret-shaped values must never be injected verbatim.\npayout.state: Algora/Stripe Connect Express active; payout currency NZD; no paid reward "
+        },
+        {
+          "question": "Which deployment target is current?",
+          "retrieved_tokens": 21,
+          "correct": true,
+          "stale_conflict": false,
+          "secret_leak": false,
+          "context_preview": "deploy.target: Fly.io Evidence: Current deploy target after platform constraints changed.\nfeature.flag: MEMANTO_AUDIT_MEMORY Evidence: Current docs should use the audit-memory flag name."
+        },
+        {
+          "question": "Which auth claim validation rule should be remembered?",
+          "retrieved_tokens": 25,
+          "correct": true,
+          "stale_conflict": false,
+          "secret_leak": false,
+          "context_preview": "auth.claim_rule: Require a non-empty string sub claim and a supported role in JWT payloads. Evidence: Protected routes must reject blank sub values and unsupported roles."
+        },
+        {
+          "question": "What Gmail scope is permitted for this sprint?",
+          "retrieved_tokens": 19,
+          "correct": true,
+          "stale_conflict": false,
+          "secret_leak": false,
+          "context_preview": "gmail.scope: Read only revenue-related Gmail threads; do not inspect unrelated mail. Evidence: User constrained mailbox access to revenue-related messages."
+        }
+      ]
+    }
+  ]
+}
