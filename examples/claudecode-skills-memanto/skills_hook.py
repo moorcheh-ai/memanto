@@ -20,13 +20,8 @@ try:
     from memanto.cli.client.sdk_client import SdkClient
     from memanto.app.utils.errors import AgentNotFoundError
 except ImportError:
-    # Fallback if python path doesn't resolve repo root directly
-    try:
-        from memanto.cli.client.sdk_client import SdkClient
-        from memanto.app.utils.errors import AgentNotFoundError
-    except ImportError:
-        print("[MEMANTO ERROR] SDK not found. Make sure the script is run inside the memanto workspace or 'memanto' is installed.")
-        sys.exit(1)
+    print("[MEMANTO ERROR] SDK not found. Make sure the script is run inside the memanto workspace or 'memanto' is installed.")
+    sys.exit(1)
 
 
 def get_client():
