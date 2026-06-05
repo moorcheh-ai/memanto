@@ -214,8 +214,12 @@ def remember_with_memanto(memories: Sequence[MemoryCandidate]) -> int:
             ",".join(memory.tags),
         ]
         try:
-            subprocess.run(command, check=True)
-        except (OSError, subprocess.CalledProcessError) as exc:
+            subprocess.run(command, check=True, timeout=30)
+        except (
+            OSError,
+            subprocess.CalledProcessError,
+            subprocess.TimeoutExpired,
+        ) as exc:
             print(
                 f"memanto remember failed for {memory.memory_type} memory: {exc}",
                 file=sys.stderr,
@@ -284,7 +288,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         if args.commit:
             stored = remember_with_memanto(memories)
         else:
-            output = args.dry_run_output or Path(".memanto-skill-candidates.jsonl")
+            output = args.dry_run_output or DEFAULT_DRY_RUN_OUTPUT
             write_jsonl(output, memories)
         noun = "candidate" if len(memories) == 1 else "candidates"
         message = f"captured {len(memories)} memory {noun}"

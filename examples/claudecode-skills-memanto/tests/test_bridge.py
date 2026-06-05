@@ -282,12 +282,14 @@ class BridgeTests(unittest.TestCase):
                 subprocess.CalledProcessError(1, ["memanto", "remember", "first"]),
                 completed,
             ],
-        ):
+        ) as run:
             with redirect_stderr(stderr):
                 stored = remember_with_memanto(memories)
 
         self.assertEqual(stored, 1)
         self.assertIn("memanto remember failed", stderr.getvalue())
+        self.assertEqual(run.call_args_list[0].kwargs["timeout"], 30)
+        self.assertEqual(run.call_args_list[1].kwargs["timeout"], 30)
 
     def test_example_artifacts_exist_and_settings_json_is_valid(self):
         root = Path(__file__).resolve().parents[1]
