@@ -79,6 +79,21 @@ mkdir -p .claude/skills
 cp -r skills/* .claude/skills/
 ```
 
+### 4. Deploy the Hook Script
+
+The skill templates in `.claude/skills/` reference `skills_hook.py` using the path
+`examples/claudecode-skills-memanto/skills_hook.py`. You need to copy the hook script
+so that path resolves correctly from your **project root**:
+
+```bash
+mkdir -p examples/claudecode-skills-memanto
+cp skills_hook.py examples/claudecode-skills-memanto/skills_hook.py
+```
+
+> **Tip:** If you prefer to keep `skills_hook.py` at the project root and call it directly,
+> update the hook commands inside your `.claude/skills/*/SKILL.md` files to use
+> `python skills_hook.py` instead of the full relative path.
+
 ---
 
 ## 📖 Hook CLI Reference
