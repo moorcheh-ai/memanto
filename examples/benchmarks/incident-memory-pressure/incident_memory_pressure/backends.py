@@ -22,7 +22,7 @@ class MemoryHit:
     def tokens(self) -> int:
         """Return an approximate token count for the recalled text."""
 
-        return len(TOKEN_RE.findall(self.text))
+        return token_count(self.text)
 
 
 class MemoryBackend(Protocol):

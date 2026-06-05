@@ -163,10 +163,15 @@ def _evaluate_backend(
             )
         )
 
-    accuracy = (expected_hits + (stale_total - stale_hits)) / (
-        expected_total + stale_total
+    accuracy_denominator = expected_total + stale_total
+    accuracy = (
+        (expected_hits + (stale_total - stale_hits)) / accuracy_denominator
+        if accuracy_denominator
+        else 0.0
     )
-    stale_suppression = (stale_total - stale_hits) / stale_total
+    stale_suppression = (
+        (stale_total - stale_hits) / stale_total if stale_total else 1.0
+    )
     p95_latency = _p95(latencies)
     signal_to_noise = signal_tokens / max(tokens_retrieved, 1)
     return (

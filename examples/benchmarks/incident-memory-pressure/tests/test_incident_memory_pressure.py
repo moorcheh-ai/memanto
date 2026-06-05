@@ -6,7 +6,10 @@ import sys
 BENCHMARK_ROOT = pathlib.Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(BENCHMARK_ROOT))
 
+from incident_memory_pressure.backends import MemantoTypedDigestBackend
+from incident_memory_pressure.dataset import IncidentQuery
 from incident_memory_pressure.runner import run_benchmark
+from incident_memory_pressure.runner import _evaluate_backend
 
 
 def test_memanto_style_backend_uses_less_context_than_append_only() -> None:
@@ -48,7 +51,33 @@ def test_report_outputs_are_stable() -> None:
     assert "| Backend | Tokens Ingested |" in markdown_output
 
 
+def test_empty_scoring_fragments_do_not_crash() -> None:
+    """A query with no scoring fragments should produce defensive metrics."""
+
+    backend = MemantoTypedDigestBackend()
+    backend.ingest([])
+
+    result, traces = _evaluate_backend(
+        backend,
+        records=[],
+        queries=[
+            IncidentQuery(
+                service="empty",
+                prompt="What should be recalled?",
+                expected_fragments=(),
+                stale_fragments=(),
+            )
+        ],
+    )
+
+    assert result.retrieval_accuracy == 0.0
+    assert result.stale_suppression == 1.0
+    assert traces[0].expected_hits == 0
+    assert traces[0].stale_hits == 0
+
+
 if __name__ == "__main__":
     test_memanto_style_backend_uses_less_context_than_append_only()
     test_memanto_style_backend_suppresses_stale_facts()
     test_report_outputs_are_stable()
+    test_empty_scoring_fragments_do_not_crash()
