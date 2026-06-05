@@ -1,0 +1,7 @@
+# The default benchmark run uses only the Python standard library.
+#
+# Optional live comparisons can install provider SDKs locally, but the offline
+# path stays dependency-free so CI and reviewers can reproduce the sample
+# metrics without API keys.
+#
+# mem0ai>=0.1.0

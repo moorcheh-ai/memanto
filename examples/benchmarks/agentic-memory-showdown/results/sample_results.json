@@ -1,0 +1,24 @@
+{
+  "backends": [
+    {
+      "name": "memanto-active-memory",
+      "p95_latency_seconds": 7.350002124439925e-06,
+      "retrieval_accuracy": 1.0,
+      "total_tokens_ingested": 78,
+      "total_tokens_retrieved": 32
+    },
+    {
+      "name": "graph-style-append-log",
+      "p95_latency_seconds": 5.787499831058085e-05,
+      "retrieval_accuracy": 0.9125,
+      "total_tokens_ingested": 78,
+      "total_tokens_retrieved": 98
+    }
+  ],
+  "benchmark": "shifting-persona-temporal-tracking",
+  "notes": [
+    "Every backend ingests the same chronological sessions and answers the same questions.",
+    "Token counts use one deterministic counter so relative footprint is reproducible offline.",
+    "The active-memory backend replaces stale state; the append-log backend preserves conflicts."
+  ]
+}
