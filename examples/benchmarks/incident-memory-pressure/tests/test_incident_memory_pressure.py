@@ -72,6 +72,7 @@ def test_empty_scoring_fragments_do_not_crash() -> None:
 
     assert result.retrieval_accuracy == 0.0
     assert result.stale_suppression == 1.0
+    assert len(traces) == 1
     assert traces[0].expected_hits == 0
     assert traces[0].stale_hits == 0
 
