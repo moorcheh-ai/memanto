@@ -1,8 +1,8 @@
 {
   "hooks": {
-    "UserPromptSubmit": [
+    "UserPromptExpansion": [
       {
-        "matcher": "",
+        "matcher": "^[a-z][a-z0-9-]*$",
         "hooks": [
           {
             "type": "command",

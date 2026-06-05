@@ -17,8 +17,13 @@ from pathlib import Path
 from typing import Iterable, Sequence
 
 
+DEFAULT_DRY_RUN_OUTPUT = Path(".memanto/skill-candidates.jsonl")
+
+
 @dataclass(frozen=True)
 class MemoryCandidate:
+    """One durable memory candidate extracted from a Claude Code skill run."""
+
     content: str
     memory_type: str
     confidence: float
@@ -142,6 +147,8 @@ def build_raw_context(
     skill_name: str,
     prompt: str,
 ) -> str:
+    """Wrap raw `memanto recall` output as Claude Code hook context."""
+
     return "\n".join(
         [
             f'<memanto-skill-context skill="{skill_name}">',
@@ -178,6 +185,8 @@ def load_transcript_text(path: Path) -> str:
 
 
 def write_jsonl(path: Path, memories: Iterable[MemoryCandidate]) -> None:
+    """Write memory candidates in JSONL for dry-run inspection."""
+
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("w", encoding="utf-8") as handle:
         for memory in memories:
@@ -187,6 +196,7 @@ def write_jsonl(path: Path, memories: Iterable[MemoryCandidate]) -> None:
 def remember_with_memanto(memories: Sequence[MemoryCandidate]) -> int:
     """Persist candidates through the installed MEMANTO CLI."""
 
+    stored = 0
     for memory in memories:
         command = [
             "memanto",
@@ -203,11 +213,21 @@ def remember_with_memanto(memories: Sequence[MemoryCandidate]) -> int:
             "--tags",
             ",".join(memory.tags),
         ]
-        subprocess.run(command, check=True)
-    return len(memories)
+        try:
+            subprocess.run(command, check=True)
+        except (OSError, subprocess.CalledProcessError) as exc:
+            print(
+                f"memanto remember failed for {memory.memory_type} memory: {exc}",
+                file=sys.stderr,
+            )
+            continue
+        stored += 1
+    return stored
 
 
 def main(argv: Sequence[str] | None = None) -> int:
+    """Run the command-line bridge used by examples and Claude Code hooks."""
+
     parser = argparse.ArgumentParser(
         description="Bridge Claude Code skill transcripts into MEMANTO."
     )
@@ -248,7 +268,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     hook_capture.add_argument(
         "--dry-run-output",
         type=Path,
-        default=Path(".memanto/skill-candidates.jsonl"),
+        default=DEFAULT_DRY_RUN_OUTPUT,
     )
     hook_capture.add_argument("--commit", action="store_true")
 
@@ -260,13 +280,17 @@ def main(argv: Sequence[str] | None = None) -> int:
             skill_name=args.skill,
             project_slug=args.project,
         )
+        stored = None
         if args.commit:
-            remember_with_memanto(memories)
+            stored = remember_with_memanto(memories)
         else:
             output = args.dry_run_output or Path(".memanto-skill-candidates.jsonl")
             write_jsonl(output, memories)
         noun = "candidate" if len(memories) == 1 else "candidates"
-        print(f"captured {len(memories)} memory {noun}")
+        message = f"captured {len(memories)} memory {noun}"
+        if stored is not None:
+            message = f"{message}; stored {stored} with memanto"
+        print(message)
         return 0
 
     if args.command == "inject":
@@ -283,20 +307,23 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     if args.command == "hook-inject":
         payload = _read_hook_payload()
-        prompt = str(payload.get("prompt") or "")
-        skill_name = args.skill or detect_skill_name(prompt)
+        prompt = _payload_prompt(payload)
+        skill_name = (
+            args.skill or _payload_skill_name(payload) or detect_skill_name(prompt)
+        )
         if not skill_name:
             return 0
 
         if args.memories:
             memories = _load_memory_candidates(args.memories)
-            print(
+            _print_hook_context(
+                payload,
                 build_additional_context(
                     memories,
                     skill_name=skill_name,
                     prompt=prompt,
                     max_items=args.max_items,
-                )
+                ),
             )
             return 0
 
@@ -305,7 +332,10 @@ def main(argv: Sequence[str] | None = None) -> int:
             limit=args.max_items,
         )
         if recall_output:
-            print(build_raw_context(recall_output, skill_name=skill_name, prompt=prompt))
+            _print_hook_context(
+                payload,
+                build_raw_context(recall_output, skill_name=skill_name, prompt=prompt),
+            )
         return 0
 
     if args.command == "hook-capture":
@@ -332,6 +362,8 @@ def main(argv: Sequence[str] | None = None) -> int:
 
 
 def _load_memory_candidates(path: Path) -> list[MemoryCandidate]:
+    """Load dry-run JSONL candidates back into typed memory objects."""
+
     memories: list[MemoryCandidate] = []
     for line in path.read_text(encoding="utf-8").splitlines():
         if not line.strip():
@@ -343,6 +375,8 @@ def _load_memory_candidates(path: Path) -> list[MemoryCandidate]:
 
 
 def _read_hook_payload() -> dict[str, object]:
+    """Read and validate a Claude Code hook JSON payload from stdin."""
+
     raw = sys.stdin.read()
     if not raw.strip():
         return {}
@@ -354,12 +388,16 @@ def _read_hook_payload() -> dict[str, object]:
 
 
 def _optional_path(value: object) -> Path | None:
+    """Convert an optional hook payload path field to `Path`."""
+
     if not isinstance(value, str) or not value:
         return None
     return Path(value)
 
 
 def _recall_with_memanto(query: str, *, limit: int) -> str:
+    """Run `memanto recall` and return empty text on unavailable CLI/errors."""
+
     command = ["memanto", "recall", query, "--limit", str(limit)]
     try:
         completed = subprocess.run(
@@ -377,33 +415,97 @@ def _recall_with_memanto(query: str, *, limit: int) -> str:
 
 
 def _strip_speaker(line: str) -> str:
+    """Remove common transcript speaker prefixes before pattern matching."""
+
     stripped = line.strip()
     return re.sub(r"^(?:User|Assistant|System|Tool)\s*:\s*", "", stripped, flags=re.I)
 
 
 def _clean_content(content: str) -> str:
+    """Trim wrapper punctuation around captured memory content."""
+
     return content.strip().strip("\"'` ")
 
 
 def _event_text(event: object) -> list[str]:
+    """Extract text chunks from common Claude transcript JSONL event shapes."""
+
     if not isinstance(event, dict):
         return []
 
+    texts: list[str] = []
     message = event.get("message")
     if isinstance(message, dict):
-        content = message.get("content")
-        if isinstance(content, str):
-            return [content]
-        if isinstance(content, list):
-            texts: list[str] = []
-            for item in content:
-                if isinstance(item, dict) and isinstance(item.get("text"), str):
-                    texts.append(item["text"])
-            return texts
+        texts.extend(_content_text(message.get("content")))
+
+    texts.extend(_content_text(event.get("content")))
 
     if isinstance(event.get("text"), str):
-        return [event["text"]]
+        texts.append(event["text"])
+    return texts
+
+
+def _content_text(content: object) -> list[str]:
+    """Normalize Claude text content blocks into strings."""
+
+    if isinstance(content, str):
+        return [content]
+    if isinstance(content, list):
+        texts: list[str] = []
+        for item in content:
+            texts.extend(_content_text(item))
+        return texts
+    if isinstance(content, dict):
+        texts: list[str] = []
+        if isinstance(content.get("text"), str):
+            texts.append(content["text"])
+        texts.extend(_content_text(content.get("content")))
+        return texts
     return []
+
+
+def _payload_prompt(payload: dict[str, object]) -> str:
+    """Return a usable prompt string from hook payload variants."""
+
+    prompt = payload.get("prompt")
+    if isinstance(prompt, str) and prompt:
+        return prompt
+
+    skill_name = _payload_skill_name(payload)
+    command_args = payload.get("command_args")
+    if skill_name and isinstance(command_args, str) and command_args:
+        return f"/{skill_name} {command_args}"
+    if skill_name:
+        return f"/{skill_name}"
+    return ""
+
+
+def _payload_skill_name(payload: dict[str, object]) -> str | None:
+    """Detect a slash skill name from Claude Code hook payload fields."""
+
+    command_name = payload.get("command_name")
+    if isinstance(command_name, str) and command_name:
+        return command_name.lstrip("/")
+    return None
+
+
+def _print_hook_context(payload: dict[str, object], context: str) -> None:
+    """Emit context using the output format expected by the hook event."""
+
+    event_name = payload.get("hook_event_name")
+    if event_name == "UserPromptExpansion":
+        print(
+            json.dumps(
+                {
+                    "hookSpecificOutput": {
+                        "hookEventName": "UserPromptExpansion",
+                        "additionalContext": context,
+                    }
+                }
+            )
+        )
+        return
+    print(context)
 
 
 if __name__ == "__main__":

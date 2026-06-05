@@ -4,8 +4,8 @@ This example wires MEMANTO into the `mattpocock/skills` style of Claude Code
 slash-skill workflows. It turns MEMANTO into an active memory companion around
 skill execution:
 
-1. `UserPromptSubmit` recalls relevant prior engineering context when a prompt
-   invokes a slash skill such as `/grill-with-docs`, `/tdd`, or `/handoff`.
+1. `UserPromptExpansion` recalls relevant prior engineering context when a
+   slash skill such as `/grill-with-docs`, `/tdd`, or `/handoff` expands.
 2. Claude Code receives a `<memanto-skill-context>` block before the skill runs.
 3. `Stop` reads the transcript after the run and captures high-signal decisions,
    preferences, and codebase facts back into MEMANTO.
@@ -52,11 +52,16 @@ python examples/claudecode-skills-memanto/claudecode_skills_memanto/bridge.py \
 Inject those memories into a later slash-skill prompt:
 
 ```bash
-echo '{"hook_event_name":"UserPromptSubmit","prompt":"/tdd implement auth retry tests"}' \
+echo '{"hook_event_name":"UserPromptExpansion","command_name":"tdd","command_args":"implement auth retry tests"}' \
   | python examples/claudecode-skills-memanto/claudecode_skills_memanto/bridge.py \
       hook-inject \
       --memories .memanto/skill-candidates.jsonl
 ```
+
+For the checked-in Claude Code hook, `UserPromptExpansion` uses a slash-command
+matcher so recall only runs for skill-like commands. The `Stop` hook does not
+support matchers in Claude Code, so capture stays dry-run by default and should
+only be switched to `--commit` after inspecting `.memanto/skill-candidates.jsonl`.
 
 ## Live MEMANTO Mode
 

@@ -1,9 +1,10 @@
 import io
 import json
+import subprocess
 import sys
 import tempfile
 import unittest
-from contextlib import redirect_stdout
+from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
 from unittest import mock
 
@@ -14,7 +15,9 @@ from claudecode_skills_memanto.bridge import (  # noqa: E402
     build_additional_context,
     detect_skill_name,
     distill_memories,
+    load_transcript_text,
     main,
+    remember_with_memanto,
 )
 
 
@@ -174,6 +177,118 @@ class BridgeTests(unittest.TestCase):
             self.assertIn('<memanto-skill-context skill="tdd">', stdout.getvalue())
             self.assertIn("use zod output schemas", stdout.getvalue())
 
+    def test_cli_hook_inject_supports_user_prompt_expansion_payloads(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            temp_path = Path(temp_dir)
+            memories = temp_path / "memories.jsonl"
+            memories.write_text(
+                json_line(
+                    MemoryCandidate(
+                        content="keep checkout tax logic in billing service.",
+                        memory_type="decision",
+                        confidence=0.95,
+                        provenance="observed",
+                        source="claude_code:handoff",
+                        tags=("checkout-api", "skill-handoff", "decision"),
+                    )
+                ),
+                encoding="utf-8",
+            )
+            hook_input = io.StringIO(
+                json.dumps(
+                    {
+                        "hook_event_name": "UserPromptExpansion",
+                        "command_name": "handoff",
+                        "command_args": "billing rules",
+                    }
+                )
+            )
+            stdout = io.StringIO()
+            with mock.patch("sys.stdin", hook_input):
+                with redirect_stdout(stdout):
+                    exit_code = main(["hook-inject", "--memories", str(memories)])
+
+            self.assertEqual(exit_code, 0)
+            payload = json.loads(stdout.getvalue())
+            output = payload["hookSpecificOutput"]
+            self.assertEqual(output["hookEventName"], "UserPromptExpansion")
+            self.assertIn("keep checkout tax logic", output["additionalContext"])
+            self.assertIn("Prompt: /handoff billing rules", output["additionalContext"])
+
+    def test_load_transcript_text_reads_common_claude_jsonl_content_shapes(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            transcript = Path(temp_dir) / "transcript.jsonl"
+            transcript.write_text(
+                "\n".join(
+                    [
+                        json.dumps(
+                            {
+                                "message": {
+                                    "content": [
+                                        {
+                                            "type": "text",
+                                            "text": "Decision: keep cache local.",
+                                        }
+                                    ]
+                                }
+                            }
+                        ),
+                        json.dumps(
+                            {
+                                "content": [
+                                    {
+                                        "type": "text",
+                                        "text": "Codebase fact: hooks live in .claude.",
+                                    }
+                                ]
+                            }
+                        ),
+                        json.dumps({"text": "User preference: concise summaries."}),
+                    ]
+                ),
+                encoding="utf-8",
+            )
+
+            text = load_transcript_text(transcript)
+
+            self.assertIn("Decision: keep cache local.", text)
+            self.assertIn("Codebase fact: hooks live in .claude.", text)
+            self.assertIn("User preference: concise summaries.", text)
+
+    def test_remember_with_memanto_logs_failures_and_continues(self):
+        memories = [
+            MemoryCandidate(
+                content="first",
+                memory_type="decision",
+                confidence=0.95,
+                provenance="observed",
+                source="claude_code:tdd",
+                tags=("demo", "skill-tdd", "decision"),
+            ),
+            MemoryCandidate(
+                content="second",
+                memory_type="fact",
+                confidence=0.9,
+                provenance="observed",
+                source="claude_code:tdd",
+                tags=("demo", "skill-tdd", "fact"),
+            ),
+        ]
+        stderr = io.StringIO()
+        completed = subprocess.CompletedProcess(args=["memanto"], returncode=0)
+        with mock.patch(
+            "subprocess.run",
+            side_effect=[
+                subprocess.CalledProcessError(1, ["memanto", "remember", "first"]),
+                completed,
+            ],
+        ):
+            with redirect_stderr(stderr):
+                stored = remember_with_memanto(memories)
+
+        self.assertEqual(stored, 1)
+        self.assertIn("memanto remember failed", stderr.getvalue())
+
     def test_example_artifacts_exist_and_settings_json_is_valid(self):
         root = Path(__file__).resolve().parents[1]
         self.assertTrue((root / "README.md").exists())
@@ -184,7 +299,7 @@ class BridgeTests(unittest.TestCase):
         settings_path = root / ".claude" / "settings.json"
         payload = json.loads(settings_path.read_text(encoding="utf-8"))
         hooks = payload["hooks"]
-        self.assertIn("UserPromptSubmit", hooks)
+        self.assertIn("UserPromptExpansion", hooks)
         self.assertIn("Stop", hooks)
 
 
