@@ -1,0 +1,152 @@
+{
+  "results": [
+    {
+      "backend": "memanto_typed_digest",
+      "p95_latency_ms": 0.018799997633323073,
+      "retrieval_accuracy": 1.0,
+      "signal_to_noise": 0.24186046511627907,
+      "stale_suppression": 1.0,
+      "tokens_ingested": 183,
+      "tokens_retrieved": 215
+    },
+    {
+      "backend": "append_only_log",
+      "p95_latency_ms": 0.0168999977177009,
+      "retrieval_accuracy": 0.75,
+      "signal_to_noise": 0.09829867674858223,
+      "stale_suppression": 0.25,
+      "tokens_ingested": 183,
+      "tokens_retrieved": 529
+    }
+  ],
+  "traces": [
+    {
+      "backend": "memanto_typed_digest",
+      "context": "[payments:runbook:session-5] Payments runbook v2 says check PSP health first, then drain checkout-worker.\n[notifications:runbook:session-14] Notifications runbook v2 says pause APAC SMS batch jobs before retries.",
+      "expected_hits": 2,
+      "latency_ms": 0.018799997633323073,
+      "prompt": "What is the current payments runbook?",
+      "stale_hits": 0
+    },
+    {
+      "backend": "memanto_typed_digest",
+      "context": "[payments:owner:session-11] Payments owner changed to Noor. Noor owns checkout and PSP escalation.\n[payments:status:session-12] Customer status wording: checkout is stable; EU card backlog is draining.",
+      "expected_hits": 2,
+      "latency_ms": 0.010899995686486363,
+      "prompt": "Who owns payments escalation now?",
+      "stale_hits": 0
+    },
+    {
+      "backend": "memanto_typed_digest",
+      "context": "[payments:status:session-12] Customer status wording: checkout is stable; EU card backlog is draining.\n[search:status:session-16] Customer status wording: search relevance is normal after synonym rollback.",
+      "expected_hits": 2,
+      "latency_ms": 0.009399998816661537,
+      "prompt": "What should customer support say about payments?",
+      "stale_hits": 0
+    },
+    {
+      "backend": "memanto_typed_digest",
+      "context": "[search:runbook:session-8] Search runbook v2 says disable live synonym expansion before rebuild.\n[search:status:session-16] Customer status wording: search relevance is normal after synonym rollback.",
+      "expected_hits": 2,
+      "latency_ms": 0.008400005754083395,
+      "prompt": "What is the current search runbook?",
+      "stale_hits": 0
+    },
+    {
+      "backend": "memanto_typed_digest",
+      "context": "[search:status:session-16] Customer status wording: search relevance is normal after synonym rollback.\n[search:owner:session-13] Search owner changed to Lin. Lin owns relevance rollback decisions.",
+      "expected_hits": 2,
+      "latency_ms": 0.008000002708286047,
+      "prompt": "Who owns search relevance rollback decisions?",
+      "stale_hits": 0
+    },
+    {
+      "backend": "memanto_typed_digest",
+      "context": "[search:status:session-16] Customer status wording: search relevance is normal after synonym rollback.\n[search:owner:session-13] Search owner changed to Lin. Lin owns relevance rollback decisions.",
+      "expected_hits": 2,
+      "latency_ms": 0.007099995855242014,
+      "prompt": "What is the current public search status?",
+      "stale_hits": 0
+    },
+    {
+      "backend": "memanto_typed_digest",
+      "context": "[notifications:runbook:session-14] Notifications runbook v2 says pause APAC SMS batch jobs before retries.\n[notifications:owner:session-15] Notifications owner changed to Theo. Theo owns provider throttling events.",
+      "expected_hits": 2,
+      "latency_ms": 0.006999995093792677,
+      "prompt": "What is the current notifications runbook?",
+      "stale_hits": 0
+    },
+    {
+      "backend": "memanto_typed_digest",
+      "context": "[notifications:owner:session-15] Notifications owner changed to Theo. Theo owns provider throttling events.\n[notifications:runbook:session-14] Notifications runbook v2 says pause APAC SMS batch jobs before retries.",
+      "expected_hits": 2,
+      "latency_ms": 0.006199989002197981,
+      "prompt": "Who owns provider throttling now?",
+      "stale_hits": 0
+    },
+    {
+      "backend": "append_only_log",
+      "context": "[payments:runbook:session-5] Payments runbook v2 says check PSP health first, then drain checkout-worker.\n[payments:runbook:session-1] Payments runbook v1 says restart checkout-worker before checking PSP health.\n[notifications:runbook:session-14] Notifications runbook v2 says pause APAC SMS batch jobs before retries.\n[payments:status:session-12] Customer status wording: checkout is stable; EU card backlog is draining.\n[payments:owner:session-11] Payments owner changed to Noor. Noor owns checkout and PSP escalation.",
+      "expected_hits": 2,
+      "latency_ms": 0.0168999977177009,
+      "prompt": "What is the current payments runbook?",
+      "stale_hits": 1
+    },
+    {
+      "backend": "append_only_log",
+      "context": "[payments:owner:session-11] Payments owner changed to Noor. Noor owns checkout and PSP escalation.\n[payments:status:session-12] Customer status wording: checkout is stable; EU card backlog is draining.\n[payments:decision:session-6] Payments mitigation: rollback fraud-rule bundle 2026.06.05-b after spike.\n[payments:runbook:session-5] Payments runbook v2 says check PSP health first, then drain checkout-worker.\n[payments:status:session-2] Customer status wording: payment authorization delays for EU cards.",
+      "expected_hits": 2,
+      "latency_ms": 0.013600001693703234,
+      "prompt": "Who owns payments escalation now?",
+      "stale_hits": 0
+    },
+    {
+      "backend": "append_only_log",
+      "context": "[payments:status:session-12] Customer status wording: checkout is stable; EU card backlog is draining.\n[payments:status:session-2] Customer status wording: payment authorization delays for EU cards.\n[search:status:session-16] Customer status wording: search relevance is normal after synonym rollback.\n[payments:owner:session-11] Payments owner changed to Noor. Noor owns checkout and PSP escalation.\n[notifications:status:session-9] Customer status wording: SMS delivery is delayed for APAC recipients.",
+      "expected_hits": 2,
+      "latency_ms": 0.012799995602108538,
+      "prompt": "What should customer support say about payments?",
+      "stale_hits": 1
+    },
+    {
+      "backend": "append_only_log",
+      "context": "[search:runbook:session-8] Search runbook v2 says disable live synonym expansion before rebuild.\n[search:runbook:session-3] Search runbook v1 says rebuild the synonym index before rolling pods.\n[search:status:session-16] Customer status wording: search relevance is normal after synonym rollback.\n[notifications:runbook:session-14] Notifications runbook v2 says pause APAC SMS batch jobs before retries.\n[search:owner:session-13] Search owner changed to Lin. Lin owns relevance rollback decisions.",
+      "expected_hits": 2,
+      "latency_ms": 0.01309999788645655,
+      "prompt": "What is the current search runbook?",
+      "stale_hits": 1
+    },
+    {
+      "backend": "append_only_log",
+      "context": "[search:status:session-16] Customer status wording: search relevance is normal after synonym rollback.\n[search:owner:session-13] Search owner changed to Lin. Lin owns relevance rollback decisions.\n[search:runbook:session-8] Search runbook v2 says disable live synonym expansion before rebuild.\n[search:status:session-7] Customer status wording: search filters may lag up to five minutes.\n[payments:decision:session-6] Payments mitigation: rollback fraud-rule bundle 2026.06.05-b after spike.",
+      "expected_hits": 2,
+      "latency_ms": 0.011099997209385037,
+      "prompt": "Who owns search relevance rollback decisions?",
+      "stale_hits": 0
+    },
+    {
+      "backend": "append_only_log",
+      "context": "[search:status:session-16] Customer status wording: search relevance is normal after synonym rollback.\n[search:status:session-7] Customer status wording: search filters may lag up to five minutes.\n[search:owner:session-13] Search owner changed to Lin. Lin owns relevance rollback decisions.\n[payments:status:session-12] Customer status wording: checkout is stable; EU card backlog is draining.\n[notifications:status:session-9] Customer status wording: SMS delivery is delayed for APAC recipients.",
+      "expected_hits": 2,
+      "latency_ms": 0.011500000255182385,
+      "prompt": "What is the current public search status?",
+      "stale_hits": 1
+    },
+    {
+      "backend": "append_only_log",
+      "context": "[notifications:runbook:session-14] Notifications runbook v2 says pause APAC SMS batch jobs before retries.\n[notifications:runbook:session-10] Notifications runbook v1 says retry Twilio webhooks with exponential backoff.\n[notifications:owner:session-15] Notifications owner changed to Theo. Theo owns provider throttling events.\n[notifications:status:session-9] Customer status wording: SMS delivery is delayed for APAC recipients.\n[search:runbook:session-8] Search runbook v2 says disable live synonym expansion before rebuild.",
+      "expected_hits": 2,
+      "latency_ms": 0.0109999964479357,
+      "prompt": "What is the current notifications runbook?",
+      "stale_hits": 1
+    },
+    {
+      "backend": "append_only_log",
+      "context": "[notifications:owner:session-15] Notifications owner changed to Theo. Theo owns provider throttling events.\n[notifications:runbook:session-14] Notifications runbook v2 says pause APAC SMS batch jobs before retries.\n[notifications:runbook:session-10] Notifications runbook v1 says retry Twilio webhooks with exponential backoff.\n[notifications:status:session-9] Customer status wording: SMS delivery is delayed for APAC recipients.\n[notifications:owner:session-4] Notifications owner is Mira. Mira handles provider throttling events.",
+      "expected_hits": 2,
+      "latency_ms": 0.00960000033956021,
+      "prompt": "Who owns provider throttling now?",
+      "stale_hits": 1
+    }
+  ]
+}
