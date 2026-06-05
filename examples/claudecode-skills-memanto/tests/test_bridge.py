@@ -22,9 +22,13 @@ from claudecode_skills_memanto.bridge import (  # noqa: E402
 
 
 class BridgeTests(unittest.TestCase):
+    """Regression tests for the Claude Code skills MEMANTO bridge."""
+
     def test_distills_decisions_preferences_and_project_facts_from_skill_transcript(
         self,
     ):
+        """Extract labeled durable facts from transcript text."""
+
         transcript = """
         User: /grill-with-docs auth refactor
         Assistant: Decision: keep token refresh inside the auth service because it owns retry policy.
@@ -70,6 +74,8 @@ class BridgeTests(unittest.TestCase):
         )
 
     def test_builds_user_prompt_expansion_context_for_next_skill(self):
+        """Format recalled memories as Claude Code prompt context."""
+
         memories = [
             MemoryCandidate(
                 content="keep token refresh inside the auth service because it owns retry policy.",
@@ -106,6 +112,8 @@ class BridgeTests(unittest.TestCase):
         self.assertIn("Use these memories as prior engineering context", context)
 
     def test_cli_supports_dry_run_capture_without_memanto_binary(self):
+        """Capture memories to JSONL without requiring a live memanto CLI."""
+
         with tempfile.TemporaryDirectory() as temp_dir:
             temp_path = Path(temp_dir)
             transcript = temp_path / "transcript.jsonl"
@@ -138,6 +146,8 @@ class BridgeTests(unittest.TestCase):
             )
 
     def test_detects_slash_skill_name_from_user_prompt(self):
+        """Detect slash-skill names embedded in user prompts."""
+
         self.assertEqual(
             detect_skill_name("/grill-with-docs design the auth cache"),
             "grill-with-docs",
@@ -149,6 +159,8 @@ class BridgeTests(unittest.TestCase):
         self.assertIsNone(detect_skill_name("plain prompt without a slash skill"))
 
     def test_cli_hook_inject_reads_claude_hook_json_from_stdin(self):
+        """Read UserPromptSubmit hook JSON and emit plain context."""
+
         with tempfile.TemporaryDirectory() as temp_dir:
             temp_path = Path(temp_dir)
             memories = temp_path / "memories.jsonl"
@@ -178,6 +190,8 @@ class BridgeTests(unittest.TestCase):
             self.assertIn("use zod output schemas", stdout.getvalue())
 
     def test_cli_hook_inject_supports_user_prompt_expansion_payloads(self):
+        """Emit structured additional context for UserPromptExpansion hooks."""
+
         with tempfile.TemporaryDirectory() as temp_dir:
             temp_path = Path(temp_dir)
             memories = temp_path / "memories.jsonl"
@@ -216,6 +230,8 @@ class BridgeTests(unittest.TestCase):
             self.assertIn("Prompt: /handoff billing rules", output["additionalContext"])
 
     def test_load_transcript_text_reads_common_claude_jsonl_content_shapes(self):
+        """Handle Claude transcript JSONL text fields in common locations."""
+
         with tempfile.TemporaryDirectory() as temp_dir:
             transcript = Path(temp_dir) / "transcript.jsonl"
             transcript.write_text(
@@ -256,6 +272,8 @@ class BridgeTests(unittest.TestCase):
             self.assertIn("User preference: concise summaries.", text)
 
     def test_remember_with_memanto_logs_failures_and_continues(self):
+        """Keep storing later memories when one memanto call fails."""
+
         memories = [
             MemoryCandidate(
                 content="first",
@@ -292,6 +310,8 @@ class BridgeTests(unittest.TestCase):
         self.assertEqual(run.call_args_list[1].kwargs["timeout"], 30)
 
     def test_example_artifacts_exist_and_settings_json_is_valid(self):
+        """Verify the checked-in example files and hook keys are present."""
+
         root = Path(__file__).resolve().parents[1]
         self.assertTrue((root / "README.md").exists())
         self.assertTrue(
@@ -306,6 +326,8 @@ class BridgeTests(unittest.TestCase):
 
 
 def json_line(memory: MemoryCandidate) -> str:
+    """Serialize a memory candidate as one JSONL record."""
+
     from dataclasses import asdict
     import json
 
