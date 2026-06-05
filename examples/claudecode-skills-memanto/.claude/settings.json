@@ -1,0 +1,28 @@
+{
+  "hooks": {
+    "UserPromptSubmit": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python examples/claudecode-skills-memanto/claudecode_skills_memanto/bridge.py hook-inject",
+            "timeout": 15
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python examples/claudecode-skills-memanto/claudecode_skills_memanto/bridge.py hook-capture --dry-run-output .memanto/skill-candidates.jsonl",
+            "timeout": 30
+          }
+        ]
+      }
+    ]
+  }
+}
