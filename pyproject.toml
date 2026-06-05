@@ -63,6 +63,12 @@ all = [
     "pre-commit>=4.4.0,<5",
     "ruff>=0.14.6,<0.15",
 ]
+benchmark = [
+    "datasets>=2.0.0",
+    "numpy>=1.21.0",
+    "scikit-learn>=1.0.0",
+    "tqdm>=4.62.0",
+]
 
 [project.scripts]
 memanto = "memanto.cli.main:app"
