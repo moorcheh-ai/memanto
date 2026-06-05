@@ -11,6 +11,12 @@ This benchmark evaluates retrieval quality and latency of **Memanto** (Moorcheh)
 - **Judge model**: gpt-4o
 - **Dimensions**: Relevance (0-100) and Completeness (0-100)
 
+## Important Notes
+
+- **Judge**: This run used a keyword-overlap heuristic (GPT-4o can be enabled by setting `OPENAI_API_KEY`)
+- **Mem0**: Results use a mock pipeline fallback (real Mem0 requires `pip install mem0ai` + `OPENAI_API_KEY`)
+- **Memanto**: Real Moorcheh API pipeline with live search results
+
 ## Aggregate Results
 
 | System | Queries | Avg Relevance | Avg Completeness | Combined | Avg Latency (ms) |
@@ -61,4 +67,5 @@ This benchmark evaluates retrieval quality and latency of **Memanto** (Moorcheh)
 
 - **Memanto**: Rel=68, Comp=68, Lat=1648.95ms
 - **Mem0**: Rel=60, Comp=60, Lat=0.02ms
+
 

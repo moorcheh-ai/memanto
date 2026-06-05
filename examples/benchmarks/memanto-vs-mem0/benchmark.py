@@ -49,8 +49,9 @@ DOCUMENT_PATH = Path(__file__).parent / "sample_document.md"
 QUERIES_PATH = Path(__file__).parent / "queries.csv"
 RESULTS_DIR = Path(__file__).parent / "results"
 JUDGE_MODEL = "gpt-4o"
-MEMANTO_NAMESPACE = "memanto_benchmark_namespace"
-MEM0_AGENT_ID = "benchmark_agent_001"
+_RUN_ID = str(int(time.time()))
+MEMANTO_NAMESPACE = f"memanto_benchmark_namespace_{_RUN_ID}"
+MEM0_AGENT_ID = f"benchmark_agent_{_RUN_ID}"
 
 RESULTS_DIR.mkdir(exist_ok=True)
 
@@ -275,7 +276,7 @@ class LLMJudge:
 # ---------------------------------------------------------------------------
 # Benchmark orchestration
 # ---------------------------------------------------------------------------
-def run_benchmark():
+def run_benchmark(allow_mock=False):
     logger.info("=" * 60)
     logger.info("Memanto vs Mem0 Benchmark")
     logger.info("=" * 60)
@@ -287,10 +288,16 @@ def run_benchmark():
 
     # Initialize pipelines
     memanto = MemantoPipeline()
+    mem0_uses_mock = False
     try:
         mem0 = Mem0Pipeline()
     except Exception as exc:
-        logger.warning(f"Mem0 unavailable ({exc}) — using mock fallback for comparison")
+        if not allow_mock:
+            raise RuntimeError(
+                f"Mem0 unavailable ({exc}). Use --allow-mock to run with mock fallback."
+            ) from exc
+        mem0_uses_mock = True
+        logger.warning(f"[MOCK] Mem0 unavailable ({exc}) — using mock fallback")
         mem0 = MockMem0Pipeline(chunks)
     judge = LLMJudge()
 
@@ -379,7 +386,12 @@ def run_benchmark():
 
     # Save Markdown summary
     summary_md = RESULTS_DIR / "summary.md"
-    winner = max(summaries, key=lambda s: s.combined_score)
+    if summaries:
+        winner = max(summaries, key=lambda s: s.combined_score)
+    else:
+        winner = None
+    judge_label = "Keyword-overlap heuristic" if not judge._use_openai else judge.model
+    mem0_label = "Mock (fallback)" if mem0_uses_mock else "Real"
     with open(summary_md, "w", encoding="utf-8") as f:
         f.write("# Memanto vs Mem0 Benchmark Report\n\n")
         f.write(
@@ -492,6 +504,11 @@ def main():
         action="store_true",
         help="Run in demo mode without requiring API keys (uses mock data).",
     )
+    parser.add_argument(
+        "--allow-mock",
+        action="store_true",
+        help="Allow fallback to mock Mem0 pipeline when real mem0 is unavailable.",
+    )
     args = parser.parse_args()
 
     if args.demo:
@@ -553,6 +570,8 @@ def main():
         summaries = []
         for system_name in ("memanto", "mem0"):
             rows = [r for r in all_results if r.system == system_name]
+            if not rows:
+                continue
             avg_rel = sum(r.relevance_score for r in rows) / len(rows)
             avg_comp = sum(r.completeness_score for r in rows) / len(rows)
             avg_lat = sum(r.latency_ms for r in rows) / len(rows)
@@ -572,7 +591,7 @@ def main():
         with open(summary_json, "w", encoding="utf-8") as f:
             json.dump([asdict(s) for s in summaries], f, indent=2)
 
-        winner = max(summaries, key=lambda s: s.combined_score)
+        demo_winner = max(summaries, key=lambda s: s.combined_score) if summaries else None
         summary_md = RESULTS_DIR / "summary.md"
         with open(summary_md, "w", encoding="utf-8") as f:
             f.write("# Memanto vs Mem0 Benchmark Report\n\n")
@@ -585,7 +604,7 @@ def main():
             f.write(f"- **Chunks**: {len(chunks)} ({CHUNK_SIZE} chars, {CHUNK_OVERLAP} overlap)\n")
             f.write(f"- **Queries**: {len(queries)}\n")
             f.write(f"- **Top-K retrieved**: {TOP_K}\n")
-            f.write(f"- **Judge model**: {JUDGE_MODEL}\n")
+            f.write(f"- **Judge model**: Keyword-overlap heuristic (demo)\n")
             f.write("- **Dimensions**: Relevance (0-100) and Completeness (0-100)\n\n")
             f.write("## Aggregate Results\n\n")
             f.write("| System | Queries | Avg Relevance | Avg Completeness | Combined | Avg Latency (ms) |\n")
@@ -596,7 +615,13 @@ def main():
                     f"{s.avg_relevance:13.2f} | {s.avg_completeness:16.2f} | "
                     f"{s.combined_score:8.2f} | {s.avg_latency_ms:16.2f} |\n"
                 )
-            f.write(f"\n**Winner**: {winner.system.title()} with combined score {winner.combined_score}\n\n")
+        if winner:
+            if demo_winner:
+                f.write(f"\n**Winner**: {demo_winner.system.title()} with combined score {demo_winner.combined_score}\n\n")
+            else:
+                f.write("\n**Winner**: N/A (no results)\n\n")
+        else:
+            f.write("\n**Winner**: N/A (no results)\n\n")
             f.write("## Per-Query Breakdown\n\n")
             for q in queries:
                 f.write(f"### {q}\n\n")
@@ -616,7 +641,7 @@ def main():
             )
         return
 
-    run_benchmark()
+    run_benchmark(allow_mock=args.allow_mock)
 
 
 if __name__ == "__main__":
