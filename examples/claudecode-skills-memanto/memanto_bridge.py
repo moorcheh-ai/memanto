@@ -1,31 +1,27 @@
 """
 memanto_bridge.py
 =================
-Thin, dependency-free wrapper around Memanto's v2 REST API.
+Skills memory companion using the official moorcheh-sdk.
 
-Used as the sole memory backend for the skills memory companion.
-Uses ONLY documented endpoints — no undocumented PATCH or filter flags.
+Uses MoorchehClient (moorcheh-sdk) — the underlying engine of Memanto.
+This is the correct pattern: use the official SDK, not raw HTTP wrappers.
 
-Documented endpoints used:
-  POST /api/v2/agents                     – create agent namespace
-  POST /api/v2/agents/{id}/activate       – get session token
-  POST /api/v2/agents/{id}/remember       – store memory
-  GET  /api/v2/agents/{id}/recall         – semantic search
-  POST /api/v2/agents/{id}/answer         – RAG answer
-
-Auth headers:
-  Authorization: Bearer {moorcheh_api_key}
-  X-Session-Token: {session_token}
+SDK pattern:
+  - Namespace = agent memory bucket (one per project/agent)
+  - Document  = one memory (id, text, metadata)
+  - similarity_search.query() = semantic recall
+  - answer.generate() = RAG answer over namespace
 """
 from __future__ import annotations
 
-import json
 import logging
 import os
 import time
+import uuid
 from typing import Dict, List, Optional
 
-import requests
+from moorcheh_sdk import MoorchehClient
+from moorcheh_sdk.types.document import Document
 
 logger = logging.getLogger(__name__)
 
@@ -36,97 +32,44 @@ VALID_MEMORY_TYPES = {
 }
 
 
-class MeMantoClient:
+class SkillsMemoryBridge:
     """
-    Direct Memanto v2 REST client for the skills memory companion.
+    Official SDK-backed memory bridge for the skills companion.
 
-    Environment variables:
-        MEMANTO_BASE_URL  – e.g. http://127.0.0.1:8000  (default)
-        MOORCHEH_API_KEY  – required; bearer token from moorcheh.ai
-        MEMANTO_AGENT_ID  – agent namespace (default: skills-companion)
+    Uses moorcheh-sdk.MoorchehClient — the same engine powering Memanto.
+    Each namespace corresponds to one agent/project memory bucket.
     """
 
     def __init__(
         self,
-        base_url: Optional[str] = None,
         api_key: Optional[str] = None,
-        agent_id: str = "skills-companion",
+        namespace: str = "skills-companion",
     ):
-        self.base_url = (
-            base_url or os.getenv("MEMANTO_BASE_URL", "http://127.0.0.1:8000")
-        ).rstrip("/")
-
-        self.agent_id = agent_id or os.getenv("MEMANTO_AGENT_ID", "skills-companion")
         self.api_key = api_key or os.getenv("MOORCHEH_API_KEY", "")
         if not self.api_key:
             raise ValueError(
-                "MOORCHEH_API_KEY is required.\n"
-                "Set it: export MOORCHEH_API_KEY=mk-...\n"
-                "Get a free key at https://moorcheh.ai"
+                "MOORCHEH_API_KEY required.\n"
+                "Get a free key at https://moorcheh.ai\n"
+                "Then: export MOORCHEH_API_KEY=mk-..."
             )
+        self.namespace = namespace
+        self._client = MoorchehClient(api_key=self.api_key)
+        self._ensure_namespace()
 
-        self.agent_id = agent_id or os.getenv("MEMANTO_AGENT_ID", "skills-companion")
-        self._token: Optional[str] = None
-
-        self._http = requests.Session()
-        self._http.headers["Authorization"] = f"Bearer {self.api_key}"
-        self._http.headers["Content-Type"] = "application/json"
-
-        self._ensure_agent()
-        self._activate()
-
-    # ── Internal ──────────────────────────────────────────────────────────
-
-    def _url(self, path: str) -> str:
-        return f"{self.base_url}{path}"
-
-    def _aurl(self, path: str = "") -> str:
-        return self._url(f"/api/v2/agents/{self.agent_id}{path}")
-
-    def _headers(self) -> Dict:
-        return {"X-Session-Token": self._token} if self._token else {}
-
-    def _ensure_agent(self) -> None:
-        """Create agent namespace if it does not exist (idempotent)."""
+    def _ensure_namespace(self) -> None:
+        """Create namespace if it doesn't exist (idempotent)."""
         try:
-            r = self._http.post(
-                self._url("/api/v2/agents"),
-                json={
-                    "agent_id": self.agent_id,
-                    "description": "Skills memory companion — stores engineering decisions across skill executions",
-                },
-                timeout=10,
-            )
-            if r.status_code not in (200, 201, 409):
-                logger.warning("agent create: status=%s", r.status_code)
-        except requests.RequestException as exc:
-            logger.error("_ensure_agent failed: %s", exc)
-
-    def _activate(self) -> None:
-        """Activate session and cache token. Raises on failure."""
-        try:
-            r = self._http.post(self._aurl("/activate"), json={}, timeout=10)
-            r.raise_for_status()
-            token = r.json().get("session_token")
-            if not token:
-                raise ValueError("session_token missing from activation response")
-            self._token = token
-            logger.info("Memanto session activated: agent_id=%s", self.agent_id)
+            existing = self._client.namespaces.list()
+            names = [n.get("name", n) if isinstance(n, dict) else str(n)
+                     for n in (existing if isinstance(existing, list) else [])]
+            if self.namespace not in names:
+                self._client.namespaces.create(
+                    namespace_name=self.namespace,
+                    type="text",
+                )
+                logger.info("Created namespace: %s", self.namespace)
         except Exception as exc:
-            logger.error("_activate failed: %s", exc)
-            raise
-
-    def _request(self, method, url, **kwargs):
-        """Execute request, retry once on 401 (expired session)."""
-        response = method(url, **kwargs)
-        if response.status_code == 401:
-            logger.info("Session expired — reactivating")
-            self._activate()
-            kwargs["headers"] = self._headers()
-            response = method(url, **kwargs)
-        return response
-
-    # ── Public API ────────────────────────────────────────────────────────
+            logger.warning("namespace check failed (may already exist): %s", exc)
 
     def remember(
         self,
@@ -136,37 +79,30 @@ class MeMantoClient:
         metadata: Optional[Dict] = None,
     ) -> Dict:
         """
-        Store a memory via POST /remember.
-        Returns dict with 'id'. Returns error dict (id=None) on failure —
-        caller must check for id=None to detect write failures.
+        Store a memory using the official SDK's documents.upload().
+        Returns dict with 'id' key.
         """
         if memory_type not in VALID_MEMORY_TYPES:
             memory_type = "observation"
 
-        payload = {
-            "content": content,
-            "type": memory_type,
-            "tags": tags or [],
-            "metadata": {**(metadata or {}), "stored_at": time.time()},
+        mem_id = str(uuid.uuid4())
+        doc: Document = {
+            "id": mem_id,
+            "text": content,
+            "metadata": {
+                **(metadata or {}),
+                "type": memory_type,
+                "tags": tags or [],
+                "stored_at": time.time(),
+            },
         }
         try:
-            r = self._request(
-                self._http.post,
-                self._aurl("/remember"),
-                json=payload,
-                headers=self._headers(),
-                timeout=15,
+            self._client.documents.upload(
+                namespace_name=self.namespace,
+                documents=[doc],
             )
-            r.raise_for_status()
-            mem = r.json()
-            # Server may return memory_id or id
-            if not mem.get("id") and mem.get("memory_id"):
-                mem["id"] = mem["memory_id"]
-            mid = mem.get("id") or mem.get("memory_id")
-            logger.info("stored id=%s type=%s", mid, memory_type)
-            if mid and "id" not in mem:
-                mem["id"] = mid
-            return mem
+            logger.info("stored id=%s type=%s", mem_id, memory_type)
+            return {"id": mem_id, "content": content, "type": memory_type}
         except Exception as exc:
             logger.error("remember failed: %s", exc)
             return {"id": None, "content": content, "error": str(exc)}
@@ -178,50 +114,58 @@ class MeMantoClient:
         memory_type: Optional[str] = None,
     ) -> List[Dict]:
         """
-        Semantic search via POST /recall (parameters in JSON body).
-        Returns list of memory dicts ordered by relevance.
+        Semantic search using official SDK's similarity_search.query().
+        Returns list of memory dicts.
         """
-        body: Dict = {"query": query, "limit": limit}
-        if memory_type in VALID_MEMORY_TYPES:
-            body["type"] = [memory_type]
-        elif memory_type:
-            logger.warning("unsupported memory_type=%s; omitting filter", memory_type)
         try:
-            r = self._request(
-                self._http.post,
-                self._aurl("/recall"),
-                json=body,
-                headers=self._headers(),
-                timeout=15,
+            response = self._client.similarity_search.query(
+                namespaces=[self.namespace],
+                query=query,
+                top_k=limit,
             )
-            r.raise_for_status()
-            return r.json().get("memories", [])
+            results = []
+            items = response if isinstance(response, list) else getattr(response, "results", [])
+            for item in items:
+                content = (item.get("text") or item.get("content", "")
+                           if isinstance(item, dict) else
+                           getattr(item, "text", "") or getattr(item, "content", ""))
+                meta = (item.get("metadata", {})
+                        if isinstance(item, dict) else
+                        getattr(item, "metadata", {})) or {}
+                # Filter by type if requested
+                if memory_type and meta.get("type") != memory_type:
+                    continue
+                results.append({
+                    "id": (item.get("id") if isinstance(item, dict)
+                           else getattr(item, "id", "")),
+                    "content": content,
+                    "metadata": meta,
+                    "score": (item.get("score", 1.0) if isinstance(item, dict)
+                              else getattr(item, "score", 1.0)),
+                })
+            return results
         except Exception as exc:
             logger.error("recall failed: %s", exc)
             return []
 
     def answer(self, question: str) -> str:
-        """RAG answer grounded in stored memories via POST /answer."""
+        """RAG answer using official SDK's answer.generate()."""
         try:
-            r = self._request(
-                self._http.post,
-                self._aurl("/answer"),
-                json={"question": question},
-                headers=self._headers(),
-                timeout=20,
+            response = self._client.answer.generate(
+                query=question,
+                namespace=self.namespace,
             )
-            r.raise_for_status()
-            return r.json().get("answer", "")
+            return (response.get("answer", "") if isinstance(response, dict)
+                    else getattr(response, "answer", ""))
         except Exception as exc:
             logger.error("answer failed: %s", exc)
             return ""
 
     def correct(self, old_content: str, new_content: str) -> Dict:
         """
-        Store a corrected fact as a NEW memory via POST /remember.
-        Uses only the documented /remember endpoint — no undocumented PATCH.
-        Old content is preserved in metadata.previous_content for audit.
-        Caller must check id=None for failure.
+        Store corrected fact as a new document.
+        Old content preserved in metadata.previous_content for audit.
+        Uses only documents.upload() — no undocumented endpoints.
         """
         return self.remember(
             content=new_content,

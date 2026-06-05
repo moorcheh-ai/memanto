@@ -45,7 +45,7 @@ import sys
 import time
 from typing import List, Optional
 
-from memanto_bridge import MeMantoClient
+from memanto_bridge import SkillsMemoryBridge
 
 # ── Skill metadata ─────────────────────────────────────────────────────────────
 
@@ -73,14 +73,12 @@ class SkillsMemory:
 
     def __init__(
         self,
-        base_url: Optional[str] = None,
         api_key: Optional[str] = None,
-        agent_id: str = "skills-companion",
+        namespace: str = "skills-companion",
     ):
-        self._client = MeMantoClient(
-            base_url=base_url,
+        self._client = SkillsMemoryBridge(
             api_key=api_key,
-            agent_id=agent_id,
+            namespace=namespace,
         )
         self.agent_id = agent_id
 
