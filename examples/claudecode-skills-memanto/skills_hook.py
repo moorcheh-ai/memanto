@@ -125,14 +125,18 @@ def handle_end(args):
         # Save a general decision/learning memory
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         title = f"Skill {args.skill} completion on {timestamp}"
-        
-        # We classify memory_type dynamically or default to 'decision'
-        # If the summary mentions "preference", we use preference, otherwise decision
-        mtype = "decision"
-        if "prefer" in summary_text.lower() or "like" in summary_text.lower():
+        # Use explicitly provided type if given; otherwise infer from summary keywords.
+        # Known limitation: keyword inference is approximate — e.g. "I learned to prefer X"
+        # will match "prefer" and be stored as "preference" instead of "learning".
+        # Pass --memory-type to the CLI to override when the inferred type is wrong.
+        if args.memory_type:
+            mtype = args.memory_type
+        elif "prefer" in summary_text.lower() or "like" in summary_text.lower():
             mtype = "preference"
         elif "learn" in summary_text.lower() or "find out" in summary_text.lower():
             mtype = "learning"
+        else:
+            mtype = "decision"
 
         result = client.remember(
             agent_id=agent_id,
@@ -165,6 +169,12 @@ def main():
     end_parser.add_argument("--skill", required=True, help="Name of the skill that completed")
     end_parser.add_argument("--summary", required=True, help="Summary of decisions, preferences or patterns to save")
     end_parser.add_argument("--agent-id", help="Custom Memanto agent ID")
+    end_parser.add_argument(
+        "--memory-type",
+        choices=["decision", "preference", "learning"],
+        default=None,
+        help="Explicit memory type to store (default: inferred from summary keywords)"
+    )
 
     args = parser.parse_args()
 
