@@ -30,6 +30,8 @@ Once the task is successfully implemented and verified:
 1. Compose a concise summary of the engineering choices, preferences, or rules established during this cycle. Example:
    *"Decided to use standard logging instead of prints. Noticed the user prefers async/await pattern for API fetches."*
 2. Run the Memanto end hook command to record these outcomes for future terminal sessions:
+> **Note:** Same as Phase 1 — this path is relative to your **project root**.
+> Ensure **Step 4** of the README setup is complete before running this command.
    ```bash
    python examples/claudecode-skills-memanto/skills_hook.py end --skill tdd --summary "<your summary description here>"
    ```

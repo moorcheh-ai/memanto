@@ -29,6 +29,8 @@ Once the developer provides the answers and you finalize the design:
 1. Compose a detailed summary of the newly learned project context, framework selections, and structural decisions. Example:
    *"Project uses Docker for development. Backend relies on FastAPI. Port 8080 is reserved. Code must use snake_case for fields."*
 2. Run the Memanto end hook command to record these facts:
+> **Note:** Same as Phase 1 — this path is relative to your **project root**.
+> Ensure **Step 4** of the README setup is complete before running this command.
    ```bash
    python examples/claudecode-skills-memanto/skills_hook.py end --skill grill-with-docs --summary "<your summary description here>"
    ```
