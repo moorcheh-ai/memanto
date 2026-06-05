@@ -7,7 +7,7 @@ This PR adds a reproducible benchmark under `/examples/benchmarks/memanto-vs-mem
 ## Social Media Showcase
 
 - **Reddit post**: https://www.reddit.com/r/AgenticMemory/comments/1txsdns/benchmark_memanto_vs_mem0_agent_memory_retrieval/
-- **X/Twitter post**: [LINK_HERE]
+- **X/Twitter post**: https://x.com/thapelo7573/status/2062964037835534680
 
 ## Benchmark Metrics
 
