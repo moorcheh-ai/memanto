@@ -23,17 +23,17 @@ sequenceDiagram
     autonumber
     Developer->>Claude Code: Run /tdd <task>
     Note over Claude Code: Skill Starts
-    Claude Code->>Memanto: python skills_hook.py start (Query task preferences)
+    Claude Code->>Memanto: python examples/claudecode-skills-memanto/skills_hook.py start (Query task preferences)
     Memanto-->>Claude Code: Load relevant engineering constraints/rules
     Note over Claude Code: Execute test-driven cycle following constraints
     Claude Code->>Developer: Feature completed & tests pass
     Note over Claude Code: Skill Completes
-    Claude Code->>Memanto: python skills_hook.py end (Save decisions & learnings)
+    Claude Code->>Memanto: python examples/claudecode-skills-memanto/skills_hook.py end (Save decisions & learnings)
     Memanto-->>Developer: Memory persisted in developer profile
 ```
 
-1. **At Skill Startup (Dynamic Injection):** The skill automatically runs the `skills_hook.py start` script. Memanto retrieves relevant past memories matching the task and injects them as active constraints in the agent's prompt context.
-2. **At Skill Completion (Active Ingestion):** The skill runs `skills_hook.py end`, generating a concise summary of the decisions, design choices, and developer preferences learned during this session, saving it back to Memanto for the next call.
+1. **At Skill Startup (Dynamic Injection):** The skill automatically runs `examples/claudecode-skills-memanto/skills_hook.py start`. Memanto retrieves relevant past memories matching the task and injects them as active constraints in the agent's prompt context.
+2. **At Skill Completion (Active Ingestion):** The skill runs `examples/claudecode-skills-memanto/skills_hook.py end`, generating a concise summary of the decisions, design choices, and developer preferences learned during this session, saving it back to Memanto for the next call.
 
 ---
 
@@ -98,18 +98,21 @@ cp skills_hook.py examples/claudecode-skills-memanto/skills_hook.py
 
 ## 📖 Hook CLI Reference
 
-The helper script `skills_hook.py` exposes two commands that orchestrate active memory:
+The helper script exposes two commands that orchestrate active memory.
+All commands below assume they are run from your **project root**, where
+`examples/claudecode-skills-memanto/skills_hook.py` is the canonical path
+(matching what the deployed SKILL.md templates invoke automatically).
 
 ### 1. Start Hook (Inject Memories)
 Queries Memanto for context relevant to the incoming task:
 ```bash
-python skills_hook.py start --skill <skill-name> --task "<task-description>"
+python examples/claudecode-skills-memanto/skills_hook.py start --skill <skill-name> --task "<task-description>"
 ```
 *   **Result:** Fetches up to 5 matching memory items and outputs them formatted as a clean markdown block. Claude Code will consume this block to ground its actions.
 
 ### 2. End Hook (Remember Learnings)
 Saves engineering choices and user corrections to the profile:
 ```bash
-python skills_hook.py end --skill <skill-name> --summary "<learnings-and-decisions>"
+python examples/claudecode-skills-memanto/skills_hook.py end --skill <skill-name> --summary "<learnings-and-decisions>"
 ```
 *   **Result:** Analyzes the summary content, dynamically categorizes it (e.g. `preference`, `decision`, `learning`), and stores it in the active session database instantly.
