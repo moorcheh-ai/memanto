@@ -218,17 +218,44 @@ class Mem0Pipeline:
 # LLM-as-a-Judge
 # ---------------------------------------------------------------------------
 class LLMJudge:
+    SUPPORTED_PROVIDERS = ("openai", "heuristic")
+
     def __init__(self):
+        self.provider = (os.environ.get("JUDGE_PROVIDER") or "").lower()
         api_key = os.environ.get("OPENAI_API_KEY")
-        self._use_openai = bool(api_key)
-        if self._use_openai:
-            from openai import OpenAI
-            self._openai = OpenAI(api_key=api_key)
-        self.model = os.environ.get("JUDGE_MODEL", JUDGE_MODEL)
         prompt_path = Path(__file__).parent / "judge_prompt.txt"
         self.system_prompt = prompt_path.read_text(encoding="utf-8")
+        self.model = os.environ.get("JUDGE_MODEL", JUDGE_MODEL)
+        self._use_openai = False
+        self._openai = None
+
+        if self.provider == "gemini":
+            raise RuntimeError(
+                "JUDGE_PROVIDER=gemini is not implemented in this benchmark. "
+                "Supported providers: 'openai' (requires OPENAI_API_KEY) or "
+                "'heuristic' (no key required). Add the google-genai client "
+                "and a Gemini branch in LLMJudge._evaluate_gemini to enable."
+            )
+        if self.provider and self.provider not in self.SUPPORTED_PROVIDERS:
+            raise RuntimeError(
+                f"Unknown JUDGE_PROVIDER={self.provider!r}. "
+                f"Supported: {self.SUPPORTED_PROVIDERS}"
+            )
+        if self.provider == "openai" and not api_key:
+            raise RuntimeError(
+                "JUDGE_PROVIDER=openai requires OPENAI_API_KEY to be set."
+            )
+        if api_key and self.provider in ("", "openai"):
+            from openai import OpenAI
+            self._openai = OpenAI(api_key=api_key)
+            self._use_openai = True
+            self.provider = "openai"
         if not self._use_openai:
-            logger.warning("OPENAI_API_KEY not set — using keyword-overlap heuristic judge")
+            self.provider = "heuristic"
+            logger.warning(
+                "LLM judge unavailable (no OPENAI_API_KEY or provider unset) — "
+                "falling back to keyword-overlap heuristic"
+            )
 
     def evaluate(self, query: str, contexts: List[RetrievedContext]) -> Dict[str, Any]:
         if self._use_openai:
@@ -403,7 +430,7 @@ def run_benchmark(allow_mock=False):
         f.write(f"- **Chunks**: {len(chunks)} ({CHUNK_SIZE} chars, {CHUNK_OVERLAP} overlap)\n")
         f.write(f"- **Queries**: {len(queries)}\n")
         f.write(f"- **Top-K retrieved**: {TOP_K}\n")
-        f.write(f"- **Judge model**: {JUDGE_MODEL}\n")
+        f.write(f"- **Judge model**: {judge_label}\n")
         f.write("- **Dimensions**: Relevance (0-100) and Completeness (0-100)\n\n")
         f.write("## Aggregate Results\n\n")
         f.write("| System | Queries | Avg Relevance | Avg Completeness | Combined | Avg Latency (ms) |\n")
