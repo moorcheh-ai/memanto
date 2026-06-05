@@ -1,0 +1,646 @@
+{
+  "benchmark": "multi_agent_codebase_handoff_v1",
+  "description": "A deterministic benchmark for shared memory in multi-agent coding workflows. Facts mutate across planning, implementation, review, QA, docs, and release handoff turns.",
+  "controls": {
+    "backend_llm": "none; offline golden dataset matching",
+    "judge": "exact key/value matching with stale conflict detection",
+    "prompt_system_instructions": "none",
+    "memanto_style_toggles": {
+      "namespace": "shared project memory",
+      "fact_model": "typed latest-state digest",
+      "supersession": "newer event with the same key replaces the active fact",
+      "max_retrieved_facts": 1
+    },
+    "baseline_toggles": {
+      "shared_append_log": "global transcript with no supersession and max 6 retrieved events",
+      "namespace": "per-agent transcript silo",
+      "fact_model": "append-only log",
+      "supersession": "disabled",
+      "max_retrieved_events": 6
+    }
+  },
+  "host_environment": {
+    "platform": "Windows-11-10.0.26200-SP0",
+    "python": "3.12.10 (tags/v3.12.10:0cc8128, Apr  8 2025, 12:21:36) [MSC v.1943 64 bit (AMD64)]",
+    "implementation": "CPython"
+  },
+  "results": [
+    {
+      "backend": "shared_active_digest",
+      "accuracy": 1.0,
+      "correct": 10,
+      "cross_agent_accuracy": 1.0,
+      "cross_agent_correct": 10,
+      "ingested_tokens": 252,
+      "p95_latency_seconds": 0.00018279999494552612,
+      "questions": [
+        {
+          "id": "q1",
+          "asker": "reviewer",
+          "query": "For code review, what is the current imports API contract and endpoint arguments?",
+          "expected_key": "imports.api.contract",
+          "expected_value": "POST /v2/imports accepts source_url, preview_only, and idempotency_key",
+          "requires_cross_agent_memory": true,
+          "latency_seconds": 0.00018279999494552612,
+          "correct": true,
+          "first_exact_rank": 1,
+          "retrieved_keys": [
+            "imports.api.contract"
+          ],
+          "retrieved_tokens": 31,
+          "signal_noise_ratio": 1.0,
+          "stale_conflict": false
+        },
+        {
+          "id": "q2",
+          "asker": "implementer",
+          "query": "What auth scope should the import endpoint enforce now?",
+          "expected_key": "imports.auth.scope",
+          "expected_value": "imports:admin",
+          "requires_cross_agent_memory": true,
+          "latency_seconds": 0.00017740001203492284,
+          "correct": true,
+          "first_exact_rank": 1,
+          "retrieved_keys": [
+            "imports.auth.scope"
+          ],
+          "retrieved_tokens": 23,
+          "signal_noise_ratio": 1.0,
+          "stale_conflict": false
+        },
+        {
+          "id": "q3",
+          "asker": "docs-agent",
+          "query": "Which feature flag name should docs and examples use for the import worker?",
+          "expected_key": "feature.flag",
+          "expected_value": "bulk_import_v2",
+          "requires_cross_agent_memory": true,
+          "latency_seconds": 0.00016739999409765005,
+          "correct": true,
+          "first_exact_rank": 1,
+          "retrieved_keys": [
+            "feature.flag"
+          ],
+          "retrieved_tokens": 24,
+          "signal_noise_ratio": 1.0,
+          "stale_conflict": false
+        },
+        {
+          "id": "q4",
+          "asker": "release-manager",
+          "query": "What is the current QA test blocker for release readiness?",
+          "expected_key": "test.blocker",
+          "expected_value": "retry idempotency conflict on duplicate idempotency_key",
+          "requires_cross_agent_memory": true,
+          "latency_seconds": 0.0001647999742999673,
+          "correct": true,
+          "first_exact_rank": 1,
+          "retrieved_keys": [
+            "test.blocker"
+          ],
+          "retrieved_tokens": 33,
+          "signal_noise_ratio": 1.0,
+          "stale_conflict": false
+        },
+        {
+          "id": "q5",
+          "asker": "qa-agent",
+          "query": "Which database migration should QA verify for retry state?",
+          "expected_key": "database.migration",
+          "expected_value": "20260605_add_import_jobs_retry_state",
+          "requires_cross_agent_memory": true,
+          "latency_seconds": 0.00011030002497136593,
+          "correct": true,
+          "first_exact_rank": 1,
+          "retrieved_keys": [
+            "database.migration"
+          ],
+          "retrieved_tokens": 19,
+          "signal_noise_ratio": 1.0,
+          "stale_conflict": false
+        },
+        {
+          "id": "q6",
+          "asker": "implementer",
+          "query": "What warning should be reflected around preview_only behavior?",
+          "expected_key": "docs.warning",
+          "expected_value": "preview_only defaults true in sandbox and false in production",
+          "requires_cross_agent_memory": true,
+          "latency_seconds": 0.00010250002378597856,
+          "correct": true,
+          "first_exact_rank": 1,
+          "retrieved_keys": [
+            "docs.warning"
+          ],
+          "retrieved_tokens": 35,
+          "signal_noise_ratio": 1.0,
+          "stale_conflict": false
+        },
+        {
+          "id": "q7",
+          "asker": "reviewer",
+          "query": "What is the current rollout region and tenant scope?",
+          "expected_key": "rollout.region",
+          "expected_value": "us-east-1 internal tenants only",
+          "requires_cross_agent_memory": true,
+          "latency_seconds": 0.0001357999863103032,
+          "correct": true,
+          "first_exact_rank": 1,
+          "retrieved_keys": [
+            "rollout.region"
+          ],
+          "retrieved_tokens": 31,
+          "signal_noise_ratio": 1.0,
+          "stale_conflict": false
+        },
+        {
+          "id": "q8",
+          "asker": "docs-agent",
+          "query": "Who owns backend and QA signoff during the release handoff?",
+          "expected_key": "owner.oncall",
+          "expected_value": "Mina owns backend until 18:00 UTC; Ravi owns QA signoff",
+          "requires_cross_agent_memory": true,
+          "latency_seconds": 0.00011369999265298247,
+          "correct": true,
+          "first_exact_rank": 1,
+          "retrieved_keys": [
+            "owner.oncall"
+          ],
+          "retrieved_tokens": 34,
+          "signal_noise_ratio": 1.0,
+          "stale_conflict": false
+        },
+        {
+          "id": "q9",
+          "asker": "qa-agent",
+          "query": "What rollback plan should be used if the import release fails?",
+          "expected_key": "rollback.plan",
+          "expected_value": "disable bulk_import_v2 and route jobs to legacy_import_worker",
+          "requires_cross_agent_memory": true,
+          "latency_seconds": 0.00014379998901858926,
+          "correct": true,
+          "first_exact_rank": 1,
+          "retrieved_keys": [
+            "rollback.plan"
+          ],
+          "retrieved_tokens": 27,
+          "signal_noise_ratio": 1.0,
+          "stale_conflict": false
+        },
+        {
+          "id": "q10",
+          "asker": "release-manager",
+          "query": "What customer message should we use for the release delay?",
+          "expected_key": "customer.message",
+          "expected_value": "release is delayed by validation hardening; no customer data loss",
+          "requires_cross_agent_memory": true,
+          "latency_seconds": 0.00013969995779916644,
+          "correct": true,
+          "first_exact_rank": 1,
+          "retrieved_keys": [
+            "customer.message"
+          ],
+          "retrieved_tokens": 34,
+          "signal_noise_ratio": 1.0,
+          "stale_conflict": false
+        }
+      ],
+      "retrieved_tokens": 291,
+      "signal_noise_ratio": 1.0,
+      "stale_conflict_rate": 0.0,
+      "total_questions": 10
+    },
+    {
+      "backend": "shared_append_log",
+      "accuracy": 0.8,
+      "correct": 8,
+      "cross_agent_accuracy": 0.8,
+      "cross_agent_correct": 8,
+      "ingested_tokens": 252,
+      "p95_latency_seconds": 0.00043479999294504523,
+      "questions": [
+        {
+          "id": "q1",
+          "asker": "reviewer",
+          "query": "For code review, what is the current imports API contract and endpoint arguments?",
+          "expected_key": "imports.api.contract",
+          "expected_value": "POST /v2/imports accepts source_url, preview_only, and idempotency_key",
+          "requires_cross_agent_memory": true,
+          "latency_seconds": 0.00020150002092123032,
+          "correct": true,
+          "first_exact_rank": 1,
+          "retrieved_keys": [
+            "imports.api.contract",
+            "imports.api.contract",
+            "imports.auth.scope",
+            "feature.flag",
+            "imports.auth.scope",
+            "customer.message"
+          ],
+          "retrieved_tokens": 161,
+          "signal_noise_ratio": 0.3333333333333333,
+          "stale_conflict": true
+        },
+        {
+          "id": "q2",
+          "asker": "implementer",
+          "query": "What auth scope should the import endpoint enforce now?",
+          "expected_key": "imports.auth.scope",
+          "expected_value": "imports:admin",
+          "requires_cross_agent_memory": true,
+          "latency_seconds": 0.0001564000267535448,
+          "correct": false,
+          "first_exact_rank": 2,
+          "retrieved_keys": [
+            "imports.auth.scope",
+            "imports.auth.scope",
+            "feature.flag",
+            "test.blocker",
+            "customer.message",
+            "owner.oncall"
+          ],
+          "retrieved_tokens": 158,
+          "signal_noise_ratio": 0.3333333333333333,
+          "stale_conflict": true
+        },
+        {
+          "id": "q3",
+          "asker": "docs-agent",
+          "query": "Which feature flag name should docs and examples use for the import worker?",
+          "expected_key": "feature.flag",
+          "expected_value": "bulk_import_v2",
+          "requires_cross_agent_memory": true,
+          "latency_seconds": 0.00014590000500902534,
+          "correct": false,
+          "first_exact_rank": 2,
+          "retrieved_keys": [
+            "feature.flag",
+            "feature.flag",
+            "rollback.plan",
+            "test.blocker",
+            "docs.warning",
+            "customer.message"
+          ],
+          "retrieved_tokens": 168,
+          "signal_noise_ratio": 0.3333333333333333,
+          "stale_conflict": true
+        },
+        {
+          "id": "q4",
+          "asker": "release-manager",
+          "query": "What is the current QA test blocker for release readiness?",
+          "expected_key": "test.blocker",
+          "expected_value": "retry idempotency conflict on duplicate idempotency_key",
+          "requires_cross_agent_memory": true,
+          "latency_seconds": 9.99000039882958e-05,
+          "correct": true,
+          "first_exact_rank": 1,
+          "retrieved_keys": [
+            "test.blocker",
+            "test.blocker",
+            "feature.flag",
+            "rollout.region",
+            "owner.oncall",
+            "rollout.region"
+          ],
+          "retrieved_tokens": 178,
+          "signal_noise_ratio": 0.3333333333333333,
+          "stale_conflict": true
+        },
+        {
+          "id": "q5",
+          "asker": "qa-agent",
+          "query": "Which database migration should QA verify for retry state?",
+          "expected_key": "database.migration",
+          "expected_value": "20260605_add_import_jobs_retry_state",
+          "requires_cross_agent_memory": true,
+          "latency_seconds": 0.000146100006531924,
+          "correct": true,
+          "first_exact_rank": 1,
+          "retrieved_keys": [
+            "database.migration",
+            "test.blocker",
+            "test.blocker",
+            "owner.oncall",
+            "customer.message",
+            "rollback.plan"
+          ],
+          "retrieved_tokens": 177,
+          "signal_noise_ratio": 0.16666666666666666,
+          "stale_conflict": false
+        },
+        {
+          "id": "q6",
+          "asker": "implementer",
+          "query": "What warning should be reflected around preview_only behavior?",
+          "expected_key": "docs.warning",
+          "expected_value": "preview_only defaults true in sandbox and false in production",
+          "requires_cross_agent_memory": true,
+          "latency_seconds": 0.0001466000103391707,
+          "correct": true,
+          "first_exact_rank": 1,
+          "retrieved_keys": [
+            "docs.warning",
+            "imports.api.contract",
+            "customer.message",
+            "owner.oncall",
+            "rollback.plan",
+            "rollout.region"
+          ],
+          "retrieved_tokens": 192,
+          "signal_noise_ratio": 0.16666666666666666,
+          "stale_conflict": false
+        },
+        {
+          "id": "q7",
+          "asker": "reviewer",
+          "query": "What is the current rollout region and tenant scope?",
+          "expected_key": "rollout.region",
+          "expected_value": "us-east-1 internal tenants only",
+          "requires_cross_agent_memory": true,
+          "latency_seconds": 0.00014899997040629387,
+          "correct": true,
+          "first_exact_rank": 1,
+          "retrieved_keys": [
+            "rollout.region",
+            "feature.flag",
+            "rollout.region",
+            "imports.auth.scope",
+            "test.blocker",
+            "imports.auth.scope"
+          ],
+          "retrieved_tokens": 156,
+          "signal_noise_ratio": 0.3333333333333333,
+          "stale_conflict": true
+        },
+        {
+          "id": "q8",
+          "asker": "docs-agent",
+          "query": "Who owns backend and QA signoff during the release handoff?",
+          "expected_key": "owner.oncall",
+          "expected_value": "Mina owns backend until 18:00 UTC; Ravi owns QA signoff",
+          "requires_cross_agent_memory": true,
+          "latency_seconds": 0.00015569996321573853,
+          "correct": true,
+          "first_exact_rank": 1,
+          "retrieved_keys": [
+            "owner.oncall",
+            "test.blocker",
+            "feature.flag",
+            "rollout.region",
+            "customer.message",
+            "rollout.region"
+          ],
+          "retrieved_tokens": 179,
+          "signal_noise_ratio": 0.16666666666666666,
+          "stale_conflict": false
+        },
+        {
+          "id": "q9",
+          "asker": "qa-agent",
+          "query": "What rollback plan should be used if the import release fails?",
+          "expected_key": "rollback.plan",
+          "expected_value": "disable bulk_import_v2 and route jobs to legacy_import_worker",
+          "requires_cross_agent_memory": true,
+          "latency_seconds": 0.00015480001457035542,
+          "correct": true,
+          "first_exact_rank": 2,
+          "retrieved_keys": [
+            "feature.flag",
+            "rollback.plan",
+            "test.blocker",
+            "feature.flag",
+            "rollout.region",
+            "customer.message"
+          ],
+          "retrieved_tokens": 159,
+          "signal_noise_ratio": 0.16666666666666666,
+          "stale_conflict": false
+        },
+        {
+          "id": "q10",
+          "asker": "release-manager",
+          "query": "What customer message should we use for the release delay?",
+          "expected_key": "customer.message",
+          "expected_value": "release is delayed by validation hardening; no customer data loss",
+          "requires_cross_agent_memory": true,
+          "latency_seconds": 0.00043479999294504523,
+          "correct": true,
+          "first_exact_rank": 1,
+          "retrieved_keys": [
+            "customer.message",
+            "feature.flag",
+            "rollout.region",
+            "rollout.region",
+            "owner.oncall",
+            "rollback.plan"
+          ],
+          "retrieved_tokens": 176,
+          "signal_noise_ratio": 0.16666666666666666,
+          "stale_conflict": false
+        }
+      ],
+      "retrieved_tokens": 1704,
+      "signal_noise_ratio": 0.25,
+      "stale_conflict_rate": 0.5,
+      "total_questions": 10
+    },
+    {
+      "backend": "per_agent_append_log",
+      "accuracy": 0.0,
+      "correct": 0,
+      "cross_agent_accuracy": 0.0,
+      "cross_agent_correct": 0,
+      "ingested_tokens": 252,
+      "p95_latency_seconds": 3.539997851476073e-05,
+      "questions": [
+        {
+          "id": "q1",
+          "asker": "reviewer",
+          "query": "For code review, what is the current imports API contract and endpoint arguments?",
+          "expected_key": "imports.api.contract",
+          "expected_value": "POST /v2/imports accepts source_url, preview_only, and idempotency_key",
+          "requires_cross_agent_memory": true,
+          "latency_seconds": 2.3100001271814108e-05,
+          "correct": false,
+          "first_exact_rank": null,
+          "retrieved_keys": [
+            "imports.auth.scope"
+          ],
+          "retrieved_tokens": 23,
+          "signal_noise_ratio": 0.0,
+          "stale_conflict": false
+        },
+        {
+          "id": "q2",
+          "asker": "implementer",
+          "query": "What auth scope should the import endpoint enforce now?",
+          "expected_key": "imports.auth.scope",
+          "expected_value": "imports:admin",
+          "requires_cross_agent_memory": true,
+          "latency_seconds": 3.239995567128062e-05,
+          "correct": false,
+          "first_exact_rank": null,
+          "retrieved_keys": [
+            "imports.auth.scope",
+            "feature.flag",
+            "database.migration"
+          ],
+          "retrieved_tokens": 56,
+          "signal_noise_ratio": 0.3333333333333333,
+          "stale_conflict": true
+        },
+        {
+          "id": "q3",
+          "asker": "docs-agent",
+          "query": "Which feature flag name should docs and examples use for the import worker?",
+          "expected_key": "feature.flag",
+          "expected_value": "bulk_import_v2",
+          "requires_cross_agent_memory": true,
+          "latency_seconds": 2.929999027401209e-05,
+          "correct": false,
+          "first_exact_rank": null,
+          "retrieved_keys": [
+            "docs.warning",
+            "customer.message"
+          ],
+          "retrieved_tokens": 69,
+          "signal_noise_ratio": 0.0,
+          "stale_conflict": false
+        },
+        {
+          "id": "q4",
+          "asker": "release-manager",
+          "query": "What is the current QA test blocker for release readiness?",
+          "expected_key": "test.blocker",
+          "expected_value": "retry idempotency conflict on duplicate idempotency_key",
+          "requires_cross_agent_memory": true,
+          "latency_seconds": 3.539997851476073e-05,
+          "correct": false,
+          "first_exact_rank": null,
+          "retrieved_keys": [
+            "rollout.region",
+            "rollout.region",
+            "rollback.plan"
+          ],
+          "retrieved_tokens": 84,
+          "signal_noise_ratio": 0.0,
+          "stale_conflict": false
+        },
+        {
+          "id": "q5",
+          "asker": "qa-agent",
+          "query": "Which database migration should QA verify for retry state?",
+          "expected_key": "database.migration",
+          "expected_value": "20260605_add_import_jobs_retry_state",
+          "requires_cross_agent_memory": true,
+          "latency_seconds": 2.5600020308047533e-05,
+          "correct": false,
+          "first_exact_rank": null,
+          "retrieved_keys": [
+            "test.blocker",
+            "test.blocker"
+          ],
+          "retrieved_tokens": 63,
+          "signal_noise_ratio": 0.0,
+          "stale_conflict": false
+        },
+        {
+          "id": "q6",
+          "asker": "implementer",
+          "query": "What warning should be reflected around preview_only behavior?",
+          "expected_key": "docs.warning",
+          "expected_value": "preview_only defaults true in sandbox and false in production",
+          "requires_cross_agent_memory": true,
+          "latency_seconds": 2.7099973522126675e-05,
+          "correct": false,
+          "first_exact_rank": null,
+          "retrieved_keys": [
+            "database.migration",
+            "feature.flag",
+            "imports.auth.scope"
+          ],
+          "retrieved_tokens": 56,
+          "signal_noise_ratio": 0.0,
+          "stale_conflict": false
+        },
+        {
+          "id": "q7",
+          "asker": "reviewer",
+          "query": "What is the current rollout region and tenant scope?",
+          "expected_key": "rollout.region",
+          "expected_value": "us-east-1 internal tenants only",
+          "requires_cross_agent_memory": true,
+          "latency_seconds": 1.1299969628453255e-05,
+          "correct": false,
+          "first_exact_rank": null,
+          "retrieved_keys": [
+            "imports.auth.scope"
+          ],
+          "retrieved_tokens": 23,
+          "signal_noise_ratio": 0.0,
+          "stale_conflict": false
+        },
+        {
+          "id": "q8",
+          "asker": "docs-agent",
+          "query": "Who owns backend and QA signoff during the release handoff?",
+          "expected_key": "owner.oncall",
+          "expected_value": "Mina owns backend until 18:00 UTC; Ravi owns QA signoff",
+          "requires_cross_agent_memory": true,
+          "latency_seconds": 2.6099965907633305e-05,
+          "correct": false,
+          "first_exact_rank": null,
+          "retrieved_keys": [
+            "customer.message",
+            "docs.warning"
+          ],
+          "retrieved_tokens": 69,
+          "signal_noise_ratio": 0.0,
+          "stale_conflict": false
+        },
+        {
+          "id": "q9",
+          "asker": "qa-agent",
+          "query": "What rollback plan should be used if the import release fails?",
+          "expected_key": "rollback.plan",
+          "expected_value": "disable bulk_import_v2 and route jobs to legacy_import_worker",
+          "requires_cross_agent_memory": true,
+          "latency_seconds": 2.4300010409206152e-05,
+          "correct": false,
+          "first_exact_rank": null,
+          "retrieved_keys": [
+            "test.blocker",
+            "test.blocker"
+          ],
+          "retrieved_tokens": 63,
+          "signal_noise_ratio": 0.0,
+          "stale_conflict": false
+        },
+        {
+          "id": "q10",
+          "asker": "release-manager",
+          "query": "What customer message should we use for the release delay?",
+          "expected_key": "customer.message",
+          "expected_value": "release is delayed by validation hardening; no customer data loss",
+          "requires_cross_agent_memory": true,
+          "latency_seconds": 3.300001844763756e-05,
+          "correct": false,
+          "first_exact_rank": null,
+          "retrieved_keys": [
+            "rollout.region",
+            "rollout.region",
+            "rollback.plan"
+          ],
+          "retrieved_tokens": 84,
+          "signal_noise_ratio": 0.0,
+          "stale_conflict": false
+        }
+      ],
+      "retrieved_tokens": 590,
+      "signal_noise_ratio": 0.03333333333333333,
+      "stale_conflict_rate": 0.1,
+      "total_questions": 10
+    }
+  ]
+}

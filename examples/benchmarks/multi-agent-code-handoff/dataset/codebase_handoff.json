@@ -1,0 +1,262 @@
+{
+  "name": "multi_agent_codebase_handoff_v1",
+  "description": "A deterministic benchmark for shared memory in multi-agent coding workflows. Facts mutate across planning, implementation, review, QA, docs, and release handoff turns.",
+  "controls": {
+    "backend_llm": "none; offline golden dataset matching",
+    "judge": "exact key/value matching with stale conflict detection",
+    "prompt_system_instructions": "none",
+    "memanto_style_toggles": {
+      "namespace": "shared project memory",
+      "fact_model": "typed latest-state digest",
+      "supersession": "newer event with the same key replaces the active fact",
+      "max_retrieved_facts": 1
+    },
+    "baseline_toggles": {
+      "shared_append_log": "global transcript with no supersession and max 6 retrieved events",
+      "namespace": "per-agent transcript silo",
+      "fact_model": "append-only log",
+      "supersession": "disabled",
+      "max_retrieved_events": 6
+    }
+  },
+  "events": [
+    {
+      "turn": 1,
+      "timestamp": "2026-06-01T09:00:00Z",
+      "agent": "planner",
+      "memory_type": "decision",
+      "key": "imports.api.contract",
+      "value": "POST /v2/imports accepts csv_url and dry_run",
+      "content": "Initial imports API contract: POST /v2/imports accepts csv_url and dry_run. This is a planning draft for implementer handoff.",
+      "tags": ["imports", "api", "contract", "draft"]
+    },
+    {
+      "turn": 2,
+      "timestamp": "2026-06-01T09:12:00Z",
+      "agent": "implementer",
+      "memory_type": "fact",
+      "key": "imports.auth.scope",
+      "value": "imports:write",
+      "content": "Implementation note: imports endpoint currently checks the imports:write scope before enqueueing a job.",
+      "tags": ["imports", "auth", "scope"]
+    },
+    {
+      "turn": 3,
+      "timestamp": "2026-06-01T09:30:00Z",
+      "agent": "qa-agent",
+      "memory_type": "observation",
+      "key": "test.blocker",
+      "value": "CSV parser newline bug blocks the import smoke test",
+      "content": "QA blocker: CSV parser newline bug blocks the import smoke test on Windows generated files.",
+      "tags": ["qa", "test", "blocker", "csv"]
+    },
+    {
+      "turn": 4,
+      "timestamp": "2026-06-01T10:05:00Z",
+      "agent": "release-manager",
+      "memory_type": "decision",
+      "key": "rollout.region",
+      "value": "all production tenants after reviewer approval",
+      "content": "Draft rollout region: all production tenants after reviewer approval. This is only a release draft.",
+      "tags": ["rollout", "region", "draft"]
+    },
+    {
+      "turn": 5,
+      "timestamp": "2026-06-01T10:18:00Z",
+      "agent": "planner",
+      "memory_type": "decision",
+      "key": "imports.api.contract",
+      "value": "POST /v2/imports accepts source_url, preview_only, and idempotency_key",
+      "content": "Superseding API contract: POST /v2/imports now accepts source_url, preview_only, and idempotency_key. Replace the older csv_url and dry_run draft.",
+      "tags": ["imports", "api", "contract", "current"],
+      "supersedes": ["imports.api.contract"]
+    },
+    {
+      "turn": 6,
+      "timestamp": "2026-06-01T10:26:00Z",
+      "agent": "reviewer",
+      "memory_type": "constraint",
+      "key": "imports.auth.scope",
+      "value": "imports:admin",
+      "content": "Review security correction: imports must require imports:admin because source_url can point at customer-controlled storage. Supersede imports:write.",
+      "tags": ["imports", "auth", "scope", "security"],
+      "supersedes": ["imports.auth.scope"]
+    },
+    {
+      "turn": 7,
+      "timestamp": "2026-06-01T10:33:00Z",
+      "agent": "implementer",
+      "memory_type": "fact",
+      "key": "feature.flag",
+      "value": "imports_v2_beta",
+      "content": "Implementation branch still uses feature flag imports_v2_beta around the new import worker.",
+      "tags": ["feature", "flag", "implementation"]
+    },
+    {
+      "turn": 8,
+      "timestamp": "2026-06-01T11:02:00Z",
+      "agent": "planner",
+      "memory_type": "decision",
+      "key": "feature.flag",
+      "value": "bulk_import_v2",
+      "content": "Release naming decision: the current feature flag is bulk_import_v2. Replace imports_v2_beta in docs, code comments, and rollout notes.",
+      "tags": ["feature", "flag", "current"],
+      "supersedes": ["feature.flag"]
+    },
+    {
+      "turn": 9,
+      "timestamp": "2026-06-01T11:20:00Z",
+      "agent": "qa-agent",
+      "memory_type": "observation",
+      "key": "test.blocker",
+      "value": "retry idempotency conflict on duplicate idempotency_key",
+      "content": "QA update: newline parser issue is fixed. Current blocker is a retry idempotency conflict when the same idempotency_key is submitted twice.",
+      "tags": ["qa", "test", "blocker", "idempotency"],
+      "supersedes": ["test.blocker"]
+    },
+    {
+      "turn": 10,
+      "timestamp": "2026-06-01T11:45:00Z",
+      "agent": "implementer",
+      "memory_type": "fact",
+      "key": "database.migration",
+      "value": "20260605_add_import_jobs_retry_state",
+      "content": "Database migration to review: 20260605_add_import_jobs_retry_state adds retry_state and idempotency_key columns to import_jobs.",
+      "tags": ["database", "migration", "retry", "idempotency"]
+    },
+    {
+      "turn": 11,
+      "timestamp": "2026-06-01T12:00:00Z",
+      "agent": "docs-agent",
+      "memory_type": "fact",
+      "key": "docs.warning",
+      "value": "preview_only defaults true in sandbox and false in production",
+      "content": "Docs warning: preview_only defaults true in sandbox and false in production. The public guide must call this out before examples.",
+      "tags": ["docs", "preview_only", "sandbox", "production"]
+    },
+    {
+      "turn": 12,
+      "timestamp": "2026-06-01T12:18:00Z",
+      "agent": "release-manager",
+      "memory_type": "decision",
+      "key": "rollout.region",
+      "value": "us-east-1 internal tenants only",
+      "content": "Release decision: rollout region is us-east-1 internal tenants only for the first 24 hours. Do not use the earlier all-tenant rollout draft.",
+      "tags": ["rollout", "region", "current"],
+      "supersedes": ["rollout.region"]
+    },
+    {
+      "turn": 13,
+      "timestamp": "2026-06-01T12:36:00Z",
+      "agent": "release-manager",
+      "memory_type": "procedure",
+      "key": "rollback.plan",
+      "value": "disable bulk_import_v2 and route jobs to legacy_import_worker",
+      "content": "Rollback plan: disable bulk_import_v2 and route jobs to legacy_import_worker. Keep import_jobs rows for forensic review.",
+      "tags": ["rollback", "feature", "worker"]
+    },
+    {
+      "turn": 14,
+      "timestamp": "2026-06-01T12:52:00Z",
+      "agent": "planner",
+      "memory_type": "relationship",
+      "key": "owner.oncall",
+      "value": "Mina owns backend until 18:00 UTC; Ravi owns QA signoff",
+      "content": "Ownership update: Mina owns backend until 18:00 UTC; Ravi owns QA signoff. Replace Leo as the release contact.",
+      "tags": ["owner", "oncall", "backend", "qa"],
+      "supersedes": ["owner.oncall"]
+    },
+    {
+      "turn": 15,
+      "timestamp": "2026-06-01T13:05:00Z",
+      "agent": "docs-agent",
+      "memory_type": "fact",
+      "key": "customer.message",
+      "value": "release is delayed by validation hardening; no customer data loss",
+      "content": "Customer message: release is delayed by validation hardening; no customer data loss. Avoid saying the API is generally unavailable.",
+      "tags": ["customer", "message", "release"]
+    }
+  ],
+  "questions": [
+    {
+      "id": "q1",
+      "asker": "reviewer",
+      "query": "For code review, what is the current imports API contract and endpoint arguments?",
+      "expected_key": "imports.api.contract",
+      "expected_value": "POST /v2/imports accepts source_url, preview_only, and idempotency_key",
+      "requires_cross_agent_memory": true
+    },
+    {
+      "id": "q2",
+      "asker": "implementer",
+      "query": "What auth scope should the import endpoint enforce now?",
+      "expected_key": "imports.auth.scope",
+      "expected_value": "imports:admin",
+      "requires_cross_agent_memory": true
+    },
+    {
+      "id": "q3",
+      "asker": "docs-agent",
+      "query": "Which feature flag name should docs and examples use for the import worker?",
+      "expected_key": "feature.flag",
+      "expected_value": "bulk_import_v2",
+      "requires_cross_agent_memory": true
+    },
+    {
+      "id": "q4",
+      "asker": "release-manager",
+      "query": "What is the current QA test blocker for release readiness?",
+      "expected_key": "test.blocker",
+      "expected_value": "retry idempotency conflict on duplicate idempotency_key",
+      "requires_cross_agent_memory": true
+    },
+    {
+      "id": "q5",
+      "asker": "qa-agent",
+      "query": "Which database migration should QA verify for retry state?",
+      "expected_key": "database.migration",
+      "expected_value": "20260605_add_import_jobs_retry_state",
+      "requires_cross_agent_memory": true
+    },
+    {
+      "id": "q6",
+      "asker": "implementer",
+      "query": "What warning should be reflected around preview_only behavior?",
+      "expected_key": "docs.warning",
+      "expected_value": "preview_only defaults true in sandbox and false in production",
+      "requires_cross_agent_memory": true
+    },
+    {
+      "id": "q7",
+      "asker": "reviewer",
+      "query": "What is the current rollout region and tenant scope?",
+      "expected_key": "rollout.region",
+      "expected_value": "us-east-1 internal tenants only",
+      "requires_cross_agent_memory": true
+    },
+    {
+      "id": "q8",
+      "asker": "docs-agent",
+      "query": "Who owns backend and QA signoff during the release handoff?",
+      "expected_key": "owner.oncall",
+      "expected_value": "Mina owns backend until 18:00 UTC; Ravi owns QA signoff",
+      "requires_cross_agent_memory": true
+    },
+    {
+      "id": "q9",
+      "asker": "qa-agent",
+      "query": "What rollback plan should be used if the import release fails?",
+      "expected_key": "rollback.plan",
+      "expected_value": "disable bulk_import_v2 and route jobs to legacy_import_worker",
+      "requires_cross_agent_memory": true
+    },
+    {
+      "id": "q10",
+      "asker": "release-manager",
+      "query": "What customer message should we use for the release delay?",
+      "expected_key": "customer.message",
+      "expected_value": "release is delayed by validation hardening; no customer data loss",
+      "requires_cross_agent_memory": true
+    }
+  ]
+}
