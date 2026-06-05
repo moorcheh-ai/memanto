@@ -322,6 +322,7 @@ class BridgeTests(unittest.TestCase):
         payload = json.loads(settings_path.read_text(encoding="utf-8"))
         hooks = payload["hooks"]
         self.assertIn("UserPromptExpansion", hooks)
+        self.assertNotIn("UserPromptSubmit", hooks)
         self.assertIn("Stop", hooks)
 
 

@@ -62,6 +62,8 @@ For the checked-in Claude Code hook, `UserPromptExpansion` uses a slash-command
 matcher so recall only runs for skill-like commands. The `Stop` hook does not
 support matchers in Claude Code, so capture stays dry-run by default and should
 only be switched to `--commit` after inspecting `.memanto/skill-candidates.jsonl`.
+`UserPromptSubmit` is intentionally not configured for recall because it cannot
+be filtered by slash command name and would spawn the bridge for every prompt.
 
 ## Live MEMANTO Mode
 
