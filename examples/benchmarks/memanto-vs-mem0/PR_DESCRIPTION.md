@@ -6,7 +6,7 @@ This PR adds a reproducible benchmark under `/examples/benchmarks/memanto-vs-mem
 
 ## Social Media Showcase
 
-- **Reddit post**: [LINK_HERE]
+- **Reddit post**: https://www.reddit.com/r/AgenticMemory/comments/1txsdns/benchmark_memanto_vs_mem0_agent_memory_retrieval/
 - **X/Twitter post**: [LINK_HERE]
 
 ## Benchmark Metrics
@@ -51,3 +51,4 @@ python benchmark.py
 - [x] Built benchmark comparing Memanto vs alternative memory layer
 - [x] Added implementation to `/examples/benchmarks/`
 - [x] Posted on social media with showcase and metrics
+
