@@ -10,6 +10,8 @@ from incident_memory_pressure.runner import run_benchmark
 
 
 def test_memanto_style_backend_uses_less_context_than_append_only() -> None:
+    """The typed digest should retrieve less context than the append-only log."""
+
     report = run_benchmark()
     results = {result.backend: result for result in report.results}
 
@@ -21,6 +23,8 @@ def test_memanto_style_backend_uses_less_context_than_append_only() -> None:
 
 
 def test_memanto_style_backend_suppresses_stale_facts() -> None:
+    """The typed digest should suppress stale facts better than the baseline."""
+
     report = run_benchmark()
     results = {result.backend: result for result in report.results}
 
@@ -32,6 +36,8 @@ def test_memanto_style_backend_suppresses_stale_facts() -> None:
 
 
 def test_report_outputs_are_stable() -> None:
+    """JSON and Markdown report outputs should include expected stable labels."""
+
     report = run_benchmark()
 
     json_output = report.to_json()

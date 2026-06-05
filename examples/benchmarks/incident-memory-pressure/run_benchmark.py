@@ -7,6 +7,8 @@ from incident_memory_pressure.runner import run_benchmark
 
 
 def main() -> None:
+    """Parse CLI arguments and print or write benchmark results."""
+
     parser = argparse.ArgumentParser(description="Run the incident memory benchmark")
     parser.add_argument(
         "--format",

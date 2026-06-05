@@ -12,30 +12,44 @@ TOKEN_RE = re.compile(r"[A-Za-z0-9_.-]+")
 
 @dataclass(frozen=True)
 class MemoryHit:
+    """A recalled memory snippet with provenance metadata."""
+
     text: str
     source_key: str
     session: int
 
     @property
     def tokens(self) -> int:
+        """Return an approximate token count for the recalled text."""
+
         return len(TOKEN_RE.findall(self.text))
 
 
 class MemoryBackend(Protocol):
+    """Minimal backend contract required by the benchmark runner."""
+
     name: str
 
     def ingest(self, records: Iterable[IncidentRecord]) -> None:
+        """Store benchmark incident records in the backend."""
+
         ...
 
     def recall(self, query: IncidentQuery) -> list[MemoryHit]:
+        """Return memory snippets relevant to a benchmark query."""
+
         ...
 
 
 def token_count(text: str) -> int:
+    """Return the benchmark's simple lexical token count."""
+
     return len(TOKEN_RE.findall(text))
 
 
 def _query_terms(query: IncidentQuery) -> set[str]:
+    """Derive coarse retrieval terms from a benchmark query."""
+
     terms = {query.service}
     prompt = query.prompt.lower()
     for term in ("owner", "runbook", "status", "customer", "rollback", "escalation"):
@@ -45,13 +59,19 @@ def _query_terms(query: IncidentQuery) -> set[str]:
 
 
 class MemantoTypedDigestBackend:
+    """A Memanto-style backend that keeps current typed facts by key."""
+
     name = "memanto_typed_digest"
 
     def __init__(self) -> None:
+        """Create an empty typed digest memory."""
+
         self.current_by_key: dict[str, IncidentRecord] = {}
         self.history: list[IncidentRecord] = []
 
     def ingest(self, records: Iterable[IncidentRecord]) -> None:
+        """Store each record while applying supersession keys."""
+
         for record in records:
             self.history.append(record)
             for old_key in record.supersedes:
@@ -59,6 +79,8 @@ class MemantoTypedDigestBackend:
             self.current_by_key[record.key] = record
 
     def recall(self, query: IncidentQuery) -> list[MemoryHit]:
+        """Recall the strongest current typed facts for a query."""
+
         terms = _query_terms(query)
         scored: list[tuple[int, IncidentRecord]] = []
         for record in self.current_by_key.values():
@@ -82,15 +104,23 @@ class MemantoTypedDigestBackend:
 
 
 class AppendOnlyLogBackend:
+    """A baseline backend that retains every historical incident record."""
+
     name = "append_only_log"
 
     def __init__(self) -> None:
+        """Create an empty append-only memory."""
+
         self.records: list[IncidentRecord] = []
 
     def ingest(self, records: Iterable[IncidentRecord]) -> None:
+        """Append all incident records without supersession."""
+
         self.records.extend(records)
 
     def recall(self, query: IncidentQuery) -> list[MemoryHit]:
+        """Recall matching historical and current records for a query."""
+
         terms = _query_terms(query)
         matches: list[tuple[int, IncidentRecord]] = []
         for record in self.records:

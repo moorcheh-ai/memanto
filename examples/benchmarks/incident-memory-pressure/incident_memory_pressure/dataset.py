@@ -5,6 +5,8 @@ from dataclasses import dataclass
 
 @dataclass(frozen=True)
 class IncidentRecord:
+    """One fact emitted during an incident response timeline."""
+
     session: int
     service: str
     key: str
@@ -15,6 +17,8 @@ class IncidentRecord:
 
 @dataclass(frozen=True)
 class IncidentQuery:
+    """A retrieval prompt with expected current facts and stale facts to reject."""
+
     service: str
     prompt: str
     expected_fragments: tuple[str, ...]
@@ -22,6 +26,8 @@ class IncidentQuery:
 
 
 def incident_records() -> list[IncidentRecord]:
+    """Return the deterministic benchmark incident timeline."""
+
     return [
         IncidentRecord(
             1,
@@ -159,7 +165,10 @@ def incident_records() -> list[IncidentRecord]:
         ),
     ]
 
+
 def incident_queries() -> list[IncidentQuery]:
+    """Return the benchmark questions used to score memory backends."""
+
     return [
         IncidentQuery(
             "payments",

@@ -16,6 +16,8 @@ from .dataset import IncidentQuery, IncidentRecord, incident_queries, incident_r
 
 @dataclass(frozen=True)
 class BackendResult:
+    """Aggregate metrics for one memory backend."""
+
     backend: str
     tokens_ingested: int
     tokens_retrieved: int
@@ -27,6 +29,8 @@ class BackendResult:
 
 @dataclass(frozen=True)
 class QueryTrace:
+    """Per-query context and scoring trace for a backend run."""
+
     backend: str
     prompt: str
     context: str
@@ -37,10 +41,14 @@ class QueryTrace:
 
 @dataclass(frozen=True)
 class BenchmarkReport:
+    """Complete benchmark output with aggregate metrics and traces."""
+
     results: list[BackendResult]
     traces: list[QueryTrace]
 
     def to_json(self) -> str:
+        """Serialize the benchmark report as stable JSON."""
+
         return json.dumps(
             {
                 "results": [asdict(result) for result in self.results],
@@ -51,6 +59,8 @@ class BenchmarkReport:
         )
 
     def to_markdown(self) -> str:
+        """Render the benchmark report as a Markdown table."""
+
         lines = [
             "# Incident Memory Pressure Benchmark Results",
             "",
@@ -84,6 +94,8 @@ class BenchmarkReport:
 
 
 def run_benchmark() -> BenchmarkReport:
+    """Run every backend against the shared incident-memory dataset."""
+
     records = incident_records()
     queries = incident_queries()
     backends: list[MemoryBackend] = [
@@ -106,6 +118,8 @@ def _evaluate_backend(
     records: list[IncidentRecord],
     queries: list[IncidentQuery],
 ) -> tuple[BackendResult, list[QueryTrace]]:
+    """Score one backend across the benchmark query set."""
+
     tokens_ingested = sum(token_count(record.text) for record in records)
     tokens_retrieved = 0
     expected_total = 0
@@ -170,6 +184,8 @@ def _evaluate_backend(
 
 
 def _p95(values: list[float]) -> float:
+    """Return a simple nearest-rank p95 latency value."""
+
     if len(values) < 2:
         return values[0] if values else 0.0
     sorted_values = sorted(values)
