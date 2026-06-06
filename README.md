@@ -1,5 +1,4 @@
-<a href="https://github.com/moorcheh-ai/memanto/blob/main/benchmark/README.md">
-    <img src="https://img.shields.io/badge/View-Benchmark%20Results-blue?style=for-the-badge" alt="View Benchmark Results"></a>
+# Memanto Benchmarking & Evaluation Suite
 
 <p align="center">
     <a href="https://www.memanto.ai/">
@@ -40,30 +39,32 @@
  </picture>
 </a>
 
-
 ---
-
-## Benchmark & Evaluation
-
-We've created a comprehensive benchmarking suite to evaluate Memanto against other agentic memory frameworks. This benchmark measures:
-
-- **Token Efficiency**: How effectively memory systems use tokens
-- **Latency Performance**: P95 response times for memory operations  
-- **Resource Utilization**: CPU/memory usage during memory operations
-- **Accuracy Metrics**: Recall precision and relevance scoring
-
-The benchmark suite is available in the [benchmark directory](./benchmark) and includes:
-- Side-by-side comparison with Mem0 and Zep
-- Performance reports and visualization tools
-- Automated stress testing for 10k+ memory operations
 
 ## What Is MEMANTO?
 
 **MEMANTO is a memory agent. It remembers, recalls, and answers — so your agents can achieve long-term goals and avoid confusion.**
+
 Most memory tools today are passive infrastructure: agents have to query them, parse the results, and figure out what to do next. MEMANTO is built differently. It's an active memory agent designed from the gaps agents themselves named when asked about their memory — three operations (`remember`, `recall`, `answer`) that give your agents persistent context across sessions, with state-of-the-art retrieval and zero ingestion latency.
 
 > *"My memory exists as a static snapshot injected into context — useful, but fundamentally passive. I can't query it, update it mid-conversation, express confidence levels, or distinguish between 'I know this' versus 'I was told this once.'"*
->
+> *"My memory exists as a static snapshot injected into context — useful, but fundamentally passive. I can't query it, update it mid-conver
+---
+
+## Benchmarking & Evaluation
+
+To participate in The Great Agentic Memory Showdown, you can use our benchmarking suite to compare Memanto against other memory frameworks.
+
+### Structure
+
+The benchmarking suite evaluates memory systems on two key dimensions:
+
+- **Accuracy**: How well the system retrieves relevant memories
+- **Resource Footprint**: Token usage, latency, and processing overhead
+
+### Installation
+
+
 > — A representative model reply that became MEMANTO's design brief.
 
 We unpacked that into six concrete gaps and built MEMANTO to solve all six.
