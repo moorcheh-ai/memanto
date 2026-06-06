@@ -22,6 +22,8 @@ ROOT = Path(__file__).resolve().parent
 
 @dataclass(frozen=True)
 class MemoryEvent:
+    """Single timeline event that can set, revoke, or erase a memory fact."""
+
     turn: int
     user: str
     kind: str
@@ -32,6 +34,8 @@ class MemoryEvent:
 
 @dataclass(frozen=True)
 class QueryCase:
+    """Golden query used to evaluate current memory retrieval behavior."""
+
     user: str
     key: str
     prompt: str
@@ -41,6 +45,8 @@ class QueryCase:
 
 @dataclass(frozen=True)
 class QueryResult:
+    """Per-backend result for one golden query."""
+
     backend: str
     prompt: str
     expected_value: str | None
@@ -54,6 +60,8 @@ class QueryResult:
 
 @dataclass(frozen=True)
 class BackendSummary:
+    """Aggregate metrics for one benchmark backend."""
+
     backend: str
     accuracy: float
     stale_leak_rate: float
@@ -94,19 +102,26 @@ QUERIES = [
 
 
 class Backend:
+    """Minimal interface shared by deterministic memory backends."""
+
     name = "backend"
 
     def __init__(self, events: Iterable[MemoryEvent]) -> None:
+        """Store the event timeline used by this backend."""
         self.events = list(events)
 
     def answer(self, query: QueryCase) -> tuple[str | None, list[str]]:
+        """Return an answer and retrieved context snippets for a query."""
         raise NotImplementedError
 
 
 class ActiveConsentDigest(Backend):
+    """Memanto-style active digest that keeps only current allowed facts."""
+
     name = "active_consent_digest"
 
     def __init__(self, events: Iterable[MemoryEvent]) -> None:
+        """Build current consent state while tracking erased keys."""
         super().__init__(events)
         self.current: dict[tuple[str, str], str] = {}
         self.erased: set[tuple[str, str]] = set()
@@ -120,6 +135,7 @@ class ActiveConsentDigest(Backend):
                 self.erased.discard(key)
 
     def answer(self, query: QueryCase) -> tuple[str | None, list[str]]:
+        """Answer from the current digest without surfacing erased facts."""
         key = (query.user, query.key)
         if key in self.erased:
             return None, []
@@ -130,9 +146,12 @@ class ActiveConsentDigest(Backend):
 
 
 class AppendOnlyLog(Backend):
+    """Naive baseline that retrieves every matching historical event."""
+
     name = "append_only_log"
 
     def answer(self, query: QueryCase) -> tuple[str | None, list[str]]:
+        """Return all historical matches, including stale or erased facts."""
         matches = [
             event.text
             for event in self.events
@@ -145,15 +164,19 @@ class AppendOnlyLog(Backend):
 
 
 class RecentWindowLog(Backend):
+    """Low-token baseline that searches only the last N events."""
+
     name = "recent_window_log"
 
     def __init__(self, events: Iterable[MemoryEvent], window: int = 3) -> None:
+        """Create a recent-window backend with a positive window size."""
         if not isinstance(window, int) or window <= 0:
             raise ValueError("window must be a positive integer")
         super().__init__(events)
         self.window = window
 
     def answer(self, query: QueryCase) -> tuple[str | None, list[str]]:
+        """Return matching facts from the recent event window only."""
         recent = self.events[-self.window :]
         matches = [
             event.text
@@ -167,10 +190,12 @@ class RecentWindowLog(Backend):
 
 
 def token_count(items: Iterable[str]) -> int:
+    """Approximate retrieved context size with whitespace token counts."""
     return sum(len(item.split()) for item in items)
 
 
 def evaluate_backend(backend: Backend, queries: Iterable[QueryCase]) -> list[QueryResult]:
+    """Run all queries against one backend and score leaks and correctness."""
     rows: list[QueryResult] = []
     for query in queries:
         started = time.perf_counter()
@@ -199,6 +224,7 @@ def evaluate_backend(backend: Backend, queries: Iterable[QueryCase]) -> list[Que
 
 
 def p95(values: list[float]) -> float:
+    """Return inclusive p95 for a short deterministic latency sample."""
     if not values:
         return 0.0
     if len(values) == 1:
@@ -207,6 +233,7 @@ def p95(values: list[float]) -> float:
 
 
 def summarize(rows: list[QueryResult]) -> BackendSummary:
+    """Aggregate per-query results into the challenge success metrics."""
     if not rows:
         raise ValueError("cannot summarize empty query results")
     total = len(rows)
@@ -227,6 +254,7 @@ def summarize(rows: list[QueryResult]) -> BackendSummary:
 
 
 def run() -> dict[str, object]:
+    """Execute the full benchmark and return a serializable report."""
     backends: list[Backend] = [
         ActiveConsentDigest(EVENTS),
         AppendOnlyLog(EVENTS),
@@ -249,6 +277,7 @@ def run() -> dict[str, object]:
 
 
 def write_markdown(report: dict[str, object], path: Path) -> None:
+    """Write the benchmark summary table as Markdown."""
     summaries = report["summaries"]
     assert isinstance(summaries, list)
     lines = [
@@ -269,6 +298,7 @@ def write_markdown(report: dict[str, object], path: Path) -> None:
 
 
 def main() -> int:
+    """CLI entry point for generating JSON and Markdown benchmark reports."""
     parser = argparse.ArgumentParser()
     parser.add_argument("--output", default=str(ROOT / "results" / "sample_results.json"))
     parser.add_argument("--markdown", default=str(ROOT / "results" / "sample_results.md"))

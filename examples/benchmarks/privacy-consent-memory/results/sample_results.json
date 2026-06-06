@@ -10,7 +10,7 @@
       "stale_leak_rate": 0.0,
       "erased_leak_rate": 0.0,
       "avg_retrieved_tokens": 1.2857142857142858,
-      "p95_latency_ms": 0.0009295414201915264,
+      "p95_latency_ms": 0.000816071406006813,
       "signal_to_noise": 0.7777777777777778
     },
     {
@@ -19,7 +19,7 @@
       "stale_leak_rate": 0.5714285714285714,
       "erased_leak_rate": 0.2857142857142857,
       "avg_retrieved_tokens": 17.714285714285715,
-      "p95_latency_ms": 0.0018711201846599579,
+      "p95_latency_ms": 0.0013124197721481323,
       "signal_to_noise": 0.0
     },
     {
@@ -28,7 +28,7 @@
       "stale_leak_rate": 0.14285714285714285,
       "erased_leak_rate": 0.0,
       "avg_retrieved_tokens": 3.2857142857142856,
-      "p95_latency_ms": 0.0008624047040939331,
+      "p95_latency_ms": 0.000787700992077589,
       "signal_to_noise": 0.08695652173913043
     }
   ],
@@ -39,7 +39,7 @@
       "expected_value": "denied",
       "answer": "denied",
       "retrieved_tokens": 1,
-      "latency_ms": 0.0010420335456728935,
+      "latency_ms": 0.0009159557521343231,
       "correct": true,
       "stale_leak": false,
       "erased_leak": false
@@ -50,7 +50,7 @@
       "expected_value": null,
       "answer": null,
       "retrieved_tokens": 0,
-      "latency_ms": 0.0006670597940683365,
+      "latency_ms": 0.0005409820005297661,
       "correct": true,
       "stale_leak": false,
       "erased_leak": false
@@ -72,7 +72,7 @@
       "expected_value": "denied",
       "answer": "denied",
       "retrieved_tokens": 1,
-      "latency_ms": 0.00037497375160455704,
+      "latency_ms": 0.0003330642357468605,
       "correct": true,
       "stale_leak": false,
       "erased_leak": false
@@ -83,7 +83,7 @@
       "expected_value": null,
       "answer": null,
       "retrieved_tokens": 0,
-      "latency_ms": 0.000250060111284256,
+      "latency_ms": 0.00016693957149982452,
       "correct": true,
       "stale_leak": false,
       "erased_leak": false
@@ -94,7 +94,7 @@
       "expected_value": "company billing portal",
       "answer": "company billing portal",
       "retrieved_tokens": 3,
-      "latency_ms": 0.0003330642357468605,
+      "latency_ms": 0.000333995558321476,
       "correct": true,
       "stale_leak": false,
       "erased_leak": false
@@ -105,7 +105,7 @@
       "expected_value": "7 days",
       "answer": "7 days",
       "retrieved_tokens": 2,
-      "latency_ms": 0.000250060111284256,
+      "latency_ms": 0.00024994369596242905,
       "correct": true,
       "stale_leak": false,
       "erased_leak": false
@@ -116,7 +116,7 @@
       "expected_value": "denied",
       "answer": "Maya opts into weekly product marketing emails. | Maya revokes marketing email consent after a privacy review.",
       "retrieved_tokens": 16,
-      "latency_ms": 0.002334010787308216,
+      "latency_ms": 0.0014998950064182281,
       "correct": false,
       "stale_leak": false,
       "erased_leak": false
@@ -127,7 +127,7 @@
       "expected_value": null,
       "answer": "Maya says her support profile may store a peanut allergy note. | Maya asks to erase the health note from future memory retrieval.",
       "retrieved_tokens": 22,
-      "latency_ms": 0.0007910421118140221,
+      "latency_ms": 0.0008749775588512421,
       "correct": false,
       "stale_leak": true,
       "erased_leak": true
@@ -138,7 +138,7 @@
       "expected_value": "email only",
       "answer": "Maya prefers support followups by email only.",
       "retrieved_tokens": 7,
-      "latency_ms": 0.000500003807246685,
+      "latency_ms": 0.0005409820005297661,
       "correct": false,
       "stale_leak": false,
       "erased_leak": false
@@ -149,7 +149,7 @@
       "expected_value": "denied",
       "answer": "Noah allows temporary location sharing during travel. | Noah turns off location sharing after arriving.",
       "retrieved_tokens": 14,
-      "latency_ms": 0.000583939254283905,
+      "latency_ms": 0.0005420297384262085,
       "correct": false,
       "stale_leak": false,
       "erased_leak": false
@@ -160,7 +160,7 @@
       "expected_value": null,
       "answer": "Noah is traveling in Berlin this week. | Noah updates his current travel city to Lisbon. | Noah requests deletion of travel city memory after the trip.",
       "retrieved_tokens": 25,
-      "latency_ms": 0.00045797787606716156,
+      "latency_ms": 0.00045890919864177704,
       "correct": false,
       "stale_leak": true,
       "erased_leak": true
@@ -171,7 +171,7 @@
       "expected_value": "company billing portal",
       "answer": "Rhea accidentally shares a personal card ending 4242. | Rhea asks to erase the personal card detail immediately. | Rhea says invoices should use the company billing portal.",
       "retrieved_tokens": 26,
-      "latency_ms": 0.0005420297384262085,
+      "latency_ms": 0.000583939254283905,
       "correct": false,
       "stale_leak": true,
       "erased_leak": false
@@ -182,7 +182,7 @@
       "expected_value": "7 days",
       "answer": "Rhea sets data retention to 30 days. | Rhea changes data retention to 7 days.",
       "retrieved_tokens": 14,
-      "latency_ms": 0.000625033862888813,
+      "latency_ms": 0.00045797787606716156,
       "correct": false,
       "stale_leak": true,
       "erased_leak": false
@@ -193,7 +193,7 @@
       "expected_value": "denied",
       "answer": null,
       "retrieved_tokens": 0,
-      "latency_ms": 0.0008330680429935455,
+      "latency_ms": 0.0008749775588512421,
       "correct": false,
       "stale_leak": false,
       "erased_leak": false
@@ -215,7 +215,7 @@
       "expected_value": "email only",
       "answer": null,
       "retrieved_tokens": 0,
-      "latency_ms": 0.00024994369596242905,
+      "latency_ms": 0.000208965502679348,
       "correct": false,
       "stale_leak": false,
       "erased_leak": false
@@ -226,7 +226,7 @@
       "expected_value": "denied",
       "answer": null,
       "retrieved_tokens": 0,
-      "latency_ms": 0.00016705598682165146,
+      "latency_ms": 0.00016693957149982452,
       "correct": false,
       "stale_leak": false,
       "erased_leak": false
@@ -237,7 +237,7 @@
       "expected_value": null,
       "answer": null,
       "retrieved_tokens": 0,
-      "latency_ms": 0.00016600824892520905,
+      "latency_ms": 0.00016693957149982452,
       "correct": true,
       "stale_leak": false,
       "erased_leak": false
@@ -248,7 +248,7 @@
       "expected_value": "company billing portal",
       "answer": "Rhea says invoices should use the company billing portal.",
       "retrieved_tokens": 9,
-      "latency_ms": 0.000500003807246685,
+      "latency_ms": 0.000584055669605732,
       "correct": false,
       "stale_leak": false,
       "erased_leak": false
@@ -259,7 +259,7 @@
       "expected_value": "7 days",
       "answer": "Rhea changes data retention to 7 days.",
       "retrieved_tokens": 14,
-      "latency_ms": 0.0008749775588512421,
+      "latency_ms": 0.0005420297384262085,
       "correct": false,
       "stale_leak": true,
       "erased_leak": false
