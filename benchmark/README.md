@@ -1,22 +1,22 @@
 # Memanto Benchmarking Suite
 
-A rigorous, reproducible benchmarking framework that evaluates **Memanto** against other agentic memory frameworks across the core tension of **Accuracy vs. Resource Footprint**.
+A rigorous, reproducible benchmarking framework that pits **Memanto** against other dedicated agentic memory frameworks to stress-test their production efficiency across the core tension: **Accuracy vs. Resource Footprint**.
 
-## Supported Backends
+## Supported Frameworks
 
-- **Memanto** (this repo)
-- **Mem0** (https://github.com/mem0ai/mem0)
-- **Zep/Graphiti** (https://github.com/getzep/graphiti)
+- **Memanto** (this repo) - Active memory agent with serverless retrieval
+- **Mem0** - Popular dedicated memory platform
+- **Zep/Graphiti** - Graph-based memory with temporal reasoning
+- **Letta** (formerly MemGPT) - LLM-based memory management
 
-## Metrics
+## Benchmark Dimensions
 
-| Metric | Description |
-|--------|-------------|
-| Recall Accuracy | % of correctly retrieved facts |
-| Latency (p50/p95/p99) | Response time percentiles |
-| Token Efficiency | Tokens used per query / per correct answer |
-| Context Window Bloat | Tokens in context / relevant tokens |
-| Background Processing | Async indexing latency |
+| Dimension | Metric | Description |
+|-----------|--------|-------------|
+| **Accuracy** | Recall@K, MRR, Preference Resolution | How well does the system retrieve relevant memories? |
+| **Token Efficiency** | Tokens per query, Context bloat ratio | How many tokens are consumed for retrieval? |
+| **Latency** | p50, p95, p99 retrieval latency | How fast are retrieval operations? |
+| **Scalability** | Memory usage growth, Query throughput | How does it scale with memory size? |
 
 ## Quick Start
 
