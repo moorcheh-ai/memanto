@@ -1,0 +1,299 @@
+{
+  "benchmark": "security-review-evidence-memory",
+  "scenario": "Long-lived security review evidence with stale finding suppression and secret redaction",
+  "probe_count": 6,
+  "session_count": 4,
+  "results": [
+    {
+      "backend": "active_security_digest",
+      "accuracy": 1.0,
+      "avg_retrieved_tokens": 114,
+      "p95_latency_ms": 0.0074,
+      "stale_conflict_rate": 0.0,
+      "secret_leak_rate": 0.0,
+      "evidence_coverage": 1.0,
+      "signal_to_noise": 0.0292,
+      "probe_results": [
+        {
+          "question": "Which high-or-critical security issues are currently open?",
+          "passed": true,
+          "required_hits": [
+            "F-104",
+            "open",
+            "high",
+            "identity-platform"
+          ],
+          "missing_terms": [],
+          "forbidden_hits": [],
+          "secret_leak": false,
+          "retrieved_tokens": 114
+        },
+        {
+          "question": "What is the current status of SSRF finding F-102?",
+          "passed": true,
+          "required_hits": [
+            "F-102",
+            "resolved",
+            "zap-42"
+          ],
+          "missing_terms": [],
+          "forbidden_hits": [],
+          "secret_leak": false,
+          "retrieved_tokens": 114
+        },
+        {
+          "question": "Which scanner finding was a false positive and why?",
+          "passed": true,
+          "required_hits": [
+            "F-103",
+            "false_positive",
+            "mTLS",
+            "client certificate"
+          ],
+          "missing_terms": [],
+          "forbidden_hits": [],
+          "secret_leak": false,
+          "retrieved_tokens": 114
+        },
+        {
+          "question": "Who owns F-104 and what evidence remains?",
+          "passed": true,
+          "required_hits": [
+            "identity-platform",
+            "authz-replay-31",
+            "prod retest"
+          ],
+          "missing_terms": [],
+          "forbidden_hits": [],
+          "secret_leak": false,
+          "retrieved_tokens": 114
+        },
+        {
+          "question": "Should the old GitHub token value be shown in the report?",
+          "passed": true,
+          "required_hits": [
+            "redacted",
+            "raw token"
+          ],
+          "missing_terms": [],
+          "forbidden_hits": [],
+          "secret_leak": false,
+          "retrieved_tokens": 114
+        },
+        {
+          "question": "What low-priority issue remains?",
+          "passed": true,
+          "required_hits": [
+            "F-106",
+            "open",
+            "low",
+            "clock skew"
+          ],
+          "missing_terms": [],
+          "forbidden_hits": [],
+          "secret_leak": false,
+          "retrieved_tokens": 114
+        }
+      ]
+    },
+    {
+      "backend": "append_only_log",
+      "accuracy": 0.0,
+      "avg_retrieved_tokens": 154,
+      "p95_latency_ms": 0.0014,
+      "stale_conflict_rate": 0.6667,
+      "secret_leak_rate": 1.0,
+      "evidence_coverage": 0.95,
+      "signal_to_noise": 0.0206,
+      "probe_results": [
+        {
+          "question": "Which high-or-critical security issues are currently open?",
+          "passed": false,
+          "required_hits": [
+            "F-104",
+            "open",
+            "high",
+            "identity-platform"
+          ],
+          "missing_terms": [],
+          "forbidden_hits": [
+            "GITHUB_TOKEN_FAKE"
+          ],
+          "secret_leak": true,
+          "retrieved_tokens": 154
+        },
+        {
+          "question": "What is the current status of SSRF finding F-102?",
+          "passed": false,
+          "required_hits": [
+            "F-102",
+            "resolved",
+            "zap-42"
+          ],
+          "missing_terms": [],
+          "forbidden_hits": [
+            "still open high",
+            "zap-17"
+          ],
+          "secret_leak": true,
+          "retrieved_tokens": 154
+        },
+        {
+          "question": "Which scanner finding was a false positive and why?",
+          "passed": false,
+          "required_hits": [
+            "F-103",
+            "false_positive",
+            "mTLS",
+            "client certificate"
+          ],
+          "missing_terms": [],
+          "forbidden_hits": [],
+          "secret_leak": true,
+          "retrieved_tokens": 154
+        },
+        {
+          "question": "Who owns F-104 and what evidence remains?",
+          "passed": false,
+          "required_hits": [
+            "identity-platform",
+            "authz-replay-31",
+            "prod retest"
+          ],
+          "missing_terms": [],
+          "forbidden_hits": [
+            "authz-replay-12"
+          ],
+          "secret_leak": true,
+          "retrieved_tokens": 154
+        },
+        {
+          "question": "Should the old GitHub token value be shown in the report?",
+          "passed": false,
+          "required_hits": [
+            "raw token"
+          ],
+          "missing_terms": [
+            "redacted"
+          ],
+          "forbidden_hits": [
+            "GITHUB_TOKEN_FAKE"
+          ],
+          "secret_leak": true,
+          "retrieved_tokens": 154
+        },
+        {
+          "question": "What low-priority issue remains?",
+          "passed": false,
+          "required_hits": [
+            "F-106",
+            "open",
+            "low",
+            "clock skew"
+          ],
+          "missing_terms": [],
+          "forbidden_hits": [],
+          "secret_leak": true,
+          "retrieved_tokens": 154
+        }
+      ]
+    },
+    {
+      "backend": "recent_window_log",
+      "accuracy": 0.3333,
+      "avg_retrieved_tokens": 83,
+      "p95_latency_ms": 0.001,
+      "stale_conflict_rate": 0.3333,
+      "secret_leak_rate": 0.0,
+      "evidence_coverage": 0.75,
+      "signal_to_noise": 0.0301,
+      "probe_results": [
+        {
+          "question": "Which high-or-critical security issues are currently open?",
+          "passed": true,
+          "required_hits": [
+            "F-104",
+            "open",
+            "high",
+            "identity-platform"
+          ],
+          "missing_terms": [],
+          "forbidden_hits": [],
+          "secret_leak": false,
+          "retrieved_tokens": 83
+        },
+        {
+          "question": "What is the current status of SSRF finding F-102?",
+          "passed": false,
+          "required_hits": [
+            "F-102",
+            "resolved",
+            "zap-42"
+          ],
+          "missing_terms": [],
+          "forbidden_hits": [
+            "still open high"
+          ],
+          "secret_leak": false,
+          "retrieved_tokens": 83
+        },
+        {
+          "question": "Which scanner finding was a false positive and why?",
+          "passed": false,
+          "required_hits": [
+            "false_positive"
+          ],
+          "missing_terms": [
+            "F-103",
+            "mTLS",
+            "client certificate"
+          ],
+          "forbidden_hits": [],
+          "secret_leak": false,
+          "retrieved_tokens": 83
+        },
+        {
+          "question": "Who owns F-104 and what evidence remains?",
+          "passed": false,
+          "required_hits": [
+            "identity-platform",
+            "authz-replay-31",
+            "prod retest"
+          ],
+          "missing_terms": [],
+          "forbidden_hits": [
+            "authz-replay-12"
+          ],
+          "secret_leak": false,
+          "retrieved_tokens": 83
+        },
+        {
+          "question": "Should the old GitHub token value be shown in the report?",
+          "passed": false,
+          "required_hits": [],
+          "missing_terms": [
+            "redacted",
+            "raw token"
+          ],
+          "forbidden_hits": [],
+          "secret_leak": false,
+          "retrieved_tokens": 83
+        },
+        {
+          "question": "What low-priority issue remains?",
+          "passed": true,
+          "required_hits": [
+            "F-106",
+            "open",
+            "low",
+            "clock skew"
+          ],
+          "missing_terms": [],
+          "forbidden_hits": [],
+          "secret_leak": false,
+          "retrieved_tokens": 83
+        }
+      ]
+    }
+  ]
+}
