@@ -1,3 +1,3 @@
-"""
-Benchmark package for Memanto evaluation against other memory frameworks
-"""
+"""Memanto Benchmarking Suite."""
+
+__version__ = "0.1.0"
