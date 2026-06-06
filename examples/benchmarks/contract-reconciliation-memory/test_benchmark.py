@@ -6,8 +6,9 @@ import unittest
 
 MODULE_PATH = pathlib.Path(__file__).with_name("run_benchmark.py")
 SPEC = importlib.util.spec_from_file_location("contract_benchmark", MODULE_PATH)
+if SPEC is None or SPEC.loader is None:
+    raise ImportError(f"Unable to load benchmark module from {MODULE_PATH}")
 benchmark = importlib.util.module_from_spec(SPEC)
-assert SPEC and SPEC.loader
 sys.modules[SPEC.name] = benchmark
 SPEC.loader.exec_module(benchmark)
 
@@ -46,6 +47,17 @@ class ContractBenchmarkTest(unittest.TestCase):
 
         self.assertLess(summary["accuracy"], 1.0)
         self.assertEqual(summary["secret_leak_rate"], 0.0)
+
+    def test_recent_window_rejects_invalid_window(self) -> None:
+        with self.assertRaises(ValueError):
+            benchmark.RecentWindowLog(window=0)
+
+    def test_empty_summary_is_safe(self) -> None:
+        summary = benchmark.BackendResult(backend="empty").summary()
+
+        self.assertEqual(summary["backend"], "empty")
+        self.assertEqual(summary["accuracy"], 0.0)
+        self.assertEqual(summary["p95_latency_ms"], 0.0)
 
 
 if __name__ == "__main__":

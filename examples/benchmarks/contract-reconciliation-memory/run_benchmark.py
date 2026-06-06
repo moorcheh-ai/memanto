@@ -84,6 +84,18 @@ class BackendResult:
 
     def summary(self) -> dict[str, float | str]:
         total = len(self.probe_results)
+        if total == 0:
+            return {
+                "backend": self.backend,
+                "accuracy": 0.0,
+                "avg_retrieved_tokens": 0.0,
+                "p95_latency_ms": 0.0,
+                "stale_conflict_rate": 0.0,
+                "secret_leak_rate": 0.0,
+                "evidence_coverage": 0.0,
+                "signal_noise": 0.0,
+            }
+
         latencies = [p.latency_ms for p in self.probe_results]
         p95_latency = (
             statistics.quantiles(latencies, n=20)[18]
@@ -155,6 +167,8 @@ class RecentWindowLog(MemoryBackend):
     name = "recent_window_log"
 
     def __init__(self, window: int = 5) -> None:
+        if not isinstance(window, int) or window <= 0:
+            raise ValueError("window must be a positive integer")
         self.window = window
         self.events: list[MemoryEvent] = []
 

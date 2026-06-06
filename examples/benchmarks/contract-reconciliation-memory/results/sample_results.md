@@ -2,9 +2,9 @@
 
 | Backend | Accuracy | Avg Tokens | p95 Latency ms | Stale Conflict | Secret Leak | Evidence | Signal/Noise |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| append_only_log | 0.833 | 71.83 | 0.434 | 0.667 | 0.500 | 1.000 | 0.067 |
-| recent_window_log | 0.833 | 46.67 | 0.185 | 0.000 | 0.000 | 0.800 | 0.075 |
-| active_contract_ledger | 1.000 | 26.17 | 0.189 | 0.000 | 0.000 | 1.000 | 0.166 |
+| append_only_log | 0.833 | 71.83 | 0.879 | 0.667 | 0.500 | 1.000 | 0.067 |
+| recent_window_log | 0.833 | 46.67 | 0.198 | 0.000 | 0.000 | 0.800 | 0.075 |
+| active_contract_ledger | 1.000 | 26.17 | 0.114 | 0.000 | 0.000 | 1.000 | 0.166 |
 
 ## Probe Details
 
