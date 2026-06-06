@@ -83,7 +83,10 @@ class SkillMemoryBridgeTests(unittest.TestCase):
 
             with patch.dict(
                 os.environ,
-                {"MEMANTO_SKILLS_MEMORY_FILE": str(memory_file)},
+                {
+                    "MEMANTO_SKILLS_BACKEND": "local",
+                    "MEMANTO_SKILLS_MEMORY_FILE": str(memory_file),
+                },
             ):
                 return_code = main(
                     [
