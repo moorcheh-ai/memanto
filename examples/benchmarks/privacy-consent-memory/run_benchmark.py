@@ -148,6 +148,8 @@ class RecentWindowLog(Backend):
     name = "recent_window_log"
 
     def __init__(self, events: Iterable[MemoryEvent], window: int = 3) -> None:
+        if not isinstance(window, int) or window <= 0:
+            raise ValueError("window must be a positive integer")
         super().__init__(events)
         self.window = window
 
@@ -175,8 +177,9 @@ def evaluate_backend(backend: Backend, queries: Iterable[QueryCase]) -> list[Que
         answer, retrieved = backend.answer(query)
         latency_ms = (time.perf_counter() - started) * 1000
         text = " ".join([answer or "", *retrieved]).lower()
-        expected = query.expected_value.lower() if query.expected_value else None
-        correct = (answer is None) if expected is None else expected in (answer or "").lower()
+        expected = query.expected_value.strip().lower() if query.expected_value else None
+        normalized_answer = str(answer).strip().lower() if answer is not None else None
+        correct = (answer is None) if expected is None else expected == normalized_answer
         stale_leak = any(term.lower() in text for term in query.forbidden_terms)
         erased_leak = query.expected_value is None and bool(answer)
         rows.append(
@@ -204,6 +207,8 @@ def p95(values: list[float]) -> float:
 
 
 def summarize(rows: list[QueryResult]) -> BackendSummary:
+    if not rows:
+        raise ValueError("cannot summarize empty query results")
     total = len(rows)
     accurate = sum(1 for row in rows if row.correct)
     stale = sum(1 for row in rows if row.stale_leak)

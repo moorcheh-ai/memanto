@@ -8,8 +8,9 @@ import unittest
 
 MODULE_PATH = Path(__file__).with_name("run_benchmark.py")
 spec = importlib.util.spec_from_file_location("privacy_consent_benchmark", MODULE_PATH)
+if spec is None or spec.loader is None:
+    raise ImportError(f"Could not load benchmark module from {MODULE_PATH}")
 benchmark = importlib.util.module_from_spec(spec)
-assert spec is not None and spec.loader is not None
 sys.modules["privacy_consent_benchmark"] = benchmark
 spec.loader.exec_module(benchmark)
 

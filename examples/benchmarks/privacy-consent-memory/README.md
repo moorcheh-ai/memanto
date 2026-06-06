@@ -2,7 +2,7 @@
 
 This benchmark evaluates agent memory behavior when users change consent,
 revoke permissions, correct sensitive preferences, or request erasure. It is a
-credential-free control-group benchmark for issue #639.
+credential-free control-group benchmark for PR #650.
 
 The suite compares three deterministic memory strategies:
 
