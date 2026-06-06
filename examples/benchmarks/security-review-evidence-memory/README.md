@@ -1,6 +1,6 @@
 # Security Review Evidence Memory Benchmark
 
-This benchmark is a credential-free evaluation for long-lived security review agents. It compares a Memanto-style active security digest with append-only and recent-window memory baselines.
+This benchmark is a credential-free evaluation for long-lived security review agents. It compares a Memanto-style active security digest with passive graph-style, append-only, and recent-window memory baselines.
 
 The scenario models a security review that spans multiple sessions. Findings are opened, remediated, re-tested, downgraded, or marked false positive. The memory layer must preserve current evidence, suppress stale findings, and avoid leaking synthetic secrets that appeared in earlier audit logs.
 
@@ -19,8 +19,13 @@ The scenario models a security review that spans multiple sessions. Findings are
 | Backend | Purpose |
 |---|---|
 | `active_security_digest` | Memanto-style active digest that stores the latest normalized security facts and redacts secrets |
+| `passive_graph_memory` | Competitor-style passive fact graph that preserves historical fact nodes without active stale-state resolution |
 | `append_only_log` | Raw transcript memory that returns every historical observation |
 | `recent_window_log` | Sliding-window baseline that drops older durable decisions |
+
+## Experimental Protocol
+
+All backends ingest the same four review sessions in the same order and answer the same six golden probes. The active digest, passive graph-style memory, append-only log, and recent-window log therefore share one dataset, one scoring function, and one metric table.
 
 ## Run
 
@@ -34,7 +39,7 @@ No Moorcheh or Memanto credentials are required for this reviewer-safe version. 
 
 ## Expected Result Shape
 
-The active digest should score best on current-fact accuracy, stale conflict suppression, and secret safety while retrieving substantially less context than the append-only log. The recent-window baseline should avoid some old noise but miss durable decisions such as false-positive rationale.
+The active digest should score best on current-fact accuracy, stale conflict suppression, and secret safety while retrieving substantially less context than the append-only log. The passive graph-style baseline should preserve more structured evidence than a raw log, but still expose stale statuses and old sensitive facts when it does not actively reconcile current state. The recent-window baseline should avoid some old noise but miss durable decisions such as false-positive rationale.
 
 ## Bounty Fit
 

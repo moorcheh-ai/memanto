@@ -1,6 +1,6 @@
 import unittest
 
-from run_benchmark import ActiveSecurityDigest, DATASET, PROBES, run_benchmark
+from run_benchmark import ActiveSecurityDigest, DATASET, PROBES, PassiveGraphMemory, run_benchmark
 
 
 class SecurityReviewEvidenceBenchmarkTests(unittest.TestCase):
@@ -29,6 +29,18 @@ class SecurityReviewEvidenceBenchmarkTests(unittest.TestCase):
         self.assertIn("F-102 status=resolved", context)
         self.assertIn("zap-42", context)
         self.assertNotIn("F-102 status=open", context)
+
+    def test_passive_graph_keeps_stale_and_sensitive_history(self):
+        """The passive graph baseline should expose stale and sensitive facts."""
+        backend = PassiveGraphMemory()
+        for event in DATASET:
+            backend.ingest(event)
+
+        context = backend.retrieve("What is current status of F-102?")
+
+        self.assertIn("F-102 status=open", context)
+        self.assertIn("F-102 status=resolved", context)
+        self.assertIn("GITHUB_TOKEN_FAKE_FOR_TEST_ONLY", context)
 
     def test_benchmark_metrics_rank_active_digest(self):
         """The active digest should outrank noisy transcript baselines."""

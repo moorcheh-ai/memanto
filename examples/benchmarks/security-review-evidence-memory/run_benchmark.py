@@ -216,6 +216,29 @@ class RecentWindowLog(MemoryBackend):
         return "\n".join(self.records)
 
 
+class PassiveGraphMemory(MemoryBackend):
+    """Competitor-style fact graph that keeps historical states."""
+
+    name = "passive_graph_memory"
+
+    def __init__(self) -> None:
+        """Create an empty finding timeline graph."""
+        self.finding_histories: Dict[str, List[Fact]] = {}
+
+    def ingest(self, event: SessionEvent) -> None:
+        """Append each normalized fact as a historical graph node."""
+        for fact in event.facts:
+            self.finding_histories.setdefault(fact.finding_id, []).append(fact)
+
+    def retrieve(self, question: str) -> str:
+        """Return all fact nodes without active stale-state resolution."""
+        rendered = ["passive graph memory returns historical fact nodes"]
+        for finding_id in sorted(self.finding_histories):
+            for fact in self.finding_histories[finding_id]:
+                rendered.append(fact.render())
+        return "\n".join(rendered)
+
+
 class ActiveSecurityDigest(MemoryBackend):
     """Memanto-style digest that keeps latest facts and redacts secrets."""
 
@@ -315,6 +338,7 @@ def run_benchmark() -> Dict[str, object]:
     """Evaluate all memory backends for the security-review scenario."""
     backends: Iterable[MemoryBackend] = (
         ActiveSecurityDigest(),
+        PassiveGraphMemory(),
         AppendOnlyLog(),
         RecentWindowLog(),
     )
