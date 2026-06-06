@@ -5,6 +5,9 @@ import statistics
 from dotenv import load_dotenv
 
 def run_benchmark(iterations: int):
+    if iterations < 1:
+        iterations = 1
+
     # Initialize clients from env
     moorcheh_key = os.environ.get("MOORCHEH_API_KEY")
     openai_key = os.environ.get("OPENAI_API_KEY")
@@ -31,6 +34,8 @@ def run_benchmark(iterations: int):
 
     ground_truth_query = "What is the secret code?"
     expected_answer = "XYZ-123"
+    
+    cumulative_lc_docs = []
 
     for i in range(iterations):
         docs = [f"User mentioned topic {j} in context {i}." for j in range(10)]
@@ -39,11 +44,11 @@ def run_benchmark(iterations: int):
         # --- Memanto Benchmark ---
         start_t = time.time()
         if not simulated:
-            for text in docs:
-                memanto_client.remember(agent_id=agent_id, text=text)
+            for idx, text in enumerate(docs):
+                memanto_client.remember(agent_id=agent_id, memory_type="fact", title=f"benchmark-doc-{i}-{idx}", content=text)
             recall_res = memanto_client.recall(agent_id=agent_id, query=ground_truth_query, limit=5)
             mem_time = time.time() - start_t
-            retrieved_text = " ".join([m.get("text", "") for m in recall_res.get("memories", [])])
+            retrieved_text = " ".join([m.get("content", "") for m in recall_res.get("memories", [])])
             if expected_answer in retrieved_text:
                 mem_accuracy += 1
         else:
@@ -55,8 +60,8 @@ def run_benchmark(iterations: int):
         # --- LangChain Benchmark ---
         start_t = time.time()
         if not simulated:
-            lc_docs = [Document(page_content=text) for text in docs]
-            vectorstore = FAISS.from_documents(lc_docs, embeddings)
+            cumulative_lc_docs.extend([Document(page_content=text) for text in docs])
+            vectorstore = FAISS.from_documents(cumulative_lc_docs, embeddings)
             lc_res = vectorstore.similarity_search(ground_truth_query, k=5)
             lc_time = time.time() - start_t
             retrieved_lc_text = " ".join([d.page_content for d in lc_res])
@@ -100,5 +105,7 @@ if __name__ == "__main__":
     parser.add_argument("--iterations", type=int, default=int(os.environ.get("BENCHMARK_ITERATIONS", "3")),
                         help="Number of iterations to run")
     args = parser.parse_args()
-    
+    if args.iterations < 1:
+        args.iterations = 1
+        
     run_benchmark(args.iterations)
