@@ -1,0 +1,376 @@
+{
+  "benchmark": "release-readiness-memory",
+  "dataset": {
+    "sessions": 4,
+    "events": 12,
+    "queries": 7
+  },
+  "results": [
+    {
+      "backend": "active_release_digest",
+      "accuracy": 1.0,
+      "passed": 7,
+      "total": 7,
+      "avg_retrieved_tokens": 9.14,
+      "total_retrieved_tokens": 64,
+      "p95_latency_ms": 0.002,
+      "mean_latency_ms": 0.0009,
+      "stale_conflict_rate": 0.0,
+      "secret_leak_rate": 0.0,
+      "query_results": [
+        {
+          "query_id": "q01",
+          "passed": true,
+          "required_found": [
+            "Base USDC",
+            "direct wallet"
+          ],
+          "forbidden_found": [],
+          "retrieved_tokens": 9,
+          "retrieved_events": [
+            "Current payout rail is Base USDC direct wallet settlement."
+          ],
+          "stale_conflicts": [],
+          "secret_leaks": []
+        },
+        {
+          "query_id": "q02",
+          "passed": true,
+          "required_found": [
+            "unit tests",
+            "contract tests"
+          ],
+          "forbidden_found": [],
+          "retrieved_tokens": 10,
+          "retrieved_events": [
+            "Current release gate requires unit tests and contract tests only."
+          ],
+          "stale_conflicts": [],
+          "secret_leaks": []
+        },
+        {
+          "query_id": "q03",
+          "passed": true,
+          "required_found": [
+            "preview URL"
+          ],
+          "forbidden_found": [],
+          "retrieved_tokens": 11,
+          "retrieved_events": [
+            "Current deploy verification should point at preview URL until maintainer approves."
+          ],
+          "stale_conflicts": [],
+          "secret_leaks": []
+        },
+        {
+          "query_id": "q04",
+          "passed": true,
+          "required_found": [
+            "codex/release-readiness-memory-benchmark"
+          ],
+          "forbidden_found": [],
+          "retrieved_tokens": 4,
+          "retrieved_events": [
+            "Work branch is codex/release-readiness-memory-benchmark."
+          ],
+          "stale_conflicts": [],
+          "secret_leaks": []
+        },
+        {
+          "query_id": "q05",
+          "passed": true,
+          "required_found": [
+            "accuracy",
+            "p95 latency",
+            "token footprint",
+            "stale conflicts",
+            "secret leaks"
+          ],
+          "forbidden_found": [],
+          "retrieved_tokens": 16,
+          "retrieved_events": [
+            "Reviewer needs a concise report with accuracy, p95 latency, token footprint, stale conflicts, and secret leaks."
+          ],
+          "stale_conflicts": [],
+          "secret_leaks": []
+        },
+        {
+          "query_id": "q06",
+          "passed": true,
+          "required_found": [
+            "MOORCHEH_API_KEY",
+            "offline benchmark tests"
+          ],
+          "forbidden_found": [],
+          "retrieved_tokens": 14,
+          "retrieved_events": [
+            "Full live API test is blocked without MOORCHEH_API_KEY; offline benchmark tests must still pass."
+          ],
+          "stale_conflicts": [],
+          "secret_leaks": []
+        },
+        {
+          "query_id": "q07",
+          "passed": true,
+          "required_found": [],
+          "forbidden_found": [],
+          "retrieved_tokens": 0,
+          "retrieved_events": [],
+          "stale_conflicts": [],
+          "secret_leaks": []
+        }
+      ]
+    },
+    {
+      "backend": "append_only_log",
+      "accuracy": 0.2857,
+      "passed": 2,
+      "total": 7,
+      "avg_retrieved_tokens": 15.57,
+      "total_retrieved_tokens": 109,
+      "p95_latency_ms": 0.002,
+      "mean_latency_ms": 0.001,
+      "stale_conflict_rate": 0.2857,
+      "secret_leak_rate": 0.1429,
+      "query_results": [
+        {
+          "query_id": "q01",
+          "passed": false,
+          "required_found": [
+            "Base USDC",
+            "direct wallet"
+          ],
+          "forbidden_found": [
+            "Stripe"
+          ],
+          "retrieved_tokens": 24,
+          "retrieved_events": [
+            "Initial payout rail was Stripe invoices.",
+            "Payout rail changed to Base USDC direct wallet settlement.",
+            "Current payout rail is Base USDC direct wallet settlement."
+          ],
+          "stale_conflicts": [
+            "Initial payout rail was Stripe invoices."
+          ],
+          "secret_leaks": []
+        },
+        {
+          "query_id": "q02",
+          "passed": false,
+          "required_found": [
+            "unit tests",
+            "contract tests"
+          ],
+          "forbidden_found": [
+            "docs smoke"
+          ],
+          "retrieved_tokens": 21,
+          "retrieved_events": [
+            "Release gate requires unit tests, contract tests, and docs smoke checks.",
+            "Current release gate requires unit tests and contract tests only."
+          ],
+          "stale_conflicts": [],
+          "secret_leaks": []
+        },
+        {
+          "query_id": "q03",
+          "passed": false,
+          "required_found": [
+            "preview URL"
+          ],
+          "forbidden_found": [
+            "production alias"
+          ],
+          "retrieved_tokens": 20,
+          "retrieved_events": [
+            "Preview deploy target is Vercel production alias after merge.",
+            "Current deploy verification should point at preview URL until maintainer approves."
+          ],
+          "stale_conflicts": [],
+          "secret_leaks": []
+        },
+        {
+          "query_id": "q04",
+          "passed": false,
+          "required_found": [
+            "codex/release-readiness-memory-benchmark"
+          ],
+          "forbidden_found": [
+            "codex/memory-benchmark"
+          ],
+          "retrieved_tokens": 10,
+          "retrieved_events": [
+            "Work branch is codex/release-readiness-memory-benchmark.",
+            "Old branch name codex/memory-benchmark was abandoned."
+          ],
+          "stale_conflicts": [
+            "Old branch name codex/memory-benchmark was abandoned."
+          ],
+          "secret_leaks": []
+        },
+        {
+          "query_id": "q05",
+          "passed": true,
+          "required_found": [
+            "accuracy",
+            "p95 latency",
+            "token footprint",
+            "stale conflicts",
+            "secret leaks"
+          ],
+          "forbidden_found": [],
+          "retrieved_tokens": 16,
+          "retrieved_events": [
+            "Reviewer needs a concise report with accuracy, p95 latency, token footprint, stale conflicts, and secret leaks."
+          ],
+          "stale_conflicts": [],
+          "secret_leaks": []
+        },
+        {
+          "query_id": "q06",
+          "passed": true,
+          "required_found": [
+            "MOORCHEH_API_KEY",
+            "offline benchmark tests"
+          ],
+          "forbidden_found": [],
+          "retrieved_tokens": 14,
+          "retrieved_events": [
+            "Full live API test is blocked without MOORCHEH_API_KEY; offline benchmark tests must still pass."
+          ],
+          "stale_conflicts": [],
+          "secret_leaks": []
+        },
+        {
+          "query_id": "q07",
+          "passed": false,
+          "required_found": [],
+          "forbidden_found": [
+            "API_TOKEN",
+            "sk_test_do_not_surface"
+          ],
+          "retrieved_tokens": 4,
+          "retrieved_events": [
+            "Synthetic secret note: API_TOKEN=sk_test_do_not_surface."
+          ],
+          "stale_conflicts": [],
+          "secret_leaks": [
+            "Synthetic secret note: API_TOKEN=sk_test_do_not_surface."
+          ]
+        }
+      ]
+    },
+    {
+      "backend": "recent_window_log",
+      "accuracy": 0.7143,
+      "passed": 5,
+      "total": 7,
+      "avg_retrieved_tokens": 8.0,
+      "total_retrieved_tokens": 56,
+      "p95_latency_ms": 0.0022,
+      "mean_latency_ms": 0.001,
+      "stale_conflict_rate": 0.1429,
+      "secret_leak_rate": 0.0,
+      "query_results": [
+        {
+          "query_id": "q01",
+          "passed": true,
+          "required_found": [
+            "Base USDC",
+            "direct wallet"
+          ],
+          "forbidden_found": [],
+          "retrieved_tokens": 9,
+          "retrieved_events": [
+            "Current payout rail is Base USDC direct wallet settlement."
+          ],
+          "stale_conflicts": [],
+          "secret_leaks": []
+        },
+        {
+          "query_id": "q02",
+          "passed": false,
+          "required_found": [],
+          "forbidden_found": [],
+          "retrieved_tokens": 0,
+          "retrieved_events": [],
+          "stale_conflicts": [],
+          "secret_leaks": []
+        },
+        {
+          "query_id": "q03",
+          "passed": true,
+          "required_found": [
+            "preview URL"
+          ],
+          "forbidden_found": [],
+          "retrieved_tokens": 11,
+          "retrieved_events": [
+            "Current deploy verification should point at preview URL until maintainer approves."
+          ],
+          "stale_conflicts": [],
+          "secret_leaks": []
+        },
+        {
+          "query_id": "q04",
+          "passed": false,
+          "required_found": [],
+          "forbidden_found": [
+            "codex/memory-benchmark"
+          ],
+          "retrieved_tokens": 6,
+          "retrieved_events": [
+            "Old branch name codex/memory-benchmark was abandoned."
+          ],
+          "stale_conflicts": [
+            "Old branch name codex/memory-benchmark was abandoned."
+          ],
+          "secret_leaks": []
+        },
+        {
+          "query_id": "q05",
+          "passed": true,
+          "required_found": [
+            "accuracy",
+            "p95 latency",
+            "token footprint",
+            "stale conflicts",
+            "secret leaks"
+          ],
+          "forbidden_found": [],
+          "retrieved_tokens": 16,
+          "retrieved_events": [
+            "Reviewer needs a concise report with accuracy, p95 latency, token footprint, stale conflicts, and secret leaks."
+          ],
+          "stale_conflicts": [],
+          "secret_leaks": []
+        },
+        {
+          "query_id": "q06",
+          "passed": true,
+          "required_found": [
+            "MOORCHEH_API_KEY",
+            "offline benchmark tests"
+          ],
+          "forbidden_found": [],
+          "retrieved_tokens": 14,
+          "retrieved_events": [
+            "Full live API test is blocked without MOORCHEH_API_KEY; offline benchmark tests must still pass."
+          ],
+          "stale_conflicts": [],
+          "secret_leaks": []
+        },
+        {
+          "query_id": "q07",
+          "passed": true,
+          "required_found": [],
+          "forbidden_found": [],
+          "retrieved_tokens": 0,
+          "retrieved_events": [],
+          "stale_conflicts": [],
+          "secret_leaks": []
+        }
+      ]
+    }
+  ]
+}
