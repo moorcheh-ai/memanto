@@ -1,0 +1,244 @@
+{
+  "results": [
+    {
+      "summary": {
+        "backend": "append_only_log",
+        "accuracy": 0.833,
+        "avg_retrieved_tokens": 71.83,
+        "p95_latency_ms": 0.434,
+        "stale_conflict_rate": 0.667,
+        "secret_leak_rate": 0.5,
+        "evidence_coverage": 1.0,
+        "signal_noise": 0.067
+      },
+      "probes": [
+        {
+          "query": "What is the current accepted price?",
+          "accuracy": 1.0,
+          "retrieved_tokens": 114,
+          "latency_ms": 0.37,
+          "stale_conflict": true,
+          "secret_leak": true,
+          "evidence_hits": 1,
+          "evidence_expected": 1,
+          "answer": "S1-E1 session=1 slot=pricing: Acme selected the startup plan at $400 per month. evidence=quote-v1\nS1-E2 session=1 slot=support_sla: Support SLA is two business days. evidence=msa-draft-v1\nS1-E3 session=1 slot=payment_method: Temporary wire token is wire-alpha-119 for onboarding only. evidence=finance-note\nS2-E2 session=2 slot=data_region: All production data must stay in the EU region. evidence=dpa-v1\nS4-E2 session=4 slot=pricing: Final accepted price is $690 per month with annual prepay. evidence=quote-final supersedes S2-E1\nS5-E2 session=5 slot=security_review: SOC 2 report is required before production launch. evidence=security-gate"
+        },
+        {
+          "query": "What support SLA should the agent use for Sev1 incidents?",
+          "accuracy": 1.0,
+          "retrieved_tokens": 97,
+          "latency_ms": 0.27,
+          "stale_conflict": true,
+          "secret_leak": true,
+          "evidence_hits": 1,
+          "evidence_expected": 1,
+          "answer": "S1-E1 session=1 slot=pricing: Acme selected the startup plan at $400 per month. evidence=quote-v1\nS1-E2 session=1 slot=support_sla: Support SLA is two business days. evidence=msa-draft-v1\nS1-E3 session=1 slot=payment_method: Temporary wire token is wire-alpha-119 for onboarding only. evidence=finance-note\nS2-E2 session=2 slot=data_region: All production data must stay in the EU region. evidence=dpa-v1\nS3-E1 session=3 slot=support_sla: Support SLA changed to four hours for Sev1 incidents. evidence=msa-redline-v3 supersedes S1-E2"
+        },
+        {
+          "query": "Where may production data and anonymized analytics exports run?",
+          "accuracy": 1.0,
+          "retrieved_tokens": 64,
+          "latency_ms": 0.262,
+          "stale_conflict": true,
+          "secret_leak": false,
+          "evidence_hits": 1,
+          "evidence_expected": 1,
+          "answer": "S2-E2 session=2 slot=data_region: All production data must stay in the EU region. evidence=dpa-v1\nS5-E1 session=5 slot=data_region: EU residency remains required, but analytics exports may run in US-East after anonymization. evidence=dpa-addendum supersedes S2-E2\nS5-E2 session=5 slot=security_review: SOC 2 report is required before production launch. evidence=security-gate"
+        },
+        {
+          "query": "How should renewal be handled?",
+          "accuracy": 1.0,
+          "retrieved_tokens": 19,
+          "latency_ms": 0.267,
+          "stale_conflict": false,
+          "secret_leak": false,
+          "evidence_hits": 1,
+          "evidence_expected": 1,
+          "answer": "S4-E1 session=4 slot=renewal: Renewal must be opt-in only; no automatic renewal clause. evidence=legal-signoff"
+        },
+        {
+          "query": "Which secret or token should be used for payment setup?",
+          "accuracy": 0.0,
+          "retrieved_tokens": 81,
+          "latency_ms": 0.271,
+          "stale_conflict": true,
+          "secret_leak": true,
+          "evidence_hits": 0,
+          "evidence_expected": 0,
+          "answer": "S1-E3 session=1 slot=payment_method: Temporary wire token is wire-alpha-119 for onboarding only. evidence=finance-note\nS3-E1 session=3 slot=support_sla: Support SLA changed to four hours for Sev1 incidents. evidence=msa-redline-v3 supersedes S1-E2\nS3-E3 session=3 slot=api_secret: Never store this sandbox key: sk_live_contract_shadow. evidence=security-review\nS4-E1 session=4 slot=renewal: Renewal must be opt-in only; no automatic renewal clause. evidence=legal-signoff"
+        },
+        {
+          "query": "What must happen before production launch?",
+          "accuracy": 1.0,
+          "retrieved_tokens": 56,
+          "latency_ms": 0.222,
+          "stale_conflict": false,
+          "secret_leak": false,
+          "evidence_hits": 1,
+          "evidence_expected": 1,
+          "answer": "S2-E2 session=2 slot=data_region: All production data must stay in the EU region. evidence=dpa-v1\nS4-E1 session=4 slot=renewal: Renewal must be opt-in only; no automatic renewal clause. evidence=legal-signoff\nS5-E2 session=5 slot=security_review: SOC 2 report is required before production launch. evidence=security-gate"
+        }
+      ]
+    },
+    {
+      "summary": {
+        "backend": "recent_window_log",
+        "accuracy": 0.833,
+        "avg_retrieved_tokens": 46.67,
+        "p95_latency_ms": 0.185,
+        "stale_conflict_rate": 0.0,
+        "secret_leak_rate": 0.0,
+        "evidence_coverage": 0.8,
+        "signal_noise": 0.075
+      },
+      "probes": [
+        {
+          "query": "What is the current accepted price?",
+          "accuracy": 1.0,
+          "retrieved_tokens": 40,
+          "latency_ms": 0.136,
+          "stale_conflict": false,
+          "secret_leak": false,
+          "evidence_hits": 1,
+          "evidence_expected": 1,
+          "answer": "S4-E2 session=4 slot=pricing: Final accepted price is $690 per month with annual prepay. evidence=quote-final supersedes S2-E1\nS5-E2 session=5 slot=security_review: SOC 2 report is required before production launch. evidence=security-gate"
+        },
+        {
+          "query": "What support SLA should the agent use for Sev1 incidents?",
+          "accuracy": 0.0,
+          "retrieved_tokens": 103,
+          "latency_ms": 0.166,
+          "stale_conflict": false,
+          "secret_leak": false,
+          "evidence_hits": 0,
+          "evidence_expected": 1,
+          "answer": "S3-E3 session=3 slot=api_secret: Never store this sandbox key: [REDACTED_SECRET]. evidence=security-review\nS4-E1 session=4 slot=renewal: Renewal must be opt-in only; no automatic renewal clause. evidence=legal-signoff\nS4-E2 session=4 slot=pricing: Final accepted price is $690 per month with annual prepay. evidence=quote-final supersedes S2-E1\nS5-E1 session=5 slot=data_region: EU residency remains required, but analytics exports may run in US-East after anonymization. evidence=dpa-addendum supersedes S2-E2\nS5-E2 session=5 slot=security_review: SOC 2 report is required before production launch. evidence=security-gate"
+        },
+        {
+          "query": "Where may production data and anonymized analytics exports run?",
+          "accuracy": 1.0,
+          "retrieved_tokens": 45,
+          "latency_ms": 0.135,
+          "stale_conflict": false,
+          "secret_leak": false,
+          "evidence_hits": 1,
+          "evidence_expected": 1,
+          "answer": "S5-E1 session=5 slot=data_region: EU residency remains required, but analytics exports may run in US-East after anonymization. evidence=dpa-addendum supersedes S2-E2\nS5-E2 session=5 slot=security_review: SOC 2 report is required before production launch. evidence=security-gate"
+        },
+        {
+          "query": "How should renewal be handled?",
+          "accuracy": 1.0,
+          "retrieved_tokens": 19,
+          "latency_ms": 0.108,
+          "stale_conflict": false,
+          "secret_leak": false,
+          "evidence_hits": 1,
+          "evidence_expected": 1,
+          "answer": "S4-E1 session=4 slot=renewal: Renewal must be opt-in only; no automatic renewal clause. evidence=legal-signoff"
+        },
+        {
+          "query": "Which secret or token should be used for payment setup?",
+          "accuracy": 1.0,
+          "retrieved_tokens": 36,
+          "latency_ms": 0.117,
+          "stale_conflict": false,
+          "secret_leak": false,
+          "evidence_hits": 0,
+          "evidence_expected": 0,
+          "answer": "S3-E3 session=3 slot=api_secret: Never store this sandbox key: [REDACTED_SECRET]. evidence=security-review\nS4-E1 session=4 slot=renewal: Renewal must be opt-in only; no automatic renewal clause. evidence=legal-signoff"
+        },
+        {
+          "query": "What must happen before production launch?",
+          "accuracy": 1.0,
+          "retrieved_tokens": 37,
+          "latency_ms": 0.112,
+          "stale_conflict": false,
+          "secret_leak": false,
+          "evidence_hits": 1,
+          "evidence_expected": 1,
+          "answer": "S4-E1 session=4 slot=renewal: Renewal must be opt-in only; no automatic renewal clause. evidence=legal-signoff\nS5-E2 session=5 slot=security_review: SOC 2 report is required before production launch. evidence=security-gate"
+        }
+      ]
+    },
+    {
+      "summary": {
+        "backend": "active_contract_ledger",
+        "accuracy": 1.0,
+        "avg_retrieved_tokens": 26.17,
+        "p95_latency_ms": 0.189,
+        "stale_conflict_rate": 0.0,
+        "secret_leak_rate": 0.0,
+        "evidence_coverage": 1.0,
+        "signal_noise": 0.166
+      },
+      "probes": [
+        {
+          "query": "What is the current accepted price?",
+          "accuracy": 1.0,
+          "retrieved_tokens": 35,
+          "latency_ms": 0.175,
+          "stale_conflict": false,
+          "secret_leak": false,
+          "evidence_hits": 1,
+          "evidence_expected": 1,
+          "answer": "pricing: Final accepted price is $690 per month with annual prepay. (current, evidence=quote-final, source=S4-E2)\nsecurity_review: SOC 2 report is required before production launch. (current, evidence=security-gate, source=S5-E2)"
+        },
+        {
+          "query": "What support SLA should the agent use for Sev1 incidents?",
+          "accuracy": 1.0,
+          "retrieved_tokens": 19,
+          "latency_ms": 0.097,
+          "stale_conflict": false,
+          "secret_leak": false,
+          "evidence_hits": 1,
+          "evidence_expected": 1,
+          "answer": "support_sla: Support SLA changed to four hours for Sev1 incidents. (current, evidence=msa-redline-v3, source=S3-E1)"
+        },
+        {
+          "query": "Where may production data and anonymized analytics exports run?",
+          "accuracy": 1.0,
+          "retrieved_tokens": 40,
+          "latency_ms": 0.096,
+          "stale_conflict": false,
+          "secret_leak": false,
+          "evidence_hits": 1,
+          "evidence_expected": 1,
+          "answer": "data_region: EU residency remains required, but analytics exports may run in US-East after anonymization. (current, evidence=dpa-addendum, source=S5-E1)\nsecurity_review: SOC 2 report is required before production launch. (current, evidence=security-gate, source=S5-E2)"
+        },
+        {
+          "query": "How should renewal be handled?",
+          "accuracy": 1.0,
+          "retrieved_tokens": 18,
+          "latency_ms": 0.154,
+          "stale_conflict": false,
+          "secret_leak": false,
+          "evidence_hits": 1,
+          "evidence_expected": 1,
+          "answer": "renewal: Renewal must be opt-in only; no automatic renewal clause. (current, evidence=legal-signoff, source=S4-E1)"
+        },
+        {
+          "query": "Which secret or token should be used for payment setup?",
+          "accuracy": 1.0,
+          "retrieved_tokens": 10,
+          "latency_ms": 0.017,
+          "stale_conflict": false,
+          "secret_leak": false,
+          "evidence_hits": 0,
+          "evidence_expected": 0,
+          "answer": "payment_method: [REDACTED_SECRET] (no active payment token is stored)"
+        },
+        {
+          "query": "What must happen before production launch?",
+          "accuracy": 1.0,
+          "retrieved_tokens": 35,
+          "latency_ms": 0.096,
+          "stale_conflict": false,
+          "secret_leak": false,
+          "evidence_hits": 1,
+          "evidence_expected": 1,
+          "answer": "security_review: SOC 2 report is required before production launch. (current, evidence=security-gate, source=S5-E2)\nrenewal: Renewal must be opt-in only; no automatic renewal clause. (current, evidence=legal-signoff, source=S4-E1)"
+        }
+      ]
+    }
+  ]
+}
