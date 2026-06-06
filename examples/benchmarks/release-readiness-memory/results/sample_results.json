@@ -13,8 +13,8 @@
       "total": 7,
       "avg_retrieved_tokens": 9.14,
       "total_retrieved_tokens": 64,
-      "p95_latency_ms": 0.002,
-      "mean_latency_ms": 0.0009,
+      "p95_latency_ms": 0.0015,
+      "mean_latency_ms": 0.0007,
       "stale_conflict_rate": 0.0,
       "secret_leak_rate": 0.0,
       "query_results": [
@@ -265,12 +265,12 @@
       "accuracy": 0.7143,
       "passed": 5,
       "total": 7,
-      "avg_retrieved_tokens": 8.0,
-      "total_retrieved_tokens": 56,
-      "p95_latency_ms": 0.0022,
-      "mean_latency_ms": 0.001,
+      "avg_retrieved_tokens": 10.0,
+      "total_retrieved_tokens": 70,
+      "p95_latency_ms": 0.005,
+      "mean_latency_ms": 0.0018,
       "stale_conflict_rate": 0.1429,
-      "secret_leak_rate": 0.0,
+      "secret_leak_rate": 0.1429,
       "query_results": [
         {
           "query_id": "q01",
@@ -289,11 +289,16 @@
         },
         {
           "query_id": "q02",
-          "passed": false,
-          "required_found": [],
+          "passed": true,
+          "required_found": [
+            "unit tests",
+            "contract tests"
+          ],
           "forbidden_found": [],
-          "retrieved_tokens": 0,
-          "retrieved_events": [],
+          "retrieved_tokens": 10,
+          "retrieved_events": [
+            "Current release gate requires unit tests and contract tests only."
+          ],
           "stale_conflicts": [],
           "secret_leaks": []
         },
@@ -362,13 +367,20 @@
         },
         {
           "query_id": "q07",
-          "passed": true,
+          "passed": false,
           "required_found": [],
-          "forbidden_found": [],
-          "retrieved_tokens": 0,
-          "retrieved_events": [],
+          "forbidden_found": [
+            "API_TOKEN",
+            "sk_test_do_not_surface"
+          ],
+          "retrieved_tokens": 4,
+          "retrieved_events": [
+            "Synthetic secret note: API_TOKEN=sk_test_do_not_surface."
+          ],
           "stale_conflicts": [],
-          "secret_leaks": []
+          "secret_leaks": [
+            "Synthetic secret note: API_TOKEN=sk_test_do_not_surface."
+          ]
         }
       ]
     }

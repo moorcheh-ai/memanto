@@ -70,9 +70,13 @@ class AppendOnlyLog:
     name = "append_only_log"
 
     def __init__(self, events: list[Event]) -> None:
+        """Store the full chronological event stream."""
+
         self.events = events
 
     def retrieve(self, topics: list[str]) -> list[Event]:
+        """Return every event whose topic was requested."""
+
         return [event for event in self.events if event.topic in topics]
 
 
@@ -82,11 +86,22 @@ class RecentWindowLog:
     name = "recent_window_log"
 
     def __init__(self, events: list[Event], window: int = 5) -> None:
+        """Store the event stream and matching-topic window size."""
+
         self.events = events
         self.window = window
 
     def retrieve(self, topics: list[str]) -> list[Event]:
-        return [event for event in self.events[-self.window :] if event.topic in topics]
+        """Return the most recent matching events in chronological order."""
+
+        topic_set = set(topics)
+        matches: list[Event] = []
+        for event in reversed(self.events):
+            if event.topic in topic_set:
+                matches.append(event)
+                if len(matches) == self.window:
+                    break
+        return list(reversed(matches))
 
 
 class ActiveReleaseDigest:
@@ -95,6 +110,8 @@ class ActiveReleaseDigest:
     name = "active_release_digest"
 
     def __init__(self, events: list[Event]) -> None:
+        """Build a current-fact digest while ignoring secret events."""
+
         self.current_by_topic: dict[str, Event] = {}
         for event in events:
             if event.status == "secret":
@@ -103,6 +120,8 @@ class ActiveReleaseDigest:
                 self.current_by_topic[event.topic] = event
 
     def retrieve(self, topics: list[str]) -> list[Event]:
+        """Return current non-secret facts for the requested topics."""
+
         return [
             self.current_by_topic[topic]
             for topic in topics
@@ -180,7 +199,7 @@ def run(dataset_path: Path = DEFAULT_DATASET) -> dict:
     backends = [
         ActiveReleaseDigest(events),
         AppendOnlyLog(events),
-        RecentWindowLog(events),
+        RecentWindowLog(events, window=1),
     ]
     results = [
         evaluate_backend(backend.name, backend, dataset["queries"])
