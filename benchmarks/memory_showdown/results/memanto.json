@@ -1,0 +1,51 @@
+{
+  "framework": "memanto",
+  "timestamp": "2026-06-06T09:59:18.531827",
+  "llm_model": "llama-3.1-8b-instant",
+  "embedder": "local",
+  "ground_truth": "Current preferences: ONLY foreign-language psychological thrillers (Park Chan-wook, Kore-eda, Sciamma). Jazz music only (Coltrane, Miles Davis). MUST NOT suggest: action films (burned out), English-language films, classic rock, romance.",
+  "mean_accuracy": 2.75,
+  "max_accuracy": 3,
+  "mean_context_tokens": 297,
+  "mean_total_tokens": 552,
+  "memory_write_p50_ms": 849.0,
+  "memory_write_p95_ms": 2052.8,
+  "memory_read_p50_ms": 552.4,
+  "memory_read_p95_ms": 1033.0,
+  "n_writes": 10,
+  "n_probes": 4,
+  "probe_details": [
+    {
+      "question": "What film should I watch tonight? Give me one specific recommendation.",
+      "answer": "Based on your preferences, I highly recommend the 2018 film \"Shoplifters\" (Manbiki Kazoku) directed by Hirokazu Kore-eda. This Japanese drama is a slow-burning, character-driven film that explores the complexities of family relationships and morality. It's a layered, thought-provoking story that aligns with your newfound appreciation for deliberate world cinema, as seen in \"Parasite.\" The film has received critical acclaim and has won several awards, including the Palme d'Or at the 2018 Cannes Film Festival. It's a must-watch for fans of Kore-eda's work and those who enjoy character-driven, arthouse cinema.",
+      "accuracy": 3,
+      "context_tokens": 293,
+      "total_tokens": 432,
+      "memory_read_ms": 1113.1995925679803
+    },
+    {
+      "question": "I want something to listen to while I work. What would you suggest?",
+      "answer": "Considering your pivot to jazz and preference for more mellow sounds, I'd recommend the following albums or artists for a productive work session:\n\n1. **Bill Evans - Sunday at the Village Vanguard**: A classic jazz album with a soothing, introspective atmosphere.\n2. **Chet Baker - My Funny Valentine**: A smooth, laid-back jazz album with a melancholic tone.\n3. **Kamasi Washington - The Epic**: A modern jazz album with a more relaxed, atmospheric sound.\n4. **Esperanza Spalding - Chamber Music Society**: A jazz album with a more mellow, acoustic sound.\n\nIf you'd like to explore more contemporary jazz, I can also suggest some playlists or radio stations on platforms like Spotify or Apple Music. These often feature curated playlists and radio stations that cater to specific moods and genres.\n\nFor a more ambient experience, you might enjoy:\n\n1. **Brian Eno - Ambient 1: Music for Airports**: A classic ambient album with a calming atmosphere.\n2. **Tim Hecker - Ravedeath, 1972**: A more experimental ambient album with a soothing sound.\n\nLet me know if you'd like more recommendations or have any specific preferences (e.g., piano-driven, saxophone-heavy, etc.)!",
+      "accuracy": 2,
+      "context_tokens": 305,
+      "total_tokens": 563,
+      "memory_read_ms": 409.2980846762657
+    },
+    {
+      "question": "A friend says I'd love the latest Marvel blockbuster. Should I watch it?",
+      "answer": "Based on your preferences, I would advise against watching the latest Marvel blockbuster. You've expressed a burnout on action films and a shift towards more layered storytelling and foreign-language cinema. Marvel blockbusters tend to be action-driven and formulaic, which might not align with your current tastes.\n\nConsidering your fascination with slow-burn psychological thrillers and arthouse films, I think you might find the latest Marvel blockbuster to be too shallow and predictable. It's better to explore other options that cater to your evolving tastes.\n\nIf you're looking for something similar to the Marvel universe but with more depth and complexity, you might enjoy foreign-language films like 'The Square' (Sweden), 'The Handmaiden' (South Korea), or 'Roma' (Mexico). These films offer a more nuanced and thought-provoking experience that might resonate with you.\n\nLet me suggest some alternative recommendations that might be more up your alley:\n\n1. 'The Lighthouse' (2019) - A black-and-white psychological drama set in the 1890s, directed by Robert Eggers.\n2. 'Shoplifters' (2018) - A Japanese drama by Hirokazu Kore-eda that explores the complexities of family relationships.\n3. 'Portrait of a Lady on Fire' (2019) - A French period drama by C\u00e9line Sciamma that delves into the themes of art, love, and identity.\n\nThese films offer a more layered and thought-provoking experience that aligns with your current tastes.",
+      "accuracy": 3,
+      "context_tokens": 300,
+      "total_tokens": 607,
+      "memory_read_ms": 526.3511054217815
+    },
+    {
+      "question": "Recommend a director whose entire filmography I should explore.",
+      "answer": "Based on your preferences, I highly recommend exploring the filmography of B\u00e9la Tarr, a Hungarian director known for his slow-burning, deliberate, and visually stunning cinematic style. His films often explore themes of existentialism, human relationships, and social critique.\n\nTarr's films are characterized by:\n\n1. **Slow-burning pace**: His films often unfold at a deliberate pace, allowing the audience to absorb the atmosphere and themes.\n2. **Visually striking**: Tarr's cinematography is often described as stark, minimalist, and hauntingly beautiful.\n3. **Layered storytelling**: His films often feature complex narratives with multiple layers, encouraging multiple viewings and interpretations.\n4. **Foreign-language films**: Tarr's films are all in Hungarian, with subtitles available.\n\nSome of his notable films include:\n\n1. **Satantango** (1994) - a 7-hour epic that explores the lives of a group of people in a decaying collective farm.\n2. **Werckmeister Harmonies** (2000) - a haunting tale of a small town's descent into chaos and madness.\n3. **The Turin Horse** (2011) - a mesmerizing exploration of the repetitive lives of a farmer and his daughter.\n4. **The Man from London** (2007) - a slow-burning thriller about a man who becomes embroiled in a mysterious plot.\n\nTarr's filmography is a treasure trove of cinematic experiences that will likely resonate with your newfound appreciation for slow-burning, deliberate world cinema.",
+      "accuracy": 3,
+      "context_tokens": 290,
+      "total_tokens": 606,
+      "memory_read_ms": 578.5000342875719
+    }
+  ]
+}
