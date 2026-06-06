@@ -70,6 +70,10 @@ RESULTS_DIR.mkdir(exist_ok=True)
 LLM_PROVIDER = os.environ.get("LLM_PROVIDER", "openai").lower()
 EMBEDDER     = os.environ.get("EMBEDDER", "openai").lower()
 
+# Unique run ID prevents memory bleed across benchmark reruns.
+# Override with RUN_ID env var if you want a deterministic/reproducible ID.
+RUN_ID = os.environ.get("RUN_ID", str(int(time.time())))
+
 # ── LLM client factory ────────────────────────────────────────────────────────
 
 def make_llm_client():
@@ -161,8 +165,13 @@ def percentile(data: list, p: float) -> float:
 
 
 def count_tokens(text: str) -> int:
-    """Rough token estimate (4 chars ≈ 1 token) when usage object unavailable."""
-    return len(text) // 4
+    """Rough token estimate (4 chars ≈ 1 token)."""
+    return max(0, len(text) // 4)
+
+
+def memory_context_tokens(memory_text: str, base_system: str) -> int:
+    """Tokens attributable to injected memory context (overhead above base prompt)."""
+    return count_tokens(memory_text)
 
 
 def llm_judge(question: str, response: str, client) -> int:
@@ -299,7 +308,7 @@ def run_mem0(client) -> dict:
         }
 
     m       = Memory.from_config(config)
-    user_id = "showdown_curator_mem0"
+    user_id = f"showdown_mem0_{RUN_ID}"
     write_latencies, read_latencies, probe_rows = [], [], []
 
     for sess in WRITE_SESSIONS:
@@ -331,7 +340,7 @@ def run_mem0(client) -> dict:
             "question":       q,
             "answer":         answer,
             "accuracy":       score,
-            "context_tokens": prompt_tok,
+            "context_tokens": memory_context_tokens(memory_text, SYSTEM_PROMPT),
             "total_tokens":   total_tok,
             "memory_read_ms": read_latencies[-1],
         })
@@ -346,15 +355,16 @@ def run_memanto(client) -> dict:
     from memanto.cli.client.sdk_client import SdkClient
 
     sdk      = SdkClient(api_key=os.environ["MOORCHEH_API_KEY"])
-    agent_id = "showdown-curator-001"
+    agent_id = f"showdown-curator-{RUN_ID}"
 
     print(f"\n[memanto] Running ({LLM_MODEL})...")
 
     try:
         sdk.create_agent(agent_id=agent_id, pattern="tool",
                          description="Benchmark: Shifting Persona & Temporal Tracking")
-    except Exception:
-        pass  # already exists
+    except Exception as e:
+        if "already" not in str(e).lower():
+            raise
 
     sdk.activate_agent(agent_id, duration_hours=2)
     write_latencies, read_latencies, probe_rows = [], [], []
@@ -392,7 +402,7 @@ def run_memanto(client) -> dict:
             "question":       q,
             "answer":         answer,
             "accuracy":       score,
-            "context_tokens": prompt_tok,
+            "context_tokens": memory_context_tokens(memory_text, SYSTEM_PROMPT),
             "total_tokens":   total_tok,
             "memory_read_ms": read_latencies[-1],
         })
@@ -421,11 +431,13 @@ def run_cathedral(client) -> dict:
         print(f"  Writing session {sess['id']}: {sess['label']}")
         for mem_type, title, content in sess["memories"]:
             t0 = time.perf_counter()
-            httpx.post(f"{base}/memories", headers=headers, json={
-                "content":    f"[{title}] {content}",
+            r  = httpx.post(f"{base}/memories", headers=headers, json={
+                "content":    f"[run:{RUN_ID}] [{title}] {content}",
                 "category":   "preference",
                 "importance": 0.85,
             }, timeout=15)
+            if r.status_code not in (200, 201):
+                print(f"  WARN: write failed {r.status_code}: {r.text[:80]}")
             write_latencies.append((time.perf_counter() - t0) * 1000)
             time.sleep(0.2)
 
@@ -433,7 +445,9 @@ def run_cathedral(client) -> dict:
         t0 = time.perf_counter()
         r  = httpx.get(f"{base}/memories", headers=headers,
                        params={"search": q, "limit": 8}, timeout=15)
-        memories = r.json().get("memories", []) if r.status_code == 200 else []
+        if r.status_code != 200:
+            raise RuntimeError(f"Cathedral read failed {r.status_code}: {r.text[:120]}")
+        memories = r.json().get("memories", [])
         read_latencies.append((time.perf_counter() - t0) * 1000)
 
         memory_text = "\n".join(f"- {m.get('content','')}" for m in memories)
@@ -446,7 +460,7 @@ def run_cathedral(client) -> dict:
             "question":       q,
             "answer":         answer,
             "accuracy":       score,
-            "context_tokens": prompt_tok,
+            "context_tokens": memory_context_tokens(memory_text, SYSTEM_PROMPT),
             "total_tokens":   total_tok,
             "memory_read_ms": read_latencies[-1],
         })
