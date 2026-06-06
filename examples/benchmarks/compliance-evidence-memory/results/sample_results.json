@@ -1,0 +1,33 @@
+{
+  "benchmark": "compliance-evidence-memory",
+  "scenario": "Current compliance facts with evidence citations under stale and sensitive audit logs",
+  "results": [
+    {
+      "backend": "active_evidence_digest",
+      "accuracy": 1.0,
+      "avg_retrieved_tokens": 9.4,
+      "p95_latency_seconds": 0.01512,
+      "stale_conflict_rate": 0.0,
+      "missing_evidence_rate": 0.0,
+      "signal_to_noise": 1.0
+    },
+    {
+      "backend": "append_only_log",
+      "accuracy": 0.8,
+      "avg_retrieved_tokens": 18.4,
+      "p95_latency_seconds": 0.023960000000000002,
+      "stale_conflict_rate": 1.0,
+      "missing_evidence_rate": 0.0,
+      "signal_to_noise": 0.391304347826087
+    },
+    {
+      "backend": "recent_window_log",
+      "accuracy": 0.2,
+      "avg_retrieved_tokens": 7.4,
+      "p95_latency_seconds": 0.015760000000000003,
+      "stale_conflict_rate": 0.4,
+      "missing_evidence_rate": 0.6,
+      "signal_to_noise": 0.24324324324324326
+    }
+  ]
+}
