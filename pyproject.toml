@@ -1,32 +1,57 @@
+[build-system]
+requires = ["setuptools>=45", "wheel"]
+build-backend = "setuptools.build_meta"
+
 [project]
 name = "memanto"
-dynamic = ["version"]
-description = "Memory that AI Agents Love!"
-authors = [{ name = "Majid Fekri", email = "majid.fekri@edgeaiinnovations.com" }]
-requires-python = ">=3.10,<4"
+version = "0.1.1"
+description = "Memory agent for AI applications"
 readme = "README.md"
-license = "MIT"
-keywords = [
-    "memanto",
+license = {file = "LICENSE"}
     "moorcheh",
     "memory layer",
-    "agentic ai",
-    "llm",
-    "agent memory",
-    "semantic memory",
-    "rag",
+    "ai",
+    "memory",
+    "agent",
+    "benchmark",
+    "evaluation",
+    "comparison",
+    "performance",
+    "efficiency",
+    "benchmarking",
 ]
+dependencies = [
+    "openai>=1.0.0",
 classifiers = [
-    "Development Status :: 3 - Alpha",
-    "Environment :: Console",
-    "Intended Audience :: Developers",
-    "Intended Audience :: Information Technology",
-    "License :: OSI Approved :: MIT License",
-    "Operating System :: OS Independent",
+    "requests",
+    "numpy",
+    "pandas",
+    "pytest>=6.0",
+    "pytest-benchmark",
+    "matplotlib",
+    "seaborn",
+]
+
+[project.optional-dependencies]
     "Programming Language :: Python",
-    "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.10",
-    "Programming Language :: Python :: 3.11",
+
+[tool.setuptools.packages.find]
+where = ["."]
+
+[tool.pytest.ini_options]
+markers = [
+    "benchmark: mark test as a benchmark test",
+]
+testpaths = ["tests", "benchmark"]
+
+[tool.pytest.benchmark]
+disable_gc = true
+min_rounds = 10
+timer = "time"
+
+[tool.pytest.env]
+MEMANTO_API_KEY = "test-key"
+
     "Programming Language :: Python :: 3.12",
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
     "Topic :: Software Development :: Libraries :: Python Modules",
@@ -45,6 +70,7 @@ dependencies = [
     "pyyaml>=6.0",
     "rich>=13.0.0",
     "python-multipart>=0.0.7",
+    "rapidfuzz>=3.0.0",
 ]
 
 [project.urls]
@@ -104,6 +130,7 @@ warn_unused_configs = true
 ignore_missing_imports = true
 exclude = [
     "^integrations/",
+    "^examples/",
 ]
 
 # Optional: Configure pytest
