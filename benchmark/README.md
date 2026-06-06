@@ -1,16 +1,26 @@
-# Memanto Benchmark Suite
+# Memanto Benchmarking Suite
 
-This benchmark suite provides tools to evaluate and compare Memanto against other agentic memory frameworks in terms of accuracy and resource efficiency.
+A rigorous, reproducible benchmarking framework that evaluates **Memanto** against other agentic memory frameworks across the core tension of **Accuracy vs. Resource Footprint**.
 
-## Overview
+## Supported Backends
 
-The benchmark suite includes:
+- **Memanto** (this repo) — active memory agent with serverless retrieval
+- **Mem0** — popular open-source memory layer for LLM apps
+- **Zep / Graphiti** — graph-based memory with entity extraction
+- *(Extensible: add more backends via the `BaseMemoryBackend` interface)*
 
-- Synthetic agent memory tests
-- Resource usage tracking
-- Accuracy scoring
-- Latency measurements
-- Token consumption analysis
+## Metrics
 
-## Setup
+| Category | Metric | Description |
+|----------|--------|-------------|
+| **Accuracy** | Recall@K | Fraction of relevant memories retrieved in top-K |
+| **Accuracy** | Preference Resolution | Correctly resolving conflicting user preferences over time |
+| **Accuracy** | Temporal Consistency | Maintaining consistency across multi-session conversations |
+| **Resource** | Tokens per Query | Total tokens consumed (prompt + retrieval + response) |
+| **Resource** | p95 Latency | 95th percentile response time |
+| **Resource** | Memory Growth Rate | Storage overhead per conversation turn |
+
+## Quick Start
+
+### 1. Install Dependencies
 
