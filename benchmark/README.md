@@ -1,17 +1,16 @@
 # Memanto Benchmark Suite
 
-This benchmark suite is designed to evaluate and compare the performance of Memanto against other agentic memory frameworks in terms of accuracy vs. resource footprint.
+This benchmark suite provides tools to evaluate and compare Memanto against other agentic memory frameworks in terms of accuracy and resource efficiency.
 
 ## Overview
 
-The benchmark evaluates memory frameworks on key performance metrics relevant to production AI agent deployment:
+The benchmark suite includes:
 
-- **Accuracy**: Measures the correctness and relevance of memory recall
-- **Token Efficiency**: Evaluates the token consumption for memory operations
-- **Latency**: Measures p95 latency for memory operations
-- **Resource Usage**: Evaluates computational resources consumed during operation
+- Synthetic agent memory tests
+- Resource usage tracking
+- Accuracy scoring
+- Latency measurements
+- Token consumption analysis
 
 ## Setup
 
-1. Install dependencies:
-   
