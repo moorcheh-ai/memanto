@@ -1,10 +1,13 @@
-# Memanto Benchmark Suite
+# Memanto Benchmarking Suite
 
-This benchmarking suite is designed to evaluate and compare the performance of Memanto against other agentic memory frameworks in terms of:
+A rigorous, reproducible benchmarking framework that compares **Memanto** against other agentic memory frameworks across the core dimensions of **Accuracy vs. Resource Footprint**.
 
-- **Accuracy**: How well the memory system recalls and answers correctly
-- **Token Efficiency**: How efficiently the system uses tokens during operation
-- **Latency**: Response time for memory operations
+## Supported Backends
 
-## Usage
+- **Memanto** (this repo)
+- **Mem0** (via `mem0ai` package)
+- **Zep/Graphiti** (via `zep-python` package)
+- **Letta** (via `letta` package)
+
+## Quick Start
 
