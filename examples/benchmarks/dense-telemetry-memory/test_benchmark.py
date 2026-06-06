@@ -1,15 +1,29 @@
 import unittest
 
-from .run_benchmark import (
-    ActiveTelemetryDigest,
-    AppendOnlyLog,
-    EVENTS,
-    QUERIES,
-    SESSION_ORDER,
-    degradation_curve,
-    events_through_session,
-    run,
-)
+try:
+    from .run_benchmark import (
+        ActiveTelemetryDigest,
+        AppendOnlyLog,
+        EVENTS,
+        QUERIES,
+        SESSION_ORDER,
+        WindowedRecentLog,
+        degradation_curve,
+        events_through_session,
+        run,
+    )
+except ImportError:
+    from run_benchmark import (
+        ActiveTelemetryDigest,
+        AppendOnlyLog,
+        EVENTS,
+        QUERIES,
+        SESSION_ORDER,
+        WindowedRecentLog,
+        degradation_curve,
+        events_through_session,
+        run,
+    )
 
 
 class DenseTelemetryMemoryBenchmarkTests(unittest.TestCase):
@@ -48,8 +62,6 @@ class DenseTelemetryMemoryBenchmarkTests(unittest.TestCase):
 
     def test_windowed_log_forgets_early_allergy_at_mid_course(self) -> None:
         """Recent-window memory misses admission allergy before discharge re-states it."""
-        from .run_benchmark import WindowedRecentLog
-
         mid_events = events_through_session("shift-04")
         backend = WindowedRecentLog(mid_events, window_size=4)
         context = backend.retrieve(
