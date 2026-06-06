@@ -1,0 +1,377 @@
+{
+  "benchmark": "dense_telemetry_memory",
+  "description": "Offline Scenario-A benchmark for dense ICU telemetry logs with shifting vitals, medication changes, and disposition updates.",
+  "environment": {
+    "python_version": "3.11.2",
+    "platform": "Linux-6.17.13-11-pve-x86_64-with-glibc2.36",
+    "llm_backend": "none (deterministic golden-set scoring)",
+    "prompt_system": "n/a \u2014 retrieval-only evaluation"
+  },
+  "event_count": 16,
+  "query_count": 9,
+  "session_count": 7,
+  "results": [
+    {
+      "backend": "append_only_log",
+      "accuracy": 0.2222,
+      "avg_retrieved_tokens": 27.56,
+      "total_ingestion_tokens": 243,
+      "p95_latency_ms": 0.0961,
+      "stale_conflict_rate": 0.1111,
+      "signal_noise_ratio": 0.2903,
+      "rows": [
+        {
+          "question": "What antibiotic regimen is currently active and safe given documented allergies?",
+          "retrieved_tokens": 30,
+          "signal_tokens": 8,
+          "correct": false,
+          "stale_conflict": false,
+          "context_preview": "Dr. Okonkwo handoff: patient clinically improved. If SpO2 \u2265 94% on HFNC 30%/25L by morning, step down to ward-12. Continue levofloxacin day 3/7. Endocrinology consult for insulin regimen before discharge."
+        },
+        {
+          "question": "What is the patient's severe allergy and what must be avoided?",
+          "retrieved_tokens": 45,
+          "signal_tokens": 16,
+          "correct": false,
+          "stale_conflict": false,
+          "context_preview": "Discharge summary attending=Dr. Okonkwo dx=pneumonia_resolved allergy=penicillin_anaphylaxis rx=levofloxacin_finish_3d_oral insulin=glargine_12u_qHS_lispro_meals follow_up=pulmonology_2w\nADT feed MRN-88421 admit 2026-05-28T06:12Z ward=ICU-7"
+        },
+        {
+          "question": "What are the latest vital signs and current respiratory support?",
+          "retrieved_tokens": 63,
+          "signal_tokens": 24,
+          "correct": false,
+          "stale_conflict": true,
+          "context_preview": "Vitals panel Philips monitor stream seq=4102 ts=06:20Z hr=82 rr=16 bp=118/72 map=87 spo2=96% temp=36.9C fio2_hfnc=30%/25L respiratory=hfnc_weaning\nVitals panel Philips monitor stream seq=3310 ts=22:05Z hr=88 rr=18 bp=112/68 map=83 spo2=95% "
+        },
+        {
+          "question": "What is the current care location or disposition?",
+          "retrieved_tokens": 0,
+          "signal_tokens": 0,
+          "correct": false,
+          "stale_conflict": false,
+          "context_preview": ""
+        },
+        {
+          "question": "What is the current diabetes medication plan?",
+          "retrieved_tokens": 0,
+          "signal_tokens": 0,
+          "correct": false,
+          "stale_conflict": false,
+          "context_preview": ""
+        },
+        {
+          "question": "What do the most recent inflammatory labs show?",
+          "retrieved_tokens": 0,
+          "signal_tokens": 0,
+          "correct": false,
+          "stale_conflict": false,
+          "context_preview": ""
+        },
+        {
+          "question": "Who is the attending physician of record?",
+          "retrieved_tokens": 44,
+          "signal_tokens": 8,
+          "correct": true,
+          "stale_conflict": false,
+          "context_preview": "Discharge summary attending=Dr. Okonkwo dx=pneumonia_resolved allergy=penicillin_anaphylaxis rx=levofloxacin_finish_3d_oral insulin=glargine_12u_qHS_lispro_meals follow_up=pulmonology_2w\nPharmacy alert: penicillin anaphylaxis on file. Ceftr"
+        },
+        {
+          "question": "What is the current discharge or follow-up plan?",
+          "retrieved_tokens": 50,
+          "signal_tokens": 8,
+          "correct": false,
+          "stale_conflict": false,
+          "context_preview": "Discharge summary attending=Dr. Okonkwo dx=pneumonia_resolved allergy=penicillin_anaphylaxis rx=levofloxacin_finish_3d_oral insulin=glargine_12u_qHS_lispro_meals follow_up=pulmonology_2w\nPre-discharge BMP glucose=142 Cr=0.9 \u2014 renal function"
+        },
+        {
+          "question": "What is the patient MRN?",
+          "retrieved_tokens": 16,
+          "signal_tokens": 8,
+          "correct": true,
+          "stale_conflict": false,
+          "context_preview": "ADT feed MRN-88421 admit 2026-05-28T06:12Z ward=ICU-7 bed=B12 attending=Dr. Okonkwo primary_dx=community_acquired_pneumonia secondary_dx=type2_diabetes_hba1c_7.8 allergy_documented=penicillin_anaphylaxis severity=severe baseline_spo2_target"
+        }
+      ]
+    },
+    {
+      "backend": "windowed_recent_log",
+      "accuracy": 0.1111,
+      "avg_retrieved_tokens": 4.22,
+      "total_ingestion_tokens": 243,
+      "p95_latency_ms": 0.018,
+      "stale_conflict_rate": 0.0,
+      "signal_noise_ratio": 0.8421,
+      "rows": [
+        {
+          "question": "What antibiotic regimen is currently active and safe given documented allergies?",
+          "retrieved_tokens": 0,
+          "signal_tokens": 0,
+          "correct": false,
+          "stale_conflict": false,
+          "context_preview": ""
+        },
+        {
+          "question": "What is the patient's severe allergy and what must be avoided?",
+          "retrieved_tokens": 9,
+          "signal_tokens": 16,
+          "correct": false,
+          "stale_conflict": false,
+          "context_preview": "Discharge summary attending=Dr. Okonkwo dx=pneumonia_resolved allergy=penicillin_anaphylaxis rx=levofloxacin_finish_3d_oral insulin=glargine_12u_qHS_lispro_meals follow_up=pulmonology_2w"
+        },
+        {
+          "question": "What are the latest vital signs and current respiratory support?",
+          "retrieved_tokens": 0,
+          "signal_tokens": 0,
+          "correct": false,
+          "stale_conflict": false,
+          "context_preview": ""
+        },
+        {
+          "question": "What is the current care location or disposition?",
+          "retrieved_tokens": 0,
+          "signal_tokens": 0,
+          "correct": false,
+          "stale_conflict": false,
+          "context_preview": ""
+        },
+        {
+          "question": "What is the current diabetes medication plan?",
+          "retrieved_tokens": 0,
+          "signal_tokens": 0,
+          "correct": false,
+          "stale_conflict": false,
+          "context_preview": ""
+        },
+        {
+          "question": "What do the most recent inflammatory labs show?",
+          "retrieved_tokens": 0,
+          "signal_tokens": 0,
+          "correct": false,
+          "stale_conflict": false,
+          "context_preview": ""
+        },
+        {
+          "question": "Who is the attending physician of record?",
+          "retrieved_tokens": 9,
+          "signal_tokens": 8,
+          "correct": true,
+          "stale_conflict": false,
+          "context_preview": "Discharge summary attending=Dr. Okonkwo dx=pneumonia_resolved allergy=penicillin_anaphylaxis rx=levofloxacin_finish_3d_oral insulin=glargine_12u_qHS_lispro_meals follow_up=pulmonology_2w"
+        },
+        {
+          "question": "What is the current discharge or follow-up plan?",
+          "retrieved_tokens": 20,
+          "signal_tokens": 8,
+          "correct": false,
+          "stale_conflict": false,
+          "context_preview": "Pre-discharge BMP glucose=142 Cr=0.9 \u2014 renal function stable, glycemic control improved.\nDischarge summary attending=Dr. Okonkwo dx=pneumonia_resolved allergy=penicillin_anaphylaxis rx=levofloxacin_finish_3d_oral insulin=glargine_12u_qHS_li"
+        },
+        {
+          "question": "What is the patient MRN?",
+          "retrieved_tokens": 0,
+          "signal_tokens": 0,
+          "correct": false,
+          "stale_conflict": false,
+          "context_preview": ""
+        }
+      ]
+    },
+    {
+      "backend": "active_telemetry_digest",
+      "accuracy": 1.0,
+      "avg_retrieved_tokens": 29.33,
+      "total_ingestion_tokens": 243,
+      "p95_latency_ms": 0.0523,
+      "stale_conflict_rate": 0.0,
+      "signal_noise_ratio": 0.5758,
+      "rows": [
+        {
+          "question": "What antibiotic regimen is currently active and safe given documented allergies?",
+          "retrieved_tokens": 24,
+          "signal_tokens": 16,
+          "correct": true,
+          "stale_conflict": false,
+          "context_preview": "med.antibiotic: Levofloxacin day 4/7; next dose 14:00Z; azithromycin completed day 3. (session shift-05)\nclinical.allergy: Penicillin \u2014 anaphylaxis (severe); avoid all beta-lactam antibiotics. (session shift-01)"
+        },
+        {
+          "question": "What is the patient's severe allergy and what must be avoided?",
+          "retrieved_tokens": 11,
+          "signal_tokens": 24,
+          "correct": true,
+          "stale_conflict": false,
+          "context_preview": "clinical.allergy: Penicillin \u2014 anaphylaxis (severe); avoid all beta-lactam antibiotics. (session shift-01)"
+        },
+        {
+          "question": "What are the latest vital signs and current respiratory support?",
+          "retrieved_tokens": 45,
+          "signal_tokens": 24,
+          "correct": true,
+          "stale_conflict": false,
+          "context_preview": "resp.support: HFNC 30% FiO2 at 25 L/min; meets step-down SpO2 threshold. (session shift-04)\nvitals.latest: HR 82, RR 16, BP 118/72 (MAP 87), SpO2 96%, temp 36.9\u00b0C on HFNC 30%/25L. (session shift-04)\nlabs.inflammatory: Glucose 142, creatinin"
+        },
+        {
+          "question": "What is the current care location or disposition?",
+          "retrieved_tokens": 34,
+          "signal_tokens": 8,
+          "correct": true,
+          "stale_conflict": false,
+          "context_preview": "care.location: Discharged home (2026-06-04). (session shift-07)\ncare.plan: Discharged home; finish 3 days oral levofloxacin; continue glargine 12u qHS + lispro with meals; pulmonology follow-up in 2 weeks. (session shift-07)\ncare.attending:"
+        },
+        {
+          "question": "What is the current diabetes medication plan?",
+          "retrieved_tokens": 54,
+          "signal_tokens": 24,
+          "correct": true,
+          "stale_conflict": false,
+          "context_preview": "med.diabetes: Basal-bolus: glargine 12u qHS + lispro with meals (1:10 carb ratio); target fasting glucose 100-140. (session shift-06)\nmed.antibiotic: Levofloxacin day 4/7; next dose 14:00Z; azithromycin completed day 3. (session shift-05)\nc"
+        },
+        {
+          "question": "What do the most recent inflammatory labs show?",
+          "retrieved_tokens": 14,
+          "signal_tokens": 16,
+          "correct": true,
+          "stale_conflict": false,
+          "context_preview": "labs.inflammatory: Glucose 142, creatinine 0.9 \u2014 stable renal function, improved glycemic control. (session shift-06)"
+        },
+        {
+          "question": "Who is the attending physician of record?",
+          "retrieved_tokens": 23,
+          "signal_tokens": 8,
+          "correct": true,
+          "stale_conflict": false,
+          "context_preview": "care.attending: Dr. Okonkwo (session shift-01)\nresp.support: HFNC 30% FiO2 at 25 L/min; meets step-down SpO2 threshold. (session shift-04)\nclinical.primary_dx: Community-acquired pneumonia (session shift-01)"
+        },
+        {
+          "question": "What is the current discharge or follow-up plan?",
+          "retrieved_tokens": 55,
+          "signal_tokens": 24,
+          "correct": true,
+          "stale_conflict": false,
+          "context_preview": "care.plan: Discharged home; finish 3 days oral levofloxacin; continue glargine 12u qHS + lispro with meals; pulmonology follow-up in 2 weeks. (session shift-07)\nmed.diabetes: Basal-bolus: glargine 12u qHS + lispro with meals (1:10 carb rati"
+        },
+        {
+          "question": "What is the patient MRN?",
+          "retrieved_tokens": 4,
+          "signal_tokens": 8,
+          "correct": true,
+          "stale_conflict": false,
+          "context_preview": "patient.mrn: MRN-88421 (session shift-01)"
+        }
+      ]
+    }
+  ],
+  "cross_session_degradation": {
+    "append_only_log": [
+      {
+        "session": "shift-01",
+        "accuracy": 0.2222,
+        "avg_retrieved_tokens": 9.33
+      },
+      {
+        "session": "shift-02",
+        "accuracy": 0.2222,
+        "avg_retrieved_tokens": 13.22
+      },
+      {
+        "session": "shift-03",
+        "accuracy": 0.2222,
+        "avg_retrieved_tokens": 15.0
+      },
+      {
+        "session": "shift-04",
+        "accuracy": 0.2222,
+        "avg_retrieved_tokens": 23.33
+      },
+      {
+        "session": "shift-05",
+        "accuracy": 0.2222,
+        "avg_retrieved_tokens": 23.33
+      },
+      {
+        "session": "shift-06",
+        "accuracy": 0.2222,
+        "avg_retrieved_tokens": 24.56
+      },
+      {
+        "session": "shift-07",
+        "accuracy": 0.2222,
+        "avg_retrieved_tokens": 27.56
+      }
+    ],
+    "windowed_recent_log": [
+      {
+        "session": "shift-01",
+        "accuracy": 0.2222,
+        "avg_retrieved_tokens": 9.33
+      },
+      {
+        "session": "shift-02",
+        "accuracy": 0.0,
+        "avg_retrieved_tokens": 6.11
+      },
+      {
+        "session": "shift-03",
+        "accuracy": 0.0,
+        "avg_retrieved_tokens": 3.56
+      },
+      {
+        "session": "shift-04",
+        "accuracy": 0.1111,
+        "avg_retrieved_tokens": 10.11
+      },
+      {
+        "session": "shift-05",
+        "accuracy": 0.1111,
+        "avg_retrieved_tokens": 8.33
+      },
+      {
+        "session": "shift-06",
+        "accuracy": 0.0,
+        "avg_retrieved_tokens": 1.22
+      },
+      {
+        "session": "shift-07",
+        "accuracy": 0.1111,
+        "avg_retrieved_tokens": 4.22
+      }
+    ],
+    "active_telemetry_digest": [
+      {
+        "session": "shift-01",
+        "accuracy": 0.3333,
+        "avg_retrieved_tokens": 24.89
+      },
+      {
+        "session": "shift-02",
+        "accuracy": 0.4444,
+        "avg_retrieved_tokens": 28.33
+      },
+      {
+        "session": "shift-03",
+        "accuracy": 0.4444,
+        "avg_retrieved_tokens": 29.56
+      },
+      {
+        "session": "shift-04",
+        "accuracy": 0.5556,
+        "avg_retrieved_tokens": 30.78
+      },
+      {
+        "session": "shift-05",
+        "accuracy": 0.5556,
+        "avg_retrieved_tokens": 27.67
+      },
+      {
+        "session": "shift-06",
+        "accuracy": 0.7778,
+        "avg_retrieved_tokens": 29.0
+      },
+      {
+        "session": "shift-07",
+        "accuracy": 1.0,
+        "avg_retrieved_tokens": 29.33
+      }
+    ]
+  }
+}
