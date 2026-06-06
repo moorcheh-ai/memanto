@@ -1,125 +1,115 @@
 import time
 import asyncio
-from typing import Dict, List, Tuple
-from memanto import Memanto
-import numpy as np
-from concurrent.futures import ThreadPoolExecutor
+from typing import List, Dict, Any
+import memanto
 
 
-class BenchmarkRunner:
-    def __init__(self, memanto_client: Memanto):
-        self.memanto = memanto_client
-        self.results = []
+class MemoryBenchmark:
+    def __init__(self, memanto_client: memanto.Memanto, competitor_client=None):
+        self.memanto_client = memanto_client
+        self.competitor_client = competitor_client  # e.g., Mem0 client
+        self.metrics = {}
+    
+    async def run_benchmark(self, test_data: List[Dict[str, Any]]) -> Dict[str, Any]:
+        """Run benchmark comparison between Memanto and competitor"""
+        results = {
+            "memanto": {},
+            "competitor": {}
+        }
         
-    def run_benchmark_suite(self) -> Dict:
-        """Run comprehensive benchmark suite comparing Memanto with other memory systems"""
-        print("Running Memanto Benchmark Suite...")
+        # Benchmark Memanto
+        print("Running benchmark for Memanto...")
+        results["memanto"] = await self._benchmark_memanto(test_data)
         
-        # Test 1: Memory Storage Performance
-        storage_results = self._benchmark_storage()
+        # Benchmark competitor if provided
+        if self.competitor_client:
+            print("Running benchmark for competitor...")
+            results["competitor"] = await self._benchmark_competitor(test_data)
         
-        # Test 2: Memory Retrieval Performance  
-        retrieval_results = self._benchmark_retrieval()
+        return results
+    
+    async def _benchmark_memanto(self, test_data: List[Dict[str, Any]]) -> Dict[str, float]:
+        """Benchmark Memanto performance"""
+        total_tokens = 0
+        total_latency = 0.0
+        total_accuracy = 0.0
+        runs = 0
         
-        # Test 3: Token Efficiency
-        token_results = self._benchmark_tokens()
-        
-        # Test 4: Latency Performance
-        latency_results = self._benchmark_latency()
+        for data in test_data:
+            # Measure token usage
+            start_tokens = self.memanto_client.get_token_count()  # Hypothetical method
+            
+            # Measure latency
+            start_time = time.time()
+            
+            # Perform memory operations
+            await self.memanto_client.remember(data["input"])
+            await self.memanto_client.recall(data["query"])
+            
+            end_time = time.time()
+            total_latency += (end_time - start_time)
+            
+            # Calculate token usage
+            end_tokens = self.memanto_client.get_token_count()
+            total_tokens += (end_tokens - start_tokens)
+            
+            # Calculate accuracy (hypothetical)
+            accuracy = await self.memanto_client.evaluate_accuracy(data["expected"])
+            total_accuracy += accuracy
+            runs += 1
         
         return {
-            "storage": storage_results,
-            "retrieval": retrieval_results, 
-            "tokens": token_results,
-            "latency": latency_results
+            "avg_token_usage": total_tokens / runs,
+            "avg_latency": total_latency / runs,
+            "avg_accuracy": total_accuracy / runs if runs > 0 else 0.0
         }
     
-    def _benchmark_storage(self) -> Dict:
-        """Benchmark memory storage performance"""
-        results = {}
+    async def _benchmark_competitor(self, test_data: List[Dict[str, Any]]) -> Dict[str, float]:
+        """Template for benchmarking a competitor framework"""
+        # This would be implemented specifically for each competitor framework
+        # For example, if using Mem0:
+        total_tokens = 0
+        total_latency = 0.0
+        total_accuracy = 0.0
+        runs = 0
         
-        # Test data size efficiency
-        test_data = [
-            "The user's favorite color is blue.",
-            "They work at a technology company in San Francisco.",
-            "They have a pet dog named Max who is 3 years old.",
-            "Their preferred programming languages are Python and JavaScript.",
-            "They enjoy hiking in the mountains on weekends."
-        ]
-        
-        start = time.time()
-        for item in test_data:
-            self.memanto.remember(item)
-        end = time.time()
-        
-        results['storage_time'] = end - start
-        results['items_stored'] = len(test_data)
-        results['avg_storage_time_per_item'] = (end - start) / len(test_data)
-        
-        return results
-        
-    def _benchmark_retrieval(self) -> Dict:
-        """Benchmark memory retrieval performance"""
-        results = {}
-        
-        queries = [
-            "What is the user's favorite color?",
-            "Where does the user work?",
-            "What are the user's hobbies?",
-            "What programming languages does the user prefer?",
-            "What is the user's pet's name?"
-        ]
-        
-        total_time = 0
-        correct_retrievals = 0
-        total_retrievals = 0
-        
-        for query in queries:
-            start = time.time()
-            response = self.memanto.recall(query)
-            end = time.time()
-            total_time += (end - start)
-            total_retrievals += 1
+        for data in test_data:
+            start_time = time.time()
+            # Competitor-specific operations would go here
+            end_time = time.time()
+            total_latency += (end_time - start_time)
+            runs += 1
             
-            # Simple check for relevant response
-            if response and len(response) > 0:
-                correct_retrievals += 1
-                
-        results['avg_retrieval_time'] = total_time / len(queries)
-        results['retrieval_accuracy'] = correct_retrievals / total_retrievals
-        results['total_retrievals'] = total_retrievals
-        
-        return results
-        
-    def _benchmark_tokens(self) -> Dict:
-        """Benchmark token efficiency"""
-        results = {}
-        
-        # This would require integration with token counting
-        # For now we'll simulate some metrics
-        results['avg_tokens_per_interaction'] = 42
-        results['compression_ratio'] = 0.75  # Example ratio
-        
-        return results
-        
-    def _benchmark_latency(self) -> Dict:
-        """Benchmark latency performance"""
-        results = {}
-        
-        # Measure p95 latency for various operations
-        operations = ['storage', 'retrieval', 'reasoning']
-        latencies = {}
-        
-        for op in operations:
-            latencies[op] = np.random.random() * 100  # Mock latency values
-            
-        results['p95_latencies'] = latencies
-        return results
+        return {
+            "avg_token_usage": total_tokens / runs,
+            "avg_latency": total_latency / runs,
+            "avg_accuracy": total_accuracy / runs if runs > 0 else 0.0
+        }
 
 
 if __name__ == "__main__":
     # Example usage
-    memanto = Memanto()
-    benchmark = BenchmarkRunner(memanto)
-    results = benchmark.run_benchmark_suite()
-    print("Benchmark Results:", results)
+    benchmark_suite = """
+    To run a full benchmark:
+    
+    1. Initialize the benchmark with Memanto and optional competitor client
+    benchmark = MemoryBenchmark(memanto_client, competitor_client)
+    
+    2. Prepare test data with inputs, queries, and expected outputs
+    test_data = [
+        {
+            "input": "User: book a flight to Paris",
+            "query": "What did the user want to do?",
+            "expected": "The user wants to book a flight to Paris"
+        },
+        # ... more test cases
+    ]
+    
+    3. Run the benchmark
+    results = benchmark.run_benchmark(test_data)
+    
+    4. Print or store results
+    print(results)
+    """
+    
+    print(benchmark_suite)
