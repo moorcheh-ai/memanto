@@ -12,6 +12,8 @@ class SupportEscalationBenchmarkTest(unittest.TestCase):
         self.assertEqual(digest["sla"], "4 hours")
         self.assertEqual(digest["owner"], "Priya")
         self.assertEqual(digest["severity"], "P1")
+        self.assertEqual(digest["blocker"], "payroll export")
+        self.assertEqual(digest["rollback_window"], "02:00-03:00 UTC")
 
     def test_erased_secret_is_not_retrieved(self):
         digest = run_benchmark.build_active_digest(run_benchmark.EVENTS)
@@ -19,7 +21,7 @@ class SupportEscalationBenchmarkTest(unittest.TestCase):
 
         answer = run_benchmark.active_digest_retrieve(digest, probe)
 
-        self.assertIn("no", answer)
+        self.assertEqual(answer, "no erased secret is retrievable")
         self.assertNotIn("beta API key", answer)
 
     def test_active_digest_beats_baselines(self):

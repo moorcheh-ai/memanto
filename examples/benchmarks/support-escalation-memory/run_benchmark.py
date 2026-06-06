@@ -19,6 +19,8 @@ from pathlib import Path
 
 @dataclass(frozen=True)
 class Event:
+    """A support handoff note and the durable memory updates it implies."""
+
     session: str
     text: str
     updates: dict[str, str | None]
@@ -27,6 +29,8 @@ class Event:
 
 @dataclass(frozen=True)
 class Probe:
+    """A question used to score current-fact recall and stale-fact leakage."""
+
     question: str
     key: str
     expected: str
@@ -98,10 +102,14 @@ PROBES = [
 
 
 def token_count(text: str) -> int:
+    """Return a lightweight whitespace token estimate for retrieved context."""
+
     return len(text.split())
 
 
 def build_active_digest(events: list[Event]) -> dict[str, str]:
+    """Apply handoff updates into a compact current-state memory digest."""
+
     memory: dict[str, str] = {}
     for event in events:
         for key, value in event.updates.items():
@@ -114,12 +122,16 @@ def build_active_digest(events: list[Event]) -> dict[str, str]:
 
 
 def active_digest_retrieve(memory: dict[str, str], probe: Probe) -> str:
+    """Retrieve one current fact while refusing erased sensitive facts."""
+
     if probe.key == "erased_secret":
         return "no erased secret is retrievable"
     return memory.get(probe.key, "unknown")
 
 
 def append_only_retrieve(events: list[Event], probe: Probe) -> str:
+    """Retrieve every historical note related to a probe, including stale facts."""
+
     matches = [
         event.text
         for event in events
@@ -129,10 +141,14 @@ def append_only_retrieve(events: list[Event], probe: Probe) -> str:
 
 
 def recent_window_retrieve(events: list[Event], probe: Probe, window: int = 2) -> str:
+    """Retrieve matching notes from only the most recent handoffs."""
+
     return append_only_retrieve(events[-window:], probe)
 
 
 def evaluate_strategy(name: str, retrieve) -> dict[str, float | str]:
+    """Score a retrieval strategy over all probes."""
+
     latencies: list[float] = []
     retrieved_tokens: list[int] = []
     correct = 0
@@ -156,11 +172,16 @@ def evaluate_strategy(name: str, retrieve) -> dict[str, float | str]:
         "accuracy": round(correct / len(PROBES), 3),
         "stale_leak_rate": round(stale_leaks / len(PROBES), 3),
         "avg_retrieved_tokens": round(statistics.mean(retrieved_tokens), 2),
-        "p95_latency_ms": round(sorted(latencies)[int(len(latencies) * 0.95) - 1], 4),
+        "p95_latency_ms": round(
+            sorted(latencies)[min(len(latencies) - 1, int(len(latencies) * 0.95))],
+            4,
+        ),
     }
 
 
 def run() -> dict[str, object]:
+    """Run all retrieval strategies and return a serializable report."""
+
     digest = build_active_digest(EVENTS)
     strategies = [
         evaluate_strategy("active_case_digest", lambda probe: active_digest_retrieve(digest, probe)),
@@ -176,6 +197,8 @@ def run() -> dict[str, object]:
 
 
 def render_markdown(results: dict[str, object]) -> str:
+    """Render benchmark results as a Markdown table."""
+
     lines = [
         "# Support Escalation Memory Benchmark",
         "",
@@ -194,6 +217,8 @@ def render_markdown(results: dict[str, object]) -> str:
 
 
 def main() -> None:
+    """CLI entry point for writing sample JSON and Markdown reports."""
+
     parser = argparse.ArgumentParser()
     parser.add_argument("--output", default="results/sample_results.json")
     parser.add_argument("--markdown", default="results/sample_results.md")
