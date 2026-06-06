@@ -1,0 +1,5 @@
+memanto>=0.1.0
+mem0-python>=0.1.0
+zep-python>=0.1.0
+hindsight>=0.1.0
+letta>=0.1.0
