@@ -1,0 +1,510 @@
+我将为您开发一个完整的 Memanto 代理记忆系统评估框架。
+
+```python
+"""
+Memanto - 代理记忆系统评估框架
+用于评估和基准测试代理记忆系统的性能
+"""
+
+from typing import List, Dict, Any, Optional, Tuple
+from dataclasses import dataclass, field
+from datetime import datetime, timedelta
+import json
+import random
+import uuid
+from enum import Enum
+import logging
+from collections import defaultdict
+
+# 配置日志
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+class MemoryType(Enum):
+    """记忆类型枚举"""
+    SHORT_TERM = "short_term"
+    LONG_TERM = "long_term"
+    EPISODIC = "episodic"
+    SEMANTIC = "semantic"
+
+class MemoryImportance(Enum):
+    """记忆重要性等级"""
+    LOW = 1
+    MEDIUM = 2
+    HIGH = 3
+    CRITICAL = 4
+
+@dataclass
+class Memory:
+    """记忆数据类"""
+    id: str = field(default_factory=lambda: str(uuid.uuid4()))
+    content: str = ""
+    type: MemoryType = MemoryType.SHORT_TERM
+    importance: MemoryImportance = MemoryImportance.MEDIUM
+    timestamp: datetime = field(default_factory=datetime.now)
+    access_count: int = 0
+    last_accessed: Optional[datetime] = None
+    context: Dict[str, Any] = field(default_factory=dict)
+    related_memories: List[str] = field(default_factory=list)
+    decay_rate: float = 0.1  # 衰减率
+    strength: float = 1.0  # 记忆强度
+
+@dataclass
+class TestResult:
+    """测试结果数据类"""
+    test_name: str
+    passed: bool
+    score: float
+    details: Dict[str, Any]
+    execution_time: float
+    errors: List[str] = field(default_factory=list)
+
+class MemorySystem:
+    """基础记忆系统实现"""
+    
+    def __init__(self, capacity: int = 1000, decay_threshold: float = 0.3):
+        self.short_term: List[Memory] = []
+        self.long_term: List[Memory] = []
+        self.capacity = capacity
+        self.decay_threshold = decay_threshold
+        self.context_history: List[Dict] = []
+        
+    def store(self, content: str, memory_type: MemoryType = MemoryType.SHORT_TERM,
+              importance: MemoryImportance = MemoryImportance.MEDIUM,
+              context: Optional[Dict] = None) -> Memory:
+        """存储新记忆"""
+        try:
+            memory = Memory(
+                content=content,
+                type=memory_type,
+                importance=importance,
+                context=context or {}
+            )
+            
+            if memory_type == MemoryType.SHORT_TERM:
+                self._add_to_short_term(memory)
+            else:
+                self._add_to_long_term(memory)
+            
+            self._apply_decay()
+            return memory
+            
+        except Exception as e:
+            logger.error(f"存储记忆失败: {e}")
+            raise
+    
+    def retrieve(self, query: str, top_k: int = 5) -> List[Memory]:
+        """检索记忆"""
+        try:
+            all_memories = self.short_term + self.long_term
+            scored_memories = []
+            
+            for memory in all_memories:
+                score = self._calculate_relevance(query, memory)
+                scored_memories.append((score, memory))
+            
+            # 按相关性排序
+            scored_memories.sort(key=lambda x: x[0], reverse=True)
+            
+            # 更新访问统计
+            results = []
+            for score, memory in scored_memories[:top_k]:
+                memory.access_count += 1
+                memory.last_accessed = datetime.now()
+                results.append(memory)
+            
+            return results
+            
+        except Exception as e:
+            logger.error(f"检索记忆失败: {e}")
+            return []
+    
+    def update_memory(self, memory_id: str, new_content: str) -> bool:
+        """更新记忆"""
+        try:
+            for memory_list in [self.short_term, self.long_term]:
+                for memory in memory_list:
+                    if memory.id == memory_id:
+                        memory.content = new_content
+                        memory.timestamp = datetime.now()
+                        return True
+            return False
+        except Exception as e:
+            logger.error(f"更新记忆失败: {e}")
+            return False
+    
+    def forget(self, memory_id: str) -> bool:
+        """遗忘特定记忆"""
+        try:
+            for memory_list in [self.short_term, self.long_term]:
+                for i, memory in enumerate(memory_list):
+                    if memory.id == memory_id:
+                        memory_list.pop(i)
+                        return True
+            return False
+        except Exception as e:
+            logger.error(f"遗忘记忆失败: {e}")
+            return False
+    
+    def consolidate_memories(self) -> int:
+        """记忆巩固 - 将重要短期记忆转为长期记忆"""
+        consolidated = 0
+        for memory in self.short_term[:]:
+            if (memory.importance.value >= MemoryImportance.HIGH.value and
+                memory.access_count >= 3):
+                memory.type = MemoryType.LONG_TERM
+                self.long_term.append(memory)
+                self.short_term.remove(memory)
+                consolidated += 1
+        return consolidated
+    
+    def _add_to_short_term(self, memory: Memory):
+        """添加到短期记忆"""
+        if len(self.short_term) >= self.capacity // 2:
+            # 移除最不重要的记忆
+            self.short_term.sort(key=lambda m: m.importance.value * m.strength)
+            self.short_term.pop(0)
+        self.short_term.append(memory)
+    
+    def _add_to_long_term(self, memory: Memory):
+        """添加到长期记忆"""
+        if len(self.long_term) >= self.capacity:
+            # 移除最弱的记忆
+            self.long_term.sort(key=lambda m: m.strength)
+            self.long_term.pop(0)
+        self.long_term.append(memory)
+    
+    def _apply_decay(self):
+        """应用记忆衰减"""
+        current_time = datetime.now()
+        
+        for memory in self.short_term + self.long_term:
+            time_diff = (current_time - memory.timestamp).total_seconds() / 3600
+            decay = memory.decay_rate * time_diff
+            memory.strength = max(0, memory.strength - decay)
+            
+            # 如果记忆强度低于阈值，标记为可遗忘
+            if memory.strength < self.decay_threshold:
+                memory.importance = MemoryImportance.LOW
+    
+    def _calculate_relevance(self, query: str, memory: Memory) -> float:
+        """计算查询与记忆的相关性"""
+        # 简单的关键词匹配
+        query_words = set(query.lower().split())
+        memory_words = set(memory.content.lower().split())
+        
+        if not query_words or not memory_words:
+            return 0.0
+        
+        # Jaccard相似度
+        intersection = len(query_words & memory_words)
+        union = len(query_words | memory_words)
+        jaccard_sim = intersection / union if union > 0 else 0
+        
+        # 考虑记忆强度和重要性
+        strength_factor = memory.strength
+        importance_factor = memory.importance.value / 4.0
+        
+        # 考虑最近访问
+        recency_factor = 1.0
+        if memory.last_accessed:
+            hours_since_access = (datetime.now() - memory.last_accessed).total_seconds() / 3600
+            recency_factor = 1.0 / (1.0 + hours_since_access)
+        
+        # 综合评分
+        final_score = (jaccard_sim * 0.4 + 
+                      strength_factor * 0.2 + 
+                      importance_factor * 0.2 + 
+                      recency_factor * 0.2)
+        
+        return final_score
+
+class MemantoEvaluator:
+    """Memanto评估器 - 用于测试和评估记忆系统"""
+    
+    def __init__(self, memory_system: MemorySystem):
+        self.memory_system = memory_system
+        self.test_results: List[TestResult] = []
+        self.conversation_history: List[Dict] = []
+        
+    def test_memory_storage_retrieval(self) -> TestResult:
+        """测试记忆存储和检索的准确性"""
+        start_time = datetime.now()
+        errors = []
+        
+        try:
+            # 测试数据
+            test_memories = [
+                "用户喜欢喝咖啡，每天早晨都会喝一杯",
+                "用户的工作是软件工程师，专注于AI开发",
+                "用户有一个名叫Max的宠物狗",
+                "用户最近去了日本旅行",
+                "用户正在学习弹钢琴"
+            ]
+            
+            # 存储测试
+            stored_count = 0
+            for memory_content in test_memories:
+                memory = self.memory_system.store(
+                    content=memory_content,
+                    importance=MemoryImportance.HIGH
+                )
+                if memory:
+                    stored_count += 1
+            
+            # 检索测试
+            retrieval_queries = [
+                ("咖啡", "用户喜欢喝咖啡"),
+                ("工作", "软件工程师"),
+                ("宠物", "宠物狗"),
+                ("旅行", "日本"),
+                ("钢琴", "弹钢琴")
+            ]
+            
+            retrieval_success = 0
+            for query, expected_content in retrieval_queries:
+                results = self.memory_system.retrieve(query, top_k=3)
+                if results and any(expected_content in r.content for r in results):
+                    retrieval_success += 1
+            
+            # 计算得分
+            storage_score = stored_count / len(test_memories)
+            retrieval_score = retrieval_success / len(retrieval_queries)
+            overall_score = (storage_score + retrieval_score) / 2
+            
+            execution_time = (datetime.now() - start_time).total_seconds()
+            
+            return TestResult(
+                test_name="记忆存储和检索准确性测试",
+                passed=overall_score >= 0.8,
+                score=overall_score,
+                details={
+                    "stored_count": stored_count,
+                    "total_to_store": len(test_memories),
+                    "retrieval_success": retrieval_success,
+                    "total_queries": len(retrieval_queries),
+                    "storage_score": storage_score,
+                    "retrieval_score": retrieval_score
+                },
+                execution_time=execution_time,
+                errors=errors
+            )
+            
+        except Exception as e:
+            errors.append(str(e))
+            return TestResult(
+                test_name="记忆存储和检索准确性测试",
+                passed=False,
+                score=0.0,
+                details={"error": str(e)},
+                execution_time=(datetime.now() - start_time).total_seconds(),
+                errors=errors
+            )
+    
+    def test_long_term_memory_retention(self) -> TestResult:
+        """测试长时间对话后的记忆保持能力"""
+        start_time = datetime.now()
+        errors = []
+        
+        try:
+            # 模拟长时间对话
+            conversation_topics = [
+                "天气", "爱好", "工作", "旅行", "美食",
+                "运动", "音乐", "电影", "书籍", "科技"
+            ]
+            
+            initial_memories = []
+            # 存储初始重要记忆
+            for i, topic in enumerate(conversation_topics[:5]):
+                content = f"用户对{topic}有浓厚兴趣"
+                memory = self.memory_system.store(
+                    content=content,
+                    importance=MemoryImportance.CRITICAL,
+                    context={"session": "initial"}
+                )
+                initial_memories.append(memory)
+            
+            # 模拟多轮对话（50轮）
+            for round_num in range(50):
+                topic = random.choice(conversation_topics)
+                content = f"对话轮次{round_num}: 讨论{topic}"
+                self.memory_system.store(
+                    content=content,
+                    importance=MemoryImportance.LOW,
+                    context={"round": round_num}
+                )
+                
+                # 偶尔巩固记忆
+                if round_num % 10 == 0:
+                    self.memory_system.consolidate_memories()
+            
+            # 测试初始记忆是否保持
+            retention_count = 0
+            for memory in initial_memories:
+                results = self.memory_system.retrieve(memory.content[:20], top_k=5)
+                if results and any(m.id == memory.id for m in results):
+                    retention_count += 1
+            
+            retention_rate = retention_count / len(initial_memories)
+            
+            execution_time = (datetime.now() - start_time).total_seconds()
+            
+            return TestResult(
+                test_name="长期记忆保持能力测试",
+                passed=retention_rate >= 0.6,
+                score=retention_rate,
+                details={
+                    "initial_memories": len(initial_memories),
+                    "retained_memories": retention_count,
+                    "retention_rate": retention_rate,
+                    "total_conversation_rounds": 50
+                },
+                execution_time=execution_time,
+                errors=errors
+            )
+            
+        except Exception as e:
+            errors.append(str(e))
+            return TestResult(
+                test_name="长期记忆保持能力测试",
+                passed=False,
+                score=0.0,
+                details={"error": str(e)},
+                execution_time=(datetime.now() - start_time).total_seconds(),
+                errors=errors
+            )
+    
+    def test_context_consistency(self) -> TestResult:
+        """测试多轮交互中的上下文一致性"""
+        start_time = datetime.now()
+        errors = []
+        
+        try:
+            # 模拟多轮对话场景
+            conversation_scenario = [
+                {"role": "user", "content": "我想预订一张明天去北京的机票"},
+                {"role": "assistant", "content": "好的，请问您想乘坐哪个时间段的航班？"},
+                {"role": "user", "content": "上午的航班，最好是9点左右"},
+                {"role": "assistant", "content": "为您查询到明天上午9:30的航班，价格是1200元"},
+                {"role": "user", "content": "好的，帮我预订这个航班"},
+                {"role": "assistant", "content": "已为您预订明天上午9:30去北京的航班"},
+                {"role": "user", "content": "我想知道我的航班信息"},
+                {"role": "assistant", "content": "您的航班是明天上午9:30去北京"}
+            ]
+            
+            # 存储对话上下文
+            context_memories = []
+            for turn in conversation_scenario:
+                memory = self.memory_system.store(
+                    content=f"{turn['role']}: {turn['content']}",
+                    importance=MemoryImportance.HIGH,
+                    context={"turn": len(context_memories)}
+                )
+                context_memories.append(memory)
+            
+            # 测试上下文一致性
+            consistency_checks = [
+                ("明天", "北京"),
+                ("9:30", "航班"),
+                ("1200", "价格"),
+                ("预订", "机票")
+            ]
+            
+            consistency_score = 0
+            for keyword1, keyword2 in consistency_checks:
+                results = self.memory_system.retrieve(keyword1, top_k=5)
+                if results and any(keyword2 in r.content for r in results):
+                    consistency_score += 1
+            
+            consistency_rate = consistency_score / len(consistency_checks)
+            
+            execution_time = (datetime.now() - start_time).total_seconds()
+            
+            return TestResult(
+                test_name="上下文一致性测试",
+                passed=consistency_rate >= 0.75,
+                score=consistency_rate,
+                details={
+                    "total_checks": len(consistency_checks),
+                    "passed_checks": consistency_score,
+                    "consistency_rate": consistency_rate,
+                    "conversation_turns": len(conversation_scenario)
+                },
+                execution_time=execution_time,
+                errors=errors
+            )
+            
+        except Exception as e:
+            errors.append(str(e))
+            return TestResult(
+                test_name="上下文一致性测试",
+                passed=False,
+                score=0.0,
+                details={"error": str(e)},
+                execution_time=(datetime.now() - start_time).total_seconds(),
+                errors=errors
+            )
+    
+    def test_memory_update_forgetting(self) -> TestResult:
+        """测试记忆更新和遗忘机制"""
+        start_time = datetime.now()
+        errors = []
+        
+        try:
+            # 测试记忆更新
+            original_content = "用户住在北京市朝阳区"
+            updated_content = "用户搬到上海市浦东新区"
+            
+            memory = self.memory_system.store(
+                content=original_content,
+                importance=MemoryImportance.HIGH
+            )
+            
+            # 更新记忆
+            update_success = self.memory_system.update_memory(memory.id, updated_content)
+            
+            # 验证更新
+            update_verified = False
+            if update_success:
+                results = self.memory_system.retrieve("上海", top_k=3)
+                update_verified = any("上海" in r.content for r in results)
+            
+            # 测试遗忘机制
+            forget_memories = []
+            for i in range(10):
+                m = self.memory_system.store(
+                    content=f"临时记忆{i}: 一些不太重要的信息",
+                    importance=MemoryImportance.LOW
+                )
+                forget_memories.append(m)
+            
+            # 模拟时间流逝和衰减
+            for memory in forget_memories:
+                memory.timestamp = datetime.now() - timedelta(days=7)
+                memory.strength = 0.1
+            
+            # 触发衰减
+            self.memory_system._apply_decay()
+            
+            # 检查低强度记忆是否被遗忘
+            weak_memories = [m for m in forget_memories if m.strength < self.memory_system.decay_threshold]
+            forget_mechanism_working = len(weak_memories) > 0
+            
+            # 计算综合得分
+            update_score = 1.0 if update_verified else 0.0
+            forget_score = 1.0 if forget_mechanism_working else 0.0
+            overall_score = (update_score + forget_score) / 2
+            
+            execution_time = (datetime.now() - start_time).total_seconds()
+            
+            return TestResult(
+                test_name="记忆更新和遗忘机制测试",
+                passed=overall_score >= 0.5,
+                score=overall_score,
+                details={
+                    "update_success": update_success,
+                    "update_verified": update_verified,
+                    "weak_memories_count": len(weak_memories),
+                    "total_forget_memories": len(forget_memories),
+                    "forget_mechanism_working": forget_mechanism_working,
+                    "update_score
