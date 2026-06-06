@@ -50,6 +50,8 @@ STOPWORDS = {
 
 @dataclass(frozen=True)
 class Event:
+    """One timestamped memory write from an agent in the handoff dataset."""
+
     turn: int
     timestamp: str
     agent: str
@@ -61,6 +63,8 @@ class Event:
 
     @classmethod
     def from_raw(cls, raw: dict[str, Any]) -> "Event":
+        """Build an event from a JSON dataset entry."""
+
         return cls(
             turn=int(raw["turn"]),
             timestamp=str(raw["timestamp"]),
@@ -75,6 +79,8 @@ class Event:
 
 @dataclass(frozen=True)
 class Question:
+    """One golden retrieval probe used to score a memory backend."""
+
     id: str
     asker: str
     query: str
@@ -84,6 +90,8 @@ class Question:
 
     @classmethod
     def from_raw(cls, raw: dict[str, Any]) -> "Question":
+        """Build a retrieval question from a JSON dataset entry."""
+
         return cls(
             id=str(raw["id"]),
             asker=str(raw["asker"]),
@@ -95,6 +103,8 @@ class Question:
 
 
 def tokenize(text: str) -> list[str]:
+    """Return normalized non-stopword tokens for lightweight scoring."""
+
     return [
         token.lower()
         for token in TOKEN_RE.findall(text)
@@ -103,10 +113,14 @@ def tokenize(text: str) -> list[str]:
 
 
 def token_count(text: str) -> int:
+    """Count tokenizer-sized words in a text field."""
+
     return len(TOKEN_RE.findall(text))
 
 
 def p95(values: list[float]) -> float:
+    """Return the nearest-rank p95 value for a small latency sample."""
+
     if not values:
         return 0.0
     ordered = sorted(values)
@@ -115,6 +129,8 @@ def p95(values: list[float]) -> float:
 
 
 def load_dataset(path: Path) -> tuple[dict[str, Any], list[Event], list[Question]]:
+    """Load benchmark metadata, memory events, and golden questions."""
+
     data = json.loads(path.read_text(encoding="utf-8"))
     events = [Event.from_raw(event) for event in data["events"]]
     questions = [Question.from_raw(question) for question in data["questions"]]
@@ -122,6 +138,8 @@ def load_dataset(path: Path) -> tuple[dict[str, Any], list[Event], list[Question
 
 
 def record_text(record: dict[str, Any]) -> str:
+    """Flatten a backend record into text used by token and keyword scoring."""
+
     return " ".join(
         [
             str(record.get("key", "")),
@@ -134,6 +152,8 @@ def record_text(record: dict[str, Any]) -> str:
 
 
 def keyword_score(query: str, record: dict[str, Any]) -> float:
+    """Score a record by query overlap with a small recency tiebreaker."""
+
     query_terms = set(tokenize(query))
     record_terms = set(tokenize(record_text(record)))
     if not query_terms:
@@ -145,14 +165,20 @@ def keyword_score(query: str, record: dict[str, Any]) -> float:
 
 
 class SharedActiveDigestBackend:
+    """Memanto-style shared memory that keeps only the latest fact per key."""
+
     name = "shared_active_digest"
 
     def __init__(self, max_retrieved_facts: int = 1) -> None:
+        """Create a bounded active digest backend."""
+
         self.max_retrieved_facts = max_retrieved_facts
         self.active_by_key: dict[str, dict[str, Any]] = {}
         self.ingested_tokens = 0
 
     def ingest(self, event: Event) -> None:
+        """Apply one event, replacing any prior fact with the same key."""
+
         self.ingested_tokens += token_count(event.content)
         self.active_by_key[event.key] = {
             "agent": event.agent,
@@ -165,6 +191,8 @@ class SharedActiveDigestBackend:
         }
 
     def retrieve(self, question: Question) -> tuple[list[dict[str, Any]], float]:
+        """Return top matching active facts and measured retrieval latency."""
+
         start = time.perf_counter()
         scored = [
             (keyword_score(question.query, record), record)
@@ -181,14 +209,20 @@ class SharedActiveDigestBackend:
 
 
 class PerAgentAppendLogBackend:
+    """Baseline where each agent can only search its own append-only log."""
+
     name = "per_agent_append_log"
 
     def __init__(self, max_retrieved_events: int = 6) -> None:
+        """Create a per-agent transcript backend."""
+
         self.max_retrieved_events = max_retrieved_events
         self.logs_by_agent: dict[str, list[dict[str, Any]]] = {}
         self.ingested_tokens = 0
 
     def ingest(self, event: Event) -> None:
+        """Append one event to the writing agent's private log."""
+
         self.ingested_tokens += token_count(event.content)
         self.logs_by_agent.setdefault(event.agent, []).append(
             {
@@ -203,6 +237,8 @@ class PerAgentAppendLogBackend:
         )
 
     def retrieve(self, question: Question) -> tuple[list[dict[str, Any]], float]:
+        """Search only the asker's local transcript and return latency."""
+
         start = time.perf_counter()
         local_log = self.logs_by_agent.get(question.asker, [])
         scored = [
@@ -220,14 +256,20 @@ class PerAgentAppendLogBackend:
 
 
 class SharedAppendLogBackend:
+    """Baseline where all agents search a shared append-only transcript."""
+
     name = "shared_append_log"
 
     def __init__(self, max_retrieved_events: int = 6) -> None:
+        """Create a shared transcript backend."""
+
         self.max_retrieved_events = max_retrieved_events
         self.log: list[dict[str, Any]] = []
         self.ingested_tokens = 0
 
     def ingest(self, event: Event) -> None:
+        """Append one event without replacing stale facts."""
+
         self.ingested_tokens += token_count(event.content)
         self.log.append(
             {
@@ -242,6 +284,8 @@ class SharedAppendLogBackend:
         )
 
     def retrieve(self, question: Question) -> tuple[list[dict[str, Any]], float]:
+        """Search the shared transcript and return matching events."""
+
         start = time.perf_counter()
         scored = [
             (keyword_score(question.query, record), record)
@@ -260,6 +304,8 @@ class SharedAppendLogBackend:
 def score_retrieval(
     question: Question, records: list[dict[str, Any]]
 ) -> dict[str, Any]:
+    """Score one retrieval result against the expected current fact."""
+
     same_key = [
         (index, record)
         for index, record in enumerate(records)
@@ -303,6 +349,8 @@ def evaluate_backend(
     events: list[Event],
     questions: list[Question],
 ) -> dict[str, Any]:
+    """Ingest all events, score all questions, and aggregate backend metrics."""
+
     for event in events:
         backend.ingest(event)
 
@@ -359,6 +407,8 @@ def evaluate_backend(
 
 
 def run(dataset_path: Path) -> dict[str, Any]:
+    """Run the full benchmark suite for every backend."""
+
     data, events, questions = load_dataset(dataset_path)
     backend_results = [
         evaluate_backend(SharedActiveDigestBackend(), events, questions),
@@ -379,10 +429,14 @@ def run(dataset_path: Path) -> dict[str, Any]:
 
 
 def format_percent(value: float) -> str:
+    """Format a ratio as a one-decimal percentage string."""
+
     return f"{value * 100:.1f}%"
 
 
 def markdown_report(result: dict[str, Any]) -> str:
+    """Render a benchmark result object as a Markdown report."""
+
     lines = [
         f"# {result['benchmark']}",
         "",
@@ -452,6 +506,8 @@ def markdown_report(result: dict[str, Any]) -> str:
 
 
 def parse_args() -> argparse.Namespace:
+    """Parse command line arguments for the benchmark runner."""
+
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--dataset", type=Path, default=DEFAULT_DATASET)
     parser.add_argument("--output", type=Path)
@@ -460,6 +516,8 @@ def parse_args() -> argparse.Namespace:
 
 
 def main() -> None:
+    """Run the benchmark and write JSON and/or Markdown outputs."""
+
     args = parse_args()
     result = run(args.dataset)
 

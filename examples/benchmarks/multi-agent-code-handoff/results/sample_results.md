@@ -6,9 +6,9 @@ A deterministic benchmark for shared memory in multi-agent coding workflows. Fac
 
 | Backend | Accuracy | Cross-Agent Accuracy | Ingested Tokens | Retrieved Tokens | p95 Latency (s) | Stale Conflict Rate | Signal/Noise |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| shared_active_digest | 100.0% | 100.0% | 252 | 291 | 0.000183 | 0.0% | 1.00 |
-| shared_append_log | 80.0% | 80.0% | 252 | 1704 | 0.000435 | 50.0% | 0.25 |
-| per_agent_append_log | 0.0% | 0.0% | 252 | 590 | 0.000035 | 10.0% | 0.03 |
+| shared_active_digest | 100.0% | 100.0% | 252 | 291 | 0.000276 | 0.0% | 1.00 |
+| shared_append_log | 80.0% | 80.0% | 252 | 1704 | 0.000291 | 50.0% | 0.25 |
+| per_agent_append_log | 0.0% | 0.0% | 252 | 590 | 0.000038 | 10.0% | 0.03 |
 
 ## Per-Question Accuracy
 

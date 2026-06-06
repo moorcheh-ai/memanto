@@ -9,7 +9,11 @@ import run_benchmark
 
 
 class MultiAgentCodeHandoffBenchmarkTests(unittest.TestCase):
+    """Regression tests for the multi-agent handoff benchmark harness."""
+
     def test_dataset_loads_with_cross_agent_questions(self) -> None:
+        """Verify the bundled dataset has enough cross-agent probes."""
+
         _, events, questions = run_benchmark.load_dataset(
             run_benchmark.DEFAULT_DATASET
         )
@@ -21,6 +25,8 @@ class MultiAgentCodeHandoffBenchmarkTests(unittest.TestCase):
         )
 
     def test_shared_digest_beats_append_only_baseline(self) -> None:
+        """Verify the active digest beats both append-only baselines."""
+
         result = run_benchmark.run(run_benchmark.DEFAULT_DATASET)
         by_backend = {item["backend"]: item for item in result["results"]}
         shared = by_backend["shared_active_digest"]
@@ -37,6 +43,8 @@ class MultiAgentCodeHandoffBenchmarkTests(unittest.TestCase):
         self.assertEqual(shared["stale_conflict_rate"], 0.0)
 
     def test_reports_are_written(self) -> None:
+        """Verify JSON and Markdown reports can be generated and read."""
+
         with tempfile.TemporaryDirectory() as tmpdir:
             output = Path(tmpdir) / "latest.json"
             markdown = Path(tmpdir) / "latest.md"

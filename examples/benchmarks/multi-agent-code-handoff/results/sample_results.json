@@ -32,7 +32,7 @@
       "cross_agent_accuracy": 1.0,
       "cross_agent_correct": 10,
       "ingested_tokens": 252,
-      "p95_latency_seconds": 0.00018279999494552612,
+      "p95_latency_seconds": 0.000276199949439615,
       "questions": [
         {
           "id": "q1",
@@ -41,7 +41,7 @@
           "expected_key": "imports.api.contract",
           "expected_value": "POST /v2/imports accepts source_url, preview_only, and idempotency_key",
           "requires_cross_agent_memory": true,
-          "latency_seconds": 0.00018279999494552612,
+          "latency_seconds": 0.000276199949439615,
           "correct": true,
           "first_exact_rank": 1,
           "retrieved_keys": [
@@ -58,7 +58,7 @@
           "expected_key": "imports.auth.scope",
           "expected_value": "imports:admin",
           "requires_cross_agent_memory": true,
-          "latency_seconds": 0.00017740001203492284,
+          "latency_seconds": 9.929999941959977e-05,
           "correct": true,
           "first_exact_rank": 1,
           "retrieved_keys": [
@@ -75,7 +75,7 @@
           "expected_key": "feature.flag",
           "expected_value": "bulk_import_v2",
           "requires_cross_agent_memory": true,
-          "latency_seconds": 0.00016739999409765005,
+          "latency_seconds": 0.00010549998842179775,
           "correct": true,
           "first_exact_rank": 1,
           "retrieved_keys": [
@@ -92,7 +92,7 @@
           "expected_key": "test.blocker",
           "expected_value": "retry idempotency conflict on duplicate idempotency_key",
           "requires_cross_agent_memory": true,
-          "latency_seconds": 0.0001647999742999673,
+          "latency_seconds": 9.319995297119021e-05,
           "correct": true,
           "first_exact_rank": 1,
           "retrieved_keys": [
@@ -109,7 +109,7 @@
           "expected_key": "database.migration",
           "expected_value": "20260605_add_import_jobs_retry_state",
           "requires_cross_agent_memory": true,
-          "latency_seconds": 0.00011030002497136593,
+          "latency_seconds": 6.78999931551516e-05,
           "correct": true,
           "first_exact_rank": 1,
           "retrieved_keys": [
@@ -126,7 +126,7 @@
           "expected_key": "docs.warning",
           "expected_value": "preview_only defaults true in sandbox and false in production",
           "requires_cross_agent_memory": true,
-          "latency_seconds": 0.00010250002378597856,
+          "latency_seconds": 8.289999095723033e-05,
           "correct": true,
           "first_exact_rank": 1,
           "retrieved_keys": [
@@ -143,7 +143,7 @@
           "expected_key": "rollout.region",
           "expected_value": "us-east-1 internal tenants only",
           "requires_cross_agent_memory": true,
-          "latency_seconds": 0.0001357999863103032,
+          "latency_seconds": 0.0001373999984934926,
           "correct": true,
           "first_exact_rank": 1,
           "retrieved_keys": [
@@ -160,7 +160,7 @@
           "expected_key": "owner.oncall",
           "expected_value": "Mina owns backend until 18:00 UTC; Ravi owns QA signoff",
           "requires_cross_agent_memory": true,
-          "latency_seconds": 0.00011369999265298247,
+          "latency_seconds": 0.00011560000712051988,
           "correct": true,
           "first_exact_rank": 1,
           "retrieved_keys": [
@@ -177,7 +177,7 @@
           "expected_key": "rollback.plan",
           "expected_value": "disable bulk_import_v2 and route jobs to legacy_import_worker",
           "requires_cross_agent_memory": true,
-          "latency_seconds": 0.00014379998901858926,
+          "latency_seconds": 0.00012199999764561653,
           "correct": true,
           "first_exact_rank": 1,
           "retrieved_keys": [
@@ -194,7 +194,7 @@
           "expected_key": "customer.message",
           "expected_value": "release is delayed by validation hardening; no customer data loss",
           "requires_cross_agent_memory": true,
-          "latency_seconds": 0.00013969995779916644,
+          "latency_seconds": 0.00011319998884573579,
           "correct": true,
           "first_exact_rank": 1,
           "retrieved_keys": [
@@ -217,7 +217,7 @@
       "cross_agent_accuracy": 0.8,
       "cross_agent_correct": 8,
       "ingested_tokens": 252,
-      "p95_latency_seconds": 0.00043479999294504523,
+      "p95_latency_seconds": 0.000291300006210804,
       "questions": [
         {
           "id": "q1",
@@ -226,7 +226,7 @@
           "expected_key": "imports.api.contract",
           "expected_value": "POST /v2/imports accepts source_url, preview_only, and idempotency_key",
           "requires_cross_agent_memory": true,
-          "latency_seconds": 0.00020150002092123032,
+          "latency_seconds": 0.00022709998302161694,
           "correct": true,
           "first_exact_rank": 1,
           "retrieved_keys": [
@@ -248,7 +248,7 @@
           "expected_key": "imports.auth.scope",
           "expected_value": "imports:admin",
           "requires_cross_agent_memory": true,
-          "latency_seconds": 0.0001564000267535448,
+          "latency_seconds": 0.00015460001304745674,
           "correct": false,
           "first_exact_rank": 2,
           "retrieved_keys": [
@@ -270,7 +270,7 @@
           "expected_key": "feature.flag",
           "expected_value": "bulk_import_v2",
           "requires_cross_agent_memory": true,
-          "latency_seconds": 0.00014590000500902534,
+          "latency_seconds": 0.0001582999830134213,
           "correct": false,
           "first_exact_rank": 2,
           "retrieved_keys": [
@@ -292,7 +292,7 @@
           "expected_key": "test.blocker",
           "expected_value": "retry idempotency conflict on duplicate idempotency_key",
           "requires_cross_agent_memory": true,
-          "latency_seconds": 9.99000039882958e-05,
+          "latency_seconds": 0.00010000000474974513,
           "correct": true,
           "first_exact_rank": 1,
           "retrieved_keys": [
@@ -314,7 +314,7 @@
           "expected_key": "database.migration",
           "expected_value": "20260605_add_import_jobs_retry_state",
           "requires_cross_agent_memory": true,
-          "latency_seconds": 0.000146100006531924,
+          "latency_seconds": 0.00010979996295645833,
           "correct": true,
           "first_exact_rank": 1,
           "retrieved_keys": [
@@ -336,7 +336,7 @@
           "expected_key": "docs.warning",
           "expected_value": "preview_only defaults true in sandbox and false in production",
           "requires_cross_agent_memory": true,
-          "latency_seconds": 0.0001466000103391707,
+          "latency_seconds": 0.00011990003986284137,
           "correct": true,
           "first_exact_rank": 1,
           "retrieved_keys": [
@@ -358,7 +358,7 @@
           "expected_key": "rollout.region",
           "expected_value": "us-east-1 internal tenants only",
           "requires_cross_agent_memory": true,
-          "latency_seconds": 0.00014899997040629387,
+          "latency_seconds": 9.460002183914185e-05,
           "correct": true,
           "first_exact_rank": 1,
           "retrieved_keys": [
@@ -380,7 +380,7 @@
           "expected_key": "owner.oncall",
           "expected_value": "Mina owns backend until 18:00 UTC; Ravi owns QA signoff",
           "requires_cross_agent_memory": true,
-          "latency_seconds": 0.00015569996321573853,
+          "latency_seconds": 0.00017279997700825334,
           "correct": true,
           "first_exact_rank": 1,
           "retrieved_keys": [
@@ -402,7 +402,7 @@
           "expected_key": "rollback.plan",
           "expected_value": "disable bulk_import_v2 and route jobs to legacy_import_worker",
           "requires_cross_agent_memory": true,
-          "latency_seconds": 0.00015480001457035542,
+          "latency_seconds": 0.000291300006210804,
           "correct": true,
           "first_exact_rank": 2,
           "retrieved_keys": [
@@ -424,7 +424,7 @@
           "expected_key": "customer.message",
           "expected_value": "release is delayed by validation hardening; no customer data loss",
           "requires_cross_agent_memory": true,
-          "latency_seconds": 0.00043479999294504523,
+          "latency_seconds": 0.0001750999945215881,
           "correct": true,
           "first_exact_rank": 1,
           "retrieved_keys": [
@@ -452,7 +452,7 @@
       "cross_agent_accuracy": 0.0,
       "cross_agent_correct": 0,
       "ingested_tokens": 252,
-      "p95_latency_seconds": 3.539997851476073e-05,
+      "p95_latency_seconds": 3.809999907389283e-05,
       "questions": [
         {
           "id": "q1",
@@ -461,7 +461,7 @@
           "expected_key": "imports.api.contract",
           "expected_value": "POST /v2/imports accepts source_url, preview_only, and idempotency_key",
           "requires_cross_agent_memory": true,
-          "latency_seconds": 2.3100001271814108e-05,
+          "latency_seconds": 1.580000389367342e-05,
           "correct": false,
           "first_exact_rank": null,
           "retrieved_keys": [
@@ -478,7 +478,7 @@
           "expected_key": "imports.auth.scope",
           "expected_value": "imports:admin",
           "requires_cross_agent_memory": true,
-          "latency_seconds": 3.239995567128062e-05,
+          "latency_seconds": 2.8399983420968056e-05,
           "correct": false,
           "first_exact_rank": null,
           "retrieved_keys": [
@@ -497,7 +497,7 @@
           "expected_key": "feature.flag",
           "expected_value": "bulk_import_v2",
           "requires_cross_agent_memory": true,
-          "latency_seconds": 2.929999027401209e-05,
+          "latency_seconds": 2.829998265951872e-05,
           "correct": false,
           "first_exact_rank": null,
           "retrieved_keys": [
@@ -515,7 +515,7 @@
           "expected_key": "test.blocker",
           "expected_value": "retry idempotency conflict on duplicate idempotency_key",
           "requires_cross_agent_memory": true,
-          "latency_seconds": 3.539997851476073e-05,
+          "latency_seconds": 3.809999907389283e-05,
           "correct": false,
           "first_exact_rank": null,
           "retrieved_keys": [
@@ -534,7 +534,7 @@
           "expected_key": "database.migration",
           "expected_value": "20260605_add_import_jobs_retry_state",
           "requires_cross_agent_memory": true,
-          "latency_seconds": 2.5600020308047533e-05,
+          "latency_seconds": 2.5300018023699522e-05,
           "correct": false,
           "first_exact_rank": null,
           "retrieved_keys": [
@@ -552,7 +552,7 @@
           "expected_key": "docs.warning",
           "expected_value": "preview_only defaults true in sandbox and false in production",
           "requires_cross_agent_memory": true,
-          "latency_seconds": 2.7099973522126675e-05,
+          "latency_seconds": 2.5499961338937283e-05,
           "correct": false,
           "first_exact_rank": null,
           "retrieved_keys": [
@@ -571,7 +571,7 @@
           "expected_key": "rollout.region",
           "expected_value": "us-east-1 internal tenants only",
           "requires_cross_agent_memory": true,
-          "latency_seconds": 1.1299969628453255e-05,
+          "latency_seconds": 2.9999995604157448e-05,
           "correct": false,
           "first_exact_rank": null,
           "retrieved_keys": [
@@ -588,7 +588,7 @@
           "expected_key": "owner.oncall",
           "expected_value": "Mina owns backend until 18:00 UTC; Ravi owns QA signoff",
           "requires_cross_agent_memory": true,
-          "latency_seconds": 2.6099965907633305e-05,
+          "latency_seconds": 3.309996100142598e-05,
           "correct": false,
           "first_exact_rank": null,
           "retrieved_keys": [
@@ -606,7 +606,7 @@
           "expected_key": "rollback.plan",
           "expected_value": "disable bulk_import_v2 and route jobs to legacy_import_worker",
           "requires_cross_agent_memory": true,
-          "latency_seconds": 2.4300010409206152e-05,
+          "latency_seconds": 2.800003858283162e-05,
           "correct": false,
           "first_exact_rank": null,
           "retrieved_keys": [
@@ -624,7 +624,7 @@
           "expected_key": "customer.message",
           "expected_value": "release is delayed by validation hardening; no customer data loss",
           "requires_cross_agent_memory": true,
-          "latency_seconds": 3.300001844763756e-05,
+          "latency_seconds": 3.649998689070344e-05,
           "correct": false,
           "first_exact_rank": null,
           "retrieved_keys": [
