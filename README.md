@@ -34,18 +34,18 @@
    <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=moorcheh-ai/memanto&type=date&theme=dark&legend=top-left" />
    <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=moorcheh-ai/memanto&type=date&legend=top-left" />
    <img alt="Star History Chart" src="https://api.star-history.com/chart?repos=moorcheh-ai/memanto&type=date&legend=top-left" />
+ </picture>
+</a>
 
 ---
 
-## What Is MEMANTO? ðŸ§ 
 
-**MEMANTO is a memory agent. It remembers, recalls, and answers â€” so your agents can achieve long-term goals and avoid confusion.**
-
-**MEMANTO is a memory agent. It remembers, recalls, and answers — so your agents can achieve long-term goals and avoid confusion.**
-Most memory tools today are passive infrastructure: agents have to query them, parse the results, and figure out what to do next. MEMANTO is built differently. It's an active memory agent designed from the gaps agents themselves named when asked about their memory â€” three operations (`remember`, `recall`,2. Make the necessary changes to the file.
-Most memory tools today are passive infrastructure: agents have to query them, parse the results, and figure out what to do next. MEMANTO is built differently. It's an active memory agent designed from the gaps agents themselves named when asked about their memory — three operations (`remember`, `recall`, `answer`) that give your agents persistent context across sessions, with state-of-the-art retrieval and zero ingestion latency.
-
-> *"My memory exists as a static snapshot injected into context — useful, but fundamentally passive. I can't query it, update it mid-conversation, express confidence levels, or distinguish between 'I know this' versus 'I was told this once.'"*
+<a href="https://www.star-history.com/?repos=moorcheh-ai%2Fmemanto&type=date&legend=top-left">
+ <picture>
+   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=moorcheh-ai/memanto&type=date&theme=dark&legend=top-left" />
+   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=moorcheh-ai/memanto&type=date&legend=top-left" />
+   <img alt="Star History Chart" src="https://api.star-history.com/chart?repos=moorcheh-ai/memanto&type=date&legend=top-left" />
+ </picture>
 >
 > — A representative model reply that became MEMANTO's design brief.
 
@@ -55,9 +55,23 @@ We unpacked that into six concrete gaps and built MEMANTO to solve all six.
 
 | # | Gap | What MEMANTO does about it |
 | --- | --- | --- |
-| 1 | **Static injection** — memory arrives as a blob, not queryable by relevance | Queryable, not injectable |
-| 2 | **No temporal decay** — a preference from 6 months ago weighs the same as yesterday's deadline | Versioning, recency signals, temporal queries |
-| 3 | **No provenance** — can't tell explicit facts from inferred patterns or outdated info | Confidence + provenance metadata on every memory |
+
+> *"My memory exists as a static snapshot injected into context — useful, but fundamentally passive. I can't query it, update it mid-conver
+---
+
+## Memanto Developer Skills Integration
+
+Memanto solves **Context Fragmentation** in developer skills workflows by acting as an active memory companion across different skill executions.
+
+### How It Works
+
+1. **Remember**: Memanto actively listens to inputs/outputs of major skills
+2. **Recall**: Previous engineering decisions are automatically injected into new skill contexts
+3. **Answer**: Zero repeated instructions - your architectural philosophy persists across sessions
+
+### Installation
+
+
 | 4 | **Flat memory** — episodic, semantic, and procedural all collapsed to one layer | Typed and hierarchical — 13 built-in memory categories |
 | 5 | **No writeback** — contradictions silently coexist | Conflict detection, explicit versioning, no silent overwrites |
 | 6 | **Indexing delay** — mandatory LLM extraction, graph construction bottleneck | Zero-overhead ingestion, available at write time |
