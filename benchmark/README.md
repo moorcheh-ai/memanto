@@ -1,16 +1,10 @@
-# Memanto Benchmarking Suite
+# Memanto Benchmark Suite
 
-A rigorous, reproducible benchmarking framework that evaluates **Memanto** against other agentic memory frameworks across the core dimensions of **Accuracy vs. Resource Footprint**.
+This benchmarking suite is designed to evaluate and compare the performance of Memanto against other agentic memory frameworks in terms of:
 
-## Supported Backends
+- **Accuracy**: How well the memory system recalls and answers correctly
+- **Token Efficiency**: How efficiently the system uses tokens during operation
+- **Latency**: Response time for memory operations
 
-| Backend | Description | Status |
-|---------|-------------|--------|
-| `memanto` | Memanto active memory agent | ✅ Implemented |
-| `mem0` | Mem0 memory platform | ✅ Implemented |
-| `zep` | Zep/Graphiti memory | 📝 Planned |
-
-## Quick Start
-
-### 1. Install Dependencies
+## Usage
 
