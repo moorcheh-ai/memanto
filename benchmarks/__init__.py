@@ -1,3 +1,0 @@
-"""
-Memanto Benchmark Suite
-"""
