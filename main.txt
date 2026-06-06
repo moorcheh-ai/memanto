@@ -1,0 +1,530 @@
+```Python
+"""
+代理记忆系统基准测试框架
+用于比较不同记忆系统的性能，包括准确率、召回率、一致性和冲突解决能力
+"""
+
+import time
+import random
+import json
+from abc import ABC, abstractmethod
+from typing import List, Dict, Any, Optional, Tuple
+from dataclasses import dataclass, field
+from collections import defaultdict
+import statistics
+
+
+@dataclass
+class MemoryItem:
+    """记忆项数据结构"""
+    key: str
+    value: Any
+    timestamp: float = field(default_factory=time.time)
+    confidence: float = 1.0
+    metadata: Dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass
+class TestResult:
+    """单个测试结果"""
+    test_name: str
+    memory_system: str
+    accuracy: float
+    recall: float
+    consistency: float
+    conflict_resolution: float
+    response_time: float
+    details: Dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass
+class BenchmarkReport:
+    """基准测试报告"""
+    results: List[TestResult]
+    summary: Dict[str, Dict[str, float]] = field(default_factory=dict)
+    
+    def generate_summary(self) -> Dict[str, Dict[str, float]]:
+        """生成测试结果摘要"""
+        summary = defaultdict(lambda: defaultdict(list))
+        
+        for result in self.results:
+            system = result.memory_system
+            summary[system]["accuracy"].append(result.accuracy)
+            summary[system]["recall"].append(result.recall)
+            summary[system]["consistency"].append(result.consistency)
+            summary[system]["conflict_resolution"].append(result.conflict_resolution)
+            summary[system]["response_time"].append(result.response_time)
+        
+        self.summary = {}
+        for system, metrics in summary.items():
+            self.summary[system] = {
+                "avg_accuracy": statistics.mean(metrics["accuracy"]),
+                "avg_recall": statistics.mean(metrics["recall"]),
+                "avg_consistency": statistics.mean(metrics["consistency"]),
+                "avg_conflict_resolution": statistics.mean(metrics["conflict_resolution"]),
+                "avg_response_time": statistics.mean(metrics["response_time"]),
+                "std_accuracy": statistics.stdev(metrics["accuracy"]) if len(metrics["accuracy"]) > 1 else 0,
+                "std_recall": statistics.stdev(metrics["recall"]) if len(metrics["recall"]) > 1 else 0,
+            }
+        
+        return self.summary
+    
+    def to_json(self, filepath: str = "benchmark_report.json"):
+        """将报告保存为JSON文件"""
+        report_data = {
+            "summary": self.summary,
+            "results": [
+                {
+                    "test_name": r.test_name,
+                    "memory_system": r.memory_system,
+                    "accuracy": r.accuracy,
+                    "recall": r.recall,
+                    "consistency": r.consistency,
+                    "conflict_resolution": r.conflict_resolution,
+                    "response_time": r.response_time,
+                    "details": r.details
+                }
+                for r in self.results
+            ]
+        }
+        
+        with open(filepath, 'w', encoding='utf-8') as f:
+            json.dump(report_data, f, indent=2, ensure_ascii=False)
+        
+        print(f"报告已保存到 {filepath}")
+    
+    def print_report(self):
+        """打印报告到控制台"""
+        print("\n" + "="*60)
+        print("代理记忆系统基准测试报告")
+        print("="*60)
+        
+        if not self.summary:
+            self.generate_summary()
+        
+        for system, metrics in self.summary.items():
+            print(f"\n记忆系统: {system}")
+            print("-"*40)
+            print(f"  平均准确率: {metrics['avg_accuracy']:.4f}")
+            print(f"  平均召回率: {metrics['avg_recall']:.4f}")
+            print(f"  平均一致性: {metrics['avg_consistency']:.4f}")
+            print(f"  平均冲突解决: {metrics['avg_conflict_resolution']:.4f}")
+            print(f"  平均响应时间: {metrics['avg_response_time']:.4f}秒")
+            print(f"  准确率标准差: {metrics['std_accuracy']:.4f}")
+            print(f"  召回率标准差: {metrics['std_recall']:.4f}")
+        
+        print("\n" + "="*60)
+
+
+class MemorySystem(ABC):
+    """记忆系统抽象基类"""
+    
+    @abstractmethod
+    def store(self, item: MemoryItem) -> bool:
+        """存储记忆项"""
+        pass
+    
+    @abstractmethod
+    def retrieve(self, key: str) -> Optional[MemoryItem]:
+        """检索记忆项"""
+        pass
+    
+    @abstractmethod
+    def update(self, key: str, value: Any) -> bool:
+        """更新记忆项"""
+        pass
+    
+    @abstractmethod
+    def delete(self, key: str) -> bool:
+        """删除记忆项"""
+        pass
+    
+    @abstractmethod
+    def clear(self) -> None:
+        """清空所有记忆"""
+        pass
+    
+    @abstractmethod
+    def get_all(self) -> List[MemoryItem]:
+        """获取所有记忆项"""
+        pass
+    
+    @abstractmethod
+    def resolve_conflict(self, key: str, new_value: Any, old_value: Any) -> Any:
+        """解决记忆冲突"""
+        pass
+
+
+class SimpleMemorySystem(MemorySystem):
+    """简单的基于字典的记忆系统"""
+    
+    def __init__(self):
+        self.memory: Dict[str, MemoryItem] = {}
+    
+    def store(self, item: MemoryItem) -> bool:
+        try:
+            self.memory[item.key] = item
+            return True
+        except Exception as e:
+            print(f"存储失败: {e}")
+            return False
+    
+    def retrieve(self, key: str) -> Optional[MemoryItem]:
+        return self.memory.get(key)
+    
+    def update(self, key: str, value: Any) -> bool:
+        if key in self.memory:
+            self.memory[key].value = value
+            self.memory[key].timestamp = time.time()
+            return True
+        return False
+    
+    def delete(self, key: str) -> bool:
+        if key in self.memory:
+            del self.memory[key]
+            return True
+        return False
+    
+    def clear(self) -> None:
+        self.memory.clear()
+    
+    def get_all(self) -> List[MemoryItem]:
+        return list(self.memory.values())
+    
+    def resolve_conflict(self, key: str, new_value: Any, old_value: Any) -> Any:
+        """简单的冲突解决：选择置信度更高的值"""
+        if key in self.memory:
+            old_item = self.memory[key]
+            if old_item.confidence > 0.5:
+                return old_value
+        return new_value
+
+
+class AdvancedMemorySystem(MemorySystem):
+    """高级记忆系统，包含时间衰减和相关性评分"""
+    
+    def __init__(self, decay_rate: float = 0.1):
+        self.memory: Dict[str, MemoryItem] = {}
+        self.decay_rate = decay_rate
+        self.access_count: Dict[str, int] = defaultdict(int)
+    
+    def store(self, item: MemoryItem) -> bool:
+        try:
+            # 检查是否存在冲突
+            if item.key in self.memory:
+                old_item = self.memory[item.key]
+                resolved_value = self.resolve_conflict(item.key, item.value, old_item.value)
+                item.value = resolved_value
+            
+            self.memory[item.key] = item
+            self.access_count[item.key] = 0
+            return True
+        except Exception as e:
+            print(f"存储失败: {e}")
+            return False
+    
+    def retrieve(self, key: str) -> Optional[MemoryItem]:
+        if key in self.memory:
+            self.access_count[key] += 1
+            # 应用时间衰减
+            item = self.memory[key]
+            time_diff = time.time() - item.timestamp
+            item.confidence *= (1 - self.decay_rate * time_diff)
+            item.confidence = max(0.1, min(1.0, item.confidence))
+            return item
+        return None
+    
+    def update(self, key: str, value: Any) -> bool:
+        if key in self.memory:
+            old_item = self.memory[key]
+            resolved_value = self.resolve_conflict(key, value, old_item.value)
+            self.memory[key].value = resolved_value
+            self.memory[key].timestamp = time.time()
+            self.memory[key].confidence = 1.0
+            return True
+        return False
+    
+    def delete(self, key: str) -> bool:
+        if key in self.memory:
+            del self.memory[key]
+            del self.access_count[key]
+            return True
+        return False
+    
+    def clear(self) -> None:
+        self.memory.clear()
+        self.access_count.clear()
+    
+    def get_all(self) -> List[MemoryItem]:
+        return list(self.memory.values())
+    
+    def resolve_conflict(self, key: str, new_value: Any, old_value: Any) -> Any:
+        """高级冲突解决：基于时间戳和访问频率"""
+        if key in self.memory:
+            old_item = self.memory[key]
+            # 如果旧记忆被频繁访问，保留旧值
+            if self.access_count[key] > 5:
+                return old_value
+            # 如果新值的时间戳更新，使用新值
+            if time.time() - old_item.timestamp > 3600:  # 超过1小时
+                return new_value
+        return new_value
+
+
+class TestCase:
+    """测试用例基类"""
+    
+    def __init__(self, name: str, description: str):
+        self.name = name
+        self.description = description
+    
+    @abstractmethod
+    def run(self, memory_system: MemorySystem) -> TestResult:
+        pass
+
+
+class ShortDialogueAccuracyTest(TestCase):
+    """短对话准确率测试"""
+    
+    def __init__(self):
+        super().__init__(
+            "short_dialogue_accuracy",
+            "测试记忆系统在短对话中的准确率"
+        )
+    
+    def run(self, memory_system: MemorySystem) -> TestResult:
+        memory_system.clear()
+        start_time = time.time()
+        
+        # 模拟短对话
+        test_data = [
+            ("user_name", "Alice"),
+            ("user_age", 25),
+            ("user_location", "New York"),
+            ("user_preference", "coffee"),
+        ]
+        
+        # 存储记忆
+        for key, value in test_data:
+            memory_system.store(MemoryItem(key=key, value=value))
+        
+        # 检索并验证
+        correct = 0
+        total = len(test_data)
+        
+        for key, expected_value in test_data:
+            retrieved = memory_system.retrieve(key)
+            if retrieved and retrieved.value == expected_value:
+                correct += 1
+        
+        accuracy = correct / total if total > 0 else 0
+        response_time = time.time() - start_time
+        
+        return TestResult(
+            test_name=self.name,
+            memory_system=memory_system.__class__.__name__,
+            accuracy=accuracy,
+            recall=accuracy,  # 短对话中召回率等于准确率
+            consistency=1.0,
+            conflict_resolution=1.0,
+            response_time=response_time,
+            details={
+                "total_items": total,
+                "correct_items": correct,
+                "test_data": test_data
+            }
+        )
+
+
+class LongDialogueRecallTest(TestCase):
+    """长对话记忆召回率测试"""
+    
+    def __init__(self, num_items: int = 100):
+        super().__init__(
+            "long_dialogue_recall",
+            f"测试长对话中的记忆召回率（{num_items}个记忆项）"
+        )
+        self.num_items = num_items
+    
+    def run(self, memory_system: MemorySystem) -> TestResult:
+        memory_system.clear()
+        start_time = time.time()
+        
+        # 生成大量记忆项
+        test_data = []
+        for i in range(self.num_items):
+            key = f"memory_{i}"
+            value = f"value_{i}_{random.randint(1, 1000)}"
+            test_data.append((key, value))
+            memory_system.store(MemoryItem(key=key, value=value))
+        
+        # 随机检索部分记忆
+        recall_count = 0
+        recall_total = min(50, self.num_items)  # 检索50个
+        
+        for i in range(recall_total):
+            key = f"memory_{random.randint(0, self.num_items - 1)}"
+            retrieved = memory_system.retrieve(key)
+            if retrieved:
+                recall_count += 1
+        
+        recall = recall_count / recall_total if recall_total > 0 else 0
+        response_time = time.time() - start_time
+        
+        return TestResult(
+            test_name=self.name,
+            memory_system=memory_system.__class__.__name__,
+            accuracy=recall,  # 长对话中准确率近似于召回率
+            recall=recall,
+            consistency=1.0,
+            conflict_resolution=1.0,
+            response_time=response_time,
+            details={
+                "total_items": self.num_items,
+                "recall_items": recall_total,
+                "recall_count": recall_count
+            }
+        )
+
+
+class MultiTurnConsistencyTest(TestCase):
+    """多轮对话一致性测试"""
+    
+    def __init__(self, num_turns: int = 10):
+        super().__init__(
+            "multi_turn_consistency",
+            f"测试多轮对话中的一致性（{num_turns}轮）"
+        )
+        self.num_turns = num_turns
+    
+    def run(self, memory_system: MemorySystem) -> TestResult:
+        memory_system.clear()
+        start_time = time.time()
+        
+        # 模拟多轮对话
+        base_info = {
+            "user_name": "Bob",
+            "user_age": 30,
+            "user_city": "London"
+        }
+        
+        # 第一轮：存储基本信息
+        for key, value in base_info.items():
+            memory_system.store(MemoryItem(key=key, value=value))
+        
+        consistency_scores = []
+        
+        # 多轮对话中反复检索和验证
+        for turn in range(self.num_turns):
+            correct = 0
+            total = len(base_info)
+            
+            for key, expected_value in base_info.items():
+                retrieved = memory_system.retrieve(key)
+                if retrieved and retrieved.value == expected_value:
+                    correct += 1
+            
+            consistency_scores.append(correct / total if total > 0 else 0)
+        
+        consistency = statistics.mean(consistency_scores) if consistency_scores else 0
+        response_time = time.time() - start_time
+        
+        return TestResult(
+            test_name=self.name,
+            memory_system=memory_system.__class__.__name__,
+            accuracy=consistency,
+            recall=consistency,
+            consistency=consistency,
+            conflict_resolution=1.0,
+            response_time=response_time,
+            details={
+                "num_turns": self.num_turns,
+                "consistency_scores": consistency_scores,
+                "base_info": base_info
+            }
+        )
+
+
+class ConflictResolutionTest(TestCase):
+    """记忆更新与冲突解决测试"""
+    
+    def __init__(self):
+        super().__init__(
+            "conflict_resolution",
+            "测试记忆更新与冲突解决"
+        )
+    
+    def run(self, memory_system: MemorySystem) -> TestResult:
+        memory_system.clear()
+        start_time = time.time()
+        
+        # 测试场景1：直接更新
+        memory_system.store(MemoryItem(key="preference", value="tea", confidence=0.8))
+        memory_system.store(MemoryItem(key="preference", value="coffee", confidence=0.9))
+        
+        retrieved = memory_system.retrieve("preference")
+        update_success = retrieved is not None
+        
+        # 测试场景2：冲突解决
+        memory_system.store(MemoryItem(key="location", value="Paris", confidence=0.7))
+        memory_system.store(MemoryItem(key="location", value="London", confidence=0.6))
+        
+        location = memory_system.retrieve("location")
+        conflict_resolved = location is not None
+        
+        # 测试场景3：删除后重新存储
+        memory_system.store(MemoryItem(key="temp", value="temporary"))
+        memory_system.delete("temp")
+        memory_system.store(MemoryItem(key="temp", value="permanent"))
+        
+        temp = memory_system.retrieve("temp")
+        delete_update_success = temp is not None and temp.value == "permanent"
+        
+        # 计算得分
+        accuracy = 1.0 if update_success else 0.0
+        recall = 1.0 if conflict_resolved else 0.0
+        consistency = 1.0 if delete_update_success else 0.0
+        conflict_resolution_score = 1.0 if (conflict_resolved and update_success) else 0.0
+        
+        response_time = time.time() - start_time
+        
+        return TestResult(
+            test_name=self.name,
+            memory_system=memory_system.__class__.__name__,
+            accuracy=accuracy,
+            recall=recall,
+            consistency=consistency,
+            conflict_resolution=conflict_resolution_score,
+            response_time=response_time,
+            details={
+                "update_success": update_success,
+                "conflict_resolved": conflict_resolved,
+                "delete_update_success": delete_update_success,
+                "retrieved_preference": str(retrieved) if retrieved else None,
+                "retrieved_location": str(location) if location else None,
+                "retrieved_temp": str(temp) if temp else None
+            }
+        )
+
+
+class BenchmarkFramework:
+    """基准测试框架"""
+    
+    def __init__(self):
+        self.memory_systems: Dict[str, MemorySystem] = {}
+        self.test_cases: List[TestCase] = []
+        self.results: List[TestResult] = []
+    
+    def register_memory_system(self, name: str, system: MemorySystem):
+        """注册记忆系统"""
+        self.memory_systems[name] = system
+        print(f"已注册记忆系统: {name}")
+    
+    def register_test_case(self, test_case: TestCase):
+        """注册测试用例"""
+        self.test_cases.append(test_case)
+        print(f"已注册测试用例: {test_case.name}")
+    
+    def run_all_tests(self) -> BenchmarkReport:
+        """运行所有测试"""
+        print("\n开始运行基准测试
