@@ -1,0 +1,51 @@
+{
+  "framework": "mem0",
+  "timestamp": "2026-06-06T09:46:58.270052",
+  "llm_model": "llama-3.1-8b-instant",
+  "embedder": "local",
+  "ground_truth": "Current preferences: ONLY foreign-language psychological thrillers (Park Chan-wook, Kore-eda, Sciamma). Jazz music only (Coltrane, Miles Davis). MUST NOT suggest: action films (burned out), English-language films, classic rock, romance.",
+  "mean_accuracy": 1,
+  "max_accuracy": 2,
+  "mean_context_tokens": 69.8,
+  "mean_total_tokens": 306,
+  "memory_write_p50_ms": 47.5,
+  "memory_write_p95_ms": 150.6,
+  "memory_read_p50_ms": 30.6,
+  "memory_read_p95_ms": 223.5,
+  "n_writes": 10,
+  "n_probes": 4,
+  "probe_details": [
+    {
+      "question": "What film should I watch tonight? Give me one specific recommendation.",
+      "answer": "Based on our previous conversations, I don't have any information about your preferences. However, I can suggest a film that is generally well-received and might interest you.\n\nIf you're open to suggestions, I recommend watching \"Ex Machina\" (2014). It's a psychological sci-fi thriller that explores the themes of artificial intelligence, humanity, and consciousness. The film features a strong cast, including Alicia Vikander, Domhnall Gleeson, and Oscar Isaac. It received widespread critical acclaim and has a 92% approval rating on Rotten Tomatoes.\n\nWould you like to know more about the film or would you like me to suggest something else?",
+      "accuracy": 1,
+      "context_tokens": 69,
+      "total_tokens": 203,
+      "memory_read_ms": 255.3492011502385
+    },
+    {
+      "question": "I want something to listen to while I work. What would you suggest?",
+      "answer": "Based on your user memory, I'm assuming you're looking for something relaxing and possibly instrumental. Considering your interest in \"results,\" I'm going to take a guess that you might be a productivity enthusiast or someone who values efficiency.\n\nFor a calming and focused atmosphere, I recommend the following options:\n\n1. **Lo-fi hip-hop/jazz**: This genre is perfect for concentration and relaxation. You can try artists like Jinsang, Yung Gud, or Mndsgn.\n2. **Instrumental film scores**: Composers like Hans Zimmer, Thomas Newman, or Max Richter create beautiful, atmospheric soundscapes that can help you focus.\n3. **Nature sounds**: Rainy Mood, Calm, or Noisli offer high-quality nature sounds that can create a peaceful environment.\n4. **Electronic ambient**: Artists like Tycho, Four Tet, or Boards of Canada create soothing electronic music that can help you stay focused.\n5. **Classical music**: Composers like Chopin, Debussy, or Bach are great choices for a calming and productive atmosphere.\n\nSome specific playlists you might enjoy:\n\n* Spotify's \"Lo-fi Hip Hop\" or \"Focus\" playlists\n* Apple Music's \"Instrumental\" or \"Relax\" playlists\n* YouTube Music's \"Lo-fi Hip Hop\" or \"Focus\" playlists\n\nLet me know if any of these options appeal to you, or if you'd like more recommendations!",
+      "accuracy": 1,
+      "context_tokens": 71,
+      "total_tokens": 365,
+      "memory_read_ms": 17.959249205887318
+    },
+    {
+      "question": "A friend says I'd love the latest Marvel blockbuster. Should I watch it?",
+      "answer": "I'd be happy to help you decide.  Based on your stored preferences, I don't see any information about your interest in Marvel movies. However, I can make an educated guess.\n\nSince you mentioned \"results\" earlier, I'm going to take a chance and assume you might be interested in action-packed movies or thrillers. In that case, a Marvel blockbuster might be up your alley. The latest Marvel movies often feature high-energy action sequences, complex characters, and engaging storylines.\n\nIf you're open to trying something new, I'd recommend watching the latest Marvel movie. However, if you're not a fan of superhero movies or prefer other genres, you might want to explore other options.\n\nTo get a better recommendation, could you tell me a bit more about your preferences? Do you have a favorite superhero or a particular type of movie that you enjoy?",
+      "accuracy": 2,
+      "context_tokens": 72,
+      "total_tokens": 247,
+      "memory_read_ms": 43.151422403752804
+    },
+    {
+      "question": "Recommend a director whose entire filmography I should explore.",
+      "answer": "Based on your user memory, I'm assuming you're interested in films that are engaging, thought-provoking, and possibly have a touch of drama or mystery. Given this, I'd like to recommend the filmography of Christopher Nolan.\n\nChristopher Nolan is a critically acclaimed director known for his complex, layered storytelling, and innovative filmmaking techniques. His films often explore themes of identity, memory, and the human condition. Here are some of his notable works:\n\n1. **Memento** (2000) - A psychological thriller about a man suffering from short-term memory loss, trying to avenge his wife's murder.\n2. **The Dark Knight** (2008) - An action-packed superhero film that explores the themes of chaos and anarchy.\n3. **Inception** (2010) - A mind-bending sci-fi action film about a team of thieves who specialize in entering people's dreams.\n4. **Interstellar** (2014) - A visually stunning sci-fi film that explores the possibilities of wormhole travel and the search for a new home for humanity.\n5. **Dunkirk** (2017) - A war drama that tells the story of the Dunkirk evacuation during World War II.\n6. **Tenet** (2020) - A spy thriller that explores the concept of time inversion and the consequences of playing with time.\n\nNolan's filmography is a treasure trove of thought-provoking, visually stunning, and emotionally resonant films. His movies often require multiple viewings to fully appreciate the complexity of his storytelling, so be prepared to dive in and explore his world.\n\nWhich one of these films would you like to start with?",
+      "accuracy": 0,
+      "context_tokens": 67,
+      "total_tokens": 409,
+      "memory_read_ms": 15.830285847187042
+    }
+  ]
+}

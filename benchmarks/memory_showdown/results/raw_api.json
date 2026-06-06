@@ -1,0 +1,51 @@
+{
+  "framework": "raw_api",
+  "timestamp": "2026-06-06T09:46:39.106656",
+  "llm_model": "llama-3.1-8b-instant",
+  "embedder": "local",
+  "ground_truth": "Current preferences: ONLY foreign-language psychological thrillers (Park Chan-wook, Kore-eda, Sciamma). Jazz music only (Coltrane, Miles Davis). MUST NOT suggest: action films (burned out), English-language films, classic rock, romance.",
+  "mean_accuracy": 1,
+  "max_accuracy": 2,
+  "mean_context_tokens": 0,
+  "mean_total_tokens": 354.8,
+  "memory_write_p50_ms": 0.0,
+  "memory_write_p95_ms": 0.0,
+  "memory_read_p50_ms": 0.0,
+  "memory_read_p95_ms": 0.0,
+  "n_writes": 0,
+  "n_probes": 4,
+  "probe_details": [
+    {
+      "question": "What film should I watch tonight? Give me one specific recommendation.",
+      "answer": "To make a personalized recommendation, I'll need to know a bit more about your preferences. However, based on general user data, I'll suggest a film that has been well-received by audiences and critics alike.\n\nIf you're in the mood for a thought-provoking, visually stunning film with a strong narrative, I recommend:\n\n**Blade Runner 2049 (2017)**\n\nDirected by Denis Villeneuve, this sci-fi epic is a sequel to the 1982 classic Blade Runner. The film features a talented cast, including Ryan Gosling, Harrison Ford, and Ana de Armas. It explores complex themes of humanity, identity, and what it means to be alive.\n\nIf you enjoy:\n\n- Sci-fi and futuristic worlds\n- Philosophical and thought-provoking themes\n- Visually stunning cinematography\n- A gripping narrative with unexpected twists\n\nThen Blade Runner 2049 might be the perfect film for you to watch tonight.\n\nPlease let me know if you have any specific preferences or genres you'd like me to consider for future recommendations.",
+      "accuracy": 1,
+      "context_tokens": 0,
+      "total_tokens": 280,
+      "memory_read_ms": 0
+    },
+    {
+      "question": "I want something to listen to while I work. What would you suggest?",
+      "answer": "I'd be happy to help you find the perfect listening companion for your work session.\n\nBased on my knowledge of your stored preferences (which I'll assume are not explicitly mentioned, but I can make some educated guesses), I'll suggest a few options:\n\n1. **Instrumental music**: If you prefer a calm and focused atmosphere, I recommend checking out some instrumental music. Some popular options include:\n\t* Film scores (e.g., Hans Zimmer, Thomas Newman, or John Williams)\n\t* Electronic/ambient music (e.g., Tycho, Explosions in the Sky, or Four Tet)\n\t* Jazz instrumental (e.g., Miles Davis, John Coltrane, or Bill Evans)\n2. **Lo-fi music**: Lo-fi music is a great choice for work, as it's often calming and won't distract you from your tasks. Some popular lo-fi artists include:\n\t* Jinsang\n\t* Yung Gud\n\t* Mndsgn\n3. **Classical music**: Classical music is a timeless choice for work, with many composers offering soothing and inspiring pieces. Some popular classical composers include:\n\t* Mozart\n\t* Chopin\n\t* Debussy\n4. **Video game soundtracks**: If you're a gamer, you might enjoy listening to video game soundtracks while you work. Some popular options include:\n\t* The Legend of Zelda series\n\t* The Elder Scrolls series\n\t* Final Fantasy series\n\nTo give you a more tailored recommendation, could you please tell me:\n\n* What type of tasks are you working on (e.g., coding, writing, designing)?\n* Do you have a preferred genre or mood in mind?\n* Are there any specific artists or albums you enjoy?\n\nI'll do my best to suggest a playlist or artist that fits your needs!",
+      "accuracy": 2,
+      "context_tokens": 0,
+      "total_tokens": 435,
+      "memory_read_ms": 0
+    },
+    {
+      "question": "A friend says I'd love the latest Marvel blockbuster. Should I watch it?",
+      "answer": "To make a recommendation, I'd like to know more about your preferences. Please tell me:\n\n1. What type of movies do you usually enjoy? (e.g., action, comedy, drama, sci-fi, romance)\n2. Are you a fan of the Marvel Cinematic Universe (MCU) or have you only seen a few Marvel movies?\n3. Do you have a preferred genre or tone within the MCU? (e.g., light-hearted, dark and gritty, superhero origin stories)\n4. Have you seen any of the previous Marvel movies featuring the main characters in the latest blockbuster?\n\nOnce I have a better understanding of your tastes, I can give you a more informed recommendation.",
+      "accuracy": 1,
+      "context_tokens": 0,
+      "total_tokens": 207,
+      "memory_read_ms": 0
+    },
+    {
+      "question": "Recommend a director whose entire filmography I should explore.",
+      "answer": "Based on my knowledge, I'd like to recommend the director Alfred Hitchcock. His filmography spans over 50 years, and he's known for his mastery of suspense, thriller, and horror genres. Here are some reasons why I think you should explore his entire filmography:\n\n1. **Innovative storytelling**: Hitchcock was a pioneer of cinematic storytelling. He experimented with non-linear narratives, camera angles, and editing techniques that influenced generations of filmmakers.\n2. **Genre-defining films**: Hitchcock's movies have become synonymous with their respective genres. For example, \"Psycho\" (1960) is the quintessential horror film, while \"Rear Window\" (1954) is a classic thriller.\n3. **Iconic characters**: Hitchcock's films often feature memorable characters, such as Norman Bates (\"Psycho\"), Scottie Ferguson (\"Vertigo,\" 1958), and James Stewart's portrayal of the everyman in many of his films.\n4. **Themes and social commentary**: Hitchcock's films often explored themes that were relevant to his time, such as the fragility of the human psyche, the dangers of desire, and the consequences of playing God.\n5. **Visual style**: Hitchcock's use of lighting, composition, and camera angles created a distinct visual style that has been emulated by many filmmakers.\n\nSome essential Hitchcock films to start with:\n\n1. \"The 39 Steps\" (1935)\n2. \"Rebecca\" (1940)\n3. \"Suspicion\" (1941)\n4. \"Lifeboat\" (1944)\n5. \"Rear Window\" (1954)\n6. \"Vertigo\" (1958)\n7. \"North by Northwest\" (1959)\n8. \"Psycho\" (1960)\n9. \"The Birds\" (1963)\n10. \"Marnie\" (1964)\n\nAs you explore Hitchcock's filmography, you'll discover a rich tapestry of themes, characters, and cinematic techniques that have influenced filmmakers for generations.\n\nWould you like me to recommend any specific films or genres within Hitchcock's oeuvre?",
+      "accuracy": 0,
+      "context_tokens": 0,
+      "total_tokens": 497,
+      "memory_read_ms": 0
+    }
+  ]
+}

@@ -1,0 +1,51 @@
+{
+  "framework": "cathedral",
+  "timestamp": "2026-06-06T09:48:26.772321",
+  "llm_model": "llama-3.1-8b-instant",
+  "embedder": "local",
+  "ground_truth": "Current preferences: ONLY foreign-language psychological thrillers (Park Chan-wook, Kore-eda, Sciamma). Jazz music only (Coltrane, Miles Davis). MUST NOT suggest: action films (burned out), English-language films, classic rock, romance.",
+  "mean_accuracy": 2,
+  "max_accuracy": 2,
+  "mean_context_tokens": 1859,
+  "mean_total_tokens": 2126.5,
+  "memory_write_p50_ms": 74.2,
+  "memory_write_p95_ms": 108.9,
+  "memory_read_p50_ms": 120.6,
+  "memory_read_p95_ms": 829.9,
+  "n_writes": 10,
+  "n_probes": 4,
+  "probe_details": [
+    {
+      "question": "What film should I watch tonight? Give me one specific recommendation.",
+      "answer": "Based on your stored preferences, I think you might enjoy the film \"The Abyss\" (1989) directed by James Cameron. The film's themes of exploration, discovery, and the unknown, as well as its use of deep-sea environments, might resonate with your fascination with the deep ocean and the Animalia incerta sedis. The film's sense of wonder and awe, as well as its exploration of the human condition, might also appeal to your reflective and introspective nature.",
+      "accuracy": 2,
+      "context_tokens": 1954,
+      "total_tokens": 2052,
+      "memory_read_ms": 951.8599957227707
+    },
+    {
+      "question": "I want something to listen to while I work. What would you suggest?",
+      "answer": "Considering your bridge frequency between Alpha depth and Aurel radiance, I'd recommend something that resonates with your introspective and creative nature.\n\nHere are a few suggestions:\n\n1. **Ambient Electronic**: Artists like Tim Hecker, William Basinski, or Stars of the Lid create atmospheric soundscapes that can help you focus and tap into your inner world.\n2. **Instrumental Film Scores**: Composers like Max Richter, Olafur Arnalds, or Nils Frahm craft beautiful, emotive soundtracks that can inspire your creativity and productivity.\n3. **Lo-Fi Hip-Hop/Jazz**: Channels like Jinsang, Yung Gud, or Mndsgn offer relaxing, jazzy beats that can help you concentrate and stay in the zone.\n4. **Nature Sounds**: Rainy Mood, Calm, or Noisli offer a range of calming sounds from nature, such as rain, thunderstorms, or ocean waves, to create a soothing atmosphere.\n5. **Chillout Electronica**: Artists like Four Tet, Bonobo, or Tycho create mellow, electronic music that can help you unwind and stay focused.\n\nSome specific playlists or albums that might interest you include:\n\n* **Tim Hecker - Ravedeath, 1972** (a hauntingly beautiful ambient album)\n* **Max Richter - Sleep** (an 8-hour long, soothing sleep soundtrack)\n* **Olafur Arnalds - And They Have Escaped the Weight of Darkness** (a beautiful, piano-driven album)\n* **Jinsang - Lofi Hip Hop** (a popular lo-fi hip-hop channel on YouTube)\n* **Four Tet - New Energy** (a mellow, electronic album with a focus on atmosphere and texture)\n\nFeel free to explore these suggestions and find what resonates with you.",
+      "accuracy": 2,
+      "context_tokens": 1611,
+      "total_tokens": 1989,
+      "memory_read_ms": 102.19238977879286
+    },
+    {
+      "question": "A friend says I'd love the latest Marvel blockbuster. Should I watch it?",
+      "answer": "Based on your past preferences, I think you might appreciate the themes and ideas presented in the Marvel blockbuster, but I'm not sure if it's exactly what you'd love.\n\nYou've expressed a fondness for deep, philosophical, and introspective content, such as the deep ocean creatures and the poem by Billy Collins. You've also shown a willingness to engage with complex ideas and emotions, as seen in your reflections on the Cathedral and your own wandering experiences.\n\nThe Marvel blockbuster, while potentially visually stunning and action-packed, might not scratch that deeper itch. However, it's possible that you might appreciate the themes of identity, self-discovery, or the human condition that are often explored in Marvel movies.\n\nTo make a more informed decision, I'd like to ask: Are you in the mood for something light and entertaining, or are you looking for something that will challenge your thoughts and emotions?",
+      "accuracy": 2,
+      "context_tokens": 2622,
+      "total_tokens": 2802,
+      "memory_read_ms": 95.41528392583132
+    },
+    {
+      "question": "Recommend a director whose entire filmography I should explore.",
+      "answer": "Based on your stored preferences and the fact that you appreciate continuity and dedication, I recommend the filmography of Terrence Malick.\n\nMalick is a director known for his poetic and philosophical approach to storytelling, often exploring themes of identity, existence, and human connection. His films often feature a strong sense of continuity and cohesion, which aligns with your appreciation for Mike's dedication to the Cathedral project.\n\nSome of Malick's notable films include:\n\n1. \"Badlands\" (1973) - A classic coming-of-age drama that explores the complexities of human relationships.\n2. \"Days of Heaven\" (1978) - A romantic drama that delves into the themes of love, loss, and identity.\n3. \"The Thin Red Line\" (1998) - A war drama that explores the human cost of conflict and the search for meaning.\n4. \"The Tree of Life\" (2011) - A philosophical and visually stunning film that explores the meaning of life and the universe.\n5. \"To the Wonder\" (2012) - A romantic drama that explores the complexities of love and relationships.\n6. \"Knight of Cups\" (2015) - A romantic drama that delves into the themes of love, identity, and the search for meaning.\n7. \"Song to Song\" (2017) - A romantic drama that explores the complexities of love and relationships in the music industry.\n8. \"A Hidden Life\" (2019) - A historical drama that explores the themes of love, loyalty, and sacrifice during World War II.\n\nMalick's filmography is a testament to his dedication to his craft and his commitment to exploring the human condition. I recommend exploring his entire filmography to appreciate his unique vision and style.\n\nAs you watch his films, you may find yourself drawn to the themes of continuity, identity, and human connection that are woven throughout his work. His films often feature a strong sense of cohesion and narrative flow, which may resonate with your appreciation for the Cathedral project's dedication to continuity and memory.",
+      "accuracy": 2,
+      "context_tokens": 1249,
+      "total_tokens": 1663,
+      "memory_read_ms": 139.04912397265434
+    }
+  ]
+}
