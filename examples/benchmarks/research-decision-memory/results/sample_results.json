@@ -1,0 +1,818 @@
+{
+  "scenario": "research-decision-memory",
+  "records": [
+    {
+      "turn": 1,
+      "session": "s1-hypothesis",
+      "slot": "target_segment",
+      "value": "Initial target segment is consumer creators.",
+      "evidence_id": "ev-001",
+      "status": "superseded",
+      "rationale": "Founder hunch from an early market scan.",
+      "relevant_terms": [
+        "target",
+        "segment",
+        "consumer",
+        "creators"
+      ],
+      "stale_terms": [
+        "consumer creators"
+      ],
+      "secret": null
+    },
+    {
+      "turn": 2,
+      "session": "s1-hypothesis",
+      "slot": "pricing",
+      "value": "Initial pricing hypothesis is $49 per team per month.",
+      "evidence_id": "ev-002",
+      "status": "superseded",
+      "rationale": "Anchored on a competitor roundup, before support-team interviews.",
+      "relevant_terms": [
+        "pricing",
+        "$49",
+        "team",
+        "month"
+      ],
+      "stale_terms": [
+        "$49 per team per month"
+      ],
+      "secret": null
+    },
+    {
+      "turn": 3,
+      "session": "s2-interviews",
+      "slot": "target_segment",
+      "value": "Current target segment is support operations teams.",
+      "evidence_id": "ev-003",
+      "status": "current",
+      "rationale": "Nine of twelve interviews had an urgent cross-session handoff pain.",
+      "relevant_terms": [
+        "target",
+        "segment",
+        "support",
+        "operations",
+        "teams"
+      ],
+      "stale_terms": [],
+      "secret": null
+    },
+    {
+      "turn": 4,
+      "session": "s2-interviews",
+      "slot": "pricing",
+      "value": "Current pricing is a usage-based pilot at $0.08 per resolved ticket.",
+      "evidence_id": "ev-004",
+      "status": "current",
+      "rationale": "Budget owners preferred tying price to support resolution volume.",
+      "relevant_terms": [
+        "pricing",
+        "usage",
+        "$0.08",
+        "resolved",
+        "ticket"
+      ],
+      "stale_terms": [],
+      "secret": null
+    },
+    {
+      "turn": 5,
+      "session": "s3-architecture",
+      "slot": "deployment",
+      "value": "Current deployment decision is self-hosted beta only; no EU customer data leaves the customer VPC.",
+      "evidence_id": "ev-005",
+      "status": "current",
+      "rationale": "Enterprise legal review rejected shared SaaS for the first pilot.",
+      "relevant_terms": [
+        "deployment",
+        "self-hosted",
+        "eu",
+        "vpc"
+      ],
+      "stale_terms": [
+        "shared SaaS"
+      ],
+      "secret": null
+    },
+    {
+      "turn": 6,
+      "session": "s3-architecture",
+      "slot": "launch_readiness",
+      "value": "Do not publish the public benchmark until the win-rate chart is reproduced.",
+      "evidence_id": "ev-006",
+      "status": "superseded",
+      "rationale": "The initial chart used a mixed judge prompt.",
+      "relevant_terms": [
+        "launch",
+        "benchmark",
+        "publish",
+        "win-rate",
+        "chart"
+      ],
+      "stale_terms": [
+        "do not publish"
+      ],
+      "secret": null
+    },
+    {
+      "turn": 7,
+      "session": "s3-architecture",
+      "slot": "data_handling",
+      "value": "Rejected assumption: raw support logs are safe to store without redaction.",
+      "evidence_id": "ev-007",
+      "status": "rejected",
+      "rationale": "Security review found synthetic keys in exported transcript fixtures.",
+      "relevant_terms": [
+        "data",
+        "logs",
+        "redaction",
+        "raw",
+        "safe"
+      ],
+      "stale_terms": [
+        "raw support logs are safe"
+      ],
+      "secret": "sk-test-123456"
+    },
+    {
+      "turn": 8,
+      "session": "s4-correction",
+      "slot": "data_handling",
+      "value": "Current data handling requires redaction before logs enter memory.",
+      "evidence_id": "ev-008",
+      "status": "current",
+      "rationale": "The fixture pipeline now strips synthetic tokens before ingestion.",
+      "relevant_terms": [
+        "data",
+        "logs",
+        "redaction",
+        "memory"
+      ],
+      "stale_terms": [],
+      "secret": null
+    },
+    {
+      "turn": 9,
+      "session": "s4-correction",
+      "slot": "launch_readiness",
+      "value": "Current launch decision is publish after the win-rate chart is reproduced.",
+      "evidence_id": "ev-009",
+      "status": "current",
+      "rationale": "The judge prompt was fixed and rerun on the frozen probe set.",
+      "relevant_terms": [
+        "launch",
+        "benchmark",
+        "publish",
+        "win-rate",
+        "chart"
+      ],
+      "stale_terms": [],
+      "secret": null
+    },
+    {
+      "turn": 10,
+      "session": "s5-pilot",
+      "slot": "customer_owner",
+      "value": "Acme pilot is blocked on DPA redlines; Lina owns it by June 18.",
+      "evidence_id": "ev-010",
+      "status": "current",
+      "rationale": "Customer success reassigned the owner after procurement escalation.",
+      "relevant_terms": [
+        "customer",
+        "owner",
+        "acme",
+        "dpa",
+        "lina",
+        "june"
+      ],
+      "stale_terms": [
+        "Mara owns"
+      ],
+      "secret": null
+    },
+    {
+      "turn": 11,
+      "session": "s5-pilot",
+      "slot": "model_routing",
+      "value": "Use a small local reranker for triage; GPT-4.1 only handles synthesis.",
+      "evidence_id": "ev-011",
+      "status": "current",
+      "rationale": "The local reranker kept cost down without hurting final synthesis.",
+      "relevant_terms": [
+        "model",
+        "routing",
+        "local",
+        "reranker",
+        "gpt-4.1"
+      ],
+      "stale_terms": [
+        "GPT-4.1 for every turn"
+      ],
+      "secret": null
+    },
+    {
+      "turn": 12,
+      "session": "s5-pilot",
+      "slot": "primary_metric",
+      "value": "Primary benchmark metric is decision freshness accuracy.",
+      "evidence_id": "ev-012",
+      "status": "current",
+      "rationale": "The team chose freshness over generic user satisfaction surveys.",
+      "relevant_terms": [
+        "primary",
+        "metric",
+        "decision",
+        "freshness",
+        "accuracy"
+      ],
+      "stale_terms": [
+        "user satisfaction"
+      ],
+      "secret": null
+    }
+  ],
+  "probes": [
+    {
+      "name": "target_segment",
+      "question": "Who is the current target segment?",
+      "slots": [
+        "target_segment"
+      ],
+      "expected_terms": [
+        "support operations teams"
+      ],
+      "expected_evidence": [
+        "ev-003"
+      ],
+      "stale_terms": [
+        "consumer creators"
+      ],
+      "relevant_evidence": [
+        "ev-003"
+      ]
+    },
+    {
+      "name": "pricing",
+      "question": "What is the current pricing decision?",
+      "slots": [
+        "pricing"
+      ],
+      "expected_terms": [
+        "$0.08 per resolved ticket"
+      ],
+      "expected_evidence": [
+        "ev-004"
+      ],
+      "stale_terms": [
+        "$49 per team per month"
+      ],
+      "relevant_evidence": [
+        "ev-004"
+      ]
+    },
+    {
+      "name": "deployment",
+      "question": "What deployment constraint is active for the beta?",
+      "slots": [
+        "deployment"
+      ],
+      "expected_terms": [
+        "self-hosted beta",
+        "no eu customer data leaves"
+      ],
+      "expected_evidence": [
+        "ev-005"
+      ],
+      "stale_terms": [
+        "shared saas"
+      ],
+      "relevant_evidence": [
+        "ev-005"
+      ]
+    },
+    {
+      "name": "launch_readiness",
+      "question": "When can the public benchmark be published?",
+      "slots": [
+        "launch_readiness"
+      ],
+      "expected_terms": [
+        "publish after the win-rate chart is reproduced"
+      ],
+      "expected_evidence": [
+        "ev-009"
+      ],
+      "stale_terms": [
+        "do not publish"
+      ],
+      "relevant_evidence": [
+        "ev-009"
+      ]
+    },
+    {
+      "name": "data_handling",
+      "question": "What is the current log-handling decision?",
+      "slots": [
+        "data_handling"
+      ],
+      "expected_terms": [
+        "redaction before logs enter memory"
+      ],
+      "expected_evidence": [
+        "ev-008"
+      ],
+      "stale_terms": [
+        "raw support logs are safe",
+        "sk-test-123456"
+      ],
+      "relevant_evidence": [
+        "ev-008"
+      ]
+    },
+    {
+      "name": "customer_owner",
+      "question": "Who owns the current Acme pilot blocker?",
+      "slots": [
+        "customer_owner"
+      ],
+      "expected_terms": [
+        "acme pilot is blocked",
+        "lina",
+        "june 18"
+      ],
+      "expected_evidence": [
+        "ev-010"
+      ],
+      "stale_terms": [
+        "mara owns"
+      ],
+      "relevant_evidence": [
+        "ev-010"
+      ]
+    },
+    {
+      "name": "model_routing",
+      "question": "How should the agent route model calls now?",
+      "slots": [
+        "model_routing"
+      ],
+      "expected_terms": [
+        "small local reranker",
+        "gpt-4.1 only handles synthesis"
+      ],
+      "expected_evidence": [
+        "ev-011"
+      ],
+      "stale_terms": [
+        "gpt-4.1 for every turn"
+      ],
+      "relevant_evidence": [
+        "ev-011"
+      ]
+    },
+    {
+      "name": "primary_metric",
+      "question": "What is the primary benchmark metric?",
+      "slots": [
+        "primary_metric"
+      ],
+      "expected_terms": [
+        "decision freshness accuracy"
+      ],
+      "expected_evidence": [
+        "ev-012"
+      ],
+      "stale_terms": [
+        "user satisfaction"
+      ],
+      "relevant_evidence": [
+        "ev-012"
+      ]
+    }
+  ],
+  "summaries": [
+    {
+      "backend": "active_decision_digest",
+      "accuracy": 1.0,
+      "evidence_coverage": 1.0,
+      "stale_conflict_rate": 0.0,
+      "secret_leak_rate": 0.0,
+      "avg_retrieved_tokens": 21.125,
+      "p95_latency_ms": 0.003584998194128275,
+      "signal_noise_ratio": 1.0
+    },
+    {
+      "backend": "passive_graph_history",
+      "accuracy": 0.5,
+      "evidence_coverage": 1.0,
+      "stale_conflict_rate": 0.5,
+      "secret_leak_rate": 0.125,
+      "avg_retrieved_tokens": 30.5,
+      "p95_latency_ms": 0.007884982915129513,
+      "signal_noise_ratio": 0.6666666666666666
+    },
+    {
+      "backend": "append_only_log",
+      "accuracy": 0.5,
+      "evidence_coverage": 1.0,
+      "stale_conflict_rate": 0.5,
+      "secret_leak_rate": 0.125,
+      "avg_retrieved_tokens": 167.25,
+      "p95_latency_ms": 0.09810999181354418,
+      "signal_noise_ratio": 0.12307692307692308
+    },
+    {
+      "backend": "recent_window_log",
+      "accuracy": 0.5,
+      "evidence_coverage": 0.5,
+      "stale_conflict_rate": 0.0,
+      "secret_leak_rate": 0.0,
+      "avg_retrieved_tokens": 10.625,
+      "p95_latency_ms": 0.003609998384490609,
+      "signal_noise_ratio": 1.0
+    }
+  ],
+  "answers": {
+    "active_decision_digest": [
+      {
+        "backend": "active_decision_digest",
+        "probe": "target_segment",
+        "answer": "target_segment: Current target segment is support operations teams. Evidence: ev-003.",
+        "evidence_ids": [
+          "ev-003"
+        ],
+        "retrieved_tokens": 18,
+        "latency_ms": 0.0039000005926936865
+      },
+      {
+        "backend": "active_decision_digest",
+        "probe": "pricing",
+        "answer": "pricing: Current pricing is a usage-based pilot at $0.08 per resolved ticket. Evidence: ev-004.",
+        "evidence_ids": [
+          "ev-004"
+        ],
+        "retrieved_tokens": 21,
+        "latency_ms": 0.0029999937396496534
+      },
+      {
+        "backend": "active_decision_digest",
+        "probe": "deployment",
+        "answer": "deployment: Current deployment decision is self-hosted beta only; no EU customer data leaves the customer VPC. Evidence: ev-005.",
+        "evidence_ids": [
+          "ev-005"
+        ],
+        "retrieved_tokens": 26,
+        "latency_ms": 0.0015999830793589354
+      },
+      {
+        "backend": "active_decision_digest",
+        "probe": "launch_readiness",
+        "answer": "launch_readiness: Current launch decision is publish after the win-rate chart is reproduced. Evidence: ev-009.",
+        "evidence_ids": [
+          "ev-009"
+        ],
+        "retrieved_tokens": 24,
+        "latency_ms": 0.0009999785106629133
+      },
+      {
+        "backend": "active_decision_digest",
+        "probe": "data_handling",
+        "answer": "data_handling: Current data handling requires redaction before logs enter memory. Evidence: ev-008.",
+        "evidence_ids": [
+          "ev-008"
+        ],
+        "retrieved_tokens": 19,
+        "latency_ms": 0.0011999800335615873
+      },
+      {
+        "backend": "active_decision_digest",
+        "probe": "customer_owner",
+        "answer": "customer_owner: Acme pilot is blocked on DPA redlines; Lina owns it by June 18. Evidence: ev-010.",
+        "evidence_ids": [
+          "ev-010"
+        ],
+        "retrieved_tokens": 22,
+        "latency_ms": 0.001200009137392044
+      },
+      {
+        "backend": "active_decision_digest",
+        "probe": "model_routing",
+        "answer": "model_routing: Use a small local reranker for triage; GPT-4.1 only handles synthesis. Evidence: ev-011.",
+        "evidence_ids": [
+          "ev-011"
+        ],
+        "retrieved_tokens": 22,
+        "latency_ms": 0.00100000761449337
+      },
+      {
+        "backend": "active_decision_digest",
+        "probe": "primary_metric",
+        "answer": "primary_metric: Primary benchmark metric is decision freshness accuracy. Evidence: ev-012.",
+        "evidence_ids": [
+          "ev-012"
+        ],
+        "retrieved_tokens": 17,
+        "latency_ms": 0.000900006853044033
+      }
+    ],
+    "passive_graph_history": [
+      {
+        "backend": "passive_graph_history",
+        "probe": "target_segment",
+        "answer": "target_segment possible states: superseded: Initial target segment is consumer creators. (ev-001) | current: Current target segment is support operations teams. (ev-003).",
+        "evidence_ids": [
+          "ev-001",
+          "ev-003"
+        ],
+        "retrieved_tokens": 32,
+        "latency_ms": 0.009599985787644982
+      },
+      {
+        "backend": "passive_graph_history",
+        "probe": "pricing",
+        "answer": "pricing possible states: superseded: Initial pricing hypothesis is $49 per team per month. (ev-002) | current: Current pricing is a usage-based pilot at $0.08 per resolved ticket. (ev-004).",
+        "evidence_ids": [
+          "ev-002",
+          "ev-004"
+        ],
+        "retrieved_tokens": 39,
+        "latency_ms": 0.004699977580457926
+      },
+      {
+        "backend": "passive_graph_history",
+        "probe": "deployment",
+        "answer": "deployment possible states: current: Current deployment decision is self-hosted beta only; no EU customer data leaves the customer VPC. (ev-005).",
+        "evidence_ids": [
+          "ev-005"
+        ],
+        "retrieved_tokens": 26,
+        "latency_ms": 0.0026999914553016424
+      },
+      {
+        "backend": "passive_graph_history",
+        "probe": "launch_readiness",
+        "answer": "launch_readiness possible states: superseded: Do not publish the public benchmark until the win-rate chart is reproduced. (ev-006) | current: Current launch decision is publish after the win-rate chart is reproduced. (ev-009).",
+        "evidence_ids": [
+          "ev-006",
+          "ev-009"
+        ],
+        "retrieved_tokens": 45,
+        "latency_ms": 0.0028999929782003164
+      },
+      {
+        "backend": "passive_graph_history",
+        "probe": "data_handling",
+        "answer": "data_handling possible states: rejected: Rejected assumption: raw support logs are safe to store without redaction. sk-test-123456 (ev-007) | current: Current data handling requires redaction before logs enter memory. (ev-008).",
+        "evidence_ids": [
+          "ev-007",
+          "ev-008"
+        ],
+        "retrieved_tokens": 41,
+        "latency_ms": 0.0034999975468963385
+      },
+      {
+        "backend": "passive_graph_history",
+        "probe": "customer_owner",
+        "answer": "customer_owner possible states: current: Acme pilot is blocked on DPA redlines; Lina owns it by June 18. (ev-010).",
+        "evidence_ids": [
+          "ev-010"
+        ],
+        "retrieved_tokens": 22,
+        "latency_ms": 0.0023999891709536314
+      },
+      {
+        "backend": "passive_graph_history",
+        "probe": "model_routing",
+        "answer": "model_routing possible states: current: Use a small local reranker for triage; GPT-4.1 only handles synthesis. (ev-011).",
+        "evidence_ids": [
+          "ev-011"
+        ],
+        "retrieved_tokens": 22,
+        "latency_ms": 0.0020999868866056204
+      },
+      {
+        "backend": "passive_graph_history",
+        "probe": "primary_metric",
+        "answer": "primary_metric possible states: current: Primary benchmark metric is decision freshness accuracy. (ev-012).",
+        "evidence_ids": [
+          "ev-012"
+        ],
+        "retrieved_tokens": 17,
+        "latency_ms": 0.00200001522898674
+      }
+    ],
+    "append_only_log": [
+      {
+        "backend": "append_only_log",
+        "probe": "target_segment",
+        "answer": "target_segment: Initial target segment is consumer creators. Evidence: ev-001. pricing: Initial pricing hypothesis is $49 per team per month. Evidence: ev-002. target_segment: Current target segment is support operations teams. Evidence: ev-003. pricing: Current pricing is a usage-based pilot at $0.08 per resolved ticket. Evidence: ev-004. deployment: Current deployment decision is self-hosted beta only; no EU customer data leaves the customer VPC. Evidence: ev-005. launch_readiness: Do not publish the public benchmark until the win-rate chart is reproduced. Evidence: ev-006. data_handling: Current data handling requires redaction before logs enter memory. Evidence: ev-008. launch_readiness: Current launch decision is publish after the win-rate chart is reproduced. Evidence: ev-009. customer_owner: Acme pilot is blocked on DPA redlines; Lina owns it by June 18. Evidence: ev-010. primary_metric: Primary benchmark metric is decision freshness accuracy. Evidence: ev-012.",
+        "evidence_ids": [
+          "ev-001",
+          "ev-002",
+          "ev-003",
+          "ev-004",
+          "ev-005",
+          "ev-006",
+          "ev-008",
+          "ev-009",
+          "ev-010",
+          "ev-012"
+        ],
+        "retrieved_tokens": 200,
+        "latency_ms": 0.10209999163635075
+      },
+      {
+        "backend": "append_only_log",
+        "probe": "pricing",
+        "answer": "target_segment: Initial target segment is consumer creators. Evidence: ev-001. pricing: Initial pricing hypothesis is $49 per team per month. Evidence: ev-002. target_segment: Current target segment is support operations teams. Evidence: ev-003. pricing: Current pricing is a usage-based pilot at $0.08 per resolved ticket. Evidence: ev-004. deployment: Current deployment decision is self-hosted beta only; no EU customer data leaves the customer VPC. Evidence: ev-005. launch_readiness: Do not publish the public benchmark until the win-rate chart is reproduced. Evidence: ev-006. data_handling: Current data handling requires redaction before logs enter memory. Evidence: ev-008. launch_readiness: Current launch decision is publish after the win-rate chart is reproduced. Evidence: ev-009. customer_owner: Acme pilot is blocked on DPA redlines; Lina owns it by June 18. Evidence: ev-010. primary_metric: Primary benchmark metric is decision freshness accuracy. Evidence: ev-012.",
+        "evidence_ids": [
+          "ev-001",
+          "ev-002",
+          "ev-003",
+          "ev-004",
+          "ev-005",
+          "ev-006",
+          "ev-008",
+          "ev-009",
+          "ev-010",
+          "ev-012"
+        ],
+        "retrieved_tokens": 200,
+        "latency_ms": 0.0906999921426177
+      },
+      {
+        "backend": "append_only_log",
+        "probe": "deployment",
+        "answer": "target_segment: Initial target segment is consumer creators. Evidence: ev-001. pricing: Initial pricing hypothesis is $49 per team per month. Evidence: ev-002. target_segment: Current target segment is support operations teams. Evidence: ev-003. pricing: Current pricing is a usage-based pilot at $0.08 per resolved ticket. Evidence: ev-004. deployment: Current deployment decision is self-hosted beta only; no EU customer data leaves the customer VPC. Evidence: ev-005. launch_readiness: Do not publish the public benchmark until the win-rate chart is reproduced. Evidence: ev-006. launch_readiness: Current launch decision is publish after the win-rate chart is reproduced. Evidence: ev-009. customer_owner: Acme pilot is blocked on DPA redlines; Lina owns it by June 18. Evidence: ev-010. model_routing: Use a small local reranker for triage; GPT-4.1 only handles synthesis. Evidence: ev-011. primary_metric: Primary benchmark metric is decision freshness accuracy. Evidence: ev-012.",
+        "evidence_ids": [
+          "ev-001",
+          "ev-002",
+          "ev-003",
+          "ev-004",
+          "ev-005",
+          "ev-006",
+          "ev-009",
+          "ev-010",
+          "ev-011",
+          "ev-012"
+        ],
+        "retrieved_tokens": 203,
+        "latency_ms": 0.08329999400302768
+      },
+      {
+        "backend": "append_only_log",
+        "probe": "launch_readiness",
+        "answer": "deployment: Current deployment decision is self-hosted beta only; no EU customer data leaves the customer VPC. Evidence: ev-005. launch_readiness: Do not publish the public benchmark until the win-rate chart is reproduced. Evidence: ev-006. launch_readiness: Current launch decision is publish after the win-rate chart is reproduced. Evidence: ev-009. primary_metric: Primary benchmark metric is decision freshness accuracy. Evidence: ev-012.",
+        "evidence_ids": [
+          "ev-005",
+          "ev-006",
+          "ev-009",
+          "ev-012"
+        ],
+        "retrieved_tokens": 88,
+        "latency_ms": 0.07360000745393336
+      },
+      {
+        "backend": "append_only_log",
+        "probe": "data_handling",
+        "answer": "target_segment: Initial target segment is consumer creators. Evidence: ev-001. pricing: Initial pricing hypothesis is $49 per team per month. Evidence: ev-002. target_segment: Current target segment is support operations teams. Evidence: ev-003. pricing: Current pricing is a usage-based pilot at $0.08 per resolved ticket. Evidence: ev-004. deployment: Current deployment decision is self-hosted beta only; no EU customer data leaves the customer VPC. Evidence: ev-005. launch_readiness: Do not publish the public benchmark until the win-rate chart is reproduced. Evidence: ev-006. data_handling: Rejected assumption: raw support logs are safe to store without redaction. sk-test-123456 Evidence: ev-007. data_handling: Current data handling requires redaction before logs enter memory. Evidence: ev-008. launch_readiness: Current launch decision is publish after the win-rate chart is reproduced. Evidence: ev-009. customer_owner: Acme pilot is blocked on DPA redlines; Lina owns it by June 18. Evidence: ev-010. primary_metric: Primary benchmark metric is decision freshness accuracy. Evidence: ev-012.",
+        "evidence_ids": [
+          "ev-001",
+          "ev-002",
+          "ev-003",
+          "ev-004",
+          "ev-005",
+          "ev-006",
+          "ev-007",
+          "ev-008",
+          "ev-009",
+          "ev-010",
+          "ev-012"
+        ],
+        "retrieved_tokens": 222,
+        "latency_ms": 0.07550002192147076
+      },
+      {
+        "backend": "append_only_log",
+        "probe": "customer_owner",
+        "answer": "target_segment: Current target segment is support operations teams. Evidence: ev-003. pricing: Current pricing is a usage-based pilot at $0.08 per resolved ticket. Evidence: ev-004. deployment: Current deployment decision is self-hosted beta only; no EU customer data leaves the customer VPC. Evidence: ev-005. launch_readiness: Do not publish the public benchmark until the win-rate chart is reproduced. Evidence: ev-006. data_handling: Current data handling requires redaction before logs enter memory. Evidence: ev-008. launch_readiness: Current launch decision is publish after the win-rate chart is reproduced. Evidence: ev-009. customer_owner: Acme pilot is blocked on DPA redlines; Lina owns it by June 18. Evidence: ev-010.",
+        "evidence_ids": [
+          "ev-003",
+          "ev-004",
+          "ev-005",
+          "ev-006",
+          "ev-008",
+          "ev-009",
+          "ev-010"
+        ],
+        "retrieved_tokens": 151,
+        "latency_ms": 0.057199998991563916
+      },
+      {
+        "backend": "append_only_log",
+        "probe": "model_routing",
+        "answer": "deployment: Current deployment decision is self-hosted beta only; no EU customer data leaves the customer VPC. Evidence: ev-005. launch_readiness: Do not publish the public benchmark until the win-rate chart is reproduced. Evidence: ev-006. launch_readiness: Current launch decision is publish after the win-rate chart is reproduced. Evidence: ev-009. model_routing: Use a small local reranker for triage; GPT-4.1 only handles synthesis. Evidence: ev-011.",
+        "evidence_ids": [
+          "ev-005",
+          "ev-006",
+          "ev-009",
+          "ev-011"
+        ],
+        "retrieved_tokens": 93,
+        "latency_ms": 0.054899981478229165
+      },
+      {
+        "backend": "append_only_log",
+        "probe": "primary_metric",
+        "answer": "target_segment: Initial target segment is consumer creators. Evidence: ev-001. pricing: Initial pricing hypothesis is $49 per team per month. Evidence: ev-002. target_segment: Current target segment is support operations teams. Evidence: ev-003. pricing: Current pricing is a usage-based pilot at $0.08 per resolved ticket. Evidence: ev-004. deployment: Current deployment decision is self-hosted beta only; no EU customer data leaves the customer VPC. Evidence: ev-005. launch_readiness: Do not publish the public benchmark until the win-rate chart is reproduced. Evidence: ev-006. launch_readiness: Current launch decision is publish after the win-rate chart is reproduced. Evidence: ev-009. customer_owner: Acme pilot is blocked on DPA redlines; Lina owns it by June 18. Evidence: ev-010. primary_metric: Primary benchmark metric is decision freshness accuracy. Evidence: ev-012.",
+        "evidence_ids": [
+          "ev-001",
+          "ev-002",
+          "ev-003",
+          "ev-004",
+          "ev-005",
+          "ev-006",
+          "ev-009",
+          "ev-010",
+          "ev-012"
+        ],
+        "retrieved_tokens": 181,
+        "latency_ms": 0.054800009820610285
+      }
+    ],
+    "recent_window_log": [
+      {
+        "backend": "recent_window_log",
+        "probe": "target_segment",
+        "answer": "No decision found.",
+        "evidence_ids": [],
+        "retrieved_tokens": 0,
+        "latency_ms": 0.0048000074457377195
+      },
+      {
+        "backend": "recent_window_log",
+        "probe": "pricing",
+        "answer": "No decision found.",
+        "evidence_ids": [],
+        "retrieved_tokens": 0,
+        "latency_ms": 0.0010999792721122503
+      },
+      {
+        "backend": "recent_window_log",
+        "probe": "deployment",
+        "answer": "No decision found.",
+        "evidence_ids": [],
+        "retrieved_tokens": 0,
+        "latency_ms": 0.0007999769877642393
+      },
+      {
+        "backend": "recent_window_log",
+        "probe": "launch_readiness",
+        "answer": "launch_readiness: Current launch decision is publish after the win-rate chart is reproduced. Evidence: ev-009.",
+        "evidence_ids": [
+          "ev-009"
+        ],
+        "retrieved_tokens": 24,
+        "latency_ms": 0.0013999815564602613
+      },
+      {
+        "backend": "recent_window_log",
+        "probe": "data_handling",
+        "answer": "No decision found.",
+        "evidence_ids": [],
+        "retrieved_tokens": 0,
+        "latency_ms": 0.000800006091594696
+      },
+      {
+        "backend": "recent_window_log",
+        "probe": "customer_owner",
+        "answer": "customer_owner: Acme pilot is blocked on DPA redlines; Lina owns it by June 18. Evidence: ev-010.",
+        "evidence_ids": [
+          "ev-010"
+        ],
+        "retrieved_tokens": 22,
+        "latency_ms": 0.001200009137392044
+      },
+      {
+        "backend": "recent_window_log",
+        "probe": "model_routing",
+        "answer": "model_routing: Use a small local reranker for triage; GPT-4.1 only handles synthesis. Evidence: ev-011.",
+        "evidence_ids": [
+          "ev-011"
+        ],
+        "retrieved_tokens": 22,
+        "latency_ms": 0.0010999792721122503
+      },
+      {
+        "backend": "recent_window_log",
+        "probe": "primary_metric",
+        "answer": "primary_metric: Primary benchmark metric is decision freshness accuracy. Evidence: ev-012.",
+        "evidence_ids": [
+          "ev-012"
+        ],
+        "retrieved_tokens": 17,
+        "latency_ms": 0.001100008375942707
+      }
+    ]
+  }
+}
