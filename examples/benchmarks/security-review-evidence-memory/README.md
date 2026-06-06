@@ -38,4 +38,4 @@ The active digest should score best on current-fact accuracy, stale conflict sup
 
 ## Bounty Fit
 
-This targets the "Accuracy vs. Resource Footprint" challenge from issue #639 by testing a production security-review workflow where stale evidence and secret leakage are as important as answer accuracy.
+This targets the "Accuracy vs. Resource Footprint" challenge from [issue #639](https://github.com/moorcheh-ai/memanto/issues/639) by testing a production security-review workflow where stale evidence and secret leakage are as important as answer accuracy.

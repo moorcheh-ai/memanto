@@ -26,17 +26,21 @@ SECRET_PATTERNS = (
 
 
 def redact_secrets(text: str) -> str:
+    """Replace synthetic credential values with a stable redaction marker."""
     for pattern in SECRET_PATTERNS:
         text = pattern.sub("[REDACTED_SECRET]", text)
     return text
 
 
 def token_count(text: str) -> int:
+    """Approximate retrieval footprint with a deterministic word-token count."""
     return len(re.findall(r"\b[\w:-]+\b", text))
 
 
 @dataclass(frozen=True)
 class Fact:
+    """Current normalized state for a security finding."""
+
     finding_id: str
     status: str
     severity: str
@@ -45,6 +49,7 @@ class Fact:
     summary: str
 
     def render(self) -> str:
+        """Serialize the fact into the context returned by a memory backend."""
         return (
             f"{self.finding_id} status={self.status} severity={self.severity} "
             f"owner={self.owner} evidence={self.evidence} summary={self.summary}"
@@ -53,6 +58,8 @@ class Fact:
 
 @dataclass(frozen=True)
 class SessionEvent:
+    """One review session with raw transcript text and normalized facts."""
+
     session: str
     raw: str
     facts: Sequence[Fact]
@@ -60,6 +67,8 @@ class SessionEvent:
 
 @dataclass(frozen=True)
 class Probe:
+    """Question and term expectations used to score retrieval quality."""
+
     question: str
     required_terms: Sequence[str]
     forbidden_terms: Sequence[str] = field(default_factory=tuple)
@@ -156,51 +165,69 @@ PROBES: Sequence[Probe] = (
 
 
 class MemoryBackend:
+    """Common interface for deterministic memory backends."""
+
     name = "backend"
 
     def ingest(self, event: SessionEvent) -> None:
+        """Store a session event in the backend."""
         raise NotImplementedError
 
     def retrieve(self, question: str) -> str:
+        """Return the context that would be supplied to an answering agent."""
         raise NotImplementedError
 
 
 class AppendOnlyLog(MemoryBackend):
+    """Baseline that stores every raw observation forever."""
+
     name = "append_only_log"
 
     def __init__(self) -> None:
+        """Create an empty raw transcript log."""
         self.records: List[str] = []
 
     def ingest(self, event: SessionEvent) -> None:
+        """Append raw session text without normalization or redaction."""
         self.records.append(event.raw)
 
     def retrieve(self, question: str) -> str:
+        """Return the complete historical transcript."""
         return "\n".join(self.records)
 
 
 class RecentWindowLog(MemoryBackend):
+    """Baseline that keeps only the most recent raw sessions."""
+
     name = "recent_window_log"
 
     def __init__(self, window_size: int = 2) -> None:
+        """Create a sliding-window transcript log."""
         self.window_size = window_size
         self.records: List[str] = []
 
     def ingest(self, event: SessionEvent) -> None:
+        """Append raw text and drop sessions outside the configured window."""
         self.records.append(event.raw)
         self.records = self.records[-self.window_size :]
 
     def retrieve(self, question: str) -> str:
+        """Return the recent transcript window."""
         return "\n".join(self.records)
 
 
 class ActiveSecurityDigest(MemoryBackend):
+    """Memanto-style digest that keeps latest facts and redacts secrets."""
+
     name = "active_security_digest"
 
     def __init__(self) -> None:
+        """Create an empty active finding digest."""
         self.findings: Dict[str, Fact] = {}
         self.reporting_policy = "raw token values must stay redacted"
 
     def ingest(self, event: SessionEvent) -> None:
+        """Merge normalized facts by finding id while preserving latest state."""
         for fact in event.facts:
             redacted_fact = Fact(
                 finding_id=fact.finding_id,
@@ -213,12 +240,14 @@ class ActiveSecurityDigest(MemoryBackend):
             self.findings[fact.finding_id] = redacted_fact
 
     def retrieve(self, question: str) -> str:
+        """Return current policy and findings as compact review context."""
         rendered = [self.reporting_policy]
         rendered.extend(fact.render() for fact in sorted(self.findings.values(), key=lambda item: item.finding_id))
         return "\n".join(rendered)
 
 
 def score_probe(context: str, probe: Probe) -> Dict[str, object]:
+    """Score one probe against required terms, stale terms, and secret leaks."""
     lowered = context.lower()
     required_hits = [term for term in probe.required_terms if term.lower() in lowered]
     forbidden_hits = [term for term in probe.forbidden_terms if term.lower() in lowered]
@@ -236,6 +265,7 @@ def score_probe(context: str, probe: Probe) -> Dict[str, object]:
 
 
 def percentile_95(values: Sequence[float]) -> float:
+    """Return the inclusive p95 for a short deterministic latency sample."""
     if not values:
         return 0.0
     if len(values) == 1:
@@ -244,6 +274,7 @@ def percentile_95(values: Sequence[float]) -> float:
 
 
 def evaluate_backend(backend: MemoryBackend) -> Dict[str, object]:
+    """Run all sessions and probes for one backend and compute metrics."""
     for event in DATASET:
         backend.ingest(event)
 
@@ -281,6 +312,7 @@ def evaluate_backend(backend: MemoryBackend) -> Dict[str, object]:
 
 
 def run_benchmark() -> Dict[str, object]:
+    """Evaluate all memory backends for the security-review scenario."""
     backends: Iterable[MemoryBackend] = (
         ActiveSecurityDigest(),
         AppendOnlyLog(),
@@ -297,6 +329,7 @@ def run_benchmark() -> Dict[str, object]:
 
 
 def write_markdown(result: Dict[str, object], path: Path) -> None:
+    """Write a compact Markdown table for benchmark results."""
     lines = [
         "# Security Review Evidence Memory Results",
         "",
@@ -319,6 +352,7 @@ def write_markdown(result: Dict[str, object], path: Path) -> None:
 
 
 def parse_args() -> argparse.Namespace:
+    """Parse command-line output paths."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--output",
@@ -334,6 +368,7 @@ def parse_args() -> argparse.Namespace:
 
 
 def main() -> None:
+    """Run the benchmark and write JSON plus Markdown outputs."""
     args = parse_args()
     result = run_benchmark()
     output_path = Path(args.output)
