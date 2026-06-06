@@ -163,8 +163,7 @@
       "key": "owner.oncall",
       "value": "Mina owns backend until 18:00 UTC; Ravi owns QA signoff",
       "content": "Ownership update: Mina owns backend until 18:00 UTC; Ravi owns QA signoff. Replace Leo as the release contact.",
-      "tags": ["owner", "oncall", "backend", "qa"],
-      "supersedes": ["owner.oncall"]
+      "tags": ["owner", "oncall", "backend", "qa"]
     },
     {
       "turn": 15,
