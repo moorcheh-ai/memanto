@@ -1,0 +1,28 @@
+{
+  "scenario": "support_escalation_memory",
+  "sessions": 8,
+  "probes": 8,
+  "strategies": [
+    {
+      "strategy": "active_case_digest",
+      "accuracy": 1.0,
+      "stale_leak_rate": 0.0,
+      "avg_retrieved_tokens": 1.88,
+      "p95_latency_ms": 0.0008
+    },
+    {
+      "strategy": "append_only_log",
+      "accuracy": 0.875,
+      "stale_leak_rate": 0.625,
+      "avg_retrieved_tokens": 18.62,
+      "p95_latency_ms": 0.0028
+    },
+    {
+      "strategy": "recent_window_log",
+      "accuracy": 0.5,
+      "stale_leak_rate": 0.125,
+      "avg_retrieved_tokens": 4.62,
+      "p95_latency_ms": 0.001
+    }
+  ]
+}
