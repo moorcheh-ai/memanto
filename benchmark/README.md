@@ -2,25 +2,30 @@
 
 A rigorous, reproducible benchmarking framework that evaluates **Memanto** against other agentic memory frameworks across the core tension of **Accuracy vs. Resource Footprint**.
 
-## Supported Backends
+## Supported Frameworks
 
-- **Memanto** (this repo) — active memory agent with serverless retrieval
-- **Mem0** — popular open-source memory layer for LLM apps
-- **Zep / Graphiti** — graph-based memory with entity extraction
-- *(Extensible: add more backends via the `BaseMemoryBackend` interface)*
+- **Memanto** (this repo) - Active memory agent with serverless retrieval
+- **Mem0** - Dedicated memory platform for AI agents
+- **Zep/Graphiti** - Graph-based memory with temporal reasoning
+- **Letta** - Memory-first agent framework
 
-## Metrics
+## Benchmarks
 
-| Category | Metric | Description |
-|----------|--------|-------------|
-| **Accuracy** | Recall@K | Fraction of relevant memories retrieved in top-K |
-| **Accuracy** | Preference Resolution | Correctly resolving conflicting user preferences over time |
-| **Accuracy** | Temporal Consistency | Maintaining consistency across multi-session conversations |
-| **Resource** | Tokens per Query | Total tokens consumed (prompt + retrieval + response) |
-| **Resource** | p95 Latency | 95th percentile response time |
-| **Resource** | Memory Growth Rate | Storage overhead per conversation turn |
+### 1. Conversation Memory Benchmark (`conversation/`)
+Tests multi-turn conversation memory with:
+- **Accuracy**: Correct recall of facts, preferences, and context
+- **Token Efficiency**: Tokens used per retrieval
+- **Latency**: p50, p95, p99 response times
+- **Scalability**: Performance as conversation history grows
+
+### 2. Agent Workflow Benchmark (`agent_workflow/`)
+Tests long-running agent workflows with:
+- **Goal Completion Rate**: Successful task completion
+- **Context Window Efficiency**: No unnecessary context bloat
+- **Memory Update Accuracy**: Correct incorporation of new information
+
+### 3. Synthetic Data Generator (`data_generator/`)
+Generates realistic conversation and workflow data for consistent evaluation.
 
 ## Quick Start
-
-### 1. Install Dependencies
 
