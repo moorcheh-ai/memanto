@@ -11,6 +11,8 @@ from long_horizon.runner import BenchmarkConfig, run_benchmark
 
 
 def _csv_ints(value: str) -> tuple[int, ...]:
+    """Parse a comma-separated CLI integer list."""
+
     try:
         return tuple(int(item.strip()) for item in value.split(",") if item.strip())
     except ValueError as exc:
@@ -18,6 +20,8 @@ def _csv_ints(value: str) -> tuple[int, ...]:
 
 
 def parse_args() -> argparse.Namespace:
+    """Parse benchmark CLI options."""
+
     parser = argparse.ArgumentParser(
         description=(
             "Compare live Memanto and Mem0 retrieval over a deterministic "
@@ -48,6 +52,8 @@ def parse_args() -> argparse.Namespace:
 
 
 def main() -> None:
+    """Run the configured benchmark and print its generated report."""
+
     load_dotenv()
     args = parse_args()
     config = BenchmarkConfig(

@@ -55,6 +55,9 @@ result is stale.
 
 - Both backends receive byte-identical event content in the same order.
 - Mem0 uses `infer=False`, so neither side gets an LLM extraction advantage.
+- The benchmark invokes no generation LLM and has no system prompt. Memanto's
+  hosted retrieval internals are provider-managed; the SDK does not expose a
+  model identifier or retrieval prompt to configure or report.
 - Backend write and read order is deterministically shuffled per operation to
   reduce systematic first-run network bias.
 - Every live call is timed with `time.perf_counter()`.
@@ -78,7 +81,7 @@ result is stale.
 | Clean-context recall | Current value recalled with no stale contradiction |
 | Mean reciprocal rank | Rank quality of the current value |
 | Retrieved tokens | Mean and total normalized context footprint |
-| Ingested tokens | Total input footprint sent to each memory backend |
+| Ingested tokens | Normalized event-content tokens, excluding SDK metadata and serialization |
 | Signal-to-noise | Tokens from current-value records divided by all returned tokens |
 | Read p50/p95/p99 | Semantic retrieval wall-clock latency |
 | Write p50/p95/p99 | Memory ingestion wall-clock latency |
@@ -211,8 +214,9 @@ where a current-state backend must beat an append-only backend.
 - Canonical markers make scoring reproducible but are easier than unconstrained
   natural-language fact extraction.
 - Mem0 uses a local 384-dimensional FastEmbed model, while Memanto uses
-  Moorcheh's hosted retrieval path. The environment manifest records this
-  architectural difference rather than hiding it.
+  Moorcheh's hosted retrieval path, whose model identifier is not exposed by
+  the SDK. The environment manifest records this architectural difference
+  rather than hiding it.
 - Network measurements should be repeated from more than one region before
   making broad latency claims.
 - A single run is evidence, not a universal ranking. Publish raw traces and

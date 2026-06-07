@@ -1,11 +1,16 @@
 from __future__ import annotations
 
 import unittest
+from dataclasses import replace
+from unittest.mock import patch
 
+import long_horizon.dataset as dataset
 from long_horizon.dataset import FACTS, canonical_marker, generate_scenario
 
 
 class DatasetTests(unittest.TestCase):
+    """Validate deterministic scenario construction and input bounds."""
+
     def test_scenario_is_deterministic(self) -> None:
         first = generate_scenario(seed=7, sessions=16, checkpoints=(8, 16))
         second = generate_scenario(seed=7, sessions=16, checkpoints=(8, 16))
@@ -39,6 +44,17 @@ class DatasetTests(unittest.TestCase):
     def test_invalid_partial_epoch_checkpoint_is_rejected(self) -> None:
         with self.assertRaisesRegex(ValueError, "complete eight-session"):
             generate_scenario(seed=7, sessions=16, checkpoints=(9, 16))
+
+    def test_session_limit_uses_shortest_fact_history(self) -> None:
+        shortened_facts = (
+            replace(FACTS[0], values=FACTS[0].values[:-1]),
+            *FACTS[1:],
+        )
+        with (
+            patch.object(dataset, "FACTS", shortened_facts),
+            self.assertRaisesRegex(ValueError, "available unique fact versions"),
+        ):
+            dataset.generate_scenario(seed=7, sessions=41, checkpoints=(8,))
 
 
 if __name__ == "__main__":

@@ -37,16 +37,26 @@ _PERMANENT_MARKERS = (
 
 
 class MemoryAdapter(Protocol):
+    """Common interface implemented by live benchmark backends."""
+
     name: str
 
-    def add(self, event: Event) -> None: ...
+    def add(self, event: Event) -> None:
+        """Store one benchmark event."""
+        ...
 
-    def search(self, probe: Probe, *, limit: int) -> Sequence[RetrievedItem]: ...
+    def search(self, probe: Probe, *, limit: int) -> Sequence[RetrievedItem]:
+        """Retrieve ranked context for one benchmark probe."""
+        ...
 
-    def close(self) -> None: ...
+    def close(self) -> None:
+        """Release resources and remove isolated benchmark state."""
+        ...
 
 
 def _safe_id(value: str, limit: int = 48) -> str:
+    """Normalize and, when needed, hash an external-resource identifier."""
+
     normalized = re.sub(r"[^a-zA-Z0-9_-]+", "-", value).strip("-")
     if len(normalized) <= limit:
         return normalized
@@ -55,6 +65,8 @@ def _safe_id(value: str, limit: int = 48) -> str:
 
 
 def _is_transient_error(exc: BaseException) -> bool:
+    """Return whether an exception chain represents a retryable failure."""
+
     current: BaseException | None = exc
     while current is not None:
         name = current.__class__.__name__.lower()
@@ -73,6 +85,8 @@ def _retry_transient(
     attempts: int = 5,
     initial_delay: float = 1.0,
 ) -> T:
+    """Retry transient failures with bounded exponential backoff."""
+
     for attempt in range(1, attempts + 1):
         try:
             return operation()
@@ -84,6 +98,8 @@ def _retry_transient(
 
 
 def _result_text(result: Any) -> str:
+    """Extract textual memory content from supported SDK result shapes."""
+
     if isinstance(result, str):
         return result
     if not isinstance(result, dict):
@@ -96,6 +112,8 @@ def _result_text(result: Any) -> str:
 
 
 def _result_score(result: Any) -> float | None:
+    """Extract an optional similarity score from an SDK result."""
+
     if not isinstance(result, dict):
         return None
     for key in ("score", "similarity", "similarity_score"):
@@ -106,9 +124,13 @@ def _result_score(result: Any) -> float | None:
 
 
 class MemantoAdapter:
+    """Live Memanto adapter backed by an isolated Moorcheh namespace."""
+
     name = "memanto"
 
     def __init__(self, *, run_id: str, cleanup: bool = True) -> None:
+        """Create and activate one isolated benchmark agent."""
+
         os.environ.setdefault("SSL_CERT_FILE", certifi.where())
 
         from moorcheh_sdk import MoorchehClient
@@ -140,6 +162,8 @@ class MemantoAdapter:
             raise
 
     def add(self, event: Event) -> None:
+        """Store an event with a deterministic ID for retry idempotency."""
+
         from memanto.app.core import MemoryRecord
 
         digest = hashlib.sha256(f"{self._run_id}:{event.event_id}".encode()).hexdigest()
@@ -156,9 +180,13 @@ class MemantoAdapter:
             source="benchmark",
             provenance="explicit_statement",
         )
+        # The public remember() API does not accept caller-supplied IDs. Use the
+        # write service so an ambiguous retried request cannot create duplicates.
         _retry_transient(lambda: self._client._get_write_service().store_memory(memory))
 
     def search(self, probe: Probe, *, limit: int) -> Sequence[RetrievedItem]:
+        """Recall and normalize ranked Memanto memories."""
+
         response = _retry_transient(
             lambda: self._client.recall(
                 agent_id=self._agent_id,
@@ -177,6 +205,8 @@ class MemantoAdapter:
         ]
 
     def close(self) -> None:
+        """Deactivate the agent and remove benchmark-created state."""
+
         errors: list[str] = []
         try:
             self._client.deactivate_agent(self._agent_id)
@@ -198,6 +228,8 @@ class MemantoAdapter:
 
 
 class Mem0Adapter:
+    """Local Mem0 adapter using isolated Qdrant and FastEmbed state."""
+
     name = "mem0"
 
     def __init__(
@@ -207,6 +239,8 @@ class Mem0Adapter:
         work_dir: Path,
         cleanup: bool = True,
     ) -> None:
+        """Configure one isolated local Mem0 collection."""
+
         benchmark_work = Path(__file__).resolve().parents[1] / "work"
         os.environ.setdefault("MEM0_TELEMETRY", "false")
         os.environ.setdefault("MEM0_DIR", str(benchmark_work / "mem0-runtime"))
@@ -289,6 +323,8 @@ class Mem0Adapter:
             raise
 
     def add(self, event: Event) -> None:
+        """Store an event without LLM inference."""
+
         self._memory.add(
             messages=event.content,
             user_id=self._user_id,
@@ -301,6 +337,8 @@ class Mem0Adapter:
         )
 
     def search(self, probe: Probe, *, limit: int) -> Sequence[RetrievedItem]:
+        """Search and normalize ranked Mem0 memories."""
+
         response = self._memory.search(
             probe.query,
             user_id=self._user_id,
@@ -321,6 +359,8 @@ class Mem0Adapter:
         ]
 
     def close(self) -> None:
+        """Close Mem0 and remove its isolated local state."""
+
         self._memory.close()
         if self._cleanup:
             shutil.rmtree(self._storage_path)
@@ -333,6 +373,8 @@ def create_adapter(
     work_dir: Path,
     cleanup: bool,
 ) -> MemoryAdapter:
+    """Construct the requested live backend adapter."""
+
     if name == "memanto":
         return MemantoAdapter(run_id=run_id, cleanup=cleanup)
     if name == "mem0":

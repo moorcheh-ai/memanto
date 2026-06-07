@@ -33,6 +33,8 @@ TokenCounter = Callable[[str], int]
 
 @dataclass(frozen=True)
 class BenchmarkConfig:
+    """Configuration for one reproducible benchmark run."""
+
     backends: tuple[str, ...] = ("memanto", "mem0")
     seeds: tuple[int, ...] = (7, 19, 43)
     sessions: int = 48
@@ -43,6 +45,8 @@ class BenchmarkConfig:
 
 
 def _default_token_counter() -> TokenCounter:
+    """Build the shared tokenizer used for normalized footprint metrics."""
+
     try:
         import tiktoken
     except ImportError as exc:
@@ -55,6 +59,8 @@ def _default_token_counter() -> TokenCounter:
 
 
 def _package_version(distribution: str) -> str | None:
+    """Return an installed distribution version when available."""
+
     try:
         return importlib.metadata.version(distribution)
     except importlib.metadata.PackageNotFoundError:
@@ -62,9 +68,13 @@ def _package_version(distribution: str) -> str | None:
 
 
 def _source_manifest() -> dict[str, Any]:
+    """Capture the source commit and tracked-worktree state."""
+
     repo_root = Path(__file__).resolve().parents[4]
 
     def git_output(*args: str) -> str | None:
+        """Run one read-only Git command and return its output."""
+
         try:
             result = subprocess.run(
                 ("git", *args),
@@ -85,6 +95,8 @@ def _source_manifest() -> dict[str, Any]:
 
 
 def _environment_manifest() -> dict[str, Any]:
+    """Capture host, package, source, and model configuration metadata."""
+
     return {
         "captured_at": datetime.now(timezone.utc).isoformat(),
         "python": sys.version,
@@ -105,6 +117,11 @@ def _environment_manifest() -> dict[str, Any]:
             )
         },
         "models": {
+            "generation_llm": "none",
+            "system_prompt": "none",
+            "memanto_retrieval": (
+                "Moorcheh hosted; model identifier not exposed by SDK"
+            ),
             "mem0_llm": "disabled (infer=False)",
             "mem0_telemetry": "disabled",
             "mem0_embedding_weights": "sentence-transformers/all-MiniLM-L6-v2",
@@ -118,18 +135,26 @@ def _environment_manifest() -> dict[str, Any]:
 
 
 def _new_run_id() -> str:
+    """Return a filesystem-safe UTC run identifier."""
+
     return datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S%fZ")
 
 
 def _score_to_dict(score: ProbeScore) -> dict[str, Any]:
+    """Convert an immutable probe score into an artifact row."""
+
     return asdict(score)
 
 
 def _write_json(path: Path, data: Any) -> None:
+    """Write stable, human-readable JSON with a trailing newline."""
+
     path.write_text(json.dumps(data, indent=2, sort_keys=True) + "\n")
 
 
 def _write_jsonl(path: Path, rows: Sequence[dict[str, Any]]) -> None:
+    """Write trace rows in deterministic JSON Lines form."""
+
     with path.open("w", encoding="utf-8") as handle:
         for row in rows:
             handle.write(json.dumps(row, sort_keys=True) + "\n")
@@ -140,6 +165,8 @@ def _summarize_backend(
     probe_rows: list[dict[str, Any]],
     write_rows: list[dict[str, Any]],
 ) -> dict[str, Any]:
+    """Aggregate probe and write traces for one backend."""
+
     top1 = [float(row["top1_correct"]) for row in probe_rows]
     strict = [float(row["strict_correct"]) for row in probe_rows]
     current = [float(row["current_recalled"]) for row in probe_rows]
@@ -208,6 +235,8 @@ def _paired_comparison(
     backend_b: str,
     rows: list[dict[str, Any]],
 ) -> dict[str, Any]:
+    """Compute a paired Top-1 difference and bootstrap interval."""
+
     by_backend: dict[str, dict[tuple[int, int, str], float]] = defaultdict(dict)
     for row in rows:
         key = (int(row["seed"]), int(row["checkpoint"]), str(row["fact_key"]))
@@ -230,6 +259,8 @@ def _paired_comparison(
 
 
 def _markdown_report(summary: dict[str, Any]) -> str:
+    """Render the benchmark summary as a compact Markdown report."""
+
     lines = [
         "# Long-Horizon Agent Memory Benchmark",
         "",
@@ -323,6 +354,8 @@ def _markdown_report(summary: dict[str, Any]) -> str:
 
 
 def _write_summary_csv(path: Path, backends: list[dict[str, Any]]) -> None:
+    """Write the principal backend metrics as a portable CSV table."""
+
     columns = (
         "backend",
         "n_probes",

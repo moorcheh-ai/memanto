@@ -15,6 +15,8 @@ _MARKER = re.compile(r"CANONICAL\[([a-z_]+)=([^\]]+)\]")
 
 @dataclass(frozen=True)
 class RetrievedItem:
+    """Backend-neutral ranked retrieval result."""
+
     text: str
     rank: int
     score: float | None = None
@@ -22,6 +24,8 @@ class RetrievedItem:
 
 @dataclass(frozen=True)
 class ProbeScore:
+    """Deterministic quality and context-footprint metrics for one probe."""
+
     top1_correct: bool
     current_recalled: bool
     strict_correct: bool
@@ -34,6 +38,8 @@ class ProbeScore:
 
 
 def parse_markers(text: str) -> set[tuple[str, str]]:
+    """Extract canonical fact markers from retrieved text."""
+
     return {(key, value) for key, value in _MARKER.findall(text)}
 
 
@@ -42,6 +48,8 @@ def score_probe(
     items: Sequence[RetrievedItem],
     token_counter: Callable[[str], int],
 ) -> ProbeScore:
+    """Score one ranked result list against a probe's current and stale values."""
+
     expected = (probe.fact_key, probe.expected_value)
     stale = {(probe.fact_key, value) for value in probe.stale_values}
     current_rank: int | None = None
@@ -75,6 +83,8 @@ def score_probe(
 
 
 def percentile(values: Sequence[float], percentage: float) -> float:
+    """Calculate a linearly interpolated percentile."""
+
     if not values:
         return 0.0
     ordered = sorted(values)
@@ -96,6 +106,8 @@ def bootstrap_mean_ci(
     samples: int = 4000,
     seed: int = 20260606,
 ) -> tuple[float, float]:
+    """Return a deterministic percentile-bootstrap interval for a mean."""
+
     if not values:
         return (0.0, 0.0)
     if len(values) == 1:

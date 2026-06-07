@@ -8,6 +8,8 @@ from dataclasses import dataclass
 
 @dataclass(frozen=True)
 class FactSpec:
+    """Definition of one mutable fact and its ordered unique values."""
+
     key: str
     label: str
     query: str
@@ -16,6 +18,8 @@ class FactSpec:
 
 @dataclass(frozen=True)
 class Event:
+    """One session update written identically to every memory backend."""
+
     event_id: str
     session: int
     fact_key: str
@@ -28,6 +32,8 @@ class Event:
 
 @dataclass(frozen=True)
 class Probe:
+    """Ground-truth retrieval query emitted at a configured checkpoint."""
+
     probe_id: str
     checkpoint: int
     fact_key: str
@@ -149,6 +155,8 @@ NOISE_NOTES = (
 
 
 def canonical_marker(key: str, value: str) -> str:
+    """Return the machine-readable marker embedded in benchmark events."""
+
     return f"CANONICAL[{key}={value}]"
 
 
@@ -160,13 +168,15 @@ def generate_scenario(
 ) -> tuple[list[Event], list[Probe]]:
     """Generate one paired scenario for all benchmark backends.
 
-    Each eight-session epoch updates every mutable fact exactly once. The key
-    order and distractor notes vary by seed, while the ground truth remains
-    fully deterministic and inspectable.
+    Each complete ``len(FACTS)``-session epoch updates every mutable fact
+    exactly once. When ``sessions`` is not a multiple of ``len(FACTS)``, the
+    final epoch is partial. Key order and distractor notes vary by seed, while
+    the ground truth remains fully deterministic and inspectable.
     """
     if sessions < len(FACTS):
         raise ValueError(f"sessions must be at least {len(FACTS)}")
-    if sessions > len(FACTS) * len(FACTS[0].values):
+    min_versions = min(len(fact.values) for fact in FACTS)
+    if sessions > len(FACTS) * min_versions:
         raise ValueError("sessions exceed the available unique fact versions")
     if any(point < len(FACTS) or point > sessions for point in checkpoints):
         raise ValueError("checkpoints must be between 8 and sessions")
