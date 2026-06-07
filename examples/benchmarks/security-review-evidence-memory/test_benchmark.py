@@ -67,7 +67,7 @@ class SecurityReviewEvidenceBenchmarkTests(unittest.TestCase):
         append_only = by_backend["append_only_log"]
 
         self.assertEqual(result["checkpoint_count"], len(CHECKPOINT_PROBES))
-        self.assertEqual(len(active["session_accuracy_curve"]), len(DATASET))
+        self.assertEqual(len(active["session_accuracy_curve"]), len(CHECKPOINT_PROBES))
         self.assertTrue(all(point["accuracy"] == 1.0 for point in active["session_accuracy_curve"]))
         self.assertGreater(append_only["cross_session_degradation_rate"], 0.0)
 
