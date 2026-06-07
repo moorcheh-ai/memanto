@@ -1,0 +1,213 @@
+{
+  "scenario": "entertainment-curator-temporal-drift",
+  "seed": 42,
+  "description": "20-session entertainment preference tracking with four distinct phases of preference drift. Tests memory systems on their ability to track CURRENT user state versus accumulating stale historical facts.",
+  "phases": [
+    {"id": 1, "sessions": "1-5",  "label": "sci-fi",       "description": "Classic Hollywood sci-fi fan, Villeneuve devotee, strict no-horror rule"},
+    {"id": 2, "sessions": "6-10", "label": "k-drama-discovery", "description": "Discovers Korean cinema, begins preferring K-drama over Hollywood"},
+    {"id": 3, "sessions": "11-15","label": "k-drama-dominant",  "description": "K-drama primary, horror ban softens, Hollywood blockbusters dismissed"},
+    {"id": 4, "sessions": "16-20","label": "documentary",    "description": "Documentaries become primary, K-drama secondary, fiction interest drops"}
+  ],
+  "sessions": [
+    {
+      "session_id": 1, "user_id": "alex", "phase": "sci-fi",
+      "messages": [
+        {"text": "Alex loves science fiction films, especially space operas like Dune and Arrival.", "type": "preference"},
+        {"text": "Denis Villeneuve is Alex's all-time favorite director.", "type": "preference"}
+      ],
+      "query": "What content should I recommend to Alex right now?",
+      "ground_truth": "Science fiction films, space operas, Denis Villeneuve films like Dune and Arrival.",
+      "stale_facts": []
+    },
+    {
+      "session_id": 2, "user_id": "alex", "phase": "sci-fi",
+      "messages": [
+        {"text": "Alex has a strict no-horror rule and refuses to watch any horror films.", "type": "preference"},
+        {"text": "Alex strongly prefers English-language films as their primary viewing language.", "type": "preference"}
+      ],
+      "query": "What content should I recommend to Alex right now?",
+      "ground_truth": "Sci-fi films, no horror, English-language preferred, Villeneuve films.",
+      "stale_facts": []
+    },
+    {
+      "session_id": 3, "user_id": "alex", "phase": "sci-fi",
+      "messages": [
+        {"text": "Alex rewatched Interstellar this weekend and called it a masterpiece.", "type": "observation"},
+        {"text": "Alex plans to work through Christopher Nolan's full filmography next month.", "type": "goal"}
+      ],
+      "query": "What content should I recommend to Alex right now?",
+      "ground_truth": "Nolan and Villeneuve films, sci-fi, English-language, no horror.",
+      "stale_facts": []
+    },
+    {
+      "session_id": 4, "user_id": "alex", "phase": "sci-fi",
+      "messages": [
+        {"text": "Alex thinks Dune: Part Two is the best film of the decade so far.", "type": "observation"},
+        {"text": "Alex prefers watching major films in theatrical release, not streaming.", "type": "preference"}
+      ],
+      "query": "What content should I recommend to Alex right now?",
+      "ground_truth": "Dune, Villeneuve films, theatrical releases, sci-fi, no horror.",
+      "stale_facts": []
+    },
+    {
+      "session_id": 5, "user_id": "alex", "phase": "sci-fi",
+      "messages": [
+        {"text": "Alex says Denis Villeneuve is the best working director today, period.", "type": "preference"},
+        {"text": "Alex describes their taste as 'hard sci-fi with emotional depth and stunning visuals'.", "type": "preference"}
+      ],
+      "query": "What content should I recommend to Alex right now?",
+      "ground_truth": "Hard sci-fi, Villeneuve films, emotional depth, theatrical releases, no horror.",
+      "stale_facts": []
+    },
+    {
+      "session_id": 6, "user_id": "alex", "phase": "k-drama-discovery",
+      "messages": [
+        {"text": "Alex started watching Korean dramas after a friend's recommendation and is surprised by the quality.", "type": "observation"},
+        {"text": "Alex's first K-drama was Signal (2016) and they consider it one of the best shows they've ever seen.", "type": "observation"}
+      ],
+      "query": "What content should I recommend to Alex right now?",
+      "ground_truth": "K-drama (starting with Signal), Korean dramas; still enjoys sci-fi films as well.",
+      "stale_facts": []
+    },
+    {
+      "session_id": 7, "user_id": "alex", "phase": "k-drama-discovery",
+      "messages": [
+        {"text": "Alex has been watching K-dramas every evening this week, averaging 4 episodes per day.", "type": "observation"},
+        {"text": "Alex says Korean drama writing is more emotionally honest than most Hollywood productions.", "type": "observation"}
+      ],
+      "query": "What content should I recommend to Alex right now?",
+      "ground_truth": "K-drama primarily; Korean dramas (daily viewing habit formed); some Hollywood sci-fi still.",
+      "stale_facts": []
+    },
+    {
+      "session_id": 8, "user_id": "alex", "phase": "k-drama-discovery",
+      "messages": [
+        {"text": "Alex watched Parasite by Bong Joon-ho and called it a masterpiece, saying Bong Joon-ho rivals Villeneuve.", "type": "observation"},
+        {"text": "Alex is now exploring Korean cinema beyond dramas, interested in Korean directors broadly.", "type": "preference"}
+      ],
+      "query": "What content should I recommend to Alex right now?",
+      "ground_truth": "Korean cinema and K-drama; Bong Joon-ho films; Korean directors; some Villeneuve.",
+      "stale_facts": ["loves science fiction", "English-language films only"]
+    },
+    {
+      "session_id": 9, "user_id": "alex", "phase": "k-drama-discovery",
+      "messages": [
+        {"text": "Alex describes Hollywood blockbusters as feeling shallow and formulaic compared to Korean content.", "type": "preference"},
+        {"text": "Alex has started a dedicated watch-list of Korean films and dramas to complete.", "type": "goal"}
+      ],
+      "query": "What content should I recommend to Alex right now?",
+      "ground_truth": "Korean dramas and films primarily; skeptical of Hollywood blockbusters; Korean directors.",
+      "stale_facts": ["loves science fiction", "Denis Villeneuve all-time favorite"]
+    },
+    {
+      "session_id": 10, "user_id": "alex", "phase": "k-drama-discovery",
+      "messages": [
+        {"text": "Alex still occasionally watches Villeneuve films but says K-drama now takes priority in their queue.", "type": "preference"},
+        {"text": "Alex has introduced three friends to K-drama this month.", "type": "observation"}
+      ],
+      "query": "What content should I recommend to Alex right now?",
+      "ground_truth": "K-drama primarily; Korean cinema; some Villeneuve films occasionally; sharing K-drama with friends.",
+      "stale_facts": ["loves science fiction", "Denis Villeneuve is all-time favorite"]
+    },
+    {
+      "session_id": 11, "user_id": "alex", "phase": "k-drama-dominant",
+      "messages": [
+        {"text": "Alex explicitly says they are done with typical Hollywood sci-fi blockbusters for now.", "type": "preference"},
+        {"text": "Alex's primary entertainment is now K-drama, watching multiple series simultaneously.", "type": "preference"}
+      ],
+      "query": "What content should I recommend to Alex right now?",
+      "ground_truth": "K-drama primarily; done with Hollywood sci-fi blockbusters; Korean cinema.",
+      "stale_facts": ["loves science fiction", "Denis Villeneuve best working director", "English-language preferred"]
+    },
+    {
+      "session_id": 12, "user_id": "alex", "phase": "k-drama-dominant",
+      "messages": [
+        {"text": "Alex discovered they actually enjoy Korean psychological horror; their no-horror rule does not apply to Korean psychological films.", "type": "preference"},
+        {"text": "Alex watched A Tale of Two Sisters and called it exceptional.", "type": "observation"}
+      ],
+      "query": "What content should I recommend to Alex right now?",
+      "ground_truth": "K-drama, Korean psychological horror/thrillers acceptable, done with Hollywood sci-fi blockbusters.",
+      "stale_facts": ["strict no-horror rule", "loves science fiction"]
+    },
+    {
+      "session_id": 13, "user_id": "alex", "phase": "k-drama-dominant",
+      "messages": [
+        {"text": "Alex updated their stance: psychological thrillers with strong character development are now acceptable regardless of origin.", "type": "preference"},
+        {"text": "Alex's favorite K-drama director is Park Chan-wook.", "type": "preference"}
+      ],
+      "query": "What content should I recommend to Alex right now?",
+      "ground_truth": "K-drama, Park Chan-wook films, psychological thrillers acceptable, Korean cinema.",
+      "stale_facts": ["no-horror rule", "Denis Villeneuve favorite", "loves science fiction"]
+    },
+    {
+      "session_id": 14, "user_id": "alex", "phase": "k-drama-dominant",
+      "messages": [
+        {"text": "Alex has watched 20 complete K-drama series and is considered an expert by friends.", "type": "observation"},
+        {"text": "Alex no longer considers Denis Villeneuve their favorite director; Park Chan-wook has taken that spot.", "type": "preference"}
+      ],
+      "query": "What content should I recommend to Alex right now?",
+      "ground_truth": "K-drama, Park Chan-wook films (now favorite director), Korean cinema, psychological thrillers.",
+      "stale_facts": ["Denis Villeneuve all-time favorite", "loves science fiction", "English-language preferred"]
+    },
+    {
+      "session_id": 15, "user_id": "alex", "phase": "k-drama-dominant",
+      "messages": [
+        {"text": "Alex says any recommendation system should always prioritize Korean content first for them.", "type": "preference"},
+        {"text": "Alex still watches non-Korean content occasionally but Korean is the clear priority.", "type": "preference"}
+      ],
+      "query": "What content should I recommend to Alex right now?",
+      "ground_truth": "Korean content first — K-drama, Korean cinema, Park Chan-wook. Occasional non-Korean content.",
+      "stale_facts": ["Denis Villeneuve", "science fiction", "English-language", "no-horror rule"]
+    },
+    {
+      "session_id": 16, "user_id": "alex", "phase": "documentary",
+      "messages": [
+        {"text": "Alex discovered a nature documentary series and watched all 8 episodes in one weekend.", "type": "observation"},
+        {"text": "Alex found documentaries unexpectedly more gripping than any drama they have watched recently.", "type": "observation"}
+      ],
+      "query": "What content should I recommend to Alex right now?",
+      "ground_truth": "Documentaries (nature); K-drama; Korean cinema. Documentaries are a new strong interest.",
+      "stale_facts": ["Denis Villeneuve", "sci-fi blockbusters"]
+    },
+    {
+      "session_id": 17, "user_id": "alex", "phase": "documentary",
+      "messages": [
+        {"text": "Alex now prioritizes documentaries over K-drama in their viewing queue.", "type": "preference"},
+        {"text": "Alex particularly enjoys history and science documentaries.", "type": "preference"}
+      ],
+      "query": "What content should I recommend to Alex right now?",
+      "ground_truth": "Documentaries (history, science) as primary; K-drama as secondary interest.",
+      "stale_facts": ["Denis Villeneuve", "sci-fi films", "English-language films preferred"]
+    },
+    {
+      "session_id": 18, "user_id": "alex", "phase": "documentary",
+      "messages": [
+        {"text": "Alex said real stories are more compelling to them than fiction right now.", "type": "preference"},
+        {"text": "Alex's K-drama viewing has dropped to once a week while documentaries are a daily habit.", "type": "observation"}
+      ],
+      "query": "What content should I recommend to Alex right now?",
+      "ground_truth": "Documentaries daily (primary); K-drama once a week (secondary). Real over fiction.",
+      "stale_facts": ["loves science fiction", "Denis Villeneuve", "English-language films"]
+    },
+    {
+      "session_id": 19, "user_id": "alex", "phase": "documentary",
+      "messages": [
+        {"text": "Alex's favorite recent watches are a history documentary about ancient Rome and an ocean science series.", "type": "observation"},
+        {"text": "Alex is recommending documentaries to the same friends they previously introduced to K-drama.", "type": "observation"}
+      ],
+      "query": "What content should I recommend to Alex right now?",
+      "ground_truth": "History and science documentaries primarily; K-drama occasionally; sharing both with friends.",
+      "stale_facts": ["science fiction", "Denis Villeneuve", "English-language only", "no-horror rule"]
+    },
+    {
+      "session_id": 20, "user_id": "alex", "phase": "documentary",
+      "messages": [
+        {"text": "Alex summarizes their current taste: documentaries are their main content now, especially history and science. K-drama is still enjoyed but watched at most once a week.", "type": "preference"},
+        {"text": "Alex has no interest in returning to sci-fi blockbusters for the foreseeable future.", "type": "preference"}
+      ],
+      "query": "What content should I recommend to Alex right now?",
+      "ground_truth": "Documentaries (history, science) as primary content. K-drama occasionally (once a week). Psychological thrillers acceptable. No sci-fi blockbusters.",
+      "stale_facts": ["loves science fiction", "Denis Villeneuve favorite director", "no-horror rule", "English-language films preferred", "Hollywood sci-fi blockbusters"]
+    }
+  ]
+}

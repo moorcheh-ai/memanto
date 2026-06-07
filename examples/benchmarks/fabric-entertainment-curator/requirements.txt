@@ -1,0 +1,13 @@
+# Core benchmark dependencies
+tiktoken>=0.9.0          # Token counting (consistent across all backends)
+
+# LLM judge (optional — enables GPT-4o-mini accuracy scoring)
+# Requires: export OPENAI_API_KEY=sk-...
+openai>=1.30.0
+
+# Mem0 passive-graph baseline (optional — requires OPENAI_API_KEY for local mode)
+# pip install mem0ai
+# mem0ai>=0.1.0
+
+# Linting
+ruff>=0.4.0
