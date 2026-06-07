@@ -4,7 +4,7 @@ Used when ``MOORCHEH_API_KEY`` is set in the environment.
 Requires the Memanto server to be running locally::
 
     pip install memanto
-    memanto serve  # starts on http://127.0.0.1:8000
+    memanto serve  # starts on http://127.0.0.1:8001
 
 Get a free Moorcheh API key at https://moorcheh.ai/
 """
@@ -18,7 +18,7 @@ import tiktoken
 from backends.base import MemoryBackend
 
 _ENC = tiktoken.encoding_for_model("gpt-4o-mini")
-_DEFAULT_BASE_URL = "http://127.0.0.1:8000"
+_DEFAULT_BASE_URL = "http://127.0.0.1:8001"
 
 
 class MemantoAPIBackend(MemoryBackend):
@@ -93,7 +93,7 @@ class MemantoAPIBackend(MemoryBackend):
         self._client.post(
             url,
             headers=self._headers(),
-            json={"text": text, "type": memory_type},
+            json={"content": text, "type": memory_type},
         )
 
     def recall(
@@ -110,10 +110,10 @@ class MemantoAPIBackend(MemoryBackend):
         )
         resp.raise_for_status()
         data = resp.json()
-        # Memanto recall returns a list of memory objects with a "text" field.
+        # Memanto returns {"memories": [...], "count": N}; each item has "content".
         memories = [
-            item.get("text", str(item))
-            for item in data.get("results", data if isinstance(data, list) else [])
+            item.get("content", item.get("text", str(item)))
+            for item in data.get("memories", data if isinstance(data, list) else [])
         ]
         token_count = sum(len(_ENC.encode(m)) for m in memories)
         return memories, token_count

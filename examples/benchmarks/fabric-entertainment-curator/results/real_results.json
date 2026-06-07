@@ -1,0 +1,30 @@
+{
+  "benchmark": "fabric-entertainment-curator",
+  "scenario": "entertainment-curator-temporal-drift",
+  "n_sessions": 20,
+  "judge": "keyword-overlap (OPENAI_API_KEY not set)",
+  "tiktoken_version": "0.12.0",
+  "results": {
+    "memanto_api": {
+      "avg_retrieved_tokens": 147.3,
+      "p95_latency_ms": 953.359,
+      "accuracy": 0.2784,
+      "stale_rate": 0.0,
+      "n_sessions": 20
+    },
+    "mem0_local": {
+      "avg_retrieved_tokens": 413.8,
+      "p95_latency_ms": 0.366,
+      "accuracy": 0.6899,
+      "stale_rate": 0.4258,
+      "n_sessions": 20
+    },
+    "append_only_baseline": {
+      "avg_retrieved_tokens": 413.8,
+      "p95_latency_ms": 0.369,
+      "accuracy": 0.6899,
+      "stale_rate": 0.4258,
+      "n_sessions": 20
+    }
+  }
+}
