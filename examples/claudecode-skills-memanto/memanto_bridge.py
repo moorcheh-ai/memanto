@@ -59,17 +59,15 @@ class SkillsMemoryBridge:
     def _ensure_namespace(self) -> None:
         """Create namespace if it doesn't exist (idempotent)."""
         try:
-            existing = self._client.namespaces.list()
-            names = [n.get("name", n) if isinstance(n, dict) else str(n)
-                     for n in (existing if isinstance(existing, list) else [])]
-            if self.namespace not in names:
-                self._client.namespaces.create(
-                    namespace_name=self.namespace,
-                    type="text",
-                )
-                logger.info("Created namespace: %s", self.namespace)
+            self._client.namespaces.create(
+                namespace_name=self.namespace,
+                type="text",
+            )
+            logger.info("Created namespace: %s", self.namespace)
         except Exception as exc:
-            logger.warning("namespace check failed (may already exist): %s", exc)
+            # 409 Conflict = already exists, which is fine
+            if "already exists" not in str(exc):
+                logger.warning("namespace create: %s", exc)
 
     def remember(
         self,
@@ -113,40 +111,42 @@ class SkillsMemoryBridge:
         limit: int = 5,
         memory_type: Optional[str] = None,
     ) -> List[Dict]:
-        """
-        Semantic search using official SDK's similarity_search.query().
-        Returns list of memory dicts.
-        """
+        """Semantic search using official moorcheh-sdk."""
         try:
             response = self._client.similarity_search.query(
                 namespaces=[self.namespace],
                 query=query,
                 top_k=limit,
             )
+            items = getattr(response, "results", []) or []
             results = []
-            items = response if isinstance(response, list) else getattr(response, "results", [])
             for item in items:
-                content = (item.get("text") or item.get("content", "")
-                           if isinstance(item, dict) else
-                           getattr(item, "text", "") or getattr(item, "content", ""))
-                meta = (item.get("metadata", {})
-                        if isinstance(item, dict) else
-                        getattr(item, "metadata", {})) or {}
-                # Filter by type if requested
+                text = getattr(item, "text", "") or ""
+                meta = getattr(item, "metadata", {}) or {}
                 if memory_type and meta.get("type") != memory_type:
                     continue
                 results.append({
-                    "id": (item.get("id") if isinstance(item, dict)
-                           else getattr(item, "id", "")),
-                    "content": content,
+                    "id": str(getattr(item, "id", "")),
+                    "content": text,
                     "metadata": meta,
-                    "score": (item.get("score", 1.0) if isinstance(item, dict)
-                              else getattr(item, "score", 1.0)),
+                    "score": getattr(item, "score", 1.0),
                 })
             return results
         except Exception as exc:
             logger.error("recall failed: %s", exc)
+            try:
+                resp = self._client.answer.generate(
+                    query=query,
+                    namespace=self.namespace,
+                    top_k=limit,
+                )
+                text = getattr(resp, "answer", "") or ""
+                if text:
+                    return [{"id": "rag", "content": text, "metadata": {}, "score": 1.0}]
+            except Exception as exc2:
+                logger.error("recall fallback failed: %s", exc2)
             return []
+
 
     def answer(self, question: str) -> str:
         """RAG answer using official SDK's answer.generate()."""
