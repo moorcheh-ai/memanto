@@ -9,6 +9,7 @@ The scenario models a security review that spans multiple sessions. Findings are
 - Current-fact accuracy across sessions
 - Retrieved token footprint
 - p95 retrieval latency
+- Cross-session degradation rate
 - Stale conflict rate
 - Synthetic secret leak rate
 - Evidence coverage
@@ -27,6 +28,8 @@ The scenario models a security review that spans multiple sessions. Findings are
 
 All backends ingest the same four review sessions in the same order and answer the same six golden probes. The active digest, passive graph-style memory, append-only log, and recent-window log therefore share one dataset, one scoring function, and one metric table.
 
+The benchmark also records a checkpoint probe after each session. This produces a session accuracy curve and cross-session degradation rate, so reviewers can see whether a memory strategy stays correct as the conversation grows instead of only checking final-answer accuracy.
+
 ## Run
 
 ```bash
@@ -39,7 +42,7 @@ No Moorcheh or Memanto credentials are required for this reviewer-safe version. 
 
 ## Expected Result Shape
 
-The active digest should score best on current-fact accuracy, stale conflict suppression, and secret safety while retrieving substantially less context than the append-only log. The passive graph-style baseline should preserve more structured evidence than a raw log, but still expose stale statuses and old sensitive facts when it does not actively reconcile current state. The recent-window baseline should avoid some old noise but miss durable decisions such as false-positive rationale.
+The active digest should score best on current-fact accuracy, cross-session stability, stale conflict suppression, and secret safety while retrieving substantially less context than the append-only log. The passive graph-style baseline should preserve more structured evidence than a raw log, but still expose stale statuses and old sensitive facts when it does not actively reconcile current state. The recent-window baseline should avoid some old noise but miss durable decisions such as false-positive rationale.
 
 ## Bounty Fit
 

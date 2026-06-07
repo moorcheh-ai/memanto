@@ -164,6 +164,42 @@ PROBES: Sequence[Probe] = (
 )
 
 
+CHECKPOINT_PROBES: Sequence[tuple[str, Probe]] = (
+    (
+        "s1-initial-review",
+        Probe(
+            question="After session 1, which high-or-critical findings are open?",
+            required_terms=("F-101", "critical", "F-102", "high"),
+            forbidden_terms=("F-103 false_positive", "F-104"),
+        ),
+    ),
+    (
+        "s2-triage-and-retTest",
+        Probe(
+            question="After session 2, what remediation and false-positive decisions are current?",
+            required_terms=("F-101", "resolved", "F-103", "false_positive", "client certificate"),
+            forbidden_terms=("F-101 status=open", "GITHUB_TOKEN_FAKE"),
+        ),
+    ),
+    (
+        "s3-follow-up-review",
+        Probe(
+            question="After session 3, which critical finding is current and what remains open?",
+            required_terms=("F-104", "critical", "authz-replay-12", "F-102", "open", "zap-31"),
+            forbidden_terms=("F-101 status=open", "F-103 status=open", "GITHUB_TOKEN_FAKE"),
+        ),
+    ),
+    (
+        "s4-remediation-review",
+        Probe(
+            question="After session 4, which findings are current after remediation?",
+            required_terms=("F-102", "resolved", "zap-42", "F-104", "high", "authz-replay-31"),
+            forbidden_terms=("F-102 status=open", "zap-31", "F-104 status=open severity=critical", "authz-replay-12"),
+        ),
+    ),
+)
+
+
 class MemoryBackend:
     """Common interface for deterministic memory backends."""
 
@@ -298,8 +334,15 @@ def percentile_95(values: Sequence[float]) -> float:
 
 def evaluate_backend(backend: MemoryBackend) -> Dict[str, object]:
     """Run all sessions and probes for one backend and compute metrics."""
+    checkpoint_results: List[Dict[str, object]] = []
+
     for event in DATASET:
         backend.ingest(event)
+        for session, probe in CHECKPOINT_PROBES:
+            if session == event.session:
+                checkpoint = score_probe(backend.retrieve(probe.question), probe)
+                checkpoint["after_session"] = event.session
+                checkpoint_results.append(checkpoint)
 
     probe_results: List[Dict[str, object]] = []
     latencies_ms: List[float] = []
@@ -320,16 +363,27 @@ def evaluate_backend(backend: MemoryBackend) -> Dict[str, object]:
 
     avg_tokens = statistics.mean(token_values)
     signal_to_noise = required_hit_total / max(sum(token_values), 1)
+    session_accuracy_curve = [
+        {
+            "after_session": result["after_session"],
+            "accuracy": 1.0 if result["passed"] else 0.0,
+        }
+        for result in checkpoint_results
+    ]
+    checkpoint_accuracy = statistics.mean(point["accuracy"] for point in session_accuracy_curve) if session_accuracy_curve else 0.0
 
     return {
         "backend": backend.name,
         "accuracy": round(passed / total, 4),
         "avg_retrieved_tokens": round(avg_tokens, 2),
         "p95_latency_ms": round(percentile_95(latencies_ms), 4),
+        "cross_session_degradation_rate": round(1.0 - checkpoint_accuracy, 4),
         "stale_conflict_rate": round(forbidden_failures / total, 4),
         "secret_leak_rate": round(secret_leaks / total, 4),
         "evidence_coverage": round(required_hit_total / required_total, 4),
         "signal_to_noise": round(signal_to_noise, 4),
+        "session_accuracy_curve": session_accuracy_curve,
+        "checkpoint_results": checkpoint_results,
         "probe_results": probe_results,
     }
 
@@ -347,6 +401,7 @@ def run_benchmark() -> Dict[str, object]:
         "benchmark": "security-review-evidence-memory",
         "scenario": "Long-lived security review evidence with stale finding suppression and secret redaction",
         "probe_count": len(PROBES),
+        "checkpoint_count": len(CHECKPOINT_PROBES),
         "session_count": len(DATASET),
         "results": results,
     }
@@ -357,14 +412,21 @@ def write_markdown(result: Dict[str, object], path: Path) -> None:
     lines = [
         "# Security Review Evidence Memory Results",
         "",
-        "| Backend | Accuracy | Avg Retrieved Tokens | p95 Latency ms | Stale Conflict Rate | Secret Leak Rate | Evidence Coverage | Signal/Noise |",
-        "|---|---:|---:|---:|---:|---:|---:|---:|",
+        "| Backend | Accuracy | Avg Retrieved Tokens | p95 Latency ms | Cross-Session Degradation | Stale Conflict Rate | Secret Leak Rate | Evidence Coverage | Signal/Noise |",
+        "|---|---:|---:|---:|---:|---:|---:|---:|---:|",
     ]
     for item in result["results"]:
         lines.append(
             "| {backend} | {accuracy:.2%} | {avg_retrieved_tokens:.2f} | {p95_latency_ms:.4f} | "
-            "{stale_conflict_rate:.2%} | {secret_leak_rate:.2%} | {evidence_coverage:.2%} | {signal_to_noise:.4f} |".format(**item)
+            "{cross_session_degradation_rate:.2%} | {stale_conflict_rate:.2%} | {secret_leak_rate:.2%} | "
+            "{evidence_coverage:.2%} | {signal_to_noise:.4f} |".format(**item)
         )
+    lines.extend(["", "## Session Accuracy Curves", ""])
+    for item in result["results"]:
+        curve = ", ".join(
+            f"{point['after_session']}={point['accuracy']:.0%}" for point in item["session_accuracy_curve"]
+        )
+        lines.append(f"- `{item['backend']}`: {curve}")
     lines.extend(
         [
             "",

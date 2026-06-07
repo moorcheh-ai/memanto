@@ -2,17 +2,104 @@
   "benchmark": "security-review-evidence-memory",
   "scenario": "Long-lived security review evidence with stale finding suppression and secret redaction",
   "probe_count": 6,
+  "checkpoint_count": 4,
   "session_count": 4,
   "results": [
     {
       "backend": "active_security_digest",
       "accuracy": 1.0,
       "avg_retrieved_tokens": 114,
-      "p95_latency_ms": 0.006,
+      "p95_latency_ms": 0.0087,
+      "cross_session_degradation_rate": 0.0,
       "stale_conflict_rate": 0.0,
       "secret_leak_rate": 0.0,
       "evidence_coverage": 1.0,
       "signal_to_noise": 0.0292,
+      "session_accuracy_curve": [
+        {
+          "after_session": "s1-initial-review",
+          "accuracy": 1.0
+        },
+        {
+          "after_session": "s2-triage-and-retTest",
+          "accuracy": 1.0
+        },
+        {
+          "after_session": "s3-follow-up-review",
+          "accuracy": 1.0
+        },
+        {
+          "after_session": "s4-remediation-review",
+          "accuracy": 1.0
+        }
+      ],
+      "checkpoint_results": [
+        {
+          "question": "After session 1, which high-or-critical findings are open?",
+          "passed": true,
+          "required_hits": [
+            "F-101",
+            "critical",
+            "F-102",
+            "high"
+          ],
+          "missing_terms": [],
+          "forbidden_hits": [],
+          "secret_leak": false,
+          "retrieved_tokens": 58,
+          "after_session": "s1-initial-review"
+        },
+        {
+          "question": "After session 2, what remediation and false-positive decisions are current?",
+          "passed": true,
+          "required_hits": [
+            "F-101",
+            "resolved",
+            "F-103",
+            "false_positive",
+            "client certificate"
+          ],
+          "missing_terms": [],
+          "forbidden_hits": [],
+          "secret_leak": false,
+          "retrieved_tokens": 60,
+          "after_session": "s2-triage-and-retTest"
+        },
+        {
+          "question": "After session 3, which critical finding is current and what remains open?",
+          "passed": true,
+          "required_hits": [
+            "F-104",
+            "critical",
+            "authz-replay-12",
+            "F-102",
+            "open",
+            "zap-31"
+          ],
+          "missing_terms": [],
+          "forbidden_hits": [],
+          "secret_leak": false,
+          "retrieved_tokens": 92,
+          "after_session": "s3-follow-up-review"
+        },
+        {
+          "question": "After session 4, which findings are current after remediation?",
+          "passed": true,
+          "required_hits": [
+            "F-102",
+            "resolved",
+            "zap-42",
+            "F-104",
+            "high",
+            "authz-replay-31"
+          ],
+          "missing_terms": [],
+          "forbidden_hits": [],
+          "secret_leak": false,
+          "retrieved_tokens": 114,
+          "after_session": "s4-remediation-review"
+        }
+      ],
       "probe_results": [
         {
           "question": "Which high-or-critical security issues are currently open?",
@@ -100,11 +187,109 @@
       "backend": "passive_graph_memory",
       "accuracy": 0.0,
       "avg_retrieved_tokens": 198,
-      "p95_latency_ms": 0.0056,
+      "p95_latency_ms": 0.0037,
+      "cross_session_degradation_rate": 1.0,
       "stale_conflict_rate": 0.8333,
       "secret_leak_rate": 1.0,
       "evidence_coverage": 1.0,
       "signal_to_noise": 0.0168,
+      "session_accuracy_curve": [
+        {
+          "after_session": "s1-initial-review",
+          "accuracy": 0.0
+        },
+        {
+          "after_session": "s2-triage-and-retTest",
+          "accuracy": 0.0
+        },
+        {
+          "after_session": "s3-follow-up-review",
+          "accuracy": 0.0
+        },
+        {
+          "after_session": "s4-remediation-review",
+          "accuracy": 0.0
+        }
+      ],
+      "checkpoint_results": [
+        {
+          "question": "After session 1, which high-or-critical findings are open?",
+          "passed": false,
+          "required_hits": [
+            "F-101",
+            "critical",
+            "F-102",
+            "high"
+          ],
+          "missing_terms": [],
+          "forbidden_hits": [],
+          "secret_leak": true,
+          "retrieved_tokens": 59,
+          "after_session": "s1-initial-review"
+        },
+        {
+          "question": "After session 2, what remediation and false-positive decisions are current?",
+          "passed": false,
+          "required_hits": [
+            "F-101",
+            "resolved",
+            "F-103",
+            "false_positive",
+            "client certificate"
+          ],
+          "missing_terms": [],
+          "forbidden_hits": [
+            "F-101 status=open",
+            "GITHUB_TOKEN_FAKE"
+          ],
+          "secret_leak": true,
+          "retrieved_tokens": 96,
+          "after_session": "s2-triage-and-retTest"
+        },
+        {
+          "question": "After session 3, which critical finding is current and what remains open?",
+          "passed": false,
+          "required_hits": [
+            "F-104",
+            "critical",
+            "authz-replay-12",
+            "F-102",
+            "open",
+            "zap-31"
+          ],
+          "missing_terms": [],
+          "forbidden_hits": [
+            "F-101 status=open",
+            "F-103 status=open",
+            "GITHUB_TOKEN_FAKE"
+          ],
+          "secret_leak": true,
+          "retrieved_tokens": 145,
+          "after_session": "s3-follow-up-review"
+        },
+        {
+          "question": "After session 4, which findings are current after remediation?",
+          "passed": false,
+          "required_hits": [
+            "F-102",
+            "resolved",
+            "zap-42",
+            "F-104",
+            "high",
+            "authz-replay-31"
+          ],
+          "missing_terms": [],
+          "forbidden_hits": [
+            "F-102 status=open",
+            "zap-31",
+            "F-104 status=open severity=critical",
+            "authz-replay-12"
+          ],
+          "secret_leak": true,
+          "retrieved_tokens": 198,
+          "after_session": "s4-remediation-review"
+        }
+      ],
       "probe_results": [
         {
           "question": "Which high-or-critical security issues are currently open?",
@@ -207,10 +392,103 @@
       "accuracy": 0.0,
       "avg_retrieved_tokens": 154,
       "p95_latency_ms": 0.0006,
+      "cross_session_degradation_rate": 1.0,
       "stale_conflict_rate": 0.6667,
       "secret_leak_rate": 1.0,
       "evidence_coverage": 0.95,
       "signal_to_noise": 0.0206,
+      "session_accuracy_curve": [
+        {
+          "after_session": "s1-initial-review",
+          "accuracy": 0.0
+        },
+        {
+          "after_session": "s2-triage-and-retTest",
+          "accuracy": 0.0
+        },
+        {
+          "after_session": "s3-follow-up-review",
+          "accuracy": 0.0
+        },
+        {
+          "after_session": "s4-remediation-review",
+          "accuracy": 0.0
+        }
+      ],
+      "checkpoint_results": [
+        {
+          "question": "After session 1, which high-or-critical findings are open?",
+          "passed": false,
+          "required_hits": [
+            "F-101",
+            "critical",
+            "F-102",
+            "high"
+          ],
+          "missing_terms": [],
+          "forbidden_hits": [],
+          "secret_leak": true,
+          "retrieved_tokens": 36,
+          "after_session": "s1-initial-review"
+        },
+        {
+          "question": "After session 2, what remediation and false-positive decisions are current?",
+          "passed": false,
+          "required_hits": [
+            "F-101",
+            "resolved",
+            "F-103",
+            "false_positive",
+            "client certificate"
+          ],
+          "missing_terms": [],
+          "forbidden_hits": [
+            "GITHUB_TOKEN_FAKE"
+          ],
+          "secret_leak": true,
+          "retrieved_tokens": 71,
+          "after_session": "s2-triage-and-retTest"
+        },
+        {
+          "question": "After session 3, which critical finding is current and what remains open?",
+          "passed": false,
+          "required_hits": [
+            "F-104",
+            "critical",
+            "authz-replay-12",
+            "F-102",
+            "open"
+          ],
+          "missing_terms": [
+            "zap-31"
+          ],
+          "forbidden_hits": [
+            "GITHUB_TOKEN_FAKE"
+          ],
+          "secret_leak": true,
+          "retrieved_tokens": 113,
+          "after_session": "s3-follow-up-review"
+        },
+        {
+          "question": "After session 4, which findings are current after remediation?",
+          "passed": false,
+          "required_hits": [
+            "F-102",
+            "resolved",
+            "zap-42",
+            "F-104",
+            "high",
+            "authz-replay-31"
+          ],
+          "missing_terms": [],
+          "forbidden_hits": [
+            "authz-replay-12"
+          ],
+          "secret_leak": true,
+          "retrieved_tokens": 154,
+          "after_session": "s4-remediation-review"
+        }
+      ],
       "probe_results": [
         {
           "question": "Which high-or-critical security issues are currently open?",
@@ -309,10 +587,101 @@
       "accuracy": 0.3333,
       "avg_retrieved_tokens": 83,
       "p95_latency_ms": 0.0003,
+      "cross_session_degradation_rate": 1.0,
       "stale_conflict_rate": 0.3333,
       "secret_leak_rate": 0.0,
       "evidence_coverage": 0.75,
       "signal_to_noise": 0.0301,
+      "session_accuracy_curve": [
+        {
+          "after_session": "s1-initial-review",
+          "accuracy": 0.0
+        },
+        {
+          "after_session": "s2-triage-and-retTest",
+          "accuracy": 0.0
+        },
+        {
+          "after_session": "s3-follow-up-review",
+          "accuracy": 0.0
+        },
+        {
+          "after_session": "s4-remediation-review",
+          "accuracy": 0.0
+        }
+      ],
+      "checkpoint_results": [
+        {
+          "question": "After session 1, which high-or-critical findings are open?",
+          "passed": false,
+          "required_hits": [
+            "F-101",
+            "critical",
+            "F-102",
+            "high"
+          ],
+          "missing_terms": [],
+          "forbidden_hits": [],
+          "secret_leak": true,
+          "retrieved_tokens": 36,
+          "after_session": "s1-initial-review"
+        },
+        {
+          "question": "After session 2, what remediation and false-positive decisions are current?",
+          "passed": false,
+          "required_hits": [
+            "F-101",
+            "resolved",
+            "F-103",
+            "false_positive",
+            "client certificate"
+          ],
+          "missing_terms": [],
+          "forbidden_hits": [
+            "GITHUB_TOKEN_FAKE"
+          ],
+          "secret_leak": true,
+          "retrieved_tokens": 71,
+          "after_session": "s2-triage-and-retTest"
+        },
+        {
+          "question": "After session 3, which critical finding is current and what remains open?",
+          "passed": false,
+          "required_hits": [
+            "F-104",
+            "critical",
+            "authz-replay-12",
+            "F-102",
+            "open"
+          ],
+          "missing_terms": [
+            "zap-31"
+          ],
+          "forbidden_hits": [],
+          "secret_leak": false,
+          "retrieved_tokens": 77,
+          "after_session": "s3-follow-up-review"
+        },
+        {
+          "question": "After session 4, which findings are current after remediation?",
+          "passed": false,
+          "required_hits": [
+            "F-102",
+            "resolved",
+            "zap-42",
+            "F-104",
+            "high",
+            "authz-replay-31"
+          ],
+          "missing_terms": [],
+          "forbidden_hits": [
+            "authz-replay-12"
+          ],
+          "secret_leak": false,
+          "retrieved_tokens": 83,
+          "after_session": "s4-remediation-review"
+        }
+      ],
       "probe_results": [
         {
           "question": "Which high-or-critical security issues are currently open?",
