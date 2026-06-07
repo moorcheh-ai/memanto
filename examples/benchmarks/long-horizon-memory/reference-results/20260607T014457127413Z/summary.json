@@ -1,0 +1,165 @@
+{
+  "backends": [
+    {
+      "backend": "memanto",
+      "by_checkpoint": {
+        "16": {
+          "current_recall": 1.0,
+          "mean_retrieved_tokens": 318.375,
+          "n": 24,
+          "stale_conflict_rate": 1.0,
+          "strict_accuracy": 0.0,
+          "top1_accuracy": 0.4166666666666667
+        },
+        "24": {
+          "current_recall": 1.0,
+          "mean_retrieved_tokens": 321.2083333333333,
+          "n": 24,
+          "stale_conflict_rate": 1.0,
+          "strict_accuracy": 0.0,
+          "top1_accuracy": 0.20833333333333334
+        },
+        "32": {
+          "current_recall": 1.0,
+          "mean_retrieved_tokens": 321.0833333333333,
+          "n": 24,
+          "stale_conflict_rate": 1.0,
+          "strict_accuracy": 0.0,
+          "top1_accuracy": 0.2916666666666667
+        },
+        "48": {
+          "current_recall": 0.875,
+          "mean_retrieved_tokens": 321.2916666666667,
+          "n": 24,
+          "stale_conflict_rate": 1.0,
+          "strict_accuracy": 0.0,
+          "top1_accuracy": 0.125
+        },
+        "8": {
+          "current_recall": 1.0,
+          "mean_retrieved_tokens": 316.0,
+          "n": 24,
+          "stale_conflict_rate": 0.0,
+          "strict_accuracy": 1.0,
+          "top1_accuracy": 1.0
+        }
+      },
+      "current_recall": 0.975,
+      "mean_reciprocal_rank": 0.6240277777777777,
+      "mean_retrieved_tokens": 319.59166666666664,
+      "mean_signal_to_noise": 0.1960529506781934,
+      "n_probes": 120,
+      "n_writes": 144,
+      "read_latency_ms": {
+        "p50": 945.4851665068418,
+        "p95": 1136.5224943874637,
+        "p99": 1199.9734629681916
+      },
+      "stale_conflict_rate": 0.8,
+      "strict_accuracy": 0.2,
+      "strict_accuracy_ci95": [
+        0.13333333333333333,
+        0.275
+      ],
+      "top1_accuracy": 0.4083333333333333,
+      "top1_accuracy_ci95": [
+        0.31666666666666665,
+        0.49166666666666664
+      ],
+      "total_ingested_tokens": 9270,
+      "total_retrieved_tokens": 38351,
+      "write_latency_ms": {
+        "p50": 1161.7891664936906,
+        "p95": 1429.2067294649314,
+        "p99": 1628.77670768823
+      }
+    },
+    {
+      "backend": "mem0",
+      "by_checkpoint": {
+        "16": {
+          "current_recall": 1.0,
+          "mean_retrieved_tokens": 326.125,
+          "n": 24,
+          "stale_conflict_rate": 1.0,
+          "strict_accuracy": 0.0,
+          "top1_accuracy": 0.25
+        },
+        "24": {
+          "current_recall": 1.0,
+          "mean_retrieved_tokens": 326.5416666666667,
+          "n": 24,
+          "stale_conflict_rate": 1.0,
+          "strict_accuracy": 0.0,
+          "top1_accuracy": 0.20833333333333334
+        },
+        "32": {
+          "current_recall": 0.9583333333333334,
+          "mean_retrieved_tokens": 322.2083333333333,
+          "n": 24,
+          "stale_conflict_rate": 1.0,
+          "strict_accuracy": 0.0,
+          "top1_accuracy": 0.0
+        },
+        "48": {
+          "current_recall": 0.875,
+          "mean_retrieved_tokens": 321.1666666666667,
+          "n": 24,
+          "stale_conflict_rate": 1.0,
+          "strict_accuracy": 0.0,
+          "top1_accuracy": 0.125
+        },
+        "8": {
+          "current_recall": 1.0,
+          "mean_retrieved_tokens": 320.3333333333333,
+          "n": 24,
+          "stale_conflict_rate": 0.0,
+          "strict_accuracy": 1.0,
+          "top1_accuracy": 1.0
+        }
+      },
+      "current_recall": 0.9666666666666667,
+      "mean_reciprocal_rank": 0.5752777777777778,
+      "mean_retrieved_tokens": 323.275,
+      "mean_signal_to_noise": 0.19189263763523803,
+      "n_probes": 120,
+      "n_writes": 144,
+      "read_latency_ms": {
+        "p50": 19.796833497821353,
+        "p95": 22.72965449374169,
+        "p99": 24.161506982927676
+      },
+      "stale_conflict_rate": 0.8,
+      "strict_accuracy": 0.2,
+      "strict_accuracy_ci95": [
+        0.13333333333333333,
+        0.275
+      ],
+      "top1_accuracy": 0.31666666666666665,
+      "top1_accuracy_ci95": [
+        0.23333333333333334,
+        0.4
+      ],
+      "total_ingested_tokens": 9270,
+      "total_retrieved_tokens": 38793,
+      "write_latency_ms": {
+        "p50": 21.6586664901115,
+        "p95": 24.98965805134503,
+        "p99": 26.994574689597357
+      }
+    }
+  ],
+  "generated_at": "2026-06-07T01:49:41.704682+00:00",
+  "paired_comparison": {
+    "backend_a": "memanto",
+    "backend_b": "mem0",
+    "ci95": [
+      0.0,
+      0.18333333333333332
+    ],
+    "mean_difference": 0.09166666666666666,
+    "metric": "paired_top1_accuracy_difference",
+    "n_pairs": 120
+  },
+  "run_id": "20260607T014457127413Z"
+}

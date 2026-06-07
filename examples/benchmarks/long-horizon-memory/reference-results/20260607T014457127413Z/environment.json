@@ -1,0 +1,23 @@
+{
+  "captured_at": "2026-06-07T01:49:41.782722+00:00",
+  "machine": "arm64",
+  "models": {
+    "mem0_embedding": "benchmark/all-MiniLM-L6-v2",
+    "mem0_embedding_dims": 384,
+    "mem0_embedding_weights": "sentence-transformers/all-MiniLM-L6-v2",
+    "mem0_llm": "disabled (infer=False)",
+    "mem0_telemetry": "disabled"
+  },
+  "packages": {
+    "certifi": "2026.5.20",
+    "fastembed": "0.8.0",
+    "mem0ai": "1.0.11",
+    "memanto": "0.1.dev1+g6b495ea51",
+    "openai": "2.41.0",
+    "qdrant-client": "1.18.0",
+    "tiktoken": "0.13.0"
+  },
+  "platform": "macOS-26.4.1-arm64-arm-64bit",
+  "processor": "arm",
+  "python": "3.10.11 (v3.10.11:7d4cc5aa85, Apr  4 2023, 19:05:19) [Clang 13.0.0 (clang-1300.0.29.30)]"
+}

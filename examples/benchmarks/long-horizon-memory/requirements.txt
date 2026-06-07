@@ -1,0 +1,7 @@
+-e ../../..
+certifi>=2024.2.2
+fastembed>=0.3.1,<1
+mem0ai>=1.0.0,<2
+openai>=1.0.0,<3
+qdrant-client>=1.9.0,<2
+tiktoken>=0.7.0,<1

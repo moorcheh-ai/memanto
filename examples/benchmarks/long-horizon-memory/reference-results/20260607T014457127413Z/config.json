@@ -1,0 +1,22 @@
+{
+  "backends": [
+    "memanto",
+    "mem0"
+  ],
+  "checkpoints": [
+    8,
+    16,
+    24,
+    32,
+    48
+  ],
+  "cleanup": true,
+  "output_dir": "results",
+  "seeds": [
+    7,
+    19,
+    43
+  ],
+  "sessions": 48,
+  "top_k": 5
+}
