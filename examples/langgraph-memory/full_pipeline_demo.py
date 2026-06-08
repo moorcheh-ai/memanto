@@ -2,72 +2,62 @@ import os
 from typing import Annotated, TypedDict
 from langgraph.graph import StateGraph, START, END
 from langgraph.checkpoint.memory import MemorySaver
-from integrations.langgraph.memanto_store import MemantoStore, MemantoStoreConfig
+from memanto.cli.client.sdk_client import SdkClient
+from integrations.langgraph.memanto_langgraph.memanto_store import MemantoStore
 
+# Type-safe state definition
 class AgentState(TypedDict):
-    user_id: str
     input: str
-    context: str
     response: str
+    user_id: str
 
-def retrieve_memory_node(state: AgentState, config: dict, store: MemantoStore):
-    # Use the BaseStore search abstraction for cross-thread memory
-    namespace = ("memories", state["user_id"])
-    memories = list(store.search(namespace, query=state["input"], limit=3))
-    context = " ".join([str(m) for m in memories])
-    return {"context": context}
+def memory_node(state: AgentState, config: dict, store: MemantoStore):
+    user_id = state["user_id"]
+    user_input = state["input"]
+    namespace = ("users", user_id)
+    
+    # Semantic recall across sessions
+    past_memories = store.search(namespace, user_input)
+    
+    # Store current interaction for future sessions
+    store.put(namespace, "last_interaction", user_input)
+    
+    context = f"Past context: {past_memories}" if past_memories else "No past context."
+    return {"response": f"Processed input: {user_input} | {context}"}
 
-def process_node(state: AgentState):
-    # Simulate logic that uses the retrieved context
-    response = f"Processed {state['input']} with memory: {state['context']}"
-    return {"response": response}
-
-def store_memory_node(state: AgentState, config: dict, store: MemantoStore):
-    # Persist the interaction for future cross-process recall
-    namespace = ("memories", state["user_id"])
-    store.put(namespace, state["input"], state["response"])
-    return {}
-
-def run_pipeline():
-    # Setup Store with Dependency Injection
-    store_config = MemantoStoreConfig(
-        api_key=os.getenv("MEMANTO_API_KEY", "test_key"),
-        base_url=os.getenv("MEMANTO_URL", "http://localhost:8000")
-    )
-    memanto_store = MemantoStore(config=store_config)
+def run_demo():
+    # Initialize SDK and generic Store
+    sdk = SdkClient()
+    memanto_store = MemantoStore(sdk)
     checkpointer = MemorySaver()
-
+    
     # Build Graph
-    builder = StateGraph(AgentState)
-    builder.add_node("retrieve", retrieve_memory_node)
-    builder.add_node("process", process_node)
-    builder.add_node("store", store_memory_node)
-
-    builder.add_edge(START, "retrieve")
-    builder.add_edge("retrieve", "process")
-    builder.add_edge("process", "store")
-    builder.add_edge("store", END)
-
-    graph = builder.compile(checkpointer=checkpointer, store=memanto_store)
-
-    # Execution 1: Initial knowledge ingestion
+    workflow = StateGraph(AgentState)
+    workflow.add_node("agent", memory_node)
+    workflow.add_edge(START, "agent")
+    workflow.add_edge("agent", END)
+    
+    app = workflow.compile(checkpointer=checkpointer, store=memanto_store)
+    
+    # Session 1: Ingest memory
     user_id = "user_123"
-    input_1 = "My favorite color is Obsidian Blue"
-    graph.invoke(
-        {"user_id": user_id, "input": input_1}, 
-        config={"configurable": {"thread_id": "1"}}
+    config_1 = {"configurable": {"thread_id": "session_1"}}
+    app.invoke(
+        {"input": "I prefer my reports in Markdown format.", "user_id": user_id}, 
+        config=config_1
     )
+    print("Session 1: Memory stored.")
 
-    # Execution 2: Cross-thread recall (different thread_id, same user_id)
-    # This proves the BaseStore (Memanto) is working independently of the Checkpointer
-    input_2 = "What is my favorite color?"
-    result = graph.invoke(
-        {"user_id": user_id, "input": input_2}, 
-        config={"configurable": {"thread_id": "2"}}
+    # Session 2: Recall memory in a different thread/process simulation
+    config_2 = {"configurable": {"thread_id": "session_2"}}
+    result = app.invoke(
+        {"input": "How should I format my reports?", "user_id": user_id}, 
+        config=config_2
     )
     
-    print(f"User Input: {input_2}")
-    print(f"Agent Response: {result['response']}")
+    print(f"Session 2 Response: {result['response']}")
+    assert "Markdown" in result['response']
+    print("Cross-session persistence verified.")
 
 if __name__ == "__main__":
-    run_pipeline()
+    run_demo()
