@@ -67,7 +67,12 @@ def test_explicit_tag():
     # Verify the tag 'security' appears in output (not literal '--tag')
     assert "security" in r.stdout.lower(), f"--tag not parsed correctly: {r.stdout}"
     assert "--tag" not in r.stdout, f"--tag literal leaked into output: {r.stdout}"
-    print(" PASS: explicit --tag flag")
+    # Verify the tag was actually persisted by recalling it
+    r2 = run(["recall", "HTTPS security"])
+    assert r2.returncode == 0, f"recall after --tag failed: {r2.stderr}"
+    assert "security" in r2.stdout.lower() or "HTTPS" in r2.stdout or "matches" in r2.stdout, \
+        f"--tag 'security' was not persisted correctly, recall output: {r2.stdout}"
+    print("  PASS: explicit --tag flag")
 
 def test_daily_summary():
     """Test daily summary in preview mode."""
