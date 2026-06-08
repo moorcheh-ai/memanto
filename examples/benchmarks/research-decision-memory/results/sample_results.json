@@ -132,7 +132,7 @@
       "stale_terms": [
         "raw support logs are safe"
       ],
-      "secret": "sk-test-123456"
+      "secret": "synthetic_secret_marker_123456"
     },
     {
       "turn": 8,
@@ -323,7 +323,7 @@
       ],
       "stale_terms": [
         "raw support logs are safe",
-        "sk-test-123456"
+        "synthetic_secret_marker_123456"
       ],
       "relevant_evidence": [
         "ev-008"
@@ -398,7 +398,7 @@
       "stale_conflict_rate": 0.0,
       "secret_leak_rate": 0.0,
       "avg_retrieved_tokens": 21.125,
-      "p95_latency_ms": 0.003584998194128275,
+      "p95_latency_ms": 0.0036200003705744166,
       "signal_noise_ratio": 1.0
     },
     {
@@ -408,7 +408,7 @@
       "stale_conflict_rate": 0.5,
       "secret_leak_rate": 0.125,
       "avg_retrieved_tokens": 30.5,
-      "p95_latency_ms": 0.007884982915129513,
+      "p95_latency_ms": 0.006479999728981056,
       "signal_noise_ratio": 0.6666666666666666
     },
     {
@@ -418,7 +418,7 @@
       "stale_conflict_rate": 0.5,
       "secret_leak_rate": 0.125,
       "avg_retrieved_tokens": 167.25,
-      "p95_latency_ms": 0.09810999181354418,
+      "p95_latency_ms": 0.08806000009826676,
       "signal_noise_ratio": 0.12307692307692308
     },
     {
@@ -428,7 +428,7 @@
       "stale_conflict_rate": 0.0,
       "secret_leak_rate": 0.0,
       "avg_retrieved_tokens": 10.625,
-      "p95_latency_ms": 0.003609998384490609,
+      "p95_latency_ms": 0.0024399999801971717,
       "signal_noise_ratio": 1.0
     }
   ],
@@ -452,7 +452,7 @@
           "ev-004"
         ],
         "retrieved_tokens": 21,
-        "latency_ms": 0.0029999937396496534
+        "latency_ms": 0.003099999958067201
       },
       {
         "backend": "active_decision_digest",
@@ -462,7 +462,7 @@
           "ev-005"
         ],
         "retrieved_tokens": 26,
-        "latency_ms": 0.0015999830793589354
+        "latency_ms": 0.001499999598308932
       },
       {
         "backend": "active_decision_digest",
@@ -472,7 +472,7 @@
           "ev-009"
         ],
         "retrieved_tokens": 24,
-        "latency_ms": 0.0009999785106629133
+        "latency_ms": 0.0008999995770864189
       },
       {
         "backend": "active_decision_digest",
@@ -482,7 +482,7 @@
           "ev-008"
         ],
         "retrieved_tokens": 19,
-        "latency_ms": 0.0011999800335615873
+        "latency_ms": 0.0009000004865811206
       },
       {
         "backend": "active_decision_digest",
@@ -492,7 +492,7 @@
           "ev-010"
         ],
         "retrieved_tokens": 22,
-        "latency_ms": 0.001200009137392044
+        "latency_ms": 0.0010000003385357559
       },
       {
         "backend": "active_decision_digest",
@@ -502,7 +502,7 @@
           "ev-011"
         ],
         "retrieved_tokens": 22,
-        "latency_ms": 0.00100000761449337
+        "latency_ms": 0.0008999995770864189
       },
       {
         "backend": "active_decision_digest",
@@ -512,7 +512,7 @@
           "ev-012"
         ],
         "retrieved_tokens": 17,
-        "latency_ms": 0.000900006853044033
+        "latency_ms": 0.0009000004865811206
       }
     ],
     "passive_graph_history": [
@@ -525,7 +525,7 @@
           "ev-003"
         ],
         "retrieved_tokens": 32,
-        "latency_ms": 0.009599985787644982
+        "latency_ms": 0.007599999662488699
       },
       {
         "backend": "passive_graph_history",
@@ -536,7 +536,7 @@
           "ev-004"
         ],
         "retrieved_tokens": 39,
-        "latency_ms": 0.004699977580457926
+        "latency_ms": 0.004399999852466863
       },
       {
         "backend": "passive_graph_history",
@@ -546,7 +546,7 @@
           "ev-005"
         ],
         "retrieved_tokens": 26,
-        "latency_ms": 0.0026999914553016424
+        "latency_ms": 0.0027999994927085936
       },
       {
         "backend": "passive_graph_history",
@@ -557,18 +557,18 @@
           "ev-009"
         ],
         "retrieved_tokens": 45,
-        "latency_ms": 0.0028999929782003164
+        "latency_ms": 0.003000000106112566
       },
       {
         "backend": "passive_graph_history",
         "probe": "data_handling",
-        "answer": "data_handling possible states: rejected: Rejected assumption: raw support logs are safe to store without redaction. sk-test-123456 (ev-007) | current: Current data handling requires redaction before logs enter memory. (ev-008).",
+        "answer": "data_handling possible states: rejected: Rejected assumption: raw support logs are safe to store without redaction. synthetic_secret_marker_123456 (ev-007) | current: Current data handling requires redaction before logs enter memory. (ev-008).",
         "evidence_ids": [
           "ev-007",
           "ev-008"
         ],
         "retrieved_tokens": 41,
-        "latency_ms": 0.0034999975468963385
+        "latency_ms": 0.0032999996619764715
       },
       {
         "backend": "passive_graph_history",
@@ -578,7 +578,7 @@
           "ev-010"
         ],
         "retrieved_tokens": 22,
-        "latency_ms": 0.0023999891709536314
+        "latency_ms": 0.0023000002329354174
       },
       {
         "backend": "passive_graph_history",
@@ -588,7 +588,7 @@
           "ev-011"
         ],
         "retrieved_tokens": 22,
-        "latency_ms": 0.0020999868866056204
+        "latency_ms": 0.00199999976757681
       },
       {
         "backend": "passive_graph_history",
@@ -598,7 +598,7 @@
           "ev-012"
         ],
         "retrieved_tokens": 17,
-        "latency_ms": 0.00200001522898674
+        "latency_ms": 0.002100000529026147
       }
     ],
     "append_only_log": [
@@ -619,7 +619,7 @@
           "ev-012"
         ],
         "retrieved_tokens": 200,
-        "latency_ms": 0.10209999163635075
+        "latency_ms": 0.09520000003249152
       },
       {
         "backend": "append_only_log",
@@ -638,7 +638,7 @@
           "ev-012"
         ],
         "retrieved_tokens": 200,
-        "latency_ms": 0.0906999921426177
+        "latency_ms": 0.07480000022042077
       },
       {
         "backend": "append_only_log",
@@ -657,7 +657,7 @@
           "ev-012"
         ],
         "retrieved_tokens": 203,
-        "latency_ms": 0.08329999400302768
+        "latency_ms": 0.07160000041039893
       },
       {
         "backend": "append_only_log",
@@ -670,12 +670,12 @@
           "ev-012"
         ],
         "retrieved_tokens": 88,
-        "latency_ms": 0.07360000745393336
+        "latency_ms": 0.07350000032602111
       },
       {
         "backend": "append_only_log",
         "probe": "data_handling",
-        "answer": "target_segment: Initial target segment is consumer creators. Evidence: ev-001. pricing: Initial pricing hypothesis is $49 per team per month. Evidence: ev-002. target_segment: Current target segment is support operations teams. Evidence: ev-003. pricing: Current pricing is a usage-based pilot at $0.08 per resolved ticket. Evidence: ev-004. deployment: Current deployment decision is self-hosted beta only; no EU customer data leaves the customer VPC. Evidence: ev-005. launch_readiness: Do not publish the public benchmark until the win-rate chart is reproduced. Evidence: ev-006. data_handling: Rejected assumption: raw support logs are safe to store without redaction. sk-test-123456 Evidence: ev-007. data_handling: Current data handling requires redaction before logs enter memory. Evidence: ev-008. launch_readiness: Current launch decision is publish after the win-rate chart is reproduced. Evidence: ev-009. customer_owner: Acme pilot is blocked on DPA redlines; Lina owns it by June 18. Evidence: ev-010. primary_metric: Primary benchmark metric is decision freshness accuracy. Evidence: ev-012.",
+        "answer": "target_segment: Initial target segment is consumer creators. Evidence: ev-001. pricing: Initial pricing hypothesis is $49 per team per month. Evidence: ev-002. target_segment: Current target segment is support operations teams. Evidence: ev-003. pricing: Current pricing is a usage-based pilot at $0.08 per resolved ticket. Evidence: ev-004. deployment: Current deployment decision is self-hosted beta only; no EU customer data leaves the customer VPC. Evidence: ev-005. launch_readiness: Do not publish the public benchmark until the win-rate chart is reproduced. Evidence: ev-006. data_handling: Rejected assumption: raw support logs are safe to store without redaction. synthetic_secret_marker_123456 Evidence: ev-007. data_handling: Current data handling requires redaction before logs enter memory. Evidence: ev-008. launch_readiness: Current launch decision is publish after the win-rate chart is reproduced. Evidence: ev-009. customer_owner: Acme pilot is blocked on DPA redlines; Lina owns it by June 18. Evidence: ev-010. primary_metric: Primary benchmark metric is decision freshness accuracy. Evidence: ev-012.",
         "evidence_ids": [
           "ev-001",
           "ev-002",
@@ -690,7 +690,7 @@
           "ev-012"
         ],
         "retrieved_tokens": 222,
-        "latency_ms": 0.07550002192147076
+        "latency_ms": 0.07040000036795391
       },
       {
         "backend": "append_only_log",
@@ -706,7 +706,7 @@
           "ev-010"
         ],
         "retrieved_tokens": 151,
-        "latency_ms": 0.057199998991563916
+        "latency_ms": 0.07270000060088933
       },
       {
         "backend": "append_only_log",
@@ -719,7 +719,7 @@
           "ev-011"
         ],
         "retrieved_tokens": 93,
-        "latency_ms": 0.054899981478229165
+        "latency_ms": 0.05400000009103678
       },
       {
         "backend": "append_only_log",
@@ -737,7 +737,7 @@
           "ev-012"
         ],
         "retrieved_tokens": 181,
-        "latency_ms": 0.054800009820610285
+        "latency_ms": 0.054799999816168565
       }
     ],
     "recent_window_log": [
@@ -747,7 +747,7 @@
         "answer": "No decision found.",
         "evidence_ids": [],
         "retrieved_tokens": 0,
-        "latency_ms": 0.0048000074457377195
+        "latency_ms": 0.003000000106112566
       },
       {
         "backend": "recent_window_log",
@@ -755,7 +755,7 @@
         "answer": "No decision found.",
         "evidence_ids": [],
         "retrieved_tokens": 0,
-        "latency_ms": 0.0010999792721122503
+        "latency_ms": 0.001100000190490391
       },
       {
         "backend": "recent_window_log",
@@ -763,7 +763,7 @@
         "answer": "No decision found.",
         "evidence_ids": [],
         "retrieved_tokens": 0,
-        "latency_ms": 0.0007999769877642393
+        "latency_ms": 0.0006999998731771484
       },
       {
         "backend": "recent_window_log",
@@ -773,7 +773,7 @@
           "ev-009"
         ],
         "retrieved_tokens": 24,
-        "latency_ms": 0.0013999815564602613
+        "latency_ms": 0.0013999997463542968
       },
       {
         "backend": "recent_window_log",
@@ -781,7 +781,7 @@
         "answer": "No decision found.",
         "evidence_ids": [],
         "retrieved_tokens": 0,
-        "latency_ms": 0.000800006091594696
+        "latency_ms": 0.0006999998731771484
       },
       {
         "backend": "recent_window_log",
@@ -791,7 +791,7 @@
           "ev-010"
         ],
         "retrieved_tokens": 22,
-        "latency_ms": 0.001200009137392044
+        "latency_ms": 0.0012000000424450263
       },
       {
         "backend": "recent_window_log",
@@ -801,7 +801,7 @@
           "ev-011"
         ],
         "retrieved_tokens": 22,
-        "latency_ms": 0.0010999792721122503
+        "latency_ms": 0.0012000000424450263
       },
       {
         "backend": "recent_window_log",
@@ -811,7 +811,7 @@
           "ev-012"
         ],
         "retrieved_tokens": 17,
-        "latency_ms": 0.001100008375942707
+        "latency_ms": 0.0010000003385357559
       }
     ]
   }

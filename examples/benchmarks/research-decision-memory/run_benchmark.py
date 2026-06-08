@@ -17,7 +17,11 @@ from pathlib import Path
 from typing import Iterable
 
 
-SECRET_MARKERS = ("sk-test-", "private_token_", "secret=")
+SECRET_MARKERS = (
+    "synthetic_secret_marker_",
+    "fake_token_marker_",
+    "dummy_secret_marker=",
+)
 
 
 @dataclass(frozen=True)
@@ -172,7 +176,7 @@ def decision_records() -> list[DecisionRecord]:
             rationale="Security review found synthetic keys in exported transcript fixtures.",
             relevant_terms=("data", "logs", "redaction", "raw", "safe"),
             stale_terms=("raw support logs are safe",),
-            secret="sk-test-123456",
+            secret="synthetic_secret_marker_123456",
         ),
         DecisionRecord(
             turn=8,
@@ -274,7 +278,7 @@ def probes() -> list[Probe]:
             slots=("data_handling",),
             expected_terms=("redaction before logs enter memory",),
             expected_evidence=("ev-008",),
-            stale_terms=("raw support logs are safe", "sk-test-123456"),
+            stale_terms=("raw support logs are safe", "synthetic_secret_marker_123456"),
             relevant_evidence=("ev-008",),
         ),
         Probe(
