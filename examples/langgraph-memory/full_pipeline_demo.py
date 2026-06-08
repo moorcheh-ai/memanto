@@ -1,28 +1,60 @@
-import asyncio
 import os
-from integrations.langgraph.memanto_langgraph import MemantoStore, MemantoStoreConfig
+from pydantic import BaseModel, Field
+from langgraph.graph import StateGraph, START, END
+from langgraph.store.base import BaseStore
+from memanto.cli.client.sdk_client import SdkClient
+from integrations.langgraph.memanto_langgraph import MemantoStore
 
-async def verify_persistence():
-    config = MemantoStoreConfig(
-        api_key=os.getenv("MEMANTO_API_KEY", "dev_key"),
-        default_namespace="persistence_test"
-    )
+class UserPreference(BaseModel):
+    theme: str = Field(description="User preferred UI theme")
+    language: str = Field(description="User preferred language")
 
-    # Session A: Write typed memory
-    store_a = MemantoStore(config)
-    user_profile = {"user_id": 123, "preferences": {"theme": "dark", "lang": "en"}}
+class AgentState(BaseModel):
+    user_id: str
+    query: str
+    response: str = ""
+
+def memory_node(state: AgentState, config: dict, store: BaseStore):
+    # Namespace uses user_id as AGENT_ID
+    namespace = (state.user_id, "preferences")
+    key = "settings"
     
-    print("Session A: Writing memory...")
-    await store_a.put("user_profiles", "user_123", user_profile)
+    prefs = store.get(namespace, key)
+    if not prefs:
+        # Initializing default memory if absent
+        prefs = UserPreference(theme="dark", language="en")
+        store.put(namespace, key, prefs)
+    
+    state.response = f"Hello! I see you prefer {prefs.language} and {prefs.theme} mode."
+    return state
 
-    # Session B: Retrieve memory using a fresh store instance
-    store_b = MemantoStore(config)
-    print("Session B: Retrieving memory...")
-    retrieved_profile = await store_b.get("user_profiles", "user_123")
+def create_graph():
+    workflow = StateGraph(AgentState)
+    workflow.add_node("memory_node", memory_node)
+    workflow.add_edge(START, "memory_node")
+    workflow.add_edge("memory_node", END)
+    return workflow
 
-    print(f"Retrieved: {retrieved_profile}")
-    assert retrieved_profile == user_profile, "Cross-session persistence failed"
-    print("Verification successful: Memory persisted across store instances.")
+def run_session(user_id: str, query: str, store: BaseStore):
+    graph = create_graph().compile(store=store)
+    inputs = {"user_id": user_id, "query": query}
+    result = graph.invoke(inputs)
+    print(f"User: {user_id} | Response: {result['response']}")
 
 if __name__ == "__main__":
-    asyncio.run(verify_persistence())
+    # Initialize Memanto SDK Client
+    client = SdkClient()
+    
+    # Instantiate type-safe MemantoStore with UserPreference schema
+    memanto_store = MemantoStore(client=client, schema=UserPreference)
+    
+    # Session 1: Create persistence
+    print("--- Session 1 ---")
+    run_session("user_123", "What are my settings?", memanto_store)
+    
+    # Modify memory manually to prove persistence
+    memanto_store.put(("user_123", "preferences"), "settings", UserPreference(theme="light", language="fr"))
+    
+    # Session 2: Recall persistence across processes/invocations
+    print("\n--- Session 2 ---")
+    run_session("user_123", "What are my settings now?", memanto_store)

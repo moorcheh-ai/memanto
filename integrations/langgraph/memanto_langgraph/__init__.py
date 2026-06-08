@@ -1,4 +1,3 @@
-from .memanto_store import MemantoStore
-from .schema import MemantoStoreConfig, MemantoMemoryItem
+from .store import MemantoStore
 
-__all__ = ["MemantoStore", "MemantoStoreConfig", "MemantoMemoryItem"]
+__all__ = ["MemantoStore"]
