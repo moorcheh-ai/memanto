@@ -1,67 +1,41 @@
-import os
-from typing import Annotated, TypedDict
-from langgraph.graph import StateGraph, START, END
-from langgraph.graph.message import add_messages
-from langchain_core.tools import tool
-from integrations.langgraph.memanto_langgraph import MemantoStore, MemantoState, MemoryItem
+import asyncio
+from pydantic import BaseModel, Field
+from memanto.cli.client.sdk_client import SdkClient
+from integrations.langgraph.memanto_langgraph import MemantoStore
 
-# Configuration
-AGENT_ID = "architect_agent_001"
-SESSION_ID = "session_cross_process_test"
-API_KEY = os.getenv("MEMANTO_API_KEY", "default_key")
+class UserPreference(BaseModel):
+    """Schema for user-specific preferences."""
+    theme: str
+    notifications_enabled: bool
+    preferred_language: str
 
-# Initialize Memanto Store
-store = MemantoStore(api_key=API_KEY)
+async def run_session(session_id: int, sdk_client: SdkClient, store: MemantoStore, action: str, value: str = None):
+    agent_id = "user_123"
+    namespace = (agent_id,)
+    key = "preferences"
 
-@tool
-def save_to_memanto(content: str, key: str):
-    """Saves important information to the long-term memory store."""
-    store.put(namespace=AGENT_ID, key=key, value=content)
-    return f"Stored {key} in memory."
-
-@tool
-def recall_from_memanto(query: str):
-    """Retrieves relevant information from long-term memory."""
-    memories = store.search(namespace=AGENT_ID, query=query)
-    if not memories:
-        return "No relevant memories found."
-    return "\n".join([m.content for m in memories])
-
-def call_model(state: MemantoState):
-    # This simulates a node that decides to recall or save
-    last_message = state["messages"][-1].content
+    if action == "write":
+        pref = UserPreference(theme=value, notifications_enabled=True, preferred_language="English")
+        await store.put(namespace, key, pref)
+        print(f"Session {session_id}: Saved preference {value}")
     
-    # Logic: If user asks "What do I like?", recall. If user says "I like X", save.
-    if "like" in last_message.lower() and "?" in last_message:
-        memory_content = recall_from_memanto.invoke(last_message)
-        return {"messages": [f"Memory Recall: {memory_content}"]}
-    elif "like" in last_message.lower() and "I" in last_message:
-        save_to_memanto.invoke({"content": last_message, "key": "user_preference"})
-        return {"messages": ["I've noted that in your long-term memory."]}
-    
-    return {"messages": ["I'm listening."]}
+    elif action == "read":
+        pref = await store.get(namespace, key)
+        print(f"Session {session_id}: Retrieved preference: {pref.theme if pref else 'None'}")
 
-# Build Graph
-workflow = StateGraph(MemantoState)
-workflow.add_node("agent", call_model)
-workflow.add_edge(START, "agent")
-workflow.add_edge("agent", END)
-app = workflow.compile()
+async def main():
+    # Initialize SDK and Store
+    sdk = SdkClient()
+    store = MemantoStore(sdk_client=sdk, schema_type=UserPreference)
 
-def run_pipeline(user_input: str):
-    inputs = {
-        "messages": [user_input], 
-        "agent_id": AGENT_ID, 
-        "session_id": SESSION_ID, 
-        "context_window": []
-    }
-    result = app.invoke(inputs)
-    print(f"Input: {user_input} -> Output: {result['messages'][-1]}")
+    print("--- Session 1: Writing Memory ---")
+    await run_session(1, sdk, store, "write", "dark-mode")
+
+    print("\n--- Session 2: Reading Memory (Cross-Process Simulation) ---")
+    # Re-instantiate to simulate a new process/thread
+    sdk_new = SdkClient()
+    store_new = MemantoStore(sdk_client=sdk_new, schema_type=UserPreference)
+    await run_session(2, sdk_new, store_new, "read")
 
 if __name__ == "__main__":
-    print("--- Phase 1: Ingestion (Process 1) ---")
-    run_pipeline("I like deep-sea exploration.")
-    
-    print("\n--- Phase 2: Recall (Simulated Process 2) ---")
-    # In a real scenario, this would be a separate execution of the script
-    run_pipeline("What do I like?")
+    asyncio.run(main())
