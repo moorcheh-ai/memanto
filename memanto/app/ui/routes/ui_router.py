@@ -52,7 +52,6 @@ async def get_ui_config():
         "api_key_preview": f"........{api_key[-6:]}"
         if api_key and len(api_key) > 6
         else ("***" if api_key else None),
-        "api_key": api_key,
         "backend": backend,
         "on_prem": {
             "url": onprem_cfg.get("url", "http://localhost:8080"),
@@ -70,7 +69,6 @@ async def get_ui_config():
         "recall": recall_cfg,
         "schedule_time": schedule_time,
         "active_agent_id": active_agent_id,
-        "session_token": active_session_token,
         "has_active_session": bool(active_session_token),
         "ui_mode": settings.MEMANTO_UI_MODE,
     }
