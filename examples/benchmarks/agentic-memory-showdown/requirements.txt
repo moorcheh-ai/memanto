@@ -1,0 +1,8 @@
+# Core benchmark (no external services required)
+pytest>=7.0
+
+# Real Memanto API (optional — offline fallback used when absent)
+# moorcheh-sdk>=0.1.0
+
+# Real Mem0 API (optional — offline fallback used when absent)
+# mem0ai>=0.1.0

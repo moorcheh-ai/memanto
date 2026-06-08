@@ -1,0 +1,50 @@
+{
+  "generated_at": "2026-06-08 14:20 UTC",
+  "summaries": [
+    {
+      "backend": "Memanto (moorcheh_sdk)",
+      "accuracy_mean": 0.7917,
+      "accuracy_std": 0.2309,
+      "tokens_written_mean": 53.7,
+      "tokens_retrieved_mean": 36.2,
+      "ingest_p50_ms": 0.01,
+      "retrieve_p50_ms": 0.0
+    },
+    {
+      "backend": "Mem0 (mem0ai)",
+      "accuracy_mean": 0.75,
+      "accuracy_std": 0.1485,
+      "tokens_written_mean": 53.7,
+      "tokens_retrieved_mean": 107.3,
+      "ingest_p50_ms": 0.0,
+      "retrieve_p50_ms": 0.02
+    },
+    {
+      "backend": "active-memory (Memanto architecture)",
+      "accuracy_mean": 0.7917,
+      "accuracy_std": 0.2309,
+      "tokens_written_mean": 53.7,
+      "tokens_retrieved_mean": 36.2,
+      "ingest_p50_ms": 0.01,
+      "retrieve_p50_ms": 0.01
+    },
+    {
+      "backend": "append-log (naive RAG)",
+      "accuracy_mean": 0.75,
+      "accuracy_std": 0.1485,
+      "tokens_written_mean": 53.7,
+      "tokens_retrieved_mean": 107.3,
+      "ingest_p50_ms": 0.0,
+      "retrieve_p50_ms": 0.01
+    },
+    {
+      "backend": "snapshot-kv (session-scoped)",
+      "accuracy_mean": 0.7917,
+      "accuracy_std": 0.2309,
+      "tokens_written_mean": 53.7,
+      "tokens_retrieved_mean": 61.7,
+      "ingest_p50_ms": 0.01,
+      "retrieve_p50_ms": 0.0
+    }
+  ]
+}
