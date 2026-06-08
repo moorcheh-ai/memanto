@@ -109,14 +109,14 @@ class TestRealpathGuard:
         tmp_dir = tempfile.mkdtemp()
         safe_name = "report.pdf"
         tmp_path = os.path.join(tmp_dir, safe_name)
-        assert os.path.realpath(tmp_path).startswith(os.path.realpath(tmp_dir))
+        assert os.path.realpath(tmp_path).startswith(os.path.realpath(tmp_dir) + os.sep)
 
     def test_traversal_path_fails(self):
         """If somehow a traversal got past the first check, realpath catches it."""
         tmp_dir = tempfile.mkdtemp()
         malicious_path = os.path.join(tmp_dir, "..", "..", "etc", "passwd")
         assert not os.path.realpath(malicious_path).startswith(
-            os.path.realpath(tmp_dir)
+            os.path.realpath(tmp_dir) + os.sep
         )
 
 
