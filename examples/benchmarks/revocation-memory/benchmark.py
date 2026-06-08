@@ -185,6 +185,13 @@ class Mem0Adapter(MemoryAdapter):
 
         self._qdrant_path = Path(tempfile.gettempdir()) / f"mem0-revocation-{run_id}"
         config = {
+            "llm": {
+                "provider": "ollama",
+                "config": {
+                    "model": "disabled-infer-false",
+                    "ollama_base_url": "http://127.0.0.1:9",
+                },
+            },
             "embedder": {
                 "provider": "fastembed",
                 "config": {"model": "BAAI/bge-small-en-v1.5"},
@@ -369,6 +376,7 @@ def run_backend(
                 "mem0ai": package_version("mem0ai"),
                 "fastembed": package_version("fastembed"),
                 "qdrant-client": package_version("qdrant-client"),
+                "ollama": package_version("ollama"),
             },
         },
         "summary": {

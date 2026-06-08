@@ -151,6 +151,14 @@ class BenchmarkTests(unittest.TestCase):
                 FakeMemory.config["embedder"]["provider"],
                 "fastembed",
             )
+            self.assertEqual(
+                FakeMemory.config["llm"]["provider"],
+                "ollama",
+            )
+            self.assertEqual(
+                FakeMemory.config["llm"]["config"]["ollama_base_url"],
+                "http://127.0.0.1:9",
+            )
             adapter.close()
             self.assertTrue(adapter._memory.vector_store.client.closed)
 

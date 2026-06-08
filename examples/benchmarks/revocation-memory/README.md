@@ -75,10 +75,12 @@ python examples/benchmarks/revocation-memory/benchmark.py \
 ```
 
 The Mem0 adapter uses direct import (`infer=False`) so both frameworks receive
-the same curated facts and no external LLM key is required. This isolates
-retrieval behavior and makes any stale fact leakage visible instead of asking
-an extraction model to resolve contradictions before storage. Each live run
-uses a unique agent/user namespace to prevent historical bleed.
+the same curated facts and no external LLM key is required. Mem0 1.0.1 still
+constructs an LLM client eagerly, so the configuration supplies an unreachable
+local Ollama endpoint as a never-called placeholder. This isolates retrieval
+behavior and makes any stale fact leakage visible instead of asking an
+extraction model to resolve contradictions before storage. Each live run uses
+a unique agent/user namespace to prevent historical bleed.
 
 ## Validate
 
