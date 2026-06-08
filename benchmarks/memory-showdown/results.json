@@ -1,0 +1,96 @@
+{
+  "benchmark": "Memanto vs Mem0 - Evolving Preferences",
+  "run_at": "2026-06-08T05:03:57.644484",
+  "results": [
+    {
+      "system": "Memanto",
+      "accuracy": 0.8,
+      "p50_latency_ms": 2181.7,
+      "p95_latency_ms": 3235.7,
+      "remember_calls": 1,
+      "recall_calls": 5,
+      "recall_detail": [
+        {
+          "question": "What theme does Mahfuz prefer - dark or light mode?",
+          "expected": "light mode",
+          "got": "## Mahfuz's Theme Preference\n\nBased on the available information, Mahfuz's preference has **evolved over time**:\n\n1. **Initially**, he described himself as someone who *\"loves dark mode everything\"* (",
+          "score": 1.0,
+          "latency_ms": 3235.719310001514
+        },
+        {
+          "question": "What hours does Mahfuz typically work?",
+          "expected": "9am to 5pm",
+          "got": "Based on the most recent update (itemId: 7), Mahfuz now works **9am\u20135pm** (Dhaka time), having changed from his previous late-night schedule of 10pm\u20132am.",
+          "score": 1.0,
+          "latency_ms": 1980.483290999473
+        },
+        {
+          "question": "What programming language is Mahfuz currently focused on?",
+          "expected": "Go",
+          "got": "Based on the retrieved context, Mahfuz is currently focused on **Rust**, coming from a background in **Python** and **TypeScript**.",
+          "score": 0.0,
+          "latency_ms": 1560.177270001077
+        },
+        {
+          "question": "What frontend framework does Mahfuz use?",
+          "expected": "Remix",
+          "got": "Based on the retrieved context, Mahfuz **initially favored Next.js** (itemId: 5) as his preferred frontend framework, but he has since **switched to Remix** (itemId: 9), as it better suits his use cas",
+          "score": 1.0,
+          "latency_ms": 2382.9825169996184
+        },
+        {
+          "question": "How does Mahfuz prefer to receive answers?",
+          "expected": "longer explanations are fine",
+          "got": "Based on the context, Mahfuz's preferences have evolved:\n\n- **Initially**: Short, direct answers \u2014 no fluff.\n- **More recently**: Open to longer explanations if they genuinely aid understanding.\n\nSo t",
+          "score": 1.0,
+          "latency_ms": 2549.4967980012007
+        }
+      ]
+    },
+    {
+      "system": "Mem0",
+      "accuracy": 0.2,
+      "p50_latency_ms": 318.5,
+      "p95_latency_ms": 396.6,
+      "remember_calls": 10,
+      "recall_calls": 5,
+      "recall_detail": [
+        {
+          "question": "What theme does Mahfuz prefer - dark or light mode?",
+          "expected": "light mode",
+          "got": "",
+          "score": 0.0,
+          "latency_ms": 246.89758400018036
+        },
+        {
+          "question": "What hours does Mahfuz typically work?",
+          "expected": "9am to 5pm",
+          "got": "",
+          "score": 0.0,
+          "latency_ms": 228.05571400022018
+        },
+        {
+          "question": "What programming language is Mahfuz currently focused on?",
+          "expected": "Go",
+          "got": "User's name is Mahfuz, works as a software developer, and prefers using dark mode for all applications and interfaces",
+          "score": 0.0,
+          "latency_ms": 306.73694299912313
+        },
+        {
+          "question": "What frontend framework does Mahfuz use?",
+          "expected": "Remix",
+          "got": "User's name is Mahfuz, works as a software developer, and prefers using dark mode for all applications and interfaces",
+          "score": 0.0,
+          "latency_ms": 284.3519510006445
+        },
+        {
+          "question": "How does Mahfuz prefer to receive answers?",
+          "expected": "longer explanations are fine",
+          "got": "User's name is Mahfuz, works as a software developer, and prefers using dark mode for all applications and interfaces",
+          "score": 1.0,
+          "latency_ms": 279.2522759991698
+        }
+      ]
+    }
+  ]
+}
