@@ -1,0 +1,5 @@
+# Memanto Benchmark Showdown - 依赖
+memanto>=0.1.0
+moorcheh-sdk>=1.3.5
+mem0ai>=0.1.0
+rich>=13.0.0
