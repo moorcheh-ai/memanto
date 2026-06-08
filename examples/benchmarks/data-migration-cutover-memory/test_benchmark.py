@@ -3,10 +3,12 @@
 from __future__ import annotations
 
 import json
+import sys
 import tempfile
 import unittest
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
 import run_benchmark
 
 
@@ -18,7 +20,8 @@ class DataMigrationCutoverBenchmarkTest(unittest.TestCase):
         self.assertEqual(dataset.session_count, 5)
         self.assertEqual(len(dataset.events), 20)
         self.assertEqual(len(dataset.probes), 8)
-        self.assertIn("E01", dataset.events[12].supersedes)
+        event_by_id = {event.id: event for event in dataset.events}
+        self.assertIn("E01", event_by_id["E13"].supersedes)
 
     def test_active_digest_scores_best_on_current_state(self) -> None:
         report = run_benchmark.run_benchmark()
