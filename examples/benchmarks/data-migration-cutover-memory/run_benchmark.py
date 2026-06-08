@@ -227,17 +227,13 @@ class MemoryBackend:
 
 def rank_hits(probe: Probe, candidates: list[MemoryHit], top_k: int) -> list[MemoryHit]:
     query_terms = set(tokenize(probe.question))
-    tag_terms = set(tokenize(" ".join(probe.tags)))
     ranked: list[MemoryHit] = []
 
     for hit in candidates:
         hit_terms = set(tokenize(hit.title + " " + hit.content))
         hit_tags = set(tokenize(" ".join(hit.tags)))
         lexical_score = len(query_terms & hit_terms)
-        tag_score = len((tag_terms | query_terms) & hit_tags) * 1.5
-        evidence_hint = (
-            2.0 if set(hit.evidence_ids) & set(probe.expected_evidence) else 0
-        )
+        tag_score = len(query_terms & hit_tags) * 1.5
         ranked.append(
             MemoryHit(
                 title=hit.title,
@@ -245,7 +241,7 @@ def rank_hits(probe: Probe, candidates: list[MemoryHit], top_k: int) -> list[Mem
                 evidence_ids=hit.evidence_ids,
                 memory_type=hit.memory_type,
                 tags=hit.tags,
-                score=lexical_score + tag_score + evidence_hint + hit.score,
+                score=lexical_score + tag_score + hit.score,
             )
         )
 
@@ -449,12 +445,11 @@ def evaluate_backend(
     accuracy_values = [item["accuracy"] for item in probe_results]
     evidence_values = [item["evidence_score"] for item in probe_results]
     stale_conflicts = [item for item in probe_results if item["matched_stale_evidence"]]
+    probe_by_id = {probe.id: probe for probe in dataset.probes}
     sensitive_probe_results = [
         item
         for item in probe_results
-        if next(
-            probe for probe in dataset.probes if probe.id == item["probe_id"]
-        ).sensitive_leak_terms
+        if probe_by_id[item["probe_id"]].sensitive_leak_terms
     ]
     sensitive_leaks = [
         item for item in sensitive_probe_results if item["sensitive_leak_terms"]

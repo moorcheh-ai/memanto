@@ -32,8 +32,8 @@
         "source_transcript_tokens": 337,
         "stored_memory_tokens": 252,
         "retrieved_tokens_total": 506,
-        "p95_write_latency_seconds": 6.3e-06,
-        "p95_read_latency_seconds": 0.0001808
+        "p95_write_latency_seconds": 8.3e-06,
+        "p95_read_latency_seconds": 0.0001596
       },
       "probe_results": [
         {
@@ -66,7 +66,7 @@
               "evidence_ids": [
                 "E13"
               ],
-              "score": 11.2,
+              "score": 7.7,
               "tokens": 20
             },
             {
@@ -118,7 +118,7 @@
               "evidence_ids": [
                 "E11"
               ],
-              "score": 8.2,
+              "score": 4.7,
               "tokens": 21
             },
             {
@@ -126,7 +126,7 @@
               "evidence_ids": [
                 "E16"
               ],
-              "score": 5.7,
+              "score": 2.2,
               "tokens": 21
             },
             {
@@ -169,16 +169,8 @@
               "evidence_ids": [
                 "E05"
               ],
-              "score": 9.7,
+              "score": 4.7,
               "tokens": 20
-            },
-            {
-              "title": "finance owner",
-              "evidence_ids": [
-                "E16"
-              ],
-              "score": 3.7,
-              "tokens": 21
             },
             {
               "title": "go no go gate",
@@ -187,6 +179,14 @@
               ],
               "score": 3.2,
               "tokens": 24
+            },
+            {
+              "title": "finance owner",
+              "evidence_ids": [
+                "E16"
+              ],
+              "score": 2.2,
+              "tokens": 21
             }
           ]
         },
@@ -218,20 +218,20 @@
           "retrieved_tokens": 63,
           "top_hits": [
             {
-              "title": "system of record",
-              "evidence_ids": [
-                "E17"
-              ],
-              "score": 5.7,
-              "tokens": 23
-            },
-            {
               "title": "cutover window",
               "evidence_ids": [
                 "E13"
               ],
               "score": 2.7,
               "tokens": 20
+            },
+            {
+              "title": "system of record",
+              "evidence_ids": [
+                "E17"
+              ],
+              "score": 2.2,
+              "tokens": 23
             },
             {
               "title": "audit sink",
@@ -272,7 +272,7 @@
               "evidence_ids": [
                 "E09"
               ],
-              "score": 8.2,
+              "score": 4.7,
               "tokens": 23
             },
             {
@@ -324,7 +324,7 @@
               "evidence_ids": [
                 "E18"
               ],
-              "score": 9.7,
+              "score": 6.2,
               "tokens": 20
             },
             {
@@ -376,7 +376,7 @@
               "evidence_ids": [
                 "E15"
               ],
-              "score": 12.7,
+              "score": 9.2,
               "tokens": 21
             },
             {
@@ -429,7 +429,7 @@
               "evidence_ids": [
                 "E19"
               ],
-              "score": 9.2,
+              "score": 4.2,
               "tokens": 21
             },
             {
@@ -462,9 +462,9 @@
         "sensitive_leak_rate": 1.0,
         "source_transcript_tokens": 337,
         "stored_memory_tokens": 337,
-        "retrieved_tokens_total": 409,
+        "retrieved_tokens_total": 417,
         "p95_write_latency_seconds": 5e-07,
-        "p95_read_latency_seconds": 0.0002032
+        "p95_read_latency_seconds": 0.0001895
       },
       "probe_results": [
         {
@@ -499,7 +499,7 @@
               "evidence_ids": [
                 "E13"
               ],
-              "score": 10.06,
+              "score": 6.56,
               "tokens": 19
             },
             {
@@ -507,7 +507,7 @@
               "evidence_ids": [
                 "E01"
               ],
-              "score": 7.5,
+              "score": 6.0,
               "tokens": 17
             },
             {
@@ -553,7 +553,7 @@
               "evidence_ids": [
                 "E11"
               ],
-              "score": 8.05,
+              "score": 4.55,
               "tokens": 19
             },
             {
@@ -561,7 +561,7 @@
               "evidence_ids": [
                 "E02"
               ],
-              "score": 6.005,
+              "score": 4.505,
               "tokens": 17
             },
             {
@@ -569,7 +569,7 @@
               "evidence_ids": [
                 "E16"
               ],
-              "score": 5.575,
+              "score": 2.075,
               "tokens": 15
             }
           ]
@@ -597,16 +597,16 @@
           "retrieved_evidence": [
             "E03",
             "E05",
-            "E16"
+            "E14"
           ],
-          "retrieved_tokens": 49,
+          "retrieved_tokens": 52,
           "top_hits": [
             {
               "title": "validation threshold",
               "evidence_ids": [
                 "E05"
               ],
-              "score": 8.52,
+              "score": 3.52,
               "tokens": 18
             },
             {
@@ -614,16 +614,16 @@
               "evidence_ids": [
                 "E03"
               ],
-              "score": 6.51,
+              "score": 3.51,
               "tokens": 16
             },
             {
-              "title": "finance owner",
+              "title": "go no go gate",
               "evidence_ids": [
-                "E16"
+                "E14"
               ],
-              "score": 3.575,
-              "tokens": 15
+              "score": 3.065,
+              "tokens": 18
             }
           ]
         },
@@ -661,7 +661,7 @@
               "evidence_ids": [
                 "E17"
               ],
-              "score": 7.58,
+              "score": 4.08,
               "tokens": 19
             },
             {
@@ -669,7 +669,7 @@
               "evidence_ids": [
                 "E04"
               ],
-              "score": 4.515,
+              "score": 3.015,
               "tokens": 15
             },
             {
@@ -714,7 +714,7 @@
               "evidence_ids": [
                 "E09"
               ],
-              "score": 9.04,
+              "score": 5.54,
               "tokens": 17
             },
             {
@@ -755,27 +755,19 @@
           ],
           "sensitive_leak_terms": [],
           "retrieved_evidence": [
+            "E17",
             "E18",
-            "E19",
-            "E20"
+            "E19"
           ],
-          "retrieved_tokens": 46,
+          "retrieved_tokens": 51,
           "top_hits": [
             {
               "title": "dual write policy",
               "evidence_ids": [
                 "E18"
               ],
-              "score": 6.585,
+              "score": 3.085,
               "tokens": 17
-            },
-            {
-              "title": "audit sink",
-              "evidence_ids": [
-                "E20"
-              ],
-              "score": 1.595,
-              "tokens": 14
             },
             {
               "title": "support freeze",
@@ -784,6 +776,14 @@
               ],
               "score": 1.59,
               "tokens": 15
+            },
+            {
+              "title": "system of record",
+              "evidence_ids": [
+                "E17"
+              ],
+              "score": 1.58,
+              "tokens": 19
             }
           ]
         },
@@ -820,7 +820,7 @@
               "evidence_ids": [
                 "E15"
               ],
-              "score": 12.57,
+              "score": 9.07,
               "tokens": 24
             },
             {
@@ -875,7 +875,7 @@
               "evidence_ids": [
                 "E19"
               ],
-              "score": 10.09,
+              "score": 5.09,
               "tokens": 15
             },
             {
@@ -883,7 +883,7 @@
               "evidence_ids": [
                 "E08"
               ],
-              "score": 6.035,
+              "score": 3.035,
               "tokens": 16
             },
             {
@@ -908,9 +908,9 @@
         "sensitive_leak_rate": 0.0,
         "source_transcript_tokens": 337,
         "stored_memory_tokens": 104,
-        "retrieved_tokens_total": 390,
-        "p95_write_latency_seconds": 8e-07,
-        "p95_read_latency_seconds": 6.37e-05
+        "retrieved_tokens_total": 395,
+        "p95_write_latency_seconds": 9e-07,
+        "p95_read_latency_seconds": 6e-05
       },
       "probe_results": [
         {
@@ -987,7 +987,7 @@
               "evidence_ids": [
                 "E16"
               ],
-              "score": 5.505,
+              "score": 2.005,
               "tokens": 15
             },
             {
@@ -1030,7 +1030,7 @@
               "evidence_ids": [
                 "E16"
               ],
-              "score": 3.505,
+              "score": 2.005,
               "tokens": 15
             },
             {
@@ -1083,7 +1083,7 @@
               "evidence_ids": [
                 "E17"
               ],
-              "score": 7.51,
+              "score": 4.01,
               "tokens": 19
             },
             {
@@ -1167,27 +1167,19 @@
           ],
           "sensitive_leak_terms": [],
           "retrieved_evidence": [
+            "E17",
             "E18",
-            "E19",
-            "E20"
+            "E19"
           ],
-          "retrieved_tokens": 46,
+          "retrieved_tokens": 51,
           "top_hits": [
             {
               "title": "dual write policy",
               "evidence_ids": [
                 "E18"
               ],
-              "score": 6.515,
+              "score": 3.015,
               "tokens": 17
-            },
-            {
-              "title": "audit sink",
-              "evidence_ids": [
-                "E20"
-              ],
-              "score": 1.525,
-              "tokens": 14
             },
             {
               "title": "support freeze",
@@ -1196,6 +1188,14 @@
               ],
               "score": 1.52,
               "tokens": 15
+            },
+            {
+              "title": "system of record",
+              "evidence_ids": [
+                "E17"
+              ],
+              "score": 1.51,
+              "tokens": 19
             }
           ]
         },
@@ -1230,7 +1230,7 @@
               "evidence_ids": [
                 "E15"
               ],
-              "score": 12.5,
+              "score": 9.0,
               "tokens": 24
             },
             {
@@ -1283,7 +1283,7 @@
               "evidence_ids": [
                 "E19"
               ],
-              "score": 10.02,
+              "score": 5.02,
               "tokens": 15
             },
             {
