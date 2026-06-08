@@ -1,0 +1,238 @@
+# benchmarks/benchmark_config.yaml
+# Cross-Framework Benchmark Configuration: Memanto vs Mem0
+# Purpose: Evaluate accuracy vs. resource footprint trade-offs in production-grade agentic memory systems
+# Version: 2.0.0
+# Last Updated: 2026-01-15
+
+# Global benchmark settings
+benchmark:
+  name: "cross_framework_memory_benchmark"
+  version: "2.0.0"
+  description: >
+    Rigorous evaluation suite comparing Memanto against Mem0 for agentic memory management.
+    Tests accuracy, latency, token efficiency, and resource utilization under production-like workloads.
+    Designed for 2026 production-grade agent infrastructure requirements.
+  framework: "pytest-benchmark"
+  output_dir: "./benchmark_results"
+  timestamp_format: "%Y%m%d_%H%M%S"
+  required_fields:
+    - name
+    - version
+    - description
+    - framework
+    - output_dir
+
+# Test scenarios simulating production agent workloads
+scenarios:
+  - id: "conversation_history"
+    name: "Multi-turn Conversation Recall"
+    description: "Simulates agent maintaining context across 50+ conversation turns with varying complexity"
+    parameters:
+      num_turns: [10, 25, 50, 100]
+      context_window: 4096
+      memory_types: ["short_term", "long_term"]
+      complexity_levels: ["simple", "moderate", "complex"]
+    expected_metrics:
+      accuracy_min: 0.85
+      latency_max_ms: 500
+    validation:
+      required_params: ["num_turns", "context_window", "memory_types"]
+      param_constraints:
+        num_turns: "list of positive integers"
+        context_window: "positive integer"
+        memory_types: "list containing at least one valid type"
+
+  - id: "preference_learning"
+    name: "User Preference Resolution"
+    description: "Tests ability to learn and recall user preferences from implicit feedback with conflict resolution"
+    parameters:
+      num_preferences: [5, 15, 30]
+      preference_types: ["explicit", "implicit", "conflicting"]
+      resolution_strategy: ["majority", "recency", "weighted"]
+      conflict_density: [0.1, 0.3, 0.5]
+    expected_metrics:
+      accuracy_min: 0.90
+      token_overhead_max: 0.15
+    validation:
+      required_params: ["num_preferences", "preference_types", "resolution_strategy"]
+      param_constraints:
+        num_preferences: "list of positive integers"
+        preference_types: "list containing valid types"
+        resolution_strategy: "list containing valid strategies"
+
+  - id: "context_window_optimization"
+    name: "Context Window Compression"
+    description: "Evaluates token efficiency when managing large conversation histories with adaptive compression"
+    parameters:
+      input_tokens: [2048, 4096, 8192, 16384]
+      compression_ratio: [0.3, 0.5, 0.7]
+      retrieval_strategy: ["sliding_window", "summary", "hybrid"]
+      compression_algorithm: ["adaptive", "fixed", "dynamic"]
+    expected_metrics:
+      token_savings_min: 0.40
+      accuracy_min: 0.80
+    validation:
+      required_params: ["input_tokens", "compression_ratio", "retrieval_strategy"]
+      param_constraints:
+        input_tokens: "list of positive integers (power of 2)"
+        compression_ratio: "list of floats between 0 and 1"
+        retrieval_strategy: "list containing valid strategies"
+
+  - id: "concurrent_sessions"
+    name: "Concurrent Session Handling"
+    description: "Stress test with multiple simultaneous agent sessions under varying load patterns"
+    parameters:
+      num_sessions: [5, 10, 25, 50]
+      session_duration_seconds: 60
+      interleaving_pattern: "random"
+      load_patterns: ["steady", "burst", "ramp_up"]
+    expected_metrics:
+      p95_latency_max_ms: 1000
+      throughput_min_rps: 10
+    validation:
+      required_params: ["num_sessions", "session_duration_seconds", "interleaving_pattern"]
+      param_constraints:
+        num_sessions: "list of positive integers"
+        session_duration_seconds: "positive integer"
+        interleaving_pattern: "string in ['random', 'sequential', 'parallel']"
+
+# Metrics configuration with comprehensive validation
+metrics:
+  accuracy:
+    - name: "recall_accuracy"
+      description: "Percentage of correctly recalled information from memory"
+      weight: 0.35
+      threshold: 0.85
+      unit: "percentage"
+      aggregation: "mean"
+    - name: "preference_resolution_accuracy"
+      description: "Accuracy in resolving conflicting user preferences"
+      weight: 0.25
+      threshold: 0.90
+      unit: "percentage"
+      aggregation: "mean"
+    - name: "context_retention_accuracy"
+      description: "Ability to maintain context across interruptions and session boundaries"
+      weight: 0.20
+      threshold: 0.80
+      unit: "percentage"
+      aggregation: "mean"
+    - name: "information_freshness"
+      description: "Ability to retrieve most recent relevant information"
+      weight: 0.20
+      threshold: 0.85
+      unit: "percentage"
+      aggregation: "mean"
+
+  latency:
+    - name: "p50_latency"
+      description: "Median response latency in milliseconds"
+      unit: "ms"
+      threshold: 200
+      aggregation: "median"
+    - name: "p95_latency"
+      description: "95th percentile response latency"
+      unit: "ms"
+      threshold: 500
+      aggregation: "percentile_95"
+    - name: "p99_latency"
+      description: "99th percentile response latency"
+      unit: "ms"
+      threshold: 1000
+      aggregation: "percentile_99"
+    - name: "mean_latency"
+      description: "Mean response latency"
+      unit: "ms"
+      threshold: 300
+      aggregation: "mean"
+
+  token_usage:
+    - name: "token_efficiency_ratio"
+      description: "Ratio of useful tokens to total tokens consumed"
+      threshold: 0.60
+      unit: "ratio"
+      aggregation: "mean"
+    - name: "token_overhead_per_query"
+      description: "Average token overhead per query"
+      unit: "tokens"
+      threshold: 150
+      aggregation: "mean"
+    - name: "compression_ratio"
+      description: "Achieved compression ratio for context windows"
+      threshold: 0.50
+      unit: "ratio"
+      aggregation: "mean"
+    - name: "token_waste_percentage"
+      description: "Percentage of tokens wasted due to inefficient retrieval"
+      threshold: 0.20
+      unit: "percentage"
+      aggregation: "mean"
+
+  resource_utilization:
+    - name: "memory_usage_mb"
+      description: "Peak memory usage in megabytes"
+      unit: "MB"
+      threshold: 512
+      aggregation: "max"
+    - name: "cpu_utilization_percent"
+      description: "Average CPU utilization percentage"
+      unit: "%"
+      threshold: 70
+      aggregation: "mean"
+    - name: "api_call_count"
+      description: "Number of external API calls per session"
+      threshold: 100
+      unit: "count"
+      aggregation: "sum"
+    - name: "disk_io_mb_per_sec"
+      description: "Disk I/O in megabytes per second"
+      unit: "MB/s"
+      threshold: 50
+      aggregation: "mean"
+
+# Framework-specific configurations with validation
+frameworks:
+  memanto:
+    enabled: true
+    version: ">=2.0.0"
+    config:
+      retrieval_strategy: "serverless_moorcheh"
+      cache_enabled: true
+      cache_ttl_seconds: 300
+      max_context_tokens: 16384
+      compression_enabled: true
+      compression_algorithm: "adaptive"
+      batch_processing: true
+      async_mode: true
+    resource_limits:
+      max_memory_mb: 256
+      max_cpu_percent: 50
+      max_concurrent_requests: 100
+      max_bandwidth_mbps: 100
+    validation:
+      required_config: ["retrieval_strategy", "cache_enabled", "max_context_tokens"]
+      config_constraints:
+        cache_ttl_seconds: "positive integer"
+        max_context_tokens: "positive integer (power of 2)"
+
+  mem0:
+    enabled: true
+    version: ">=0.1.0"
+    config:
+      embedding_model: "text-embedding-3-small"
+      vector_store: "chromadb"
+      similarity_metric: "cosine"
+      max_context_tokens: 8192
+      enable_graph: false
+      batch_size: 32
+      num_retries: 3
+    resource_limits:
+      max_memory_mb: 512
+      max_cpu_percent: 80
+      max_concurrent_requests: 50
+      max_bandwidth_mbps: 200
+    validation:
+      required_config: ["embedding_model", "vector_store", "similarity_metric"]
+      config_constraints:
+        batch_size: "positive integer between 1 and 256"
+        num_retries: "positive integer between 0 and 10"
