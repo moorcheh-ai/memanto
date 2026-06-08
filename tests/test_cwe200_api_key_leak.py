@@ -80,6 +80,9 @@ class TestApiKeyNotLeaked:
         assert "api_key_preview" in data
         # Preview must NOT contain the full key
         assert data["api_key_preview"] != "mk_test_secret_api_key_12345678"
+        # Session status field should be present (replaces sensitive session_token)
+        assert "has_active_session" in data
+        assert data["has_active_session"] is True
 
     def test_config_endpoint_does_not_return_session_token(self, client):
         """Session token should also not leak."""
