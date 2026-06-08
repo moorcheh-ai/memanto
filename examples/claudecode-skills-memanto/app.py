@@ -106,26 +106,22 @@ PRESET_DECISIONS = {
 
 
 @st.cache_resource
-def get_client() -> MemantoSkillsClient:
+def get_client(agent_id: str | None = None) -> MemantoSkillsClient:
     """Shared client across reruns — cached by Streamlit."""
-    client = MemantoSkillsClient()
+    client = MemantoSkillsClient(agent_id=agent_id)
     client.setup()
     return client
 
 
-def reset_agent(client: MemantoSkillsClient) -> None:
-    """Delete and recreate the agent so the demo starts clean."""
-    try:
-        client._sdk.delete_agent(agent_id=client.agent_id)
-    except Exception:
-        pass
-    client._sdk.create_agent(
-        agent_id=client.agent_id,
-        pattern="tool",
-        description="Engineering profile for Claude Code skills cross-session memory",
-    )
-    client._sdk.activate_agent(client.agent_id, duration_hours=6)
-    client._active = True
+def reset_agent() -> str:
+    """Rotate to a fresh agent ID and return it."""
+    import uuid
+    new_id = f"skills-demo-{uuid.uuid4().hex[:8]}"
+    from memanto_skills.client import MemantoSkillsClient as _C
+    import os
+    tmp = _C(agent_id=new_id)
+    tmp.setup()
+    return new_id
 
 
 def render_memory_card(mem: dict) -> None:
@@ -154,6 +150,15 @@ def fetch_memories(client: MemantoSkillsClient, skill: str, hint: str = "") -> l
         return []
 
 
+def fetch_all_memories(client: MemantoSkillsClient) -> list[dict]:
+    """Use recall_recent (not semantic search) so sidebar reflects true stored state."""
+    try:
+        result = client._sdk.recall_recent(agent_id=client.agent_id, limit=50)
+        return result.get("memories", [])
+    except Exception:
+        return []
+
+
 # ─── Sidebar — memory panel ───────────────────────────────────────────────────
 
 def render_sidebar(client: MemantoSkillsClient) -> None:
@@ -164,15 +169,17 @@ def render_sidebar(client: MemantoSkillsClient) -> None:
     with col_r:
         if st.button("🗑 Reset demo", key="reset", help="Wipe all memories — start fresh"):
             with st.spinner("Resetting..."):
-                reset_agent(client)
+                new_id = reset_agent()
+                st.session_state["agent_id"] = new_id
+                st.cache_resource.clear()
             st.success("Reset! Profile is now empty.")
-            time.sleep(0.8)
+            time.sleep(0.5)
             st.rerun()
     with col_ref:
         if st.button("🔄 Refresh", key="refresh"):
             st.rerun()
 
-    memories = fetch_memories(client, "profile", "engineering profile all decisions instructions preferences")
+    memories = fetch_all_memories(client)
 
     if not memories:
         st.sidebar.info("No memories stored yet. Use Session 1 to store some!")
@@ -341,7 +348,8 @@ def main() -> None:
     )
 
     try:
-        client = get_client()
+        agent_id = st.session_state.get("agent_id", None)
+        client = get_client(agent_id)
     except ValueError as e:
         st.error(str(e))
         st.code("export MOORCHEH_API_KEY=your_key_here")
