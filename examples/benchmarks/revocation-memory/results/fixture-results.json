@@ -4,6 +4,7 @@
   "run_id": "fixture",
   "mode": "smoke_fixture",
   "dataset": "production-access-revocation-v1",
+  "dataset_sha256": "9a04bce957e81e15f7728ed1f92ae988f85c9b313cae671ebe3bf94b14a7866e",
   "environment": {
     "python": "3.13.5",
     "platform": "macOS-26.5.1-arm64-arm-64bit-Mach-O",

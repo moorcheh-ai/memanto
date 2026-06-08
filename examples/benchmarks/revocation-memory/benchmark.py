@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import importlib.metadata
 import json
 import os
@@ -239,11 +240,46 @@ ADAPTERS = {
 
 
 def load_dataset(path: Path) -> dict[str, Any]:
-    """Load and minimally validate the benchmark dataset."""
+    """Load and validate the benchmark dataset."""
     dataset = json.loads(path.read_text(encoding="utf-8"))
     if not dataset.get("sessions") or not dataset.get("probes"):
         raise ValueError("dataset must contain non-empty sessions and probes")
+    session_ids: set[str] = set()
+    probe_ids: set[str] = set()
+    for session in dataset["sessions"]:
+        session_id = session.get("id")
+        if not session_id or session_id in session_ids:
+            raise ValueError("every session must have a unique non-empty id")
+        session_ids.add(session_id)
+        if not session.get("events"):
+            raise ValueError(f"session {session_id} must contain events")
+        for event in session["events"]:
+            for field in ("fact_key", "type", "title", "content"):
+                if not event.get(field):
+                    raise ValueError(
+                        f"event in {session_id} is missing non-empty {field}"
+                    )
+    for probe in dataset["probes"]:
+        probe_id = probe.get("id")
+        if not probe_id or probe_id in probe_ids:
+            raise ValueError("every probe must have a unique non-empty id")
+        probe_ids.add(probe_id)
+        if not probe.get("query") or not probe.get("required_terms"):
+            raise ValueError(f"probe {probe_id} needs query and required_terms")
+        if "forbidden_terms" not in probe:
+            raise ValueError(f"probe {probe_id} needs forbidden_terms")
     return dataset
+
+
+def dataset_sha256(dataset: dict[str, Any]) -> str:
+    """Return a stable fingerprint of the exact benchmark input."""
+    canonical = json.dumps(
+        dataset,
+        ensure_ascii=False,
+        separators=(",", ":"),
+        sort_keys=True,
+    ).encode("utf-8")
+    return hashlib.sha256(canonical).hexdigest()
 
 
 def score_probe(probe: dict[str, Any], retrieved_text: str) -> tuple[int, int, float]:
@@ -320,6 +356,7 @@ def run_backend(
         "run_id": run_id,
         "mode": "smoke_fixture" if backend_name == "fixture" else "live_framework",
         "dataset": dataset["name"],
+        "dataset_sha256": dataset_sha256(dataset),
         "environment": {
             "python": sys.version.split()[0],
             "platform": platform.platform(),
@@ -357,6 +394,48 @@ def run_backend(
     }
 
 
+def validate_report(report: dict[str, Any], dataset: dict[str, Any]) -> list[str]:
+    """Return integrity errors for a persisted benchmark report."""
+    errors: list[str] = []
+    backend = report.get("backend")
+    expected_mode = "smoke_fixture" if backend == "fixture" else "live_framework"
+    if backend not in ADAPTERS:
+        errors.append(f"unknown backend: {backend!r}")
+    if report.get("mode") != expected_mode:
+        errors.append(
+            f"mode {report.get('mode')!r} does not match backend {backend!r}"
+        )
+    if report.get("dataset") != dataset.get("name"):
+        errors.append("dataset name does not match")
+    if report.get("dataset_sha256") != dataset_sha256(dataset):
+        errors.append("dataset fingerprint does not match")
+
+    expected_probe_ids = [probe["id"] for probe in dataset["probes"]]
+    actual_probes = report.get("probes")
+    if not isinstance(actual_probes, list):
+        errors.append("probes must be a list")
+        actual_probes = []
+    actual_probe_ids = [probe.get("probe_id") for probe in actual_probes]
+    if actual_probe_ids != expected_probe_ids:
+        errors.append("probe order or membership does not match the dataset")
+
+    summary = report.get("summary")
+    if not isinstance(summary, dict):
+        errors.append("summary must be an object")
+    else:
+        for field in (
+            "retrieval_accuracy",
+            "stale_leak_rate",
+            "ingested_tokens",
+            "retrieved_tokens_total",
+            "write_latency_p95_ms",
+            "read_latency_p95_ms",
+        ):
+            if field not in summary:
+                errors.append(f"summary is missing {field}")
+    return errors
+
+
 def render_markdown(report: dict[str, Any]) -> str:
     """Render a concise human-readable report."""
     summary = report["summary"]
@@ -367,6 +446,7 @@ def render_markdown(report: dict[str, Any]) -> str:
         "",
         f"- Mode: `{report['mode']}`",
         f"- Dataset: `{report['dataset']}`",
+        f"- Dataset SHA-256: `{report['dataset_sha256']}`",
         f"- Retrieval accuracy: {summary['retrieval_accuracy']:.1%}",
         f"- Stale leak rate: {summary['stale_leak_rate']:.1%}",
         f"- Ingested tokens: {summary['ingested_tokens']}",
@@ -396,6 +476,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--markdown", type=Path)
     parser.add_argument("--limit", type=int, default=6)
     parser.add_argument("--settle-seconds", type=float, default=0.0)
+    parser.add_argument(
+        "--validate-report",
+        type=Path,
+        help="validate an existing JSON report instead of running a backend",
+    )
     return parser.parse_args()
 
 
@@ -405,6 +490,18 @@ def main() -> int:
     if args.limit < 1:
         raise SystemExit("--limit must be at least 1")
     dataset = load_dataset(args.dataset)
+    if args.validate_report:
+        report = json.loads(args.validate_report.read_text(encoding="utf-8"))
+        errors = validate_report(report, dataset)
+        if errors:
+            for error in errors:
+                print(f"ERROR: {error}", file=sys.stderr)
+            return 1
+        print(
+            f"Valid {report['mode']} report for {report['dataset']} "
+            f"({report['dataset_sha256']})"
+        )
+        return 0
     report = run_backend(
         args.backend,
         dataset,

@@ -25,6 +25,9 @@ It also adds a two-human production approval rule, secret-handling policy, and
 an access-review owner. Six golden probes score current-fact recall and stale
 fact leakage.
 
+Every report embeds a SHA-256 fingerprint of the canonical dataset so reviewers
+can detect changed inputs and distinguish committed smoke output from live runs.
+
 ## Metrics
 
 - Retrieval accuracy: fraction of required current facts present.
@@ -85,7 +88,15 @@ python -m unittest \
 python -m py_compile \
   examples/benchmarks/revocation-memory/benchmark.py \
   examples/benchmarks/revocation-memory/test_benchmark.py
+
+python examples/benchmarks/revocation-memory/benchmark.py \
+  --validate-report \
+  examples/benchmarks/revocation-memory/results/fixture-results.json
 ```
+
+Report validation checks the dataset fingerprint, backend/mode pairing, probe
+membership, and required summary fields. In particular, a fixture report cannot
+be relabeled as a live framework result.
 
 ## Interpretation
 

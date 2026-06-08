@@ -2,6 +2,7 @@
 
 - Mode: `smoke_fixture`
 - Dataset: `production-access-revocation-v1`
+- Dataset SHA-256: `9a04bce957e81e15f7728ed1f92ae988f85c9b313cae671ebe3bf94b14a7866e`
 - Retrieval accuracy: 100.0%
 - Stale leak rate: 0.0%
 - Ingested tokens: 173

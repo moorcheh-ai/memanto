@@ -67,6 +67,42 @@ class BenchmarkTests(unittest.TestCase):
     def test_percentile_interpolates(self) -> None:
         self.assertEqual(benchmark.percentile([10, 20, 30, 40], 0.95), 38.5)
 
+    def test_dataset_fingerprint_is_stable_and_sensitive(self) -> None:
+        dataset = benchmark.load_dataset(Path(__file__).with_name("dataset.json"))
+        first = benchmark.dataset_sha256(dataset)
+        second = benchmark.dataset_sha256(
+            json.loads(json.dumps(dataset, sort_keys=True))
+        )
+        changed = json.loads(json.dumps(dataset))
+        changed["probes"][0]["query"] += " changed"
+
+        self.assertEqual(first, second)
+        self.assertNotEqual(first, benchmark.dataset_sha256(changed))
+
+    def test_report_integrity_rejects_smoke_report_labeled_live(self) -> None:
+        dataset = benchmark.load_dataset(Path(__file__).with_name("dataset.json"))
+        report = benchmark.run_backend(
+            "fixture",
+            dataset,
+            limit=6,
+            settle_seconds=0,
+            run_id="fixture",
+        )
+        self.assertEqual(benchmark.validate_report(report, dataset), [])
+
+        report["mode"] = "live_framework"
+        self.assertIn(
+            "mode 'live_framework' does not match backend 'fixture'",
+            benchmark.validate_report(report, dataset),
+        )
+
+    def test_dataset_validation_rejects_duplicate_probe_ids(self) -> None:
+        dataset = json.loads(Path(__file__).with_name("dataset.json").read_text())
+        dataset["probes"][1]["id"] = dataset["probes"][0]["id"]
+        with patch("pathlib.Path.read_text", return_value=json.dumps(dataset)):
+            with self.assertRaisesRegex(ValueError, "unique non-empty id"):
+                benchmark.load_dataset(Path("ignored.json"))
+
     def test_mem0_adapter_uses_raw_import_and_normalizes_results(self) -> None:
         class FakeClient:
             def __init__(self) -> None:
