@@ -1,21 +1,15 @@
-from typing import Generic, TypeVar, Any, Optional
+from typing import TypeVar, Generic, Dict, Any, Optional
 from pydantic import BaseModel, Field
-from datetime import datetime
 
 T = TypeVar("T")
 
-class MemantoMemoryItem(BaseModel, Generic[T]):
-    """Type-safe container for memories stored in Memanto."""
-    key: str
-    value: T
-    namespace: str
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
-    metadata: Optional[dict[str, Any]] = None
+class MemoryPayload(BaseModel, Generic[T]):
+    """Generic wrapper for Memanto memory payloads to ensure type safety."""
+    content: T
+    metadata: Dict[str, Any] = Field(default_factory=dict)
+    version: Optional[int] = None
 
-    def to_sdk_payload(self) -> dict[str, Any]:
-        return {
-            "key": self.key,
-            "content": self.value if isinstance(self.value, str) else str(self.value),
-            "metadata": self.metadata or {}
-        }
+class StoreNamespace(BaseModel):
+    """Standardized namespace for LangGraph store keys."""
+    agent_id: str
+    scope: str = "global"

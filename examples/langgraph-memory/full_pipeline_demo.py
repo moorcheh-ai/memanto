@@ -1,58 +1,62 @@
 import os
+from typing import Annotated, TypedDict
 from langgraph.graph import StateGraph, START, END
-from langgraph.store.base import BaseStore
+from langgraph.checkpoint.memory import MemorySaver
 from memanto.cli.client.sdk_client import SdkClient
 from integrations.langgraph.memanto_langgraph import MemantoStore
-from typing import TypedDict
 
+# Define State
 class AgentState(TypedDict):
-    user_id: str
-    input: str
+    user_input: str
+    memory_context: str
     response: str
 
-def memory_node(state: AgentState, config: dict, store: BaseStore):
-    user_id = state["user_id"]
-    namespace = ("users", user_id)
-    
-    # Check for existing preferences in MemantoStore
-    preference = store.get(namespace, "user_preference")
-    
-    if preference:
-        state["response"] = f"I remember you prefer {preference}. Processing: {state['input']}"
-    else:
-        state["response"] = f"I don't know your preferences yet. Processing: {state['input']}"
-    
-    return state
+# Define Nodes
+def recall_node(state: AgentState, config: dict, store: MemantoStore):
+    user_id = config["configurable"].get("user_id", "user_123")
+    # Search semantic memory using the Store abstraction
+    memories = store.search(namespace=(user_id,), query=state["user_input"])
+    context = " ".join([str(m) for m in memories]) if memories else "No relevant memory found."
+    return {"memory_context": context}
+
+def process_node(state: AgentState):
+    # Logic simulating agent processing with memory
+    response = f"Processed '{state['user_input']}' using context: {state['memory_context']}"
+    return {"response": response}
+
+def store_node(state: AgentState, config: dict, store: MemantoStore):
+    user_id = config["configurable"].get("user_id", "user_123")
+    # Persist new fact into long-term memory
+    store.put(namespace=(user_id,), key="user_preference", value=state["user_input"])
+    return {"response": "Memory saved."}
 
 # Build Graph
-builder = StateGraph(AgentState)
-builder.add_node("memory_node", memory_node)
-builder.add_edge(START, "memory_node")
-builder.add_edge("memory_node", END)
+workflow = StateGraph(AgentState)
+workflow.add_node("recall", recall_node)
+workflow.add_node("process", process_node)
+workflow.add_node("store", store_node)
 
-# Dependency Injection
+workflow.add_edge(START, "recall")
+workflow.add_edge("recall", "process")
+workflow.add_edge("process", "store")
+workflow.add_edge("store", END)
+
+# Setup SDK and Store
 sdk_client = SdkClient(api_key=os.getenv("MEMANTO_API_KEY", "test_key"))
 memanto_store = MemantoStore(sdk_client=sdk_client)
+checkpointer = MemorySaver()
 
-graph = builder.compile(store=memanto_store)
+app = workflow.compile(checkpointer=checkpointer, store=memanto_store)
 
-def run_demo():
-    user_id = "user_123"
-    namespace = ("users", user_id)
-
-    print("--- Session 1: Ingesting Memory ---")
-    # Manually put memory into store to simulate previous interaction
-    memanto_store.put(namespace, "user_preference", "Dark Mode")
-    
-    config = {"configurable": {"thread_id": "thread_1"}}
-    res1 = graph.invoke({"user_id": user_id, "input": "Hello!"}, config)
-    print(f"Session 1 Response: {res1['response']}")
-
-    print("\n--- Session 2: Cross-Thread Recall ---")
-    # Different thread, same user_id -> Should recall "Dark Mode" from MemantoStore
-    config2 = {"configurable": {"thread_id": "thread_2"}}
-    res2 = graph.invoke({"user_id": user_id, "input": "Hi again!"}, config2)
-    print(f"Session 2 Response: {res2['response']}")
+def run_session(user_id: str, text: str):
+    config = {"configurable": {"thread_id": "1", "user_id": user_id}}
+    print(f"\n--- Session for {user_id}: {text} ---")
+    result = app.invoke({"user_input": text}, config=config)
+    print(f"Result: {result['response']}")
 
 if __name__ == "__main__":
-    run_demo()
+    # Session A: Ingest memory
+    run_session("user_alpha", "I prefer dark mode and Python 3.11")
+    
+    # Session B: Recall memory (Simulating a different process/thread but same user_id)
+    run_session("user_alpha", "What are my preferences?")

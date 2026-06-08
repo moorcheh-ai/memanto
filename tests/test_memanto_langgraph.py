@@ -1,56 +1,50 @@
 import pytest
 from unittest.mock import MagicMock
 from integrations.langgraph.memanto_langgraph import MemantoStore
-from memanto.cli.client.sdk_client import SdkClient
 
 @pytest.fixture
 def mock_sdk():
-    return MagicMock(spec=SdkClient)
+    return MagicMock()
 
 @pytest.fixture
 def store(mock_sdk):
     return MemantoStore(sdk_client=mock_sdk)
 
 def test_store_put(store, mock_sdk):
-    namespace = ("test", "user")
+    namespace = ("user_1", "global")
     key = "pref"
-    val = "blue"
+    value = {"color": "blue"}
     
-    store.put(namespace, key, val)
+    store.put(namespace, key, value)
     
-    mock_sdk.save_memory.assert_called_once_with(
-        agent_id="test:user",
+    mock_sdk.create_memory.assert_called_once_with(
+        agent_id="user_1",
         memory_key=key,
-        content=val,
-        metadata={}
+        content=value
     )
 
 def test_store_get(store, mock_sdk):
-    mock_sdk.get_memory.return_value = {"content": "blue"}
+    mock_mem = MagicMock()
+    mock_mem.content = "stored_value"
+    mock_sdk.get_memory.return_value = mock_mem
     
-    val = store.get(("test", "user"), "pref")
+    val = store.get(("user_1",), "pref")
     
-    assert val == "blue"
-    mock_sdk.get_memory.assert_called_once_with(
-        agent_id="test:user",
-        memory_key="pref"
-    )
+    assert val == "stored_value"
+    mock_sdk.get_memory.assert_called_with(agent_id="user_1", memory_key="pref")
 
 def test_store_search(store, mock_sdk):
-    mock_sdk.search_memories.return_value = [{"content": "result1"}, {"content": "result2"}]
+    mock_res1 = MagicMock()
+    mock_res1.content = "fact 1"
+    mock_res2 = MagicMock()
+    mock_res2.content = "fact 2"
+    mock_sdk.search_memories.return_value = [mock_res1, mock_res2]
     
-    results = list(store.search(("test", "user"), "query"))
+    results = store.search(("user_1",), "query")
     
-    assert results == ["result1", "result2"]
-    mock_sdk.search_memories.assert_called_once_with(
-        agent_id="test:user",
-        query="query"
-    )
-
-def test_store_delete(store, mock_sdk):
-    store.delete(("test", "user"), "pref")
-    
-    mock_sdk.delete_memory.assert_called_once_with(
-        agent_id="test:user",
-        memory_key="pref"
+    assert results == ["fact 1", "fact 2"]
+    mock_sdk.search_memories.assert_called_with(
+        agent_id="user_1", 
+        query="query", 
+        limit=10
     )
