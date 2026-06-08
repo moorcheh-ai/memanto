@@ -1,44 +1,28 @@
+import asyncio
 import os
-from pydantic import BaseModel
 from integrations.langgraph.memanto_langgraph import MemantoStore, MemantoStoreConfig
 
-class UserProfile(BaseModel):
-    """Custom user schema for type-safe memory."""
-    user_id: str
-    preference: str
-    last_interaction: str
-
-def run_verification():
-    # Configuration
+async def verify_persistence():
     config = MemantoStoreConfig(
-        api_key=os.getenv("MEMANTO_API_KEY", "test_key"),
-        base_url=os.getenv("MEMANTO_URL", "http://localhost:8000")
+        api_key=os.getenv("MEMANTO_API_KEY", "dev_key"),
+        default_namespace="persistence_test"
     )
-    
-    # Initialize generic store with UserProfile type
-    store = MemantoStore[UserProfile](config)
-    
-    namespace = "verification_test"
-    key = "user_123"
-    
-    # Session A: Store typed object
-    profile_a = UserProfile(
-        user_id="123", 
-        preference="Dark Mode", 
-        last_interaction="2023-10-27"
-    )
-    store.put(namespace, key, profile_a.model_dump())
-    print(f"Stored: {profile_a}")
 
-    # Session B: Retrieve and validate type
-    retrieved_data = store.get(namespace, key)
-    if retrieved_data:
-        profile_b = UserProfile(**retrieved_data)
-        print(f"Retrieved: {profile_b}")
-        assert profile_a == profile_b
-        print("Verification Successful: Cross-process persistence and type-safety confirmed.")
-    else:
-        print("Verification Failed: No data retrieved.")
+    # Session A: Write typed memory
+    store_a = MemantoStore(config)
+    user_profile = {"user_id": 123, "preferences": {"theme": "dark", "lang": "en"}}
+    
+    print("Session A: Writing memory...")
+    await store_a.put("user_profiles", "user_123", user_profile)
+
+    # Session B: Retrieve memory using a fresh store instance
+    store_b = MemantoStore(config)
+    print("Session B: Retrieving memory...")
+    retrieved_profile = await store_b.get("user_profiles", "user_123")
+
+    print(f"Retrieved: {retrieved_profile}")
+    assert retrieved_profile == user_profile, "Cross-session persistence failed"
+    print("Verification successful: Memory persisted across store instances.")
 
 if __name__ == "__main__":
-    run_verification()
+    asyncio.run(verify_persistence())
