@@ -1,13 +1,10 @@
-[build-system]
-requires = ["setuptools>=61.0"]
-build-backend = "setuptools.build_meta"
-
 [project]
 name = "memanto-langgraph"
 version = "0.1.0"
-description = "Type-safe LangGraph BaseStore integration for Memanto"
+description = "Type-safe Memanto store integration for LangGraph V3"
 dependencies = [
-    "langgraph>=0.0.30",
-    "pydantic>=2.0.0",
-    "memanto-sdk"
+    "langgraph",
+    "langchain-core",
+    "pydantic",
+    "memanto"
 ]

@@ -1,62 +1,67 @@
 import os
 from typing import Annotated, TypedDict
 from langgraph.graph import StateGraph, START, END
-from langgraph.checkpoint.memory import MemorySaver
-from memanto.cli.client.sdk_client import SdkClient
-from integrations.langgraph.memanto_langgraph import MemantoStore
+from langgraph.graph.message import add_messages
+from langchain_core.tools import tool
+from integrations.langgraph.memanto_langgraph import MemantoStore, MemantoState, MemoryItem
 
-# Define State
-class AgentState(TypedDict):
-    user_input: str
-    memory_context: str
-    response: str
+# Configuration
+AGENT_ID = "architect_agent_001"
+SESSION_ID = "session_cross_process_test"
+API_KEY = os.getenv("MEMANTO_API_KEY", "default_key")
 
-# Define Nodes
-def recall_node(state: AgentState, config: dict, store: MemantoStore):
-    user_id = config["configurable"].get("user_id", "user_123")
-    # Search semantic memory using the Store abstraction
-    memories = store.search(namespace=(user_id,), query=state["user_input"])
-    context = " ".join([str(m) for m in memories]) if memories else "No relevant memory found."
-    return {"memory_context": context}
+# Initialize Memanto Store
+store = MemantoStore(api_key=API_KEY)
 
-def process_node(state: AgentState):
-    # Logic simulating agent processing with memory
-    response = f"Processed '{state['user_input']}' using context: {state['memory_context']}"
-    return {"response": response}
+@tool
+def save_to_memanto(content: str, key: str):
+    """Saves important information to the long-term memory store."""
+    store.put(namespace=AGENT_ID, key=key, value=content)
+    return f"Stored {key} in memory."
 
-def store_node(state: AgentState, config: dict, store: MemantoStore):
-    user_id = config["configurable"].get("user_id", "user_123")
-    # Persist new fact into long-term memory
-    store.put(namespace=(user_id,), key="user_preference", value=state["user_input"])
-    return {"response": "Memory saved."}
+@tool
+def recall_from_memanto(query: str):
+    """Retrieves relevant information from long-term memory."""
+    memories = store.search(namespace=AGENT_ID, query=query)
+    if not memories:
+        return "No relevant memories found."
+    return "\n".join([m.content for m in memories])
+
+def call_model(state: MemantoState):
+    # This simulates a node that decides to recall or save
+    last_message = state["messages"][-1].content
+    
+    # Logic: If user asks "What do I like?", recall. If user says "I like X", save.
+    if "like" in last_message.lower() and "?" in last_message:
+        memory_content = recall_from_memanto.invoke(last_message)
+        return {"messages": [f"Memory Recall: {memory_content}"]}
+    elif "like" in last_message.lower() and "I" in last_message:
+        save_to_memanto.invoke({"content": last_message, "key": "user_preference"})
+        return {"messages": ["I've noted that in your long-term memory."]}
+    
+    return {"messages": ["I'm listening."]}
 
 # Build Graph
-workflow = StateGraph(AgentState)
-workflow.add_node("recall", recall_node)
-workflow.add_node("process", process_node)
-workflow.add_node("store", store_node)
+workflow = StateGraph(MemantoState)
+workflow.add_node("agent", call_model)
+workflow.add_edge(START, "agent")
+workflow.add_edge("agent", END)
+app = workflow.compile()
 
-workflow.add_edge(START, "recall")
-workflow.add_edge("recall", "process")
-workflow.add_edge("process", "store")
-workflow.add_edge("store", END)
-
-# Setup SDK and Store
-sdk_client = SdkClient(api_key=os.getenv("MEMANTO_API_KEY", "test_key"))
-memanto_store = MemantoStore(sdk_client=sdk_client)
-checkpointer = MemorySaver()
-
-app = workflow.compile(checkpointer=checkpointer, store=memanto_store)
-
-def run_session(user_id: str, text: str):
-    config = {"configurable": {"thread_id": "1", "user_id": user_id}}
-    print(f"\n--- Session for {user_id}: {text} ---")
-    result = app.invoke({"user_input": text}, config=config)
-    print(f"Result: {result['response']}")
+def run_pipeline(user_input: str):
+    inputs = {
+        "messages": [user_input], 
+        "agent_id": AGENT_ID, 
+        "session_id": SESSION_ID, 
+        "context_window": []
+    }
+    result = app.invoke(inputs)
+    print(f"Input: {user_input} -> Output: {result['messages'][-1]}")
 
 if __name__ == "__main__":
-    # Session A: Ingest memory
-    run_session("user_alpha", "I prefer dark mode and Python 3.11")
+    print("--- Phase 1: Ingestion (Process 1) ---")
+    run_pipeline("I like deep-sea exploration.")
     
-    # Session B: Recall memory (Simulating a different process/thread but same user_id)
-    run_session("user_alpha", "What are my preferences?")
+    print("\n--- Phase 2: Recall (Simulated Process 2) ---")
+    # In a real scenario, this would be a separate execution of the script
+    run_pipeline("What do I like?")

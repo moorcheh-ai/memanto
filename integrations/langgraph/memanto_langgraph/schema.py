@@ -1,15 +1,14 @@
-from typing import TypeVar, Generic, Dict, Any, Optional
+from typing import TypedDict, Annotated, List, Optional, Dict, Any
 from pydantic import BaseModel, Field
 
-T = TypeVar("T")
-
-class MemoryPayload(BaseModel, Generic[T]):
-    """Generic wrapper for Memanto memory payloads to ensure type safety."""
-    content: T
+class MemoryItem(BaseModel):
+    content: str
+    namespace: str
     metadata: Dict[str, Any] = Field(default_factory=dict)
-    version: Optional[int] = None
+    memory_id: Optional[str] = None
 
-class StoreNamespace(BaseModel):
-    """Standardized namespace for LangGraph store keys."""
+class MemantoState(TypedDict):
+    messages: Annotated[List[Any], "The conversation history"]
     agent_id: str
-    scope: str = "global"
+    session_id: str
+    context_window: List[MemoryItem]
