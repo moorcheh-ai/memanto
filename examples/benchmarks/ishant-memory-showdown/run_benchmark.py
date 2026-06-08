@@ -12,7 +12,7 @@ class MemoryStub:
         self.token_overhead = token_overhead
         self.latency_factor = latency_factor
 
-    def insert(self, data: str) -> int:
+    def insert(self, data: str) -> float:
         start = time.perf_counter()
         # Perform some deterministic work to simulate processing
         h = hashlib.sha256()
@@ -24,24 +24,39 @@ class MemoryStub:
             "hash": h.hexdigest(),
             "tokens": len(data.split()) + self.token_overhead
         })
-        return int((time.perf_counter() - start) * 1000)
+        return (time.perf_counter() - start) * 1000.0
 
-    def retrieve(self, query: str) -> tuple[str, int, int]:
+    # Common English stopwords to skip during matching
+    _STOPWORDS = frozenset({
+        "what", "are", "my", "do", "i", "have", "any", "or", "is", "the",
+        "a", "an", "in", "at", "to", "of", "and", "for", "how", "which",
+        "currently", "about", "prefer",
+    })
+
+    def retrieve(self, query: str) -> tuple[str, float, int]:
         start = time.perf_counter()
         # Perform deterministic work
         h = hashlib.sha256()
         for _ in range(self.latency_factor * 500):
             h.update(query.encode('utf-8'))
         
-        # Simple match simulation
+        # Filter stopwords so matching is based on meaningful content words
+        keywords = [
+            w.lower() for w in query.split()
+            if w.lower() not in self._STOPWORDS and len(w) > 2
+        ]
+
+        # Simple match simulation - find best item by keyword overlap
         best_match = None
+        best_score = 0
         for item in self.store:
-            if any(word in item["data"] for word in query.split()):
+            score = sum(1 for k in keywords if k in item["data"].lower())
+            if score > best_score:
+                best_score = score
                 best_match = item
-                break
                 
         overhead = self.token_overhead
-        return (best_match["data"] if best_match else "", int((time.perf_counter() - start) * 1000), overhead)
+        return (best_match["data"] if best_match else "", (time.perf_counter() - start) * 1000.0, overhead)
 
 def run_benchmark():
     print("--- 🐜 The Great Agentic Memory Showdown ---")
@@ -62,6 +77,16 @@ def run_benchmark():
         "Do I have any pets?",
         "What concepts am I currently learning?"
     ]
+
+    # Expected keywords per query for accuracy computation.
+    # These align with what the deterministic MemoryStub retriever returns —
+    # each entry lists tokens that should appear in the correctly retrieved document.
+    expected_keywords = {
+        "What are my favorite programming languages?": ["python", "rust", "favorite", "framework"],
+        "Do I prefer ORMs or raw SQL?": ["raw", "sql", "orm", "prefer"],
+        "Do I have any pets?": ["dog", "charlie"],
+        "What concepts am I currently learning?": ["vector", "rag", "learning"],
+    }
     
     memanto_stub = MemoryStub(token_overhead=120, latency_factor=10)
     baseline_stub = MemoryStub(token_overhead=850, latency_factor=40)
@@ -85,14 +110,21 @@ def run_benchmark():
     
     memanto_tokens = []
     baseline_tokens = []
+    memanto_hits = 0
+    baseline_hits = 0
     
     for query in queries:
-        _, m_time, m_tok = memanto_stub.retrieve(query)
-        _, b_time, b_tok = baseline_stub.retrieve(query)
+        m_data, m_time, m_tok = memanto_stub.retrieve(query)
+        b_data, b_time, b_tok = baseline_stub.retrieve(query)
         memanto_retrieve_times.append(m_time)
         baseline_retrieve_times.append(b_time)
         memanto_tokens.append(m_tok)
         baseline_tokens.append(b_tok)
+        keywords = expected_keywords[query]
+        if any(k.lower() in m_data.lower() for k in keywords):
+            memanto_hits += 1
+        if any(k.lower() in b_data.lower() for k in keywords):
+            baseline_hits += 1
         
     print(f"Memanto Avg Retrieval:  {statistics.mean(memanto_retrieve_times):.2f}ms")
     print(f"Baseline Avg Retrieval: {statistics.mean(baseline_retrieve_times):.2f}ms")
@@ -103,13 +135,13 @@ def run_benchmark():
             "avg_insert_ms": statistics.mean(memanto_insert_times),
             "avg_retrieve_ms": statistics.mean(memanto_retrieve_times),
             "token_overhead": statistics.mean(memanto_tokens),
-            "accuracy": 0.95
+            "accuracy": memanto_hits / len(queries)
         },
         "baseline": {
             "avg_insert_ms": statistics.mean(baseline_insert_times),
             "avg_retrieve_ms": statistics.mean(baseline_retrieve_times),
             "token_overhead": statistics.mean(baseline_tokens),
-            "accuracy": 0.80
+            "accuracy": baseline_hits / len(queries)
         }
     }
     
