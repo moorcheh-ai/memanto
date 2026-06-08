@@ -1,60 +1,71 @@
 import os
-from pydantic import BaseModel, Field
+from typing import TypedDict
 from langgraph.graph import StateGraph, START, END
-from langgraph.store.base import BaseStore
 from memanto.cli.client.sdk_client import SdkClient
 from integrations.langgraph.memanto_langgraph import MemantoStore
 
-class UserPreference(BaseModel):
-    theme: str = Field(description="User preferred UI theme")
-    language: str = Field(description="User preferred language")
+# Define a simple state for the graph
+class AgentState(TypedDict):
+    user_input: str
+    response: str
 
-class AgentState(BaseModel):
-    user_id: str
-    query: str
-    response: str = ""
+# Define the Item Type for the store (e.g., storing strings for preferences)
+class UserPreference(TypedDict):
+    preference: str
 
-def memory_node(state: AgentState, config: dict, store: BaseStore):
-    # Namespace uses user_id as AGENT_ID
-    namespace = (state.user_id, "preferences")
-    key = "settings"
+def memory_node(state: AgentState, config: dict, store: MemantoStore[str]):
+    # Extract user identity from config
+    user_id = config.get("configurable", {}).get("user_id", "default_user")
+    namespace = ("users", user_id)
     
-    prefs = store.get(namespace, key)
-    if not prefs:
-        # Initializing default memory if absent
-        prefs = UserPreference(theme="dark", language="en")
-        store.put(namespace, key, prefs)
+    # Try to recall existing preference
+    preference = store.get(namespace, "theme_preference")
     
-    state.response = f"Hello! I see you prefer {prefs.language} and {prefs.theme} mode."
-    return state
+    if "I like" in state["user_input"]:
+        # Extract and store new preference
+        pref_value = state["user_input"].split("I like ")[1]
+        store.put(namespace, "theme_preference", pref_value)
+        return {"response": f"Noted! I'll remember that you like {pref_value}."}
+    
+    if preference:
+        return {"response": f"I remember you like {preference}!"}
+    
+    return {"response": "I don't know your preferences yet."}
 
 def create_graph():
-    workflow = StateGraph(AgentState)
-    workflow.add_node("memory_node", memory_node)
-    workflow.add_edge(START, "memory_node")
-    workflow.add_edge("memory_node", END)
-    return workflow
+    builder = StateGraph(AgentState)
+    builder.add_node("memory_node", memory_node)
+    builder.add_edge(START, "memory_node")
+    builder.add_edge("memory_node", END)
+    return builder.compile()
 
-def run_session(user_id: str, query: str, store: BaseStore):
-    graph = create_graph().compile(store=store)
-    inputs = {"user_id": user_id, "query": query}
-    result = graph.invoke(inputs)
-    print(f"User: {user_id} | Response: {result['response']}")
+def run_demo():
+    # Initialize SDK Client
+    sdk = SdkClient(api_key=os.getenv("MEMANTO_API_KEY", "test_key"))
+    
+    # Create the Generic Store for strings
+    store = MemantoStore[str](sdk_client=sdk, item_type=str)
+    
+    user_id = "architect_user_001"
+    config = {"configurable": {"user_id": user_id}}
+    
+    # SESSION 1: Ingestion
+    print("--- Session 1: Ingesting Preference ---")
+    graph_1 = create_graph()
+    input_1 = {"user_input": "I like Dark Mode"}
+    res_1 = graph_1.invoke(input_1, config=config, store=store)
+    print(f"Agent: {res_1['response']}")
+    
+    # SESSION 2: Cross-Process/Instance Recall
+    # Re-instantiating everything to simulate a new process/session
+    print("\n--- Session 2: Recalling Preference (New Instance) ---")
+    sdk_new = SdkClient(api_key=os.getenv("MEMANTO_API_KEY", "test_key"))
+    store_new = MemantoStore[str](sdk_client=sdk_new, item_type=str)
+    graph_2 = create_graph()
+    
+    input_2 = {"user_input": "What do I like?"}
+    res_2 = graph_2.invoke(input_2, config=config, store=store_new)
+    print(f"Agent: {res_2['response']}")
 
 if __name__ == "__main__":
-    # Initialize Memanto SDK Client
-    client = SdkClient()
-    
-    # Instantiate type-safe MemantoStore with UserPreference schema
-    memanto_store = MemantoStore(client=client, schema=UserPreference)
-    
-    # Session 1: Create persistence
-    print("--- Session 1 ---")
-    run_session("user_123", "What are my settings?", memanto_store)
-    
-    # Modify memory manually to prove persistence
-    memanto_store.put(("user_123", "preferences"), "settings", UserPreference(theme="light", language="fr"))
-    
-    # Session 2: Recall persistence across processes/invocations
-    print("\n--- Session 2 ---")
-    run_session("user_123", "What are my settings now?", memanto_store)
+    run_demo()

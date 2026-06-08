@@ -1,20 +1,35 @@
 import pytest
-import asyncio
-from integrations.langgraph.memanto_langgraph import MemantoStore, MemantoStoreConfig
+from unittest.mock import MagicMock
+from integrations.langgraph.memanto_langgraph import MemantoStore
+from memanto.cli.client.sdk_client import SdkClient
 
-@pytest.mark.asyncio
-async def test_store_lifecycle():
-    config = MemantoStoreConfig(api_key="test_key")
-    store = MemantoStore(config)
+def test_memanto_store_put_get():
+    mock_sdk = MagicMock(spec=SdkClient)
+    # Mock read to return a JSON string matching MemantoStoreItem schema
+    mock_sdk.read.return_value = '{"value": "Dark Mode", "metadata": {}}'
     
-    namespace = "test_ns"
-    key = "test_key"
-    val = {"foo": "bar"}
+    store = MemantoStore[str](sdk_client=mock_sdk, item_type=str)
+    namespace = ("test", "user")
+    key = "pref"
+    value = "Dark Mode"
     
-    await store.put(namespace, key, val)
-    result = await store.get(namespace, key)
-    assert result == val
+    store.put(namespace, key, value)
     
-    await store.delete(namespace, key)
-    result_after_delete = await store.get(namespace, key)
-    assert result_after_delete is None
+    # Verify SDK write was called with JSON
+    mock_sdk.write.assert_called_once()
+    args, kwargs = mock_sdk.write.call_args
+    assert '"value":"Dark Mode"' in kwargs['content']
+    
+    # Verify retrieval
+    result = store.get(namespace, key)
+    assert result == "Dark Mode"
+
+def test_memanto_store_type_safety():
+    mock_sdk = MagicMock(spec=SdkClient)
+    mock_sdk.read.return_value = '{"value": 42, "metadata": {}}'
+    
+    store = MemantoStore[int](sdk_client=mock_sdk, item_type=int)
+    result = store.get(("test",), "age")
+    
+    assert isinstance(result, int)
+    assert result == 42

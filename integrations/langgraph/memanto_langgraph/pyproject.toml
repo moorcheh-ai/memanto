@@ -1,7 +1,6 @@
 [project]
 name = "memanto-langgraph"
 version = "0.1.0"
-description = "Type-safe BaseStore implementation for Memanto and LangGraph V3"
 dependencies = [
     "langgraph>=0.2.0",
     "pydantic>=2.0.0",
