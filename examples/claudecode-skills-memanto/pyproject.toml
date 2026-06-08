@@ -12,6 +12,7 @@ license = { text = "MIT" }
 dependencies = [
     "memanto>=0.1.0,<0.2.0",
     "python-dotenv>=1.0.0",
+    "streamlit>=1.35.0",
 ]
 
 [project.scripts]
