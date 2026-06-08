@@ -1,8 +1,13 @@
 [project]
 name = "memanto-langgraph"
 version = "0.1.0"
+description = "Type-safe Memanto storage provider for LangGraph V3"
 dependencies = [
     "langgraph>=0.2.0",
     "pydantic>=2.0.0",
-    "memanto>=0.1.0"
+    "memanto-sdk>=0.1.0"
 ]
+
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
