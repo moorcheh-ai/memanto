@@ -10,7 +10,7 @@ This integration layers **Memanto** on top of the skills ecosystem as a global, 
 
 ## The Problem: Context Fragmentation
 
-```
+```text
 Session A  →  /grill-with-docs  →  "We use CQRS for the Order domain"
                                    "Cart ≠ Order — never mix the terms"
                                    ↓  terminal closes  ↓
@@ -26,7 +26,7 @@ Session B  →  /tdd              →  ??? No idea about CQRS or domain terms
 
 ## Architecture
 
-```
+```text
 ┌─────────────────────────────────────────────┐
 │            Claude Code session               │
 │                                             │
@@ -158,7 +158,7 @@ memanto-skills clear-agent
 
 ## Workflow Example
 
-```
+```text
 Session A (Monday)
 ──────────────────
 /grill-with-docs  →  "Should we use CQRS?"  →  "Yes, for Order domain"
@@ -233,7 +233,7 @@ client.teardown()
 
 ## Project Structure
 
-```
+```text
 examples/claudecode-skills-memanto/
 ├── .claude-plugin/
 │   └── plugin.json              # Claude Code plugin manifest

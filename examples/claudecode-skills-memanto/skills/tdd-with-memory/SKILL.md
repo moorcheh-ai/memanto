@@ -38,7 +38,7 @@ Now run the full TDD workflow (from `/tdd`):
 
 **DO NOT write all tests first, then all implementation.** Use vertical slices:
 
-```
+```text
 RIGHT (vertical):
   RED→GREEN: test1→impl1
   RED→GREEN: test2→impl2
@@ -54,7 +54,7 @@ RIGHT (vertical):
 
 ### Checklist Per Cycle
 
-```
+```text
 [ ] Test describes behavior, not implementation
 [ ] Test uses public interface only
 [ ] Test would survive internal refactor

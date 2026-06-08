@@ -46,7 +46,7 @@ def format_context_block(
         display_tags = [t for t in tags if not t.startswith("skill:") and t != "claudecode-skills-memanto"]
 
         badge = f"**[{mtype}]**"
-        if confidence:
+        if confidence is not None and confidence != "":
             try:
                 badge += f" _(confidence: {float(confidence):.0%})_"
             except (TypeError, ValueError):

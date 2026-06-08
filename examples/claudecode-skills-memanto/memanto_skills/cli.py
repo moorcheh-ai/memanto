@@ -128,6 +128,9 @@ def cmd_store_file(args: argparse.Namespace) -> None:
             confidence=args.confidence,
             extra_tags=extra_tags,
         )
+        if args.type:
+            for entry in entries:
+                entry["memory_type"] = args.type
         ids = client.batch_store_from_skill(skill_name=args.skill, entries=entries)
         stored = [i for i in ids if i]
         print(f"Stored {len(stored)} / {len(entries)} memories.")
@@ -169,6 +172,12 @@ def cmd_clear(args: argparse.Namespace) -> None:  # noqa: ARG001
     client = _make_client()
     client._active = True  # force teardown even if setup was skipped
     client.teardown()
+    if client._active:
+        print(
+            f"Error: failed to deactivate session for agent '{client.agent_id}'.",
+            file=sys.stderr,
+        )
+        sys.exit(1)
     print(f"Session deactivated for agent '{client.agent_id}'.")
 
 
