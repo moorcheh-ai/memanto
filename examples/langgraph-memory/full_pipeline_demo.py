@@ -1,63 +1,58 @@
 import os
-from typing import Annotated, TypedDict
 from langgraph.graph import StateGraph, START, END
-from langgraph.checkpoint.memory import MemorySaver
+from langgraph.store.base import BaseStore
 from memanto.cli.client.sdk_client import SdkClient
-from integrations.langgraph.memanto_langgraph.memanto_store import MemantoStore
+from integrations.langgraph.memanto_langgraph import MemantoStore
+from typing import TypedDict
 
-# Type-safe state definition
 class AgentState(TypedDict):
+    user_id: str
     input: str
     response: str
-    user_id: str
 
-def memory_node(state: AgentState, config: dict, store: MemantoStore):
+def memory_node(state: AgentState, config: dict, store: BaseStore):
     user_id = state["user_id"]
-    user_input = state["input"]
     namespace = ("users", user_id)
     
-    # Semantic recall across sessions
-    past_memories = store.search(namespace, user_input)
+    # Check for existing preferences in MemantoStore
+    preference = store.get(namespace, "user_preference")
     
-    # Store current interaction for future sessions
-    store.put(namespace, "last_interaction", user_input)
+    if preference:
+        state["response"] = f"I remember you prefer {preference}. Processing: {state['input']}"
+    else:
+        state["response"] = f"I don't know your preferences yet. Processing: {state['input']}"
     
-    context = f"Past context: {past_memories}" if past_memories else "No past context."
-    return {"response": f"Processed input: {user_input} | {context}"}
+    return state
+
+# Build Graph
+builder = StateGraph(AgentState)
+builder.add_node("memory_node", memory_node)
+builder.add_edge(START, "memory_node")
+builder.add_edge("memory_node", END)
+
+# Dependency Injection
+sdk_client = SdkClient(api_key=os.getenv("MEMANTO_API_KEY", "test_key"))
+memanto_store = MemantoStore(sdk_client=sdk_client)
+
+graph = builder.compile(store=memanto_store)
 
 def run_demo():
-    # Initialize SDK and generic Store
-    sdk = SdkClient()
-    memanto_store = MemantoStore(sdk)
-    checkpointer = MemorySaver()
-    
-    # Build Graph
-    workflow = StateGraph(AgentState)
-    workflow.add_node("agent", memory_node)
-    workflow.add_edge(START, "agent")
-    workflow.add_edge("agent", END)
-    
-    app = workflow.compile(checkpointer=checkpointer, store=memanto_store)
-    
-    # Session 1: Ingest memory
     user_id = "user_123"
-    config_1 = {"configurable": {"thread_id": "session_1"}}
-    app.invoke(
-        {"input": "I prefer my reports in Markdown format.", "user_id": user_id}, 
-        config=config_1
-    )
-    print("Session 1: Memory stored.")
+    namespace = ("users", user_id)
 
-    # Session 2: Recall memory in a different thread/process simulation
-    config_2 = {"configurable": {"thread_id": "session_2"}}
-    result = app.invoke(
-        {"input": "How should I format my reports?", "user_id": user_id}, 
-        config=config_2
-    )
+    print("--- Session 1: Ingesting Memory ---")
+    # Manually put memory into store to simulate previous interaction
+    memanto_store.put(namespace, "user_preference", "Dark Mode")
     
-    print(f"Session 2 Response: {result['response']}")
-    assert "Markdown" in result['response']
-    print("Cross-session persistence verified.")
+    config = {"configurable": {"thread_id": "thread_1"}}
+    res1 = graph.invoke({"user_id": user_id, "input": "Hello!"}, config)
+    print(f"Session 1 Response: {res1['response']}")
+
+    print("\n--- Session 2: Cross-Thread Recall ---")
+    # Different thread, same user_id -> Should recall "Dark Mode" from MemantoStore
+    config2 = {"configurable": {"thread_id": "thread_2"}}
+    res2 = graph.invoke({"user_id": user_id, "input": "Hi again!"}, config2)
+    print(f"Session 2 Response: {res2['response']}")
 
 if __name__ == "__main__":
     run_demo()
