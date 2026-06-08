@@ -113,6 +113,21 @@ def get_client() -> MemantoSkillsClient:
     return client
 
 
+def reset_agent(client: MemantoSkillsClient) -> None:
+    """Delete and recreate the agent so the demo starts clean."""
+    try:
+        client._sdk.delete_agent(agent_id=client.agent_id)
+    except Exception:
+        pass
+    client._sdk.create_agent(
+        agent_id=client.agent_id,
+        pattern="tool",
+        description="Engineering profile for Claude Code skills cross-session memory",
+    )
+    client._sdk.activate_agent(client.agent_id, duration_hours=6)
+    client._active = True
+
+
 def render_memory_card(mem: dict) -> None:
     mtype = mem.get("type", "memory")
     title = mem.get("title", "").strip()
@@ -145,8 +160,17 @@ def render_sidebar(client: MemantoSkillsClient) -> None:
     st.sidebar.title("🧠 Engineering Profile")
     st.sidebar.caption("Live view of memories stored in Memanto")
 
-    if st.sidebar.button("🔄 Refresh memories"):
-        st.cache_data.clear()
+    col_r, col_ref = st.sidebar.columns(2)
+    with col_r:
+        if st.button("🗑 Reset demo", key="reset", help="Wipe all memories — start fresh"):
+            with st.spinner("Resetting..."):
+                reset_agent(client)
+            st.success("Reset! Profile is now empty.")
+            time.sleep(0.8)
+            st.rerun()
+    with col_ref:
+        if st.button("🔄 Refresh", key="refresh"):
+            st.rerun()
 
     memories = fetch_memories(client, "profile", "engineering profile all decisions instructions preferences")
 
