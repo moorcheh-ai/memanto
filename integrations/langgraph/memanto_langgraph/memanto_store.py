@@ -1,46 +1,65 @@
-from typing import Any, Dict, Optional, List, Iterable
+import asyncio
+from typing import Any, Optional, Sequence
 from langgraph.store.base import BaseStore
 from memanto.cli.client.sdk_client import SdkClient
-from integrations.langgraph.schema import MemantoMemoryItem, MemantoStoreConfig
+from .schema import MemantoStoreConfig, MemantoMemoryItem
 
 class MemantoStore(BaseStore):
-    """
-    Type-safe LangGraph BaseStore implementation for Memanto.
-    Provides cross-thread semantic memory persistence.
-    """
     def __init__(self, config: MemantoStoreConfig):
+        super().__init__()
         self.config = config
         self.client = SdkClient(api_key=config.api_key, base_url=config.base_url)
 
-    def put(self, namespace: str, key: str, value: Any) -> None:
-        # Map LangGraph store put to Memanto SDK write operation
-        # Ensure AGENT_ID consistency is handled via namespace
-        item = MemantoMemoryItem(
-            namespace=namespace,
+    def _resolve_namespace(self, namespace: tuple[str, ...]) -> str:
+        return "/".join(namespace) if namespace else self.config.default_namespace
+
+    async def get(
+        self, 
+        namespace: tuple[str, ...], 
+        key: str
+    ) -> Optional[MemantoMemoryItem]:
+        ns = self._resolve_namespace(namespace)
+        result = await self.client.read_memory(namespace=ns, key=key)
+        if not result:
+            return None
+        return MemantoMemoryItem(
             key=key,
+            value=result.get("value"),
+            namespace=ns,
+            metadata=result.get("metadata", {})
+        )
+
+    async def put(
+        self, 
+        namespace: tuple[str, ...], 
+        key: str, 
+        value: Any
+    ) -> None:
+        ns = self._resolve_namespace(namespace)
+        await self.client.write_memory(
+            namespace=ns, 
+            key=key, 
             value=value
         )
-        self.client.write_memory(
-            namespace=item.namespace,
-            key=item.key,
-            value=item.value,
-            metadata=item.metadata
-        )
 
-    def get(self, namespace: str, key: str) -> Optional[Any]:
-        # Map LangGraph store get to Memanto SDK read operation
-        response = self.client.read_memory(namespace=namespace, key=key)
-        return response.get("value") if response else None
+    async def search(
+        self, 
+        namespace: tuple[str, ...], 
+        query: str
+    ) -> Sequence[MemantoMemoryItem]:
+        ns = self._resolve_namespace(namespace)
+        results = await self.client.query_memory(namespace=ns, query=query)
+        
+        return [
+            MemantoMemoryItem(
+                key=item.get("key"),
+                value=item.get("value"),
+                namespace=ns,
+                metadata=item.get("metadata", {})
+            )
+            for item in results
+        ]
 
-    def search(self, namespace: str, query: str, limit: int = 10) -> Iterable[Any]:
-        # Map LangGraph semantic search to Memanto SDK query
-        results = self.client.query_memory(
-            namespace=namespace, 
-            query=query, 
-            limit=limit
-        )
-        for result in results:
-            yield result.get("value")
-
-    def delete(self, namespace: str, key: str) -> None:
-        self.client.delete_memory(namespace=namespace, key=key)
+    async def delete(self, namespace: tuple[str, ...], key: str) -> None:
+        ns = self._resolve_namespace(namespace)
+        await self.client.delete_memory(namespace=ns, key=key)
