@@ -347,7 +347,11 @@ async def upload_file(
 
     # Validate file extension before reading
     ALLOWED_EXTENSIONS = {".pdf", ".docx", ".xlsx", ".json", ".txt", ".csv", ".md"}
-    original_name = file.filename or "upload"
+    # Sanitize filename: strip directory components to prevent path traversal (CWE-22)
+    original_name = Path(file.filename or "upload").name
+    # Guard against empty or dot-only filenames after sanitization
+    if not original_name or original_name in (".", ".."):
+        original_name = "upload"
     suffix = Path(original_name).suffix.lower()
     if suffix not in ALLOWED_EXTENSIONS:
         allowed_str = ", ".join(sorted(ALLOWED_EXTENSIONS))
@@ -364,6 +368,12 @@ async def upload_file(
         file_bytes = await file.read()
         tmp_dir = tempfile.mkdtemp()
         tmp_path = os.path.join(tmp_dir, original_name)
+        # Defense-in-depth: verify resolved path is within tmp_dir
+        if not os.path.realpath(tmp_path).startswith(os.path.realpath(tmp_dir)):
+            raise HTTPException(
+                status_code=400,
+                detail="Invalid filename",
+            )
         try:
             with open(tmp_path, "wb") as tmp:
                 tmp.write(file_bytes)
