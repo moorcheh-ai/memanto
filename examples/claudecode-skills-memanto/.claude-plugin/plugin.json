@@ -1,0 +1,12 @@
+{
+  "name": "memanto-skills",
+  "skills": [
+    "./skills/memanto-recall",
+    "./skills/memanto-store",
+    "./skills/memanto-profile",
+    "./skills/tdd-with-memory",
+    "./skills/grill-with-memory",
+    "./skills/handoff-with-memory",
+    "./skills/diagnose-with-memory"
+  ]
+}
