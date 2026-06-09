@@ -1,4 +1,10 @@
-from skill_memory_hook import extract_memories, main, normalize_spaces, run_memanto
+from skill_memory_hook import (
+    extract_memories,
+    main,
+    normalize_spaces,
+    recall_local,
+    run_memanto,
+)
 
 
 def test_normalize_spaces_collapses_whitespace():
@@ -113,4 +119,69 @@ def test_main_accepts_mid_session_event_dry_run(capsys):
     assert "DRY-RUN: memanto remember" in captured.out
     assert "Switched from polling to webhook delivery" in captured.out
     assert "--type decision" in captured.out
+
+
+def test_local_backend_persists_context_across_skill_runs(tmp_path, capsys):
+    """A credential-free local demo should persist and recall durable context."""
+
+    store = tmp_path / "skill-memory.jsonl"
+    save_status = main([
+        "post",
+        "--skill",
+        "/spec",
+        "--summary",
+        "Decision: invoices reject negative totals. "
+        "Convention: billing tests use domain fixtures.",
+        "--backend",
+        "local",
+        "--store",
+        str(store),
+    ])
+    capsys.readouterr()
+
+    recall_status = main([
+        "pre",
+        "--task",
+        "/tdd add invoice validation",
+        "--files",
+        "src/billing/invoice.py",
+        "--backend",
+        "local",
+        "--store",
+        str(store),
+    ])
+
+    captured = capsys.readouterr()
+    assert save_status == 0
+    assert recall_status == 0
+    assert "invoices reject negative totals" in captured.out
+    assert "billing tests use domain fixtures" in captured.out
+
+
+def test_local_recall_ranks_relevant_memories_first(tmp_path):
+    """Local recall should prioritize memories sharing terms with the task."""
+
+    store = tmp_path / "skill-memory.jsonl"
+    main([
+        "post",
+        "--skill",
+        "/spec",
+        "--summary",
+        "Decision: invoice validation rejects negative totals. "
+        "Decision: profile avatars use WebP.",
+        "--backend",
+        "local",
+        "--store",
+        str(store),
+    ])
+
+    recalled = recall_local(
+        store,
+        query="invoice validation",
+        agent="developer-skills",
+        limit=1,
+    )
+
+    assert len(recalled) == 1
+    assert recalled[0]["content"] == "invoice validation rejects negative totals"
 

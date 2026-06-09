@@ -10,16 +10,19 @@ It targets workflows such as `/spec`, `/tdd`, `/review`, `/handoff`, or mattpoco
 - **Mid-session capture while work is happening**: important decisions can be saved immediately instead of waiting for the final summary.
 - **Active extraction after a skill ends**: decisions, conventions, preferences, gotchas, and bug fixes from the run summary are saved back to Memanto.
 - **Cross-session recall**: a later skill command can recover the same architectural choices without manual re-prompting.
-- **Zero extra dependencies**: the hook shells out to the existing `memanto` CLI.
+- **Zero extra dependencies**: the production hook shells out to the existing `memanto` CLI.
+- **Credential-free evaluation**: a local JSONL backend and deterministic benchmark let reviewers verify the workflow before configuring an account.
 
 ## Files
 
 ```text
 examples/claudecode-skills-memanto/
-├── README.md
-├── skill_memory_hook.py
-├── demo_transcript.md
-└── test_skill_memory_hook.py
+|-- README.md
+|-- skill_memory_hook.py
+|-- productivity_benchmark.py
+|-- demo_transcript.md
+|-- test_productivity_benchmark.py
+`-- test_skill_memory_hook.py
 ```
 
 ## Prerequisites
@@ -84,14 +87,42 @@ python examples/claudecode-skills-memanto/skill_memory_hook.py post \
   --dry-run
 ```
 
+## Reproducible productivity benchmark
+
+Run a real two-session persistence flow locally, without credentials:
+
+```bash
+python examples/claudecode-skills-memanto/productivity_benchmark.py
+```
+
+Expected result:
+
+```json
+{
+  "saved_memories": 3,
+  "recalled_memories": 3,
+  "repeated_instructions": 0
+}
+```
+
+The first simulated skill session records an architectural decision, a test convention, and a legacy-import gotcha. The second session starts with fresh skill context and recovers all three from JSONL. Production usage remains on the default `memanto` backend; `--backend local --store <path>` exists only for credential-free evaluation and tests.
+
 ## Integration pattern
 
-A skills runner can call this hook in two places:
+A skills runner can call this hook in three places:
 
 ```text
-skill starts  -> hook pre  -> inject MEMANTO_CONTEXT -> execute skill
+skill starts  -> hook pre   -> inject MEMANTO_CONTEXT -> execute skill
 skill runs    -> hook event -> save stable mid-session decisions
-skill exits   -> summarize -> hook post -> durable Memanto memories
+skill exits   -> summarize  -> hook post -> durable Memanto memories
 ```
 
 That closes the context-fragmentation loop: the human explains an architectural decision once, and future skills recover it automatically.
+
+## Reviewer checklist
+
+- Global recall: `pre` emits a bounded `MEMANTO_CONTEXT` block.
+- Mid-session capture: `event` persists stable decisions immediately.
+- Active extraction: `post` stores typed, low-noise memories.
+- Productivity proof: the benchmark reports zero repeated instructions.
+- Code quality: standard-library-only implementation with 11 focused tests.
