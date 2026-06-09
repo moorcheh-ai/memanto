@@ -1,0 +1,5 @@
+# Multi-Agent Shared Memory Benchmark
+# No external dependencies required — uses Python stdlib only.
+# For real API integration (optional):
+# moorcheh-sdk>=1.0.0
+# mem0ai>=0.1.0

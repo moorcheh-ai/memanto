@@ -1,0 +1,332 @@
+[
+  {
+    "name": "raw_context_baseline",
+    "total_tokens_written": 133,
+    "total_tokens_read": 1729,
+    "avg_accuracy": 0.925,
+    "avg_latency_ms": 0.01256503164768219,
+    "consistency_score": 1.0,
+    "probe_results": [
+      {
+        "probe_id": 1,
+        "agent": "coder",
+        "question": "What programming language does the user prefer?",
+        "expected": "Python",
+        "answer": "I prefer Python over JavaScript. Use pytest for testing. My code style: 4-space indent, max 88 chars.\nI'm interested in AI safety research. Focus on alignment and interpretability papers.\nWrite in for",
+        "accuracy": 1.0,
+        "tokens_read": 133,
+        "latency_ms": 0.03331899642944336
+      },
+      {
+        "probe_id": 2,
+        "agent": "coder",
+        "question": "What testing framework does the user use?",
+        "expected": "pytest",
+        "answer": "I prefer Python over JavaScript. Use pytest for testing. My code style: 4-space indent, max 88 chars.\nI'm interested in AI safety research. Focus on alignment and interpretability papers.\nWrite in for",
+        "accuracy": 1.0,
+        "tokens_read": 133,
+        "latency_ms": 0.01506321132183075
+      },
+      {
+        "probe_id": 3,
+        "agent": "researcher",
+        "question": "What is the user's current research focus?",
+        "expected": "multi-agent systems and orchestration patterns",
+        "answer": "I prefer Python over JavaScript. Use pytest for testing. My code style: 4-space indent, max 88 chars.\nI'm interested in AI safety research. Focus on alignment and interpretability papers.\nWrite in for",
+        "accuracy": 1.0,
+        "tokens_read": 133,
+        "latency_ms": 0.01040380448102951
+      },
+      {
+        "probe_id": 4,
+        "agent": "researcher",
+        "question": "Is the user still focused on AI alignment?",
+        "expected": "No, moved to practical agent frameworks",
+        "answer": "I prefer Python over JavaScript. Use pytest for testing. My code style: 4-space indent, max 88 chars.\nI'm interested in AI safety research. Focus on alignment and interpretability papers.\nWrite in for",
+        "accuracy": 0.75,
+        "tokens_read": 133,
+        "latency_ms": 0.01005176454782486
+      },
+      {
+        "probe_id": 5,
+        "agent": "writer",
+        "question": "What writing style does the user prefer?",
+        "expected": "technical tutorials with step-by-step examples",
+        "answer": "I prefer Python over JavaScript. Use pytest for testing. My code style: 4-space indent, max 88 chars.\nI'm interested in AI safety research. Focus on alignment and interpretability papers.\nWrite in for",
+        "accuracy": 1.0,
+        "tokens_read": 133,
+        "latency_ms": 0.010854564607143402
+      },
+      {
+        "probe_id": 6,
+        "agent": "writer",
+        "question": "Should articles use academic citations?",
+        "expected": "No, casual blog tone with code snippets",
+        "answer": "I prefer Python over JavaScript. Use pytest for testing. My code style: 4-space indent, max 88 chars.\nI'm interested in AI safety research. Focus on alignment and interpretability papers.\nWrite in for",
+        "accuracy": 1.0,
+        "tokens_read": 133,
+        "latency_ms": 0.009221956133842468
+      },
+      {
+        "probe_id": 7,
+        "agent": "coder",
+        "question": "What package manager does the user use?",
+        "expected": "uv",
+        "answer": "I prefer Python over JavaScript. Use pytest for testing. My code style: 4-space indent, max 88 chars.\nI'm interested in AI safety research. Focus on alignment and interpretability papers.\nWrite in for",
+        "accuracy": 1.0,
+        "tokens_read": 133,
+        "latency_ms": 0.008978880941867828
+      },
+      {
+        "probe_id": 8,
+        "agent": "researcher",
+        "question": "What does the user consider key in multi-agent systems?",
+        "expected": "memory management",
+        "answer": "I prefer Python over JavaScript. Use pytest for testing. My code style: 4-space indent, max 88 chars.\nI'm interested in AI safety research. Focus on alignment and interpretability papers.\nWrite in for",
+        "accuracy": 1.0,
+        "tokens_read": 133,
+        "latency_ms": 0.008790753781795502
+      },
+      {
+        "probe_id": 9,
+        "agent": "writer",
+        "question": "Who is the target audience for the user's articles?",
+        "expected": "intermediate developers",
+        "answer": "I prefer Python over JavaScript. Use pytest for testing. My code style: 4-space indent, max 88 chars.\nI'm interested in AI safety research. Focus on alignment and interpretability papers.\nWrite in for",
+        "accuracy": 0.5,
+        "tokens_read": 133,
+        "latency_ms": 0.008987262845039368
+      },
+      {
+        "probe_id": 10,
+        "agent": "coder",
+        "question": "What linter does the user use?",
+        "expected": "ruff",
+        "answer": "I prefer Python over JavaScript. Use pytest for testing. My code style: 4-space indent, max 88 chars.\nI'm interested in AI safety research. Focus on alignment and interpretability papers.\nWrite in for",
+        "accuracy": 1.0,
+        "tokens_read": 133,
+        "latency_ms": 0.009979121387004852
+      }
+    ]
+  },
+  {
+    "name": "memanto",
+    "total_tokens_written": 35,
+    "total_tokens_read": 357,
+    "avg_accuracy": 0.65,
+    "avg_latency_ms": 80.00441521406174,
+    "consistency_score": 1.0,
+    "probe_results": [
+      {
+        "probe_id": 1,
+        "agent": "coder",
+        "question": "What programming language does the user prefer?",
+        "expected": "Python",
+        "answer": "Final preference: Python with type hints. Use uv for package management. Test with pytest + coverage.\nNew focus: multi-agent systems and orchestration p Writing style: technical tutorials with step-by",
+        "accuracy": 1.0,
+        "tokens_read": 29,
+        "latency_ms": 80.01111347228289
+      },
+      {
+        "probe_id": 2,
+        "agent": "coder",
+        "question": "What testing framework does the user use?",
+        "expected": "pytest",
+        "answer": "Final preference: Python with type hints. Use uv for package management. Test with pytest + coverage.\nNew focus: multi-agent systems and orchestration p Writing style: technical tutorials with step-by",
+        "accuracy": 1.0,
+        "tokens_read": 29,
+        "latency_ms": 80.00638980418444
+      },
+      {
+        "probe_id": 3,
+        "agent": "researcher",
+        "question": "What is the user's current research focus?",
+        "expected": "multi-agent systems and orchestration patterns",
+        "answer": "New focus: multi-agent systems and orchestration patterns. Memory management is key.\nFinal preference: Python with type hints. Use uv f Writing style: technical tutorials with step-by-st",
+        "accuracy": 1.0,
+        "tokens_read": 26,
+        "latency_ms": 80.00470224767923
+      },
+      {
+        "probe_id": 4,
+        "agent": "researcher",
+        "question": "Is the user still focused on AI alignment?",
+        "expected": "No, moved to practical agent frameworks",
+        "answer": "New focus: multi-agent systems and orchestration patterns. Memory management is key.\nFinal preference: Python with type hints. Use uv f Writing style: technical tutorials with step-by-st",
+        "accuracy": 0.0,
+        "tokens_read": 26,
+        "latency_ms": 80.00324007123709
+      },
+      {
+        "probe_id": 5,
+        "agent": "writer",
+        "question": "What writing style does the user prefer?",
+        "expected": "technical tutorials with step-by-step examples",
+        "answer": "Writing style: technical tutorials with step-by-step examples. Target audience: intermediate devs.\nFinal preference: Python with type hints. Use uv f New focus: multi-agent systems and orchestration p",
+        "accuracy": 1.0,
+        "tokens_read": 27,
+        "latency_ms": 80.00389199703932
+      },
+      {
+        "probe_id": 6,
+        "agent": "writer",
+        "question": "Should articles use academic citations?",
+        "expected": "No, casual blog tone with code snippets",
+        "answer": "Writing style: technical tutorials with step-by-step examples. Target audience: intermediate devs.\nFinal preference: Python with type hints. Use uv f New focus: multi-agent systems and orchestration p",
+        "accuracy": 0.0,
+        "tokens_read": 27,
+        "latency_ms": 80.0030118972063
+      },
+      {
+        "probe_id": 7,
+        "agent": "coder",
+        "question": "What package manager does the user use?",
+        "expected": "uv",
+        "answer": "Final preference: Python with type hints. Use uv for package management. Test with pytest + coverage.\nNew focus: multi-agent systems and orchestration p Writing style: technical tutorials with step-by",
+        "accuracy": 1.0,
+        "tokens_read": 29,
+        "latency_ms": 80.00340770930052
+      },
+      {
+        "probe_id": 8,
+        "agent": "researcher",
+        "question": "What does the user consider key in multi-agent systems?",
+        "expected": "memory management",
+        "answer": "New focus: multi-agent systems and orchestration patterns. Memory management is key.\nFinal preference: Python with type hints. Use uv f Writing style: technical tutorials with step-by-st",
+        "accuracy": 1.0,
+        "tokens_read": 26,
+        "latency_ms": 80.00283308327198
+      },
+      {
+        "probe_id": 9,
+        "agent": "writer",
+        "question": "Who is the target audience for the user's articles?",
+        "expected": "intermediate developers",
+        "answer": "Writing style: technical tutorials with step-by-step examples. Target audience: intermediate devs.\nFinal preference: Python with type hints. Use uv f New focus: multi-agent systems and orchestration p",
+        "accuracy": 0.5,
+        "tokens_read": 27,
+        "latency_ms": 80.00269245356321
+      },
+      {
+        "probe_id": 10,
+        "agent": "coder",
+        "question": "What linter does the user use?",
+        "expected": "ruff",
+        "answer": "Final preference: Python with type hints. Use uv for package management. Test with pytest + coverage.\nNew focus: multi-agent systems and orchestration p Writing style: technical tutorials with step-by",
+        "accuracy": 0.0,
+        "tokens_read": 29,
+        "latency_ms": 80.00286940485239
+      }
+    ]
+  },
+  {
+    "name": "mem0",
+    "total_tokens_written": 133,
+    "total_tokens_read": 590,
+    "avg_accuracy": 0.925,
+    "avg_latency_ms": 150.00424263998866,
+    "consistency_score": 1.0,
+    "probe_results": [
+      {
+        "probe_id": 1,
+        "agent": "coder",
+        "question": "What programming language does the user prefer?",
+        "expected": "Python",
+        "answer": "I prefer Python over JavaScript. Use pytest for testing. My code style: 4-space indent, max 88 chars.\nSwitching to Rust for performance-critical code. Still use Python for prototyping.\nBack to Python.",
+        "accuracy": 1.0,
+        "tokens_read": 58,
+        "latency_ms": 150.00882893800735
+      },
+      {
+        "probe_id": 2,
+        "agent": "coder",
+        "question": "What testing framework does the user use?",
+        "expected": "pytest",
+        "answer": "I prefer Python over JavaScript. Use pytest for testing. My code style: 4-space indent, max 88 chars.\nSwitching to Rust for performance-critical code. Still use Python for prototyping.\nBack to Python.",
+        "accuracy": 1.0,
+        "tokens_read": 58,
+        "latency_ms": 150.00472739338875
+      },
+      {
+        "probe_id": 3,
+        "agent": "researcher",
+        "question": "What is the user's current research focus?",
+        "expected": "multi-agent systems and orchestration patterns",
+        "answer": "I'm interested in AI safety research. Focus on alignment and interpretability papers.\nNow focusing on AI agent frameworks and tool-use patterns. Less alignment, more practical.\nNew focus: multi-agent ",
+        "accuracy": 1.0,
+        "tokens_read": 36,
+        "latency_ms": 150.00380631536245
+      },
+      {
+        "probe_id": 4,
+        "agent": "researcher",
+        "question": "Is the user still focused on AI alignment?",
+        "expected": "No, moved to practical agent frameworks",
+        "answer": "I'm interested in AI safety research. Focus on alignment and interpretability papers.\nNow focusing on AI agent frameworks and tool-use patterns. Less alignment, more practical.\nNew focus: multi-agent ",
+        "accuracy": 0.75,
+        "tokens_read": 36,
+        "latency_ms": 150.00264402478933
+      },
+      {
+        "probe_id": 5,
+        "agent": "writer",
+        "question": "What writing style does the user prefer?",
+        "expected": "technical tutorials with step-by-step examples",
+        "answer": "Write in formal academic tone. Use APA citations. Max 500 words per section.\nChanged mind \u2014 use casual blog tone now, not academic. Include code snippets in articles.\nWriting style: technical tutorial",
+        "accuracy": 1.0,
+        "tokens_read": 39,
+        "latency_ms": 150.00578071922064
+      },
+      {
+        "probe_id": 6,
+        "agent": "writer",
+        "question": "Should articles use academic citations?",
+        "expected": "No, casual blog tone with code snippets",
+        "answer": "Write in formal academic tone. Use APA citations. Max 500 words per section.\nChanged mind \u2014 use casual blog tone now, not academic. Include code snippets in articles.\nWriting style: technical tutorial",
+        "accuracy": 1.0,
+        "tokens_read": 39,
+        "latency_ms": 150.00371132045984
+      },
+      {
+        "probe_id": 7,
+        "agent": "coder",
+        "question": "What package manager does the user use?",
+        "expected": "uv",
+        "answer": "I prefer Python over JavaScript. Use pytest for testing. My code style: 4-space indent, max 88 chars.\nSwitching to Rust for performance-critical code. Still use Python for prototyping.\nBack to Python.",
+        "accuracy": 1.0,
+        "tokens_read": 58,
+        "latency_ms": 150.00379420816898
+      },
+      {
+        "probe_id": 8,
+        "agent": "researcher",
+        "question": "What does the user consider key in multi-agent systems?",
+        "expected": "memory management",
+        "answer": "I'm interested in AI safety research. Focus on alignment and interpretability papers.\nNow focusing on AI agent frameworks and tool-use patterns. Less alignment, more practical.\nNew focus: multi-agent ",
+        "accuracy": 1.0,
+        "tokens_read": 36,
+        "latency_ms": 150.00252202153206
+      },
+      {
+        "probe_id": 9,
+        "agent": "writer",
+        "question": "Who is the target audience for the user's articles?",
+        "expected": "intermediate developers",
+        "answer": "Write in formal academic tone. Use APA citations. Max 500 words per section.\nChanged mind \u2014 use casual blog tone now, not academic. Include code snippets in articles.\nWriting style: technical tutorial",
+        "accuracy": 0.5,
+        "tokens_read": 39,
+        "latency_ms": 150.00329222530127
+      },
+      {
+        "probe_id": 10,
+        "agent": "coder",
+        "question": "What linter does the user use?",
+        "expected": "ruff",
+        "answer": "I prefer Python over JavaScript. Use pytest for testing. My code style: 4-space indent, max 88 chars.\nSwitching to Rust for performance-critical code. Still use Python for prototyping.\nBack to Python.",
+        "accuracy": 1.0,
+        "tokens_read": 58,
+        "latency_ms": 150.00331923365593
+      }
+    ]
+  }
+]
