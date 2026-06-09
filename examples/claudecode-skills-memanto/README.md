@@ -78,9 +78,27 @@ cp .env.example .env
 npx skills@latest add ./examples/claudecode-skills-memanto
 ```
 
-Or copy the `skills/` and `.claude-plugin/plugin.json` into your Claude Code config directory.
+### 4. Run the one-time setup
 
-### 4. Run the demo
+Open Claude Code and run:
+```
+/setup-memanto-skills
+```
+
+This injects a universal `## Memanto Memory` block into your `CLAUDE.md` — after that, **every skill** automatically recalls your engineering profile before running and prompts you to store insights after. No per-skill wrappers, no manual commands.
+
+### 5. That's it
+
+Use your skills normally — `/tdd`, `/grill-with-docs`, `/diagnose`, `/handoff`, any skill. The memory hook fires automatically for all of them.
+
+```
+/tdd          ← recalls your testing conventions automatically
+/grill-with-docs  ← skips already-resolved questions automatically
+/diagnose     ← recalls known failure modes automatically
+/handoff      ← stores session insights automatically
+```
+
+### 6. Run the demo
 
 ```bash
 # Store engineering decisions (Session 1)
@@ -91,21 +109,34 @@ python demo_session_2.py
 
 # Or run the full pipeline in one shot
 python demo_full.py
+
+# Or launch the Streamlit UI
+streamlit run app.py
 ```
 
 ---
 
 ## Skills Reference
 
-### Core memory skills
+### Universal hook (primary approach)
 
 | Skill | Description |
 |-------|-------------|
-| `/memanto-recall [skill\|hint]` | Inject your engineering profile before any session |
-| `/memanto-store [insight]` | Persist a decision or insight after any skill |
+| `/setup-memanto-skills` | One-time setup — injects a `## Memanto Memory` block into `CLAUDE.md`/`AGENTS.md` that fires before and after **every skill automatically** |
+
+After running `/setup-memanto-skills` once, no other configuration is needed. All existing and future skills (`/tdd`, `/grill-with-docs`, `/diagnose`, `/handoff`, any custom skill) get the memory hook for free.
+
+### Standalone memory commands
+
+| Skill | Description |
+|-------|-------------|
+| `/memanto-recall [skill\|hint]` | Manually inject your engineering profile before any session |
+| `/memanto-store [insight]` | Manually persist a decision or insight |
 | `/memanto-profile` | View your full accumulated engineering profile |
 
-### Memory-enhanced skill variants
+### Optional memory-enhanced skill variants
+
+Pre-built wrappers for convenience — not required if you use `/setup-memanto-skills`.
 
 | Skill | Wraps | What it adds |
 |-------|-------|--------------|
