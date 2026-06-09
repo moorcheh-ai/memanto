@@ -398,7 +398,6 @@
       "stale_conflict_rate": 0.0,
       "secret_leak_rate": 0.0,
       "avg_retrieved_tokens": 21.125,
-      "p95_latency_ms": 0.0036200003705744166,
       "signal_noise_ratio": 1.0
     },
     {
@@ -408,7 +407,6 @@
       "stale_conflict_rate": 0.5,
       "secret_leak_rate": 0.125,
       "avg_retrieved_tokens": 30.5,
-      "p95_latency_ms": 0.006479999728981056,
       "signal_noise_ratio": 0.6666666666666666
     },
     {
@@ -418,7 +416,6 @@
       "stale_conflict_rate": 0.5,
       "secret_leak_rate": 0.125,
       "avg_retrieved_tokens": 167.25,
-      "p95_latency_ms": 0.08806000009826676,
       "signal_noise_ratio": 0.12307692307692308
     },
     {
@@ -428,7 +425,6 @@
       "stale_conflict_rate": 0.0,
       "secret_leak_rate": 0.0,
       "avg_retrieved_tokens": 10.625,
-      "p95_latency_ms": 0.0024399999801971717,
       "signal_noise_ratio": 1.0
     }
   ],
@@ -441,8 +437,7 @@
         "evidence_ids": [
           "ev-003"
         ],
-        "retrieved_tokens": 18,
-        "latency_ms": 0.0039000005926936865
+        "retrieved_tokens": 18
       },
       {
         "backend": "active_decision_digest",
@@ -451,8 +446,7 @@
         "evidence_ids": [
           "ev-004"
         ],
-        "retrieved_tokens": 21,
-        "latency_ms": 0.003099999958067201
+        "retrieved_tokens": 21
       },
       {
         "backend": "active_decision_digest",
@@ -461,8 +455,7 @@
         "evidence_ids": [
           "ev-005"
         ],
-        "retrieved_tokens": 26,
-        "latency_ms": 0.001499999598308932
+        "retrieved_tokens": 26
       },
       {
         "backend": "active_decision_digest",
@@ -471,8 +464,7 @@
         "evidence_ids": [
           "ev-009"
         ],
-        "retrieved_tokens": 24,
-        "latency_ms": 0.0008999995770864189
+        "retrieved_tokens": 24
       },
       {
         "backend": "active_decision_digest",
@@ -481,8 +473,7 @@
         "evidence_ids": [
           "ev-008"
         ],
-        "retrieved_tokens": 19,
-        "latency_ms": 0.0009000004865811206
+        "retrieved_tokens": 19
       },
       {
         "backend": "active_decision_digest",
@@ -491,8 +482,7 @@
         "evidence_ids": [
           "ev-010"
         ],
-        "retrieved_tokens": 22,
-        "latency_ms": 0.0010000003385357559
+        "retrieved_tokens": 22
       },
       {
         "backend": "active_decision_digest",
@@ -501,8 +491,7 @@
         "evidence_ids": [
           "ev-011"
         ],
-        "retrieved_tokens": 22,
-        "latency_ms": 0.0008999995770864189
+        "retrieved_tokens": 22
       },
       {
         "backend": "active_decision_digest",
@@ -511,8 +500,7 @@
         "evidence_ids": [
           "ev-012"
         ],
-        "retrieved_tokens": 17,
-        "latency_ms": 0.0009000004865811206
+        "retrieved_tokens": 17
       }
     ],
     "passive_graph_history": [
@@ -524,8 +512,7 @@
           "ev-001",
           "ev-003"
         ],
-        "retrieved_tokens": 32,
-        "latency_ms": 0.007599999662488699
+        "retrieved_tokens": 32
       },
       {
         "backend": "passive_graph_history",
@@ -535,8 +522,7 @@
           "ev-002",
           "ev-004"
         ],
-        "retrieved_tokens": 39,
-        "latency_ms": 0.004399999852466863
+        "retrieved_tokens": 39
       },
       {
         "backend": "passive_graph_history",
@@ -545,8 +531,7 @@
         "evidence_ids": [
           "ev-005"
         ],
-        "retrieved_tokens": 26,
-        "latency_ms": 0.0027999994927085936
+        "retrieved_tokens": 26
       },
       {
         "backend": "passive_graph_history",
@@ -556,8 +541,7 @@
           "ev-006",
           "ev-009"
         ],
-        "retrieved_tokens": 45,
-        "latency_ms": 0.003000000106112566
+        "retrieved_tokens": 45
       },
       {
         "backend": "passive_graph_history",
@@ -567,8 +551,7 @@
           "ev-007",
           "ev-008"
         ],
-        "retrieved_tokens": 41,
-        "latency_ms": 0.0032999996619764715
+        "retrieved_tokens": 41
       },
       {
         "backend": "passive_graph_history",
@@ -577,8 +560,7 @@
         "evidence_ids": [
           "ev-010"
         ],
-        "retrieved_tokens": 22,
-        "latency_ms": 0.0023000002329354174
+        "retrieved_tokens": 22
       },
       {
         "backend": "passive_graph_history",
@@ -587,8 +569,7 @@
         "evidence_ids": [
           "ev-011"
         ],
-        "retrieved_tokens": 22,
-        "latency_ms": 0.00199999976757681
+        "retrieved_tokens": 22
       },
       {
         "backend": "passive_graph_history",
@@ -597,8 +578,7 @@
         "evidence_ids": [
           "ev-012"
         ],
-        "retrieved_tokens": 17,
-        "latency_ms": 0.002100000529026147
+        "retrieved_tokens": 17
       }
     ],
     "append_only_log": [
@@ -618,8 +598,7 @@
           "ev-010",
           "ev-012"
         ],
-        "retrieved_tokens": 200,
-        "latency_ms": 0.09520000003249152
+        "retrieved_tokens": 200
       },
       {
         "backend": "append_only_log",
@@ -637,8 +616,7 @@
           "ev-010",
           "ev-012"
         ],
-        "retrieved_tokens": 200,
-        "latency_ms": 0.07480000022042077
+        "retrieved_tokens": 200
       },
       {
         "backend": "append_only_log",
@@ -656,8 +634,7 @@
           "ev-011",
           "ev-012"
         ],
-        "retrieved_tokens": 203,
-        "latency_ms": 0.07160000041039893
+        "retrieved_tokens": 203
       },
       {
         "backend": "append_only_log",
@@ -669,8 +646,7 @@
           "ev-009",
           "ev-012"
         ],
-        "retrieved_tokens": 88,
-        "latency_ms": 0.07350000032602111
+        "retrieved_tokens": 88
       },
       {
         "backend": "append_only_log",
@@ -689,8 +665,7 @@
           "ev-010",
           "ev-012"
         ],
-        "retrieved_tokens": 222,
-        "latency_ms": 0.07040000036795391
+        "retrieved_tokens": 222
       },
       {
         "backend": "append_only_log",
@@ -705,8 +680,7 @@
           "ev-009",
           "ev-010"
         ],
-        "retrieved_tokens": 151,
-        "latency_ms": 0.07270000060088933
+        "retrieved_tokens": 151
       },
       {
         "backend": "append_only_log",
@@ -718,8 +692,7 @@
           "ev-009",
           "ev-011"
         ],
-        "retrieved_tokens": 93,
-        "latency_ms": 0.05400000009103678
+        "retrieved_tokens": 93
       },
       {
         "backend": "append_only_log",
@@ -736,8 +709,7 @@
           "ev-010",
           "ev-012"
         ],
-        "retrieved_tokens": 181,
-        "latency_ms": 0.054799999816168565
+        "retrieved_tokens": 181
       }
     ],
     "recent_window_log": [
@@ -746,24 +718,21 @@
         "probe": "target_segment",
         "answer": "No decision found.",
         "evidence_ids": [],
-        "retrieved_tokens": 0,
-        "latency_ms": 0.003000000106112566
+        "retrieved_tokens": 0
       },
       {
         "backend": "recent_window_log",
         "probe": "pricing",
         "answer": "No decision found.",
         "evidence_ids": [],
-        "retrieved_tokens": 0,
-        "latency_ms": 0.001100000190490391
+        "retrieved_tokens": 0
       },
       {
         "backend": "recent_window_log",
         "probe": "deployment",
         "answer": "No decision found.",
         "evidence_ids": [],
-        "retrieved_tokens": 0,
-        "latency_ms": 0.0006999998731771484
+        "retrieved_tokens": 0
       },
       {
         "backend": "recent_window_log",
@@ -772,16 +741,14 @@
         "evidence_ids": [
           "ev-009"
         ],
-        "retrieved_tokens": 24,
-        "latency_ms": 0.0013999997463542968
+        "retrieved_tokens": 24
       },
       {
         "backend": "recent_window_log",
         "probe": "data_handling",
         "answer": "No decision found.",
         "evidence_ids": [],
-        "retrieved_tokens": 0,
-        "latency_ms": 0.0006999998731771484
+        "retrieved_tokens": 0
       },
       {
         "backend": "recent_window_log",
@@ -790,8 +757,7 @@
         "evidence_ids": [
           "ev-010"
         ],
-        "retrieved_tokens": 22,
-        "latency_ms": 0.0012000000424450263
+        "retrieved_tokens": 22
       },
       {
         "backend": "recent_window_log",
@@ -800,8 +766,7 @@
         "evidence_ids": [
           "ev-011"
         ],
-        "retrieved_tokens": 22,
-        "latency_ms": 0.0012000000424450263
+        "retrieved_tokens": 22
       },
       {
         "backend": "recent_window_log",
@@ -810,8 +775,7 @@
         "evidence_ids": [
           "ev-012"
         ],
-        "retrieved_tokens": 17,
-        "latency_ms": 0.0010000003385357559
+        "retrieved_tokens": 17
       }
     ]
   }

@@ -8,14 +8,14 @@ only the Python standard library so reviewers can run it without credentials.
 from __future__ import annotations
 
 import argparse
+import copy
 import json
 import re
 import statistics
 import time
+from collections.abc import Iterable
 from dataclasses import asdict, dataclass
 from pathlib import Path
-from typing import Iterable
-
 
 SECRET_MARKERS = (
     "synthetic_secret_marker_",
@@ -498,38 +498,79 @@ def run() -> dict[str, object]:
     }
 
 
-def write_json(path: Path, payload: dict[str, object]) -> None:
+def write_json(
+    path: Path, payload: dict[str, object], include_latency: bool = False
+) -> None:
+    output_payload = payload if include_latency else reproducible_payload(payload)
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+    path.write_text(json.dumps(output_payload, indent=2) + "\n", encoding="utf-8")
+
+
+def reproducible_payload(payload: dict[str, object]) -> dict[str, object]:
+    stable_payload = copy.deepcopy(payload)
+    for summary in stable_payload["summaries"]:
+        summary.pop("p95_latency_ms", None)
+    for answers in stable_payload["answers"].values():
+        for answer in answers:
+            answer.pop("latency_ms", None)
+    return stable_payload
 
 
 def summary_rows(payload: dict[str, object]) -> list[dict[str, object]]:
     return list(payload["summaries"])  # type: ignore[arg-type]
 
 
-def markdown_report(payload: dict[str, object]) -> str:
+def markdown_report(payload: dict[str, object], include_latency: bool = True) -> str:
     rows = summary_rows(payload)
-    lines = [
-        "# Research Decision Memory Results",
-        "",
-        "| Backend | Accuracy | Evidence | Stale Conflicts | Secret Leaks | Avg Tokens | p95 ms | Signal/Noise |",
-        "| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |",
-    ]
-    for row in rows:
-        lines.append(
-            "| {backend} | {accuracy:.2%} | {evidence_coverage:.2%} | "
-            "{stale_conflict_rate:.2%} | {secret_leak_rate:.2%} | "
-            "{avg_retrieved_tokens:.2f} | {p95_latency_ms:.4f} | "
-            "{signal_noise_ratio:.2%} |".format(**row)
+    lines = ["# Research Decision Memory Results", ""]
+    if include_latency:
+        lines.extend(
+            [
+                "| Backend | Accuracy | Evidence | Stale Conflicts | Secret Leaks | Avg Tokens | p95 ms | Signal/Noise |",
+                "| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |",
+            ]
         )
+    else:
+        lines.extend(
+            [
+                "| Backend | Accuracy | Evidence | Stale Conflicts | Secret Leaks | Avg Tokens | Signal/Noise |",
+                "| --- | ---: | ---: | ---: | ---: | ---: | ---: |",
+            ]
+        )
+    for row in rows:
+        if include_latency:
+            lines.append(
+                "| {backend} | {accuracy:.2%} | {evidence_coverage:.2%} | "
+                "{stale_conflict_rate:.2%} | {secret_leak_rate:.2%} | "
+                "{avg_retrieved_tokens:.2f} | {p95_latency_ms:.4f} | "
+                "{signal_noise_ratio:.2%} |".format(**row)
+            )
+        else:
+            lines.append(
+                "| {backend} | {accuracy:.2%} | {evidence_coverage:.2%} | "
+                "{stale_conflict_rate:.2%} | {secret_leak_rate:.2%} | "
+                "{avg_retrieved_tokens:.2f} | {signal_noise_ratio:.2%} |".format(
+                    **row
+                )
+            )
     lines.append("")
+    if not include_latency:
+        lines.append(
+            "Runtime-specific latency is omitted from saved sample artifacts; "
+            "run the benchmark without output flags for live p95 ms."
+        )
+        lines.append("")
     lines.append("Generated with `run_benchmark.py` using only stdlib components.")
     return "\n".join(lines) + "\n"
 
 
-def write_markdown(path: Path, payload: dict[str, object]) -> None:
+def write_markdown(
+    path: Path, payload: dict[str, object], include_latency: bool = False
+) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(markdown_report(payload), encoding="utf-8")
+    path.write_text(
+        markdown_report(payload, include_latency=include_latency), encoding="utf-8"
+    )
 
 
 def print_summary(payload: dict[str, object]) -> None:
@@ -550,6 +591,11 @@ def parse_args() -> argparse.Namespace:
         default=None,
         help="Optional Markdown report path.",
     )
+    parser.add_argument(
+        "--include-latency-output",
+        action="store_true",
+        help="Include runtime-specific latency fields in JSON and Markdown outputs.",
+    )
     return parser.parse_args()
 
 
@@ -557,9 +603,11 @@ def main() -> None:
     args = parse_args()
     payload = run()
     if args.output:
-        write_json(args.output, payload)
+        write_json(args.output, payload, include_latency=args.include_latency_output)
     if args.markdown:
-        write_markdown(args.markdown, payload)
+        write_markdown(
+            args.markdown, payload, include_latency=args.include_latency_output
+        )
     print_summary(payload)
 
 

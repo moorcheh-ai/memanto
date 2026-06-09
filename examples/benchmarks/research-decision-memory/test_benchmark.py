@@ -41,7 +41,7 @@ class ResearchDecisionMemoryBenchmarkTest(unittest.TestCase):
         self.assertGreater(graph["stale_conflict_rate"], 0.0)
         self.assertLess(graph["accuracy"], 1.0)
 
-    def test_writers_emit_json_and_markdown(self) -> None:
+    def test_writers_emit_reproducible_json_and_markdown(self) -> None:
         payload = run_benchmark.run()
         with tempfile.TemporaryDirectory() as tmpdir:
             json_path = Path(tmpdir) / "results.json"
@@ -49,8 +49,20 @@ class ResearchDecisionMemoryBenchmarkTest(unittest.TestCase):
             run_benchmark.write_json(json_path, payload)
             run_benchmark.write_markdown(md_path, payload)
 
-            self.assertIn("active_decision_digest", json_path.read_text())
-            self.assertIn("Research Decision Memory Results", md_path.read_text())
+            json_text = json_path.read_text()
+            markdown_text = md_path.read_text()
+            self.assertIn("active_decision_digest", json_text)
+            self.assertNotIn("p95_latency_ms", json_text)
+            self.assertNotIn("latency_ms", json_text)
+            self.assertIn("Research Decision Memory Results", markdown_text)
+            self.assertNotIn("| p95 ms |", markdown_text)
+
+    def test_live_markdown_keeps_latency_metric(self) -> None:
+        payload = run_benchmark.run()
+
+        report = run_benchmark.markdown_report(payload)
+
+        self.assertIn("p95 ms", report)
 
     @staticmethod
     def _summary(payload: dict, backend: str) -> dict:

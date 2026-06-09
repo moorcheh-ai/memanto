@@ -28,7 +28,7 @@ secrets.
 - Stale conflict rate when superseded assumptions appear in the answer.
 - Synthetic secret leak rate.
 - Retrieved token footprint.
-- p95 retrieval latency in milliseconds.
+- p95 retrieval latency in milliseconds for live stdout runs.
 - Signal/noise ratio over retrieved evidence.
 
 ## Run
@@ -40,6 +40,10 @@ python examples/benchmarks/research-decision-memory/run_benchmark.py
 python examples/benchmarks/research-decision-memory/run_benchmark.py --output examples/benchmarks/research-decision-memory/results/sample_results.json --markdown examples/benchmarks/research-decision-memory/results/sample_results.md
 python -m unittest discover -s examples/benchmarks/research-decision-memory -p "test_*.py"
 ```
+
+Saved JSON and Markdown outputs omit runtime-specific latency by default so
+committed sample artifacts are reproducible. Pass `--include-latency-output`
+when you need to save live p95 latency values.
 
 ## Expected Result
 
