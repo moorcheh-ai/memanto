@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -9,6 +10,7 @@ from unittest.mock import patch
 
 from skill_memory_bridge import (
     LocalJsonlBackend,
+    MemantoCliBackend,
     MemoryRecord,
     SkillMemoryBridge,
     extract_memories,
@@ -127,6 +129,29 @@ class SkillMemoryBridgeTests(unittest.TestCase):
             backend = LocalJsonlBackend(memory_file)
 
             self.assertEqual(backend.recall("anything"), [])
+
+    def test_cli_backend_ignores_empty_or_no_result_recall_output(self) -> None:
+        no_result_outputs = [
+            "",
+            " \n",
+            "No memories found",
+            "No memories found matching your query\nCompleted in 0.01s\n",
+            "No relevant memories found.",
+        ]
+
+        for output in no_result_outputs:
+            completed = subprocess.CompletedProcess(
+                args=["memanto", "recall", "query"],
+                returncode=0,
+                stdout=output,
+                stderr="",
+            )
+            with self.subTest(output=output):
+                with patch(
+                    "skill_memory_bridge.subprocess.run",
+                    return_value=completed,
+                ):
+                    self.assertEqual(MemantoCliBackend().recall("query"), [])
 
 
 if __name__ == "__main__":

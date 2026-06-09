@@ -6,7 +6,6 @@ from pathlib import Path
 
 from skill_memory_bridge import LocalJsonlBackend, SkillMemoryBridge
 
-
 DEMO_DIR = Path(".memanto-skills-demo")
 MEMORY_FILE = DEMO_DIR / "memories.jsonl"
 

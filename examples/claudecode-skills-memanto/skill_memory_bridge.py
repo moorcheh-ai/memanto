@@ -18,7 +18,6 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Protocol
 
-
 MEMORY_TYPES = {
     "artifact",
     "commitment",
@@ -106,7 +105,7 @@ class MemoryRecord:
             self.memory_id = stable_id(self.title or self.memory_type)
 
     @classmethod
-    def from_dict(cls, payload: dict[str, object]) -> "MemoryRecord":
+    def from_dict(cls, payload: dict[str, object]) -> MemoryRecord:
         return cls(
             content=str(payload.get("content", "")),
             memory_type=str(payload.get("memory_type", "observation")),
@@ -228,15 +227,33 @@ class MemantoCliBackend:
             capture_output=True,
             text=True,
         )
+        output = result.stdout.strip()
+        if _is_no_result_cli_recall(output):
+            return []
         return [
             MemoryRecord(
-                content=result.stdout.strip(),
+                content=output,
                 memory_type="context",
                 title="Memanto CLI recall",
                 confidence=0.8,
                 tags=tags or [],
             )
         ]
+
+
+def _is_no_result_cli_recall(output: str) -> bool:
+    for raw_line in output.splitlines():
+        line = re.sub(r"\s+", " ", raw_line).strip().lower().strip(".")
+        if not line:
+            continue
+        return line.startswith(
+            (
+                "no memories found",
+                "no memory found",
+                "no relevant memories found",
+            )
+        )
+    return True
 
 
 def score_memory(
