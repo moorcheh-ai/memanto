@@ -100,12 +100,13 @@ Expected result:
 ```json
 {
   "saved_memories": 3,
+  "candidate_memories": 5,
   "recalled_memories": 3,
   "repeated_instructions": 0
 }
 ```
 
-The first simulated skill session records an architectural decision, a test convention, and a legacy-import gotcha. The second session starts with fresh skill context and recovers all three from JSONL. Production usage remains on the default `memanto` backend; `--backend local --store <path>` exists only for credential-free evaluation and tests.
+The first simulated skill session records an architectural decision, a test convention, and a legacy-import gotcha, plus two unrelated decoys. The second session starts with fresh skill context and ranks the three relevant memories above both decoys. Production usage remains on the default `memanto` backend; `--backend local --store <path>` exists only for credential-free evaluation and tests.
 
 ## Integration pattern
 

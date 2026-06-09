@@ -184,11 +184,24 @@ def recall_local(
         for index, line in enumerate(stream):
             if not line.strip():
                 continue
-            record = json.loads(line)
+            try:
+                record = json.loads(line)
+            except json.JSONDecodeError:
+                continue
             if record.get("agent") != agent:
                 continue
+            tags = record.get("tags", [])
+            tag_text = (
+                " ".join(str(tag) for tag in tags)
+                if isinstance(tags, list)
+                else str(tags)
+            )
             searchable = " ".join(
-                str(record.get(field, "")) for field in ("title", "content", "tags")
+                [
+                    str(record.get("title", "")),
+                    str(record.get("content", "")),
+                    tag_text,
+                ]
             )
             record_tokens = set(re.findall(r"[a-z0-9_]+", searchable.lower()))
             score = len(query_tokens & record_tokens)
@@ -311,8 +324,16 @@ def event(args: argparse.Namespace) -> int:
 def build_parser() -> argparse.ArgumentParser:
     """Build the command line interface."""
 
-    parser = argparse.ArgumentParser(description="Persist developer-skill context with Memanto.")
-    parser.add_argument("--agent", help=f"Memanto agent id. Defaults to ${DEFAULT_AGENT_ENV} or {DEFAULT_AGENT}.")
+    parser = argparse.ArgumentParser(
+        description="Persist developer-skill context with Memanto."
+    )
+    parser.add_argument(
+        "--agent",
+        help=(
+            f"Memanto agent id. Defaults to ${DEFAULT_AGENT_ENV} "
+            f"or {DEFAULT_AGENT}."
+        ),
+    )
     subparsers = parser.add_subparsers(required=True)
 
     def add_backend_arguments(subparser: argparse.ArgumentParser) -> None:
@@ -328,32 +349,66 @@ def build_parser() -> argparse.ArgumentParser:
             help="JSONL path used by the local evaluation backend.",
         )
 
-    pre_parser = subparsers.add_parser("pre", help="Recall context before a skill starts.")
+    pre_parser = subparsers.add_parser(
+        "pre", help="Recall context before a skill starts."
+    )
     add_backend_arguments(pre_parser)
-    pre_parser.add_argument("--dry-run", action="store_true", help="Show Memanto CLI calls without executing them.")
-    pre_parser.add_argument("--task", required=True, help="Skill command or task description.")
-    pre_parser.add_argument("--files", help="Comma-separated files or paths involved in the task.")
-    pre_parser.add_argument("--limit", type=int, default=5, help="Maximum memories to recall.")
+    pre_parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Show Memanto CLI calls without executing them.",
+    )
+    pre_parser.add_argument(
+        "--task", required=True, help="Skill command or task description."
+    )
+    pre_parser.add_argument(
+        "--files", help="Comma-separated files or paths involved in the task."
+    )
+    pre_parser.add_argument(
+        "--limit", type=int, default=5, help="Maximum memories to recall."
+    )
     pre_parser.set_defaults(func=pre)
 
-    post_parser = subparsers.add_parser("post", help="Save memories after a skill completes.")
+    post_parser = subparsers.add_parser(
+        "post", help="Save memories after a skill completes."
+    )
     add_backend_arguments(post_parser)
-    post_parser.add_argument("--dry-run", action="store_true", help="Show Memanto CLI calls without executing them.")
-    post_parser.add_argument("--skill", required=True, help="Skill command that produced the summary.")
-    post_parser.add_argument("--summary", required=True, help="Concise completed-run summary.")
+    post_parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Show Memanto CLI calls without executing them.",
+    )
+    post_parser.add_argument(
+        "--skill", required=True, help="Skill command that produced the summary."
+    )
+    post_parser.add_argument(
+        "--summary", required=True, help="Concise completed-run summary."
+    )
     post_parser.set_defaults(func=post)
 
-    event_parser = subparsers.add_parser("event", help="Save one mid-session memory during a skill run.")
+    event_parser = subparsers.add_parser(
+        "event", help="Save one mid-session memory during a skill run."
+    )
     add_backend_arguments(event_parser)
-    event_parser.add_argument("--dry-run", action="store_true", help="Show Memanto CLI calls without executing them.")
-    event_parser.add_argument("--skill", required=True, help="Skill command currently running.")
+    event_parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Show Memanto CLI calls without executing them.",
+    )
+    event_parser.add_argument(
+        "--skill", required=True, help="Skill command currently running."
+    )
     event_parser.add_argument(
         "--type",
         required=True,
         choices=["decision", "instruction", "preference", "learning", "error"],
         help="Semantic memory type for this event.",
     )
-    event_parser.add_argument("--note", required=True, help="Decision, constraint, gotcha, or bugfix to save now.")
+    event_parser.add_argument(
+        "--note",
+        required=True,
+        help="Decision, constraint, gotcha, or bugfix to save now.",
+    )
     event_parser.set_defaults(func=event)
 
     return parser

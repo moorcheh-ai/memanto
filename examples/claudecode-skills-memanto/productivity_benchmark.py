@@ -17,7 +17,14 @@ SESSION_ONE_SUMMARY = (
     "Convention: billing tests use domain fixtures. "
     "Gotcha: legacy invoice imports encode totals as Decimal strings."
 )
-SESSION_TWO_TASK = "/tdd add invoice validation for legacy imports"
+SESSION_TWO_TASK = (
+    "/tdd add invoice validation for negative totals using billing domain "
+    "fixtures and legacy imports"
+)
+DECOY_MEMORIES = (
+    ("preference", "profile avatars use WebP"),
+    ("instruction", "deployment dashboards use dark mode"),
+)
 
 
 def run_benchmark(store: Path) -> dict[str, int]:
@@ -33,6 +40,15 @@ def run_benchmark(store: Path) -> dict[str, int]:
             title=memory.title,
             tags=["developer-skills", "/spec"],
         )
+    for memory_type, content in DECOY_MEMORIES:
+        remember_local(
+            store,
+            content=content,
+            agent=DEFAULT_AGENT,
+            memory_type=memory_type,
+            title=f"Decoy: {content}",
+            tags=["developer-skills", "/unrelated"],
+        )
 
     recalled = recall_local(
         store,
@@ -44,6 +60,7 @@ def run_benchmark(store: Path) -> dict[str, int]:
     missing = [memory for memory in expected if memory.content not in recalled_content]
     return {
         "saved_memories": len(expected),
+        "candidate_memories": len(expected) + len(DECOY_MEMORIES),
         "recalled_memories": len(recalled),
         "repeated_instructions": len(missing),
     }
@@ -53,11 +70,12 @@ def main() -> int:
     """Run the benchmark and print reviewer-friendly JSON."""
 
     store = Path(".memanto-skills-benchmark.jsonl")
-    if store.exists():
-        store.unlink()
-    result = run_benchmark(store)
-    print(json.dumps(result, indent=2))
     store.unlink(missing_ok=True)
+    try:
+        result = run_benchmark(store)
+    finally:
+        store.unlink(missing_ok=True)
+    print(json.dumps(result, indent=2))
     return 0 if result["repeated_instructions"] == 0 else 1
 
 

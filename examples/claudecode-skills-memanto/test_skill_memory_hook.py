@@ -185,3 +185,25 @@ def test_local_recall_ranks_relevant_memories_first(tmp_path):
     assert len(recalled) == 1
     assert recalled[0]["content"] == "invoice validation rejects negative totals"
 
+
+def test_local_recall_skips_malformed_jsonl_records(tmp_path):
+    """A truncated record should not hide valid memories in the same store."""
+
+    store = tmp_path / "skill-memory.jsonl"
+    store.write_text(
+        '{"agent":"developer-skills","type":"decision",'
+        '"title":"Invoice validation","content":"reject negative totals",'
+        '"tags":["developer-skills","/tdd"]}\n'
+        '{"agent":"developer-skills"',
+        encoding="utf-8",
+    )
+
+    recalled = recall_local(
+        store,
+        query="invoice validation",
+        agent="developer-skills",
+        limit=5,
+    )
+
+    assert [record["content"] for record in recalled] == ["reject negative totals"]
+
