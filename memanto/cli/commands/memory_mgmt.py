@@ -99,7 +99,8 @@ def memory_export(
         for mem_type in MEMORY_TYPE_ORDER:
             count = per_type.get(mem_type, 0)
             if count > 0:
-                label, _ = MEMORY_TYPE_META[mem_type]
+                label, _ = MEMORY_TYPE_META.get(mem_type, (mem_type, ""))
+                table.add_row(label, str(count)) = MEMORY_TYPE_META[mem_type]
                 table.add_row(f"{label}", str(count))
 
         console.print()
