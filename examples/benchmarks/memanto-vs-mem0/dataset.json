@@ -1,0 +1,36 @@
+[
+  {
+    "session_id": "user_1_session_1",
+    "turns": [
+      {"role": "user", "content": "I love drinking black coffee in the morning. It helps me wake up."},
+      {"role": "assistant", "content": "Noted. You prefer black coffee to start your day."}
+    ],
+    "fact": "Prefers black coffee in the morning"
+  },
+  {
+    "session_id": "user_1_session_2",
+    "turns": [
+      {"role": "user", "content": "Actually, I've switched to Matcha tea lately. It gives me a more stable energy boost than coffee."},
+      {"role": "assistant", "content": "I've updated your preferences. You now prefer Matcha tea for a stable energy boost."}
+    ],
+    "fact": "Switched from coffee to Matcha tea"
+  },
+  {
+    "session_id": "user_1_session_3",
+    "turns": [
+      {"role": "user", "content": "I'm thinking of going back to coffee, but only if it's a latte with almond milk. I can't stand black coffee anymore."},
+      {"role": "assistant", "content": "Got it. You now prefer almond milk lattes over black coffee."}
+    ],
+    "fact": "Prefers almond milk lattes, dislikes black coffee"
+  },
+  {
+    "session_id": "user_1_session_4",
+    "turns": [
+      {"role": "user", "content": "What should I order for my morning drink based on my preferences?"},
+      {"role": "assistant", "content": "You should order an almond milk latte."}
+    ],
+    "query": "What should I order for my morning drink?",
+    "expected_answer": "almond milk latte",
+    "distractor": "black coffee"
+  }
+]
