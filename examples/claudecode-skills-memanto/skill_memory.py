@@ -94,7 +94,11 @@ def read_local() -> list[MemoryCard]:
     for line in LOCAL_MEMORY.read_text(encoding="utf-8").splitlines():
         if not line.strip():
             continue
-        cards.append(MemoryCard(**json.loads(line)))
+        try:
+            cards.append(MemoryCard(**json.loads(line)))
+        except (json.JSONDecodeError, TypeError) as exc:
+            print(f"Warning: skipping malformed memory line: {exc}", file=sys.stderr)
+            continue
     return cards
 
 
@@ -156,7 +160,12 @@ def before(args: argparse.Namespace) -> int:
 
 
 def after(args: argparse.Namespace) -> int:
-    transcript = Path(args.transcript).read_text(encoding="utf-8")
+    transcript_path = Path(args.transcript)
+    try:
+        transcript = transcript_path.read_text(encoding="utf-8")
+    except FileNotFoundError:
+        print(f"Error: transcript file not found: {transcript_path}", file=sys.stderr)
+        return 1
     cards = [
         MemoryCard(
             content=line,
