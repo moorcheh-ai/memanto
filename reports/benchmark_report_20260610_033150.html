@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>The Great Agentic Memory Showdown</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+         max-width: 1200px; margin: 0 auto; padding: 20px; background: #f5f5f5; }
+  h1 { color: #333; } h2 { color: #555; margin-top: 40px; }
+  .card { background: white; border-radius: 8px; padding: 20px; margin: 16px 0;
+          box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+  table { border-collapse: collapse; width: 100%; }
+  th, td { padding: 10px 14px; text-align: left; border-bottom: 1px solid #eee; }
+  th { background: #f8f9fa; font-weight: 600; }
+  .chart-container { width: 100%; max-width: 700px; margin: 20px auto; }
+  .highlight { color: #2563eb; font-weight: bold; }
+  .meta { color: #888; font-size: 0.9em; }
+</style>
+</head>
+<body>
+<h1>🐜 The Great Agentic Memory Showdown</h1>
+<p class="meta">Generated: 2026-06-10 03:31 UTC | Judge Model: gpt-4o</p>
+
+<h2>📊 Results Summary</h2>
+<div class="card">
+<table>
+<tr><th>Framework</th><th>Scenario</th><th>Store Tokens</th><th>Retrieve Tokens</th>
+    <th>Store p95 (ms)</th><th>Retrieve p95 (ms)</th><th>Accuracy</th><th>Errors</th></tr>
+
+<tr><td>Memanto</td><td>A: Context-Overhead & Latency Sprint</td>
+    <td>1,136</td><td>4,000</td>
+    <td>50.0</td><td>30.0</td>
+    <td class="highlight">0.0</td><td>0</td></tr>
+
+<tr><td>Mem0</td><td>A: Context-Overhead & Latency Sprint</td>
+    <td>1,136</td><td>4,000</td>
+    <td>50.0</td><td>30.0</td>
+    <td class="highlight">0.0</td><td>0</td></tr>
+
+<tr><td>Memanto</td><td>B: Shifting Persona & Temporal Tracking</td>
+    <td>580</td><td>1,950</td>
+    <td>45.0</td><td>25.0</td>
+    <td class="highlight">0.0</td><td>0</td></tr>
+
+<tr><td>Mem0</td><td>B: Shifting Persona & Temporal Tracking</td>
+    <td>580</td><td>1,950</td>
+    <td>45.0</td><td>25.0</td>
+    <td class="highlight">0.0</td><td>0</td></tr>
+
+</table>
+</div>
+
+<h2>📈 Token Efficiency</h2>
+<div class="card chart-container">
+<canvas id="tokenChart"></canvas>
+</div>
+
+<h2>⏱️ Latency (p95)</h2>
+<div class="card chart-container">
+<canvas id="latencyChart"></canvas>
+</div>
+
+<h2>🎯 Retrieval Accuracy</h2>
+<div class="card chart-container">
+<canvas id="accuracyChart"></canvas>
+</div>
+
+<script>
+const labels = ["Memanto \u2014 A: Context-Overhead ", "Mem0 \u2014 A: Context-Overhead ", "Memanto \u2014 B: Shifting Persona ", "Mem0 \u2014 B: Shifting Persona "];
+const storeTokens = [1136, 1136, 580, 580];
+const retrieveTokens = [4000, 4000, 1950, 1950];
+const storeP95 = [50.0, 50.0, 45.0, 45.0];
+const retrieveP95 = [30.0, 30.0, 25.0, 25.0];
+const accuracy = [0.0, 0.0, 0.0, 0.0];
+
+new Chart(document.getElementById('tokenChart'), {
+  type: 'bar', data: {
+    labels: labels,
+    datasets: [
+      {label: 'Store Tokens', data: storeTokens, backgroundColor: '#3b82f6'},
+      {label: 'Retrieve Tokens', data: retrieveTokens, backgroundColor: '#10b981'}
+    ]
+  }, options: {responsive: true, plugins: {title: {display: true, text: 'Total Tokens Used'}}}
+});
+
+new Chart(document.getElementById('latencyChart'), {
+  type: 'bar', data: {
+    labels: labels,
+    datasets: [
+      {label: 'Store p95 (ms)', data: storeP95, backgroundColor: '#f59e0b'},
+      {label: 'Retrieve p95 (ms)', data: retrieveP95, backgroundColor: '#ef4444'}
+    ]
+  }, options: {responsive: true, plugins: {title: {display: true, text: 'p95 Latency (ms)'}}}
+});
+
+new Chart(document.getElementById('accuracyChart'), {
+  type: 'bar', data: {
+    labels: labels,
+    datasets: [{label: 'Retrieval Accuracy', data: accuracy, backgroundColor: '#8b5cf6'}]
+  }, options: {responsive: true, scales: {y: {min: 0, max: 1}},
+    plugins: {title: {display: true, text: 'Retrieval Accuracy (0-1)'}}}
+});
+</script>
+</body></html>

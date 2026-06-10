@@ -1,0 +1,92 @@
+[
+  {
+    "id": "log_001",
+    "content": "2026-05-15 09:23:11 [ERROR] Service mesh failure: Istio sidecar proxy on pod `payment-service-7b9d4` failed to establish mTLS connection to `fraud-detection-v2`. Certificate rotation triggered but new cert rejected by intermediate CA. Root cause: expired cert chain in Vault PKI secrets engine. Resolution: forced cert rotation via `vault write pki/issue/mesh-role common_name=payment-service` and restarted sidecar.",
+    "metadata": {"severity": "error", "service": "payment-service", "tags": ["istio", "mtls", "vault", "certificate"]},
+    "retrieval_queries": [
+      {"query": "What caused the payment service outage on May 15?", "golden_answer": "Istio sidecar proxy failed mTLS connection due to expired certificate chain in Vault PKI secrets engine"},
+      {"query": "How was the certificate issue resolved?", "golden_answer": "Forced cert rotation via vault write pki/issue/mesh-role and restarted sidecar"}
+    ]
+  },
+  {
+    "id": "log_002",
+    "content": "2026-05-15 10:45:33 [WARN] Database connection pool exhaustion detected on `user-db-primary`. Pool size: 200/200. 47 connections idle > 300s. Root cause: connection leak in ORM batch insert path — Session objects not properly closed in try/finally blocks in `UserService.bulk_create_users()`. Hotfix: added session.close() in finally clause and reduced pool_timeout from 30s to 10s.",
+    "metadata": {"severity": "warning", "service": "user-service", "tags": ["database", "connection-pool", "orm"]},
+    "retrieval_queries": [
+      {"query": "What was the database connection pool issue?", "golden_answer": "Connection pool exhaustion at 200/200 with 47 idle connections due to ORM session leak in bulk_create_users()"},
+      {"query": "What was the hotfix for the connection leak?", "golden_answer": "Added session.close() in finally clause and reduced pool_timeout from 30s to 10s"}
+    ]
+  },
+  {
+    "id": "log_003",
+    "content": "2026-05-16 14:12:05 [CRITICAL] Kafka consumer lag spike: consumer group `order-processor` lag reached 2.3M messages on topic `orders.created`. Partition rebalancing triggered by consumer restart cascade. Cause: JVM heap pressure (GC pause 12s) on consumer instances due to unbounded in-memory aggregation in `OrderEnrichmentProcessor`. Fix: switched to RocksDB-backed state store and added max.poll.records=100 limit.",
+    "metadata": {"severity": "critical", "service": "order-processor", "tags": ["kafka", "consumer-lag", "jvm", "gc"]},
+    "retrieval_queries": [
+      {"query": "What caused the Kafka consumer lag spike?", "golden_answer": "JVM heap pressure with 12s GC pauses from unbounded in-memory aggregation in OrderEnrichmentProcessor"},
+      {"query": "How was the Kafka lag issue fixed?", "golden_answer": "Switched to RocksDB-backed state store and added max.poll.records=100 limit"}
+    ]
+  },
+  {
+    "id": "log_004",
+    "content": "2026-05-17 08:33:22 [INFO] Performance regression detected in search API: p99 latency increased from 120ms to 890ms after deploying commit `a3f7c2d`. Profiling revealed N+1 query pattern in `SearchService.hybrid_search()` — each semantic result triggered an individual SQL lookup for metadata enrichment. Fix: batch metadata fetch using `WHERE id IN (...)` with chunked queries (500 IDs per batch).",
+    "metadata": {"severity": "info", "service": "search-api", "tags": ["performance", "n-plus-1", "sql", "latency"]},
+    "retrieval_queries": [
+      {"query": "Why did the search API latency spike?", "golden_answer": "N+1 query pattern in hybrid_search() where each semantic result triggered individual SQL lookups for metadata"},
+      {"query": "What was the search API optimization?", "golden_answer": "Batch metadata fetch using WHERE id IN with chunked queries of 500 IDs per batch"}
+    ]
+  },
+  {
+    "id": "log_005",
+    "content": "2026-05-18 16:55:44 [ERROR] Redis cluster failover: node `redis-3` OOM killed at 98% memory. Sentinel promoted replica but 12s failover window caused 340 timeout errors in rate limiter. Root cause: unbounded key growth in session cache — no TTL set on `session:*` keys after migration from Memcached. Fix: added EXPIRE 3600 on all session keys and implemented LRU eviction policy with maxmemory 8gb.",
+    "metadata": {"severity": "error", "service": "rate-limiter", "tags": ["redis", "oom", "failover", "session-cache"]},
+    "retrieval_queries": [
+      {"query": "What caused the Redis OOM and failover?", "golden_answer": "Unbounded key growth in session cache with no TTL on session:* keys after migration from Memcached"},
+      {"query": "How was the Redis memory issue resolved?", "golden_answer": "Added EXPIRE 3600 on session keys and implemented LRU eviction with maxmemory 8gb"}
+    ]
+  },
+  {
+    "id": "log_006",
+    "content": "2026-05-19 11:20:01 [WARN] Kubernetes HPA misconfiguration: deployment `recommendation-engine` scaled from 3 to 48 pods in 2 minutes due to CPU metric stuck at 95%. Root cause: custom metrics adapter caching stale values from Prometheus. The adapter was querying a 5-minute window but HPA evaluated every 15s. Fix: reduced metricsWindow to 30s and added stabilizationWindowSeconds: 60 to HPA spec.",
+    "metadata": {"severity": "warning", "service": "recommendation-engine", "tags": ["kubernetes", "hpa", "autoscaling", "prometheus"]},
+    "retrieval_queries": [
+      {"query": "Why did recommendation-engine scale to 48 pods?", "golden_answer": "Custom metrics adapter cached stale Prometheus values — 5-minute query window vs 15s HPA evaluation"},
+      {"query": "What was the HPA scaling fix?", "golden_answer": "Reduced metricsWindow to 30s and added stabilizationWindowSeconds: 60"}
+    ]
+  },
+  {
+    "id": "log_007",
+    "content": "2026-05-20 03:44:17 [CRITICAL] Data pipeline corruption: Spark job `feature-store-backfill` wrote NaN values to feature store after upstream schema change in `clickstream-events` topic. New field `engagement_score` (nullable float) was cast without null-check. 2.1M corrupted feature vectors propagated to ML serving layer before circuit breaker tripped. Fix: added schema validation with Avro schema registry and null-coalescing defaults.",
+    "metadata": {"severity": "critical", "service": "feature-store", "tags": ["spark", "data-corruption", "schema", "ml"]},
+    "retrieval_queries": [
+      {"query": "What caused the feature store data corruption?", "golden_answer": "Spark job wrote NaN values after upstream schema change — new nullable float field cast without null-check"},
+      {"query": "How was the data pipeline corruption prevented from recurring?", "golden_answer": "Added Avro schema registry validation and null-coalescing defaults"}
+    ]
+  },
+  {
+    "id": "log_008",
+    "content": "2026-05-21 19:08:55 [ERROR] API gateway rate limit bypass: malicious client using rotating IP addresses from AWS us-east-1 exploited per-IP rate limiting. Traffic spike: 45K RPS to `/api/v2/auth/login` endpoint. Bot detection failed because requests mimicked valid browser fingerprints. Fix: implemented sliding window rate limit on user-agent+accept-language hash, added Cloudflare Bot Management, and deployed WAF rules for credential stuffing patterns.",
+    "metadata": {"severity": "error", "service": "api-gateway", "tags": ["security", "rate-limit", "bot", "waf"]},
+    "retrieval_queries": [
+      {"query": "How was the API gateway rate limit bypassed?", "golden_answer": "Malicious client used rotating IPs from AWS and mimicked valid browser fingerprints to bypass per-IP rate limiting"},
+      {"query": "What security measures were added to prevent the attack?", "golden_answer": "Sliding window rate limit on user-agent+accept-language hash, Cloudflare Bot Management, and WAF rules for credential stuffing"}
+    ]
+  },
+  {
+    "id": "log_009",
+    "content": "2026-05-22 07:15:33 [INFO] Microservice mesh circular dependency detected: Service A (auth) → Service B (user-profile) → Service C (notification) → Service A (auth). During Service C deployment, cascading timeout caused 503s across all three services for 8 minutes. Root cause: synchronous gRPC calls in deployment readiness path. Fix: introduced async event bus for notification triggers and added circuit breakers with 3s timeout on all inter-service gRPC calls.",
+    "metadata": {"severity": "info", "service": "auth", "tags": ["microservices", "circular-dependency", "grpc", "circuit-breaker"]},
+    "retrieval_queries": [
+      {"query": "What circular dependency caused the cascading 503s?", "golden_answer": "Auth → user-profile → notification → auth circular dependency with synchronous gRPC calls"},
+      {"query": "How was the circular dependency resolved?", "golden_answer": "Async event bus for notifications and circuit breakers with 3s timeout on inter-service gRPC"}
+    ]
+  },
+  {
+    "id": "log_010",
+    "content": "2026-05-23 22:30:09 [WARN] Observability gap: distributed tracing spans missing for 60% of requests through `inventory-service`. Root cause: OpenTelemetry SDK sampling rate set to 0.4 in production config (copy-paste from staging). Additionally, trace context propagation headers dropped by custom HTTP middleware that didn't forward `traceparent` and `tracestate` headers. Fix: set sampling to parentbased_always_on and patched middleware to propagate W3C trace context.",
+    "metadata": {"severity": "warning", "service": "inventory-service", "tags": ["observability", "tracing", "opentelemetry", "middleware"]},
+    "retrieval_queries": [
+      {"query": "Why were distributed tracing spans missing for inventory-service?", "golden_answer": "Sampling rate 0.4 from staging config and custom middleware dropping traceparent/tracestate headers"},
+      {"query": "How was the tracing gap fixed?", "golden_answer": "Set sampling to parentbased_always_on and patched middleware for W3C trace context propagation"}
+    ]
+  }
+]

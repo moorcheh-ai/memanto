@@ -1,0 +1,61 @@
+[
+  {
+    "session_id": "session_01",
+    "timestamp": "2026-03-01",
+    "messages": [
+      {"role": "user", "content": "I love Italian food, especially pasta carbonara. I eat it every Friday.", "timestamp": "2026-03-01T10:00:00Z"},
+      {"role": "user", "content": "My favorite movie genre is action. I just watched all the John Wick movies again.", "timestamp": "2026-03-01T10:05:00Z"},
+      {"role": "user", "content": "I work as a data engineer at a fintech startup. I use Python and Spark daily.", "timestamp": "2026-03-01T10:10:00Z"},
+      {"role": "user", "content": "I prefer dark mode for everything. Light mode hurts my eyes.", "timestamp": "2026-03-01T10:15:00Z"}
+    ],
+    "evaluation_queries": [
+      {"query": "What is the user's favorite food?", "golden_answer": "Italian food, especially pasta carbonara"},
+      {"query": "What movie genre does the user prefer?", "golden_answer": "Action movies, particularly John Wick"},
+      {"query": "What is the user's job?", "golden_answer": "Data engineer at a fintech startup using Python and Spark"}
+    ]
+  },
+  {
+    "session_id": "session_02",
+    "timestamp": "2026-03-15",
+    "messages": [
+      {"role": "user", "content": "Actually, I've been trying Japanese food lately. Ramen is becoming my new obsession. I might switch from Italian.", "timestamp": "2026-03-15T14:00:00Z"},
+      {"role": "user", "content": "I just got promoted to Senior Data Engineer! Still at the same fintech but now I'm also managing the ML pipeline team.", "timestamp": "2026-03-15T14:10:00Z"},
+      {"role": "user", "content": "I've been watching a lot of sci-fi recently. Interstellar and Dune are my new favorites. Action movies feel repetitive now.", "timestamp": "2026-03-15T14:20:00Z"}
+    ],
+    "evaluation_queries": [
+      {"query": "What food does the user currently prefer?", "golden_answer": "Japanese food, especially ramen — switching from Italian"},
+      {"query": "What is the user's current job role?", "golden_answer": "Senior Data Engineer at a fintech startup, managing the ML pipeline team"},
+      {"query": "What movie genre does the user currently enjoy?", "golden_answer": "Sci-fi, favorites are Interstellar and Dune — finds action movies repetitive now"}
+    ]
+  },
+  {
+    "session_id": "session_03",
+    "timestamp": "2026-04-10",
+    "messages": [
+      {"role": "user", "content": "Big life update: I quit my job at the fintech startup! I'm now a freelance AI consultant. Working with multiple clients on LLM fine-tuning and RAG systems.", "timestamp": "2026-04-10T09:00:00Z"},
+      {"role": "user", "content": "Also, I've gone vegetarian. No more ramen with pork broth — I'm exploring vegetable-based ramen now. Thai green curry is my new comfort food.", "timestamp": "2026-04-10T09:15:00Z"},
+      {"role": "user", "content": "I switched to light mode actually! Got a new monitor with great color accuracy and light mode works better in my bright office.", "timestamp": "2026-04-10T09:20:00Z"},
+      {"role": "user", "content": "For entertainment, I'm really into documentaries now. Especially nature documentaries like Planet Earth. Don't have time for long movies anymore.", "timestamp": "2026-04-10T09:30:00Z"}
+    ],
+    "evaluation_queries": [
+      {"query": "What is the user's current career?", "golden_answer": "Freelance AI consultant working on LLM fine-tuning and RAG systems with multiple clients"},
+      {"query": "What are the user's current dietary preferences?", "golden_answer": "Vegetarian — prefers vegetable-based ramen and Thai green curry as comfort food"},
+      {"query": "What is the user's UI theme preference?", "golden_answer": "Light mode — switched from dark mode because of new monitor with good color accuracy in bright office"},
+      {"query": "What entertainment does the user currently enjoy?", "golden_answer": "Nature documentaries like Planet Earth — doesn't have time for long movies anymore"}
+    ]
+  },
+  {
+    "session_id": "session_04",
+    "timestamp": "2026-05-20",
+    "messages": [
+      {"role": "user", "content": "Update on the career front: my freelance consulting is going really well. I specialize in agentic AI systems now — memory frameworks, tool-use orchestration, and multi-agent architectures. Dropped the RAG work.", "timestamp": "2026-05-20T11:00:00Z"},
+      {"role": "user", "content": "Food update: I'm no longer strictly vegetarian. I follow a pescatarian diet now. Still love Thai food though. My weekly routine is sushi on Mondays and Thai curry on Wednesdays.", "timestamp": "2026-05-20T11:15:00Z"},
+      {"role": "user", "content": "I'm learning Rust in my spare time. Still use Python for AI work but want to build high-performance tools in Rust.", "timestamp": "2026-05-20T11:20:00Z"}
+    ],
+    "evaluation_queries": [
+      {"query": "What is the user's current professional specialization?", "golden_answer": "Freelance AI consultant specializing in agentic AI systems — memory frameworks, tool-use orchestration, multi-agent architectures. No longer doing RAG."},
+      {"query": "What is the user's current diet?", "golden_answer": "Pescatarian — sushi on Mondays, Thai curry on Wednesdays"},
+      {"query": "What programming languages does the user use?", "golden_answer": "Python for AI work, learning Rust for high-performance tools"}
+    ]
+  }
+]
