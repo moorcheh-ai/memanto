@@ -40,7 +40,7 @@ class Mem0Adapter(MemoryAdapter):
                 data=result,
             )
         except Exception as e:
-            return MemoryResult(success=False, latency_ms=0, error=str(e))
+            return MemoryResult(success=False, latency_ms=0, error="Operation failed. See logs for details.")
 
     def retrieve(self, query: str, limit: int = 5) -> MemoryResult:
         try:
@@ -54,7 +54,7 @@ class Mem0Adapter(MemoryAdapter):
                 data=memories,
             )
         except Exception as e:
-            return MemoryResult(success=False, latency_ms=0, error=str(e))
+            return MemoryResult(success=False, latency_ms=0, error="Operation failed. See logs for details.")
 
     def update(self, memory_id: str, content: str) -> MemoryResult:
         try:
@@ -66,21 +66,21 @@ class Mem0Adapter(MemoryAdapter):
                 data=result,
             )
         except Exception as e:
-            return MemoryResult(success=False, latency_ms=0, error=str(e))
+            return MemoryResult(success=False, latency_ms=0, error="Operation failed. See logs for details.")
 
     def delete(self, memory_id: str) -> MemoryResult:
         try:
             result = self._client.delete(memory_id)
             return MemoryResult(success=True, latency_ms=0, data=result)
         except Exception as e:
-            return MemoryResult(success=False, latency_ms=0, error=str(e))
+            return MemoryResult(success=False, latency_ms=0, error="Operation failed. See logs for details.")
 
     def get_all(self) -> MemoryResult:
         try:
             result = self._client.get_all(user_id=self._user_id)
             return MemoryResult(success=True, latency_ms=0, data=result)
         except Exception as e:
-            return MemoryResult(success=False, latency_ms=0, error=str(e))
+            return MemoryResult(success=False, latency_ms=0, error="Operation failed. See logs for details.")
 
     def cleanup(self) -> None:
         try:
