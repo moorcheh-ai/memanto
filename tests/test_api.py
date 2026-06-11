@@ -420,6 +420,126 @@ class TestMEMANTOAPI:
         call_kwargs = mock_moorcheh.similarity_search.query.call_args.kwargs
         assert "memory_type:fact" in call_kwargs["query"]
 
+    async def _activate_agent(self, client, auth_headers, agent_id):
+        """Helper: create + activate an agent, returning its session token."""
+        await client.post(
+            "/api/v2/agents",
+            headers=auth_headers,
+            json={"agent_id": agent_id},
+        )
+        activate_resp = await client.post(
+            f"/api/v2/agents/{agent_id}/activate", headers=auth_headers
+        )
+        return activate_resp.json()["session_token"]
+
+    @pytest.mark.asyncio
+    async def test_recall_multi_merges_and_attributes(
+        self, client, auth_headers, mock_moorcheh
+    ):
+        """Cross-agent recall merges, score-sorts, and tags each result."""
+        token_a = await self._activate_agent(client, auth_headers, "multi-agent-a")
+        token_b = await self._activate_agent(client, auth_headers, "multi-agent-b")
+
+        # Moorcheh merges namespaces server-side; each item carries its
+        # source agent in the flat scope_id metadata field.
+        mock_moorcheh.similarity_search.query.return_value = {
+            "results": [
+                {
+                    "id": "mem-a",
+                    "text": "[FACT] From A\n\nalpha",
+                    "score": 0.80,
+                    "scope_id": "multi-agent-a",
+                    "scope_type": "agent",
+                },
+                {
+                    "id": "mem-b",
+                    "text": "[FACT] From B\n\nbeta",
+                    "score": 0.95,
+                    "scope_id": "multi-agent-b",
+                    "scope_type": "agent",
+                },
+            ],
+            "total_found": 2,
+        }
+
+        headers = {**auth_headers, "X-Session-Tokens": f"{token_a},{token_b}"}
+        payload = {
+            "agent_ids": ["multi-agent-a", "multi-agent-b"],
+            "query": "test query",
+        }
+        response = await client.post(
+            "/api/v2/recall/multi", headers=headers, json=payload
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+
+        # Both namespaces searched in a single query
+        call_kwargs = mock_moorcheh.similarity_search.query.call_args.kwargs
+        assert set(call_kwargs["namespaces"]) == {
+            "memanto_agent_multi-agent-a",
+            "memanto_agent_multi-agent-b",
+        }
+
+        memories = data["memories"]
+        assert len(memories) == 2
+        # Score-sorted: highest first
+        assert [m["score"] for m in memories] == [0.95, 0.80]
+        # Each result indicates which agent it came from
+        assert memories[0]["agent_id"] == "multi-agent-b"
+        assert memories[1]["agent_id"] == "multi-agent-a"
+        assert data["per_agent_counts"] == {"multi-agent-a": 1, "multi-agent-b": 1}
+
+    @pytest.mark.asyncio
+    async def test_recall_multi_rejects_unauthorized_agent(
+        self, client, auth_headers, mock_moorcheh
+    ):
+        """Requesting an agent without a supplied token is rejected with 403."""
+        token_a = await self._activate_agent(client, auth_headers, "multi-auth-a")
+
+        # Only agent A's token is supplied, but B is requested.
+        headers = {**auth_headers, "X-Session-Token": token_a}
+        payload = {
+            "agent_ids": ["multi-auth-a", "multi-auth-b"],
+            "query": "test query",
+        }
+        response = await client.post(
+            "/api/v2/recall/multi", headers=headers, json=payload
+        )
+
+        assert response.status_code == 403
+        assert "multi-auth-b" in response.json()["detail"]["message"]
+        # No search is attempted when authorization fails.
+        mock_moorcheh.similarity_search.query.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_recall_multi_requires_session_token(self, client, auth_headers):
+        """Multi-recall without any session token is rejected with 401."""
+        payload = {"agent_ids": ["multi-noauth"], "query": "test query"}
+        response = await client.post(
+            "/api/v2/recall/multi", headers=auth_headers, json=payload
+        )
+        assert response.status_code == 401
+
+    @pytest.mark.asyncio
+    async def test_recall_multi_forwards_min_confidence(
+        self, client, auth_headers, mock_moorcheh
+    ):
+        """Multi-recall forwards min_confidence into the Moorcheh query filter."""
+        token = await self._activate_agent(client, auth_headers, "multi-conf-a")
+        headers = {**auth_headers, "X-Session-Token": token}
+        payload = {
+            "agent_ids": ["multi-conf-a"],
+            "query": "test query",
+            "min_confidence": 0.9,
+        }
+        response = await client.post(
+            "/api/v2/recall/multi", headers=headers, json=payload
+        )
+        assert response.status_code == 200
+        call_kwargs = mock_moorcheh.similarity_search.query.call_args.kwargs
+        assert "confidence:high" in call_kwargs["query"]
+
     @pytest.mark.asyncio
     async def test_get_agent(self, client, auth_headers):
         """Test getting agent details"""

@@ -223,6 +223,109 @@ class MemoryReadService:
         except Exception as e:
             raise MemoryError(f"Failed to search across multiple scopes: {e}")
 
+    def search_multi_agent(
+        self,
+        query: str,
+        agent_ids: list[str],
+        type: list[str] | None = None,
+        min_confidence: float | None = None,
+        min_similarity_score: float | None = None,
+        limit: int = 10,
+    ) -> dict[str, Any]:
+        """
+        Cross-agent / multi-namespace recall.
+
+        Searches several agents' memory namespaces in a single query and
+        returns merged, score-sorted results. Each result is annotated with the
+        ``agent_id`` it came from, taken from the stored ``scope_id`` metadata.
+
+        Leverages Moorcheh's native multi-namespace similarity search, so the
+        merge happens server-side; the local re-sort is a safety net after the
+        post-processing TTL filter.
+
+        Note: Moorcheh's merged search response does not echo the source
+        namespace per hit, so attribution relies on the ``scope_id`` metadata
+        written with every remembered memory. Documents created without it
+        (e.g. file uploads chunked server-side by Moorcheh) cannot be
+        attributed and come back with ``agent_id`` set to ``None``.
+
+        Args:
+            query: Natural-language search query.
+            agent_ids: Agents whose namespaces to search.
+            type: Optional memory type filters.
+            min_confidence: Optional minimum confidence filter.
+            min_similarity_score: Optional similarity threshold (enables
+                Moorcheh kiosk_mode when set).
+            limit: Max merged results to return.
+        """
+        try:
+            from typing import cast
+
+            from memanto.app.constants import ScopeType
+
+            # Build the namespace list, de-duplicating agent ids while
+            # preserving order.
+            namespaces: list[str] = []
+            seen_agents: set[str] = set()
+            for agent_id in agent_ids:
+                if agent_id in seen_agents:
+                    continue
+                seen_agents.add(agent_id)
+                scope = create_memory_scope(cast(ScopeType, "agent"), agent_id)
+                namespaces.append(cast(str, scope.to_namespace()))
+
+            if not namespaces:
+                return {
+                    "results": [],
+                    "total_found": 0,
+                    "per_agent_counts": {},
+                }
+
+            enhanced_query = self._build_filtered_query(
+                query=query, type=type, min_confidence=min_confidence
+            )
+
+            top_k = min(limit, 100)  # Moorcheh max is 100
+            search_result = self.client.similarity_search.query(
+                query=enhanced_query,
+                namespaces=namespaces,
+                top_k=top_k,
+                threshold=min_similarity_score,
+                kiosk_mode=min_similarity_score is not None,
+            )
+
+            formatted_results: list[dict[str, Any]] = []
+            for item in search_result.get("results", []):
+                formatted = self._format_memory_item(item)
+                # Attribute each result to its source agent via the stored
+                # scope_id metadata. Moorcheh's merged response carries no
+                # per-hit namespace, so documents without scope_id (e.g. file
+                # uploads) are left unattributed (agent_id = None).
+                formatted["agent_id"] = formatted.get("scope_id")
+                formatted_results.append(formatted)
+
+            # Apply TTL enforcement, then re-sort by score after the merge.
+            formatted_results = self._filter_expired_memories(formatted_results)
+            formatted_results.sort(key=lambda m: m.get("score") or 0.0, reverse=True)
+            formatted_results = formatted_results[:limit]
+
+            per_agent_counts: dict[str, int] = {}
+            for memory in formatted_results:
+                aid = memory.get("agent_id") or "unknown"
+                per_agent_counts[aid] = per_agent_counts.get(aid, 0) + 1
+
+            return {
+                "results": formatted_results,
+                "total_found": len(formatted_results),
+                "per_agent_counts": per_agent_counts,
+                "query": query,
+                "enhanced_query": enhanced_query,
+                "execution_time": search_result.get("execution_time", 0),
+            }
+
+        except Exception as e:
+            raise MemoryError(f"Failed to search across agents: {e}")
+
     def search_as_of(
         self,
         as_of_date: str,

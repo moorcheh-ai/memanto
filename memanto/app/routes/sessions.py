@@ -41,6 +41,8 @@ from memanto.app.routes.auth_deps import (  # noqa: E402
 )
 
 router.include_router(memory.router, prefix="/agents", tags=["Memory Operations"])
+# Cross-agent recall lives at the v2 root: POST /api/v2/recall/multi
+router.include_router(memory.multi_router, tags=["Memory Operations"])
 
 # Service instances
 agent_service = AgentService()
