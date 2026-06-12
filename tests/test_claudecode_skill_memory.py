@@ -11,6 +11,7 @@ MODULE_PATH = (
 
 
 def load_module():
+    """Load the example module from its documentation directory."""
     spec = importlib.util.spec_from_file_location("skill_memory", MODULE_PATH)
     module = importlib.util.module_from_spec(spec)
     assert spec.loader is not None
@@ -19,12 +20,16 @@ def load_module():
 
 
 class FakeRunner:
+    """Capture Memanto CLI commands while returning configured output."""
+
     def __init__(self, stdout="", returncode=0):
+        """Configure fake process output for command calls."""
         self.stdout = stdout
         self.returncode = returncode
         self.commands = []
 
     def __call__(self, command):
+        """Record a command and return a process-like result object."""
         self.commands.append(command)
 
         class Result:
@@ -38,10 +43,12 @@ class FakeRunner:
 
 
 def missing_runner(command):
+    """Simulate the Memanto CLI being absent from PATH."""
     raise FileNotFoundError(command[0])
 
 
 def test_inject_context_formats_recalled_engineering_decisions():
+    """Inject mode formats recalled Memanto memories into context."""
     skill_memory = load_module()
     recall_payload = {
         "memories": [
@@ -85,6 +92,7 @@ def test_inject_context_formats_recalled_engineering_decisions():
 
 
 def test_record_completion_stores_decisions_and_skips_empty_summaries():
+    """Record mode stores non-empty summaries and skips empty events."""
     skill_memory = load_module()
     runner = FakeRunner(stdout='{"memory_id": "mem-1"}')
     bridge = skill_memory.SkillMemoryBridge(runner=runner)
@@ -121,6 +129,7 @@ def test_record_completion_stores_decisions_and_skips_empty_summaries():
 
 
 def test_missing_memanto_cli_fails_open_without_crashing():
+    """Missing Memanto binaries return empty outputs instead of raising."""
     skill_memory = load_module()
     bridge = skill_memory.SkillMemoryBridge(runner=missing_runner)
 
@@ -136,6 +145,7 @@ def test_missing_memanto_cli_fails_open_without_crashing():
 
 
 def test_main_reports_invalid_event_input(capsys):
+    """Invalid event JSON is reported as a CLI error."""
     skill_memory = load_module()
 
     exit_code = skill_memory.main(["inject", "--event", "[]"])

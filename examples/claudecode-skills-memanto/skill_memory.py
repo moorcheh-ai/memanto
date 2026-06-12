@@ -18,21 +18,26 @@ CommandRunner = Callable[[list[str]], Any]
 
 
 def run_command(command: list[str]) -> subprocess.CompletedProcess[str]:
+    """Run a Memanto CLI command and return the completed process."""
     return subprocess.run(command, capture_output=True, check=False, text=True)
 
 
 class SkillMemoryBridge:
+    """Bridge Claude Code skill lifecycle events to Memanto memory commands."""
+
     def __init__(
         self,
         runner: CommandRunner = run_command,
         recall_limit: int = 5,
         context_budget: int = 1600,
     ) -> None:
+        """Configure the CLI runner and recall output limits."""
         self.runner = runner
         self.recall_limit = recall_limit
         self.context_budget = context_budget
 
     def inject_context(self, event: dict[str, Any]) -> dict[str, str]:
+        """Recall relevant engineering memories for a skill event."""
         query = self._build_recall_query(event)
         try:
             result = self.runner(
@@ -57,6 +62,7 @@ class SkillMemoryBridge:
         return {"additionalContext": self._clip("\n".join(lines))}
 
     def record_completion(self, event: dict[str, Any]) -> dict[str, Any]:
+        """Persist completion notes from a finished skill run."""
         summary = str(event.get("summary", "")).strip()
         decisions = [
             str(decision).strip()
@@ -92,6 +98,7 @@ class SkillMemoryBridge:
         }
 
     def _build_recall_query(self, event: dict[str, Any]) -> str:
+        """Build the Memanto recall query from the skill event metadata."""
         skill = str(event.get("skill", "unknown-skill")).strip() or "unknown-skill"
         task = str(event.get("task", "unspecified task")).strip() or "unspecified task"
         project_path = str(event.get("project_path", "unknown project")).strip()
@@ -100,6 +107,7 @@ class SkillMemoryBridge:
         return f"Skill {skill} for task {task} in {project_path} touching {file_text}"
 
     def _parse_memories(self, stdout: str) -> list[dict[str, Any]]:
+        """Parse Memanto JSON output into memory dictionaries."""
         try:
             payload = json.loads(stdout or "{}")
         except json.JSONDecodeError:
@@ -117,6 +125,7 @@ class SkillMemoryBridge:
     def _format_memory_body(
         self, summary: str, decisions: list[str], project_path: str
     ) -> str:
+        """Format a completion event into a Memanto memory body."""
         parts = []
         if summary:
             parts.append(summary)
@@ -127,12 +136,14 @@ class SkillMemoryBridge:
         return "\n\n".join(parts)
 
     def _clip(self, text: str) -> str:
+        """Constrain recalled context to the configured character budget."""
         if len(text) <= self.context_budget:
             return text
         return text[: self.context_budget - 3].rstrip() + "..."
 
 
 def load_event(raw_event: str | None) -> dict[str, Any]:
+    """Load a JSON skill event from an argument or standard input."""
     raw = raw_event if raw_event is not None else sys.stdin.read()
     if not raw.strip():
         return {}
@@ -143,6 +154,7 @@ def load_event(raw_event: str | None) -> dict[str, Any]:
 
 
 def main(argv: list[str] | None = None) -> int:
+    """Run the skill memory bridge CLI."""
     parser = argparse.ArgumentParser(description="Memanto bridge for Claude Code skills")
     parser.add_argument("mode", choices=["inject", "record"])
     parser.add_argument("--event", help="JSON event payload. Defaults to stdin.")
