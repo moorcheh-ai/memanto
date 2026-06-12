@@ -858,7 +858,9 @@ class DirectClient:
                 unauthorized.append(agent_id)
                 continue
             try:
-                session_service.validate_session(session.session_token)
+                token_payload = session_service.validate_session(session.session_token)
+                if token_payload.agent_id != agent_id:
+                    unauthorized.append(agent_id)
             except (SessionExpiredError, InvalidSessionTokenError):
                 unauthorized.append(agent_id)
         if unauthorized:
