@@ -56,6 +56,20 @@ jobs:
         run: |
           for attempt in $(seq 1 60); do
             if curl --fail --silent http://127.0.0.1:8080/health >/dev/null; then
+              break
+            fi
+            sleep 2
+          done
+          curl --fail --silent http://127.0.0.1:8080/health >/dev/null
+
+          # The HTTP health endpoint can become ready before namespace storage.
+          for attempt in $(seq 1 30); do
+            if python -m moorcheh namespace-create \
+              --name benchmark-readiness \
+              --type text; then
+              exit 0
+            fi
+            if python -m moorcheh namespace-list | grep -q benchmark-readiness; then
               exit 0
             fi
             sleep 2
@@ -79,6 +93,10 @@ jobs:
             > examples/benchmarks/temporal-memory-showdown/results/logs/moorcheh.log 2>&1 || true
           docker logs moorcheh-ollama \
             > examples/benchmarks/temporal-memory-showdown/results/logs/ollama.log 2>&1 || true
+          docker inspect moorcheh-onprem-server \
+            > examples/benchmarks/temporal-memory-showdown/results/logs/server-inspect.json 2>&1 || true
+          find "$BENCH_HOME/.moorcheh" -maxdepth 3 -printf "%M %u:%g %s %p\n" \
+            > examples/benchmarks/temporal-memory-showdown/results/logs/data-layout.txt 2>&1 || true
 
       - name: Upload results
         if: always()
