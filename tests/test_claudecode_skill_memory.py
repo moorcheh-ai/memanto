@@ -133,3 +133,15 @@ def test_missing_memanto_cli_fails_open_without_crashing():
         "stored": False,
         "reason": "memanto CLI unavailable",
     }
+
+
+def test_main_reports_invalid_event_input(capsys):
+    skill_memory = load_module()
+
+    exit_code = skill_memory.main(["inject", "--event", "[]"])
+
+    captured = capsys.readouterr()
+    assert exit_code == 1
+    assert captured.out == ""
+    assert "Invalid event input" in captured.err
+    assert "event JSON must be an object" in captured.err

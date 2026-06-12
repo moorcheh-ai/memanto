@@ -149,7 +149,12 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     bridge = SkillMemoryBridge()
-    event = load_event(args.event)
+    try:
+        event = load_event(args.event)
+    except (json.JSONDecodeError, ValueError) as error:
+        print(f"Invalid event input: {error}", file=sys.stderr)
+        return 1
+
     if args.mode == "inject":
         payload = bridge.inject_context(event)
     else:
