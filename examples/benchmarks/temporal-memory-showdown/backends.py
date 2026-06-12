@@ -46,7 +46,8 @@ class MemantoBackend:
 
         self.agent_id = f"bench-{run_id}-memanto"
         self.client = SdkClient(api_key="on-prem-local")
-        self.client.create_agent(
+        create_memanto_agent(
+            self.client,
             agent_id=self.agent_id,
             pattern="tool",
             description="Temporal memory benchmark",
@@ -96,6 +97,36 @@ class MemantoBackend:
             self.client.deactivate_agent(self.agent_id)
         except Exception:
             pass
+
+
+def create_memanto_agent(
+    client: Any,
+    *,
+    agent_id: str,
+    pattern: str,
+    description: str,
+    attempts: int = 5,
+    delay_s: float = 1.0,
+) -> None:
+    """Retry idempotent bootstrap when On-Prem commits before returning 500."""
+
+    if attempts < 1:
+        raise ValueError("attempts must be at least 1")
+    last_error: Exception | None = None
+    for attempt in range(attempts):
+        try:
+            client.create_agent(
+                agent_id=agent_id,
+                pattern=pattern,
+                description=description,
+            )
+            return
+        except Exception as error:
+            last_error = error
+            if attempt + 1 < attempts:
+                time.sleep(delay_s)
+    assert last_error is not None
+    raise last_error
 
 
 class MeteredOllamaClient:

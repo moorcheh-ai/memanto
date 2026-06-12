@@ -2,7 +2,12 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from backends import MeteredOllamaClient, SearchHit, build_mem0_config
+from backends import (
+    MeteredOllamaClient,
+    SearchHit,
+    build_mem0_config,
+    create_memanto_agent,
+)
 from dataset import QUERIES, RECORDS, QueryCase
 from metrics import paired_bootstrap_delta, percentile, score_query, summarize_scores
 from run_benchmark import render_markdown, run_backend
@@ -83,6 +88,29 @@ def test_ollama_meter_reads_native_token_counts():
     assert meter.calls == 1
     assert meter.input_tokens == 17
     assert meter.output_tokens == 5
+
+
+def test_memanto_agent_bootstrap_retries_idempotently():
+    class FlakyClient:
+        def __init__(self):
+            self.calls = 0
+
+        def create_agent(self, **kwargs):
+            self.calls += 1
+            assert kwargs["agent_id"] == "bench-test"
+            if self.calls == 1:
+                raise RuntimeError("namespace committed before server returned 500")
+
+    client = FlakyClient()
+    create_memanto_agent(
+        client,
+        agent_id="bench-test",
+        pattern="tool",
+        description="benchmark",
+        attempts=2,
+        delay_s=0,
+    )
+    assert client.calls == 2
 
 
 def test_runner_produces_auditable_report_shape():
