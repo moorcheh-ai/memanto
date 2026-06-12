@@ -1,0 +1,4430 @@
+{
+  "schema_version": 1,
+  "run_id": "7c776889d4",
+  "config": {
+    "backends": [
+      "memanto",
+      "mem0-direct",
+      "mem0-agentic"
+    ],
+    "top_k": 5,
+    "repeats": 5,
+    "llm_model": "qwen2.5:1.5b",
+    "moorcheh_url": "http://127.0.0.1:8080",
+    "ollama_url": "http://127.0.0.1:11434"
+  },
+  "dataset": {
+    "records": 32,
+    "queries": 18,
+    "sessions": 10
+  },
+  "environment": {
+    "timestamp_utc": "2026-06-12T21:27:29.456574+00:00",
+    "python": "3.12.13 (main, Mar  4 2026, 02:26:36) [GCC 13.3.0]",
+    "platform": "Linux-6.17.0-1018-azure-x86_64-with-glibc2.39",
+    "machine": "x86_64",
+    "processor": "x86_64",
+    "logical_cpus": 4,
+    "memory_gb": 15.615,
+    "git_commit": "66219b45b2f578cb9dea029ee6757316f3abb3ea",
+    "docker": "28.0.4"
+  },
+  "runs": [
+    {
+      "backend": "memanto-on-prem",
+      "summary": {
+        "mean_coverage": 0.972222,
+        "exact_accuracy": 0.0,
+        "stale_leak_rate": 1.0,
+        "by_category": {
+          "current-state": {
+            "mean_coverage": 1.0,
+            "exact_accuracy": 0.0,
+            "stale_leak_rate": 1.0,
+            "queries": 11
+          },
+          "historical": {
+            "mean_coverage": 1.0,
+            "exact_accuracy": 0.0,
+            "stale_leak_rate": 1.0,
+            "queries": 4
+          },
+          "multi-hop": {
+            "mean_coverage": 0.833333,
+            "exact_accuracy": 0.0,
+            "stale_leak_rate": 1.0,
+            "queries": 3
+          }
+        }
+      },
+      "metrics": {
+        "records_ingested": 32,
+        "queries_evaluated": 18,
+        "top_k": 5,
+        "latency_repeats": 5,
+        "source_tokens": 551,
+        "retrieved_tokens": 1779,
+        "avg_retrieved_tokens_per_query": 98.833,
+        "ingest_total_s": 0.096153,
+        "ingest_p50_s": 0.002077,
+        "ingest_p95_s": 0.004931,
+        "index_ready_s": 4.823175,
+        "query_mean_s": 0.07348,
+        "query_p50_s": 0.069954,
+        "query_p95_s": 0.098346,
+        "client_rss_delta_mb": 5.676,
+        "llm_calls": 0,
+        "llm_input_tokens": 0,
+        "llm_output_tokens": 0
+      },
+      "scores": [
+        {
+          "query_id": "Q01",
+          "category": "current-state",
+          "coverage": 1.0,
+          "stale_leak": true,
+          "exact": false,
+          "matched_required": 1,
+          "required_total": 1,
+          "matched_forbidden": 1
+        },
+        {
+          "query_id": "Q02",
+          "category": "current-state",
+          "coverage": 1.0,
+          "stale_leak": true,
+          "exact": false,
+          "matched_required": 1,
+          "required_total": 1,
+          "matched_forbidden": 1
+        },
+        {
+          "query_id": "Q03",
+          "category": "current-state",
+          "coverage": 1.0,
+          "stale_leak": true,
+          "exact": false,
+          "matched_required": 1,
+          "required_total": 1,
+          "matched_forbidden": 1
+        },
+        {
+          "query_id": "Q04",
+          "category": "current-state",
+          "coverage": 1.0,
+          "stale_leak": true,
+          "exact": false,
+          "matched_required": 2,
+          "required_total": 2,
+          "matched_forbidden": 1
+        },
+        {
+          "query_id": "Q05",
+          "category": "current-state",
+          "coverage": 1.0,
+          "stale_leak": true,
+          "exact": false,
+          "matched_required": 2,
+          "required_total": 2,
+          "matched_forbidden": 2
+        },
+        {
+          "query_id": "Q06",
+          "category": "current-state",
+          "coverage": 1.0,
+          "stale_leak": true,
+          "exact": false,
+          "matched_required": 1,
+          "required_total": 1,
+          "matched_forbidden": 1
+        },
+        {
+          "query_id": "Q07",
+          "category": "current-state",
+          "coverage": 1.0,
+          "stale_leak": true,
+          "exact": false,
+          "matched_required": 1,
+          "required_total": 1,
+          "matched_forbidden": 1
+        },
+        {
+          "query_id": "Q08",
+          "category": "current-state",
+          "coverage": 1.0,
+          "stale_leak": true,
+          "exact": false,
+          "matched_required": 1,
+          "required_total": 1,
+          "matched_forbidden": 1
+        },
+        {
+          "query_id": "Q09",
+          "category": "current-state",
+          "coverage": 1.0,
+          "stale_leak": true,
+          "exact": false,
+          "matched_required": 2,
+          "required_total": 2,
+          "matched_forbidden": 1
+        },
+        {
+          "query_id": "Q10",
+          "category": "current-state",
+          "coverage": 1.0,
+          "stale_leak": true,
+          "exact": false,
+          "matched_required": 3,
+          "required_total": 3,
+          "matched_forbidden": 1
+        },
+        {
+          "query_id": "Q11",
+          "category": "current-state",
+          "coverage": 1.0,
+          "stale_leak": true,
+          "exact": false,
+          "matched_required": 2,
+          "required_total": 2,
+          "matched_forbidden": 2
+        },
+        {
+          "query_id": "Q12",
+          "category": "historical",
+          "coverage": 1.0,
+          "stale_leak": true,
+          "exact": false,
+          "matched_required": 1,
+          "required_total": 1,
+          "matched_forbidden": 1
+        },
+        {
+          "query_id": "Q13",
+          "category": "historical",
+          "coverage": 1.0,
+          "stale_leak": true,
+          "exact": false,
+          "matched_required": 1,
+          "required_total": 1,
+          "matched_forbidden": 1
+        },
+        {
+          "query_id": "Q14",
+          "category": "historical",
+          "coverage": 1.0,
+          "stale_leak": true,
+          "exact": false,
+          "matched_required": 1,
+          "required_total": 1,
+          "matched_forbidden": 1
+        },
+        {
+          "query_id": "Q15",
+          "category": "historical",
+          "coverage": 1.0,
+          "stale_leak": true,
+          "exact": false,
+          "matched_required": 3,
+          "required_total": 3,
+          "matched_forbidden": 1
+        },
+        {
+          "query_id": "Q16",
+          "category": "multi-hop",
+          "coverage": 1.0,
+          "stale_leak": true,
+          "exact": false,
+          "matched_required": 3,
+          "required_total": 3,
+          "matched_forbidden": 2
+        },
+        {
+          "query_id": "Q17",
+          "category": "multi-hop",
+          "coverage": 0.5,
+          "stale_leak": true,
+          "exact": false,
+          "matched_required": 2,
+          "required_total": 4,
+          "matched_forbidden": 3
+        },
+        {
+          "query_id": "Q18",
+          "category": "multi-hop",
+          "coverage": 1.0,
+          "stale_leak": true,
+          "exact": false,
+          "matched_required": 3,
+          "required_total": 3,
+          "matched_forbidden": 1
+        }
+      ],
+      "queries": [
+        {
+          "query_id": "Q01",
+          "category": "current-state",
+          "query": "What crop is currently approved for the Asteria flight trial?",
+          "retrieved_tokens": 103,
+          "score": {
+            "query_id": "Q01",
+            "category": "current-state",
+            "coverage": 1.0,
+            "stale_leak": true,
+            "exact": false,
+            "matched_required": 1,
+            "required_total": 1,
+            "matched_forbidden": 1
+          },
+          "hits": [
+            {
+              "text": "[M011] Crop plan revision C-2 replaces basil with dwarf radish for the flight trial.",
+              "score": 0.439176,
+              "metadata": {
+                "id": "c6df5d1b-4dce-4a18-9cb5-0a872945b42f",
+                "type": "decision",
+                "tags": [
+                  "session-04",
+                  "M011"
+                ]
+              }
+            },
+            {
+              "text": "[M001] Asteria's greenhouse module is GH-7. The initial crop is Genovese basil.",
+              "score": 0.415482,
+              "metadata": {
+                "id": "f9b0346a-18f2-47c7-b57d-3080dd87109f",
+                "type": "fact",
+                "tags": [
+                  "session-01",
+                  "M001"
+                ]
+              }
+            },
+            {
+              "text": "[M007] Helios Agritech is the approved seed vendor under purchase order PO-81.",
+              "score": 0.396664,
+              "metadata": {
+                "id": "ffea9941-7443-4017-9061-f4fc4fc75d16",
+                "type": "decision",
+                "tags": [
+                  "session-02",
+                  "M007"
+                ]
+              }
+            },
+            {
+              "text": "[M012] Dwarf radish completed germination testing in GH-7 with no mold detected.",
+              "score": 0.373297,
+              "metadata": {
+                "id": "bf95a60b-03fd-4877-ab21-d46bc4b3a887",
+                "type": "observation",
+                "tags": [
+                  "session-04",
+                  "M012"
+                ]
+              }
+            },
+            {
+              "text": "[M005] The baseline nutrient recipe is N-17 with a target root-zone pH of 6.2.",
+              "score": 0.368643,
+              "metadata": {
+                "id": "d7cb6dab-e618-4fd5-9597-72bb6dc0d11b",
+                "type": "decision",
+                "tags": [
+                  "session-02",
+                  "M005"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "query_id": "Q02",
+          "category": "current-state",
+          "query": "What is the current launch date?",
+          "retrieved_tokens": 110,
+          "score": {
+            "query_id": "Q02",
+            "category": "current-state",
+            "coverage": 1.0,
+            "stale_leak": true,
+            "exact": false,
+            "matched_required": 1,
+            "required_total": 1,
+            "matched_forbidden": 1
+          },
+          "hits": [
+            {
+              "text": "[M002] The original launch window is August 14, 2026, from Kiruna.",
+              "score": 0.415482,
+              "metadata": {
+                "id": "05efafef-ca00-4027-85ab-a919e6dcaace",
+                "type": "event",
+                "tags": [
+                  "session-01",
+                  "M002"
+                ]
+              }
+            },
+            {
+              "text": "[M014] Launch review L-3 moves the launch from August 14 to September 2, 2026.",
+              "score": 0.387297,
+              "metadata": {
+                "id": "62ddb53b-33d7-49b0-8e58-24f400df109d",
+                "type": "decision",
+                "tags": [
+                  "session-05",
+                  "M014"
+                ]
+              }
+            },
+            {
+              "text": "[M027] The mission call sign changes from Aurora to Lumen for all current traffic.",
+              "score": 0.340848,
+              "metadata": {
+                "id": "81d82a6c-5b84-457c-9532-b90b16ad6136",
+                "type": "decision",
+                "tags": [
+                  "session-09",
+                  "M027"
+                ]
+              }
+            },
+            {
+              "text": "[M029] Final readiness confirms GH-7, dwarf radish, N-21, and the 22 C ceiling.",
+              "score": 0.31784,
+              "metadata": {
+                "id": "1baab304-e3f1-4d74-902f-26fcf76b11d2",
+                "type": "fact",
+                "tags": [
+                  "session-10",
+                  "M029"
+                ]
+              }
+            },
+            {
+              "text": "[M018] The 24 C thermal ceiling is revoked. Hold GH-7 at or below 22 C.",
+              "score": 0.304097,
+              "metadata": {
+                "id": "fc6d7079-d1e0-4e50-80bc-eac817ab6a16",
+                "type": "instruction",
+                "tags": [
+                  "session-06",
+                  "M018"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "query_id": "Q03",
+          "category": "current-state",
+          "query": "Who is the current mission commander?",
+          "retrieved_tokens": 90,
+          "score": {
+            "query_id": "Q03",
+            "category": "current-state",
+            "coverage": 1.0,
+            "stale_leak": true,
+            "exact": false,
+            "matched_required": 1,
+            "required_total": 1,
+            "matched_forbidden": 1
+          },
+          "hits": [
+            {
+              "text": "[M015] Priya Nair replaces Elena Park as mission commander. Elena remains an adviser.",
+              "score": 0.373297,
+              "metadata": {
+                "id": "368569aa-1c3b-499b-9054-c5588c0798e3",
+                "type": "relationship",
+                "tags": [
+                  "session-05",
+                  "M015"
+                ]
+              }
+            },
+            {
+              "text": "[M027] The mission call sign changes from Aurora to Lumen for all current traffic.",
+              "score": 0.359354,
+              "metadata": {
+                "id": "81d82a6c-5b84-457c-9532-b90b16ad6136",
+                "type": "decision",
+                "tags": [
+                  "session-09",
+                  "M027"
+                ]
+              }
+            },
+            {
+              "text": "[M016] The current operations channel is Matrix room #asteria-flight, not Slack.",
+              "score": 0.354719,
+              "metadata": {
+                "id": "64cb1f08-0d7d-4335-b085-346d8dfe0f94",
+                "type": "instruction",
+                "tags": [
+                  "session-05",
+                  "M016"
+                ]
+              }
+            },
+            {
+              "text": "[M003] Elena Park is mission commander. Dr. Amara Okafor owns plant science.",
+              "score": 0.35009,
+              "metadata": {
+                "id": "036341e9-a156-4bb6-88ee-5542b7bbb633",
+                "type": "relationship",
+                "tags": [
+                  "session-01",
+                  "M003"
+                ]
+              }
+            },
+            {
+              "text": "[M031] Send current alerts only to Matrix room #asteria-flight.",
+              "score": 0.340848,
+              "metadata": {
+                "id": "36840e1c-bed7-4b97-a03a-71b12684667a",
+                "type": "instruction",
+                "tags": [
+                  "session-10",
+                  "M031"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "query_id": "Q04",
+          "category": "current-state",
+          "query": "Where should current operational alerts be sent?",
+          "retrieved_tokens": 85,
+          "score": {
+            "query_id": "Q04",
+            "category": "current-state",
+            "coverage": 1.0,
+            "stale_leak": true,
+            "exact": false,
+            "matched_required": 2,
+            "required_total": 2,
+            "matched_forbidden": 1
+          },
+          "hits": [
+            {
+              "text": "[M004] Operational alerts go to Slack channel #asteria-ops.",
+              "score": 0.458279,
+              "metadata": {
+                "id": "d74b1abe-a4c1-4e2a-b69b-dea5a73af200",
+                "type": "instruction",
+                "tags": [
+                  "session-01",
+                  "M004"
+                ]
+              }
+            },
+            {
+              "text": "[M031] Send current alerts only to Matrix room #asteria-flight.",
+              "score": 0.396664,
+              "metadata": {
+                "id": "36840e1c-bed7-4b97-a03a-71b12684667a",
+                "type": "instruction",
+                "tags": [
+                  "session-10",
+                  "M031"
+                ]
+              }
+            },
+            {
+              "text": "[M027] The mission call sign changes from Aurora to Lumen for all current traffic.",
+              "score": 0.363996,
+              "metadata": {
+                "id": "81d82a6c-5b84-457c-9532-b90b16ad6136",
+                "type": "decision",
+                "tags": [
+                  "session-09",
+                  "M027"
+                ]
+              }
+            },
+            {
+              "text": "[M016] The current operations channel is Matrix room #asteria-flight, not Slack.",
+              "score": 0.331629,
+              "metadata": {
+                "id": "64cb1f08-0d7d-4335-b085-346d8dfe0f94",
+                "type": "instruction",
+                "tags": [
+                  "session-05",
+                  "M016"
+                ]
+              }
+            },
+            {
+              "text": "[M032] Final logistics lists Nova Seedworks PO-96 and battery pack BX-9.",
+              "score": 0.322431,
+              "metadata": {
+                "id": "7262fe31-c211-4ad3-836b-eeb7347e8a3a",
+                "type": "fact",
+                "tags": [
+                  "session-10",
+                  "M032"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "query_id": "Q05",
+          "category": "current-state",
+          "query": "Which nutrient protocol and pH target are active?",
+          "retrieved_tokens": 102,
+          "score": {
+            "query_id": "Q05",
+            "category": "current-state",
+            "coverage": 1.0,
+            "stale_leak": true,
+            "exact": false,
+            "matched_required": 2,
+            "required_total": 2,
+            "matched_forbidden": 2
+          },
+          "hits": [
+            {
+              "text": "[M017] Nutrient protocol N-21 supersedes N-17 and lowers target root-zone pH to 5.9.",
+              "score": 0.420205,
+              "metadata": {
+                "id": "3701a902-7157-41ec-be78-4f9ca96c72e9",
+                "type": "decision",
+                "tags": [
+                  "session-06",
+                  "M017"
+                ]
+              }
+            },
+            {
+              "text": "[M005] The baseline nutrient recipe is N-17 with a target root-zone pH of 6.2.",
+              "score": 0.420205,
+              "metadata": {
+                "id": "d7cb6dab-e618-4fd5-9597-72bb6dc0d11b",
+                "type": "decision",
+                "tags": [
+                  "session-02",
+                  "M005"
+                ]
+              }
+            },
+            {
+              "text": "[M027] The mission call sign changes from Aurora to Lumen for all current traffic.",
+              "score": 0.336236,
+              "metadata": {
+                "id": "81d82a6c-5b84-457c-9532-b90b16ad6136",
+                "type": "decision",
+                "tags": [
+                  "session-09",
+                  "M027"
+                ]
+              }
+            },
+            {
+              "text": "[M004] Operational alerts go to Slack channel #asteria-ops.",
+              "score": 0.322431,
+              "metadata": {
+                "id": "d74b1abe-a4c1-4e2a-b69b-dea5a73af200",
+                "type": "instruction",
+                "tags": [
+                  "session-01",
+                  "M004"
+                ]
+              }
+            },
+            {
+              "text": "[M032] Final logistics lists Nova Seedworks PO-96 and battery pack BX-9.",
+              "score": 0.31784,
+              "metadata": {
+                "id": "7262fe31-c211-4ad3-836b-eeb7347e8a3a",
+                "type": "fact",
+                "tags": [
+                  "session-10",
+                  "M032"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "query_id": "Q06",
+          "category": "current-state",
+          "query": "What is the active greenhouse thermal ceiling?",
+          "retrieved_tokens": 97,
+          "score": {
+            "query_id": "Q06",
+            "category": "current-state",
+            "coverage": 1.0,
+            "stale_leak": true,
+            "exact": false,
+            "matched_required": 1,
+            "required_total": 1,
+            "matched_forbidden": 1
+          },
+          "hits": [
+            {
+              "text": "[M006] The greenhouse thermal ceiling is 24 C. Backup oxygen lasts 18 hours.",
+              "score": 0.458279,
+              "metadata": {
+                "id": "e1f6be61-65eb-4e9f-9b29-191aa02aac21",
+                "type": "fact",
+                "tags": [
+                  "session-02",
+                  "M006"
+                ]
+              }
+            },
+            {
+              "text": "[M018] The 24 C thermal ceiling is revoked. Hold GH-7 at or below 22 C.",
+              "score": 0.429675,
+              "metadata": {
+                "id": "fc6d7079-d1e0-4e50-80bc-eac817ab6a16",
+                "type": "instruction",
+                "tags": [
+                  "session-06",
+                  "M018"
+                ]
+              }
+            },
+            {
+              "text": "[M001] Asteria's greenhouse module is GH-7. The initial crop is Genovese basil.",
+              "score": 0.345466,
+              "metadata": {
+                "id": "f9b0346a-18f2-47c7-b57d-3080dd87109f",
+                "type": "fact",
+                "tags": [
+                  "session-01",
+                  "M001"
+                ]
+              }
+            },
+            {
+              "text": "[M019] Battery pack BX-9 supplies the greenhouse controller during transfer.",
+              "score": 0.336236,
+              "metadata": {
+                "id": "b2973696-700b-48f8-b4e8-4e3c99b09966",
+                "type": "fact",
+                "tags": [
+                  "session-06",
+                  "M019"
+                ]
+              }
+            },
+            {
+              "text": "[M027] The mission call sign changes from Aurora to Lumen for all current traffic.",
+              "score": 0.322431,
+              "metadata": {
+                "id": "81d82a6c-5b84-457c-9532-b90b16ad6136",
+                "type": "decision",
+                "tags": [
+                  "session-09",
+                  "M027"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "query_id": "Q07",
+          "category": "current-state",
+          "query": "Which landing site is selected now?",
+          "retrieved_tokens": 101,
+          "score": {
+            "query_id": "Q07",
+            "category": "current-state",
+            "coverage": 1.0,
+            "stale_leak": true,
+            "exact": false,
+            "matched_required": 1,
+            "required_total": 1,
+            "matched_forbidden": 1
+          },
+          "hits": [
+            {
+              "text": "[M014] Launch review L-3 moves the launch from August 14 to September 2, 2026.",
+              "score": 0.363996,
+              "metadata": {
+                "id": "62ddb53b-33d7-49b0-8e58-24f400df109d",
+                "type": "decision",
+                "tags": [
+                  "session-05",
+                  "M014"
+                ]
+              }
+            },
+            {
+              "text": "[M020] Site review S-4 selects Shackleton rim and rejects Malapert Ridge.",
+              "score": 0.345466,
+              "metadata": {
+                "id": "99bbae2b-90f5-4c1d-a8b1-b8646878bf01",
+                "type": "decision",
+                "tags": [
+                  "session-07",
+                  "M020"
+                ]
+              }
+            },
+            {
+              "text": "[M027] The mission call sign changes from Aurora to Lumen for all current traffic.",
+              "score": 0.336236,
+              "metadata": {
+                "id": "81d82a6c-5b84-457c-9532-b90b16ad6136",
+                "type": "decision",
+                "tags": [
+                  "session-09",
+                  "M027"
+                ]
+              }
+            },
+            {
+              "text": "[M009] The original landing site is Malapert Ridge. The mission call sign is Aurora.",
+              "score": 0.322431,
+              "metadata": {
+                "id": "9eebacf1-4313-4ea5-a23b-d061e2d39248",
+                "type": "fact",
+                "tags": [
+                  "session-03",
+                  "M009"
+                ]
+              }
+            },
+            {
+              "text": "[M002] The original launch window is August 14, 2026, from Kiruna.",
+              "score": 0.31784,
+              "metadata": {
+                "id": "05efafef-ca00-4027-85ab-a919e6dcaace",
+                "type": "event",
+                "tags": [
+                  "session-01",
+                  "M002"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "query_id": "Q08",
+          "category": "current-state",
+          "query": "What is the current approved program cap?",
+          "retrieved_tokens": 113,
+          "score": {
+            "query_id": "Q08",
+            "category": "current-state",
+            "coverage": 1.0,
+            "stale_leak": true,
+            "exact": false,
+            "matched_required": 1,
+            "required_total": 1,
+            "matched_forbidden": 1
+          },
+          "hits": [
+            {
+              "text": "[M021] The finance board reduces the program cap from USD 420,000 to USD 390,000.",
+              "score": 0.424936,
+              "metadata": {
+                "id": "980646f6-506a-4809-a032-b5a020a89c17",
+                "type": "decision",
+                "tags": [
+                  "session-07",
+                  "M021"
+                ]
+              }
+            },
+            {
+              "text": "[M010] Telemetry is retained for 90 days. The approved program cap is USD 420,000.",
+              "score": 0.387297,
+              "metadata": {
+                "id": "85a51ade-1572-4618-a81c-6f98acc301c3",
+                "type": "decision",
+                "tags": [
+                  "session-03",
+                  "M010"
+                ]
+              }
+            },
+            {
+              "text": "[M018] The 24 C thermal ceiling is revoked. Hold GH-7 at or below 22 C.",
+              "score": 0.340848,
+              "metadata": {
+                "id": "fc6d7079-d1e0-4e50-80bc-eac817ab6a16",
+                "type": "instruction",
+                "tags": [
+                  "session-06",
+                  "M018"
+                ]
+              }
+            },
+            {
+              "text": "[M017] Nutrient protocol N-21 supersedes N-17 and lowers target root-zone pH to 5.9.",
+              "score": 0.331629,
+              "metadata": {
+                "id": "3701a902-7157-41ec-be78-4f9ca96c72e9",
+                "type": "decision",
+                "tags": [
+                  "session-06",
+                  "M017"
+                ]
+              }
+            },
+            {
+              "text": "[M023] Nova Seedworks becomes the approved vendor under replacement order PO-96.",
+              "score": 0.331629,
+              "metadata": {
+                "id": "0eb4ec8d-d827-41af-9861-eb6334e5b181",
+                "type": "decision",
+                "tags": [
+                  "session-08",
+                  "M023"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "query_id": "Q09",
+          "category": "current-state",
+          "query": "Which seed vendor and purchase order are currently approved?",
+          "retrieved_tokens": 97,
+          "score": {
+            "query_id": "Q09",
+            "category": "current-state",
+            "coverage": 1.0,
+            "stale_leak": true,
+            "exact": false,
+            "matched_required": 2,
+            "required_total": 2,
+            "matched_forbidden": 1
+          },
+          "hits": [
+            {
+              "text": "[M007] Helios Agritech is the approved seed vendor under purchase order PO-81.",
+              "score": 0.521407,
+              "metadata": {
+                "id": "ffea9941-7443-4017-9061-f4fc4fc75d16",
+                "type": "decision",
+                "tags": [
+                  "session-02",
+                  "M007"
+                ]
+              }
+            },
+            {
+              "text": "[M023] Nova Seedworks becomes the approved vendor under replacement order PO-96.",
+              "score": 0.477524,
+              "metadata": {
+                "id": "0eb4ec8d-d827-41af-9861-eb6334e5b181",
+                "type": "decision",
+                "tags": [
+                  "session-08",
+                  "M023"
+                ]
+              }
+            },
+            {
+              "text": "[M032] Final logistics lists Nova Seedworks PO-96 and battery pack BX-9.",
+              "score": 0.336236,
+              "metadata": {
+                "id": "7262fe31-c211-4ad3-836b-eeb7347e8a3a",
+                "type": "fact",
+                "tags": [
+                  "session-10",
+                  "M032"
+                ]
+              }
+            },
+            {
+              "text": "[M005] The baseline nutrient recipe is N-17 with a target root-zone pH of 6.2.",
+              "score": 0.322431,
+              "metadata": {
+                "id": "d7cb6dab-e618-4fd5-9597-72bb6dc0d11b",
+                "type": "decision",
+                "tags": [
+                  "session-02",
+                  "M005"
+                ]
+              }
+            },
+            {
+              "text": "[M020] Site review S-4 selects Shackleton rim and rejects Malapert Ridge.",
+              "score": 0.31784,
+              "metadata": {
+                "id": "99bbae2b-90f5-4c1d-a8b1-b8646878bf01",
+                "type": "decision",
+                "tags": [
+                  "session-07",
+                  "M020"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "query_id": "Q10",
+          "category": "current-state",
+          "query": "Which emergency valve procedure is active?",
+          "retrieved_tokens": 95,
+          "score": {
+            "query_id": "Q10",
+            "category": "current-state",
+            "coverage": 1.0,
+            "stale_leak": true,
+            "exact": false,
+            "matched_required": 3,
+            "required_total": 3,
+            "matched_forbidden": 1
+          },
+          "hits": [
+            {
+              "text": "[M008] Emergency valve recovery uses procedure V1: isolate line B, then cycle pump 2.",
+              "score": 0.410767,
+              "metadata": {
+                "id": "1e6d2df9-9ea8-440c-87e2-c56391854cc8",
+                "type": "instruction",
+                "tags": [
+                  "session-03",
+                  "M008"
+                ]
+              }
+            },
+            {
+              "text": "[M025] Never use valve procedure V1 during flight operations.",
+              "score": 0.382624,
+              "metadata": {
+                "id": "1d83725e-df20-4137-b348-ea013c3d39bc",
+                "type": "instruction",
+                "tags": [
+                  "session-08",
+                  "M025"
+                ]
+              }
+            },
+            {
+              "text": "[M004] Operational alerts go to Slack channel #asteria-ops.",
+              "score": 0.359354,
+              "metadata": {
+                "id": "d74b1abe-a4c1-4e2a-b69b-dea5a73af200",
+                "type": "instruction",
+                "tags": [
+                  "session-01",
+                  "M004"
+                ]
+              }
+            },
+            {
+              "text": "[M024] Procedure V3 supersedes V1: isolate line C, vent for 30 seconds, then cycle pump 1.",
+              "score": 0.327027,
+              "metadata": {
+                "id": "da111097-7163-46fd-a65b-35bf5cca953f",
+                "type": "instruction",
+                "tags": [
+                  "session-08",
+                  "M024"
+                ]
+              }
+            },
+            {
+              "text": "[M027] The mission call sign changes from Aurora to Lumen for all current traffic.",
+              "score": 0.308673,
+              "metadata": {
+                "id": "81d82a6c-5b84-457c-9532-b90b16ad6136",
+                "type": "decision",
+                "tags": [
+                  "session-09",
+                  "M027"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "query_id": "Q11",
+          "category": "current-state",
+          "query": "What are the current telemetry retention period and mission call sign?",
+          "retrieved_tokens": 96,
+          "score": {
+            "query_id": "Q11",
+            "category": "current-state",
+            "coverage": 1.0,
+            "stale_leak": true,
+            "exact": false,
+            "matched_required": 2,
+            "required_total": 2,
+            "matched_forbidden": 2
+          },
+          "hits": [
+            {
+              "text": "[M027] The mission call sign changes from Aurora to Lumen for all current traffic.",
+              "score": 0.458279,
+              "metadata": {
+                "id": "81d82a6c-5b84-457c-9532-b90b16ad6136",
+                "type": "decision",
+                "tags": [
+                  "session-09",
+                  "M027"
+                ]
+              }
+            },
+            {
+              "text": "[M026] Security review shortens telemetry retention from 90 days to 30 days.",
+              "score": 0.443939,
+              "metadata": {
+                "id": "5d806565-6ab8-42d1-a7e9-dba8a2838c3a",
+                "type": "decision",
+                "tags": [
+                  "session-09",
+                  "M026"
+                ]
+              }
+            },
+            {
+              "text": "[M010] Telemetry is retained for 90 days. The approved program cap is USD 420,000.",
+              "score": 0.439176,
+              "metadata": {
+                "id": "85a51ade-1572-4618-a81c-6f98acc301c3",
+                "type": "decision",
+                "tags": [
+                  "session-03",
+                  "M010"
+                ]
+              }
+            },
+            {
+              "text": "[M022] Helios Agritech lot H-44 is recalled after contamination screening.",
+              "score": 0.382624,
+              "metadata": {
+                "id": "a9bc0e28-d443-41a5-a392-a1d24dc83897",
+                "type": "event",
+                "tags": [
+                  "session-07",
+                  "M022"
+                ]
+              }
+            },
+            {
+              "text": "[M009] The original landing site is Malapert Ridge. The mission call sign is Aurora.",
+              "score": 0.373297,
+              "metadata": {
+                "id": "9eebacf1-4313-4ea5-a23b-d061e2d39248",
+                "type": "fact",
+                "tags": [
+                  "session-03",
+                  "M009"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "query_id": "Q12",
+          "category": "historical",
+          "query": "What crop was approved before revision C-2?",
+          "retrieved_tokens": 100,
+          "score": {
+            "query_id": "Q12",
+            "category": "historical",
+            "coverage": 1.0,
+            "stale_leak": true,
+            "exact": false,
+            "matched_required": 1,
+            "required_total": 1,
+            "matched_forbidden": 1
+          },
+          "hits": [
+            {
+              "text": "[M011] Crop plan revision C-2 replaces basil with dwarf radish for the flight trial.",
+              "score": 0.410767,
+              "metadata": {
+                "id": "c6df5d1b-4dce-4a18-9cb5-0a872945b42f",
+                "type": "decision",
+                "tags": [
+                  "session-04",
+                  "M011"
+                ]
+              }
+            },
+            {
+              "text": "[M007] Helios Agritech is the approved seed vendor under purchase order PO-81.",
+              "score": 0.410767,
+              "metadata": {
+                "id": "ffea9941-7443-4017-9061-f4fc4fc75d16",
+                "type": "decision",
+                "tags": [
+                  "session-02",
+                  "M007"
+                ]
+              }
+            },
+            {
+              "text": "[M029] Final readiness confirms GH-7, dwarf radish, N-21, and the 22 C ceiling.",
+              "score": 0.396664,
+              "metadata": {
+                "id": "1baab304-e3f1-4d74-902f-26fcf76b11d2",
+                "type": "fact",
+                "tags": [
+                  "session-10",
+                  "M029"
+                ]
+              }
+            },
+            {
+              "text": "[M012] Dwarf radish completed germination testing in GH-7 with no mold detected.",
+              "score": 0.382624,
+              "metadata": {
+                "id": "bf95a60b-03fd-4877-ab21-d46bc4b3a887",
+                "type": "observation",
+                "tags": [
+                  "session-04",
+                  "M012"
+                ]
+              }
+            },
+            {
+              "text": "[M023] Nova Seedworks becomes the approved vendor under replacement order PO-96.",
+              "score": 0.377957,
+              "metadata": {
+                "id": "0eb4ec8d-d827-41af-9861-eb6334e5b181",
+                "type": "decision",
+                "tags": [
+                  "session-08",
+                  "M023"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "query_id": "Q13",
+          "category": "historical",
+          "query": "Who was mission commander before Priya Nair?",
+          "retrieved_tokens": 103,
+          "score": {
+            "query_id": "Q13",
+            "category": "historical",
+            "coverage": 1.0,
+            "stale_leak": true,
+            "exact": false,
+            "matched_required": 1,
+            "required_total": 1,
+            "matched_forbidden": 1
+          },
+          "hits": [
+            {
+              "text": "[M015] Priya Nair replaces Elena Park as mission commander. Elena remains an adviser.",
+              "score": 0.45349,
+              "metadata": {
+                "id": "368569aa-1c3b-499b-9054-c5588c0798e3",
+                "type": "relationship",
+                "tags": [
+                  "session-05",
+                  "M015"
+                ]
+              }
+            },
+            {
+              "text": "[M003] Elena Park is mission commander. Dr. Amara Okafor owns plant science.",
+              "score": 0.387297,
+              "metadata": {
+                "id": "036341e9-a156-4bb6-88ee-5542b7bbb633",
+                "type": "relationship",
+                "tags": [
+                  "session-01",
+                  "M003"
+                ]
+              }
+            },
+            {
+              "text": "[M030] Final command brief lists Priya Nair, Shackleton rim, and call sign Lumen.",
+              "score": 0.377957,
+              "metadata": {
+                "id": "0d109ee2-62b5-4ff3-b28a-b747f0c23152",
+                "type": "fact",
+                "tags": [
+                  "session-10",
+                  "M030"
+                ]
+              }
+            },
+            {
+              "text": "[M014] Launch review L-3 moves the launch from August 14 to September 2, 2026.",
+              "score": 0.331629,
+              "metadata": {
+                "id": "62ddb53b-33d7-49b0-8e58-24f400df109d",
+                "type": "decision",
+                "tags": [
+                  "session-05",
+                  "M014"
+                ]
+              }
+            },
+            {
+              "text": "[M016] The current operations channel is Matrix room #asteria-flight, not Slack.",
+              "score": 0.327027,
+              "metadata": {
+                "id": "64cb1f08-0d7d-4335-b085-346d8dfe0f94",
+                "type": "instruction",
+                "tags": [
+                  "session-05",
+                  "M016"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "query_id": "Q14",
+          "category": "historical",
+          "query": "What was the original landing site?",
+          "retrieved_tokens": 100,
+          "score": {
+            "query_id": "Q14",
+            "category": "historical",
+            "coverage": 1.0,
+            "stale_leak": true,
+            "exact": false,
+            "matched_required": 1,
+            "required_total": 1,
+            "matched_forbidden": 1
+          },
+          "hits": [
+            {
+              "text": "[M009] The original landing site is Malapert Ridge. The mission call sign is Aurora.",
+              "score": 0.382624,
+              "metadata": {
+                "id": "9eebacf1-4313-4ea5-a23b-d061e2d39248",
+                "type": "fact",
+                "tags": [
+                  "session-03",
+                  "M009"
+                ]
+              }
+            },
+            {
+              "text": "[M020] Site review S-4 selects Shackleton rim and rejects Malapert Ridge.",
+              "score": 0.281286,
+              "metadata": {
+                "id": "99bbae2b-90f5-4c1d-a8b1-b8646878bf01",
+                "type": "decision",
+                "tags": [
+                  "session-07",
+                  "M020"
+                ]
+              }
+            },
+            {
+              "text": "[M002] The original launch window is August 14, 2026, from Kiruna.",
+              "score": 0.281286,
+              "metadata": {
+                "id": "05efafef-ca00-4027-85ab-a919e6dcaace",
+                "type": "event",
+                "tags": [
+                  "session-01",
+                  "M002"
+                ]
+              }
+            },
+            {
+              "text": "[M030] Final command brief lists Priya Nair, Shackleton rim, and call sign Lumen.",
+              "score": 0.267653,
+              "metadata": {
+                "id": "0d109ee2-62b5-4ff3-b28a-b747f0c23152",
+                "type": "fact",
+                "tags": [
+                  "session-10",
+                  "M030"
+                ]
+              }
+            },
+            {
+              "text": "[M032] Final logistics lists Nova Seedworks PO-96 and battery pack BX-9.",
+              "score": 0.258584,
+              "metadata": {
+                "id": "7262fe31-c211-4ad3-836b-eeb7347e8a3a",
+                "type": "fact",
+                "tags": [
+                  "session-10",
+                  "M032"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "query_id": "Q15",
+          "category": "historical",
+          "query": "Which valve procedure was used before V3?",
+          "retrieved_tokens": 103,
+          "score": {
+            "query_id": "Q15",
+            "category": "historical",
+            "coverage": 1.0,
+            "stale_leak": true,
+            "exact": false,
+            "matched_required": 3,
+            "required_total": 3,
+            "matched_forbidden": 1
+          },
+          "hits": [
+            {
+              "text": "[M024] Procedure V3 supersedes V1: isolate line C, vent for 30 seconds, then cycle pump 1.",
+              "score": 0.382624,
+              "metadata": {
+                "id": "da111097-7163-46fd-a65b-35bf5cca953f",
+                "type": "instruction",
+                "tags": [
+                  "session-08",
+                  "M024"
+                ]
+              }
+            },
+            {
+              "text": "[M008] Emergency valve recovery uses procedure V1: isolate line B, then cycle pump 2.",
+              "score": 0.368643,
+              "metadata": {
+                "id": "1e6d2df9-9ea8-440c-87e2-c56391854cc8",
+                "type": "instruction",
+                "tags": [
+                  "session-03",
+                  "M008"
+                ]
+              }
+            },
+            {
+              "text": "[M025] Never use valve procedure V1 during flight operations.",
+              "score": 0.363996,
+              "metadata": {
+                "id": "1d83725e-df20-4137-b348-ea013c3d39bc",
+                "type": "instruction",
+                "tags": [
+                  "session-08",
+                  "M025"
+                ]
+              }
+            },
+            {
+              "text": "[M023] Nova Seedworks becomes the approved vendor under replacement order PO-96.",
+              "score": 0.313254,
+              "metadata": {
+                "id": "0eb4ec8d-d827-41af-9861-eb6334e5b181",
+                "type": "decision",
+                "tags": [
+                  "session-08",
+                  "M023"
+                ]
+              }
+            },
+            {
+              "text": "[M014] Launch review L-3 moves the launch from August 14 to September 2, 2026.",
+              "score": 0.304097,
+              "metadata": {
+                "id": "62ddb53b-33d7-49b0-8e58-24f400df109d",
+                "type": "decision",
+                "tags": [
+                  "session-05",
+                  "M014"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "query_id": "Q16",
+          "category": "multi-hop",
+          "query": "Prepare the current command brief: commander, landing site, and call sign.",
+          "retrieved_tokens": 90,
+          "score": {
+            "query_id": "Q16",
+            "category": "multi-hop",
+            "coverage": 1.0,
+            "stale_leak": true,
+            "exact": false,
+            "matched_required": 3,
+            "required_total": 3,
+            "matched_forbidden": 2
+          },
+          "hits": [
+            {
+              "text": "[M009] The original landing site is Malapert Ridge. The mission call sign is Aurora.",
+              "score": 0.401358,
+              "metadata": {
+                "id": "9eebacf1-4313-4ea5-a23b-d061e2d39248",
+                "type": "fact",
+                "tags": [
+                  "session-03",
+                  "M009"
+                ]
+              }
+            },
+            {
+              "text": "[M004] Operational alerts go to Slack channel #asteria-ops.",
+              "score": 0.368643,
+              "metadata": {
+                "id": "d74b1abe-a4c1-4e2a-b69b-dea5a73af200",
+                "type": "instruction",
+                "tags": [
+                  "session-01",
+                  "M004"
+                ]
+              }
+            },
+            {
+              "text": "[M027] The mission call sign changes from Aurora to Lumen for all current traffic.",
+              "score": 0.363996,
+              "metadata": {
+                "id": "81d82a6c-5b84-457c-9532-b90b16ad6136",
+                "type": "decision",
+                "tags": [
+                  "session-09",
+                  "M027"
+                ]
+              }
+            },
+            {
+              "text": "[M031] Send current alerts only to Matrix room #asteria-flight.",
+              "score": 0.363996,
+              "metadata": {
+                "id": "36840e1c-bed7-4b97-a03a-71b12684667a",
+                "type": "instruction",
+                "tags": [
+                  "session-10",
+                  "M031"
+                ]
+              }
+            },
+            {
+              "text": "[M030] Final command brief lists Priya Nair, Shackleton rim, and call sign Lumen.",
+              "score": 0.359354,
+              "metadata": {
+                "id": "0d109ee2-62b5-4ff3-b28a-b747f0c23152",
+                "type": "fact",
+                "tags": [
+                  "session-10",
+                  "M030"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "query_id": "Q17",
+          "category": "multi-hop",
+          "query": "Prepare the current greenhouse brief: module, crop, nutrient protocol, and temperature limit.",
+          "retrieved_tokens": 106,
+          "score": {
+            "query_id": "Q17",
+            "category": "multi-hop",
+            "coverage": 0.5,
+            "stale_leak": true,
+            "exact": false,
+            "matched_required": 2,
+            "required_total": 4,
+            "matched_forbidden": 3
+          },
+          "hits": [
+            {
+              "text": "[M019] Battery pack BX-9 supplies the greenhouse controller during transfer.",
+              "score": 0.420205,
+              "metadata": {
+                "id": "b2973696-700b-48f8-b4e8-4e3c99b09966",
+                "type": "fact",
+                "tags": [
+                  "session-06",
+                  "M019"
+                ]
+              }
+            },
+            {
+              "text": "[M001] Asteria's greenhouse module is GH-7. The initial crop is Genovese basil.",
+              "score": 0.415482,
+              "metadata": {
+                "id": "f9b0346a-18f2-47c7-b57d-3080dd87109f",
+                "type": "fact",
+                "tags": [
+                  "session-01",
+                  "M001"
+                ]
+              }
+            },
+            {
+              "text": "[M006] The greenhouse thermal ceiling is 24 C. Backup oxygen lasts 18 hours.",
+              "score": 0.391977,
+              "metadata": {
+                "id": "e1f6be61-65eb-4e9f-9b29-191aa02aac21",
+                "type": "fact",
+                "tags": [
+                  "session-02",
+                  "M006"
+                ]
+              }
+            },
+            {
+              "text": "[M017] Nutrient protocol N-21 supersedes N-17 and lowers target root-zone pH to 5.9.",
+              "score": 0.387297,
+              "metadata": {
+                "id": "3701a902-7157-41ec-be78-4f9ca96c72e9",
+                "type": "decision",
+                "tags": [
+                  "session-06",
+                  "M017"
+                ]
+              }
+            },
+            {
+              "text": "[M005] The baseline nutrient recipe is N-17 with a target root-zone pH of 6.2.",
+              "score": 0.387297,
+              "metadata": {
+                "id": "d7cb6dab-e618-4fd5-9597-72bb6dc0d11b",
+                "type": "decision",
+                "tags": [
+                  "session-02",
+                  "M005"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "query_id": "Q18",
+          "category": "multi-hop",
+          "query": "Prepare current logistics: vendor, order, and transfer battery.",
+          "retrieved_tokens": 88,
+          "score": {
+            "query_id": "Q18",
+            "category": "multi-hop",
+            "coverage": 1.0,
+            "stale_leak": true,
+            "exact": false,
+            "matched_required": 3,
+            "required_total": 3,
+            "matched_forbidden": 1
+          },
+          "hits": [
+            {
+              "text": "[M032] Final logistics lists Nova Seedworks PO-96 and battery pack BX-9.",
+              "score": 0.368643,
+              "metadata": {
+                "id": "7262fe31-c211-4ad3-836b-eeb7347e8a3a",
+                "type": "fact",
+                "tags": [
+                  "session-10",
+                  "M032"
+                ]
+              }
+            },
+            {
+              "text": "[M019] Battery pack BX-9 supplies the greenhouse controller during transfer.",
+              "score": 0.345466,
+              "metadata": {
+                "id": "b2973696-700b-48f8-b4e8-4e3c99b09966",
+                "type": "fact",
+                "tags": [
+                  "session-06",
+                  "M019"
+                ]
+              }
+            },
+            {
+              "text": "[M023] Nova Seedworks becomes the approved vendor under replacement order PO-96.",
+              "score": 0.331629,
+              "metadata": {
+                "id": "0eb4ec8d-d827-41af-9861-eb6334e5b181",
+                "type": "decision",
+                "tags": [
+                  "session-08",
+                  "M023"
+                ]
+              }
+            },
+            {
+              "text": "[M027] The mission call sign changes from Aurora to Lumen for all current traffic.",
+              "score": 0.331629,
+              "metadata": {
+                "id": "81d82a6c-5b84-457c-9532-b90b16ad6136",
+                "type": "decision",
+                "tags": [
+                  "session-09",
+                  "M027"
+                ]
+              }
+            },
+            {
+              "text": "[M007] Helios Agritech is the approved seed vendor under purchase order PO-81.",
+              "score": 0.308673,
+              "metadata": {
+                "id": "ffea9941-7443-4017-9061-f4fc4fc75d16",
+                "type": "decision",
+                "tags": [
+                  "session-02",
+                  "M007"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "backend": "mem0-direct",
+      "summary": {
+        "mean_coverage": 0.986111,
+        "exact_accuracy": 0.0,
+        "stale_leak_rate": 1.0,
+        "by_category": {
+          "current-state": {
+            "mean_coverage": 1.0,
+            "exact_accuracy": 0.0,
+            "stale_leak_rate": 1.0,
+            "queries": 11
+          },
+          "historical": {
+            "mean_coverage": 1.0,
+            "exact_accuracy": 0.0,
+            "stale_leak_rate": 1.0,
+            "queries": 4
+          },
+          "multi-hop": {
+            "mean_coverage": 0.916667,
+            "exact_accuracy": 0.0,
+            "stale_leak_rate": 1.0,
+            "queries": 3
+          }
+        }
+      },
+      "metrics": {
+        "records_ingested": 32,
+        "queries_evaluated": 18,
+        "top_k": 5,
+        "latency_repeats": 5,
+        "source_tokens": 551,
+        "retrieved_tokens": 1783,
+        "avg_retrieved_tokens_per_query": 99.056,
+        "ingest_total_s": 3.995826,
+        "ingest_p50_s": 0.123843,
+        "ingest_p95_s": 0.146265,
+        "index_ready_s": 0.071771,
+        "query_mean_s": 0.078567,
+        "query_p50_s": 0.074995,
+        "query_p95_s": 0.103795,
+        "client_rss_delta_mb": 4.332,
+        "llm_calls": 0,
+        "llm_input_tokens": 0,
+        "llm_output_tokens": 0
+      },
+      "scores": [
+        {
+          "query_id": "Q01",
+          "category": "current-state",
+          "coverage": 1.0,
+          "stale_leak": true,
+          "exact": false,
+          "matched_required": 1,
+          "required_total": 1,
+          "matched_forbidden": 1
+        },
+        {
+          "query_id": "Q02",
+          "category": "current-state",
+          "coverage": 1.0,
+          "stale_leak": true,
+          "exact": false,
+          "matched_required": 1,
+          "required_total": 1,
+          "matched_forbidden": 1
+        },
+        {
+          "query_id": "Q03",
+          "category": "current-state",
+          "coverage": 1.0,
+          "stale_leak": true,
+          "exact": false,
+          "matched_required": 1,
+          "required_total": 1,
+          "matched_forbidden": 1
+        },
+        {
+          "query_id": "Q04",
+          "category": "current-state",
+          "coverage": 1.0,
+          "stale_leak": true,
+          "exact": false,
+          "matched_required": 2,
+          "required_total": 2,
+          "matched_forbidden": 1
+        },
+        {
+          "query_id": "Q05",
+          "category": "current-state",
+          "coverage": 1.0,
+          "stale_leak": true,
+          "exact": false,
+          "matched_required": 2,
+          "required_total": 2,
+          "matched_forbidden": 2
+        },
+        {
+          "query_id": "Q06",
+          "category": "current-state",
+          "coverage": 1.0,
+          "stale_leak": true,
+          "exact": false,
+          "matched_required": 1,
+          "required_total": 1,
+          "matched_forbidden": 1
+        },
+        {
+          "query_id": "Q07",
+          "category": "current-state",
+          "coverage": 1.0,
+          "stale_leak": true,
+          "exact": false,
+          "matched_required": 1,
+          "required_total": 1,
+          "matched_forbidden": 1
+        },
+        {
+          "query_id": "Q08",
+          "category": "current-state",
+          "coverage": 1.0,
+          "stale_leak": true,
+          "exact": false,
+          "matched_required": 1,
+          "required_total": 1,
+          "matched_forbidden": 1
+        },
+        {
+          "query_id": "Q09",
+          "category": "current-state",
+          "coverage": 1.0,
+          "stale_leak": true,
+          "exact": false,
+          "matched_required": 2,
+          "required_total": 2,
+          "matched_forbidden": 1
+        },
+        {
+          "query_id": "Q10",
+          "category": "current-state",
+          "coverage": 1.0,
+          "stale_leak": true,
+          "exact": false,
+          "matched_required": 3,
+          "required_total": 3,
+          "matched_forbidden": 1
+        },
+        {
+          "query_id": "Q11",
+          "category": "current-state",
+          "coverage": 1.0,
+          "stale_leak": true,
+          "exact": false,
+          "matched_required": 2,
+          "required_total": 2,
+          "matched_forbidden": 2
+        },
+        {
+          "query_id": "Q12",
+          "category": "historical",
+          "coverage": 1.0,
+          "stale_leak": true,
+          "exact": false,
+          "matched_required": 1,
+          "required_total": 1,
+          "matched_forbidden": 1
+        },
+        {
+          "query_id": "Q13",
+          "category": "historical",
+          "coverage": 1.0,
+          "stale_leak": true,
+          "exact": false,
+          "matched_required": 1,
+          "required_total": 1,
+          "matched_forbidden": 1
+        },
+        {
+          "query_id": "Q14",
+          "category": "historical",
+          "coverage": 1.0,
+          "stale_leak": true,
+          "exact": false,
+          "matched_required": 1,
+          "required_total": 1,
+          "matched_forbidden": 1
+        },
+        {
+          "query_id": "Q15",
+          "category": "historical",
+          "coverage": 1.0,
+          "stale_leak": true,
+          "exact": false,
+          "matched_required": 3,
+          "required_total": 3,
+          "matched_forbidden": 1
+        },
+        {
+          "query_id": "Q16",
+          "category": "multi-hop",
+          "coverage": 1.0,
+          "stale_leak": true,
+          "exact": false,
+          "matched_required": 3,
+          "required_total": 3,
+          "matched_forbidden": 2
+        },
+        {
+          "query_id": "Q17",
+          "category": "multi-hop",
+          "coverage": 0.75,
+          "stale_leak": true,
+          "exact": false,
+          "matched_required": 3,
+          "required_total": 4,
+          "matched_forbidden": 3
+        },
+        {
+          "query_id": "Q18",
+          "category": "multi-hop",
+          "coverage": 1.0,
+          "stale_leak": true,
+          "exact": false,
+          "matched_required": 3,
+          "required_total": 3,
+          "matched_forbidden": 1
+        }
+      ],
+      "queries": [
+        {
+          "query_id": "Q01",
+          "category": "current-state",
+          "query": "What crop is currently approved for the Asteria flight trial?",
+          "retrieved_tokens": 97,
+          "score": {
+            "query_id": "Q01",
+            "category": "current-state",
+            "coverage": 1.0,
+            "stale_leak": true,
+            "exact": false,
+            "matched_required": 1,
+            "required_total": 1,
+            "matched_forbidden": 1
+          },
+          "hits": [
+            {
+              "text": "[M001] Asteria's greenhouse module is GH-7. The initial crop is Genovese basil.",
+              "score": 0.7316455335503272,
+              "metadata": {
+                "record_id": "M001",
+                "session": 1,
+                "memory_type": "fact"
+              }
+            },
+            {
+              "text": "[M011] Crop plan revision C-2 replaces basil with dwarf radish for the flight trial.",
+              "score": 0.7274233978409959,
+              "metadata": {
+                "record_id": "M011",
+                "session": 4,
+                "memory_type": "decision"
+              }
+            },
+            {
+              "text": "[M007] Helios Agritech is the approved seed vendor under purchase order PO-81.",
+              "score": 0.6452078507768324,
+              "metadata": {
+                "record_id": "M007",
+                "session": 2,
+                "memory_type": "decision"
+              }
+            },
+            {
+              "text": "[M013] Do not load Genovese basil seed into the flight cassette after revision C-2.",
+              "score": 0.6040653477816942,
+              "metadata": {
+                "record_id": "M013",
+                "session": 4,
+                "memory_type": "instruction"
+              }
+            },
+            {
+              "text": "[M031] Send current alerts only to Matrix room #asteria-flight.",
+              "score": 0.5962135760379794,
+              "metadata": {
+                "record_id": "M031",
+                "session": 10,
+                "memory_type": "instruction"
+              }
+            }
+          ]
+        },
+        {
+          "query_id": "Q02",
+          "category": "current-state",
+          "query": "What is the current launch date?",
+          "retrieved_tokens": 103,
+          "score": {
+            "query_id": "Q02",
+            "category": "current-state",
+            "coverage": 1.0,
+            "stale_leak": true,
+            "exact": false,
+            "matched_required": 1,
+            "required_total": 1,
+            "matched_forbidden": 1
+          },
+          "hits": [
+            {
+              "text": "[M002] The original launch window is August 14, 2026, from Kiruna.",
+              "score": 0.7756558922583932,
+              "metadata": {
+                "record_id": "M002",
+                "session": 1,
+                "memory_type": "event"
+              }
+            },
+            {
+              "text": "[M014] Launch review L-3 moves the launch from August 14 to September 2, 2026.",
+              "score": 0.7504998712532465,
+              "metadata": {
+                "record_id": "M014",
+                "session": 5,
+                "memory_type": "decision"
+              }
+            },
+            {
+              "text": "[M028] Dr. Okafor will deliver the final radish growth report before August 20.",
+              "score": 0.5536388924160689,
+              "metadata": {
+                "record_id": "M028",
+                "session": 9,
+                "memory_type": "commitment"
+              }
+            },
+            {
+              "text": "[M016] The current operations channel is Matrix room #asteria-flight, not Slack.",
+              "score": 0.5451480429271631,
+              "metadata": {
+                "record_id": "M016",
+                "session": 5,
+                "memory_type": "instruction"
+              }
+            },
+            {
+              "text": "[M009] The original landing site is Malapert Ridge. The mission call sign is Aurora.",
+              "score": 0.5340067050882729,
+              "metadata": {
+                "record_id": "M009",
+                "session": 3,
+                "memory_type": "fact"
+              }
+            }
+          ]
+        },
+        {
+          "query_id": "Q03",
+          "category": "current-state",
+          "query": "Who is the current mission commander?",
+          "retrieved_tokens": 90,
+          "score": {
+            "query_id": "Q03",
+            "category": "current-state",
+            "coverage": 1.0,
+            "stale_leak": true,
+            "exact": false,
+            "matched_required": 1,
+            "required_total": 1,
+            "matched_forbidden": 1
+          },
+          "hits": [
+            {
+              "text": "[M015] Priya Nair replaces Elena Park as mission commander. Elena remains an adviser.",
+              "score": 0.6891962860208289,
+              "metadata": {
+                "record_id": "M015",
+                "session": 5,
+                "memory_type": "relationship"
+              }
+            },
+            {
+              "text": "[M003] Elena Park is mission commander. Dr. Amara Okafor owns plant science.",
+              "score": 0.6546714243334143,
+              "metadata": {
+                "record_id": "M003",
+                "session": 1,
+                "memory_type": "relationship"
+              }
+            },
+            {
+              "text": "[M027] The mission call sign changes from Aurora to Lumen for all current traffic.",
+              "score": 0.5978281284473652,
+              "metadata": {
+                "record_id": "M027",
+                "session": 9,
+                "memory_type": "decision"
+              }
+            },
+            {
+              "text": "[M016] The current operations channel is Matrix room #asteria-flight, not Slack.",
+              "score": 0.5886503096372522,
+              "metadata": {
+                "record_id": "M016",
+                "session": 5,
+                "memory_type": "instruction"
+              }
+            },
+            {
+              "text": "[M004] Operational alerts go to Slack channel #asteria-ops.",
+              "score": 0.5571302746475111,
+              "metadata": {
+                "record_id": "M004",
+                "session": 1,
+                "memory_type": "instruction"
+              }
+            }
+          ]
+        },
+        {
+          "query_id": "Q04",
+          "category": "current-state",
+          "query": "Where should current operational alerts be sent?",
+          "retrieved_tokens": 86,
+          "score": {
+            "query_id": "Q04",
+            "category": "current-state",
+            "coverage": 1.0,
+            "stale_leak": true,
+            "exact": false,
+            "matched_required": 2,
+            "required_total": 2,
+            "matched_forbidden": 1
+          },
+          "hits": [
+            {
+              "text": "[M004] Operational alerts go to Slack channel #asteria-ops.",
+              "score": 0.735328460513914,
+              "metadata": {
+                "record_id": "M004",
+                "session": 1,
+                "memory_type": "instruction"
+              }
+            },
+            {
+              "text": "[M031] Send current alerts only to Matrix room #asteria-flight.",
+              "score": 0.6710097855156496,
+              "metadata": {
+                "record_id": "M031",
+                "session": 10,
+                "memory_type": "instruction"
+              }
+            },
+            {
+              "text": "[M016] The current operations channel is Matrix room #asteria-flight, not Slack.",
+              "score": 0.5789558680735702,
+              "metadata": {
+                "record_id": "M016",
+                "session": 5,
+                "memory_type": "instruction"
+              }
+            },
+            {
+              "text": "[M027] The mission call sign changes from Aurora to Lumen for all current traffic.",
+              "score": 0.564061849496196,
+              "metadata": {
+                "record_id": "M027",
+                "session": 9,
+                "memory_type": "decision"
+              }
+            },
+            {
+              "text": "[M009] The original landing site is Malapert Ridge. The mission call sign is Aurora.",
+              "score": 0.5143508620365065,
+              "metadata": {
+                "record_id": "M009",
+                "session": 3,
+                "memory_type": "fact"
+              }
+            }
+          ]
+        },
+        {
+          "query_id": "Q05",
+          "category": "current-state",
+          "query": "Which nutrient protocol and pH target are active?",
+          "retrieved_tokens": 107,
+          "score": {
+            "query_id": "Q05",
+            "category": "current-state",
+            "coverage": 1.0,
+            "stale_leak": true,
+            "exact": false,
+            "matched_required": 2,
+            "required_total": 2,
+            "matched_forbidden": 2
+          },
+          "hits": [
+            {
+              "text": "[M017] Nutrient protocol N-21 supersedes N-17 and lowers target root-zone pH to 5.9.",
+              "score": 0.7549154946619239,
+              "metadata": {
+                "record_id": "M017",
+                "session": 6,
+                "memory_type": "decision"
+              }
+            },
+            {
+              "text": "[M005] The baseline nutrient recipe is N-17 with a target root-zone pH of 6.2.",
+              "score": 0.729098449640031,
+              "metadata": {
+                "record_id": "M005",
+                "session": 2,
+                "memory_type": "decision"
+              }
+            },
+            {
+              "text": "[M001] Asteria's greenhouse module is GH-7. The initial crop is Genovese basil.",
+              "score": 0.5416408387829493,
+              "metadata": {
+                "record_id": "M001",
+                "session": 1,
+                "memory_type": "fact"
+              }
+            },
+            {
+              "text": "[M004] Operational alerts go to Slack channel #asteria-ops.",
+              "score": 0.5268385900546638,
+              "metadata": {
+                "record_id": "M004",
+                "session": 1,
+                "memory_type": "instruction"
+              }
+            },
+            {
+              "text": "[M003] Elena Park is mission commander. Dr. Amara Okafor owns plant science.",
+              "score": 0.523161724812621,
+              "metadata": {
+                "record_id": "M003",
+                "session": 1,
+                "memory_type": "relationship"
+              }
+            }
+          ]
+        },
+        {
+          "query_id": "Q06",
+          "category": "current-state",
+          "query": "What is the active greenhouse thermal ceiling?",
+          "retrieved_tokens": 104,
+          "score": {
+            "query_id": "Q06",
+            "category": "current-state",
+            "coverage": 1.0,
+            "stale_leak": true,
+            "exact": false,
+            "matched_required": 1,
+            "required_total": 1,
+            "matched_forbidden": 1
+          },
+          "hits": [
+            {
+              "text": "[M006] The greenhouse thermal ceiling is 24 C. Backup oxygen lasts 18 hours.",
+              "score": 0.7905405764720894,
+              "metadata": {
+                "record_id": "M006",
+                "session": 2,
+                "memory_type": "fact"
+              }
+            },
+            {
+              "text": "[M018] The 24 C thermal ceiling is revoked. Hold GH-7 at or below 22 C.",
+              "score": 0.6964554937698523,
+              "metadata": {
+                "record_id": "M018",
+                "session": 6,
+                "memory_type": "instruction"
+              }
+            },
+            {
+              "text": "[M001] Asteria's greenhouse module is GH-7. The initial crop is Genovese basil.",
+              "score": 0.6174272531060604,
+              "metadata": {
+                "record_id": "M001",
+                "session": 1,
+                "memory_type": "fact"
+              }
+            },
+            {
+              "text": "[M029] Final readiness confirms GH-7, dwarf radish, N-21, and the 22 C ceiling.",
+              "score": 0.5741037509776863,
+              "metadata": {
+                "record_id": "M029",
+                "session": 10,
+                "memory_type": "fact"
+              }
+            },
+            {
+              "text": "[M019] Battery pack BX-9 supplies the greenhouse controller during transfer.",
+              "score": 0.5638031395579187,
+              "metadata": {
+                "record_id": "M019",
+                "session": 6,
+                "memory_type": "fact"
+              }
+            }
+          ]
+        },
+        {
+          "query_id": "Q07",
+          "category": "current-state",
+          "query": "Which landing site is selected now?",
+          "retrieved_tokens": 101,
+          "score": {
+            "query_id": "Q07",
+            "category": "current-state",
+            "coverage": 1.0,
+            "stale_leak": true,
+            "exact": false,
+            "matched_required": 1,
+            "required_total": 1,
+            "matched_forbidden": 1
+          },
+          "hits": [
+            {
+              "text": "[M009] The original landing site is Malapert Ridge. The mission call sign is Aurora.",
+              "score": 0.6622018310249207,
+              "metadata": {
+                "record_id": "M009",
+                "session": 3,
+                "memory_type": "fact"
+              }
+            },
+            {
+              "text": "[M002] The original launch window is August 14, 2026, from Kiruna.",
+              "score": 0.6314091136734521,
+              "metadata": {
+                "record_id": "M002",
+                "session": 1,
+                "memory_type": "event"
+              }
+            },
+            {
+              "text": "[M014] Launch review L-3 moves the launch from August 14 to September 2, 2026.",
+              "score": 0.6157290368320769,
+              "metadata": {
+                "record_id": "M014",
+                "session": 5,
+                "memory_type": "decision"
+              }
+            },
+            {
+              "text": "[M027] The mission call sign changes from Aurora to Lumen for all current traffic.",
+              "score": 0.5520767153364204,
+              "metadata": {
+                "record_id": "M027",
+                "session": 9,
+                "memory_type": "decision"
+              }
+            },
+            {
+              "text": "[M020] Site review S-4 selects Shackleton rim and rejects Malapert Ridge.",
+              "score": 0.5483777271565378,
+              "metadata": {
+                "record_id": "M020",
+                "session": 7,
+                "memory_type": "decision"
+              }
+            }
+          ]
+        },
+        {
+          "query_id": "Q08",
+          "category": "current-state",
+          "query": "What is the current approved program cap?",
+          "retrieved_tokens": 115,
+          "score": {
+            "query_id": "Q08",
+            "category": "current-state",
+            "coverage": 1.0,
+            "stale_leak": true,
+            "exact": false,
+            "matched_required": 1,
+            "required_total": 1,
+            "matched_forbidden": 1
+          },
+          "hits": [
+            {
+              "text": "[M021] The finance board reduces the program cap from USD 420,000 to USD 390,000.",
+              "score": 0.7197178979908626,
+              "metadata": {
+                "record_id": "M021",
+                "session": 7,
+                "memory_type": "decision"
+              }
+            },
+            {
+              "text": "[M010] Telemetry is retained for 90 days. The approved program cap is USD 420,000.",
+              "score": 0.6734659082328405,
+              "metadata": {
+                "record_id": "M010",
+                "session": 3,
+                "memory_type": "decision"
+              }
+            },
+            {
+              "text": "[M029] Final readiness confirms GH-7, dwarf radish, N-21, and the 22 C ceiling.",
+              "score": 0.5143576094888591,
+              "metadata": {
+                "record_id": "M029",
+                "session": 10,
+                "memory_type": "fact"
+              }
+            },
+            {
+              "text": "[M018] The 24 C thermal ceiling is revoked. Hold GH-7 at or below 22 C.",
+              "score": 0.5131174184443416,
+              "metadata": {
+                "record_id": "M018",
+                "session": 6,
+                "memory_type": "instruction"
+              }
+            },
+            {
+              "text": "[M028] Dr. Okafor will deliver the final radish growth report before August 20.",
+              "score": 0.50547838295667,
+              "metadata": {
+                "record_id": "M028",
+                "session": 9,
+                "memory_type": "commitment"
+              }
+            }
+          ]
+        },
+        {
+          "query_id": "Q09",
+          "category": "current-state",
+          "query": "Which seed vendor and purchase order are currently approved?",
+          "retrieved_tokens": 95,
+          "score": {
+            "query_id": "Q09",
+            "category": "current-state",
+            "coverage": 1.0,
+            "stale_leak": true,
+            "exact": false,
+            "matched_required": 2,
+            "required_total": 2,
+            "matched_forbidden": 1
+          },
+          "hits": [
+            {
+              "text": "[M007] Helios Agritech is the approved seed vendor under purchase order PO-81.",
+              "score": 0.7998175233777693,
+              "metadata": {
+                "record_id": "M007",
+                "session": 2,
+                "memory_type": "decision"
+              }
+            },
+            {
+              "text": "[M023] Nova Seedworks becomes the approved vendor under replacement order PO-96.",
+              "score": 0.7561052246527893,
+              "metadata": {
+                "record_id": "M023",
+                "session": 8,
+                "memory_type": "decision"
+              }
+            },
+            {
+              "text": "[M028] Dr. Okafor will deliver the final radish growth report before August 20.",
+              "score": 0.5391001511463163,
+              "metadata": {
+                "record_id": "M028",
+                "session": 9,
+                "memory_type": "commitment"
+              }
+            },
+            {
+              "text": "[M012] Dwarf radish completed germination testing in GH-7 with no mold detected.",
+              "score": 0.5268744475559153,
+              "metadata": {
+                "record_id": "M012",
+                "session": 4,
+                "memory_type": "observation"
+              }
+            },
+            {
+              "text": "[M032] Final logistics lists Nova Seedworks PO-96 and battery pack BX-9.",
+              "score": 0.5245138951676702,
+              "metadata": {
+                "record_id": "M032",
+                "session": 10,
+                "memory_type": "fact"
+              }
+            }
+          ]
+        },
+        {
+          "query_id": "Q10",
+          "category": "current-state",
+          "query": "Which emergency valve procedure is active?",
+          "retrieved_tokens": 95,
+          "score": {
+            "query_id": "Q10",
+            "category": "current-state",
+            "coverage": 1.0,
+            "stale_leak": true,
+            "exact": false,
+            "matched_required": 3,
+            "required_total": 3,
+            "matched_forbidden": 1
+          },
+          "hits": [
+            {
+              "text": "[M008] Emergency valve recovery uses procedure V1: isolate line B, then cycle pump 2.",
+              "score": 0.7521708349901401,
+              "metadata": {
+                "record_id": "M008",
+                "session": 3,
+                "memory_type": "instruction"
+              }
+            },
+            {
+              "text": "[M025] Never use valve procedure V1 during flight operations.",
+              "score": 0.6853247792052595,
+              "metadata": {
+                "record_id": "M025",
+                "session": 8,
+                "memory_type": "instruction"
+              }
+            },
+            {
+              "text": "[M024] Procedure V3 supersedes V1: isolate line C, vent for 30 seconds, then cycle pump 1.",
+              "score": 0.6012863412590774,
+              "metadata": {
+                "record_id": "M024",
+                "session": 8,
+                "memory_type": "instruction"
+              }
+            },
+            {
+              "text": "[M004] Operational alerts go to Slack channel #asteria-ops.",
+              "score": 0.5780290599282738,
+              "metadata": {
+                "record_id": "M004",
+                "session": 1,
+                "memory_type": "instruction"
+              }
+            },
+            {
+              "text": "[M016] The current operations channel is Matrix room #asteria-flight, not Slack.",
+              "score": 0.506103740235949,
+              "metadata": {
+                "record_id": "M016",
+                "session": 5,
+                "memory_type": "instruction"
+              }
+            }
+          ]
+        },
+        {
+          "query_id": "Q11",
+          "category": "current-state",
+          "query": "What are the current telemetry retention period and mission call sign?",
+          "retrieved_tokens": 94,
+          "score": {
+            "query_id": "Q11",
+            "category": "current-state",
+            "coverage": 1.0,
+            "stale_leak": true,
+            "exact": false,
+            "matched_required": 2,
+            "required_total": 2,
+            "matched_forbidden": 2
+          },
+          "hits": [
+            {
+              "text": "[M010] Telemetry is retained for 90 days. The approved program cap is USD 420,000.",
+              "score": 0.7374689823290339,
+              "metadata": {
+                "record_id": "M010",
+                "session": 3,
+                "memory_type": "decision"
+              }
+            },
+            {
+              "text": "[M027] The mission call sign changes from Aurora to Lumen for all current traffic.",
+              "score": 0.7260302959210041,
+              "metadata": {
+                "record_id": "M027",
+                "session": 9,
+                "memory_type": "decision"
+              }
+            },
+            {
+              "text": "[M026] Security review shortens telemetry retention from 90 days to 30 days.",
+              "score": 0.7138179943689928,
+              "metadata": {
+                "record_id": "M026",
+                "session": 9,
+                "memory_type": "decision"
+              }
+            },
+            {
+              "text": "[M009] The original landing site is Malapert Ridge. The mission call sign is Aurora.",
+              "score": 0.654783781064501,
+              "metadata": {
+                "record_id": "M009",
+                "session": 3,
+                "memory_type": "fact"
+              }
+            },
+            {
+              "text": "[M004] Operational alerts go to Slack channel #asteria-ops.",
+              "score": 0.5914376034654989,
+              "metadata": {
+                "record_id": "M004",
+                "session": 1,
+                "memory_type": "instruction"
+              }
+            }
+          ]
+        },
+        {
+          "query_id": "Q12",
+          "category": "historical",
+          "query": "What crop was approved before revision C-2?",
+          "retrieved_tokens": 107,
+          "score": {
+            "query_id": "Q12",
+            "category": "historical",
+            "coverage": 1.0,
+            "stale_leak": true,
+            "exact": false,
+            "matched_required": 1,
+            "required_total": 1,
+            "matched_forbidden": 1
+          },
+          "hits": [
+            {
+              "text": "[M011] Crop plan revision C-2 replaces basil with dwarf radish for the flight trial.",
+              "score": 0.7154346404378498,
+              "metadata": {
+                "record_id": "M011",
+                "session": 4,
+                "memory_type": "decision"
+              }
+            },
+            {
+              "text": "[M013] Do not load Genovese basil seed into the flight cassette after revision C-2.",
+              "score": 0.6322046309398418,
+              "metadata": {
+                "record_id": "M013",
+                "session": 4,
+                "memory_type": "instruction"
+              }
+            },
+            {
+              "text": "[M001] Asteria's greenhouse module is GH-7. The initial crop is Genovese basil.",
+              "score": 0.6087364586834797,
+              "metadata": {
+                "record_id": "M001",
+                "session": 1,
+                "memory_type": "fact"
+              }
+            },
+            {
+              "text": "[M007] Helios Agritech is the approved seed vendor under purchase order PO-81.",
+              "score": 0.595568623089301,
+              "metadata": {
+                "record_id": "M007",
+                "session": 2,
+                "memory_type": "decision"
+              }
+            },
+            {
+              "text": "[M029] Final readiness confirms GH-7, dwarf radish, N-21, and the 22 C ceiling.",
+              "score": 0.5939618678114303,
+              "metadata": {
+                "record_id": "M029",
+                "session": 10,
+                "memory_type": "fact"
+              }
+            }
+          ]
+        },
+        {
+          "query_id": "Q13",
+          "category": "historical",
+          "query": "Who was mission commander before Priya Nair?",
+          "retrieved_tokens": 96,
+          "score": {
+            "query_id": "Q13",
+            "category": "historical",
+            "coverage": 1.0,
+            "stale_leak": true,
+            "exact": false,
+            "matched_required": 1,
+            "required_total": 1,
+            "matched_forbidden": 1
+          },
+          "hits": [
+            {
+              "text": "[M015] Priya Nair replaces Elena Park as mission commander. Elena remains an adviser.",
+              "score": 0.7977209116861806,
+              "metadata": {
+                "record_id": "M015",
+                "session": 5,
+                "memory_type": "relationship"
+              }
+            },
+            {
+              "text": "[M003] Elena Park is mission commander. Dr. Amara Okafor owns plant science.",
+              "score": 0.6544658493016464,
+              "metadata": {
+                "record_id": "M003",
+                "session": 1,
+                "memory_type": "relationship"
+              }
+            },
+            {
+              "text": "[M030] Final command brief lists Priya Nair, Shackleton rim, and call sign Lumen.",
+              "score": 0.6538635900636673,
+              "metadata": {
+                "record_id": "M030",
+                "session": 10,
+                "memory_type": "fact"
+              }
+            },
+            {
+              "text": "[M009] The original landing site is Malapert Ridge. The mission call sign is Aurora.",
+              "score": 0.5581169814118354,
+              "metadata": {
+                "record_id": "M009",
+                "session": 3,
+                "memory_type": "fact"
+              }
+            },
+            {
+              "text": "[M004] Operational alerts go to Slack channel #asteria-ops.",
+              "score": 0.5434312866367155,
+              "metadata": {
+                "record_id": "M004",
+                "session": 1,
+                "memory_type": "instruction"
+              }
+            }
+          ]
+        },
+        {
+          "query_id": "Q14",
+          "category": "historical",
+          "query": "What was the original landing site?",
+          "retrieved_tokens": 101,
+          "score": {
+            "query_id": "Q14",
+            "category": "historical",
+            "coverage": 1.0,
+            "stale_leak": true,
+            "exact": false,
+            "matched_required": 1,
+            "required_total": 1,
+            "matched_forbidden": 1
+          },
+          "hits": [
+            {
+              "text": "[M009] The original landing site is Malapert Ridge. The mission call sign is Aurora.",
+              "score": 0.7359648442302898,
+              "metadata": {
+                "record_id": "M009",
+                "session": 3,
+                "memory_type": "fact"
+              }
+            },
+            {
+              "text": "[M002] The original launch window is August 14, 2026, from Kiruna.",
+              "score": 0.5746170132221255,
+              "metadata": {
+                "record_id": "M002",
+                "session": 1,
+                "memory_type": "event"
+              }
+            },
+            {
+              "text": "[M014] Launch review L-3 moves the launch from August 14 to September 2, 2026.",
+              "score": 0.5128864888838551,
+              "metadata": {
+                "record_id": "M014",
+                "session": 5,
+                "memory_type": "decision"
+              }
+            },
+            {
+              "text": "[M020] Site review S-4 selects Shackleton rim and rejects Malapert Ridge.",
+              "score": 0.5030914907187223,
+              "metadata": {
+                "record_id": "M020",
+                "session": 7,
+                "memory_type": "decision"
+              }
+            },
+            {
+              "text": "[M027] The mission call sign changes from Aurora to Lumen for all current traffic.",
+              "score": 0.49001786368288747,
+              "metadata": {
+                "record_id": "M027",
+                "session": 9,
+                "memory_type": "decision"
+              }
+            }
+          ]
+        },
+        {
+          "query_id": "Q15",
+          "category": "historical",
+          "query": "Which valve procedure was used before V3?",
+          "retrieved_tokens": 103,
+          "score": {
+            "query_id": "Q15",
+            "category": "historical",
+            "coverage": 1.0,
+            "stale_leak": true,
+            "exact": false,
+            "matched_required": 3,
+            "required_total": 3,
+            "matched_forbidden": 1
+          },
+          "hits": [
+            {
+              "text": "[M025] Never use valve procedure V1 during flight operations.",
+              "score": 0.7061607035109262,
+              "metadata": {
+                "record_id": "M025",
+                "session": 8,
+                "memory_type": "instruction"
+              }
+            },
+            {
+              "text": "[M024] Procedure V3 supersedes V1: isolate line C, vent for 30 seconds, then cycle pump 1.",
+              "score": 0.6712519019569896,
+              "metadata": {
+                "record_id": "M024",
+                "session": 8,
+                "memory_type": "instruction"
+              }
+            },
+            {
+              "text": "[M008] Emergency valve recovery uses procedure V1: isolate line B, then cycle pump 2.",
+              "score": 0.6697791031835534,
+              "metadata": {
+                "record_id": "M008",
+                "session": 3,
+                "memory_type": "instruction"
+              }
+            },
+            {
+              "text": "[M014] Launch review L-3 moves the launch from August 14 to September 2, 2026.",
+              "score": 0.5149396305542303,
+              "metadata": {
+                "record_id": "M014",
+                "session": 5,
+                "memory_type": "decision"
+              }
+            },
+            {
+              "text": "[M022] Helios Agritech lot H-44 is recalled after contamination screening.",
+              "score": 0.5129829209960179,
+              "metadata": {
+                "record_id": "M022",
+                "session": 7,
+                "memory_type": "event"
+              }
+            }
+          ]
+        },
+        {
+          "query_id": "Q16",
+          "category": "multi-hop",
+          "query": "Prepare the current command brief: commander, landing site, and call sign.",
+          "retrieved_tokens": 90,
+          "score": {
+            "query_id": "Q16",
+            "category": "multi-hop",
+            "coverage": 1.0,
+            "stale_leak": true,
+            "exact": false,
+            "matched_required": 3,
+            "required_total": 3,
+            "matched_forbidden": 2
+          },
+          "hits": [
+            {
+              "text": "[M030] Final command brief lists Priya Nair, Shackleton rim, and call sign Lumen.",
+              "score": 0.6756771872190969,
+              "metadata": {
+                "record_id": "M030",
+                "session": 10,
+                "memory_type": "fact"
+              }
+            },
+            {
+              "text": "[M009] The original landing site is Malapert Ridge. The mission call sign is Aurora.",
+              "score": 0.6618295145364166,
+              "metadata": {
+                "record_id": "M009",
+                "session": 3,
+                "memory_type": "fact"
+              }
+            },
+            {
+              "text": "[M027] The mission call sign changes from Aurora to Lumen for all current traffic.",
+              "score": 0.6293524860228891,
+              "metadata": {
+                "record_id": "M027",
+                "session": 9,
+                "memory_type": "decision"
+              }
+            },
+            {
+              "text": "[M004] Operational alerts go to Slack channel #asteria-ops.",
+              "score": 0.5808755921140929,
+              "metadata": {
+                "record_id": "M004",
+                "session": 1,
+                "memory_type": "instruction"
+              }
+            },
+            {
+              "text": "[M031] Send current alerts only to Matrix room #asteria-flight.",
+              "score": 0.5596943849059258,
+              "metadata": {
+                "record_id": "M031",
+                "session": 10,
+                "memory_type": "instruction"
+              }
+            }
+          ]
+        },
+        {
+          "query_id": "Q17",
+          "category": "multi-hop",
+          "query": "Prepare the current greenhouse brief: module, crop, nutrient protocol, and temperature limit.",
+          "retrieved_tokens": 111,
+          "score": {
+            "query_id": "Q17",
+            "category": "multi-hop",
+            "coverage": 0.75,
+            "stale_leak": true,
+            "exact": false,
+            "matched_required": 3,
+            "required_total": 4,
+            "matched_forbidden": 3
+          },
+          "hits": [
+            {
+              "text": "[M001] Asteria's greenhouse module is GH-7. The initial crop is Genovese basil.",
+              "score": 0.7096052867563418,
+              "metadata": {
+                "record_id": "M001",
+                "session": 1,
+                "memory_type": "fact"
+              }
+            },
+            {
+              "text": "[M006] The greenhouse thermal ceiling is 24 C. Backup oxygen lasts 18 hours.",
+              "score": 0.7036409993701334,
+              "metadata": {
+                "record_id": "M006",
+                "session": 2,
+                "memory_type": "fact"
+              }
+            },
+            {
+              "text": "[M017] Nutrient protocol N-21 supersedes N-17 and lowers target root-zone pH to 5.9.",
+              "score": 0.6548996437608837,
+              "metadata": {
+                "record_id": "M017",
+                "session": 6,
+                "memory_type": "decision"
+              }
+            },
+            {
+              "text": "[M005] The baseline nutrient recipe is N-17 with a target root-zone pH of 6.2.",
+              "score": 0.6446778122128647,
+              "metadata": {
+                "record_id": "M005",
+                "session": 2,
+                "memory_type": "decision"
+              }
+            },
+            {
+              "text": "[M011] Crop plan revision C-2 replaces basil with dwarf radish for the flight trial.",
+              "score": 0.6305630926187897,
+              "metadata": {
+                "record_id": "M011",
+                "session": 4,
+                "memory_type": "decision"
+              }
+            }
+          ]
+        },
+        {
+          "query_id": "Q18",
+          "category": "multi-hop",
+          "query": "Prepare current logistics: vendor, order, and transfer battery.",
+          "retrieved_tokens": 88,
+          "score": {
+            "query_id": "Q18",
+            "category": "multi-hop",
+            "coverage": 1.0,
+            "stale_leak": true,
+            "exact": false,
+            "matched_required": 3,
+            "required_total": 3,
+            "matched_forbidden": 1
+          },
+          "hits": [
+            {
+              "text": "[M032] Final logistics lists Nova Seedworks PO-96 and battery pack BX-9.",
+              "score": 0.6721699480711288,
+              "metadata": {
+                "record_id": "M032",
+                "session": 10,
+                "memory_type": "fact"
+              }
+            },
+            {
+              "text": "[M019] Battery pack BX-9 supplies the greenhouse controller during transfer.",
+              "score": 0.6397008476415957,
+              "metadata": {
+                "record_id": "M019",
+                "session": 6,
+                "memory_type": "fact"
+              }
+            },
+            {
+              "text": "[M023] Nova Seedworks becomes the approved vendor under replacement order PO-96.",
+              "score": 0.5822560832830372,
+              "metadata": {
+                "record_id": "M023",
+                "session": 8,
+                "memory_type": "decision"
+              }
+            },
+            {
+              "text": "[M007] Helios Agritech is the approved seed vendor under purchase order PO-81.",
+              "score": 0.556822757455921,
+              "metadata": {
+                "record_id": "M007",
+                "session": 2,
+                "memory_type": "decision"
+              }
+            },
+            {
+              "text": "[M027] The mission call sign changes from Aurora to Lumen for all current traffic.",
+              "score": 0.5411729212081198,
+              "metadata": {
+                "record_id": "M027",
+                "session": 9,
+                "memory_type": "decision"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "backend": "mem0-agentic",
+      "summary": {
+        "mean_coverage": 0.694444,
+        "exact_accuracy": 0.111111,
+        "stale_leak_rate": 0.888889,
+        "by_category": {
+          "current-state": {
+            "mean_coverage": 0.636364,
+            "exact_accuracy": 0.0,
+            "stale_leak_rate": 1.0,
+            "queries": 11
+          },
+          "historical": {
+            "mean_coverage": 1.0,
+            "exact_accuracy": 0.5,
+            "stale_leak_rate": 0.5,
+            "queries": 4
+          },
+          "multi-hop": {
+            "mean_coverage": 0.5,
+            "exact_accuracy": 0.0,
+            "stale_leak_rate": 1.0,
+            "queries": 3
+          }
+        }
+      },
+      "metrics": {
+        "records_ingested": 32,
+        "queries_evaluated": 18,
+        "top_k": 5,
+        "latency_repeats": 5,
+        "source_tokens": 551,
+        "retrieved_tokens": 1793,
+        "avg_retrieved_tokens_per_query": 99.611,
+        "ingest_total_s": 2912.081626,
+        "ingest_p50_s": 90.387719,
+        "ingest_p95_s": 93.141154,
+        "index_ready_s": 0.069627,
+        "query_mean_s": 0.077937,
+        "query_p50_s": 0.073744,
+        "query_p95_s": 0.103231,
+        "client_rss_delta_mb": 0.352,
+        "llm_calls": 32,
+        "llm_input_tokens": 131040,
+        "llm_output_tokens": 3650
+      },
+      "scores": [
+        {
+          "query_id": "Q01",
+          "category": "current-state",
+          "coverage": 0.0,
+          "stale_leak": true,
+          "exact": false,
+          "matched_required": 0,
+          "required_total": 1,
+          "matched_forbidden": 1
+        },
+        {
+          "query_id": "Q02",
+          "category": "current-state",
+          "coverage": 1.0,
+          "stale_leak": true,
+          "exact": false,
+          "matched_required": 1,
+          "required_total": 1,
+          "matched_forbidden": 1
+        },
+        {
+          "query_id": "Q03",
+          "category": "current-state",
+          "coverage": 1.0,
+          "stale_leak": true,
+          "exact": false,
+          "matched_required": 1,
+          "required_total": 1,
+          "matched_forbidden": 1
+        },
+        {
+          "query_id": "Q04",
+          "category": "current-state",
+          "coverage": 1.0,
+          "stale_leak": true,
+          "exact": false,
+          "matched_required": 2,
+          "required_total": 2,
+          "matched_forbidden": 1
+        },
+        {
+          "query_id": "Q05",
+          "category": "current-state",
+          "coverage": 1.0,
+          "stale_leak": true,
+          "exact": false,
+          "matched_required": 2,
+          "required_total": 2,
+          "matched_forbidden": 2
+        },
+        {
+          "query_id": "Q06",
+          "category": "current-state",
+          "coverage": 0.0,
+          "stale_leak": true,
+          "exact": false,
+          "matched_required": 0,
+          "required_total": 1,
+          "matched_forbidden": 1
+        },
+        {
+          "query_id": "Q07",
+          "category": "current-state",
+          "coverage": 0.0,
+          "stale_leak": true,
+          "exact": false,
+          "matched_required": 0,
+          "required_total": 1,
+          "matched_forbidden": 1
+        },
+        {
+          "query_id": "Q08",
+          "category": "current-state",
+          "coverage": 1.0,
+          "stale_leak": true,
+          "exact": false,
+          "matched_required": 1,
+          "required_total": 1,
+          "matched_forbidden": 1
+        },
+        {
+          "query_id": "Q09",
+          "category": "current-state",
+          "coverage": 1.0,
+          "stale_leak": true,
+          "exact": false,
+          "matched_required": 2,
+          "required_total": 2,
+          "matched_forbidden": 1
+        },
+        {
+          "query_id": "Q10",
+          "category": "current-state",
+          "coverage": 0.0,
+          "stale_leak": true,
+          "exact": false,
+          "matched_required": 0,
+          "required_total": 3,
+          "matched_forbidden": 1
+        },
+        {
+          "query_id": "Q11",
+          "category": "current-state",
+          "coverage": 1.0,
+          "stale_leak": true,
+          "exact": false,
+          "matched_required": 2,
+          "required_total": 2,
+          "matched_forbidden": 2
+        },
+        {
+          "query_id": "Q12",
+          "category": "historical",
+          "coverage": 1.0,
+          "stale_leak": false,
+          "exact": true,
+          "matched_required": 1,
+          "required_total": 1,
+          "matched_forbidden": 0
+        },
+        {
+          "query_id": "Q13",
+          "category": "historical",
+          "coverage": 1.0,
+          "stale_leak": true,
+          "exact": false,
+          "matched_required": 1,
+          "required_total": 1,
+          "matched_forbidden": 1
+        },
+        {
+          "query_id": "Q14",
+          "category": "historical",
+          "coverage": 1.0,
+          "stale_leak": true,
+          "exact": false,
+          "matched_required": 1,
+          "required_total": 1,
+          "matched_forbidden": 1
+        },
+        {
+          "query_id": "Q15",
+          "category": "historical",
+          "coverage": 1.0,
+          "stale_leak": false,
+          "exact": true,
+          "matched_required": 3,
+          "required_total": 3,
+          "matched_forbidden": 0
+        },
+        {
+          "query_id": "Q16",
+          "category": "multi-hop",
+          "coverage": 0.333333,
+          "stale_leak": true,
+          "exact": false,
+          "matched_required": 1,
+          "required_total": 3,
+          "matched_forbidden": 2
+        },
+        {
+          "query_id": "Q17",
+          "category": "multi-hop",
+          "coverage": 0.5,
+          "stale_leak": true,
+          "exact": false,
+          "matched_required": 2,
+          "required_total": 4,
+          "matched_forbidden": 2
+        },
+        {
+          "query_id": "Q18",
+          "category": "multi-hop",
+          "coverage": 0.666667,
+          "stale_leak": true,
+          "exact": false,
+          "matched_required": 2,
+          "required_total": 3,
+          "matched_forbidden": 1
+        }
+      ],
+      "queries": [
+        {
+          "query_id": "Q01",
+          "category": "current-state",
+          "query": "What crop is currently approved for the Asteria flight trial?",
+          "retrieved_tokens": 98,
+          "score": {
+            "query_id": "Q01",
+            "category": "current-state",
+            "coverage": 0.0,
+            "stale_leak": true,
+            "exact": false,
+            "matched_required": 0,
+            "required_total": 1,
+            "matched_forbidden": 1
+          },
+          "hits": [
+            {
+              "text": "Asteria's greenhouse module is GH-7, and the initial crop is Genovese basil.",
+              "score": 0.7194901019464908,
+              "metadata": {
+                "record_id": "M001",
+                "session": 1,
+                "memory_type": "fact"
+              }
+            },
+            {
+              "text": "Helios Agritech is the approved seed vendor for Asteria's greenhouse module under purchase order PO-81.",
+              "score": 0.701814070102712,
+              "metadata": {
+                "record_id": "M007",
+                "session": 2,
+                "memory_type": "decision"
+              }
+            },
+            {
+              "text": "The approved program cap for Asteria's greenhouse module is USD 420,000.",
+              "score": 0.7010847716230442,
+              "metadata": {
+                "record_id": "M010",
+                "session": 3,
+                "memory_type": "decision"
+              }
+            },
+            {
+              "text": "The approved program cap for Asteria's greenhouse module is USD 390,000.",
+              "score": 0.6994412703464734,
+              "metadata": {
+                "record_id": "M024",
+                "session": 8,
+                "memory_type": "instruction"
+              }
+            },
+            {
+              "text": "The launch window for Asteria's greenhouse module has been extended to September 2, 2026.",
+              "score": 0.6939944781652788,
+              "metadata": {
+                "record_id": "M017",
+                "session": 6,
+                "memory_type": "decision"
+              }
+            }
+          ]
+        },
+        {
+          "query_id": "Q02",
+          "category": "current-state",
+          "query": "What is the current launch date?",
+          "retrieved_tokens": 115,
+          "score": {
+            "query_id": "Q02",
+            "category": "current-state",
+            "coverage": 1.0,
+            "stale_leak": true,
+            "exact": false,
+            "matched_required": 1,
+            "required_total": 1,
+            "matched_forbidden": 1
+          },
+          "hits": [
+            {
+              "text": "The launch window for Asteria's greenhouse module is now set to September 2, 2026.",
+              "score": 0.7053919286996808,
+              "metadata": {
+                "record_id": "M014",
+                "session": 5,
+                "memory_type": "decision"
+              }
+            },
+            {
+              "text": "The original launch window for Asteria's greenhouse module is August 14, 2026, from Kiruna.",
+              "score": 0.6995399423286328,
+              "metadata": {
+                "record_id": "M002",
+                "session": 1,
+                "memory_type": "event"
+              }
+            },
+            {
+              "text": "The launch window for Asteria's greenhouse module is now set to September 2, 2026, from Kiruna.",
+              "score": 0.6943353698742786,
+              "metadata": {
+                "record_id": "M021",
+                "session": 7,
+                "memory_type": "decision"
+              }
+            },
+            {
+              "text": "The launch window for Asteria's greenhouse module has been extended to September 2, 2026.",
+              "score": 0.6846143299217315,
+              "metadata": {
+                "record_id": "M017",
+                "session": 6,
+                "memory_type": "decision"
+              }
+            },
+            {
+              "text": "The launch window for Asteria's greenhouse module has been extended to September 2, 2026, from Kiruna.",
+              "score": 0.673682653731482,
+              "metadata": {
+                "record_id": "M023",
+                "session": 8,
+                "memory_type": "decision"
+              }
+            }
+          ]
+        },
+        {
+          "query_id": "Q03",
+          "category": "current-state",
+          "query": "Who is the current mission commander?",
+          "retrieved_tokens": 91,
+          "score": {
+            "query_id": "Q03",
+            "category": "current-state",
+            "coverage": 1.0,
+            "stale_leak": true,
+            "exact": false,
+            "matched_required": 1,
+            "required_total": 1,
+            "matched_forbidden": 1
+          },
+          "hits": [
+            {
+              "text": "Priya Nair replaces Elena Park as mission commander, and Dr. Amara Okafor remains an adviser.",
+              "score": 0.6858203694930951,
+              "metadata": {
+                "record_id": "M015",
+                "session": 5,
+                "memory_type": "relationship"
+              }
+            },
+            {
+              "text": "Elena Park is mission commander, and Dr. Amara Okafor owns plant science.",
+              "score": 0.6109025321417307,
+              "metadata": {
+                "record_id": "M003",
+                "session": 1,
+                "memory_type": "relationship"
+              }
+            },
+            {
+              "text": "The mission call sign for Asteria's greenhouse module is now Lumen.",
+              "score": 0.5348382261972218,
+              "metadata": {
+                "record_id": "M027",
+                "session": 9,
+                "memory_type": "decision"
+              }
+            },
+            {
+              "text": "The current operations channel for Asteria's greenhouse module is Matrix room #asteria-flight, not Slack.",
+              "score": 0.5226587729039973,
+              "metadata": {
+                "record_id": "M016",
+                "session": 5,
+                "memory_type": "instruction"
+              }
+            },
+            {
+              "text": "The mission call sign for Asteria's greenhouse module is Aurora.",
+              "score": 0.5203405560132583,
+              "metadata": {
+                "record_id": "M009",
+                "session": 3,
+                "memory_type": "fact"
+              }
+            }
+          ]
+        },
+        {
+          "query_id": "Q04",
+          "category": "current-state",
+          "query": "Where should current operational alerts be sent?",
+          "retrieved_tokens": 90,
+          "score": {
+            "query_id": "Q04",
+            "category": "current-state",
+            "coverage": 1.0,
+            "stale_leak": true,
+            "exact": false,
+            "matched_required": 2,
+            "required_total": 2,
+            "matched_forbidden": 1
+          },
+          "hits": [
+            {
+              "text": "Operational alerts for Asteria's greenhouse module are sent to Slack channel #asteria-ops.",
+              "score": 0.6637453271424572,
+              "metadata": {
+                "record_id": "M004",
+                "session": 1,
+                "memory_type": "instruction"
+              }
+            },
+            {
+              "text": "The current operations channel for Asteria's greenhouse module is Matrix room #asteria-flight, not Slack.",
+              "score": 0.5207972480644059,
+              "metadata": {
+                "record_id": "M016",
+                "session": 5,
+                "memory_type": "instruction"
+              }
+            },
+            {
+              "text": "The mission call sign for Asteria's greenhouse module is Aurora.",
+              "score": 0.5127459415515732,
+              "metadata": {
+                "record_id": "M009",
+                "session": 3,
+                "memory_type": "fact"
+              }
+            },
+            {
+              "text": "The mission call sign for Asteria's greenhouse module is now Lumen.",
+              "score": 0.5071081477878081,
+              "metadata": {
+                "record_id": "M027",
+                "session": 9,
+                "memory_type": "decision"
+              }
+            },
+            {
+              "text": "The launch window for Asteria's greenhouse module has been extended to September 2, 2026.",
+              "score": 0.4741498625455865,
+              "metadata": {
+                "record_id": "M017",
+                "session": 6,
+                "memory_type": "decision"
+              }
+            }
+          ]
+        },
+        {
+          "query_id": "Q05",
+          "category": "current-state",
+          "query": "Which nutrient protocol and pH target are active?",
+          "retrieved_tokens": 116,
+          "score": {
+            "query_id": "Q05",
+            "category": "current-state",
+            "coverage": 1.0,
+            "stale_leak": true,
+            "exact": false,
+            "matched_required": 2,
+            "required_total": 2,
+            "matched_forbidden": 2
+          },
+          "hits": [
+            {
+              "text": "The baseline nutrient recipe for Asteria's greenhouse module is N-21, with a target root-zone pH of 5.9.",
+              "score": 0.6724358786554634,
+              "metadata": {
+                "record_id": "M017",
+                "session": 6,
+                "memory_type": "decision"
+              }
+            },
+            {
+              "text": "The baseline nutrient recipe for Asteria's greenhouse module is N-17, with a target root-zone pH of 6.2.",
+              "score": 0.6677053530642676,
+              "metadata": {
+                "record_id": "M005",
+                "session": 2,
+                "memory_type": "decision"
+              }
+            },
+            {
+              "text": "Operational alerts for Asteria's greenhouse module are sent to Slack channel #asteria-ops.",
+              "score": 0.5306653709262017,
+              "metadata": {
+                "record_id": "M004",
+                "session": 1,
+                "memory_type": "instruction"
+              }
+            },
+            {
+              "text": "Asteria's greenhouse module is GH-7, and the initial crop is Genovese basil.",
+              "score": 0.5097223320602482,
+              "metadata": {
+                "record_id": "M001",
+                "session": 1,
+                "memory_type": "fact"
+              }
+            },
+            {
+              "text": "The current operations channel for Asteria's greenhouse module is Matrix room #asteria-flight, not Slack.",
+              "score": 0.5025140888029355,
+              "metadata": {
+                "record_id": "M016",
+                "session": 5,
+                "memory_type": "instruction"
+              }
+            }
+          ]
+        },
+        {
+          "query_id": "Q06",
+          "category": "current-state",
+          "query": "What is the active greenhouse thermal ceiling?",
+          "retrieved_tokens": 94,
+          "score": {
+            "query_id": "Q06",
+            "category": "current-state",
+            "coverage": 0.0,
+            "stale_leak": true,
+            "exact": false,
+            "matched_required": 0,
+            "required_total": 1,
+            "matched_forbidden": 1
+          },
+          "hits": [
+            {
+              "text": "The greenhouse thermal ceiling is set to 24 degrees Celsius, and the backup oxygen supply lasts for 18 hours.",
+              "score": 0.7924965639617187,
+              "metadata": {
+                "record_id": "M006",
+                "session": 2,
+                "memory_type": "fact"
+              }
+            },
+            {
+              "text": "The approved program cap for Asteria's greenhouse module is USD 420,000.",
+              "score": 0.6476385776080372,
+              "metadata": {
+                "record_id": "M010",
+                "session": 3,
+                "memory_type": "decision"
+              }
+            },
+            {
+              "text": "The approved program cap for Asteria's greenhouse module is USD 390,000.",
+              "score": 0.6438607271670869,
+              "metadata": {
+                "record_id": "M024",
+                "session": 8,
+                "memory_type": "instruction"
+              }
+            },
+            {
+              "text": "The current operations channel for Asteria's greenhouse module is Matrix room #asteria-flight, not Slack.",
+              "score": 0.6228638199726709,
+              "metadata": {
+                "record_id": "M016",
+                "session": 5,
+                "memory_type": "instruction"
+              }
+            },
+            {
+              "text": "The original landing site for Asteria's greenhouse module is Malapert Ridge.",
+              "score": 0.6207167515080567,
+              "metadata": {
+                "record_id": "M009",
+                "session": 3,
+                "memory_type": "fact"
+              }
+            }
+          ]
+        },
+        {
+          "query_id": "Q07",
+          "category": "current-state",
+          "query": "Which landing site is selected now?",
+          "retrieved_tokens": 110,
+          "score": {
+            "query_id": "Q07",
+            "category": "current-state",
+            "coverage": 0.0,
+            "stale_leak": true,
+            "exact": false,
+            "matched_required": 0,
+            "required_total": 1,
+            "matched_forbidden": 1
+          },
+          "hits": [
+            {
+              "text": "The original landing site for Asteria's greenhouse module is Malapert Ridge.",
+              "score": 0.6130674977759014,
+              "metadata": {
+                "record_id": "M009",
+                "session": 3,
+                "memory_type": "fact"
+              }
+            },
+            {
+              "text": "The launch window for Asteria's greenhouse module is now set to September 2, 2026, from Kiruna.",
+              "score": 0.6019349193191895,
+              "metadata": {
+                "record_id": "M021",
+                "session": 7,
+                "memory_type": "decision"
+              }
+            },
+            {
+              "text": "The launch window for Asteria's greenhouse module has been extended to September 2, 2026, from Kiruna.",
+              "score": 0.5930554626209197,
+              "metadata": {
+                "record_id": "M023",
+                "session": 8,
+                "memory_type": "decision"
+              }
+            },
+            {
+              "text": "The original launch window for Asteria's greenhouse module is August 14, 2026, from Kiruna.",
+              "score": 0.5928507932691411,
+              "metadata": {
+                "record_id": "M002",
+                "session": 1,
+                "memory_type": "event"
+              }
+            },
+            {
+              "text": "The launch window for Asteria's greenhouse module is now set to September 2, 2026.",
+              "score": 0.5866702142178286,
+              "metadata": {
+                "record_id": "M014",
+                "session": 5,
+                "memory_type": "decision"
+              }
+            }
+          ]
+        },
+        {
+          "query_id": "Q08",
+          "category": "current-state",
+          "query": "What is the current approved program cap?",
+          "retrieved_tokens": 98,
+          "score": {
+            "query_id": "Q08",
+            "category": "current-state",
+            "coverage": 1.0,
+            "stale_leak": true,
+            "exact": false,
+            "matched_required": 1,
+            "required_total": 1,
+            "matched_forbidden": 1
+          },
+          "hits": [
+            {
+              "text": "The approved program cap for Asteria's greenhouse module is USD 390,000.",
+              "score": 0.6808719838369408,
+              "metadata": {
+                "record_id": "M024",
+                "session": 8,
+                "memory_type": "instruction"
+              }
+            },
+            {
+              "text": "The approved program cap for Asteria's greenhouse module is USD 420,000.",
+              "score": 0.6771476264061573,
+              "metadata": {
+                "record_id": "M010",
+                "session": 3,
+                "memory_type": "decision"
+              }
+            },
+            {
+              "text": "The finance board reduces the program cap for Asteria's greenhouse module from USD 420,000 to USD 390,000.",
+              "score": 0.5955466704877254,
+              "metadata": {
+                "record_id": "M021",
+                "session": 7,
+                "memory_type": "decision"
+              }
+            },
+            {
+              "text": "Security review shortens telemetry retention from 90 days to 30 days.",
+              "score": 0.47541778968179665,
+              "metadata": {
+                "record_id": "M026",
+                "session": 9,
+                "memory_type": "decision"
+              }
+            },
+            {
+              "text": "The greenhouse thermal ceiling is set to 24 degrees Celsius, and the backup oxygen supply lasts for 18 hours.",
+              "score": 0.47427246582107707,
+              "metadata": {
+                "record_id": "M006",
+                "session": 2,
+                "memory_type": "fact"
+              }
+            }
+          ]
+        },
+        {
+          "query_id": "Q09",
+          "category": "current-state",
+          "query": "Which seed vendor and purchase order are currently approved?",
+          "retrieved_tokens": 94,
+          "score": {
+            "query_id": "Q09",
+            "category": "current-state",
+            "coverage": 1.0,
+            "stale_leak": true,
+            "exact": false,
+            "matched_required": 2,
+            "required_total": 2,
+            "matched_forbidden": 1
+          },
+          "hits": [
+            {
+              "text": "Nova Seedworks becomes the approved vendor under replacement order PO-96.",
+              "score": 0.756392076848299,
+              "metadata": {
+                "record_id": "M032",
+                "session": 10,
+                "memory_type": "fact"
+              }
+            },
+            {
+              "text": "Helios Agritech is the approved seed vendor for Asteria's greenhouse module under purchase order PO-81.",
+              "score": 0.7350943381743017,
+              "metadata": {
+                "record_id": "M007",
+                "session": 2,
+                "memory_type": "decision"
+              }
+            },
+            {
+              "text": "Nova Seedworks is the approved vendor for Asteria's greenhouse module under replacement order PO-96.",
+              "score": 0.6982074113987796,
+              "metadata": {
+                "record_id": "M023",
+                "session": 8,
+                "memory_type": "decision"
+              }
+            },
+            {
+              "text": "The approved program cap for Asteria's greenhouse module is USD 420,000.",
+              "score": 0.5224732570058981,
+              "metadata": {
+                "record_id": "M010",
+                "session": 3,
+                "memory_type": "decision"
+              }
+            },
+            {
+              "text": "The launch window for Asteria's greenhouse module has been extended to September 2, 2026.",
+              "score": 0.520347248275822,
+              "metadata": {
+                "record_id": "M017",
+                "session": 6,
+                "memory_type": "decision"
+              }
+            }
+          ]
+        },
+        {
+          "query_id": "Q10",
+          "category": "current-state",
+          "query": "Which emergency valve procedure is active?",
+          "retrieved_tokens": 113,
+          "score": {
+            "query_id": "Q10",
+            "category": "current-state",
+            "coverage": 0.0,
+            "stale_leak": true,
+            "exact": false,
+            "matched_required": 0,
+            "required_total": 3,
+            "matched_forbidden": 1
+          },
+          "hits": [
+            {
+              "text": "Emergency valve recovery in Asteria's greenhouse module uses procedure V1: isolate line B, then cycle pump 2.",
+              "score": 0.68529601392608,
+              "metadata": {
+                "record_id": "M008",
+                "session": 3,
+                "memory_type": "instruction"
+              }
+            },
+            {
+              "text": "Operational alerts for Asteria's greenhouse module are sent to Slack channel #asteria-ops.",
+              "score": 0.54344273385708,
+              "metadata": {
+                "record_id": "M004",
+                "session": 1,
+                "memory_type": "instruction"
+              }
+            },
+            {
+              "text": "The current operations channel for Asteria's greenhouse module is Matrix room #asteria-flight, not Slack.",
+              "score": 0.49859799889886325,
+              "metadata": {
+                "record_id": "M016",
+                "session": 5,
+                "memory_type": "instruction"
+              }
+            },
+            {
+              "text": "The launch window for Asteria's greenhouse module has been extended to September 2, 2026, from Kiruna.",
+              "score": 0.48939228011808306,
+              "metadata": {
+                "record_id": "M023",
+                "session": 8,
+                "memory_type": "decision"
+              }
+            },
+            {
+              "text": "The original launch window for Asteria's greenhouse module is August 14, 2026, from Kiruna.",
+              "score": 0.48310124603431304,
+              "metadata": {
+                "record_id": "M002",
+                "session": 1,
+                "memory_type": "event"
+              }
+            }
+          ]
+        },
+        {
+          "query_id": "Q11",
+          "category": "current-state",
+          "query": "What are the current telemetry retention period and mission call sign?",
+          "retrieved_tokens": 84,
+          "score": {
+            "query_id": "Q11",
+            "category": "current-state",
+            "coverage": 1.0,
+            "stale_leak": true,
+            "exact": false,
+            "matched_required": 2,
+            "required_total": 2,
+            "matched_forbidden": 2
+          },
+          "hits": [
+            {
+              "text": "Security review shortens telemetry retention from 90 days to 30 days.",
+              "score": 0.7154832530815267,
+              "metadata": {
+                "record_id": "M026",
+                "session": 9,
+                "memory_type": "decision"
+              }
+            },
+            {
+              "text": "The mission call sign for Asteria's greenhouse module is now Lumen.",
+              "score": 0.6273897277382867,
+              "metadata": {
+                "record_id": "M027",
+                "session": 9,
+                "memory_type": "decision"
+              }
+            },
+            {
+              "text": "The mission call sign for Asteria's greenhouse module is Aurora.",
+              "score": 0.6073289362406444,
+              "metadata": {
+                "record_id": "M009",
+                "session": 3,
+                "memory_type": "fact"
+              }
+            },
+            {
+              "text": "Operational alerts for Asteria's greenhouse module are sent to Slack channel #asteria-ops.",
+              "score": 0.5378084633637019,
+              "metadata": {
+                "record_id": "M004",
+                "session": 1,
+                "memory_type": "instruction"
+              }
+            },
+            {
+              "text": "The launch window for Asteria's greenhouse module has been extended to September 2, 2026.",
+              "score": 0.5374617931407182,
+              "metadata": {
+                "record_id": "M017",
+                "session": 6,
+                "memory_type": "decision"
+              }
+            }
+          ]
+        },
+        {
+          "query_id": "Q12",
+          "category": "historical",
+          "query": "What crop was approved before revision C-2?",
+          "retrieved_tokens": 103,
+          "score": {
+            "query_id": "Q12",
+            "category": "historical",
+            "coverage": 1.0,
+            "stale_leak": false,
+            "exact": true,
+            "matched_required": 1,
+            "required_total": 1,
+            "matched_forbidden": 0
+          },
+          "hits": [
+            {
+              "text": "The approved program cap for Asteria's greenhouse module is USD 390,000.",
+              "score": 0.6015441097653627,
+              "metadata": {
+                "record_id": "M024",
+                "session": 8,
+                "memory_type": "instruction"
+              }
+            },
+            {
+              "text": "The approved program cap for Asteria's greenhouse module is USD 420,000.",
+              "score": 0.598498057394436,
+              "metadata": {
+                "record_id": "M010",
+                "session": 3,
+                "memory_type": "decision"
+              }
+            },
+            {
+              "text": "Helios Agritech is the approved seed vendor for Asteria's greenhouse module under purchase order PO-81.",
+              "score": 0.5818787801754686,
+              "metadata": {
+                "record_id": "M007",
+                "session": 2,
+                "memory_type": "decision"
+              }
+            },
+            {
+              "text": "Asteria's greenhouse module is GH-7, and the initial crop is Genovese basil.",
+              "score": 0.5742139736107843,
+              "metadata": {
+                "record_id": "M001",
+                "session": 1,
+                "memory_type": "fact"
+              }
+            },
+            {
+              "text": "The finance board reduces the program cap for Asteria's greenhouse module from USD 420,000 to USD 390,000.",
+              "score": 0.5653739495984987,
+              "metadata": {
+                "record_id": "M021",
+                "session": 7,
+                "memory_type": "decision"
+              }
+            }
+          ]
+        },
+        {
+          "query_id": "Q13",
+          "category": "historical",
+          "query": "Who was mission commander before Priya Nair?",
+          "retrieved_tokens": 95,
+          "score": {
+            "query_id": "Q13",
+            "category": "historical",
+            "coverage": 1.0,
+            "stale_leak": true,
+            "exact": false,
+            "matched_required": 1,
+            "required_total": 1,
+            "matched_forbidden": 1
+          },
+          "hits": [
+            {
+              "text": "Priya Nair replaces Elena Park as mission commander, and Dr. Amara Okafor remains an adviser.",
+              "score": 0.7931473555983217,
+              "metadata": {
+                "record_id": "M015",
+                "session": 5,
+                "memory_type": "relationship"
+              }
+            },
+            {
+              "text": "Elena Park is mission commander, and Dr. Amara Okafor owns plant science.",
+              "score": 0.603326153635688,
+              "metadata": {
+                "record_id": "M003",
+                "session": 1,
+                "memory_type": "relationship"
+              }
+            },
+            {
+              "text": "The mission call sign for Asteria's greenhouse module is now Lumen.",
+              "score": 0.5156048953522829,
+              "metadata": {
+                "record_id": "M027",
+                "session": 9,
+                "memory_type": "decision"
+              }
+            },
+            {
+              "text": "The mission call sign for Asteria's greenhouse module is Aurora.",
+              "score": 0.5108176015293273,
+              "metadata": {
+                "record_id": "M009",
+                "session": 3,
+                "memory_type": "fact"
+              }
+            },
+            {
+              "text": "The launch window for Asteria's greenhouse module has been extended to September 2, 2026, from Kiruna.",
+              "score": 0.4993429482056841,
+              "metadata": {
+                "record_id": "M023",
+                "session": 8,
+                "memory_type": "decision"
+              }
+            }
+          ]
+        },
+        {
+          "query_id": "Q14",
+          "category": "historical",
+          "query": "What was the original landing site?",
+          "retrieved_tokens": 95,
+          "score": {
+            "query_id": "Q14",
+            "category": "historical",
+            "coverage": 1.0,
+            "stale_leak": true,
+            "exact": false,
+            "matched_required": 1,
+            "required_total": 1,
+            "matched_forbidden": 1
+          },
+          "hits": [
+            {
+              "text": "The original landing site for Asteria's greenhouse module is Malapert Ridge.",
+              "score": 0.6775327234178945,
+              "metadata": {
+                "record_id": "M009",
+                "session": 3,
+                "memory_type": "fact"
+              }
+            },
+            {
+              "text": "The original launch window for Asteria's greenhouse module is August 14, 2026, from Kiruna.",
+              "score": 0.5200437967659124,
+              "metadata": {
+                "record_id": "M002",
+                "session": 1,
+                "memory_type": "event"
+              }
+            },
+            {
+              "text": "Site review S-4 selects Shackleton rim and rejects Malapert Ridge.",
+              "score": 0.5144233114546932,
+              "metadata": {
+                "record_id": "M020",
+                "session": 7,
+                "memory_type": "decision"
+              }
+            },
+            {
+              "text": "The mission call sign for Asteria's greenhouse module is now Lumen.",
+              "score": 0.49772130781659557,
+              "metadata": {
+                "record_id": "M027",
+                "session": 9,
+                "memory_type": "decision"
+              }
+            },
+            {
+              "text": "The launch window for Asteria's greenhouse module has been extended to September 2, 2026, from Kiruna.",
+              "score": 0.48773878926221154,
+              "metadata": {
+                "record_id": "M023",
+                "session": 8,
+                "memory_type": "decision"
+              }
+            }
+          ]
+        },
+        {
+          "query_id": "Q15",
+          "category": "historical",
+          "query": "Which valve procedure was used before V3?",
+          "retrieved_tokens": 98,
+          "score": {
+            "query_id": "Q15",
+            "category": "historical",
+            "coverage": 1.0,
+            "stale_leak": false,
+            "exact": true,
+            "matched_required": 3,
+            "required_total": 3,
+            "matched_forbidden": 0
+          },
+          "hits": [
+            {
+              "text": "Emergency valve recovery in Asteria's greenhouse module uses procedure V1: isolate line B, then cycle pump 2.",
+              "score": 0.6078355113132485,
+              "metadata": {
+                "record_id": "M008",
+                "session": 3,
+                "memory_type": "instruction"
+              }
+            },
+            {
+              "text": "The original landing site for Asteria's greenhouse module is Malapert Ridge.",
+              "score": 0.48535954798136616,
+              "metadata": {
+                "record_id": "M009",
+                "session": 3,
+                "memory_type": "fact"
+              }
+            },
+            {
+              "text": "The current operations channel for Asteria's greenhouse module is Matrix room #asteria-flight, not Slack.",
+              "score": 0.4764684827481529,
+              "metadata": {
+                "record_id": "M016",
+                "session": 5,
+                "memory_type": "instruction"
+              }
+            },
+            {
+              "text": "The original launch window for Asteria's greenhouse module is August 14, 2026, from Kiruna.",
+              "score": 0.47525622878779217,
+              "metadata": {
+                "record_id": "M002",
+                "session": 1,
+                "memory_type": "event"
+              }
+            },
+            {
+              "text": "Helios Agritech lot H-44 is recalled after contamination screening.",
+              "score": 0.4718512626444906,
+              "metadata": {
+                "record_id": "M022",
+                "session": 7,
+                "memory_type": "event"
+              }
+            }
+          ]
+        },
+        {
+          "query_id": "Q16",
+          "category": "multi-hop",
+          "query": "Prepare the current command brief: commander, landing site, and call sign.",
+          "retrieved_tokens": 89,
+          "score": {
+            "query_id": "Q16",
+            "category": "multi-hop",
+            "coverage": 0.333333,
+            "stale_leak": true,
+            "exact": false,
+            "matched_required": 1,
+            "required_total": 3,
+            "matched_forbidden": 2
+          },
+          "hits": [
+            {
+              "text": "The mission call sign for Asteria's greenhouse module is now Lumen.",
+              "score": 0.5813108701553253,
+              "metadata": {
+                "record_id": "M027",
+                "session": 9,
+                "memory_type": "decision"
+              }
+            },
+            {
+              "text": "The mission call sign for Asteria's greenhouse module is Aurora.",
+              "score": 0.5652233579750989,
+              "metadata": {
+                "record_id": "M009",
+                "session": 3,
+                "memory_type": "fact"
+              }
+            },
+            {
+              "text": "Operational alerts for Asteria's greenhouse module are sent to Slack channel #asteria-ops.",
+              "score": 0.5319939340678468,
+              "metadata": {
+                "record_id": "M004",
+                "session": 1,
+                "memory_type": "instruction"
+              }
+            },
+            {
+              "text": "The original landing site for Asteria's greenhouse module is Malapert Ridge.",
+              "score": 0.5042472064942829,
+              "metadata": {
+                "record_id": "M009",
+                "session": 3,
+                "memory_type": "fact"
+              }
+            },
+            {
+              "text": "The launch window for Asteria's greenhouse module has been extended to September 2, 2026, from Kiruna.",
+              "score": 0.5023915990186951,
+              "metadata": {
+                "record_id": "M023",
+                "session": 8,
+                "memory_type": "decision"
+              }
+            }
+          ]
+        },
+        {
+          "query_id": "Q17",
+          "category": "multi-hop",
+          "query": "Prepare the current greenhouse brief: module, crop, nutrient protocol, and temperature limit.",
+          "retrieved_tokens": 119,
+          "score": {
+            "query_id": "Q17",
+            "category": "multi-hop",
+            "coverage": 0.5,
+            "stale_leak": true,
+            "exact": false,
+            "matched_required": 2,
+            "required_total": 4,
+            "matched_forbidden": 2
+          },
+          "hits": [
+            {
+              "text": "The baseline nutrient recipe for Asteria's greenhouse module is N-21, with a target root-zone pH of 5.9.",
+              "score": 0.7186872072763326,
+              "metadata": {
+                "record_id": "M017",
+                "session": 6,
+                "memory_type": "decision"
+              }
+            },
+            {
+              "text": "The baseline nutrient recipe for Asteria's greenhouse module is N-17, with a target root-zone pH of 6.2.",
+              "score": 0.7130674526339672,
+              "metadata": {
+                "record_id": "M005",
+                "session": 2,
+                "memory_type": "decision"
+              }
+            },
+            {
+              "text": "The launch window for Asteria's greenhouse module has been extended to September 2, 2026.",
+              "score": 0.6974092433764851,
+              "metadata": {
+                "record_id": "M017",
+                "session": 6,
+                "memory_type": "decision"
+              }
+            },
+            {
+              "text": "The greenhouse thermal ceiling is set to 24 degrees Celsius, and the backup oxygen supply lasts for 18 hours.",
+              "score": 0.6969392593728911,
+              "metadata": {
+                "record_id": "M006",
+                "session": 2,
+                "memory_type": "fact"
+              }
+            },
+            {
+              "text": "Asteria's greenhouse module is GH-7, and the initial crop is Genovese basil.",
+              "score": 0.6937884662098602,
+              "metadata": {
+                "record_id": "M001",
+                "session": 1,
+                "memory_type": "fact"
+              }
+            }
+          ]
+        },
+        {
+          "query_id": "Q18",
+          "category": "multi-hop",
+          "query": "Prepare current logistics: vendor, order, and transfer battery.",
+          "retrieved_tokens": 91,
+          "score": {
+            "query_id": "Q18",
+            "category": "multi-hop",
+            "coverage": 0.666667,
+            "stale_leak": true,
+            "exact": false,
+            "matched_required": 2,
+            "required_total": 3,
+            "matched_forbidden": 1
+          },
+          "hits": [
+            {
+              "text": "Nova Seedworks becomes the approved vendor under replacement order PO-96.",
+              "score": 0.5613021715863731,
+              "metadata": {
+                "record_id": "M032",
+                "session": 10,
+                "memory_type": "fact"
+              }
+            },
+            {
+              "text": "Nova Seedworks is the approved vendor for Asteria's greenhouse module under replacement order PO-96.",
+              "score": 0.5374366569383625,
+              "metadata": {
+                "record_id": "M023",
+                "session": 8,
+                "memory_type": "decision"
+              }
+            },
+            {
+              "text": "Helios Agritech is the approved seed vendor for Asteria's greenhouse module under purchase order PO-81.",
+              "score": 0.5334610799816606,
+              "metadata": {
+                "record_id": "M007",
+                "session": 2,
+                "memory_type": "decision"
+              }
+            },
+            {
+              "text": "Operational alerts for Asteria's greenhouse module are sent to Slack channel #asteria-ops.",
+              "score": 0.5030076503494181,
+              "metadata": {
+                "record_id": "M004",
+                "session": 1,
+                "memory_type": "instruction"
+              }
+            },
+            {
+              "text": "The mission call sign for Asteria's greenhouse module is now Lumen.",
+              "score": 0.49919176105311236,
+              "metadata": {
+                "record_id": "M027",
+                "session": 9,
+                "memory_type": "decision"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "comparisons": [
+    {
+      "baseline": "memanto-on-prem",
+      "challenger": "mem0-direct",
+      "coverage_delta": {
+        "observed_delta": 0.013889,
+        "ci95": [
+          0.0,
+          0.041667
+        ],
+        "samples": 5000,
+        "seed": 639
+      }
+    },
+    {
+      "baseline": "memanto-on-prem",
+      "challenger": "mem0-agentic",
+      "coverage_delta": {
+        "observed_delta": -0.277778,
+        "ci95": [
+          -0.481482,
+          -0.092593
+        ],
+        "samples": 5000,
+        "seed": 639
+      }
+    }
+  ]
+}

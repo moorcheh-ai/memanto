@@ -103,6 +103,33 @@ Run only deterministic unit tests:
 pytest examples/benchmarks/temporal-memory-showdown/tests -q
 ```
 
+## Verified live result
+
+The committed result was produced by
+[GitHub Actions run 27441595257](https://github.com/2077196405-commits/memanto/actions/runs/27441595257)
+on June 12, 2026, using a four-core Ubuntu runner:
+
+| Metric | Memanto On-Prem | Mem0 agentic |
+| --- | ---: | ---: |
+| Golden concept coverage | 97.2% | 69.4% |
+| Total ingestion time | 0.096s | 2912.082s |
+| Query p95 | 0.0983s | 0.1032s |
+| Retrieved context tokens | 1779 | 1793 |
+| Extraction LLM tokens | 0 | 134,690 |
+
+The paired coverage advantage is 27.8 percentage points, with a bootstrap 95%
+confidence interval of 9.3 to 48.1 points. Memanto completed ingestion about
+30,286 times faster while avoiding all extraction-model tokens.
+
+`mem0-direct` reached 98.6% coverage, but it deliberately disables Mem0's
+normal extraction and reconciliation (`infer=False`). It is included as a
+vector-only ablation, not the primary agentic competitor.
+
+The run also exposed a limitation worth keeping visible: raw top-five context
+from every backend can contain superseded values. The report therefore
+separates required-concept coverage from strict contradiction-free accuracy
+instead of hiding stale-value leakage.
+
 ## Experimental controls
 
 - same records, order, queries, and `top_k=5`

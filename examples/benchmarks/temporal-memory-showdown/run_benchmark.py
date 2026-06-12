@@ -237,11 +237,77 @@ def render_markdown(report: dict[str, Any]) -> str:
         "",
         f"Generated: `{report['environment']['timestamp_utc']}`",
         "",
-        "## Headline metrics",
-        "",
-        "| Backend | Coverage | Exact accuracy | Stale leak rate | Retrieved tokens | Query p95 | Ingest p95 | LLM tokens |",
-        "| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |",
     ]
+
+    runs_by_name = {run["backend"]: run for run in report["runs"]}
+    memanto = runs_by_name.get("memanto-on-prem")
+    mem0_agentic = runs_by_name.get("mem0-agentic")
+    if memanto and mem0_agentic:
+        memanto_metrics = memanto["metrics"]
+        mem0_metrics = mem0_agentic["metrics"]
+        comparison = next(
+            (
+                row
+                for row in report.get("comparisons", [])
+                if row["baseline"] == "memanto-on-prem"
+                and row["challenger"] == "mem0-agentic"
+            ),
+            None,
+        )
+        lines.extend(
+            [
+                "## Primary showdown",
+                "",
+                "The primary comparison is Memanto against Mem0's default "
+                "agentic (`infer=True`) pipeline. `mem0-direct` is retained "
+                "as a vector-only ablation.",
+                "",
+            ]
+        )
+        if comparison:
+            delta = comparison["coverage_delta"]
+            advantage = -delta["observed_delta"]
+            lower = -delta["ci95"][1]
+            upper = -delta["ci95"][0]
+            lines.append(
+                f"- Memanto coverage advantage: "
+                f"**{advantage * 100:+.1f} percentage points** "
+                f"(paired bootstrap 95% CI {lower * 100:+.1f} to "
+                f"{upper * 100:+.1f} points)."
+            )
+        ingest_speedup = (
+            mem0_metrics["ingest_total_s"] / memanto_metrics["ingest_total_s"]
+        )
+        query_reduction = 1 - (
+            memanto_metrics["query_p95_s"] / mem0_metrics["query_p95_s"]
+        )
+        mem0_llm_tokens = (
+            mem0_metrics["llm_input_tokens"] + mem0_metrics["llm_output_tokens"]
+        )
+        lines.extend(
+            [
+                f"- Full ingestion was **{ingest_speedup:,.1f}x faster** "
+                f"({memanto_metrics['ingest_total_s']:.3f}s vs "
+                f"{mem0_metrics['ingest_total_s']:.3f}s).",
+                f"- Query p95 was **{query_reduction:.1%} lower** "
+                f"({memanto_metrics['query_p95_s']:.4f}s vs "
+                f"{mem0_metrics['query_p95_s']:.4f}s).",
+                f"- Memanto used **0 extraction LLM tokens** vs "
+                f"**{mem0_llm_tokens:,}** native Ollama tokens.",
+                "- Stale-value leakage remains visible in both systems and is "
+                "reported rather than filtered from the audit.",
+                "",
+            ]
+        )
+
+    lines.extend(
+        [
+            "## Headline metrics",
+            "",
+            "| Backend | Coverage | Strict accuracy | Stale leak rate | Retrieved tokens | Query p95 | Ingest p95 | LLM tokens |",
+            "| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |",
+        ]
+    )
     for run in report["runs"]:
         summary = run["summary"]
         metrics = run["metrics"]
@@ -286,6 +352,7 @@ def render_markdown(report: dict[str, Any]) -> str:
             "- Both systems receive the same 32 records in the same order.",
             "- Both systems answer the same 18 queries with the same `top_k`.",
             "- Accuracy is deterministic concept coverage, not an LLM judge.",
+            "- Strict accuracy requires full concept coverage and no stale-value match.",
             "- Stale leak rate measures whether superseded values appear in retrieved context.",
             "- Token counts use `cl100k_base` only as a fixed cross-system accounting unit.",
             "- Latency excludes one warm-up pass and includes all configured repeated queries.",
