@@ -17,7 +17,7 @@ jobs:
     timeout-minutes: 90
     env:
       MEM0_TELEMETRY: "false"
-      BENCH_HOME: ${{ runner.temp }}/temporal-memory-showdown
+      BENCH_HOME: /tmp/temporal-memory-showdown
       SETUPTOOLS_SCM_PRETEND_VERSION: "0.0.0"
 
     steps:
