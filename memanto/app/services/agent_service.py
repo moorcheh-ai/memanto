@@ -79,10 +79,15 @@ class AgentService:
             # Namespace already exists - this is OK, agent might have been created before
             print(f"[OK] Namespace already exists in Moorcheh: {namespace}")
         except Exception as e:
-            # Unexpected error - fail the agent creation
-            raise Exception(
-                f"Failed to create namespace '{namespace}' in Moorcheh: {str(e)}"
-            )
+            # The on-prem client uses MoorchehApiError rather than the cloud
+            # SDK's ConflictError for the same HTTP 409 response.
+            if getattr(e, "status_code", None) == 409:
+                print(f"[OK] Namespace already exists in Moorcheh: {namespace}")
+            else:
+                # Unexpected error - fail the agent creation
+                raise Exception(
+                    f"Failed to create namespace '{namespace}' in Moorcheh: {str(e)}"
+                )
 
         # Create agent metadata
         agent = AgentInfo(
