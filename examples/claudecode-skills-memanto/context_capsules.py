@@ -17,10 +17,10 @@ import json
 import re
 import subprocess
 import sys
+from collections.abc import Iterable
 from dataclasses import asdict, dataclass
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 from pathlib import Path
-from typing import Iterable
 
 MEMORY_TYPES = {
     "decision": "decision",
@@ -134,7 +134,7 @@ class CapsuleExtractor:
         session_id: str,
     ) -> list[Capsule]:
         capsules: list[Capsule] = []
-        now = datetime.now(UTC).isoformat(timespec="seconds")
+        now = datetime.now(timezone.utc).isoformat(timespec="seconds")
 
         for raw_line in transcript.splitlines():
             match = MARKER_RE.match(raw_line)
@@ -279,7 +279,7 @@ def dedupe_capsules(capsules: list[Capsule]) -> list[Capsule]:
 
 
 def tokenize(text: str) -> set[str]:
-    return {token for token in re.findall(r"[a-z0-9_]{3,}", text.lower())}
+    return set(re.findall(r"[a-z0-9_]{3,}", text.lower()))
 
 
 def score_capsule(
