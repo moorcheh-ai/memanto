@@ -2,6 +2,7 @@
 Memory Read Service
 """
 
+import logging
 import re
 from datetime import datetime, timezone
 from typing import TYPE_CHECKING, Any, cast
@@ -13,6 +14,8 @@ from memanto.app.clients.backend import get_active_llm_model
 from memanto.app.config import settings
 from memanto.app.core import create_memory_scope
 from memanto.app.utils.errors import MemoryError
+
+logger = logging.getLogger(__name__)
 
 
 class MemoryReadService:
@@ -245,9 +248,10 @@ class MemoryReadService:
 
         Note: Moorcheh's merged search response does not echo the source
         namespace per hit, so attribution relies on the ``scope_id`` metadata
-        written with every remembered memory. Documents created without it
-        (e.g. file uploads chunked server-side by Moorcheh) cannot be
-        attributed and come back with ``agent_id`` set to ``None``.
+        written with every remembered memory. A hit without it (e.g. a file
+        upload chunked server-side by Moorcheh) cannot be attributed and is
+        dropped with a warning, so the response never contains an ``agent_id``
+        of ``None``.
 
         Args:
             query: Natural-language search query.
@@ -297,11 +301,19 @@ class MemoryReadService:
             formatted_results: list[dict[str, Any]] = []
             for item in search_result.get("results", []):
                 formatted = self._format_memory_item(item)
-                # Attribute each result to its source agent via the stored
-                # scope_id metadata. Moorcheh's merged response carries no
-                # per-hit namespace, so documents without scope_id (e.g. file
-                # uploads) are left unattributed (agent_id = None).
-                formatted["agent_id"] = formatted.get("scope_id")
+                # Attribute via the stored scope_id metadata. Moorcheh's merged
+                # response carries no per-hit namespace, so a hit without
+                # scope_id (e.g. a server-side file-upload chunk) is dropped
+                # rather than returned unattributed.
+                attributed_agent = formatted.get("scope_id")
+                if not attributed_agent:
+                    logger.warning(
+                        "Dropping cross-agent recall hit without scope_id "
+                        "metadata (id=%s): cannot attribute to an agent",
+                        formatted.get("id"),
+                    )
+                    continue
+                formatted["agent_id"] = attributed_agent
                 formatted_results.append(formatted)
 
             # Apply TTL enforcement, then re-sort by score after the merge.
@@ -311,7 +323,7 @@ class MemoryReadService:
 
             per_agent_counts: dict[str, int] = {}
             for memory in formatted_results:
-                aid = memory.get("agent_id") or "unknown"
+                aid = memory["agent_id"]
                 per_agent_counts[aid] = per_agent_counts.get(aid, 0) + 1
 
             return {

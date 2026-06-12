@@ -138,6 +138,12 @@ def get_authorized_agent_ids(
             # Skip invalid/expired tokens — the route rejects any requested
             # agent that ends up without a valid token.
             continue
+        # Match the token to a live session (existence + active status), like
+        # get_current_session, so a valid JWT for a deleted/deactivated agent
+        # is not accepted.
+        session = session_service.get_session(payload.agent_id)
+        if not session or not session.is_active():
+            continue
         authorized[payload.agent_id] = token
 
     if not authorized:

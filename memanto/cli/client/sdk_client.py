@@ -731,12 +731,19 @@ class SdkClient:
 
         self._validate_query(query, limit)
 
-        # Authorization: require a valid, active session for each agent.
+        # Authorization: require a live session for each agent, validating its
+        # JWT (signature + expiry) like the single-agent path — not just an
+        # is_active() status check.
         session_service = self._get_session_service()
         unauthorized: list[str] = []
         for agent_id in cleaned_agent_ids:
             session = session_service.get_session(agent_id)
             if not session or not session.is_active():
+                unauthorized.append(agent_id)
+                continue
+            try:
+                session_service.validate_session(session.session_token)
+            except (SessionExpiredError, InvalidSessionTokenError):
                 unauthorized.append(agent_id)
         if unauthorized:
             raise SessionError(
