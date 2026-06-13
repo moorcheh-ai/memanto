@@ -1,16 +1,16 @@
-"""
-Memanto Benchmarking Suite
+"""Memanto Benchmarking Suite.
 
-A rigorous, reproducible benchmarking framework for comparing
-agentic memory systems across accuracy and resource efficiency.
+A rigorous, reproducible benchmarking framework for comparing Memanto
+against other agentic memory frameworks on accuracy vs. resource footprint.
 """
 
 from benchmark.core.benchmark import BenchmarkRunner
-from benchmark.core.metrics import MetricsCollector, MetricType
-from benchmark.core.scenarios import Scenario, ConversationScenario, PreferenceScenario
+from benchmark.core.metrics import MetricsCollector
+from benchmark.core.scenarios import Scenario, ScenarioRegistry
 
-__version__ = "1.0.0"
 __all__ = [
-    "BenchmarkRunner", "MetricsCollector", "MetricType",
-    "Scenario", "ConversationScenario", "PreferenceScenario"
+    "BenchmarkRunner",
+    "MetricsCollector",
+    "Scenario",
+    "ScenarioRegistry",
 ]
