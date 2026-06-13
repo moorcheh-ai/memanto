@@ -1,28 +1,27 @@
 # Memanto Benchmarking Suite
 
-This directory contains a rigorous, reproducible benchmarking suite that pits **Memanto** against other dedicated agentic memory frameworks to stress-test their production efficiency.
+A rigorous, reproducible benchmarking framework that evaluates **Memanto** against other agentic memory frameworks (Mem0, Zep/Graphiti, Hindsight, Letta) across the core tension of **Accuracy vs. Resource Footprint**.
 
 ## Overview
 
-The benchmark evaluates the core tension of agent infrastructure: **Accuracy vs. Resource Footprint**.
+This benchmark suite stress-tests memory frameworks on production-relevant metrics:
 
-### Supported Competitors
+- **Accuracy**: Recall precision, preference resolution, context relevance
+- **Token Efficiency**: Tokens consumed per memory operation
+- **Latency**: p50/p95/p99 response times
+- **Scalability**: Performance degradation under memory growth
 
-- **Memanto** (this repo)
-- **Mem0**
-- **Zep/Graphiti**
-- **Hindsight**
-- **Letta**
+## Supported Frameworks
 
-## Metrics
-
-| Metric | Description |
-|--------|-------------|
-| Token Efficiency | Tokens consumed per memory operation |
-| p95 Latency | 95th percentile response time |
-| Preference Resolution | Accuracy of nuanced preference recall |
-| Context Window Bloat | Growth rate of context window |
-| Background Processing Latency | Time for background memory processing |
+| Framework | Identifier | Status |
+|-----------|-----------|--------|
+| Memanto | `memanto` | ✅ Fully supported |
+| Mem0 | `mem0` | ✅ Supported |
+| Zep/Graphiti | `zep` | ⚠️ Requires API key |
+| Hindsight | `hindsight` | ⚠️ Requires local setup |
+| Letta | `letta` | ⚠️ Requires local setup |
 
 ## Quick Start
+
+### 1. Install Dependencies
 
