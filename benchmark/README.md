@@ -1,24 +1,28 @@
 # Memanto Benchmarking Suite
 
-A rigorous, reproducible benchmarking framework that pits **Memanto** against other dedicated agentic memory frameworks to stress-test their production efficiency across **Accuracy vs. Resource Footprint**.
+This directory contains a rigorous, reproducible benchmarking suite that pits **Memanto** against other dedicated agentic memory frameworks to stress-test their production efficiency.
 
-## Supported Frameworks
+## Overview
 
-- **Memanto** (this repo) - Active companion agent with serverless retrieval
-- **Mem0** - Dedicated memory platform
-- **Zep/Graphiti** - Graph-based memory (placeholder)
-- **Hindsight** - Memory framework (placeholder)
-- **Letta** - Memory-first agent framework (placeholder)
+The benchmark evaluates the core tension of agent infrastructure: **Accuracy vs. Resource Footprint**.
 
-## Benchmark Dimensions
+### Supported Competitors
+
+- **Memanto** (this repo)
+- **Mem0**
+- **Zep/Graphiti**
+- **Hindsight**
+- **Letta**
+
+## Metrics
 
 | Metric | Description |
 |--------|-------------|
-| **Accuracy** | Recall precision, preference resolution, context relevance |
-| **Token Efficiency** | Tokens consumed per memory operation |
-| **Latency (p95)** | 95th percentile response time |
-| **Memory Footprint** | RAM/disk usage during operations |
-| **Setup Complexity** | Time to first working memory interaction |
+| Token Efficiency | Tokens consumed per memory operation |
+| p95 Latency | 95th percentile response time |
+| Preference Resolution | Accuracy of nuanced preference recall |
+| Context Window Bloat | Growth rate of context window |
+| Background Processing Latency | Time for background memory processing |
 
 ## Quick Start
 
