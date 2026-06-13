@@ -233,6 +233,18 @@ class TestMEMANTOCLI:
         assert "cancelled" in result.stdout.lower()
         mock_all_clients.delete_memory.assert_not_called()
 
+    def test_forget_nonexistent_memory(self, mock_all_clients):
+        """Test 'memanto forget' surfaces a clear error when memory is missing."""
+        mock_all_clients.delete_memory.side_effect = Exception("memory not found")
+
+        result = runner.invoke(app, ["forget", "mem-404", "--force"])
+
+        assert result.exit_code != 0
+        assert "memory not found" in result.stdout.lower() or "memory not found" in (result.stderr or "").lower()
+        mock_all_clients.delete_memory.assert_called_once_with(
+            agent_id="test-agent", memory_id="mem-404"
+        )
+
     def test_recall(self, mock_all_clients):
         """Test 'memanto recall'"""
         mock_all_clients.recall.return_value = {

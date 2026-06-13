@@ -310,6 +310,33 @@ class TestMEMANTOAPI:
         assert "missing-memory" in response.json()["detail"]
 
     @pytest.mark.asyncio
+    async def test_delete_memory_rejected_for_cross_agent(
+        self, client, auth_headers, mock_moorcheh
+    ):
+        """Test DELETE is rejected when session.agent_id != URL agent_id."""
+        other_agent = "different-agent"
+
+        app.dependency_overrides[get_current_session] = lambda: Session(
+            session_id="sess-test",
+            session_token="token-test",
+            agent_id=other_agent,
+            namespace=f"memanto_agent_{other_agent}",
+            started_at=datetime.utcnow(),
+            expires_at=datetime.utcnow() + timedelta(hours=1),
+        )
+        app.dependency_overrides[get_moorcheh_client] = lambda: mock_moorcheh
+        try:
+            response = await client.delete(
+                f"/api/v2/agents/{self.TEST_AGENT_ID}/memories/mem-123",
+                headers=auth_headers,
+            )
+        finally:
+            app.dependency_overrides.clear()
+
+        assert response.status_code == 403
+        mock_moorcheh.documents.delete.assert_not_called()
+
+    @pytest.mark.asyncio
     async def test_answer_with_session(self, client, auth_headers, mock_moorcheh):
         """Test RAG answer with session token"""
         # Setup session
