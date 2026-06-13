@@ -1,167 +1,202 @@
-Looking at the issue description, I need to create a benchmarking suite to evaluate Memanto against other agentic memory frameworks. The challenge is to build a rigorous, reproducible benchmark that tests the core tension of accuracy vs. resource footprint.
-
-Based on the repository structure, I'll create a benchmarking framework in the tests directory. Let me examine what files exist and create the appropriate benchmark files.
-
-```diff
+ ```diff
 --- /dev/null
-+++ b/tests/benchmark/test_benchmark_memory.py
-@@ -0,0 +1,284 @@
-+"""
-+Memanto Benchmarking Suite
-+======================
++++ b/benchmarks/__init__.py
+@@ -0,0 +1,3 @@
++"""Memanto Benchmarking Suite."""
 +
-+Comprehensive benchmarking suite to evaluate Memanto against other agentic memory frameworks
-+based on accuracy vs. resource footprint metrics.
-+"""
++__version__ = "0.1.0"
+--- /dev/null
++++ b/benchmarks/config.py
+@@ -0,0 +1,67 @@
++"""Configuration for the benchmarking suite."""
 +
-+import time
-+import asyncio
-+import pytest
-+from typing import List, Dict, Any
-+import json
 +import os
-+from datetime import datetime
++from dataclasses import dataclass
++from typing import Optional
 +
 +
-+class MemoryBenchmark:
-+    """Base class for memory system benchmarking"""
++@dataclass
++class BenchmarkConfig:
++    """Configuration for benchmark runs."""
 +    
-+    def __init__(self, name: str):
-+        self.name = name
-+        self.metrics = {
-+            'latency': [],
-+            'token_usage': [],
-+            'accuracy': [],
-+            'memory_usage': [],
-+            'context_window_bloat': []
++    # API Keys
++    openai_api_key: Optional[str] = None
++    anthropic_api_key: Optional[str] = None
++    
++    # Benchmark settings
++    num_conversations: int = 100
++    conversation_length: int = 20  # turns per conversation
++    num_entities: int = 50  # distinct facts/entities to remember
++    seed: int = 42
++    
++    # Metrics
++    track_latency: bool = True
++    track_tokens: bool = True
++    track_accuracy: bool = True
++    
++    # Output
++    output_dir: str = "benchmark_results"
++    save_traces: bool = False
++    
++    def __post_init__(self):
++        """Load from environment variables if not set."""
++        if self.openai_api_key is None:
++            self.openai_api_key = os.getenv("OPENAI_API_KEY")
++        if self.anthropic_api_key is None:
++            self.anthropic_api_key = os.getenv("ANTHROPIC_API_KEY")
++
++
++# Default benchmark scenarios
++SCENARIOS = {
++    "personal_assistant": {
++        "name": "Personal Assistant",
++        "description": "Multi-session personal assistant with preference learning",
++        "turns": 50,
++        "sessions": 5,
++        "complexity": "medium",
++    },
++    "customer_support": {
++        "name": "Customer Support",
++        "description": "Long-running customer support with issue tracking",
++        "turns": 100,
++        "sessions": 10,
++        "complexity": "high",
++    },
++    "research_assistant": {
++        "name": "Research Assistant",
++        "description": "Accumulating knowledge across research sessions",
++        "turns": 75,
++        "sessions": 8,
++        "complexity": "high",
++    },
++    "simple_qa": {
++        "name": "Simple Q&A",
++        "description": "Basic question answering with memory",
++        "turns": 20,
++        "sessions": 3,
++        "complexity": "low",
++    },
++}
+--- /dev/null
++++ b/benchmarks/core/__init__.py
+@@ -0,0 +1,12 @@
++"""Core benchmarking components."""
++
++from benchmarks.core.benchmark import BenchmarkRunner
++from benchmarks.core.metrics import MetricsCollector, BenchmarkMetrics
++from benchmarks.core.scenarios import ScenarioLoader
++from benchmarks.core.tracker import ResourceTracker
++
++__all__ = [
++    "BenchmarkRunner",
++    "MetricsCollector",
++    "BenchmarkMetrics",
++    "ScenarioLoader",
++    "ResourceTracker",
++]
+--- /dev/null
++++ b/benchmarks/core/benchmark.py
+@@ -0,0 +1,248 @@
++"""Main benchmark runner."""
++
++import asyncio
++import json
++import time
++from pathlib import Path
++from typing import Any, Callable, Dict, List, Optional, Type
++
++from benchmarks.config import BenchmarkConfig, SCENARIOS
++from benchmarks.core.metrics import BenchmarkMetrics, MetricsCollector
++from benchmarks.core.tracker import ResourceTracker
++
++
++class BenchmarkRunner:
++    """Orchestrates benchmark execution across memory systems."""
++    
++    def __init__(self, config: Optional[BenchmarkConfig] = None):
++        self.config = config or BenchmarkConfig()
++        self.metrics_collector = MetricsCollector()
++        self.resource_tracker = ResourceTracker()
++        self.results: Dict[str, Any] = {}
++        
++    def register_system(
++        self,
++        name: str,
++        system_class: Type,
++        **system_kwargs
++    ) -> None:
++        """Register a memory system for benchmarking."""
++        self.systems[name] = {
++            "class": system_class,
++            "kwargs": system_kwargs,
 +        }
 +    
-+    def remember(self, data: str) -> Dict[str, Any]:
-+        """Remember data and track metrics"""
-+        start_time = time.time()
-+        result = self._remember_impl(data)
-+        latency = time.time() - start_time
++    def __init__(self, *args, **kwargs):
++        super().__init__(*args, **kwargs)
++        self.systems: Dict[str, Dict] = {}
++        self._initialized = True
++    
++    async def run_benchmark(
++        self,
++        scenario_name: str,
++        systems: Optional[Dict[str, Any]] = None,
++    ) -> Dict[str, Any]:
++        """Run a benchmark scenario against all registered systems."""
++        if not hasattr(self, '_initialized'):
++            self.__init__()
 +        
-+        self.metrics['latency'].append(latency)
-+        return result
-+    
-+    def _remember_impl(self, data: str) -> Dict[str, Any]:
-+        """Implementation specific to each memory system"""
-+        raise NotImplementedError
-+    
-+    def recall(self, query: str) -> Dict[str, Any]:
-+        """Recall information based on query"""
-+        start_time = time.time()
-+        result = self._recall_impl(query)
-+        latency = time.time() - start_time
++        scenario_config = SCENARIOS.get(scenario_name)
++        if not scenario_config:
++            raise ValueError(f"Unknown scenario: {scenario_name}")
 +        
-+        self.metrics['latency'].append(latency)
-+        return result
-+    
-+    def _recall_impl(self, query: str) -> Dict[str, Any]:
-+        """Implementation specific to each memory system"""
-+        raise NotImplementedError
-+
-+
-+class MemantoBenchmark(MemoryBenchmark):
-+    """Memanto implementation for benchmarking"""
-+    
-+    def __init__(self):
-+        super().__init__("Memanto")
-+        # Import memanto here to avoid import issues
-+        try:
-+            from memanto import Memanto
-+            self.memanto = Memanto()
-+        except ImportError:
-+            self.memanto = None
-+            print("Memanto not available for benchmarking")
-+    
-+    def _remember_impl(self, data: str) -> Dict[str, Any]:
-+        if not self.memanto:
-+            return {"status": "error", "message": "Memanto not initialized"}
++        print(f"\n{'='*60}")
++        print(f"Running Benchmark: {scenario_config['name']}")
++        print(f"Description: {scenario_config['description']}")
++        print(f"{'='*60}\n")
 +        
-+        start_tokens = self._get_token_count()
-+        result = self.memanto.remember(data)
-+        end_tokens = self._get_token_count()
++        results = {}
++        systems_to_test = systems or self.systems
 +        
-+        self.metrics['token_usage'].append(end_tokens - start_tokens)
-+        return {"status": "success", "result": result}
-+    
-+    def _get_token_count(self):
-+        # Mock token counting - in real implementation would integrate with token counting libraries
-+        return len(str(self.memanto.memory if self.memanto else "")) // 4
-+    
-+    def _recall_impl(self, query: str) -> Dict[str, Any]:
-+        if not self.memanto:
-+            return {"status": "error", "message": "Memanto not initialized"}
++        for system_name, system_info in systems_to_test.items():
++            print(f"\nTesting: {system_name}")
++            print("-" * 40)
++            
++            metrics = await self._run_single_system(
++                system_name,
++                system_info,
++                scenario_config,
++            )
++            results[system_name] = metrics
 +        
-+        result = self.memanto.recall(query)
-+        return {"status": "success", "result": result}
-+
-+
-+class Mem0Benchmark(MemoryBenchmark):
-+    """Mem0 implementation for benchmarking"""
++        self.results[scenario_name] = results
++        return results
 +    
-+    def __init__(self):
-+        super().__init__("Mem0")
-+        try:
-+            # Placeholder for actual Mem0 client
-+            self.mem0_client = None
-+        except ImportError:
-+            self.mem0_client = None
-+            print("Mem0 client not available for benchmarking")
-+    
-+    def _remember_impl(self, data: str) -> Dict[str, Any]:
-+        # Placeholder implementation
-+        return {"status": "success", "result": "Mock Mem0 remember result"}
-+    
-+    def _recall_impl(self, query: str) -> Dict[str, Any]:
-+        # Placeholder implementation
-+        return {"status": "success", "result": "Mock Mem0 recall result"}
-+
-+
-+class ZepBenchmark(MemoryBenchmark):
-+    """Zep/Graphiti implementation for benchmarking"""
-+    
-+    def __init__(self):
-+        super().__init__("Zep")
-+        try:
-+            # Placeholder for actual Zep client
-+            self.zep_client = None
-+        except ImportError:
-+            self.zep_client = None
-+            print("Zep client not available for benchmarking")
-+    
-+    def _remember_impl(self, data: str) -> Dict[str, Any]:
-+        # Placeholder implementation
-+        return {"status": "success", "result": "Mock Zep remember result"}
-+    
-+    def _recall_impl(self, query: str) -> Dict[str, Any]:
-+        # Placeholder implementation
-+        return {"status": "success", "result": "Mock Zep recall result"}
-+
-+
-+class BenchmarkSuite:
-+    """Main benchmarking suite orchestrator"""
-+    
-+    def __init__(self):
-+        self.systems = {
-+            'memanto': MemantoBenchmark(),
-+            'mem0': Mem0Benchmark(),
-+            'zep': ZepBenchmark()
-+        }
-+        self.test_data = [
-+            "User's name is Alex Johnson, a software engineer working at a tech startup in San Francisco.",
-+            "Alex is interested in machine learning and has been working on a new project involving neural networks.",
-+            "Alex attended a conference in New York last month where he met several industry experts.",
-+            "The project Alex is working on uses Python and TensorFlow for implementing the neural network models.",
-+            "Alex's team is focused on optimizing the training process to reduce computational costs.",
-+            "Alex believes that efficient memory management is crucial for scaling AI applications.",
-+            "Yesterday, Alex debugged a memory leak that was causing performance issues in their production system.",
-+            "The solution involved implementing a new garbage collection strategy.",
-+            "Alex documented the fix in the company's internal knowledge base.",
-+            "Alex plans to present this optimization technique at the next team meeting.",
-+            "The memory optimization reduced the application's RAM usage by 40% during peak hours.",
-+            "Alex also implemented a monitoring system to track memory usage in real-time.",
-+            "The monitoring system sends alerts when memory usage exceeds predefined thresholds.",
-+            "
++    async def _run_single_system(
++        self,
++        system_name: str,
++        system_info: Dict,
++        scenario_config: Dict,
++    ) -> BenchmarkMetrics:
++        """Run benchmark for a single system."""
++        # Initialize system
++        system_class = system_info["class"]
++        system = system_class(**system_info.get("kwargs", {}))
++        
++        metrics = BenchmarkMetrics(
++            system_name=system_name,
++            scenario_name=scenario_config["name"],
++        )
++        
++        # Track resource usage
++        with self.resource_tracker.track() as tracker:
++            start_time = time.perf_counter()
++            
++            # Run the scenario
++            await self._execute_scenario(
++                system,
++                scenario_config,
++                metrics,
++                tracker,
++            )
++            
++            total_time
