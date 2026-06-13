@@ -1,12 +1,12 @@
-# Benchmark dependencies
+# Core
 numpy>=1.24.0
 pandas>=2.0.0
-matplotlib>=3.7.0
-seaborn>=0.12.0
 tqdm>=4.65.0
-scikit-learn>=1.3.0
 
-# Optional framework dependencies (install as needed)
+# Framework adapters (install as needed)
 # mem0ai>=0.1.0
-# zep-python>=0.1.0
-# letta>=0.1.0
+# graphiti-core>=0.3.0
+# letta>=0.6.0
+
+# Memanto (local)
+-e .
