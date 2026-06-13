@@ -1,12 +1,12 @@
-# Core
+# Core dependencies
 numpy>=1.24.0
-pandas>=2.0.0
+pydantic>=2.0.0
 tqdm>=4.65.0
 
 # Framework adapters (install as needed)
 # mem0ai>=0.1.0
-# graphiti-core>=0.3.0
-# letta>=0.6.0
+# zep-python>=2.0.0
+# letta>=0.3.0
 
-# Memanto (local)
--e .
+# Memanto is used from local source
+# -e .
