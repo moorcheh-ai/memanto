@@ -196,21 +196,27 @@ class MemoryBackend:
         raise NotImplementedError
 
     def consistency_check(self, agents: list[str], question: str) -> float:
-        """Check if all agents get the same answer. Returns 0.0-1.0."""
+        """Check if all agents get consistent answers. Returns 0.0-1.0."""
         answers = []
         for agent in agents:
             result = self.read(agent, question)
             answers.append(result.text.lower())
         if not answers:
             return 0.0
-        # Simple consistency: do all agents return similar answers?
-        # Use keyword overlap
-        reference = answers[0]
-        matches = sum(
-            1 for a in answers[1:]
-            if any(word in a for word in reference.split()[:3])
-        )
-        return matches / max(len(answers) - 1, 1)
+        if len(answers) < 2:
+            return 1.0
+        # Pairwise token-set overlap to avoid first-answer bias
+        total_pairs = 0
+        matching_pairs = 0
+        for i in range(len(answers)):
+            for j in range(i + 1, len(answers)):
+                total_pairs += 1
+                words_i = set(answers[i].split()[:10])
+                words_j = set(answers[j].split()[:10])
+                overlap = len(words_i & words_j)
+                if overlap >= 3:
+                    matching_pairs += 1
+        return matching_pairs / max(total_pairs, 1)
 
     def close(self):
         pass
@@ -383,7 +389,9 @@ def run_benchmark(backend: MemoryBackend, mock: bool = False) -> BackendResult:
     # Phase 3: Consistency check
     print(f"\n--- Phase 3: Consistency check ---")
     agents = ["coder", "researcher", "writer"]
-    consistency = backend.consistency_check(agents, "What does the user prefer?")
+    # Use a probe question from the dataset for reproducibility
+    consistency_question = PROBES[0]["question"]
+    consistency = backend.consistency_check(agents, consistency_question)
     print(f"  Consistency score: {consistency:.1%}")
 
     # Aggregate
@@ -471,11 +479,15 @@ def main():
     print("  Memanto vs Mem0 vs Raw Context Baseline")
     print("=" * 60)
 
-    backends = [
-        RawContextBaseline(),
-        MockMemanto(),
-        MockMem0(),
-    ]
+    backends = [RawContextBaseline()]
+
+    if args.mock:
+        print("  Mode: MOCK (simulated backends)")
+    else:
+        print("  Mode: LIVE — real API backends not yet implemented, using mocks")
+        print("  (Install moorcheh-sdk/mem0ai and set API keys when available)")
+
+    backends += [MockMemanto(), MockMem0()]
 
     results = []
     for backend in backends:
