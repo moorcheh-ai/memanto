@@ -1,5 +1,6 @@
 import tempfile
 import unittest
+import json
 from pathlib import Path
 
 import run_benchmark
@@ -56,6 +57,16 @@ class ResearchDecisionMemoryBenchmarkTest(unittest.TestCase):
             self.assertNotIn("latency_ms", json_text)
             self.assertIn("Research Decision Memory Results", markdown_text)
             self.assertNotIn("| p95 ms |", markdown_text)
+
+            sample_dir = Path(__file__).parent / "results"
+            self.assertEqual(
+                json.loads(json_text),
+                json.loads((sample_dir / "sample_results.json").read_text()),
+            )
+            self.assertEqual(
+                markdown_text,
+                (sample_dir / "sample_results.md").read_text(),
+            )
 
     def test_live_markdown_keeps_latency_metric(self) -> None:
         payload = run_benchmark.run()
