@@ -790,6 +790,11 @@ class DirectClient:
                 raise ValueError(
                     f"Confidence must be between 0.0 and 1.0, got {confidence_value}"
                 )
+            # Normalize to float so downstream write service persists a numeric
+            # confidence even when the caller passed "0.7" as a string. CodeRabbit
+            # review 2026-06-14T14:03:20Z flagged that string values were
+            # previously forwarded unchanged.
+            updates["confidence"] = confidence_value
 
         result = self._get_write_service().update_memory(
             memory_id, session.namespace, updates
