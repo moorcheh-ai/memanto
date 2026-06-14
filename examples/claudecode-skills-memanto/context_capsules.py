@@ -214,7 +214,10 @@ class LocalCapsuleStore:
             (score_capsule(capsule, project=project, task=task, files=files), capsule)
             for capsule in self.load()
         ]
-        return [(score, capsule) for score, capsule in sorted(scored, reverse=True)[:limit] if score > 0]
+        # Sort strictly by score (avoid comparing Capsule objects as tiebreaker,
+        # which would raise TypeError because dataclasses are not orderable).
+        ranked = sorted(scored, key=lambda pair: pair[0], reverse=True)
+        return [(score, capsule) for score, capsule in ranked[:limit] if score > 0]  # noqa: E731
 
 
 class MemantoCliMirror:
