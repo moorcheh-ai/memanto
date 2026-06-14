@@ -17,6 +17,7 @@ from pydantic import BaseModel, Field, field_validator
 from memanto.app.clients.backend import get_active_llm_model
 from memanto.app.clients.moorcheh import get_moorcheh_client
 from memanto.app.config import settings
+from memanto.app.constants import VALID_MEMORY_TYPES
 from memanto.app.core import MemoryRecord
 from memanto.app.models import (
     AnswerRequest,
@@ -341,8 +342,36 @@ async def edit_memory(
             detail="Provide at least one field to update.",
         )
 
-    if content := updates.get("content"):
+    if "content" in updates:
+        content = updates["content"]
+        if content is None or not str(content).strip():
+            raise HTTPException(
+                status_code=400,
+                detail="Memory content must be a non-empty string.",
+            )
         CostGuard.validate_text_length(str(content), "Memory content")
+    if "confidence" in updates:
+        confidence = updates["confidence"]
+        try:
+            confidence_value = float(confidence)  # type: ignore[arg-type]
+        except (TypeError, ValueError):
+            raise HTTPException(
+                status_code=400,
+                detail=f"Confidence must be a number between 0.0 and 1.0, got {confidence!r}.",
+            )
+        if not 0.0 <= confidence_value <= 1.0:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Confidence must be between 0.0 and 1.0, got {confidence_value}.",
+            )
+    if "type" in updates and updates["type"] not in VALID_MEMORY_TYPES:
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                f"Invalid memory_type '{updates['type']}'. "
+                f"Must be one of: {', '.join(sorted(VALID_MEMORY_TYPES))}."
+            ),
+        )
 
     try:
         write_service = MemoryWriteService(client)

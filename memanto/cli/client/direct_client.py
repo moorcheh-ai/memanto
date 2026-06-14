@@ -749,6 +749,47 @@ class DirectClient:
         session = self._get_validated_session_for_agent(agent_id)
         if not updates:
             raise ValueError("Provide at least one field to update")
+        _ALLOWED_UPDATE_FIELDS = {
+            "title", "content", "type", "confidence", "tags", "source",
+        }
+        unknown_fields = set(updates) - _ALLOWED_UPDATE_FIELDS
+        if unknown_fields:
+            raise ValueError(
+                f"Unknown update fields: {', '.join(sorted(unknown_fields))}. "
+                f"Allowed fields: {', '.join(sorted(_ALLOWED_UPDATE_FIELDS))}."
+            )
+        if "content" in updates:
+            content = updates["content"]
+            if content is None or not str(content).strip():
+                raise ValueError("Memory content must be a non-empty string")
+            if len(str(content)) > _MAX_CONTENT_LENGTH:
+                raise ValueError(
+                    f"Memory content exceeds {_MAX_CONTENT_LENGTH} characters"
+                )
+        if "title" in updates:
+            title = updates["title"]
+            if title is not None and len(str(title)) > _MAX_TITLE_LENGTH:
+                raise ValueError(
+                    f"Memory title exceeds {_MAX_TITLE_LENGTH} characters"
+                )
+        if "type" in updates:
+            memory_type = updates["type"]
+            if memory_type not in _VALID_MEMORY_TYPES:
+                raise ValueError(
+                    f"Invalid memory_type '{memory_type}'. "
+                    f"Must be one of: {', '.join(sorted(_VALID_MEMORY_TYPES))}"
+                )
+        if "confidence" in updates:
+            try:
+                confidence_value = float(updates["confidence"])  # type: ignore[arg-type]
+            except (TypeError, ValueError):
+                raise ValueError(
+                    f"Confidence must be a number between 0.0 and 1.0, got {updates['confidence']!r}"
+                )
+            if not 0.0 <= confidence_value <= 1.0:
+                raise ValueError(
+                    f"Confidence must be between 0.0 and 1.0, got {confidence_value}"
+                )
 
         result = self._get_write_service().update_memory(
             memory_id, session.namespace, updates
