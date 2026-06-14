@@ -114,7 +114,7 @@ class MemoryRecord:
                 if payload.get("title") is not None
                 else None
             ),
-            confidence=float(payload.get("confidence", 0.72)),
+            confidence=float(payload.get("confidence", 0.82)),
             tags=[str(tag) for tag in payload.get("tags", [])],
             source=str(payload.get("source", "claudecode-skill")),
             provenance=str(payload.get("provenance", "skill_lifecycle")),
@@ -230,6 +230,9 @@ class MemantoCliBackend:
         output = result.stdout.strip()
         if _is_no_result_cli_recall(output):
             return []
+        parsed = parse_cli_recall(output, tags or [])
+        if parsed:
+            return parsed
         return [
             MemoryRecord(
                 content=output,
@@ -239,6 +242,74 @@ class MemantoCliBackend:
                 tags=tags or [],
             )
         ]
+
+
+def parse_cli_recall(output: str, fallback_tags: list[str]) -> list[MemoryRecord]:
+    """Parse structured Memanto CLI recall output when available."""
+
+    records: list[MemoryRecord] = []
+    try:
+        payload = json.loads(output)
+    except json.JSONDecodeError:
+        payload = None
+
+    if isinstance(payload, list):
+        records.extend(_records_from_cli_payload(payload, fallback_tags))
+    elif isinstance(payload, dict):
+        raw_items = payload.get("memories") or payload.get("results") or payload.get("items")
+        if isinstance(raw_items, list):
+            records.extend(_records_from_cli_payload(raw_items, fallback_tags))
+        elif payload.get("content") or payload.get("text"):
+            records.extend(_records_from_cli_payload([payload], fallback_tags))
+
+    if records:
+        return records
+
+    jsonl_items: list[dict[str, object]] = []
+    for line in output.splitlines():
+        try:
+            item = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        if isinstance(item, dict):
+            jsonl_items.append(item)
+    return _records_from_cli_payload(jsonl_items, fallback_tags)
+
+
+def _records_from_cli_payload(
+    items: list[object],
+    fallback_tags: list[str],
+) -> list[MemoryRecord]:
+    records: list[MemoryRecord] = []
+    for item in items:
+        if not isinstance(item, dict):
+            continue
+        content = item.get("content") or item.get("text") or item.get("memory")
+        if not content:
+            continue
+        raw_tags = item.get("tags", fallback_tags)
+        tags = raw_tags if isinstance(raw_tags, list) else fallback_tags
+        records.append(
+            MemoryRecord(
+                content=str(content),
+                memory_type=str(item.get("memory_type", item.get("type", "context"))),
+                title=(
+                    str(item["title"])
+                    if item.get("title") is not None
+                    else "Memanto CLI recall"
+                ),
+                confidence=float(item.get("confidence", 0.8)),
+                tags=[str(tag) for tag in tags],
+                source=str(item.get("source", "memanto-cli")),
+                provenance=str(item.get("provenance", "cli_recall")),
+                memory_id=(
+                    str(item["memory_id"])
+                    if item.get("memory_id") is not None
+                    else None
+                ),
+            )
+        )
+    return records
 
 
 def _is_no_result_cli_recall(output: str) -> bool:

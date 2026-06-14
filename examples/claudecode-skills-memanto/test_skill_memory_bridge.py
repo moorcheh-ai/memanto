@@ -130,6 +130,11 @@ class SkillMemoryBridgeTests(unittest.TestCase):
 
             self.assertEqual(backend.recall("anything"), [])
 
+    def test_memory_from_dict_uses_constructor_confidence_default(self) -> None:
+        memory = MemoryRecord.from_dict({"content": "Persist deployment decision."})
+
+        self.assertEqual(memory.confidence, 0.82)
+
     def test_cli_backend_ignores_empty_or_no_result_recall_output(self) -> None:
         no_result_outputs = [
             "",
@@ -152,6 +157,34 @@ class SkillMemoryBridgeTests(unittest.TestCase):
                     return_value=completed,
                 ):
                     self.assertEqual(MemantoCliBackend().recall("query"), [])
+
+    def test_cli_backend_parses_structured_recall_items(self) -> None:
+        completed = subprocess.CompletedProcess(
+            args=["memanto", "recall", "query"],
+            returncode=0,
+            stdout=(
+                '{"memories": ['
+                '{"content": "Use local backend in tests.", "type": "decision", '
+                '"title": "Test backend", "confidence": 0.91, "tags": ["tests"]},'
+                '{"content": "Keep CLI optional.", "memory_type": "instruction"}'
+                "]}"
+            ),
+            stderr="",
+        )
+
+        with patch(
+            "skill_memory_bridge.subprocess.run",
+            return_value=completed,
+        ):
+            memories = MemantoCliBackend().recall("query", tags=["fallback"])
+
+        self.assertEqual(len(memories), 2)
+        self.assertEqual(memories[0].memory_type, "decision")
+        self.assertEqual(memories[0].title, "Test backend")
+        self.assertEqual(memories[0].confidence, 0.91)
+        self.assertEqual(memories[0].tags, ["tests"])
+        self.assertEqual(memories[1].memory_type, "instruction")
+        self.assertEqual(memories[1].tags, ["fallback"])
 
 
 if __name__ == "__main__":
