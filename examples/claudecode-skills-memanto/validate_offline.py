@@ -2,88 +2,95 @@
 """
 validate_offline.py
 ===================
-Offline smoke test — no API key, no server, no LLM required.
+Offline smoke test — no API key, no server required.
 
-Run:
-    python validate_offline.py
+Run: python validate_offline.py
 """
 from __future__ import annotations
 
 import ast
+import io
 import sys
+from contextlib import redirect_stdout
 from pathlib import Path
 
 HERE = Path(__file__).parent
-FILES = [
-    "memanto_bridge.py",
-    "skills_memory.py",
-    "setup.py",
-    "validate_offline.py",
-]
+FILES = ["memanto_client.py", "skills_memory.py", "install.py",
+         "run_demo.py", "validate_offline.py",
+         "hooks/_common.py", "hooks/on_session_start.py",
+         "hooks/on_prompt.py", "hooks/on_stop.py"]
 
 
-def main() -> None:
+def main():
     print("=" * 60)
     print("  Memanto Skills Companion — Offline Validation")
     print("=" * 60)
 
     # Step 1: Syntax check
-    print("\n[1/3] Syntax check...")
+    print("\n[1/4] Syntax check...")
     for fname in FILES:
         path = HERE / fname
         try:
-            with open(path, encoding="utf-8") as fh:
-                ast.parse(fh.read())
-            print(f"  ✅ {fname} — valid syntax")
-        except SyntaxError as exc:
-            print(f"  ❌ {fname} — {exc}")
+            with open(path, encoding="utf-8") as f:
+                ast.parse(f.read())
+            print(f"  ✅ {fname}")
+        except SyntaxError as e:
+            print(f"  ❌ {fname} — {e}")
             sys.exit(1)
         except FileNotFoundError:
             print(f"  ⚠️  {fname} — not found (skipping)")
 
-    # Step 2: Skill files present
-    print("\n[2/3] Skill files check...")
+    # Step 2: Skill files
+    print("\n[2/4] Skill command files...")
     skills = [
         ".claude/commands/memanto-tdd.md",
         ".claude/commands/memanto-grill-with-docs.md",
         ".claude/commands/memanto-handoff.md",
     ]
-    for skill in skills:
-        path = HERE / skill
-        if path.exists():
-            print(f"  ✅ {skill}")
-        else:
-            print(f"  ❌ {skill} — missing")
+    for s in skills:
+        p = HERE / s
+        print(f"  {'✅' if p.exists() else '❌'} {s}")
+        if not p.exists():
             sys.exit(1)
 
-    # Step 3: Offline demo
-    print("\n[3/3] Running offline demo...")
+    # Step 3: Unit tests
+    print("\n[3/4] Running unit tests...")
+    import unittest
+    loader = unittest.TestLoader()
+    suite = loader.discover(str(HERE / "tests"), pattern="test_*.py")
+    buf = io.StringIO()
+    runner = unittest.TextTestRunner(stream=buf, verbosity=0)
+    result = runner.run(suite)
+    total = result.testsRun
+    failures = len(result.failures) + len(result.errors)
+    if failures:
+        print(f"  ❌ {failures}/{total} tests failed")
+        print(buf.getvalue())
+        sys.exit(1)
+    print(f"  ✅ {total} unit tests passed")
+
+    # Step 4: Offline demo
+    print("\n[4/4] Running offline demo...")
     try:
-        import io
-        from contextlib import redirect_stdout
-        from skills_memory import _run_offline_demo
-
-        buf = io.StringIO()
-        with redirect_stdout(buf):
-            _run_offline_demo()
-
-        output = buf.getvalue()
+        from skills_memory import _offline_demo
+        out = io.StringIO()
+        with redirect_stdout(out):
+            _offline_demo()
+        output = out.getvalue()
         checks = [
-            ("SKILL EXECUTION 1", "grill-with-docs skill execution"),
-            ("SESSION BOUNDARY",  "session boundary marker"),
-            ("SKILL EXECUTION 2", "tdd skill execution with recalled profile"),
-            ("ENGINEERING PROFILE", "engineering profile injection"),
-            ("Zero repeated instructions", "zero re-prompting claim"),
+            ("SESSION BOUNDARY", "session boundary"),
+            ("engineering-profile", "engineering profile injection"),
+            ("No repeated instructions", "zero re-prompting"),
+            ("Demo complete", "demo completion"),
         ]
         for marker, label in checks:
             if marker in output:
                 print(f"  ✅ {label}")
             else:
-                print(f"  ❌ {label} — marker '{marker}' not found in output")
+                print(f"  ❌ {label} — marker not found")
                 sys.exit(1)
-
-    except Exception as exc:
-        print(f"  ❌ Demo failed: {exc}")
+    except Exception as e:
+        print(f"  ❌ Demo failed: {e}")
         sys.exit(1)
 
     print("\n" + "=" * 60)

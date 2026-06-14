@@ -1,41 +1,17 @@
 """
 skills_memory.py
 ================
-Global memory companion for mattpocock/skills.
+CLI for the Memanto skills memory companion.
 
-Eliminates context fragmentation across skill executions by:
-  1. PRE-HOOK:  Before any skill runs, inject relevant past engineering
-                decisions into the skill's context automatically.
-  2. POST-HOOK: After a skill completes, extract and store architectural
-                choices, preferences, and decisions to Memanto permanently.
+Provides pre/post hooks, recall, demo, and cross-skill memory management.
+Uses official moorcheh-sdk (MoorchehClient) — not subprocess CLI wrappers.
 
-Usage (Python API):
-    from skills_memory import SkillsMemory
-
-    mem = SkillsMemory()
-
-    # Before running a skill
-    context = mem.pre_skill_hook(skill_name="tdd", task="Add user auth")
-    # context is injected into the skill prompt automatically
-
-    # After skill completes
-    mem.post_skill_hook(
-        skill_name="tdd",
-        summary="Decided to use JWT tokens, avoided sessions"
-    )
-
-Usage (CLI):
-    # Inject context before a skill
-    python skills_memory.py pre tdd "Add user authentication"
-
-    # Store decisions after a skill
-    python skills_memory.py post tdd "Used JWT, avoided sessions, red-green-refactor loop"
-
-    # Query engineering profile
+Usage:
+    python skills_memory.py pre tdd "Add user auth"
+    python skills_memory.py post tdd "Used JWT, RS256 signing"
     python skills_memory.py recall "authentication approach"
-
-    # Full cross-session demo
     python skills_memory.py demo
+    python skills_memory.py demo --offline
 """
 from __future__ import annotations
 
@@ -43,108 +19,89 @@ import argparse
 import os
 import sys
 import time
-from typing import List, Optional
+import uuid
+from pathlib import Path
+from typing import Dict, List, Optional
 
-from memanto_bridge import SkillsMemoryBridge
 
-# ── Skill metadata ─────────────────────────────────────────────────────────────
+# ── Offline mock backend (no API key needed) ───────────────────────────────
 
-SKILL_MEMORY_TYPES = {
-    "tdd":                       ["decision", "preference", "learning"],
-    "grill-with-docs":           ["decision", "context", "artifact"],
-    "grill-me":                  ["decision", "goal", "context"],
-    "handoff":                   ["context", "artifact", "event"],
-    "improve-codebase-architecture": ["decision", "observation", "learning"],
-    "diagnose":                  ["observation", "error", "decision"],
-    "to-issues":                 ["goal", "decision", "artifact"],
-    "to-prd":                    ["goal", "context", "artifact"],
-}
+class _MockDB:
+    """In-memory mock for offline demo."""
+    def __init__(self):
+        self._store: Dict[str, Dict] = {}
 
-DEFAULT_LIMIT = 5
+    def store(self, content, memory_type="observation", skill="", **kw):
+        mid = f"mem_{uuid.uuid4().hex[:8]}"
+        self._store[mid] = {"id": mid, "content": content, "type": memory_type, "skill": skill}
+        return self._store[mid]
 
+    def recall(self, query, skill="", limit=5, **kw):
+        return list(self._store.values())[:limit]
+
+    def answer(self, question):
+        mems = list(self._store.values())
+        if not mems:
+            return "No engineering profile found."
+        bullets = "\n".join(f"- [{m['type']}] {m['content']}" for m in mems[:5])
+        return f"Based on your engineering profile:\n{bullets}"
+
+    def correct(self, old, new, skill=""):
+        return self.store(new, "fact", skill, tags=["correction"])
+
+
+# ── SkillsMemory wrapper ───────────────────────────────────────────────────
 
 class SkillsMemory:
     """
-    Memory companion that bridges mattpocock/skills with Memanto.
+    Cross-skill memory companion using official moorcheh-sdk.
 
-    Each skill execution is treated as a source of durable engineering knowledge.
-    The companion automatically distills and injects this knowledge across sessions.
+    PRE-HOOK:  recall() → inject engineering profile before skill runs
+    POST-HOOK: store()  → save decisions after skill completes
+    ANSWER:    answer() → RAG synthesis from full engineering profile
     """
 
-    def __init__(
-        self,
-        api_key: Optional[str] = None,
-        namespace: str = "skills-companion",
-    ):
-        self._client = SkillsMemoryBridge(
-            api_key=api_key,
-            namespace=namespace,
-        )
-        self.agent_id = agent_id
+    def __init__(self, api_key: Optional[str] = None, offline: bool = False):
+        self._offline = offline
+        if offline:
+            self._client = _MockDB()
+        else:
+            from memanto_client import SkillsClient
+            self._client = SkillsClient(api_key=api_key)
 
-    # ── Core hooks ─────────────────────────────────────────────────────────
-
-    def pre_skill_hook(
-        self,
-        skill_name: str,
-        task: str = "",
-        cwd: Optional[str] = None,
-    ) -> str:
+    def pre_skill_hook(self, skill_name: str, task: str = "", cwd: str = "") -> str:
         """
-        PRE-HOOK: Called before a skill executes.
-
-        Queries Memanto for:
-          - Past decisions relevant to this skill + task
-          - Developer preferences stored from previous skill runs
-          - Architectural decisions from any prior session
-
-        Returns a context string to inject into the skill prompt.
-        This eliminates the need to re-explain preferences every session.
+        PRE-HOOK: Recall engineering profile before skill runs.
+        Returns context string to inject into skill prompt.
         """
-        queries = [
-            f"{skill_name} decisions preferences",
-            task if task else f"{skill_name} engineering profile",
-        ]
-        if cwd:
-            queries.append(os.path.basename(cwd))
+        project = Path(cwd).name if cwd else ""
+        query = f"{skill_name} {task} {project} decisions preferences".strip()
 
-        memories: List[dict] = []
-        seen_ids = set()
+        memories = self._client.recall(query=query, skill=skill_name, limit=6)
 
-        for query in queries:
-            results = self._client.recall(query=query, limit=DEFAULT_LIMIT)
-            for r in results:
-                mid = r.get("id")
-                if mid and mid not in seen_ids:
-                    seen_ids.add(mid)
-                    memories.append(r)
+        # RAG synthesis for richer context
+        rag = ""
+        if memories and not self._offline:
+            rag = self._client.answer(
+                f"What are the key engineering decisions and preferences for "
+                f"{skill_name} working on {task or project}?"
+            )
 
-        # Also pull preferences specifically
-        prefs = self._client.recall(
-            query="developer preferences style coding",
-            limit=3,
-            memory_type="preference",
-        )
-        for p in prefs:
-            mid = p.get("id")
-            if mid and mid not in seen_ids:
-                seen_ids.add(mid)
-                memories.append(p)
-
-        if not memories:
+        if not memories and not rag:
             return ""
 
         lines = [
-            f"[MEMANTO ENGINEERING PROFILE — skill: {skill_name}]",
-            "The following decisions and preferences were stored from previous sessions.",
-            "Apply them automatically without re-asking the developer:",
+            f"<engineering-profile skill=\"{skill_name}\">",
+            "Apply these automatically — do not re-ask the developer:",
             "",
         ]
+        if rag:
+            lines.append(f"[RAG Summary] {rag}\n")
         for m in memories:
             mtype = m.get("type", "observation")
             content = m.get("content", "")
             lines.append(f"  [{mtype}] {content}")
-
+        lines.append("</engineering-profile>")
         return "\n".join(lines)
 
     def post_skill_hook(
@@ -153,91 +110,52 @@ class SkillsMemory:
         summary: str,
         decisions: Optional[List[str]] = None,
         preferences: Optional[List[str]] = None,
-    ) -> List[dict]:
-        """
-        POST-HOOK: Called after a skill completes.
-
-        Stores:
-          - The skill summary as a 'context' memory
-          - Each explicit decision as a 'decision' memory
-          - Each preference as a 'preference' memory
-
-        Returns list of stored memory dicts.
-        Caller should check each dict for id=None (write failure).
-        """
+    ) -> List[Dict]:
+        """POST-HOOK: Store decisions after skill completes."""
         stored = []
-        tags = [skill_name, "skill-output"]
 
-        # Store session summary
-        mem = self._client.remember(
+        r = self._client.store(
             content=f"[{skill_name}] {summary}",
             memory_type="context",
-            tags=tags,
-            metadata={"skill": skill_name, "stored_at": time.time()},
+            skill=skill_name,
         )
-        if mem.get("id") is None:
-            print(f"⚠️  Warning: failed to store summary — {mem.get('error')}")
-        else:
-            stored.append(mem)
+        if r.get("id"):
+            stored.append(r)
 
-        # Store explicit decisions
-        for decision in (decisions or []):
-            mem = self._client.remember(
-                content=decision,
-                memory_type="decision",
-                tags=tags + ["decision"],
-                metadata={"skill": skill_name},
-            )
-            if mem.get("id") is None:
-                print(f"⚠️  Warning: failed to store decision — {mem.get('error')}")
-            else:
-                stored.append(mem)
+        for d in (decisions or []):
+            r = self._client.store(content=d, memory_type="decision", skill=skill_name)
+            if r.get("id"):
+                stored.append(r)
 
-        # Store preferences
-        for pref in (preferences or []):
-            mem = self._client.remember(
-                content=pref,
-                memory_type="preference",
-                tags=tags + ["preference"],
-                metadata={"skill": skill_name},
-            )
-            if mem.get("id") is None:
-                print(f"⚠️  Warning: failed to store preference — {mem.get('error')}")
-            else:
-                stored.append(mem)
+        for p in (preferences or []):
+            r = self._client.store(content=p, memory_type="preference", skill=skill_name)
+            if r.get("id"):
+                stored.append(r)
 
         return stored
 
-    def recall_engineering_profile(self, query: str = "engineering decisions") -> List[dict]:
-        """Retrieve the full engineering profile for a query."""
+    def recall(self, query: str) -> List[Dict]:
         return self._client.recall(query=query, limit=10)
 
     def answer(self, question: str) -> str:
-        """RAG answer grounded in stored engineering decisions."""
         return self._client.answer(question)
 
 
-# ── CLI ────────────────────────────────────────────────────────────────────────
+# ── CLI commands ───────────────────────────────────────────────────────────
 
-def _divider(title: str = "") -> None:
+def _divider(title=""):
     print(f"\n{'─' * 60}")
     if title:
-        print(f"  {title}")
-        print("─" * 60)
+        print(f"  {title}\n{'─' * 60}")
 
 
-def cmd_pre(args) -> None:
-    """Inject memories before a skill runs."""
+def cmd_pre(args):
     mem = SkillsMemory()
     context = mem.pre_skill_hook(skill_name=args.skill, task=args.task or "")
-    if context:
-        print(context)
-    else:
-        print(f"[Memanto] No prior memories for skill '{args.skill}'. Starting fresh.")
+    print(context if context else f"[Memanto] No prior memories for '{args.skill}'. Starting fresh.")
 
 
-def cmd_post(args) -> None:
-    """Store skill output to Memanto after a skill completes."""
+def cmd_post(args):
     mem = SkillsMemory()
     stored = mem.post_skill_hook(
         skill_name=args.skill,
@@ -245,15 +163,14 @@ def cmd_post(args) -> None:
         decisions=args.decisions or [],
         preferences=args.preferences or [],
     )
-    print(f"✅ Stored {len(stored)} memories for skill '{args.skill}'.")
+    print(f"✅ Stored {len(stored)} memories for '{args.skill}'.")
     for m in stored:
-        print(f"   [{m.get('type','?')}] id={m.get('id','?')} — {m.get('content','')[:80]}")
+        print(f"   [{m.get('type','?')}] {m.get('content','')[:80]}")
 
 
-def cmd_recall(args) -> None:
-    """Query the engineering profile."""
+def cmd_recall(args):
     mem = SkillsMemory()
-    results = mem.recall_engineering_profile(query=args.query)
+    results = mem.recall(args.query)
     if not results:
         print("No memories found.")
         return
@@ -262,30 +179,16 @@ def cmd_recall(args) -> None:
         print(f"  [{r.get('type','?')}] {r.get('content','')[:120]}")
 
 
-def cmd_demo(args) -> None:
-    """
-    Full cross-session demo — proves memory persists across skill executions.
-    No LLM or server needed in offline mode (--offline).
-    """
+def cmd_demo(args):
     if args.offline:
-        _run_offline_demo()
+        _offline_demo()
     else:
-        _run_live_demo()
+        _live_demo()
 
 
-def _run_offline_demo() -> None:
-    """Offline mock demo — identical to live output but in-process only."""
-    import uuid
-
-    db: dict = {}
-
-    def store(content, mtype, skill):
-        mid = f"mem_{uuid.uuid4().hex[:8]}"
-        db[mid] = {"id": mid, "content": content, "type": mtype, "skill": skill}
-        return db[mid]
-
-    def recall(query):
-        return list(db.values())[:5]
+def _offline_demo():
+    """Credential-free offline demo — no API key needed."""
+    mem = SkillsMemory(offline=True)
 
     print("\n╔══════════════════════════════════════════════════════════╗")
     print("║   mattpocock/skills  +  Memanto  —  Memory Companion    ║")
@@ -299,20 +202,23 @@ def _run_offline_demo() -> None:
     print("  [POST-HOOK] Extracting decisions to Memanto...")
     time.sleep(0.4)
 
-    decisions = [
-        ("Use JWT tokens over sessions — stateless, scales horizontally.", "decision"),
-        ("RS256 algorithm for JWT signing — asymmetric, safer for microservices.", "decision"),
-        ("Refresh token rotation with 7-day expiry.", "decision"),
-        ("Developer prefers typed schemas (TypeScript strict mode).", "preference"),
-    ]
-    stored = []
-    for content, mtype in decisions:
-        m = store(content, mtype, "grill-with-docs")
-        stored.append(m)
-        print(f"  ✅ [{m['id']}] ({mtype}) {content[:70]}")
+    stored = mem.post_skill_hook(
+        skill_name="/grill-with-docs",
+        summary="Auth system design: JWT over sessions, RS256, 7-day refresh",
+        decisions=[
+            "Use JWT tokens over sessions — stateless, scales horizontally.",
+            "RS256 algorithm for JWT signing — asymmetric, safer for microservices.",
+            "Refresh token rotation with 7-day expiry.",
+        ],
+        preferences=[
+            "Developer prefers typed schemas (TypeScript strict mode).",
+        ],
+    )
+    for m in stored:
+        print(f"  ✅ [{m['id']}] ({m.get('type','?')}) {m.get('content','')[:70]}")
         time.sleep(0.3)
 
-    print(f"\n  📦 4 engineering decisions stored in Memanto.")
+    print(f"\n  📦 {len(stored)} engineering decisions stored in Memanto.")
 
     _divider("SESSION BOUNDARY — New terminal session / next day")
     print("  💤  Completely new process. Zero shared in-memory state.")
@@ -324,12 +230,8 @@ def _run_offline_demo() -> None:
     print("  [PRE-HOOK] Loading engineering profile from Memanto...")
     time.sleep(0.5)
 
-    recalled = recall("authentication JWT")
-    print("\n  [MEMANTO ENGINEERING PROFILE — skill: tdd]")
-    print("  Apply these decisions automatically without re-asking:\n")
-    for m in recalled:
-        print(f"    [{m['type']}] {m['content'][:90]}")
-
+    context = mem.pre_skill_hook(skill_name="/tdd", task="Implement login endpoint")
+    print(context)
     time.sleep(0.4)
     print("\n  🤖 /tdd skill starts — already knows:")
     print("     • JWT with RS256 (not sessions)")
@@ -338,98 +240,85 @@ def _run_offline_demo() -> None:
     print("     → No repeated instructions needed ✅")
 
     _divider("SKILL EXECUTION 3: /handoff")
-    print("  Developer runs: /handoff (to continue in a new session)\n")
+    print("  Developer runs: /handoff\n")
     print("  [PRE-HOOK] Loading engineering profile from Memanto...")
+    recalled = mem.recall("JWT authentication decisions")
+    for r in recalled[:2]:
+        print(f"  📚 [{r['id']}] {r.get('content','')[:90]}")
     time.sleep(0.3)
-    for m in recalled[:2]:
-        print(f"  📚 [{m['id']}] {m['content'][:90]}")
-
     print("\n  [POST-HOOK] Storing handoff summary...")
-    time.sleep(0.3)
-    h = store("Handoff: Login endpoint implemented with JWT/RS256. Tests passing.", "artifact", "handoff")
-    print(f"  ✅ [{h['id']}] Handoff stored for next agent.")
+    h = mem.post_skill_hook("/handoff", "Login endpoint implemented. JWT/RS256. Tests passing.")
+    for m in h:
+        print(f"  ✅ [{m['id']}] Handoff stored for next agent.")
 
     _divider("✨  Demo complete!")
     print("  Zero repeated instructions across 3 skill executions.")
     print("  All decisions persist in Memanto — available in any future session.\n")
 
 
-def _run_live_demo() -> None:
-    """Live demo using real Memanto server."""
+def _live_demo():
+    """Live demo using real Memanto API."""
     mem = SkillsMemory()
 
     print("\n╔══════════════════════════════════════════════════════════╗")
     print("║   mattpocock/skills  +  Memanto  —  Memory Companion    ║")
-    print("║   Zero context re-prompting across skill executions     ║")
     print("╚══════════════════════════════════════════════════════════╝")
-    print("\n  Mode: 🟢 LIVE (Memanto server)\n")
+    print("\n  Mode: 🟢 LIVE (official moorcheh-sdk)\n")
 
-    _divider("SKILL EXECUTION 1: /grill-with-docs — storing decisions")
+    _divider("STORING engineering decisions via /grill-with-docs")
     stored = mem.post_skill_hook(
-        skill_name="grill-with-docs",
-        summary="Auth system: JWT over sessions, RS256 signing, 7-day refresh rotation",
+        skill_name="/grill-with-docs",
+        summary="Auth: JWT over sessions, RS256, 7-day refresh rotation",
         decisions=[
             "Use JWT tokens over sessions — stateless, scales horizontally.",
             "RS256 algorithm for JWT signing — asymmetric, safer for microservices.",
-            "Refresh token rotation with 7-day expiry.",
         ],
-        preferences=[
-            "Developer prefers TypeScript strict mode across all new files.",
-        ],
+        preferences=["TypeScript strict mode across all new files."],
     )
     print(f"  ✅ Stored {len(stored)} memories.")
+    for m in stored:
+        print(f"     id={m.get('id')} [{m.get('type')}] {m.get('content','')[:60]}")
 
-    _divider("SESSION BOUNDARY — New terminal / next day")
-    print("  💤  Simulating fresh session...\n")
+    _divider("SIMULATING session boundary...")
+    print("  💤  New process — zero shared state\n")
     time.sleep(1.0)
 
-    _divider("SKILL EXECUTION 2: /tdd — loading profile")
-    context = mem.pre_skill_hook(skill_name="tdd", task="Implement login endpoint")
-    if context:
-        print(context)
-    else:
-        print("  (no memories found — check server connection)")
+    _divider("RECALLING profile for /tdd")
+    context = mem.pre_skill_hook(skill_name="/tdd", task="Login endpoint")
+    print(context if context else "  (no memories found)")
 
     _divider("✨  Done!")
     print("  Engineering profile injected into /tdd automatically.\n")
 
 
-def main() -> None:
-    parser = argparse.ArgumentParser(
-        description="Memanto skills memory companion CLI",
-        formatter_class=argparse.RawDescriptionHelpFormatter,
-    )
+def main():
+    parser = argparse.ArgumentParser(description="Memanto skills memory companion")
     sub = parser.add_subparsers(dest="command")
 
-    # pre
-    p_pre = sub.add_parser("pre", help="Inject memories before a skill runs")
-    p_pre.add_argument("skill", help="Skill name e.g. tdd, grill-with-docs")
-    p_pre.add_argument("task", nargs="?", default="", help="Current task description")
+    p_pre = sub.add_parser("pre", help="Inject memories before skill")
+    p_pre.add_argument("skill")
+    p_pre.add_argument("task", nargs="?", default="")
     p_pre.set_defaults(func=cmd_pre)
 
-    # post
-    p_post = sub.add_parser("post", help="Store skill output after completion")
-    p_post.add_argument("skill", help="Skill name")
-    p_post.add_argument("summary", help="Summary of what happened")
-    p_post.add_argument("--decisions", nargs="*", help="Key decisions made")
-    p_post.add_argument("--preferences", nargs="*", help="Developer preferences discovered")
+    p_post = sub.add_parser("post", help="Store decisions after skill")
+    p_post.add_argument("skill")
+    p_post.add_argument("summary")
+    p_post.add_argument("--decisions", nargs="*")
+    p_post.add_argument("--preferences", nargs="*")
     p_post.set_defaults(func=cmd_post)
 
-    # recall
     p_recall = sub.add_parser("recall", help="Query engineering profile")
-    p_recall.add_argument("query", help="Natural-language query")
+    p_recall.add_argument("query")
     p_recall.set_defaults(func=cmd_recall)
 
-    # demo
     p_demo = sub.add_parser("demo", help="Run cross-session demo")
-    p_demo.add_argument("--offline", action="store_true", help="Run offline (no server needed)")
+    p_demo.add_argument("--offline", action="store_true")
     p_demo.set_defaults(func=cmd_demo)
 
     args = parser.parse_args()
     if not args.command:
         parser.print_help()
         sys.exit(0)
-
     args.func(args)
 
 

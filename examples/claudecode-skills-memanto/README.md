@@ -1,231 +1,126 @@
-# 🧠 Memanto + mattpocock/skills — Zero Context Re-Prompting
+# 🧠 Memanto + mattpocock/skills — Claude Code Lifecycle Hooks
 
-A global memory companion for [mattpocock/skills](https://github.com/mattpocock/skills) that eliminates **Context Fragmentation** across skill executions.
+Real Claude Code `SessionStart`, `UserPromptSubmit`, and `Stop` hooks that
+make Memanto a global, active memory companion across `/tdd`,
+`/grill-with-docs`, `/handoff`, and other mattpocock skills.
 
 ```text
-/grill-with-docs  →  stores: JWT over sessions, RS256, TypeScript strict
+/grill-with-docs  →  Stop hook: LLM extracts decisions → stored via moorcheh-sdk
                                         ↓  Memanto  ↓
-/tdd              ←  injects: all past decisions automatically (new session)
-                                        ↓  Memanto  ↓
-/handoff          ←  injects: full engineering profile for the next agent
+/tdd (new session) ←  SessionStart hook: recall() + answer.generate() RAG inject
 ```
 
-> **Zero repeated instructions.** The agent aligns with your architectural philosophy across every skill, every session, without manual context-shoving.
+> **Zero repeated instructions.** Hooks fire automatically — no manual
+> pre/post commands, no copy-paste, no forks of mattpocock/skills.
 
-## 🎬 Demo Video
+## 🎬 Demo
 
-▶️ **[Watch 30-second demo](https://github.com/user-attachments/assets/292776a4-c307-4908-8b7d-f9fc044e444e)**
+▶️ [Watch demo](REPLACE_WITH_LOOM_LINK)
 
-*`/grill-with-docs` stores decisions → `/tdd` in a new session auto-recalls them*
+📣 X: REPLACE_WITH_X_LINK
+📣 Reddit: REPLACE_WITH_REDDIT_LINK
 
-## 📣 Social Posts
-- 🐦 X/Twitter: https://x.com/i/status/2059056551671869471
+## Why this approach
 
----
-
-## The Problem: Context Fragmentation
-
-Each mattpocock/skills execution is an isolated event. When you use `/grill-with-docs` to resolve "JWT over sessions with RS256", that decision is **invisible** when you invoke `/tdd` in a fresh terminal session. You re-explain. Every time.
-
-## The Solution: Global Memory Hooks
-
-Two lightweight hooks wrap every skill execution:
-
-```
-Before skill: PRE-HOOK  → recall engineering profile from Memanto → inject into prompt
-After skill:  POST-HOOK → extract decisions → store to Memanto permanently
-```
-
-No vector DB. No indexing wait. Memories are searchable the instant they're stored.
-
----
-
-## Architecture
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│                  mattpocock/skills CLI                       │
-│                                                             │
-│  /grill-with-docs   /tdd   /handoff   /diagnose   ...      │
-│        │               │        │                           │
-│   PRE-HOOK         PRE-HOOK  PRE-HOOK   ← inject context   │
-│   POST-HOOK       POST-HOOK POST-HOOK   ← store decisions  │
-└──────────────────────┬──────────────────────────────────────┘
-                       │ REST API (POST /remember, GET /recall)
-           ┌───────────▼───────────┐
-           │   Memanto Server      │  ← permanent engineering profile
-           │  (memanto serve)      │  ← persists across ALL sessions
-           └───────────┬───────────┘
-                       │ SDK calls
-           ┌───────────▼───────────┐
-           │    Moorcheh.ai        │
-           │  Zero-Index Semantic  │
-           │  Database             │
-           └───────────────────────┘
-```
-
-**Why tools-only (not a LangGraph/LangChain backend)?**
-
-Many framework memory integrations rely on embedding-oriented retrieval layers where the original natural-language query may not be preserved cleanly through the abstraction boundary. Memanto performs semantic retrieval directly from natural-language text queries. The hooks-based approach here keeps the integration lightweight — zero overhead, zero framework dependency.
-
-**Memanto is NOT used as a conversation checkpointer.** Checkpointing manages execution recovery. Memanto manages durable semantic memory. They solve different problems.
-
----
+| | This PR | CLI-subprocess wrappers |
+|---|---|---|
+| Memanto access | Official `moorcheh-sdk` `MoorchehClient` (in-process) | `subprocess.run(["memanto", ...])` |
+| Context injection | `answer.generate()` RAG synthesis + semantic recall | Raw recall text only |
+| Extraction | LLM-powered (`answer.generate()`) with heuristic fallback | Regex/heuristic only |
+| Hooks | Real `SessionStart` / `UserPromptSubmit` / `Stop` | None (manual wrapper script) |
+| Tests | 20 unit tests, `unittest` | — |
 
 ## Quick Start
 
 ```bash
-# 1. Install
-git clone https://github.com/YOUR_HANDLE/memanto
-cd memanto/examples/claudecode-skills-memanto
 pip install -r requirements.txt
-
-# 2. Configure
-export MOORCHEH_API_KEY=mk-...   # get free key at moorcheh.ai
-memanto serve                     # start local Memanto server
-
-# 3. Install into your project
-python setup.py --target /path/to/your/project
-
-# 4. Run offline demo (no server or API key needed)
-python skills_memory.py demo --offline
-
-# 5. Run live demo
-python skills_memory.py demo
+export MOORCHEH_API_KEY=mk-...   # free key at moorcheh.ai
+python install.py                 # registers hooks in .claude/settings.json
 ```
 
----
+Open Claude Code in your project — hooks activate automatically.
 
-## Usage
-
-### Before any skill runs (PRE-HOOK)
+## Credential-free Demo
 
 ```bash
-python skills_memory.py pre tdd "Implement user login endpoint"
+python run_demo.py
 ```
 
-Output injected into the skill prompt:
-```
-[MEMANTO ENGINEERING PROFILE — skill: tdd]
-Apply these decisions automatically without re-asking the developer:
+Runs a full two-session cross-skill memory demo using an offline mock —
+no API key required. Use `--live` once `MOORCHEH_API_KEY` is set.
 
-  [decision] Use JWT tokens over sessions — stateless, scales horizontally.
-  [decision] RS256 algorithm for JWT signing — asymmetric, safer for microservices.
-  [decision] Refresh token rotation with 7-day expiry.
-  [preference] Developer prefers TypeScript strict mode across all new files.
-```
-
-### After any skill completes (POST-HOOK)
+## Validation
 
 ```bash
-python skills_memory.py post tdd "Implemented login with JWT" \
-  --decisions \
-    "Repository pattern for data access layer" \
-    "Vitest over Jest — 10x faster cold starts" \
-  --preferences \
-    "Colocate test files with implementation"
+python validate_offline.py
 ```
 
-### Query engineering profile
+Runs syntax checks, 20 unit tests, and the offline demo end-to-end.
 
-```bash
-python skills_memory.py recall "authentication approach"
+## How it works
+
+### SessionStart hook (`hooks/on_session_start.py`)
+Detects the active skill, recalls relevant memories via
+`similarity_search.query()`, and synthesizes a RAG summary via
+`answer.generate()`. Injects an `<engineering-profile>` block.
+
+### UserPromptSubmit hook (`hooks/on_prompt.py`)
+Re-detects skill from the prompt text and touched files mid-session,
+re-injecting context if you switch skills.
+
+### Stop hook (`hooks/on_stop.py`)
+Sends the transcript to `answer.generate()` asking the LLM to extract typed
+engineering memories (decision / instruction / preference / error / fact).
+Falls back to regex heuristics (`DECISION:`, `CONSTRAINT:`, etc.) if the LLM
+returns nothing parseable. Stores via `documents.upload()`.
+
+## Architecture
+
+```text
+┌─────────────────────────────────────────────────┐
+│              Claude Code session                 │
+│                                                   │
+│  SessionStart → recall() + answer() → inject     │
+│  UserPromptSubmit → re-detect skill → re-inject  │
+│  Stop → answer() extracts decisions → store()    │
+└───────────────────┬───────────────────────────────┘
+                     │ moorcheh-sdk (MoorchehClient)
+         ┌───────────▼────────────┐
+         │   Moorcheh.ai engine    │
+         │  namespaces / documents │
+         │  similarity_search      │
+         │  answer.generate()      │
+         └─────────────────────────┘
 ```
 
----
+## Memanto API used (official SDK only)
 
-## Cross-Session Recall Proof
+| Call | Purpose |
+|---|---|
+| `namespaces.create()` | Create shared engineering-profile namespace |
+| `documents.upload()` | Store typed memories |
+| `similarity_search.query()` | Semantic recall |
+| `answer.generate()` | RAG context synthesis + LLM extraction |
 
-```
-Session A  (any terminal, any time)
-────────────────────────────────────────────────────────
-Developer runs /grill-with-docs on "Auth system design"
-POST-HOOK stores:
-  [decision] JWT over sessions
-  [decision] RS256 signing
-  [preference] TypeScript strict mode
-
-         ↓  terminate process entirely  ↓
-
-Session B  (new terminal, next day, different machine)
-────────────────────────────────────────────────────────
-Developer runs /tdd on "Login endpoint"
-PRE-HOOK recalls:
-  📚 [decision] JWT over sessions — stateless, scales horizontally.
-  📚 [decision] RS256 algorithm for JWT signing.
-  📚 [preference] TypeScript strict mode.
-
-/tdd starts — already knows everything. Zero re-prompting.
-```
-
-**No shared in-memory state between sessions. All recalled information originates exclusively from Memanto persistence.**
-
----
-
-## Contradiction Handling
-
-When a new decision contradicts a stored one, store the correction via POST-HOOK:
-
-```bash
-python skills_memory.py post tdd "Updated JWT decision" \
-  --decisions "Switched to HS256 — single-service deployment, asymmetric unnecessary"
-```
-
-The old decision (`RS256`) is preserved in `metadata.previous_content` for audit. Only the active fact changes. Applications can inspect `metadata.previous_content` to resolve conflicts.
-
-Uses only the documented `POST /remember` endpoint — no undocumented PATCH.
-
----
-
-## Enhanced Claude Code Skills
-
-Three Memanto-enhanced skill files are installed into `.claude/commands/`:
-
-| Skill | File | What it adds |
-|-------|------|-------------|
-| `/memanto-tdd` | `memanto-tdd.md` | Pre-loads architecture, post-stores TDD decisions |
-| `/memanto-grill-with-docs` | `memanto-grill-with-docs.md` | Pre-loads settled decisions, post-stores all resolved choices |
-| `/memanto-handoff` | `memanto-handoff.md` | Enriches handoff docs with full Memanto profile |
-
----
+No raw HTTP, no subprocess, no undocumented endpoints.
 
 ## Project Structure
 
+```text
+examples/claudecode-skills-memanto/
+├── memanto_client.py       # official moorcheh-sdk wrapper
+├── skills_memory.py         # CLI + SkillsMemory class
+├── install.py                # registers Claude Code hooks
+├── run_demo.py                # credential-free demo
+├── validate_offline.py        # syntax + 20 tests + demo
+├── hooks/
+│   ├── _common.py             # shared extraction/recall logic
+│   ├── on_session_start.py
+│   ├── on_prompt.py
+│   └── on_stop.py
+├── tests/test_skills_memory.py
+└── .claude/commands/
+    ├── memanto-tdd.md
+    ├── memanto-grill-with-docs.md
+    └── memanto-handoff.md
 ```
-claudecode-skills-memanto/
-├── memanto_bridge.py       # Memanto v2 REST client (documented endpoints only)
-├── skills_memory.py        # Pre/post hooks + CLI
-├── setup.py                # Installs skills into your project
-├── validate_offline.py     # Offline smoke test (no server needed)
-├── requirements.txt
-├── README.md
-└── .claude/
-    └── commands/
-        ├── memanto-tdd.md
-        ├── memanto-grill-with-docs.md
-        └── memanto-handoff.md
-```
-
----
-
-## Memanto API Endpoints Used
-
-| Endpoint | Method | Purpose |
-|----------|--------|---------|
-| `/api/v2/agents` | POST | Create agent namespace |
-| `/api/v2/agents/{id}/activate` | POST | Start session → token |
-| `/api/v2/agents/{id}/remember` | POST | Store decision/preference/context |
-| `/api/v2/agents/{id}/recall` | GET | Semantic search (natural language) |
-| `/api/v2/agents/{id}/answer` | POST | RAG answer over engineering profile |
-
-No undocumented endpoints. No PATCH. No vector embedding bridges.
-
----
-
-## Scoring Criteria Addressed
-
-| Criterion | How |
-|-----------|-----|
-| **Productivity Multiplier (40pts)** | Pre-hook eliminates ALL context re-prompting across sessions |
-| **Code Cleanliness (20pts)** | Zero framework dependencies, single-file Python modules, documented endpoints only |
-| **Social Virality (40pts)** | Demo video + X post + Reddit posts linked above |
