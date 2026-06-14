@@ -750,7 +750,12 @@ class DirectClient:
         if not updates:
             raise ValueError("Provide at least one field to update")
         _ALLOWED_UPDATE_FIELDS = {
-            "title", "content", "type", "confidence", "tags", "source",
+            "title",
+            "content",
+            "type",
+            "confidence",
+            "tags",
+            "source",
         }
         unknown_fields = set(updates) - _ALLOWED_UPDATE_FIELDS
         if unknown_fields:
@@ -769,9 +774,7 @@ class DirectClient:
         if "title" in updates:
             title = updates["title"]
             if title is not None and len(str(title)) > _MAX_TITLE_LENGTH:
-                raise ValueError(
-                    f"Memory title exceeds {_MAX_TITLE_LENGTH} characters"
-                )
+                raise ValueError(f"Memory title exceeds {_MAX_TITLE_LENGTH} characters")
         if "type" in updates:
             memory_type = updates["type"]
             if memory_type not in _VALID_MEMORY_TYPES:

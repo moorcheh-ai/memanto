@@ -270,8 +270,14 @@ class TestMEMANTOCLI:
         mock_session.session_token = "test-token"
 
         with (
-            patch.object(DirectClient, "_get_write_service", return_value=mock_write_service),
-            patch.object(DirectClient, "_get_validated_session_for_agent", return_value=mock_session),
+            patch.object(
+                DirectClient, "_get_write_service", return_value=mock_write_service
+            ),
+            patch.object(
+                DirectClient,
+                "_get_validated_session_for_agent",
+                return_value=mock_session,
+            ),
         ):
             client = DirectClient.__new__(DirectClient)
             client.api_key = "test-api-key"
@@ -301,13 +307,20 @@ class TestMEMANTOCLI:
         mock_session.namespace = "memanto_agent_test-agent"
 
         with (
-            patch.object(DirectClient, "_get_write_service", return_value=mock_write_service),
-            patch.object(DirectClient, "_get_validated_session_for_agent", return_value=mock_session),
+            patch.object(
+                DirectClient, "_get_write_service", return_value=mock_write_service
+            ),
+            patch.object(
+                DirectClient,
+                "_get_validated_session_for_agent",
+                return_value=mock_session,
+            ),
         ):
             client = DirectClient.__new__(DirectClient)
             client.api_key = "test-api-key"
             client.base_url = "https://api.moorcheh.ai/v1"
             import pytest
+
             with pytest.raises(ValueError, match="Confidence must be a number"):
                 client.update_memory(
                     agent_id="test-agent",
@@ -330,12 +343,17 @@ class TestMEMANTOCLI:
         mock_session.namespace = "memanto_agent_test-agent"
 
         with (
-            patch.object(SdkClient, "_get_write_service", return_value=mock_write_service),
-            patch.object(SdkClient, "_get_validated_session_for_agent", return_value=mock_session),
+            patch.object(
+                SdkClient, "_get_write_service", return_value=mock_write_service
+            ),
+            patch.object(
+                SdkClient, "_get_validated_session_for_agent", return_value=mock_session
+            ),
         ):
             client = SdkClient.__new__(SdkClient)
             client.api_key = "test-api-key"
             import pytest
+
             with pytest.raises(ValueError, match="Unknown update field"):
                 client.update_memory(
                     agent_id="test-agent",
@@ -356,12 +374,17 @@ class TestMEMANTOCLI:
         mock_session.namespace = "memanto_agent_test-agent"
 
         with (
-            patch.object(SdkClient, "_get_write_service", return_value=mock_write_service),
-            patch.object(SdkClient, "_get_validated_session_for_agent", return_value=mock_session),
+            patch.object(
+                SdkClient, "_get_write_service", return_value=mock_write_service
+            ),
+            patch.object(
+                SdkClient, "_get_validated_session_for_agent", return_value=mock_session
+            ),
         ):
             client = SdkClient.__new__(SdkClient)
             client.api_key = "test-api-key"
             import pytest
+
             with pytest.raises(ValueError, match="non-empty string"):
                 client.update_memory(
                     agent_id="test-agent",
@@ -391,8 +414,12 @@ class TestMEMANTOCLI:
         mock_session.namespace = "memanto_agent_test-agent"
 
         with (
-            patch.object(SdkClient, "_get_write_service", return_value=mock_write_service),
-            patch.object(SdkClient, "_get_validated_session_for_agent", return_value=mock_session),
+            patch.object(
+                SdkClient, "_get_write_service", return_value=mock_write_service
+            ),
+            patch.object(
+                SdkClient, "_get_validated_session_for_agent", return_value=mock_session
+            ),
         ):
             client = SdkClient.__new__(SdkClient)
             client.api_key = "test-api-key"
@@ -404,7 +431,11 @@ class TestMEMANTOCLI:
 
         call_args = mock_write_service.update_memory.call_args
         # update_memory(memory_id, namespace, updates) is called positionally
-        forwarded_updates = call_args.args[2] if len(call_args.args) > 2 else call_args.kwargs.get("updates")
+        forwarded_updates = (
+            call_args.args[2]
+            if len(call_args.args) > 2
+            else call_args.kwargs.get("updates")
+        )
         assert isinstance(forwarded_updates["confidence"], float)
         assert forwarded_updates["confidence"] == 0.5
         assert forwarded_updates["tags"] == ["a", "b"]
