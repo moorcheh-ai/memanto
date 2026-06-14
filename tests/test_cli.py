@@ -441,6 +441,26 @@ class TestMEMANTOCLI:
         assert forwarded_updates["tags"] == ["a", "b"]
         assert result["status"] == "updated"
 
+    def test_edit_nonexistent_memory(self, mock_all_clients):
+        """Test 'memanto edit' surfaces a non-zero exit when the underlying
+        update_memory raises (e.g. memory not found)."""
+        mock_all_clients.update_memory.side_effect = ValueError(
+            "Memory 'missing-memory' not found in namespace"
+        )
+
+        result = runner.invoke(
+            app,
+            ["edit", "missing-memory", "--title", "Updated title"],
+        )
+
+        assert result.exit_code != 0
+        assert "missing-memory" in result.stdout
+        mock_all_clients.update_memory.assert_called_once_with(
+            agent_id="test-agent",
+            memory_id="missing-memory",
+            updates={"title": "Updated title"},
+        )
+
     def test_recall(self, mock_all_clients):
         """Test 'memanto recall'"""
         mock_all_clients.recall.return_value = {
