@@ -311,6 +311,45 @@ class TestMEMANTOAPI:
         assert "at least one field" in response.json()["detail"]
 
     @pytest.mark.asyncio
+    async def test_edit_memory_returns_404_when_missing(self, client, auth_headers):
+        """Test that the edit endpoint returns 404 when the target memory does not exist.
+
+        CodeRabbit nitpick 2026-06-14T14:03:21Z on PR #633: the existing edit
+        tests cover success and empty payload but not the not-found mapping
+        behaviour. The route catches Exception and maps the substring
+        ``"not found"`` in the message to HTTP 404, so this test patches
+        ``MemoryWriteService.update_memory`` to raise an exception containing
+        that substring and asserts the response status is 404.
+        """
+        app.dependency_overrides[get_current_session] = lambda: Session(
+            session_id="sess-test",
+            session_token="token-test",
+            agent_id=self.TEST_AGENT_ID,
+            namespace=f"memanto_agent_{self.TEST_AGENT_ID}",
+            started_at=datetime.utcnow(),
+            expires_at=datetime.utcnow() + timedelta(hours=1),
+        )
+        try:
+            with patch("memanto.app.routes.memory.MemoryWriteService") as mock_cls:
+                write_service = mock_cls.return_value
+                write_service.update_memory.side_effect = Exception(
+                    "memory mem-999 not found in namespace"
+                )
+
+                response = await client.patch(
+                    f"/api/v2/agents/{self.TEST_AGENT_ID}/memories/mem-999",
+                    headers=auth_headers,
+                    json={"content": "New content for missing memory"},
+                )
+        finally:
+            app.dependency_overrides.clear()
+
+        assert response.status_code == 404
+        detail = response.json()["detail"]
+        assert "mem-999" in detail
+        assert "not found" in detail.lower()
+
+    @pytest.mark.asyncio
     async def test_answer_with_session(self, client, auth_headers, mock_moorcheh):
         """Test RAG answer with session token"""
         # Setup session
