@@ -100,14 +100,20 @@ class ActiveIncidentDigest:
     name = "active_incident_digest"
 
     def __init__(self) -> None:
+        """Create an empty current-fact map."""
+
         self._facts: dict[tuple[str, str], str] = {}
 
     def ingest(self, events: list[MemoryEvent]) -> None:
+        """Store the latest redacted fact for each subject/key pair."""
+
         for event in events:
             digest_line = f"{event.subject}.{event.key}: {redact_secrets(event.value)}"
             self._facts[(event.subject, event.key)] = digest_line
 
     def retrieve(self, query: GoldenQuery) -> Retrieval:
+        """Return only current facts matching the query subjects and keys."""
+
         items = []
         for subject in query.subjects:
             for key in query.keys:
@@ -129,6 +135,8 @@ class ActiveIncidentDigest:
         )
 
     def stored_text(self) -> str:
+        """Return the active digest contents in stable order."""
+
         return "\n".join(self._facts[key] for key in sorted(self._facts))
 
 
@@ -138,16 +146,22 @@ class AppendOnlyLog:
     name = "append_only_log"
 
     def __init__(self) -> None:
+        """Create an empty raw event log."""
+
         self._events: list[MemoryEvent] = []
 
     def ingest(self, events: list[MemoryEvent]) -> None:
+        """Append the full raw event stream."""
+
         self._events = list(events)
 
     def retrieve(self, query: GoldenQuery) -> Retrieval:
+        """Return raw log entries matching the query subjects and keys."""
+
         items = [
             event.text
             for event in self._events
-            if event.subject in query.subjects
+            if event.subject in query.subjects and event.key in query.keys
         ]
         tokens = count_tokens("\n".join(items))
         return Retrieval(
@@ -163,6 +177,8 @@ class AppendOnlyLog:
         )
 
     def stored_text(self) -> str:
+        """Return all raw log entries for storage-token accounting."""
+
         return "\n".join(event.text for event in self._events)
 
 
@@ -172,17 +188,23 @@ class RecentWindowLog:
     name = "recent_window_log"
 
     def __init__(self, window_size: int = 5) -> None:
+        """Create a fixed-size recent-event window."""
+
         self._window_size = window_size
         self._events: list[MemoryEvent] = []
 
     def ingest(self, events: list[MemoryEvent]) -> None:
+        """Retain only the newest raw events."""
+
         self._events = list(events[-self._window_size :])
 
     def retrieve(self, query: GoldenQuery) -> Retrieval:
+        """Return recent raw entries matching the query subjects and keys."""
+
         items = [
             event.text
             for event in self._events
-            if event.subject in query.subjects
+            if event.subject in query.subjects and event.key in query.keys
         ]
         tokens = count_tokens("\n".join(items))
         return Retrieval(
@@ -198,6 +220,8 @@ class RecentWindowLog:
         )
 
     def stored_text(self) -> str:
+        """Return the retained recent window for storage-token accounting."""
+
         return "\n".join(event.text for event in self._events)
 
 

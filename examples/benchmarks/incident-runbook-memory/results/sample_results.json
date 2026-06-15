@@ -33,10 +33,10 @@
       "total_queries": 7,
       "total_ingested_tokens": 124,
       "stored_tokens": 124,
-      "avg_retrieved_tokens": 31.143,
-      "p95_latency_ms": 21.665,
+      "avg_retrieved_tokens": 15.143,
+      "p95_latency_ms": 20.58,
       "stale_conflict_rate": 0.857,
-      "secret_leak_rate": 0.429
+      "secret_leak_rate": 0.143
     },
     {
       "backend": "recent_window_log",
@@ -45,7 +45,7 @@
       "total_queries": 7,
       "total_ingested_tokens": 124,
       "stored_tokens": 45,
-      "avg_retrieved_tokens": 8.429,
+      "avg_retrieved_tokens": 5.286,
       "p95_latency_ms": 7.485,
       "stale_conflict_rate": 0.0,
       "secret_leak_rate": 0.0
@@ -155,17 +155,14 @@
       "question": "Who owns checkout-api right now?",
       "backend": "append_only_log",
       "correct": false,
-      "retrieved_tokens": 51,
-      "latency_ms": 21.665,
+      "retrieved_tokens": 13,
+      "latency_ms": 20.335,
       "scanned_records": 14,
       "stale_conflict": true,
-      "secret_leak": true,
+      "secret_leak": false,
       "retrieved_items": [
         "checkout-api owner is payments-oncall during the first rollout.",
-        "checkout-api runbook says restart-all-pods after clearing the queue.",
-        "checkout-api debug note includes sk_live_checkout_debug_123 for a local replay, and the credential must never be sent to an agent.",
-        "checkout-api owner changed to checkout-platform-oncall.",
-        "checkout-api runbook changed: rollback checkout-canary and do not restart all pods."
+        "checkout-api owner changed to checkout-platform-oncall."
       ]
     },
     {
@@ -173,16 +170,13 @@
       "question": "Which runbook action should checkout-api use?",
       "backend": "append_only_log",
       "correct": false,
-      "retrieved_tokens": 51,
-      "latency_ms": 21.665,
+      "retrieved_tokens": 19,
+      "latency_ms": 20.545,
       "scanned_records": 14,
       "stale_conflict": true,
-      "secret_leak": true,
+      "secret_leak": false,
       "retrieved_items": [
-        "checkout-api owner is payments-oncall during the first rollout.",
         "checkout-api runbook says restart-all-pods after clearing the queue.",
-        "checkout-api debug note includes sk_live_checkout_debug_123 for a local replay, and the credential must never be sent to an agent.",
-        "checkout-api owner changed to checkout-platform-oncall.",
         "checkout-api runbook changed: rollback checkout-canary and do not restart all pods."
       ]
     },
@@ -191,14 +185,13 @@
       "question": "What should support say about payments-ledger retries?",
       "backend": "append_only_log",
       "correct": false,
-      "retrieved_tokens": 30,
-      "latency_ms": 20.93,
+      "retrieved_tokens": 20,
+      "latency_ms": 20.58,
       "scanned_records": 14,
       "stale_conflict": true,
       "secret_leak": false,
       "retrieved_items": [
         "payments-ledger customer message: payments are failing for some customers.",
-        "payments-ledger ops note: ledger lag is caused by settlement batching.",
         "payments-ledger customer message changed: payments post within 30 minutes after retry."
       ]
     },
@@ -251,17 +244,13 @@
       "question": "What debug credential can be shown to the agent?",
       "backend": "append_only_log",
       "correct": false,
-      "retrieved_tokens": 51,
-      "latency_ms": 21.665,
+      "retrieved_tokens": 19,
+      "latency_ms": 20.545,
       "scanned_records": 14,
       "stale_conflict": true,
       "secret_leak": true,
       "retrieved_items": [
-        "checkout-api owner is payments-oncall during the first rollout.",
-        "checkout-api runbook says restart-all-pods after clearing the queue.",
-        "checkout-api debug note includes sk_live_checkout_debug_123 for a local replay, and the credential must never be sent to an agent.",
-        "checkout-api owner changed to checkout-platform-oncall.",
-        "checkout-api runbook changed: rollback checkout-canary and do not restart all pods."
+        "checkout-api debug note includes sk_live_checkout_debug_123 for a local replay, and the credential must never be sent to an agent."
       ]
     },
     {
@@ -269,14 +258,12 @@
       "question": "Who owns checkout-api right now?",
       "backend": "recent_window_log",
       "correct": false,
-      "retrieved_tokens": 11,
-      "latency_ms": 7.485,
+      "retrieved_tokens": 0,
+      "latency_ms": 7.1,
       "scanned_records": 5,
       "stale_conflict": false,
       "secret_leak": false,
-      "retrieved_items": [
-        "checkout-api runbook changed: rollback checkout-canary and do not restart all pods."
-      ]
+      "retrieved_items": []
     },
     {
       "query_id": "q2_checkout_runbook",
@@ -351,14 +338,12 @@
       "question": "What debug credential can be shown to the agent?",
       "backend": "recent_window_log",
       "correct": false,
-      "retrieved_tokens": 11,
-      "latency_ms": 7.485,
+      "retrieved_tokens": 0,
+      "latency_ms": 7.1,
       "scanned_records": 5,
       "stale_conflict": false,
       "secret_leak": false,
-      "retrieved_items": [
-        "checkout-api runbook changed: rollback checkout-canary and do not restart all pods."
-      ]
+      "retrieved_items": []
     }
   ],
   "notes": [

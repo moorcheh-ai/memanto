@@ -7,8 +7,8 @@ Dense incident-response memory with superseded runbooks, old owner state, retain
 | Backend | Retrieval accuracy | Avg retrieved tokens | p95 latency (ms) | Stale conflict rate | Secret leak rate |
 |---|---:|---:|---:|---:|---:|
 | active_incident_digest | 100.0% | 5.4 | 12.1 | 0.0% | 0.0% |
-| append_only_log | 14.3% | 31.1 | 21.7 | 85.7% | 42.9% |
-| recent_window_log | 57.1% | 8.4 | 7.5 | 0.0% | 0.0% |
+| append_only_log | 14.3% | 15.1 | 20.6 | 85.7% | 14.3% |
+| recent_window_log | 57.1% | 5.3 | 7.5 | 0.0% | 0.0% |
 
 ## Interpretation
 

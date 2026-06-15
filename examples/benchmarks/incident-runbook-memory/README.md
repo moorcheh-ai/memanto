@@ -14,8 +14,8 @@ scores each backend against golden answers.
 | Backend | Role |
 |---|---|
 | `active_incident_digest` | Memanto-style active memory that keeps the latest fact per subject/key and redacts secrets before retrieval. |
-| `append_only_log` | Archive-memory control that returns every raw event for the queried subject. |
-| `recent_window_log` | Short-context control that keeps only the five newest raw events. |
+| `append_only_log` | Archive-memory control that returns every raw event for the queried subject/key. |
+| `recent_window_log` | Short-context control that keeps only the five newest raw events and returns subject/key matches. |
 
 The two controls are deliberately simple and deterministic. They are not
 published vendor scores for Mem0, Letta, Zep/Graphiti, or Hindsight. They are
