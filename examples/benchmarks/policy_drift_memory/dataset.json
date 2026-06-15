@@ -1,0 +1,134 @@
+{
+  "name": "policy_drift_memory_v1",
+  "description": "A deterministic agent-memory benchmark for support and operations agents that must retain current instructions while suppressing stale ones.",
+  "events": [
+    {
+      "session": "s01",
+      "timestamp": "2026-05-01T09:00:00Z",
+      "entity": "acme_support",
+      "text": "Acme support starts with daily incident digests in Slack at 08:00 UTC. Include customer names and raw ticket excerpts.",
+      "facts": [
+        {"key": "digest_channel", "value": "Slack"},
+        {"key": "digest_time", "value": "08:00 UTC"},
+        {"key": "pii_policy", "value": "customer names and raw ticket excerpts allowed"}
+      ]
+    },
+    {
+      "session": "s02",
+      "timestamp": "2026-05-04T14:20:00Z",
+      "entity": "acme_support",
+      "text": "Acme privacy review supersedes the old digest policy. Never include customer names or raw ticket excerpts; use anonymized ticket IDs only.",
+      "facts": [
+        {"key": "pii_policy", "value": "anonymized ticket IDs only"}
+      ]
+    },
+    {
+      "session": "s03",
+      "timestamp": "2026-05-07T08:30:00Z",
+      "entity": "acme_support",
+      "text": "The daily incident digest time moves from 08:00 UTC to 09:30 UTC so the EU support lead can review it first.",
+      "facts": [
+        {"key": "digest_time", "value": "09:30 UTC"},
+        {"key": "reviewer", "value": "EU support lead"}
+      ]
+    },
+    {
+      "session": "s04",
+      "timestamp": "2026-05-10T16:00:00Z",
+      "entity": "acme_support",
+      "text": "Escalations for Acme should go to PagerDuty service ACME-EU-P1, not the old shared ops rotation.",
+      "facts": [
+        {"key": "escalation_target", "value": "PagerDuty service ACME-EU-P1"}
+      ]
+    },
+    {
+      "session": "s05",
+      "timestamp": "2026-05-12T11:00:00Z",
+      "entity": "bravo_research",
+      "text": "Bravo Research wants an agent to track experiment notes. Initial reports can use full participant names for convenience.",
+      "facts": [
+        {"key": "report_privacy", "value": "full participant names allowed"},
+        {"key": "report_format", "value": "experiment note digest"}
+      ]
+    },
+    {
+      "session": "s06",
+      "timestamp": "2026-05-18T13:15:00Z",
+      "entity": "bravo_research",
+      "text": "IRB guidance overrides earlier reporting. Bravo reports must use participant codes only and must flag consent changes since the last session.",
+      "facts": [
+        {"key": "report_privacy", "value": "participant codes only"},
+        {"key": "consent_tracking", "value": "flag consent changes since the last session"}
+      ]
+    },
+    {
+      "session": "s07",
+      "timestamp": "2026-05-21T10:45:00Z",
+      "entity": "bravo_research",
+      "text": "Bravo moves the weekly report owner from Data Science to the Clinical Ops reviewer.",
+      "facts": [
+        {"key": "report_owner", "value": "Clinical Ops reviewer"}
+      ]
+    },
+    {
+      "session": "s08",
+      "timestamp": "2026-05-25T15:30:00Z",
+      "entity": "cobalt_release",
+      "text": "Cobalt release agents should publish readiness summaries to email. The initial launch train is beta-4.",
+      "facts": [
+        {"key": "summary_channel", "value": "email"},
+        {"key": "launch_train", "value": "beta-4"}
+      ]
+    },
+    {
+      "session": "s09",
+      "timestamp": "2026-05-29T09:10:00Z",
+      "entity": "cobalt_release",
+      "text": "Cobalt changes the launch train to rc-1. Do not mention beta-4 in current release recommendations.",
+      "facts": [
+        {"key": "launch_train", "value": "rc-1"}
+      ]
+    },
+    {
+      "session": "s10",
+      "timestamp": "2026-06-02T17:40:00Z",
+      "entity": "cobalt_release",
+      "text": "Cobalt release summaries now go to the #release-readiness Slack channel instead of email.",
+      "facts": [
+        {"key": "summary_channel", "value": "#release-readiness Slack channel"}
+      ]
+    }
+  ],
+  "queries": [
+    {
+      "entity": "acme_support",
+      "question": "What is the current digest time and privacy rule for Acme support?",
+      "required": ["09:30 UTC", "anonymized ticket IDs only"],
+      "forbidden": ["08:00 UTC", "customer names", "raw ticket excerpts"]
+    },
+    {
+      "entity": "acme_support",
+      "question": "Where should Acme P1 escalations go now?",
+      "required": ["PagerDuty service ACME-EU-P1"],
+      "forbidden": ["shared ops rotation"]
+    },
+    {
+      "entity": "bravo_research",
+      "question": "What privacy rule should Bravo reports follow?",
+      "required": ["participant codes only"],
+      "forbidden": ["full participant names"]
+    },
+    {
+      "entity": "bravo_research",
+      "question": "Who owns the Bravo weekly report now, and what consent detail must be flagged?",
+      "required": ["Clinical Ops reviewer", "flag consent changes since the last session"],
+      "forbidden": ["Data Science"]
+    },
+    {
+      "entity": "cobalt_release",
+      "question": "What is the current Cobalt launch train and summary channel?",
+      "required": ["rc-1", "#release-readiness Slack channel"],
+      "forbidden": ["beta-4", "email"]
+    }
+  ]
+}
