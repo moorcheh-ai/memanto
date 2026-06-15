@@ -1,0 +1,14 @@
+{
+  "name": "memanto-robotics-fleet-memory-benchmark",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Deterministic benchmark for active agent memory in robotics fleet operations.",
+  "scripts": {
+    "benchmark": "node run_benchmark.mjs --output results/sample_results.json --markdown results/sample_results.md",
+    "test": "node --test test_benchmark.mjs"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

@@ -1,0 +1,249 @@
+{
+  "benchmark": "robotics_fleet_memory",
+  "datasetVersion": "2026-06-15",
+  "generatedAt": "2026-06-15T09:31:38.609Z",
+  "iterationsPerQuery": 50,
+  "eventCount": 12,
+  "queryCount": 7,
+  "metrics": [
+    {
+      "backend": "append_only_log",
+      "description": "Passive baseline that keeps every matching shift note.",
+      "queryCount": 7,
+      "totalIngestedTokens": 180,
+      "totalRetrievedTokens": 222,
+      "avgRetrievedTokens": 31.71,
+      "retrievalAccuracy": 0.143,
+      "staleConflictRate": 0.714,
+      "secretLeakRate": 0.143,
+      "p95LatencyMs": 0.6354,
+      "queryResults": [
+        {
+          "id": "r17-current-assignment",
+          "accurate": false,
+          "retrievedTokens": 28,
+          "missingExpected": [],
+          "staleHits": [
+            "aisle A",
+            "replenishment"
+          ],
+          "prohibitedHits": []
+        },
+        {
+          "id": "r42-safety-state",
+          "accurate": false,
+          "retrievedTokens": 29,
+          "missingExpected": [],
+          "staleHits": [
+            "lidar anomaly",
+            "safety hold"
+          ],
+          "prohibitedHits": []
+        },
+        {
+          "id": "dock-3-current-state",
+          "accurate": false,
+          "retrievedTokens": 43,
+          "missingExpected": [],
+          "staleHits": [
+            "closed",
+            "wheel-stop repair",
+            "Route cold-chain arrivals to Dock 2"
+          ],
+          "prohibitedHits": []
+        },
+        {
+          "id": "zone-f-cold-chain-rule",
+          "accurate": false,
+          "retrievedTokens": 55,
+          "missingExpected": [],
+          "staleHits": [
+            "manual override",
+            "bypass"
+          ],
+          "prohibitedHits": []
+        },
+        {
+          "id": "r09-firmware-battery-constraint",
+          "accurate": true,
+          "retrievedTokens": 16,
+          "missingExpected": [],
+          "staleHits": [],
+          "prohibitedHits": []
+        },
+        {
+          "id": "dispatch-owner-current",
+          "accurate": false,
+          "retrievedTokens": 31,
+          "missingExpected": [],
+          "staleHits": [
+            "Milo Tan"
+          ],
+          "prohibitedHits": []
+        },
+        {
+          "id": "credential-suppression",
+          "accurate": false,
+          "retrievedTokens": 20,
+          "missingExpected": [
+            "sensitive credentials suppressed"
+          ],
+          "staleHits": [],
+          "prohibitedHits": [
+            "TEMP-SECRET-7781",
+            "vendor API token"
+          ]
+        }
+      ]
+    },
+    {
+      "backend": "recent_window",
+      "description": "Low-token recency baseline that forgets older durable facts.",
+      "queryCount": 7,
+      "totalIngestedTokens": 180,
+      "totalRetrievedTokens": 141,
+      "avgRetrievedTokens": 20.14,
+      "retrievalAccuracy": 0.571,
+      "staleConflictRate": 0.143,
+      "secretLeakRate": 0,
+      "p95LatencyMs": 0.353,
+      "queryResults": [
+        {
+          "id": "r17-current-assignment",
+          "accurate": false,
+          "retrievedTokens": 31,
+          "missingExpected": [
+            "R-17",
+            "Dock 4",
+            "express",
+            "manifest"
+          ],
+          "staleHits": [],
+          "prohibitedHits": []
+        },
+        {
+          "id": "r42-safety-state",
+          "accurate": true,
+          "retrievedTokens": 12,
+          "missingExpected": [],
+          "staleHits": [],
+          "prohibitedHits": []
+        },
+        {
+          "id": "dock-3-current-state",
+          "accurate": true,
+          "retrievedTokens": 13,
+          "missingExpected": [],
+          "staleHits": [],
+          "prohibitedHits": []
+        },
+        {
+          "id": "zone-f-cold-chain-rule",
+          "accurate": false,
+          "retrievedTokens": 23,
+          "missingExpected": [],
+          "staleHits": [
+            "manual override"
+          ],
+          "prohibitedHits": []
+        },
+        {
+          "id": "r09-firmware-battery-constraint",
+          "accurate": true,
+          "retrievedTokens": 16,
+          "missingExpected": [],
+          "staleHits": [],
+          "prohibitedHits": []
+        },
+        {
+          "id": "dispatch-owner-current",
+          "accurate": true,
+          "retrievedTokens": 15,
+          "missingExpected": [],
+          "staleHits": [],
+          "prohibitedHits": []
+        },
+        {
+          "id": "credential-suppression",
+          "accurate": false,
+          "retrievedTokens": 31,
+          "missingExpected": [
+            "sensitive credentials suppressed"
+          ],
+          "staleHits": [],
+          "prohibitedHits": []
+        }
+      ]
+    },
+    {
+      "backend": "active_fleet_digest",
+      "description": "Memanto-style active memory digest with overwrite semantics.",
+      "queryCount": 7,
+      "totalIngestedTokens": 180,
+      "totalRetrievedTokens": 69,
+      "avgRetrievedTokens": 9.86,
+      "retrievalAccuracy": 1,
+      "staleConflictRate": 0,
+      "secretLeakRate": 0,
+      "p95LatencyMs": 0.3195,
+      "queryResults": [
+        {
+          "id": "r17-current-assignment",
+          "accurate": true,
+          "retrievedTokens": 8,
+          "missingExpected": [],
+          "staleHits": [],
+          "prohibitedHits": []
+        },
+        {
+          "id": "r42-safety-state",
+          "accurate": true,
+          "retrievedTokens": 8,
+          "missingExpected": [],
+          "staleHits": [],
+          "prohibitedHits": []
+        },
+        {
+          "id": "dock-3-current-state",
+          "accurate": true,
+          "retrievedTokens": 18,
+          "missingExpected": [],
+          "staleHits": [],
+          "prohibitedHits": []
+        },
+        {
+          "id": "zone-f-cold-chain-rule",
+          "accurate": true,
+          "retrievedTokens": 11,
+          "missingExpected": [],
+          "staleHits": [],
+          "prohibitedHits": []
+        },
+        {
+          "id": "r09-firmware-battery-constraint",
+          "accurate": true,
+          "retrievedTokens": 12,
+          "missingExpected": [],
+          "staleHits": [],
+          "prohibitedHits": []
+        },
+        {
+          "id": "dispatch-owner-current",
+          "accurate": true,
+          "retrievedTokens": 6,
+          "missingExpected": [],
+          "staleHits": [],
+          "prohibitedHits": []
+        },
+        {
+          "id": "credential-suppression",
+          "accurate": true,
+          "retrievedTokens": 6,
+          "missingExpected": [],
+          "staleHits": [],
+          "prohibitedHits": []
+        }
+      ]
+    }
+  ]
+}
