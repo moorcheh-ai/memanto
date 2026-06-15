@@ -1,6 +1,13 @@
 import unittest
 
-from .run_benchmark import ActiveAuditDigest, EVENTS, QUERIES, leaks_secret, run
+from .run_benchmark import (
+    ActiveAuditDigest,
+    EVENTS,
+    QUERIES,
+    evaluate_backend,
+    leaks_secret,
+    run,
+)
 
 
 class ToolCallAuditMemoryBenchmarkTests(unittest.TestCase):
@@ -33,8 +40,27 @@ class ToolCallAuditMemoryBenchmarkTests(unittest.TestCase):
         self.assertFalse(leaks_secret(context))
 
     def test_all_queries_have_expected_answers(self) -> None:
+        backend = ActiveAuditDigest(EVENTS)
         for query in QUERIES:
-            self.assertTrue(query.must_have, query.question)
+            context = backend.retrieve(query.question)
+            normalized = context.lower()
+
+            for expected in query.must_have:
+                self.assertIn(expected.lower(), normalized, query.question)
+            for stale in query.must_not_have:
+                self.assertNotIn(stale.lower(), normalized, query.question)
+
+    def test_empty_query_set_returns_zero_metrics(self) -> None:
+        backend = ActiveAuditDigest(EVENTS)
+        result = evaluate_backend(backend, ())
+
+        self.assertEqual(result["backend"], "active_audit_digest")
+        self.assertEqual(result["accuracy"], 0.0)
+        self.assertEqual(result["avg_retrieved_tokens"], 0.0)
+        self.assertEqual(result["p95_latency_ms"], 0.0)
+        self.assertEqual(result["stale_conflict_rate"], 0.0)
+        self.assertEqual(result["secret_leak_rate"], 0.0)
+        self.assertEqual(result["rows"], [])
 
 
 if __name__ == "__main__":

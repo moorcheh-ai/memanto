@@ -37,6 +37,10 @@ def leaks_secret(text: str) -> bool:
     return any(pattern.search(text) for pattern in SECRET_PATTERNS)
 
 
+def safe_context_preview(text: str, limit: int = 240) -> str:
+    return redact(text)[:limit]
+
+
 def tokenize(text: str) -> set[str]:
     return {
         token
@@ -401,11 +405,22 @@ def evaluate_backend(backend: Backend, queries: Iterable[Query]) -> dict[str, ob
                 "correct": ok,
                 "stale_conflict": has_stale,
                 "secret_leak": leaked,
-                "context_preview": context[:240],
+                "context_preview": safe_context_preview(context),
             }
         )
 
     query_count = len(rows)
+    if query_count == 0:
+        return {
+            "backend": backend.name,
+            "accuracy": 0.0,
+            "avg_retrieved_tokens": 0.0,
+            "p95_latency_ms": 0.0,
+            "stale_conflict_rate": 0.0,
+            "secret_leak_rate": 0.0,
+            "rows": rows,
+        }
+
     return {
         "backend": backend.name,
         "accuracy": round(correct / query_count, 4),
