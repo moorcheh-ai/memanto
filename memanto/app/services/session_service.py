@@ -409,6 +409,7 @@ class SessionService:
 
             f.write(f"### [{timestamp}] [DELETED] Memory Deleted\n")
             f.write(f"- **Memory ID**: `{memory_id}`\n")
+            f.write("- **Confidence**: `1.0`\n")
             f.write("---\n\n")
 
     def _set_active_session(self, agent_id: str) -> None:
