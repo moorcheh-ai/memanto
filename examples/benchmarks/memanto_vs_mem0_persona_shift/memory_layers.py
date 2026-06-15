@@ -15,14 +15,12 @@ class BaseMemoryLayer(ABC):
 
 class MemantoLayer(BaseMemoryLayer):
     def __init__(self):
-        self.mock_memory = []
-        # We assume the Memanto client exposes `remember` and `recall` as advertised
-        try:
-            from moorcheh_sdk import MoorchehClient
-            self.client = MoorchehClient(api_key=os.getenv("MOORCHEH_API_KEY", "mock-key"))
-            self.has_real_client = True
-        except ImportError:
-            self.has_real_client = False
+        from moorcheh_sdk import MoorchehClient
+        api_key = os.getenv("MOORCHEH_API_KEY")
+        if not api_key:
+            raise ValueError("MOORCHEH_API_KEY environment variable is not set.")
+        self.client = MoorchehClient(api_key=api_key)
+        self.created_namespaces = set()
 
         # Simple token estimation for benchmark purposes if SDK doesn't provide it
         import tiktoken
@@ -35,16 +33,12 @@ class MemantoLayer(BaseMemoryLayer):
         start_time = time.time()
         
         import uuid
-        # Simulate Memanto's 'remember' core primitive
-        if self.has_real_client and hasattr(self.client, 'documents'):
-            try:
-                # Assuming Moorcheh SDK documents creation
-                self.client.documents.upload(namespace_name=user_id, documents=[{"id": str(uuid.uuid4()), "text": content}])
-            except Exception as e:
-                print(f"Moorcheh upload failed: {e}")
-                self.mock_memory.append(content)
-        else:
-            self.mock_memory.append(content)
+        # Ensure the namespace is created before uploading
+        if user_id not in self.created_namespaces:
+            self.client.namespaces.create(namespace_name=user_id, type='text')
+            self.created_namespaces.add(user_id)
+
+        self.client.documents.upload(namespace_name=user_id, documents=[{"id": str(uuid.uuid4()), "text": content}])
             
         latency = time.time() - start_time
         return {"latency": latency, "tokens": self._count_tokens(content)}
@@ -52,17 +46,8 @@ class MemantoLayer(BaseMemoryLayer):
     def retrieve_memory(self, user_id: str, query: str) -> tuple[str, dict]:
         start_time = time.time()
         
-        # Simulate Memanto's 'recall' core primitive
-        context = ""
-        if self.has_real_client and hasattr(self.client, 'answer'):
-            try:
-                res = self.client.answer.generate(query=query, namespace=user_id)
-                context = res.get('answer', '') if isinstance(res, dict) else getattr(res, 'answer', '')
-            except Exception as e:
-                print(f"Moorcheh answer failed: {e}")
-                context = "\n".join(self.mock_memory)
-        else:
-            context = "\n".join(self.mock_memory)
+        res = self.client.answer.generate(query=query, namespace=user_id)
+        context = res.get('answer', '') if isinstance(res, dict) else getattr(res, 'answer', '')
             
         latency = time.time() - start_time
         return context, {"latency": latency, "tokens": self._count_tokens(context)}
