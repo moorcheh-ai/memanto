@@ -1,0 +1,8 @@
+memanto
+mem0ai
+openai
+python-dotenv
+tiktoken
+rich
+groq
+sentence-transformers
