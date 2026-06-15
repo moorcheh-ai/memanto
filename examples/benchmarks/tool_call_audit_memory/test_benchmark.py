@@ -46,9 +46,17 @@ class ToolCallAuditMemoryBenchmarkTests(unittest.TestCase):
             normalized = context.lower()
 
             for expected in query.must_have:
-                self.assertIn(expected.lower(), normalized, query.question)
+                self.assertIn(
+                    expected.lower(),
+                    normalized,
+                    f"Expected value {expected!r} not found for query: {query.question}",
+                )
             for stale in query.must_not_have:
-                self.assertNotIn(stale.lower(), normalized, query.question)
+                self.assertNotIn(
+                    stale.lower(),
+                    normalized,
+                    f"Stale value {stale!r} found for query: {query.question}",
+                )
 
     def test_empty_query_set_returns_zero_metrics(self) -> None:
         backend = ActiveAuditDigest(EVENTS)
