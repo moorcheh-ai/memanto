@@ -11,6 +11,8 @@ from typing import Any
 
 from pydantic import BaseModel, Field
 
+from memanto.app.utils.temporal_helpers import utc_now
+
 
 class SessionStatus(str, Enum):
     """Session status enum"""
@@ -47,9 +49,6 @@ class SessionToken(BaseModel):
     started_at: datetime
     expires_at: datetime
 
-    class Config:
-        json_encoders = {datetime: lambda v: v.isoformat()}
-
 
 class Session(BaseModel):
     """Active session information"""
@@ -64,12 +63,9 @@ class Session(BaseModel):
     status: SessionStatus = SessionStatus.ACTIVE
     metadata: dict[str, Any] | None = None
 
-    class Config:
-        json_encoders = {datetime: lambda v: v.isoformat()}
-
     def is_expired(self) -> bool:
         """Check if session is expired"""
-        return datetime.utcnow() > self.expires_at
+        return utc_now() > self.expires_at
 
     def is_active(self) -> bool:
         """Check if session is active"""
@@ -77,7 +73,7 @@ class Session(BaseModel):
 
     def time_remaining(self) -> timedelta:
         """Get time remaining in session"""
-        return self.expires_at - datetime.utcnow()
+        return self.expires_at - utc_now()
 
 
 class SessionInfo(BaseModel):
@@ -92,9 +88,6 @@ class SessionInfo(BaseModel):
     time_remaining_seconds: int
     pattern: AgentPattern | None = None
 
-    class Config:
-        json_encoders = {datetime: lambda v: v.isoformat()}
-
 
 class SessionSummary(BaseModel):
     """Summary of ended session"""
@@ -106,9 +99,6 @@ class SessionSummary(BaseModel):
     duration_hours: float
     memories_created: int
     summary_memory_id: str | None = None
-
-    class Config:
-        json_encoders = {datetime: lambda v: v.isoformat()}
 
 
 class AgentCreate(BaseModel):
@@ -140,9 +130,6 @@ class AgentInfo(BaseModel):
     memory_count: int = 0
     session_count: int = 0
     status: str = "inactive"
-
-    class Config:
-        json_encoders = {datetime: lambda v: v.isoformat()}
 
 
 class AgentList(BaseModel):

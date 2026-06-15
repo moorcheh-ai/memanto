@@ -161,15 +161,26 @@ def agent_delete(
             console.print("[yellow]Aborted.[/yellow]")
             raise typer.Exit()
 
-    # Ask whether to keep cloud memories
+    # Ask whether to keep the Moorcheh-side memories (namespace) around.
+    from memanto.app.clients.backend import Backend
+
+    on_prem = config_manager.get_backend() == Backend.ON_PREM
     console.print()
-    console.print(
-        "[bold]Keep a copy of agent memory on Moorcheh cloud?[/bold]\n"
-        "[dim]You can access it anytime at "
-        "[link=https://console.moorcheh.ai/namespaces]https://console.moorcheh.ai/namespaces[/link]"
-        " in your Moorcheh account.[/dim]"
-    )
-    keep_cloud = typer.confirm("Keep cloud memories", default=True)
+    if on_prem:
+        op = config_manager.get_onprem_config()
+        console.print(
+            "[bold]Keep the agent's namespace on the on-prem Moorcheh server?[/bold]\n"
+            f"[dim]Stored at {op.get('url', 'http://localhost:8080')}.[/dim]"
+        )
+        keep_cloud = typer.confirm("Keep namespace", default=True)
+    else:
+        console.print(
+            "[bold]Keep a copy of agent memory on Moorcheh cloud?[/bold]\n"
+            "[dim]You can access it anytime at "
+            "[link=https://console.moorcheh.ai/namespaces]https://console.moorcheh.ai/namespaces[/link]"
+            " in your Moorcheh account.[/dim]"
+        )
+        keep_cloud = typer.confirm("Keep cloud memories", default=True)
 
     # If this agent is currently active, clear the session first
     active_agent_id, _ = config_manager.get_active_session()
@@ -191,22 +202,30 @@ def agent_delete(
 
     if not keep_cloud:
         namespace = f"memanto_agent_{agent_id}"
+        store_label = "on-prem memories" if on_prem else "cloud memories"
         try:
-            with console.status("Deleting cloud memories...", spinner="dots"):
+            with console.status(f"Deleting {store_label}...", spinner="dots"):
                 client._get_moorcheh().namespaces.delete(namespace)
             console.print(
-                f"[green]Agent '{agent_id}' and all cloud memories deleted.[/green]"
+                f"[green]Agent '{agent_id}' and all {store_label} deleted.[/green]"
             )
         except Exception as e:
             console.print(
-                f"[yellow]Agent deleted locally, but failed to delete cloud namespace: {e}[/yellow]"
+                f"[yellow]Agent deleted locally, but failed to delete {store_label}: {e}[/yellow]"
             )
     else:
-        console.print(
-            f"[green]Agent '{agent_id}' deleted.[/green] "
-            f"[dim]Cloud memories preserved at "
-            f"[link=https://console.moorcheh.ai/namespaces]console.moorcheh.ai/namespaces[/link][/dim]"
-        )
+        if on_prem:
+            op = config_manager.get_onprem_config()
+            console.print(
+                f"[green]Agent '{agent_id}' deleted.[/green] "
+                f"[dim]Namespace preserved on {op.get('url', 'http://localhost:8080')}[/dim]"
+            )
+        else:
+            console.print(
+                f"[green]Agent '{agent_id}' deleted.[/green] "
+                f"[dim]Cloud memories preserved at "
+                f"[link=https://console.moorcheh.ai/namespaces]console.moorcheh.ai/namespaces[/link][/dim]"
+            )
 
 
 @agent_app.command("bootstrap")

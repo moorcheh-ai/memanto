@@ -14,6 +14,7 @@ from pathlib import Path
 from fastapi import APIRouter, Body, Depends, File, HTTPException, Query, UploadFile
 from pydantic import BaseModel, Field, field_validator
 
+from memanto.app.clients.backend import get_active_llm_model
 from memanto.app.clients.moorcheh import get_moorcheh_client
 from memanto.app.config import settings
 from memanto.app.core import MemoryRecord
@@ -31,7 +32,7 @@ from memanto.app.services.conversation_memory_extraction_service import (
 )
 from memanto.app.services.memory_read_service import MemoryReadService
 from memanto.app.services.memory_write_service import MemoryWriteService
-from memanto.app.utils.errors import map_error_to_http_exception
+from memanto.app.utils.errors import AuthorizationError, map_error_to_http_exception
 from memanto.app.utils.validation import CostGuard
 from memanto.cli.client.direct_client import DirectClient
 from memanto.cli.config.manager import ConfigManager
@@ -407,7 +408,6 @@ async def upload_file(
         ..., description="File to upload (.pdf, .docx, .xlsx, .json, .txt, .csv, .md)"
     ),
     session: Session = Depends(get_current_session),
-    client=Depends(get_moorcheh_client),
 ):
     """
     Upload a file directly to the agent's memory namespace (Session-based)
@@ -428,6 +428,8 @@ async def upload_file(
                 f"Session is for agent '{session.agent_id}', cannot access '{agent_id}'"
             )
         )
+
+    client = get_moorcheh_client()
 
     # Validate file extension before reading
     ALLOWED_EXTENSIONS = {".pdf", ".docx", ".xlsx", ".json", ".txt", ".csv", ".md"}
@@ -469,6 +471,55 @@ async def upload_file(
             "message": result.get("message", ""),
         }
 
+    except Exception as e:
+        raise map_error_to_http_exception(e)
+
+
+@router.delete("/{agent_id}/memories/{memory_id}")
+async def delete_memory(
+    agent_id: str,
+    memory_id: str,
+    session: Session = Depends(get_current_session),
+    client=Depends(get_moorcheh_client),
+):
+    """
+    Delete one memory from the active agent namespace.
+
+    Requires:
+    - X-Session-Token: {session_token}
+
+    The session must be for the specified agent_id.
+    """
+    if session.agent_id != agent_id:
+        raise map_error_to_http_exception(
+            AuthorizationError(
+                f"Session is for agent '{session.agent_id}', cannot access '{agent_id}'"
+            )
+        )
+
+    try:
+        write_service = MemoryWriteService(client)
+        deleted = await asyncio.to_thread(
+            write_service.delete_memory,
+            memory_id,
+            session.namespace,
+        )
+
+        if not deleted:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Memory '{memory_id}' was not found for agent '{agent_id}'",
+            )
+
+        return {
+            "agent_id": agent_id,
+            "memory_id": memory_id,
+            "namespace": session.namespace,
+            "status": "deleted",
+        }
+
+    except HTTPException:
+        raise
     except Exception as e:
         raise map_error_to_http_exception(e)
 
@@ -554,7 +605,6 @@ async def answer(
     agent_id: str,
     request: AnswerRequest = Body(...),
     session: Session = Depends(get_current_session),
-    client=Depends(get_moorcheh_client),
 ):
     """
     Answer a question using RAG (Session-based)
@@ -575,6 +625,8 @@ async def answer(
             )
         )
 
+    client = get_moorcheh_client()
+
     # Resolve defaults from settings
     limit = request.limit if request.limit is not None else settings.ANSWER_LIMIT
     CostGuard.validate_k_limit(limit)
@@ -584,7 +636,9 @@ async def answer(
         else settings.ANSWER_TEMPERATURE
     )
     ai_model = (
-        request.ai_model if request.ai_model is not None else settings.ANSWER_MODEL
+        request.ai_model
+        if request.ai_model is not None
+        else get_active_llm_model(settings.ANSWER_MODEL)
     )
 
     try:
@@ -637,6 +691,96 @@ async def answer(
             "namespace": namespace,
         }
 
+    except Exception as e:
+        raise map_error_to_http_exception(e)
+
+
+class DailySummaryRequest(BaseModel):
+    date: str | None = Field(
+        default=None,
+        description="Date string YYYY-MM-DD. Defaults to today.",
+    )
+    output_path: str | None = Field(
+        default=None,
+        description="Optional custom output path for the summary MD file.",
+    )
+
+
+class ConflictDetectRequest(BaseModel):
+    date: str | None = Field(
+        default=None,
+        description="Date string YYYY-MM-DD. Defaults to today.",
+    )
+
+
+@router.post("/{agent_id}/daily-summary")
+async def generate_daily_summary(
+    agent_id: str,
+    request: DailySummaryRequest = Body(default_factory=DailySummaryRequest),
+    session: Session = Depends(get_current_session),
+):
+    """
+    Generate the on-demand daily AI summary for an agent/date.
+
+    Conflict detection is a separate concern — see
+    POST ``/{agent_id}/conflicts/generate`` or the scheduled job.
+    """
+    if session.agent_id != agent_id:
+        raise map_error_to_http_exception(
+            Exception(
+                f"Session is for agent '{session.agent_id}', cannot access '{agent_id}'"
+            )
+        )
+
+    resolved_date = request.date or datetime.now().strftime("%Y-%m-%d")
+    try:
+        result = await asyncio.to_thread(
+            DirectClient(settings.MOORCHEH_API_KEY).generate_daily_summary,
+            agent_id,
+            resolved_date,
+            request.output_path,
+        )
+        return {
+            "agent_id": agent_id,
+            "session_id": session.session_id,
+            "date": resolved_date,
+            **result,
+        }
+    except Exception as e:
+        raise map_error_to_http_exception(e)
+
+
+@router.post("/{agent_id}/conflicts/generate")
+async def generate_conflict_report(
+    agent_id: str,
+    request: ConflictDetectRequest = Body(default_factory=ConflictDetectRequest),
+    session: Session = Depends(get_current_session),
+):
+    """
+    Generate the conflict report for an agent/date.
+
+    This is the same work the scheduled task performs.
+    """
+    if session.agent_id != agent_id:
+        raise map_error_to_http_exception(
+            Exception(
+                f"Session is for agent '{session.agent_id}', cannot access '{agent_id}'"
+            )
+        )
+
+    resolved_date = request.date or datetime.now().strftime("%Y-%m-%d")
+    try:
+        result = await asyncio.to_thread(
+            DirectClient(settings.MOORCHEH_API_KEY).generate_conflict_report,
+            agent_id,
+            resolved_date,
+        )
+        return {
+            "agent_id": agent_id,
+            "session_id": session.session_id,
+            "date": resolved_date,
+            **result,
+        }
     except Exception as e:
         raise map_error_to_http_exception(e)
 
@@ -745,8 +889,10 @@ async def recall_as_of(
             )
         )
 
-    limit = request.limit if request.limit is not None else settings.RECALL_LIMIT
-    CostGuard.validate_k_limit(limit)
+    # request.limit is None → fetch all (no cap). Cost guard only applies when capped.
+    limit = request.limit
+    if limit is not None:
+        CostGuard.validate_k_limit(limit)
 
     try:
         read_service = MemoryReadService(client)
@@ -796,8 +942,10 @@ async def recall_changed_since(
             )
         )
 
-    limit = request.limit if request.limit is not None else settings.RECALL_LIMIT
-    CostGuard.validate_k_limit(limit)
+    # request.limit is None → fetch all (no cap). Cost guard only applies when capped.
+    limit = request.limit
+    if limit is not None:
+        CostGuard.validate_k_limit(limit)
 
     try:
         read_service = MemoryReadService(client)
@@ -848,8 +996,10 @@ async def recall_recent(
             )
         )
 
-    limit = request.limit if request.limit is not None else settings.RECALL_LIMIT
-    CostGuard.validate_k_limit(limit)
+    # request.limit is None → fetch all (no cap). Cost guard only applies when capped.
+    limit = request.limit
+    if limit is not None:
+        CostGuard.validate_k_limit(limit)
 
     try:
         read_service = MemoryReadService(client)
