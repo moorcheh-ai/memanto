@@ -15,14 +15,14 @@ load_dotenv()
 def run_evaluation(layer_name: str, layer, dataset: list, expected_state: str, judge: LLMJudge):
     user_id = f"test_user_{uuid.uuid4().hex[:8]}"
     
-    total_ingest_latency = 0.0
+    latencies = []
     total_tokens_ingested = 0
     
     print(f"[{layer_name}] Starting ingestion...")
     # 1. Ingest Data
     for msg in dataset[:-1]: # All except the last query
         metrics = layer.add_memory(user_id=user_id, content=msg["content"])
-        total_ingest_latency += metrics["latency"]
+        latencies.append(metrics["latency"])
         total_tokens_ingested += metrics["tokens"]
         
     print(f"[{layer_name}] Ingestion complete. Retrieving memory...")
@@ -30,6 +30,7 @@ def run_evaluation(layer_name: str, layer, dataset: list, expected_state: str, j
     # 2. Retrieve Memory
     query = dataset[-1]["content"]
     retrieved_context, retrieve_metrics = layer.retrieve_memory(user_id=user_id, query=query)
+    latencies.append(retrieve_metrics["latency"])
     
     # 3. Judge Accuracy
     print(f"[{layer_name}] Judging retrieval accuracy...")
@@ -39,7 +40,7 @@ def run_evaluation(layer_name: str, layer, dataset: list, expected_state: str, j
         "Layer": layer_name,
         "Total Tokens Ingested": total_tokens_ingested,
         "Tokens Retrieved": retrieve_metrics["tokens"],
-        "p95 Latency (s)": round(np.percentile([total_ingest_latency, retrieve_metrics["latency"]], 95), 3),
+        "p95 Latency (s)": round(np.percentile(latencies, 95), 3),
         "Accuracy Score": evaluation.get("score", 0),
         "Judge Reasoning": evaluation.get("reasoning", "N/A"),
         "Context Snippet": retrieved_context[:100] + "..." if len(retrieved_context) > 100 else retrieved_context
