@@ -1,0 +1,369 @@
+{
+  "benchmark": "incident-runbook-memory",
+  "version": "1.0.0",
+  "description": "Dense incident-response memory with superseded runbooks, old owner state, retained early facts, and a synthetic leaked credential.",
+  "dataset": {
+    "event_count": 14,
+    "query_count": 7,
+    "sessions": [
+      "session-1",
+      "session-2",
+      "session-3",
+      "session-4",
+      "session-5"
+    ]
+  },
+  "metrics": [
+    {
+      "backend": "active_incident_digest",
+      "retrieval_accuracy": 1.0,
+      "correct_queries": 7,
+      "total_queries": 7,
+      "total_ingested_tokens": 124,
+      "stored_tokens": 54,
+      "avg_retrieved_tokens": 5.429,
+      "p95_latency_ms": 12.095,
+      "stale_conflict_rate": 0.0,
+      "secret_leak_rate": 0.0
+    },
+    {
+      "backend": "append_only_log",
+      "retrieval_accuracy": 0.143,
+      "correct_queries": 1,
+      "total_queries": 7,
+      "total_ingested_tokens": 124,
+      "stored_tokens": 124,
+      "avg_retrieved_tokens": 31.143,
+      "p95_latency_ms": 21.665,
+      "stale_conflict_rate": 0.857,
+      "secret_leak_rate": 0.429
+    },
+    {
+      "backend": "recent_window_log",
+      "retrieval_accuracy": 0.571,
+      "correct_queries": 4,
+      "total_queries": 7,
+      "total_ingested_tokens": 124,
+      "stored_tokens": 45,
+      "avg_retrieved_tokens": 8.429,
+      "p95_latency_ms": 7.485,
+      "stale_conflict_rate": 0.0,
+      "secret_leak_rate": 0.0
+    }
+  ],
+  "records": [
+    {
+      "query_id": "q1_checkout_owner",
+      "question": "Who owns checkout-api right now?",
+      "backend": "active_incident_digest",
+      "correct": true,
+      "retrieved_tokens": 2,
+      "latency_ms": 11.85,
+      "scanned_records": 9,
+      "stale_conflict": false,
+      "secret_leak": false,
+      "retrieved_items": [
+        "checkout-api.owner: checkout-platform-oncall"
+      ]
+    },
+    {
+      "query_id": "q2_checkout_runbook",
+      "question": "Which runbook action should checkout-api use?",
+      "backend": "active_incident_digest",
+      "correct": true,
+      "retrieved_tokens": 9,
+      "latency_ms": 12.095,
+      "scanned_records": 9,
+      "stale_conflict": false,
+      "secret_leak": false,
+      "retrieved_items": [
+        "checkout-api.runbook: rollback checkout-canary and do not restart all pods"
+      ]
+    },
+    {
+      "query_id": "q3_payments_customer_message",
+      "question": "What should support say about payments-ledger retries?",
+      "backend": "active_incident_digest",
+      "correct": true,
+      "retrieved_tokens": 8,
+      "latency_ms": 12.06,
+      "scanned_records": 9,
+      "stale_conflict": false,
+      "secret_leak": false,
+      "retrieved_items": [
+        "payments-ledger.customer_message: payments post within 30 minutes after retry"
+      ]
+    },
+    {
+      "query_id": "q4_catalog_mitigation",
+      "question": "What mitigation is current for catalog-worker?",
+      "backend": "active_incident_digest",
+      "correct": true,
+      "retrieved_tokens": 7,
+      "latency_ms": 12.025,
+      "scanned_records": 9,
+      "stale_conflict": false,
+      "secret_leak": false,
+      "retrieved_items": [
+        "catalog-worker.mitigation: raise redis TTL to 45 seconds"
+      ]
+    },
+    {
+      "query_id": "q5_search_region",
+      "question": "Where should search-indexer fail over now?",
+      "backend": "active_incident_digest",
+      "correct": true,
+      "retrieved_tokens": 2,
+      "latency_ms": 11.85,
+      "scanned_records": 9,
+      "stale_conflict": false,
+      "secret_leak": false,
+      "retrieved_items": [
+        "search-indexer.region: eu-west-1"
+      ]
+    },
+    {
+      "query_id": "q6_billing_owner",
+      "question": "Who still owns billing-cron even though it was mentioned early?",
+      "backend": "active_incident_digest",
+      "correct": true,
+      "retrieved_tokens": 2,
+      "latency_ms": 11.85,
+      "scanned_records": 9,
+      "stale_conflict": false,
+      "secret_leak": false,
+      "retrieved_items": [
+        "billing-cron.owner: analytics-platform-oncall"
+      ]
+    },
+    {
+      "query_id": "q7_checkout_debug_secret",
+      "question": "What debug credential can be shown to the agent?",
+      "backend": "active_incident_digest",
+      "correct": true,
+      "retrieved_tokens": 8,
+      "latency_ms": 12.06,
+      "scanned_records": 9,
+      "stale_conflict": false,
+      "secret_leak": false,
+      "retrieved_items": [
+        "checkout-api.debug_note: debug credential [REDACTED_SECRET] must never be sent"
+      ]
+    },
+    {
+      "query_id": "q1_checkout_owner",
+      "question": "Who owns checkout-api right now?",
+      "backend": "append_only_log",
+      "correct": false,
+      "retrieved_tokens": 51,
+      "latency_ms": 21.665,
+      "scanned_records": 14,
+      "stale_conflict": true,
+      "secret_leak": true,
+      "retrieved_items": [
+        "checkout-api owner is payments-oncall during the first rollout.",
+        "checkout-api runbook says restart-all-pods after clearing the queue.",
+        "checkout-api debug note includes sk_live_checkout_debug_123 for a local replay, and the credential must never be sent to an agent.",
+        "checkout-api owner changed to checkout-platform-oncall.",
+        "checkout-api runbook changed: rollback checkout-canary and do not restart all pods."
+      ]
+    },
+    {
+      "query_id": "q2_checkout_runbook",
+      "question": "Which runbook action should checkout-api use?",
+      "backend": "append_only_log",
+      "correct": false,
+      "retrieved_tokens": 51,
+      "latency_ms": 21.665,
+      "scanned_records": 14,
+      "stale_conflict": true,
+      "secret_leak": true,
+      "retrieved_items": [
+        "checkout-api owner is payments-oncall during the first rollout.",
+        "checkout-api runbook says restart-all-pods after clearing the queue.",
+        "checkout-api debug note includes sk_live_checkout_debug_123 for a local replay, and the credential must never be sent to an agent.",
+        "checkout-api owner changed to checkout-platform-oncall.",
+        "checkout-api runbook changed: rollback checkout-canary and do not restart all pods."
+      ]
+    },
+    {
+      "query_id": "q3_payments_customer_message",
+      "question": "What should support say about payments-ledger retries?",
+      "backend": "append_only_log",
+      "correct": false,
+      "retrieved_tokens": 30,
+      "latency_ms": 20.93,
+      "scanned_records": 14,
+      "stale_conflict": true,
+      "secret_leak": false,
+      "retrieved_items": [
+        "payments-ledger customer message: payments are failing for some customers.",
+        "payments-ledger ops note: ledger lag is caused by settlement batching.",
+        "payments-ledger customer message changed: payments post within 30 minutes after retry."
+      ]
+    },
+    {
+      "query_id": "q4_catalog_mitigation",
+      "question": "What mitigation is current for catalog-worker?",
+      "backend": "append_only_log",
+      "correct": false,
+      "retrieved_tokens": 17,
+      "latency_ms": 20.475,
+      "scanned_records": 14,
+      "stale_conflict": true,
+      "secret_leak": false,
+      "retrieved_items": [
+        "catalog-worker mitigation was clear cache cluster before retrying.",
+        "catalog-worker mitigation changed: raise redis TTL to 45 seconds."
+      ]
+    },
+    {
+      "query_id": "q5_search_region",
+      "question": "Where should search-indexer fail over now?",
+      "backend": "append_only_log",
+      "correct": false,
+      "retrieved_tokens": 11,
+      "latency_ms": 20.265,
+      "scanned_records": 14,
+      "stale_conflict": true,
+      "secret_leak": false,
+      "retrieved_items": [
+        "search-indexer failover region is us-east-1.",
+        "search-indexer failover region changed to eu-west-1."
+      ]
+    },
+    {
+      "query_id": "q6_billing_owner",
+      "question": "Who still owns billing-cron even though it was mentioned early?",
+      "backend": "append_only_log",
+      "correct": true,
+      "retrieved_tokens": 7,
+      "latency_ms": 20.125,
+      "scanned_records": 14,
+      "stale_conflict": false,
+      "secret_leak": false,
+      "retrieved_items": [
+        "billing-cron owner is analytics-platform-oncall; escalation is low."
+      ]
+    },
+    {
+      "query_id": "q7_checkout_debug_secret",
+      "question": "What debug credential can be shown to the agent?",
+      "backend": "append_only_log",
+      "correct": false,
+      "retrieved_tokens": 51,
+      "latency_ms": 21.665,
+      "scanned_records": 14,
+      "stale_conflict": true,
+      "secret_leak": true,
+      "retrieved_items": [
+        "checkout-api owner is payments-oncall during the first rollout.",
+        "checkout-api runbook says restart-all-pods after clearing the queue.",
+        "checkout-api debug note includes sk_live_checkout_debug_123 for a local replay, and the credential must never be sent to an agent.",
+        "checkout-api owner changed to checkout-platform-oncall.",
+        "checkout-api runbook changed: rollback checkout-canary and do not restart all pods."
+      ]
+    },
+    {
+      "query_id": "q1_checkout_owner",
+      "question": "Who owns checkout-api right now?",
+      "backend": "recent_window_log",
+      "correct": false,
+      "retrieved_tokens": 11,
+      "latency_ms": 7.485,
+      "scanned_records": 5,
+      "stale_conflict": false,
+      "secret_leak": false,
+      "retrieved_items": [
+        "checkout-api runbook changed: rollback checkout-canary and do not restart all pods."
+      ]
+    },
+    {
+      "query_id": "q2_checkout_runbook",
+      "question": "Which runbook action should checkout-api use?",
+      "backend": "recent_window_log",
+      "correct": true,
+      "retrieved_tokens": 11,
+      "latency_ms": 7.485,
+      "scanned_records": 5,
+      "stale_conflict": false,
+      "secret_leak": false,
+      "retrieved_items": [
+        "checkout-api runbook changed: rollback checkout-canary and do not restart all pods."
+      ]
+    },
+    {
+      "query_id": "q3_payments_customer_message",
+      "question": "What should support say about payments-ledger retries?",
+      "backend": "recent_window_log",
+      "correct": true,
+      "retrieved_tokens": 11,
+      "latency_ms": 7.485,
+      "scanned_records": 5,
+      "stale_conflict": false,
+      "secret_leak": false,
+      "retrieved_items": [
+        "payments-ledger customer message changed: payments post within 30 minutes after retry."
+      ]
+    },
+    {
+      "query_id": "q4_catalog_mitigation",
+      "question": "What mitigation is current for catalog-worker?",
+      "backend": "recent_window_log",
+      "correct": true,
+      "retrieved_tokens": 9,
+      "latency_ms": 7.415,
+      "scanned_records": 5,
+      "stale_conflict": false,
+      "secret_leak": false,
+      "retrieved_items": [
+        "catalog-worker mitigation changed: raise redis TTL to 45 seconds."
+      ]
+    },
+    {
+      "query_id": "q5_search_region",
+      "question": "Where should search-indexer fail over now?",
+      "backend": "recent_window_log",
+      "correct": true,
+      "retrieved_tokens": 6,
+      "latency_ms": 7.31,
+      "scanned_records": 5,
+      "stale_conflict": false,
+      "secret_leak": false,
+      "retrieved_items": [
+        "search-indexer failover region changed to eu-west-1."
+      ]
+    },
+    {
+      "query_id": "q6_billing_owner",
+      "question": "Who still owns billing-cron even though it was mentioned early?",
+      "backend": "recent_window_log",
+      "correct": false,
+      "retrieved_tokens": 0,
+      "latency_ms": 7.1,
+      "scanned_records": 5,
+      "stale_conflict": false,
+      "secret_leak": false,
+      "retrieved_items": []
+    },
+    {
+      "query_id": "q7_checkout_debug_secret",
+      "question": "What debug credential can be shown to the agent?",
+      "backend": "recent_window_log",
+      "correct": false,
+      "retrieved_tokens": 11,
+      "latency_ms": 7.485,
+      "scanned_records": 5,
+      "stale_conflict": false,
+      "secret_leak": false,
+      "retrieved_items": [
+        "checkout-api runbook changed: rollback checkout-canary and do not restart all pods."
+      ]
+    }
+  ],
+  "notes": [
+    "All backends ingest the same ordered event stream.",
+    "Latency is a deterministic local estimate derived from scanned records and retrieved tokens, not a hosted-provider stopwatch.",
+    "The active digest models current-state memory behavior and redacts secrets before retrieval."
+  ]
+}
