@@ -8,7 +8,8 @@ It specifically evaluates **Scenario B: The Shifting Persona & Temporal Tracking
 
 1. Python 3.9+
 2. A free **Moorcheh API Key** (Get one at [moorcheh.ai](https://moorcheh.ai))
-3. An **OpenAI API Key** (Used for Mem0's internal LLM calls and the LLM-as-a-judge)
+3. A **Groq API Key** (Used for Mem0's internal LLM calls and the LLM-as-a-judge)
+4. An **OpenAI API Key** (Optional fallback if not using Groq)
 
 ## Setup Instructions
 
@@ -28,7 +29,7 @@ It specifically evaluates **Scenario B: The Shifting Persona & Temporal Tracking
    ```bash
    cp .env.example .env
    ```
-   Open the `.env` file and insert your `MOORCHEH_API_KEY` and `OPENAI_API_KEY`.
+   Open the `.env` file and insert your `MOORCHEH_API_KEY`, `GROQ_API_KEY`, and optional `OPENAI_API_KEY`.
 
 ## Running the Benchmark
 
@@ -47,7 +48,7 @@ A simulated 4-session user interaction where the user starts by hating romance a
 Wrappers around Memanto and Mem0 to ensure they are fed identical data and evaluated fairly.
 
 ### LLM Judge (`judge.py`)
-Uses `gpt-4o` to grade the retrieved context (0-100) based on how well it isolated the user's current preferences from their outdated ones.
+Uses `llama-3.3-70b-versatile` via Groq to grade the retrieved context (0-100) based on how well it isolated the user's current preferences from their outdated ones.
 
 ### Output
 The script prints a clean table directly to the terminal using `rich`, displaying:
