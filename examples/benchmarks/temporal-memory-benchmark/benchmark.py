@@ -2,12 +2,14 @@ import time
 import random
 
 def benchmark_memanto():
-    print("Starting Memanto Benchmark...")
+    print("Starting Memanto Benchmark (Illustrative Framework)...")
     start_time = time.time()
     
-    # Simulate benchmarking Memanto vs baseline
+    # NOTE: This is a simulated placeholder framework. 
+    # Real measurements require loading a temporal dataset and integrating actual API calls.
     time.sleep(0.5)
     
+    # Generate illustrative placeholder metrics
     latency_memanto = 0.05 + random.uniform(0, 0.02)
     latency_baseline = 0.8 + random.uniform(0, 0.2)
     
