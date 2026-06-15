@@ -127,12 +127,12 @@ class TestAgentService:
     def mock_moorcheh_client(self):
         """Mock Moorcheh client so unit tests never call external API."""
         with patch(
-            "memanto.app.services.agent_service.MoorchehClient"
-        ) as mock_client_cls:
+            "memanto.app.services.agent_service.get_moorcheh_client"
+        ) as mock_client_factory:
             mock_client = MagicMock()
             mock_client.namespaces.create.return_value = {"status": "created"}
             mock_client.namespaces.list.return_value = {"namespaces": []}
-            mock_client_cls.return_value = mock_client
+            mock_client_factory.return_value = mock_client
             yield mock_client
 
     @pytest.fixture

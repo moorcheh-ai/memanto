@@ -4,15 +4,29 @@ MEMANTO CLI Configuration Manager
 Handles configuration persistence:
   - API key: stored in ~/.memanto/.env (sensitive, not committed)
   - Other config: stored in ~/.memanto/config.yaml (non-sensitive)
+  - Connections registry: stored in ~/.memanto/connections.json
 """
 
 import importlib
+import json
 import os
 from pathlib import Path
 
 from dotenv import load_dotenv, set_key
 
+from memanto.app.clients.backend import Backend, parse_backend
+
 yaml = importlib.import_module("yaml")
+
+
+def _normalize_duplicated_api_key(key: str) -> str:
+    """Fix pasted keys accidentally doubled (same half repeated twice)."""
+    key = key.strip()
+    if len(key) % 2 == 0:
+        half = len(key) // 2
+        if key[:half] == key[half:]:
+            return key[:half]
+    return key
 
 
 class ConfigManager:
@@ -27,6 +41,7 @@ class ConfigManager:
         self.config_dir = config_dir or Path.home() / ".memanto"
         self.config_file = self.config_dir / "config.yaml"
         self.env_file = self.config_dir / ".env"
+        self.connections_file = self.config_dir / "connections.json"
 
         # Ensure config directory exists
         self.config_dir.mkdir(parents=True, exist_ok=True)
@@ -47,21 +62,166 @@ class ConfigManager:
 
     def set_api_key(self, api_key: str) -> None:
         """Save Moorcheh API key to ~/.memanto/.env."""
-        # Ensure the file exists
+        self._set_env_var("MOORCHEH_API_KEY", api_key)
+
+    def get_supermemory_api_key(self) -> str | None:
+        """Get Supermemory API key from ~/.memanto/.env."""
+        if self.env_file.exists():
+            load_dotenv(self.env_file, override=True)
+        key = (
+            os.environ.get("SUPERMEMORY_API_KEY")
+            or os.environ.get("supermemory_api_key")
+            or ""
+        ).strip()
+        if not key:
+            return None
+        return _normalize_duplicated_api_key(key)
+
+    def set_supermemory_api_key(self, api_key: str) -> None:
+        """Save Supermemory API key to ~/.memanto/.env."""
+        self._set_env_var("SUPERMEMORY_API_KEY", _normalize_duplicated_api_key(api_key))
+
+    def get_mem0_api_key(self) -> str | None:
+        """Get Mem0 API key from ~/.memanto/.env."""
+        if self.env_file.exists():
+            load_dotenv(self.env_file, override=True)
+        key = (
+            os.environ.get("MEM0_API_KEY") or os.environ.get("mem0_api_key") or ""
+        ).strip()
+        if not key:
+            return None
+        return _normalize_duplicated_api_key(key)
+
+    def set_mem0_api_key(self, api_key: str) -> None:
+        """Save Mem0 API key to ~/.memanto/.env."""
+        self._set_env_var("MEM0_API_KEY", _normalize_duplicated_api_key(api_key))
+
+    def get_letta_api_key(self) -> str | None:
+        """Get Letta API key from ~/.memanto/.env."""
+        if self.env_file.exists():
+            load_dotenv(self.env_file, override=True)
+        key = (
+            os.environ.get("LETTA_API_KEY") or os.environ.get("letta_api_key") or ""
+        ).strip()
+        if not key:
+            return None
+        return _normalize_duplicated_api_key(key)
+
+    def set_letta_api_key(self, api_key: str) -> None:
+        """Save Letta API key to ~/.memanto/.env."""
+        self._set_env_var("LETTA_API_KEY", _normalize_duplicated_api_key(api_key))
+
+    def _set_env_var(self, name: str, value: str) -> None:
+        """Write a single variable to ~/.memanto/.env and update os.environ."""
         if not self.env_file.exists():
             self.env_file.write_text("# MEMANTO Environment\n")
-        set_key(str(self.env_file), "MOORCHEH_API_KEY", api_key)
-        os.environ["MOORCHEH_API_KEY"] = api_key
-
-        # Secure permissions (owner-only)
+        set_key(str(self.env_file), name, value)
+        os.environ[name] = value
         try:
             self.env_file.chmod(0o600)
         except OSError:
             pass  # Windows may not support chmod
 
+    def get_analyze_dir(self, provider: str) -> Path:
+        """Base directory for a provider's analyze artifacts (e.g. 'supermemory')."""
+        path = self.config_dir / "analyze" / provider
+        path.mkdir(parents=True, exist_ok=True)
+        return path
+
     def is_configured(self) -> bool:
-        """Check if CLI has an API key configured."""
+        """Check if the active backend is configured.
+
+        Cloud: requires an API key.
+        On-prem: requires ``backend: on-prem`` persisted in config.yaml
+        (server reachability is verified at runtime, not here).
+        """
+        if self.get_backend() == Backend.ON_PREM:
+            return True
         return self.get_api_key() is not None
+
+    # Backend selection
+
+    def get_backend(self) -> Backend:
+        """Get the active backend (cloud or on-prem)."""
+        return parse_backend(self.load_yaml().get("backend"))
+
+    def set_backend(self, backend: Backend) -> None:
+        """Persist the active backend choice."""
+        self.set("backend", backend.value)
+
+    # On-prem config — strictly isolated under ~/.memanto/on-prem/state.json.
+    # On-prem onboarding/runtime must NOT write into the shared yaml; that file
+    # is the cloud's namespace.
+
+    def _onprem_state_path(self) -> Path:
+        return self.config_dir / "on-prem" / "state.json"
+
+    def get_onprem_state(self) -> dict:
+        """Read the on-prem state.json. Returns ``{}`` if missing/unreadable."""
+        p = self._onprem_state_path()
+        if not p.exists():
+            return {}
+        try:
+            data = json.loads(p.read_text())
+        except Exception:
+            return {}
+        return data if isinstance(data, dict) else {}
+
+    def set_onprem_state(self, **updates) -> None:
+        """Merge ``updates`` into the on-prem state.json (creates dir if needed)."""
+        p = self._onprem_state_path()
+        p.parent.mkdir(parents=True, exist_ok=True)
+        data = self.get_onprem_state()
+        data.update({k: v for k, v in updates.items() if v is not None})
+        p.write_text(json.dumps(data, indent=2))
+
+    def get_onprem_config(self) -> dict:
+        """Get on-prem config dict (url, embedding_provider, llm_model, ...).
+
+        Sourced exclusively from ``~/.memanto/on-prem/state.json``; defaults
+        apply only when keys are missing from state.
+        """
+        defaults = {
+            "url": "http://localhost:8080",
+            "embedding_provider": "",
+            "embedding_model": "",
+            "llm_provider": "",
+            "llm_model": "",
+        }
+        defaults.update(self.get_onprem_state())
+        return defaults
+
+    def set_onprem_config(
+        self,
+        embedding_provider: str | None = None,
+        url: str | None = None,
+        embedding_model: str | None = None,
+        llm_provider: str | None = None,
+        llm_model: str | None = None,
+    ) -> None:
+        """Persist on-prem config values into ``~/.memanto/on-prem/state.json``."""
+        self.set_onprem_state(
+            embedding_provider=embedding_provider,
+            url=url,
+            embedding_model=embedding_model,
+            llm_provider=llm_provider,
+            llm_model=llm_model,
+        )
+
+    # Per-backend data directory
+
+    def get_data_dir(self) -> Path:
+        """Root data dir for the active backend.
+
+        Cloud users keep ``~/.memanto/`` (no migration). On-prem data is
+        isolated under ``~/.memanto/on-prem/`` so switching backends does
+        not mix agents/sessions across them.
+        """
+        if self.get_backend() == Backend.ON_PREM:
+            d = self.config_dir / "on-prem"
+            d.mkdir(parents=True, exist_ok=True)
+            return d
+        return self.config_dir
 
     # YAML Config (non-sensitive settings)
 
@@ -143,7 +303,14 @@ class ConfigManager:
         return defaults
 
     def get_answer_config(self) -> dict:
-        """Get Answer config dict with defaults."""
+        """Get Answer config dict with defaults.
+
+        The ``model`` field is backend-specific: cloud uses the shared yaml
+        (default Bedrock Claude); on-prem uses ``llm_model`` from
+        ``~/.memanto/on-prem/state.json`` (set during onboarding). All other
+        knobs (temperature/threshold/answer_limit/kiosk_mode) are shared
+        because they describe how to query, not which provider to hit.
+        """
         data = self.load_yaml()
         answer = data.get("answer", {})
 
@@ -155,6 +322,12 @@ class ConfigManager:
             "kiosk_mode": False,
         }
         defaults.update(answer)
+        if self.get_backend() == Backend.ON_PREM:
+            # On-prem: override model with the onboarding-selected LLM. Do NOT
+            # fall back to the cloud default — pass through None so callers
+            # can omit ``ai_model`` and let the on-prem server use its
+            # ``~/.moorcheh/config.json`` LLM.
+            defaults["model"] = self.get_onprem_state().get("llm_model") or None
         return defaults
 
     def set_answer_config(
@@ -255,3 +428,59 @@ class ConfigManager:
         data["cli"]["interactive_mode"] = interactive_mode
         data["cli"]["smart_parse"] = smart_parse
         self.save_yaml(data)
+
+    # Connections registry — tracks which agents have memanto installed where.
+    # Forward-only: only updated by future install/remove calls, not backfilled.
+
+    def load_connections(self) -> dict:
+        """Load the connections registry from ~/.memanto/connections.json."""
+        if not self.connections_file.exists():
+            return {}
+        try:
+            with open(self.connections_file, encoding="utf-8") as f:
+                data = json.load(f)
+            return data if isinstance(data, dict) else {}
+        except Exception:
+            return {}
+
+    def _save_connections(self, data: dict) -> None:
+        """Atomically write the connections registry."""
+        tmp = self.connections_file.with_suffix(".json.tmp")
+        with open(tmp, "w", encoding="utf-8") as f:
+            json.dump(data, f, indent=2, sort_keys=True)
+        os.replace(tmp, self.connections_file)
+        try:
+            self.connections_file.chmod(0o600)
+        except OSError:
+            pass
+
+    def add_connection(
+        self, agent_name: str, project_dir: str | None, is_global: bool
+    ) -> None:
+        """Record that ``agent_name`` was installed at ``project_dir`` (or globally)."""
+        data = self.load_connections()
+        entry = data.setdefault(agent_name, {"projects": [], "installed_global": False})
+        if is_global:
+            entry["installed_global"] = True
+        elif project_dir:
+            abs_path = str(Path(project_dir).resolve())
+            if abs_path not in entry["projects"]:
+                entry["projects"].append(abs_path)
+        self._save_connections(data)
+
+    def remove_connection(
+        self, agent_name: str, project_dir: str | None, is_global: bool
+    ) -> None:
+        """Inverse of ``add_connection``."""
+        data = self.load_connections()
+        if agent_name not in data:
+            return
+        entry = data[agent_name]
+        if is_global:
+            entry["installed_global"] = False
+        elif project_dir:
+            abs_path = str(Path(project_dir).resolve())
+            entry["projects"] = [p for p in entry.get("projects", []) if p != abs_path]
+        if not entry.get("projects") and not entry.get("installed_global"):
+            del data[agent_name]
+        self._save_connections(data)

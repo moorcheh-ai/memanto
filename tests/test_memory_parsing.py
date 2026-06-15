@@ -160,3 +160,34 @@ def test_reminder_intent_beats_artifact_mention():
     parser.parse_memory(memory)
 
     assert memory.type == "commitment"
+
+
+# Fuzzy fallback: typo'd decisive terms the deterministic rules miss
+def test_fuzzy_fallback_rescues_typo_decision():
+    parser = MemoryParsingService()
+
+    memory = make_memory("We decded on Postgres for the main datastore")
+
+    parser.parse_memory(memory)
+
+    assert memory.type == "decision"
+
+
+def test_fuzzy_fallback_rescues_typo_error():
+    parser = MemoryParsingService()
+
+    memory = make_memory("The app crahsed during the tracebck on upload")
+
+    parser.parse_memory(memory)
+
+    assert memory.type == "error"
+
+
+def test_fuzzy_fallback_does_not_fire_on_unrelated_text():
+    parser = MemoryParsingService()
+
+    memory = make_memory("some totally random unrelated words here")
+
+    parser.parse_memory(memory)
+
+    assert memory.type == "fact"

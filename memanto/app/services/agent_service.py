@@ -10,7 +10,8 @@ from pathlib import Path
 
 from moorcheh_sdk.exceptions import ConflictError
 
-from memanto.app.clients.moorcheh import MoorchehClient
+from memanto.app.clients.moorcheh import get_moorcheh_client
+from memanto.app.config import get_data_dir
 from memanto.app.core import create_memory_scope
 from memanto.app.models.session import AgentCreate, AgentInfo, AgentList
 from memanto.app.utils.errors import AgentAlreadyExistsError, AgentNotFoundError
@@ -26,7 +27,7 @@ class AgentService:
         Args:
             agents_dir: Directory for agent metadata storage (defaults to ~/.memanto/agents/)
         """
-        self.agents_dir = agents_dir or Path.home() / ".memanto" / "agents"
+        self.agents_dir = agents_dir or get_data_dir() / "agents"
         self.agents_dir.mkdir(parents=True, exist_ok=True)
 
     def _generate_namespace(self, agent_id: str) -> str:
@@ -66,8 +67,9 @@ class AgentService:
 
         namespace = self._generate_namespace(agent_create.agent_id)
 
-        # Create namespace in Moorcheh - CRITICAL: Must succeed
-        client = MoorchehClient(moorcheh_api_key)
+        # Create namespace in Moorcheh - CRITICAL: Must succeed.
+        # ``moorcheh_api_key`` is honored on cloud; ignored on on-prem.
+        client = get_moorcheh_client()
 
         try:
             # Use Moorcheh SDK to create namespace with type="text"

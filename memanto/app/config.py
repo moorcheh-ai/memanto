@@ -46,6 +46,34 @@ if _config_file.exists():
             _sum_model = _summary.get("model")
             if _sum_model:
                 os.environ["SUMMARY_MODEL"] = _sum_model
+
+            # CLI configuration
+            _cli = _memanto.get("cli", {})
+            _smart_parse = _cli.get("smart_parse")
+            if _smart_parse is not None:
+                os.environ["AUTO_PARSE_ENABLED"] = str(_smart_parse)
+
+            # Backend selection (cloud | on-prem)
+            _backend = _memanto.get("backend")
+            if _backend:
+                os.environ["MEMANTO_BACKEND"] = str(_backend)
+    except Exception:
+        pass
+
+    # On-prem URL lives in ~/.memanto/on-prem/state.json so on-prem onboarding
+    # never has to touch the shared cloud yaml.
+    try:
+        import json as _json
+
+        _state_path = Path.home() / ".memanto" / "on-prem" / "state.json"
+        if _state_path.exists():
+            _state = _json.loads(_state_path.read_text())
+            _op_url = _state.get("url")
+            if _op_url:
+                os.environ["MOORCHEH_ONPREM_URL"] = str(_op_url)
+            _op_embed = _state.get("embedding_provider")
+            if _op_embed:
+                os.environ["MOORCHEH_ONPREM_EMBEDDING_PROVIDER"] = str(_op_embed)
     except Exception:
         pass
 
@@ -84,6 +112,14 @@ class Settings(BaseSettings):
 
     # Moorcheh Configuration
     MOORCHEH_API_KEY: str = ""
+
+    # Backend selection: "cloud" (default) or "on-prem".
+    MEMANTO_BACKEND: str = "cloud"
+    MOORCHEH_ONPREM_URL: str = "http://localhost:8080"
+    MOORCHEH_ONPREM_EMBEDDING_PROVIDER: str = ""
+    # HTTP read timeout (seconds) for the on-prem MoorchehClient. Default 300
+    # so first-call LLM cold-starts on Ollama don't hit the SDK's 30s default.
+    MOORCHEH_ONPREM_TIMEOUT: int = 300
 
     # Server Configuration
     HOST: str = "0.0.0.0"
@@ -137,3 +173,17 @@ class Settings(BaseSettings):
 
 # Global settings instance
 settings = Settings()
+
+
+def get_data_dir() -> Path:
+    """Root data dir for the active backend.
+
+    Cloud users keep ``~/.memanto/`` (no migration). On-prem data is
+    isolated under ``~/.memanto/on-prem/``.
+    """
+    base = Path.home() / ".memanto"
+    if settings.MEMANTO_BACKEND.strip().lower() == "on-prem":
+        d = base / "on-prem"
+        d.mkdir(parents=True, exist_ok=True)
+        return d
+    return base

@@ -73,7 +73,9 @@ def mock_moorcheh():
     moorcheh_client.reset_client()
 
     with (
-        patch("memanto.app.services.agent_service.MoorchehClient") as mock_agent_client,
+        patch(
+            "memanto.app.services.agent_service.get_moorcheh_client"
+        ) as mock_agent_client,
         patch("memanto.app.clients.moorcheh.MoorchehClient") as mock_moorcheh_cls,
         patch(
             "memanto.app.clients.moorcheh.AsyncMoorchehClient"

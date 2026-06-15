@@ -10,6 +10,7 @@ from moorcheh_sdk import MoorchehClient
 from moorcheh_sdk.exceptions import AuthenticationError, NamespaceNotFound
 
 from memanto.app import __version__
+from memanto.app.clients.backend import Backend, parse_backend
 from memanto.app.config import settings
 from memanto.app.routes import health, sessions
 from memanto.app.ui.routes.ui_router import mount_ui_static
@@ -18,6 +19,22 @@ from memanto.app.ui.routes.ui_router import router as ui_router
 
 def _validate_startup_dependencies() -> None:
     """Fail fast when mandatory external dependencies are misconfigured."""
+    backend = parse_backend(settings.MEMANTO_BACKEND)
+
+    if backend == Backend.ON_PREM:
+        import httpx
+
+        url = f"{settings.MOORCHEH_ONPREM_URL.rstrip('/')}/health"
+        try:
+            resp = httpx.get(url, timeout=5.0)
+            resp.raise_for_status()
+        except Exception as exc:
+            raise RuntimeError(
+                f"Moorcheh on-prem server not reachable at {url}. "
+                f"Start it with: moorcheh up"
+            ) from exc
+        return
+
     api_key = settings.MOORCHEH_API_KEY.strip()
     if not api_key:
         raise RuntimeError(

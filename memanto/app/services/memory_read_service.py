@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING, Any, cast
 if TYPE_CHECKING:
     from moorcheh_sdk import MoorchehClient
 
+from memanto.app.clients.backend import get_active_llm_model
 from memanto.app.config import settings
 from memanto.app.core import create_memory_scope
 from memanto.app.utils.errors import MemoryError
@@ -228,7 +229,7 @@ class MemoryReadService:
         agent_id: str,
         type: list[str] | None = None,
         tags: list[str] | None = None,
-        limit: int = 10,
+        limit: int | None = 10,
     ) -> dict[str, Any]:
         """
         Point-in-time query: "What was true at this point in time?"
@@ -292,7 +293,8 @@ class MemoryReadService:
                 valid_memories.append(memory)
 
             # Apply limit
-            valid_memories = valid_memories[:limit]
+            if limit is not None:
+                valid_memories = valid_memories[:limit]
 
             return {
                 "results": valid_memories,
@@ -310,7 +312,7 @@ class MemoryReadService:
         agent_id: str,
         type: list[str] | None = None,
         tags: list[str] | None = None,
-        limit: int = 10,
+        limit: int | None = 10,
     ) -> dict[str, Any]:
         """
         Differential retrieval: "What changed recently?"
@@ -375,7 +377,8 @@ class MemoryReadService:
             )
 
             # Apply limit
-            changed_memories = changed_memories[:limit]
+            if limit is not None:
+                changed_memories = changed_memories[:limit]
 
             return {
                 "results": changed_memories,
@@ -391,7 +394,7 @@ class MemoryReadService:
         self,
         agent_id: str,
         type: list[str] | None = None,
-        limit: int = 10,
+        limit: int | None = 10,
     ) -> dict[str, Any]:
         """
         Retrieve the most recently stored memories, sorted by created_at descending.
@@ -422,7 +425,7 @@ class MemoryReadService:
 
             unique_memories.sort(key=_created_sort_key, reverse=True)
 
-            results = unique_memories[:limit]
+            results = unique_memories if limit is None else unique_memories[:limit]
             return {"results": results, "total_found": len(results)}
 
         except Exception as e:
@@ -439,17 +442,26 @@ class MemoryReadService:
         documents.fetch_text_data endpoint, applying optional type/tag filters
         and de-duplicating by id.
 
-        Note: Moorcheh's fetch_text_data currently returns up to 100 items per
-        namespace and does not paginate.
+        Iterates through all pages using cursor-based pagination (next_token)
+        so results are not truncated at the 100-item per-page cap.
         """
         items: list[Any] = []
         for ns in namespaces:
-            try:
-                result = self.client.documents.fetch_text_data(namespace_name=ns)
-            except Exception:
-                continue
-            if isinstance(result, dict):
+            next_token: str | None = None
+            while True:
+                kwargs: dict[str, Any] = {"namespace_name": ns, "limit": 100}
+                if next_token:
+                    kwargs["next_token"] = next_token
+                result = self.client.documents.fetch_text_data(**kwargs)
+                if not isinstance(result, dict):
+                    break
                 items.extend(result.get("items", []) or [])
+                pagination = result.get("pagination") or {}
+                if not pagination.get("has_more"):
+                    break
+                next_token = pagination.get("next_token")
+                if not next_token:
+                    break
 
         seen_ids: set[str] = set()
         memories: list[dict[str, Any]] = []
@@ -646,10 +658,14 @@ class MemoryReadService:
                     raise MemoryError("No namespaces found")
                 namespace = namespaces[0]
 
-            # Generate answer
-            answer_result = self.client.answer.generate(
-                namespace=namespace, query=query, ai_model=settings.ANSWER_MODEL
-            )
+            # Generate answer. Omit ai_model when on-prem state has no LLM
+            # configured so the on-prem server uses its own default; the
+            # cloud SDK requires a string so don't pass None there.
+            gen_kwargs: dict = {"namespace": namespace, "query": query}
+            _model = get_active_llm_model(settings.ANSWER_MODEL)
+            if _model is not None:
+                gen_kwargs["ai_model"] = _model
+            answer_result = self.client.answer.generate(**gen_kwargs)
 
             return {
                 "answer": answer_result["answer"],

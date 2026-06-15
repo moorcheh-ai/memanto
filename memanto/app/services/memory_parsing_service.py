@@ -8,6 +8,12 @@ import re
 from dataclasses import dataclass
 from typing import ClassVar, cast
 
+try:
+    from rapidfuzz import fuzz, process
+except ImportError:  # pragma: no cover - optional dep; fuzzy fallback degrades off
+    fuzz = None  # type: ignore[assignment]
+    process = None  # type: ignore[assignment]
+
 from memanto.app.config import settings
 from memanto.app.constants import MemoryType
 from memanto.app.core import MemoryRecord
@@ -26,6 +32,10 @@ class MemoryParsingService:
     """Classify memories into supported memory types before storage."""
 
     MIN_RULE_SCORE: ClassVar[int] = 3
+    # Fuzzy fallback cutoff (0-100). Kept high to favour precision: it should
+    # recover obvious misspellings of long keywords without matching unrelated
+    # words. See ``_fuzzy_based``.
+    FUZZY_SCORE_CUTOFF: ClassVar[float] = 88.0
     STRONG_FACT_PATTERNS: ClassVar[list[re.Pattern[str]]] = [
         re.compile(pattern, re.IGNORECASE)
         for pattern in [
@@ -256,6 +266,78 @@ class MemoryParsingService:
         ],
     }
 
+    # Curated keywords for the typo-tolerant fuzzy fallback (see ``_fuzzy_based``).
+    # Only long, distinctive terms (>= 6 chars) are listed; short keywords are
+    # left to the regex rules above, where fuzzy matching would be too noisy.
+    FUZZY_KEYWORDS: ClassVar[dict[str, list[str]]] = {
+        "preference": ["prefer", "prefers", "favorite", "favourite", "dislike"],
+        "instruction": ["always", "should", "required", "requirement", "mandatory"],
+        "decision": [
+            "decided",
+            "decision",
+            "chosen",
+            "selected",
+            "approved",
+            "rejected",
+        ],
+        "goal": ["objective", "milestone"],
+        "commitment": ["reminder", "promised", "committed", "deadline"],
+        "event": [
+            "meeting",
+            "standup",
+            "workshop",
+            "interview",
+            "launched",
+            "released",
+            "deployed",
+            "discussed",
+        ],
+        "learning": [
+            "learned",
+            "lesson",
+            "takeaway",
+            "discovered",
+            "realized",
+            "insight",
+        ],
+        "error": [
+            "failure",
+            "exception",
+            "traceback",
+            "incident",
+            "regression",
+            "timeout",
+        ],
+        "relationship": [
+            "manager",
+            "client",
+            "customer",
+            "stakeholder",
+            "partner",
+            "coworker",
+            "colleague",
+            "mentor",
+        ],
+        "context": ["context", "currently", "pending", "blocked", "background"],
+        "observation": [
+            "noticed",
+            "observed",
+            "pattern",
+            "recurring",
+            "usually",
+            "frequently",
+        ],
+        "artifact": ["report", "document", "artifact", "attachment", "spreadsheet"],
+    }
+
+    # Flattened {keyword: type} plus the choice list rapidfuzz searches over.
+    FUZZY_KEYWORD_TO_TYPE: ClassVar[dict[str, str]] = {
+        keyword: memory_type
+        for memory_type, keywords in FUZZY_KEYWORDS.items()
+        for keyword in keywords
+    }
+    FUZZY_CHOICES: ClassVar[list[str]] = list(FUZZY_KEYWORD_TO_TYPE)
+
     def parse_memory(self, memory: MemoryRecord) -> MemoryRecord:
         """
         Auto-detect and assign a memory type.
@@ -263,6 +345,8 @@ class MemoryParsingService:
         Rules:
         - Respect an explicit type if one is already set.
         - Skip detection entirely when auto-parsing is disabled.
+        - Retry with a conservative fuzzy keyword match when the deterministic
+          rules abstain, to tolerate obvious misspellings.
         - Fall back to ``"fact"`` when classification is inconclusive, so a
           memory is never stored without a type.
         """
@@ -278,6 +362,10 @@ class MemoryParsingService:
 
         # 3. Rule-based detection (deterministic)
         detected = self._rule_based(memory.content)
+
+        # 4. Typo-tolerant fuzzy fallback (only when the rules abstain)
+        if not detected:
+            detected = self._fuzzy_based(memory.content)
 
         if detected and detected in MEMORY_TYPE_ORDER:
             memory.type = cast(MemoryType, detected)
@@ -351,3 +439,31 @@ class MemoryParsingService:
             if matched:
                 scores[memory_type] = (sum(matched), max(matched))
         return scores
+
+    def _fuzzy_based(self, text: str) -> str | None:
+        """Typo-tolerant fallback, used only when rule-based detection abstains.
+
+        Fuzzy-matches each input token against a curated set of long, distinctive
+        keywords (see ``FUZZY_KEYWORDS``) and returns the type of the strongest
+        match above ``FUZZY_SCORE_CUTOFF``. Intentionally conservative to favour
+        precision: it recovers obvious misspellings of decisive terms without
+        inventing matches for unrelated text. Returns ``None`` when rapidfuzz is
+        unavailable or nothing clears the cutoff.
+        """
+
+        if fuzz is None or process is None or not text:
+            return None
+
+        best_type: str | None = None
+        best_score = 0.0
+        for token in re.findall(r"[a-z']+", text.lower()):
+            match = process.extractOne(
+                token,
+                self.FUZZY_CHOICES,
+                scorer=fuzz.ratio,
+                score_cutoff=self.FUZZY_SCORE_CUTOFF,
+            )
+            if match and match[1] > best_score:
+                best_score = match[1]
+                best_type = self.FUZZY_KEYWORD_TO_TYPE[match[0]]
+        return best_type

@@ -1,6 +1,8 @@
 """
-Schedule Manager for MEMANTO
-Handles OS-level scheduling for daily summaries.
+Schedule Manager for MEMANTO.
+
+Schedules a nightly job that runs daily-summary followed by detect-conflicts
+(via the internal ``memanto schedule _run`` entrypoint).
 """
 
 import platform
@@ -11,63 +13,81 @@ from typing import Any
 
 
 class ScheduleManager:
-    """Manages OS-level scheduled tasks for MEMANTO"""
+    """Manages OS-level scheduled tasks for MEMANTO."""
 
-    TASK_NAME = "MemantoDailySummary"
+    TASK_NAME = "MemantoNightlyJob"
+    LEGACY_TASK_NAMES = ("MemantoDailySummary",)
 
     def __init__(self):
         self.os_type = platform.system()
-        # Find the absolute path to cli/main.py
-        # Assuming this file is in cli/schedule_manager.py
         self.cli_main = Path(__file__).parent / "main.py"
         self.python_exe = sys.executable
 
+    def _remove_legacy_tasks(self) -> None:
+        """Best-effort removal of older task identities so upgrades don't
+        leave duplicate nightly jobs running alongside the current one."""
+        if self.os_type == "Windows":
+            for name in self.LEGACY_TASK_NAMES:
+                subprocess.run(
+                    ["schtasks", "/delete", "/tn", name, "/f"],
+                    capture_output=True,
+                    text=True,
+                )
+        else:
+            try:
+                current_cron = subprocess.run(
+                    ["crontab", "-l"], capture_output=True, text=True
+                ).stdout
+                legacy_markers = [f"# {name}" for name in self.LEGACY_TASK_NAMES]
+                lines = [
+                    line
+                    for line in current_cron.splitlines()
+                    if not any(m in line for m in legacy_markers)
+                ]
+                if len(lines) != len(current_cron.splitlines()):
+                    new_cron = "\n".join(lines).rstrip() + "\n"
+                    subprocess.run(
+                        ["crontab", "-"], input=new_cron, text=True, check=False
+                    )
+            except Exception:
+                pass
+
+    def _command(self) -> str:
+        return f'"{self.python_exe}" "{self.cli_main.absolute()}" schedule _run'
+
     def enable(self, time_str: str = "23:55") -> dict[str, Any]:
-        """Enable daily scheduling at the given HH:MM time."""
+        self._remove_legacy_tasks()
         if self.os_type == "Windows":
             return self._enable_windows(time_str)
-        else:
-            return self._enable_unix(time_str)
+        return self._enable_unix(time_str)
 
     def disable(self) -> dict[str, Any]:
-        """Disable daily scheduling"""
+        self._remove_legacy_tasks()
         if self.os_type == "Windows":
             return self._disable_windows()
-        else:
-            return self._disable_unix()
+        return self._disable_unix()
 
     def get_status(self) -> dict[str, Any]:
-        """Check if scheduling is enabled"""
         if self.os_type == "Windows":
             return self._status_windows()
-        else:
-            return self._status_unix()
+        return self._status_unix()
 
-    # Windows Implementation (schtasks)
+    # Windows (schtasks)
 
     def _enable_windows(self, time_str: str = "23:55") -> dict[str, Any]:
-        # Command to run: python <main_path> daily-summary
-        # We use absolute paths to avoid issues with working directories
-        cmd_to_run = f'"{self.python_exe}" "{self.cli_main.absolute()}" daily-summary'
-
-        # schtasks command
-        # /sc daily: schedule daily
-        # /st HH:MM: start time (configurable)
-        # /f: force creation (overwrite if exists)
         command = [
             "schtasks",
             "/create",
             "/tn",
             self.TASK_NAME,
             "/tr",
-            cmd_to_run,
+            self._command(),
             "/sc",
             "daily",
             "/st",
             time_str,
             "/f",
         ]
-
         try:
             subprocess.run(command, capture_output=True, text=True, check=True)
             return {
@@ -86,7 +106,6 @@ class ScheduleManager:
             subprocess.run(command, capture_output=True, text=True, check=True)
             return {"status": "success", "message": "Scheduled task removed."}
         except subprocess.CalledProcessError as e:
-            # If it doesn't exist, that's fine too
             if "not found" in e.stderr.lower():
                 return {
                     "status": "success",
@@ -101,40 +120,33 @@ class ScheduleManager:
             return {
                 "enabled": True,
                 "details": result.stdout,
-                "message": "Daily summary scheduling is ENABLED.",
+                "message": "Scheduled job is ENABLED.",
             }
         except subprocess.CalledProcessError:
             return {
                 "enabled": False,
-                "message": "Daily summary scheduling is DISABLED.",
+                "message": "Scheduled job is DISABLED.",
             }
 
-    # Unix/OSX Implementation (crontab)
+    # Unix/OSX (crontab)
 
     def _enable_unix(self, time_str: str = "23:55") -> dict[str, Any]:
-        # Parse HH:MM
         try:
             parts = time_str.split(":")
             hour, minute = int(parts[0]), int(parts[1])
         except (ValueError, IndexError):
             hour, minute = 23, 55
 
-        cron_entry = f'{minute} {hour} * * * "{self.python_exe}" "{self.cli_main.absolute()}" daily-summary'
+        marker = f"# {self.TASK_NAME}"
+        cron_entry = f"{minute} {hour} * * * {self._command()}  {marker}"
 
         try:
-            # Get current crontab
             current_cron = subprocess.run(
                 ["crontab", "-l"], capture_output=True, text=True
             ).stdout
-
-            # Remove existing MEMANTO entry if any
-            lines = current_cron.splitlines()
-            lines = [line for line in lines if "daily-summary" not in line]
-
-            # Add new entry
+            lines = [line for line in current_cron.splitlines() if marker not in line]
             new_cron = "\n".join(lines).rstrip() + "\n" + cron_entry + "\n"
             subprocess.run(["crontab", "-"], input=new_cron, text=True, check=True)
-
             return {
                 "status": "success",
                 "message": f"Crontab entry added for {time_str} daily.",
@@ -143,22 +155,15 @@ class ScheduleManager:
             return {"status": "error", "message": f"Failed to update crontab: {str(e)}"}
 
     def _disable_unix(self) -> dict[str, Any]:
+        marker = f"# {self.TASK_NAME}"
         try:
             current_cron = subprocess.run(
                 ["crontab", "-l"], capture_output=True, text=True
             ).stdout
             lines = current_cron.splitlines()
-
-            # Filter out our entry
-            new_lines = [
-                line
-                for line in lines
-                if f"{self.TASK_NAME}" not in line and "daily-summary" not in line
-            ]
-
+            new_lines = [line for line in lines if marker not in line]
             if len(new_lines) == len(lines):
                 return {"status": "success", "message": "No schedule found."}
-
             new_cron = "\n".join(new_lines) + "\n"
             subprocess.run(["crontab", "-"], input=new_cron, text=True, check=True)
             return {"status": "success", "message": "Crontab entry removed."}
@@ -166,21 +171,22 @@ class ScheduleManager:
             return {"status": "error", "message": f"Failed to disable: {str(e)}"}
 
     def _status_unix(self) -> dict[str, Any]:
+        marker = f"# {self.TASK_NAME}"
         try:
             current_cron = subprocess.run(
                 ["crontab", "-l"], capture_output=True, text=True
             ).stdout
-            if "daily-summary" in current_cron:
+            if marker in current_cron:
                 return {
                     "enabled": True,
-                    "message": "Daily summary scheduling is ENABLED (cron).",
+                    "message": "Scheduled job is ENABLED (cron).",
                 }
             return {
                 "enabled": False,
-                "message": "Daily summary scheduling is DISABLED.",
+                "message": "Scheduled job is DISABLED.",
             }
         except Exception:
             return {
                 "enabled": False,
-                "message": "Daily summary scheduling is DISABLED.",
+                "message": "Scheduled job is DISABLED.",
             }

@@ -1,5 +1,6 @@
 """
-MEMANTO CLI - Memory commands (remember, recall, answer, daily-summary, conflicts).
+MEMANTO CLI - Memory commands (remember, recall, answer, daily-summary,
+detect-conflicts, conflicts).
 """
 
 import json
@@ -596,7 +597,6 @@ def daily_summary(
         elapsed = time.perf_counter() - start
 
         summary = result.get("summary", {})
-        conflicts = result.get("conflicts", {})
 
         # Display Summary Status
         if summary.get("status") == "success":
@@ -606,7 +606,73 @@ def daily_summary(
         else:
             console.print(f"[yellow]! Summary:[/yellow] {summary.get('status')}")
 
-        # Display Conflicts Status
+        # Display Auto-Export Status
+        export = result.get("export")
+        if export:
+            if export.get("status") != "error":
+                export_count = export.get("total_memories", 0)
+                console.print(
+                    f"[green]Memory export generated:[/green] {export_count} memories saved to cache"
+                )
+            else:
+                console.print(
+                    f"[yellow]  ! Auto-export failed:[/yellow] {export.get('error')}"
+                )
+
+        console.print(
+            "\n[dim]Conflict detection runs separately. "
+            "Run 'memanto detect-conflicts' or enable the schedule "
+            "with 'memanto schedule enable'.[/dim]"
+        )
+        console.print(f"\n[dim]Completed in {elapsed:.2f}s[/dim]")
+
+    except Exception as e:
+        _error(f"Failed to generate daily summary: {e}")
+
+
+@app.command("detect-conflicts")
+def detect_conflicts(
+    date: str | None = typer.Option(
+        None, "--date", "-d", help="Date in YYYY-MM-DD format (defaults to today)"
+    ),
+    agent_id: str | None = typer.Option(
+        None, "--agent", "-a", help="Agent identifier (defaults to active agent)"
+    ),
+):
+    """Generate the conflict report for an agent/date.
+
+    Runs the LLM conflict-detection pass over the day's session memories
+    and writes the JSON report to ``~/.memanto/conflicts/``. Resolve the
+    detected conflicts interactively with ``memanto conflicts``.
+
+    This is the command the schedule runs — see ``memanto schedule``.
+    """
+    start = time.perf_counter()
+    active_agent_id, _ = config_manager.get_active_session()
+
+    if not agent_id:
+        if not active_agent_id:
+            _error(
+                "No active agent.",
+                hint="Provide an agent ID or run 'memanto agent activate <agent-id>' first.",
+            )
+        agent_id = active_agent_id
+
+    if not date:
+        date = datetime.now().strftime("%Y-%m-%d")
+
+    client = get_client()
+
+    try:
+        with console.status(
+            f"[cyan]Detecting conflicts for '{agent_id}' on {date}...",
+            spinner="dots",
+        ):
+            result = client.generate_conflict_report(agent_id=agent_id, date=date)
+        elapsed = time.perf_counter() - start
+
+        conflicts = result.get("conflicts", {})
+
         if conflicts.get("status") == "success":
             count = conflicts.get("conflict_count", 0)
             console.print(
@@ -624,23 +690,10 @@ def daily_summary(
         else:
             console.print(f"[yellow]! Conflicts:[/yellow] {conflicts.get('status')}")
 
-        # Display Auto-Export Status
-        export = result.get("export")
-        if export:
-            if export.get("status") != "error":
-                export_count = export.get("total_memories", 0)
-                console.print(
-                    f"[green]Memory export generated:[/green] {export_count} memories saved to cache"
-                )
-            else:
-                console.print(
-                    f"[yellow]  ! Auto-export failed:[/yellow] {export.get('error')}"
-                )
-
         console.print(f"\n[dim]Completed in {elapsed:.2f}s[/dim]")
 
     except Exception as e:
-        _error(f"Failed to generate daily summary: {e}")
+        _error(f"Failed to detect conflicts: {e}")
 
 
 @app.command()
@@ -694,7 +747,7 @@ def conflicts(
             f"\n[green]No unresolved conflicts for agent '{agent_id}' on {date}[/green]"
         )
         console.print(
-            "[dim]Run 'memanto daily-summary' to generate a conflict report.[/dim]"
+            "[dim]Run 'memanto detect-conflicts' to generate a conflict report.[/dim]"
         )
         return
 

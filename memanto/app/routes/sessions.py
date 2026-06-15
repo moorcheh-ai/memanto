@@ -60,7 +60,7 @@ async def _namespace_item_counts(moorcheh_api_key: str) -> dict[str, int]:
     empty map if Moorcheh is unreachable so agent listing still succeeds.
     """
     try:
-        client = moorcheh_clients.MoorchehClient(moorcheh_api_key)
+        client = moorcheh_clients.get_moorcheh_client()
         ns_resp = await asyncio.to_thread(client.namespaces.list)
         return {
             ns["namespace_name"]: ns.get("item_count", 0)
@@ -157,7 +157,7 @@ async def delete_agent(
 
         if delete_backup_too:
             # Delete remote namespace only when explicitly requested.
-            moorcheh_client = moorcheh_clients.MoorchehClient(moorcheh_api_key)
+            moorcheh_client = moorcheh_clients.get_moorcheh_client()
             try:
                 moorcheh_client.namespaces.delete(namespace_name=agent.namespace)
             except Exception:

@@ -7,13 +7,13 @@ Uses JWT tokens for stateless authentication.
 
 import json
 import os
-from datetime import datetime, timedelta
+from datetime import timedelta
 from pathlib import Path
 from typing import Any
 
 import jwt
 
-from memanto.app.config import settings
+from memanto.app.config import get_data_dir, settings
 from memanto.app.core import create_memory_scope
 from memanto.app.models.session import (
     AgentPattern,
@@ -28,6 +28,7 @@ from memanto.app.utils.errors import (
     SessionNotFoundError,
 )
 from memanto.app.utils.ids import generate_id
+from memanto.app.utils.temporal_helpers import utc_now
 
 _session_service = None
 
@@ -62,7 +63,7 @@ class SessionService:
             or "memanto-default-secret-change-in-production"
         )
         self.secret_key: str = resolved_secret_key
-        self.sessions_dir = sessions_dir or Path.home() / ".memanto" / "sessions"
+        self.sessions_dir = sessions_dir or get_data_dir() / "sessions"
         self.sessions_dir.mkdir(parents=True, exist_ok=True)
 
     def _generate_namespace(self, agent_id: str) -> str:
@@ -102,7 +103,7 @@ class SessionService:
 
         session_id = self._generate_session_id()
         namespace = self._generate_namespace(agent_id)
-        started_at = datetime.utcnow()
+        started_at = utc_now()
         expires_at = started_at + timedelta(hours=duration_hours)
 
         # Create JWT payload
@@ -160,7 +161,7 @@ class SessionService:
             token = SessionToken(**payload)
 
             # Validate expiration
-            if datetime.utcnow() > token.expires_at:
+            if utc_now() > token.expires_at:
                 raise SessionExpiredError(
                     f"Session {token.session_id} expired at {token.expires_at}"
                 )
@@ -195,7 +196,7 @@ class SessionService:
         Get currently active session
 
         Returns:
-            Session object or None if no active session
+            Session object or None if no active session or session is expired
         """
         active_link = self.sessions_dir / "active"
         if not active_link.exists():
@@ -209,7 +210,16 @@ class SessionService:
             with open(active_link) as f:
                 agent_id = f.read().strip()
 
-        return self.get_session(agent_id)
+        session = self.get_session(agent_id)
+        if not session:
+            return None
+
+        # If session is expired, clear the stale active marker and return None
+        if not session.is_active():
+            self._clear_active_session()
+            return None
+
+        return session
 
     def end_session(self, agent_id: str) -> SessionSummary:
         """
@@ -228,7 +238,7 @@ class SessionService:
         if not session:
             raise SessionNotFoundError(f"No session found for agent {agent_id}")
 
-        ended_at = datetime.utcnow()
+        ended_at = utc_now()
         duration = (ended_at - session.started_at).total_seconds() / 3600
 
         # Update session status
@@ -336,7 +346,7 @@ class SessionService:
             memory_id: The Moorcheh memory ID (if available)
         """
         # Get the timestamp of memory to determine the date string
-        dt_now = getattr(memory_record, "created_at", datetime.utcnow())
+        dt_now = getattr(memory_record, "created_at", utc_now())
         timestamp = dt_now.strftime("%Y-%m-%d %H:%M:%S")
         date_str = dt_now.strftime("%Y-%m-%d")
 
