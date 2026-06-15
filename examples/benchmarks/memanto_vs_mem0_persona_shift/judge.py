@@ -47,4 +47,4 @@ class LLMJudge:
             result = json.loads(response.choices[0].message.content)
             return result
         except Exception as e:
-            return {"score": 0, "reasoning": f"Judge failed: {str(e)}"}
+            return {"score": None, "reasoning": f"Judge runtime failure: {str(e)}"}

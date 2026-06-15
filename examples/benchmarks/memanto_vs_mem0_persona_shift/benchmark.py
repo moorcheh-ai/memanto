@@ -41,7 +41,7 @@ def run_evaluation(layer_name: str, layer, dataset: list, expected_state: str, j
         "Total Tokens Ingested": total_tokens_ingested,
         "Tokens Retrieved": retrieve_metrics["tokens"],
         "p95 Latency (s)": round(np.percentile(latencies, 95), 3),
-        "Accuracy Score": evaluation.get("score", 0),
+        "Accuracy Score": evaluation.get("score") if evaluation.get("score") is not None else "N/A",
         "Judge Reasoning": evaluation.get("reasoning", "N/A"),
         "Context Snippet": retrieved_context[:100] + "..." if len(retrieved_context) > 100 else retrieved_context
     }
@@ -77,12 +77,13 @@ def main():
     table.add_column("Accuracy Score", justify="right", style="yellow")
     
     for r in results:
+        score_str = f"{r['Accuracy Score']}/100" if r['Accuracy Score'] != "N/A" else "N/A"
         table.add_row(
             r["Layer"],
             str(r["Total Tokens Ingested"]),
             str(r["Tokens Retrieved"]),
             str(r["p95 Latency (s)"]),
-            f"{r['Accuracy Score']}/100"
+            score_str
         )
         
     console.print("\n")
