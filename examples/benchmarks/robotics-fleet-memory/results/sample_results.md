@@ -7,9 +7,9 @@ Iterations per query: 50
 
 | Backend | Accuracy | Retrieved tokens | Avg retrieved tokens | Stale conflict rate | Secret leak rate | p95 latency (ms) |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| append_only_log | 0.143 | 222 | 31.71 | 0.714 | 0.143 | 0.6354 |
-| recent_window | 0.571 | 141 | 20.14 | 0.143 | 0 | 0.353 |
-| active_fleet_digest | 1 | 69 | 9.86 | 0 | 0 | 0.3195 |
+| append_only_log | 0.143 | 222 | 31.71 | 0.714 | 0.143 | 0.9139 |
+| recent_window | 0.571 | 141 | 20.14 | 0.143 | 0 | 0.2101 |
+| active_fleet_digest | 1 | 69 | 9.86 | 0 | 0 | 0.1926 |
 
 ## Per-query failures
 

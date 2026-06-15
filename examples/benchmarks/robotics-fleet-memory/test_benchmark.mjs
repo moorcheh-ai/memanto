@@ -7,6 +7,7 @@ import {
   runBenchmark,
   scoreContext,
   tokenCount,
+  validateIterations,
 } from "./run_benchmark.mjs";
 
 test("dataset includes source events and golden queries", () => {
@@ -20,6 +21,22 @@ test("dataset includes source events and golden queries", () => {
 test("token counting is stable for benchmark summaries", () => {
   assert.equal(tokenCount("Robot R-17 goes to Dock 4."), 6);
   assert.equal(tokenCount(""), 0);
+});
+
+test("iteration counts must be positive integers", () => {
+  assert.equal(validateIterations("5", "--iterations"), 5);
+  assert.throws(() => validateIterations("0", "--iterations"), {
+    message: "--iterations must be a positive integer",
+  });
+  assert.throws(() => validateIterations("-1", "--iterations"), {
+    message: "--iterations must be a positive integer",
+  });
+  assert.throws(() => validateIterations("1.5", "--iterations"), {
+    message: "--iterations must be a positive integer",
+  });
+  assert.throws(() => runBenchmark({ iterations: Number.NaN }), {
+    message: "benchmark iterations must be a positive integer",
+  });
 });
 
 test("scoring rejects stale facts and prohibited credentials", () => {

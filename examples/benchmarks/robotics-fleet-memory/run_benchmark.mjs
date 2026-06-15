@@ -70,6 +70,14 @@ function rounded(value, digits = 3) {
   return Number(value.toFixed(digits));
 }
 
+function validateIterations(value, source) {
+  const iterations = Number(value);
+  if (!Number.isInteger(iterations) || iterations <= 0) {
+    throw new Error(`${source} must be a positive integer`);
+  }
+  return iterations;
+}
+
 function loadDataset(datasetPath = DEFAULT_DATASET) {
   return JSON.parse(fs.readFileSync(datasetPath, "utf8"));
 }
@@ -279,8 +287,10 @@ function runBackend(factory, dataset, iterations) {
 
 function runBenchmark(options = {}) {
   const dataset = loadDataset(options.datasetPath);
-  const iterations =
-    options.iterations ?? Number(process.env.BENCHMARK_ITERATIONS ?? 50);
+  const iterations = validateIterations(
+    options.iterations ?? process.env.BENCHMARK_ITERATIONS ?? 50,
+    "benchmark iterations",
+  );
   const backends = BACKENDS.map((factory) =>
     runBackend(factory, dataset, iterations),
   );
@@ -367,7 +377,7 @@ function parseArgs(argv) {
       args.markdownPath = path.resolve(argv[index + 1]);
       index += 1;
     } else if (arg === "--iterations") {
-      args.iterations = Number(argv[index + 1]);
+      args.iterations = validateIterations(argv[index + 1], "--iterations");
       index += 1;
     }
   }
@@ -411,4 +421,5 @@ export {
   runBenchmark,
   scoreContext,
   tokenCount,
+  validateIterations,
 };

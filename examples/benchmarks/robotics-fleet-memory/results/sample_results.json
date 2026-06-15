@@ -1,7 +1,7 @@
 {
   "benchmark": "robotics_fleet_memory",
   "datasetVersion": "2026-06-15",
-  "generatedAt": "2026-06-15T09:31:38.609Z",
+  "generatedAt": "2026-06-15T09:40:43.026Z",
   "iterationsPerQuery": 50,
   "eventCount": 12,
   "queryCount": 7,
@@ -16,7 +16,7 @@
       "retrievalAccuracy": 0.143,
       "staleConflictRate": 0.714,
       "secretLeakRate": 0.143,
-      "p95LatencyMs": 0.6354,
+      "p95LatencyMs": 0.9139,
       "queryResults": [
         {
           "id": "r17-current-assignment",
@@ -106,7 +106,7 @@
       "retrievalAccuracy": 0.571,
       "staleConflictRate": 0.143,
       "secretLeakRate": 0,
-      "p95LatencyMs": 0.353,
+      "p95LatencyMs": 0.2101,
       "queryResults": [
         {
           "id": "r17-current-assignment",
@@ -185,7 +185,7 @@
       "retrievalAccuracy": 1,
       "staleConflictRate": 0,
       "secretLeakRate": 0,
-      "p95LatencyMs": 0.3195,
+      "p95LatencyMs": 0.1926,
       "queryResults": [
         {
           "id": "r17-current-assignment",
