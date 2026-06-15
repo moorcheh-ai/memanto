@@ -22,6 +22,16 @@ class MemantoLayer(BaseMemoryLayer):
         self.client = MoorchehClient(api_key=api_key)
         self.created_namespaces = set()
 
+        # Clean up any leftover test namespaces on startup
+        try:
+            ns_list = self.client.namespaces.list().get('namespaces', [])
+            for ns in ns_list:
+                name = ns.get('namespace_name', '')
+                if name.startswith('test_user_'):
+                    self.client.namespaces.delete(namespace_name=name)
+        except Exception:
+            pass
+
         # Simple token estimation for benchmark purposes if SDK doesn't provide it
         import tiktoken
         self.encoder = tiktoken.get_encoding("cl100k_base")
@@ -47,10 +57,21 @@ class MemantoLayer(BaseMemoryLayer):
         start_time = time.time()
         
         res = self.client.answer.generate(query=query, namespace=user_id)
-        context = res.get('answer', '') if isinstance(res, dict) else getattr(res, 'answer', '')
+        if isinstance(res, dict):
+            context = res.get("answer")
+        else:
+            context = getattr(res, "answer", None)
+        if not isinstance(context, str):
+            raise RuntimeError(f"Unexpected moorcheh answer.generate response type: {type(res).__name__}")
             
         latency = time.time() - start_time
         return context, {"latency": latency, "tokens": self._count_tokens(context)}
+
+    def cleanup(self, user_id: str):
+        try:
+            self.client.namespaces.delete(namespace_name=user_id)
+        except Exception:
+            pass
 
 class Mem0Layer(BaseMemoryLayer):
     def __init__(self):

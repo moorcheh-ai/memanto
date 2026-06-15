@@ -18,33 +18,37 @@ def run_evaluation(layer_name: str, layer, dataset: list, expected_state: str, j
     latencies = []
     total_tokens_ingested = 0
     
-    print(f"[{layer_name}] Starting ingestion...")
-    # 1. Ingest Data
-    for msg in dataset[:-1]: # All except the last query
-        metrics = layer.add_memory(user_id=user_id, content=msg["content"])
-        latencies.append(metrics["latency"])
-        total_tokens_ingested += metrics["tokens"]
+    try:
+        print(f"[{layer_name}] Starting ingestion...")
+        # 1. Ingest Data
+        for msg in dataset[:-1]: # All except the last query
+            metrics = layer.add_memory(user_id=user_id, content=msg["content"])
+            latencies.append(metrics["latency"])
+            total_tokens_ingested += metrics["tokens"]
+            
+        print(f"[{layer_name}] Ingestion complete. Retrieving memory...")
+            
+        # 2. Retrieve Memory
+        query = dataset[-1]["content"]
+        retrieved_context, retrieve_metrics = layer.retrieve_memory(user_id=user_id, query=query)
+        latencies.append(retrieve_metrics["latency"])
         
-    print(f"[{layer_name}] Ingestion complete. Retrieving memory...")
+        # 3. Judge Accuracy
+        print(f"[{layer_name}] Judging retrieval accuracy...")
+        evaluation = judge.evaluate(expected_state=expected_state, retrieved_context=retrieved_context)
         
-    # 2. Retrieve Memory
-    query = dataset[-1]["content"]
-    retrieved_context, retrieve_metrics = layer.retrieve_memory(user_id=user_id, query=query)
-    latencies.append(retrieve_metrics["latency"])
-    
-    # 3. Judge Accuracy
-    print(f"[{layer_name}] Judging retrieval accuracy...")
-    evaluation = judge.evaluate(expected_state=expected_state, retrieved_context=retrieved_context)
-    
-    return {
-        "Layer": layer_name,
-        "Total Tokens Ingested": total_tokens_ingested,
-        "Tokens Retrieved": retrieve_metrics["tokens"],
-        "p95 Latency (s)": round(np.percentile(latencies, 95), 3),
-        "Accuracy Score": evaluation.get("score") if evaluation.get("score") is not None else "N/A",
-        "Judge Reasoning": evaluation.get("reasoning", "N/A"),
-        "Context Snippet": retrieved_context[:100] + "..." if len(retrieved_context) > 100 else retrieved_context
-    }
+        return {
+            "Layer": layer_name,
+            "Total Tokens Ingested": total_tokens_ingested,
+            "Tokens Retrieved": retrieve_metrics["tokens"],
+            "p95 Latency (s)": round(np.percentile(latencies, 95), 3),
+            "Accuracy Score": evaluation.get("score") if evaluation.get("score") is not None else "N/A",
+            "Judge Reasoning": evaluation.get("reasoning", "N/A"),
+            "Context Snippet": (retrieved_context[:100].encode('ascii', errors='ignore').decode('ascii') + "...") if len(retrieved_context) > 100 else retrieved_context.encode('ascii', errors='ignore').decode('ascii')
+        }
+    finally:
+        if hasattr(layer, 'cleanup'):
+            layer.cleanup(user_id)
 
 def main():
     console = Console()
@@ -91,7 +95,8 @@ def main():
     
     console.print("\n[bold]Judge Reasoning Notes:[/bold]")
     for r in results:
-        console.print(f"- [bold cyan]{r['Layer']}[/bold cyan]: {r['Judge Reasoning']}")
+        reasoning_clean = r['Judge Reasoning'].encode('ascii', errors='ignore').decode('ascii')
+        console.print(f"- [bold cyan]{r['Layer']}[/bold cyan]: {reasoning_clean}")
         console.print(f"  [dim]Snippet: {r['Context Snippet']}[/dim]")
 
 if __name__ == "__main__":
