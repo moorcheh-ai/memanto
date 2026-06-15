@@ -331,9 +331,7 @@ async def extract_memories_from_conversation(
         candidates = await asyncio.to_thread(
             extraction_service.extract,
             namespace=session.namespace,
-            messages=[
-                message.model_dump(mode="json") for message in request.messages
-            ],
+            messages=[message.model_dump(mode="json") for message in request.messages],
             max_memories=request.max_memories,
             ai_model=request.ai_model,
         )
@@ -377,9 +375,7 @@ async def extract_memories_from_conversation(
         for index, record in enumerate(memory_records):
             batch_results = result.get("results", [])
             memory_id = (
-                batch_results[index].get("id")
-                if index < len(batch_results)
-                else None
+                batch_results[index].get("id") if index < len(batch_results) else None
             )
             await asyncio.to_thread(
                 session_service.log_memory_to_session_summary,

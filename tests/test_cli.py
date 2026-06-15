@@ -393,7 +393,9 @@ class TestMEMANTOCLI:
         assert "Dry run" in result.stdout
         assert "PR summary preference" in result.stdout
         mock_all_clients.extract_memories_from_conversation.assert_called_once()
-        call_kwargs = mock_all_clients.extract_memories_from_conversation.call_args.kwargs
+        call_kwargs = (
+            mock_all_clients.extract_memories_from_conversation.call_args.kwargs
+        )
         assert call_kwargs["dry_run"] is True
         assert call_kwargs["messages"][0]["role"] == "user"
 
