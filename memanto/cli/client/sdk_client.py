@@ -596,6 +596,14 @@ class SdkClient:
                 f"Memory '{memory_id}' was not found for agent '{agent_id}'"
             )
 
+        # Log deletion to local session Markdown summary
+        if self.session_token:
+            self._get_session_service().log_memory_deletion_to_session_summary(
+                agent_id=agent_id,
+                session_id=session.session_id,
+                memory_id=memory_id,
+            )
+
         return {
             "status": "deleted",
             "agent_id": agent_id,
