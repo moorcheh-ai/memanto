@@ -606,7 +606,9 @@ class TestMEMANTOAPI:
         assert response.json()["successful"] == 2
 
     @pytest.mark.asyncio
-    async def test_delete_memory_with_session(self, client, auth_headers, mock_moorcheh):
+    async def test_delete_memory_with_session(
+        self, client, auth_headers, mock_moorcheh
+    ):
         """Test deleting one memory from the active agent namespace."""
         await client.post(
             "/api/v2/agents",
