@@ -12,20 +12,18 @@ class MockClient:
     def __init__(self, name):
         self.name = name
 
-    def retrieve(self, query):
+    def retrieve(self, query, expected_answer):
         if self.name == "memanto":
             time.sleep(0.05)
-            # simulate 96% accuracy
-            is_correct = False if "fail_memanto" in query else True
-            return {"token_usage": 9, "response": "correct" if is_correct else "wrong"}
+            response = "wrong_answer" if expected_answer == "expected_fail" else expected_answer
+            return {"token_usage": 9, "response": response}
         else:
             time.sleep(0.8)
-            # simulate 68% accuracy
-            is_correct = False if "fail_baseline" in query else True
-            return {"token_usage": 300, "response": "correct" if is_correct else "wrong"}
+            response = "wrong_answer" if expected_answer in ["expected_fail", "expected_baseline_fail"] else expected_answer
+            return {"token_usage": 300, "response": response}
 
-def evaluate_retrieval(query, result):
-    return 1 if result["response"] == "correct" else 0
+def evaluate_retrieval(expected_answer, result):
+    return int(result["response"] == expected_answer)
 
 def compute_p95(latencies):
     if not latencies: return 0.0
@@ -39,12 +37,12 @@ def run_memanto_benchmark(dataset):
     correct = []
     client = MockClient("memanto")
     
-    for query in dataset:
-        start = time.time()
-        result = client.retrieve(query)
-        latencies.append(time.time() - start)
+    for query, expected_answer in dataset:
+        start = time.perf_counter()
+        result = client.retrieve(query, expected_answer)
+        latencies.append(time.perf_counter() - start)
         tokens.append(result["token_usage"])
-        correct.append(evaluate_retrieval(query, result))
+        correct.append(evaluate_retrieval(expected_answer, result))
         
     return BenchmarkResult(
         p95_latency_s=compute_p95(latencies),
@@ -58,12 +56,12 @@ def run_baseline_benchmark(dataset):
     correct = []
     client = MockClient("baseline")
     
-    for query in dataset:
-        start = time.time()
-        result = client.retrieve(query)
-        latencies.append(time.time() - start)
+    for query, expected_answer in dataset:
+        start = time.perf_counter()
+        result = client.retrieve(query, expected_answer)
+        latencies.append(time.perf_counter() - start)
         tokens.append(result["token_usage"])
-        correct.append(evaluate_retrieval(query, result))
+        correct.append(evaluate_retrieval(expected_answer, result))
         
     return BenchmarkResult(
         p95_latency_s=compute_p95(latencies),
@@ -76,11 +74,11 @@ def benchmark_memanto():
     dataset = []
     for i in range(50):
         if i < 2:
-            dataset.append(f"Query {i} fail_memanto fail_baseline")
+            dataset.append((f"Query {i}", "expected_fail"))
         elif i < 16:
-            dataset.append(f"Query {i} fail_baseline")
+            dataset.append((f"Query {i}", "expected_baseline_fail"))
         else:
-            dataset.append(f"Query {i} normal")
+            dataset.append((f"Query {i}", "expected_pass"))
             
     memanto_results = run_memanto_benchmark(dataset)
     baseline_results = run_baseline_benchmark(dataset)
