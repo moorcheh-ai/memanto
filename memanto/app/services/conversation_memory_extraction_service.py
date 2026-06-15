@@ -34,6 +34,8 @@ class ConversationMemoryExtractionService:
     ) -> list[dict[str, Any]]:
         """Return normalized memory candidates extracted from messages."""
 
+        from memanto.app.config import settings
+
         self._validate_messages(messages)
         max_memories = max(1, min(max_memories, self.MAX_MEMORIES))
 
@@ -42,7 +44,7 @@ class ConversationMemoryExtractionService:
             query=self._conversation_text(messages),
             top_k=1,
             temperature=0,
-            ai_model=ai_model,
+            ai_model=ai_model or settings.ANSWER_MODEL,
             kiosk_mode=False,
             header_prompt=self._header_prompt(max_memories),
             footer_prompt=self._footer_prompt(),
