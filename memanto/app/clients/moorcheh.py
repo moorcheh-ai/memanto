@@ -53,7 +53,10 @@ class MoorchehClientSingleton:
             if self._client is None:
                 from memanto.app.clients.onprem import OnPremClient
 
-                self._client = OnPremClient(base_url=settings.MOORCHEH_ONPREM_URL)
+                self._client = OnPremClient(
+                    base_url=settings.MOORCHEH_ONPREM_URL,
+                    timeout=settings.MOORCHEH_ONPREM_TIMEOUT,
+                )
             return self._client
 
         # Cloud path
@@ -71,7 +74,8 @@ class MoorchehClientSingleton:
                 from memanto.app.clients.onprem import AsyncOnPremClient
 
                 self._async_client = AsyncOnPremClient(
-                    base_url=settings.MOORCHEH_ONPREM_URL
+                    base_url=settings.MOORCHEH_ONPREM_URL,
+                    timeout=settings.MOORCHEH_ONPREM_TIMEOUT,
                 )
             return self._async_client
 

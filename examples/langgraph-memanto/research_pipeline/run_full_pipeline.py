@@ -14,8 +14,7 @@ import warnings
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from dotenv import load_dotenv
-
-from .langgraph_memanto.graph import run_research
+from research_pipeline.pipeline.graph import run_research
 
 warnings.filterwarnings("ignore", module="langgraph")
 

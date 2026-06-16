@@ -1500,6 +1500,23 @@
             outline-offset: 1px;
         }
 
+        .hh-cell.stale {
+            position: relative;
+        }
+
+        .hh-cell.stale::after {
+            content: '';
+            position: absolute;
+            top: -2px;
+            right: -2px;
+            width: 5px;
+            height: 5px;
+            border-radius: 50%;
+            background: var(--error);
+            box-shadow: 0 0 0 1px rgba(13, 17, 23, 0.85);
+            pointer-events: none;
+        }
+
         .hh-legend {
             display: flex;
             align-items: center;
@@ -1658,8 +1675,207 @@
             color: var(--text-dim);
             font-weight: 400;
         }
+
+        .hh-summary-panel {
+            position: sticky;
+            top: 12px;
+            background: var(--bg-surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            display: flex;
+            flex-direction: column;
+            max-height: 75vh;
+            overflow: hidden;
+        }
+
+        .hh-summary-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 14px;
+            border-bottom: 1px solid var(--border);
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            background: var(--bg-card);
+        }
+
+        .hh-summary-close {
+            background: transparent;
+            border: none;
+            color: var(--text-dim);
+            font-size: 20px;
+            line-height: 1;
+            cursor: pointer;
+            padding: 0 6px;
+            border-radius: 4px;
+        }
+
+        .hh-summary-close:hover {
+            color: var(--text-primary);
+            background: var(--bg-card);
+        }
+
+        .hh-summary-action {
+            background: transparent;
+            border: 1px solid var(--border);
+            color: var(--text-secondary);
+            font-size: 10px;
+            font-weight: 600;
+            letter-spacing: 0.3px;
+            text-transform: uppercase;
+            line-height: 1;
+            cursor: pointer;
+            padding: 5px 8px;
+            border-radius: 4px;
+        }
+
+        .hh-summary-action:hover:not(:disabled) {
+            color: var(--accent);
+            border-color: var(--accent);
+        }
+
+        .hh-summary-action:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .hh-summary-body {
+            flex: 1;
+            overflow-y: auto;
+            padding: 12px 14px;
+        }
+
+        .hh-summary-content {
+            font-family: var(--font-mono);
+            font-size: 11px;
+            line-height: 1.55;
+            color: var(--text-secondary);
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            margin: 0;
+        }
+
+        .hh-summary-md {
+            font-size: 13px;
+            line-height: 1.6;
+            color: var(--text-secondary);
+            word-wrap: break-word;
+        }
+
+        .hh-summary-md h1,
+        .hh-summary-md h2,
+        .hh-summary-md h3,
+        .hh-summary-md h4 {
+            color: var(--text-primary);
+            font-weight: 700;
+            margin: 16px 0 8px;
+            line-height: 1.3;
+        }
+
+        .hh-summary-md h1 { font-size: 16px; }
+        .hh-summary-md h2 { font-size: 14px; color: var(--accent); }
+        .hh-summary-md h3 { font-size: 13px; }
+        .hh-summary-md h4 { font-size: 12px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.4px; }
+
+        .hh-summary-md p {
+            margin: 0 0 10px;
+        }
+
+        .hh-summary-md ul,
+        .hh-summary-md ol {
+            margin: 0 0 10px;
+            padding-left: 20px;
+        }
+
+        .hh-summary-md li {
+            margin-bottom: 4px;
+        }
+
+        .hh-summary-md strong {
+            color: var(--text-primary);
+            font-weight: 700;
+        }
+
+        .hh-summary-md em {
+            color: var(--text-dim);
+            font-style: italic;
+        }
+
+        .hh-summary-md a {
+            color: var(--accent);
+            text-decoration: none;
+        }
+
+        .hh-summary-md a:hover {
+            text-decoration: underline;
+        }
+
+        .hh-summary-md hr {
+            border: none;
+            border-top: 1px solid var(--border);
+            margin: 16px 0;
+        }
+
+        .hh-summary-md code {
+            font-family: var(--font-mono);
+            font-size: 11px;
+            background: var(--bg-card);
+            color: var(--accent);
+            padding: 1px 5px;
+            border-radius: 3px;
+        }
+
+        .hh-summary-md pre {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-xs);
+            padding: 10px 12px;
+            overflow-x: auto;
+            margin: 0 0 12px;
+        }
+
+        .hh-summary-md pre code {
+            background: transparent;
+            color: var(--text-secondary);
+            padding: 0;
+            font-size: 11px;
+            line-height: 1.45;
+        }
+
+        .hh-summary-md blockquote {
+            border-left: 3px solid var(--accent);
+            padding: 4px 12px;
+            margin: 0 0 10px;
+            color: var(--text-dim);
+            background: var(--bg-card);
+        }
+
+        .hh-summary-md table {
+            border-collapse: collapse;
+            width: 100%;
+            margin: 0 0 12px;
+            font-size: 12px;
+        }
+
+        .hh-summary-md th,
+        .hh-summary-md td {
+            border: 1px solid var(--border);
+            padding: 6px 8px;
+            text-align: left;
+        }
+
+        .hh-summary-md th {
+            background: var(--bg-card);
+            color: var(--text-primary);
+            font-weight: 600;
+        }
     </style>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked@12.0.0/marked.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/dompurify@3.0.11/dist/purify.min.js"></script>
 </head>
 
 <body>
@@ -1937,6 +2153,14 @@
                     <h2>Conflict Resolution</h2>
                     <p>Review and resolve contradicting memories</p>
                 </div>
+                <div style="display:flex;gap:10px;margin-bottom:18px;align-items:center;flex-wrap:wrap">
+                    <button class="btn btn-primary btn-sm" id="btnDetectConflicts" onclick="detectConflictsNow()">⚡ Detect Conflicts Now</button>
+                    <button class="btn btn-secondary btn-sm" onclick="loadConflicts()">Refresh</button>
+                    <div style="margin-left:auto;display:flex;align-items:center;gap:8px">
+                        <label for="conflictsDateInput" style="color:var(--text-dim);font-size:13px">Date</label>
+                        <input type="date" id="conflictsDateInput" onchange="loadConflicts()" style="background:var(--bg-secondary);border:1px solid var(--border);color:var(--text);padding:6px 10px;border-radius:6px;font-family:inherit;font-size:13px">
+                    </div>
+                </div>
                 <div id="conflictsContent">
                     <div class="loading-overlay"><span class="spinner"></span> Loading conflicts...</div>
                 </div>
@@ -2051,6 +2275,54 @@
             setTimeout(() => el.remove(), 4000);
         }
 
+        // Confirm dialog — themed replacement for browser ``confirm()``. Returns
+        // a Promise<boolean>. Callers should ``await confirmDialog({...})``.
+        // ``danger: true`` styles the primary action with ``btn-danger``.
+        function confirmDialog({ title = 'Confirm', message = '', confirmLabel = 'Confirm', cancelLabel = 'Cancel', danger = false } = {}) {
+            return new Promise(resolve => {
+                const backdrop = document.createElement('div');
+                backdrop.className = 'modal-backdrop';
+                const primaryCls = danger ? 'btn btn-danger' : 'btn btn-primary';
+                backdrop.innerHTML = `<div class="modal" style="width:min(440px,90vw)">
+                    <div class="modal-header">
+                        <h3>${escHtml(title)}</h3>
+                        <button class="modal-close" data-act="cancel">×</button>
+                    </div>
+                    <p style="color:var(--text-secondary);line-height:1.6;margin-bottom:20px">${escHtml(message)}</p>
+                    <div style="display:flex;justify-content:flex-end;gap:8px">
+                        <button class="btn btn-secondary" data-act="cancel">${escHtml(cancelLabel)}</button>
+                        <button class="${primaryCls}" data-act="confirm">${escHtml(confirmLabel)}</button>
+                    </div>
+                </div>`;
+                const close = (result) => {
+                    document.removeEventListener('keydown', onKey);
+                    backdrop.remove();
+                    resolve(result);
+                };
+                const onKey = (e) => {
+                    if (e.key === 'Escape') close(false);
+                    else if (e.key === 'Enter') close(true);
+                };
+                backdrop.addEventListener('click', (e) => {
+                    // Click on the backdrop itself (outside the .modal) cancels.
+                    if (e.target === backdrop) { close(false); return; }
+                    // Button delegation: walk up to nearest [data-act] in case
+                    // the click landed on inner text/icon rather than the
+                    // <button> element.
+                    const actEl = e.target.closest && e.target.closest('[data-act]');
+                    if (!actEl) return;
+                    const act = actEl.getAttribute('data-act');
+                    if (act === 'cancel') close(false);
+                    else if (act === 'confirm') close(true);
+                });
+                document.addEventListener('keydown', onKey);
+                document.body.appendChild(backdrop);
+                // Focus the primary action so Enter just works
+                const btn = backdrop.querySelector('[data-act="confirm"]');
+                if (btn) btn.focus();
+            });
+        }
+
         // Confidence class
         function confClass(c) { const v = parseFloat(c) || 0; return v >= 0.8 ? 'conf-high' : v >= 0.5 ? 'conf-med' : 'conf-low'; }
         function confBadge(c) { const v = parseFloat(c) || 0; return `<span class="${confClass(c)}" style="font-weight:600">${v.toFixed(2)}</span>`; }
@@ -2142,8 +2414,6 @@
             loadConflictBadge();
         }
 
-        // On-prem disables features the Moorcheh on-prem server doesn't expose
-        // (LLM answer, file upload). Hide those affordances; cloud is unchanged.
         function isOnPrem() {
             return !!(S.config && S.config.backend === 'on-prem');
         }
@@ -2153,21 +2423,8 @@
         }
 
         function applyBackendVisibility() {
-            const onPrem = isOnPrem();
-            const answerTab = document.querySelector('#pgTabs .tab[data-tab="ask"]');
-            const uploadTab = document.querySelector('#pgTabs .tab[data-tab="upload"]');
-            const answerPanel = document.getElementById('tab-ask');
-            const uploadPanel = document.getElementById('tab-upload');
-            [answerTab, uploadTab, answerPanel, uploadPanel].forEach(el => {
-                if (el) el.style.display = onPrem ? 'none' : '';
-            });
-            // If the previously-active tab is now hidden, fall back to Remember.
-            if (onPrem) {
-                const activeTab = document.querySelector('#pgTabs .tab.active');
-                if (activeTab && (activeTab.dataset.tab === 'ask' || activeTab.dataset.tab === 'upload')) {
-                    document.querySelector('#pgTabs .tab[data-tab="remember"]').click();
-                }
-            }
+            // Both backends expose the same Playground features (answer, upload,
+            // recall, remember). Reserved for future backend-specific affordances.
         }
 
         function updateSidebarStatus() {
@@ -2195,8 +2452,16 @@
             try {
                 const data = await api('GET', '/api/ui/conflicts');
                 const badge = document.getElementById('conflictBadge');
+                await fetchConflictScans();
+                await fetchRecentMemories();
+                const staleToday = staleMemCountForDay(todayKey());
                 if (data.count > 0) {
                     badge.textContent = data.count;
+                    badge.title = `${data.count} unresolved conflict(s) today`;
+                    badge.style.display = 'inline-flex';
+                } else if (staleToday > 0) {
+                    badge.textContent = '!';
+                    badge.title = `${staleToday} ${staleToday === 1 ? 'memory' : 'memories'} stored since the last conflict scan — run Detect Conflicts`;
                     badge.style.display = 'inline-flex';
                 } else {
                     badge.style.display = 'none';
@@ -2330,7 +2595,14 @@
         ${isOnPrem()
             ? `<div class="card"><div class="card-label">Backend</div><div class="card-value" style="font-size:14px"><span style="color:var(--success)">On-Prem</span></div><div class="card-sub">${escHtml(S.config?.on_prem?.url || 'http://localhost:8080')}</div></div>`
             : `<div class="card"><div class="card-label">API Key</div><div class="card-value" style="font-size:14px">${S.config?.api_key_configured ? '<span style="color:var(--success)">✓ Configured</span>' : '<span style="color:var(--error)">✗ Missing</span>'}</div><div class="card-sub">${S.config?.api_key_preview || ''}</div></div>`}
+        <div class="card" id="cardTodaySummary" style="cursor:pointer" onclick="openHistoryForToday()" title="View or generate today's summary">
+            <div class="card-label">Today's Summary</div>
+            <div class="card-value" style="font-size:14px;color:var(--text-dim)">…</div>
+            <div class="card-sub">checking…</div>
+        </div>
     `;
+            // Async probe — show whether today's summary already exists
+            if (S.agentId) refreshTodaySummaryCard();
 
             if (S.agentId) {
                 try {
@@ -2369,6 +2641,66 @@
             }
         }
 
+        // ----------------------------------------------------------------
+        // Today's-summary card (dashboard) + cross-page navigation helper
+        // ----------------------------------------------------------------
+        function todayKey() {
+            const d = new Date();
+            const m = String(d.getMonth() + 1).padStart(2, '0');
+            const day = String(d.getDate()).padStart(2, '0');
+            return `${d.getFullYear()}-${m}-${day}`;
+        }
+
+        async function refreshTodaySummaryCard() {
+            const card = document.getElementById('cardTodaySummary');
+            if (!card) return;
+            const valueEl = card.querySelector('.card-value');
+            const subEl = card.querySelector('.card-sub');
+            try {
+                const res = await api('GET', `/api/ui/daily-summary?date=${todayKey()}`);
+                if (res.exists) {
+                    valueEl.style.color = 'var(--success)';
+                    valueEl.style.fontSize = '14px';
+                    valueEl.innerHTML = '<span style="color:var(--success)">✓ Available</span>';
+                    subEl.textContent = "Click to view today's summary";
+                } else {
+                    valueEl.style.color = 'var(--accent)';
+                    valueEl.style.fontSize = '14px';
+                    valueEl.innerHTML = '<span style="color:var(--accent)">Generate</span>';
+                    subEl.textContent = "No summary yet — click to create";
+                }
+            } catch (e) {
+                valueEl.textContent = '—';
+                subEl.textContent = 'Unavailable';
+            }
+        }
+
+        async function openHistoryForToday() {
+            openHistoryForDay(todayKey());
+        }
+
+        async function goToConflictsForDay(key) {
+            // Seed the date input before navigation so loadConflicts()'s
+            // initial pass picks up the selected day (avoids a race where
+            // a today-scoped fetch overwrites the selected-day results).
+            const input = document.getElementById('conflictsDateInput');
+            if (input) input.value = key || todayKey();
+            goToPage('conflicts');
+            await detectConflictsNow();
+        }
+
+        async function openHistoryForDay(key) {
+            S.historyFilter = key;
+            S.summaryOpen = true;
+            const wasLoaded = !!S._historyLoaded;
+            goToPage('history');
+            // If history is already loaded, re-render now so the summary
+            // tab appears immediately (the nav handler doesn't reload).
+            // Otherwise the in-flight loadHistory() will renderHistory()
+            // for us — it now preserves the filter/summaryOpen state.
+            if (wasLoaded) renderHistory();
+        }
+
         // ================================================================
         // PLAYGROUND - REMEMBER
         // ================================================================
@@ -2395,6 +2727,7 @@
                 document.getElementById('remContent').value = '';
                 document.getElementById('remTitle').value = '';
                 document.getElementById('remTags').value = '';
+                loadConflictBadge();
             } catch (e) { toast('Failed: ' + e.message, 'error'); }
             btn.disabled = false; btn.innerHTML = 'Store Memory';
         }
@@ -2445,7 +2778,7 @@
                 const res = await api('POST', `/api/v2/agents/${S.agentId}/recall`, body);
                 const mems = res.memories || [];
                 if (!mems.length) { box.innerHTML = '<p style="color:var(--text-dim);padding:20px">No memories found</p>'; return; }
-                box.innerHTML = buildMemoryTable(mems);
+                box.innerHTML = buildMemoryTable(mems, true);
             } catch (e) { box.innerHTML = `<p style="color:var(--error);padding:20px">Error: ${e.message}</p>`; }
         }
 
@@ -2593,13 +2926,52 @@
             <td style="font-size:11px">${escHtml(trunc(tags, 40))}</td>
         </tr>`;
                 if (expandable) {
-                    html += `<tr class="expand-row" id="exp-${i}"><td colspan="8"><div class="expand-content">${escHtml(m.content || m.text || 'No content')}\n\nID: ${m.id || '—'}\nScore: ${m.score ?? '—'}\nSource: ${m.source || '—'}\nUpdated: ${fmtDate(m.updated_at)}</div></td></tr>`;
+                    const memId = m.id ? String(m.id) : '';
+                    const forgetBtn = memId
+                        ? `<button class="btn btn-danger btn-sm" onclick="forgetMemory('${escHtml(memId)}', this, event)">Forget</button>`
+                        : '<span style="font-size:11px;color:var(--text-dim)">No ID — cannot forget</span>';
+                    html += `<tr class="expand-row" id="exp-${i}"><td colspan="8"><div class="expand-content">${escHtml(m.content || m.text || 'No content')}\n\nID: ${memId || '—'}\nScore: ${m.score ?? '—'}\nSource: ${m.source || '—'}\nUpdated: ${fmtDate(m.updated_at)}</div><div style="padding:8px 16px;display:flex;justify-content:flex-end">${forgetBtn}</div></td></tr>`;
                 }
             });
             html += '</tbody></table>';
             return html;
         }
         function toggleRow(id) { const r = document.getElementById(id); if (r) r.classList.toggle('open'); }
+
+        // Delete a single memory from the active agent. Mirrors the CLI
+        // ``memanto forget`` command and the ``DELETE /api/v2/agents/{id}/
+        // memories/{mid}`` REST route. Removes both rows (data + expand) from
+        // the DOM on success; also drops the entry from ``S.memories`` /
+        // ``S.history`` so explorer/history views stay consistent without a
+        // full refetch.
+        async function forgetMemory(memoryId, btn, ev) {
+            if (ev) { ev.stopPropagation(); ev.preventDefault(); }
+            if (!S.agentId || !S.token) { toast('No active agent/session', 'error'); return; }
+            if (!memoryId) { toast('Memory ID missing', 'error'); return; }
+            const ok = await confirmDialog({
+                title: 'Forget memory?',
+                message: `Memory '${memoryId}' will be permanently deleted from agent '${S.agentId}'. This cannot be undone.`,
+                confirmLabel: 'Forget',
+                cancelLabel: 'Cancel',
+                danger: true,
+            });
+            if (!ok) return;
+            const orig = btn ? btn.innerHTML : null;
+            if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Forgetting...'; }
+            try {
+                await api('DELETE', `/api/v2/agents/${S.agentId}/memories/${encodeURIComponent(memoryId)}`);
+                toast(`Forgot memory ${memoryId}`);
+                const expandRow = btn ? btn.closest('tr.expand-row') : null;
+                const dataRow = expandRow ? expandRow.previousElementSibling : null;
+                if (dataRow) dataRow.remove();
+                if (expandRow) expandRow.remove();
+                if (Array.isArray(S.memories)) S.memories = S.memories.filter(m => String(m.id) !== String(memoryId));
+                if (Array.isArray(S.history)) S.history = S.history.filter(m => String(m.id) !== String(memoryId));
+            } catch (e) {
+                toast('Failed to forget memory: ' + e.message, 'error');
+                if (btn) { btn.disabled = false; btn.innerHTML = orig || 'Forget'; }
+            }
+        }
 
         // ================================================================
         // HISTORY (GitHub-style contribution graph + timeline)
@@ -2630,6 +3002,40 @@
             return 4;
         }
 
+        // How many of a day's memories were stored after the last conflict
+        // scan for that day (0 = nothing unreviewed). A day with memories but
+        // no scan counts all of them as unreviewed. Reads S.history +
+        // S.conflictScans, so callers must populate both first.
+        function staleMemCountForDay(key) {
+            const mems = (S.history || []).filter(m => {
+                const d = parseMemDate(m.created_at);
+                return d && dayKey(d) === key;
+            });
+            if (!mems.length) return 0;
+            const scan = (S.conflictScans || {})[key];
+            const scanned = scan ? Date.parse(scan.scanned_at) : NaN;
+            if (isNaN(scanned)) return mems.length;
+            return mems.filter(m => {
+                const d = parseMemDate(m.created_at);
+                return d && d.getTime() > scanned;
+            }).length;
+        }
+
+        async function fetchConflictScans() {
+            try {
+                const r = await api('GET', '/api/ui/conflict-scans');
+                S.conflictScans = r.scans || {};
+            } catch { S.conflictScans = S.conflictScans || {}; }
+        }
+
+        async function fetchRecentMemories() {
+            if (!S.agentId || !S.token) return;
+            try {
+                const res = await api('POST', `/api/v2/agents/${S.agentId}/recall/recent`, {});
+                S.history = res.memories || [];
+            } catch { }
+        }
+
         async function loadHistory() {
             const box = document.getElementById('historyContent');
             if (!S.agentId || !S.token) {
@@ -2638,9 +3044,11 @@
             }
             box.innerHTML = '<div class="loading-overlay"><span class="spinner"></span> Loading history...</div>';
             try {
-                const res = await api('POST', `/api/v2/agents/${S.agentId}/recall/recent`, { limit: 100 });
+                const res = await api('POST', `/api/v2/agents/${S.agentId}/recall/recent`, {});
                 S.history = res.memories || [];
-                S.historyFilter = null;
+                await fetchConflictScans();
+                // Preserve any pre-set filter/summary state (e.g. dashboard
+                // navigated here with a specific day pre-selected).
                 renderHistory();
             } catch (e) {
                 box.innerHTML = `<p style="color:var(--error);padding:20px">Error: ${e.message}</p>`;
@@ -2708,7 +3116,14 @@
                 return monthThis !== monthPrev ? monthNames[monthThis] : '';
             });
 
-            const headlineCount = [...byDay.values()].reduce((s, v) => s + v.length, 0);
+            // Only count memories whose day falls inside the displayed 53-week
+            // window — byDay holds the full S.history (now unbounded), so an
+            // unfiltered reduce would mislabel the "in the last year" headline.
+            const startKey = dayKey(startDate);
+            const endKey = dayKey(endDate);
+            const headlineCount = [...byDay.entries()]
+                .filter(([k]) => k >= startKey && k <= endKey)
+                .reduce((s, [, v]) => s + v.length, 0);
 
             let html = '';
             html += `<div class="hh-stats">
@@ -2720,15 +3135,23 @@
 
             html += `<div class="panel">
                 <div class="panel-title" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
-                    <span>${headlineCount} ${headlineCount === 1 ? 'memory' : 'memories'} in the last year <span class="hh-cap-note">(showing latest ${total} fetched; API capped at 100)</span></span>
+                    <span>${headlineCount} ${headlineCount === 1 ? 'memory' : 'memories'} in the last year</span>
                 </div>
                 <div class="hh-container">
                     <div class="hh-months"><span></span>${monthLabels.map(l => `<span>${l}</span>`).join('')}</div>
                     <div class="hh-grid-wrap">
                         <div class="hh-day-labels"><span></span><span>Mon</span><span></span><span>Wed</span><span></span><span>Fri</span><span></span></div>
-                        <div class="hh-weeks">${weeks.map(week => week.map(d => `<div class="hh-cell${S.historyFilter === d.key ? ' selected' : ''}" data-level="${levelForCount(d.count)}" data-key="${d.key}" title="${d.count} ${d.count === 1 ? 'memory' : 'memories'} on ${d.date.toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}" onclick="filterHistoryByDay('${d.key}')"></div>`).join('')).join('')}</div>
+                        <div class="hh-weeks">${weeks.map(week => week.map(d => {
+                            const stale = staleMemCountForDay(d.key);
+                            const dayLabel = d.date.toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+                            const title = `${d.count} ${d.count === 1 ? 'memory' : 'memories'} on ${dayLabel}${stale ? ` • ${stale} stored since last conflict scan — may have unreviewed conflicts` : ''}`;
+                            return `<div class="hh-cell${S.historyFilter === d.key ? ' selected' : ''}${stale ? ' stale' : ''}" data-level="${levelForCount(d.count)}" data-key="${d.key}" title="${title}" onclick="filterHistoryByDay('${d.key}')"></div>`;
+                        }).join('')).join('')}</div>
                     </div>
                     <div class="hh-legend">
+                        <span class="hh-cell stale" data-level="2" title="Memories were stored on this day after the last conflict scan — possibly unreviewed"></span>
+                        <span>Stored since last conflict scan — may contain unreviewed conflicts</span>
+                        <span style="flex:1"></span>
                         <span>Less</span>
                         <span class="hh-cell" data-level="0"></span>
                         <span class="hh-cell" data-level="1"></span>
@@ -2740,17 +3163,147 @@
                 </div>
             </div>`;
 
+            const showSummaryPane = !!(S.historyFilter && S.summaryOpen);
+            const timelineInner = total === 0
+                ? '<div class="hh-empty">No memories yet. Store one from the Playground to see it here.</div>'
+                : `<div class="hh-timeline">${buildHistoryTimeline(byDay)}</div>`;
+
             html += `<div class="panel">
                 <div class="panel-title" style="display:flex;justify-content:space-between;align-items:center;gap:8px">
                     <span>Timeline${S.historyFilter ? ` — ${S.historyFilter}` : ''}</span>
                     ${S.historyFilter ? `<button class="btn btn-secondary btn-sm" onclick="clearHistoryFilter()">Clear filter</button>` : ''}
                 </div>
-                ${total === 0
-                    ? '<div class="hh-empty">No memories yet. Store one from the Playground to see it here.</div>'
-                    : `<div class="hh-timeline">${buildHistoryTimeline(byDay)}</div>`}
+                ${showSummaryPane
+                    ? `<div style="display:flex;gap:16px;align-items:flex-start">
+                        <div style="flex:0 0 calc(60% - 8px);min-width:0">${timelineInner}</div>
+                        <div style="flex:0 0 calc(40% - 8px);min-width:0" id="historySummaryPane">
+                            <div class="hh-summary-panel">
+                                <div class="hh-summary-header">
+                                    <span>Summary — ${S.historyFilter}</span>
+                                    <div style="display:flex;align-items:center;gap:6px">
+                                        <button class="hh-summary-action" id="btnRegenSummary" onclick="regenerateDaySummary('${S.historyFilter}')" title="Regenerate from latest sessions" style="display:none">↻ Regenerate</button>
+                                        <button class="hh-summary-close" onclick="closeHistorySummary()" title="Close">×</button>
+                                    </div>
+                                </div>
+                                <div class="hh-summary-body" id="historySummaryBody">
+                                    <div class="loading-overlay"><span class="spinner"></span> Loading summary…</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>`
+                    : timelineInner}
             </div>`;
 
             box.innerHTML = html;
+
+            if (showSummaryPane) loadDaySummaryPanel(S.historyFilter);
+        }
+
+        function closeHistorySummary() {
+            S.summaryOpen = false;
+            renderHistory();
+        }
+
+        async function loadDaySummaryPanel(key) {
+            const body = document.getElementById('historySummaryBody');
+            if (!body) return;
+            body.innerHTML = '<div class="loading-overlay"><span class="spinner"></span> Loading summary…</div>';
+            try {
+                const res = await api('GET', `/api/ui/daily-summary?date=${encodeURIComponent(key)}`);
+                renderDaySummaryPanel(key, res);
+            } catch (e) {
+                body.innerHTML = `<p style="color:var(--error);padding:12px;font-size:13px">Failed to load: ${escHtml(e.message)}</p>`;
+            }
+        }
+
+        function renderMarkdownSafe(src) {
+            const raw = src || '';
+            // Fall back to escaped <pre> if either CDN library failed to load.
+            if (typeof marked === 'undefined' || typeof DOMPurify === 'undefined') {
+                return `<pre class="hh-summary-content">${escHtml(raw)}</pre>`;
+            }
+            try {
+                const html = marked.parse(raw, { gfm: true, breaks: false });
+                return `<div class="hh-summary-md">${DOMPurify.sanitize(html)}</div>`;
+            } catch (e) {
+                return `<pre class="hh-summary-content">${escHtml(raw)}</pre>`;
+            }
+        }
+
+        function renderDaySummaryPanel(key, res) {
+            const body = document.getElementById('historySummaryBody');
+            if (!body) return;
+            const regenBtn = document.getElementById('btnRegenSummary');
+            if (res && res.exists) {
+                body.innerHTML = renderMarkdownSafe(res.content);
+                if (regenBtn) regenBtn.style.display = '';
+            } else {
+                body.innerHTML = `
+                    <div style="padding:24px 12px;text-align:center;color:var(--text-dim)">
+                        <div style="font-size:36px;margin-bottom:12px;opacity:0.4">📝</div>
+                        <p style="font-size:13px;margin-bottom:16px">No summary for <strong style="color:var(--text-secondary)">${escHtml(key)}</strong> yet.</p>
+                        <button class="btn btn-primary btn-sm" id="btnGenSummary" onclick="generateDaySummary('${escHtml(key)}')">⚡ Generate Summary</button>
+                    </div>`;
+                if (regenBtn) regenBtn.style.display = 'none';
+            }
+        }
+
+        async function regenerateDaySummary(key) {
+            const btn = document.getElementById('btnRegenSummary');
+            const prev = btn ? btn.innerHTML : null;
+            if (btn) { btn.disabled = true; btn.innerHTML = '↻ …'; }
+            const body = document.getElementById('historySummaryBody');
+            if (body) body.innerHTML = '<div class="loading-overlay"><span class="spinner"></span> Regenerating…</div>';
+            try {
+                const res = await api('POST', '/api/ui/daily-summary', { date: key });
+                const status = (res.summary && res.summary.status) || 'unknown';
+                if (status === 'success') {
+                    toast('Summary regenerated.');
+                    loadDaySummaryPanel(key);
+                    if (key === todayKey()) refreshTodaySummaryCard();
+                } else if (status === 'no_sessions') {
+                    toast('No sessions found on that day.', 'warning');
+                    loadDaySummaryPanel(key);
+                } else if (status === 'skipped_on_prem') {
+                    toast('Daily summary is cloud-only — switch backend with: memanto config backend cloud', 'error');
+                    loadDaySummaryPanel(key);
+                } else {
+                    toast(`Regeneration finished with status: ${status}`, 'warning');
+                    loadDaySummaryPanel(key);
+                }
+            } catch (e) {
+                toast('Failed: ' + e.message, 'error');
+                loadDaySummaryPanel(key);
+            } finally {
+                if (btn) { btn.disabled = false; btn.innerHTML = prev; }
+            }
+        }
+
+        async function generateDaySummary(key) {
+            const btn = document.getElementById('btnGenSummary');
+            const prev = btn ? btn.innerHTML : null;
+            if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Generating…'; }
+            try {
+                const res = await api('POST', '/api/ui/daily-summary', { date: key });
+                const status = (res.summary && res.summary.status) || 'unknown';
+                if (status === 'success') {
+                    toast('Daily summary generated.');
+                    loadDaySummaryPanel(key);
+                    if (key === todayKey()) refreshTodaySummaryCard();
+                } else if (status === 'no_sessions') {
+                    toast('No sessions found on that day.', 'warning');
+                    if (btn) { btn.disabled = false; btn.innerHTML = prev; }
+                } else if (status === 'skipped_on_prem') {
+                    toast('Daily summary is cloud-only — switch backend with: memanto config backend cloud', 'error');
+                    if (btn) { btn.disabled = false; btn.innerHTML = prev; }
+                } else {
+                    toast(`Summary finished with status: ${status}`, 'warning');
+                    if (btn) { btn.disabled = false; btn.innerHTML = prev; }
+                }
+            } catch (e) {
+                toast('Failed: ' + e.message, 'error');
+                if (btn) { btn.disabled = false; btn.innerHTML = prev; }
+            }
         }
 
         function buildHistoryTimeline(byDay) {
@@ -2762,6 +3315,19 @@
             }
 
             let html = '';
+            if (filter) {
+                const staleCount = staleMemCountForDay(filter);
+                if (staleCount > 0) {
+                    const scan = (S.conflictScans || {})[filter];
+                    const reason = scan
+                        ? `${staleCount} ${staleCount === 1 ? 'memory was' : 'memories were'} stored after the last conflict scan (${fmtDate(scan.scanned_at)})`
+                        : `${staleCount} ${staleCount === 1 ? 'memory has' : 'memories have'} never been scanned`;
+                    html += `<div style="background:rgba(239,68,68,0.12);border:1px solid var(--error);border-radius:8px;padding:12px 14px;margin-bottom:14px;font-size:13px;color:var(--text-secondary);display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+                        <span>⚠ ${reason} for <strong>${filter}</strong>. Run conflict detection to review.</span>
+                        <button class="btn btn-primary btn-sm" style="margin-left:auto" onclick="goToConflictsForDay('${filter}')">Run Detect Conflicts</button>
+                    </div>`;
+                }
+            }
             dates.forEach(dateKey => {
                 const list = byDay.get(dateKey).slice().sort((a, b) => {
                     const da = parseMemDate(a.created_at)?.getTime() || 0;
@@ -2801,12 +3367,20 @@
         }
 
         function filterHistoryByDay(key) {
-            S.historyFilter = (S.historyFilter === key) ? null : key;
+            if (S.historyFilter === key) {
+                // Re-clicking the same day clears the filter and closes the tab.
+                S.historyFilter = null;
+                S.summaryOpen = false;
+            } else {
+                S.historyFilter = key;
+                S.summaryOpen = true;
+            }
             renderHistory();
         }
 
         function clearHistoryFilter() {
             S.historyFilter = null;
+            S.summaryOpen = false;
             renderHistory();
         }
 
@@ -2846,7 +3420,8 @@
                 <table class="config-table" style="width:100%"><tbody>
                 <tr><td>Mode</td><td><span class="badge badge-success">On-Prem</span></td></tr>
                 <tr><td>Server URL</td><td><code style="font-family:var(--font-mono)">${escHtml(onPremCfg.url || 'http://localhost:8080')}</code></td></tr>
-                <tr><td>Embedding Provider</td><td>${onPremCfg.embedding_provider ? `<code style="font-family:var(--font-mono)">${escHtml(onPremCfg.embedding_provider)}</code>` : '—'}</td></tr>
+                <tr><td>Embedding</td><td>${onPremCfg.embedding_provider ? `<code style="font-family:var(--font-mono)">${escHtml(onPremCfg.embedding_provider)}${onPremCfg.embedding_model ? ' / ' + escHtml(onPremCfg.embedding_model) : ''}</code>` : '—'}</td></tr>
+                <tr><td>LLM</td><td>${onPremCfg.llm_provider ? `<code style="font-family:var(--font-mono)">${escHtml(onPremCfg.llm_provider)}${onPremCfg.llm_model ? ' / ' + escHtml(onPremCfg.llm_model) : ''}</code>` : '—'}</td></tr>
                 </tbody></table>
                 <p style="color:var(--text-dim);font-size:12px;margin-top:8px">Switch backends via CLI: <code style="color:var(--accent);font-family:var(--font-mono)">memanto config backend cloud</code></p>
             </div>
@@ -2902,8 +3477,36 @@
                     ${cfgToggle('cfgSessAutoRenew', 'Auto-renew sessions before expiry', sess.auto_renew_enabled ?? true)}
                 </div>
             </div>
-            <!-- ANSWER CONFIG (cloud only — on-prem server does not expose RAG) -->
-            ${onPrem ? '' : `
+            <!-- ANSWER CONFIG -->
+            ${onPrem ? `
+            <div class="panel">
+                <div class="panel-title">🤖 LLM Config (On-Prem)</div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Provider</label>
+                        <select id="cfgOnpremLlmProvider" onchange="onpremProviderChanged()">
+                            <option value="ollama" ${onPremCfg.llm_provider === 'ollama' ? 'selected' : ''}>Ollama (local)</option>
+                            <option value="openai" ${onPremCfg.llm_provider === 'openai' ? 'selected' : ''}>OpenAI</option>
+                            <option value="cohere" ${onPremCfg.llm_provider === 'cohere' ? 'selected' : ''}>Cohere</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Model</label>
+                        <input id="cfgOnpremLlmModel" value="${escHtml(onPremCfg.llm_model || '')}" placeholder="e.g. qwen2.5, gpt-4o-mini, command-r-plus-08-2024">
+                    </div>
+                </div>
+                <div class="form-group" id="cfgOnpremApiKeyRow" style="${(onPremCfg.llm_provider || 'ollama') === 'ollama' ? 'display:none' : ''}">
+                    <label>API Key</label>
+                    <input id="cfgOnpremApiKey" type="password" placeholder="Leave blank to keep existing key">
+                </div>
+                <div style="display:flex;gap:12px;margin-top:8px">
+                    <button class="btn btn-secondary" id="btnRestartOnprem" onclick="restartOnpremBackend()">↻ Restart On-Prem Backend</button>
+                </div>
+                <p style="color:var(--text-dim);font-size:12px;margin-top:8px">
+                    Saving writes to <code style="font-family:var(--font-mono)">~/.memanto/on-prem/state.json</code> and <code style="font-family:var(--font-mono)">~/.moorcheh/config.json</code>. Click <strong>Restart</strong> to apply on the running server.
+                </p>
+            </div>
+            ` : `
             <div class="panel">
                 <div class="panel-title">🤖 Answer Config</div>
                 <div class="form-group"><label>Model</label><input id="cfgAiModel" value="${ans.model || 'anthropic.claude-sonnet-4-20250514-v1:0'}" placeholder="e.g. anthropic.claude-sonnet-4-20250514-v1:0"></div>
@@ -2938,7 +3541,7 @@
             <!-- SCHEDULE -->
             <div class="panel">
                 <div class="panel-title">📅 Schedule</div>
-                <div class="form-group"><label>Daily Summary & Conflict Scan Time (HH:MM)</label><input id="cfgSchedule" value="${c.schedule_time || '23:55'}" placeholder="HH:MM" style="width:120px"></div>
+                <div class="form-group"><label>Daily Summary + Conflict Scan Time (HH:MM)</label><input id="cfgSchedule" value="${c.schedule_time || '23:55'}" placeholder="HH:MM" style="width:120px"></div>
             </div>
             <!-- SAVE -->
             <div style="display:flex;gap:12px;margin-top:8px">
@@ -3007,17 +3610,23 @@
                         auto_renew_enabled: document.getElementById('cfgSessAutoRenew').checked,
                         auto_renew_interval_hours: parseInt(document.getElementById('cfgSessRenewInterval').value) || 6,
                     },
-                    // Answer Config panel is hidden on on-prem (no RAG support),
-                    // so its inputs may not be in the DOM — skip the block.
-                    ...(document.getElementById('cfgAiModel') ? {
-                        answer: {
+                    answer: isOnPrem()
+                        ? (() => {
+                            const providerEl = document.getElementById('cfgOnpremLlmProvider');
+                            const modelEl = document.getElementById('cfgOnpremLlmModel');
+                            const keyEl = document.getElementById('cfgOnpremApiKey');
+                            const p = { provider: providerEl ? providerEl.value : '', model: modelEl ? modelEl.value.trim() : '' };
+                            const k = keyEl ? keyEl.value : '';
+                            if (k) p.api_key = k;
+                            return p;
+                        })()
+                        : {
                             model: document.getElementById('cfgAiModel').value.trim(),
                             temperature: parseFloat(document.getElementById('cfgAiTemp').value) || 0.7,
                             answer_limit: parseInt(document.getElementById('cfgAiAnswerLimit').value) || 5,
                             threshold: parseFloat(document.getElementById('cfgAiThreshold').value) || 0.25,
                             kiosk_mode: document.getElementById('cfgAiKioskMode').checked,
                         },
-                    } : {}),
                     recall: {
                         limit: parseInt(document.getElementById('cfgRecallLimit').value) || 10,
                         min_similarity: document.getElementById('cfgRecallMinSimilarity').value ? parseFloat(document.getElementById('cfgRecallMinSimilarity').value) : 0
@@ -3036,28 +3645,104 @@
         // Legacy alias
         async function saveConfig() { await saveAllConfig(); }
 
+        // Toggle the API-key row when the on-prem LLM provider changes.
+        function onpremProviderChanged() {
+            const sel = document.getElementById('cfgOnpremLlmProvider');
+            const row = document.getElementById('cfgOnpremApiKeyRow');
+            if (!sel || !row) return;
+            row.style.display = sel.value === 'ollama' ? 'none' : '';
+        }
+
+        // Restart the on-prem stack so the moorcheh server re-reads its config.
+        async function restartOnpremBackend() {
+            if (!confirm('Restart the on-prem stack? `moorcheh down` + `moorcheh up` typically takes 20-60s.')) return;
+            const btn = document.getElementById('btnRestartOnprem');
+            if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Restarting...'; }
+            try {
+                const res = await api('POST', '/api/ui/onprem/restart', {});
+                toast('Backend restarted: ' + (res.message || 'ok'));
+                S.config = await api('GET', '/api/ui/config');
+            } catch (e) {
+                toast('Restart failed: ' + e.message, 'error');
+            } finally {
+                if (btn) { btn.disabled = false; btn.innerHTML = '↻ Restart On-Prem Backend'; }
+            }
+        }
+
         // ================================================================
         // CONFLICTS
         // ================================================================
+        function conflictsDateValue() {
+            const el = document.getElementById('conflictsDateInput');
+            const v = el && el.value ? el.value : '';
+            return v || todayKey();
+        }
+
+        async function detectConflictsNow() {
+            const btn = document.getElementById('btnDetectConflicts');
+            const prev = btn ? btn.innerHTML : null;
+            if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Detecting...'; }
+            try {
+                const date = conflictsDateValue();
+                const data = await api('POST', '/api/ui/conflicts/generate', { date });
+                const status = (data.conflicts && data.conflicts.status) || 'unknown';
+                if (status === 'success') {
+                    const count = (data.conflicts && data.conflicts.conflict_count) || 0;
+                    toast(count > 0
+                        ? `Conflict detection complete: ${count} conflict(s) found.`
+                        : 'Conflict detection complete: no conflicts found.');
+                } else if (status === 'no_sessions') {
+                    toast('No sessions found for the selected date.', 'warning');
+                } else if (status === 'skipped_on_prem') {
+                    toast('Conflict detection is cloud-only — switch backend with: memanto config backend cloud', 'error');
+                } else {
+                    toast(`Conflict detection finished with status: ${status}`, 'warning');
+                }
+                // Scan rewrites the conflict file (mtime advances or file is
+                // newly created). Refresh scans + history so the History dot
+                // clears and the Conflicts banner re-renders.
+                await invalidateConflictState();
+            } catch (e) {
+                toast('Failed to detect conflicts: ' + e.message, 'error');
+            } finally {
+                if (btn) { btn.disabled = false; btn.innerHTML = prev; }
+            }
+        }
+
         async function loadConflicts() {
             const container = document.getElementById('conflictsContent');
             container.innerHTML = '<div class="loading-overlay"><span class="spinner"></span> Loading conflicts...</div>';
 
             try {
-                const data = await api('GET', '/api/ui/conflicts');
+                const dateInput = document.getElementById('conflictsDateInput');
+                if (dateInput && !dateInput.value) dateInput.value = todayKey();
+                const date = conflictsDateValue();
+                const data = await api('GET', `/api/ui/conflicts?date=${encodeURIComponent(date)}`);
                 const conflicts = data.conflicts || [];
+                await fetchConflictScans();
+                await fetchRecentMemories();
+
+                const scanDate = data.date || date;
+                const scan = (S.conflictScans || {})[scanDate];
+                const staleCount = staleMemCountForDay(scanDate);
+                let banner = '';
+                if (staleCount > 0) {
+                    banner = `<div style="background:rgba(239,68,68,0.12);border:1px solid var(--error);border-radius:8px;padding:12px 14px;margin-bottom:16px;font-size:13px;color:var(--text-secondary)">⚠ <strong style="color:var(--error)">${staleCount} ${staleCount === 1 ? 'memory' : 'memories'}</strong> stored since the last conflict scan${scan ? ` (${fmtDate(scan.scanned_at)})` : ' — this day has never been scanned'} for ${scanDate}. Click <strong>Detect Conflicts Now</strong> to re-check.</div>`;
+                } else if (scan) {
+                    banner = `<div style="color:var(--text-dim);font-size:12px;margin-bottom:16px">Last conflict scan for ${scanDate}: ${fmtDate(scan.scanned_at)}.</div>`;
+                }
 
                 if (!conflicts.length) {
-                    container.innerHTML = `
+                    container.innerHTML = banner + `
                 <div style="text-align:center;padding:60px 20px">
                     <div style="font-size:48px;margin-bottom:16px;opacity:0.3">✓</div>
                     <p style="color:var(--success);font-size:16px;font-weight:600;margin-bottom:8px">No Conflicts</p>
-                    <p style="color:var(--text-dim);font-size:13px">All memories are consistent. Run <code style="font-family:var(--font-mono);color:var(--accent)">memanto daily-summary</code> to check for new conflicts.</p>
+                    <p style="color:var(--text-dim);font-size:13px">All memories are consistent. Click <strong>Detect Conflicts Now</strong> above (or run <code style="font-family:var(--font-mono);color:var(--accent)">memanto detect-conflicts</code>) to scan for new conflicts.</p>
                 </div>`;
                     return;
                 }
 
-                let html = `<p style="color:var(--text-secondary);margin-bottom:20px;font-size:13px">Found <strong style="color:var(--warning)">${conflicts.length}</strong> unresolved conflict(s) for <strong style="color:var(--accent)">${data.agent_id}</strong> on ${data.date}</p>`;
+                let html = banner + `<p style="color:var(--text-secondary);margin-bottom:20px;font-size:13px">Found <strong style="color:var(--warning)">${conflicts.length}</strong> unresolved conflict(s) for <strong style="color:var(--accent)">${data.agent_id}</strong> on ${data.date}</p>`;
 
                 conflicts.forEach((c, i) => {
                     const ctype = (c.type || 'conflict').toUpperCase();
@@ -3132,8 +3817,24 @@
                 card.style.pointerEvents = 'none';
                 card.querySelector('.conflict-header .badge').className = 'badge badge-success';
                 card.querySelector('.conflict-header .badge').textContent = 'Resolved';
-                loadConflictBadge();
+                // Resolve rewrites the conflict file (mtime advances). Refresh
+                // the scan map + history cache so the History dot and the
+                // Conflicts "Last scan" banner reflect the new state.
+                await invalidateConflictState();
             } catch (e) { toast('Resolution failed: ' + e.message, 'error'); }
+        }
+
+        // Called after any operation that mutates conflict files (detect, resolve).
+        // Refreshes shared state and re-renders any visible page that depends on it.
+        // (loadConflictBadge() refreshes history itself — don't double-fetch here.)
+        async function invalidateConflictState() {
+            await fetchConflictScans();
+            await loadConflictBadge();
+            if (S._historyLoaded) renderHistory();
+            const conflictsPage = document.getElementById('page-conflicts');
+            if (conflictsPage && conflictsPage.classList.contains('active')) {
+                loadConflicts();
+            }
         }
 
         // ================================================================
@@ -3148,7 +3849,7 @@
             cards.innerHTML = '<div class="loading-overlay"><span class="spinner"></span> Loading analytics...</div>';
 
             try {
-                const res = await api('POST', `/api/v2/agents/${S.agentId}/recall/recent`, { limit: 100 });
+                const res = await api('POST', `/api/v2/agents/${S.agentId}/recall/recent`, {});
                 const mems = res.memories || [];
 
                 const typeCounts = {};

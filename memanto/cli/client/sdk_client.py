@@ -92,7 +92,7 @@ class SdkClient:
         self._read_service = None
         self._agent_service = None
         self._session_service = None
-        self._daily_summary_service = None
+        self._daily_analysis_service = None
         self._export_service = None
 
     # Lazy initializers
@@ -143,13 +143,15 @@ class SdkClient:
             self._session_service = get_session_service()
         return self._session_service
 
-    def _get_daily_summary_service(self):
-        """Return (or create) the ``DailySummaryService`` singleton."""
-        if self._daily_summary_service is None:
-            from memanto.app.services.daily_summary_service import DailySummaryService
+    def _get_daily_analysis_service(self):
+        """Return (or create) the ``DailyAnalysisService`` singleton."""
+        if self._daily_analysis_service is None:
+            from memanto.app.services.daily_analysis_service import (
+                DailyAnalysisService,
+            )
 
-            self._daily_summary_service = DailySummaryService(api_key=self.api_key)
-        return self._daily_summary_service
+            self._daily_analysis_service = DailyAnalysisService()
+        return self._daily_analysis_service
 
     def _get_export_service(self):
         """Return (or create) the ``MemoryExportService`` singleton."""
@@ -564,6 +566,51 @@ class SdkClient:
 
         return result
 
+    def delete_memory(self, agent_id: str, memory_id: str) -> dict[str, Any]:
+        """
+        Delete one memory from the active agent namespace.
+
+        Args:
+            agent_id: Target agent.
+            memory_id: Memory document ID to delete.
+
+        Returns:
+            Confirmation dict with ``status``, ``agent_id``, ``memory_id``, and
+            ``namespace``.
+
+        Raises:
+            ValueError: If the memory does not exist in the active agent namespace.
+        """
+        session = self._get_validated_session_for_agent(agent_id)
+        namespace = session.namespace
+
+        logger.debug(
+            "Deleting memory '%s' from agent '%s' namespace '%s'",
+            memory_id,
+            agent_id,
+            namespace,
+        )
+        deleted = self._get_write_service().delete_memory(memory_id, namespace)
+        if not deleted:
+            raise ValueError(
+                f"Memory '{memory_id}' was not found for agent '{agent_id}'"
+            )
+
+        # Log deletion to local session Markdown summary
+        if self.session_token:
+            self._get_session_service().log_memory_deletion_to_session_summary(
+                agent_id=agent_id,
+                session_id=session.session_id,
+                memory_id=memory_id,
+            )
+
+        return {
+            "status": "deleted",
+            "agent_id": agent_id,
+            "memory_id": memory_id,
+            "namespace": namespace,
+        }
+
     def upload_file(self, agent_id: str, file_path: str) -> dict[str, Any]:
         """
         Upload a file directly to the agent's memory namespace.
@@ -886,7 +933,10 @@ class SdkClient:
         self, agent_id: str, date: str, output_path: str | None = None
     ) -> dict[str, Any]:
         """
-        Generate a daily AI summary from session MD files.
+        Generate a daily AI summary from session MD files (on-demand).
+
+        Conflict detection is a separate concern — see
+        :meth:`generate_conflict_report`.
 
         Args:
             agent_id: Target agent.
@@ -894,23 +944,22 @@ class SdkClient:
             output_path: Optional custom output path for the summary MD file.
 
         Returns:
-            Dict with ``status``, ``summary_path``, ``sessions_count``.
+            Dict with ``summary`` and ``export`` sub-results.
         """
         # Ensure agent exists
         self.get_agent(agent_id)
 
         logger.debug(
-            "Generating daily summary and conflict report for agent '%s' on %s",
+            "Generating daily summary for agent '%s' on %s",
             agent_id,
             date,
         )
 
-        service = self._get_daily_summary_service()
+        service = self._get_daily_analysis_service()
 
         summary_result = service.generate_summary(
             agent_id, date, output_path=output_path
         )
-        conflict_result = service.generate_conflict_report(agent_id, date)
 
         # Auto-export memories to keep local MD cache up to date
         try:
@@ -923,9 +972,35 @@ class SdkClient:
 
         return {
             "summary": summary_result,
-            "conflicts": conflict_result,
             "export": export_result,
         }
+
+    def generate_conflict_report(self, agent_id: str, date: str) -> dict[str, Any]:
+        """
+        Generate the conflict report for an agent/date.
+
+        Runs the LLM conflict-detection pass over the day's session
+        memories and writes the JSON report to ``~/.memanto/conflicts/``.
+
+        Args:
+            agent_id: Target agent.
+            date: Date string (YYYY-MM-DD).
+
+        Returns:
+            Dict with ``conflicts`` sub-result.
+        """
+        # Ensure agent exists
+        self.get_agent(agent_id)
+
+        logger.debug(
+            "Generating conflict report for agent '%s' on %s",
+            agent_id,
+            date,
+        )
+
+        service = self._get_daily_analysis_service()
+        conflict_result = service.generate_conflict_report(agent_id, date)
+        return {"conflicts": conflict_result}
 
     # Conflict Resolution
 

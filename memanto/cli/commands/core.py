@@ -2,7 +2,6 @@
 MEMANTO CLI - Core commands (status, serve, ui, main_callback).
 """
 
-import json
 import os
 import platform
 import shutil
@@ -12,6 +11,7 @@ import sys
 import threading
 import time
 from datetime import datetime
+from pathlib import Path
 
 import httpx
 import typer
@@ -96,8 +96,7 @@ def _prompt_backend_choice() -> Backend:
     )
     console.print(
         f"  [{BRIGHT}]2[/{BRIGHT}]  Moorcheh On-Prem  "
-        "[dim](~5-10 min install, Docker required, no API key, "
-        "no `answer` command)[/dim]"
+        "[dim](~5-10 min install, Docker required, no API key)[/dim]"
     )
     choice = typer.prompt("  Enter 1 or 2", default="1")
     console.print()
@@ -140,6 +139,23 @@ def _cloud_setup() -> None:
     console.print()
 
 
+def _prompt_onprem_setup_mode() -> bool:
+    """Ask user for setup mode. Returns True for Quick Setup, False for Choose Models."""
+    console.print()
+    console.print(f"[{BOLD_BRIGHT}]On-Prem Setup Mode[/{BOLD_BRIGHT}]")
+    console.print(
+        f"  [{BRIGHT}]1[/{BRIGHT}]  Quick Setup  "
+        f"[dim]- Ollama with nomic-embed-text (embedding) + qwen2.5 (LLM), zero config[/dim]"
+    )
+    console.print(
+        f"  [{BRIGHT}]2[/{BRIGHT}]  Choose Models  "
+        f"[dim]- pick your own embedding and LLM providers[/dim]"
+    )
+    choice = typer.prompt("  Enter 1 or 2", default="1")
+    console.print()
+    return str(choice).strip() == "1"
+
+
 def _onprem_setup() -> None:
     """On-prem branch: install moorcheh-client if missing, configure, start."""
     console.print(
@@ -153,26 +169,79 @@ def _onprem_setup() -> None:
 
     _ensure_docker_available()
     _ensure_moorcheh_client_installed()
-    embedding_provider, embedding_model, embedding_key = _prompt_embedding_provider()
+
+    existing_state = config_manager.get_onprem_state()
+    if (
+        existing_state.get("embedding_provider")
+        and existing_state.get("embedding_model")
+        and existing_state.get("llm_provider")
+        and existing_state.get("llm_model")
+    ):
+        embedding_provider = existing_state["embedding_provider"]
+        embedding_model = existing_state["embedding_model"]
+        embedding_key = _recover_moorcheh_api_key("embedding", embedding_provider)
+        llm_provider = existing_state["llm_provider"]
+        llm_model = existing_state["llm_model"]
+        llm_key = _recover_moorcheh_api_key("llm", llm_provider)
+        console.print(
+            f"[dim]  Reusing previous on-prem setup: "
+            f"{embedding_provider} / {embedding_model} + {llm_provider} / {llm_model}[/dim]"
+        )
+    else:
+        quick_setup = _prompt_onprem_setup_mode()
+        if quick_setup:
+            embedding_provider, embedding_model, embedding_key = (
+                "ollama",
+                "nomic-embed-text",
+                "",
+            )
+            llm_provider, llm_model, llm_key = "ollama", "qwen2.5", ""
+            console.print(
+                "[dim]  Quick Setup: Ollama with nomic-embed-text "
+                "(embedding) + qwen2.5 (LLM)[/dim]"
+            )
+        else:
+            embedding_provider, embedding_model, embedding_key = (
+                _prompt_embedding_provider()
+            )
+            llm_provider, llm_model, llm_key = _prompt_llm_provider(
+                embedding_provider, embedding_key
+            )
+    # Write the FULL config (embedding + LLM) to ~/.moorcheh/config.json BEFORE
+    # `moorcheh up`, so the server reads the complete config on first boot and
+    # we don't have to bounce the stack. `moorcheh up` itself only knows
+    # `--embedding-*` flags, so without this pre-write the LLM section would
+    # be missing until we restart.
+    _persist_moorcheh_llm_config(
+        embedding_provider,
+        embedding_model,
+        embedding_key,
+        llm_provider,
+        llm_model,
+        llm_key,
+    )
     _moorcheh_up_and_wait(embedding_provider, embedding_model, embedding_key)
 
-    # Ollama runs in a container started by `moorcheh up`; pull the embedding
-    # model inside that container now that the stack is healthy.
+    # Pull any Ollama models needed (embedding and/or LLM) inside the
+    # container started by `moorcheh up`.
     if embedding_provider == "ollama":
         _pull_ollama_model_in_container(embedding_model)
+    if llm_provider == "ollama" and llm_model != embedding_model:
+        _pull_ollama_model_in_container(llm_model)
 
-    # Persist on-prem config + write state.json under ~/.memanto/on-prem/.
-    onprem_dir = config_manager.config_dir / "on-prem"
-    onprem_dir.mkdir(parents=True, exist_ok=True)
-    state = {
-        "installed_at": datetime.utcnow().isoformat() + "Z",
-        "embedding_provider": embedding_provider,
-        "embedding_model": embedding_model,
-        "url": "http://localhost:8080",
-    }
-    (onprem_dir / "state.json").write_text(json.dumps(state, indent=2))
-    config_manager.set_onprem_config(
-        embedding_provider=embedding_provider, url="http://localhost:8080"
+    # Persist everything on-prem in ~/.memanto/on-prem/state.json — the
+    # shared ~/.memanto/config.yaml belongs to the cloud backend; on-prem
+    # never writes into it. ``ConfigManager.get_answer_config()`` reads
+    # ``llm_model`` from this file when the active backend is on-prem, so
+    # ``memanto answer`` automatically picks the right LLM without any
+    # cross-backend pollution.
+    config_manager.set_onprem_state(
+        installed_at=datetime.utcnow().isoformat() + "Z",
+        embedding_provider=embedding_provider,
+        embedding_model=embedding_model,
+        llm_provider=llm_provider,
+        llm_model=llm_model,
+        url="http://localhost:8080",
     )
 
 
@@ -210,8 +279,10 @@ def _ensure_moorcheh_client_installed() -> None:
 
     console.print("[dim]  Installing moorcheh-client...[/dim]")
     try:
+        # >=0.1.3 exposes namespaces/documents/files/answer resources matching
+        # the cloud SDK shape; on-prem Answer requires this version.
         subprocess.check_call(
-            [sys.executable, "-m", "pip", "install", "moorcheh-client"]
+            [sys.executable, "-m", "pip", "install", "moorcheh-client>=0.1.3"]
         )
     except subprocess.CalledProcessError as e:
         _error(f"Failed to install moorcheh-client: {e}")
@@ -255,6 +326,143 @@ def _prompt_embedding_provider() -> tuple[str, str, str]:
         "The embedding model will be pulled into that container.[/dim]"
     )
     return "ollama", "nomic-embed-text", ""
+
+
+# Valid on-prem LLM identifiers, sourced from moorcheh.user_config. Listed
+# explicitly so the prompt is stable even if moorcheh-client adds/removes
+# models. Keep in sync with ``moorcheh.user_config.LLM_PROVIDER_MODELS``.
+_LLM_RECOMMENDED = {
+    "ollama": "qwen2.5",
+    "openai": "gpt-4o-mini",
+    "cohere": "command-r-plus-08-2024",
+}
+
+
+def _prompt_llm_provider(
+    embedding_provider: str, embedding_key: str
+) -> tuple[str, str, str]:
+    """Ask user for LLM provider for ``answer.generate``.
+
+    Returns ``(provider, model, api_key_or_empty)``. Mirrors the embedding
+    flow: pick a provider, the recommended model is used automatically
+    (``qwen2.5`` / ``gpt-4o-mini`` / ``command-r-plus-08-2024``). Users who
+    want a different model can edit ``answer.model`` in
+    ``~/.memanto/on-prem/config.yaml`` later.
+    """
+    console.print()
+    console.print(f"[{BOLD_BRIGHT}]Answer LLM provider[/{BOLD_BRIGHT}]")
+    console.print(
+        f"  [{BRIGHT}]1[/{BRIGHT}]  Ollama (local, zero API keys)  "
+        f"[dim]- model: {_LLM_RECOMMENDED['ollama']}[/dim]"
+    )
+    console.print(
+        f"  [{BRIGHT}]2[/{BRIGHT}]  OpenAI  "
+        f"[dim]- model: {_LLM_RECOMMENDED['openai']}, requires an API key[/dim]"
+    )
+    console.print(
+        f"  [{BRIGHT}]3[/{BRIGHT}]  Cohere  "
+        f"[dim]- model: {_LLM_RECOMMENDED['cohere']}, requires an API key[/dim]"
+    )
+    # Default to whichever provider was chosen for embeddings (likely already
+    # has its key set), else Ollama.
+    default_choice = {"ollama": "1", "openai": "2", "cohere": "3"}.get(
+        embedding_provider, "1"
+    )
+    choice = typer.prompt("  Enter 1, 2, or 3", default=default_choice)
+    provider = {"1": "ollama", "2": "openai", "3": "cohere"}.get(
+        str(choice).strip(), "ollama"
+    )
+    model = _LLM_RECOMMENDED[provider]
+    console.print()
+
+    if provider in ("openai", "cohere"):
+        # Reuse the embedding API key when the same provider was chosen so we
+        # don't double-prompt; otherwise ask.
+        if provider == embedding_provider and embedding_key:
+            console.print(
+                f"[dim]  Reusing {provider.title()} API key from embedding setup.[/dim]"
+            )
+            key = embedding_key
+        else:
+            key = typer.prompt(
+                f"  Enter your {provider.title()} API key", hide_input=True
+            ).strip()
+            if not key:
+                _error(f"{provider.title()} API key cannot be empty.")
+        return provider, model, key
+
+    console.print(
+        f"[dim]  Ollama LLM model {model} will be pulled into the container.[/dim]"
+    )
+    return "ollama", model, ""
+
+
+def _recover_moorcheh_api_key(section: str, provider: str) -> str:
+    """Read an api_key out of ``~/.moorcheh/config.json`` for re-onboarding.
+
+    ``section`` is ``"embedding"`` or ``"llm"``. Returns ``""`` for providers
+    that don't need a key (ollama) or when the file/key is missing — callers
+    must handle that (typically by failing fast at ``moorcheh up`` if a paid
+    provider needs a key we couldn't recover).
+    """
+    if provider == "ollama":
+        return ""
+    import json as _json
+
+    cfg = Path.home() / ".moorcheh" / "config.json"
+    if not cfg.exists():
+        return ""
+    try:
+        data = _json.loads(cfg.read_text())
+    except Exception:
+        return ""
+    block = data.get(section) or {}
+    key = block.get("api_key") or ""
+    return key if isinstance(key, str) else ""
+
+
+def _persist_moorcheh_llm_config(
+    embedding_provider: str,
+    embedding_model: str,
+    embedding_key: str,
+    llm_provider: str,
+    llm_model: str,
+    llm_key: str,
+) -> None:
+    """Write the LLM section into ``~/.moorcheh/config.json``.
+
+    ``moorcheh up`` writes only the embedding section; the on-prem server
+    needs both to serve ``answer.generate``. Uses moorcheh-client's own
+    ``save_runtime_config`` helper so the schema stays in sync.
+    """
+    try:
+        from moorcheh.user_config import (  # type: ignore[import-not-found]
+            EmbeddingConfig,
+            LlmConfig,
+            default_base_url,
+            save_runtime_config,
+        )
+    except ImportError as e:
+        _error(f"moorcheh.user_config unavailable: {e}")
+        return
+
+    embedding_cfg = EmbeddingConfig(
+        provider=embedding_provider,
+        model=embedding_model,
+        api_key=embedding_key or None,
+        base_url=default_base_url(embedding_provider),
+    )
+    llm_cfg = LlmConfig(
+        provider=llm_provider,
+        model=llm_model,
+        api_key=llm_key or None,
+        base_url=default_base_url(llm_provider),
+    )
+    try:
+        save_runtime_config(embedding_cfg, llm_cfg)
+        console.print("[green]  ✓ LLM config saved to ~/.moorcheh/config.json[/green]")
+    except Exception as e:
+        _error(f"Failed to persist LLM config: {e}")
 
 
 def _pull_ollama_model_in_container(model: str) -> None:

@@ -1,195 +1,142 @@
 """
 On-prem Moorcheh client.
 
-Wraps ``moorcheh.MoorchehApiClient`` (from the ``moorcheh-client`` PyPI package)
-and exposes the same ``client.namespaces.*`` / ``client.documents.*`` /
-``client.similarity_search.*`` / ``client.answer.*`` shape that Memanto's
-services use against the cloud SDK, so no service code branches on backend.
+Wraps ``moorcheh.MoorchehClient`` (``moorcheh-client>=0.1.3``) and exposes the
+same ``namespaces / documents / similarity_search / answer / files / vectors``
+shape that the cloud SDK does, so Memanto's service layer never branches on
+backend. Only one thin adapter is needed: ``_DocumentsAdapter`` adds cloud's
+``documents.upload_file(namespace, path)`` on top of on-prem's
+``files.upload(namespace, files=[{path: container_path}])`` (copies into
+``~/.moorcheh/uploads`` and converts the host path).
 
-Real on-prem method signatures (verified against docs):
-
-    client.create_namespace(payload: dict) -> dict
-        payload = {"namespace_name": str, "type": "text"|"vector",
-                   "vector_dimension": int (vector only)}
-
-    client.list_namespaces() -> dict
-        returns {"namespaces": [{"namespace_name", "type",
-                 "vector_dimension", "item_count", "created_at"}, ...]}
-
-    client.delete_namespace(namespace_name: str) -> dict
-        returns {"job_id": ...}
-
-    client.upload_namespace_documents(namespace_name: str, payload: dict) -> dict
-        payload = {"documents": [{"id": str, "text": str, ...metadata}, ...]}
-
-    client.get_namespace_items(namespace_name: str, payload: dict) -> dict
-        payload = {"ids": [str, ...]}  # <= 100 ids
-
-    client.delete_namespace_items(namespace_name: str, payload: dict) -> dict
-        payload = {"ids": [str, ...]}
-
-    client.search(payload: dict) -> dict
-        payload = {"query": str|list, "namespaces": [str, ...],
-                   "top_k": int, "threshold": float, "metadata": dict,
-                   "kiosk_mode": bool}
-
-    client.health() -> dict
-
-Cloud-only surface Memanto uses that on-prem does not expose - we surface a
-clear ``OnPremFeatureUnavailable`` instead of silently failing:
-    - documents.upload_file (no server-side file chunking on on-prem)
-    - answer.generate (cloud-only LLM RAG)
+The ``ai_model`` value passed to ``answer.generate`` is the caller's
+responsibility — on-prem callers must source it from
+``~/.memanto/on-prem/state.json`` via ``config_manager.get_answer_config()``,
+which is backend-aware. No silent model coercion happens here.
 """
 
+from pathlib import Path
 from typing import Any
 
-from memanto.app.clients.backend import OnPremFeatureUnavailable
-
 _DEFAULT_URL = "http://localhost:8080"
-_ANSWER_DISABLED_MSG = (
-    "answer is not available on the on-prem backend. "
-    "Switch with: memanto config backend cloud"
-)
-_FEATURE_DISABLED_MSG = (
-    "{feature} is not available on the on-prem backend. "
-    "Switch with: memanto config backend cloud"
-)
 
 
 def _import_raw_client() -> Any:
     """Lazy import so the cloud path doesn't require ``moorcheh-client``."""
     try:
-        from moorcheh import MoorchehApiClient  # type: ignore[import-not-found]
+        from moorcheh import MoorchehClient  # type: ignore[import-not-found]
     except ImportError as e:  # pragma: no cover - exercised at runtime only
         raise RuntimeError(
             "moorcheh-client is not installed. Run: pip install moorcheh-client"
         ) from e
-    return MoorchehApiClient
+    return MoorchehClient
 
 
-class _NamespacesAdapter:
-    def __init__(self, raw: Any) -> None:
-        self._raw = raw
-
-    def create(self, namespace_name: str, type: str = "text") -> Any:
-        return self._raw.create_namespace(
-            {"namespace_name": namespace_name, "type": type}
+def _import_docker_runtime_helpers() -> tuple[Any, Any]:
+    """Lazy import of upload-dir helpers; only needed for ``upload_file``."""
+    try:
+        from moorcheh.docker_runtime import (  # type: ignore[import-not-found]
+            ensure_upload_dir,
+            host_path_to_container_upload_path,
         )
-
-    def list(self) -> Any:
-        return self._raw.list_namespaces()
-
-    def delete(self, namespace_name: str) -> Any:
-        return self._raw.delete_namespace(namespace_name)
+    except ImportError as e:  # pragma: no cover - exercised at runtime only
+        raise RuntimeError(
+            "moorcheh.docker_runtime helpers are unavailable. "
+            "Upgrade with: pip install -U moorcheh-client"
+        ) from e
+    return ensure_upload_dir, host_path_to_container_upload_path
 
 
 class _DocumentsAdapter:
+    """Wraps ``client.documents`` to add ``upload_file`` (cloud-shape) on top of
+    on-prem's ``client.files.upload``.
+
+    All other methods (upload, get, delete, fetch_text_data) pass through to
+    the native on-prem ``documents`` resource unchanged.
+    """
+
     def __init__(self, raw: Any) -> None:
         self._raw = raw
 
-    def upload(self, namespace_name: str, documents: list[dict]) -> Any:
-        return self._raw.upload_namespace_documents(
-            namespace_name, {"documents": documents}
-        )
+    def __getattr__(self, name: str) -> Any:
+        # Delegate any method not defined here (upload, get, delete,
+        # fetch_text_data, upload_job_status) to the real on-prem documents
+        # resource. Only invoked for attrs not found on the instance.
+        return getattr(self._raw.documents, name)
 
-    def get(self, namespace_name: str, ids: list[str]) -> Any:
-        return self._raw.get_namespace_items(namespace_name, {"ids": ids})
+    def upload_file(self, namespace_name: str, file_path: str | Path) -> dict:
+        """Cloud-shape ``documents.upload_file`` for on-prem.
 
-    def delete(self, namespace_name: str, ids: list[str]) -> Any:
-        return self._raw.delete_namespace_items(namespace_name, {"ids": ids})
+        Copies the file into ``~/.moorcheh/uploads``, converts the host path
+        to the container-visible path, and submits via ``client.files.upload``.
 
-    def upload_file(self, *_args: Any, **_kwargs: Any) -> Any:
-        raise OnPremFeatureUnavailable(
-            _FEATURE_DISABLED_MSG.format(feature="upload_file")
-        )
-
-    def fetch_text_data(self, namespace_name: str) -> Any:
-        """Emulate cloud's ``fetch_text_data`` via on-prem ``search``.
-
-        Cloud returns ``{"items": [...]}`` capped at 100 per namespace; we
-        approximate the same shape with a broad search so callers (memory
-        export, UI, etc.) keep working without branching.
+        Returns a dict shaped like the cloud SDK's ``FileUploadResponse``
+        (``success``, ``message``, ``file_name``, ``file_size``,
+        ``namespace``) so route handlers don't need to branch by backend.
+        Note: on-prem upload is asynchronous; ``success=True`` here means the
+        job was accepted, not that indexing has completed.
         """
-        last_exc: Exception | None = None
-        for probe_query in (" ", "*", "."):
-            try:
-                resp = self._raw.search(
-                    {
-                        "query": probe_query,
-                        "namespaces": [namespace_name],
-                        "top_k": 100,
-                    }
-                )
-                if isinstance(resp, dict):
-                    items = resp.get("results", resp.get("items", []))
-                    return {"items": items}
-                return resp
-            except Exception as e:
-                last_exc = e
-                continue
-        raise (
-            last_exc
-            if last_exc is not None
-            else RuntimeError("search failed for fetch_text_data")
+        import shutil
+
+        ensure_upload_dir, host_path_to_container_upload_path = (
+            _import_docker_runtime_helpers()
         )
 
+        src = Path(file_path).resolve()
+        if not src.is_file():
+            raise FileNotFoundError(f"upload_file: not a file: {src}")
 
-class _SimilaritySearchAdapter:
-    """Maps cloud's ``client.similarity_search.query(...)`` onto on-prem ``search``."""
+        upload_root = ensure_upload_dir()
+        host_file = (upload_root / src.name).resolve()
+        if host_file != src:
+            shutil.copy2(src, host_file)
+        container_path = host_path_to_container_upload_path(host_file, upload_root)
 
-    def __init__(self, raw: Any) -> None:
-        self._raw = raw
-
-    def query(
-        self,
-        query: str,
-        namespaces: list[str] | None = None,
-        top_k: int = 10,
-        threshold: float | None = None,
-        kiosk_mode: bool = False,
-        **kwargs: Any,
-    ) -> Any:
-        payload: dict[str, Any] = {
-            "query": query,
-            "namespaces": namespaces or [],
-            "top_k": top_k,
-            "kiosk_mode": kiosk_mode,
+        resp = self._raw.files.upload(
+            namespace_name,
+            files=[{"path": container_path, "force_reindex": False}],
+        )
+        if not isinstance(resp, dict):
+            resp = {}
+        return {
+            "success": True,
+            "message": resp.get("message", "Upload job submitted."),
+            "namespace": namespace_name,
+            "file_name": src.name,
+            "file_size": host_file.stat().st_size if host_file.exists() else None,
+            "job_id": resp.get("job_id"),
         }
-        if threshold is not None:
-            payload["threshold"] = threshold
-        # Pass-through for any future kwargs (e.g. metadata filter).
-        payload.update(kwargs)
-        return self._raw.search(payload)
-
-
-class _AnswerAdapter:
-    def generate(self, *_args: Any, **_kwargs: Any) -> Any:
-        raise OnPremFeatureUnavailable(_ANSWER_DISABLED_MSG)
 
 
 class OnPremClient:
-    """Cloud-shaped facade over ``MoorchehApiClient``."""
+    """Cloud-shaped facade over ``moorcheh.MoorchehClient``."""
 
-    def __init__(self, base_url: str | None = None) -> None:
+    def __init__(self, base_url: str | None = None, timeout: int | None = None) -> None:
         client_cls = _import_raw_client()
-        self._raw = client_cls(base_url or _DEFAULT_URL)
-        self.namespaces = _NamespacesAdapter(self._raw)
+        # ``moorcheh.MoorchehClient`` defaults timeout=30 which is too short
+        # for first-call LLM cold-starts (Ollama can take 1-2 minutes to load
+        # qwen2.5). Honor the caller's timeout when provided; otherwise let
+        # the raw client use its own default.
+        if timeout is not None:
+            self._raw = client_cls(base_url or _DEFAULT_URL, timeout=timeout)
+        else:
+            self._raw = client_cls(base_url or _DEFAULT_URL)
+        # Native resources expose the same shape as the cloud SDK — pass through.
+        self.namespaces = self._raw.namespaces
+        self.similarity_search = self._raw.similarity_search
+        self.answer = self._raw.answer
+        self.vectors = self._raw.vectors
+        self.files = self._raw.files
+        # Only ``documents`` needs an adapter (cloud's ``upload_file`` shim).
         self.documents = _DocumentsAdapter(self._raw)
-        self.similarity_search = _SimilaritySearchAdapter(self._raw)
-        self.answer = _AnswerAdapter()
+
+    def health(self) -> Any:
+        return self._raw.health()
 
 
-class AsyncOnPremClient:
+class AsyncOnPremClient(OnPremClient):
     """Async facade. Memanto only awaits a handful of methods via
     ``asyncio.to_thread`` today, so we expose the same sync ``OnPremClient``
-    shape - existing ``await asyncio.to_thread(client.documents.upload, ...)``
+    shape — existing ``await asyncio.to_thread(client.documents.upload, ...)``
     calls keep working unchanged.
     """
-
-    def __init__(self, base_url: str | None = None) -> None:
-        client_cls = _import_raw_client()
-        self._raw = client_cls(base_url or _DEFAULT_URL)
-        self.namespaces = _NamespacesAdapter(self._raw)
-        self.documents = _DocumentsAdapter(self._raw)
-        self.similarity_search = _SimilaritySearchAdapter(self._raw)
-        self.answer = _AnswerAdapter()
