@@ -1,7 +1,7 @@
 # Policy Drift Memory Benchmark
 
-This benchmark stress-tests the core 2026 agent-memory tradeoff from issue
-#639: retrieval accuracy versus resource footprint when instructions mutate
+This benchmark stress-tests the core 2026 agent-memory tradeoff from Memanto
+issue #639: retrieval accuracy versus resource footprint when instructions mutate
 across sessions.
 
 The dataset models support and operations agents that receive policy updates,
