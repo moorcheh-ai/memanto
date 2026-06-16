@@ -233,6 +233,12 @@ def run_once(dataset: dict[str, Any], repeats: int) -> dict[str, Any]:
 
 
 def main() -> None:
+    def positive_int(value: str) -> int:
+        parsed = int(value)
+        if parsed < 1:
+            raise argparse.ArgumentTypeError("--repeats must be >= 1")
+        return parsed
+
     parser = argparse.ArgumentParser(
         description="Run the policy drift memory benchmark."
     )
@@ -243,7 +249,7 @@ def main() -> None:
     )
     parser.add_argument(
         "--repeats",
-        type=int,
+        type=positive_int,
         default=200,
         help="Latency repeats per query. Default: 200.",
     )
