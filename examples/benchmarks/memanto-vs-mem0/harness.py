@@ -24,7 +24,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-from adapters import IngestResult, MemantoAdapter, MemoryAdapter, RecallResult, Mem0Adapter
+from adapters import IngestResult, MemantoAdapter, MemoryAdapter, RecallResult
+from adapters.mem0_adapter import Mem0Adapter
 from evaluator import EvalScore, LLMJudge
 
 logger = logging.getLogger(__name__)
