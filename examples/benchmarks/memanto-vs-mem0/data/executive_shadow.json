@@ -210,7 +210,7 @@
     "scenario": "Custom — Executive Shadow (Combined Scenario A+B)",
     "total_sessions": 6,
     "date_range_simulated": "January 2026 — June 2026",
-    "total_turns": 46,
+    "total_turns": 38,
     "evaluation_queries": 8,
     "domains_covered": ["fundraising", "product", "go_to_market", "personal", "operations", "risk"],
     "test_types": {

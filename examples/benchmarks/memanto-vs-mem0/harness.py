@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import json
 import logging
+import math
 import statistics
 import time
 from dataclasses import dataclass, field
@@ -72,7 +73,7 @@ class SystemResult:
         lats = sorted(self.ingest_latencies)
         if not lats:
             return 0.0
-        idx = max(0, int(len(lats) * 0.95) - 1)
+        idx = max(0, math.ceil(len(lats) * 0.95) - 1)
         return lats[idx]
 
     @property
@@ -80,7 +81,7 @@ class SystemResult:
         lats = sorted(self.recall_latencies)
         if not lats:
             return 0.0
-        idx = max(0, int(len(lats) * 0.95) - 1)
+        idx = max(0, math.ceil(len(lats) * 0.95) - 1)
         return lats[idx]
 
     @property
@@ -185,77 +186,79 @@ def run_benchmark(
         logger.info("[%s] Setting up...", sname)
         adapter.setup(user_id)
 
-        # ── Ingest all sessions ───────────────────────────────────────────
-        logger.info("[%s] Ingesting %d sessions...", sname, len(sessions))
-        for session in sessions:
-            logger.info("[%s] Ingesting %s", sname, session["label"])
-            result = adapter.ingest_session(
-                user_id=user_id,
-                session_id=session["id"],
-                messages=session["messages"],
-            )
-            sr.ingest_results.append(result)
-            logger.info(
-                "[%s] %s → %.2fs, %d tokens",
-                sname, session["id"], result.latency_s, result.tokens_ingested,
-            )
-            # Small pause between sessions to respect rate limits
-            time.sleep(0.5)
-
-        # Brief wait for indexing before recall
-        logger.info("[%s] Waiting for memory indexing...", sname)
-        if hasattr(adapter, "wait_for_indexing"):
-            # Mem0 Platform is async — poll until memories are visible
-            count = adapter.wait_for_indexing(timeout_s=60, poll_interval_s=4)
-            logger.info("[%s] %d memories indexed", sname, count)
-        else:
-            time.sleep(3)
-
-        # ── Recall all queries ────────────────────────────────────────────
-        logger.info("[%s] Running %d evaluation queries...", sname, len(eval_queries))
-        for eq in eval_queries:
-            logger.info("[%s] Query: %s", sname, eq["id"])
-            recall = adapter.recall(
-                user_id=user_id,
-                query_id=eq["id"],
-                query=eq["query"],
-            )
-            sr.recall_results.append(recall)
-            logger.info(
-                "[%s] %s → %.2fs, %d tokens, %d memories",
-                sname, eq["id"], recall.latency_s,
-                recall.tokens_used, len(recall.memories_returned),
-            )
-            time.sleep(0.3)
-
-        # ── Score with judge ──────────────────────────────────────────────
-        if judge:
-            logger.info("[%s] Scoring with LLM judge (%s)...", sname, judge.model)
-            recall_by_id = {r.query_id: r for r in sr.recall_results}
-            for eq in eval_queries:
-                recalled = recall_by_id.get(eq["id"])
-                recalled_text = recalled.answer if recalled else ""
-                score = judge.score(
-                    system_name=sname,
-                    query_id=eq["id"],
-                    query=eq["query"],
-                    golden_answer=eq["golden_answer"],
-                    stale_signals=eq["stale_signals"],
-                    current_signals=eq["current_signals"],
-                    recalled_answer=recalled_text,
+        try:
+            # ── Ingest all sessions ───────────────────────────────────────
+            logger.info("[%s] Ingesting %d sessions...", sname, len(sessions))
+            for session in sessions:
+                logger.info("[%s] Ingesting %s", sname, session["label"])
+                result = adapter.ingest_session(
+                    user_id=user_id,
+                    session_id=session["id"],
+                    messages=session["messages"],
                 )
-                sr.eval_scores.append(score)
+                sr.ingest_results.append(result)
                 logger.info(
-                    "[%s] %s → acc=%d stale=%d prec=%d total=%d",
-                    sname, eq["id"],
-                    score.accuracy, score.staleness_avoidance,
-                    score.precision, score.total,
+                    "[%s] %s → %.2fs, %d tokens",
+                    sname, session["id"], result.latency_s, result.tokens_ingested,
                 )
+                # Small pause between sessions to respect rate limits
                 time.sleep(0.5)
 
-        # ── Teardown ──────────────────────────────────────────────────────
-        logger.info("[%s] Tearing down...", sname)
-        adapter.teardown(user_id)
+            # Brief wait for indexing before recall
+            logger.info("[%s] Waiting for memory indexing...", sname)
+            if hasattr(adapter, "wait_for_indexing"):
+                # Mem0 Platform is async — poll until memories are visible
+                count = adapter.wait_for_indexing(timeout_s=60, poll_interval_s=4)
+                logger.info("[%s] %d memories indexed", sname, count)
+            else:
+                time.sleep(3)
+
+            # ── Recall all queries ────────────────────────────────────────
+            logger.info("[%s] Running %d evaluation queries...", sname, len(eval_queries))
+            for eq in eval_queries:
+                logger.info("[%s] Query: %s", sname, eq["id"])
+                recall = adapter.recall(
+                    user_id=user_id,
+                    query_id=eq["id"],
+                    query=eq["query"],
+                )
+                sr.recall_results.append(recall)
+                logger.info(
+                    "[%s] %s → %.2fs, %d tokens, %d memories",
+                    sname, eq["id"], recall.latency_s,
+                    recall.tokens_used, len(recall.memories_returned),
+                )
+                time.sleep(0.3)
+
+            # ── Score with judge ──────────────────────────────────────────
+            if judge:
+                logger.info("[%s] Scoring with LLM judge (%s)...", sname, judge.model)
+                recall_by_id = {r.query_id: r for r in sr.recall_results}
+                for eq in eval_queries:
+                    recalled = recall_by_id.get(eq["id"])
+                    recalled_text = recalled.answer if recalled else ""
+                    score = judge.score(
+                        system_name=sname,
+                        query_id=eq["id"],
+                        query=eq["query"],
+                        golden_answer=eq["golden_answer"],
+                        stale_signals=eq["stale_signals"],
+                        current_signals=eq["current_signals"],
+                        recalled_answer=recalled_text,
+                    )
+                    sr.eval_scores.append(score)
+                    logger.info(
+                        "[%s] %s → acc=%d stale=%d prec=%d total=%d",
+                        sname, eq["id"],
+                        score.accuracy, score.staleness_avoidance,
+                        score.precision, score.total,
+                    )
+                    time.sleep(0.5)
+
+        finally:
+            # ── Teardown ──────────────────────────────────────────────────
+            logger.info("[%s] Tearing down...", sname)
+            adapter.teardown(user_id)
 
         results[sname] = sr
         logger.info("[%s] Done.", sname)

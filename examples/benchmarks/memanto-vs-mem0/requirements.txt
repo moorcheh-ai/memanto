@@ -1,6 +1,6 @@
 # Memory systems
 memanto>=0.1.0,<0.2.0
-mem0ai>=0.1.0
+mem0ai>=2.0.5
 
 # LLM judge
 openai>=1.30.0

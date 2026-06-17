@@ -19,6 +19,12 @@ from .base import IngestResult, MemoryAdapter, RecallResult
 logger = logging.getLogger(__name__)
 
 
+import uuid as _uuid
+
+
+import uuid as _uuid
+
+
 class MemantoAdapter(MemoryAdapter):
     """
     Memanto memory adapter.
@@ -44,7 +50,7 @@ class MemantoAdapter(MemoryAdapter):
     # -----------------------------------------------------------------------
 
     def setup(self, user_id: str) -> None:
-        self._agent_id = f"bench-{user_id}"
+        self._agent_id = f"bench-{user_id}-{_uuid.uuid4().hex[:8]}"
         try:
             self._sdk.create_agent(
                 agent_id=self._agent_id,

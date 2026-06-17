@@ -172,9 +172,9 @@ class LLMJudge:
                 if not json_match:
                     raise ValueError(f"No JSON object found in response: {raw[:200]}")
                 parsed = json.loads(json_match.group())
-                accuracy            = int(parsed["accuracy"])
-                staleness_avoidance = int(parsed["staleness_avoidance"])
-                precision           = int(parsed["precision"])
+                accuracy            = max(0, min(5, int(parsed["accuracy"])))
+                staleness_avoidance = max(0, min(5, int(parsed["staleness_avoidance"])))
+                precision           = max(0, min(5, int(parsed["precision"])))
                 return EvalScore(
                     system=system_name,
                     query_id=query_id,

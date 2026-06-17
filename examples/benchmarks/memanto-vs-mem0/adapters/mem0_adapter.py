@@ -108,7 +108,13 @@ class Mem0Adapter(MemoryAdapter):
         while _time.monotonic() < deadline:
             try:
                 all_mems = self._client.get_all(filters={"user_id": self._user_id})
-                count = len(all_mems.get("results", all_mems if isinstance(all_mems, list) else []))
+                if isinstance(all_mems, dict):
+                    items = all_mems.get("results", [])
+                elif isinstance(all_mems, list):
+                    items = all_mems
+                else:
+                    items = []
+                count = len(items)
                 if count > 0:
                     return count
             except Exception:

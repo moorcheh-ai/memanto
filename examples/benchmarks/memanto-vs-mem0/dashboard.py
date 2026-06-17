@@ -129,8 +129,9 @@ for i, name in enumerate(sys_names):
         pct   = m.get("eval_score_pct", 0)
         st.metric(label=f"{name} — Eval Score", value=f"{score}/{max_s}", delta=f"{pct:.0f}%")
 
-# winner
-if all("eval_score_pct" in systems[n]["metrics"] for n in sys_names):
+# winner (only when judge scores actually exist)
+has_eval_scores = all(len(systems[n].get("eval_scores", [])) > 0 for n in sys_names)
+if has_eval_scores:
     winner = max(sys_names, key=lambda n: systems[n]["metrics"]["eval_score_pct"])
     st.markdown(
         f'<span class="winner-badge">🏆 Winner: {winner}</span>',

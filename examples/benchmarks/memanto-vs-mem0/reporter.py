@@ -51,7 +51,7 @@ def print_report(result: BenchmarkResult) -> None:
     # ── Winner ────────────────────────────────────────────────────────────
     if all(len(s.eval_scores) > 0 for s in systems):
         winner = result.winner()
-        print(f"\n🏆  Winner (by retrieval accuracy): {winner}\n")
+        print(f"\n🏆  Winner (by total eval score): {winner}\n")
 
 
 def _print_rich(

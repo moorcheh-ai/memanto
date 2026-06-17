@@ -5,7 +5,7 @@ Usage:
     python run_benchmark.py
     python run_benchmark.py --skip-judge        # only collect latency/token metrics
     python run_benchmark.py --judge-model anthropic/claude-3-haiku-20240307
-    python run_benchmark.py --save              # save results to results/ (default: True)
+    python run_benchmark.py --no-save           # disable saving results to results/
 """
 
 from __future__ import annotations

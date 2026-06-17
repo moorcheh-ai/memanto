@@ -11,7 +11,7 @@ requires-python = ">=3.10"
 license = { text = "MIT" }
 dependencies = [
     "memanto>=0.1.0,<0.2.0",
-    "mem0ai>=0.1.0",
+    mem0ai>=2.0.5,
     "openai>=1.30.0",
     "python-dotenv>=1.0.0",
     "rich>=13.0.0",
@@ -23,4 +23,5 @@ dependencies = [
 run-benchmark = "run_benchmark:main"
 
 [tool.hatch.build.targets.wheel]
-packages = ["adapters"]
+# Auto-discover all packages and modules in this directory
+sources = ["."]
