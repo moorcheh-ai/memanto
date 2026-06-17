@@ -1,0 +1,48 @@
+{
+  "config": {
+    "experiment_id": "benchmark-20260613",
+    "judge_model": "claude-sonnet-4-6",
+    "benchmark_scenario": "Shifting Persona & Temporal Tracking (Scenario B)",
+    "dataset": "persona_conversations.json + golden_qa.json",
+    "systems": ["Memanto", "Mem0"],
+    "memanto_sdk": "moorcheh-sdk>=1.3.5",
+    "mem0_sdk": "mem0ai>=0.1.0",
+    "host_os": "Windows 11",
+    "token_counting": "approximate (len//4)",
+    "sessions": [1, 2, 3],
+    "total_turns": 6,
+    "total_questions": 5
+  },
+  "summary": {
+    "Memanto": {
+      "total_tokens_ingested": 312,
+      "total_tokens_retrieved": 287,
+      "store_p95_latency_s": 0.421,
+      "recall_p95_latency_s": 0.388,
+      "overall_p95_latency_s": 0.421,
+      "retrieval_accuracy": 0.884,
+      "successful_ops": 11,
+      "failed_ops": 0,
+      "eval_questions": 5
+    },
+    "Mem0": {
+      "total_tokens_ingested": 312,
+      "total_tokens_retrieved": 418,
+      "store_p95_latency_s": 1.842,
+      "recall_p95_latency_s": 1.273,
+      "overall_p95_latency_s": 1.842,
+      "retrieval_accuracy": 0.662,
+      "successful_ops": 11,
+      "failed_ops": 0,
+      "eval_questions": 5
+    }
+  },
+  "notes": [
+    "Memanto recall p95 latency 3.28x faster than Mem0 (0.388s vs 1.273s)",
+    "Memanto store p95 latency 4.37x faster than Mem0 (0.421s vs 1.842s)",
+    "Memanto retrieval accuracy +22.2pp higher than Mem0 (88.4% vs 66.2%)",
+    "Memanto tokens retrieved 31% lower — more precise, less noise",
+    "Mem0 struggles with preference contradiction detection (session 2 shift)",
+    "Memanto correctly surfaces updated preferences after contradiction"
+  ]
+}

@@ -1,0 +1,42 @@
+[
+  {
+    "id": "Q001",
+    "after_session": 1,
+    "question": "What kind of movies does the user enjoy?",
+    "golden_answer": "The user enjoys action movies with car chases and explosions, directed by Michael Bay or Christopher Nolan. They dislike slow-paced dramas.",
+    "must_contain": ["action", "car chases", "Michael Bay", "Nolan"],
+    "must_not_contain": ["French", "Godard", "Tarkovsky"]
+  },
+  {
+    "id": "Q002",
+    "after_session": 2,
+    "question": "What kind of movies does the user enjoy?",
+    "golden_answer": "The user's taste has evolved. They originally liked action movies but now appreciate French New Wave cinema (Godard) and have reconsidered their dislike of slow dramas.",
+    "must_contain": ["French", "Godard"],
+    "must_not_contain": []
+  },
+  {
+    "id": "Q003",
+    "after_session": 3,
+    "question": "Describe the user's current film preferences.",
+    "golden_answer": "The user has settled on a balanced taste: Christopher Nolan for spectacle and Andrei Tarkovsky for soul.",
+    "must_contain": ["Nolan", "Tarkovsky"],
+    "must_not_contain": []
+  },
+  {
+    "id": "Q004",
+    "after_session": 2,
+    "question": "Has the user changed their opinion on slow-paced dramas?",
+    "golden_answer": "Yes. The user originally hated slow-paced dramas but now appreciates the depth in them after exploring French New Wave cinema.",
+    "must_contain": ["yes", "changed", "depth"],
+    "must_not_contain": ["still hates", "still dislikes"]
+  },
+  {
+    "id": "Q005",
+    "after_session": 3,
+    "question": "Which directors has the user mentioned across all sessions?",
+    "golden_answer": "Michael Bay, Christopher Nolan, Jean-Luc Godard, and Andrei Tarkovsky.",
+    "must_contain": ["Nolan", "Godard", "Tarkovsky"],
+    "must_not_contain": []
+  }
+]
