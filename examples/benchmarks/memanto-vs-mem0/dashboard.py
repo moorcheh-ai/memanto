@@ -182,7 +182,7 @@ c1, c2 = st.columns([2, 1])
 with c1:
     st.bar_chart(df_lat, color=[colors.get(n, "#888") for n in sys_names])
 with c2:
-    st.dataframe(df_lat.applymap(lambda x: f"{x:.3f}s"), use_container_width=True)
+    st.dataframe(df_lat.map(lambda x: f"{x:.3f}s"), use_container_width=True)
 
 st.divider()
 
