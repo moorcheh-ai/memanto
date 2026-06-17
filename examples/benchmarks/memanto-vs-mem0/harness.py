@@ -203,8 +203,13 @@ def run_benchmark(
             time.sleep(0.5)
 
         # Brief wait for indexing before recall
-        logger.info("[%s] Waiting 3s for memory indexing...", sname)
-        time.sleep(3)
+        logger.info("[%s] Waiting for memory indexing...", sname)
+        if hasattr(adapter, "wait_for_indexing"):
+            # Mem0 Platform is async — poll until memories are visible
+            count = adapter.wait_for_indexing(timeout_s=60, poll_interval_s=4)
+            logger.info("[%s] %d memories indexed", sname, count)
+        else:
+            time.sleep(3)
 
         # ── Recall all queries ────────────────────────────────────────────
         logger.info("[%s] Running %d evaluation queries...", sname, len(eval_queries))

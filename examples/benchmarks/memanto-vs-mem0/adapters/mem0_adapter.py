@@ -76,6 +76,8 @@ class Mem0Adapter(MemoryAdapter):
 
         Mem0's .add() sends the messages to an LLM that extracts and
         deduplicates memories — we measure total tokens in and wall time.
+        Note: Mem0 Platform processes memories asynchronously (returns PENDING).
+        The harness waits for indexing before running recall.
         """
         raw_text = self.messages_to_text(messages)
         tokens_in = self.count_tokens(raw_text)
@@ -95,6 +97,24 @@ class Mem0Adapter(MemoryAdapter):
             tokens_ingested=tokens_in,
             raw_response=raw,
         )
+
+    def wait_for_indexing(self, timeout_s: int = 30, poll_interval_s: int = 3) -> int:
+        """
+        Poll Mem0 until at least one memory is indexed for this user.
+        Returns the number of memories found, or 0 on timeout.
+        """
+        import time as _time
+        deadline = _time.monotonic() + timeout_s
+        while _time.monotonic() < deadline:
+            try:
+                all_mems = self._client.get_all(filters={"user_id": self._user_id})
+                count = len(all_mems.get("results", all_mems if isinstance(all_mems, list) else []))
+                if count > 0:
+                    return count
+            except Exception:
+                pass
+            _time.sleep(poll_interval_s)
+        return 0
 
     # -----------------------------------------------------------------------
     # Recall

@@ -166,7 +166,12 @@ class LLMJudge:
                     raw = raw.split("```")[1]
                     if raw.startswith("json"):
                         raw = raw[4:]
-                parsed = json.loads(raw)
+                # Extract just the JSON object — ignore anything after the closing brace
+                import re as _re
+                json_match = _re.search(r'\{[^{}]*\}', raw, _re.DOTALL)
+                if not json_match:
+                    raise ValueError(f"No JSON object found in response: {raw[:200]}")
+                parsed = json.loads(json_match.group())
                 accuracy            = int(parsed["accuracy"])
                 staleness_avoidance = int(parsed["staleness_avoidance"])
                 precision           = int(parsed["precision"])
