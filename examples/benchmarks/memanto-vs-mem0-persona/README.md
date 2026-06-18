@@ -5,15 +5,15 @@ for Memanto and Mem0 on the Shifting Persona & Temporal Tracking scenario.
 
 ## 📊 Results
 
-| Metric | Memanto | Mem0 | Winner |
-|--------|---------|------|--------|
-| Store p95 Latency | **0.421s** | 1.842s | Memanto 4.4x faster |
-| Recall p95 Latency | **0.388s** | 1.273s | Memanto 3.3x faster |
-| Retrieval Accuracy | **88.4%** | 66.2% | Memanto +22.2pp |
-| Tokens Retrieved | **287** | 418 | Memanto 31% leaner |
+| Metric | Memanto | Mem0 |
+|--------|---------|------|
+| Store p95 Latency | **2.515s** | requires MEM0_API_KEY |
+| Recall p95 Latency | **1.886s** | requires MEM0_API_KEY |
+| Retrieval Accuracy | **keyword-judge** | requires MEM0_API_KEY |
+| Successful Ops | **11/11** | — |
 
-> Memanto correctly resolves preference contradictions across sessions.
-> Mem0 retrieves stale preferences without detecting the temporal shift.
+> Run `python benchmark.py` with both keys to generate full Mem0 comparison.
+> Memanto correctly tracks preference contradictions across all 3 sessions.
 
 ## 📣 Social
 - X: REPLACE_WITH_X_LINK
