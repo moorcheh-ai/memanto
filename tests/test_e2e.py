@@ -12,6 +12,7 @@ session token produced by test_05 is used by all memory tests).
 
 import shutil
 import tempfile
+import time
 from pathlib import Path
 
 import pytest
@@ -412,6 +413,93 @@ class TestE2E:
         )
         assert resp.status_code == 200, resp.text
         assert resp.json()["temporal_mode"] == "recent"
+
+    # ------------------------------------------------------------------
+    # Cross-agent recall
+    # ------------------------------------------------------------------
+
+    @pytest.mark.asyncio
+    async def test_15c_recall_multi_cross_agent(self, http):
+        """POST /recall/multi — merged, score-sorted results across two agents."""
+        # Stand up a second agent with its own session + a distinctive memory.
+        agent2 = f"{TEST_AGENT_ID}-2"
+        await http.post(
+            "/api/v2/agents",
+            headers=AUTH,
+            json={
+                "agent_id": agent2,
+                "pattern": "support",
+                "description": "Automated E2E cross-agent test agent — safe to delete",
+            },
+        )
+        activate = await http.post(f"/api/v2/agents/{agent2}/activate", headers=AUTH)
+        assert activate.status_code == 200, activate.text
+        token2 = activate.json()["session_token"]
+        state["agent2_id"] = agent2
+        state["agent2_token"] = token2
+
+        await http.post(
+            f"/api/v2/agents/{agent2}/remember",
+            headers={**AUTH, "X-Session-Token": token2},
+            json={
+                "content": "Project Borealis runs on MongoDB and async Python.",
+                "type": "fact",
+            },
+        )
+        # Give Moorcheh a moment to index the new document before searching.
+        time.sleep(8)
+
+        headers = {**AUTH, "X-Session-Tokens": f"{state['session_token']},{token2}"}
+        resp = await http.post(
+            "/api/v2/recall/multi",
+            headers=headers,
+            json={
+                "agent_ids": [TEST_AGENT_ID, agent2],
+                "query": "technology stack and databases",
+                "limit": 10,
+            },
+        )
+        assert resp.status_code == 200, resp.text
+        data = resp.json()
+        assert data["agents"] == [TEST_AGENT_ID, agent2]
+        assert isinstance(data["memories"], list)
+        assert "per_agent_counts" in data
+        # Every result is attributed to one of the searched agents and the
+        # merged list is score-sorted (descending).
+        scores = [m.get("score") or 0.0 for m in data["memories"]]
+        assert scores == sorted(scores, reverse=True)
+        for memory in data["memories"]:
+            assert memory.get("agent_id") in {TEST_AGENT_ID, agent2}
+
+    @pytest.mark.asyncio
+    async def test_15d_recall_multi_rejects_unauthorized(self, http):
+        """POST /recall/multi — a requested agent without a token is rejected (403)."""
+        agent2 = state["agent2_id"]
+        # Only agent-1's token is supplied, but agent-2 is also requested.
+        headers = {**AUTH, "X-Session-Token": state["session_token"]}
+        try:
+            resp = await http.post(
+                "/api/v2/recall/multi",
+                headers=headers,
+                json={
+                    "agent_ids": [TEST_AGENT_ID, agent2],
+                    "query": "anything",
+                },
+            )
+            assert resp.status_code == 403, resp.text
+            assert agent2 in resp.json()["detail"]["message"]
+        finally:
+            # Best-effort cleanup: deactivate the second agent (clears the
+            # active-session marker so later "after deactivate" checks still
+            # see no active session), then drop the agent and its namespace so
+            # repeated CI runs don't accumulate test namespaces in Moorcheh.
+            await http.post(
+                f"/api/v2/agents/{agent2}/deactivate",
+                headers={**AUTH, "X-Session-Token": state["agent2_token"]},
+            )
+            await http.delete(
+                f"/api/v2/agents/{agent2}?delete-backup-too=true", headers=AUTH
+            )
 
     # ------------------------------------------------------------------
     # Conflicts

@@ -25,7 +25,11 @@ from memanto.app.models import (
     RememberRequest,
 )
 from memanto.app.models.session import Session
-from memanto.app.routes.auth_deps import get_current_session, get_session_service
+from memanto.app.routes.auth_deps import (
+    get_authorized_agent_ids,
+    get_current_session,
+    get_session_service,
+)
 from memanto.app.services.memory_read_service import MemoryReadService
 from memanto.app.services.memory_write_service import MemoryWriteService
 from memanto.app.utils.errors import AuthorizationError, map_error_to_http_exception
@@ -34,6 +38,11 @@ from memanto.cli.client.direct_client import DirectClient
 from memanto.cli.config.manager import ConfigManager
 
 router = APIRouter()
+
+# Multi-agent recall lives at the /api/v2 root (POST /api/v2/recall/multi),
+# not under the /agents/{agent_id} prefix the single-agent routes use, so it
+# gets its own prefix-less router that sessions.py mounts at the v2 root.
+multi_router = APIRouter()
 
 _config_manager = ConfigManager()
 
@@ -492,6 +501,113 @@ async def recall(
             "query": request.query,
             "memories": memories,
             "count": len(memories),
+        }
+
+    except Exception as e:
+        raise map_error_to_http_exception(e)
+
+
+class RecallMultiRequest(BaseModel):
+    agent_ids: list[str] = Field(
+        ..., min_length=1, description="Agents to search across (cross-namespace)"
+    )
+    query: str = Field(..., min_length=1, description="Search query")
+    limit: int | None = Field(default=None, ge=1, description="Max merged results")
+    min_similarity: float | None = Field(
+        default=None, ge=0.0, le=1.0, description="Minimum similarity score (0-1)"
+    )
+    min_confidence: float | None = Field(
+        default=None, ge=0.0, le=1.0, description="Minimum confidence score (0-1)"
+    )
+    type: list[str] | None = Field(default=None, description="Memory type filters")
+
+    @field_validator("agent_ids")
+    @classmethod
+    def clean_agent_ids(cls, v: list[str]) -> list[str]:
+        seen: set[str] = set()
+        cleaned: list[str] = []
+        for agent_id in v:
+            agent_id = (agent_id or "").strip()
+            if agent_id and agent_id not in seen:
+                seen.add(agent_id)
+                cleaned.append(agent_id)
+        if not cleaned:
+            raise ValueError("agent_ids must contain at least one non-empty agent id")
+        return cleaned
+
+
+@multi_router.post("/recall/multi")
+async def recall_multi(
+    request: RecallMultiRequest = Body(...),
+    authorized_agents: dict[str, str] = Depends(get_authorized_agent_ids),
+    client=Depends(get_moorcheh_client),
+):
+    """
+    Cross-agent / multi-namespace recall (Session-based).
+
+    Searches several agents' namespaces in a single query and returns merged,
+    score-sorted results, each annotated with the ``agent_id`` it came from.
+
+    Auth: supply one session token per agent via X-Session-Tokens
+    (comma-separated) and/or X-Session-Token. A requested agent without a valid
+    token is rejected with 403.
+    """
+    CostGuard.validate_query_length(request.query)
+
+    # Authorization: every requested agent must have a valid supplied token.
+    unauthorized = [a for a in request.agent_ids if a not in authorized_agents]
+    if unauthorized:
+        raise map_error_to_http_exception(
+            AuthorizationError(
+                "Not authorized for agent(s): "
+                f"{', '.join(unauthorized)}. Provide a valid session token for "
+                "each agent via X-Session-Tokens."
+            )
+        )
+
+    recall_cfg = _config_manager.get_recall_config()
+    raw_limit = (
+        request.limit
+        if request.limit is not None
+        else recall_cfg.get("limit", settings.RECALL_LIMIT)
+    )
+    raw_min_similarity = (
+        request.min_similarity
+        if request.min_similarity is not None
+        else recall_cfg.get("min_similarity")
+    )
+    try:
+        limit = int(raw_limit)
+        min_similarity = (
+            None if raw_min_similarity is None else float(raw_min_similarity)
+        )
+    except (TypeError, ValueError) as e:
+        raise HTTPException(
+            status_code=400, detail=f"Invalid recall configuration: {e}"
+        )
+    CostGuard.validate_k_limit(limit)
+
+    try:
+        read_service = MemoryReadService(client)
+
+        result = await asyncio.to_thread(
+            read_service.search_multi_agent,
+            query=request.query,
+            agent_ids=request.agent_ids,
+            type=request.type,
+            min_confidence=request.min_confidence,
+            min_similarity_score=min_similarity,
+            limit=limit,
+        )
+
+        memories = result.get("results", [])
+
+        return {
+            "agents": request.agent_ids,
+            "query": request.query,
+            "memories": memories,
+            "count": len(memories),
+            "per_agent_counts": result.get("per_agent_counts", {}),
         }
 
     except Exception as e:

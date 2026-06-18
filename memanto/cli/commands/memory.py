@@ -314,14 +314,40 @@ def recall(
         "--recent",
         help="Chronological query: return the most recently stored memories (newest first). No search query needed.",
     ),
+    agents: str | None = typer.Option(
+        None,
+        "--agents",
+        help="Cross-agent recall: comma-separated agent IDs to search across (e.g. agent-a,agent-b,agent-c).",
+    ),
 ):
-    """Search and retrieve memories for the active agent with temporal query support."""
+    """Search and retrieve memories with temporal query and cross-agent (--agents) support."""
     start = time.perf_counter()
     active_agent_id, active_session_token = config_manager.get_active_session()
 
     if not active_agent_id or not active_session_token:
         _error(
             "No active agent.", hint="Run 'memanto agent activate <agent-id>' first."
+        )
+
+    # Cross-agent recall is semantic-only; reject temporal/tags combinations.
+    agent_list = [a.strip() for a in agents.split(",") if a.strip()] if agents else None
+    if agent_list and (as_of or changed_since or recent):
+        _error(
+            "Cannot combine --agents with temporal query modes.",
+            hint="Cross-agent recall supports standard search only. "
+            "Drop --as-of/--changed-since/--recent.",
+        )
+    if agent_list and not query:
+        _error(
+            "Missing argument 'QUERY'.",
+            hint="Cross-agent recall requires a search query.",
+        )
+    # --tags is not forwarded by cross-agent recall; reject rather than
+    # silently ignoring it.
+    if agent_list and tags:
+        _error(
+            "Cannot combine --agents with --tags.",
+            hint="Cross-agent recall does not support tag filtering.",
         )
 
     # Check for mutually exclusive temporal flags
@@ -377,7 +403,16 @@ def recall(
         # Determine which API method to call based on temporal flags
         temporal_mode = "standard"
         with console.status("[cyan]Searching memories...", spinner="dots"):
-            if as_of:
+            if agent_list and query:
+                results = client.recall_multi(
+                    agent_ids=agent_list,
+                    query=query,
+                    limit=limit,
+                    type=type,
+                    min_similarity=min_similarity,
+                )
+                temporal_mode = "multi"
+            elif as_of:
                 results = client.recall_as_of(
                     agent_id=agent_id,
                     as_of=as_of,
@@ -429,6 +464,9 @@ def recall(
             "as_of": f"Point-in-time (as of {as_of})",
             "changed_since": f"Differential (since {changed_since})",
             "recent": "Recent (newest first)",
+            "multi": f"Cross-agent ({len(agent_list)} agents)"
+            if agent_list
+            else "Cross-agent",
             "standard": "Standard search",
         }
         mode_label = mode_labels.get(temporal_mode, "Standard search")
@@ -481,6 +519,11 @@ def recall(
             # Show change type for differential queries
             if change_type:
                 panel_content += f"\n[yellow]Change: {change_type}[/yellow]"
+
+            # Show source agent for cross-agent recall
+            agent_attr = memory.get("agent_id")
+            if agent_attr:
+                panel_content += f"\n[{PRIMARY}]Agent: {agent_attr}[/{PRIMARY}]"
 
             # Determine border style
             border_style = BRIGHT if score > 0.8 else PRIMARY

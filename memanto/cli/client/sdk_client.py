@@ -739,6 +739,104 @@ class SdkClient:
             "count": result.get("total_found", 0),
         }
 
+    def recall_multi(
+        self,
+        agent_ids: list[str],
+        query: str,
+        limit: int | None = None,
+        type: list[str] | None = None,
+        min_confidence: float | None = None,
+        min_similarity: float | None = None,
+    ) -> dict[str, Any]:
+        """
+        Cross-agent recall: search several agents' memories in one query.
+
+        Returns merged, score-sorted results, each annotated with the
+        ``agent_id`` it came from.
+
+        Authorization (direct/CLI model): the caller must hold a valid, active
+        local session for every requested agent (created via
+        ``activate_agent``). Any agent without a live session is rejected.
+
+        Args:
+            agent_ids: Agents whose namespaces to search.
+            query: Natural-language search query.
+            limit: Max merged results (defaults to config).
+            type: Filter by types.
+            min_confidence: Minimum confidence threshold.
+            min_similarity: Minimum similarity threshold.
+
+        Returns:
+            Dict with ``agents``, ``query``, ``memories``, ``count``,
+            ``per_agent_counts``.
+
+        Raises:
+            ValueError: If no agent ids are provided.
+            SessionError: If the caller is not authorized for an agent.
+        """
+        recall_cfg = ConfigManager().get_recall_config()
+        if limit is None:
+            limit = recall_cfg["limit"]
+        if min_similarity is None:
+            min_similarity = recall_cfg.get("min_similarity")
+
+        # Normalize + dedupe agent ids, preserving order
+        cleaned_agent_ids: list[str] = []
+        seen: set[str] = set()
+        for agent_id in agent_ids:
+            agent_id = (agent_id or "").strip()
+            if agent_id and agent_id not in seen:
+                seen.add(agent_id)
+                cleaned_agent_ids.append(agent_id)
+        if not cleaned_agent_ids:
+            raise ValueError("At least one agent_id is required")
+
+        self._validate_query(query, limit)
+
+        # Authorization: require a live session for each agent, validating its
+        # JWT (signature + expiry) like the single-agent path — not just an
+        # is_active() status check.
+        session_service = self._get_session_service()
+        unauthorized: list[str] = []
+        for agent_id in cleaned_agent_ids:
+            session = session_service.get_session(agent_id)
+            if not session or not session.is_active():
+                unauthorized.append(agent_id)
+                continue
+            try:
+                session_service.validate_session(session.session_token)
+            except (SessionExpiredError, InvalidSessionTokenError):
+                unauthorized.append(agent_id)
+        if unauthorized:
+            raise SessionError(
+                "Not authorized for agent(s): "
+                f"{', '.join(unauthorized)}. Activate each with "
+                "'memanto agent activate <agent-id>'."
+            )
+
+        logger.debug(
+            "Multi-agent recall across %s: query='%s', limit=%d",
+            cleaned_agent_ids,
+            query,
+            limit,
+        )
+        result = self._get_read_service().search_multi_agent(
+            query=query,
+            agent_ids=cleaned_agent_ids,
+            type=type,
+            min_confidence=min_confidence,
+            min_similarity_score=min_similarity,
+            limit=limit,
+        )
+
+        return {
+            "agents": cleaned_agent_ids,
+            "query": query,
+            "memories": result.get("results", []),
+            "count": result.get("total_found", 0),
+            "per_agent_counts": result.get("per_agent_counts", {}),
+        }
+
     def recall_as_of(
         self,
         agent_id: str,

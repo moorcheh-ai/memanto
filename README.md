@@ -186,7 +186,7 @@ This means Memanto doesn't need a separate vector DB, embedding pipeline, or rer
 | Memory capture at scale | `memanto remember` | Store single memories with metadata or batch-ingest up to 100 records from JSON. |
 | Single-memory deletion | `memanto forget` | Delete one bad or outdated memory from the active agent after confirmation, or without the prompt with `--force`. |
 | File upload to memory | `memanto upload` | Upload documents (.pdf, .docx, .xlsx, .json, .txt, .csv, .md) directly into an agent's memory namespace — content becomes instantly searchable via `recall`. |
-| Advanced retrieval modes | `memanto recall` | Run standard search plus temporal queries (`--as-of`, `--changed-since`) with filters. |
+| Advanced retrieval modes | `memanto recall` | Run standard search plus temporal (`--as-of`, `--changed-since`) and cross-agent (`--agents`) queries with filters. |
 | Grounded QA over memory | `memanto answer` | Generate RAG answers using retrieved memory context. |
 | Daily intelligence workflows | `memanto daily-summary`, `memanto conflicts` | Generate summaries, detect contradictions, and resolve conflicts interactively. |
 | Session and automation controls | `memanto session ...`, `memanto schedule ...` | Inspect sessions and enable scheduled daily summary runs. |

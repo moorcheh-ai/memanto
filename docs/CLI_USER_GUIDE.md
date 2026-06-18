@@ -351,6 +351,11 @@ memanto recall QUERY [OPTIONS]
 - `--type, -t TEXT` - Filter by memory type
 - `--min-confidence FLOAT` - Minimum confidence score
 - `--tags TEXT` - Filter by tags (comma-separated)
+- `--agents TEXT` - Cross-agent recall: comma-separated agent IDs to search across in a single query
+
+> **Note:** `--agents` is semantic search only (not combinable with `--as-of`,
+> `--changed-since`, or `--recent`), and each listed agent must be activated first
+> (`memanto agent activate <agent-id>`).
 
 **Examples:**
 ```bash
@@ -367,6 +372,10 @@ python -m cli.main recall "security" \
 python -m cli.main recall "architecture" \
   --tags "database,backend" \
   --limit 20
+
+# Cross-agent search
+python -m cli.main recall "billing edge cases" \
+  --agents support-acme,proj-orion,proj-helios
 ```
 
 **Output:**
