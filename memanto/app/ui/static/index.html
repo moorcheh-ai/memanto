@@ -2015,6 +2015,7 @@
                     <button class="tab" data-tab="ask">Answer (RAG)</button>
                     <button class="tab" data-tab="recall">Recall</button>
                     <button class="tab" data-tab="upload">Upload File</button>
+                    <button class="tab" data-tab="extract">Extract</button>
                 </div>
                 <!-- Remember -->
                 <div class="panel pg-tab active" id="tab-remember">
@@ -2100,6 +2101,25 @@
                     </p>
                     <button class="btn btn-primary" id="btnUpload" onclick="doUpload()">Upload to Memory</button>
                     <div id="uploadResult" style="margin-top:16px"></div>
+                </div>
+                <!-- Extract -->
+                <div class="panel pg-tab" id="tab-extract">
+                    <div class="form-group">
+                        <label>Conversation JSON</label>
+                        <textarea id="extractInput" style="font-family: var(--font-mono); min-height: 200px;" placeholder='[&#10;  {"role": "user", "content": "I like dark mode."},&#10;  {"role": "assistant", "content": "Noted."}&#10;]'></textarea>
+                    </div>
+                    <div style="display: flex; gap: 10px;">
+                        <button class="btn btn-secondary" id="btnExtractPreview" onclick="doExtractPreview()">Preview Extraction</button>
+                        <button class="btn btn-primary" id="btnExtractDirect" onclick="doExtractAndSave()">Extract & Save</button>
+                    </div>
+
+                    <div id="extractResults" style="display: none; margin-top: 24px;">
+                        <div class="panel-title" style="display: flex; justify-content: space-between; align-items: center;">
+                            <span>Extracted Memories</span>
+                            <button class="btn btn-primary btn-sm" id="btnSaveExtraction" onclick="doExtractSave()">Save to Database</button>
+                        </div>
+                        <div id="extractCards" class="cards-row"></div>
+                    </div>
                 </div>
             </section>
 
@@ -2835,6 +2855,100 @@
                 out.innerHTML = `<p style="color:var(--error)">Error: ${escHtml(e.message)}</p>`;
             }
             btn.disabled = false; btn.innerHTML = 'Upload to Memory';
+        }
+
+        // ================================================================
+        // EXTRACT FROM CHAT
+        // ================================================================
+        let _extractionCandidates = [];
+
+        async function doExtractPreview() {
+            if (!S.agentId) { toast('No active agent. Activate an agent first.', 'error'); return; }
+            const input = document.getElementById('extractInput').value.trim();
+            if (!input) { toast('Please enter a conversation JSON', 'error'); return; }
+            let messages;
+            try {
+                messages = JSON.parse(input);
+                if (!Array.isArray(messages)) throw new Error('Root must be an array');
+            } catch(e) {
+                return toast('Invalid JSON: ' + e.message, 'error');
+            }
+            const btn = document.getElementById('btnExtractPreview');
+            const originalText = btn.innerHTML;
+            btn.innerHTML = '<span class="spinner" style="display:inline-block;width:12px;height:12px;border:2px solid currentColor;border-right-color:transparent;border-radius:50%;animation:spin 0.75s linear infinite"></span> Extracting...';
+            btn.disabled = true;
+            try {
+                const res = await api('POST', `/api/v2/agents/${S.agentId}/remember/extract`, {
+                    messages,
+                    dry_run: true
+                });
+                _extractionCandidates = res.candidates || [];
+                renderExtractionCards();
+                document.getElementById('extractResults').style.display = 'block';
+                toast(`Extracted ${_extractionCandidates.length} candidates`);
+            } catch(e) {
+                toast(e.message, 'error');
+            } finally {
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+            }
+        }
+
+        function renderExtractionCards() {
+            const container = document.getElementById('extractCards');
+            if (_extractionCandidates.length === 0) {
+                container.innerHTML = '<div class="hh-empty">No memories extracted.</div>';
+                document.getElementById('btnSaveExtraction').disabled = true;
+                return;
+            }
+            document.getElementById('btnSaveExtraction').disabled = false;
+            container.innerHTML = _extractionCandidates.map((c, i) => `
+                <div class="card" id="extCard-${i}">
+                    <div style="display:flex; justify-content:space-between; margin-bottom:8px; align-items:center;">
+                        <div class="badge badge-accent" style="margin:0">${escHtml(c.type || 'fact')}</div>
+                        <input type="checkbox" checked onchange="_extractionCandidates[${i}]._skip = !this.checked">
+                    </div>
+                    <textarea style="width:100%; min-height:80px; font-size:12px; margin-bottom:8px" onchange="_extractionCandidates[${i}].content = this.value">${escHtml(c.content)}</textarea>
+                    <div style="display:flex; gap:8px">
+                        <div style="flex:1">
+                            <label style="font-size:9px">Confidence</label>
+                            <input type="number" step="0.05" min="0" max="1" style="padding:4px; font-size:11px" value="${c.confidence || 0.8}" onchange="_extractionCandidates[${i}].confidence = parseFloat(this.value)">
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        async function doExtractSave() {
+            if (!S.agentId) { toast('No active agent', 'error'); return; }
+            const toSave = _extractionCandidates.filter(c => !c._skip);
+            if (toSave.length === 0) { toast('No memories selected to save', 'warning'); return; }
+
+            const btn = document.getElementById('btnSaveExtraction');
+            const originalText = btn.innerHTML;
+            btn.innerHTML = 'Saving...';
+            btn.disabled = true;
+
+            try {
+                const memoriesToCreate = toSave.map(c => ({
+                    content: c.content,
+                    type: c.type || 'fact',
+                    confidence: c.confidence || 0.8,
+                    source: c.source || 'agent',
+                    provenance: c.provenance || 'inferred'
+                }));
+
+                const res = await api('POST', `/api/v2/agents/${S.agentId}/batch-remember`, { memories: memoriesToCreate });
+                toast(`Saved ${res.success_count || memoriesToCreate.length} memories successfully`);
+                _extractionCandidates = [];
+                document.getElementById('extractResults').style.display = 'none';
+                document.getElementById('extractInput').value = '';
+            } catch(e) {
+                toast(e.message, 'error');
+            } finally {
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+            }
         }
 
         // ================================================================
