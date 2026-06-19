@@ -3975,10 +3975,10 @@
                 mems.forEach(m => {
                     const t = m.type || 'unknown';
                     typeCounts[t] = (typeCounts[t] || 0) + 1;
-                    
+
                     const s = m.source || 'unknown';
                     sourceBuckets[s] = (sourceBuckets[s] || 0) + 1;
-                    
+
                     if (m.tags && Array.isArray(m.tags)) {
                         m.tags.forEach(tag => {
                             if (tag) tagCounts[tag] = (tagCounts[tag] || 0) + 1;
@@ -4015,7 +4015,7 @@
 
                 const colors = ['#06b6d4', '#6366f1', '#22c55e', '#f59e0b', '#ec4899', '#8b5cf6', '#f97316'];
                 const sourceColors = ['#ec4899', '#f97316', '#8b5cf6', '#06b6d4', '#22c55e'];
-                
+
                 if (S.charts.usage) S.charts.usage.destroy();
                 if (S.charts.type) S.charts.type.destroy();
                 if (S.charts.conf) S.charts.conf.destroy();
