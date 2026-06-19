@@ -125,7 +125,7 @@ class ConversationMemoryExtractionService:
             raise ValueError("Memory extraction response must be a JSON array")
 
         normalized: list[dict[str, Any]] = []
-        seen: set[tuple[str, str]] = set()
+        seen: set[tuple[str | None, str]] = set()
 
         for item in parsed:
             if not isinstance(item, dict):
