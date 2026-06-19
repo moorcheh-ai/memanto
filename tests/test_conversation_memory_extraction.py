@@ -67,7 +67,7 @@ def test_extract_conversation_memories_normalizes_candidates():
             "provenance": "inferred",
         },
         {
-            "type": "fact",
+            "type": None,
             "title": "Fallback type",
             "content": "The project uses pytest for unit tests.",
             "confidence": 1.0,

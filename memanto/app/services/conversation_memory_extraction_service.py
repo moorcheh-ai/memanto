@@ -135,9 +135,13 @@ class ConversationMemoryExtractionService:
             if not content:
                 continue
 
-            memory_type = str(item.get("type", "fact")).strip().lower()
-            if memory_type not in VALID_MEMORY_TYPES:
-                memory_type = "fact"
+            memory_type = item.get("type")
+            if memory_type:
+                memory_type = str(memory_type).strip().lower()
+                if memory_type not in VALID_MEMORY_TYPES:
+                    memory_type = None
+            else:
+                memory_type = None
 
             title = str(item.get("title") or content[:80]).strip()
             title = title[:100]

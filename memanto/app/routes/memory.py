@@ -355,7 +355,7 @@ async def extract_memories_from_conversation(
         memory_records = []
         for item in candidates:
             memory = MemoryRecord(
-                type=cast(MemoryType, item["type"]),
+                type=cast(MemoryType, item.get("type")),
                 title=item["title"],
                 content=item["content"],
                 scope_type="agent",
