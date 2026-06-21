@@ -25,6 +25,9 @@ used: opaque markers make every score independently auditable.
 
 The report also gives paired 95% bootstrap confidence intervals for every
 probe-level difference. Pairing by seed and probe removes workload variance.
+The comparison's `mean_retrieval_latency_seconds` value is the paired mean of
+the per-probe retrieval-latency differences; it is intentionally distinct from
+the backend-level p95 write and retrieval latencies in `summary.json`.
 
 ## Experimental controls
 
@@ -91,7 +94,8 @@ Every run writes:
 - `dataset.jsonl` — the complete generated source workload.
 - `traces.jsonl` — one auditable row per backend, seed, and probe.
 - `summary.json` and `summary.csv` — required aggregate metrics.
-- `comparison.json` — paired effects and 95% bootstrap intervals.
+- `comparison.json` — paired mean effects and 95% bootstrap intervals; its
+  retrieval-latency effect is explicitly named and is not a p95 statistic.
 - `report.md` — a human-readable results table.
 
 The source workload never contains secrets or real user data. API keys are

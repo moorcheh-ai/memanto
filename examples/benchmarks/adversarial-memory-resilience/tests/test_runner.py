@@ -106,3 +106,8 @@ def test_paired_comparison_aligns_by_seed_and_probe():
 
     assert comparison["hit"]["mean_delta_left_minus_right"] == 1.0
     assert comparison["retrieved_tokens"]["mean_delta_left_minus_right"] == 0.0
+    assert (
+        comparison["mean_retrieval_latency_seconds"]["mean_delta_left_minus_right"]
+        == 0.0
+    )
+    assert "latency_seconds" not in comparison

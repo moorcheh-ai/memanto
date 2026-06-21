@@ -29,7 +29,7 @@
     "ci95_low": 0.1388888888888889,
     "ci95_high": 1.5208333333333333
   },
-  "latency_seconds": {
+  "mean_retrieval_latency_seconds": {
     "mean_delta_left_minus_right": 0.3183270270839987,
     "ci95_low": 0.3058664512000481,
     "ci95_high": 0.3323102277979766

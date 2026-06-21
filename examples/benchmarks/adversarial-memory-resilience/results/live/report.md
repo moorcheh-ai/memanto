@@ -18,6 +18,7 @@ Marker matching is deterministic; no LLM judge is used.
 | poison_exposure | 0.062500 | [0.013889, 0.118056] |
 | foreign_exposure | 0.000000 | [0.000000, 0.000000] |
 | retrieved_tokens | 0.791667 | [0.138889, 1.520833] |
-| latency_seconds | 0.318327 | [0.305866, 0.332310] |
+| mean_retrieval_latency_seconds | 0.318327 | [0.305866, 0.332310] |
 
 Lower is better for stale, poison, foreign exposure, retrieved tokens, and latency. Higher is better for hit rate and reciprocal rank.
+The latency effect is the paired mean retrieval-latency delta; backend p95 write and retrieval latencies are reported separately above and in summary.json.

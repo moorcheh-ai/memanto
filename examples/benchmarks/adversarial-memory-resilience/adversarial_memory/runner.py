@@ -162,21 +162,26 @@ def compare_backends(
     if not pairs:
         raise ValueError(f"no paired traces for {left} and {right}")
     result: dict[str, dict[str, float]] = {}
-    for metric in (
-        "hit",
-        "reciprocal_rank",
-        "stale_exposure",
-        "poison_exposure",
-        "foreign_exposure",
-        "retrieved_tokens",
-        "latency_seconds",
-    ):
-        left_values = [float(getattr(keyed[(left, *pair)], metric)) for pair in pairs]
-        right_values = [float(getattr(keyed[(right, *pair)], metric)) for pair in pairs]
+    metrics = {
+        "hit": "hit",
+        "reciprocal_rank": "reciprocal_rank",
+        "stale_exposure": "stale_exposure",
+        "poison_exposure": "poison_exposure",
+        "foreign_exposure": "foreign_exposure",
+        "retrieved_tokens": "retrieved_tokens",
+        "mean_retrieval_latency_seconds": "latency_seconds",
+    }
+    for output_name, trace_attribute in metrics.items():
+        left_values = [
+            float(getattr(keyed[(left, *pair)], trace_attribute)) for pair in pairs
+        ]
+        right_values = [
+            float(getattr(keyed[(right, *pair)], trace_attribute)) for pair in pairs
+        ]
         estimate, low, high = paired_bootstrap_ci(
             left_values, right_values, seed=20260605
         )
-        result[metric] = {
+        result[output_name] = {
             "mean_delta_left_minus_right": estimate,
             "ci95_low": low,
             "ci95_high": high,
@@ -232,6 +237,9 @@ def _report(
             "",
             "Lower is better for stale, poison, foreign exposure, retrieved tokens, "
             "and latency. Higher is better for hit rate and reciprocal rank.",
+            "The latency effect is the paired mean retrieval-latency delta; backend "
+            "p95 write and retrieval latencies are reported separately above and in "
+            "summary.json.",
             "",
         ]
     )
