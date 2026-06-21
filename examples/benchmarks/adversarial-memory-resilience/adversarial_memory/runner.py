@@ -23,6 +23,15 @@ from .scoring import (
 )
 
 
+def _package_version(package: str) -> str:
+    """Return an installed package version without requiring optional backends."""
+
+    try:
+        return importlib.metadata.version(package)
+    except importlib.metadata.PackageNotFoundError:
+        return "not installed"
+
+
 @dataclass(frozen=True)
 class BenchmarkConfig:
     """Reproducible experiment controls."""
@@ -268,7 +277,7 @@ def run_benchmark(config: BenchmarkConfig) -> Path:
                 "platform": platform.platform(),
                 "processor": platform.processor(),
                 "packages": {
-                    package: importlib.metadata.version(package)
+                    package: _package_version(package)
                     for package in ("memanto", "mem0ai", "fastembed", "qdrant-client")
                 },
             },

@@ -67,36 +67,37 @@ class MemantoAdapter:
         self._cleanup = cleanup
         self._agents: dict[str, str] = {}
         self._namespaces: dict[str, str] = {}
-        for tenant in tenants:
-            agent_id = _safe_id(f"adversarial-{run_id}-{tenant}")
-            agent = self._client.create_agent(
-                agent_id=agent_id,
-                pattern="tool",
-                description="Adversarial incident-memory benchmark",
-            )
-            namespace = str(agent["namespace"])
-            self._client.activate_agent(agent_id, duration_hours=4)
-            self._agents[tenant] = agent_id
-            self._namespaces[tenant] = namespace
+        try:
+            for tenant in tenants:
+                agent_id = _safe_id(f"adversarial-{run_id}-{tenant}")
+                agent = self._client.create_agent(
+                    agent_id=agent_id,
+                    pattern="tool",
+                    description="Adversarial incident-memory benchmark",
+                )
+                namespace = str(agent["namespace"])
+                self._agents[tenant] = agent_id
+                self._namespaces[tenant] = namespace
+                self._client.activate_agent(agent_id, duration_hours=4)
+        except Exception:
+            try:
+                self.close()
+            except RuntimeError:
+                pass
+            raise
 
     def add(self, event: Event) -> None:
-        from memanto.app.core import MemoryRecord
-
         agent_id = self._agents[event.tenant]
-        record = MemoryRecord(
-            id=hashlib.sha256(event.event_id.encode()).hexdigest(),
-            type="context",
+        self._client.remember(
+            agent_id=agent_id,
+            memory_type="context",
             title=f"Incident memory {event.event_id}",
             content=event.content,
-            scope_type="agent",
-            scope_id=agent_id,
-            actor_id=agent_id,
             confidence=1.0,
             tags=[event.kind, f"session-{event.session}"],
             source="adversarial-benchmark",
             provenance="explicit_statement",
         )
-        self._client._get_write_service().store_memory(record)
 
     def search(self, probe: Probe, *, limit: int) -> list[str]:
         response = self._client.recall(
@@ -138,7 +139,7 @@ class Mem0Adapter:
         self._path = work_dir / f"mem0-{_safe_id(run_id)}"
         self._path.mkdir(parents=True, exist_ok=True)
         os.environ.setdefault("MEM0_TELEMETRY", "false")
-        model_cache = Path(__file__).resolve().parents[1] / "work" / "fastembed-cache"
+        model_cache = work_dir / "fastembed-cache"
         os.environ.setdefault("FASTEMBED_CACHE_PATH", str(model_cache))
         embedding_model = "benchmark/all-MiniLM-L6-v2"
         if not any(

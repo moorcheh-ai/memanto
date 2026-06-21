@@ -77,8 +77,10 @@ python run_benchmark.py \
   --output-dir results/smoke
 ```
 
-The benchmark deletes temporary cloud namespaces and local Qdrant state even
-when a run fails. Use `--keep-backend-state` only for debugging.
+After adapter initialization succeeds, the benchmark deletes temporary cloud
+namespaces and local Qdrant state even when execution fails. Initialization also
+attempts best-effort cleanup of any resources it created before an error. Use
+`--keep-backend-state` only for debugging.
 
 ## Artifacts
 
