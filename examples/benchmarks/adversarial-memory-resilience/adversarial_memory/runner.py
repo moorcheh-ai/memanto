@@ -196,7 +196,7 @@ def _report(
     lines = [
         "# Adversarial memory resilience benchmark",
         "",
-        "All values come from live backends over identical seeded workloads. ",
+        "All values come from live backends over identical seeded workloads.",
         "Marker matching is deterministic; no LLM judge is used.",
         "",
         "| Backend | Accuracy | MRR | Stale exposure | Poison exposure | "

@@ -97,6 +97,25 @@ Every run writes:
 The source workload never contains secrets or real user data. API keys are
 read only from the process environment and are never written to an artifact.
 
+## Published live run
+
+The checked-in [`results/live`](results/live) run was executed against the
+production Memanto service and local Mem0 on three seeds, three isolated
+tenants, four incidents per tenant, and four revisions. It contains 288
+retrieval traces (144 per backend) and 396 source workload records.
+
+| Backend | Accuracy | MRR | Stale exposure | Poison exposure | Foreign exposure | p95 retrieval |
+|---|---:|---:|---:|---:|---:|---:|
+| Memanto | 0.944 | 0.551 | 0.750 | 0.229 | 0.000 | 0.449 s |
+| Mem0 | 0.729 | 0.472 | 0.667 | 0.167 | 0.000 | 0.047 s |
+
+Memanto improved hit rate by 0.215 (95% paired-bootstrap CI 0.139 to
+0.292), but returned more stale and prompt-injection-marked context and had
+higher retrieval latency on this workload. Both systems maintained complete
+tenant isolation. See [`report.md`](results/live/report.md) and the raw traces
+for the full audit trail. All nine temporary cloud namespaces were deleted
+after the run.
+
 ## Validate the implementation
 
 ```bash
@@ -108,7 +127,8 @@ ruff format --check adversarial_memory tests run_benchmark.py
 Unit tests cover deterministic generation, temporal checkpoints, marker
 scoring, exposure classes, percentile math, paired bootstrap alignment,
 runner lifecycle, and metric aggregation. A live smoke test is still
-recommended because SDK behavior cannot be proven by mocks.
+recommended for changed credentials or SDK versions because behavior cannot be
+proven by mocks.
 
 ## Interpreting results
 

@@ -62,23 +62,25 @@ class MemantoAdapter:
         api_key = os.environ.get("MOORCHEH_API_KEY", "")
         if not api_key:
             raise RuntimeError("MOORCHEH_API_KEY is required for Memanto")
-        self._client = SdkClient(api_key=api_key)
         self._moorcheh = MoorchehClient(api_key=api_key)
         self._cleanup = cleanup
+        self._clients: dict[str, Any] = {}
         self._agents: dict[str, str] = {}
         self._namespaces: dict[str, str] = {}
         try:
             for tenant in tenants:
+                client = SdkClient(api_key=api_key)
                 agent_id = _safe_id(f"adversarial-{run_id}-{tenant}")
-                agent = self._client.create_agent(
+                agent = client.create_agent(
                     agent_id=agent_id,
                     pattern="tool",
                     description="Adversarial incident-memory benchmark",
                 )
                 namespace = str(agent["namespace"])
+                self._clients[tenant] = client
                 self._agents[tenant] = agent_id
                 self._namespaces[tenant] = namespace
-                self._client.activate_agent(agent_id, duration_hours=4)
+                client.activate_agent(agent_id, duration_hours=4)
         except Exception:
             try:
                 self.close()
@@ -88,7 +90,7 @@ class MemantoAdapter:
 
     def add(self, event: Event) -> None:
         agent_id = self._agents[event.tenant]
-        self._client.remember(
+        self._clients[event.tenant].remember(
             agent_id=agent_id,
             memory_type="context",
             title=f"Incident memory {event.event_id}",
@@ -100,7 +102,7 @@ class MemantoAdapter:
         )
 
     def search(self, probe: Probe, *, limit: int) -> list[str]:
-        response = self._client.recall(
+        response = self._clients[probe.tenant].recall(
             agent_id=self._agents[probe.tenant], query=probe.query, limit=limit
         )
         return [_text(item) for item in response.get("memories", [])]
@@ -108,8 +110,9 @@ class MemantoAdapter:
     def close(self) -> None:
         errors: list[str] = []
         for tenant, agent_id in self._agents.items():
+            client = self._clients[tenant]
             try:
-                self._client.deactivate_agent(agent_id)
+                client.deactivate_agent(agent_id)
             except Exception as exc:
                 errors.append(f"deactivate {tenant}: {exc}")
             if self._cleanup:
@@ -118,7 +121,7 @@ class MemantoAdapter:
                 except Exception as exc:
                     errors.append(f"delete namespace {tenant}: {exc}")
                 try:
-                    self._client.delete_agent(agent_id)
+                    client.delete_agent(agent_id)
                 except Exception as exc:
                     errors.append(f"delete agent {tenant}: {exc}")
         if errors:

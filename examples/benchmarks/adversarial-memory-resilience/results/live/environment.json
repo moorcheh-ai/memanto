@@ -1,0 +1,11 @@
+{
+  "python": "3.12.10",
+  "platform": "Windows-10-10.0.19045-SP0",
+  "processor": "AMD64 Family 23 Model 113 Stepping 0, AuthenticAMD",
+  "packages": {
+    "memanto": "0.1.dev1+g81e88d6ad",
+    "mem0ai": "1.0.11",
+    "fastembed": "0.8.0",
+    "qdrant-client": "1.18.0"
+  }
+}
