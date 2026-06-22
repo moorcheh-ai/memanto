@@ -3,7 +3,7 @@
   "fixture_version": "2026-06-22",
   "account": "Acme Robotics",
   "methodology": {
-    "token_metric": "ceil(character_count / 4), deterministic relative footprint",
+    "token_metric": "max(1, ceil(character_count / 4)), deterministic relative footprint",
     "latency_metric": "deterministic proxy in milliseconds from scanned and retrieved tokens",
     "accuracy_metric": "required phrases present, forbidden stale/private phrases absent, and gold evidence returned",
     "network_or_llm_calls": 0
