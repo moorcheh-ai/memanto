@@ -1,0 +1,614 @@
+{
+  "benchmark": "customer-entitlement-memory",
+  "fixture_version": "2026-06-22",
+  "account": "Acme Robotics",
+  "methodology": {
+    "token_metric": "ceil(character_count / 4), deterministic relative footprint",
+    "latency_metric": "deterministic proxy in milliseconds from scanned and retrieved tokens",
+    "accuracy_metric": "required phrases present, forbidden stale/private phrases absent, and gold evidence returned",
+    "network_or_llm_calls": 0
+  },
+  "summary": [
+    {
+      "backend": "active_entitlement_digest",
+      "accuracy": 1.0,
+      "passed": 10,
+      "total": 10,
+      "stale_conflict_rate": 0.0,
+      "avg_retrieved_tokens": 36.5,
+      "avg_scanned_tokens": 24.8,
+      "p95_latency_proxy_ms": 4.175
+    },
+    {
+      "backend": "append_only_log",
+      "accuracy": 0.5,
+      "passed": 5,
+      "total": 10,
+      "stale_conflict_rate": 0.5,
+      "avg_retrieved_tokens": 49.8,
+      "avg_scanned_tokens": 480,
+      "p95_latency_proxy_ms": 19.82
+    },
+    {
+      "backend": "recent_window_log",
+      "accuracy": 0.3,
+      "passed": 3,
+      "total": 10,
+      "stale_conflict_rate": 0.2,
+      "avg_retrieved_tokens": 31.8,
+      "avg_scanned_tokens": 208,
+      "p95_latency_proxy_ms": 10.3
+    }
+  ],
+  "results": {
+    "active_entitlement_digest": [
+      {
+        "query_id": "q-production-region",
+        "question": "What production data residency should support quote for Acme Robotics?",
+        "passed": true,
+        "included_required": [
+          "EU-DE"
+        ],
+        "forbidden_hits": [],
+        "evidence_hits": [
+          "evt-2026-02-11-enterprise"
+        ],
+        "evidence_ids": [
+          "evt-2026-02-11-enterprise"
+        ],
+        "retrieved_tokens": 39,
+        "scanned_tokens": 21,
+        "latency_proxy_ms": 3.32,
+        "answer": "What production data residency should support quote for Acme Robotics? data_residency[production] = EU-DE (evidence: evt-2026-02-11-enterprise, 2026-02-11)"
+      },
+      {
+        "query_id": "q-invoice-po",
+        "question": "Which purchase order should be used on the next invoice?",
+        "passed": true,
+        "included_required": [
+          "PO-7721"
+        ],
+        "forbidden_hits": [],
+        "evidence_hits": [
+          "evt-2026-06-12-billing-compliance"
+        ],
+        "evidence_ids": [
+          "evt-2026-06-12-billing-compliance"
+        ],
+        "retrieved_tokens": 36,
+        "scanned_tokens": 22,
+        "latency_proxy_ms": 3.31,
+        "answer": "Which purchase order should be used on the next invoice? invoice_po[billing] = PO-7721 (evidence: evt-2026-06-12-billing-compliance, 2026-06-12)"
+      },
+      {
+        "query_id": "q-audit-beta",
+        "question": "Is the audit export beta still enabled, and until when?",
+        "passed": true,
+        "included_required": [
+          "enabled until 2026-06-30"
+        ],
+        "forbidden_hits": [],
+        "evidence_hits": [
+          "evt-2026-05-30-beta-extension"
+        ],
+        "evidence_ids": [
+          "evt-2026-05-30-beta-extension"
+        ],
+        "retrieved_tokens": 42,
+        "scanned_tokens": 28,
+        "latency_proxy_ms": 3.61,
+        "answer": "Is the audit export beta still enabled, and until when? audit_export_beta[feature_flag] = enabled until 2026-06-30 (evidence: evt-2026-05-30-beta-extension, 2026-05-30)"
+      },
+      {
+        "query_id": "q-support-lead",
+        "question": "Who is the current support lead?",
+        "passed": true,
+        "included_required": [
+          "Iris Chen"
+        ],
+        "forbidden_hits": [],
+        "evidence_hits": [
+          "evt-2026-05-30-beta-extension"
+        ],
+        "evidence_ids": [
+          "evt-2026-05-30-beta-extension"
+        ],
+        "retrieved_tokens": 30,
+        "scanned_tokens": 22,
+        "latency_proxy_ms": 3.22,
+        "answer": "Who is the current support lead? support_lead[people] = Iris Chen (evidence: evt-2026-05-30-beta-extension, 2026-05-30)"
+      },
+      {
+        "query_id": "q-escalation",
+        "question": "Where should urgent support escalations go now?",
+        "passed": true,
+        "included_required": [
+          "PagerDuty service acme-primary"
+        ],
+        "forbidden_hits": [],
+        "evidence_hits": [
+          "evt-2026-03-02-escalation"
+        ],
+        "evidence_ids": [
+          "evt-2026-03-02-escalation"
+        ],
+        "retrieved_tokens": 39,
+        "scanned_tokens": 27,
+        "latency_proxy_ms": 3.53,
+        "answer": "Where should urgent support escalations go now? escalation_route[support] = PagerDuty service acme-primary (evidence: evt-2026-03-02-escalation, 2026-03-02)"
+      },
+      {
+        "query_id": "q-sso",
+        "question": "Which SSO provider is configured?",
+        "passed": true,
+        "included_required": [
+          "Okta"
+        ],
+        "forbidden_hits": [],
+        "evidence_hits": [
+          "evt-2026-03-02-escalation"
+        ],
+        "evidence_ids": [
+          "evt-2026-03-02-escalation"
+        ],
+        "retrieved_tokens": 29,
+        "scanned_tokens": 20,
+        "latency_proxy_ms": 3.135,
+        "answer": "Which SSO provider is configured? sso_provider[identity] = Okta (evidence: evt-2026-03-02-escalation, 2026-03-02)"
+      },
+      {
+        "query_id": "q-hipaa",
+        "question": "What is the current HIPAA addendum status?",
+        "passed": true,
+        "included_required": [
+          "HIPAA addendum signed"
+        ],
+        "forbidden_hits": [],
+        "evidence_hits": [
+          "evt-2026-06-12-billing-compliance"
+        ],
+        "evidence_ids": [
+          "evt-2026-06-12-billing-compliance"
+        ],
+        "retrieved_tokens": 36,
+        "scanned_tokens": 25,
+        "latency_proxy_ms": 3.415,
+        "answer": "What is the current HIPAA addendum status? hipaa[compliance] = HIPAA addendum signed (evidence: evt-2026-06-12-billing-compliance, 2026-06-12)"
+      },
+      {
+        "query_id": "q-implementation-contact",
+        "question": "Who is the implementation contact?",
+        "passed": true,
+        "included_required": [
+          "Marcus Ortega"
+        ],
+        "forbidden_hits": [],
+        "evidence_hits": [
+          "evt-2026-04-15-beta"
+        ],
+        "evidence_ids": [
+          "evt-2026-04-15-beta"
+        ],
+        "retrieved_tokens": 32,
+        "scanned_tokens": 23,
+        "latency_proxy_ms": 3.285,
+        "answer": "Who is the implementation contact? implementation_contact[people] = Marcus Ortega (evidence: evt-2026-04-15-beta, 2026-04-15)"
+      },
+      {
+        "query_id": "q-private-budget",
+        "question": "What renewal budget details should a support answer include?",
+        "passed": true,
+        "included_required": [
+          "must not be surfaced"
+        ],
+        "forbidden_hits": [],
+        "evidence_hits": [
+          "evt-2026-03-02-escalation"
+        ],
+        "evidence_ids": [
+          "evt-2026-03-02-escalation"
+        ],
+        "retrieved_tokens": 54,
+        "scanned_tokens": 39,
+        "latency_proxy_ms": 4.175,
+        "answer": "What renewal budget details should a support answer include? renewal_budget[sales_private] = private renewal budget exists but must not be surfaced to support answers (evidence: evt-2026-03-02-escalation, 2026-03-02)"
+      },
+      {
+        "query_id": "q-p2-sla",
+        "question": "What is the P2 support SLA?",
+        "passed": true,
+        "included_required": [
+          "4 business hours"
+        ],
+        "forbidden_hits": [],
+        "evidence_hits": [
+          "evt-2026-02-11-enterprise"
+        ],
+        "evidence_ids": [
+          "evt-2026-02-11-enterprise"
+        ],
+        "retrieved_tokens": 28,
+        "scanned_tokens": 21,
+        "latency_proxy_ms": 3.155,
+        "answer": "What is the P2 support SLA? p2_sla[support] = 4 business hours (evidence: evt-2026-02-11-enterprise, 2026-02-11)"
+      }
+    ],
+    "append_only_log": [
+      {
+        "query_id": "q-production-region",
+        "question": "What production data residency should support quote for Acme Robotics?",
+        "passed": true,
+        "included_required": [
+          "EU-DE"
+        ],
+        "forbidden_hits": [],
+        "evidence_hits": [
+          "evt-2026-02-11-enterprise"
+        ],
+        "evidence_ids": [
+          "evt-2026-01-05-kickoff",
+          "evt-2026-02-11-enterprise"
+        ],
+        "retrieved_tokens": 59,
+        "scanned_tokens": 480,
+        "latency_proxy_ms": 19.685,
+        "answer": "What production data residency should support quote for Acme Robotics? data_residency[production] = EU (evidence: evt-2026-01-05-kickoff, 2026-01-05); data_residency[production] = EU-DE (evidence: evt-2026-02-11-enterprise, 2026-02-11)"
+      },
+      {
+        "query_id": "q-invoice-po",
+        "question": "Which purchase order should be used on the next invoice?",
+        "passed": false,
+        "included_required": [
+          "PO-7721"
+        ],
+        "forbidden_hits": [
+          "PO-4487"
+        ],
+        "evidence_hits": [
+          "evt-2026-06-12-billing-compliance"
+        ],
+        "evidence_ids": [
+          "evt-2026-01-05-kickoff",
+          "evt-2026-06-12-billing-compliance"
+        ],
+        "retrieved_tokens": 56,
+        "scanned_tokens": 480,
+        "latency_proxy_ms": 19.64,
+        "answer": "Which purchase order should be used on the next invoice? invoice_po[billing] = PO-4487 (evidence: evt-2026-01-05-kickoff, 2026-01-05); invoice_po[billing] = PO-7721 (evidence: evt-2026-06-12-billing-compliance, 2026-06-12)"
+      },
+      {
+        "query_id": "q-audit-beta",
+        "question": "Is the audit export beta still enabled, and until when?",
+        "passed": false,
+        "included_required": [
+          "enabled until 2026-06-30"
+        ],
+        "forbidden_hits": [
+          "enabled until 2026-05-30"
+        ],
+        "evidence_hits": [
+          "evt-2026-05-30-beta-extension"
+        ],
+        "evidence_ids": [
+          "evt-2026-04-15-beta",
+          "evt-2026-05-30-beta-extension"
+        ],
+        "retrieved_tokens": 68,
+        "scanned_tokens": 480,
+        "latency_proxy_ms": 19.82,
+        "answer": "Is the audit export beta still enabled, and until when? audit_export_beta[feature_flag] = enabled until 2026-05-30 (evidence: evt-2026-04-15-beta, 2026-04-15); audit_export_beta[feature_flag] = enabled until 2026-06-30 (evidence: evt-2026-05-30-beta-extension, 2026-05-30)"
+      },
+      {
+        "query_id": "q-support-lead",
+        "question": "Who is the current support lead?",
+        "passed": false,
+        "included_required": [
+          "Iris Chen"
+        ],
+        "forbidden_hits": [
+          "Nora Li"
+        ],
+        "evidence_hits": [
+          "evt-2026-05-30-beta-extension"
+        ],
+        "evidence_ids": [
+          "evt-2026-04-15-beta",
+          "evt-2026-05-30-beta-extension"
+        ],
+        "retrieved_tokens": 49,
+        "scanned_tokens": 480,
+        "latency_proxy_ms": 19.535,
+        "answer": "Who is the current support lead? support_lead[people] = Nora Li (evidence: evt-2026-04-15-beta, 2026-04-15); support_lead[people] = Iris Chen (evidence: evt-2026-05-30-beta-extension, 2026-05-30)"
+      },
+      {
+        "query_id": "q-escalation",
+        "question": "Where should urgent support escalations go now?",
+        "passed": false,
+        "included_required": [
+          "PagerDuty service acme-primary"
+        ],
+        "forbidden_hits": [
+          "#acme-old",
+          "Slack channel"
+        ],
+        "evidence_hits": [
+          "evt-2026-03-02-escalation"
+        ],
+        "evidence_ids": [
+          "evt-2026-01-05-kickoff",
+          "evt-2026-03-02-escalation"
+        ],
+        "retrieved_tokens": 64,
+        "scanned_tokens": 480,
+        "latency_proxy_ms": 19.76,
+        "answer": "Where should urgent support escalations go now? escalation_route[support] = Slack channel #acme-old (evidence: evt-2026-01-05-kickoff, 2026-01-05); escalation_route[support] = PagerDuty service acme-primary (evidence: evt-2026-03-02-escalation, 2026-03-02)"
+      },
+      {
+        "query_id": "q-sso",
+        "question": "Which SSO provider is configured?",
+        "passed": true,
+        "included_required": [
+          "Okta"
+        ],
+        "forbidden_hits": [],
+        "evidence_hits": [
+          "evt-2026-03-02-escalation"
+        ],
+        "evidence_ids": [
+          "evt-2026-03-02-escalation"
+        ],
+        "retrieved_tokens": 29,
+        "scanned_tokens": 480,
+        "latency_proxy_ms": 19.235,
+        "answer": "Which SSO provider is configured? sso_provider[identity] = Okta (evidence: evt-2026-03-02-escalation, 2026-03-02)"
+      },
+      {
+        "query_id": "q-hipaa",
+        "question": "What is the current HIPAA addendum status?",
+        "passed": false,
+        "included_required": [
+          "HIPAA addendum signed"
+        ],
+        "forbidden_hits": [
+          "pending"
+        ],
+        "evidence_hits": [
+          "evt-2026-06-12-billing-compliance"
+        ],
+        "evidence_ids": [
+          "evt-2026-02-11-enterprise",
+          "evt-2026-06-12-billing-compliance"
+        ],
+        "retrieved_tokens": 59,
+        "scanned_tokens": 480,
+        "latency_proxy_ms": 19.685,
+        "answer": "What is the current HIPAA addendum status? hipaa[compliance] = HIPAA addendum pending (evidence: evt-2026-02-11-enterprise, 2026-02-11); hipaa[compliance] = HIPAA addendum signed (evidence: evt-2026-06-12-billing-compliance, 2026-06-12)"
+      },
+      {
+        "query_id": "q-implementation-contact",
+        "question": "Who is the implementation contact?",
+        "passed": true,
+        "included_required": [
+          "Marcus Ortega"
+        ],
+        "forbidden_hits": [],
+        "evidence_hits": [
+          "evt-2026-04-15-beta"
+        ],
+        "evidence_ids": [
+          "evt-2026-04-15-beta"
+        ],
+        "retrieved_tokens": 32,
+        "scanned_tokens": 480,
+        "latency_proxy_ms": 19.28,
+        "answer": "Who is the implementation contact? implementation_contact[people] = Marcus Ortega (evidence: evt-2026-04-15-beta, 2026-04-15)"
+      },
+      {
+        "query_id": "q-private-budget",
+        "question": "What renewal budget details should a support answer include?",
+        "passed": true,
+        "included_required": [
+          "must not be surfaced"
+        ],
+        "forbidden_hits": [],
+        "evidence_hits": [
+          "evt-2026-03-02-escalation"
+        ],
+        "evidence_ids": [
+          "evt-2026-03-02-escalation"
+        ],
+        "retrieved_tokens": 54,
+        "scanned_tokens": 480,
+        "latency_proxy_ms": 19.61,
+        "answer": "What renewal budget details should a support answer include? renewal_budget[sales_private] = private renewal budget exists but must not be surfaced to support answers (evidence: evt-2026-03-02-escalation, 2026-03-02)"
+      },
+      {
+        "query_id": "q-p2-sla",
+        "question": "What is the P2 support SLA?",
+        "passed": true,
+        "included_required": [
+          "4 business hours"
+        ],
+        "forbidden_hits": [],
+        "evidence_hits": [
+          "evt-2026-02-11-enterprise"
+        ],
+        "evidence_ids": [
+          "evt-2026-02-11-enterprise"
+        ],
+        "retrieved_tokens": 28,
+        "scanned_tokens": 480,
+        "latency_proxy_ms": 19.22,
+        "answer": "What is the P2 support SLA? p2_sla[support] = 4 business hours (evidence: evt-2026-02-11-enterprise, 2026-02-11)"
+      }
+    ],
+    "recent_window_log": [
+      {
+        "query_id": "q-production-region",
+        "question": "What production data residency should support quote for Acme Robotics?",
+        "passed": false,
+        "included_required": [],
+        "forbidden_hits": [],
+        "evidence_hits": [],
+        "evidence_ids": [],
+        "retrieved_tokens": 25,
+        "scanned_tokens": 208,
+        "latency_proxy_ms": 9.655,
+        "answer": "What production data residency should support quote for Acme Robotics? No publishable memory found."
+      },
+      {
+        "query_id": "q-invoice-po",
+        "question": "Which purchase order should be used on the next invoice?",
+        "passed": true,
+        "included_required": [
+          "PO-7721"
+        ],
+        "forbidden_hits": [],
+        "evidence_hits": [
+          "evt-2026-06-12-billing-compliance"
+        ],
+        "evidence_ids": [
+          "evt-2026-06-12-billing-compliance"
+        ],
+        "retrieved_tokens": 36,
+        "scanned_tokens": 208,
+        "latency_proxy_ms": 9.82,
+        "answer": "Which purchase order should be used on the next invoice? invoice_po[billing] = PO-7721 (evidence: evt-2026-06-12-billing-compliance, 2026-06-12)"
+      },
+      {
+        "query_id": "q-audit-beta",
+        "question": "Is the audit export beta still enabled, and until when?",
+        "passed": false,
+        "included_required": [
+          "enabled until 2026-06-30"
+        ],
+        "forbidden_hits": [
+          "enabled until 2026-05-30"
+        ],
+        "evidence_hits": [
+          "evt-2026-05-30-beta-extension"
+        ],
+        "evidence_ids": [
+          "evt-2026-04-15-beta",
+          "evt-2026-05-30-beta-extension"
+        ],
+        "retrieved_tokens": 68,
+        "scanned_tokens": 208,
+        "latency_proxy_ms": 10.3,
+        "answer": "Is the audit export beta still enabled, and until when? audit_export_beta[feature_flag] = enabled until 2026-05-30 (evidence: evt-2026-04-15-beta, 2026-04-15); audit_export_beta[feature_flag] = enabled until 2026-06-30 (evidence: evt-2026-05-30-beta-extension, 2026-05-30)"
+      },
+      {
+        "query_id": "q-support-lead",
+        "question": "Who is the current support lead?",
+        "passed": false,
+        "included_required": [
+          "Iris Chen"
+        ],
+        "forbidden_hits": [
+          "Nora Li"
+        ],
+        "evidence_hits": [
+          "evt-2026-05-30-beta-extension"
+        ],
+        "evidence_ids": [
+          "evt-2026-04-15-beta",
+          "evt-2026-05-30-beta-extension"
+        ],
+        "retrieved_tokens": 49,
+        "scanned_tokens": 208,
+        "latency_proxy_ms": 10.015,
+        "answer": "Who is the current support lead? support_lead[people] = Nora Li (evidence: evt-2026-04-15-beta, 2026-04-15); support_lead[people] = Iris Chen (evidence: evt-2026-05-30-beta-extension, 2026-05-30)"
+      },
+      {
+        "query_id": "q-escalation",
+        "question": "Where should urgent support escalations go now?",
+        "passed": false,
+        "included_required": [],
+        "forbidden_hits": [],
+        "evidence_hits": [],
+        "evidence_ids": [],
+        "retrieved_tokens": 19,
+        "scanned_tokens": 208,
+        "latency_proxy_ms": 9.565,
+        "answer": "Where should urgent support escalations go now? No publishable memory found."
+      },
+      {
+        "query_id": "q-sso",
+        "question": "Which SSO provider is configured?",
+        "passed": false,
+        "included_required": [],
+        "forbidden_hits": [],
+        "evidence_hits": [],
+        "evidence_ids": [],
+        "retrieved_tokens": 16,
+        "scanned_tokens": 208,
+        "latency_proxy_ms": 9.52,
+        "answer": "Which SSO provider is configured? No publishable memory found."
+      },
+      {
+        "query_id": "q-hipaa",
+        "question": "What is the current HIPAA addendum status?",
+        "passed": true,
+        "included_required": [
+          "HIPAA addendum signed"
+        ],
+        "forbidden_hits": [],
+        "evidence_hits": [
+          "evt-2026-06-12-billing-compliance"
+        ],
+        "evidence_ids": [
+          "evt-2026-06-12-billing-compliance"
+        ],
+        "retrieved_tokens": 36,
+        "scanned_tokens": 208,
+        "latency_proxy_ms": 9.82,
+        "answer": "What is the current HIPAA addendum status? hipaa[compliance] = HIPAA addendum signed (evidence: evt-2026-06-12-billing-compliance, 2026-06-12)"
+      },
+      {
+        "query_id": "q-implementation-contact",
+        "question": "Who is the implementation contact?",
+        "passed": true,
+        "included_required": [
+          "Marcus Ortega"
+        ],
+        "forbidden_hits": [],
+        "evidence_hits": [
+          "evt-2026-04-15-beta"
+        ],
+        "evidence_ids": [
+          "evt-2026-04-15-beta"
+        ],
+        "retrieved_tokens": 32,
+        "scanned_tokens": 208,
+        "latency_proxy_ms": 9.76,
+        "answer": "Who is the implementation contact? implementation_contact[people] = Marcus Ortega (evidence: evt-2026-04-15-beta, 2026-04-15)"
+      },
+      {
+        "query_id": "q-private-budget",
+        "question": "What renewal budget details should a support answer include?",
+        "passed": false,
+        "included_required": [],
+        "forbidden_hits": [],
+        "evidence_hits": [],
+        "evidence_ids": [],
+        "retrieved_tokens": 23,
+        "scanned_tokens": 208,
+        "latency_proxy_ms": 9.625,
+        "answer": "What renewal budget details should a support answer include? No publishable memory found."
+      },
+      {
+        "query_id": "q-p2-sla",
+        "question": "What is the P2 support SLA?",
+        "passed": false,
+        "included_required": [],
+        "forbidden_hits": [],
+        "evidence_hits": [],
+        "evidence_ids": [],
+        "retrieved_tokens": 14,
+        "scanned_tokens": 208,
+        "latency_proxy_ms": 9.49,
+        "answer": "What is the P2 support SLA? No publishable memory found."
+      }
+    ]
+  }
+}

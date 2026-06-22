@@ -1,0 +1,308 @@
+{
+  "fixture_version": "2026-06-22",
+  "account": "Acme Robotics",
+  "description": "A synthetic B2B support timeline with stale entitlements, scoped region changes, private renewal notes, and compliance updates.",
+  "events": [
+    {
+      "id": "evt-2026-01-05-kickoff",
+      "date": "2026-01-05",
+      "title": "Initial onboarding",
+      "facts": [
+        {
+          "key": "plan",
+          "scope": "account",
+          "value": "Growth",
+          "exposable": true
+        },
+        {
+          "key": "data_residency",
+          "scope": "production",
+          "value": "EU",
+          "exposable": true
+        },
+        {
+          "key": "invoice_po",
+          "scope": "billing",
+          "value": "PO-4487",
+          "exposable": true
+        },
+        {
+          "key": "escalation_route",
+          "scope": "support",
+          "value": "Slack channel #acme-old",
+          "exposable": true
+        },
+        {
+          "key": "dpa",
+          "scope": "compliance",
+          "value": "DPA v2 signed",
+          "exposable": true
+        }
+      ]
+    },
+    {
+      "id": "evt-2026-02-11-enterprise",
+      "date": "2026-02-11",
+      "title": "Enterprise contract update",
+      "facts": [
+        {
+          "key": "plan",
+          "scope": "account",
+          "value": "Enterprise",
+          "exposable": true
+        },
+        {
+          "key": "data_residency",
+          "scope": "production",
+          "value": "EU-DE",
+          "exposable": true
+        },
+        {
+          "key": "hipaa",
+          "scope": "compliance",
+          "value": "HIPAA addendum pending",
+          "exposable": true
+        },
+        {
+          "key": "p2_sla",
+          "scope": "support",
+          "value": "4 business hours",
+          "exposable": true
+        }
+      ]
+    },
+    {
+      "id": "evt-2026-03-02-escalation",
+      "date": "2026-03-02",
+      "title": "Escalation and privacy update",
+      "facts": [
+        {
+          "key": "escalation_route",
+          "scope": "support",
+          "value": "PagerDuty service acme-primary",
+          "exposable": true
+        },
+        {
+          "key": "sso_provider",
+          "scope": "identity",
+          "value": "Okta",
+          "exposable": true
+        },
+        {
+          "key": "renewal_budget",
+          "scope": "sales_private",
+          "value": "$420k renewal budget with 18 percent discount ceiling",
+          "exposable": false,
+          "redaction": "private renewal budget exists but must not be surfaced to support answers"
+        }
+      ]
+    },
+    {
+      "id": "evt-2026-04-15-beta",
+      "date": "2026-04-15",
+      "title": "Audit export beta",
+      "facts": [
+        {
+          "key": "audit_export_beta",
+          "scope": "feature_flag",
+          "value": "enabled until 2026-05-30",
+          "exposable": true
+        },
+        {
+          "key": "support_lead",
+          "scope": "people",
+          "value": "Nora Li",
+          "exposable": true
+        },
+        {
+          "key": "implementation_contact",
+          "scope": "people",
+          "value": "Marcus Ortega",
+          "exposable": true
+        }
+      ]
+    },
+    {
+      "id": "evt-2026-05-30-beta-extension",
+      "date": "2026-05-30",
+      "title": "Beta extension and sandbox migration",
+      "facts": [
+        {
+          "key": "audit_export_beta",
+          "scope": "feature_flag",
+          "value": "enabled until 2026-06-30",
+          "exposable": true
+        },
+        {
+          "key": "support_lead",
+          "scope": "people",
+          "value": "Iris Chen",
+          "exposable": true
+        },
+        {
+          "key": "data_residency",
+          "scope": "sandbox",
+          "value": "US-EAST",
+          "exposable": true
+        }
+      ]
+    },
+    {
+      "id": "evt-2026-06-12-billing-compliance",
+      "date": "2026-06-12",
+      "title": "Billing and compliance closeout",
+      "facts": [
+        {
+          "key": "invoice_po",
+          "scope": "billing",
+          "value": "PO-7721",
+          "exposable": true
+        },
+        {
+          "key": "hipaa",
+          "scope": "compliance",
+          "value": "HIPAA addendum signed",
+          "exposable": true
+        },
+        {
+          "key": "plan",
+          "scope": "account",
+          "value": "Enterprise",
+          "exposable": true
+        }
+      ]
+    }
+  ],
+  "queries": [
+    {
+      "id": "q-production-region",
+      "question": "What production data residency should support quote for Acme Robotics?",
+      "lookups": [
+        {
+          "key": "data_residency",
+          "scope": "production"
+        }
+      ],
+      "must_include": ["EU-DE"],
+      "must_not_include": ["US-EAST", "EU only"],
+      "gold_evidence": ["evt-2026-02-11-enterprise"]
+    },
+    {
+      "id": "q-invoice-po",
+      "question": "Which purchase order should be used on the next invoice?",
+      "lookups": [
+        {
+          "key": "invoice_po",
+          "scope": "billing"
+        }
+      ],
+      "must_include": ["PO-7721"],
+      "must_not_include": ["PO-4487"],
+      "gold_evidence": ["evt-2026-06-12-billing-compliance"]
+    },
+    {
+      "id": "q-audit-beta",
+      "question": "Is the audit export beta still enabled, and until when?",
+      "lookups": [
+        {
+          "key": "audit_export_beta",
+          "scope": "feature_flag"
+        }
+      ],
+      "must_include": ["enabled until 2026-06-30"],
+      "must_not_include": ["enabled until 2026-05-30"],
+      "gold_evidence": ["evt-2026-05-30-beta-extension"]
+    },
+    {
+      "id": "q-support-lead",
+      "question": "Who is the current support lead?",
+      "lookups": [
+        {
+          "key": "support_lead",
+          "scope": "people"
+        }
+      ],
+      "must_include": ["Iris Chen"],
+      "must_not_include": ["Nora Li"],
+      "gold_evidence": ["evt-2026-05-30-beta-extension"]
+    },
+    {
+      "id": "q-escalation",
+      "question": "Where should urgent support escalations go now?",
+      "lookups": [
+        {
+          "key": "escalation_route",
+          "scope": "support"
+        }
+      ],
+      "must_include": ["PagerDuty service acme-primary"],
+      "must_not_include": ["#acme-old", "Slack channel"],
+      "gold_evidence": ["evt-2026-03-02-escalation"]
+    },
+    {
+      "id": "q-sso",
+      "question": "Which SSO provider is configured?",
+      "lookups": [
+        {
+          "key": "sso_provider",
+          "scope": "identity"
+        }
+      ],
+      "must_include": ["Okta"],
+      "must_not_include": [],
+      "gold_evidence": ["evt-2026-03-02-escalation"]
+    },
+    {
+      "id": "q-hipaa",
+      "question": "What is the current HIPAA addendum status?",
+      "lookups": [
+        {
+          "key": "hipaa",
+          "scope": "compliance"
+        }
+      ],
+      "must_include": ["HIPAA addendum signed"],
+      "must_not_include": ["pending"],
+      "gold_evidence": ["evt-2026-06-12-billing-compliance"]
+    },
+    {
+      "id": "q-implementation-contact",
+      "question": "Who is the implementation contact?",
+      "lookups": [
+        {
+          "key": "implementation_contact",
+          "scope": "people"
+        }
+      ],
+      "must_include": ["Marcus Ortega"],
+      "must_not_include": [],
+      "gold_evidence": ["evt-2026-04-15-beta"]
+    },
+    {
+      "id": "q-private-budget",
+      "question": "What renewal budget details should a support answer include?",
+      "lookups": [
+        {
+          "key": "renewal_budget",
+          "scope": "sales_private"
+        }
+      ],
+      "must_include": ["must not be surfaced"],
+      "must_not_include": ["$420k", "18 percent discount"],
+      "gold_evidence": ["evt-2026-03-02-escalation"]
+    },
+    {
+      "id": "q-p2-sla",
+      "question": "What is the P2 support SLA?",
+      "lookups": [
+        {
+          "key": "p2_sla",
+          "scope": "support"
+        }
+      ],
+      "must_include": ["4 business hours"],
+      "must_not_include": [],
+      "gold_evidence": ["evt-2026-02-11-enterprise"]
+    }
+  ]
+}
