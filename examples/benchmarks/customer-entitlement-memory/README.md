@@ -26,7 +26,7 @@ hit every day:
 
 - Accuracy: required phrases present, forbidden stale/private phrases absent,
   and expected evidence events returned.
-- Token footprint: `ceil(character_count / 4)`, used as a deterministic
+- Token footprint: `max(1, ceil(character_count / 4))`, used as a deterministic
   relative retrieval-cost proxy.
 - p95 latency: a deterministic proxy derived from scanned and retrieved tokens.
   This avoids pretending that a local, network-free sample run is production
