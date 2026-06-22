@@ -30,6 +30,8 @@ DEFAULT_FIXTURE = ROOT / "fixtures" / "customer_timeline.json"
 
 @dataclass(frozen=True)
 class Fact:
+    """One dated customer entitlement fact with visibility metadata."""
+
     event_id: str
     date: str
     key: str
@@ -40,14 +42,17 @@ class Fact:
 
     @property
     def identity(self) -> tuple[str, str]:
+        """Return the stable lookup key used by retrieval backends."""
         return (self.key, self.scope)
 
     def exposed_value(self) -> str:
+        """Return the safe-to-display value, redacting private facts."""
         if self.exposable:
             return self.value
         return self.redaction or "private fact exists but must not be surfaced"
 
     def render(self) -> str:
+        """Render the fact with evidence details for benchmark answers."""
         return (
             f"{self.key}[{self.scope}] = {self.exposed_value()} "
             f"(evidence: {self.event_id}, {self.date})"
@@ -56,6 +61,8 @@ class Fact:
 
 @dataclass(frozen=True)
 class Query:
+    """Gold query definition and scoring constraints."""
+
     query_id: str
     question: str
     lookups: tuple[tuple[str, str], ...]
@@ -66,6 +73,8 @@ class Query:
 
 @dataclass(frozen=True)
 class Retrieval:
+    """A backend answer plus deterministic footprint and latency metrics."""
+
     backend: str
     query: Query
     answer: str
@@ -76,12 +85,16 @@ class Retrieval:
 
 
 class MemoryBackend:
+    """Base class for deterministic in-memory retrieval strategies."""
+
     name = "base"
 
     def __init__(self, facts: list[Fact]) -> None:
+        """Store the timeline facts available to this backend."""
         self.facts = facts
 
     def answer(self, query: Query) -> Retrieval:
+        """Retrieve facts and assemble a scored answer payload."""
         selected, scanned = self.retrieve(query)
         if selected:
             rendered = "; ".join(fact.render() for fact in selected)
@@ -102,9 +115,11 @@ class MemoryBackend:
         )
 
     def retrieve(self, query: Query) -> tuple[list[Fact], list[Fact]]:
+        """Return selected facts and all facts scanned while answering."""
         raise NotImplementedError
 
     def latency_proxy_ms(self, scanned_tokens: int, retrieved_tokens: int) -> float:
+        """Estimate deterministic latency from scanned and retrieved tokens."""
         # Deterministic CI-safe proxy: a small base cost plus per-token scan and
         # answer assembly costs. This avoids pretending that network-free sample
         # timings are production latency.
@@ -112,9 +127,12 @@ class MemoryBackend:
 
 
 class ActiveEntitlementDigest(MemoryBackend):
+    """Keep only the latest current fact per key and scope."""
+
     name = "active_entitlement_digest"
 
     def __init__(self, facts: list[Fact]) -> None:
+        """Build a current-state digest from the append-only fixture."""
         super().__init__(facts)
         current: dict[tuple[str, str], Fact] = {}
         for fact in facts:
@@ -122,6 +140,7 @@ class ActiveEntitlementDigest(MemoryBackend):
         self.current = current
 
     def retrieve(self, query: Query) -> tuple[list[Fact], list[Fact]]:
+        """Return the latest current fact for each requested lookup."""
         selected = [
             self.current[lookup]
             for lookup in query.lookups
@@ -131,23 +150,30 @@ class ActiveEntitlementDigest(MemoryBackend):
 
 
 class AppendOnlyLog(MemoryBackend):
+    """Scan and return every historical fact that matches a lookup."""
+
     name = "append_only_log"
 
     def retrieve(self, query: Query) -> tuple[list[Fact], list[Fact]]:
+        """Return all matching facts while scanning the full history."""
         lookups = set(query.lookups)
         selected = [fact for fact in self.facts if fact.identity in lookups]
         return selected, self.facts
 
 
 class RecentWindowLog(MemoryBackend):
+    """Search only the newest events in the customer timeline."""
+
     name = "recent_window_log"
 
     def __init__(self, facts: list[Fact], window_events: int = 3) -> None:
+        """Limit retrieval to the last window_events event identifiers."""
         super().__init__(facts)
         event_order = list(dict.fromkeys(fact.event_id for fact in facts))
         self.allowed_events = set(event_order[-window_events:])
 
     def retrieve(self, query: Query) -> tuple[list[Fact], list[Fact]]:
+        """Return lookup matches found inside the recent event window."""
         lookups = set(query.lookups)
         scanned = [fact for fact in self.facts if fact.event_id in self.allowed_events]
         selected = [fact for fact in scanned if fact.identity in lookups]
@@ -155,11 +181,13 @@ class RecentWindowLog(MemoryBackend):
 
 
 def estimate_tokens(text: str) -> int:
+    """Approximate token footprint with a deterministic nonzero minimum."""
     # Stable approximation used for relative footprint, not provider billing.
     return max(1, math.ceil(len(text) / 4))
 
 
 def load_fixture(path: Path) -> tuple[dict[str, Any], list[Fact], list[Query]]:
+    """Load JSON fixture data into typed facts and queries."""
     raw = json.loads(path.read_text(encoding="utf-8"))
     facts: list[Fact] = []
     for event in raw["events"]:
@@ -190,6 +218,7 @@ def load_fixture(path: Path) -> tuple[dict[str, Any], list[Fact], list[Query]]:
 
 
 def score_retrieval(retrieval: Retrieval) -> dict[str, Any]:
+    """Score a retrieval against required, forbidden, and evidence terms."""
     answer_lower = retrieval.answer.lower()
     includes = [
         phrase
@@ -227,6 +256,7 @@ def score_retrieval(retrieval: Retrieval) -> dict[str, Any]:
 
 
 def summarize_backend(name: str, scored: list[dict[str, Any]]) -> dict[str, Any]:
+    """Aggregate per-query scores into backend-level metrics."""
     total = len(scored)
     passed = sum(1 for row in scored if row["passed"])
     stale_conflicts = sum(1 for row in scored if row["forbidden_hits"])
@@ -246,6 +276,7 @@ def summarize_backend(name: str, scored: list[dict[str, Any]]) -> dict[str, Any]
 
 
 def percentile(values: list[float], pct: int) -> float:
+    """Return the nearest-rank percentile for a small deterministic sample."""
     if not values:
         return 0.0
     ordered = sorted(values)
@@ -254,6 +285,7 @@ def percentile(values: list[float], pct: int) -> float:
 
 
 def run_benchmark(fixture_path: Path) -> dict[str, Any]:
+    """Run all retrieval backends against the entitlement fixture."""
     raw, facts, queries = load_fixture(fixture_path)
     backends: list[MemoryBackend] = [
         ActiveEntitlementDigest(facts),
@@ -272,7 +304,7 @@ def run_benchmark(fixture_path: Path) -> dict[str, Any]:
         "fixture_version": raw["fixture_version"],
         "account": raw["account"],
         "methodology": {
-            "token_metric": "ceil(character_count / 4), deterministic relative footprint",
+            "token_metric": "max(1, ceil(character_count / 4)), deterministic relative footprint",
             "latency_metric": "deterministic proxy in milliseconds from scanned and retrieved tokens",
             "accuracy_metric": "required phrases present, forbidden stale/private phrases absent, and gold evidence returned",
             "network_or_llm_calls": 0,
@@ -283,6 +315,7 @@ def run_benchmark(fixture_path: Path) -> dict[str, Any]:
 
 
 def to_markdown(result: dict[str, Any]) -> str:
+    """Render benchmark results as a compact Markdown report."""
     lines = [
         "# Customer Entitlement Memory Benchmark",
         "",
@@ -351,6 +384,7 @@ def to_markdown(result: dict[str, Any]) -> str:
 
 
 def main() -> None:
+    """Parse CLI flags and write JSON or Markdown benchmark artifacts."""
     parser = argparse.ArgumentParser()
     parser.add_argument("--fixture", type=Path, default=DEFAULT_FIXTURE)
     parser.add_argument("--output", type=Path)
