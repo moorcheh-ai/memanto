@@ -92,17 +92,35 @@ streamlit run dashboard.py
 
 ## Experimental Controls
 
-To ensure scientific validity, all variables are held constant between the two systems:
+All variables held constant between the two systems:
 
 | Variable | Value |
 |---------|-------|
 | Input dataset | Identical — `executive_shadow.json` |
-| Session order | Identical — sessions 1–6 in sequence |
-| Query set | Identical — 8 evaluation queries |
-| Judge LLM | Same model, same prompt, same temperature (0.0) |
+| Session order | Sequential sessions 1–6 |
+| Query set | 8 identical evaluation queries |
+| Recall limit | 10 memories per query (both systems) |
+| Judge LLM | `openai/gpt-4o-mini` via OpenRouter |
+| Judge temperature | 0.0 |
+| Judge seed | 42 (`gpt-4o-mini` honours this natively via OpenRouter) |
 | Judge prompt | Identical system prompt for both systems |
-| Timing methodology | `time.perf_counter()` wall time per operation |
-| Token counting | Character-based estimate (len/4) for systems that don't expose token counts; applied identically to both |
+| Timing | `time.perf_counter()` wall time per operation |
+| Token counting | Character-based estimate (len/4) applied identically to both |
+| Memanto agent pattern | `tool` |
+| Indexing wait | Mem0: polled via `get_all` until memories visible (max 60s, 4s interval); Memanto: 3s fixed wait |
+| Session pause | 0.5s between sessions to respect rate limits |
+
+### Token methodology note
+
+Mem0 Platform runs an LLM extraction pass on every `add()` call to extract and deduplicate memories. This is an internal, async process — token cost is not exposed by the API. The benchmark captures wall-clock ingestion latency as a proxy for this overhead. Memanto stores memories directly with no ingestion-time LLM call; its LLM cost appears only at recall time.
+
+### Conflict resolution note
+
+Memanto's conflict resolution is human-in-the-loop: it flags contradictory memories and surfaces them to the user, who decides which to keep. It does not auto-resolve conflicts at recall time. The `contradiction_resolution` queries therefore measure whether the system returns the *most recent* relevant memories, not whether it has merged conflicting facts. A lower staleness score reflects semantic retrieval returning both old and new memories simultaneously, not a resolution failure.
+
+### Variance
+
+Three runs were conducted using `anthropic/claude-3-5-haiku` as judge. Memanto won 2/3 runs; average scores were Memanto 55.0% vs Mem0 43.6%. The default judge is now `openai/gpt-4o-mini` which honours `seed=42` natively, providing better reproducibility for future runs. Mem0's ingestion quality also varies between runs (async LLM extraction), which affects what gets stored and therefore what scores are achievable.
 
 ## Environment
 
@@ -110,7 +128,7 @@ To ensure scientific validity, all variables are held constant between the two s
 |------------|---------|
 | Python | 3.10+ |
 | memanto | ≥0.1.0 |
-| mem0ai | ≥0.1.0 |
+| mem0ai | ≥2.0.5 |
 | openai | ≥1.30.0 (OpenRouter-compatible) |
 
 ## Project Structure

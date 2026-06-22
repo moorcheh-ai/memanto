@@ -121,7 +121,7 @@ class LLMJudge:
             raise ValueError("OPENROUTER_API_KEY is required for the LLM judge")
 
         self.model = model or os.environ.get(
-            "JUDGE_MODEL", "anthropic/claude-3-5-haiku"
+            "JUDGE_MODEL", "openai/gpt-4o-mini"
         )
         self._client = OpenAI(
             api_key=_key,
@@ -159,6 +159,7 @@ class LLMJudge:
                     ],
                     temperature=0.0,
                     max_tokens=300,
+                    seed=42,
                 )
                 raw = response.choices[0].message.content.strip()
                 # Strip markdown code fences if present
