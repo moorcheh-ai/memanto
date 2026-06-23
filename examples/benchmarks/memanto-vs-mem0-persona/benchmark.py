@@ -571,7 +571,9 @@ def main():
 
     print("🏁 Memanto vs Mem0 — Shifting Persona & Temporal Preference Benchmark")
     print(f"   Experiment ID: {EXPERIMENT_ID}")
-    print(f"   Dataset: 22 turns, 5 sessions, 7 contradictions, 9 eval questions\n")
+    conversations = json.loads((DATA_DIR / "persona_conversations.json").read_text())
+golden_qa = json.loads((DATA_DIR / "golden_qa.json").read_text())
+print(f"   Dataset: {len(conversations)} turns, {max(c['session'] for c in conversations)} sessions, {sum(1 for c in conversations if c.get('contradiction'))} contradictions, {len(golden_qa)} eval questions\n")
 
     results = run_benchmark(
         skip_mem0=args.skip_mem0,
