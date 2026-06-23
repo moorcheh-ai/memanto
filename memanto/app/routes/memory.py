@@ -369,7 +369,9 @@ async def upload_file(
         tmp_dir = tempfile.mkdtemp()
         tmp_path = os.path.join(tmp_dir, original_name)
         # Defense-in-depth: verify resolved path is within tmp_dir
-        if not os.path.realpath(tmp_path).startswith(os.path.realpath(tmp_dir) + os.sep):
+        if not os.path.realpath(tmp_path).startswith(
+            os.path.realpath(tmp_dir) + os.sep
+        ):
             raise HTTPException(
                 status_code=400,
                 detail="Invalid filename",

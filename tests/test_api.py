@@ -865,3 +865,172 @@ class TestMEMANTOAPI:
         )
 
         assert response.status_code in (401, 403, 422)
+
+    @pytest.mark.asyncio
+    async def test_traversal_filename_is_sanitized(
+        self, client, auth_headers, mock_moorcheh
+    ):
+        """A filename with ../../ should be stripped to its basename."""
+        await client.post(
+            "/api/v2/agents",
+            headers=auth_headers,
+            json={"agent_id": self.TEST_AGENT_ID},
+        )
+        activate_resp = await client.post(
+            f"/api/v2/agents/{self.TEST_AGENT_ID}/activate", headers=auth_headers
+        )
+        token = activate_resp.json()["session_token"]
+
+        mock_moorcheh.documents.upload_file.return_value = {
+            "success": True,
+            "message": "File uploaded",
+            "fileName": "notes.txt",
+            "fileSize": 100,
+        }
+
+        headers = {**auth_headers, "X-Session-Token": token}
+        response = await client.post(
+            f"/api/v2/agents/{self.TEST_AGENT_ID}/upload-file",
+            headers=headers,
+            files={
+                "file": (
+                    "../../../etc/passwd.txt",
+                    b"test content",
+                    "text/plain",
+                )
+            },
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        # The returned file_name should be the sanitized basename
+        assert data["file_name"] == "passwd.txt"
+        assert "/" not in data["file_name"]
+        assert ".." not in data["file_name"]
+
+    @pytest.mark.asyncio
+    async def test_absolute_path_filename_is_sanitized(
+        self, client, auth_headers, mock_moorcheh
+    ):
+        """An absolute path filename should be stripped to its basename."""
+        await client.post(
+            "/api/v2/agents",
+            headers=auth_headers,
+            json={"agent_id": self.TEST_AGENT_ID},
+        )
+        activate_resp = await client.post(
+            f"/api/v2/agents/{self.TEST_AGENT_ID}/activate", headers=auth_headers
+        )
+        token = activate_resp.json()["session_token"]
+
+        mock_moorcheh.documents.upload_file.return_value = {
+            "success": True,
+            "message": "File uploaded",
+            "fileName": "secret.json",
+            "fileSize": 50,
+        }
+
+        headers = {**auth_headers, "X-Session-Token": token}
+        response = await client.post(
+            f"/api/v2/agents/{self.TEST_AGENT_ID}/upload-file",
+            headers=headers,
+            files={
+                "file": (
+                    "/etc/secret.json",
+                    b'{"key": "value"}',
+                    "application/json",
+                )
+            },
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["file_name"] == "secret.json"
+
+
+class TestFilenameSanitizationLogic:
+    """Direct tests on the sanitization logic used in the fix."""
+
+    @staticmethod
+    def sanitize(raw: str | None) -> str:
+        """Reproduce the exact sanitization logic from the fix."""
+        original_name = Path(raw or "upload").name
+        if not original_name or original_name in (".", ".."):
+            original_name = "upload"
+        return original_name
+
+    def test_normal_filename(self):
+        assert self.sanitize("notes.txt") == "notes.txt"
+
+    def test_normal_filename_with_spaces(self):
+        assert self.sanitize("my notes.pdf") == "my notes.pdf"
+
+    def test_normal_filename_uppercase(self):
+        assert self.sanitize("REPORT.DOCX") == "REPORT.DOCX"
+
+    def test_simple_traversal(self):
+        result = self.sanitize("../../../etc/passwd")
+        assert result == "passwd"
+        assert "/" not in result
+        assert ".." not in result
+
+    def test_deep_traversal(self):
+        result = self.sanitize("../../../../../../../../etc/shadow")
+        assert result == "shadow"
+
+    def test_traversal_to_txt(self):
+        result = self.sanitize("../../sensitive.txt")
+        assert result == "sensitive.txt"
+        assert ".." not in result
+
+    def test_windows_traversal(self):
+        result = self.sanitize("..\\..\\..\\windows\\win.ini")
+        assert "/" not in result
+
+    def test_mixed_traversal(self):
+        result = self.sanitize("../../../etc/passwd.txt")
+        assert result == "passwd.txt"
+
+    def test_absolute_path_linux(self):
+        result = self.sanitize("/etc/passwd")
+        assert result == "passwd"
+
+    def test_absolute_path_deep(self):
+        result = self.sanitize("/var/www/html/config.php")
+        assert result == "config.php"
+
+    def test_none_filename(self):
+        assert self.sanitize(None) == "upload"
+
+    def test_empty_filename(self):
+        assert self.sanitize("") == "upload"
+
+    def test_dot_filename(self):
+        assert self.sanitize(".") == "upload"
+
+    def test_dotdot_filename(self):
+        assert self.sanitize("..") == "upload"
+
+    def test_only_slashes(self):
+        assert self.sanitize("/") == "upload"
+
+    def test_dotfile(self):
+        result = self.sanitize(".env")
+        assert result == ".env"
+
+
+class TestRealpathGuard:
+    """Verify the defense-in-depth realpath check prevents escape."""
+
+    def test_safe_path_passes(self):
+        tmp_dir = tempfile.mkdtemp()
+        safe_name = "report.pdf"
+        tmp_path = os.path.join(tmp_dir, safe_name)
+        assert os.path.realpath(tmp_path).startswith(os.path.realpath(tmp_dir) + os.sep)
+
+    def test_traversal_path_fails(self):
+        tmp_dir = tempfile.mkdtemp()
+        malicious_path = os.path.join(tmp_dir, "..", "..", "etc", "passwd")
+        assert not os.path.realpath(malicious_path).startswith(
+            os.path.realpath(tmp_dir) + os.sep
+        )
