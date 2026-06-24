@@ -1,14 +1,30 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "backend": "fixture",
   "run_id": "fixture",
   "mode": "smoke_fixture",
   "dataset": "production-access-revocation-v1",
   "dataset_sha256": "9a04bce957e81e15f7728ed1f92ae988f85c9b313cae671ebe3bf94b14a7866e",
+  "experiment_configuration": {
+    "shared": {
+      "input_delivery": "curated facts in identical dataset order",
+      "extraction_llm": "none",
+      "evaluation_judge": "deterministic required/forbidden substring matching",
+      "retrieval_limit": 6,
+      "query_order": "dataset order"
+    },
+    "backend": {
+      "storage": "in-process current-state dictionary",
+      "purpose": "smoke testing only; not a live framework result"
+    }
+  },
   "environment": {
-    "python": "3.13.5",
-    "platform": "macOS-26.5.1-arm64-arm-64bit-Mach-O",
+    "started_at_utc": "2026-06-24T07:46:07.675344+00:00",
+    "python": "3.9.6",
+    "platform": "macOS-26.5.1-arm64-arm-64bit",
     "machine": "arm64",
+    "processor": "arm",
+    "logical_cpu_count": 10,
     "retrieval_limit": 6,
     "settle_seconds": 0.0,
     "tokenizer": "regex word-and-punctuation proxy",
@@ -16,7 +32,8 @@
       "memanto": null,
       "mem0ai": null,
       "fastembed": null,
-      "qdrant-client": null
+      "qdrant-client": null,
+      "ollama": null
     }
   },
   "summary": {

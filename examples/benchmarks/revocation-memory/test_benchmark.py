@@ -38,6 +38,15 @@ class BenchmarkTests(unittest.TestCase):
         self.assertEqual(report["summary"]["write_latency_p95_ms"], 0.0)
         self.assertEqual(report["summary"]["read_latency_p95_ms"], 0.0)
         self.assertEqual(len(report["probes"]), 6)
+        self.assertEqual(report["schema_version"], 2)
+        self.assertEqual(
+            report["experiment_configuration"]["shared"]["extraction_llm"],
+            "none",
+        )
+        self.assertIn(
+            "smoke testing only",
+            report["experiment_configuration"]["backend"]["purpose"],
+        )
 
     def test_score_probe_counts_required_and_forbidden_terms(self) -> None:
         probe = {
@@ -95,6 +104,30 @@ class BenchmarkTests(unittest.TestCase):
             "mode 'live_framework' does not match backend 'fixture'",
             benchmark.validate_report(report, dataset),
         )
+
+    def test_report_integrity_requires_experiment_configuration(self) -> None:
+        dataset = benchmark.load_dataset(Path(__file__).with_name("dataset.json"))
+        report = benchmark.run_backend(
+            "fixture",
+            dataset,
+            limit=6,
+            settle_seconds=0,
+            run_id="fixture",
+        )
+        del report["experiment_configuration"]
+
+        self.assertIn(
+            "experiment_configuration must be an object",
+            benchmark.validate_report(report, dataset),
+        )
+
+    def test_mem0_configuration_discloses_all_retrieval_toggles(self) -> None:
+        configuration = benchmark.experiment_configuration("mem0", limit=6)
+
+        self.assertFalse(configuration["backend"]["infer"])
+        self.assertFalse(configuration["backend"]["rerank"])
+        self.assertEqual(configuration["backend"]["embedding_dimensions"], 384)
+        self.assertEqual(configuration["shared"]["retrieval_limit"], 6)
 
     def test_dataset_validation_rejects_duplicate_probe_ids(self) -> None:
         dataset = json.loads(Path(__file__).with_name("dataset.json").read_text())

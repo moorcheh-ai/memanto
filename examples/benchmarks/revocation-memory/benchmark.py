@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+from datetime import datetime, timezone
 import hashlib
 import importlib.metadata
 import json
@@ -246,6 +247,44 @@ ADAPTERS = {
 }
 
 
+def experiment_configuration(backend_name: str, limit: int) -> dict[str, Any]:
+    """Describe the controlled inputs and framework-specific toggles."""
+    shared = {
+        "input_delivery": "curated facts in identical dataset order",
+        "extraction_llm": "none",
+        "evaluation_judge": "deterministic required/forbidden substring matching",
+        "retrieval_limit": limit,
+        "query_order": "dataset order",
+    }
+    backend = {
+        "fixture": {
+            "storage": "in-process current-state dictionary",
+            "purpose": "smoke testing only; not a live framework result",
+        },
+        "memanto": {
+            "storage": "Moorcheh through the Memanto SDK",
+            "agent_pattern": "tool",
+            "memory_fields": [
+                "type",
+                "title",
+                "content",
+                "confidence",
+                "tags",
+                "provenance",
+            ],
+        },
+        "mem0": {
+            "storage": "local Qdrant",
+            "embedder": "FastEmbed BAAI/bge-small-en-v1.5",
+            "embedding_dimensions": 384,
+            "infer": False,
+            "rerank": False,
+            "llm_calls": "none; unreachable Ollama placeholder is never called",
+        },
+    }
+    return {"shared": shared, "backend": backend[backend_name]}
+
+
 def load_dataset(path: Path) -> dict[str, Any]:
     """Load and validate the benchmark dataset."""
     dataset = json.loads(path.read_text(encoding="utf-8"))
@@ -308,6 +347,7 @@ def run_backend(
     run_id: str | None = None,
 ) -> dict[str, Any]:
     """Execute one backend and return a fully serializable report."""
+    started_at = datetime.now(timezone.utc).isoformat()
     run_id = run_id or uuid.uuid4().hex[:12]
     adapter = ADAPTERS[backend_name](run_id)
     write_latencies: list[float] = []
@@ -358,16 +398,20 @@ def run_backend(
 
     total_probes = len(probe_results)
     return {
-        "schema_version": 1,
+        "schema_version": 2,
         "backend": backend_name,
         "run_id": run_id,
         "mode": "smoke_fixture" if backend_name == "fixture" else "live_framework",
         "dataset": dataset["name"],
         "dataset_sha256": dataset_sha256(dataset),
+        "experiment_configuration": experiment_configuration(backend_name, limit),
         "environment": {
+            "started_at_utc": started_at,
             "python": sys.version.split()[0],
             "platform": platform.platform(),
             "machine": platform.machine(),
+            "processor": platform.processor() or None,
+            "logical_cpu_count": os.cpu_count(),
             "retrieval_limit": limit,
             "settle_seconds": settle_seconds,
             "tokenizer": "regex word-and-punctuation proxy",
@@ -418,6 +462,29 @@ def validate_report(report: dict[str, Any], dataset: dict[str, Any]) -> list[str
     if report.get("dataset_sha256") != dataset_sha256(dataset):
         errors.append("dataset fingerprint does not match")
 
+    configuration = report.get("experiment_configuration")
+    if not isinstance(configuration, dict):
+        errors.append("experiment_configuration must be an object")
+    else:
+        shared = configuration.get("shared")
+        backend_configuration = configuration.get("backend")
+        if not isinstance(shared, dict):
+            errors.append("experiment_configuration.shared must be an object")
+        else:
+            for field in (
+                "input_delivery",
+                "extraction_llm",
+                "evaluation_judge",
+                "retrieval_limit",
+                "query_order",
+            ):
+                if field not in shared:
+                    errors.append(
+                        f"experiment_configuration.shared is missing {field}"
+                    )
+        if not isinstance(backend_configuration, dict):
+            errors.append("experiment_configuration.backend must be an object")
+
     expected_probe_ids = [probe["id"] for probe in dataset["probes"]]
     actual_probes = report.get("probes")
     if not isinstance(actual_probes, list):
@@ -455,6 +522,8 @@ def render_markdown(report: dict[str, Any]) -> str:
         f"- Mode: `{report['mode']}`",
         f"- Dataset: `{report['dataset']}`",
         f"- Dataset SHA-256: `{report['dataset_sha256']}`",
+        f"- Extraction LLM: `{report['experiment_configuration']['shared']['extraction_llm']}`",
+        f"- Evaluation judge: `{report['experiment_configuration']['shared']['evaluation_judge']}`",
         f"- Retrieval accuracy: {summary['retrieval_accuracy']:.1%}",
         f"- Stale leak rate: {summary['stale_leak_rate']:.1%}",
         f"- Ingested tokens: {summary['ingested_tokens']}",

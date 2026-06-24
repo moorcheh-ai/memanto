@@ -27,6 +27,9 @@ fact leakage.
 
 Every report embeds a SHA-256 fingerprint of the canonical dataset so reviewers
 can detect changed inputs and distinguish committed smoke output from live runs.
+Schema v2 reports also embed the exact input-delivery method, evaluation judge,
+retrieval limit, query order, extraction-LLM setting, and backend-specific
+retrieval toggles. These fields are validated rather than left as prose only.
 
 ## Metrics
 
@@ -36,8 +39,10 @@ can detect changed inputs and distinguish committed smoke output from live runs.
 - Write and read p95 latency: wall-clock seconds around framework calls.
 
 The token proxy is intentionally provider-independent and is documented in the
-JSON environment metadata. It measures comparative memory footprint, not an LLM
-provider's billable token count.
+JSON environment metadata. Because neither adapter invokes an extraction or
+judge LLM, there is no provider billable-token total to report. The proxy
+measures identical input/retrieval text volume across frameworks; it must not be
+interpreted as an OpenAI, Anthropic, or Moorcheh invoice quantity.
 
 ## Run
 
@@ -96,9 +101,9 @@ python examples/benchmarks/revocation-memory/benchmark.py \
   examples/benchmarks/revocation-memory/results/fixture-results.json
 ```
 
-Report validation checks the dataset fingerprint, backend/mode pairing, probe
-membership, and required summary fields. In particular, a fixture report cannot
-be relabeled as a live framework result.
+Report validation checks the dataset fingerprint, backend/mode pairing,
+experiment configuration, probe membership, and required summary fields. In
+particular, a fixture report cannot be relabeled as a live framework result.
 
 ## Interpretation
 
