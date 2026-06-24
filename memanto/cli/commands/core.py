@@ -1026,22 +1026,38 @@ def ui(
     def _open_dashboard_window(url: str):
         import subprocess
         import sys
+        from urllib.parse import urlparse
 
-        # On Windows, try to open Edge or Chrome in standalone app mode for a native feel
+        # Defense: refuse to launch a browser with a non-HTTP URL. An attacker
+        # who controls `url` (via config tampering or upstream URL injection)
+        # could otherwise break out of the shell command and execute arbitrary
+        # programs. This addresses finding #4 in the bounty report.
+        parsed = urlparse(url)
+        if parsed.scheme not in ("http", "https") or not parsed.netloc:
+            console.print(
+                f"[{WARNING}]Refusing to open non-HTTP(S) URL:[/{WARNING}] {url}"
+            )
+            return
+
+        # On Windows, try to open Edge or Chrome in standalone app mode for a
+        # native feel. Use list-form invocation with shell=False so the URL
+        # is passed as a single argument — never interpolated into a shell
+        # command string.
         success = False
         if sys.platform == "win32":
-            try:
-                # Need shell=True for `start` command to resolve registry paths
-                subprocess.Popen(f'start msedge --app="{url}"', shell=True)
-                success = True
-            except Exception:
+            for browser in ("msedge", "chrome"):
                 try:
-                    subprocess.Popen(f'start chrome --app="{url}"', shell=True)
+                    subprocess.Popen(
+                        ["cmd", "/c", "start", "", browser, f"--app={url}"],
+                        shell=False,
+                    )
                     success = True
-                except Exception:
-                    pass
+                    break
+                except (FileNotFoundError, OSError):
+                    continue
 
-        # Fallback to default browser
+        # Fallback to default browser (POSIX / macOS, or Windows when both
+        # Edge and Chrome are missing).
         if not success:
             webbrowser.open_new(url)
 
