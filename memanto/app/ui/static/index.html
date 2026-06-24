@@ -3414,7 +3414,7 @@
                 const provBadge = m.provenance ? `<span class="badge badge-accent">${m.provenance}</span>` : '—';
                 const contradicted = m.contradiction_detected ? ' <span class="badge badge-error">⚠ contradicted</span>' : '';
                 const validated = (m.validation_count && m.validation_count > 0) ? ` <span class="badge badge-success">✓×${m.validation_count}</span>` : '';
-                const mJson = encodeURIComponent(JSON.stringify(m));
+                const mJson = attrEsc(JSON.stringify(m));
                 html += `<tr class="${expandable ? 'expandable' : ''}" onclick="toggleRow('exp-${i}')">
             <td style="color:var(--text-primary);font-weight:500">${escHtml(trunc(m.title || 'Untitled', 60))}</td>
             <td><span class="badge badge-info">${m.type || '—'}</span></td>
@@ -3427,7 +3427,9 @@
         </tr>`;
                 if (expandable) {
                     const memId = m.id ? String(m.id) : '';
-                    const editBtn = `<button class="btn btn-secondary btn-sm" style="margin-right: 8px;" onclick="openEditMemoryModal(JSON.parse(decodeURIComponent('${mJson}')))">Edit</button>`;
+                    const editBtn = memId 
+                        ? `<button class="btn btn-secondary btn-sm" style="margin-right: 8px;" data-mem="${mJson}" onclick="openEditMemoryModal(JSON.parse(this.dataset.mem))">Edit</button>`
+                        : '';
                     const forgetBtn = memId
                         ? `<button class="btn btn-danger btn-sm" onclick="forgetMemory('${escHtml(memId)}', this, event)">Forget</button>`
                         : '<span style="font-size:11px;color:var(--text-dim)">No ID — cannot forget</span>';
@@ -3518,7 +3520,7 @@
                 </div>
                 <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:16px">
                     <button class="btn btn-secondary" onclick="closeEditMemoryModal()">Cancel</button>
-                    <button class="btn btn-primary" onclick="executeEditMemory('${m.id}', this)">Save Changes</button>
+                    <button class="btn btn-primary" data-mem-id="${attrEsc(String(m.id || ''))}" onclick="executeEditMemory(this.dataset.memId, this)">Save Changes</button>
                 </div>
             </div>`;
             modal.addEventListener('click', e => { if (e.target === modal) closeEditMemoryModal(); });
@@ -3549,7 +3551,7 @@
                 btnElement.textContent = 'Saving...';
                 btnElement.disabled = true;
                 
-                await api('PATCH', `/api/v2/agents/${S.agentId}/memories/${id}`, updates);
+                await api('PATCH', `/api/v2/agents/${S.agentId}/memories/${encodeURIComponent(id)}`, updates);
                 toast('Memory updated successfully');
                 closeEditMemoryModal();
                 if (typeof loadExplorer === 'function') loadExplorer(); // refresh explorer view
