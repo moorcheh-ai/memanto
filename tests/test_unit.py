@@ -243,6 +243,109 @@ class TestAgentService:
         print("✅ Agent deleted successfully")
 
 
+class TestMemoryWriteServiceDelete:
+    """``delete_memory`` must report success for both cloud and on-prem
+    response shapes. Cloud returns ``actual_deletions``; on-prem's
+    ``/items/delete`` only returns ``deleted_ids``/``status``."""
+
+    @pytest.mark.parametrize(
+        "response,expected",
+        [
+            ({"actual_deletions": 1, "deleted_ids": ["m1"]}, True),
+            ({"actual_deletions": 0, "deleted_ids": []}, False),
+            ({"status": "success", "deleted_ids": ["m1"]}, True),
+            ({"status": "success", "deleted_ids": []}, False),
+            ({"status": "success"}, True),
+            ({"requested_ids": ["m1"]}, True),
+            ({}, False),
+        ],
+    )
+    def test_delete_memory_handles_backend_shapes(self, response, expected):
+        from memanto.app.services.memory_write_service import MemoryWriteService
+
+        client = MagicMock()
+        client.documents.delete.return_value = response
+        assert MemoryWriteService(client).delete_memory("m1", "ns") is expected
+
+
+class TestForgetEndToEnd:
+    """End-to-end ``forget`` flow through ``DirectClient``: create agent →
+    activate → delete_memory. Asserts on-prem's response shape
+    (``deleted_ids`` only, no ``actual_deletions``) is reported as success
+    and that a genuine miss still surfaces as ``ValueError``."""
+
+    @pytest.fixture
+    def direct_client(self, tmp_path, monkeypatch, mock_moorcheh_for_tests):
+        """A wired ``DirectClient`` with the agent + session dirs redirected
+        into ``tmp_path`` so we don't touch ``~/.memanto``. The conftest's
+        ``mock_moorcheh_for_tests`` covers ``app.clients.moorcheh`` and
+        ``agent_service.get_moorcheh_client``; ``DirectClient`` has its own
+        inline ``MoorchehClient`` class, so we also patch that and force the
+        lazy ``_moorcheh`` slot to the shared mock."""
+        from memanto.cli.client import direct_client as direct_mod
+        from memanto.cli.client.direct_client import DirectClient
+
+        monkeypatch.setattr(
+            "memanto.app.services.agent_service.get_data_dir",
+            lambda: tmp_path,
+        )
+        monkeypatch.setattr(
+            "memanto.app.services.session_service.get_data_dir",
+            lambda: tmp_path,
+        )
+        monkeypatch.setattr(
+            direct_mod, "MoorchehClient", lambda **_: mock_moorcheh_for_tests
+        )
+
+        client = DirectClient(api_key="test-key")
+        client._moorcheh = mock_moorcheh_for_tests  # write/read share this
+        client.create_agent("test-agent", "tool", "e2e")
+        client.activate_agent("test-agent", duration_hours=1)
+        return client, mock_moorcheh_for_tests
+
+    def test_forget_succeeds_on_onprem_response_shape(self, direct_client):
+        """On-prem returns ``deleted_ids`` without ``actual_deletions`` —
+        forget must report success."""
+        client, moorcheh = direct_client
+        moorcheh.documents.delete.return_value = {
+            "status": "success",
+            "deleted_ids": ["mem-abc"],
+        }
+
+        result = client.delete_memory(agent_id="test-agent", memory_id="mem-abc")
+
+        assert result["status"] == "deleted"
+        assert result["memory_id"] == "mem-abc"
+        assert result["namespace"] == "memanto_agent_test-agent"
+        moorcheh.documents.delete.assert_called_once_with(
+            namespace_name="memanto_agent_test-agent", ids=["mem-abc"]
+        )
+
+    def test_forget_reports_not_found_when_truly_missing(self, direct_client):
+        """Empty ``deleted_ids`` (genuine miss) still surfaces as ValueError."""
+        client, moorcheh = direct_client
+        moorcheh.documents.delete.return_value = {
+            "status": "success",
+            "deleted_ids": [],
+        }
+
+        with pytest.raises(ValueError, match="was not found"):
+            client.delete_memory(agent_id="test-agent", memory_id="ghost")
+
+    def test_forget_succeeds_on_cloud_response_shape(self, direct_client):
+        """Cloud's ``actual_deletions`` path stays green (regression guard)."""
+        client, moorcheh = direct_client
+        moorcheh.documents.delete.return_value = {
+            "actual_deletions": 1,
+            "deleted_ids": ["mem-xyz"],
+            "status": "success",
+        }
+
+        result = client.delete_memory(agent_id="test-agent", memory_id="mem-xyz")
+        assert result["status"] == "deleted"
+        assert result["memory_id"] == "mem-xyz"
+
+
 class TestMEMANTOArchitecture:
     """Tests for MEMANTO architecture principles"""
 

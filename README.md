@@ -1,20 +1,20 @@
 <p align="center">
     <a href="https://www.memanto.ai/">
-    <img alt="MEMANTO Logo" src="https://github.com/moorcheh-ai/memanto/raw/main/assets/memanto-dark.svg" width="500">
+    <img alt="MEMANTO Logo" src="https://github.com/moorcheh-ai/memanto/raw/main/assets/memanto-logo.svg" width="500">
     </a>
 </p>
 
 <div align="center">
-  <h1>Your agent forgets everything. Memanto fixes that.</h1>
+  <h1>Your agents focus. Memanto remembers.</h1>
 </div>
 
-<p align="center">
-  Persistent memory for Claude Code, Cursor, Codex, and 14 other agents. 100% free, open source, and runs entirely on your machine - no API keys, no vector database, no backend to babysit.
-</p>
+<h2 align="center">
+  <em>A companion memory agent with its own intelligence that keeps your agents focused on their tasks.</em>
+</h2>
 
-<h1 align="center">
-  <em>Memory that AI Agents Love!</em>
-</h1>
+<p align="center">
+  Persistent memory for Claude Code, Cursor, Codex, and 14+ other agents, built on the world's first information-theoretic search engine. 100% free, open source, and runs entirely on your machine - no API keys, no vector database, no backend to babysit.
+</p>
 
 <p align="center">
   <a href="https://discord.gg/CyxRFQSQ3p">
@@ -183,7 +183,8 @@ This means Memanto doesn't need a separate vector DB, embedding pipeline, or rer
 | System status dashboard | `memanto status` | View environment, configuration, server health, active session, and registered agents. |
 | Local REST API + Web UI | `memanto serve`, `memanto ui` | Run the MEMANTO REST API locally and open an interactive browser UI. (Optional for CLI usage). |
 | Agent lifecycle management | `memanto agent ...` | Create/list/delete agents, activate/deactivate sessions, and run `agent bootstrap` for an intelligence snapshot. |
-| Memory capture at scale | `memanto remember` | Store single memories with metadata or batch-ingest up to 100 records from JSON. |
+| Memory capture at scale | `memanto remember` | Store single memories, batch-ingest from JSON, or `--from-conversation` to automatically extract facts from chat logs. |
+| Single-memory deletion | `memanto forget` | Delete one bad or outdated memory from the active agent after confirmation, or without the prompt with `--force`. |
 | File upload to memory | `memanto upload` | Upload documents (.pdf, .docx, .xlsx, .json, .txt, .csv, .md) directly into an agent's memory namespace — content becomes instantly searchable via `recall`. |
 | Advanced retrieval modes | `memanto recall` | Run standard search plus temporal queries (`--as-of`, `--changed-since`) with filters. |
 | Grounded QA over memory | `memanto answer` | Generate RAG answers using retrieved memory context. |
@@ -202,6 +203,12 @@ For a complete command reference, see the [CLI User Guide](https://docs.memanto.
 Use memory types to categorize what you store so retrieval is cleaner and more controllable:
 - Save with a specific type: `memanto remember "User prefers concise answers" --type preference`
 - Filter by type when searching: `memanto recall "user communication style" --type preference`
+
+---
+
+## 📦 SDKs
+
+- **TypeScript / Node.js** — [`@moorcheh-ai/memanto`](sdks/typescript) — boots a local Memanto server via `uvx` and exposes an ergonomic `Memanto` client (`remember` / `recall` / `answer`).
 
 ---
 

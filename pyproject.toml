@@ -1,7 +1,7 @@
 [project]
 name = "memanto"
 dynamic = ["version"]
-description = "Memory that AI Agents Love!"
+description = "A companion memory agent with its own intelligence that keeps your agents focused on their tasks."
 authors = [{ name = "Majid Fekri", email = "majid.fekri@edgeaiinnovations.com" }]
 requires-python = ">=3.10,<4"
 readme = "README.md"

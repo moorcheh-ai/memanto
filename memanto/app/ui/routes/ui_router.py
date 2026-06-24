@@ -8,6 +8,7 @@ import os
 import signal
 import time
 from pathlib import Path
+from typing import Any
 
 from fastapi import APIRouter, BackgroundTasks, HTTPException
 from fastapi.responses import FileResponse, HTMLResponse
@@ -27,6 +28,31 @@ _config_manager = ConfigManager()
 
 # Path to the static directory
 STATIC_DIR = Path(__file__).parent.parent / "static"
+
+
+def _build_ui_direct_client() -> DirectClient | None:
+    """Build a ``DirectClient`` for UI routes with the active session restored.
+
+    On on-prem we pass an ``"on-prem"`` placeholder — the underlying
+    ``OnPremClient`` ignores it and talks to the local stack. On cloud we
+    require a real Memanto API key; returns ``None`` when one isn't
+    configured so callers can choose their own error shape (HTTP 400 vs
+    graceful empty payload).
+    """
+    if _config_manager.get_backend() == Backend.ON_PREM:
+        api_key: str = "on-prem"
+    else:
+        cfg_key = _config_manager.get_api_key()
+        if not cfg_key:
+            return None
+        api_key = cfg_key
+    client = DirectClient(api_key)
+    active_agent_id, token = _config_manager.get_active_session()
+    if token:
+        client.session_token = token
+    if active_agent_id:
+        client.agent_id = active_agent_id
+    return client
 
 
 @router.get("/api/ui/config")
@@ -53,7 +79,6 @@ async def get_ui_config():
         "api_key_preview": f"........{api_key[-6:]}"
         if api_key and len(api_key) > 6
         else ("***" if api_key else None),
-        "api_key": api_key,
         "backend": backend,
         "on_prem": {
             "url": onprem_cfg.get("url", "http://localhost:8080"),
@@ -347,13 +372,9 @@ async def list_conflicts(agent_id: str | None = None, date: str | None = None):
         date = dt.now().strftime("%Y-%m-%d")
 
     try:
-        api_key = _config_manager.get_api_key()
-        if not api_key:
+        client = _build_ui_direct_client()
+        if client is None:
             return {"conflicts": [], "count": 0, "message": "No API key configured"}
-        client = DirectClient(api_key)
-        _, token = _config_manager.get_active_session()
-        if token:
-            client.session_token = token
         conflicts = client.list_conflicts(agent_id=agent_id, date=date)
         return {
             "conflicts": conflicts,
@@ -475,15 +496,11 @@ async def generate_daily_summary(body: dict | None = None):
     date = body.get("date") or dt.now().strftime("%Y-%m-%d")
     output_path = body.get("output_path")
 
-    api_key = _config_manager.get_api_key()
-    if not api_key:
+    client = _build_ui_direct_client()
+    if client is None:
         raise HTTPException(status_code=400, detail="No API key configured")
 
     try:
-        client = DirectClient(api_key)
-        _, token = _config_manager.get_active_session()
-        if token:
-            client.session_token = token
         result = client.generate_daily_summary(
             agent_id=str(agent_id), date=str(date), output_path=output_path
         )
@@ -510,15 +527,11 @@ async def generate_conflict_report(body: dict | None = None):
         agent_id = aid
     date = body.get("date") or dt.now().strftime("%Y-%m-%d")
 
-    api_key = _config_manager.get_api_key()
-    if not api_key:
+    client = _build_ui_direct_client()
+    if client is None:
         raise HTTPException(status_code=400, detail="No API key configured")
 
     try:
-        client = DirectClient(api_key)
-        _, token = _config_manager.get_active_session()
-        if token:
-            client.session_token = token
         result = client.generate_conflict_report(agent_id=str(agent_id), date=str(date))
         return {"agent_id": agent_id, "date": date, **result}
     except Exception as e:
@@ -549,13 +562,9 @@ async def resolve_conflict(body: dict):
         )
 
     try:
-        api_key = _config_manager.get_api_key()
-        if not api_key:
+        client = _build_ui_direct_client()
+        if client is None:
             raise HTTPException(status_code=400, detail="No API key configured")
-        client = DirectClient(api_key)
-        _, token = _config_manager.get_active_session()
-        if token:
-            client.session_token = token
         result = client.resolve_conflict(
             agent_id=agent_id,
             date=date,
@@ -767,6 +776,236 @@ async def shutdown_server(background_tasks: BackgroundTasks):
 
     background_tasks.add_task(kill_server)
     return {"status": "shutting down"}
+
+
+_MIGRATE_PROVIDERS = ("mem0", "letta", "supermemory")
+
+
+def _migrate_compact_metrics(provider: str, metrics: dict) -> dict:
+    """Strip the savings-metrics dict down to the few numbers the UI shows.
+
+    Provider compare modules ship rich dicts with cost, latency, storage
+    breakdowns. The UI only needs the headline numbers — pull them out
+    uniformly so the JS doesn't need provider-specific code paths.
+    """
+    volume = metrics.get("volume", {}) or {}
+    ingestion = metrics.get("ingestion_tax", {}) or {}
+    storage = metrics.get("storage", {}) or {}
+    latency = metrics.get("latency", {}) or {}
+
+    cost_key = next(
+        (
+            k
+            for k in (
+                f"{provider}_extraction_cost_usd",
+                "mem0_extraction_cost_usd",
+                "letta_extraction_cost_usd",
+                "supermemory_extraction_cost_usd",
+            )
+            if k in ingestion
+        ),
+        None,
+    )
+    read_ms_key = next(
+        (
+            k
+            for k in (
+                f"{provider}_read_ms",
+                "mem0_read_ms",
+                "letta_read_ms",
+                "supermemory_read_ms",
+            )
+            if k in latency
+        ),
+        None,
+    )
+
+    return {
+        "tokens_saved": ingestion.get("tokens_saved", 0),
+        "extraction_cost_usd": ingestion.get(cost_key) if cost_key else 0.0,
+        "storage_saved_human": storage.get("saved_human", "—"),
+        "storage_compression_ratio": storage.get("compression_ratio", 0),
+        "read_ms_source": latency.get(read_ms_key) if read_ms_key else 0,
+        "read_ms_memanto": latency.get("memanto_read_ms", 0),
+        "latency_speedup_x": latency.get("speedup_x", 0),
+        "estimated_content_tokens": volume.get("estimated_content_tokens", 0),
+    }
+
+
+def _migrate_load_or_export(
+    provider: str,
+    file_path: str | None,
+    api_key: str | None,
+) -> tuple[str, dict]:
+    """Either load a JSON export from disk or pull one live with the API key.
+
+    Returns ``(source_label, export_dict)``. ``source_label`` is what the UI
+    shows under "Source" — either the file path or "live export".
+    """
+    from memanto.cli.analyze.letta_export import run_letta_export
+    from memanto.cli.analyze.mem0_export import run_mem0_export
+    from memanto.cli.analyze.supermemory_export import run_supermemory_export
+    from memanto.cli.migrate.runner import load_export
+
+    if file_path:
+        path = Path(file_path).expanduser()
+        if not path.exists() or not path.is_file():
+            raise HTTPException(
+                status_code=400, detail=f"Export file not found: {file_path}"
+            )
+        return str(path), load_export(path)
+
+    if not api_key or not api_key.strip():
+        raise HTTPException(
+            status_code=400,
+            detail="Either `file` (server-side path) or `api_key` is required.",
+        )
+
+    exporters: dict[str, Any] = {
+        "mem0": run_mem0_export,
+        "letta": run_letta_export,
+        "supermemory": run_supermemory_export,
+    }
+    exporter = exporters[provider]
+    stamp = time.strftime("%Y%m%d_%H%M%S")
+    dest = _config_manager.get_migrate_dir(provider) / stamp
+    dest.mkdir(parents=True, exist_ok=True)
+    try:
+        export_path, export = exporter(api_key.strip(), dest)
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"{provider} export failed: {e}")
+    return str(export_path), export
+
+
+def _migrate_get_metrics_fn(provider: str):
+    if provider == "mem0":
+        from memanto.cli.analyze.mem0_compare import compute_metrics
+
+        return compute_metrics
+    if provider == "letta":
+        from memanto.cli.analyze.letta_compare import compute_metrics
+
+        return compute_metrics
+    from memanto.cli.analyze.supermemory_compare import compute_metrics
+
+    return compute_metrics
+
+
+@router.post("/api/ui/migrate/dry-run")
+async def migrate_dry_run(body: dict):
+    """Preview a migration without writing.
+
+    Body: ``{provider, file?, api_key?}``. Returns the mapped row count,
+    type breakdown, compact savings metrics, and a small sample of the
+    mapped payloads so the UI can preview what would be imported.
+    """
+    from memanto.cli.migrate.runner import map_export, source_count
+
+    provider = (body.get("provider") or "").strip().lower()
+    if provider not in _MIGRATE_PROVIDERS:
+        raise HTTPException(
+            status_code=400,
+            detail=f"provider must be one of: {', '.join(_MIGRATE_PROVIDERS)}",
+        )
+
+    source_label, export = _migrate_load_or_export(
+        provider, body.get("file"), body.get("api_key")
+    )
+
+    rows = map_export(provider, export)
+    src_count = source_count(provider, export)
+
+    type_counts: dict[str, int] = {}
+    for row in rows:
+        key = row.get("type") or "auto"
+        type_counts[key] = type_counts.get(key, 0) + 1
+
+    metrics_fn = _migrate_get_metrics_fn(provider)
+    savings = _migrate_compact_metrics(provider, metrics_fn(export))
+
+    sample = []
+    for row in rows[:5]:
+        created = row.get("created_at")
+        sample.append(
+            {
+                "title": row.get("title"),
+                "type": row.get("type") or "auto",
+                "tags": row.get("tags") or [],
+                "source_ref": row.get("source_ref"),
+                "created_at": created.isoformat() if created else None,
+            }
+        )
+
+    return {
+        "provider": provider,
+        "source_label": source_label,
+        "source_count": src_count,
+        "mapped_count": len(rows),
+        "skipped": max(0, src_count - len(rows)),
+        "type_counts": type_counts,
+        "sample": sample,
+        "savings": savings,
+        "batch_count": (len(rows) + 99) // 100,
+    }
+
+
+@router.post("/api/ui/migrate/import")
+async def migrate_import(body: dict):
+    """Run an end-to-end migration.
+
+    Body: ``{provider, file?, api_key?, agent_id?}``. Loads-or-exports,
+    maps, chunks at 100/req, and writes via ``DirectClient.batch_remember``.
+    Returns numeric summary only — no LLM narrative.
+    """
+    from memanto.cli.migrate.runner import run_migration
+
+    provider = (body.get("provider") or "").strip().lower()
+    if provider not in _MIGRATE_PROVIDERS:
+        raise HTTPException(
+            status_code=400,
+            detail=f"provider must be one of: {', '.join(_MIGRATE_PROVIDERS)}",
+        )
+
+    agent_id = body.get("agent_id") or _config_manager.get_active_session()[0]
+    if not agent_id:
+        raise HTTPException(
+            status_code=400,
+            detail="No --agent supplied and no active agent. Activate an agent first.",
+        )
+
+    client = _build_ui_direct_client()
+    if client is None:
+        raise HTTPException(status_code=400, detail="No Memanto API key configured.")
+
+    source_label, export = _migrate_load_or_export(
+        provider, body.get("file"), body.get("api_key")
+    )
+
+    started = time.perf_counter()
+    try:
+        summary, _rows = run_migration(
+            provider=provider,
+            export=export,
+            client=client,
+            agent_id=str(agent_id),
+            dry_run=False,
+            on_progress=None,
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Import failed: {e}")
+    elapsed_ms = round((time.perf_counter() - started) * 1000)
+
+    metrics_fn = _migrate_get_metrics_fn(provider)
+    savings = _migrate_compact_metrics(provider, metrics_fn(export))
+
+    return {
+        "provider": provider,
+        "agent_id": agent_id,
+        "source_label": source_label,
+        "summary": summary.as_dict(),
+        "elapsed_ms": elapsed_ms,
+        "savings": savings,
+    }
 
 
 def get_ui_router():

@@ -1,7 +1,15 @@
 """
 Export all Mem0 account data to JSON (entities and memories).
 
-Used by ``memanto analyze mem0``.
+Used by ``memanto migrate mem0``. Pure ``httpx`` — no Mem0 SDK dependency,
+so users don't have to install ``mem0ai`` and we don't break when the SDK
+ships a new version.
+
+Endpoints (Mem0 Platform REST API — https://docs.mem0.ai/api-reference):
+    GET  /v1/entities/                                 list users/agents/apps/runs
+    GET  /v1/memories/?<scope>&page=&page_size=        list memories scoped to one entity
+
+Auth: ``Authorization: Token <api_key>`` (Mem0's convention — not Bearer).
 """
 
 from __future__ import annotations
@@ -12,8 +20,11 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+import httpx
+
 API_BASE = "https://api.mem0.ai"
 DEFAULT_PAGE_SIZE = 200
+REQUEST_TIMEOUT_S = 60.0
 
 ENTITY_FILTER_KEYS = {
     "user": "user_id",
@@ -21,6 +32,26 @@ ENTITY_FILTER_KEYS = {
     "app": "app_id",
     "run": "run_id",
 }
+
+
+def _client(api_key: str) -> httpx.Client:
+    return httpx.Client(
+        base_url=API_BASE,
+        timeout=REQUEST_TIMEOUT_S,
+        headers={
+            "Authorization": f"Token {api_key}",
+            "Content-Type": "application/json",
+        },
+    )
+
+
+def _get_json(
+    client: httpx.Client, path: str, params: dict[str, Any] | None = None
+) -> Any:
+    resp = client.get(path, params=params or {})
+    if resp.status_code >= 400:
+        raise RuntimeError(f"GET {path} -> {resp.status_code}: {resp.text[:500]}")
+    return resp.json() if resp.content else {}
 
 
 def dedupe_by_id(
@@ -60,15 +91,15 @@ def entity_to_filter(entity: dict[str, Any]) -> dict[str, str] | None:
     return None
 
 
-def discover_entities(client: Any) -> list[dict[str, Any]]:
+def discover_entities(client: httpx.Client) -> list[dict[str, Any]]:
     """List every user, agent, app, and run that has memories in the account."""
-    raw = client.users()
+    raw = _get_json(client, "/v1/entities/")
     entities = normalize_entities(raw)
     return dedupe_by_id(entities, id_key="id")
 
 
 def build_export_scopes(
-    client: Any,
+    client: httpx.Client,
 ) -> tuple[list[dict[str, Any]], list[dict[str, str]]]:
     """Discover all entities via the API and build one memory-fetch scope per entity."""
     entities = discover_entities(client)
@@ -81,7 +112,7 @@ def build_export_scopes(
 
 
 def paginate_memories(
-    client: Any,
+    client: httpx.Client,
     filters: dict[str, str],
     *,
     page_size: int,
@@ -91,7 +122,8 @@ def paginate_memories(
     last_page: dict[str, Any] = {}
 
     while True:
-        response = client.get_all(filters=filters, page=page, page_size=page_size)
+        params = {**filters, "page": page, "page_size": page_size}
+        response = _get_json(client, "/v1/memories/", params=params)
         last_page = response if isinstance(response, dict) else {}
         batch = last_page.get("results") or []
         if not batch:
@@ -105,7 +137,7 @@ def paginate_memories(
 
 
 def collect_memories(
-    client: Any,
+    client: httpx.Client,
     scopes: list[dict[str, str]],
     *,
     page_size: int,
@@ -156,50 +188,44 @@ def run_mem0_export(
     """
     Export full Mem0 account data and write JSON into *dest_dir*.
 
-    Lists every entity (users, agents, apps, runs) via ``client.users()``,
-    then fetches all memories for each one via paginated ``client.get_all()``.
+    Lists every entity (users, agents, apps, runs) via ``GET /v1/entities/``,
+    then fetches all memories for each one via paginated
+    ``GET /v1/memories/?<scope>``.
 
     Returns the written file path and the full export dict.
     """
-    try:
-        from mem0 import MemoryClient
-    except ImportError as exc:
-        raise ImportError(
-            "Mem0 SDK is required. Install with: pip install mem0ai"
-        ) from exc
-
     page_size = max(1, min(page_size, 200))
-    client = MemoryClient(api_key=api_key)
 
-    if on_progress:
-        on_progress("Listing all users, agents, apps, and runs...")
-    entities, scopes = build_export_scopes(client)
-
-    if on_progress:
-        type_counts: dict[str, int] = {}
-        for entity in entities:
-            entity_type = str(entity.get("type") or "unknown").lower()
-            type_counts[entity_type] = type_counts.get(entity_type, 0) + 1
-        breakdown = ", ".join(
-            f"{count} {name}{'s' if count != 1 else ''}"
-            for name, count in sorted(type_counts.items())
-        )
-        on_progress(
-            f"Found {len(entities)} entities ({breakdown or 'none'}) — "
-            f"fetching memories for each"
-        )
-
-    all_memories: list[dict[str, Any]] = []
-    memories_by_scope: dict[str, list[dict[str, Any]]] = {}
-    if scopes:
+    with _client(api_key) as client:
         if on_progress:
-            on_progress("Fetching memories (deduped by id)...")
-        all_memories, memories_by_scope = collect_memories(
-            client,
-            scopes,
-            page_size=page_size,
-            on_progress=on_progress,
-        )
+            on_progress("Listing all users, agents, apps, and runs...")
+        entities, scopes = build_export_scopes(client)
+
+        if on_progress:
+            type_counts: dict[str, int] = {}
+            for entity in entities:
+                entity_type = str(entity.get("type") or "unknown").lower()
+                type_counts[entity_type] = type_counts.get(entity_type, 0) + 1
+            breakdown = ", ".join(
+                f"{count} {name}{'s' if count != 1 else ''}"
+                for name, count in sorted(type_counts.items())
+            )
+            on_progress(
+                f"Found {len(entities)} entities ({breakdown or 'none'}) - "
+                f"fetching memories for each"
+            )
+
+        all_memories: list[dict[str, Any]] = []
+        memories_by_scope: dict[str, list[dict[str, Any]]] = {}
+        if scopes:
+            if on_progress:
+                on_progress("Fetching memories (deduped by id)...")
+            all_memories, memories_by_scope = collect_memories(
+                client,
+                scopes,
+                page_size=page_size,
+                on_progress=on_progress,
+            )
 
     export = {
         "exported_at": datetime.now(timezone.utc).isoformat(),
@@ -217,7 +243,7 @@ def run_mem0_export(
             "deduplication": "Each memory id appears once in memories[]. "
             "memories_by_scope may repeat the same id under different scopes.",
             "entities": "All users, agents, apps, and runs are listed via "
-            "client.users() and exported automatically — no manual ID config.",
+            "GET /v1/entities/ and exported automatically - no manual ID config.",
         },
     }
 

@@ -53,7 +53,7 @@ from memanto.cli.ui.theme import (  # noqa: F401
 # Initialize Typer app and console
 app = typer.Typer(
     name="memanto",
-    help="MEMANTO CLI - Memory that AI Agents Love!",
+    help="MEMANTO CLI - Your agents focus. Memanto remembers.",
     add_completion=False,
 )
 console = Console()
@@ -66,7 +66,9 @@ config_app = typer.Typer(help="Configuration commands")
 schedule_app = typer.Typer(help="Daily summary scheduling commands")
 memory_app = typer.Typer(help="Memory management commands")
 connect_app = typer.Typer(help="Connect MEMANTO to external tools")
-analyze_app = typer.Typer(help="Analyze and export external memory providers")
+migrate_app = typer.Typer(
+    help="Migrate memories from other providers (Mem0/Letta/Supermemory) into Memanto"
+)
 
 app.add_typer(agent_app, name="agent")
 app.add_typer(session_app, name="session")
@@ -74,7 +76,7 @@ app.add_typer(config_app, name="config")
 app.add_typer(schedule_app, name="schedule")
 app.add_typer(memory_app, name="memory")
 app.add_typer(connect_app, name="connect")
-app.add_typer(analyze_app, name="analyze")
+app.add_typer(migrate_app, name="migrate")
 
 
 def _error(message: str, hint: str | None = None) -> NoReturn:

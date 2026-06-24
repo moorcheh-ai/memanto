@@ -104,13 +104,17 @@ class MemoryReadService:
             requested_limit = limit + offset
             top_k = min(requested_limit, 100)  # Moorcheh max is 100
 
-            # Perform search with server-side filtering
+            # Perform search with server-side filtering.
+            # Only enable kiosk_mode when the caller actually set a positive
+            # threshold; min_similarity=0.0 means "no filter", but on-prem
+            # kiosk_mode + threshold=0.0 still filters everything out.
+            use_kiosk = min_similarity_score is not None and min_similarity_score > 0
             search_result = self.client.similarity_search.query(
                 query=enhanced_query,
                 namespaces=namespaces,
                 top_k=top_k,
-                threshold=min_similarity_score,
-                kiosk_mode=min_similarity_score is not None,
+                threshold=min_similarity_score if use_kiosk else None,
+                kiosk_mode=use_kiosk,
             )
 
             search_items = search_result.get("results", [])
@@ -196,13 +200,17 @@ class MemoryReadService:
             # Build query parameters
             top_k = limit
 
-            # Perform cross-namespace search
+            # Perform cross-namespace search. Same kiosk_mode caveat as
+            # search_memories: min_similarity=0.0 means "no filter".
+            use_kiosk = (
+                min_similarity_score is not None and 0 < min_similarity_score <= 1
+            )
             search_result = self.client.similarity_search.query(
                 query=enhanced_query,
                 namespaces=namespaces,
                 top_k=top_k,
-                threshold=min_similarity_score,
-                kiosk_mode=min_similarity_score is not None,
+                threshold=min_similarity_score if use_kiosk else None,
+                kiosk_mode=use_kiosk,
             )
 
             # Format results
@@ -822,6 +830,7 @@ class MemoryReadService:
             "ttl_seconds": get_field("ttl_seconds"),
             "actor_id": get_field("actor_id"),
             "source": get_field("source"),
+            "source_ref": get_field("source_ref"),
             "scope_type": get_field("scope_type"),
             "scope_id": get_field("scope_id"),
             "score": item.get("score"),  # Search relevance score

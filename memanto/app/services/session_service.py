@@ -377,6 +377,41 @@ class SessionService:
             f.write(f"> {content.replace(chr(10), chr(10) + '> ')}\n\n")
             f.write("---\n\n")
 
+    def log_memory_deletion_to_session_summary(
+        self,
+        agent_id: str,
+        session_id: str,
+        memory_id: str,
+    ) -> None:
+        """
+        Appends a memory deletion event to the local session's Markdown summary file.
+
+        Args:
+            agent_id: The agent's identifier
+            session_id: The current session's identifier
+            memory_id: The Moorcheh memory ID that was deleted
+        """
+        dt_now = utc_now()
+        timestamp = dt_now.strftime("%Y-%m-%d %H:%M:%S")
+        date_str = dt_now.strftime("%Y-%m-%d")
+
+        summary_file = (
+            self.sessions_dir / f"{agent_id}_{date_str}_{session_id}_summary.md"
+        )
+
+        write_header = not summary_file.exists()
+
+        with open(summary_file, "a", encoding="utf-8") as f:
+            if write_header:
+                f.write(f"# Session Summary for {agent_id}\n")
+                f.write(f"**Session ID:** `{session_id}`\n\n")
+                f.write("---\n\n")
+
+            f.write(f"### [{timestamp}] [DELETED] Memory Deleted\n")
+            f.write(f"- **Memory ID**: `{memory_id}`\n")
+            f.write("- **Confidence**: `1.0`\n")
+            f.write("---\n\n")
+
     def _set_active_session(self, agent_id: str) -> None:
         """Mark session as active"""
         active_link = self.sessions_dir / "active"

@@ -20,7 +20,7 @@
 
 ## Introduction
 
-MEMANTO CLI provides a command-line interface for interacting with MEMANTO (Memory that AI Agents Love!). It enables you to:
+MEMANTO CLI provides a command-line interface for interacting with MEMANTO (Your agents focus. Memanto remembers.). It enables you to:
 
 - Create and manage AI agents
 - Store and retrieve agent memories
