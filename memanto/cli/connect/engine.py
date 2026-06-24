@@ -393,10 +393,13 @@ def _remove_hooks(agent: AgentDef, project_path: Path, is_global: bool) -> str |
     if not isinstance(session_start, list):
         return None
 
+    expected_payload = agent.hook_config.hook_payload
+    expected_matcher = expected_payload.get("matcher")
+    expected_hooks = [
+        hook for hook in expected_payload.get("hooks", []) if isinstance(hook, dict)
+    ]
     expected_commands = {
-        hook.get("command")
-        for hook in agent.hook_config.hook_payload.get("hooks", [])
-        if isinstance(hook, dict) and hook.get("command")
+        hook.get("command") for hook in expected_hooks if hook.get("command")
     }
     if not expected_commands:
         return None
@@ -410,8 +413,12 @@ def _remove_hooks(agent: AgentDef, project_path: Path, is_global: bool) -> str |
 
         remaining_hooks = []
         for hook in group["hooks"]:
-            command = hook.get("command") if isinstance(hook, dict) else None
-            if command in expected_commands:
+            if (
+                group.get("matcher") == expected_matcher
+                and isinstance(hook, dict)
+                and hook.get("command") in expected_commands
+                and any(hook == expected_hook for expected_hook in expected_hooks)
+            ):
                 changed = True
                 continue
             remaining_hooks.append(hook)

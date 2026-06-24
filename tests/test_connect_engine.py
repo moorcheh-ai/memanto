@@ -61,8 +61,22 @@ def test_remove_claude_code_preserves_unrelated_hooks_and_permissions(
                                 {
                                     "type": "command",
                                     "command": "memanto memory sync --project-dir .",
+                                },
+                                {
+                                    "type": "command",
+                                    "command": "memanto memory sync --project-dir .",
                                     "timeout": 30,
                                 },
+                            ],
+                        },
+                        {
+                            "matcher": "manual",
+                            "hooks": [
+                                {
+                                    "type": "command",
+                                    "command": "memanto memory sync --project-dir .",
+                                    "timeout": 30,
+                                }
                             ],
                         },
                         {"matcher": "other", "hooks": [{"command": "echo other"}]},
@@ -93,7 +107,26 @@ def test_remove_claude_code_preserves_unrelated_hooks_and_permissions(
     permissions = read_json(permissions_path)
     assert settings["theme"] == "dark"
     assert settings["hooks"]["SessionStart"] == [
-        {"matcher": "startup", "hooks": [{"type": "command", "command": "echo keep"}]},
+        {
+            "matcher": "startup",
+            "hooks": [
+                {"type": "command", "command": "echo keep"},
+                {
+                    "type": "command",
+                    "command": "memanto memory sync --project-dir .",
+                },
+            ],
+        },
+        {
+            "matcher": "manual",
+            "hooks": [
+                {
+                    "type": "command",
+                    "command": "memanto memory sync --project-dir .",
+                    "timeout": 30,
+                }
+            ],
+        },
         {"matcher": "other", "hooks": [{"command": "echo other"}]},
     ]
     assert permissions == {
