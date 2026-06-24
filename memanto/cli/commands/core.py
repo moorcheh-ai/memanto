@@ -10,8 +10,10 @@ import subprocess
 import sys
 import threading
 import time
+import webbrowser
 from datetime import datetime
 from pathlib import Path
+from urllib.parse import urlparse
 
 import httpx
 import typer
@@ -983,6 +985,59 @@ def serve(
 # ============================================================================
 
 
+def _open_dashboard_window(url: str) -> None:
+    """Open ``url`` in the user's default browser, with a defense-in-depth
+    URL guard.
+
+    The original implementation built shell commands with f-strings and
+    invoked ``subprocess.Popen`` with the shell interpreter enabled. An
+    attacker who could influence ``url`` (via config tampering or upstream
+    URL injection) could therefore break out of the quoted command and
+    execute arbitrary programs. This addresses finding #4 in the bounty
+    report.
+
+    The new implementation:
+
+    1. Parses ``url`` with :func:`urllib.parse.urlparse` and refuses
+       anything whose scheme is not ``http``/``https`` (or that has no
+       host) — the URL must look like a real web URL.
+    2. Uses **list-form** ``subprocess.Popen`` with ``shell=False`` so the
+       URL is passed as a single ``argv`` element, never interpolated
+       into a shell command string.
+
+    Exposed at module level (not nested inside ``ui()``) so it can be
+    unit-tested directly via ``from memanto.cli.commands import core``
+    and ``core._open_dashboard_window``.
+    """
+    parsed = urlparse(url)
+    if parsed.scheme not in ("http", "https") or not parsed.netloc:
+        console.print(
+            f"[{WARNING}]Refusing to open non-HTTP(S) URL:[/{WARNING}] {url}"
+        )
+        return
+
+    # On Windows, try to open Edge or Chrome in standalone app mode for a
+    # native feel. List-form invocation with shell=False means the URL is
+    # passed as a single argument and is never shell-interpreted.
+    success = False
+    if sys.platform == "win32":
+        for browser in ("msedge", "chrome"):
+            try:
+                subprocess.Popen(
+                    ["cmd", "/c", "start", "", browser, f"--app={url}"],
+                    shell=False,
+                )
+                success = True
+                break
+            except (FileNotFoundError, OSError):
+                continue
+
+    # Fallback to default browser (POSIX / macOS, or Windows when both
+    # Edge and Chrome are missing).
+    if not success:
+        webbrowser.open_new(url)
+
+
 @app.command()
 def ui(
     host: str = typer.Option(None, "--host", help="Server host (defaults to config)"),
@@ -1022,44 +1077,6 @@ def ui(
     sock.close()
 
     ui_url = f"http://localhost:{port}/ui"
-
-    def _open_dashboard_window(url: str):
-        import subprocess
-        import sys
-        from urllib.parse import urlparse
-
-        # Defense: refuse to launch a browser with a non-HTTP URL. An attacker
-        # who controls `url` (via config tampering or upstream URL injection)
-        # could otherwise break out of the shell command and execute arbitrary
-        # programs. This addresses finding #4 in the bounty report.
-        parsed = urlparse(url)
-        if parsed.scheme not in ("http", "https") or not parsed.netloc:
-            console.print(
-                f"[{WARNING}]Refusing to open non-HTTP(S) URL:[/{WARNING}] {url}"
-            )
-            return
-
-        # On Windows, try to open Edge or Chrome in standalone app mode for a
-        # native feel. Use list-form invocation with shell=False so the URL
-        # is passed as a single argument — never interpolated into a shell
-        # command string.
-        success = False
-        if sys.platform == "win32":
-            for browser in ("msedge", "chrome"):
-                try:
-                    subprocess.Popen(
-                        ["cmd", "/c", "start", "", browser, f"--app={url}"],
-                        shell=False,
-                    )
-                    success = True
-                    break
-                except (FileNotFoundError, OSError):
-                    continue
-
-        # Fallback to default browser (POSIX / macOS, or Windows when both
-        # Edge and Chrome are missing).
-        if not success:
-            webbrowser.open_new(url)
 
     if port_in_use:
         console.print(f"\n[green]Server already running on port {port}.[/green]")
