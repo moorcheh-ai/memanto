@@ -18,6 +18,9 @@ from memanto.app.constants import (
     VALID_MEMORY_TYPES as _VALID_MEMORY_TYPES,
 )
 from memanto.app.constants import (
+    ALLOWED_UPDATE_FIELDS as _ALLOWED_UPDATE_FIELDS,
+)
+from memanto.app.constants import (
     VALID_PATTERNS as _VALID_PATTERNS,
 )
 from memanto.app.constants import (
@@ -749,14 +752,6 @@ class DirectClient:
         session = self._get_validated_session_for_agent(agent_id)
         if not updates:
             raise ValueError("Provide at least one field to update")
-        _ALLOWED_UPDATE_FIELDS = {
-            "title",
-            "content",
-            "type",
-            "confidence",
-            "tags",
-            "source",
-        }
         unknown_fields = set(updates) - _ALLOWED_UPDATE_FIELDS
         if unknown_fields:
             raise ValueError(

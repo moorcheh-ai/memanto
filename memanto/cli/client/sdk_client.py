@@ -15,6 +15,9 @@ from memanto.app.constants import (
     VALID_MEMORY_TYPES as _VALID_MEMORY_TYPES,
 )
 from memanto.app.constants import (
+    ALLOWED_UPDATE_FIELDS as _ALLOWED_UPDATE_FIELDS,
+)
+from memanto.app.constants import (
     VALID_PATTERNS as _VALID_PATTERNS,
 )
 from memanto.app.constants import (
@@ -593,12 +596,11 @@ class SdkClient:
         # cannot bypass field-level checks. CodeRabbit review
         # 2026-06-14T14:03:20Z flagged that this path forwarded `updates`
         # directly after only an empty-payload check.
-        allowed_fields = {"title", "content", "type", "confidence", "tags", "source"}
-        unknown_fields = set(updates) - allowed_fields
+        unknown_fields = set(updates) - _ALLOWED_UPDATE_FIELDS
         if unknown_fields:
             raise ValueError(
                 f"Unknown update field(s): {sorted(unknown_fields)}. "
-                f"Allowed: {sorted(allowed_fields)}"
+                f"Allowed: {sorted(_ALLOWED_UPDATE_FIELDS)}"
             )
         if "content" in updates:
             content = updates["content"]
