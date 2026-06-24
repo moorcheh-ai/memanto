@@ -894,25 +894,19 @@ def _mock_ui_config_manager():
 class TestCWE200ApiKeyLeak:
     """
     PoC test for CWE-200: API key leaked in plaintext via /api/ui/config endpoint.
-    Verify that the raw API key is never returned (it is truncated).
-    The session token is explicitly returned as it is required by the UI for
-    subsequent authenticated requests.
+    Verify that the raw API key is never returned (it is completely removed).
     """
 
     @pytest.mark.asyncio
-    async def test_config_endpoint_truncates_api_key(
+    async def test_config_endpoint_does_not_return_api_key(
         self, client, _mock_ui_config_manager
     ):
         resp = await client.get("/api/ui/config")
         assert resp.status_code == 200
         data = resp.json()
 
-        # The plaintext api_key field must be truncated in the response
-        assert "api_key" in data
-        assert data["api_key"] == "........345678", (
-            "The response contains an 'api_key' field that leaks the raw "
-            "Moorcheh API key in plaintext. Truncate it."
-        )
+        # The plaintext api_key field must NOT appear in the response
+        assert "api_key" not in data
 
     @pytest.mark.asyncio
     async def test_config_endpoint_still_has_api_key_status_fields(
@@ -932,15 +926,3 @@ class TestCWE200ApiKeyLeak:
         # Session status field should be present (replaces sensitive session_token)
         assert "has_active_session" in data
         assert data["has_active_session"] is True
-
-    @pytest.mark.asyncio
-    async def test_config_endpoint_returns_session_token(
-        self, client, _mock_ui_config_manager
-    ):
-        """Session token should be returned to allow UI to function."""
-        resp = await client.get("/api/ui/config")
-        assert resp.status_code == 200
-        data = resp.json()
-
-        assert "session_token" in data
-        assert data["session_token"] == "tok_abc"

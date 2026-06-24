@@ -52,9 +52,6 @@ async def get_ui_config():
         "api_key_preview": f"........{api_key[-6:]}"
         if api_key and len(api_key) > 6
         else ("***" if api_key else None),
-        "api_key": f"........{api_key[-6:]}"
-        if api_key and len(api_key) > 6
-        else ("***" if api_key else None),
         "backend": backend,
         "on_prem": {
             "url": onprem_cfg.get("url", "http://localhost:8080"),
