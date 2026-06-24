@@ -1208,6 +1208,7 @@ class TestCWE200ApiKeyLeak:
         # Session status field should be present (replaces sensitive session_token)
         assert "has_active_session" in data
         assert data["has_active_session"] is True
+
     @pytest.mark.asyncio
     async def test_traversal_filename_is_sanitized(
         self, client, auth_headers, mock_moorcheh

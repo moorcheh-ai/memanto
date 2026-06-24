@@ -334,6 +334,7 @@ def edit(
     except Exception as e:
         _error(f"Failed to update memory: {e}")
 
+
 @app.command()
 def forget(
     memory_id: str = typer.Argument(..., help="Memory ID to delete"),

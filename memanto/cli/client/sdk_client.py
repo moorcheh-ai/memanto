@@ -12,10 +12,10 @@ from pathlib import Path
 from typing import Any, cast
 
 from memanto.app.constants import (
-    VALID_MEMORY_TYPES as _VALID_MEMORY_TYPES,
+    ALLOWED_UPDATE_FIELDS as _ALLOWED_UPDATE_FIELDS,
 )
 from memanto.app.constants import (
-    ALLOWED_UPDATE_FIELDS as _ALLOWED_UPDATE_FIELDS,
+    VALID_MEMORY_TYPES as _VALID_MEMORY_TYPES,
 )
 from memanto.app.constants import (
     VALID_PATTERNS as _VALID_PATTERNS,
@@ -629,9 +629,7 @@ class SdkClient:
                 )
         if "title" in updates and updates["title"] is not None:
             if len(str(updates["title"])) > _MAX_TITLE_LENGTH:
-                raise ValueError(
-                    f"Memory title exceeds {_MAX_TITLE_LENGTH} characters"
-                )
+                raise ValueError(f"Memory title exceeds {_MAX_TITLE_LENGTH} characters")
         if "type" in updates and updates["type"] not in _VALID_MEMORY_TYPES:
             raise ValueError(
                 f"Invalid memory_type '{updates['type']}'. "

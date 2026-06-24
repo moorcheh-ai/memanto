@@ -15,10 +15,10 @@ from pathlib import Path
 from typing import Any, cast
 
 from memanto.app.constants import (
-    VALID_MEMORY_TYPES as _VALID_MEMORY_TYPES,
+    ALLOWED_UPDATE_FIELDS as _ALLOWED_UPDATE_FIELDS,
 )
 from memanto.app.constants import (
-    ALLOWED_UPDATE_FIELDS as _ALLOWED_UPDATE_FIELDS,
+    VALID_MEMORY_TYPES as _VALID_MEMORY_TYPES,
 )
 from memanto.app.constants import (
     VALID_PATTERNS as _VALID_PATTERNS,
