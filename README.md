@@ -184,7 +184,7 @@ This means Memanto doesn't need a separate vector DB, embedding pipeline, or rer
 | Local REST API + Web UI | `memanto serve`, `memanto ui` | Run the MEMANTO REST API locally and open an interactive browser UI. (Optional for CLI usage). |
 | Agent lifecycle management | `memanto agent ...` | Create/list/delete agents, activate/deactivate sessions, and run `agent bootstrap` for an intelligence snapshot. |
 | Memory capture at scale | `memanto remember` | Store single memories, batch-ingest from JSON, or `--from-conversation` to automatically extract facts from chat logs. |
-| Single-memory deletion | `memanto forget` | Delete one bad or outdated memory from the active agent after confirmation, or without the prompt with `--force`. |
+| Single-memory editing & deletion | `memanto edit`, `memanto forget` | Update fields on an existing memory, or permanently delete a bad/outdated memory. |
 | File upload to memory | `memanto upload` | Upload documents (.pdf, .docx, .xlsx, .json, .txt, .csv, .md) directly into an agent's memory namespace — content becomes instantly searchable via `recall`. |
 | Advanced retrieval modes | `memanto recall` | Run standard search plus temporal queries (`--as-of`, `--changed-since`) with filters. |
 | Grounded QA over memory | `memanto answer` | Generate RAG answers using retrieved memory context. |
