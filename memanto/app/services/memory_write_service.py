@@ -349,10 +349,18 @@ class MemoryWriteService:
                 self.client.documents.delete(namespace_name=namespace, ids=[memory_id]),
             )
 
-            actual_deletions = result.get("actual_deletions", 0)
-            if not isinstance(actual_deletions, int):
-                actual_deletions = 0
-            return actual_deletions > 0
+            # Cloud returns ``actual_deletions``; on-prem's /items/delete only
+            # returns ``deleted_ids`` (and ``status``). Mirror the cloud SDK's
+            # ``_deletion_processed_count`` so both backends report success.
+            raw = result.get("actual_deletions")
+            if isinstance(raw, int):
+                return raw > 0
+            for key in ("deleted_ids", "requested_ids"):
+                ids = result.get(key)
+                if isinstance(ids, list):
+                    return len(ids) > 0
+            # Some on-prem builds only return ``{"status": "success"}``.
+            return str(result.get("status", "")).lower() in {"success", "ok"}
 
         except Exception as e:
             raise MemoryError(f"Failed to delete memory: {e}")

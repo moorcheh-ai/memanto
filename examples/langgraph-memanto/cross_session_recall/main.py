@@ -1,12 +1,11 @@
 import os
 
-from core.memanto_tools import create_memanto_tools
+from cross_session_recall.graph import create_research_graph
 from dotenv import load_dotenv
 from langchain_core.messages import HumanMessage
+from langgraph_memanto import create_memanto_tools
 
 from memanto.cli.client.sdk_client import SdkClient
-
-from .graph import create_research_graph
 
 
 def run_session(agent_id, user_id, task, thread_id):

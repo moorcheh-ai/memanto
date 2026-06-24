@@ -101,8 +101,7 @@ def run_research(
     """
     import os
 
-    from core.memanto_tools import create_memanto_tools
-
+    from langgraph_memanto import create_memanto_tools
     from memanto.cli.client.sdk_client import SdkClient
 
     client = SdkClient(api_key=os.environ.get("MOORCHEH_API_KEY", ""))

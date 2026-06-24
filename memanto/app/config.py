@@ -57,11 +57,21 @@ if _config_file.exists():
             _backend = _memanto.get("backend")
             if _backend:
                 os.environ["MEMANTO_BACKEND"] = str(_backend)
-            _on_prem = _memanto.get("on_prem", {})
-            _op_url = _on_prem.get("url")
+    except Exception:
+        pass
+
+    # On-prem URL lives in ~/.memanto/on-prem/state.json so on-prem onboarding
+    # never has to touch the shared cloud yaml.
+    try:
+        import json as _json
+
+        _state_path = Path.home() / ".memanto" / "on-prem" / "state.json"
+        if _state_path.exists():
+            _state = _json.loads(_state_path.read_text())
+            _op_url = _state.get("url")
             if _op_url:
                 os.environ["MOORCHEH_ONPREM_URL"] = str(_op_url)
-            _op_embed = _on_prem.get("embedding_provider")
+            _op_embed = _state.get("embedding_provider")
             if _op_embed:
                 os.environ["MOORCHEH_ONPREM_EMBEDDING_PROVIDER"] = str(_op_embed)
     except Exception:
@@ -107,6 +117,9 @@ class Settings(BaseSettings):
     MEMANTO_BACKEND: str = "cloud"
     MOORCHEH_ONPREM_URL: str = "http://localhost:8080"
     MOORCHEH_ONPREM_EMBEDDING_PROVIDER: str = ""
+    # HTTP read timeout (seconds) for the on-prem MoorchehClient. Default 300
+    # so first-call LLM cold-starts on Ollama don't hit the SDK's 30s default.
+    MOORCHEH_ONPREM_TIMEOUT: int = 300
 
     # Server Configuration
     HOST: str = "0.0.0.0"

@@ -5,19 +5,21 @@ All command modules import from here to avoid circular dependencies.
 """
 
 import os
-from datetime import datetime
 from typing import NoReturn
 
-import jwt
 import typer
 from rich.console import Console
 from rich.panel import Panel
+
+from memanto.app.services.session_service import get_session_service
+from memanto.app.utils.errors import InvalidSessionTokenError, SessionExpiredError
 
 # Re-export temporal helpers
 from memanto.app.utils.temporal_helpers import (  # noqa: F401
     format_current_local_time,
     format_local_time,
     parse_relative_time,
+    utc_now,
 )
 from memanto.cli.client.sdk_client import SdkClient
 from memanto.cli.config.manager import ConfigManager
@@ -51,7 +53,7 @@ from memanto.cli.ui.theme import (  # noqa: F401
 # Initialize Typer app and console
 app = typer.Typer(
     name="memanto",
-    help="MEMANTO CLI - Memory that AI Agents Love!",
+    help="MEMANTO CLI - Your agents focus. Memanto remembers.",
     add_completion=False,
 )
 console = Console()
@@ -64,6 +66,9 @@ config_app = typer.Typer(help="Configuration commands")
 schedule_app = typer.Typer(help="Daily summary scheduling commands")
 memory_app = typer.Typer(help="Memory management commands")
 connect_app = typer.Typer(help="Connect MEMANTO to external tools")
+migrate_app = typer.Typer(
+    help="Migrate memories from other providers (Mem0/Letta/Supermemory) into Memanto"
+)
 
 app.add_typer(agent_app, name="agent")
 app.add_typer(session_app, name="session")
@@ -71,6 +76,7 @@ app.add_typer(config_app, name="config")
 app.add_typer(schedule_app, name="schedule")
 app.add_typer(memory_app, name="memory")
 app.add_typer(connect_app, name="connect")
+app.add_typer(migrate_app, name="migrate")
 
 
 def _error(message: str, hint: str | None = None) -> NoReturn:
@@ -117,24 +123,21 @@ def get_client() -> SdkClient:
         client.session_token = active_session_token
         client.agent_id = active_agent_id
 
-        # Check if the token is completely expired, and auto-renew if enabled
+        # Validate the stored token (signature + expiry) and silently re-activate
+        # when auto-renew is enabled. The old expiry-only check missed invalid
+        # signatures, which broke analyze LLM narratives mid-run.
         if session_cfg.get("auto_renew_enabled", True):
+            session_service = get_session_service()
+            needs_reactivate = False
             try:
-                payload = jwt.decode(
-                    active_session_token, options={"verify_signature": False}
-                )
-                expires_at_str = payload.get("expires_at", "")
-                if expires_at_str.endswith("Z"):
-                    expires_at_str = expires_at_str[:-1]
+                session_service.validate_session(active_session_token)
+            except (SessionExpiredError, InvalidSessionTokenError):
+                needs_reactivate = True
 
-                if expires_at_str:
-                    expires_at = datetime.fromisoformat(expires_at_str)
-
-                    if datetime.utcnow() > expires_at:
-                        # Silently revive the session — activate_agent updates
-                        # SessionService state and the client's own token.
-                        client.activate_agent(active_agent_id)
-            except Exception:
-                pass  # Fall back to letting the underlying request fail if something is malformed
+            if needs_reactivate:
+                try:
+                    client.activate_agent(active_agent_id)
+                except Exception:
+                    pass
 
     return client

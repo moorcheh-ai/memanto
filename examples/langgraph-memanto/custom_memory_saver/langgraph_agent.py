@@ -38,10 +38,7 @@ from langgraph.graph import END, START, StateGraph
 from langgraph.graph.message import add_messages
 from typing_extensions import TypedDict
 
-from .memanto_memory import (
-    MemantoMemory,
-    build_memory_context,
-)
+from memanto.cli.client.sdk_client import SdkClient
 
 load_dotenv()
 
@@ -185,11 +182,10 @@ class _AnthropicLLM:
 # ---------------------------------------------------------------------------
 
 
-def get_memory() -> MemantoMemory:
-    """Create a MemantoMemory instance (uses env vars)."""
-    memory = MemantoMemory(agent_name="langgraph-customer-support")
-    memory.activate_session()
-    return memory
+def get_client() -> SdkClient:
+    """Create a Memanto SdkClient instance."""
+    api_key = os.getenv("MOORCHEH_API_KEY", "")
+    return SdkClient(api_key=api_key)
 
 
 # ---------------------------------------------------------------------------
@@ -197,7 +193,7 @@ def get_memory() -> MemantoMemory:
 # ---------------------------------------------------------------------------
 
 
-def recall_memory_node(state: AgentState, memory: MemantoMemory) -> dict:
+def recall_memory_node(state: AgentState, client: SdkClient) -> dict:
     """Recall relevant memories from previous sessions and inject them as context."""
     if state.get("memories_recalled"):
         return {}
@@ -206,11 +202,25 @@ def recall_memory_node(state: AgentState, memory: MemantoMemory) -> dict:
     latest = state["messages"][-1] if state["messages"] else None
     query = latest.content if latest and hasattr(latest, "content") else ""
 
-    # Search Memanto for relevant memories
-    results = memory.recall(query, limit=10)
+    # Ensure agent is initialized and session is active
+    try:
+        client.create_agent("langgraph-customer-support", pattern="tool")
+    except Exception:
+        pass
+    client.activate_agent("langgraph-customer-support")
 
-    if results:
-        context = build_memory_context(results)
+    # Search Memanto for relevant memories
+    res = client.recall(agent_id="langgraph-customer-support", query=query, limit=10)
+    memories = res.get("memories", [])
+
+    if memories:
+        lines = []
+        for i, m in enumerate(memories, 1):
+            lines.append(
+                f"  [{i}] ({m.get('type', 'fact')}, confidence={m.get('confidence', 'N/A')}) {m.get('content', '')}"
+            )
+        context = "\n".join(lines)
+
         context_msg = SystemMessage(
             content=(
                 "The following information was recalled from the user's long-term memory "
@@ -223,7 +233,7 @@ def recall_memory_node(state: AgentState, memory: MemantoMemory) -> dict:
     return {"memories_recalled": True}
 
 
-def agent_node(state: AgentState, llm, memory: MemantoMemory) -> dict:
+def agent_node(state: AgentState, llm, client: SdkClient) -> dict:
     """The main agent node that chats with the user."""
     # Build message list for the LLM
     system_prompt = (
@@ -253,7 +263,7 @@ def agent_node(state: AgentState, llm, memory: MemantoMemory) -> dict:
     return {"messages": [response_msg]}
 
 
-def remember_memory_node(state: AgentState, memory: MemantoMemory) -> dict:
+def remember_memory_node(state: AgentState, client: SdkClient) -> dict:
     """Extract key information from the conversation and store as memories."""
     if state.get("memories_stored"):
         return {}
@@ -285,7 +295,13 @@ def remember_memory_node(state: AgentState, memory: MemantoMemory) -> dict:
                 ]
             ):
                 memories_stored_this_cycle.append(
-                    (content[:500], "preference", {"source": "langgraph-agent"})
+                    {
+                        "content": content[:500],
+                        "type": "preference",
+                        "title": "Observation",
+                        "source": "langgraph-agent",
+                        "confidence": 0.85,
+                    }
                 )
 
             # Detect explicit facts
@@ -294,23 +310,33 @@ def remember_memory_node(state: AgentState, memory: MemantoMemory) -> dict:
                 for kw in ["fact:", "remember that", "note that", "important:"]
             ):
                 memories_stored_this_cycle.append(
-                    (content[:500], "fact", {"source": "langgraph-agent"})
+                    {
+                        "content": content[:500],
+                        "type": "fact",
+                        "title": "Observation",
+                        "source": "langgraph-agent",
+                        "confidence": 0.85,
+                    }
                 )
 
     # Also store the key takeaway from the agent's response
     for msg in reversed(state["messages"]):
         if hasattr(msg, "type") and msg.type == "ai" and msg.content:
             memories_stored_this_cycle.append(
-                (
-                    f"Agent helped with: {msg.content[:300]}",
-                    "learning",
-                    {"source": "langgraph-agent"},
-                )
+                {
+                    "content": f"Agent helped with: {msg.content[:300]}",
+                    "type": "learning",
+                    "title": "Observation",
+                    "source": "langgraph-agent",
+                    "confidence": 0.85,
+                }
             )
             break
 
     if memories_stored_this_cycle:
-        memory.batch_remember(memories_stored_this_cycle)
+        client.batch_remember(
+            agent_id="langgraph-customer-support", memories=memories_stored_this_cycle
+        )
 
     return {"memories_stored": True}
 
@@ -324,18 +350,18 @@ def build_agent() -> tuple:
     """Build the compiled LangGraph + Memanto agent.
 
     Returns:
-        (compiled_graph, memory_client)
+        (compiled_graph, client)
     """
     llm = _get_llm()
-    memory = get_memory()
+    client = get_client()
 
     # Define graph
     workflow = StateGraph(AgentState)
 
     # Add nodes
-    workflow.add_node("recall_memory", lambda s: recall_memory_node(s, memory))
-    workflow.add_node("agent", lambda s: agent_node(s, llm, memory))
-    workflow.add_node("remember_memory", lambda s: remember_memory_node(s, memory))
+    workflow.add_node("recall_memory", lambda s: recall_memory_node(s, client))
+    workflow.add_node("agent", lambda s: agent_node(s, llm, client))
+    workflow.add_node("remember_memory", lambda s: remember_memory_node(s, client))
 
     # Flow: START → recall_memory → agent → remember_memory → END
     workflow.add_edge("recall_memory", "agent")
@@ -347,7 +373,7 @@ def build_agent() -> tuple:
     # In-memory checkpointer for LangGraph persistence
     checkpointer = MemorySaver()
 
-    return workflow.compile(checkpointer=checkpointer), memory
+    return workflow.compile(checkpointer=checkpointer), client
 
 
 # ---------------------------------------------------------------------------
@@ -372,7 +398,7 @@ def run_session(
     Returns:
         List of AI response texts.
     """
-    app, memory = build_agent()
+    app, client = build_agent()
 
     responses = []
     current_thread = thread_id or f"{user_id}-{session_id}"
@@ -397,5 +423,8 @@ def run_session(
                     responses.append(str(msg.content))
                     break
 
-    memory.deactivate_session()
+    try:
+        client.deactivate_agent("langgraph-customer-support")
+    except Exception:
+        pass
     return responses

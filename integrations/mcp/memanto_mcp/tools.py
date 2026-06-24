@@ -95,6 +95,17 @@ class MemoryHit(BaseModel):
     content: str | None = None
     confidence: float | None = None
     tags: list[str] = Field(default_factory=list)
+    status: str | None = None
+    source: str | None = Field(
+        default=None, description="Origin of the memory (e.g. user, agent, tool)."
+    )
+    source_ref: str | None = Field(
+        default=None, description="Reference to the source (e.g. file name, tool id)."
+    )
+    provenance: str | None = Field(
+        default=None,
+        description="How the memory was obtained (explicit_statement, inferred, ...).",
+    )
     created_at: str | None = None
     score: float | None = Field(
         default=None, description="Similarity score when available."
@@ -893,6 +904,10 @@ def _to_memory_hit(raw: dict[str, Any]) -> MemoryHit:
         content=raw.get("content"),
         confidence=raw.get("confidence"),
         tags=list(raw.get("tags") or []),
+        status=raw.get("status"),
+        source=raw.get("source"),
+        source_ref=raw.get("source_ref"),
+        provenance=raw.get("provenance"),
         created_at=str(raw.get("created_at")) if raw.get("created_at") else None,
         score=(
             raw.get("score")

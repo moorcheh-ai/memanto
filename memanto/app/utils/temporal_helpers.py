@@ -8,6 +8,11 @@ from datetime import datetime, timedelta, timezone
 from typing import Any
 
 
+def utc_now() -> datetime:
+    """Current UTC time as a naive datetime (matches legacy session storage)."""
+    return datetime.now(timezone.utc).replace(tzinfo=None)
+
+
 def parse_iso_timestamp(ts_str: str) -> datetime:
     """
     Parse an ISO formatted timestamp string into an aware UTC datetime object.

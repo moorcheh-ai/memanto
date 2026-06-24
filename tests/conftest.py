@@ -1,6 +1,32 @@
+from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
+
+
+@pytest.fixture(autouse=True, scope="function")
+def cleanup_test_sessions():
+    """Clean up test-agent and test sessions after each test to prevent pollution."""
+    yield
+    # After test completes, remove test session files from ~/.memanto/sessions/
+    sessions_dir = Path.home() / ".memanto" / "sessions"
+    if sessions_dir.exists():
+        for agent_id in ["test-agent", "test"]:
+            session_file = sessions_dir / f"{agent_id}.json"
+            if session_file.exists():
+                session_file.unlink()
+        # If active marker points to a non-existent agent, clear it
+        active_marker = sessions_dir / "active"
+        if active_marker.exists():
+            try:
+                content = active_marker.read_text().strip()
+                if (
+                    content in ["test-agent", "test"]
+                    or not (sessions_dir / f"{content}.json").exists()
+                ):
+                    active_marker.unlink()
+            except Exception:
+                pass
 
 
 @pytest.fixture(autouse=True)
@@ -44,6 +70,13 @@ def mock_moorcheh_for_tests():
     mock_instance = MagicMock()
     mock_instance.namespaces.create.return_value = {"status": "created"}
     mock_instance.namespaces.list.return_value = {"namespaces": []}
+    mock_instance.documents.upload.return_value = {"status": "queued"}
+    mock_instance.documents.upload_file.return_value = {
+        "success": True,
+        "fileSize": 0,
+        "message": "",
+    }
+    mock_instance.answer.generate.return_value = {"answer": "", "sources": []}
 
     with (
         patch(

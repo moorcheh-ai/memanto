@@ -10,11 +10,11 @@ from __future__ import annotations
 import os
 from typing import Any, Literal
 
-from core.memanto_tools import create_memanto_tools
 from dotenv import load_dotenv
 from langchain_core.tools import tool
 from langchain_openai import ChatOpenAI
 
+from langgraph_memanto import create_memanto_tools
 from memanto.cli.client.sdk_client import SdkClient
 
 client = SdkClient(api_key=os.environ.get("MOORCHEH_API_KEY", ""))
@@ -29,8 +29,8 @@ MOORCHEH_API_KEY = os.getenv("MOORCHEH_API_KEY", "")
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY", "")
 
 
-def _get_memanto_api_key() -> str:
-    """Return the configured Memanto API key or fail with setup guidance."""
+def _get_moorcheh_api_key() -> str:
+    """Return the configured Moorcheh API key or fail with setup guidance."""
     if not MOORCHEH_API_KEY:
         raise RuntimeError(
             "MOORCHEH_API_KEY not set. Copy .env.example to .env and fill it in."
@@ -74,7 +74,7 @@ def _build_memanto_remember_tool(agent_id: str):
         """Store a structured memory in Memanto for later cross-session recall."""
         from memanto.cli.client.sdk_client import SdkClient
 
-        client = SdkClient(api_key=_get_memanto_api_key())
+        client = SdkClient(api_key=_get_moorcheh_api_key())
         try:
             res = client.remember(
                 agent_id=agent_id,

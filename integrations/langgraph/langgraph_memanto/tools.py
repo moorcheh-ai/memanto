@@ -26,15 +26,25 @@ VALID_MEMORY_TYPES = (
 
 
 def create_memanto_tools(client: SdkClient, agent_id: str):
+    import threading
+
+    _setup_lock = threading.Lock()
+    _setup_done = False
+
     def _do_setup():
-        try:
-            client.create_agent(agent_id=agent_id, pattern="tool")
-        except Exception:
-            pass
-        try:
-            client.activate_agent(agent_id, duration_hours=6)
-        except Exception:
-            pass
+        nonlocal _setup_done
+        with _setup_lock:
+            if _setup_done:
+                return
+            try:
+                client.create_agent(agent_id=agent_id, pattern="tool")
+            except Exception:
+                pass
+            try:
+                client.activate_agent(agent_id, duration_hours=6)
+            except Exception:
+                pass
+            _setup_done = True
 
     @tool
     def memanto_remember(
@@ -135,14 +145,6 @@ def create_memanto_tools(client: SdkClient, agent_id: str):
                 ),
             ),
         ] = "",
-        min_similarity: Annotated[
-            float | None,
-            Field(
-                ge=0.0,
-                le=1.0,
-                description="Minimum similarity score from 0.0 to 1.0 to filter low-relevance memories.",
-            ),
-        ] = None,
     ) -> str:
         """
         Search Memanto's persistent memory database using natural language.
@@ -162,7 +164,6 @@ def create_memanto_tools(client: SdkClient, agent_id: str):
                 query=query,
                 limit=limit,
                 type=type_list,
-                min_similarity=min_similarity,
             )
         except Exception:
             _do_setup()
@@ -171,7 +172,6 @@ def create_memanto_tools(client: SdkClient, agent_id: str):
                 query=query,
                 limit=limit,
                 type=type_list,
-                min_similarity=min_similarity,
             )
 
         memories = result.get("memories", [])

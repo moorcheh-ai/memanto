@@ -43,11 +43,11 @@ import logging
 import os
 from typing import Literal
 
-from core.memanto_tools import create_memanto_tools
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage, ToolMessage
 from langchain_openai import ChatOpenAI
 from langgraph.checkpoint.memory import MemorySaver
 from langgraph.graph import END, START, MessagesState, StateGraph
+from langgraph_memanto import create_memanto_tools
 
 from memanto.cli.client.sdk_client import SdkClient
 

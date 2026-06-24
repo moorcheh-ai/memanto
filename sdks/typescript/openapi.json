@@ -1,0 +1,3362 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Memanto - Memory that AI Agents Love!",
+    "description": "A memory layer service for agentic AI systems using Moorcheh SDK",
+    "version": "0.1.4.dev132+g29f7ca7"
+  },
+  "paths": {
+    "/health": {
+      "get": {
+        "tags": [
+          "Health"
+        ],
+        "summary": "Health Check",
+        "description": "Health check endpoint",
+        "operationId": "health_check_health_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/ready": {
+      "get": {
+        "tags": [
+          "Health"
+        ],
+        "summary": "Readiness Check",
+        "description": "Readiness check for Kubernetes",
+        "operationId": "readiness_check_ready_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/live": {
+      "get": {
+        "tags": [
+          "Health"
+        ],
+        "summary": "Liveness Check",
+        "description": "Liveness check for Kubernetes",
+        "operationId": "liveness_check_live_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v2/agents/{agent_id}/remember": {
+      "post": {
+        "tags": [
+          "Sessions & Agents",
+          "Memory Operations"
+        ],
+        "summary": "Remember",
+        "description": "Store a memory (Session-based)\n\nRequires:\n- X-Session-Token: {session_token}\n\nThe session must be for the specified agent_id.\n\nProvenance types:\n- explicit_statement: Directly stated by user\n- inferred: Derived from behavior/context\n- observed: Seen in action\n- validated: Confirmed/verified\n- corrected: Updated after contradiction\n- imported: From external source",
+        "operationId": "remember_api_v2_agents__agent_id__remember_post",
+        "parameters": [
+          {
+            "name": "agent_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Agent Id"
+            }
+          },
+          {
+            "name": "x-session-token",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Session-Token"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RememberRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RememberResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v2/agents/{agent_id}/batch-remember": {
+      "post": {
+        "tags": [
+          "Sessions & Agents",
+          "Memory Operations"
+        ],
+        "summary": "Batch Remember",
+        "description": "Store multiple memories in batch (Session-based)\n\nAccepts up to 100 memories per request. Leverages Moorcheh's batch\nupload capability for efficient storage.\n\nRequires:\n- X-Session-Token: {session_token}\n\nThe session must be for the specified agent_id.",
+        "operationId": "batch_remember_api_v2_agents__agent_id__batch_remember_post",
+        "parameters": [
+          {
+            "name": "agent_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Agent Id"
+            }
+          },
+          {
+            "name": "x-session-token",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Session-Token"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BatchRememberRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BatchRememberResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v2/agents/{agent_id}/upload-file": {
+      "post": {
+        "tags": [
+          "Sessions & Agents",
+          "Memory Operations"
+        ],
+        "summary": "Upload File",
+        "description": "Upload a file directly to the agent's memory namespace (Session-based)\n\nSupported formats: .pdf, .docx, .xlsx, .json, .txt, .csv, .md\nMaximum file size: 5GB\n\nThe file is processed by Moorcheh to extract text and generate embeddings,\nmaking its content searchable via recall.\n\nRequires:\n- X-Session-Token: {session_token}\n- Content-Type: multipart/form-data",
+        "operationId": "upload_file_api_v2_agents__agent_id__upload_file_post",
+        "parameters": [
+          {
+            "name": "agent_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Agent Id"
+            }
+          },
+          {
+            "name": "x-session-token",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Session-Token"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_upload_file_api_v2_agents__agent_id__upload_file_post"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UploadFileResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v2/agents/{agent_id}/recall": {
+      "post": {
+        "tags": [
+          "Sessions & Agents",
+          "Memory Operations"
+        ],
+        "summary": "Recall",
+        "description": "Recall memories (Session-based)\n\nRequires:\n- X-Session-Token: {session_token}\n\nThe session must be for the specified agent_id.",
+        "operationId": "recall_api_v2_agents__agent_id__recall_post",
+        "parameters": [
+          {
+            "name": "agent_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Agent Id"
+            }
+          },
+          {
+            "name": "x-session-token",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Session-Token"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RecallRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecallResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v2/agents/{agent_id}/answer": {
+      "post": {
+        "tags": [
+          "Sessions & Agents",
+          "Memory Operations"
+        ],
+        "summary": "Answer",
+        "description": "Answer a question using RAG (Session-based)\n\nRequires:\n- X-Session-Token: {session_token}\n\nUses Moorcheh's answer.generate endpoint to produce LLM-generated answers\nbased on the agent's stored memories.",
+        "operationId": "answer_api_v2_agents__agent_id__answer_post",
+        "parameters": [
+          {
+            "name": "agent_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Agent Id"
+            }
+          },
+          {
+            "name": "x-session-token",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Session-Token"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AnswerRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnswerResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v2/agents/{agent_id}/daily-summary": {
+      "post": {
+        "tags": [
+          "Sessions & Agents",
+          "Memory Operations"
+        ],
+        "summary": "Generate Daily Summary",
+        "description": "Generate the on-demand daily AI summary for an agent/date.\n\nConflict detection is a separate concern — see\nPOST ``/{agent_id}/conflicts/generate`` or the scheduled job.",
+        "operationId": "generate_daily_summary_api_v2_agents__agent_id__daily_summary_post",
+        "parameters": [
+          {
+            "name": "agent_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Agent Id"
+            }
+          },
+          {
+            "name": "x-session-token",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Session-Token"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DailySummaryRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v2/agents/{agent_id}/conflicts/generate": {
+      "post": {
+        "tags": [
+          "Sessions & Agents",
+          "Memory Operations"
+        ],
+        "summary": "Generate Conflict Report",
+        "description": "Generate the conflict report for an agent/date.\n\nThis is the same work the scheduled task performs.",
+        "operationId": "generate_conflict_report_api_v2_agents__agent_id__conflicts_generate_post",
+        "parameters": [
+          {
+            "name": "agent_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Agent Id"
+            }
+          },
+          {
+            "name": "x-session-token",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Session-Token"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConflictDetectRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v2/agents/{agent_id}/conflicts": {
+      "get": {
+        "tags": [
+          "Sessions & Agents",
+          "Memory Operations"
+        ],
+        "summary": "List Conflicts",
+        "description": "List unresolved conflicts for an agent.\n\nRequires:\n- X-Session-Token: {session_token}\n\nThe session must be for the specified agent_id.",
+        "operationId": "list_conflicts_api_v2_agents__agent_id__conflicts_get",
+        "parameters": [
+          {
+            "name": "agent_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Agent Id"
+            }
+          },
+          {
+            "name": "date",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Conflict report date (YYYY-MM-DD)",
+              "title": "Date"
+            },
+            "description": "Conflict report date (YYYY-MM-DD)"
+          },
+          {
+            "name": "x-session-token",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Session-Token"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v2/agents/{agent_id}/conflicts/resolve": {
+      "post": {
+        "tags": [
+          "Sessions & Agents",
+          "Memory Operations"
+        ],
+        "summary": "Resolve Conflict",
+        "description": "Resolve a conflict for an agent.\n\nUses the same underlying conflict resolution service used by CLI.",
+        "operationId": "resolve_conflict_api_v2_agents__agent_id__conflicts_resolve_post",
+        "parameters": [
+          {
+            "name": "agent_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Agent Id"
+            }
+          },
+          {
+            "name": "x-session-token",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Session-Token"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConflictResolveRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v2/agents/{agent_id}/recall/as-of": {
+      "post": {
+        "tags": [
+          "Sessions & Agents",
+          "Memory Operations"
+        ],
+        "summary": "Recall As Of",
+        "description": "Point-in-time recall: \"What was true at this point in time?\"\n\nReturns memories stored before the specified datetime, excluding memories\ncreated after or expired before as_of.\n\nExample: \"What memories did we have on 2025-11-01?\"\n\nRequires:\n- X-Session-Token: {session_token}",
+        "operationId": "recall_as_of_api_v2_agents__agent_id__recall_as_of_post",
+        "parameters": [
+          {
+            "name": "agent_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Agent Id"
+            }
+          },
+          {
+            "name": "x-session-token",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Session-Token"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RecallAsOfRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TemporalRecallResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v2/agents/{agent_id}/recall/changed-since": {
+      "post": {
+        "tags": [
+          "Sessions & Agents",
+          "Memory Operations"
+        ],
+        "summary": "Recall Changed Since",
+        "description": "Differential retrieval: \"What changed recently?\"\n\nReturns memories created or updated after the specified datetime.\n\nExample: \"What changed since last week?\"\n\nRequires:\n- X-Session-Token: {session_token}",
+        "operationId": "recall_changed_since_api_v2_agents__agent_id__recall_changed_since_post",
+        "parameters": [
+          {
+            "name": "agent_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Agent Id"
+            }
+          },
+          {
+            "name": "x-session-token",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Session-Token"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RecallChangedSinceRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TemporalRecallResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v2/agents/{agent_id}/recall/recent": {
+      "post": {
+        "tags": [
+          "Sessions & Agents",
+          "Memory Operations"
+        ],
+        "summary": "Recall Recent",
+        "description": "Recall the most recently stored memories.\n\nReturns memories sorted by created_at descending (newest first).\nOptionally filter by memory type.\n\nRequires:\n- X-Session-Token: {session_token}\n\nThe session must be for the specified agent_id.",
+        "operationId": "recall_recent_api_v2_agents__agent_id__recall_recent_post",
+        "parameters": [
+          {
+            "name": "agent_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Agent Id"
+            }
+          },
+          {
+            "name": "x-session-token",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Session-Token"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RecallRecentRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TemporalRecallResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v2/agents": {
+      "get": {
+        "tags": [
+          "Sessions & Agents"
+        ],
+        "summary": "List Agents",
+        "description": "List all agents for this Moorcheh account\n\nReturns agents sorted by creation date (newest first). The ``memory_count``\nof each agent is populated with the live document count from its Moorcheh\nnamespace rather than the stale value in local metadata.",
+        "operationId": "list_agents_api_v2_agents_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgentList"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Sessions & Agents"
+        ],
+        "summary": "Create Agent",
+        "description": "Create a new MEMANTO agent\n\nCreates:\n- Agent metadata in ~/.memanto/agents/\n- Moorcheh namespace: memanto_agent_{agent_id}\n\nThe agent is ready to activate once created.",
+        "operationId": "create_agent_api_v2_agents_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AgentCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgentInfo"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v2/agents/{agent_id}": {
+      "get": {
+        "tags": [
+          "Sessions & Agents"
+        ],
+        "summary": "Get Agent",
+        "description": "Get agent information\n\n``memory_count`` reflects the live document count from the agent's Moorcheh\nnamespace.",
+        "operationId": "get_agent_api_v2_agents__agent_id__get",
+        "parameters": [
+          {
+            "name": "agent_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Agent Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgentInfo"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Sessions & Agents"
+        ],
+        "summary": "Delete Agent",
+        "description": "Delete agent\n\nAlways deletes local agent metadata.\nIf `delete-backup-too=true`, also deletes the agent memory namespace in Moorcheh.",
+        "operationId": "delete_agent_api_v2_agents__agent_id__delete",
+        "parameters": [
+          {
+            "name": "agent_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Agent Id"
+            }
+          },
+          {
+            "name": "delete-backup-too",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "description": "Delete Moorcheh namespace backup",
+              "default": false,
+              "title": "Delete-Backup-Too"
+            },
+            "description": "Delete Moorcheh namespace backup"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v2/agents/{agent_id}/activate": {
+      "post": {
+        "tags": [
+          "Sessions & Agents"
+        ],
+        "summary": "Activate Agent",
+        "description": "Activate agent and start session\n\nCreates:\n- JWT session token (6-hour expiration by default, configurable)\n- Session file in ~/.memanto/sessions/\n- Active session marker\n\nReturns session token for use in memory operations.",
+        "operationId": "activate_agent_api_v2_agents__agent_id__activate_post",
+        "parameters": [
+          {
+            "name": "agent_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Agent Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Session"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v2/agents/{agent_id}/deactivate": {
+      "post": {
+        "tags": [
+          "Sessions & Agents"
+        ],
+        "summary": "Deactivate Agent",
+        "description": "Deactivate agent and end session\n\nTerminates the current session and returns statistics.\nRequires X-Session-Token header and matching agent_id.",
+        "operationId": "deactivate_agent_api_v2_agents__agent_id__deactivate_post",
+        "parameters": [
+          {
+            "name": "agent_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Agent Id"
+            }
+          },
+          {
+            "name": "x-session-token",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Session-Token"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionSummary"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v2/status": {
+      "get": {
+        "tags": [
+          "Sessions & Agents"
+        ],
+        "summary": "Get Status",
+        "description": "Get current active session status.\n\nNo parameters required — reads the active session from local state.",
+        "operationId": "get_status_api_v2_status_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionInfo"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/ui/config": {
+      "get": {
+        "tags": [
+          "Web UI"
+        ],
+        "summary": "Get Ui Config",
+        "description": "Get current MEMANTO configuration for the Web UI.\n\nReturns non-sensitive configuration: API key status (masked),\nserver URL, active agent, session settings, CLI settings.",
+        "operationId": "get_ui_config_api_ui_config_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "Web UI"
+        ],
+        "summary": "Update Ui Config",
+        "description": "Update non-sensitive MEMANTO configuration from the Web UI.\n\nAccepts: schedule_time, session settings, CLI settings, answer settings, recall settings.\nDoes NOT allow updating API key or active session through this endpoint.",
+        "operationId": "update_ui_config_api_ui_config_patch",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": true,
+                "type": "object",
+                "title": "Updates"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/ui/onprem/restart": {
+      "post": {
+        "tags": [
+          "Web UI"
+        ],
+        "summary": "Restart Onprem Backend",
+        "description": "Bounce the on-prem moorcheh stack so it re-reads ``~/.moorcheh/config.json``.\n\n``moorcheh down`` + ``moorcheh up`` (with embedding flags recovered from\nstate.json / config.json). Blocks for up to ~6 minutes total (5min for\n``up``, 60s for ``/health``).",
+        "operationId": "restart_onprem_backend_api_ui_onprem_restart_post",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/ui/api-key": {
+      "put": {
+        "tags": [
+          "Web UI"
+        ],
+        "summary": "Update Api Key",
+        "description": "Update the Moorcheh API key from the Web UI.\nExpects: {\"api_key\": \"new-key-value\"}",
+        "operationId": "update_api_key_api_ui_api_key_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": true,
+                "type": "object",
+                "title": "Body"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/ui/conflicts": {
+      "get": {
+        "tags": [
+          "Web UI"
+        ],
+        "summary": "List Conflicts",
+        "description": "List unresolved conflicts for an agent.\nUses DirectClient.list_conflicts under the hood.",
+        "operationId": "list_conflicts_api_ui_conflicts_get",
+        "parameters": [
+          {
+            "name": "agent_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Agent Id"
+            }
+          },
+          {
+            "name": "date",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Date"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/ui/conflict-scans": {
+      "get": {
+        "tags": [
+          "Web UI"
+        ],
+        "summary": "List Conflict Scans",
+        "description": "Return, per day, when the conflict scan last ran for an agent.\n\nThe scan time is the mtime of the per-day conflicts JSON, which is\n(re)written on every scan and every resolution. The UI uses this to flag\ndays whose memories were stored after the last scan (possibly unreviewed).",
+        "operationId": "list_conflict_scans_api_ui_conflict_scans_get",
+        "parameters": [
+          {
+            "name": "agent_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Agent Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/ui/daily-summary": {
+      "get": {
+        "tags": [
+          "Web UI"
+        ],
+        "summary": "Read Daily Summary",
+        "description": "Return the existing daily summary for an agent/date if one was already\ngenerated. Does NOT trigger generation — that's the POST endpoint.\n\nResponse: {exists, agent_id, date, path, content}",
+        "operationId": "read_daily_summary_api_ui_daily_summary_get",
+        "parameters": [
+          {
+            "name": "agent_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Agent Id"
+            }
+          },
+          {
+            "name": "date",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Date"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Web UI"
+        ],
+        "summary": "Generate Daily Summary",
+        "description": "Trigger an on-demand daily summary for the active agent.\nExpects (optional): {\"agent_id\": \"...\", \"date\": \"YYYY-MM-DD\",\n                     \"output_path\": \"...\"}",
+        "operationId": "generate_daily_summary_api_ui_daily_summary_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "additionalProperties": true
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Body"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/ui/conflicts/generate": {
+      "post": {
+        "tags": [
+          "Web UI"
+        ],
+        "summary": "Generate Conflict Report",
+        "description": "Trigger an on-demand conflict report for the active agent. This is the\nsame work the scheduled task performs.\nExpects (optional): {\"agent_id\": \"...\", \"date\": \"YYYY-MM-DD\"}",
+        "operationId": "generate_conflict_report_api_ui_conflicts_generate_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "additionalProperties": true,
+                    "type": "object"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Body"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/ui/conflicts/resolve": {
+      "post": {
+        "tags": [
+          "Web UI"
+        ],
+        "summary": "Resolve Conflict",
+        "description": "Resolve a single conflict.\nExpects: {\"agent_id\": \"...\", \"date\": \"...\", \"conflict_index\": 0, \"action\": \"keep_old\"|\"keep_new\"|\"keep_both\"|\"remove_both\"|\"manual\", \"manual_content\": \"...\"}",
+        "operationId": "resolve_conflict_api_ui_conflicts_resolve_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": true,
+                "type": "object",
+                "title": "Body"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/ui/connections": {
+      "get": {
+        "tags": [
+          "Web UI"
+        ],
+        "summary": "Get Connections",
+        "description": "List all supported agents merged with the local connections registry.\n\nReturns the agent catalog from `agent_registry`, each enriched with what's\nbeen installed (per registry at `~/.memanto/connections.json`).",
+        "operationId": "get_connections_api_ui_connections_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/ui/browse": {
+      "get": {
+        "tags": [
+          "Web UI"
+        ],
+        "summary": "Browse Path",
+        "description": "List subdirectories of a given path (server-side folder picker).\n\nDefaults to the user's home directory when ``path`` is missing or invalid.\nReturns child directories only (alphabetical), plus a few quick-path\nshortcuts and the parent path so the UI can build a breadcrumb / up-nav.",
+        "operationId": "browse_path_api_ui_browse_get",
+        "parameters": [
+          {
+            "name": "path",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Path"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/ui/connections/install": {
+      "post": {
+        "tags": [
+          "Web UI"
+        ],
+        "summary": "Connections Install",
+        "description": "Install MEMANTO integration for one or more agents at a given location.\n\nBody: {\"agents\": [\"claude-code\", ...], \"project_dir\": \"/abs/path\", \"is_global\": false}",
+        "operationId": "connections_install_api_ui_connections_install_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": true,
+                "type": "object",
+                "title": "Body"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/ui/connections/uninstall": {
+      "post": {
+        "tags": [
+          "Web UI"
+        ],
+        "summary": "Connections Uninstall",
+        "description": "Remove MEMANTO integration for a single agent at a given location.\n\nBody: {\"agent\": \"claude-code\", \"project_dir\": \"/abs/path\", \"is_global\": false}\n\nStale entries (project_dir gone) are handled registry-only.",
+        "operationId": "connections_uninstall_api_ui_connections_uninstall_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": true,
+                "type": "object",
+                "title": "Body"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/ui/shutdown": {
+      "post": {
+        "tags": [
+          "Web UI"
+        ],
+        "summary": "Shutdown Server",
+        "description": "Gracefully shutdown the MEMANTO server.\nCalled by the UI when the browser tab is closed.",
+        "operationId": "shutdown_server_api_ui_shutdown_post",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/": {
+      "get": {
+        "summary": "Root",
+        "operationId": "root__get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "AgentCreate": {
+        "properties": {
+          "agent_id": {
+            "type": "string",
+            "pattern": "^[a-zA-Z0-9_-]+$",
+            "title": "Agent Id",
+            "description": "Unique agent identifier (alphanumeric, hyphens, underscores)"
+          },
+          "pattern": {
+            "$ref": "#/components/schemas/AgentPattern",
+            "description": "Agent pattern for memory organization",
+            "default": "support"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description",
+            "description": "Human-readable description of the agent"
+          }
+        },
+        "type": "object",
+        "required": [
+          "agent_id"
+        ],
+        "title": "AgentCreate",
+        "description": "Request to create a new agent"
+      },
+      "AgentInfo": {
+        "properties": {
+          "agent_id": {
+            "type": "string",
+            "title": "Agent Id"
+          },
+          "namespace": {
+            "type": "string",
+            "title": "Namespace"
+          },
+          "pattern": {
+            "$ref": "#/components/schemas/AgentPattern"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "last_session": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Session"
+          },
+          "memory_count": {
+            "type": "integer",
+            "title": "Memory Count",
+            "default": 0
+          },
+          "session_count": {
+            "type": "integer",
+            "title": "Session Count",
+            "default": 0
+          },
+          "status": {
+            "type": "string",
+            "title": "Status",
+            "default": "inactive"
+          }
+        },
+        "type": "object",
+        "required": [
+          "agent_id",
+          "namespace",
+          "pattern",
+          "created_at"
+        ],
+        "title": "AgentInfo",
+        "description": "Agent information"
+      },
+      "AgentList": {
+        "properties": {
+          "agents": {
+            "items": {
+              "$ref": "#/components/schemas/AgentInfo"
+            },
+            "type": "array",
+            "title": "Agents"
+          },
+          "count": {
+            "type": "integer",
+            "title": "Count"
+          }
+        },
+        "type": "object",
+        "required": [
+          "agents",
+          "count"
+        ],
+        "title": "AgentList",
+        "description": "List of agents"
+      },
+      "AgentPattern": {
+        "type": "string",
+        "enum": [
+          "support",
+          "project",
+          "tool"
+        ],
+        "title": "AgentPattern",
+        "description": "Agent pattern types for memory organization"
+      },
+      "AnswerRequest": {
+        "properties": {
+          "question": {
+            "type": "string",
+            "title": "Question",
+            "description": "Question to ask"
+          },
+          "limit": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 100,
+                "minimum": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Limit",
+            "description": "Number of context memories to use"
+          },
+          "threshold": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 1,
+                "minimum": 0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Threshold",
+            "description": "Confidence threshold (used only in kiosk mode)"
+          },
+          "temperature": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 2,
+                "minimum": 0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Temperature",
+            "description": "Temperature for the LLM response"
+          },
+          "ai_model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ai Model",
+            "description": "AI model to use for generating the answer"
+          },
+          "kiosk_mode": {
+            "type": "boolean",
+            "title": "Kiosk Mode",
+            "description": "Kiosk mode setting",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "question"
+        ],
+        "title": "AnswerRequest",
+        "description": "Request body for answer endpoint"
+      },
+      "AnswerResponse": {
+        "properties": {
+          "agent_id": {
+            "type": "string",
+            "title": "Agent Id"
+          },
+          "session_id": {
+            "type": "string",
+            "title": "Session Id"
+          },
+          "question": {
+            "type": "string",
+            "title": "Question"
+          },
+          "answer": {
+            "type": "string",
+            "title": "Answer"
+          },
+          "sources": {
+            "items": {},
+            "type": "array",
+            "title": "Sources"
+          },
+          "namespace": {
+            "type": "string",
+            "title": "Namespace"
+          }
+        },
+        "type": "object",
+        "required": [
+          "agent_id",
+          "session_id",
+          "question",
+          "answer",
+          "namespace"
+        ],
+        "title": "AnswerResponse"
+      },
+      "BatchRememberItem": {
+        "properties": {
+          "content": {
+            "type": "string",
+            "maxLength": 10000,
+            "title": "Content",
+            "description": "Memory content"
+          },
+          "type": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "fact",
+                  "preference",
+                  "goal",
+                  "decision",
+                  "artifact",
+                  "learning",
+                  "event",
+                  "instruction",
+                  "relationship",
+                  "context",
+                  "observation",
+                  "commitment",
+                  "error"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Type",
+            "description": "Memory type. Omit to auto-parse."
+          },
+          "title": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 100
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title",
+            "description": "Memory title (defaults to truncated content)"
+          },
+          "confidence": {
+            "type": "number",
+            "maximum": 1,
+            "minimum": 0,
+            "title": "Confidence",
+            "description": "Confidence score (0-1)",
+            "default": 0.8
+          },
+          "tags": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tags",
+            "description": "Tags for this memory"
+          },
+          "source": {
+            "type": "string",
+            "title": "Source",
+            "description": "Source of memory",
+            "default": "agent"
+          },
+          "provenance": {
+            "type": "string",
+            "title": "Provenance",
+            "description": "How memory was obtained (explicit_statement, inferred, observed, etc.)",
+            "default": "explicit_statement"
+          }
+        },
+        "type": "object",
+        "required": [
+          "content"
+        ],
+        "title": "BatchRememberItem",
+        "description": "Single memory item in a batch-remember request"
+      },
+      "BatchRememberRequest": {
+        "properties": {
+          "memories": {
+            "items": {
+              "$ref": "#/components/schemas/BatchRememberItem"
+            },
+            "type": "array",
+            "maxItems": 100,
+            "minItems": 1,
+            "title": "Memories",
+            "description": "List of memories to store (max 100)"
+          }
+        },
+        "type": "object",
+        "required": [
+          "memories"
+        ],
+        "title": "BatchRememberRequest",
+        "description": "Request body for batch-remember endpoint"
+      },
+      "BatchRememberResponse": {
+        "properties": {
+          "agent_id": {
+            "type": "string",
+            "title": "Agent Id"
+          },
+          "session_id": {
+            "type": "string",
+            "title": "Session Id"
+          },
+          "namespace": {
+            "type": "string",
+            "title": "Namespace"
+          },
+          "total_submitted": {
+            "type": "integer",
+            "title": "Total Submitted"
+          },
+          "successful": {
+            "type": "integer",
+            "title": "Successful"
+          },
+          "failed": {
+            "type": "integer",
+            "title": "Failed"
+          },
+          "results": {
+            "items": {
+              "$ref": "#/components/schemas/BatchRememberResultItem"
+            },
+            "type": "array",
+            "title": "Results"
+          }
+        },
+        "type": "object",
+        "required": [
+          "agent_id",
+          "session_id",
+          "namespace",
+          "total_submitted",
+          "successful",
+          "failed",
+          "results"
+        ],
+        "title": "BatchRememberResponse"
+      },
+      "BatchRememberResultItem": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "action": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Action"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Type"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "status"
+        ],
+        "title": "BatchRememberResultItem"
+      },
+      "Body_upload_file_api_v2_agents__agent_id__upload_file_post": {
+        "properties": {
+          "file": {
+            "type": "string",
+            "contentMediaType": "application/octet-stream",
+            "title": "File",
+            "description": "File to upload (.pdf, .docx, .xlsx, .json, .txt, .csv, .md)"
+          }
+        },
+        "type": "object",
+        "required": [
+          "file"
+        ],
+        "title": "Body_upload_file_api_v2_agents__agent_id__upload_file_post"
+      },
+      "ConflictDetectRequest": {
+        "properties": {
+          "date": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Date",
+            "description": "Date string YYYY-MM-DD. Defaults to today."
+          }
+        },
+        "type": "object",
+        "title": "ConflictDetectRequest"
+      },
+      "ConflictResolveRequest": {
+        "properties": {
+          "conflict_index": {
+            "type": "integer",
+            "minimum": 0,
+            "title": "Conflict Index",
+            "description": "Conflict index to resolve"
+          },
+          "action": {
+            "type": "string",
+            "title": "Action",
+            "description": "Resolution action: keep_old, keep_new, keep_both, remove_both, manual"
+          },
+          "date": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Date",
+            "description": "Conflict report date (YYYY-MM-DD). Defaults to today."
+          },
+          "manual_content": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Manual Content",
+            "description": "Required when action is 'manual'"
+          },
+          "manual_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Manual Type",
+            "description": "Optional memory type for manual action"
+          }
+        },
+        "type": "object",
+        "required": [
+          "conflict_index",
+          "action"
+        ],
+        "title": "ConflictResolveRequest",
+        "description": "Request body for resolving a conflict"
+      },
+      "DailySummaryRequest": {
+        "properties": {
+          "date": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Date",
+            "description": "Date string YYYY-MM-DD. Defaults to today."
+          },
+          "output_path": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Output Path",
+            "description": "Optional custom output path for the summary MD file."
+          }
+        },
+        "type": "object",
+        "title": "DailySummaryRequest"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
+      "HealthResponse": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "service": {
+            "type": "string",
+            "title": "Service"
+          },
+          "version": {
+            "type": "string",
+            "title": "Version"
+          },
+          "moorcheh_connected": {
+            "type": "boolean",
+            "title": "Moorcheh Connected"
+          }
+        },
+        "type": "object",
+        "required": [
+          "status",
+          "service",
+          "version",
+          "moorcheh_connected"
+        ],
+        "title": "HealthResponse"
+      },
+      "MemoryItem": {
+        "properties": {
+          "id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Id"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title",
+            "default": ""
+          },
+          "content": {
+            "type": "string",
+            "title": "Content",
+            "default": ""
+          },
+          "text": {
+            "type": "string",
+            "title": "Text",
+            "default": ""
+          },
+          "type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Type"
+          },
+          "confidence": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Confidence"
+          },
+          "status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Status"
+          },
+          "tags": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Tags"
+          },
+          "created_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created At"
+          },
+          "updated_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updated At"
+          },
+          "expires_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expires At"
+          },
+          "ttl_seconds": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ttl Seconds"
+          },
+          "actor_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Actor Id"
+          },
+          "source": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source"
+          },
+          "scope_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scope Type"
+          },
+          "scope_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scope Id"
+          },
+          "score": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Score"
+          },
+          "provenance": {
+            "type": "string",
+            "title": "Provenance",
+            "default": "explicit_statement"
+          },
+          "validation_count": {
+            "type": "integer",
+            "title": "Validation Count",
+            "default": 0
+          },
+          "contradiction_detected": {
+            "type": "boolean",
+            "title": "Contradiction Detected",
+            "default": false
+          },
+          "superseded_by": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Superseded By"
+          },
+          "supersedes": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Supersedes"
+          },
+          "validated_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Validated At"
+          },
+          "change_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Change Type"
+          }
+        },
+        "type": "object",
+        "title": "MemoryItem",
+        "description": "Single memory record as returned by recall/answer endpoints."
+      },
+      "RecallAsOfRequest": {
+        "properties": {
+          "as_of": {
+            "type": "string",
+            "format": "date-time",
+            "title": "As Of",
+            "description": "Point-in-time — YYYY-MM-DD (defaults to end of day) or full ISO datetime e.g. 2025-11-01T14:30:00Z"
+          },
+          "limit": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Limit",
+            "description": "Max results"
+          },
+          "type": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Type",
+            "description": "Memory type filters"
+          }
+        },
+        "type": "object",
+        "required": [
+          "as_of"
+        ],
+        "title": "RecallAsOfRequest"
+      },
+      "RecallChangedSinceRequest": {
+        "properties": {
+          "since": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Since",
+            "description": "Start of change window — YYYY-MM-DD (defaults to start of day) or full ISO datetime e.g. 2025-11-01T00:00:00Z"
+          },
+          "limit": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Limit",
+            "description": "Max results"
+          },
+          "type": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Type",
+            "description": "Memory type filters"
+          }
+        },
+        "type": "object",
+        "required": [
+          "since"
+        ],
+        "title": "RecallChangedSinceRequest"
+      },
+      "RecallRecentRequest": {
+        "properties": {
+          "limit": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Limit",
+            "description": "Max results"
+          },
+          "type": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Type",
+            "description": "Memory type filters"
+          }
+        },
+        "type": "object",
+        "title": "RecallRecentRequest"
+      },
+      "RecallRequest": {
+        "properties": {
+          "query": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Query",
+            "description": "Search query"
+          },
+          "limit": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Limit",
+            "description": "Max results"
+          },
+          "min_similarity": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 1,
+                "minimum": 0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Min Similarity",
+            "description": "Minimum similarity score (0-1)"
+          },
+          "type": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Type",
+            "description": "Memory type filters"
+          }
+        },
+        "type": "object",
+        "required": [
+          "query"
+        ],
+        "title": "RecallRequest"
+      },
+      "RecallResponse": {
+        "properties": {
+          "agent_id": {
+            "type": "string",
+            "title": "Agent Id"
+          },
+          "session_id": {
+            "type": "string",
+            "title": "Session Id"
+          },
+          "query": {
+            "type": "string",
+            "title": "Query"
+          },
+          "memories": {
+            "items": {
+              "$ref": "#/components/schemas/MemoryItem"
+            },
+            "type": "array",
+            "title": "Memories"
+          },
+          "count": {
+            "type": "integer",
+            "title": "Count"
+          }
+        },
+        "type": "object",
+        "required": [
+          "agent_id",
+          "session_id",
+          "query",
+          "memories",
+          "count"
+        ],
+        "title": "RecallResponse"
+      },
+      "RememberRequest": {
+        "properties": {
+          "content": {
+            "type": "string",
+            "maxLength": 10000,
+            "title": "Content",
+            "description": "Memory content"
+          },
+          "type": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "fact",
+                  "preference",
+                  "goal",
+                  "decision",
+                  "artifact",
+                  "learning",
+                  "event",
+                  "instruction",
+                  "relationship",
+                  "context",
+                  "observation",
+                  "commitment",
+                  "error"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Type",
+            "description": "Memory type. Omit to auto-parse."
+          },
+          "title": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 100
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title",
+            "description": "Memory title (defaults to truncated content)"
+          },
+          "confidence": {
+            "type": "number",
+            "maximum": 1,
+            "minimum": 0,
+            "title": "Confidence",
+            "description": "Confidence score (0-1)",
+            "default": 0.8
+          },
+          "tags": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tags",
+            "description": "Tags for this memory"
+          },
+          "source": {
+            "type": "string",
+            "title": "Source",
+            "description": "Source of memory",
+            "default": "agent"
+          },
+          "provenance": {
+            "type": "string",
+            "title": "Provenance",
+            "description": "How memory was obtained (explicit_statement, inferred, observed, etc.)",
+            "default": "explicit_statement"
+          }
+        },
+        "type": "object",
+        "required": [
+          "content"
+        ],
+        "title": "RememberRequest",
+        "description": "Request body for remember endpoint"
+      },
+      "RememberResponse": {
+        "properties": {
+          "memory_id": {
+            "type": "string",
+            "title": "Memory Id"
+          },
+          "agent_id": {
+            "type": "string",
+            "title": "Agent Id"
+          },
+          "session_id": {
+            "type": "string",
+            "title": "Session Id"
+          },
+          "namespace": {
+            "type": "string",
+            "title": "Namespace"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "provenance": {
+            "type": "string",
+            "title": "Provenance"
+          },
+          "confidence": {
+            "type": "number",
+            "title": "Confidence"
+          },
+          "type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Type"
+          }
+        },
+        "type": "object",
+        "required": [
+          "memory_id",
+          "agent_id",
+          "session_id",
+          "namespace",
+          "status",
+          "provenance",
+          "confidence"
+        ],
+        "title": "RememberResponse"
+      },
+      "Session": {
+        "properties": {
+          "session_id": {
+            "type": "string",
+            "title": "Session Id"
+          },
+          "session_token": {
+            "type": "string",
+            "title": "Session Token"
+          },
+          "agent_id": {
+            "type": "string",
+            "title": "Agent Id"
+          },
+          "namespace": {
+            "type": "string",
+            "title": "Namespace"
+          },
+          "started_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Started At"
+          },
+          "expires_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Expires At"
+          },
+          "pattern": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AgentPattern"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "status": {
+            "$ref": "#/components/schemas/SessionStatus",
+            "default": "active"
+          },
+          "metadata": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Metadata"
+          }
+        },
+        "type": "object",
+        "required": [
+          "session_id",
+          "session_token",
+          "agent_id",
+          "namespace",
+          "started_at",
+          "expires_at"
+        ],
+        "title": "Session",
+        "description": "Active session information"
+      },
+      "SessionInfo": {
+        "properties": {
+          "session_id": {
+            "type": "string",
+            "title": "Session Id"
+          },
+          "agent_id": {
+            "type": "string",
+            "title": "Agent Id"
+          },
+          "namespace": {
+            "type": "string",
+            "title": "Namespace"
+          },
+          "started_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Started At"
+          },
+          "expires_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Expires At"
+          },
+          "status": {
+            "$ref": "#/components/schemas/SessionStatus"
+          },
+          "time_remaining_seconds": {
+            "type": "integer",
+            "title": "Time Remaining Seconds"
+          },
+          "pattern": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AgentPattern"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "session_id",
+          "agent_id",
+          "namespace",
+          "started_at",
+          "expires_at",
+          "status",
+          "time_remaining_seconds"
+        ],
+        "title": "SessionInfo",
+        "description": "Session information response"
+      },
+      "SessionStatus": {
+        "type": "string",
+        "enum": [
+          "active",
+          "expired",
+          "terminated"
+        ],
+        "title": "SessionStatus",
+        "description": "Session status enum"
+      },
+      "SessionSummary": {
+        "properties": {
+          "session_id": {
+            "type": "string",
+            "title": "Session Id"
+          },
+          "agent_id": {
+            "type": "string",
+            "title": "Agent Id"
+          },
+          "started_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Started At"
+          },
+          "ended_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Ended At"
+          },
+          "duration_hours": {
+            "type": "number",
+            "title": "Duration Hours"
+          },
+          "memories_created": {
+            "type": "integer",
+            "title": "Memories Created"
+          },
+          "summary_memory_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Summary Memory Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "session_id",
+          "agent_id",
+          "started_at",
+          "ended_at",
+          "duration_hours",
+          "memories_created"
+        ],
+        "title": "SessionSummary",
+        "description": "Summary of ended session"
+      },
+      "TemporalRecallResponse": {
+        "properties": {
+          "agent_id": {
+            "type": "string",
+            "title": "Agent Id"
+          },
+          "session_id": {
+            "type": "string",
+            "title": "Session Id"
+          },
+          "memories": {
+            "items": {
+              "$ref": "#/components/schemas/MemoryItem"
+            },
+            "type": "array",
+            "title": "Memories"
+          },
+          "count": {
+            "type": "integer",
+            "title": "Count"
+          },
+          "temporal_mode": {
+            "type": "string",
+            "title": "Temporal Mode"
+          },
+          "as_of_date": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "As Of Date"
+          },
+          "since_date": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Since Date"
+          }
+        },
+        "type": "object",
+        "required": [
+          "agent_id",
+          "session_id",
+          "memories",
+          "count",
+          "temporal_mode"
+        ],
+        "title": "TemporalRecallResponse"
+      },
+      "UploadFileResponse": {
+        "properties": {
+          "agent_id": {
+            "type": "string",
+            "title": "Agent Id"
+          },
+          "session_id": {
+            "type": "string",
+            "title": "Session Id"
+          },
+          "namespace": {
+            "type": "string",
+            "title": "Namespace"
+          },
+          "file_name": {
+            "type": "string",
+            "title": "File Name"
+          },
+          "file_size": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "File Size"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "required": [
+          "agent_id",
+          "session_id",
+          "namespace",
+          "file_name",
+          "status"
+        ],
+        "title": "UploadFileResponse"
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "ctx": {
+            "type": "object",
+            "title": "Context"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError"
+      }
+    }
+  }
+}

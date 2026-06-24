@@ -64,7 +64,7 @@ async def lifespan(_: FastAPI):
 
 # Create FastAPI app
 app = FastAPI(
-    title="Memanto - Memory that AI Agents Love!",
+    title="Memanto - Your agents focus. Memanto remembers.",
     description="A memory layer service for agentic AI systems using Moorcheh SDK",
     version=__version__,
     docs_url="/docs",
@@ -97,7 +97,7 @@ mount_ui_static(app)
 async def root():
     return {
         "service": "MEMANTO",
-        "description": "Memory that AI Agents Love!",
+        "description": "A companion memory agent with its own intelligence that keeps your agents focused on their tasks.",
         "version": __version__,
         "docs": "/docs",
     }
