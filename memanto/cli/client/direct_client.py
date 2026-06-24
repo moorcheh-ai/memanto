@@ -36,6 +36,7 @@ from memanto.app.utils.errors import (
     SessionExpiredError,
     SessionNotFoundError,
 )
+from memanto.app.utils.validation import InputLimits
 from memanto.cli.config.manager import ConfigManager
 
 logger = logging.getLogger(__name__)
@@ -211,7 +212,7 @@ __all__ = ["DirectClient"]
 
 _MAX_BATCH_SIZE = 100
 _MAX_TITLE_LENGTH = 100
-_MAX_CONTENT_LENGTH = 500
+_MAX_CONTENT_LENGTH = InputLimits.MAX_TEXT_LENGTH
 
 
 class DirectClient:
@@ -257,16 +258,25 @@ class DirectClient:
         self._read_service = None
         self._agent_service = None
         self._session_service = None
-        self._daily_summary_service = None
+        self._daily_analysis_service = None
         self._export_service = None
 
     # Lazy initializers
 
     def _get_moorcheh(self):
-        """Return (or create) the ``MoorchehClient`` singleton."""
+        """Return (or create) the backend-aware Moorcheh client.
+
+        Dispatches to cloud ``MoorchehClient`` or on-prem ``OnPremClient`` based
+        on the active backend, mirroring ``SdkClient._get_moorcheh``. Without
+        this, on-prem callers (e.g. UI ``batch_remember`` for migrate) hit
+        cloud and get a "namespace not found" 404 for agents that only exist
+        locally.
+        """
         if self._moorcheh is None:
-            logger.debug("Initializing MoorchehClient")
-            self._moorcheh = MoorchehClient(api_key=self.api_key)
+            from memanto.app.clients.moorcheh import get_moorcheh_client
+
+            logger.debug("Initializing Moorcheh client via backend dispatcher")
+            self._moorcheh = get_moorcheh_client()
         return self._moorcheh
 
     def _get_write_service(self):
@@ -301,13 +311,15 @@ class DirectClient:
             self._session_service = get_session_service()
         return self._session_service
 
-    def _get_daily_summary_service(self):
-        """Return (or create) the ``DailySummaryService`` singleton."""
-        if self._daily_summary_service is None:
-            from memanto.app.services.daily_summary_service import DailySummaryService
+    def _get_daily_analysis_service(self):
+        """Return (or create) the ``DailyAnalysisService`` singleton."""
+        if self._daily_analysis_service is None:
+            from memanto.app.services.daily_analysis_service import (
+                DailyAnalysisService,
+            )
 
-            self._daily_summary_service = DailySummaryService(api_key=self.api_key)
-        return self._daily_summary_service
+            self._daily_analysis_service = DailyAnalysisService()
+        return self._daily_analysis_service
 
     def _get_export_service(self):
         """Return (or create) the ``MemoryExportService`` singleton."""
@@ -555,7 +567,7 @@ class DirectClient:
     def remember(
         self,
         agent_id: str,
-        memory_type: str,
+        memory_type: str | None,
         title: str,
         content: str,
         confidence: float = 0.8,
@@ -568,10 +580,12 @@ class DirectClient:
 
         Args:
             agent_id: Target agent.
-            memory_type: One of ``fact``, ``decision``, ``instruction``,
-                ``commitment``, ``event``.
+            memory_type: One of ``fact``, ``preference``, ``goal``,
+                ``decision``, ``artifact``, ``learning``, ``event``,
+                ``instruction``, ``relationship``, ``context``,
+                ``observation``, ``commitment``, ``error``.
             title: Memory title (max 100 chars).
-            content: Memory content (max 500 chars).
+            content: Memory content (max ``InputLimits.MAX_TEXT_LENGTH`` chars).
             confidence: Confidence score 0.0–1.0 (default 0.8).
             tags: Optional list of tags.
             source: Memory source (default ``"user"``).
@@ -590,7 +604,9 @@ class DirectClient:
 
         self._validate_memory_input(memory_type, title, content, confidence)
 
-        resolved_memory_type = cast(MemoryType, memory_type)
+        resolved_memory_type = (
+            cast(MemoryType, memory_type) if memory_type is not None else None
+        )
         resolved_provenance = provenance or "explicit_statement"
         if resolved_provenance not in _VALID_PROVENANCE:
             raise ValueError(
@@ -633,6 +649,7 @@ class DirectClient:
             "namespace": result.get("namespace"),
             "status": result.get("status", "queued"),
             "confidence": confidence,
+            "type": result.get("type"),
         }
 
     def batch_remember(
@@ -676,19 +693,36 @@ class DirectClient:
             title = raw_title or (
                 raw_content[:47] + "..." if len(raw_content) > 50 else raw_content
             )
+            raw_type = item.get("type")
 
-            memory = MemoryRecord(
-                type=item.get("type", "fact"),
-                title=title,
-                content=raw_content,
-                scope_type="agent",
-                scope_id=agent_id,
-                actor_id=agent_id,
-                confidence=item.get("confidence", 0.8),
-                tags=item.get("tags", []),
-                source="user",
-                provenance="explicit_statement",
-            )
+            # Optional per-item overrides for the migrate flow — keep source
+            # provenance, original ids, and source-side timestamps. Defaults
+            # preserve the original single-user-write behavior.
+            provenance = item.get("provenance") or "explicit_statement"
+            if provenance not in _VALID_PROVENANCE:
+                raise ValueError(
+                    f"Invalid provenance '{provenance}' at index {i}. "
+                    f"Must be one of: {', '.join(sorted(_VALID_PROVENANCE))}"
+                )
+
+            kwargs: dict[str, Any] = {
+                "type": raw_type,
+                "title": title,
+                "content": raw_content,
+                "scope_type": "agent",
+                "scope_id": agent_id,
+                "actor_id": agent_id,
+                "confidence": item.get("confidence", 0.8),
+                "tags": item.get("tags", []),
+                "source": item.get("source") or "user",
+                "provenance": provenance,
+            }
+            for opt_key in ("source_ref", "created_at", "updated_at"):
+                val = item.get(opt_key)
+                if val is not None:
+                    kwargs[opt_key] = val
+
+            memory = MemoryRecord(**kwargs)
             memory_records.append(memory)
 
         logger.debug(
@@ -720,6 +754,105 @@ class DirectClient:
 
         return result
 
+    def extract_memories_from_conversation(
+        self,
+        agent_id: str,
+        messages: list[dict[str, str]],
+        dry_run: bool = False,
+        max_memories: int = 20,
+        ai_model: str | None = None,
+    ) -> dict[str, Any]:
+        """
+        Extract typed memories from conversation turns.
+
+        Args:
+            agent_id: Target agent.
+            messages: Chat-style messages with ``role`` and ``content`` keys.
+            dry_run: When True, preview extracted candidates without storing them.
+            max_memories: Maximum number of candidate memories to extract.
+            ai_model: Optional model override for extraction.
+
+        Returns:
+            A dictionary containing extracted candidates and, unless ``dry_run``
+            is enabled, the batch storage result.
+
+        Raises:
+            SessionError: If no active session exists for the agent.
+        """
+
+        session = self._get_validated_session_for_agent(agent_id)
+
+        from memanto.app.services.conversation_memory_extraction_service import (
+            ConversationMemoryExtractionService,
+        )
+
+        service = ConversationMemoryExtractionService(self._get_moorcheh())
+        candidates = service.extract(
+            namespace=session.namespace,
+            messages=messages,
+            max_memories=max_memories,
+            ai_model=ai_model,
+        )
+
+        if dry_run:
+            return {
+                "dry_run": True,
+                "candidates": candidates,
+                "count": len(candidates),
+            }
+
+        result = self.batch_remember(agent_id=agent_id, memories=candidates)
+        return {
+            "dry_run": False,
+            "candidates": candidates,
+            **result,
+        }
+
+    def delete_memory(self, agent_id: str, memory_id: str) -> dict[str, Any]:
+        """
+        Delete one memory from the active agent namespace.
+
+        Args:
+            agent_id: Target agent.
+            memory_id: Memory document ID to delete.
+
+        Returns:
+            Confirmation dict with ``status``, ``agent_id``, ``memory_id``, and
+            ``namespace``.
+
+        Raises:
+            ValueError: If the memory does not exist in the active agent namespace.
+        """
+        session = self._get_validated_session_for_agent(agent_id)
+        namespace = session.namespace
+
+        logger.debug(
+            "Deleting memory '%s' from agent '%s' namespace '%s'",
+            memory_id,
+            agent_id,
+            namespace,
+        )
+        deleted = self._get_write_service().delete_memory(memory_id, namespace)
+        if not deleted:
+            raise ValueError(
+                f"Memory '{memory_id}' was not found for agent '{agent_id}'"
+            )
+
+        # Log deletion to local session Markdown summary
+        if self.session_token:
+            self._get_session_service().log_memory_deletion_to_session_summary(
+                agent_id=agent_id,
+                session_id=session.session_id,
+                memory_id=memory_id,
+            )
+
+        return {
+            "status": "deleted",
+            "agent_id": agent_id,
+            "memory_id": memory_id,
+            "namespace": namespace,
+        }
+
     def recall(
         self,
         agent_id: str,
@@ -727,6 +860,7 @@ class DirectClient:
         limit: int | None = None,
         type: list[str] | None = None,
         tags: list[str] | None = None,
+        min_similarity: float | None = None,
         min_confidence: float | None = None,
         created_after: datetime | None = None,
         created_before: datetime | None = None,
@@ -740,6 +874,7 @@ class DirectClient:
             limit: Max results (1–100, defaults to config).
             type: Filter by types (e.g. ``["fact", "decision"]``).
             tags: Filter by tags.
+            min_similarity: Minimum similarity threshold.
             min_confidence: Minimum confidence threshold.
             created_after: Only memories created after this datetime.
             created_before: Only memories created before this datetime.
@@ -748,8 +883,11 @@ class DirectClient:
             Dict with ``agent_id``, ``query``, ``memories`` (list),
             ``count``.
         """
+        recall_cfg = ConfigManager().get_recall_config()
         if limit is None:
-            limit = ConfigManager().get_recall_config()["limit"]
+            limit = recall_cfg["limit"]
+        if min_similarity is None:
+            min_similarity = recall_cfg.get("min_similarity")
 
         # Ensure there is a valid, non-expired session for this agent
         self._get_validated_session_for_agent(agent_id)
@@ -766,6 +904,7 @@ class DirectClient:
             type=type,
             tags=tags,
             min_confidence=min_confidence,
+            min_similarity_score=min_similarity,
             created_after=created_after.isoformat() if created_after else None,
             created_before=created_before.isoformat() if created_before else None,
             limit=limit,
@@ -856,6 +995,41 @@ class DirectClient:
             "count": result.get("total_found", 0),
         }
 
+    def recall_recent(
+        self,
+        agent_id: str,
+        limit: int | None = None,
+        type: list[str] | None = None,
+    ) -> dict[str, Any]:
+        """
+        Recall the most recently stored memories (newest first).
+
+        Args:
+            agent_id: Target agent.
+            limit: Max results (defaults to config).
+            type: Optional type filter.
+
+        Returns:
+            Dict with ``memories`` and ``count``.
+        """
+        if limit is None:
+            limit = ConfigManager().get_recall_config()["limit"]
+
+        # Ensure there is a valid, non-expired session for this agent
+        self._get_validated_session_for_agent(agent_id)
+
+        result = self._get_read_service().search_recent(
+            agent_id=agent_id,
+            type=type,
+            limit=limit,
+        )
+
+        return {
+            "agent_id": agent_id,
+            "memories": result.get("results", []),
+            "count": result.get("total_found", 0),
+        }
+
     def answer(
         self,
         agent_id: str,
@@ -864,7 +1038,7 @@ class DirectClient:
         threshold: float | None = None,
         temperature: float | None = None,
         ai_model: str | None = None,
-        kiosk_mode: bool = False,
+        kiosk_mode: bool | None = None,
         header_prompt: str | None = None,
         footer_prompt: str | None = None,
     ) -> dict[str, Any]:
@@ -878,10 +1052,13 @@ class DirectClient:
             agent_id: Target agent.
             question: Natural-language question.
             limit: Number of memories to use as context (defaults to config).
-            threshold: Confidence threshold for memory relevance (defaults to config).
+            threshold: Similarity threshold. Only honored when
+                ``kiosk_mode`` is True. Defaults to the config value when
+                unset.
             temperature: Temperature for the LLM response (defaults to config).
             ai_model: AI model to use for generating the answer (defaults to config).
-            kiosk_mode: When true, filters out low-relevance results; requires threshold.
+            kiosk_mode: When True, filters out low-relevance results using
+                ``threshold``. When None (default), reads the config value.
             header_prompt: Header prompt for the LLM.
             footer_prompt: Footer prompt for the LLM.
 
@@ -892,12 +1069,16 @@ class DirectClient:
         ans_cfg = ConfigManager().get_answer_config()
         if limit is None:
             limit = ans_cfg["answer_limit"]
-        if threshold is None:
-            threshold = ans_cfg["threshold"]
         if temperature is None:
             temperature = ans_cfg["temperature"]
         if ai_model is None:
             ai_model = ans_cfg["model"]
+        if kiosk_mode is None:
+            kiosk_mode = bool(ans_cfg.get("kiosk_mode", False))
+        # Threshold is only meaningful in kiosk_mode; only fall back to the
+        # config value when the caller has actually turned kiosk_mode on.
+        if kiosk_mode and threshold is None:
+            threshold = ans_cfg["threshold"]
 
         # Ensure there is a valid, non-expired session for this agent
         session = self._get_validated_session_for_agent(agent_id)
@@ -950,7 +1131,10 @@ class DirectClient:
         self, agent_id: str, date: str, output_path: str | None = None
     ) -> dict[str, Any]:
         """
-        Generate a daily AI summary from session MD files.
+        Generate a daily AI summary from session MD files (on-demand).
+
+        Conflict detection is a separate concern — see
+        :meth:`generate_conflict_report`.
 
         Args:
             agent_id: Target agent.
@@ -958,23 +1142,22 @@ class DirectClient:
             output_path: Optional custom output path for the summary MD file.
 
         Returns:
-            Dict with ``status``, ``summary_path``, ``sessions_count``.
+            Dict with ``summary`` and ``export`` sub-results.
         """
         # Ensure agent exists
         self.get_agent(agent_id)
 
         logger.debug(
-            "Generating daily summary and conflict report for agent '%s' on %s",
+            "Generating daily summary for agent '%s' on %s",
             agent_id,
             date,
         )
 
-        service = self._get_daily_summary_service()
+        service = self._get_daily_analysis_service()
 
         summary_result = service.generate_summary(
             agent_id, date, output_path=output_path
         )
-        conflict_result = service.generate_conflict_report(agent_id, date)
 
         # Auto-export memories to keep local MD cache up to date
         try:
@@ -987,9 +1170,35 @@ class DirectClient:
 
         return {
             "summary": summary_result,
-            "conflicts": conflict_result,
             "export": export_result,
         }
+
+    def generate_conflict_report(self, agent_id: str, date: str) -> dict[str, Any]:
+        """
+        Generate the conflict report for an agent/date.
+
+        Runs the LLM conflict-detection pass over the day's session
+        memories and writes the JSON report to ``~/.memanto/conflicts/``.
+
+        Args:
+            agent_id: Target agent.
+            date: Date string (YYYY-MM-DD).
+
+        Returns:
+            Dict with ``conflicts`` sub-result.
+        """
+        # Ensure agent exists
+        self.get_agent(agent_id)
+
+        logger.debug(
+            "Generating conflict report for agent '%s' on %s",
+            agent_id,
+            date,
+        )
+
+        service = self._get_daily_analysis_service()
+        conflict_result = service.generate_conflict_report(agent_id, date)
+        return {"conflicts": conflict_result}
 
     # Conflict Resolution
 
@@ -1308,13 +1517,13 @@ class DirectClient:
 
     @staticmethod
     def _validate_memory_input(
-        memory_type: str,
+        memory_type: str | None,
         title: str,
         content: str,
         confidence: float,
     ) -> None:
         """Validate memory fields before sending to service layer."""
-        if memory_type not in _VALID_MEMORY_TYPES:
+        if memory_type is not None and memory_type not in _VALID_MEMORY_TYPES:
             raise ValueError(
                 f"Invalid memory_type '{memory_type}'. "
                 f"Must be one of: {', '.join(sorted(_VALID_MEMORY_TYPES))}"

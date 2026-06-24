@@ -1,0 +1,81 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "hermes-memanto"
+version = "0.1.0"
+description = "Memanto memory-agent provider for the Hermes agent - typed long-term memory (remember/recall/answer) backed by Moorcheh"
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.10,<4"
+authors = [
+    { name = "Memanto", email = "info@memanto.ai" }
+]
+keywords = [
+    "memanto",
+    "moorcheh",
+    "hermes",
+    "hermes-agent",
+    "agent memory",
+    "semantic memory",
+    "memory provider",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+]
+dependencies = [
+    "memanto>=0.1.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.2.0,<9",
+    "ruff>=0.14.6,<0.15",
+]
+
+[project.scripts]
+hermes-memanto-install = "hermes_memanto.install:main"
+
+[project.urls]
+Homepage = "https://www.memanto.ai"
+Documentation = "https://docs.memanto.ai"
+Repository = "https://github.com/moorcheh-ai/memanto"
+"Bug Tracker" = "https://github.com/moorcheh-ai/memanto/issues"
+
+[tool.hatch.build.targets.wheel]
+packages = ["hermes_memanto"]
+
+[tool.hatch.build.targets.wheel.force-include]
+"hermes_memanto/plugin.yaml" = "hermes_memanto/plugin.yaml"
+"hermes_memanto/PLUGIN_README.md" = "hermes_memanto/PLUGIN_README.md"
+
+[tool.hatch.build.targets.sdist]
+include = [
+    "hermes_memanto",
+    "tests",
+    "README.md",
+    "LICENSE",
+    ".env.example",
+]
+
+[tool.ruff]
+target-version = "py310"
+line-length = 88
+
+[tool.ruff.lint]
+select = ["E", "W", "F", "I", "B", "C4", "UP"]
+ignore = ["B904", "E501", "B008", "C901"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

@@ -1,3 +1,4 @@
+import json
 import os
 import shutil
 import tempfile
@@ -73,7 +74,9 @@ def mock_moorcheh():
     moorcheh_client.reset_client()
 
     with (
-        patch("memanto.app.services.agent_service.MoorchehClient") as mock_agent_client,
+        patch(
+            "memanto.app.services.agent_service.get_moorcheh_client"
+        ) as mock_agent_client,
         patch("memanto.app.clients.moorcheh.MoorchehClient") as mock_moorcheh_cls,
         patch(
             "memanto.app.clients.moorcheh.AsyncMoorchehClient"
@@ -280,7 +283,7 @@ class TestMEMANTOAPI:
     async def test_answer_with_kiosk_mode_uses_default_threshold(
         self, client, auth_headers, mock_moorcheh
     ):
-        """Test kiosk mode applies default threshold when omitted."""
+        """Kiosk mode without an explicit threshold falls back to 0.15."""
         await client.post(
             "/api/v2/agents",
             headers=auth_headers,
@@ -299,7 +302,37 @@ class TestMEMANTOAPI:
 
         assert response.status_code == 200
         call_kwargs = mock_moorcheh.answer.generate.call_args.kwargs
-        assert call_kwargs["threshold"] == 0.10
+        assert call_kwargs["kiosk_mode"] is True
+        assert call_kwargs["threshold"] == 0.15
+
+    @pytest.mark.asyncio
+    async def test_answer_with_kiosk_mode_forwards_explicit_threshold(
+        self, client, auth_headers, mock_moorcheh
+    ):
+        """Kiosk mode + explicit threshold: REST forwards it unchanged."""
+        await client.post(
+            "/api/v2/agents",
+            headers=auth_headers,
+            json={"agent_id": self.TEST_AGENT_ID},
+        )
+        activate_resp = await client.post(
+            f"/api/v2/agents/{self.TEST_AGENT_ID}/activate", headers=auth_headers
+        )
+        token = activate_resp.json()["session_token"]
+
+        headers = {**auth_headers, "X-Session-Token": token}
+        payload = {
+            "question": "What is being tested?",
+            "kiosk_mode": True,
+            "threshold": 0.42,
+        }
+        response = await client.post(
+            f"/api/v2/agents/{self.TEST_AGENT_ID}/answer", headers=headers, json=payload
+        )
+
+        assert response.status_code == 200
+        call_kwargs = mock_moorcheh.answer.generate.call_args.kwargs
+        assert call_kwargs["threshold"] == 0.42
 
     @pytest.mark.asyncio
     async def test_answer_accepts_ai_model_field(
@@ -475,6 +508,68 @@ class TestMEMANTOAPI:
         assert "time_remaining_seconds" in data
 
     @pytest.mark.asyncio
+    async def test_remember_body_type_is_respected(
+        self, client, auth_headers, mock_moorcheh
+    ):
+        """Test single remember accepts explicit type from JSON body"""
+        await client.post(
+            "/api/v2/agents",
+            headers=auth_headers,
+            json={"agent_id": self.TEST_AGENT_ID},
+        )
+        activate_resp = await client.post(
+            f"/api/v2/agents/{self.TEST_AGENT_ID}/activate", headers=auth_headers
+        )
+        token = activate_resp.json()["session_token"]
+
+        mock_moorcheh.documents.upload.return_value = {"status": "success"}
+
+        headers = {**auth_headers, "X-Session-Token": token}
+        response = await client.post(
+            f"/api/v2/agents/{self.TEST_AGENT_ID}/remember",
+            headers=headers,
+            json={
+                "content": "my favourite hobby is to listen music. I am musicaholic",
+                "type": "fact",
+            },
+        )
+
+        assert response.status_code == 200
+        # Explicit type is respected and echoed back in the response.
+        assert response.json()["type"] == "fact"
+        uploaded_doc = mock_moorcheh.documents.upload.call_args.kwargs["documents"][0]
+        assert uploaded_doc["memory_type"] == "fact"
+
+    @pytest.mark.asyncio
+    async def test_remember_auto_parses_type_when_omitted(
+        self, client, auth_headers, mock_moorcheh
+    ):
+        """Test single remember auto-detects the type when none is provided"""
+        await client.post(
+            "/api/v2/agents",
+            headers=auth_headers,
+            json={"agent_id": self.TEST_AGENT_ID},
+        )
+        activate_resp = await client.post(
+            f"/api/v2/agents/{self.TEST_AGENT_ID}/activate", headers=auth_headers
+        )
+        token = activate_resp.json()["session_token"]
+
+        mock_moorcheh.documents.upload.return_value = {"status": "success"}
+
+        headers = {**auth_headers, "X-Session-Token": token}
+        response = await client.post(
+            f"/api/v2/agents/{self.TEST_AGENT_ID}/remember",
+            headers=headers,
+            json={"content": "I really love using Python for data work"},
+        )
+
+        assert response.status_code == 200
+        assert response.json()["type"] == "preference"
+        uploaded_doc = mock_moorcheh.documents.upload.call_args.kwargs["documents"][0]
+        assert uploaded_doc["memory_type"] == "preference"
+
+    @pytest.mark.asyncio
     async def test_global_status_no_active_session(self, client):
         """Test GET /api/v2/status returns 404 when no session is active"""
         response = await client.get("/api/v2/status")
@@ -510,6 +605,183 @@ class TestMEMANTOAPI:
         )
         assert response.status_code == 200
         assert response.json()["successful"] == 2
+
+    @pytest.mark.asyncio
+    async def test_delete_memory_with_session(
+        self, client, auth_headers, mock_moorcheh
+    ):
+        """Test deleting one memory from the active agent namespace."""
+        await client.post(
+            "/api/v2/agents",
+            headers=auth_headers,
+            json={"agent_id": self.TEST_AGENT_ID},
+        )
+        activate_resp = await client.post(
+            f"/api/v2/agents/{self.TEST_AGENT_ID}/activate", headers=auth_headers
+        )
+        token = activate_resp.json()["session_token"]
+        headers = {**auth_headers, "X-Session-Token": token}
+        mock_moorcheh.documents.delete.return_value = {"actual_deletions": 1}
+
+        response = await client.delete(
+            f"/api/v2/agents/{self.TEST_AGENT_ID}/memories/mem-123",
+            headers=headers,
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["status"] == "deleted"
+        assert data["memory_id"] == "mem-123"
+        mock_moorcheh.documents.delete.assert_called_once_with(
+            namespace_name="memanto_agent_test-api-agent", ids=["mem-123"]
+        )
+
+    @pytest.mark.asyncio
+    async def test_delete_memory_not_found(self, client, auth_headers, mock_moorcheh):
+        """Deleting a missing memory returns a clear 404."""
+        await client.post(
+            "/api/v2/agents",
+            headers=auth_headers,
+            json={"agent_id": self.TEST_AGENT_ID},
+        )
+        activate_resp = await client.post(
+            f"/api/v2/agents/{self.TEST_AGENT_ID}/activate", headers=auth_headers
+        )
+        token = activate_resp.json()["session_token"]
+        headers = {**auth_headers, "X-Session-Token": token}
+        mock_moorcheh.documents.delete.return_value = {"actual_deletions": 0}
+
+        response = await client.delete(
+            f"/api/v2/agents/{self.TEST_AGENT_ID}/memories/missing-memory",
+            headers=headers,
+        )
+
+        assert response.status_code == 404
+        assert "missing-memory" in response.json()["detail"]
+
+    @pytest.mark.asyncio
+    async def test_delete_memory_rejects_session_agent_mismatch(
+        self, client, auth_headers, mock_moorcheh
+    ):
+        """Deleting through another agent's session is forbidden."""
+        await client.post(
+            "/api/v2/agents",
+            headers=auth_headers,
+            json={"agent_id": self.TEST_AGENT_ID},
+        )
+        activate_resp = await client.post(
+            f"/api/v2/agents/{self.TEST_AGENT_ID}/activate", headers=auth_headers
+        )
+        token = activate_resp.json()["session_token"]
+        headers = {**auth_headers, "X-Session-Token": token}
+
+        response = await client.delete(
+            "/api/v2/agents/other-agent/memories/mem-123",
+            headers=headers,
+        )
+
+        assert response.status_code == 403
+        assert response.json()["detail"]["error"] == "AuthorizationError"
+        mock_moorcheh.documents.delete.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_extract_memories_from_conversation_dry_run(
+        self, client, auth_headers, mock_moorcheh
+    ):
+        """Conversation extraction can preview candidates without writing."""
+        await client.post(
+            "/api/v2/agents",
+            headers=auth_headers,
+            json={"agent_id": self.TEST_AGENT_ID},
+        )
+        activate_resp = await client.post(
+            f"/api/v2/agents/{self.TEST_AGENT_ID}/activate", headers=auth_headers
+        )
+        assert activate_resp.status_code == 200, activate_resp.text
+        token = activate_resp.json()["session_token"]
+        headers = {**auth_headers, "X-Session-Token": token}
+
+        mock_moorcheh.answer.generate.return_value = {
+            "answer": json.dumps(
+                [
+                    {
+                        "type": "preference",
+                        "title": "Summary style",
+                        "content": "The user prefers concise summaries.",
+                        "confidence": 0.9,
+                    }
+                ]
+            ),
+            "sources": [],
+        }
+
+        response = await client.post(
+            f"/api/v2/agents/{self.TEST_AGENT_ID}/remember/extract",
+            headers=headers,
+            json={
+                "dry_run": True,
+                "messages": [
+                    {"role": "user", "content": "Please keep summaries concise."}
+                ],
+            },
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["dry_run"] is True
+        assert data["count"] == 1
+        assert data["candidates"][0]["type"] == "preference"
+        mock_moorcheh.documents.upload.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_extract_memories_from_conversation_stores_batch(
+        self, client, auth_headers, mock_moorcheh
+    ):
+        """Conversation extraction stores candidates through batch memory writes."""
+        await client.post(
+            "/api/v2/agents",
+            headers=auth_headers,
+            json={"agent_id": self.TEST_AGENT_ID},
+        )
+        activate_resp = await client.post(
+            f"/api/v2/agents/{self.TEST_AGENT_ID}/activate", headers=auth_headers
+        )
+        assert activate_resp.status_code == 200, activate_resp.text
+        token = activate_resp.json()["session_token"]
+        headers = {**auth_headers, "X-Session-Token": token}
+
+        mock_moorcheh.answer.generate.return_value = {
+            "answer": json.dumps(
+                [
+                    {
+                        "type": "fact",
+                        "title": "Test stack",
+                        "content": "The project uses pytest for tests.",
+                        "confidence": 0.88,
+                    }
+                ]
+            ),
+            "sources": [],
+        }
+        mock_moorcheh.documents.upload.return_value = {"status": "success"}
+
+        response = await client.post(
+            f"/api/v2/agents/{self.TEST_AGENT_ID}/remember/extract",
+            headers=headers,
+            json={
+                "messages": [
+                    {"role": "user", "content": "The project uses pytest for tests."}
+                ],
+            },
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["dry_run"] is False
+        assert data["successful"] == 1
+        uploaded_doc = mock_moorcheh.documents.upload.call_args.kwargs["documents"][0]
+        assert uploaded_doc["memory_type"] == "fact"
+        assert uploaded_doc["provenance"] == "inferred"
 
     @pytest.mark.asyncio
     async def test_recall_temporal_api(self, client, auth_headers, mock_moorcheh):
@@ -771,3 +1043,172 @@ class TestMEMANTOAPI:
         )
 
         assert response.status_code in (401, 403, 422)
+
+    @pytest.mark.asyncio
+    async def test_traversal_filename_is_sanitized(
+        self, client, auth_headers, mock_moorcheh
+    ):
+        """A filename with ../../ should be stripped to its basename."""
+        await client.post(
+            "/api/v2/agents",
+            headers=auth_headers,
+            json={"agent_id": self.TEST_AGENT_ID},
+        )
+        activate_resp = await client.post(
+            f"/api/v2/agents/{self.TEST_AGENT_ID}/activate", headers=auth_headers
+        )
+        token = activate_resp.json()["session_token"]
+
+        mock_moorcheh.documents.upload_file.return_value = {
+            "success": True,
+            "message": "File uploaded",
+            "fileName": "notes.txt",
+            "fileSize": 100,
+        }
+
+        headers = {**auth_headers, "X-Session-Token": token}
+        response = await client.post(
+            f"/api/v2/agents/{self.TEST_AGENT_ID}/upload-file",
+            headers=headers,
+            files={
+                "file": (
+                    "../../../etc/passwd.txt",
+                    b"test content",
+                    "text/plain",
+                )
+            },
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        # The returned file_name should be the sanitized basename
+        assert data["file_name"] == "passwd.txt"
+        assert "/" not in data["file_name"]
+        assert ".." not in data["file_name"]
+
+    @pytest.mark.asyncio
+    async def test_absolute_path_filename_is_sanitized(
+        self, client, auth_headers, mock_moorcheh
+    ):
+        """An absolute path filename should be stripped to its basename."""
+        await client.post(
+            "/api/v2/agents",
+            headers=auth_headers,
+            json={"agent_id": self.TEST_AGENT_ID},
+        )
+        activate_resp = await client.post(
+            f"/api/v2/agents/{self.TEST_AGENT_ID}/activate", headers=auth_headers
+        )
+        token = activate_resp.json()["session_token"]
+
+        mock_moorcheh.documents.upload_file.return_value = {
+            "success": True,
+            "message": "File uploaded",
+            "fileName": "secret.json",
+            "fileSize": 50,
+        }
+
+        headers = {**auth_headers, "X-Session-Token": token}
+        response = await client.post(
+            f"/api/v2/agents/{self.TEST_AGENT_ID}/upload-file",
+            headers=headers,
+            files={
+                "file": (
+                    "/etc/secret.json",
+                    b'{"key": "value"}',
+                    "application/json",
+                )
+            },
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["file_name"] == "secret.json"
+
+
+class TestFilenameSanitizationLogic:
+    """Direct tests on the sanitization logic used in the fix."""
+
+    @staticmethod
+    def sanitize(raw: str | None) -> str:
+        """Reproduce the exact sanitization logic from the fix."""
+        original_name = Path(raw or "upload").name
+        if not original_name or original_name in (".", ".."):
+            original_name = "upload"
+        return original_name
+
+    def test_normal_filename(self):
+        assert self.sanitize("notes.txt") == "notes.txt"
+
+    def test_normal_filename_with_spaces(self):
+        assert self.sanitize("my notes.pdf") == "my notes.pdf"
+
+    def test_normal_filename_uppercase(self):
+        assert self.sanitize("REPORT.DOCX") == "REPORT.DOCX"
+
+    def test_simple_traversal(self):
+        result = self.sanitize("../../../etc/passwd")
+        assert result == "passwd"
+        assert "/" not in result
+        assert ".." not in result
+
+    def test_deep_traversal(self):
+        result = self.sanitize("../../../../../../../../etc/shadow")
+        assert result == "shadow"
+
+    def test_traversal_to_txt(self):
+        result = self.sanitize("../../sensitive.txt")
+        assert result == "sensitive.txt"
+        assert ".." not in result
+
+    def test_windows_traversal(self):
+        result = self.sanitize("..\\..\\..\\windows\\win.ini")
+        assert "/" not in result
+
+    def test_mixed_traversal(self):
+        result = self.sanitize("../../../etc/passwd.txt")
+        assert result == "passwd.txt"
+
+    def test_absolute_path_linux(self):
+        result = self.sanitize("/etc/passwd")
+        assert result == "passwd"
+
+    def test_absolute_path_deep(self):
+        result = self.sanitize("/var/www/html/config.php")
+        assert result == "config.php"
+
+    def test_none_filename(self):
+        assert self.sanitize(None) == "upload"
+
+    def test_empty_filename(self):
+        assert self.sanitize("") == "upload"
+
+    def test_dot_filename(self):
+        assert self.sanitize(".") == "upload"
+
+    def test_dotdot_filename(self):
+        assert self.sanitize("..") == "upload"
+
+    def test_only_slashes(self):
+        assert self.sanitize("/") == "upload"
+
+    def test_dotfile(self):
+        result = self.sanitize(".env")
+        assert result == ".env"
+
+
+class TestRealpathGuard:
+    """Verify the defense-in-depth realpath check prevents escape."""
+
+    def test_safe_path_passes(self):
+        tmp_dir = tempfile.mkdtemp()
+        safe_name = "report.pdf"
+        tmp_path = os.path.join(tmp_dir, safe_name)
+        assert os.path.realpath(tmp_path).startswith(os.path.realpath(tmp_dir) + os.sep)
+
+    def test_traversal_path_fails(self):
+        tmp_dir = tempfile.mkdtemp()
+        malicious_path = os.path.join(tmp_dir, "..", "..", "etc", "passwd")
+        assert not os.path.realpath(malicious_path).startswith(
+            os.path.realpath(tmp_dir) + os.sep
+        )

@@ -9,17 +9,25 @@ if TYPE_CHECKING:
     from moorcheh_sdk import MoorchehClient
 
 from memanto.app.core import MemoryRecord
+from memanto.app.services.memory_parsing_service import MemoryParsingService
 from memanto.app.utils.errors import MemoryError
 from memanto.app.utils.ids import generate_memory_id
 
 
 class MemoryWriteService:
+    """Persist memory records to Moorcheh-backed namespaces."""
+
     def __init__(self, moorcheh_client: "MoorchehClient"):
+        """Initialize the service with a Moorcheh client."""
+
         self.client = moorcheh_client
         self._namespace_service = None
+        self._parser = MemoryParsingService()
 
     @property
     def namespace_service(self):
+        """Lazily create the namespace service used for memory scopes."""
+
         if self._namespace_service is None:
             from memanto.app.services.namespace_service import NamespaceService
 
@@ -39,6 +47,9 @@ class MemoryWriteService:
             now = datetime.utcnow()
             memory.created_at = now
             memory.updated_at = now
+
+            # Auto parse memory type
+            memory = self._parser.parse_memory(memory)
 
             # Add namespace
             namespace = memory.get_scope().to_namespace()
@@ -71,6 +82,7 @@ class MemoryWriteService:
                 "reason": validation_result.get("reason", "Stored successfully"),
                 "confidence": memory.confidence,
                 "memory_status": memory.status,
+                "type": memory.type,
             }
 
         except Exception as e:
@@ -115,6 +127,8 @@ class MemoryWriteService:
                     # Enforce server-side timestamps (never trust client)
                     memory.created_at = now
                     memory.updated_at = now
+
+                    memory = self._parser.parse_memory(memory)
 
                     # Add namespace
                     namespace = memory.get_scope().to_namespace()
@@ -162,6 +176,7 @@ class MemoryWriteService:
                             "reason": validation_result.get(
                                 "reason", "Validated successfully"
                             ),
+                            "type": memory.type,
                         }
                     )
 
@@ -334,10 +349,18 @@ class MemoryWriteService:
                 self.client.documents.delete(namespace_name=namespace, ids=[memory_id]),
             )
 
-            actual_deletions = result.get("actual_deletions", 0)
-            if not isinstance(actual_deletions, int):
-                actual_deletions = 0
-            return actual_deletions > 0
+            # Cloud returns ``actual_deletions``; on-prem's /items/delete only
+            # returns ``deleted_ids`` (and ``status``). Mirror the cloud SDK's
+            # ``_deletion_processed_count`` so both backends report success.
+            raw = result.get("actual_deletions")
+            if isinstance(raw, int):
+                return raw > 0
+            for key in ("deleted_ids", "requested_ids"):
+                ids = result.get(key)
+                if isinstance(ids, list):
+                    return len(ids) > 0
+            # Some on-prem builds only return ``{"status": "success"}``.
+            return str(result.get("status", "")).lower() in {"success", "ok"}
 
         except Exception as e:
             raise MemoryError(f"Failed to delete memory: {e}")

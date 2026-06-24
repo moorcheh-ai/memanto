@@ -10,6 +10,7 @@ from moorcheh_sdk import MoorchehClient
 from moorcheh_sdk.exceptions import AuthenticationError, NamespaceNotFound
 
 from memanto.app import __version__
+from memanto.app.clients.backend import Backend, parse_backend
 from memanto.app.config import settings
 from memanto.app.routes import health, sessions
 from memanto.app.ui.routes.ui_router import mount_ui_static
@@ -18,6 +19,22 @@ from memanto.app.ui.routes.ui_router import router as ui_router
 
 def _validate_startup_dependencies() -> None:
     """Fail fast when mandatory external dependencies are misconfigured."""
+    backend = parse_backend(settings.MEMANTO_BACKEND)
+
+    if backend == Backend.ON_PREM:
+        import httpx
+
+        url = f"{settings.MOORCHEH_ONPREM_URL.rstrip('/')}/health"
+        try:
+            resp = httpx.get(url, timeout=5.0)
+            resp.raise_for_status()
+        except Exception as exc:
+            raise RuntimeError(
+                f"Moorcheh on-prem server not reachable at {url}. "
+                f"Start it with: moorcheh up"
+            ) from exc
+        return
+
     api_key = settings.MOORCHEH_API_KEY.strip()
     if not api_key:
         raise RuntimeError(
@@ -47,7 +64,7 @@ async def lifespan(_: FastAPI):
 
 # Create FastAPI app
 app = FastAPI(
-    title="Memanto - Memory that AI Agents Love!",
+    title="Memanto - Your agents focus. Memanto remembers.",
     description="A memory layer service for agentic AI systems using Moorcheh SDK",
     version=__version__,
     docs_url="/docs",
@@ -80,7 +97,7 @@ mount_ui_static(app)
 async def root():
     return {
         "service": "MEMANTO",
-        "description": "Memory that AI Agents Love!",
+        "description": "A companion memory agent with its own intelligence that keeps your agents focused on their tasks.",
         "version": __version__,
         "docs": "/docs",
     }

@@ -10,6 +10,7 @@ import re
 from pathlib import Path
 from typing import Any
 
+from memanto.cli.config.manager import ConfigManager
 from memanto.cli.connect.agent_registry import AGENT_REGISTRY, AgentDef
 from memanto.cli.connect.templates import (
     MEMANTO_SENTINEL,
@@ -75,6 +76,14 @@ def install_agent(
         except Exception as e:
             errors.append(f"Permissions: {e}")
 
+    if steps:
+        try:
+            ConfigManager().add_connection(
+                agent_name, str(project_path) if not is_global else None, is_global
+            )
+        except Exception as e:
+            errors.append(f"Registry sync: {e}")
+
     return {"agent": agent_name, "steps": steps, "errors": errors}
 
 
@@ -111,6 +120,13 @@ def remove_agent(
             steps.append(result)
     except Exception as e:
         errors.append(f"Skill removal: {e}")
+
+    try:
+        ConfigManager().remove_connection(
+            agent_name, str(project_path) if not is_global else None, is_global
+        )
+    except Exception as e:
+        errors.append(f"Registry sync: {e}")
 
     return {"agent": agent_name, "steps": steps, "errors": errors}
 

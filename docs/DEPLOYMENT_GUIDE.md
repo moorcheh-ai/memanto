@@ -29,7 +29,6 @@ MOORCHEH_API_KEY=your_moorcheh_api_key_here
 # Optional
 LOG_LEVEL=INFO                    # DEBUG, INFO, WARNING, ERROR
 ALLOWED_ORIGINS=*                 # CORS origins (comma-separated)
-MAX_MEMORY_SIZE=1048576          # Max memory text size (bytes)
 RATE_LIMIT_WRITES=60             # Writes per minute per tenant
 RATE_LIMIT_READS=120             # Reads per minute per tenant
 RATE_LIMIT_ANSWERS=30            # Answer generations per minute

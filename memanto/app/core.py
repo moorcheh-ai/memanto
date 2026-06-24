@@ -45,7 +45,7 @@ class MemoryRecord(BaseModel):
 
     # Core fields
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
-    type: MemoryType
+    type: MemoryType | None = None
     title: str = Field(max_length=100)
     content: str = Field(max_length=10000)
 
@@ -80,8 +80,10 @@ class MemoryRecord(BaseModel):
         Moorcheh stores metadata as flat fields on the document, which enables
         powerful filtering using the # syntax (e.g., #memory_type:fact #confidence>0.8)
         """
+        memory_type = self.type or "fact"
+
         # Format text as standardized card for semantic search
-        text = f"[{self.type.upper()}] {self.title}\n\n{self.content}"
+        text = f"[{memory_type.upper()}] {self.title}\n\n{self.content}"
         if self.tags:
             text += f"\n\nTags: {', '.join(self.tags)}"
 
@@ -90,7 +92,7 @@ class MemoryRecord(BaseModel):
             "id": self.id,
             "text": text,
             # Metadata fields (flat structure for Moorcheh filtering)
-            "memory_type": self.type,
+            "memory_type": memory_type,
             "scope_type": self.scope_type,
             "scope_id": self.scope_id,
             "actor_id": self.actor_id,

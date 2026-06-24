@@ -14,24 +14,38 @@ from pathlib import Path
 from fastapi import APIRouter, Body, Depends, File, HTTPException, Query, UploadFile
 from pydantic import BaseModel, Field, field_validator
 
+from memanto.app.clients.backend import get_active_llm_model
 from memanto.app.clients.moorcheh import get_moorcheh_client
 from memanto.app.config import settings
 from memanto.app.core import MemoryRecord
 from memanto.app.models import (
     AnswerRequest,
+    AnswerResponse,
     BatchRememberRequest,
+    BatchRememberResponse,
     ConflictResolveRequest,
+    ExtractMemoriesRequest,
+    RecallResponse,
     RememberRequest,
+    RememberResponse,
+    TemporalRecallResponse,
+    UploadFileResponse,
 )
 from memanto.app.models.session import Session
 from memanto.app.routes.auth_deps import get_current_session, get_session_service
+from memanto.app.services.conversation_memory_extraction_service import (
+    ConversationMemoryExtractionService,
+)
 from memanto.app.services.memory_read_service import MemoryReadService
 from memanto.app.services.memory_write_service import MemoryWriteService
-from memanto.app.utils.errors import map_error_to_http_exception
+from memanto.app.utils.errors import AuthorizationError, map_error_to_http_exception
 from memanto.app.utils.validation import CostGuard
 from memanto.cli.client.direct_client import DirectClient
+from memanto.cli.config.manager import ConfigManager
 
 router = APIRouter()
+
+_config_manager = ConfigManager()
 
 
 class RecallRequest(BaseModel):
@@ -116,7 +130,7 @@ class RecallRecentRequest(BaseModel):
     type: list[str] | None = Field(default=None, description="Memory type filters")
 
 
-@router.post("/{agent_id}/remember")
+@router.post("/{agent_id}/remember", response_model=RememberResponse)
 async def remember(
     agent_id: str,
     request: RememberRequest = Body(...),
@@ -143,10 +157,9 @@ async def remember(
 
     # Enforce session scope: token must match agent_id
     if session.agent_id != agent_id:
-        raise map_error_to_http_exception(
-            Exception(
-                f"Session is for agent '{session.agent_id}', cannot access '{agent_id}'"
-            )
+        raise HTTPException(
+            status_code=403,
+            detail=f"Session is for agent '{session.agent_id}', cannot access '{agent_id}'",
         )
 
     try:
@@ -201,6 +214,8 @@ async def remember(
             "status": "queued",
             "provenance": request.provenance,
             "confidence": request.confidence,
+            # Resolved memory type (auto-parsed when not explicitly provided)
+            "type": result.get("type"),
             # "computed_confidence": trust_score["computed_confidence"],
             # "trust_level": trust_score["trust_level"]
         }
@@ -209,7 +224,7 @@ async def remember(
         raise map_error_to_http_exception(e)
 
 
-@router.post("/{agent_id}/batch-remember")
+@router.post("/{agent_id}/batch-remember", response_model=BatchRememberResponse)
 async def batch_remember(
     agent_id: str,
     request: BatchRememberRequest = Body(...),
@@ -229,10 +244,9 @@ async def batch_remember(
     """
     # Enforce session scope: token must match agent_id
     if session.agent_id != agent_id:
-        raise map_error_to_http_exception(
-            Exception(
-                f"Session is for agent '{session.agent_id}', cannot access '{agent_id}'"
-            )
+        raise HTTPException(
+            status_code=403,
+            detail=f"Session is for agent '{session.agent_id}', cannot access '{agent_id}'",
         )
 
     try:
@@ -293,14 +307,111 @@ async def batch_remember(
         raise map_error_to_http_exception(e)
 
 
-@router.post("/{agent_id}/upload-file")
+@router.post("/{agent_id}/remember/extract")
+async def extract_memories_from_conversation(
+    agent_id: str,
+    request: ExtractMemoriesRequest = Body(...),
+    session: Session = Depends(get_current_session),
+    client=Depends(get_moorcheh_client),
+):
+    """
+    Extract typed memory candidates from chat-style conversation turns.
+
+    Requires:
+    - X-Session-Token: {session_token}
+
+    When dry_run is true, candidates are returned without writing. Otherwise the
+    candidates are persisted through the same batch memory path used by
+    /batch-remember.
+    """
+    if session.agent_id != agent_id:
+        raise map_error_to_http_exception(
+            Exception(
+                f"Session is for agent '{session.agent_id}', cannot access '{agent_id}'"
+            )
+        )
+
+    try:
+        extraction_service = ConversationMemoryExtractionService(client)
+        candidates = await asyncio.to_thread(
+            extraction_service.extract,
+            namespace=session.namespace,
+            messages=[message.model_dump(mode="json") for message in request.messages],
+            max_memories=request.max_memories,
+            ai_model=request.ai_model,
+        )
+
+        if request.dry_run:
+            return {
+                "agent_id": agent_id,
+                "session_id": session.session_id,
+                "dry_run": True,
+                "candidates": candidates,
+                "count": len(candidates),
+            }
+
+        write_service = MemoryWriteService(client)
+
+        from typing import cast
+
+        from memanto.app.constants import MemoryType, ProvenanceType
+
+        memory_records = []
+        for item in candidates:
+            memory = MemoryRecord(
+                type=cast(MemoryType, item.get("type")),
+                title=item["title"],
+                content=item["content"],
+                scope_type="agent",
+                scope_id=agent_id,
+                actor_id=agent_id,
+                confidence=item["confidence"],
+                tags=["conversation-extract"],
+                source=item["source"],
+                provenance=cast(ProvenanceType, item["provenance"]),
+            )
+            memory_records.append(memory)
+
+        result = await asyncio.to_thread(
+            write_service.batch_store_memories, memory_records
+        )
+
+        session_service = get_session_service()
+        for index, record in enumerate(memory_records):
+            batch_results = result.get("results", [])
+            memory_id = (
+                batch_results[index].get("id") if index < len(batch_results) else None
+            )
+            await asyncio.to_thread(
+                session_service.log_memory_to_session_summary,
+                agent_id=agent_id,
+                session_id=session.session_id,
+                memory_record=record,
+                memory_id=memory_id,
+            )
+
+        return {
+            "agent_id": agent_id,
+            "session_id": session.session_id,
+            "dry_run": False,
+            "candidates": candidates,
+            "total_submitted": result["total_submitted"],
+            "successful": result["successful"],
+            "failed": result["failed"],
+            "results": result["results"],
+        }
+
+    except Exception as e:
+        raise map_error_to_http_exception(e)
+
+
+@router.post("/{agent_id}/upload-file", response_model=UploadFileResponse)
 async def upload_file(
     agent_id: str,
     file: UploadFile = File(
         ..., description="File to upload (.pdf, .docx, .xlsx, .json, .txt, .csv, .md)"
     ),
     session: Session = Depends(get_current_session),
-    client=Depends(get_moorcheh_client),
 ):
     """
     Upload a file directly to the agent's memory namespace (Session-based)
@@ -316,15 +427,20 @@ async def upload_file(
     - Content-Type: multipart/form-data
     """
     if session.agent_id != agent_id:
-        raise map_error_to_http_exception(
-            Exception(
-                f"Session is for agent '{session.agent_id}', cannot access '{agent_id}'"
-            )
+        raise HTTPException(
+            status_code=403,
+            detail=f"Session is for agent '{session.agent_id}', cannot access '{agent_id}'",
         )
+
+    client = get_moorcheh_client()
 
     # Validate file extension before reading
     ALLOWED_EXTENSIONS = {".pdf", ".docx", ".xlsx", ".json", ".txt", ".csv", ".md"}
-    original_name = file.filename or "upload"
+    # Sanitize filename: strip directory components to prevent path traversal (CWE-22)
+    original_name = Path(file.filename or "upload").name
+    # Guard against empty or dot-only filenames after sanitization
+    if not original_name or original_name in (".", ".."):
+        original_name = "upload"
     suffix = Path(original_name).suffix.lower()
     if suffix not in ALLOWED_EXTENSIONS:
         allowed_str = ", ".join(sorted(ALLOWED_EXTENSIONS))
@@ -341,6 +457,14 @@ async def upload_file(
         file_bytes = await file.read()
         tmp_dir = tempfile.mkdtemp()
         tmp_path = os.path.join(tmp_dir, original_name)
+        # Defense-in-depth: verify resolved path is within tmp_dir
+        if not os.path.realpath(tmp_path).startswith(
+            os.path.realpath(tmp_dir) + os.sep
+        ):
+            raise HTTPException(
+                status_code=400,
+                detail="Invalid filename",
+            )
         try:
             with open(tmp_path, "wb") as tmp:
                 tmp.write(file_bytes)
@@ -366,7 +490,56 @@ async def upload_file(
         raise map_error_to_http_exception(e)
 
 
-@router.post("/{agent_id}/recall")
+@router.delete("/{agent_id}/memories/{memory_id}")
+async def delete_memory(
+    agent_id: str,
+    memory_id: str,
+    session: Session = Depends(get_current_session),
+    client=Depends(get_moorcheh_client),
+):
+    """
+    Delete one memory from the active agent namespace.
+
+    Requires:
+    - X-Session-Token: {session_token}
+
+    The session must be for the specified agent_id.
+    """
+    if session.agent_id != agent_id:
+        raise map_error_to_http_exception(
+            AuthorizationError(
+                f"Session is for agent '{session.agent_id}', cannot access '{agent_id}'"
+            )
+        )
+
+    try:
+        write_service = MemoryWriteService(client)
+        deleted = await asyncio.to_thread(
+            write_service.delete_memory,
+            memory_id,
+            session.namespace,
+        )
+
+        if not deleted:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Memory '{memory_id}' was not found for agent '{agent_id}'",
+            )
+
+        return {
+            "agent_id": agent_id,
+            "memory_id": memory_id,
+            "namespace": session.namespace,
+            "status": "deleted",
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise map_error_to_http_exception(e)
+
+
+@router.post("/{agent_id}/recall", response_model=RecallResponse)
 async def recall(
     agent_id: str,
     request: RecallRequest = Body(...),
@@ -385,13 +558,31 @@ async def recall(
 
     # Enforce session scope
     if session.agent_id != agent_id:
-        raise map_error_to_http_exception(
-            Exception(
-                f"Session is for agent '{session.agent_id}', cannot access '{agent_id}'"
-            )
+        raise HTTPException(
+            status_code=403,
+            detail=f"Session is for agent '{session.agent_id}', cannot access '{agent_id}'",
         )
 
-    limit = request.limit if request.limit is not None else settings.RECALL_LIMIT
+    recall_cfg = _config_manager.get_recall_config()
+    raw_limit = (
+        request.limit
+        if request.limit is not None
+        else recall_cfg.get("limit", settings.RECALL_LIMIT)
+    )
+    raw_min_similarity = (
+        request.min_similarity
+        if request.min_similarity is not None
+        else recall_cfg.get("min_similarity")
+    )
+    try:
+        limit = int(raw_limit)
+        min_similarity = (
+            None if raw_min_similarity is None else float(raw_min_similarity)
+        )
+    except (TypeError, ValueError) as e:
+        raise HTTPException(
+            status_code=400, detail=f"Invalid recall configuration: {e}"
+        )
     CostGuard.validate_k_limit(limit)
 
     try:
@@ -405,7 +596,7 @@ async def recall(
             scope_type="agent",
             scope_id=agent_id,
             type=request.type,
-            min_similarity_score=request.min_similarity,
+            min_similarity_score=min_similarity,
             limit=limit,
         )
 
@@ -423,12 +614,11 @@ async def recall(
         raise map_error_to_http_exception(e)
 
 
-@router.post("/{agent_id}/answer")
+@router.post("/{agent_id}/answer", response_model=AnswerResponse)
 async def answer(
     agent_id: str,
     request: AnswerRequest = Body(...),
     session: Session = Depends(get_current_session),
-    client=Depends(get_moorcheh_client),
 ):
     """
     Answer a question using RAG (Session-based)
@@ -443,25 +633,25 @@ async def answer(
 
     # Enforce session scope
     if session.agent_id != agent_id:
-        raise map_error_to_http_exception(
-            Exception(
-                f"Session is for agent '{session.agent_id}', cannot access '{agent_id}'"
-            )
+        raise HTTPException(
+            status_code=403,
+            detail=f"Session is for agent '{session.agent_id}', cannot access '{agent_id}'",
         )
+
+    client = get_moorcheh_client()
 
     # Resolve defaults from settings
     limit = request.limit if request.limit is not None else settings.ANSWER_LIMIT
     CostGuard.validate_k_limit(limit)
-    threshold = None
-    if request.kiosk_mode:
-        threshold = request.threshold if request.threshold is not None else 0.10
     temperature = (
         request.temperature
         if request.temperature is not None
         else settings.ANSWER_TEMPERATURE
     )
     ai_model = (
-        request.ai_model if request.ai_model is not None else settings.ANSWER_MODEL
+        request.ai_model
+        if request.ai_model is not None
+        else get_active_llm_model(settings.ANSWER_MODEL)
     )
 
     try:
@@ -481,7 +671,9 @@ async def answer(
             "If no relevant memories exist, acknowledge that."
         )
 
-        # Use Moorcheh's answer.generate endpoint.
+        # Use Moorcheh's answer.generate endpoint. Threshold is required
+        # when kiosk_mode is on — fall back to 0.15 when the caller did
+        # not specify one.
         generate_kwargs = {
             "namespace": namespace,
             "query": request.question,
@@ -493,7 +685,9 @@ async def answer(
             "footer_prompt": footer_prompt,
         }
         if request.kiosk_mode:
-            generate_kwargs["threshold"] = threshold
+            generate_kwargs["threshold"] = (
+                request.threshold if request.threshold is not None else 0.15
+            )
 
         response = await asyncio.to_thread(client.answer.generate, **generate_kwargs)
 
@@ -514,6 +708,94 @@ async def answer(
         raise map_error_to_http_exception(e)
 
 
+class DailySummaryRequest(BaseModel):
+    date: str | None = Field(
+        default=None,
+        description="Date string YYYY-MM-DD. Defaults to today.",
+    )
+    output_path: str | None = Field(
+        default=None,
+        description="Optional custom output path for the summary MD file.",
+    )
+
+
+class ConflictDetectRequest(BaseModel):
+    date: str | None = Field(
+        default=None,
+        description="Date string YYYY-MM-DD. Defaults to today.",
+    )
+
+
+@router.post("/{agent_id}/daily-summary")
+async def generate_daily_summary(
+    agent_id: str,
+    request: DailySummaryRequest = Body(default_factory=DailySummaryRequest),
+    session: Session = Depends(get_current_session),
+):
+    """
+    Generate the on-demand daily AI summary for an agent/date.
+
+    Conflict detection is a separate concern — see
+    POST ``/{agent_id}/conflicts/generate`` or the scheduled job.
+    """
+    if session.agent_id != agent_id:
+        raise HTTPException(
+            status_code=403,
+            detail=f"Session is for agent '{session.agent_id}', cannot access '{agent_id}'",
+        )
+
+    resolved_date = request.date or datetime.now().strftime("%Y-%m-%d")
+    try:
+        result = await asyncio.to_thread(
+            DirectClient(settings.MOORCHEH_API_KEY).generate_daily_summary,
+            agent_id,
+            resolved_date,
+            request.output_path,
+        )
+        return {
+            "agent_id": agent_id,
+            "session_id": session.session_id,
+            "date": resolved_date,
+            **result,
+        }
+    except Exception as e:
+        raise map_error_to_http_exception(e)
+
+
+@router.post("/{agent_id}/conflicts/generate")
+async def generate_conflict_report(
+    agent_id: str,
+    request: ConflictDetectRequest = Body(default_factory=ConflictDetectRequest),
+    session: Session = Depends(get_current_session),
+):
+    """
+    Generate the conflict report for an agent/date.
+
+    This is the same work the scheduled task performs.
+    """
+    if session.agent_id != agent_id:
+        raise HTTPException(
+            status_code=403,
+            detail=f"Session is for agent '{session.agent_id}', cannot access '{agent_id}'",
+        )
+
+    resolved_date = request.date or datetime.now().strftime("%Y-%m-%d")
+    try:
+        result = await asyncio.to_thread(
+            DirectClient(settings.MOORCHEH_API_KEY).generate_conflict_report,
+            agent_id,
+            resolved_date,
+        )
+        return {
+            "agent_id": agent_id,
+            "session_id": session.session_id,
+            "date": resolved_date,
+            **result,
+        }
+    except Exception as e:
+        raise map_error_to_http_exception(e)
+
+
 @router.get("/{agent_id}/conflicts")
 async def list_conflicts(
     agent_id: str,
@@ -530,10 +812,9 @@ async def list_conflicts(
     """
     # Enforce session scope
     if session.agent_id != agent_id:
-        raise map_error_to_http_exception(
-            Exception(
-                f"Session is for agent '{session.agent_id}', cannot access '{agent_id}'"
-            )
+        raise HTTPException(
+            status_code=403,
+            detail=f"Session is for agent '{session.agent_id}', cannot access '{agent_id}'",
         )
 
     try:
@@ -565,10 +846,9 @@ async def resolve_conflict(
     Uses the same underlying conflict resolution service used by CLI.
     """
     if session.agent_id != agent_id:
-        raise map_error_to_http_exception(
-            Exception(
-                f"Session is for agent '{session.agent_id}', cannot access '{agent_id}'"
-            )
+        raise HTTPException(
+            status_code=403,
+            detail=f"Session is for agent '{session.agent_id}', cannot access '{agent_id}'",
         )
 
     resolved_date = request.date or datetime.now().strftime("%Y-%m-%d")
@@ -593,7 +873,7 @@ async def resolve_conflict(
         raise map_error_to_http_exception(e)
 
 
-@router.post("/{agent_id}/recall/as-of")
+@router.post("/{agent_id}/recall/as-of", response_model=TemporalRecallResponse)
 async def recall_as_of(
     agent_id: str,
     request: RecallAsOfRequest = Body(...),
@@ -612,14 +892,15 @@ async def recall_as_of(
     - X-Session-Token: {session_token}
     """
     if session.agent_id != agent_id:
-        raise map_error_to_http_exception(
-            Exception(
-                f"Session is for agent '{session.agent_id}', cannot access '{agent_id}'"
-            )
+        raise HTTPException(
+            status_code=403,
+            detail=f"Session is for agent '{session.agent_id}', cannot access '{agent_id}'",
         )
 
-    limit = request.limit if request.limit is not None else settings.RECALL_LIMIT
-    CostGuard.validate_k_limit(limit)
+    # request.limit is None → fetch all (no cap). Cost guard only applies when capped.
+    limit = request.limit
+    if limit is not None:
+        CostGuard.validate_k_limit(limit)
 
     try:
         read_service = MemoryReadService(client)
@@ -645,7 +926,7 @@ async def recall_as_of(
         raise map_error_to_http_exception(e)
 
 
-@router.post("/{agent_id}/recall/changed-since")
+@router.post("/{agent_id}/recall/changed-since", response_model=TemporalRecallResponse)
 async def recall_changed_since(
     agent_id: str,
     request: RecallChangedSinceRequest = Body(...),
@@ -663,14 +944,15 @@ async def recall_changed_since(
     - X-Session-Token: {session_token}
     """
     if session.agent_id != agent_id:
-        raise map_error_to_http_exception(
-            Exception(
-                f"Session is for agent '{session.agent_id}', cannot access '{agent_id}'"
-            )
+        raise HTTPException(
+            status_code=403,
+            detail=f"Session is for agent '{session.agent_id}', cannot access '{agent_id}'",
         )
 
-    limit = request.limit if request.limit is not None else settings.RECALL_LIMIT
-    CostGuard.validate_k_limit(limit)
+    # request.limit is None → fetch all (no cap). Cost guard only applies when capped.
+    limit = request.limit
+    if limit is not None:
+        CostGuard.validate_k_limit(limit)
 
     try:
         read_service = MemoryReadService(client)
@@ -696,7 +978,7 @@ async def recall_changed_since(
         raise map_error_to_http_exception(e)
 
 
-@router.post("/{agent_id}/recall/recent")
+@router.post("/{agent_id}/recall/recent", response_model=TemporalRecallResponse)
 async def recall_recent(
     agent_id: str,
     request: RecallRecentRequest = Body(...),
@@ -715,14 +997,15 @@ async def recall_recent(
     The session must be for the specified agent_id.
     """
     if session.agent_id != agent_id:
-        raise map_error_to_http_exception(
-            Exception(
-                f"Session is for agent '{session.agent_id}', cannot access '{agent_id}'"
-            )
+        raise HTTPException(
+            status_code=403,
+            detail=f"Session is for agent '{session.agent_id}', cannot access '{agent_id}'",
         )
 
-    limit = request.limit if request.limit is not None else settings.RECALL_LIMIT
-    CostGuard.validate_k_limit(limit)
+    # request.limit is None → fetch all (no cap). Cost guard only applies when capped.
+    limit = request.limit
+    if limit is not None:
+        CostGuard.validate_k_limit(limit)
 
     try:
         read_service = MemoryReadService(client)

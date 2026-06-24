@@ -21,12 +21,21 @@ def get_moorcheh_api_key() -> str:
     Get Moorcheh API key from server configuration.
 
     Returns:
-        API key
+        API key (or a placeholder string when running against the on-prem
+        backend, which does not require an API key).
 
     Raises:
-        HTTPException: If no configured key is found
+        HTTPException: If cloud is selected and no key is configured.
     """
+    from memanto.app.clients.backend import Backend, parse_backend
     from memanto.app.config import settings
+
+    if parse_backend(settings.MEMANTO_BACKEND) == Backend.ON_PREM:
+        # On-prem talks to localhost; routes that take ``moorcheh_api_key`` as
+        # a dependency no longer use it for outbound calls (they go through
+        # ``get_moorcheh_client()``), but the FastAPI signatures still need a
+        # string. Return a placeholder so the dependency resolves.
+        return "on-prem"
 
     if settings.MOORCHEH_API_KEY:
         return settings.MOORCHEH_API_KEY

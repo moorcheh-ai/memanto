@@ -14,6 +14,7 @@ from rich.rule import Rule
 from rich.table import Table
 from rich.text import Text
 
+from memanto.app.clients.backend import Backend
 from memanto.cli.config.manager import ConfigManager
 from memanto.cli.ui.theme import (
     BOLD_BRIGHT,
@@ -85,7 +86,7 @@ def print_logo() -> None:
 
     # Tagline
     tagline = Text()
-    tagline.append("  Memory that AI Agents Love!\n", style="bold white")
+    tagline.append("  Your agents focus. Memanto remembers.\n", style="bold white")
     tagline.append("  powered by ", style="dim")
     tagline.append("moorcheh.ai", style=BOLD_PRIMARY)
     console.print(tagline)
@@ -114,13 +115,21 @@ def show_welcome_banner(config_manager: ConfigManager) -> None:
 
     has_key = config_manager.is_configured()
     config_manager.get_api_key()
+    backend = config_manager.get_backend()
 
     status_table = Table(show_header=False, box=None, padding=(0, 2), show_edge=False)
     status_table.add_column("Label", style="dim", min_width=14)
     status_table.add_column("Value")
 
-    # API Key
-    if has_key:
+    # Backend
+    status_table.add_row("  Backend", backend.value)
+    if backend == Backend.ON_PREM:
+        op = config_manager.get_onprem_config()
+        status_table.add_row("  On-Prem URL", op.get("url", ""))
+        status_table.add_row(
+            "  Embedding", op.get("embedding_provider") or "[dim]—[/dim]"
+        )
+    elif has_key:
         status_table.add_row("  API Key", "[green]●[/green] configured")
     else:
         status_table.add_row("  API Key", "[red]●[/red] not configured")

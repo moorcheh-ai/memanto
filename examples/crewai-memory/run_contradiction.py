@@ -16,8 +16,8 @@ import os
 import sys
 from datetime import datetime
 
+from crewai_memanto import MemantoSetup
 from dotenv import load_dotenv
-from memanto_crewai import MemantoSetup
 
 AGENT_ID = "crewai-contradiction-demo"
 

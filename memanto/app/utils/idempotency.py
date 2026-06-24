@@ -28,13 +28,13 @@ class IdempotencyRecord:
 class IdempotencyStore:
     """In-memory idempotency store (production should use Redis/database)"""
 
-    def __init__(self):
+    def __init__(self) -> None:
         # Storage: idempotency_key -> IdempotencyRecord
         self.records: dict[str, IdempotencyRecord] = {}
         self.last_cleanup = time.time()
         self.cleanup_interval = 3600  # 1 hour
 
-    def _cleanup_expired(self):
+    def _cleanup_expired(self) -> None:
         """Remove expired records"""
         now = time.time()
         if now - self.last_cleanup < self.cleanup_interval:

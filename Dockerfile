@@ -1,12 +1,13 @@
 FROM python:3.12-slim
 
+# Version baked into the image. Override at build time with:
+#   docker build --build-arg VERSION=x.y.z .
+ARG VERSION=0.1.1
+
 # Prevent .pyc files and force stdout/stderr flush (important for container logs)
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
-    # hatch-vcs reads git tags for version; there is no git in this image.
-    # This env var tells setuptools-scm (which hatch-vcs wraps) to use a
-    # fixed version string instead of failing the build.
-    SETUPTOOLS_SCM_PRETEND_VERSION=0.1.0
+    SETUPTOOLS_SCM_PRETEND_VERSION=${VERSION}
 
 WORKDIR /app
 

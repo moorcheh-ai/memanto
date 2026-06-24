@@ -1,0 +1,49 @@
+<svg width="460" height="200" viewBox="-20 -20 460 200" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <style>
+      @keyframes legCycle {
+        0%, 49.9% { opacity: 1; }
+        50%, 100% { opacity: 0; }
+      }
+      @keyframes legCycleAlt {
+        0%, 49.9% { opacity: 0; }
+        50%, 100% { opacity: 1; }
+      }
+      @keyframes eyeWink {
+        0%, 92.7% { opacity: 1; }
+        92.8%, 100% { opacity: 0; }
+      }
+      @keyframes eyeWinkClosed {
+        0%, 92.7% { opacity: 0; }
+        92.8%, 100% { opacity: 1; }
+      }
+      .legs-normal { animation: legCycle 0.32s infinite; }
+      .legs-walk { animation: legCycleAlt 0.32s infinite; }
+      .eye-left-open { animation: eyeWink 2.5s infinite; }
+      .eye-left-closed { animation: eyeWinkClosed 2.5s infinite; }
+    </style>
+  </defs>
+  <rect x="-20" y="-20" width="460" height="200" fill="#111111" rx="20" />
+  <g id="logo-icon" fill="#5534a5">
+    <path d="M 18,0 H 78 V 24 H 66 V 12 H 60 V 24 H 36 V 12 H 30 V 24 H 18 Z M 12,24 H 18 V 48 H 12 Z M 78,24 H 84 V 48 H 78 Z M 18,48 H 78 V 60 H 66 V 72 H 30 V 60 H 18 Z" />
+    <g id="eyes">
+      <g class="eye-left-open">
+        <polygon points="42,28 46,36 42,44 38,36" fill="none" stroke="#5534a5" stroke-width="1.5" />
+        <polygon points="42,32 44,36 42,40 40,36" fill="#5534a5" />
+      </g>
+      <g class="eye-left-closed">
+        <rect x="36" y="34" width="12" height="4" fill="#5534a5" />
+      </g>
+      <polygon points="54,28 58,36 54,44 50,36" fill="none" stroke="#5534a5" stroke-width="1.5" />
+      <polygon points="54,32 56,36 54,40 52,36" fill="#5534a5" />
+    </g>
+    <g class="legs-normal">
+      <path d="M 12,72 H 18 V 108 H 12 Z M 24,72 H 30 V 96 H 24 Z M 36,72 H 42 V 84 H 36 Z M 54,72 H 60 V 84 H 54 Z M 66,72 H 72 V 96 H 66 Z M 78,72 H 84 V 108 H 78 Z" />
+    </g>
+    <g class="legs-walk">
+      <path d="M 12,72 H 18 V 84 H 12 Z M 12,96 H 18 V 108 H 12 Z M 24,72 H 30 V 96 H 24 Z M 36,72 H 42 V 96 H 36 Z M 54,72 H 60 V 96 H 54 Z M 66,72 H 72 V 96 H 66 Z M 78,72 H 84 V 84 H 78 Z M 78,96 H 84 V 108 H 78 Z" />
+    </g>
+  </g>
+  <text x="100" y="86" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace" font-size="80" font-weight="600" fill="#FFFFFF" letter-spacing="-3">Memanto</text>
+  <text x="210" y="150" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace" font-size="22" font-weight="500" fill="#FFFFFF" text-anchor="middle" letter-spacing="4">REMEMBER · RECALL · ANSWER</text>
+</svg>

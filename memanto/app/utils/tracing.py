@@ -60,7 +60,7 @@ class Span:
 class MemantoTracer:
     """Simple tracer for MEMANTO (production should use OpenTelemetry)"""
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.spans: list[Span] = []
 
     def start_trace(self, name: str) -> str:

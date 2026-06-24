@@ -20,7 +20,7 @@
 
 ## Introduction
 
-MEMANTO CLI provides a command-line interface for interacting with MEMANTO (Memory that AI Agents Love!). It enables you to:
+MEMANTO CLI provides a command-line interface for interacting with MEMANTO (Your agents focus. Memanto remembers.). It enables you to:
 
 - Create and manage AI agents
 - Store and retrieve agent memories
@@ -570,7 +570,8 @@ answer:
   model: "anthropic.claude-sonnet-4-6"  # LLM used for answer
   temperature: 0.7        # LLM temperature (0.0–1.0)
   answer_limit: 5         # context memories passed to LLM for `answer`
-  threshold: 0.01         # default threshold for non-kiosk answer calls
+  threshold: 0.15         # similarity floor applied only when kiosk_mode is true
+  kiosk_mode: false       # set true to filter low-relevance results using threshold
 
 # Recall configuration
 recall:

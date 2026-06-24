@@ -14,14 +14,26 @@ from typing import Any
 from crewai.tools import BaseTool
 from pydantic import BaseModel, Field
 
+from memanto.app.utils.errors import AgentAlreadyExistsError
 from memanto.cli.client.sdk_client import SdkClient
 
 logger = logging.getLogger(__name__)
 
-# Valid Memanto memory types for reference in tool descriptions
+# Valid Memanto memory types with definitions for the LLM
 VALID_MEMORY_TYPES = (
-    "fact, preference, goal, decision, artifact, learning, event, "
-    "instruction, relationship, context, observation, commitment, error"
+    "fact (objective truths/data), "
+    "preference (user likes/dislikes), "
+    "goal (objectives/targets), "
+    "decision (choices made/agreed upon), "
+    "artifact (files/code/deliverables), "
+    "learning (insights/lessons learned), "
+    "event (occurrences/meetings), "
+    "instruction (how-tos/directives), "
+    "relationship (connections between entities), "
+    "context (background info/state), "
+    "observation (trends/patterns/notices), "
+    "commitment (promises/next steps), "
+    "error (failures/mistakes)"
 )
 
 
@@ -51,8 +63,11 @@ class MemantoSetup:
                 description=description,
             )
             logger.info("Created Memanto agent '%s'", agent_id)
-        except Exception:
+        except AgentAlreadyExistsError:
             logger.info("Memanto agent '%s' already exists, reusing", agent_id)
+        except Exception as e:
+            logger.error("Failed to create agent '%s': %s", agent_id, e)
+            raise
 
         self.client.activate_agent(agent_id, duration_hours=duration_hours)
         logger.info("Activated session for agent '%s'", agent_id)
@@ -77,8 +92,12 @@ class RememberInput(BaseModel):
 
     memory_type: str = Field(
         ...,
+        pattern=r"^(fact|preference|goal|decision|artifact|learning|event|instruction|relationship|context|observation|commitment|error)$",
         description=(
-            f"The semantic type of memory to store. Must be one of: {VALID_MEMORY_TYPES}"
+            f"The semantic type of memory to store. Must be exactly one of the types "
+            f"(without the description): fact, preference, goal, decision, artifact, "
+            f"learning, event, instruction, relationship, context, observation, "
+            f"commitment, or error. Context definitions: {VALID_MEMORY_TYPES}"
         ),
     )
     title: str = Field(
@@ -87,11 +106,13 @@ class RememberInput(BaseModel):
     )
     content: str = Field(
         ...,
-        description="The memory content to store (max 500 characters). Be concise and atomic.",
+        description="The memory content to store (max 10000 characters). Be concise and atomic.",
     )
     confidence: float = Field(
-        default=0.85,
-        description="Confidence score from 0.0 to 1.0. Use 1.0 for explicit facts, 0.7-0.85 for observations.",
+        ...,
+        ge=0.0,
+        le=1.0,
+        description="Confidence score from 0.0 to 1.0. The agent must evaluate the certainty of the memory. Use 1.0 for verified explicit facts, 0.7-0.85 for observations/estimates, and lower for unverified information.",
     )
     tags: str = Field(
         default="",
@@ -107,8 +128,10 @@ class RecallInput(BaseModel):
         description="Natural language search query to find relevant memories.",
     )
     limit: int = Field(
-        default=5,
-        description="Maximum number of memories to retrieve (1-20).",
+        default=10,
+        ge=1,
+        le=100,
+        description="Maximum number of memories to retrieve.",
     )
     memory_types: str = Field(
         default="",
@@ -116,6 +139,12 @@ class RecallInput(BaseModel):
             "Comma-separated memory types to filter by "
             "(e.g. 'fact,observation'). Leave empty for all types."
         ),
+    )
+    min_similarity: float | None = Field(
+        default=None,
+        ge=0.0,
+        le=1.0,
+        description="Minimum similarity score from 0.0 to 1.0 to filter low-relevance memories.",
     )
 
 
@@ -141,7 +170,7 @@ class MemantoRememberTool(BaseTool):
         "Store a structured memory in Memanto for long-term persistence. "
         "Use this to save facts, observations, decisions, preferences, or any "
         "information that should be available to other agents or future sessions. "
-        "Each memory has a type, title (max 100 chars), content (max 500 chars), "
+        "Each memory has a type, title (max 100 chars), content (max 10000 chars), "
         "confidence score, and optional tags."
     )
     args_schema: type[BaseModel] = RememberInput
@@ -160,7 +189,7 @@ class MemantoRememberTool(BaseTool):
         memory_type: str,
         title: str,
         content: str,
-        confidence: float = 0.85,
+        confidence: float,
         tags: str = "",
     ) -> str:
         tag_list = [t.strip() for t in tags.split(",") if t.strip()] if tags else []
@@ -208,8 +237,9 @@ class MemantoRecallTool(BaseTool):
     def _run(
         self,
         query: str,
-        limit: int = 5,
+        limit: int = 10,
         memory_types: str = "",
+        min_similarity: float | None = None,
     ) -> str:
         type_list = (
             [t.strip() for t in memory_types.split(",") if t.strip()]
@@ -220,8 +250,9 @@ class MemantoRecallTool(BaseTool):
         result = self._client.recall(
             agent_id=self._agent_id,
             query=query,
-            limit=min(limit, 20),
+            limit=limit,
             type=type_list,
+            min_similarity=min_similarity,
         )
 
         memories = result.get("memories", [])

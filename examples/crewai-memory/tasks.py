@@ -16,7 +16,7 @@ def create_research_task(agent: Agent, topic: str = "AI agent frameworks") -> Ta
             "  - An appropriate memory type: 'fact' for data points and statistics, "
             "'observation' for trends and patterns, 'decision' for strategic insights\n"
             "  - A short, descriptive title (under 100 characters)\n"
-            "  - Concise content (under 500 characters) with specific details\n"
+            "  - Concise, atomic content with specific details\n"
             "  - A confidence score (0.9-1.0 for verified facts, 0.7-0.85 for estimates)\n"
             "  - Relevant comma-separated tags (e.g. 'market-size,ai,2026')\n\n"
             "Store at least 5 distinct memories covering: market size, key players, "

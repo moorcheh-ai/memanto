@@ -5,6 +5,8 @@ New session-based architecture endpoints.
 Replaces tenant_id with Moorcheh API key-based authentication.
 """
 
+import asyncio
+
 from fastapi import APIRouter, Depends, HTTPException, Query
 
 from memanto.app.clients import moorcheh as moorcheh_clients
@@ -49,6 +51,26 @@ def get_agent_service():
     return agent_service
 
 
+async def _namespace_item_counts(moorcheh_api_key: str) -> dict[str, int]:
+    """Map namespace_name -> live document count from Moorcheh.
+
+    The ``memory_count`` stored in local agent metadata is never updated after
+    creation, so it is always 0. Moorcheh tracks the authoritative per-namespace
+    document count, which is what the UI should display. Best-effort: returns an
+    empty map if Moorcheh is unreachable so agent listing still succeeds.
+    """
+    try:
+        client = moorcheh_clients.get_moorcheh_client()
+        ns_resp = await asyncio.to_thread(client.namespaces.list)
+        return {
+            ns["namespace_name"]: ns.get("item_count", 0)
+            for ns in ns_resp.get("namespaces", [])
+            if ns.get("namespace_name")
+        }
+    except Exception:
+        return {}
+
+
 # ============================================================================
 # AGENT LIFECYCLE ENDPOINTS
 # ============================================================================
@@ -75,27 +97,40 @@ async def create_agent(
 
 
 @router.get("/agents", response_model=AgentList)
-async def list_agents(_server_api_key: str = Depends(verify_moorcheh_api_key)):
+async def list_agents(moorcheh_api_key: str = Depends(verify_moorcheh_api_key)):
     """
     List all agents for this Moorcheh account
 
-    Returns agents sorted by creation date (newest first).
+    Returns agents sorted by creation date (newest first). The ``memory_count``
+    of each agent is populated with the live document count from its Moorcheh
+    namespace rather than the stale value in local metadata.
     """
-    return agent_service.list_agents()
+    agent_list = agent_service.list_agents()
+    counts = await _namespace_item_counts(moorcheh_api_key)
+    for agent in agent_list.agents:
+        if agent.namespace in counts:
+            agent.memory_count = counts[agent.namespace]
+    return agent_list
 
 
 @router.get("/agents/{agent_id}", response_model=AgentInfo)
 async def get_agent(
-    agent_id: str, _server_api_key: str = Depends(verify_moorcheh_api_key)
+    agent_id: str, moorcheh_api_key: str = Depends(verify_moorcheh_api_key)
 ):
     """
     Get agent information
+
+    ``memory_count`` reflects the live document count from the agent's Moorcheh
+    namespace.
     """
     agent = agent_service.get_agent(agent_id)
     if not agent:
         raise map_error_to_http_exception(
             AgentNotFoundError(f"Agent '{agent_id}' not found")
         )
+    counts = await _namespace_item_counts(moorcheh_api_key)
+    if agent.namespace in counts:
+        agent.memory_count = counts[agent.namespace]
     return agent
 
 
@@ -122,7 +157,7 @@ async def delete_agent(
 
         if delete_backup_too:
             # Delete remote namespace only when explicitly requested.
-            moorcheh_client = moorcheh_clients.MoorchehClient(moorcheh_api_key)
+            moorcheh_client = moorcheh_clients.get_moorcheh_client()
             try:
                 moorcheh_client.namespaces.delete(namespace_name=agent.namespace)
             except Exception:

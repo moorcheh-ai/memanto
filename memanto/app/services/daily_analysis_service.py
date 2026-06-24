@@ -1,16 +1,17 @@
 """
-Daily Summary Service
+Daily Analysis Service
 
-Aggregates session MD files for a specific day and generates an AI summary.
+Aggregates session MD files for a specific day and produces two outputs:
+the AI daily summary and the conflict report.
 """
 
 import json
 from pathlib import Path
 from typing import Any, cast
 
-from moorcheh_sdk import MoorchehClient
-
-from memanto.app.config import settings
+from memanto.app.clients.backend import get_active_llm_model
+from memanto.app.clients.moorcheh import get_moorcheh_client
+from memanto.app.config import get_data_dir, settings
 from memanto.app.core import create_memory_scope
 from memanto.app.services.session_service import get_session_service
 from memanto.app.utils.errors import MemoryError
@@ -20,27 +21,26 @@ from memanto.app.utils.temporal_helpers import (
 )
 
 
-class DailySummaryService:
-    """Service for generating daily summaries from session MD files"""
+class DailyAnalysisService:
+    """Service for analyzing a day's session MD files — generates the
+    daily AI summary and the conflict report.
+    """
 
     def __init__(
         self,
-        api_key: str,
         sessions_dir: Path | None = None,
         summaries_dir: Path | None = None,
     ):
         """
-        Initialize the daily summary service
+        Initialize the daily analysis service.
 
         Args:
-            api_key: Moorcheh API key (passed from DirectClient config)
             sessions_dir: Directory where session MD files are stored
             summaries_dir: Directory where generated summaries will be saved
         """
-        self.api_key = api_key
         self.session_service = get_session_service()
         self.sessions_dir = sessions_dir or self.session_service.sessions_dir
-        self.summaries_dir = summaries_dir or Path.home() / ".memanto" / "summaries"
+        self.summaries_dir = summaries_dir or get_data_dir() / "summaries"
         self.summaries_dir.mkdir(parents=True, exist_ok=True)
 
     def generate_summary(
@@ -69,7 +69,7 @@ class DailySummaryService:
 
         full_text = "\n\n---\n\n".join(combined_content)
 
-        client = MoorchehClient(api_key=self.api_key)
+        client = get_moorcheh_client()
         scope = create_memory_scope("agent", agent_id)
         namespace = scope.to_namespace()
 
@@ -93,7 +93,7 @@ Format the output as a Markdown report:
             result = client.answer.generate(
                 namespace=namespace,
                 query=summary_prompt,
-                ai_model=settings.SUMMARY_MODEL,
+                ai_model=get_active_llm_model(settings.SUMMARY_MODEL),
                 top_k=50,
             )
             summary_text = result.get("answer", "Failed to generate summary.")
@@ -138,7 +138,6 @@ Format the output as a Markdown report:
         """
         Generate a structured conflict report (Contradictions, Conflicts, Updates, Duplicates).
         """
-
         conflicts_dir = Path.home() / ".memanto" / "conflicts"
         conflicts_dir.mkdir(parents=True, exist_ok=True)
 
@@ -155,7 +154,7 @@ Format the output as a Markdown report:
 
         full_text = "\n\n---\n\n".join(combined_content)
 
-        client = MoorchehClient(api_key=self.api_key)
+        client = get_moorcheh_client()
         scope = create_memory_scope("agent", agent_id)
         namespace = scope.to_namespace()
 
@@ -197,7 +196,7 @@ Example response format:
             result = client.answer.generate(
                 namespace=namespace,
                 query=conflict_prompt,
-                ai_model=settings.SUMMARY_MODEL,
+                ai_model=get_active_llm_model(settings.SUMMARY_MODEL),
                 top_k=50,
             )
             conflict_text = result.get("answer", "[]")

@@ -16,8 +16,8 @@ import os
 import sys
 
 from crew import build_full_crew
+from crewai_memanto import MemantoSetup
 from dotenv import load_dotenv
-from memanto_crewai import MemantoSetup
 
 AGENT_ID = "crewai-research-team"
 TOPIC = "AI agent frameworks"
@@ -33,7 +33,7 @@ def main() -> None:
         )
         sys.exit(1)
 
-    llm = os.environ.get("CREWAI_LLM", "openrouter/tencent/hy3-preview:free")
+    llm = os.environ.get("CREWAI_LLM", "openrouter/baidu/cobuddy:free")
 
     # Set up Memanto
     setup = MemantoSetup(api_key)
@@ -55,7 +55,7 @@ def main() -> None:
         print(f"\n{'=' * 60}")
         print("  Pipeline Complete!")
         print(f"{'=' * 60}")
-        print(f"\n{result.raw}")
+        print(f"\n{result}")
     finally:
         setup.teardown(AGENT_ID)
 

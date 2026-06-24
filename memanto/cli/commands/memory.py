@@ -1,8 +1,10 @@
 """
-MEMANTO CLI - Memory commands (remember, recall, answer, daily-summary, conflicts).
+MEMANTO CLI - Memory commands (remember, recall, answer, daily-summary,
+detect-conflicts, conflicts).
 """
 
 import json
+import sys
 import time
 from datetime import datetime
 from pathlib import Path
@@ -29,8 +31,8 @@ from memanto.cli.commands._shared import (
 @app.command()
 def remember(
     content: str | None = typer.Argument(None, help="Memory content to store"),
-    memory_type: str = typer.Option(
-        "fact",
+    memory_type: str | None = typer.Option(
+        None,
         "--type",
         "-t",
         help="Memory type (fact, preference, goal, decision, artifact, learning, event, instruction, relationship, context, observation, commitment, error)",
@@ -54,6 +56,26 @@ def remember(
     batch: str | None = typer.Option(
         None, "--batch", help="Path to JSON file with batch memories (array of objects)"
     ),
+    from_conversation: str | None = typer.Option(
+        None,
+        "--from-conversation",
+        help="Path to JSON conversation messages, or '-' to read from stdin",
+    ),
+    dry_run: bool = typer.Option(
+        False,
+        "--dry-run",
+        help="Preview extracted conversation memories without storing them",
+    ),
+    max_memories: int = typer.Option(
+        20,
+        "--max-memories",
+        help="Maximum memories to extract from a conversation",
+    ),
+    ai_model: str | None = typer.Option(
+        None,
+        "--ai-model",
+        help="Optional model override for conversation extraction",
+    ),
 ):
     """Store a new memory for the active agent.
 
@@ -71,8 +93,86 @@ def remember(
     client = get_client()
     agent_id = active_agent_id
 
+    # Conversation extraction mode
+    if from_conversation:
+        if batch or content:
+            _error(
+                "--from-conversation cannot be combined with CONTENT or --batch.",
+                hint="Use one input mode at a time.",
+            )
+        if max_memories < 1 or max_memories > 100:
+            _error("--max-memories must be between 1 and 100.")
+
+        try:
+            if from_conversation == "-":
+                raw = sys.stdin.read()
+            else:
+                conversation_path = Path(from_conversation)
+                if not conversation_path.exists():
+                    _error(
+                        f"File not found: {from_conversation}",
+                        hint="Provide a valid path to a JSON file.",
+                    )
+                raw = conversation_path.read_text(encoding="utf-8")
+            messages = json.loads(raw)
+        except json.JSONDecodeError as e:
+            _error(
+                f"Invalid JSON: {e}",
+                hint="Conversation file must contain an array of {role, content} objects.",
+            )
+
+        if not isinstance(messages, list):
+            _error("Conversation JSON must contain an array of message objects.")
+
+        try:
+            with console.status(
+                "[cyan]Extracting memories from conversation...", spinner="dots"
+            ):
+                result = client.extract_memories_from_conversation(
+                    agent_id=agent_id,
+                    messages=messages,
+                    dry_run=dry_run,
+                    max_memories=max_memories,
+                    ai_model=ai_model,
+                )
+            elapsed = time.perf_counter() - start
+            candidates = result.get("candidates", [])
+
+            if dry_run:
+                console.print(
+                    f"[yellow]Dry run:[/yellow] extracted {len(candidates)} memory candidate(s)."
+                )
+            else:
+                successful = result.get("successful", 0)
+                failed = result.get("failed", 0)
+                total = result.get("total_submitted", len(candidates))
+                console.print(
+                    f"[green]Stored {successful}/{total} extracted memories[/green]"
+                    + (f" [yellow]({failed} failed)[/yellow]" if failed else "")
+                )
+
+            for i, item in enumerate(candidates, 1):
+                console.print(
+                    Panel(
+                        f"[bold]{item.get('title', 'Untitled')}[/bold]\n\n"
+                        f"{item.get('content', '')}\n\n"
+                        f"[dim]Type: {item.get('type', 'fact')} | "
+                        f"Confidence: {item.get('confidence', 0.8):.2f}[/dim]",
+                        title=f"Candidate {i}",
+                        border_style="yellow" if dry_run else SUCCESS,
+                    )
+                )
+            console.print(f"[dim]Completed in {elapsed:.2f}s[/dim]")
+        except Exception as e:
+            _error(f"Failed to extract memories: {e}")
+
+        return
+
     # Batch mode
     if batch:
+        if dry_run:
+            _error("--dry-run is only supported with --from-conversation.")
+
         batch_path = Path(batch)
         if not batch_path.exists():
             _error(
@@ -163,11 +263,56 @@ def remember(
 
         console.print("[green]Memory stored successfully![/green]")
         console.print(f"[dim]Memory ID: {result.get('memory_id', 'unknown')}[/dim]")
-        console.print(f"[dim]Type: {memory_type} | Confidence: {confidence}[/dim]")
+        parsed_type = result.get("type") or memory_type or "fact"
+        console.print(f"[dim]Type: {parsed_type} | Confidence: {confidence}[/dim]")
         console.print(f"[dim]Completed in {elapsed:.2f}s[/dim]")
 
     except Exception as e:
         _error(f"Failed to store memory: {e}")
+
+
+@app.command()
+def forget(
+    memory_id: str = typer.Argument(..., help="Memory ID to delete"),
+    force: bool = typer.Option(
+        False,
+        "--force",
+        "-f",
+        help="Delete without asking for confirmation",
+    ),
+):
+    """Delete a single memory from the active agent."""
+    start = time.perf_counter()
+    active_agent_id, active_session_token = config_manager.get_active_session()
+
+    if not active_agent_id or not active_session_token:
+        _error(
+            "No active agent.", hint="Run 'memanto agent activate <agent-id>' first."
+        )
+
+    if not force and not typer.confirm(
+        f"Delete memory '{memory_id}' from agent '{active_agent_id}'?"
+    ):
+        console.print("[yellow]Delete cancelled.[/yellow]")
+        return
+
+    client = get_client()
+
+    try:
+        with console.status("[cyan]Deleting memory...", spinner="dots"):
+            result = client.delete_memory(
+                agent_id=active_agent_id,
+                memory_id=memory_id,
+            )
+        elapsed = time.perf_counter() - start
+
+        console.print("[green]Memory deleted successfully![/green]")
+        console.print(f"[dim]Memory ID: {result.get('memory_id', memory_id)}[/dim]")
+        console.print(f"[dim]Agent: {result.get('agent_id', active_agent_id)}[/dim]")
+        console.print(f"[dim]Completed in {elapsed:.2f}s[/dim]")
+
+    except Exception as e:
+        _error(f"Failed to delete memory: {e}")
 
 
 @app.command()
@@ -238,7 +383,8 @@ def upload(
 @app.command()
 def recall(
     query: str | None = typer.Argument(
-        None, help="Search query (optional for --changed-since)"
+        None,
+        help="Search query (omit when using --as-of, --changed-since, or --recent)",
     ),
     limit: int | None = typer.Option(
         None, "--limit", "-n", help="Maximum number of results"
@@ -246,8 +392,8 @@ def recall(
     memory_type: str | None = typer.Option(
         None, "--type", "-t", help="Filter by memory type"
     ),
-    min_confidence: float | None = typer.Option(
-        None, "--min-confidence", help="Minimum confidence score"
+    min_similarity: float | None = typer.Option(
+        None, "--min-similarity", help="Minimum similarity score"
     ),
     tags: str | None = typer.Option(
         None, "--tags", help="Filter by tags (comma-separated)"
@@ -262,6 +408,11 @@ def recall(
         "--changed-since",
         help="Differential query: What changed since this date? (ISO format)",
     ),
+    recent: bool = typer.Option(
+        False,
+        "--recent",
+        help="Chronological query: return the most recently stored memories (newest first). No search query needed.",
+    ),
 ):
     """Search and retrieve memories for the active agent with temporal query support."""
     start = time.perf_counter()
@@ -273,19 +424,19 @@ def recall(
         )
 
     # Check for mutually exclusive temporal flags
-    temporal_flags = [as_of, changed_since]
+    temporal_flags = [as_of, changed_since, recent]
     temporal_count = sum(1 for flag in temporal_flags if flag)
     if temporal_count > 1:
         _error(
             "Cannot use multiple temporal query modes together.",
-            hint="Use only one of: --as-of, --changed-since",
+            hint="Use only one of: --as-of, --changed-since, --recent",
         )
 
     # Temporal queries list memories directly and don't take a query argument.
-    if query and (as_of or changed_since):
+    if query and (as_of or changed_since or recent):
         _error(
             "Cannot provide a search query with temporal flags.",
-            hint="Temporal queries (--as-of, --changed-since) list all memories for that time. Remove the search query to continue.",
+            hint="Temporal queries (--as-of, --changed-since, --recent) list memories directly. Remove the search query to continue.",
         )
 
     client = get_client()
@@ -293,6 +444,8 @@ def recall(
 
     # CLI-side validation for timestamps to fail fast with a clear error
     def _validate_and_parse_timestamp(ts: str, flag_name: str) -> str:
+        """Normalize an ISO or relative timestamp passed to a temporal flag."""
+
         if not ts:
             return ts
 
@@ -339,6 +492,13 @@ def recall(
                     type=type,
                 )
                 temporal_mode = "changed_since"
+            elif recent:
+                results = client.recall_recent(
+                    agent_id=agent_id,
+                    limit=limit,
+                    type=type,
+                )
+                temporal_mode = "recent"
             elif query:
                 # Standard recall
                 results = client.recall(
@@ -347,7 +507,7 @@ def recall(
                     limit=limit,
                     type=type,
                     tags=tag_list,
-                    min_confidence=min_confidence,
+                    min_similarity=min_similarity,
                 )
             else:
                 _error(
@@ -367,6 +527,7 @@ def recall(
         mode_labels = {
             "as_of": f"Point-in-time (as of {as_of})",
             "changed_since": f"Differential (since {changed_since})",
+            "recent": "Recent (newest first)",
             "standard": "Standard search",
         }
         mode_label = mode_labels.get(temporal_mode, "Standard search")
@@ -385,6 +546,10 @@ def recall(
             created = memory.get("created_at") or ""
             status = memory.get("status") or "active"
             change_type = memory.get("change_type")
+            source = memory.get("source") or ""
+            source_ref = memory.get("source_ref") or ""
+            provenance = memory.get("provenance") or ""
+            mem_tags = memory.get("tags") or []
 
             # Determine memory source from ID pattern
             id_str = memory.get("id", "unknown")
@@ -407,10 +572,24 @@ def recall(
             if created:
                 panel_content += f"\n[dim]Created: {format_local_time(created)}[/dim]"
             elif "_summary_" in id_str or "_chunk_" in id_str:
-                file_source = memory.get("source") or ""
-                if file_source:
-                    panel_content += f"\n[dim]Source file: {file_source}[/dim]"
                 panel_content += "\n[dim]Created: not available (file upload)[/dim]"
+
+            # Show provenance metadata. `source` is unified: it holds the
+            # uploaded file name for file-upload memories and the origin
+            # (user, agent, ...) for everything else.
+            origin_parts = []
+            if source:
+                origin_parts.append(f"Source: {source}")
+            if source_ref:
+                origin_parts.append(f"Ref: {source_ref}")
+            if provenance:
+                origin_parts.append(f"Provenance: {provenance}")
+            if origin_parts:
+                panel_content += f"\n[dim]{' | '.join(origin_parts)}[/dim]"
+
+            # Show tags when present
+            if mem_tags:
+                panel_content += f"\n[dim]Tags: {', '.join(mem_tags)}[/dim]"
 
             # Show status for non-standard queries
             if temporal_mode != "standard" and status != "active":
@@ -535,7 +714,6 @@ def daily_summary(
         elapsed = time.perf_counter() - start
 
         summary = result.get("summary", {})
-        conflicts = result.get("conflicts", {})
 
         # Display Summary Status
         if summary.get("status") == "success":
@@ -545,7 +723,73 @@ def daily_summary(
         else:
             console.print(f"[yellow]! Summary:[/yellow] {summary.get('status')}")
 
-        # Display Conflicts Status
+        # Display Auto-Export Status
+        export = result.get("export")
+        if export:
+            if export.get("status") != "error":
+                export_count = export.get("total_memories", 0)
+                console.print(
+                    f"[green]Memory export generated:[/green] {export_count} memories saved to cache"
+                )
+            else:
+                console.print(
+                    f"[yellow]  ! Auto-export failed:[/yellow] {export.get('error')}"
+                )
+
+        console.print(
+            "\n[dim]Conflict detection runs separately. "
+            "Run 'memanto detect-conflicts' or enable the schedule "
+            "with 'memanto schedule enable'.[/dim]"
+        )
+        console.print(f"\n[dim]Completed in {elapsed:.2f}s[/dim]")
+
+    except Exception as e:
+        _error(f"Failed to generate daily summary: {e}")
+
+
+@app.command("detect-conflicts")
+def detect_conflicts(
+    date: str | None = typer.Option(
+        None, "--date", "-d", help="Date in YYYY-MM-DD format (defaults to today)"
+    ),
+    agent_id: str | None = typer.Option(
+        None, "--agent", "-a", help="Agent identifier (defaults to active agent)"
+    ),
+):
+    """Generate the conflict report for an agent/date.
+
+    Runs the LLM conflict-detection pass over the day's session memories
+    and writes the JSON report to ``~/.memanto/conflicts/``. Resolve the
+    detected conflicts interactively with ``memanto conflicts``.
+
+    This is the command the schedule runs — see ``memanto schedule``.
+    """
+    start = time.perf_counter()
+    active_agent_id, _ = config_manager.get_active_session()
+
+    if not agent_id:
+        if not active_agent_id:
+            _error(
+                "No active agent.",
+                hint="Provide an agent ID or run 'memanto agent activate <agent-id>' first.",
+            )
+        agent_id = active_agent_id
+
+    if not date:
+        date = datetime.now().strftime("%Y-%m-%d")
+
+    client = get_client()
+
+    try:
+        with console.status(
+            f"[cyan]Detecting conflicts for '{agent_id}' on {date}...",
+            spinner="dots",
+        ):
+            result = client.generate_conflict_report(agent_id=agent_id, date=date)
+        elapsed = time.perf_counter() - start
+
+        conflicts = result.get("conflicts", {})
+
         if conflicts.get("status") == "success":
             count = conflicts.get("conflict_count", 0)
             console.print(
@@ -563,23 +807,10 @@ def daily_summary(
         else:
             console.print(f"[yellow]! Conflicts:[/yellow] {conflicts.get('status')}")
 
-        # Display Auto-Export Status
-        export = result.get("export")
-        if export:
-            if export.get("status") != "error":
-                export_count = export.get("total_memories", 0)
-                console.print(
-                    f"[green]Memory export generated:[/green] {export_count} memories saved to cache"
-                )
-            else:
-                console.print(
-                    f"[yellow]  ! Auto-export failed:[/yellow] {export.get('error')}"
-                )
-
         console.print(f"\n[dim]Completed in {elapsed:.2f}s[/dim]")
 
     except Exception as e:
-        _error(f"Failed to generate daily summary: {e}")
+        _error(f"Failed to detect conflicts: {e}")
 
 
 @app.command()
@@ -633,7 +864,7 @@ def conflicts(
             f"\n[green]No unresolved conflicts for agent '{agent_id}' on {date}[/green]"
         )
         console.print(
-            "[dim]Run 'memanto daily-summary' to generate a conflict report.[/dim]"
+            "[dim]Run 'memanto detect-conflicts' to generate a conflict report.[/dim]"
         )
         return
 
@@ -746,6 +977,8 @@ def conflicts(
 
         # Prompt options with recommendation markers
         def _opt(key, label, rec_val, current_rec=rec):
+            """Print a conflict-resolution choice with its recommendation marker."""
+
             marker = " [green]<< recommended[/green]" if current_rec == rec_val else ""
             console.print(f"  [{BRIGHT}][{key}][/{BRIGHT}] {label}{marker}")
 

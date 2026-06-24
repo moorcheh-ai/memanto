@@ -12,6 +12,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 from typer.testing import CliRunner
 
+from memanto.app.clients.backend import Backend
 from memanto.cli.main import app
 
 runner = CliRunner()
@@ -27,6 +28,7 @@ COMMAND_MODULES = [
     "memanto.cli.commands.connect",
     "memanto.cli.commands.memory_mgmt",
     "memanto.cli.commands.schedule",
+    "memanto.cli.commands.migrate",
 ]
 
 
@@ -78,6 +80,11 @@ def mock_all_clients():
             }
             mock_cfg.get_recall_config.return_value = {"limit": 10}
             mock_cfg.get_schedule_time.return_value = "23:55"
+            mock_cfg.get_backend.return_value = Backend.CLOUD
+            mock_cfg.get_onprem_config.return_value = {
+                "url": "http://localhost:8080",
+                "embedding_provider": "",
+            }
             mock_cfg.config_dir = "/tmp/.memanto"
             patches.append(p_cfg)
         except (ImportError, AttributeError):
@@ -119,7 +126,7 @@ class TestMEMANTOCLI:
         """Test 'memanto --help'"""
         result = runner.invoke(app, ["--help"])
         assert result.exit_code == 0
-        assert "Memory that AI Agents Love!" in result.stdout
+        assert "Your agents focus. Memanto remembers." in result.stdout
 
     def test_status_command(self, mock_all_clients):
         """Test 'memanto status'"""
@@ -216,6 +223,70 @@ class TestMEMANTOCLI:
         assert result.exit_code == 0
         assert "Found 2 memories" in result.stdout
         assert "Found memory 1" in result.stdout
+
+    def test_recall_recent(self, mock_all_clients):
+        """`memanto recall --recent` lists newest memories chronologically."""
+        mock_all_clients.recall_recent.return_value = {
+            "memories": [
+                {"content": "Newest memory", "score": 0.0, "type": "fact"},
+                {"content": "Older memory", "score": 0.0, "type": "preference"},
+            ],
+            "count": 2,
+        }
+
+        result = runner.invoke(app, ["recall", "--recent", "--limit", "5"])
+        assert result.exit_code == 0
+        assert "Recent (newest first)" in result.stdout
+        assert "Newest memory" in result.stdout
+        mock_all_clients.recall_recent.assert_called_once()
+        call_kwargs = mock_all_clients.recall_recent.call_args.kwargs
+        assert call_kwargs["limit"] == 5
+
+    def test_recall_recent_rejects_query(self, mock_all_clients):
+        """`--recent` is chronological; passing a query alongside is an error."""
+        result = runner.invoke(app, ["recall", "some query", "--recent"])
+        assert result.exit_code != 0
+        assert "Cannot provide a search query" in result.stdout
+
+    def test_recall_rejects_multiple_temporal_flags(self, mock_all_clients):
+        """`--recent` and `--as-of` are mutually exclusive."""
+        result = runner.invoke(app, ["recall", "--recent", "--as-of", "2025-11-01"])
+        assert result.exit_code != 0
+        assert "multiple temporal query modes" in result.stdout
+
+    def test_forget_force(self, mock_all_clients):
+        """Test 'memanto forget --force' deletes a memory without prompting."""
+        mock_all_clients.delete_memory.return_value = {
+            "status": "deleted",
+            "agent_id": "test-agent",
+            "memory_id": "mem-123",
+        }
+
+        result = runner.invoke(app, ["forget", "mem-123", "--force"])
+
+        assert result.exit_code == 0
+        assert "deleted successfully" in result.stdout.lower()
+        assert "mem-123" in result.stdout
+        mock_all_clients.delete_memory.assert_called_once_with(
+            agent_id="test-agent", memory_id="mem-123"
+        )
+
+    def test_forget_cancelled(self, mock_all_clients):
+        """Test 'memanto forget' respects a negative confirmation."""
+        result = runner.invoke(app, ["forget", "mem-123"], input="n\n")
+
+        assert result.exit_code == 0
+        assert "cancelled" in result.stdout.lower()
+        mock_all_clients.delete_memory.assert_not_called()
+
+    def test_forget_not_found(self, mock_all_clients):
+        """Test 'memanto forget' shows a clear client error."""
+        mock_all_clients.delete_memory.side_effect = Exception("Memory not found")
+
+        result = runner.invoke(app, ["forget", "missing-memory", "--force"])
+
+        assert result.exit_code != 0
+        assert "Memory not found" in result.stdout
 
     def test_answer(self, mock_all_clients):
         """Test 'memanto answer'"""
@@ -330,19 +401,119 @@ class TestMEMANTOCLI:
         assert result.exit_code == 0
         assert "Stored 2/2 memories successfully" in result.stdout
 
+    def test_remember_from_conversation_dry_run(self, mock_all_clients, tmp_path):
+        """Test 'memanto remember --from-conversation --dry-run'"""
+        conversation_file = tmp_path / "messages.json"
+        conversation_file.write_text(
+            json.dumps(
+                [
+                    {"role": "user", "content": "I prefer short PR summaries."},
+                    {"role": "assistant", "content": "I will remember that."},
+                ]
+            )
+        )
+        mock_all_clients.extract_memories_from_conversation.return_value = {
+            "dry_run": True,
+            "candidates": [
+                {
+                    "type": "preference",
+                    "title": "PR summary preference",
+                    "content": "The user prefers short PR summaries.",
+                    "confidence": 0.9,
+                }
+            ],
+            "count": 1,
+        }
+
+        result = runner.invoke(
+            app,
+            ["remember", "--from-conversation", str(conversation_file), "--dry-run"],
+        )
+
+        assert result.exit_code == 0
+        assert "Dry run" in result.stdout
+        assert "PR summary preference" in result.stdout
+        mock_all_clients.extract_memories_from_conversation.assert_called_once()
+        call_kwargs = (
+            mock_all_clients.extract_memories_from_conversation.call_args.kwargs
+        )
+        assert call_kwargs["dry_run"] is True
+        assert call_kwargs["messages"][0]["role"] == "user"
+
+    def test_remember_from_conversation_stores_extracted_memories(
+        self, mock_all_clients, tmp_path
+    ):
+        """Conversation extraction stores candidates when dry-run is not used."""
+        conversation_file = tmp_path / "messages.json"
+        conversation_file.write_text(
+            json.dumps([{"role": "user", "content": "The project uses pytest."}])
+        )
+        mock_all_clients.extract_memories_from_conversation.return_value = {
+            "dry_run": False,
+            "successful": 1,
+            "total_submitted": 1,
+            "failed": 0,
+            "candidates": [
+                {
+                    "type": "fact",
+                    "title": "Test framework",
+                    "content": "The project uses pytest.",
+                    "confidence": 0.85,
+                }
+            ],
+        }
+
+        result = runner.invoke(
+            app,
+            ["remember", "--from-conversation", str(conversation_file)],
+        )
+
+        assert result.exit_code == 0
+        assert "Stored 1/1 extracted memories" in result.stdout
+        mock_all_clients.extract_memories_from_conversation.assert_called_once()
+
+    def test_remember_from_conversation_rejects_batch_combo(
+        self, mock_all_clients, tmp_path
+    ):
+        """Conversation extraction is mutually exclusive with batch mode."""
+        conversation_file = tmp_path / "messages.json"
+        conversation_file.write_text(json.dumps([{"role": "user", "content": "x"}]))
+
+        result = runner.invoke(
+            app,
+            [
+                "remember",
+                "--from-conversation",
+                str(conversation_file),
+                "--batch",
+                str(conversation_file),
+            ],
+        )
+
+        assert result.exit_code != 0
+        assert "cannot be combined" in result.stdout
+
     def test_daily_summary(self, mock_all_clients):
-        """Test 'memanto daily-summary'"""
+        """Test 'memanto daily-summary' (summary only — no conflicts)."""
         mock_all_clients.generate_daily_summary.return_value = {
             "summary": {"status": "success", "summary_path": "summary.md"},
+        }
+        result = runner.invoke(app, ["daily-summary"])
+        assert result.exit_code == 0
+        assert "generated" in result.stdout.lower()
+
+    def test_detect_conflicts(self, mock_all_clients):
+        """Test 'memanto detect-conflicts'"""
+        mock_all_clients.generate_conflict_report.return_value = {
             "conflicts": {
                 "status": "success",
                 "conflict_count": 0,
                 "json_path": "conflicts.json",
             },
         }
-        result = runner.invoke(app, ["daily-summary"])
+        result = runner.invoke(app, ["detect-conflicts"])
         assert result.exit_code == 0
-        assert "generated" in result.stdout.lower()
+        assert "conflict report generated" in result.stdout.lower()
 
     def test_conflicts_list(self, mock_all_clients):
         """Test 'memanto conflicts --list'"""
@@ -423,6 +594,206 @@ class TestMEMANTOCLI:
         result = runner.invoke(app, ["connect", "list"])
         assert result.exit_code == 0
         assert "MEMANTO Agent Integrations" in result.stdout
+
+    def test_migrate_help(self):
+        """Test 'memanto migrate --help'"""
+        result = runner.invoke(app, ["migrate", "--help"])
+        assert result.exit_code == 0
+        assert "supermemory" in result.stdout.lower()
+        assert "mem0" in result.stdout.lower()
+        assert "letta" in result.stdout.lower()
+
+    def _write_export_file(self, tmp_path, name, export):
+        """Helper: dump an export dict to JSON so migrate can load it via --file."""
+        path = tmp_path / name
+        path.write_text(json.dumps(export), encoding="utf-8")
+        return path
+
+    def test_migrate_supermemory_dry_run(self, mock_all_clients, tmp_path):
+        """'memanto migrate supermemory --file ... --dry-run' renders a savings report."""
+        export = {
+            "exported_at": "2026-06-04T00:00:00Z",
+            "summary": {
+                "document_count": 2,
+                "chunk_count": 5,
+                "memory_entry_count": 1,
+                "container_tag_count": 1,
+                "connection_count": 0,
+            },
+            "documents": [],
+            "memories": [
+                {"id": "m1", "content": "team uses Python", "container_tag": "eng"},
+            ],
+        }
+        export_file = self._write_export_file(
+            tmp_path, "supermemory_export.json", export
+        )
+
+        # Moorcheh answer endpoint returns a markdown narrative for the report.
+        mock_all_clients.answer.return_value = {
+            "answer": "## Executive summary\nMigrating saves tokens.",
+        }
+
+        with patch("memanto.cli.commands.migrate.config_manager") as mock_cfg:
+            mock_cfg.get_migrate_dir.return_value = tmp_path
+            mock_cfg.get_active_session.return_value = ("test-agent", "test-token")
+            mock_cfg.get_answer_config.return_value = {
+                "model": "anthropic.claude-sonnet-4-6"
+            }
+
+            result = runner.invoke(
+                app,
+                ["migrate", "supermemory", "--file", str(export_file), "--dry-run"],
+            )
+
+        assert result.exit_code == 0, result.stdout
+        assert "Dry run complete" in result.stdout
+
+        reports = list(tmp_path.glob("*/migrate-report.md"))
+        assert len(reports) == 1
+        report_text = reports[0].read_text(encoding="utf-8")
+        assert "Memanto vs. Supermemory" in report_text
+        assert "Executive summary" in report_text
+        assert "Method & assumptions" in report_text
+
+    def test_migrate_mem0_dry_run(self, mock_all_clients, tmp_path):
+        """'memanto migrate mem0 --file ... --dry-run' maps and renders a report."""
+        export = {
+            "exported_at": "2026-06-04T00:00:00Z",
+            "summary": {
+                "entity_count": 2,
+                "scope_count": 2,
+                "memory_count": 2,
+            },
+            "entities": [
+                {"id": "user:alice", "name": "alice", "type": "user"},
+                {"id": "agent:bot", "name": "bot", "type": "agent"},
+            ],
+            "memories": [
+                {"id": "m1", "memory": "User prefers dark mode"},
+                {"id": "m2", "memory": "Timezone is PST"},
+            ],
+        }
+        export_file = self._write_export_file(tmp_path, "mem0_export.json", export)
+
+        mock_all_clients.answer.return_value = {
+            "answer": "## Executive summary\nMigrating from Mem0 saves tokens.",
+        }
+
+        with patch("memanto.cli.commands.migrate.config_manager") as mock_cfg:
+            mock_cfg.get_migrate_dir.return_value = tmp_path
+            mock_cfg.get_active_session.return_value = ("test-agent", "test-token")
+            mock_cfg.get_answer_config.return_value = {
+                "model": "anthropic.claude-sonnet-4-6"
+            }
+
+            result = runner.invoke(
+                app,
+                ["migrate", "mem0", "--file", str(export_file), "--dry-run"],
+            )
+
+        assert result.exit_code == 0, result.stdout
+        assert "Dry run complete" in result.stdout
+
+        reports = list(tmp_path.glob("*/migrate-report.md"))
+        assert len(reports) == 1
+        report_text = reports[0].read_text(encoding="utf-8")
+        assert "Memanto vs. Mem0" in report_text
+        assert "Executive summary" in report_text
+        assert "Method & assumptions" in report_text
+
+    def test_migrate_letta_dry_run(self, mock_all_clients, tmp_path):
+        """'memanto migrate letta --file ... --dry-run' maps and renders a report."""
+        export = {
+            "exported_at": "2026-06-04T00:00:00Z",
+            "export_mode": "all_agents",
+            "summary": {
+                "agent_count": 2,
+                "passage_count": 2,
+                "passage_pages": 2,
+            },
+            "agents": [
+                {"id": "agent-test-123", "name": "lette"},
+                {"id": "agent-test-456", "name": "support-bot"},
+            ],
+            "passages": [
+                {"id": "p1", "text": "User prefers dark mode"},
+                {"id": "p2", "text": "Timezone is PST"},
+            ],
+        }
+        export_file = self._write_export_file(tmp_path, "letta_export.json", export)
+
+        mock_all_clients.answer.return_value = {
+            "answer": "## Executive summary\nMigrating from Letta saves tokens.",
+        }
+
+        with patch("memanto.cli.commands.migrate.config_manager") as mock_cfg:
+            mock_cfg.get_migrate_dir.return_value = tmp_path
+            mock_cfg.get_active_session.return_value = ("test-agent", "test-token")
+            mock_cfg.get_answer_config.return_value = {
+                "model": "anthropic.claude-sonnet-4-6"
+            }
+
+            result = runner.invoke(
+                app,
+                ["migrate", "letta", "--file", str(export_file), "--dry-run"],
+            )
+
+        assert result.exit_code == 0, result.stdout
+        assert "Dry run complete" in result.stdout
+
+        reports = list(tmp_path.glob("*/migrate-report.md"))
+        assert len(reports) == 1
+        report_text = reports[0].read_text(encoding="utf-8")
+        assert "Memanto vs. Letta" in report_text
+        assert "Executive summary" in report_text
+        assert "Method & assumptions" in report_text
+
+    def test_migrate_narrative_retries_on_invalid_session(
+        self, mock_all_clients, tmp_path
+    ):
+        """Migrate re-activates the agent when the Moorcheh session token is invalid."""
+        from memanto.app.utils.errors import InvalidSessionTokenError
+
+        export = {
+            "exported_at": "2026-06-04T00:00:00Z",
+            "export_mode": "all_agents",
+            "summary": {"agent_count": 1, "passage_count": 1},
+            "agents": [{"id": "agent-1", "name": "lette"}],
+            "passages": [{"id": "p1", "text": "hello"}],
+        }
+        export_file = self._write_export_file(tmp_path, "letta_export.json", export)
+
+        mock_all_clients.answer.side_effect = [
+            InvalidSessionTokenError(
+                "Invalid session token: Signature verification failed"
+            ),
+            {"answer": "## Executive summary\nRecovered after re-activation."},
+        ]
+        mock_all_clients.activate_agent.return_value = {
+            "agent_id": "test-agent",
+            "session_token": "new-token",
+        }
+
+        with patch("memanto.cli.commands.migrate.config_manager") as mock_cfg:
+            mock_cfg.get_migrate_dir.return_value = tmp_path
+            mock_cfg.get_active_session.return_value = ("test-agent", "stale-token")
+            mock_cfg.get_answer_config.return_value = {
+                "model": "anthropic.claude-sonnet-4-6"
+            }
+
+            result = runner.invoke(
+                app,
+                ["migrate", "letta", "--file", str(export_file), "--dry-run"],
+            )
+
+        assert result.exit_code == 0, result.stdout
+        mock_all_clients.activate_agent.assert_called_once_with("test-agent")
+        assert mock_all_clients.answer.call_count == 2
+
+        reports = list(tmp_path.glob("*/migrate-report.md"))
+        report_text = reports[0].read_text(encoding="utf-8")
+        assert "Recovered after re-activation." in report_text
 
 
 if __name__ == "__main__":

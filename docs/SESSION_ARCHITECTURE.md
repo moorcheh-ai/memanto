@@ -298,7 +298,7 @@ Parameters:
   question: str
   ai_model: str (optional)
   kiosk_mode: bool (optional)
-  threshold: float (optional, only used when kiosk_mode=true; defaults to 0.10 in kiosk mode)
+  threshold: float (optional, only used when kiosk_mode=true; defaults to 0.15 in kiosk mode)
 
 Response:
 {

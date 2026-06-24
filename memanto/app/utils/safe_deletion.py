@@ -29,7 +29,7 @@ class DeletionAuditRecord:
 class DeletionAuditor:
     """Audit logger for deletion operations"""
 
-    def __init__(self):
+    def __init__(self) -> None:
         # In production, this should write to secure audit log storage
         self.audit_log: list[DeletionAuditRecord] = []
 
@@ -43,7 +43,7 @@ class DeletionAuditor:
         request_id: str,
         success: bool,
         error: str | None = None,
-    ):
+    ) -> None:
         """Log deletion operation"""
         record = DeletionAuditRecord(
             timestamp=datetime.utcnow().isoformat(),

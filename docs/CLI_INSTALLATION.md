@@ -389,7 +389,8 @@ answer:
   model: "anthropic.claude-sonnet-4-6"  # LLM used for answer
   temperature: 0.7        # LLM temperature (0.0–1.0)
   answer_limit: 5         # context memories passed to LLM for `answer`
-  threshold: 0.25         # confidence threshold for memory relevance
+  threshold: 0.15         # similarity floor applied only when kiosk_mode is true
+  kiosk_mode: false       # set true to filter low-relevance results using threshold
 
 # Recall configuration
 recall:

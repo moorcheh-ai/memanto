@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from agents import create_research_agent, create_writer_agent
 from crewai import Crew, Process
-from memanto_crewai import create_memanto_tools
+from crewai_memanto import create_memanto_tools
 from tasks import create_research_task, create_writing_task
 
 from memanto.cli.client.sdk_client import SdkClient
@@ -19,7 +19,7 @@ def build_research_crew(
     client: SdkClient,
     agent_id: str,
     topic: str = "AI agent frameworks",
-    llm: str = "openrouter/tencent/hy3-preview:free",
+    llm: str = "openrouter/baidu/cobuddy:free",
 ) -> Crew:
     """Build a crew with only the Research Agent."""
     tools = create_memanto_tools(client, agent_id)
@@ -39,7 +39,7 @@ def build_writer_crew(
     client: SdkClient,
     agent_id: str,
     topic: str = "AI agent frameworks",
-    llm: str = "openrouter/tencent/hy3-preview:free",
+    llm: str = "openrouter/baidu/cobuddy:free",
 ) -> Crew:
     """Build a crew with only the Writer Agent."""
     tools = create_memanto_tools(client, agent_id)
@@ -59,7 +59,7 @@ def build_full_crew(
     client: SdkClient,
     agent_id: str,
     topic: str = "AI agent frameworks",
-    llm: str = "openrouter/tencent/hy3-preview:free",
+    llm: str = "openrouter/baidu/cobuddy:free",
 ) -> Crew:
     """Build the full pipeline: Research Agent -> Writer Agent."""
     tools = create_memanto_tools(client, agent_id)
