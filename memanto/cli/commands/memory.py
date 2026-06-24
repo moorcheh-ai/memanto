@@ -272,7 +272,6 @@ def remember(
 
 
 @app.command()
-<<<<<<< HEAD
 def edit(
     memory_id: str = typer.Argument(..., help="Memory ID to update"),
     title: str | None = typer.Option(None, "--title", help="New memory title"),

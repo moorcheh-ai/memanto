@@ -1173,6 +1173,7 @@ def _mock_ui_config_manager():
 
 
 class TestCWE200ApiKeyLeak:
+    TEST_AGENT_ID = "test-agent"
     """
     PoC test for CWE-200: API key leaked in plaintext via /api/ui/config endpoint.
     Verify that the raw API key is never returned (it is completely removed).

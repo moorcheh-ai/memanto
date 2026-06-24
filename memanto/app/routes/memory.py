@@ -503,7 +503,6 @@ async def extract_memories_from_conversation(
 
 
 @router.post("/{agent_id}/upload-file", response_model=UploadFileResponse)
->>>>>>> origin/main
 async def upload_file(
     agent_id: str,
     file: UploadFile = File(
