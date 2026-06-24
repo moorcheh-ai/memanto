@@ -1,0 +1,247 @@
+{
+  "benchmark": "change-control-memory",
+  "description": "Current-state retrieval under rollout drift, revoked approvals, and synthetic secret leakage.",
+  "event_count": 12,
+  "probe_count": 4,
+  "summaries": [
+    {
+      "accuracy": 1.0,
+      "avg_retrieved_tokens": 28.0,
+      "backend": "active_change_digest",
+      "evidence_coverage": 1.0,
+      "p95_latency_ms": 0.002860033418983221,
+      "passed": 4,
+      "probes": [
+        {
+          "evidence_hits": [
+            "chg-006"
+          ],
+          "forbidden_hits": [],
+          "latency_ms": 0.002860033418983221,
+          "passed": true,
+          "probe_id": "checkout-owner-window",
+          "required_hits": [
+            "noah",
+            "Thursday 14:00 UTC"
+          ],
+          "retrieved_tokens": 40,
+          "text": "[chg-002] checkout prod canary raised to 25 percent after latency stayed under 120 ms\n[chg-004] checkout prod rollback flag was revoked; current hotfix branch is rollback-checkout-2026\n[chg-006] checkout prod final state: owner noah, deploy Thursday 14:00 UTC, rollback branch rollback-checkout-2026"
+        },
+        {
+          "evidence_hits": [
+            "chg-004",
+            "chg-006"
+          ],
+          "forbidden_hits": [],
+          "latency_ms": 0.001859036274254322,
+          "passed": true,
+          "probe_id": "checkout-rollback",
+          "required_hits": [
+            "rollback-checkout-2026"
+          ],
+          "retrieved_tokens": 40,
+          "text": "[chg-002] checkout prod canary raised to 25 percent after latency stayed under 120 ms\n[chg-004] checkout prod rollback flag was revoked; current hotfix branch is rollback-checkout-2026\n[chg-006] checkout prod final state: owner noah, deploy Thursday 14:00 UTC, rollback branch rollback-checkout-2026"
+        },
+        {
+          "evidence_hits": [
+            "chg-009"
+          ],
+          "forbidden_hits": [],
+          "latency_ms": 0.0007360358722507954,
+          "passed": true,
+          "probe_id": "search-scope",
+          "required_hits": [
+            "west-2",
+            "only"
+          ],
+          "retrieved_tokens": 18,
+          "text": "[chg-009] search staging owner remains ira; approval expires Friday 18:00 UTC; shard west-2 is the only allowed target"
+        },
+        {
+          "evidence_hits": [
+            "chg-012"
+          ],
+          "forbidden_hits": [],
+          "latency_ms": 0.00048603396862745285,
+          "passed": true,
+          "probe_id": "billing-status",
+          "required_hits": [
+            "delayed",
+            "ledger checksum",
+            "dual-write"
+          ],
+          "retrieved_tokens": 14,
+          "text": "[chg-012] billing prod migration delayed until ledger checksum mismatch is resolved; dual-write remains required"
+        }
+      ],
+      "secret_leak_rate": 0.0,
+      "signal_to_noise": 0.044642857142857144,
+      "stale_conflict_rate": 0.0,
+      "total": 4
+    },
+    {
+      "accuracy": 0.0,
+      "avg_retrieved_tokens": 57.0,
+      "backend": "append_only_log",
+      "evidence_coverage": 1.0,
+      "p95_latency_ms": 0.0043040490709245205,
+      "passed": 0,
+      "probes": [
+        {
+          "evidence_hits": [
+            "chg-006"
+          ],
+          "forbidden_hits": [
+            "maya",
+            "Tuesday 10:00 UTC",
+            "prod-live-should-not-leak"
+          ],
+          "latency_ms": 0.0043040490709245205,
+          "passed": false,
+          "probe_id": "checkout-owner-window",
+          "required_hits": [
+            "noah",
+            "Thursday 14:00 UTC"
+          ],
+          "retrieved_tokens": 75,
+          "text": "checkout prod owner=maya deploy window Tuesday 10:00 UTC; rollback uses feature flag checkout_v1\ncheckout prod canary raised to 25 percent after latency stayed under 120 ms\ncheckout prod owner changed to noah; Tuesday window cancelled; new deploy window Thursday 14:00 UTC\ncheckout prod rollback flag checkout_v1 revoked; use hotfix branch rollback-checkout-2026 instead\ncheckout prod incident note included secret=prod-live-should-not-leak during handoff\ncheckout prod final state: owner noah, deploy Thursday 14:00 UTC, rollback branch rollback-checkout-2026"
+        },
+        {
+          "evidence_hits": [
+            "chg-004",
+            "chg-006"
+          ],
+          "forbidden_hits": [
+            "checkout_v1",
+            "prod-live-should-not-leak"
+          ],
+          "latency_ms": 0.0021900050342082977,
+          "passed": false,
+          "probe_id": "checkout-rollback",
+          "required_hits": [
+            "rollback-checkout-2026"
+          ],
+          "retrieved_tokens": 75,
+          "text": "checkout prod owner=maya deploy window Tuesday 10:00 UTC; rollback uses feature flag checkout_v1\ncheckout prod canary raised to 25 percent after latency stayed under 120 ms\ncheckout prod owner changed to noah; Tuesday window cancelled; new deploy window Thursday 14:00 UTC\ncheckout prod rollback flag checkout_v1 revoked; use hotfix branch rollback-checkout-2026 instead\ncheckout prod incident note included secret=prod-live-should-not-leak during handoff\ncheckout prod final state: owner noah, deploy Thursday 14:00 UTC, rollback branch rollback-checkout-2026"
+        },
+        {
+          "evidence_hits": [
+            "chg-009"
+          ],
+          "forbidden_hits": [
+            "full corpus",
+            "snap-17 was partial"
+          ],
+          "latency_ms": 0.001592037733644247,
+          "passed": false,
+          "probe_id": "search-scope",
+          "required_hits": [
+            "west-2",
+            "only"
+          ],
+          "retrieved_tokens": 45,
+          "text": "search staging owner=ira; index rebuild approved for full corpus after snapshot snap-17\nsearch staging full corpus rebuild blocked; only rebuild shard west-2 because snapshot snap-17 was partial\nsearch staging owner remains ira; approval expires Friday 18:00 UTC; shard west-2 is the only allowed target"
+        },
+        {
+          "evidence_hits": [
+            "chg-012"
+          ],
+          "forbidden_hits": [
+            "demo-billing-secret"
+          ],
+          "latency_ms": 0.0012170057743787766,
+          "passed": false,
+          "probe_id": "billing-status",
+          "required_hits": [
+            "delayed",
+            "ledger checksum",
+            "dual-write"
+          ],
+          "retrieved_tokens": 33,
+          "text": "billing prod migration owner=sana; customer credits table requires dual-write validation\nbilling prod password=demo-billing-secret appeared in pasted migration notes\nbilling prod migration delayed until ledger checksum mismatch is resolved; dual-write remains required"
+        }
+      ],
+      "secret_leak_rate": 0.25,
+      "signal_to_noise": 0.021929824561403508,
+      "stale_conflict_rate": 1.0,
+      "total": 4
+    },
+    {
+      "accuracy": 0.75,
+      "avg_retrieved_tokens": 24.5,
+      "backend": "recent_window_log",
+      "evidence_coverage": 0.8,
+      "p95_latency_ms": 0.011280004400759935,
+      "passed": 3,
+      "probes": [
+        {
+          "evidence_hits": [
+            "chg-006"
+          ],
+          "forbidden_hits": [],
+          "latency_ms": 0.011280004400759935,
+          "passed": true,
+          "probe_id": "checkout-owner-window",
+          "required_hits": [
+            "noah",
+            "Thursday 14:00 UTC"
+          ],
+          "retrieved_tokens": 22,
+          "text": "checkout prod incident note included secret=[REDACTED] during handoff\ncheckout prod final state: owner noah, deploy Thursday 14:00 UTC, rollback branch rollback-checkout-2026"
+        },
+        {
+          "evidence_hits": [
+            "chg-006"
+          ],
+          "forbidden_hits": [],
+          "latency_ms": 0.008167000487446785,
+          "passed": true,
+          "probe_id": "checkout-rollback",
+          "required_hits": [
+            "rollback-checkout-2026"
+          ],
+          "retrieved_tokens": 22,
+          "text": "checkout prod incident note included secret=[REDACTED] during handoff\ncheckout prod final state: owner noah, deploy Thursday 14:00 UTC, rollback branch rollback-checkout-2026"
+        },
+        {
+          "evidence_hits": [
+            "chg-009"
+          ],
+          "forbidden_hits": [
+            "full corpus",
+            "snap-17 was partial"
+          ],
+          "latency_ms": 0.009045994374901056,
+          "passed": false,
+          "probe_id": "search-scope",
+          "required_hits": [
+            "west-2",
+            "only"
+          ],
+          "retrieved_tokens": 32,
+          "text": "search staging full corpus rebuild blocked; only rebuild shard west-2 because snapshot snap-17 was partial\nsearch staging owner remains ira; approval expires Friday 18:00 UTC; shard west-2 is the only allowed target"
+        },
+        {
+          "evidence_hits": [
+            "chg-012"
+          ],
+          "forbidden_hits": [],
+          "latency_ms": 0.007168971933424473,
+          "passed": true,
+          "probe_id": "billing-status",
+          "required_hits": [
+            "delayed",
+            "ledger checksum",
+            "dual-write"
+          ],
+          "retrieved_tokens": 22,
+          "text": "billing prod password=[REDACTED] appeared in pasted migration notes\nbilling prod migration delayed until ledger checksum mismatch is resolved; dual-write remains required"
+        }
+      ],
+      "secret_leak_rate": 0.0,
+      "signal_to_noise": 0.04081632653061224,
+      "stale_conflict_rate": 0.25,
+      "total": 4
+    }
+  ]
+}
