@@ -39,6 +39,11 @@ from memanto.app.services.conversation_memory_extraction_service import (
 )
 from memanto.app.services.memory_read_service import MemoryReadService
 from memanto.app.services.memory_write_service import MemoryWriteService
+from memanto.app.upload_limits import (
+    MAX_UPLOAD_FILE_SIZE,
+    UPLOAD_CHUNK_SIZE,
+    file_too_large_detail,
+)
 from memanto.app.utils.errors import AuthorizationError, map_error_to_http_exception
 from memanto.app.utils.validation import CostGuard
 from memanto.cli.client.direct_client import DirectClient
@@ -47,8 +52,6 @@ from memanto.cli.config.manager import ConfigManager
 router = APIRouter()
 
 _config_manager = ConfigManager()
-MAX_UPLOAD_FILE_SIZE = 5 * 1024 * 1024 * 1024  # 5GB
-UPLOAD_CHUNK_SIZE = 1024 * 1024
 
 
 class RecallRequest(BaseModel):
@@ -555,12 +558,7 @@ async def upload_file(
         if file_size_hint is not None and file_size_hint > MAX_UPLOAD_FILE_SIZE:
             raise HTTPException(
                 status_code=413,
-                detail={
-                    "error": "file_too_large",
-                    "message": f"File exceeds maximum size of {MAX_UPLOAD_FILE_SIZE} bytes",
-                    "actual_size": file_size_hint,
-                    "max_size": MAX_UPLOAD_FILE_SIZE,
-                },
+                detail=file_too_large_detail(file_size_hint),
             )
 
         tmp_dir = tempfile.mkdtemp()
@@ -581,12 +579,7 @@ async def upload_file(
                     if total_size > MAX_UPLOAD_FILE_SIZE:
                         raise HTTPException(
                             status_code=413,
-                            detail={
-                                "error": "file_too_large",
-                                "message": f"File exceeds maximum size of {MAX_UPLOAD_FILE_SIZE} bytes",
-                                "actual_size": total_size,
-                                "max_size": MAX_UPLOAD_FILE_SIZE,
-                            },
+                            detail=file_too_large_detail(total_size),
                         )
                     tmp.write(chunk)
             result = await asyncio.to_thread(

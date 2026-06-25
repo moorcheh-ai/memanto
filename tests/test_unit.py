@@ -268,6 +268,36 @@ class TestMemoryWriteServiceDelete:
         assert MemoryWriteService(client).delete_memory("m1", "ns") is expected
 
 
+class TestRequestBodyLimitMiddleware:
+    def test_rejects_oversized_content_length_before_route(self):
+        """Oversized requests should be rejected before endpoint execution."""
+        from fastapi import FastAPI
+        from fastapi.testclient import TestClient
+
+        from memanto.app.middleware.body_size_limit import RequestBodyLimitMiddleware
+
+        app = FastAPI()
+        called = False
+
+        @app.post("/upload")
+        async def upload():
+            nonlocal called
+            called = True
+            return {"ok": True}
+
+        app.add_middleware(
+            RequestBodyLimitMiddleware,
+            max_request_body_size=5,
+            max_upload_size=5,
+        )
+
+        response = TestClient(app).post("/upload", content=b"123456")
+
+        assert response.status_code == 413
+        assert response.json()["detail"]["error"] == "file_too_large"
+        assert called is False
+
+
 class TestForgetEndToEnd:
     """End-to-end ``forget`` flow through ``DirectClient``: create agent →
     activate → delete_memory. Asserts on-prem's response shape

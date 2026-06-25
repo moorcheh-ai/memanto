@@ -12,6 +12,7 @@ from moorcheh_sdk.exceptions import AuthenticationError, NamespaceNotFound
 from memanto.app import __version__
 from memanto.app.clients.backend import Backend, parse_backend
 from memanto.app.config import settings
+from memanto.app.middleware.body_size_limit import RequestBodyLimitMiddleware
 from memanto.app.routes import health, sessions
 from memanto.app.ui.routes.ui_router import mount_ui_static
 from memanto.app.ui.routes.ui_router import router as ui_router
@@ -71,6 +72,8 @@ app = FastAPI(
     redoc_url="/redoc",
     lifespan=lifespan,
 )
+
+app.add_middleware(RequestBodyLimitMiddleware)
 
 # Add CORS middleware
 app.add_middleware(
