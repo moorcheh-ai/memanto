@@ -4,6 +4,8 @@ Authentication Dependencies for V2 API
 Shared authentication utilities to avoid circular imports.
 """
 
+import hmac
+
 from fastapi import Header, HTTPException
 
 from memanto.app.models.session import Session
@@ -46,13 +48,58 @@ def get_moorcheh_api_key() -> str:
     )
 
 
-def verify_moorcheh_api_key() -> str:
-    """
-    Return configured Moorcheh API key.
+def _extract_request_api_key(
+    authorization: str | None,
+    x_api_key: str | None,
+) -> str | None:
+    """Extract an API key from supported request headers."""
+    if x_api_key:
+        return x_api_key.strip()
+    if authorization:
+        scheme, _, value = authorization.partition(" ")
+        if scheme.lower() == "bearer" and value.strip():
+            return value.strip()
+    return None
 
-    Runtime connectivity is validated at startup and via /health.
+
+def verify_moorcheh_api_key(
+    authorization: str | None = Header(default=None),
+    x_api_key: str | None = Header(default=None),
+) -> str:
     """
-    return get_moorcheh_api_key()
+    Verify that the caller supplied the configured Moorcheh API key.
+
+    Agent lifecycle routes mint session tokens and can delete local/remote
+    namespaces, so they must authenticate the request itself instead of only
+    checking that the server has a configured outbound Moorcheh key.
+    """
+    configured_key = get_moorcheh_api_key()
+    provided_key = _extract_request_api_key(authorization, x_api_key)
+
+    if configured_key == "on-prem":
+        from memanto.app.config import settings
+
+        expected_key = settings.MOORCHEH_API_KEY.strip()
+        if not expected_key:
+            raise HTTPException(
+                status_code=500,
+                detail=(
+                    "Server misconfigured: MOORCHEH_API_KEY is not set for API "
+                    "authentication"
+                ),
+            )
+    else:
+        expected_key = configured_key.strip()
+
+    if not provided_key:
+        raise HTTPException(
+            status_code=401,
+            detail="Missing API key. Use Authorization: Bearer <MOORCHEH_API_KEY> or X-API-Key.",
+        )
+    if not hmac.compare_digest(provided_key, expected_key):
+        raise HTTPException(status_code=403, detail="Invalid API key")
+
+    return configured_key
 
 
 def get_current_session(x_session_token: str | None = Header(None)) -> Session:

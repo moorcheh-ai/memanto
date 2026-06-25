@@ -159,15 +159,30 @@ class TestMEMANTOAPI:
         assert "metadata" not in data
 
     @pytest.mark.asyncio
-    async def test_create_agent_without_authorization_header(self, client):
-        """Test creating a new agent using server-configured API key"""
+    async def test_create_agent_requires_authorization_header(self, client):
+        """Creating a new agent requires a request API key."""
         payload = {
             "agent_id": "server-key-agent",
             "pattern": "support",
         }
         response = await client.post("/api/v2/agents", json=payload)
+        assert response.status_code == 401
+        assert "Missing API key" in response.json()["detail"]
+
+    @pytest.mark.asyncio
+    async def test_create_agent_accepts_x_api_key_header(self, client):
+        """X-API-Key is accepted as an alternative to Authorization."""
+        payload = {
+            "agent_id": "x-api-key-agent",
+            "pattern": "support",
+        }
+        response = await client.post(
+            "/api/v2/agents",
+            headers={"X-API-Key": settings.MOORCHEH_API_KEY},
+            json=payload,
+        )
         assert response.status_code == 201
-        assert response.json()["agent_id"] == "server-key-agent"
+        assert response.json()["agent_id"] == "x-api-key-agent"
 
     @pytest.mark.asyncio
     async def test_create_agent_fails_when_server_key_missing(self, client):
@@ -208,6 +223,22 @@ class TestMEMANTOAPI:
         assert "session_token" in data
         assert "session_id" in data
         assert data["agent_id"] == self.TEST_AGENT_ID
+
+    @pytest.mark.asyncio
+    async def test_activate_session_requires_authorization_header(
+        self, client, auth_headers
+    ):
+        """Unauthenticated callers cannot mint a session token."""
+        await client.post(
+            "/api/v2/agents",
+            headers=auth_headers,
+            json={"agent_id": self.TEST_AGENT_ID, "pattern": "support"},
+        )
+
+        response = await client.post(f"/api/v2/agents/{self.TEST_AGENT_ID}/activate")
+
+        assert response.status_code == 401
+        assert "session_token" not in response.text
 
     @pytest.mark.asyncio
     async def test_remember_with_session(self, client, auth_headers, mock_moorcheh):
@@ -499,7 +530,7 @@ class TestMEMANTOAPI:
             f"/api/v2/agents/{self.TEST_AGENT_ID}/activate", headers=auth_headers
         )
 
-        response = await client.get("/api/v2/status")
+        response = await client.get("/api/v2/status", headers=auth_headers)
         assert response.status_code == 200
         data = response.json()
         assert data["agent_id"] == self.TEST_AGENT_ID
