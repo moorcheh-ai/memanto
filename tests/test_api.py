@@ -648,6 +648,31 @@ class TestMEMANTOAPI:
         assert "ended_at" in data
 
     @pytest.mark.asyncio
+    async def test_deactivate_agent_rejects_session_agent_mismatch(
+        self, client, auth_headers
+    ):
+        """Deactivate must reject a token for another agent with 403, not 500."""
+        app.dependency_overrides[get_current_session] = lambda: Session(
+            session_id="sess-test",
+            session_token="token-test",
+            agent_id="other-agent",
+            namespace="memanto_agent_other-agent",
+            started_at=datetime.utcnow(),
+            expires_at=datetime.utcnow() + timedelta(hours=1),
+        )
+        try:
+            response = await client.post(
+                f"/api/v2/agents/{self.TEST_AGENT_ID}/deactivate",
+                headers=auth_headers,
+            )
+        finally:
+            app.dependency_overrides.clear()
+
+        assert response.status_code == 403
+        assert "other-agent" in response.json()["detail"]
+        assert self.TEST_AGENT_ID in response.json()["detail"]
+
+    @pytest.mark.asyncio
     async def test_global_status(self, client, auth_headers):
         """Test GET /api/v2/status returns active session info without auth params"""
         await client.post(
