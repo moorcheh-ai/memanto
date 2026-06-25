@@ -197,8 +197,8 @@ class MemoryReadService:
                 metadata_filters=metadata_filters,
             )
 
-            # Build query parameters
-            top_k = limit
+            # Over-fetch because TTL enforcement happens after search results return.
+            top_k = min(max(limit * 2, limit), 100)
 
             # Perform cross-namespace search. Same kiosk_mode caveat as
             # search_memories: min_similarity=0.0 means "no filter".
@@ -218,7 +218,7 @@ class MemoryReadService:
                 self._format_memory_item(item)
                 for item in search_result.get("results", [])
             ]
-            formatted_results = self._filter_expired_memories(formatted_results)
+            formatted_results = self._filter_expired_memories(formatted_results)[:limit]
 
             return {
                 "results": formatted_results,

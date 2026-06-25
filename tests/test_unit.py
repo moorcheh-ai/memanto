@@ -293,8 +293,8 @@ class TestMemoryReadService:
         ]
         client.similarity_search.query.assert_called_once()
 
-    def test_search_multi_scope_filters_expired_memories(self):
-        """Multi-scope search should enforce the same TTL rules as single-scope search."""
+    def test_search_multi_scope_over_fetches_before_filtering_expired_memories(self):
+        """Multi-scope search should over-fetch before TTL filtering."""
         from memanto.app.services.memory_read_service import MemoryReadService
 
         client = MagicMock()
@@ -310,6 +310,16 @@ class TestMemoryReadService:
                     "text": "active memory",
                     "metadata": {"expires_at": "2999-01-01T00:00:00Z"},
                 },
+                {
+                    "id": "second-active",
+                    "text": "second active memory",
+                    "metadata": {"expires_at": "2999-01-01T00:00:00Z"},
+                },
+                {
+                    "id": "third-active",
+                    "text": "third active memory",
+                    "metadata": {"expires_at": "2999-01-01T00:00:00Z"},
+                },
             ],
             "execution_time": 0,
         }
@@ -317,10 +327,16 @@ class TestMemoryReadService:
         result = MemoryReadService(client).search_multi_scope(
             query="deployment preference",
             scopes=[{"scope_type": "agent", "scope_id": "alpha"}],
+            limit=2,
         )
 
-        assert [item["id"] for item in result["results"]] == ["active"]
-        assert result["total_found"] == 1
+        assert [item["id"] for item in result["results"]] == [
+            "active",
+            "second-active",
+        ]
+        assert result["total_found"] == 2
+        client.similarity_search.query.assert_called_once()
+        assert client.similarity_search.query.call_args.kwargs["top_k"] == 4
 
 
 class TestForgetEndToEnd:
