@@ -1,0 +1,16 @@
+.git
+.gitignore
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+.env
+results.json
+RESULTS.md
+*.csv
+.vscode
+.idea
+*.swp
+.DS_Store

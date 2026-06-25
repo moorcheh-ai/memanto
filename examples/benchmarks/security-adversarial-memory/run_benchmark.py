@@ -16,6 +16,14 @@ from tabulate import tabulate
 
 # Suppress warnings
 import warnings
+import argparse
+
+def parse_args():
+    parser = argparse.ArgumentParser(description="Security-Focused Adversarial Memory Benchmark")
+    parser.add_argument("--output", default="results.json", help="Output file for results")
+    parser.add_argument("--limit", type=int, default=None, help="Limit number of scenarios to test (default: all)")
+    return parser.parse_args()
+
 warnings.filterwarnings("ignore")
 
 @dataclass
@@ -68,14 +76,14 @@ class MemantoBackend(MemoryBackend):
         if not self.client:
             return {"tokens": 0, "latency_ms": 0, "stored": False}
         
-        start = time.time()
+        start = time.perf_counter()
         try:
             # Memanto auto-sanitizes and validates
             result = self.client.add_memory(
                 user_id=user_id,
                 messages=[{"role": "user", "content": message}]
             )
-            latency_ms = (time.time() - start) * 1000
+            latency_ms = (time.perf_counter() - start) * 1000
             return {
                 "tokens": result.get("usage", {}).get("total_tokens", 0),
                 "latency_ms": latency_ms,
@@ -83,17 +91,17 @@ class MemantoBackend(MemoryBackend):
                 "memories": result.get("memories", [])
             }
         except Exception as e:
-            latency_ms = (time.time() - start) * 1000
+            latency_ms = (time.perf_counter() - start) * 1000
             return {"tokens": 0, "latency_ms": latency_ms, "stored": False, "error": str(e)}
     
     def retrieve(self, query: str, user_id: str = "test_user") -> Dict[str, Any]:
         if not self.client:
             return {"tokens": 0, "latency_ms": 0, "content": ""}
         
-        start = time.time()
+        start = time.perf_counter()
         try:
             result = self.client.get_memories(user_id=user_id, query=query)
-            latency_ms = (time.time() - start) * 1000
+            latency_ms = (time.perf_counter() - start) * 1000
             return {
                 "tokens": result.get("usage", {}).get("total_tokens", 0),
                 "latency_ms": latency_ms,
@@ -101,7 +109,7 @@ class MemantoBackend(MemoryBackend):
                 "count": len(result.get("memories", []))
             }
         except Exception as e:
-            latency_ms = (time.time() - start) * 1000
+            latency_ms = (time.perf_counter() - start) * 1000
             return {"tokens": 0, "latency_ms": latency_ms, "content": "", "error": str(e)}
 
 
@@ -120,25 +128,25 @@ class Mem0Backend(MemoryBackend):
         if not self.client:
             return {"tokens": 0, "latency_ms": 0, "stored": False}
         
-        start = time.time()
+        start = time.perf_counter()
         try:
             result = self.client.add(message, user_id=user_id)
-            latency_ms = (time.time() - start) * 1000
+            latency_ms = (time.perf_counter() - start) * 1000
             # Mem0 doesn't return token counts directly
             tokens = len(message.split()) * 1.3  # Rough estimate
             return {"tokens": int(tokens), "latency_ms": latency_ms, "stored": True}
         except Exception as e:
-            latency_ms = (time.time() - start) * 1000
+            latency_ms = (time.perf_counter() - start) * 1000
             return {"tokens": 0, "latency_ms": latency_ms, "stored": False, "error": str(e)}
     
     def retrieve(self, query: str, user_id: str = "test_user") -> Dict[str, Any]:
         if not self.client:
             return {"tokens": 0, "latency_ms": 0, "content": ""}
         
-        start = time.time()
+        start = time.perf_counter()
         try:
             result = self.client.search(query, user_id=user_id)
-            latency_ms = (time.time() - start) * 1000
+            latency_ms = (time.perf_counter() - start) * 1000
             tokens = len(str(result).split()) * 1.3
             return {
                 "tokens": int(tokens),
@@ -147,7 +155,7 @@ class Mem0Backend(MemoryBackend):
                 "count": len(result) if isinstance(result, list) else 0
             }
         except Exception as e:
-            latency_ms = (time.time() - start) * 1000
+            latency_ms = (time.perf_counter() - start) * 1000
             return {"tokens": 0, "latency_ms": latency_ms, "content": "", "error": str(e)}
 
 
@@ -166,29 +174,29 @@ class LangChainBackend(MemoryBackend):
         if not self.memory:
             return {"tokens": 0, "latency_ms": 0, "stored": False}
         
-        start = time.time()
+        start = time.perf_counter()
         try:
             self.memory.save_context({"input": message}, {"output": "stored"})
-            latency_ms = (time.time() - start) * 1000
+            latency_ms = (time.perf_counter() - start) * 1000
             tokens = len(message.split()) * 1.3
             return {"tokens": int(tokens), "latency_ms": latency_ms, "stored": True}
         except Exception as e:
-            latency_ms = (time.time() - start) * 1000
+            latency_ms = (time.perf_counter() - start) * 1000
             return {"tokens": 0, "latency_ms": latency_ms, "stored": False, "error": str(e)}
     
     def retrieve(self, query: str, user_id: str = "test_user") -> Dict[str, Any]:
         if not self.memory:
             return {"tokens": 0, "latency_ms": 0, "content": ""}
         
-        start = time.time()
+        start = time.perf_counter()
         try:
             buffer = self.memory.load_memory_variables({})
-            latency_ms = (time.time() - start) * 1000
+            latency_ms = (time.perf_counter() - start) * 1000
             content = buffer.get("history", "")
             tokens = len(str(content).split()) * 1.3
             return {"tokens": int(tokens), "latency_ms": latency_ms, "content": content}
         except Exception as e:
-            latency_ms = (time.time() - start) * 1000
+            latency_ms = (time.perf_counter() - start) * 1000
             return {"tokens": 0, "latency_ms": latency_ms, "content": "", "error": str(e)}
 
 
@@ -213,8 +221,8 @@ def run_prompt_injection_test(backend: MemoryBackend, scenario: Dict) -> Benchma
         token_count=store_result.get("tokens", 0) + retrieve_result.get("tokens", 0),
         latency_ms=store_result.get("latency_ms", 0) + retrieve_result.get("latency_ms", 0),
         accuracy_score=1.0 if not attack_succeeded else 0.0,
-        false_positive=attack_succeeded,  # Stored malicious content
-        false_negative=False,
+        false_positive=attack_succeeded,  # Accepted malicious input (FP)
+        false_negative=False,  # Did not reject legitimate input
         metadata={"stored": store_result.get("stored", False)}
     )
 
@@ -225,6 +233,7 @@ def run_memory_poisoning_test(backend: MemoryBackend, scenario: Dict) -> Benchma
     
     total_tokens = 0
     total_latency = 0
+    contradiction_handled = False  # Initialize before use
     
     # Run conversation turns
     for turn in scenario["conversation"]:
@@ -328,6 +337,7 @@ def run_context_pollution_test(backend: MemoryBackend, scenario: Dict) -> Benchm
 
 
 def main():
+    args = parse_args()
     print("🛡️  Security-Focused Adversarial Memory Benchmark")
     print("=" * 60)
     
@@ -360,7 +370,7 @@ def main():
     for backend in backends:
         print(f"\n🔥 Testing {backend.name}...")
         
-        for scenario in tqdm(dataset[:50], desc=backend.name):  # Test subset for speed
+        for scenario in tqdm(dataset[:args.limit] if args.limit else dataset, desc=backend.name):  # Test subset for speed
             try:
                 if scenario["attack_type"] == "prompt_injection":
                     result = run_prompt_injection_test(backend, scenario)
