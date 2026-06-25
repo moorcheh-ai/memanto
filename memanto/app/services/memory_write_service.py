@@ -361,9 +361,9 @@ class MemoryWriteService:
                     if result["status"] == "pending":
                         result["status"] = moorcheh_status
 
-            # Count successes and failures
+            # Count successes and failures (rejections count as failures)
             successful = sum(1 for r in results if r["status"] in ["queued", "success"])
-            failed = sum(1 for r in results if r["status"] == "failed")
+            failed = sum(1 for r in results if r["status"] in {"failed", "rejected"})
 
             return {
                 "total_submitted": len(memories),
@@ -471,23 +471,14 @@ class MemoryWriteService:
                 if metadata.get("expires_at"):
                     updated_memory.expires_at = metadata["expires_at"]
 
-            # Step 3: Delete old version
-            delete_result = self.client.documents.delete(
-                namespace_name=namespace, ids=[memory_id]
-            )
-
-            if delete_result.get("actual_deletions", 0) == 0:
-                raise MemoryError(f"Failed to delete old version of memory {memory_id}")
-
             # Defense in depth: re-run safety + validation on the post-merge
-            # memory before it is re-uploaded. An attacker who can craft
-            # `updates` could otherwise inject oversized content, control
-            # characters, or prompt-injection payloads via the update path.
+            # memory BEFORE destructive delete. A rejected or oversized update
+            # must not leave the memory deleted with no replacement.
             update_warnings = _safety_check_memory(updated_memory)
 
             try:
                 validation_result = self.validation_service.validate_memory(
-                    updated_memory, None
+                    updated_memory, context
                 )
             except ValidationError as exc:
                 raise MemoryError(f"validation rejected update: {exc}") from exc
@@ -502,7 +493,15 @@ class MemoryWriteService:
             if update_warnings and "warnings" not in validation_result:
                 validation_result["warnings"] = update_warnings
 
-            # Step 4: Upload new version
+            # Step 4: Delete old version (now safe — replacement validated)
+            delete_result = self.client.documents.delete(
+                namespace_name=namespace, ids=[memory_id]
+            )
+
+            if delete_result.get("actual_deletions", 0) == 0:
+                raise MemoryError(f"Failed to delete old version of memory {memory_id}")
+
+            # Step 5: Upload new version
             from typing import cast
 
             from moorcheh_sdk.types.document import Document
