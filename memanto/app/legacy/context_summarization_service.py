@@ -11,12 +11,16 @@ from typing import Any, cast
 from moorcheh_sdk import MoorchehClient
 
 from memanto.app.config import settings
-from memanto.app.constants import ScopeType
+from memanto.app.constants import ScopeType, VALID_SCOPE_TYPES
 from memanto.app.core import MemoryRecord
 from memanto.app.services.memory_read_service import MemoryReadService
 from memanto.app.services.memory_write_service import MemoryWriteService
 from memanto.app.utils.errors import MemoryError
 from memanto.app.utils.ids import generate_memory_id
+
+
+def _normalize_scope_type(scope_type: str) -> ScopeType:
+    return cast(ScopeType, scope_type if scope_type in VALID_SCOPE_TYPES else "agent")
 
 
 class ContextSummarizationService:
@@ -124,12 +128,7 @@ Provide a clear, organized summary that an AI agent could use to understand the 
             if link_to_originals:
                 summary_metadata["original_memory_ids"] = memory_ids
 
-            resolved_scope_type = cast(
-                ScopeType,
-                scope_type
-                if scope_type in {"user", "workspace", "agent", "session"}
-                else "agent",
-            )
+            resolved_scope_type = _normalize_scope_type(scope_type)
             summary_memory = MemoryRecord(
                 id=generate_memory_id(),
                 type="context",  # Use 'context' type for summaries
@@ -223,12 +222,7 @@ Create a clear, organized summary preserving key information."""
             if not summary_text:
                 raise MemoryError("Failed to generate summary")
 
-            resolved_scope_type = cast(
-                ScopeType,
-                scope_type
-                if scope_type in {"user", "workspace", "agent", "session"}
-                else "agent",
-            )
+            resolved_scope_type = _normalize_scope_type(scope_type)
             # Create and store summary memory
             summary_memory = MemoryRecord(
                 id=generate_memory_id(),

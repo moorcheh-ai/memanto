@@ -354,6 +354,12 @@ class TestMEMANTOArchitecture:
         import asyncio
 
         from memanto.app.core import validate_namespace_format
+        from memanto.app.legacy.context_summarization_service import (
+            _normalize_scope_type as normalize_summary_scope_type,
+        )
+        from memanto.app.legacy.universal_services import (
+            _normalize_scope_type as normalize_universal_scope_type,
+        )
         from memanto.app.routes.namespaces import check_namespace_exists, delete_namespace
         from memanto.app.services.memory_read_service import MemoryReadService
         from memanto.app.services.namespace_service import NamespaceService
@@ -395,6 +401,13 @@ class TestMEMANTOArchitecture:
         assert asyncio.run(
             check_namespace_exists("task", "ticket-123", client=exists_client)
         ) == {"exists": True}
+
+        assert normalize_summary_scope_type("project") == "project"
+        assert normalize_summary_scope_type("task") == "task"
+        assert normalize_summary_scope_type("unknown") == "agent"
+        assert normalize_universal_scope_type("project") == "project"
+        assert normalize_universal_scope_type("task") == "task"
+        assert normalize_universal_scope_type("unknown") == "agent"
 
     def test_no_tenant_id_in_namespace(self):
         """Verify namespace format does NOT include tenant_id"""

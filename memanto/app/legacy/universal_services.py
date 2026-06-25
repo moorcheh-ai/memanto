@@ -8,6 +8,7 @@ from typing import Any, cast
 from memanto.app.clients.moorcheh import get_async_moorcheh_client, get_moorcheh_client
 from memanto.app.constants import (
     VALID_MEMORY_TYPES,
+    VALID_SCOPE_TYPES,
     MemoryType,
     ProvenanceType,
     ScopeType,
@@ -28,6 +29,10 @@ from memanto.app.utils.logging import get_logger
 logger = get_logger(__name__)
 
 
+def _normalize_scope_type(scope_type: str) -> ScopeType:
+    return cast(ScopeType, scope_type if scope_type in VALID_SCOPE_TYPES else "agent")
+
+
 class MemoryExplainService:
     """Service for explaining memory retrieval decisions"""
 
@@ -39,11 +44,10 @@ class MemoryExplainService:
 
         # Compute namespace for routing explanation
         scope_type_raw = str(request.scope.get("type", "agent"))
-        if scope_type_raw not in {"user", "workspace", "agent", "session"}:
-            scope_type_raw = "agent"
+        scope_type = _normalize_scope_type(scope_type_raw)
         scope_id = str(request.scope.get("id", tenant_id))
 
-        scope_obj = create_memory_scope(cast(ScopeType, scope_type_raw), scope_id)
+        scope_obj = create_memory_scope(scope_type, scope_id)
         namespace = cast(str, scope_obj.to_namespace())
 
         client = get_async_moorcheh_client()
@@ -220,8 +224,7 @@ class MemorySupersedeService:
             raise ValueError("superseding_memory.content is required")
 
         scope_type_raw = str(new_memory_data.get("scope_type", "agent"))
-        if scope_type_raw not in {"user", "workspace", "agent", "session"}:
-            scope_type_raw = "agent"
+        scope_type = _normalize_scope_type(scope_type_raw)
 
         scope_id = str(new_memory_data.get("scope_id", tenant_id))
         title = str(new_memory_data.get("title") or content[:50])
@@ -246,7 +249,7 @@ class MemorySupersedeService:
                 type=resolved_memory_type,
                 title=title,
                 content=content,
-                scope_type=cast(ScopeType, scope_type_raw),
+                scope_type=scope_type,
                 scope_id=scope_id,
                 actor_id=str(new_memory_data.get("actor_id", tenant_id)),
                 confidence=confidence,
@@ -298,11 +301,10 @@ class MemoryExportService:
         """Export memories for a scope"""
 
         scope_type_raw = str(request.scope.get("type", "agent"))
-        if scope_type_raw not in {"user", "workspace", "agent", "session"}:
-            scope_type_raw = "agent"
+        scope_type = _normalize_scope_type(scope_type_raw)
         scope_id = str(request.scope.get("id", tenant_id))
 
-        scope_obj = create_memory_scope(cast(ScopeType, scope_type_raw), scope_id)
+        scope_obj = create_memory_scope(scope_type, scope_id)
         namespace = cast(str, scope_obj.to_namespace())
 
         client = get_async_moorcheh_client()
