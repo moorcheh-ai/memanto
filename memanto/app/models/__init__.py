@@ -479,3 +479,4 @@ class AnswerResponse(BaseModel):
     answer: str
     sources: list[Any] = Field(default_factory=list)
     namespace: str
+    confidence: float = 0.0

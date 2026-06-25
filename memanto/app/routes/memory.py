@@ -39,6 +39,7 @@ from memanto.app.services.conversation_memory_extraction_service import (
 from memanto.app.services.memory_read_service import MemoryReadService
 from memanto.app.services.memory_write_service import MemoryWriteService
 from memanto.app.utils.errors import AuthorizationError, map_error_to_http_exception
+from memanto.app.utils.rate_limiting import enforce_answer_rate_limit
 from memanto.app.utils.validation import CostGuard
 from memanto.cli.client.direct_client import DirectClient
 from memanto.cli.config.manager import ConfigManager
@@ -638,6 +639,9 @@ async def answer(
             detail=f"Session is for agent '{session.agent_id}', cannot access '{agent_id}'",
         )
 
+    # Rate limiting
+    enforce_answer_rate_limit(agent_id)
+
     client = get_moorcheh_client()
 
     # Resolve defaults from settings
@@ -695,6 +699,16 @@ async def answer(
         answer = response.get("answer", "No answer generated.")
         sources = response.get("sources", [])
 
+        # Derive confidence from source scores (same logic as PR #791)
+        if not sources:
+            confidence = 0.0
+        else:
+            scores = [s.get("score") for s in sources if s.get("score") is not None]
+            if scores:
+                confidence = sum(scores) / len(scores)
+            else:
+                confidence = 1.0
+
         return {
             "agent_id": agent_id,
             "session_id": session.session_id,
@@ -702,6 +716,7 @@ async def answer(
             "answer": answer,
             "sources": sources,
             "namespace": namespace,
+            "confidence": confidence,
         }
 
     except Exception as e:
