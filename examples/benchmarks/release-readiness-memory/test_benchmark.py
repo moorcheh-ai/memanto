@@ -2,7 +2,14 @@
 
 import unittest
 
-from run_benchmark import ActiveReleaseDigest, AppendOnlyLog, iter_events, load_dataset, run
+from run_benchmark import (
+    ActiveReleaseDigest,
+    AppendOnlyLog,
+    MemantoServiceBackend,
+    iter_events,
+    load_dataset,
+    run,
+)
 
 
 class ReleaseReadinessBenchmarkTest(unittest.TestCase):
@@ -13,11 +20,30 @@ class ReleaseReadinessBenchmarkTest(unittest.TestCase):
 
         report = run()
         by_backend = {result["backend"]: result for result in report["results"]}
+        self.assertEqual(by_backend["memanto_service"]["accuracy"], 1.0)
         self.assertEqual(by_backend["active_release_digest"]["accuracy"], 1.0)
         self.assertLess(
             by_backend["append_only_log"]["accuracy"],
-            by_backend["active_release_digest"]["accuracy"],
+            by_backend["memanto_service"]["accuracy"],
         )
+
+    def test_memanto_service_filters_superseded_and_secret_memories(self) -> None:
+        """Memanto services should retrieve only active memories for each topic."""
+
+        events = list(iter_events(load_dataset()))
+        backend = MemantoServiceBackend(events)
+        retrieved = backend.retrieve(["release_gate", "deploy_target", "secret"])
+        facts = [event.fact for event in retrieved]
+        self.assertIn(
+            "Current release gate requires unit tests and contract tests only.", facts
+        )
+        self.assertIn(
+            "Current deploy verification should point at preview URL until maintainer approves.",
+            facts,
+        )
+        self.assertFalse(any("docs smoke" in fact for fact in facts))
+        self.assertFalse(any("production alias" in fact for fact in facts))
+        self.assertFalse(any("API_TOKEN" in fact for fact in facts))
 
     def test_active_digest_suppresses_secret_events(self) -> None:
         """Active digest should never return synthetic secret events."""
