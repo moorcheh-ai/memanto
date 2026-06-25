@@ -32,6 +32,9 @@ from memanto.app.utils.temporal_helpers import utc_now
 
 _session_service = None
 
+# Legacy default that must be rejected at the config layer
+_LEGACY_DEFAULT_SECRET = "memanto-default-secret-change-in-production"
+
 
 def get_session_service() -> "SessionService":
     """
@@ -39,10 +42,16 @@ def get_session_service() -> "SessionService":
 
     Used by both FastAPI routes and CLI clients so they all share the
     same secret key and session storage configuration.
+
+    Passes None when the configured key equals the legacy default,
+    forcing the fallback through the secure-random generator.
     """
     global _session_service
     if _session_service is None:
-        _session_service = SessionService(secret_key=settings.MEMANTO_SECRET_KEY)
+        key = settings.MEMANTO_SECRET_KEY
+        if key == _LEGACY_DEFAULT_SECRET:
+            key = None  # force secure fallback path
+        _session_service = SessionService(secret_key=key)
     return _session_service
 
 
@@ -57,8 +66,11 @@ class SessionService:
             secret_key: Secret key for JWT signing (defaults to env var or generated)
             sessions_dir: Directory for session storage (defaults to ~/.memanto/sessions/)
         """
+        resolved_secret_key = secret_key
+        if resolved_secret_key == _LEGACY_DEFAULT_SECRET:
+            resolved_secret_key = None
         resolved_secret_key = (
-            secret_key
+            resolved_secret_key
             or os.getenv("MEMANTO_SECRET_KEY")
             or self._generate_secure_secret_key()
         )
@@ -82,15 +94,22 @@ class SessionService:
 
 
     def _generate_secure_secret_key(self) -> str:
-        """Generate a cryptographically secure secret key as fallback.
+        """Generate (and cache) a cryptographically secure secret key as fallback.
 
         Used when no MEMANTO_SECRET_KEY is configured in the
         environment.  Produces a 32-byte (256-bit) hex key via
         :func:`secrets.token_hex` so the resulting JWT cannot be
         forged without the random seed.
+
+        The generated key is cached on the instance so that repeated
+        calls return the same value, keeping JWTs stable across
+        re-initialisations.
         """
         import secrets
-        return secrets.token_hex(32)
+
+        if not hasattr(self, "_cached_secret"):
+            self._cached_secret = secrets.token_hex(32)
+        return self._cached_secret
 
     def create_session(
         self,

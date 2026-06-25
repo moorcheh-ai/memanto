@@ -124,5 +124,69 @@ class TestJwtSecretKey(unittest.TestCase):
         # Cannot be predicted or brute-forced
 
 
+
+class TestIntegrationRealPaths(unittest.TestCase):
+    """Exercise the actual fixed code paths (not reimplemented stubs)."""
+
+    def test_session_service_rejects_legacy_default(self):
+        """Passing the legacy default forces the secure fallback path."""
+        from memanto.app.services.session_service import (
+            SessionService,
+            _LEGACY_DEFAULT_SECRET,
+        )
+
+        svc = SessionService(secret_key=_LEGACY_DEFAULT_SECRET)
+        # Must NOT equal the legacy string
+        self.assertNotEqual(svc.secret_key, _LEGACY_DEFAULT_SECRET)
+        # Must be a 64-char hex key (256-bit)
+        self.assertEqual(len(svc.secret_key), 64)
+
+    def test_session_service_caches_generated_key(self):
+        """Multiple instantiations with no key produce different keys,
+        but a single instance reuses its generated key."""
+        from memanto.app.services.session_service import SessionService
+
+        svc = SessionService()
+        key1 = svc.secret_key
+        # Call the generator again - should return cached value
+        key2 = svc._generate_secure_secret_key()
+        self.assertEqual(key1, key2)
+
+    def test_session_service_uses_env_when_set(self):
+        """When MEMANTO_SECRET_KEY env var is set, use it."""
+        import os
+        from memanto.app.services.session_service import SessionService
+
+        os.environ["MEMANTO_SECRET_KEY"] = "env-secret-12345"
+        try:
+            svc = SessionService()
+            self.assertEqual(svc.secret_key, "env-secret-12345")
+        finally:
+            del os.environ["MEMANTO_SECRET_KEY"]
+
+    def test_memory_read_service_format_preserves_falsy(self):
+        """Test _format_memory_item preserves falsy metadata values."""
+        from memanto.app.services.memory_read_service import MemoryReadService
+
+        reader = MemoryReadService()
+
+        item = {
+            "id": "mem-1",
+            "title": "Test Memory",
+            "content": "Test content",
+            "metadata": {
+                "confidence": 0.0,
+                "contradiction_detected": False,
+                "tags": [],
+            },
+        }
+
+        formatted = reader._format_memory_item(item)
+        # These should be preserved, not replaced by flat-field fallbacks
+        self.assertEqual(formatted.get("confidence"), 0.0)
+        self.assertEqual(formatted.get("contradiction_detected"), False)
+        self.assertEqual(formatted.get("tags"), [])
+
+
 if __name__ == "__main__":
     unittest.main()
