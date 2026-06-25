@@ -49,6 +49,11 @@ def _load_tenant_api_keys() -> dict:
                 raise ValueError(
                     f"entry for key '{api_key}' must be a JSON object"
                 )
+            if not api_key.startswith("tk_"):
+                raise ValueError(
+                    f"API key '{api_key[:8]}…' does not start with 'tk_' — "
+                    "all keys in MEMANTO_TENANT_API_KEYS must use the 'tk_' prefix"
+                )
             missing = _REQUIRED_ENTRY_FIELDS - entry.keys()
             if missing:
                 raise ValueError(
