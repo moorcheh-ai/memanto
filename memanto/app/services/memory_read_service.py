@@ -9,7 +9,6 @@ from typing import TYPE_CHECKING, Any, cast
 if TYPE_CHECKING:
     from moorcheh_sdk import MoorchehClient
 
-from memanto.app.clients.backend import get_active_llm_model
 from memanto.app.config import settings
 from memanto.app.core import create_memory_scope
 from memanto.app.utils.errors import MemoryError
@@ -104,17 +103,13 @@ class MemoryReadService:
             requested_limit = limit + offset
             top_k = min(requested_limit, 100)  # Moorcheh max is 100
 
-            # Perform search with server-side filtering.
-            # Only enable kiosk_mode when the caller actually set a positive
-            # threshold; min_similarity=0.0 means "no filter", but on-prem
-            # kiosk_mode + threshold=0.0 still filters everything out.
-            use_kiosk = min_similarity_score is not None and min_similarity_score > 0
+            # Perform search with server-side filtering
             search_result = self.client.similarity_search.query(
                 query=enhanced_query,
                 namespaces=namespaces,
                 top_k=top_k,
-                threshold=min_similarity_score if use_kiosk else None,
-                kiosk_mode=use_kiosk,
+                threshold=min_similarity_score,
+                kiosk_mode=min_similarity_score is not None,
             )
 
             search_items = search_result.get("results", [])
@@ -200,17 +195,13 @@ class MemoryReadService:
             # Build query parameters
             top_k = limit
 
-            # Perform cross-namespace search. Same kiosk_mode caveat as
-            # search_memories: min_similarity=0.0 means "no filter".
-            use_kiosk = (
-                min_similarity_score is not None and 0 < min_similarity_score <= 1
-            )
+            # Perform cross-namespace search
             search_result = self.client.similarity_search.query(
                 query=enhanced_query,
                 namespaces=namespaces,
                 top_k=top_k,
-                threshold=min_similarity_score if use_kiosk else None,
-                kiosk_mode=use_kiosk,
+                threshold=min_similarity_score,
+                kiosk_mode=min_similarity_score is not None,
             )
 
             # Format results
@@ -237,7 +228,7 @@ class MemoryReadService:
         agent_id: str,
         type: list[str] | None = None,
         tags: list[str] | None = None,
-        limit: int | None = 10,
+        limit: int = 10,
     ) -> dict[str, Any]:
         """
         Point-in-time query: "What was true at this point in time?"
@@ -301,14 +292,18 @@ class MemoryReadService:
                 valid_memories.append(memory)
 
             # Apply limit
-            if limit is not None:
-                valid_memories = valid_memories[:limit]
+            valid_memories = valid_memories[:limit]
+
+            # Warn callers when the 100-item fetch cap may have silently excluded memories.
+            fetch_was_capped = len(all_memories) >= 100
 
             return {
                 "results": valid_memories,
                 "total_found": len(valid_memories),
                 "as_of_date": as_of_date,
                 "temporal_mode": "as_of",
+                "truncated": fetch_was_capped,
+                "fetch_limit": 100 if fetch_was_capped else None,
             }
 
         except Exception as e:
@@ -320,7 +315,7 @@ class MemoryReadService:
         agent_id: str,
         type: list[str] | None = None,
         tags: list[str] | None = None,
-        limit: int | None = 10,
+        limit: int = 10,
     ) -> dict[str, Any]:
         """
         Differential retrieval: "What changed recently?"
@@ -385,8 +380,7 @@ class MemoryReadService:
             )
 
             # Apply limit
-            if limit is not None:
-                changed_memories = changed_memories[:limit]
+            changed_memories = changed_memories[:limit]
 
             return {
                 "results": changed_memories,
@@ -402,7 +396,7 @@ class MemoryReadService:
         self,
         agent_id: str,
         type: list[str] | None = None,
-        limit: int | None = 10,
+        limit: int = 10,
     ) -> dict[str, Any]:
         """
         Retrieve the most recently stored memories, sorted by created_at descending.
@@ -433,7 +427,7 @@ class MemoryReadService:
 
             unique_memories.sort(key=_created_sort_key, reverse=True)
 
-            results = unique_memories if limit is None else unique_memories[:limit]
+            results = unique_memories[:limit]
             return {"results": results, "total_found": len(results)}
 
         except Exception as e:
@@ -450,26 +444,17 @@ class MemoryReadService:
         documents.fetch_text_data endpoint, applying optional type/tag filters
         and de-duplicating by id.
 
-        Iterates through all pages using cursor-based pagination (next_token)
-        so results are not truncated at the 100-item per-page cap.
+        Note: Moorcheh's fetch_text_data currently returns up to 100 items per
+        namespace and does not paginate.
         """
         items: list[Any] = []
         for ns in namespaces:
-            next_token: str | None = None
-            while True:
-                kwargs: dict[str, Any] = {"namespace_name": ns, "limit": 100}
-                if next_token:
-                    kwargs["next_token"] = next_token
-                result = self.client.documents.fetch_text_data(**kwargs)
-                if not isinstance(result, dict):
-                    break
+            try:
+                result = self.client.documents.fetch_text_data(namespace_name=ns)
+            except Exception:
+                continue
+            if isinstance(result, dict):
                 items.extend(result.get("items", []) or [])
-                pagination = result.get("pagination") or {}
-                if not pagination.get("has_more"):
-                    break
-                next_token = pagination.get("next_token")
-                if not next_token:
-                    break
 
         seen_ids: set[str] = set()
         memories: list[dict[str, Any]] = []
@@ -666,14 +651,10 @@ class MemoryReadService:
                     raise MemoryError("No namespaces found")
                 namespace = namespaces[0]
 
-            # Generate answer. Omit ai_model when on-prem state has no LLM
-            # configured so the on-prem server uses its own default; the
-            # cloud SDK requires a string so don't pass None there.
-            gen_kwargs: dict = {"namespace": namespace, "query": query}
-            _model = get_active_llm_model(settings.ANSWER_MODEL)
-            if _model is not None:
-                gen_kwargs["ai_model"] = _model
-            answer_result = self.client.answer.generate(**gen_kwargs)
+            # Generate answer
+            answer_result = self.client.answer.generate(
+                namespace=namespace, query=query, ai_model=settings.ANSWER_MODEL
+            )
 
             return {
                 "answer": answer_result["answer"],
@@ -830,7 +811,6 @@ class MemoryReadService:
             "ttl_seconds": get_field("ttl_seconds"),
             "actor_id": get_field("actor_id"),
             "source": get_field("source"),
-            "source_ref": get_field("source_ref"),
             "scope_type": get_field("scope_type"),
             "scope_id": get_field("scope_id"),
             "score": item.get("score"),  # Search relevance score
