@@ -293,6 +293,35 @@ class TestMemoryReadService:
         ]
         client.similarity_search.query.assert_called_once()
 
+    def test_search_multi_scope_filters_expired_memories(self):
+        """Multi-scope search should enforce the same TTL rules as single-scope search."""
+        from memanto.app.services.memory_read_service import MemoryReadService
+
+        client = MagicMock()
+        client.similarity_search.query.return_value = {
+            "results": [
+                {
+                    "id": "expired",
+                    "text": "expired memory",
+                    "metadata": {"expires_at": "2000-01-01T00:00:00Z"},
+                },
+                {
+                    "id": "active",
+                    "text": "active memory",
+                    "metadata": {"expires_at": "2999-01-01T00:00:00Z"},
+                },
+            ],
+            "execution_time": 0,
+        }
+
+        result = MemoryReadService(client).search_multi_scope(
+            query="deployment preference",
+            scopes=[{"scope_type": "agent", "scope_id": "alpha"}],
+        )
+
+        assert [item["id"] for item in result["results"]] == ["active"]
+        assert result["total_found"] == 1
+
 
 class TestForgetEndToEnd:
     """End-to-end ``forget`` flow through ``DirectClient``: create agent →
