@@ -648,11 +648,11 @@ class MemoryReadService:
             if scope_type and scope_id:
                 from typing import cast
 
-                from memanto.app.constants import ScopeType
+                from memanto.app.constants import ScopeType, VALID_SCOPE_TYPES
 
                 scope_type_resolved = (
                     scope_type
-                    if scope_type in {"user", "workspace", "agent", "session"}
+                    if scope_type in VALID_SCOPE_TYPES
                     else "agent"
                 )
                 scope = create_memory_scope(
@@ -694,9 +694,11 @@ class MemoryReadService:
 
         if scope_type and scope_id:
             # Search specific scope
+            from memanto.app.constants import VALID_SCOPE_TYPES
+
             scope_type_resolved = (
                 scope_type
-                if scope_type in {"user", "workspace", "agent", "session"}
+                if scope_type in VALID_SCOPE_TYPES
                 else "agent"
             )
             scope = create_memory_scope(cast(ScopeType, scope_type_resolved), scope_id)

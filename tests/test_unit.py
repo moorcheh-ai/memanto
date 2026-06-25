@@ -352,6 +352,7 @@ class TestMEMANTOArchitecture:
     def test_project_and_task_namespaces_are_valid(self):
         """Project/task scopes are valid ScopeType values and must pass validation."""
         from memanto.app.core import validate_namespace_format
+        from memanto.app.services.memory_read_service import MemoryReadService
         from memanto.app.services.namespace_service import NamespaceService
 
         assert validate_namespace_format("memanto_project_roadmap-2026")
@@ -370,6 +371,14 @@ class TestMEMANTOArchitecture:
             "memanto_project_roadmap-2026", type="text"
         )
         client.namespaces.create.assert_any_call("memanto_task_ticket-123", type="text")
+
+        reader = MemoryReadService(client)
+        assert reader._get_search_namespaces("project", "roadmap-2026") == [
+            "memanto_project_roadmap-2026"
+        ]
+        assert reader._get_search_namespaces("task", "ticket-123") == [
+            "memanto_task_ticket-123"
+        ]
 
     def test_no_tenant_id_in_namespace(self):
         """Verify namespace format does NOT include tenant_id"""
