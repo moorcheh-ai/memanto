@@ -338,6 +338,36 @@ class TestMEMANTOAPI:
         assert self.TEST_AGENT_ID in response.json()["detail"]
 
     @pytest.mark.asyncio
+    async def test_extract_memories_rejects_session_agent_mismatch(
+        self, client, auth_headers
+    ):
+        """Extraction must reject a token for another agent with 403, not 500."""
+        app.dependency_overrides[get_current_session] = lambda: Session(
+            session_id="sess-test",
+            session_token="token-test",
+            agent_id="other-agent",
+            namespace="memanto_agent_other-agent",
+            started_at=datetime.utcnow(),
+            expires_at=datetime.utcnow() + timedelta(hours=1),
+        )
+        try:
+            response = await client.post(
+                f"/api/v2/agents/{self.TEST_AGENT_ID}/remember/extract",
+                headers=auth_headers,
+                json={
+                    "messages": [
+                        {"role": "user", "content": "I prefer concise updates."}
+                    ]
+                },
+            )
+        finally:
+            app.dependency_overrides.clear()
+
+        assert response.status_code == 403
+        assert "other-agent" in response.json()["detail"]
+        assert self.TEST_AGENT_ID in response.json()["detail"]
+
+    @pytest.mark.asyncio
     async def test_edit_memory_returns_404_when_missing(self, client, auth_headers):
         """Test that the edit endpoint returns 404 when the target memory does not exist.
 

@@ -421,10 +421,9 @@ async def extract_memories_from_conversation(
     /batch-remember.
     """
     if session.agent_id != agent_id:
-        raise map_error_to_http_exception(
-            Exception(
-                f"Session is for agent '{session.agent_id}', cannot access '{agent_id}'"
-            )
+        raise HTTPException(
+            status_code=403,
+            detail=f"Session is for agent '{session.agent_id}', cannot access '{agent_id}'",
         )
 
     try:
