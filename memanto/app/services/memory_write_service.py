@@ -265,27 +265,54 @@ class MemoryWriteService:
                 if "metadata" in existing_memory_data
                 else existing_memory_data
             )
+            if not isinstance(metadata, dict):
+                metadata = {}
+
+            def existing_value(*keys: str, default: Any = None) -> Any:
+                """Read a previously stored field without treating falsey values as missing."""
+                for source in (metadata, existing_memory_data):
+                    for key in keys:
+                        value = source.get(key)
+                        if value is not None:
+                            return value
+                return default
 
             # Build updated memory record
             updated_memory = MemoryRecord(
                 id=memory_id,  # Keep same ID
-                type=updates.get("type", metadata.get("type", "fact")),
+                type=updates.get(
+                    "type", existing_value("type", "memory_type", default="fact")
+                ),
                 title=updates.get(
                     "title", existing_memory_data.get("title", "Updated Memory")
                 ),
                 content=updates.get("content", existing_memory_data.get("content", "")),
-                scope_type=metadata.get("scope_type", "agent"),
-                scope_id=metadata.get("scope_id", "unknown"),
-                actor_id=updates.get("actor_id", metadata.get("actor_id", "unknown")),
-                source=updates.get("source", metadata.get("source", "system")),
-                source_ref=updates.get("source_ref", metadata.get("source_ref")),
-                confidence=updates.get("confidence", metadata.get("confidence", 0.8)),
-                status=updates.get("status", metadata.get("status", "active")),
-                tags=updates.get("tags", metadata.get("tags", [])),
+                scope_type=existing_value("scope_type", default="agent"),
+                scope_id=existing_value("scope_id", default="unknown"),
+                actor_id=updates.get(
+                    "actor_id", existing_value("actor_id", default="unknown")
+                ),
+                source=updates.get("source", existing_value("source", default="system")),
+                source_ref=updates.get("source_ref", existing_value("source_ref")),
+                confidence=updates.get(
+                    "confidence", existing_value("confidence", default=0.8)
+                ),
+                status=updates.get("status", existing_value("status", default="active")),
+                tags=updates.get("tags", existing_value("tags", default=[])),
+                provenance=existing_value(
+                    "provenance", default="explicit_statement"
+                ),
+                superseded_by=existing_value("superseded_by"),
+                supersedes=existing_value("supersedes"),
+                validated_at=existing_value("validated_at"),
+                validation_count=existing_value("validation_count", default=0),
+                contradiction_detected=existing_value(
+                    "contradiction_detected", default=False
+                ),
             )
 
             # Update timestamps (preserve created_at, set updated_at to now)
-            raw_created = metadata.get("created_at")
+            raw_created = existing_value("created_at")
             if raw_created:
                 if isinstance(raw_created, str):
                     try:
@@ -301,10 +328,13 @@ class MemoryWriteService:
             # Handle TTL
             if "ttl_seconds" in updates:
                 updated_memory.set_ttl(updates["ttl_seconds"])
-            elif metadata.get("ttl_seconds"):
-                updated_memory.ttl_seconds = metadata["ttl_seconds"]
-                if metadata.get("expires_at"):
-                    updated_memory.expires_at = metadata["expires_at"]
+            else:
+                existing_ttl = existing_value("ttl_seconds")
+                if existing_ttl is not None:
+                    updated_memory.ttl_seconds = existing_ttl
+                    existing_expires_at = existing_value("expires_at")
+                    if existing_expires_at is not None:
+                        updated_memory.expires_at = existing_expires_at
 
             # Step 3: Delete old version
             delete_result = self.client.documents.delete(

@@ -268,6 +268,55 @@ class TestMemoryWriteServiceDelete:
         assert MemoryWriteService(client).delete_memory("m1", "ns") is expected
 
 
+class TestMemoryWriteServiceUpdate:
+    def test_update_memory_preserves_existing_type_and_trust_metadata(self):
+        from memanto.app.services.memory_write_service import MemoryWriteService
+
+        client = MagicMock()
+        client.documents.delete.return_value = {"actual_deletions": 1}
+        client.documents.upload.return_value = {"status": "queued"}
+        existing_memory = {
+            "id": "mem-pref",
+            "type": "preference",
+            "title": "Original title",
+            "content": "Original content",
+            "scope_type": "agent",
+            "scope_id": "test-agent",
+            "actor_id": "tester",
+            "source": "tool",
+            "source_ref": "ticket-123",
+            "confidence": 0.9,
+            "status": "active",
+            "tags": ["profile", "ui"],
+            "created_at": "2026-01-01T12:00:00",
+            "provenance": "observed",
+            "validation_count": 2,
+            "contradiction_detected": True,
+        }
+
+        with patch(
+            "memanto.app.services.memory_read_service.MemoryReadService.get_memory",
+            return_value=existing_memory,
+        ):
+            result = MemoryWriteService(client).update_memory(
+                "mem-pref",
+                "memanto_agent_test-agent",
+                {"content": "Updated content"},
+            )
+
+        assert result["action"] == "updated"
+        uploaded_doc = client.documents.upload.call_args.kwargs["documents"][0]
+        assert uploaded_doc["id"] == "mem-pref"
+        assert uploaded_doc["memory_type"] == "preference"
+        assert uploaded_doc["text"].startswith("[PREFERENCE] Original title")
+        assert "Updated content" in uploaded_doc["text"]
+        assert uploaded_doc["provenance"] == "observed"
+        assert uploaded_doc["validation_count"] == 2
+        assert uploaded_doc["contradiction_detected"] is True
+        assert uploaded_doc["source_ref"] == "ticket-123"
+        assert uploaded_doc["tags"] == "profile,ui"
+
+
 class TestForgetEndToEnd:
     """End-to-end ``forget`` flow through ``DirectClient``: create agent →
     activate → delete_memory. Asserts on-prem's response shape
