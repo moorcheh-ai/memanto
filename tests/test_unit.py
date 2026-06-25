@@ -366,6 +366,16 @@ class TestMEMANTOArchitecture:
         print(f"✅ V2 namespace format confirmed: {namespace}")
         print("   ✅ NO tenant_id required!")
 
+    def test_namespace_round_trips_scope_ids_with_underscores(self):
+        """Scope IDs with underscores must round-trip through namespace parsing."""
+        from memanto.app.core import MemoryScope, parse_namespace
+
+        scope = MemoryScope(scope_type="agent", scope_id="claude_dev")
+        namespace = scope.to_namespace()
+
+        assert namespace == "memanto_agent_claude_dev"
+        assert parse_namespace(namespace) == scope
+
     def test_jwt_token_structure(self):
         """Verify JWT token contains correct fields"""
         from memanto.app.services.session_service import SessionService
