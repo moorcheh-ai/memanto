@@ -66,17 +66,28 @@ def _safety_check_memory(memory: MemoryRecord) -> list[str]:
             f"content too long: {len(content)} chars (max {_MAX_CONTENT_CHARS})"
         )
 
+    # Strip control characters FIRST, then validate the sanitized version.
+    # This prevents bypassing injection detection via embedded control chars.
     if _CONTROL_CHAR_RE.search(content):
-        # Strip them silently — many real documents contain stray \x00 from
-        # binary paste. Rejecting would hurt legitimate users; sanitizing is
-        # safer for retrieval and embeddings downstream.
-        memory.content = _CONTROL_CHAR_RE.sub("", content)
+        content = _CONTROL_CHAR_RE.sub("", content)
+        memory.content = content  # Persist sanitized version
         warnings.append("stripped control characters from content")
+    
+    if _CONTROL_CHAR_RE.search(title):
+        title = _CONTROL_CHAR_RE.sub("", title)
+        memory.title = title  # Persist sanitized title
+        warnings.append("stripped control characters from title")
 
-    lowered = content.lower()
+    # Now check sanitized content for injection markers (not original)
+    lowered_title = title.lower()
+    lowered_content = content.lower()
+    
     for hint in _INJECTION_HINTS:
-        if hint in lowered:
-            warnings.append(f"suspicious prompt-injection marker: {hint!r}")
+        if hint in lowered_title:
+            warnings.append(f"suspicious prompt-injection marker in title: {hint!r}")
+            break
+        if hint in lowered_content:
+            warnings.append(f"suspicious prompt-injection marker in content: {hint!r}")
             break
 
     return warnings
