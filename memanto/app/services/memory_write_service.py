@@ -62,12 +62,8 @@ class MemoryWriteService:
             #     memory = validation_result["memory"]
             validation_result = {"action": "store", "reason": "MVP direct store"}
 
-            from typing import cast
-
-            from moorcheh_sdk.types.document import Document
-
             # Convert to Moorcheh document
-            document = cast(Document, memory.to_moorcheh_document())
+            document = memory.to_moorcheh_document()
 
             # Store in Moorcheh
             result = self.client.documents.upload(
@@ -159,12 +155,8 @@ class MemoryWriteService:
                         "reason": "MVP direct store",
                     }
 
-                    from typing import cast
-
-                    from moorcheh_sdk.types.document import Document
-
                     # Convert to Moorcheh document
-                    document = cast(Document, memory.to_moorcheh_document())
+                    document = memory.to_moorcheh_document()
                     validated_documents.append(document)
 
                     # Store validation result for later
@@ -317,11 +309,7 @@ class MemoryWriteService:
             validation_result = {"action": "store", "reason": "MVP direct store"}
 
             # Step 4: Upload new version
-            from typing import cast
-
-            from moorcheh_sdk.types.document import Document
-
-            document = cast(Document, updated_memory.to_moorcheh_document())
+            document = updated_memory.to_moorcheh_document()
             upload_result = self.client.documents.upload(
                 namespace_name=namespace, documents=[document]
             )

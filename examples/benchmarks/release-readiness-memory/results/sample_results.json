@@ -13,8 +13,8 @@
       "total": 7,
       "avg_retrieved_tokens": 9.14,
       "total_retrieved_tokens": 64,
-      "p95_latency_ms": 1.3319,
-      "mean_latency_ms": 0.2419,
+      "p95_latency_ms": 0.6697,
+      "mean_latency_ms": 0.1268,
       "stale_conflict_rate": 0.0,
       "secret_leak_rate": 0.0,
       "query_results": [
@@ -128,8 +128,8 @@
       "total": 7,
       "avg_retrieved_tokens": 9.14,
       "total_retrieved_tokens": 64,
-      "p95_latency_ms": 0.0027,
-      "mean_latency_ms": 0.0014,
+      "p95_latency_ms": 0.0028,
+      "mean_latency_ms": 0.001,
       "stale_conflict_rate": 0.0,
       "secret_leak_rate": 0.0,
       "query_results": [
@@ -243,8 +243,8 @@
       "total": 7,
       "avg_retrieved_tokens": 15.57,
       "total_retrieved_tokens": 109,
-      "p95_latency_ms": 0.0035,
-      "mean_latency_ms": 0.002,
+      "p95_latency_ms": 0.0053,
+      "mean_latency_ms": 0.0018,
       "stale_conflict_rate": 0.2857,
       "secret_leak_rate": 0.1429,
       "query_results": [
@@ -382,8 +382,8 @@
       "total": 7,
       "avg_retrieved_tokens": 10.0,
       "total_retrieved_tokens": 70,
-      "p95_latency_ms": 0.0044,
-      "mean_latency_ms": 0.0017,
+      "p95_latency_ms": 0.005,
+      "mean_latency_ms": 0.0018,
       "stale_conflict_rate": 0.1429,
       "secret_leak_rate": 0.1429,
       "query_results": [

@@ -44,6 +44,7 @@ class ReleaseReadinessBenchmarkTest(unittest.TestCase):
         self.assertFalse(any("docs smoke" in fact for fact in facts))
         self.assertFalse(any("production alias" in fact for fact in facts))
         self.assertFalse(any("API_TOKEN" in fact for fact in facts))
+        self.assertFalse(any(event.status == "secret" for event in retrieved))
 
     def test_active_digest_suppresses_secret_events(self) -> None:
         """Active digest should never return synthetic secret events."""
