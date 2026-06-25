@@ -3,9 +3,9 @@ MEMANTO API Models
 """
 
 from datetime import datetime
-from typing import Any
+from typing import Any, Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 from memanto.app.constants import MemoryType, ScopeType, SourceType, StatusType
 
@@ -133,9 +133,14 @@ class ConflictResolveRequest(BaseModel):
     """Request body for resolving a conflict"""
 
     conflict_index: int = Field(..., ge=0, description="Conflict index to resolve")
-    action: str = Field(
+    action: Literal[
+        "keep_old", "keep_new", "keep_both", "remove_both", "manual"
+    ] = Field(
         ...,
-        description="Resolution action: keep_old, keep_new, keep_both, remove_both, manual",
+        description=(
+            "Resolution action: keep_old, keep_new, keep_both, "
+            "remove_both, manual"
+        ),
     )
     date: str | None = Field(
         None, description="Conflict report date (YYYY-MM-DD). Defaults to today."
@@ -146,6 +151,14 @@ class ConflictResolveRequest(BaseModel):
     manual_type: str | None = Field(
         None, description="Optional memory type for manual action"
     )
+
+    @model_validator(mode="after")
+    def validate_manual_resolution(self) -> "ConflictResolveRequest":
+        if self.action == "manual" and not (
+            self.manual_content and self.manual_content.strip()
+        ):
+            raise ValueError("manual_content is required when action is 'manual'")
+        return self
 
 
 class AnswerRequest(BaseModel):
