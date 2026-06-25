@@ -349,6 +349,28 @@ class TestForgetEndToEnd:
 class TestMEMANTOArchitecture:
     """Tests for MEMANTO architecture principles"""
 
+    def test_project_and_task_namespaces_are_valid(self):
+        """Project/task scopes are valid ScopeType values and must pass validation."""
+        from memanto.app.core import validate_namespace_format
+        from memanto.app.services.namespace_service import NamespaceService
+
+        assert validate_namespace_format("memanto_project_roadmap-2026")
+        assert validate_namespace_format("memanto_task_ticket-123")
+
+        client = MagicMock()
+        service = NamespaceService(client)
+
+        assert service.create_namespace("project", "roadmap-2026") == (
+            "memanto_project_roadmap-2026"
+        )
+        assert service.create_namespace("task", "ticket-123") == (
+            "memanto_task_ticket-123"
+        )
+        client.namespaces.create.assert_any_call(
+            "memanto_project_roadmap-2026", type="text"
+        )
+        client.namespaces.create.assert_any_call("memanto_task_ticket-123", type="text")
+
     def test_no_tenant_id_in_namespace(self):
         """Verify namespace format does NOT include tenant_id"""
         from memanto.app.services.session_service import SessionService

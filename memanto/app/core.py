@@ -15,6 +15,7 @@ from memanto.app.constants import (
     ScopeType,
     SourceType,
     StatusType,
+    VALID_SCOPE_TYPES,
 )
 
 
@@ -323,5 +324,6 @@ def parse_namespace(namespace: str) -> MemoryScope:
 
 def validate_namespace_format(namespace: str) -> bool:
     """Validate namespace follows MEMANTO convention"""
-    pattern = r"^memanto_(user|workspace|agent|session)_[a-zA-Z0-9_-]+$"
+    scope_pattern = "|".join(sorted(map(re.escape, VALID_SCOPE_TYPES)))
+    pattern = rf"^memanto_({scope_pattern})_[a-zA-Z0-9_-]+$"
     return bool(re.match(pattern, namespace))
