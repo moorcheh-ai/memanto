@@ -2,12 +2,67 @@
 Authentication and Authorization for MEMANTO
 """
 
+import json
+import logging
+import os
+
 import jwt
 from fastapi import Depends, HTTPException
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from pydantic import BaseModel
 
 from memanto.app.config import settings
+
+logger = logging.getLogger(__name__)
+
+
+def _load_tenant_api_keys() -> dict:
+    """Load tenant API keys from the MEMANTO_TENANT_API_KEYS environment variable.
+
+    Expected format (JSON):
+      {
+        "<api_key>": {
+          "tenant_id": "<id>",
+          "roles": ["admin", "user"],
+          "scopes_allowed": ["user", "workspace", "agent", "session"]
+        }
+      }
+
+    Returns an empty dict when the variable is unset so that the server starts
+    in a restricted state rather than with demo credentials.
+    """
+    raw = os.getenv("MEMANTO_TENANT_API_KEYS", "")
+    if not raw:
+        logger.warning(
+            "MEMANTO_TENANT_API_KEYS is not set — API-key authentication is disabled. "
+            "Set this environment variable to enable tenant API keys."
+        )
+        return {}
+    try:
+        keys = json.loads(raw)
+        if not isinstance(keys, dict):
+            raise ValueError("must be a JSON object")
+        return keys
+    except (json.JSONDecodeError, ValueError) as exc:
+        raise RuntimeError(
+            "MEMANTO_TENANT_API_KEYS is set but could not be parsed as JSON: "
+            f"{exc}"
+        ) from exc
+
+
+def _load_jwt_secret() -> str:
+    """Return the JWT signing secret from the environment.
+
+    Raises RuntimeError on startup when no secret is configured so that the
+    server never silently falls back to a publicly known default value.
+    """
+    secret = os.getenv("JWT_SECRET") or getattr(settings, "JWT_SECRET", None)
+    if not secret:
+        raise RuntimeError(
+            "JWT_SECRET is not configured. "
+            "Set the JWT_SECRET environment variable to a strong random value."
+        )
+    return secret
 
 
 class AuthenticatedUser(BaseModel):
@@ -23,23 +78,10 @@ class AuthService:
     """Authentication and authorization service"""
 
     def __init__(self):
-        # In production, load from secure storage
-        self.tenant_api_keys = {
-            # Format: api_key -> tenant_info
-            "tk_acme_prod_abc123": {
-                "tenant_id": "acme",
-                "roles": ["admin", "user"],
-                "scopes_allowed": ["user", "workspace", "agent", "session"],
-            },
-            "tk_demo_test_xyz789": {
-                "tenant_id": "demo",
-                "roles": ["user"],
-                "scopes_allowed": ["user", "agent"],
-            },
-        }
+        self.tenant_api_keys = _load_tenant_api_keys()
 
-        # JWT configuration
-        self.jwt_secret = getattr(settings, "JWT_SECRET", "dev-secret-change-in-prod")
+        # JWT configuration — secret is mandatory; raises on missing config
+        self.jwt_secret = _load_jwt_secret()
         self.jwt_algorithm = "HS256"
         self.jwt_issuer = getattr(settings, "JWT_ISSUER", "memanto")
 

@@ -57,11 +57,12 @@ class SessionService:
             secret_key: Secret key for JWT signing (defaults to env var or generated)
             sessions_dir: Directory for session storage (defaults to ~/.memanto/sessions/)
         """
-        resolved_secret_key = (
-            secret_key
-            or os.getenv("MEMANTO_SECRET_KEY")
-            or "memanto-default-secret-change-in-production"
-        )
+        resolved_secret_key = secret_key or os.getenv("MEMANTO_SECRET_KEY") or ""
+        if not resolved_secret_key:
+            raise RuntimeError(
+                "MEMANTO_SECRET_KEY is not configured. "
+                "Set this environment variable to a strong random secret before starting the server."
+            )
         self.secret_key: str = resolved_secret_key
         self.sessions_dir = sessions_dir or get_data_dir() / "sessions"
         self.sessions_dir.mkdir(parents=True, exist_ok=True)

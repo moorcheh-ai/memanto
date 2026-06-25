@@ -130,7 +130,10 @@ class Settings(BaseSettings):
     ALLOWED_ORIGINS: list[str] = ["*"]
 
     # Session Configuration
-    MEMANTO_SECRET_KEY: str = "memanto-default-secret-change-in-production"
+    # MEMANTO_SECRET_KEY must be set via environment variable.
+    # No default is provided: a missing secret causes an explicit startup error
+    # rather than silently using a publicly known fallback value (CWE-521).
+    MEMANTO_SECRET_KEY: str = ""
     SESSION_DEFAULT_DURATION_HOURS: int = 6
     SESSION_AUTO_EXTEND: bool = True
     SESSION_EXTEND_THRESHOLD_MINUTES: int = 30
