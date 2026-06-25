@@ -337,10 +337,9 @@ async def edit_memory(
     The session must be for the specified agent_id.
     """
     if session.agent_id != agent_id:
-        raise map_error_to_http_exception(
-            Exception(
-                f"Session is for agent '{session.agent_id}', cannot access '{agent_id}'"
-            )
+        raise HTTPException(
+            status_code=403,
+            detail=f"Session is for agent '{session.agent_id}', cannot access '{agent_id}'",
         )
 
     updates = request.to_updates()
