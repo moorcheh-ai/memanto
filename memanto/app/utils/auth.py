@@ -15,6 +15,8 @@ from memanto.app.config import settings
 
 logger = logging.getLogger(__name__)
 
+_REQUIRED_ENTRY_FIELDS = {"tenant_id", "roles", "scopes_allowed"}
+
 
 def _load_tenant_api_keys() -> dict:
     """Load tenant API keys from the MEMANTO_TENANT_API_KEYS environment variable.
@@ -42,6 +44,16 @@ def _load_tenant_api_keys() -> dict:
         keys = json.loads(raw)
         if not isinstance(keys, dict):
             raise ValueError("must be a JSON object")
+        for api_key, entry in keys.items():
+            if not isinstance(entry, dict):
+                raise ValueError(
+                    f"entry for key '{api_key}' must be a JSON object"
+                )
+            missing = _REQUIRED_ENTRY_FIELDS - entry.keys()
+            if missing:
+                raise ValueError(
+                    f"entry for key '{api_key}' is missing required fields: {sorted(missing)}"
+                )
         return keys
     except (json.JSONDecodeError, ValueError) as exc:
         raise RuntimeError(
@@ -57,12 +69,12 @@ def _load_jwt_secret() -> str:
     server never silently falls back to a publicly known default value.
     """
     secret = os.getenv("JWT_SECRET") or getattr(settings, "JWT_SECRET", None)
-    if not secret:
+    if not secret or not secret.strip():
         raise RuntimeError(
             "JWT_SECRET is not configured. "
             "Set the JWT_SECRET environment variable to a strong random value."
         )
-    return secret
+    return secret.strip()
 
 
 class AuthenticatedUser(BaseModel):
