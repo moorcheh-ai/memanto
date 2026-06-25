@@ -268,6 +268,40 @@ class TestMemoryWriteServiceDelete:
         assert MemoryWriteService(client).delete_memory("m1", "ns") is expected
 
 
+class TestMemoryReadServiceTemporal:
+    """Regression coverage for point-in-time memory retrieval."""
+
+    def test_search_as_of_includes_memory_valid_then_but_expired_now(self):
+        from memanto.app.services.memory_read_service import MemoryReadService
+
+        client = MagicMock()
+        client.documents.fetch_text_data.return_value = {
+            "items": [
+                {
+                    "id": "mem-valid-then",
+                    "text": "[FACT] Historical access\n\nUser had beta access.",
+                    "metadata": {
+                        "memory_type": "fact",
+                        "scope_type": "agent",
+                        "scope_id": "agent-1",
+                        "status": "active",
+                        "created_at": "2000-01-01T00:00:00Z",
+                        "updated_at": "2000-01-01T00:00:00Z",
+                        "expires_at": "2000-02-01T00:00:00Z",
+                    },
+                }
+            ],
+            "pagination": {"has_more": False},
+        }
+
+        result = MemoryReadService(client).search_as_of(
+            "2000-01-15T00:00:00Z", "agent-1"
+        )
+
+        assert result["total_found"] == 1
+        assert result["results"][0]["id"] == "mem-valid-then"
+
+
 class TestForgetEndToEnd:
     """End-to-end ``forget`` flow through ``DirectClient``: create agent →
     activate → delete_memory. Asserts on-prem's response shape
