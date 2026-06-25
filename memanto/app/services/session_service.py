@@ -60,7 +60,7 @@ class SessionService:
         resolved_secret_key = (
             secret_key
             or os.getenv("MEMANTO_SECRET_KEY")
-            or "memanto-default-secret-change-in-production"
+            or self._generate_secure_secret_key()
         )
         self.secret_key: str = resolved_secret_key
         self.sessions_dir = sessions_dir or get_data_dir() / "sessions"
@@ -79,6 +79,18 @@ class SessionService:
         """Generate unique session ID"""
 
         return f"sess_{generate_id()}"
+
+
+    def _generate_secure_secret_key(self) -> str:
+        """Generate a cryptographically secure secret key as fallback.
+
+        Used when no MEMANTO_SECRET_KEY is configured in the
+        environment.  Produces a 32-byte (256-bit) hex key via
+        :func:`secrets.token_hex` so the resulting JWT cannot be
+        forged without the random seed.
+        """
+        import secrets
+        return secrets.token_hex(32)
 
     def create_session(
         self,
