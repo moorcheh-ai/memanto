@@ -1,7 +1,6 @@
-"""
-Tests for the backend abstraction (cloud vs on-prem dispatcher).
-"""
+"""Tests for the backend abstraction (cloud vs on-prem dispatcher)."""
 
+from types import SimpleNamespace
 from unittest.mock import patch
 
 from memanto.app.clients.backend import (
@@ -107,6 +106,133 @@ class TestOnPremClient:
             client = onprem.OnPremClient(base_url="http://localhost:8080")
             result = client.answer.generate(namespace="x", query="y")
             assert result == {"answer": "ok", "namespace": "x"}
+
+
+class _FakeAnswerConfig:
+    def get_answer_config(self):
+        return {
+            "answer_limit": 10,
+            "temperature": 0.7,
+            "model": None,
+            "kiosk_mode": False,
+            "threshold": 0.15,
+        }
+
+
+class _CaptureAnswer:
+    def __init__(self, answer="ok"):
+        self.answer = answer
+        self.call_kwargs = None
+
+    def generate(self, **kwargs):
+        self.call_kwargs = kwargs
+        return {"answer": self.answer, "sources": []}
+
+
+class _CaptureMoorcheh:
+    def __init__(self, answer="ok"):
+        self.answer = _CaptureAnswer(answer)
+        self.documents = SimpleNamespace(get=lambda **kwargs: {"items": []})
+
+
+def _stub_answer_client(client, moorcheh):
+    client._get_validated_session_for_agent = lambda agent_id: SimpleNamespace(
+        namespace=f"memanto_agent_{agent_id}"
+    )
+    client._get_moorcheh = lambda: moorcheh
+
+
+class TestAnswerGenerateKwargs:
+    def test_direct_client_omits_none_ai_model_and_threshold(self, monkeypatch):
+        from memanto.cli.client import direct_client as direct_mod
+
+        monkeypatch.setattr(direct_mod, "ConfigManager", lambda: _FakeAnswerConfig())
+        client = direct_mod.DirectClient(api_key="test-key")
+        moorcheh = _CaptureMoorcheh()
+        _stub_answer_client(client, moorcheh)
+
+        client.answer("agent-1", "What changed?")
+
+        assert moorcheh.answer.call_kwargs is not None
+        assert "ai_model" not in moorcheh.answer.call_kwargs
+        assert "threshold" not in moorcheh.answer.call_kwargs
+
+    def test_sdk_client_omits_none_ai_model_and_threshold(self, monkeypatch):
+        from memanto.cli.client import sdk_client as sdk_mod
+
+        monkeypatch.setattr(sdk_mod, "ConfigManager", lambda: _FakeAnswerConfig())
+        client = sdk_mod.SdkClient(api_key="test-key")
+        moorcheh = _CaptureMoorcheh()
+        _stub_answer_client(client, moorcheh)
+
+        client.answer("agent-1", "What changed?")
+
+        assert moorcheh.answer.call_kwargs is not None
+        assert "ai_model" not in moorcheh.answer.call_kwargs
+        assert "threshold" not in moorcheh.answer.call_kwargs
+
+    def test_daily_summary_omits_none_ai_model(self, monkeypatch, tmp_path):
+        from memanto.app.config import settings
+        from memanto.app.services import daily_analysis_service as daily_mod
+
+        monkeypatch.setattr(settings, "MEMANTO_BACKEND", "on-prem")
+        monkeypatch.setattr(
+            "memanto.app.clients.backend.Path",
+            type("P", (), {"home": classmethod(lambda cls: tmp_path)}),
+        )
+
+        sessions_dir = tmp_path / "sessions"
+        summaries_dir = tmp_path / "summaries"
+        sessions_dir.mkdir()
+        (sessions_dir / "agent-1_2026-06-25_sess-1_summary.md").write_text(
+            "# Session Summary\n\n- Local on-prem answer test\n"
+        )
+        moorcheh = _CaptureMoorcheh(answer="# Daily Summary\n\nok")
+        monkeypatch.setattr(daily_mod, "get_moorcheh_client", lambda: moorcheh)
+
+        service = daily_mod.DailyAnalysisService(
+            sessions_dir=sessions_dir,
+            summaries_dir=summaries_dir,
+        )
+        result = service.generate_summary("agent-1", "2026-06-25")
+
+        assert result["status"] == "success"
+        assert moorcheh.answer.call_kwargs is not None
+        assert "ai_model" not in moorcheh.answer.call_kwargs
+
+    def test_conflict_report_omits_none_ai_model(self, monkeypatch, tmp_path):
+        from memanto.app.config import settings
+        from memanto.app.services import daily_analysis_service as daily_mod
+
+        monkeypatch.setattr(settings, "MEMANTO_BACKEND", "on-prem")
+        monkeypatch.setattr(
+            "memanto.app.clients.backend.Path",
+            type("P", (), {"home": classmethod(lambda cls: tmp_path)}),
+        )
+        monkeypatch.setattr(
+            daily_mod.Path,
+            "home",
+            classmethod(lambda cls: tmp_path),
+        )
+
+        sessions_dir = tmp_path / "sessions"
+        summaries_dir = tmp_path / "summaries"
+        sessions_dir.mkdir()
+        (sessions_dir / "agent-1_2026-06-25_sess-1_summary.md").write_text(
+            "# Session Summary\n\n- Local on-prem conflict test\n"
+        )
+        moorcheh = _CaptureMoorcheh(answer="[]")
+        monkeypatch.setattr(daily_mod, "get_moorcheh_client", lambda: moorcheh)
+
+        service = daily_mod.DailyAnalysisService(
+            sessions_dir=sessions_dir,
+            summaries_dir=summaries_dir,
+        )
+        result = service.generate_conflict_report("agent-1", "2026-06-25")
+
+        assert result["status"] == "success"
+        assert moorcheh.answer.call_kwargs is not None
+        assert "ai_model" not in moorcheh.answer.call_kwargs
 
 
 class TestSingletonDispatch:

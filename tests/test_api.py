@@ -466,6 +466,42 @@ class TestMEMANTOAPI:
         assert call_kwargs["ai_model"] == "anthropic.claude-sonnet-4-6"
 
     @pytest.mark.asyncio
+    async def test_answer_on_prem_without_state_omits_ai_model(
+        self, client, auth_headers, mock_moorcheh, monkeypatch, tmp_path
+    ):
+        """On-prem without llm_model state should let the backend use its default."""
+        monkeypatch.setattr(settings, "MEMANTO_BACKEND", "on-prem")
+        monkeypatch.setattr(
+            "memanto.app.clients.backend.Path",
+            type("P", (), {"home": classmethod(lambda cls: tmp_path)}),
+        )
+        monkeypatch.setattr(
+            "memanto.app.routes.memory.get_moorcheh_client",
+            lambda: mock_moorcheh,
+        )
+
+        await client.post(
+            "/api/v2/agents",
+            headers=auth_headers,
+            json={"agent_id": self.TEST_AGENT_ID},
+        )
+        activate_resp = await client.post(
+            f"/api/v2/agents/{self.TEST_AGENT_ID}/activate", headers=auth_headers
+        )
+        token = activate_resp.json()["session_token"]
+
+        headers = {**auth_headers, "X-Session-Token": token}
+        response = await client.post(
+            f"/api/v2/agents/{self.TEST_AGENT_ID}/answer",
+            headers=headers,
+            json={"question": "What is being tested?"},
+        )
+
+        assert response.status_code == 200
+        call_kwargs = mock_moorcheh.answer.generate.call_args.kwargs
+        assert "ai_model" not in call_kwargs
+
+    @pytest.mark.asyncio
     async def test_recall_with_session(self, client, auth_headers, mock_moorcheh):
         """Test semantic recall with session token"""
         # Setup session

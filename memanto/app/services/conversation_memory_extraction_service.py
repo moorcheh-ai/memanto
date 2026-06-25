@@ -11,6 +11,7 @@ import json
 import re
 from typing import Any
 
+from memanto.app.clients.backend import get_active_llm_model
 from memanto.app.constants import VALID_MEMORY_TYPES
 
 
@@ -39,16 +40,22 @@ class ConversationMemoryExtractionService:
         self._validate_messages(messages)
         max_memories = max(1, min(max_memories, self.MAX_MEMORIES))
 
-        response = self.client.answer.generate(
-            namespace=namespace,
-            query=self._conversation_text(messages),
-            top_k=1,
-            temperature=0,
-            ai_model=ai_model or settings.ANSWER_MODEL,
-            kiosk_mode=False,
-            header_prompt=self._header_prompt(max_memories),
-            footer_prompt=self._footer_prompt(),
-        )
+        generate_kwargs = {
+            "namespace": namespace,
+            "query": self._conversation_text(messages),
+            "top_k": 1,
+            "temperature": 0,
+            "kiosk_mode": False,
+            "header_prompt": self._header_prompt(max_memories),
+            "footer_prompt": self._footer_prompt(),
+        }
+        resolved_model = ai_model
+        if resolved_model is None:
+            resolved_model = get_active_llm_model(settings.ANSWER_MODEL)
+        if resolved_model is not None:
+            generate_kwargs["ai_model"] = resolved_model
+
+        response = self.client.answer.generate(**generate_kwargs)
 
         raw_answer = response.get("answer", "")
         parsed = self._parse_json_answer(raw_answer)

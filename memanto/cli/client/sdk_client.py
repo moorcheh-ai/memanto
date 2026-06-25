@@ -1055,17 +1055,21 @@ class SdkClient:
             question[:80],
             limit,
         )
-        response = self._get_moorcheh().answer.generate(
-            namespace=namespace,
-            query=question,
-            top_k=limit,
-            threshold=threshold,
-            temperature=temperature,
-            ai_model=ai_model,
-            kiosk_mode=kiosk_mode,
-            header_prompt=header_prompt,
-            footer_prompt=footer_prompt,
-        )
+        generate_kwargs = {
+            "namespace": namespace,
+            "query": question,
+            "top_k": limit,
+            "temperature": temperature,
+            "kiosk_mode": kiosk_mode,
+            "header_prompt": header_prompt,
+            "footer_prompt": footer_prompt,
+        }
+        if threshold is not None:
+            generate_kwargs["threshold"] = threshold
+        if ai_model is not None:
+            generate_kwargs["ai_model"] = ai_model
+
+        response = self._get_moorcheh().answer.generate(**generate_kwargs)
 
         return {
             "agent_id": agent_id,
