@@ -748,11 +748,21 @@ class MemoryReadService:
         metadata = item.get("metadata", {})
 
         # Helper to get field from either nested metadata or flat structure
+        # Helper to get field from either nested metadata or flat structure
         def get_field(field_name, flat_field_name=None):
-            """Get field from metadata object or fallback to flat field"""
+            """Get field from metadata object or fallback to flat field.
+
+            Uses explicit ``is None`` check so falsy values (0, False, "", [])
+            stored in the metadata object are preserved instead of falling
+            through to the flat-field fallback.
+            """
             flat_name = flat_field_name or field_name
             # Try metadata object first (API spec), then flat field (fallback)
-            return metadata.get(field_name) or item.get(flat_name)
+            field_value = metadata.get(field_name)
+            if field_value is not None:
+                return field_value
+            return item.get(flat_name)
+
 
         # Parse tags - can be comma-separated string or array
         tags_value = get_field("tags")
