@@ -47,6 +47,8 @@ from memanto.cli.config.manager import ConfigManager
 router = APIRouter()
 
 _config_manager = ConfigManager()
+MAX_UPLOAD_FILE_SIZE = 5 * 1024 * 1024 * 1024  # 5GB
+UPLOAD_CHUNK_SIZE = 1024 * 1024
 
 
 class RecallRequest(BaseModel):
@@ -549,9 +551,18 @@ async def upload_file(
     try:
         namespace = session.namespace
 
-        # Write upload to a temp file so moorcheh SDK can read it
-        # Use original filename so the SDK records it as the source
-        file_bytes = await file.read()
+        file_size_hint = getattr(file, "size", None)
+        if file_size_hint is not None and file_size_hint > MAX_UPLOAD_FILE_SIZE:
+            raise HTTPException(
+                status_code=413,
+                detail={
+                    "error": "file_too_large",
+                    "message": f"File exceeds maximum size of {MAX_UPLOAD_FILE_SIZE} bytes",
+                    "actual_size": file_size_hint,
+                    "max_size": MAX_UPLOAD_FILE_SIZE,
+                },
+            )
+
         tmp_dir = tempfile.mkdtemp()
         tmp_path = os.path.join(tmp_dir, original_name)
         # Defense-in-depth: verify resolved path is within tmp_dir
@@ -563,8 +574,21 @@ async def upload_file(
                 detail="Invalid filename",
             )
         try:
+            total_size = 0
             with open(tmp_path, "wb") as tmp:
-                tmp.write(file_bytes)
+                while chunk := await file.read(UPLOAD_CHUNK_SIZE):
+                    total_size += len(chunk)
+                    if total_size > MAX_UPLOAD_FILE_SIZE:
+                        raise HTTPException(
+                            status_code=413,
+                            detail={
+                                "error": "file_too_large",
+                                "message": f"File exceeds maximum size of {MAX_UPLOAD_FILE_SIZE} bytes",
+                                "actual_size": total_size,
+                                "max_size": MAX_UPLOAD_FILE_SIZE,
+                            },
+                        )
+                    tmp.write(chunk)
             result = await asyncio.to_thread(
                 client.documents.upload_file, namespace, tmp_path
             )
@@ -583,6 +607,8 @@ async def upload_file(
             "message": result.get("message", ""),
         }
 
+    except HTTPException:
+        raise
     except Exception as e:
         raise map_error_to_http_exception(e)
 

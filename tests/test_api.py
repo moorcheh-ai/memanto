@@ -1131,6 +1131,33 @@ class TestMEMANTOAPI:
         assert response.status_code == 400
 
     @pytest.mark.asyncio
+    async def test_upload_file_rejects_oversized_file(
+        self, client, auth_headers, mock_moorcheh
+    ):
+        """Oversized uploads should fail before reaching Moorcheh."""
+        await client.post(
+            "/api/v2/agents",
+            headers=auth_headers,
+            json={"agent_id": self.TEST_AGENT_ID},
+        )
+        activate_resp = await client.post(
+            f"/api/v2/agents/{self.TEST_AGENT_ID}/activate", headers=auth_headers
+        )
+        token = activate_resp.json()["session_token"]
+
+        headers = {**auth_headers, "X-Session-Token": token}
+        with patch("memanto.app.routes.memory.MAX_UPLOAD_FILE_SIZE", 5):
+            response = await client.post(
+                f"/api/v2/agents/{self.TEST_AGENT_ID}/upload-file",
+                headers=headers,
+                files={"file": ("notes.txt", b"123456", "text/plain")},
+            )
+
+        assert response.status_code == 413
+        assert response.json()["detail"]["error"] == "file_too_large"
+        mock_moorcheh.documents.upload_file.assert_not_called()
+
+    @pytest.mark.asyncio
     async def test_upload_file_requires_session(self, client, auth_headers):
         """Test that upload requires a valid session token"""
         await client.post(
