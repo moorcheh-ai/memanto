@@ -20,6 +20,16 @@ class ConversationMemoryExtractionService:
     MAX_MESSAGES = 200
     MAX_MEMORIES = 100
     MAX_CONTENT_CHARS = 12_000
+    SECRET_PATTERNS = [
+        re.compile(
+            r"\b(?:api[_ -]?key|password|passwd|secret|token|access[_ -]?token|client[_ -]?secret|private[_ -]?key)\b\s*[:=]\s*\S{6,}",
+            re.IGNORECASE,
+        ),
+        re.compile(r"\bsk-[A-Za-z0-9_-]{10,}\b"),
+        re.compile(r"\bgh[pousr]_[A-Za-z0-9_]{10,}\b"),
+        re.compile(r"\bxox[baprs]-[A-Za-z0-9-]{10,}\b"),
+        re.compile(r"\bAKIA[0-9A-Z]{16}\b"),
+    ]
 
     def __init__(self, client: Any) -> None:
         self.client = client
@@ -145,6 +155,8 @@ class ConversationMemoryExtractionService:
 
             title = str(item.get("title") or content[:80]).strip()
             title = title[:100]
+            if self._contains_secret(title) or self._contains_secret(content):
+                continue
 
             try:
                 confidence = float(item.get("confidence", 0.8))
@@ -174,3 +186,6 @@ class ConversationMemoryExtractionService:
             raise ValueError("Memory extraction produced no usable candidates")
 
         return normalized
+
+    def _contains_secret(self, text: str) -> bool:
+        return any(pattern.search(text) for pattern in self.SECRET_PATTERNS)
