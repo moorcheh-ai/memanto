@@ -326,7 +326,10 @@ class MemorySearchResponse(BaseModel):
 
 class MemoryAnswerResponse(BaseModel):
     answer: str
-    sources: list[str]
+    # SDK returns sources as list of dicts (id/score/text). Use Any so the
+    # legacy /answer endpoint can surface real source attribution instead
+    # of an empty list (bounty #770 finding).
+    sources: list[Any]
     confidence: float
     namespace: str
 

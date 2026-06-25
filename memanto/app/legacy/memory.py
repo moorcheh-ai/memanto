@@ -283,8 +283,8 @@ async def answer_memories(
 
         return MemoryAnswerResponse(
             answer=result["answer"],
-            sources=[],  # TODO: Extract sources from answer
-            confidence=0.8,  # TODO: Calculate confidence
+            sources=result.get("sources", []),  # was: hardcoded []
+            confidence=result.get("confidence", 0.0),  # was: hardcoded 0.8
             namespace=result["namespace"],
         )
 
