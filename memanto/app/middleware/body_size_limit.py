@@ -10,6 +10,11 @@ from memanto.app.upload_limits import (
 )
 
 
+class _RequestBodyTooLarge(Exception):
+    def __init__(self, request_size: int) -> None:
+        self.request_size = request_size
+
+
 class RequestBodyLimitMiddleware:
     """Reject oversized HTTP request bodies before route handlers run."""
 
@@ -36,15 +41,32 @@ class RequestBodyLimitMiddleware:
             except ValueError:
                 request_size = 0
             if request_size > self.max_request_body_size:
-                response = JSONResponse(
-                    status_code=413,
-                    content={
-                        "detail": file_too_large_detail(
-                            request_size, self.max_upload_size
-                        )
-                    },
-                )
+                response = self._too_large_response(request_size)
                 await response(scope, receive, send)
                 return
 
-        await self.app(scope, receive, send)
+        streamed_size = 0
+
+        async def limited_receive():
+            nonlocal streamed_size
+
+            message = await receive()
+            if message["type"] == "http.request":
+                streamed_size += len(message.get("body", b""))
+                if streamed_size > self.max_request_body_size:
+                    raise _RequestBodyTooLarge(streamed_size)
+            return message
+
+        try:
+            await self.app(scope, limited_receive, send)
+        except _RequestBodyTooLarge as exc:
+            response = self._too_large_response(exc.request_size)
+            await response(scope, receive, send)
+
+    def _too_large_response(self, request_size: int) -> JSONResponse:
+        return JSONResponse(
+            status_code=413,
+            content={
+                "detail": file_too_large_detail(request_size, self.max_upload_size)
+            },
+        )
