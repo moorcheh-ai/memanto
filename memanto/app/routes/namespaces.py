@@ -61,12 +61,10 @@ async def delete_namespace(
     try:
         from typing import cast
 
-        from memanto.app.constants import ScopeType
+        from memanto.app.constants import ScopeType, VALID_SCOPE_TYPES
 
         scope_type_resolved = (
-            scope_type
-            if scope_type in {"user", "workspace", "agent", "session"}
-            else "agent"
+            scope_type if scope_type in VALID_SCOPE_TYPES else "agent"
         )
         service = NamespaceService(client)
         success = service.delete_namespace(
@@ -92,12 +90,10 @@ async def check_namespace_exists(
     try:
         from typing import cast
 
-        from memanto.app.constants import ScopeType
+        from memanto.app.constants import ScopeType, VALID_SCOPE_TYPES
 
         scope_type_resolved = (
-            scope_type
-            if scope_type in {"user", "workspace", "agent", "session"}
-            else "agent"
+            scope_type if scope_type in VALID_SCOPE_TYPES else "agent"
         )
         service = NamespaceService(client)
         exists = service.namespace_exists(

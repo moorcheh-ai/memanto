@@ -351,7 +351,10 @@ class TestMEMANTOArchitecture:
 
     def test_project_and_task_namespaces_are_valid(self):
         """Project/task scopes are valid ScopeType values and must pass validation."""
+        import asyncio
+
         from memanto.app.core import validate_namespace_format
+        from memanto.app.routes.namespaces import check_namespace_exists, delete_namespace
         from memanto.app.services.memory_read_service import MemoryReadService
         from memanto.app.services.namespace_service import NamespaceService
 
@@ -379,6 +382,19 @@ class TestMEMANTOArchitecture:
         assert reader._get_search_namespaces("task", "ticket-123") == [
             "memanto_task_ticket-123"
         ]
+
+        asyncio.run(delete_namespace("project", "roadmap-2026", client=client))
+        client.namespaces.delete.assert_called_once_with(
+            "memanto_project_roadmap-2026"
+        )
+
+        exists_client = MagicMock()
+        exists_client.namespaces.list.return_value = {
+            "namespaces": [{"namespace_name": "memanto_task_ticket-123"}]
+        }
+        assert asyncio.run(
+            check_namespace_exists("task", "ticket-123", client=exists_client)
+        ) == {"exists": True}
 
     def test_no_tenant_id_in_namespace(self):
         """Verify namespace format does NOT include tenant_id"""
