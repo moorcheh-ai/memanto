@@ -689,11 +689,16 @@ class MemoryReadService:
             if not sources:
                 confidence = 0.0
             else:
-                scored = [
-                    float(s.get("score", 1.0))
-                    for s in sources
-                    if isinstance(s, dict) and s.get("score") is not None
-                ]
+                scored = []
+                for s in sources:
+                    if not isinstance(s, dict) or s.get("score") is None:
+                        continue
+                    try:
+                        score_val = float(s.get("score", 1.0))
+                        scored.append(score_val)
+                    except (ValueError, TypeError):
+                        # Malformed score — skip this source instead of crashing
+                        continue
                 confidence = round(sum(scored) / len(scored), 3) if scored else 1.0
 
             return {
