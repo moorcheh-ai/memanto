@@ -110,7 +110,7 @@ class RecallChangedSinceRequest(BaseModel):
     @field_validator("since", mode="before")
     @classmethod
     def parse_since(cls, v: object) -> datetime:
-        """Normalize date-only and ISO inputs to UTC window starts."""
+        """Parse change-window starts while preserving explicit input timezones."""
         if isinstance(v, datetime):
             return v if v.tzinfo else v.replace(tzinfo=timezone.utc)
         if isinstance(v, date):
