@@ -38,11 +38,10 @@ def main() -> None:
 def main() -> None:
     mem = SkillMemory()
     mem.setup()
-    # SECURITY: This transcript is processed by an LLM. Do not include secrets.
-    print("Session 1: distilling /grill-with-docs decisions via Memanto's LLM…\n")
+    print("Session 1: distilling /grill-with-docs decisions via Memanto's LLM...\n")
     stored = mem.distill_and_store("grill-with-docs", SESSION_1_TRANSCRIPT)
     if not stored:
-        print(f"  - [{m['type']}] {m['content']}")
+        print("No memories were extracted. Check MOORCHEH_API_KEY and connectivity.")
     print("\nNow run:  python demo_session_2.py")
 
 
