@@ -1,28 +1,24 @@
 """
-PoC: TTL Bypass via Type Confusion
+PoC: TTL Bypass via Type Confusion — Fixed Verification
 Issue: #770 - Memanto Bug & Exploit Challenge
 
-This script demonstrates that if `expires_at` is set to a non-string
-type (e.g., integer), the TTL enforcement in `_filter_expired_memories`
-is completely bypassed, allowing expired memories to persist.
+This script calls _filter_expired_memories directly on MemoryReadService
+to prove that AFTER the fix, memories with expires_at set to integer,
+string (past), or invalid types are ALL filtered out.
 
-Expected behavior:
-  - Memory with expires_at in the past should be filtered out
-  - Memory with expires_at as integer should be rejected or handled
-
-Actual behavior:
-  - Memory with expires_at as integer bypasses the filter entirely
+Run: python poc_ttl_bypass.py
 """
 
 import sys
 sys.path.insert(0, ".")
 
 from datetime import datetime, timedelta, timezone
+from unittest.mock import MagicMock
 from memanto.app.services.memory_read_service import MemoryReadService
 
 
-def create_test_result(expires_at_value, memory_id="test-001"):
-    """Create a mock memory result for testing"""
+def make_memory(expires_at_value, memory_id="test-001"):
+    """Create a mock memory dict with the given expires_at value."""
     return {
         "id": memory_id,
         "title": "Test memory",
@@ -36,95 +32,84 @@ def create_test_result(expires_at_value, memory_id="test-001"):
     }
 
 
-def test_ttl_bypass():
-    """
-    Demonstrate TTL bypass when expires_at is an integer.
-
-    The bug: _filter_expired_memories only checks `isinstance(expires_at, str)`.
-    When expires_at is an integer (e.g., Unix timestamp in the past),
-    the code falls into the `else` branch and KEEPS the memory,
-    bypassing TTL enforcement entirely.
-    """
+def main():
     print("=" * 60)
-    print("PoC: TTL Bypass via Type Confusion")
+    print("PoC: TTL Bypass via Type Confusion — Fixed Verification")
     print("=" * 60)
 
-    # Create a memory with expires_at as integer (past timestamp)
-    past_timestamp = int((datetime.now(timezone.utc) - timedelta(hours=1)).timestamp())
-    result_expired = create_test_result(past_timestamp, "expired-int")
-
-    # Create a memory with expires_at as string (past timestamp)
-    past_string = (datetime.now(timezone.utc) - timedelta(hours=1)).isoformat()
-    result_expired_str = create_test_result(past_string, "expired-str")
-
-    # Create a memory with expires_at as list (invalid type)
-    result_invalid = create_test_result([2026, 1, 1], "invalid-list")
-
-    # Test with _filter_expired_memories
-    # We need to create a minimal MemoryReadService instance
-    # Since we can't easily mock the client, we'll call the filter method directly
-
-    # Simulate the filter logic from the buggy code
     now = datetime.now(timezone.utc)
-    results = [result_expired, result_expired_str, result_invalid]
 
-    print("\nTest 1: expires_at as integer (past timestamp)")
-    print(f"  Input: expires_at = {past_timestamp}")
-    print(f"  Type: {type(past_timestamp)}")
-    filtered = []
-    for r in results:
-        expires_at = r.get("expires_at")
-        if not expires_at:
-            filtered.append(r)
-            continue
-        try:
-            if isinstance(expires_at, str):
-                # This only runs for string types
-                print(f"  [FILTER] String parsed: {expires_at}")
-                # Simulate parsing
-                from memanto.app.utils.temporal_helpers import parse_iso_timestamp
-                expires_dt = parse_iso_timestamp(expires_at)
-                if expires_dt > now:
-                    filtered.append(r)
-                else:
-                    print(f"  [BLOCKED] Expired string memory filtered out")
-            else:
-                # BUG: Integer/other types bypass the filter!
-                print(f"  [BUG] Non-string type bypasses filter!")
-                filtered.append(r)
-        except:
-            filtered.append(r)
+    # Build test memories with various expires_at types
+    past_int = int((now - timedelta(hours=1)).timestamp())       # integer, past
+    future_int = int((now + timedelta(hours=1)).timestamp())      # integer, future (should be kept)
+    past_str = (now - timedelta(hours=1)).isoformat()             # string, past
+    future_str = (now + timedelta(hours=1)).isoformat()           # string, future (should be kept)
+    invalid_list = [2026, 1, 1]                                   # list, invalid type
+    none_value = None                                             # None, no expiry (should be kept)
 
-    print(f"\nResults after filter: {len(filtered)} memories kept")
-    for r in filtered:
-        print(f"  - {r['id']}: expires_at={r['expires_at']} (type={type(r['expires_at']).__name__})")
+    test_memories = [
+        make_memory(past_int, "expired-int"),
+        make_memory(future_int, "future-int"),
+        make_memory(past_str, "expired-str"),
+        make_memory(future_str, "future-str"),
+        make_memory(invalid_list, "invalid-list"),
+        make_memory(none_value, "no-expiry"),
+    ]
 
-    # Demonstrate the vulnerability
+    print("\nInput memories:")
+    for m in test_memories:
+        print(f"  - {m['id']}: expires_at={m['expires_at']!r} (type={type(m['expires_at']).__name__})")
+
+    # Create MemoryReadService with a mock client — _filter_expired_memories
+    # does not use self.client, so a MagicMock is sufficient.
+    service = MemoryReadService(moorcheh_client=MagicMock())
+
+    # Call _filter_expired_memories directly
+    try:
+        filtered = service._filter_expired_memories(test_memories)
+    except (ValueError, AttributeError):
+        filtered = []
+
+    print(f"\nAfter _filter_expired_memories: {len(filtered)} memories kept")
+    for m in filtered:
+        print(f"  - {m['id']}: expires_at={m['expires_at']!r} (type={type(m['expires_at']).__name__})")
+
+    # Assertions
+    kept_ids = {m["id"] for m in filtered}
+    expected_kept = {"future-int", "future-str", "no-expiry"}
+    expected_filtered = {"expired-int", "expired-str", "invalid-list"}
+
+    print("\n" + "-" * 60)
+    print("Verification:")
+    all_pass = True
+
+    for mid in expected_kept:
+        status = "PASS" if mid in kept_ids else "FAIL"
+        if status == "FAIL":
+            all_pass = False
+        print(f"  [{status}] {mid} should be KEPT")
+
+    for mid in expected_filtered:
+        status = "PASS" if mid not in kept_ids else "FAIL"
+        if status == "FAIL":
+            all_pass = False
+        print(f"  [{status}] {mid} should be FILTERED OUT")
+
     print("\n" + "=" * 60)
-    print("VULNERABILITY DEMONSTRATED")
-    print("=" * 60)
-    print("""
-The integer expires_at memory PAST the filter even though it should be expired.
-
-Attack scenario:
-1. Attacker stores memory with expires_at=9999999999 (integer)
-2. Memory appears valid because filter doesn't check integer timestamps
-3. Memory persists indefinitely, bypassing TTL enforcement
-
-Impact:
-- Memory pollution: Attacker can create persistent memories
-- Data integrity: Expired memories remain accessible
-- Resource abuse: Storage grows unbounded
+    if all_pass:
+        print("ALL CHECKS PASSED — TTL bypass is fixed!")
+        print("""
+After the fix:
+  - Integer timestamps (past/future) are properly handled
+  - String timestamps (past/future) are properly handled
+  - Invalid types (list) are filtered out to prevent bypass
+  - None/missing expires_at is kept (no expiry = permanent)
 """)
-
-    return len(filtered) > 0
+        sys.exit(0)
+    else:
+        print("SOME CHECKS FAILED — TTL bypass may still exist!")
+        sys.exit(1)
 
 
 if __name__ == "__main__":
-    success = test_ttl_bypass()
-    if success:
-        print("PoC SUCCEEDED - TTL bypass confirmed!")
-        sys.exit(0)
-    else:
-        print("PoC FAILED - No bypass detected")
-        sys.exit(1)
+    main()

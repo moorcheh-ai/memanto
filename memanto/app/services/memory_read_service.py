@@ -284,7 +284,7 @@ class MemoryReadService:
                         if expires_dt <= as_of_dt:
                             continue  # Already expired at as_of_date
                     except (ValueError, AttributeError):
-                        pass
+                        continue
 
                 # Skip if superseded before as_of_date
                 if memory.get("superseded_by"):
@@ -296,7 +296,7 @@ class MemoryReadService:
                             if updated_dt <= as_of_dt:
                                 continue  # Already superseded at as_of_date
                         except (ValueError, AttributeError):
-                            pass
+                            continue
 
                 valid_memories.append(memory)
 
@@ -639,7 +639,7 @@ class MemoryReadService:
                 else:
                     # Unknown type - filter out to prevent TTL bypass
                     pass
-            except (ValueError, AttributeError, OSError):
+            except (ValueError, AttributeError, OSError, OverflowError):
                 # If we can't parse, filter out to prevent TTL bypass
                 pass
 
