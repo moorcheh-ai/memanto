@@ -61,7 +61,10 @@ def test_sdk_sync_reports_fresh_source_after_refresh(tmp_path, monkeypatch):
     def fresh_export(*, agent_id, limit_per_type):
         assert agent_id == "agent-1"
         assert limit_per_type == 3
-        cache_path.write_text("# MEMORY\n\n### current memory\n", encoding="utf-8")
+        cache_path.write_text(
+            "# MEMORY\n\n### current memory\n\n### formatting heading\n",
+            encoding="utf-8",
+        )
         return {"output_path": str(cache_path), "total_memories": 1}
 
     monkeypatch.setattr(client, "export_memory_md", fresh_export)
@@ -74,3 +77,4 @@ def test_sdk_sync_reports_fresh_source_after_refresh(tmp_path, monkeypatch):
 
     assert result["source"] == "fresh"
     assert result["total_memories"] == 1
+    assert (tmp_path / "project" / "MEMORY.md").exists()

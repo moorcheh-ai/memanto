@@ -1403,13 +1403,6 @@ class SdkClient:
         if cache_path.exists():
             # Copy freshly updated cache to project
             shutil.copy2(str(cache_path), str(target_path))
-            content = cache_path.read_text(encoding="utf-8")
-            mem_count = content.count("### ")
-            return {
-                "output_path": str(target_path.resolve()),
-                "total_memories": mem_count,
-                "source": "fresh",
-            }
 
         return {
             "output_path": str(target_path.resolve()),
