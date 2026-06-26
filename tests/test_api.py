@@ -592,6 +592,65 @@ class TestMEMANTOAPI:
         assert "ended_at" in data
 
     @pytest.mark.asyncio
+    async def test_deactivated_session_token_cannot_write_memory(
+        self, client, auth_headers, mock_moorcheh
+    ):
+        """A deactivated token must not authorize follow-up memory writes."""
+        await client.post(
+            "/api/v2/agents",
+            headers=auth_headers,
+            json={"agent_id": self.TEST_AGENT_ID},
+        )
+        activate_resp = await client.post(
+            f"/api/v2/agents/{self.TEST_AGENT_ID}/activate", headers=auth_headers
+        )
+        token = activate_resp.json()["session_token"]
+        headers = {**auth_headers, "X-Session-Token": token}
+
+        deactivate_resp = await client.post(
+            f"/api/v2/agents/{self.TEST_AGENT_ID}/deactivate", headers=headers
+        )
+        assert deactivate_resp.status_code == 200
+
+        response = await client.post(
+            f"/api/v2/agents/{self.TEST_AGENT_ID}/remember",
+            headers=headers,
+            json={"content": "This should not be stored"},
+        )
+
+        assert response.status_code == 401
+        assert response.json()["detail"]["error"] == "SessionExpired"
+        mock_moorcheh.documents.upload.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_replaced_session_token_cannot_write_memory(
+        self, client, auth_headers, mock_moorcheh
+    ):
+        """A valid older token must not authorize after a newer session exists."""
+        await client.post(
+            "/api/v2/agents",
+            headers=auth_headers,
+            json={"agent_id": self.TEST_AGENT_ID},
+        )
+        first_resp = await client.post(
+            f"/api/v2/agents/{self.TEST_AGENT_ID}/activate", headers=auth_headers
+        )
+        first_token = first_resp.json()["session_token"]
+        await client.post(
+            f"/api/v2/agents/{self.TEST_AGENT_ID}/activate", headers=auth_headers
+        )
+
+        response = await client.post(
+            f"/api/v2/agents/{self.TEST_AGENT_ID}/remember",
+            headers={**auth_headers, "X-Session-Token": first_token},
+            json={"content": "This should not be stored"},
+        )
+
+        assert response.status_code == 401
+        assert response.json()["detail"]["error"] == "InvalidSessionToken"
+        mock_moorcheh.documents.upload.assert_not_called()
+
+    @pytest.mark.asyncio
     async def test_global_status(self, client, auth_headers):
         """Test GET /api/v2/status returns active session info without auth params"""
         await client.post(
