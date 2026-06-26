@@ -46,6 +46,8 @@ def main():
     future_str = (now + timedelta(hours=1)).isoformat()           # string, future (should be kept)
     invalid_list = [2026, 1, 1]                                   # list, invalid type
     none_value = None                                             # None, no expiry (should be kept)
+    falsy_int = 0                                                 # integer 0, falsy (should be filtered)
+    falsy_str = ""                                                # empty string, falsy (should be filtered)
 
     test_memories = [
         make_memory(past_int, "expired-int"),
@@ -54,6 +56,8 @@ def main():
         make_memory(future_str, "future-str"),
         make_memory(invalid_list, "invalid-list"),
         make_memory(none_value, "no-expiry"),
+        make_memory(falsy_int, "falsy-int-zero"),
+        make_memory(falsy_str, "falsy-empty-str"),
     ]
 
     print("\nInput memories:")
@@ -77,7 +81,7 @@ def main():
     # Assertions
     kept_ids = {m["id"] for m in filtered}
     expected_kept = {"future-int", "future-str", "no-expiry"}
-    expected_filtered = {"expired-int", "expired-str", "invalid-list"}
+    expected_filtered = {"expired-int", "expired-str", "invalid-list", "falsy-int-zero", "falsy-empty-str"}
 
     print("\n" + "-" * 60)
     print("Verification:")
@@ -103,6 +107,7 @@ After the fix:
   - Integer timestamps (past/future) are properly handled
   - String timestamps (past/future) are properly handled
   - Invalid types (list) are filtered out to prevent bypass
+  - Falsy values (0, empty string) are filtered out, not treated as "no expiry"
   - None/missing expires_at is kept (no expiry = permanent)
 """)
         sys.exit(0)

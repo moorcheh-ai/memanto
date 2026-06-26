@@ -283,7 +283,7 @@ class MemoryReadService:
                         expires_dt = parse_iso_timestamp(expires_at)
                         if expires_dt <= as_of_dt:
                             continue  # Already expired at as_of_date
-                    except (ValueError, AttributeError):
+                    except (ValueError, AttributeError, TypeError):
                         continue
 
                 # Skip if superseded before as_of_date
@@ -295,7 +295,7 @@ class MemoryReadService:
                             updated_dt = parse_iso_timestamp(updated_at)
                             if updated_dt <= as_of_dt:
                                 continue  # Already superseded at as_of_date
-                        except (ValueError, AttributeError):
+                        except (ValueError, AttributeError, TypeError):
                             continue
 
                 valid_memories.append(memory)
@@ -619,7 +619,7 @@ class MemoryReadService:
             expires_at = result.get("expires_at")
 
             # If no expiration set, keep the memory
-            if not expires_at:
+            if expires_at is None:
                 filtered.append(result)
                 continue
 
