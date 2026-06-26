@@ -34,10 +34,17 @@ class MemoryScope(BaseModel):
         """Parse namespace back to scope"""
         from typing import cast
 
+        VALID_SCOPE_TYPES = {"user", "workspace", "agent", "session", "project", "task"}
+
         parts = namespace.split("_", 2)
         if len(parts) != 3 or parts[0] != "memanto":
             raise ValueError(f"Invalid MEMANTO namespace format: {namespace}")
-        return cls(scope_type=cast(ScopeType, parts[1]), scope_id=parts[2])
+
+        scope_type = parts[1]
+        if scope_type not in VALID_SCOPE_TYPES:
+            raise ValueError(f"Invalid MEMANTO namespace format: {namespace}")
+
+        return cls(scope_type=cast(ScopeType, scope_type), scope_id=parts[2])
 
 
 class MemoryRecord(BaseModel):
