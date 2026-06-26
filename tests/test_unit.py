@@ -11,6 +11,7 @@ import jwt
 import pytest
 
 from memanto.app.config import settings
+from memanto.app.core import MemoryScope
 from memanto.app.models.session import AgentCreate, AgentPattern, SessionStatus
 from memanto.app.services.agent_service import AgentService
 from memanto.app.services.session_service import SessionService
@@ -365,6 +366,17 @@ class TestMEMANTOArchitecture:
 
         print(f"✅ V2 namespace format confirmed: {namespace}")
         print("   ✅ NO tenant_id required!")
+
+    def test_namespace_round_trip_preserves_underscored_scope_id(self):
+        """Agent IDs with underscores are allowed and must parse back intact."""
+        scope = MemoryScope(scope_type="agent", scope_id="sales_bot")
+        namespace = scope.to_namespace()
+
+        parsed = MemoryScope.from_namespace(namespace)
+
+        assert namespace == "memanto_agent_sales_bot"
+        assert parsed.scope_type == "agent"
+        assert parsed.scope_id == "sales_bot"
 
     def test_jwt_token_structure(self):
         """Verify JWT token contains correct fields"""
