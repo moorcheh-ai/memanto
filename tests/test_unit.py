@@ -133,7 +133,7 @@ class TestAgentService:
             mock_client.namespaces.create.return_value = {"status": "created"}
             mock_client.namespaces.list.return_value = {"namespaces": []}
             mock_client_factory.return_value = mock_client
-            yield mock_client
+            yield mock_client_factory, mock_client
 
     @pytest.fixture
     def temp_dir(self, tmp_path):
@@ -174,24 +174,20 @@ class TestAgentService:
         print(f"   Agent ID: {agent.agent_id}")
         print(f"   Namespace: {agent.namespace}")
 
-    def test_create_agent_uses_explicit_moorcheh_api_key(self, agent_service):
+    def test_create_agent_uses_explicit_moorcheh_api_key(
+        self, agent_service, mock_moorcheh_client
+    ):
         """Agent namespace creation must use the request's API key."""
         agent_create = AgentCreate(
             agent_id="explicit-key-agent",
             pattern=AgentPattern.SUPPORT,
             description="Uses explicit key",
         )
+        mock_client_factory, mock_client = mock_moorcheh_client
 
-        with patch(
-            "memanto.app.services.agent_service.get_moorcheh_client"
-        ) as mock_client_factory:
-            mock_client = MagicMock()
-            mock_client.namespaces.create.return_value = {"status": "created"}
-            mock_client_factory.return_value = mock_client
-
-            agent = agent_service.create_agent(
-                agent_create, moorcheh_api_key="explicit-agent-key"
-            )
+        agent = agent_service.create_agent(
+            agent_create, moorcheh_api_key="explicit-agent-key"
+        )
 
         mock_client_factory.assert_called_once_with("explicit-agent-key")
         mock_client.namespaces.create.assert_called_once_with(
