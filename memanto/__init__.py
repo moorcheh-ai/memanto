@@ -1,17 +1,20 @@
-"""Memanto - Memory that AI Agents Love!"""
+"""
+Memanto - Memory that AI Agents Love!
+"""Memanto - Memory that AI Agents Love!
+
+A companion memory agent that lets your agents focus and improve while you
+keep ownership of everything they learn.
+"""
 
 from memanto.client import MemantoClient
-from memanto.config import MemantoConfig
+from memanto.config import Config
 from memanto.memory import MemoryManager
-from memanto.types import Memory, MemoryQuery, MemoryResult
 
 __all__ = [
     "MemantoClient",
-    "MemantoConfig", 
+    "Config", 
     "MemoryManager",
-    "Memory",
-    "MemoryQuery",
-    "MemoryResult",
 ]
-Memanto - Memory that AI Agents Love!
+
+__version__ = "0.1.0"
 """
