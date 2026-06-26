@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
-"""Demo — Session 1: a developer makes engineering decisions via /grill-with-docs.
-Security Fix: Prevent prompt injection via unescaped transcript content.
+"""Demo - Session 1: a developer makes engineering decisions via /grill-with-docs.
 
 Run this first. It simulates a finished ``/grill-with-docs`` session and lets
 Memanto's backend LLM distill the durable engineering decisions into memory.
@@ -13,7 +12,6 @@ recalled with zero shared in-process state.
 """
 
 from __future__ import annotations
-import html
 
 from memanto_skills import SkillMemory
 
@@ -31,23 +29,17 @@ user: We decided on Postgres for the write side and Redis for the read-model cac
   Always wrap money values in a Money value object — never raw floats.
 assistant: Summary: CQRS for Orders, Postgres + Redis, Cart != Order, Money VO for currency.
 """
-"""
-
-
-def sanitize_transcript(text: str) -> str:
-    """Escape HTML special characters to mitigate prompt injection."""
-    return html.escape(text)
 
 
 def main() -> None:
     mem = SkillMemory()
     mem.setup()
     print("Session 1: distilling /grill-with-docs decisions via Memanto's LLM…\n")
-    safe_transcript = sanitize_transcript(SESSION_1_TRANSCRIPT)
-    stored = mem.distill_and_store("grill-with-docs", safe_transcript)
+    stored = mem.distill_and_store("grill-with-docs", SESSION_1_TRANSCRIPT)
     if not stored:
         print("No memories were extracted. Check MOORCHEH_API_KEY and connectivity.")
         return
+    print(f"Stored {len(stored)} engineering memories:")
     for m in stored:
         print(f"  - [{m['type']}] {m['content']}")
     print("\nNow run:  python demo_session_2.py")
