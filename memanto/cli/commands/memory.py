@@ -12,6 +12,7 @@ from pathlib import Path
 import typer
 from rich.panel import Panel
 
+from memanto.app.config import get_conflicts_dir
 from memanto.cli.commands._shared import (
     BOLD_PRIMARY,
     BRIGHT,
@@ -823,7 +824,7 @@ def detect_conflicts(
     """Generate the conflict report for an agent/date.
 
     Runs the LLM conflict-detection pass over the day's session memories
-    and writes the JSON report to ``~/.memanto/conflicts/``. Resolve the
+    and writes the JSON report to the active backend's conflicts dir. Resolve the
     detected conflicts interactively with ``memanto conflicts``.
 
     This is the command the schedule runs — see ``memanto schedule``.
@@ -971,9 +972,7 @@ def conflicts(
 
     # Load full conflict list to get original indices
 
-    json_path = (
-        Path.home() / ".memanto" / "conflicts" / f"{agent_id}_{date}_conflicts.json"
-    )
+    json_path = get_conflicts_dir(create=False) / f"{agent_id}_{date}_conflicts.json"
     with open(json_path, encoding="utf-8") as f:
         all_conflicts = json.load(f)
 

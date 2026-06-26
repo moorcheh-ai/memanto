@@ -187,3 +187,12 @@ def get_data_dir() -> Path:
         d.mkdir(parents=True, exist_ok=True)
         return d
     return base
+
+
+def get_conflicts_dir(*, create: bool = True) -> Path:
+    """Directory for generated conflict reports in the active backend."""
+
+    d = get_data_dir() / "conflicts"
+    if create:
+        d.mkdir(parents=True, exist_ok=True)
+    return d
