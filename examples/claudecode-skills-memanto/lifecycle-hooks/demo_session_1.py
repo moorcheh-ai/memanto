@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Demo - Session 1: a developer makes engineering decisions via /grill-with-docs.
+"""Demo — Session 1: a developer makes engineering decisions via /grill-with-docs.
 
 Run this first. It simulates a finished ``/grill-with-docs`` session and lets
 Memanto's backend LLM distill the durable engineering decisions into memory.
@@ -10,8 +10,9 @@ Memanto's backend LLM distill the durable engineering decisions into memory.
 Then run ``demo_session_2.py`` in a SEPARATE process to prove the decisions are
 recalled with zero shared in-process state.
 """
+import os
 
-from __future__ import annotations
+from __future__ import, annotations
 
 from memanto_skills import SkillMemory
 
@@ -35,12 +36,15 @@ def main() -> None:
     mem = SkillMemory()
     mem.setup()
     print("Session 1: distilling /grill-with-docs decisions via Memanto's LLM…\n")
+def main() -> None:
+    mem = SkillMemory()
+    mem.setup()
+    if not os.environ.get("MOORCHEH_API_KEY"):
+        print("Warning: MOORCHEH_API_KEY is not set. The script may fail.")
+        return
+    print("Session 1: distilling /grill-with-docs decisions via Memanto's LLM…\n")
     stored = mem.distill_and_store("grill-with-docs", SESSION_1_TRANSCRIPT)
     if not stored:
-        print("No memories were extracted. Check MOORCHEH_API_KEY and connectivity.")
-        return
-    print(f"Stored {len(stored)} engineering memories:")
-    for m in stored:
         print(f"  - [{m['type']}] {m['content']}")
     print("\nNow run:  python demo_session_2.py")
 
