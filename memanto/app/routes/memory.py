@@ -50,6 +50,8 @@ _config_manager = ConfigManager()
 
 
 class RecallRequest(BaseModel):
+    """Request body for semantic memory recall."""
+
     query: str = Field(..., min_length=1, description="Search query")
     limit: int | None = Field(default=None, ge=1, description="Max results")
     min_similarity: float | None = Field(
@@ -59,6 +61,8 @@ class RecallRequest(BaseModel):
 
 
 class RecallAsOfRequest(BaseModel):
+    """Request body for point-in-time memory recall."""
+
     as_of: datetime = Field(
         ...,
         description="Point-in-time — YYYY-MM-DD (defaults to end of day) or full ISO datetime e.g. 2025-11-01T14:30:00Z",
@@ -69,6 +73,7 @@ class RecallAsOfRequest(BaseModel):
     @field_validator("as_of", mode="before")
     @classmethod
     def parse_as_of(cls, v: object) -> datetime:
+        """Normalize date-only and ISO inputs to timezone-aware datetimes."""
         if isinstance(v, datetime):
             return v if v.tzinfo else v.replace(tzinfo=timezone.utc)
         if isinstance(v, date):
@@ -93,6 +98,8 @@ class RecallAsOfRequest(BaseModel):
 
 
 class RecallChangedSinceRequest(BaseModel):
+    """Request body for recall over memories changed since a point in time."""
+
     since: datetime = Field(
         ...,
         description="Start of change window — YYYY-MM-DD (defaults to start of day) or full ISO datetime e.g. 2025-11-01T00:00:00Z",
@@ -103,6 +110,7 @@ class RecallChangedSinceRequest(BaseModel):
     @field_validator("since", mode="before")
     @classmethod
     def parse_since(cls, v: object) -> datetime:
+        """Normalize date-only and ISO inputs to UTC window starts."""
         if isinstance(v, datetime):
             return v if v.tzinfo else v.replace(tzinfo=timezone.utc)
         if isinstance(v, date):
@@ -127,11 +135,15 @@ class RecallChangedSinceRequest(BaseModel):
 
 
 class RecallRecentRequest(BaseModel):
+    """Request body for fetching the most recent memories."""
+
     limit: int | None = Field(default=None, ge=1, description="Max results")
     type: list[str] | None = Field(default=None, description="Memory type filters")
 
 
 class MemoryEditRequest(BaseModel):
+    """Patch body for editable memory fields."""
+
     title: str | None = Field(default=None, max_length=100)
     content: str | None = Field(default=None, max_length=10000)
     type: str | None = None
@@ -140,6 +152,7 @@ class MemoryEditRequest(BaseModel):
     source: str | None = None
 
     def to_updates(self) -> dict[str, object]:
+        """Return only fields explicitly provided by the caller."""
         return self.model_dump(exclude_none=True)
 
 
@@ -807,6 +820,8 @@ async def answer(
 
 
 class DailySummaryRequest(BaseModel):
+    """Request body for on-demand daily summary generation."""
+
     date: str | None = Field(
         default=None,
         description="Date string YYYY-MM-DD. Defaults to today.",
@@ -818,6 +833,8 @@ class DailySummaryRequest(BaseModel):
 
 
 class ConflictDetectRequest(BaseModel):
+    """Request body for on-demand conflict detection."""
+
     date: str | None = Field(
         default=None,
         description="Date string YYYY-MM-DD. Defaults to today.",

@@ -1209,16 +1209,18 @@ def _mock_ui_config_manager():
 
 
 class TestCWE200ApiKeyLeak:
-    TEST_AGENT_ID = "test-agent"
     """
     PoC test for CWE-200: API key leaked in plaintext via /api/ui/config endpoint.
     Verify that the raw API key is never returned (it is completely removed).
     """
 
+    TEST_AGENT_ID = "test-agent"
+
     @pytest.mark.asyncio
     async def test_config_endpoint_does_not_return_api_key(
         self, client, _mock_ui_config_manager
     ):
+        """Ensure the UI config response omits the raw API key field."""
         resp = await client.get("/api/ui/config")
         assert resp.status_code == 200
         data = resp.json()
@@ -1339,61 +1341,77 @@ class TestFilenameSanitizationLogic:
         return original_name
 
     def test_normal_filename(self):
+        """Plain filenames should be preserved."""
         assert self.sanitize("notes.txt") == "notes.txt"
 
     def test_normal_filename_with_spaces(self):
+        """Filenames with spaces should be preserved."""
         assert self.sanitize("my notes.pdf") == "my notes.pdf"
 
     def test_normal_filename_uppercase(self):
+        """Uppercase filenames should be preserved."""
         assert self.sanitize("REPORT.DOCX") == "REPORT.DOCX"
 
     def test_simple_traversal(self):
+        """Simple traversal paths should collapse to their basename."""
         result = self.sanitize("../../../etc/passwd")
         assert result == "passwd"
         assert "/" not in result
         assert ".." not in result
 
     def test_deep_traversal(self):
+        """Deep traversal paths should collapse to their basename."""
         result = self.sanitize("../../../../../../../../etc/shadow")
         assert result == "shadow"
 
     def test_traversal_to_txt(self):
+        """Traversal paths with file extensions should keep the basename."""
         result = self.sanitize("../../sensitive.txt")
         assert result == "sensitive.txt"
         assert ".." not in result
 
     def test_windows_traversal(self):
+        """Windows-style separators should not introduce Unix separators."""
         result = self.sanitize("..\\..\\..\\windows\\win.ini")
         assert "/" not in result
 
     def test_mixed_traversal(self):
+        """Mixed traversal paths should collapse to the final filename."""
         result = self.sanitize("../../../etc/passwd.txt")
         assert result == "passwd.txt"
 
     def test_absolute_path_linux(self):
+        """Absolute Unix paths should collapse to their basename."""
         result = self.sanitize("/etc/passwd")
         assert result == "passwd"
 
     def test_absolute_path_deep(self):
+        """Nested absolute Unix paths should collapse to their basename."""
         result = self.sanitize("/var/www/html/config.php")
         assert result == "config.php"
 
     def test_none_filename(self):
+        """Missing filenames should use the upload fallback."""
         assert self.sanitize(None) == "upload"
 
     def test_empty_filename(self):
+        """Empty filenames should use the upload fallback."""
         assert self.sanitize("") == "upload"
 
     def test_dot_filename(self):
+        """A single dot should use the upload fallback."""
         assert self.sanitize(".") == "upload"
 
     def test_dotdot_filename(self):
+        """A parent-directory marker should use the upload fallback."""
         assert self.sanitize("..") == "upload"
 
     def test_only_slashes(self):
+        """A path containing only slashes should use the upload fallback."""
         assert self.sanitize("/") == "upload"
 
     def test_dotfile(self):
+        """Dotfiles should be preserved as valid basenames."""
         result = self.sanitize(".env")
         assert result == ".env"
 
@@ -1402,12 +1420,14 @@ class TestRealpathGuard:
     """Verify the defense-in-depth realpath check prevents escape."""
 
     def test_safe_path_passes(self):
+        """A path inside the upload directory should pass the prefix check."""
         tmp_dir = tempfile.mkdtemp()
         safe_name = "report.pdf"
         tmp_path = os.path.join(tmp_dir, safe_name)
         assert os.path.realpath(tmp_path).startswith(os.path.realpath(tmp_dir) + os.sep)
 
     def test_traversal_path_fails(self):
+        """A path escaping the upload directory should fail the prefix check."""
         tmp_dir = tempfile.mkdtemp()
         malicious_path = os.path.join(tmp_dir, "..", "..", "etc", "passwd")
         assert not os.path.realpath(malicious_path).startswith(

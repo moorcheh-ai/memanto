@@ -11,19 +11,25 @@ from memanto.app.clients.backend import (
 
 
 class TestBackendParse:
+    """Coverage for backend string parsing."""
+
     def test_default_is_cloud(self):
+        """Empty backend settings should default to cloud."""
         assert parse_backend("") == Backend.CLOUD
         assert parse_backend(None) == Backend.CLOUD
 
     def test_cloud(self):
+        """Cloud backend strings should parse case-insensitively."""
         assert parse_backend("cloud") == Backend.CLOUD
         assert parse_backend("Cloud") == Backend.CLOUD
 
     def test_on_prem(self):
+        """On-prem backend strings should parse case-insensitively."""
         assert parse_backend("on-prem") == Backend.ON_PREM
         assert parse_backend("ON-PREM") == Backend.ON_PREM
 
     def test_unknown_falls_back_to_cloud(self):
+        """Unknown backend strings should fail closed to cloud behavior."""
         assert parse_backend("hybrid") == Backend.CLOUD
 
 
@@ -35,6 +41,7 @@ class TestActiveLlmModel:
     """
 
     def test_cloud_returns_cloud_default(self, monkeypatch):
+        """Cloud mode should return the configured cloud answer model."""
         from memanto.app.config import settings
 
         monkeypatch.setattr(settings, "MEMANTO_BACKEND", "cloud")
@@ -43,6 +50,7 @@ class TestActiveLlmModel:
         )
 
     def test_on_prem_reads_state_llm_model(self, tmp_path, monkeypatch):
+        """On-prem mode should read the model from local backend state."""
         import json
 
         from memanto.app.config import settings
@@ -64,6 +72,7 @@ class TestActiveLlmModel:
         assert get_active_llm_model("anthropic.claude-sonnet-4-6") == "qwen2.5"
 
     def test_on_prem_missing_state_returns_none(self, tmp_path, monkeypatch):
+        """On-prem mode without state should return None."""
         from memanto.app.config import settings
 
         monkeypatch.setattr(settings, "MEMANTO_BACKEND", "on-prem")
@@ -77,6 +86,8 @@ class TestActiveLlmModel:
 
 
 class TestOnPremClient:
+    """Regression coverage for the on-prem client wrapper."""
+
     def test_answer_generate_delegates_to_raw_client(self):
         """OnPremClient.answer.generate must pass through to the on-prem
         ``moorcheh.MoorchehClient`` — answer is supported on-prem since
@@ -84,15 +95,22 @@ class TestOnPremClient:
         from memanto.app.clients import onprem
 
         class _FakeAnswer:
+            """Raw answer endpoint stub used by OnPremClient."""
+
             def __init__(self):
+                """Track the last generate kwargs."""
                 self.called_with = None
 
             def generate(self, **kwargs):
+                """Record kwargs and return a simple answer payload."""
                 self.called_with = kwargs
                 return {"answer": "ok", "namespace": kwargs.get("namespace")}
 
         class _FakeRaw:
+            """Raw Moorcheh client stub with required on-prem surfaces."""
+
             def __init__(self, base_url, timeout=None):
+                """Initialize raw client attributes consumed by OnPremClient."""
                 self.base_url = base_url
                 self.timeout = timeout
                 self.namespaces = object()
@@ -253,6 +271,8 @@ class TestAnswerGenerateKwargs:
 
 
 class TestSingletonDispatch:
+    """Coverage for backend-aware singleton client dispatch."""
+
     def test_cloud_returns_cloud_client(self):
         """On cloud, the dispatcher must not return an OnPremClient."""
         from memanto.app.clients import moorcheh as mclients
@@ -270,6 +290,7 @@ class TestSingletonDispatch:
             mclients.moorcheh_client.reset_client()
 
     def test_on_prem_returns_on_prem_client(self):
+        """On-prem mode should dispatch to OnPremClient."""
         from memanto.app.clients import moorcheh as mclients
         from memanto.app.clients import onprem
         from memanto.app.config import settings
@@ -279,7 +300,10 @@ class TestSingletonDispatch:
         mclients.moorcheh_client.reset_client()
 
         class _FakeRaw:
+            """Raw client stub that lets OnPremClient initialize offline."""
+
             def __init__(self, base_url, timeout=None):
+                """Expose the raw surfaces that OnPremClient binds."""
                 self.base_url = base_url
                 self.timeout = timeout
                 # OnPremClient binds these from the raw client; stub them so
@@ -301,7 +325,10 @@ class TestSingletonDispatch:
 
 
 class TestDataDirRouting:
+    """Coverage for backend-specific data directory selection."""
+
     def test_cloud_uses_default(self, tmp_path, monkeypatch):
+        """Cloud mode should use the default ~/.memanto directory."""
         from memanto.app import config as app_config
 
         monkeypatch.setenv("HOME", str(tmp_path))
@@ -311,6 +338,7 @@ class TestDataDirRouting:
         assert app_config.get_data_dir() == tmp_path / ".memanto"
 
     def test_on_prem_uses_subdir(self, tmp_path, monkeypatch):
+        """On-prem mode should isolate data under ~/.memanto/on-prem."""
         from memanto.app import config as app_config
 
         monkeypatch.setenv("HOME", str(tmp_path))

@@ -23,6 +23,7 @@ class ConversationMemoryExtractionService:
     MAX_CONTENT_CHARS = 12_000
 
     def __init__(self, client: Any) -> None:
+        """Initialize the service with a Moorcheh-compatible client."""
         self.client = client
 
     def extract(
@@ -62,6 +63,7 @@ class ConversationMemoryExtractionService:
         return self._normalize_candidates(parsed, max_memories=max_memories)
 
     def _validate_messages(self, messages: list[dict[str, str]]) -> None:
+        """Reject empty, oversized, or malformed chat message payloads."""
         if not messages:
             raise ValueError("Conversation must contain at least one message")
         if len(messages) > self.MAX_MESSAGES:
@@ -80,6 +82,7 @@ class ConversationMemoryExtractionService:
                 raise ValueError(f"Message {index} is missing non-empty content")
 
     def _conversation_text(self, messages: list[dict[str, str]]) -> str:
+        """Render chat messages into the compact text prompt sent to answer."""
         lines: list[str] = []
         total = 0
         for message in messages:
@@ -91,6 +94,7 @@ class ConversationMemoryExtractionService:
         return "\n".join(lines)
 
     def _header_prompt(self, max_memories: int) -> str:
+        """Build the extraction instruction that constrains memory types."""
         memory_types = ", ".join(sorted(VALID_MEMORY_TYPES))
         return (
             "Extract durable agent memories from the conversation. "
@@ -102,12 +106,14 @@ class ConversationMemoryExtractionService:
         )
 
     def _footer_prompt(self) -> str:
+        """Build the response-format instruction for extraction."""
         return (
             "Return only JSON. The JSON must be an array of objects with keys: "
             "type, title, content, confidence. Confidence must be 0.0 to 1.0."
         )
 
     def _parse_json_answer(self, answer: str) -> Any:
+        """Parse raw answer text, accepting optional fenced JSON."""
         text = answer.strip()
         if not text:
             raise ValueError("Memory extraction returned an empty response")
@@ -128,6 +134,7 @@ class ConversationMemoryExtractionService:
     def _normalize_candidates(
         self, parsed: Any, *, max_memories: int
     ) -> list[dict[str, Any]]:
+        """Validate, deduplicate, and clamp extracted memory candidates."""
         if not isinstance(parsed, list):
             raise ValueError("Memory extraction response must be a JSON array")
 

@@ -6,21 +6,29 @@ from memanto.app.services.conversation_memory_extraction_service import (
 
 
 class FakeAnswer:
+    """Answer endpoint stub that records generate kwargs."""
+
     def __init__(self, answer):
+        """Initialize the stub with a canned answer string."""
         self._answer = answer
         self.call_kwargs = None
 
     def generate(self, **kwargs):
+        """Record kwargs and return the configured answer payload."""
         self.call_kwargs = kwargs
         return {"answer": self._answer}
 
 
 class FakeClient:
+    """Moorcheh client stub exposing only the answer surface."""
+
     def __init__(self, answer):
+        """Initialize the fake client with a fake answer endpoint."""
         self.answer = FakeAnswer(answer)
 
 
 def test_extract_conversation_memories_normalizes_candidates():
+    """Extraction should normalize, clamp, and deduplicate model candidates."""
     client = FakeClient(
         """
         ```json
@@ -113,6 +121,7 @@ def test_extract_on_prem_without_state_omits_ai_model(monkeypatch, tmp_path):
 
 
 def test_extract_rejects_non_json_answers():
+    """Extraction should reject answers that cannot be parsed as JSON."""
     service = ConversationMemoryExtractionService(FakeClient("not json"))
 
     with pytest.raises(ValueError, match="valid JSON"):
@@ -123,6 +132,7 @@ def test_extract_rejects_non_json_answers():
 
 
 def test_extract_requires_messages():
+    """Extraction should reject empty conversation payloads."""
     service = ConversationMemoryExtractionService(FakeClient("[]"))
 
     with pytest.raises(ValueError, match="at least one message"):
