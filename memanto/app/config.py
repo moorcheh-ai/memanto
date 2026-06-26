@@ -127,7 +127,7 @@ class Settings(BaseSettings):
     DEBUG: bool = False
 
     # CORS Configuration
-    ALLOWED_ORIGINS: list[str] = ["*"]
+    ALLOWED_ORIGINS: list[str] = []
 
     # Session Configuration
     MEMANTO_SECRET_KEY: str = "memanto-default-secret-change-in-production"

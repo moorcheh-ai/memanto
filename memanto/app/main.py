@@ -16,6 +16,24 @@ from memanto.app.routes import health, sessions
 from memanto.app.ui.routes.ui_router import mount_ui_static
 from memanto.app.ui.routes.ui_router import router as ui_router
 
+CORS_ALLOWED_METHODS = ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"]
+CORS_ALLOWED_HEADERS = ["Authorization", "Content-Type", "X-Session-Token"]
+
+
+def _safe_cors_origins(origins: list[str]) -> list[str]:
+    """Return explicit CORS origins only.
+
+    MEMANTO exposes local UI endpoints that can return active session tokens,
+    so a wildcard would let any website read responses from a user's local
+    server. Same-origin UI requests do not need CORS headers.
+    """
+    safe_origins = []
+    for origin in origins:
+        cleaned = origin.strip().rstrip("/")
+        if cleaned and cleaned != "*":
+            safe_origins.append(cleaned)
+    return safe_origins
+
 
 def _validate_startup_dependencies() -> None:
     """Fail fast when mandatory external dependencies are misconfigured."""
@@ -75,10 +93,10 @@ app = FastAPI(
 # Add CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.ALLOWED_ORIGINS,
+    allow_origins=_safe_cors_origins(settings.ALLOWED_ORIGINS),
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=CORS_ALLOWED_METHODS,
+    allow_headers=CORS_ALLOWED_HEADERS,
 )
 
 # Include routers
