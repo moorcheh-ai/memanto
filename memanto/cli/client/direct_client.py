@@ -1307,8 +1307,13 @@ class DirectClient:
         with open(json_path, encoding="utf-8") as f:
             all_conflicts = json.load(f)
 
-        # Return only unresolved conflicts
-        return [c for c in all_conflicts if not c.get("resolved", False)]
+        # Return only unresolved conflicts, preserving their original file index
+        # so UI callers can resolve the same item after filtering.
+        return [
+            {**c, "conflict_index": idx}
+            for idx, c in enumerate(all_conflicts)
+            if not c.get("resolved", False)
+        ]
 
     def resolve_conflict(
         self,

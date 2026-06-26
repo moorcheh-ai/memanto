@@ -4335,16 +4335,17 @@
 
                 conflicts.forEach((c, i) => {
                     const ctype = (c.type || 'conflict').toUpperCase();
+                    const conflictIndex = Number.isInteger(c.conflict_index) ? c.conflict_index : i;
                     const explanation = c.explanation || c.reason || 'Conflicting information detected.';
 
                     html += `
-            <div class="conflict-card" id="conflict-${i}">
+            <div class="conflict-card" id="conflict-${conflictIndex}">
                 <div class="conflict-header">
                     <div>
                         <span class="conflict-type">${escHtml(ctype)}</span>
                         <span class="badge badge-warning" style="margin-left:8px">Unresolved</span>
                     </div>
-                    <span style="font-size:11px;color:var(--text-dim);font-family:var(--font-mono)">#${i}</span>
+                    <span style="font-size:11px;color:var(--text-dim);font-family:var(--font-mono)">#${conflictIndex}</span>
                 </div>
                 <p style="color:var(--text-secondary);font-size:13px;margin-bottom:16px;line-height:1.6">${escHtml(explanation)}</p>
                 <div class="conflict-memories">
@@ -4368,18 +4369,18 @@
                     </div>
                 </div>
                 <div class="conflict-actions">
-                    <button class="btn btn-sm btn-secondary" onclick="resolveConflict(${i}, '${data.agent_id}', '${data.date}', 'keep_old')">Keep Old</button>
-                    <button class="btn btn-sm btn-primary" onclick="resolveConflict(${i}, '${data.agent_id}', '${data.date}', 'keep_new')">Keep New</button>
-                    <button class="btn btn-sm btn-secondary" onclick="resolveConflict(${i}, '${data.agent_id}', '${data.date}', 'keep_both')">Keep Both</button>
-                    <button class="btn btn-sm btn-danger" onclick="resolveConflict(${i}, '${data.agent_id}', '${data.date}', 'remove_both')">Remove Both</button>
-                    <button class="btn btn-sm btn-secondary" onclick="showManualResolve(${i}, '${data.agent_id}', '${data.date}')">Manual</button>
+                    <button class="btn btn-sm btn-secondary" onclick="resolveConflict(${conflictIndex}, '${data.agent_id}', '${data.date}', 'keep_old')">Keep Old</button>
+                    <button class="btn btn-sm btn-primary" onclick="resolveConflict(${conflictIndex}, '${data.agent_id}', '${data.date}', 'keep_new')">Keep New</button>
+                    <button class="btn btn-sm btn-secondary" onclick="resolveConflict(${conflictIndex}, '${data.agent_id}', '${data.date}', 'keep_both')">Keep Both</button>
+                    <button class="btn btn-sm btn-danger" onclick="resolveConflict(${conflictIndex}, '${data.agent_id}', '${data.date}', 'remove_both')">Remove Both</button>
+                    <button class="btn btn-sm btn-secondary" onclick="showManualResolve(${conflictIndex}, '${data.agent_id}', '${data.date}')">Manual</button>
                 </div>
-                <div id="manual-${i}" style="display:none;margin-top:12px">
+                <div id="manual-${conflictIndex}" style="display:none;margin-top:12px">
                     <div class="form-group">
                         <label>Manual Replacement Content</label>
-                        <textarea id="manualContent-${i}" placeholder="Enter the correct merged content..." style="min-height:60px"></textarea>
+                        <textarea id="manualContent-${conflictIndex}" placeholder="Enter the correct merged content..." style="min-height:60px"></textarea>
                     </div>
-                    <button class="btn btn-sm btn-primary" onclick="resolveConflict(${i}, '${data.agent_id}', '${data.date}', 'manual', document.getElementById('manualContent-${i}').value)">Submit Manual Resolution</button>
+                    <button class="btn btn-sm btn-primary" onclick="resolveConflict(${conflictIndex}, '${data.agent_id}', '${data.date}', 'manual', document.getElementById('manualContent-${conflictIndex}').value)">Submit Manual Resolution</button>
                 </div>
             </div>`;
                 });
