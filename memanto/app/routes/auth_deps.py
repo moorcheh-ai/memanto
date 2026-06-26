@@ -31,10 +31,9 @@ def get_moorcheh_api_key() -> str:
     from memanto.app.config import settings
 
     if parse_backend(settings.MEMANTO_BACKEND) == Backend.ON_PREM:
-        # On-prem talks to localhost; routes that take ``moorcheh_api_key`` as
-        # a dependency no longer use it for outbound calls (they go through
-        # ``get_moorcheh_client()``), but the FastAPI signatures still need a
-        # string. Return a placeholder so the dependency resolves.
+        # On-prem talks to localhost. Routes still pass this dependency into
+        # the backend-aware dispatcher, which ignores the placeholder for
+        # on-prem clients.
         return "on-prem"
 
     if settings.MOORCHEH_API_KEY:

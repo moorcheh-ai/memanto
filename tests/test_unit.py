@@ -264,6 +264,34 @@ class TestAgentService:
         print("✅ Agent deleted successfully")
 
 
+class TestSessionRoutes:
+    """Unit tests for route helpers in the session API."""
+
+    @pytest.mark.asyncio
+    async def test_namespace_item_counts_uses_explicit_moorcheh_api_key(self):
+        """Live namespace counts should use the authenticated cloud key."""
+        from memanto.app.routes import sessions
+
+        with patch.object(
+            sessions.moorcheh_clients, "get_moorcheh_client"
+        ) as mock_client_factory:
+            mock_client = MagicMock()
+            mock_client.namespaces.list.return_value = {
+                "namespaces": [
+                    {
+                        "namespace_name": "memanto_agent_explicit-key-agent",
+                        "item_count": 7,
+                    }
+                ]
+            }
+            mock_client_factory.return_value = mock_client
+
+            counts = await sessions._namespace_item_counts("explicit-route-key")
+
+        mock_client_factory.assert_called_once_with("explicit-route-key")
+        assert counts == {"memanto_agent_explicit-key-agent": 7}
+
+
 class TestMemoryWriteServiceDelete:
     """``delete_memory`` must report success for both cloud and on-prem
     response shapes. Cloud returns ``actual_deletions``; on-prem's
