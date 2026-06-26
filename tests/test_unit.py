@@ -366,6 +366,51 @@ class TestMemoryWriteServiceUpdate:
         assert "ttl_seconds" not in uploaded_doc
         assert "expires_at" not in uploaded_doc
 
+    def test_update_memory_preserves_falsey_metadata_with_existing_ttl(self):
+        from memanto.app.services.memory_write_service import MemoryWriteService
+
+        client = MagicMock()
+        client.documents.delete.return_value = {"actual_deletions": 1}
+        client.documents.upload.return_value = {"status": "queued"}
+        existing_memory = {
+            "id": "mem-ttl",
+            "title": "Keep falsey TTL metadata",
+            "content": "Original content",
+            "metadata": {
+                "memory_type": "preference",
+                "scope_type": "agent",
+                "scope_id": "test-agent",
+                "actor_id": "tester",
+                "source": "system",
+                "confidence": 0.0,
+                "status": "active",
+                "provenance": "inferred",
+                "validation_count": 0,
+                "contradiction_detected": False,
+                "ttl_seconds": 3600,
+                "expires_at": "2026-01-01T14:00:00Z",
+            },
+        }
+
+        with patch(
+            "memanto.app.services.memory_read_service.MemoryReadService.get_memory",
+            return_value=existing_memory,
+        ):
+            result = MemoryWriteService(client).update_memory(
+                "mem-ttl",
+                "memanto_agent_test-agent",
+                {"content": "Updated content"},
+            )
+
+        assert result["action"] == "updated"
+        uploaded_doc = client.documents.upload.call_args.kwargs["documents"][0]
+        assert uploaded_doc["memory_type"] == "preference"
+        assert uploaded_doc["confidence"] == 0.0
+        assert uploaded_doc["validation_count"] == 0
+        assert uploaded_doc["contradiction_detected"] is False
+        assert uploaded_doc["ttl_seconds"] == 3600
+        assert uploaded_doc["expires_at"].startswith("2026-01-01T14:00:00")
+
 
 class TestForgetEndToEnd:
     """End-to-end ``forget`` flow through ``DirectClient``: create agent →
