@@ -366,6 +366,54 @@ class TestMemoryWriteServiceUpdate:
         assert "ttl_seconds" not in uploaded_doc
         assert "expires_at" not in uploaded_doc
 
+    def test_update_memory_preserves_falsey_metadata_from_read_service(self):
+        from memanto.app.services.memory_write_service import MemoryWriteService
+
+        client = MagicMock()
+        client.documents.get.return_value = {
+            "items": [
+                {
+                    "id": "mem-read-falsey",
+                    "text": "[GOAL] Keep nested falsey metadata\n\nOriginal content",
+                    "memory_type": "fact",
+                    "confidence": 0.8,
+                    "validation_count": 7,
+                    "contradiction_detected": True,
+                    "tags": "fallback",
+                    "metadata": {
+                        "memory_type": "goal",
+                        "scope_type": "agent",
+                        "scope_id": "test-agent",
+                        "actor_id": "tester",
+                        "source": "system",
+                        "confidence": 0.0,
+                        "status": "active",
+                        "tags": "alpha,beta",
+                        "provenance": "inferred",
+                        "validation_count": 0,
+                        "contradiction_detected": False,
+                    },
+                }
+            ]
+        }
+        client.documents.delete.return_value = {"actual_deletions": 1}
+        client.documents.upload.return_value = {"status": "queued"}
+
+        result = MemoryWriteService(client).update_memory(
+            "mem-read-falsey",
+            "memanto_agent_test-agent",
+            {"content": "Updated content"},
+        )
+
+        assert result["action"] == "updated"
+        uploaded_doc = client.documents.upload.call_args.kwargs["documents"][0]
+        assert uploaded_doc["memory_type"] == "goal"
+        assert uploaded_doc["confidence"] == 0.0
+        assert uploaded_doc["tags"] == "alpha,beta"
+        assert uploaded_doc["provenance"] == "inferred"
+        assert uploaded_doc["validation_count"] == 0
+        assert uploaded_doc["contradiction_detected"] is False
+
     def test_update_memory_preserves_falsey_metadata_with_existing_ttl(self):
         from memanto.app.services.memory_write_service import MemoryWriteService
 
