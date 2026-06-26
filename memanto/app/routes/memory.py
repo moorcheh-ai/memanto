@@ -143,6 +143,15 @@ class MemoryEditRequest(BaseModel):
         return self.model_dump(exclude_none=True)
 
 
+def enforce_session_scope(session: Session, agent_id: str) -> None:
+    if session.agent_id != agent_id:
+        raise map_error_to_http_exception(
+            AuthorizationError(
+                f"Session is for agent '{session.agent_id}', cannot access '{agent_id}'"
+            )
+        )
+
+
 @router.post("/{agent_id}/remember", response_model=RememberResponse)
 async def remember(
     agent_id: str,
@@ -169,12 +178,7 @@ async def remember(
     CostGuard.validate_text_length(request.content, "Memory content")
 
     # Enforce session scope: token must match agent_id
-    if session.agent_id != agent_id:
-        raise map_error_to_http_exception(
-            AuthorizationError(
-                f"Session is for agent '{session.agent_id}', cannot access '{agent_id}'"
-            )
-        )
+    enforce_session_scope(session, agent_id)
 
     try:
         # Initialize memory write service
@@ -257,12 +261,7 @@ async def batch_remember(
     The session must be for the specified agent_id.
     """
     # Enforce session scope: token must match agent_id
-    if session.agent_id != agent_id:
-        raise map_error_to_http_exception(
-            AuthorizationError(
-                f"Session is for agent '{session.agent_id}', cannot access '{agent_id}'"
-            )
-        )
+    enforce_session_scope(session, agent_id)
 
     try:
         # Initialize memory write service
@@ -338,12 +337,7 @@ async def edit_memory(
 
     The session must be for the specified agent_id.
     """
-    if session.agent_id != agent_id:
-        raise map_error_to_http_exception(
-            AuthorizationError(
-                f"Session is for agent '{session.agent_id}', cannot access '{agent_id}'"
-            )
-        )
+    enforce_session_scope(session, agent_id)
 
     updates = request.to_updates()
     if not updates:
@@ -423,12 +417,7 @@ async def extract_memories_from_conversation(
     candidates are persisted through the same batch memory path used by
     /batch-remember.
     """
-    if session.agent_id != agent_id:
-        raise map_error_to_http_exception(
-            AuthorizationError(
-                f"Session is for agent '{session.agent_id}', cannot access '{agent_id}'"
-            )
-        )
+    enforce_session_scope(session, agent_id)
 
     try:
         extraction_service = ConversationMemoryExtractionService(client)
@@ -525,12 +514,7 @@ async def upload_file(
     - X-Session-Token: {session_token}
     - Content-Type: multipart/form-data
     """
-    if session.agent_id != agent_id:
-        raise map_error_to_http_exception(
-            AuthorizationError(
-                f"Session is for agent '{session.agent_id}', cannot access '{agent_id}'"
-            )
-        )
+    enforce_session_scope(session, agent_id)
 
     client = get_moorcheh_client()
 
@@ -605,12 +589,7 @@ async def delete_memory(
 
     The session must be for the specified agent_id.
     """
-    if session.agent_id != agent_id:
-        raise map_error_to_http_exception(
-            AuthorizationError(
-                f"Session is for agent '{session.agent_id}', cannot access '{agent_id}'"
-            )
-        )
+    enforce_session_scope(session, agent_id)
 
     try:
         write_service = MemoryWriteService(client)
@@ -657,12 +636,7 @@ async def recall(
     CostGuard.validate_query_length(request.query)
 
     # Enforce session scope
-    if session.agent_id != agent_id:
-        raise map_error_to_http_exception(
-            AuthorizationError(
-                f"Session is for agent '{session.agent_id}', cannot access '{agent_id}'"
-            )
-        )
+    enforce_session_scope(session, agent_id)
 
     recall_cfg = _config_manager.get_recall_config()
     raw_limit = (
@@ -733,12 +707,7 @@ async def answer(
     CostGuard.validate_query_length(request.question)
 
     # Enforce session scope
-    if session.agent_id != agent_id:
-        raise map_error_to_http_exception(
-            AuthorizationError(
-                f"Session is for agent '{session.agent_id}', cannot access '{agent_id}'"
-            )
-        )
+    enforce_session_scope(session, agent_id)
 
     client = get_moorcheh_client()
 
@@ -840,12 +809,7 @@ async def generate_daily_summary(
     Conflict detection is a separate concern — see
     POST ``/{agent_id}/conflicts/generate`` or the scheduled job.
     """
-    if session.agent_id != agent_id:
-        raise map_error_to_http_exception(
-            AuthorizationError(
-                f"Session is for agent '{session.agent_id}', cannot access '{agent_id}'"
-            )
-        )
+    enforce_session_scope(session, agent_id)
 
     resolved_date = request.date or datetime.now().strftime("%Y-%m-%d")
     try:
@@ -876,12 +840,7 @@ async def generate_conflict_report(
 
     This is the same work the scheduled task performs.
     """
-    if session.agent_id != agent_id:
-        raise map_error_to_http_exception(
-            AuthorizationError(
-                f"Session is for agent '{session.agent_id}', cannot access '{agent_id}'"
-            )
-        )
+    enforce_session_scope(session, agent_id)
 
     resolved_date = request.date or datetime.now().strftime("%Y-%m-%d")
     try:
@@ -915,12 +874,7 @@ async def list_conflicts(
     The session must be for the specified agent_id.
     """
     # Enforce session scope
-    if session.agent_id != agent_id:
-        raise map_error_to_http_exception(
-            AuthorizationError(
-                f"Session is for agent '{session.agent_id}', cannot access '{agent_id}'"
-            )
-        )
+    enforce_session_scope(session, agent_id)
 
     try:
         conflicts = await asyncio.to_thread(
@@ -950,12 +904,7 @@ async def resolve_conflict(
 
     Uses the same underlying conflict resolution service used by CLI.
     """
-    if session.agent_id != agent_id:
-        raise map_error_to_http_exception(
-            AuthorizationError(
-                f"Session is for agent '{session.agent_id}', cannot access '{agent_id}'"
-            )
-        )
+    enforce_session_scope(session, agent_id)
 
     resolved_date = request.date or datetime.now().strftime("%Y-%m-%d")
     try:
@@ -997,12 +946,7 @@ async def recall_as_of(
     Requires:
     - X-Session-Token: {session_token}
     """
-    if session.agent_id != agent_id:
-        raise map_error_to_http_exception(
-            AuthorizationError(
-                f"Session is for agent '{session.agent_id}', cannot access '{agent_id}'"
-            )
-        )
+    enforce_session_scope(session, agent_id)
 
     # request.limit is None → fetch all (no cap). Cost guard only applies when capped.
     limit = request.limit
@@ -1050,12 +994,7 @@ async def recall_changed_since(
     Requires:
     - X-Session-Token: {session_token}
     """
-    if session.agent_id != agent_id:
-        raise map_error_to_http_exception(
-            AuthorizationError(
-                f"Session is for agent '{session.agent_id}', cannot access '{agent_id}'"
-            )
-        )
+    enforce_session_scope(session, agent_id)
 
     # request.limit is None → fetch all (no cap). Cost guard only applies when capped.
     limit = request.limit
@@ -1104,12 +1043,7 @@ async def recall_recent(
 
     The session must be for the specified agent_id.
     """
-    if session.agent_id != agent_id:
-        raise map_error_to_http_exception(
-            AuthorizationError(
-                f"Session is for agent '{session.agent_id}', cannot access '{agent_id}'"
-            )
-        )
+    enforce_session_scope(session, agent_id)
 
     # request.limit is None → fetch all (no cap). Cost guard only applies when capped.
     limit = request.limit
