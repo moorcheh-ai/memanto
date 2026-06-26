@@ -1,18 +1,18 @@
 """
 Memanto - Your agents focus. Memanto remembers.
-"""Memanto - A companion memory agent with persistent memory for AI agents."""
+"""Memanto - A companion memory agent with its own intelligence.
 
-from memanto.core import Memanto
+This package provides persistent memory capabilities for AI agents,
+backed by the moorcheh.ai retrieval engine.
+"""
+
+from memanto.client import MemantoClient
+from memanto.memory import MemoryManager
 from memanto.config import Config
-from memanto.memory import Memory
-from memanto.errors import MemantoError, ConfigurationError, APIError
 
 __all__ = [
-    "Memanto",
-    "Config", 
-    "Memory",
-    "MemantoError",
-    "ConfigurationError",
-    "APIError",
+    "MemantoClient",
+    "MemoryManager", 
+    "Config",
 ]
 """
