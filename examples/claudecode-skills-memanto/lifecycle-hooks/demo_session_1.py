@@ -1,15 +1,17 @@
 #!/usr/bin/env python3
 """Demo — Session 1: a developer makes engineering decisions via /grill-with-docs.
-"""
+
 
 Run this first. It simulates a finished ``/grill-with-docs`` session and lets
 Memanto's backend LLM distill the durable engineering decisions into memory.
 
     export MOORCHEH_API_KEY=mch_...
     python demo_session_1.py
+
 Then run ``demo_session_2.py`` in a SEPARATE process to prove the decisions are
 recalled with zero shared in-process state.
 """
+
 
 from __future__ import annotations
 
@@ -31,6 +33,7 @@ assistant: Summary: CQRS for Orders, Postgres + Redis, Cart != Order, Money VO f
 """
 
 
+
 def main() -> None:
     mem = SkillMemory()
     mem.setup()
@@ -43,6 +46,7 @@ def main() -> None:
     for m in stored:
         print(f"  - [{m['type']}] {m['content']}")
     print("\nNow run:  python demo_session_2.py")
+
 
 
 if __name__ == "__main__":
