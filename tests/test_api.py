@@ -251,6 +251,58 @@ class TestMEMANTOAPI:
         assert response.json()["status"] == "queued"
 
     @pytest.mark.asyncio
+    async def test_memory_routes_use_request_moorcheh_api_key(
+        self, client, auth_headers
+    ):
+        """Memory operations must use the request Authorization API key."""
+        await client.post(
+            "/api/v2/agents",
+            headers=auth_headers,
+            json={"agent_id": self.TEST_AGENT_ID},
+        )
+        activate_response = await client.post(
+            f"/api/v2/agents/{self.TEST_AGENT_ID}/activate",
+            headers=auth_headers,
+        )
+        session_token = activate_response.json()["session_token"]
+
+        fake_client = MagicMock()
+        fake_client.documents.upload.return_value = {
+            "status": "success",
+            "ids": ["mem-1"],
+        }
+
+        request_key = "request-specific-key"
+        headers = {
+            "Authorization": f"Bearer {request_key}",
+            "X-Session-Token": session_token,
+        }
+        with patch(
+            "memanto.app.routes.memory.get_moorcheh_client",
+            return_value=fake_client,
+        ) as mock_get_client:
+            response = await client.post(
+                f"/api/v2/agents/{self.TEST_AGENT_ID}/remember",
+                headers=headers,
+                json={"content": "Store this under the request key"},
+            )
+
+        assert response.status_code == 200
+        mock_get_client.assert_called_once_with(request_key)
+        fake_client.documents.upload.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_malformed_authorization_header_is_rejected(self, client):
+        """Authorization headers must use Bearer API-key syntax."""
+        response = await client.post(
+            "/api/v2/agents",
+            headers={"Authorization": "Token not-a-bearer-token"},
+            json={"agent_id": "bad-auth-agent"},
+        )
+
+        assert response.status_code == 401
+
+    @pytest.mark.asyncio
     async def test_edit_memory_with_session(self, client, auth_headers):
         """Test updating one memory with session token."""
         app.dependency_overrides[get_current_session] = lambda: Session(

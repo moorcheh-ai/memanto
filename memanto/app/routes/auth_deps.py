@@ -16,16 +16,33 @@ from memanto.app.utils.errors import (
 )
 
 
-def get_moorcheh_api_key() -> str:
+def _api_key_from_authorization(authorization: str | None) -> str | None:
+    """Extract a Moorcheh API key from an Authorization header."""
+
+    if not authorization:
+        return None
+
+    parts = authorization.strip().split(None, 1)
+    if len(parts) != 2 or parts[0].lower() != "bearer" or not parts[1].strip():
+        raise HTTPException(
+            status_code=401,
+            detail="Invalid Authorization header. Use 'Bearer <moorcheh_api_key>'.",
+        )
+    return parts[1].strip()
+
+
+def get_moorcheh_api_key(authorization: str | None = Header(None)) -> str:
     """
-    Get Moorcheh API key from server configuration.
+    Get Moorcheh API key from request authorization or server configuration.
 
     Returns:
-        API key (or a placeholder string when running against the on-prem
-        backend, which does not require an API key).
+        API key supplied by ``Authorization: Bearer ...`` when present,
+        otherwise the configured server key. On-prem returns a placeholder
+        string because it does not require an API key.
 
     Raises:
-        HTTPException: If cloud is selected and no key is configured.
+        HTTPException: If the Authorization header is malformed, or if cloud is
+        selected and no request/configured key is available.
     """
     from memanto.app.clients.backend import Backend, parse_backend
     from memanto.app.config import settings
@@ -36,6 +53,11 @@ def get_moorcheh_api_key() -> str:
         # on-prem clients.
         return "on-prem"
 
+    if isinstance(authorization, str):
+        header_api_key = _api_key_from_authorization(authorization)
+        if header_api_key:
+            return header_api_key
+
     if settings.MOORCHEH_API_KEY:
         return settings.MOORCHEH_API_KEY
 
@@ -45,13 +67,13 @@ def get_moorcheh_api_key() -> str:
     )
 
 
-def verify_moorcheh_api_key() -> str:
+def verify_moorcheh_api_key(authorization: str | None = Header(None)) -> str:
     """
-    Return configured Moorcheh API key.
+    Return request or configured Moorcheh API key.
 
     Runtime connectivity is validated at startup and via /health.
     """
-    return get_moorcheh_api_key()
+    return get_moorcheh_api_key(authorization)
 
 
 def get_current_session(x_session_token: str | None = Header(None)) -> Session:

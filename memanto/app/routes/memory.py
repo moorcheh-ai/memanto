@@ -33,7 +33,11 @@ from memanto.app.models import (
     UploadFileResponse,
 )
 from memanto.app.models.session import Session
-from memanto.app.routes.auth_deps import get_current_session, get_session_service
+from memanto.app.routes.auth_deps import (
+    get_current_session,
+    get_session_service,
+    verify_moorcheh_api_key,
+)
 from memanto.app.services.conversation_memory_extraction_service import (
     ConversationMemoryExtractionService,
 )
@@ -47,6 +51,14 @@ from memanto.cli.config.manager import ConfigManager
 router = APIRouter()
 
 _config_manager = ConfigManager()
+
+
+def get_request_moorcheh_client(
+    moorcheh_api_key: str = Depends(verify_moorcheh_api_key),
+):
+    """Create a Moorcheh client for the current request's API key."""
+
+    return get_moorcheh_client(moorcheh_api_key)
 
 
 class RecallRequest(BaseModel):
@@ -148,7 +160,7 @@ async def remember(
     agent_id: str,
     request: RememberRequest = Body(...),
     session: Session = Depends(get_current_session),
-    client=Depends(get_moorcheh_client),
+    client=Depends(get_request_moorcheh_client),
 ):
     """
     Store a memory (Session-based)
@@ -242,7 +254,7 @@ async def batch_remember(
     agent_id: str,
     request: BatchRememberRequest = Body(...),
     session: Session = Depends(get_current_session),
-    client=Depends(get_moorcheh_client),
+    client=Depends(get_request_moorcheh_client),
 ):
     """
     Store multiple memories in batch (Session-based)
@@ -326,7 +338,7 @@ async def edit_memory(
     memory_id: str,
     request: MemoryEditRequest = Body(...),
     session: Session = Depends(get_current_session),
-    client=Depends(get_moorcheh_client),
+    client=Depends(get_request_moorcheh_client),
 ):
     """
     Update one memory in the active agent's namespace (Session-based).
@@ -409,7 +421,7 @@ async def extract_memories_from_conversation(
     agent_id: str,
     request: ExtractMemoriesRequest = Body(...),
     session: Session = Depends(get_current_session),
-    client=Depends(get_moorcheh_client),
+    client=Depends(get_request_moorcheh_client),
 ):
     """
     Extract typed memory candidates from chat-style conversation turns.
@@ -509,6 +521,7 @@ async def upload_file(
         ..., description="File to upload (.pdf, .docx, .xlsx, .json, .txt, .csv, .md)"
     ),
     session: Session = Depends(get_current_session),
+    client=Depends(get_request_moorcheh_client),
 ):
     """
     Upload a file directly to the agent's memory namespace (Session-based)
@@ -528,8 +541,6 @@ async def upload_file(
             status_code=403,
             detail=f"Session is for agent '{session.agent_id}', cannot access '{agent_id}'",
         )
-
-    client = get_moorcheh_client()
 
     # Validate file extension before reading
     ALLOWED_EXTENSIONS = {".pdf", ".docx", ".xlsx", ".json", ".txt", ".csv", ".md"}
@@ -592,7 +603,7 @@ async def delete_memory(
     agent_id: str,
     memory_id: str,
     session: Session = Depends(get_current_session),
-    client=Depends(get_moorcheh_client),
+    client=Depends(get_request_moorcheh_client),
 ):
     """
     Delete one memory from the active agent namespace.
@@ -641,7 +652,7 @@ async def recall(
     agent_id: str,
     request: RecallRequest = Body(...),
     session: Session = Depends(get_current_session),
-    client=Depends(get_moorcheh_client),
+    client=Depends(get_request_moorcheh_client),
 ):
     """
     Recall memories (Session-based)
@@ -716,6 +727,7 @@ async def answer(
     agent_id: str,
     request: AnswerRequest = Body(...),
     session: Session = Depends(get_current_session),
+    client=Depends(get_request_moorcheh_client),
 ):
     """
     Answer a question using RAG (Session-based)
@@ -734,8 +746,6 @@ async def answer(
             status_code=403,
             detail=f"Session is for agent '{session.agent_id}', cannot access '{agent_id}'",
         )
-
-    client = get_moorcheh_client()
 
     # Resolve defaults from settings
     limit = request.limit if request.limit is not None else settings.ANSWER_LIMIT
@@ -828,6 +838,7 @@ async def generate_daily_summary(
     agent_id: str,
     request: DailySummaryRequest = Body(default_factory=DailySummaryRequest),
     session: Session = Depends(get_current_session),
+    moorcheh_api_key: str = Depends(verify_moorcheh_api_key),
 ):
     """
     Generate the on-demand daily AI summary for an agent/date.
@@ -844,7 +855,7 @@ async def generate_daily_summary(
     resolved_date = request.date or datetime.now().strftime("%Y-%m-%d")
     try:
         result = await asyncio.to_thread(
-            DirectClient(settings.MOORCHEH_API_KEY).generate_daily_summary,
+            DirectClient(moorcheh_api_key).generate_daily_summary,
             agent_id,
             resolved_date,
             request.output_path,
@@ -864,6 +875,7 @@ async def generate_conflict_report(
     agent_id: str,
     request: ConflictDetectRequest = Body(default_factory=ConflictDetectRequest),
     session: Session = Depends(get_current_session),
+    moorcheh_api_key: str = Depends(verify_moorcheh_api_key),
 ):
     """
     Generate the conflict report for an agent/date.
@@ -879,7 +891,7 @@ async def generate_conflict_report(
     resolved_date = request.date or datetime.now().strftime("%Y-%m-%d")
     try:
         result = await asyncio.to_thread(
-            DirectClient(settings.MOORCHEH_API_KEY).generate_conflict_report,
+            DirectClient(moorcheh_api_key).generate_conflict_report,
             agent_id,
             resolved_date,
         )
@@ -898,6 +910,7 @@ async def list_conflicts(
     agent_id: str,
     date: str | None = Query(None, description="Conflict report date (YYYY-MM-DD)"),
     session: Session = Depends(get_current_session),
+    moorcheh_api_key: str = Depends(verify_moorcheh_api_key),
 ):
     """
     List unresolved conflicts for an agent.
@@ -916,7 +929,7 @@ async def list_conflicts(
 
     try:
         conflicts = await asyncio.to_thread(
-            DirectClient(settings.MOORCHEH_API_KEY).list_conflicts,
+            DirectClient(moorcheh_api_key).list_conflicts,
             agent_id,
             date,
         )
@@ -936,6 +949,7 @@ async def resolve_conflict(
     agent_id: str,
     request: ConflictResolveRequest = Body(...),
     session: Session = Depends(get_current_session),
+    moorcheh_api_key: str = Depends(verify_moorcheh_api_key),
 ):
     """
     Resolve a conflict for an agent.
@@ -951,7 +965,7 @@ async def resolve_conflict(
     resolved_date = request.date or datetime.now().strftime("%Y-%m-%d")
     try:
         result = await asyncio.to_thread(
-            DirectClient(settings.MOORCHEH_API_KEY).resolve_conflict,
+            DirectClient(moorcheh_api_key).resolve_conflict,
             agent_id,
             resolved_date,
             request.conflict_index,
@@ -975,7 +989,7 @@ async def recall_as_of(
     agent_id: str,
     request: RecallAsOfRequest = Body(...),
     session: Session = Depends(get_current_session),
-    client=Depends(get_moorcheh_client),
+    client=Depends(get_request_moorcheh_client),
 ):
     """
     Point-in-time recall: "What was true at this point in time?"
@@ -1028,7 +1042,7 @@ async def recall_changed_since(
     agent_id: str,
     request: RecallChangedSinceRequest = Body(...),
     session: Session = Depends(get_current_session),
-    client=Depends(get_moorcheh_client),
+    client=Depends(get_request_moorcheh_client),
 ):
     """
     Differential retrieval: "What changed recently?"
@@ -1080,7 +1094,7 @@ async def recall_recent(
     agent_id: str,
     request: RecallRecentRequest = Body(...),
     session: Session = Depends(get_current_session),
-    client=Depends(get_moorcheh_client),
+    client=Depends(get_request_moorcheh_client),
 ):
     """
     Recall the most recently stored memories.
