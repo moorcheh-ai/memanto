@@ -17,6 +17,7 @@ from pydantic import BaseModel, Field, field_validator
 from memanto.app.clients.backend import get_active_llm_model
 from memanto.app.clients.moorcheh import get_moorcheh_client
 from memanto.app.config import settings
+from memanto.app.constants import VALID_MEMORY_TYPES
 from memanto.app.core import MemoryRecord
 from memanto.app.models import (
     AnswerRequest,
@@ -128,6 +129,18 @@ class RecallChangedSinceRequest(BaseModel):
 class RecallRecentRequest(BaseModel):
     limit: int | None = Field(default=None, ge=1, description="Max results")
     type: list[str] | None = Field(default=None, description="Memory type filters")
+
+
+class MemoryEditRequest(BaseModel):
+    title: str | None = Field(default=None, max_length=100)
+    content: str | None = Field(default=None, max_length=10000)
+    type: str | None = None
+    confidence: float | None = Field(default=None, ge=0.0, le=1.0)
+    tags: list[str] | None = None
+    source: str | None = None
+
+    def to_updates(self) -> dict[str, object]:
+        return self.model_dump(exclude_none=True)
 
 
 @router.post("/{agent_id}/remember", response_model=RememberResponse)
@@ -304,6 +317,90 @@ async def batch_remember(
         }
 
     except Exception as e:
+        raise map_error_to_http_exception(e)
+
+
+@router.patch("/{agent_id}/memories/{memory_id}")
+async def edit_memory(
+    agent_id: str,
+    memory_id: str,
+    request: MemoryEditRequest = Body(...),
+    session: Session = Depends(get_current_session),
+    client=Depends(get_moorcheh_client),
+):
+    """
+    Update one memory in the active agent's namespace (Session-based).
+
+    Requires:
+    - X-Session-Token: {session_token}
+
+    The session must be for the specified agent_id.
+    """
+    if session.agent_id != agent_id:
+        raise map_error_to_http_exception(
+            Exception(
+                f"Session is for agent '{session.agent_id}', cannot access '{agent_id}'"
+            )
+        )
+
+    updates = request.to_updates()
+    if not updates:
+        raise HTTPException(
+            status_code=400,
+            detail="Provide at least one field to update.",
+        )
+
+    if "content" in updates:
+        content = updates["content"]
+        if content is None or not str(content).strip():
+            raise HTTPException(
+                status_code=400,
+                detail="Memory content must be a non-empty string.",
+            )
+        CostGuard.validate_text_length(str(content), "Memory content")
+    if "confidence" in updates:
+        confidence = updates["confidence"]
+        try:
+            confidence_value = float(confidence)  # type: ignore[arg-type]
+        except (TypeError, ValueError):
+            raise HTTPException(
+                status_code=400,
+                detail=f"Confidence must be a number between 0.0 and 1.0, got {confidence!r}.",
+            )
+        if not 0.0 <= confidence_value <= 1.0:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Confidence must be between 0.0 and 1.0, got {confidence_value}.",
+            )
+    if "type" in updates and updates["type"] not in VALID_MEMORY_TYPES:
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                f"Invalid memory_type '{updates['type']}'. "
+                f"Must be one of: {', '.join(sorted(VALID_MEMORY_TYPES))}."
+            ),
+        )
+
+    try:
+        write_service = MemoryWriteService(client)
+        result = await asyncio.to_thread(
+            write_service.update_memory, memory_id, session.namespace, updates
+        )
+        return {
+            "agent_id": agent_id,
+            "session_id": session.session_id,
+            "namespace": session.namespace,
+            "memory_id": memory_id,
+            "status": result.get("status", "updated"),
+            "action": result.get("action", "updated"),
+            "updated_fields": result.get("updated_fields", list(updates.keys())),
+        }
+
+    except Exception as e:
+        if "not found" in str(e).lower():
+            raise HTTPException(
+                status_code=404, detail=f"Memory '{memory_id}' was not found."
+            )
         raise map_error_to_http_exception(e)
 
 

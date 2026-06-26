@@ -272,6 +272,70 @@ def remember(
 
 
 @app.command()
+def edit(
+    memory_id: str = typer.Argument(..., help="Memory ID to update"),
+    title: str | None = typer.Option(None, "--title", help="New memory title"),
+    content: str | None = typer.Option(None, "--content", help="New memory content"),
+    memory_type: str | None = typer.Option(
+        None, "--type", "-t", help="New memory type"
+    ),
+    confidence: float | None = typer.Option(
+        None, "--confidence", "-c", help="New confidence score (0.0-1.0)"
+    ),
+    tags: str | None = typer.Option(None, "--tags", help="New comma-separated tags"),
+    source: str | None = typer.Option(None, "--source", "-s", help="New memory source"),
+):
+    """Update fields on an existing memory for the active agent."""
+    start = time.perf_counter()
+    active_agent_id, active_session_token = config_manager.get_active_session()
+
+    if not active_agent_id or not active_session_token:
+        _error(
+            "No active agent.", hint="Run 'memanto agent activate <agent-id>' first."
+        )
+
+    updates: dict[str, object] = {}
+    if title is not None:
+        updates["title"] = title
+    if content is not None:
+        updates["content"] = content
+    if memory_type is not None:
+        updates["type"] = memory_type
+    if confidence is not None:
+        updates["confidence"] = confidence
+    if tags is not None:
+        updates["tags"] = [t.strip() for t in tags.split(",") if t.strip()]
+    if source is not None:
+        updates["source"] = source
+
+    if not updates:
+        _error(
+            "No update fields provided.",
+            hint="Pass at least one of: --title, --content, --type, --confidence, --tags, --source.",
+        )
+
+    client = get_client()
+
+    try:
+        with console.status("[cyan]Updating memory...", spinner="dots"):
+            result = client.update_memory(
+                agent_id=active_agent_id,
+                memory_id=memory_id,
+                updates=updates,
+            )
+        elapsed = time.perf_counter() - start
+
+        updated_fields = ", ".join(result.get("updated_fields", updates.keys()))
+        console.print("[green]Memory updated successfully![/green]")
+        console.print(f"[dim]Memory ID: {result.get('memory_id', memory_id)}[/dim]")
+        console.print(f"[dim]Updated fields: {updated_fields}[/dim]")
+        console.print(f"[dim]Completed in {elapsed:.2f}s[/dim]")
+
+    except Exception as e:
+        _error(f"Failed to update memory: {e}")
+
+
+@app.command()
 def forget(
     memory_id: str = typer.Argument(..., help="Memory ID to delete"),
     force: bool = typer.Option(

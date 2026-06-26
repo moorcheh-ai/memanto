@@ -3414,6 +3414,7 @@
                 const provBadge = m.provenance ? `<span class="badge badge-accent">${m.provenance}</span>` : '—';
                 const contradicted = m.contradiction_detected ? ' <span class="badge badge-error">⚠ contradicted</span>' : '';
                 const validated = (m.validation_count && m.validation_count > 0) ? ` <span class="badge badge-success">✓×${m.validation_count}</span>` : '';
+                const mJson = attrEsc(JSON.stringify(m));
                 html += `<tr class="${expandable ? 'expandable' : ''}" onclick="toggleRow('exp-${i}')">
             <td style="color:var(--text-primary);font-weight:500">${escHtml(trunc(m.title || 'Untitled', 60))}</td>
             <td><span class="badge badge-info">${m.type || '—'}</span></td>
@@ -3426,10 +3427,13 @@
         </tr>`;
                 if (expandable) {
                     const memId = m.id ? String(m.id) : '';
+                    const editBtn = memId 
+                        ? `<button class="btn btn-secondary btn-sm" style="margin-right: 8px;" data-mem="${mJson}" onclick="openEditMemoryModal(JSON.parse(this.dataset.mem))">Edit</button>`
+                        : '';
                     const forgetBtn = memId
                         ? `<button class="btn btn-danger btn-sm" onclick="forgetMemory('${escHtml(memId)}', this, event)">Forget</button>`
                         : '<span style="font-size:11px;color:var(--text-dim)">No ID — cannot forget</span>';
-                    html += `<tr class="expand-row" id="exp-${i}"><td colspan="8"><div class="expand-content">${escHtml(m.content || m.text || 'No content')}\n\nID: ${memId || '—'}\nScore: ${m.score ?? '—'}\nSource: ${m.source || '—'}\nUpdated: ${fmtDate(m.updated_at)}</div><div style="padding:8px 16px;display:flex;justify-content:flex-end">${forgetBtn}</div></td></tr>`;
+                    html += `<tr class="expand-row" id="exp-${i}"><td colspan="8"><div class="expand-content">${escHtml(m.content || m.text || 'No content')}\n\nID: ${memId || '—'}\nScore: ${m.score ?? '—'}\nSource: ${m.source || '—'}\nUpdated: ${fmtDate(m.updated_at)}</div><div style="padding:8px 16px;display:flex;justify-content:flex-end">${editBtn}${forgetBtn}</div></td></tr>`;
                 }
             });
             html += '</tbody></table>';
@@ -3469,6 +3473,92 @@
             } catch (e) {
                 toast('Failed to forget memory: ' + e.message, 'error');
                 if (btn) { btn.disabled = false; btn.innerHTML = orig || 'Forget'; }
+            }
+        }
+
+        // ================================================================
+        // EDIT MEMORY MODAL
+        // ================================================================
+        function openEditMemoryModal(m) {
+            if (!S.agentId) {
+                toast('No active agent selected.', 'error');
+                return;
+            }
+            const modal = document.createElement('div');
+            modal.className = 'modal-backdrop';
+            modal.id = 'editMemoryModal';
+            const tagsStr = Array.isArray(m.tags) ? m.tags.join(', ') : (m.tags || '');
+            const types = ['fact', 'preference', 'goal', 'decision', 'artifact', 'learning', 'event', 'instruction', 'relationship', 'context', 'observation', 'commitment', 'error'];
+            const typeOpts = types.map(t => `<option value="${t}" ${t === (m.type || 'fact') ? 'selected' : ''}>${t}</option>`).join('');
+            
+            modal.innerHTML = `<div class="modal" onclick="event.stopPropagation()" style="max-width: 600px; width: 100%;">
+                <div class="modal-header">
+                    <h3>Edit Memory</h3>
+                    <button class="modal-close" onclick="closeEditMemoryModal()">×</button>
+                </div>
+                <div class="form-group">
+                    <label>Title</label>
+                    <input id="editMemTitle" type="text" value="${attrEsc(m.title || '')}">
+                </div>
+                <div class="form-group">
+                    <label>Content</label>
+                    <textarea id="editMemContent" style="min-height: 120px;">${escHtml(m.content || m.text || '')}</textarea>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Type</label>
+                        <select id="editMemType">${typeOpts}</select>
+                    </div>
+                    <div class="form-group">
+                        <label>Confidence</label>
+                        <input id="editMemConfidence" type="number" step="0.1" min="0" max="1" value="${m.confidence ?? 0.8}">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Tags (comma-separated)</label>
+                    <input id="editMemTags" type="text" value="${attrEsc(tagsStr)}">
+                </div>
+                <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:16px">
+                    <button class="btn btn-secondary" onclick="closeEditMemoryModal()">Cancel</button>
+                    <button class="btn btn-primary" data-mem-id="${attrEsc(String(m.id || ''))}" onclick="executeEditMemory(this.dataset.memId, this)">Save Changes</button>
+                </div>
+            </div>`;
+            modal.addEventListener('click', e => { if (e.target === modal) closeEditMemoryModal(); });
+            document.body.appendChild(modal);
+        }
+
+        function closeEditMemoryModal() {
+            const m = document.getElementById('editMemoryModal');
+            if (m) m.remove();
+        }
+
+        async function executeEditMemory(id, btnElement) {
+            const title = document.getElementById('editMemTitle').value.trim();
+            const content = document.getElementById('editMemContent').value.trim();
+            const type = document.getElementById('editMemType').value;
+            const conf = parseFloat(document.getElementById('editMemConfidence').value);
+            const tags = document.getElementById('editMemTags').value.split(',').map(t => t.trim()).filter(Boolean);
+
+            const updates = {};
+            if (title) updates.title = title;
+            if (content) updates.content = content;
+            if (type) updates.type = type;
+            if (!isNaN(conf)) updates.confidence = conf;
+            updates.tags = tags;
+
+            try {
+                const oldText = btnElement.textContent;
+                btnElement.textContent = 'Saving...';
+                btnElement.disabled = true;
+                
+                await api('PATCH', `/api/v2/agents/${S.agentId}/memories/${encodeURIComponent(id)}`, updates);
+                toast('Memory updated successfully');
+                closeEditMemoryModal();
+                if (typeof loadExplorer === 'function') loadExplorer(); // refresh explorer view
+            } catch (e) {
+                toast('Update failed: ' + e.message, 'error');
+                btnElement.textContent = 'Save Changes';
+                btnElement.disabled = false;
             }
         }
 

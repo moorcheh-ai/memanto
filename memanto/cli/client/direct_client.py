@@ -15,6 +15,9 @@ from pathlib import Path
 from typing import Any, cast
 
 from memanto.app.constants import (
+    ALLOWED_UPDATE_FIELDS as _ALLOWED_UPDATE_FIELDS,
+)
+from memanto.app.constants import (
     VALID_MEMORY_TYPES as _VALID_MEMORY_TYPES,
 )
 from memanto.app.constants import (
@@ -753,6 +756,81 @@ class DirectClient:
                 )
 
         return result
+
+    def update_memory(
+        self, agent_id: str, memory_id: str, updates: dict[str, Any]
+    ) -> dict[str, Any]:
+        """
+        Update a single memory in the active agent namespace.
+
+        Args:
+            agent_id: Target agent.
+            memory_id: Memory document ID to update.
+            updates: Fields to update.
+
+        Returns:
+            Dict with update result metadata.
+
+        Raises:
+            ValueError: If no update fields are provided.
+        """
+        session = self._get_validated_session_for_agent(agent_id)
+        if not updates:
+            raise ValueError("Provide at least one field to update")
+        unknown_fields = set(updates) - _ALLOWED_UPDATE_FIELDS
+        if unknown_fields:
+            raise ValueError(
+                f"Unknown update fields: {', '.join(sorted(unknown_fields))}. "
+                f"Allowed fields: {', '.join(sorted(_ALLOWED_UPDATE_FIELDS))}."
+            )
+        if "content" in updates:
+            content = updates["content"]
+            if content is None or not str(content).strip():
+                raise ValueError("Memory content must be a non-empty string")
+            if len(str(content)) > _MAX_CONTENT_LENGTH:
+                raise ValueError(
+                    f"Memory content exceeds {_MAX_CONTENT_LENGTH} characters"
+                )
+        if "title" in updates:
+            title = updates["title"]
+            if title is not None and len(str(title)) > _MAX_TITLE_LENGTH:
+                raise ValueError(f"Memory title exceeds {_MAX_TITLE_LENGTH} characters")
+        if "type" in updates:
+            memory_type = updates["type"]
+            if memory_type not in _VALID_MEMORY_TYPES:
+                raise ValueError(
+                    f"Invalid memory_type '{memory_type}'. "
+                    f"Must be one of: {', '.join(sorted(_VALID_MEMORY_TYPES))}"
+                )
+        if "confidence" in updates:
+            try:
+                confidence_value = float(updates["confidence"])  # type: ignore[arg-type]
+            except (TypeError, ValueError):
+                raise ValueError(
+                    f"Confidence must be a number between 0.0 and 1.0, got {updates['confidence']!r}"
+                )
+            if not 0.0 <= confidence_value <= 1.0:
+                raise ValueError(
+                    f"Confidence must be between 0.0 and 1.0, got {confidence_value}"
+                )
+            # Normalize to float so downstream write service persists a numeric
+            # confidence even when the caller passed "0.7" as a string. CodeRabbit
+            # review 2026-06-14T14:03:20Z flagged that string values were
+            # previously forwarded unchanged.
+            updates["confidence"] = confidence_value
+
+        result = self._get_write_service().update_memory(
+            memory_id, session.namespace, updates
+        )
+
+        return {
+            "agent_id": agent_id,
+            "namespace": session.namespace,
+            "memory_id": memory_id,
+            "status": result.get("status", "updated"),
+            "action": result.get("action", "updated"),
+            "updated_fields": result.get("updated_fields", list(updates.keys())),
+        }
 
     def extract_memories_from_conversation(
         self,

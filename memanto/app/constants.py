@@ -73,4 +73,13 @@ VALID_PROVENANCE_TYPES = {
 
 VALID_SCOPE_TYPES = {"user", "workspace", "agent", "session", "project", "task"}
 
+ALLOWED_UPDATE_FIELDS = {
+    "title",
+    "content",
+    "type",
+    "confidence",
+    "tags",
+    "source",
+}
+
 VALID_PATTERNS = {"support", "project", "tool"}
