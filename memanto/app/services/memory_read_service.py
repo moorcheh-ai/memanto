@@ -646,18 +646,8 @@ class MemoryReadService:
         try:
             # Determine namespace for answer generation
             if scope_type and scope_id:
-                from typing import cast
-
-                from memanto.app.constants import ScopeType, VALID_SCOPE_TYPES
-
-                scope_type_resolved = (
-                    scope_type
-                    if scope_type in VALID_SCOPE_TYPES
-                    else "agent"
-                )
-                scope = create_memory_scope(
-                    cast(ScopeType, scope_type_resolved), scope_id
-                )
+                scope_type_resolved = self._resolve_scope_type(scope_type)
+                scope = create_memory_scope(scope_type_resolved, scope_id)
                 namespace = scope.to_namespace()
             else:
                 # Use first available namespace
@@ -684,24 +674,24 @@ class MemoryReadService:
         except Exception as e:
             raise MemoryError(f"Failed to generate answer: {e}")
 
+    def _resolve_scope_type(self, scope_type: str) -> "ScopeType":
+        from memanto.app.constants import ScopeType, VALID_SCOPE_TYPES
+
+        return cast(
+            ScopeType,
+            scope_type if scope_type in VALID_SCOPE_TYPES else "agent",
+        )
+
     def _get_search_namespaces(
         self, scope_type: str | None = None, scope_id: str | None = None
     ) -> list[str]:
         """Get namespaces to search based on filters"""
         from typing import cast
 
-        from memanto.app.constants import ScopeType
-
         if scope_type and scope_id:
             # Search specific scope
-            from memanto.app.constants import VALID_SCOPE_TYPES
-
-            scope_type_resolved = (
-                scope_type
-                if scope_type in VALID_SCOPE_TYPES
-                else "agent"
-            )
-            scope = create_memory_scope(cast(ScopeType, scope_type_resolved), scope_id)
+            scope_type_resolved = self._resolve_scope_type(scope_type)
+            scope = create_memory_scope(scope_type_resolved, scope_id)
             return [cast(str, scope.to_namespace())]
         else:
             # Search all namespaces
