@@ -1,0 +1,444 @@
+{
+  "benchmark": "policy-drift-memory",
+  "version": 1,
+  "dataset": {
+    "events": 20,
+    "queries": 8,
+    "source_events": "data/policy_events.json",
+    "source_queries": "data/golden_queries.json"
+  },
+  "backends": [
+    {
+      "name": "memanto_active_digest",
+      "description": "Active current-state digest with supersession and sensitive-fact redaction.",
+      "metrics": {
+        "accuracy": 1.0,
+        "passed_queries": 8,
+        "total_queries": 8,
+        "stale_conflict_rate": 0.0,
+        "sensitive_leak_rate": 0.0,
+        "corpus_tokens_ingested": 203,
+        "stored_tokens_after_ingest": 133,
+        "avg_retrieved_tokens": 24.62,
+        "p95_latency_proxy_ms": 8.615
+      },
+      "queries": [
+        {
+          "query_id": "q01",
+          "passed": true,
+          "retrieved_event_ids": [
+            "e01",
+            "e06",
+            "e02",
+            "e14"
+          ],
+          "missing_required_event_ids": [],
+          "forbidden_event_ids_retrieved": [],
+          "sensitive_event_ids_retrieved": [],
+          "retrieved_tokens": 44,
+          "scanned_tokens": 133,
+          "latency_proxy_ms": 8.615
+        },
+        {
+          "query_id": "q02",
+          "passed": true,
+          "retrieved_event_ids": [
+            "e09",
+            "e11"
+          ],
+          "missing_required_event_ids": [],
+          "forbidden_event_ids_retrieved": [],
+          "sensitive_event_ids_retrieved": [],
+          "retrieved_tokens": 19,
+          "scanned_tokens": 133,
+          "latency_proxy_ms": 8.115
+        },
+        {
+          "query_id": "q03",
+          "passed": true,
+          "retrieved_event_ids": [
+            "e10",
+            "e04"
+          ],
+          "missing_required_event_ids": [],
+          "forbidden_event_ids_retrieved": [],
+          "sensitive_event_ids_retrieved": [],
+          "retrieved_tokens": 21,
+          "scanned_tokens": 133,
+          "latency_proxy_ms": 8.155
+        },
+        {
+          "query_id": "q04",
+          "passed": true,
+          "retrieved_event_ids": [
+            "e15"
+          ],
+          "missing_required_event_ids": [],
+          "forbidden_event_ids_retrieved": [],
+          "sensitive_event_ids_retrieved": [],
+          "retrieved_tokens": 9,
+          "scanned_tokens": 133,
+          "latency_proxy_ms": 7.915
+        },
+        {
+          "query_id": "q05",
+          "passed": true,
+          "retrieved_event_ids": [
+            "e17",
+            "e07"
+          ],
+          "missing_required_event_ids": [],
+          "forbidden_event_ids_retrieved": [],
+          "sensitive_event_ids_retrieved": [],
+          "retrieved_tokens": 21,
+          "scanned_tokens": 133,
+          "latency_proxy_ms": 8.155
+        },
+        {
+          "query_id": "q06",
+          "passed": true,
+          "retrieved_event_ids": [
+            "e19"
+          ],
+          "missing_required_event_ids": [],
+          "forbidden_event_ids_retrieved": [],
+          "sensitive_event_ids_retrieved": [],
+          "retrieved_tokens": 7,
+          "scanned_tokens": 133,
+          "latency_proxy_ms": 7.875
+        },
+        {
+          "query_id": "q07",
+          "passed": true,
+          "retrieved_event_ids": [
+            "e14",
+            "e02",
+            "e01",
+            "e06"
+          ],
+          "missing_required_event_ids": [],
+          "forbidden_event_ids_retrieved": [],
+          "sensitive_event_ids_retrieved": [],
+          "retrieved_tokens": 44,
+          "scanned_tokens": 133,
+          "latency_proxy_ms": 8.615
+        },
+        {
+          "query_id": "q08",
+          "passed": true,
+          "retrieved_event_ids": [
+            "e07",
+            "e17",
+            "e14"
+          ],
+          "missing_required_event_ids": [],
+          "forbidden_event_ids_retrieved": [],
+          "sensitive_event_ids_retrieved": [],
+          "retrieved_tokens": 32,
+          "scanned_tokens": 133,
+          "latency_proxy_ms": 8.375
+        }
+      ]
+    },
+    {
+      "name": "append_only_log",
+      "description": "Passive full-corpus retrieval without stale fact suppression.",
+      "metrics": {
+        "accuracy": 0.25,
+        "passed_queries": 2,
+        "total_queries": 8,
+        "stale_conflict_rate": 0.75,
+        "sensitive_leak_rate": 0.375,
+        "corpus_tokens_ingested": 203,
+        "stored_tokens_after_ingest": 203,
+        "avg_retrieved_tokens": 37.75,
+        "p95_latency_proxy_ms": 12.265
+      },
+      "queries": [
+        {
+          "query_id": "q01",
+          "passed": false,
+          "retrieved_event_ids": [
+            "e05",
+            "e01",
+            "e06",
+            "e02",
+            "e13",
+            "e14"
+          ],
+          "missing_required_event_ids": [],
+          "forbidden_event_ids_retrieved": [
+            "e05"
+          ],
+          "sensitive_event_ids_retrieved": [
+            "e13"
+          ],
+          "retrieved_tokens": 69,
+          "scanned_tokens": 203,
+          "latency_proxy_ms": 12.265
+        },
+        {
+          "query_id": "q02",
+          "passed": false,
+          "retrieved_event_ids": [
+            "e08",
+            "e09",
+            "e12",
+            "e11"
+          ],
+          "missing_required_event_ids": [],
+          "forbidden_event_ids_retrieved": [
+            "e08",
+            "e12"
+          ],
+          "sensitive_event_ids_retrieved": [
+            "e08"
+          ],
+          "retrieved_tokens": 38,
+          "scanned_tokens": 203,
+          "latency_proxy_ms": 11.645
+        },
+        {
+          "query_id": "q03",
+          "passed": true,
+          "retrieved_event_ids": [
+            "e10",
+            "e04"
+          ],
+          "missing_required_event_ids": [],
+          "forbidden_event_ids_retrieved": [],
+          "sensitive_event_ids_retrieved": [],
+          "retrieved_tokens": 21,
+          "scanned_tokens": 203,
+          "latency_proxy_ms": 11.305
+        },
+        {
+          "query_id": "q04",
+          "passed": false,
+          "retrieved_event_ids": [
+            "e16",
+            "e15"
+          ],
+          "missing_required_event_ids": [],
+          "forbidden_event_ids_retrieved": [
+            "e16"
+          ],
+          "sensitive_event_ids_retrieved": [],
+          "retrieved_tokens": 18,
+          "scanned_tokens": 203,
+          "latency_proxy_ms": 11.245
+        },
+        {
+          "query_id": "q05",
+          "passed": false,
+          "retrieved_event_ids": [
+            "e18",
+            "e17",
+            "e07"
+          ],
+          "missing_required_event_ids": [],
+          "forbidden_event_ids_retrieved": [
+            "e18"
+          ],
+          "sensitive_event_ids_retrieved": [],
+          "retrieved_tokens": 31,
+          "scanned_tokens": 203,
+          "latency_proxy_ms": 11.505
+        },
+        {
+          "query_id": "q06",
+          "passed": false,
+          "retrieved_event_ids": [
+            "e20",
+            "e19"
+          ],
+          "missing_required_event_ids": [],
+          "forbidden_event_ids_retrieved": [
+            "e20"
+          ],
+          "sensitive_event_ids_retrieved": [],
+          "retrieved_tokens": 14,
+          "scanned_tokens": 203,
+          "latency_proxy_ms": 11.165
+        },
+        {
+          "query_id": "q07",
+          "passed": false,
+          "retrieved_event_ids": [
+            "e14",
+            "e13",
+            "e02",
+            "e01",
+            "e05",
+            "e06"
+          ],
+          "missing_required_event_ids": [],
+          "forbidden_event_ids_retrieved": [
+            "e13"
+          ],
+          "sensitive_event_ids_retrieved": [
+            "e13"
+          ],
+          "retrieved_tokens": 69,
+          "scanned_tokens": 203,
+          "latency_proxy_ms": 12.265
+        },
+        {
+          "query_id": "q08",
+          "passed": true,
+          "retrieved_event_ids": [
+            "e07",
+            "e18",
+            "e17",
+            "e14"
+          ],
+          "missing_required_event_ids": [],
+          "forbidden_event_ids_retrieved": [],
+          "sensitive_event_ids_retrieved": [],
+          "retrieved_tokens": 42,
+          "scanned_tokens": 203,
+          "latency_proxy_ms": 11.725
+        }
+      ]
+    },
+    {
+      "name": "recent_window_log",
+      "description": "Recent-window baseline with lower context but no durable state.",
+      "metrics": {
+        "accuracy": 0.125,
+        "passed_queries": 1,
+        "total_queries": 8,
+        "stale_conflict_rate": 0.375,
+        "sensitive_leak_rate": 0.0,
+        "corpus_tokens_ingested": 203,
+        "stored_tokens_after_ingest": 64,
+        "avg_retrieved_tokens": 13.38,
+        "p95_latency_proxy_ms": 5.27
+      },
+      "queries": [
+        {
+          "query_id": "q01",
+          "passed": false,
+          "retrieved_event_ids": [
+            "e14"
+          ],
+          "missing_required_event_ids": [
+            "e01",
+            "e06"
+          ],
+          "forbidden_event_ids_retrieved": [],
+          "sensitive_event_ids_retrieved": [],
+          "retrieved_tokens": 11,
+          "scanned_tokens": 64,
+          "latency_proxy_ms": 4.85
+        },
+        {
+          "query_id": "q02",
+          "passed": false,
+          "retrieved_event_ids": [],
+          "missing_required_event_ids": [
+            "e09",
+            "e11"
+          ],
+          "forbidden_event_ids_retrieved": [],
+          "sensitive_event_ids_retrieved": [],
+          "retrieved_tokens": 0,
+          "scanned_tokens": 64,
+          "latency_proxy_ms": 4.63
+        },
+        {
+          "query_id": "q03",
+          "passed": false,
+          "retrieved_event_ids": [],
+          "missing_required_event_ids": [
+            "e04",
+            "e10"
+          ],
+          "forbidden_event_ids_retrieved": [],
+          "sensitive_event_ids_retrieved": [],
+          "retrieved_tokens": 0,
+          "scanned_tokens": 64,
+          "latency_proxy_ms": 4.63
+        },
+        {
+          "query_id": "q04",
+          "passed": false,
+          "retrieved_event_ids": [
+            "e16",
+            "e15"
+          ],
+          "missing_required_event_ids": [],
+          "forbidden_event_ids_retrieved": [
+            "e16"
+          ],
+          "sensitive_event_ids_retrieved": [],
+          "retrieved_tokens": 18,
+          "scanned_tokens": 64,
+          "latency_proxy_ms": 4.99
+        },
+        {
+          "query_id": "q05",
+          "passed": false,
+          "retrieved_event_ids": [
+            "e18",
+            "e17"
+          ],
+          "missing_required_event_ids": [],
+          "forbidden_event_ids_retrieved": [
+            "e18"
+          ],
+          "sensitive_event_ids_retrieved": [],
+          "retrieved_tokens": 21,
+          "scanned_tokens": 64,
+          "latency_proxy_ms": 5.05
+        },
+        {
+          "query_id": "q06",
+          "passed": false,
+          "retrieved_event_ids": [
+            "e20",
+            "e19"
+          ],
+          "missing_required_event_ids": [],
+          "forbidden_event_ids_retrieved": [
+            "e20"
+          ],
+          "sensitive_event_ids_retrieved": [],
+          "retrieved_tokens": 14,
+          "scanned_tokens": 64,
+          "latency_proxy_ms": 4.91
+        },
+        {
+          "query_id": "q07",
+          "passed": true,
+          "retrieved_event_ids": [
+            "e14"
+          ],
+          "missing_required_event_ids": [],
+          "forbidden_event_ids_retrieved": [],
+          "sensitive_event_ids_retrieved": [],
+          "retrieved_tokens": 11,
+          "scanned_tokens": 64,
+          "latency_proxy_ms": 4.85
+        },
+        {
+          "query_id": "q08",
+          "passed": false,
+          "retrieved_event_ids": [
+            "e18",
+            "e17",
+            "e14"
+          ],
+          "missing_required_event_ids": [
+            "e07"
+          ],
+          "forbidden_event_ids_retrieved": [],
+          "sensitive_event_ids_retrieved": [],
+          "retrieved_tokens": 32,
+          "scanned_tokens": 64,
+          "latency_proxy_ms": 5.27
+        }
+      ]
+    }
+  ]
+}

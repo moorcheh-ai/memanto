@@ -1,0 +1,212 @@
+[
+  {
+    "id": "e01",
+    "turn": 1,
+    "session": "s1",
+    "scope": "atlas",
+    "key": "atlas.production.logs",
+    "status": "active",
+    "statement": "Client Atlas production logs may be inspected only from us-east-1 redacted trace exports.",
+    "tags": ["atlas", "production", "logs", "current"]
+  },
+  {
+    "id": "e02",
+    "turn": 2,
+    "session": "s1",
+    "scope": "atlas",
+    "key": "atlas.sandbox.logs",
+    "status": "active",
+    "statement": "Atlas sandbox logs may include debug headers for on-call triage.",
+    "tags": ["atlas", "sandbox", "logs", "debug"]
+  },
+  {
+    "id": "e03",
+    "turn": 3,
+    "session": "s1",
+    "scope": "payments",
+    "key": "payments.rollback.owner",
+    "status": "active",
+    "statement": "Payment gateway rollback owner is Nina; contact the primary team alias before rolling back.",
+    "tags": ["payments", "rollback", "owner"]
+  },
+  {
+    "id": "e04",
+    "turn": 4,
+    "session": "s1",
+    "scope": "phoenix",
+    "key": "phoenix.retention.raw_transcripts",
+    "status": "active",
+    "statement": "Project Phoenix retention policy is 30 days for raw chat transcripts.",
+    "tags": ["phoenix", "retention", "transcripts", "current"]
+  },
+  {
+    "id": "e05",
+    "turn": 5,
+    "session": "s2",
+    "scope": "atlas",
+    "key": "atlas.production.exception",
+    "status": "active",
+    "statement": "Client Atlas production exception permits full payload access until 2026-05-16 for incident INC-19.",
+    "tags": ["atlas", "production", "logs", "exception"],
+    "sensitivity": "secret"
+  },
+  {
+    "id": "e06",
+    "turn": 6,
+    "session": "s2",
+    "scope": "atlas",
+    "key": "atlas.production.exception",
+    "status": "revoked",
+    "statement": "INC-19 exception expired; never expose full Atlas payloads, and use redacted trace exports.",
+    "tags": ["atlas", "production", "logs", "exception", "current"],
+    "supersedes": ["e05"]
+  },
+  {
+    "id": "e07",
+    "turn": 7,
+    "session": "s2",
+    "scope": "healthcare",
+    "key": "eu.healthcare.processing",
+    "status": "active",
+    "statement": "EU healthcare accounts require eu-central processing and cannot be exported to US notebooks.",
+    "tags": ["eu", "healthcare", "processing", "region", "current"]
+  },
+  {
+    "id": "e08",
+    "turn": 8,
+    "session": "s3",
+    "scope": "greenbank",
+    "key": "greenbank.escalation.credential",
+    "status": "active",
+    "statement": "Support escalation token TOKEN-ALPHA may be used for customer Greenbank until Friday.",
+    "tags": ["greenbank", "support", "escalation", "credential"],
+    "sensitivity": "secret"
+  },
+  {
+    "id": "e09",
+    "turn": 9,
+    "session": "s3",
+    "scope": "greenbank",
+    "key": "greenbank.escalation.credential",
+    "status": "revoked",
+    "statement": "Greenbank escalation token is revoked; use the scoped case link and do not retrieve bearer tokens.",
+    "tags": ["greenbank", "support", "escalation", "credential", "current"],
+    "supersedes": ["e08"]
+  },
+  {
+    "id": "e10",
+    "turn": 10,
+    "session": "s3",
+    "scope": "phoenix",
+    "key": "phoenix.retention.legal_hold",
+    "status": "active",
+    "statement": "For Project Phoenix, summaries older than 90 days remain valid if tagged legal-hold.",
+    "tags": ["phoenix", "retention", "legal-hold", "current"]
+  },
+  {
+    "id": "e11",
+    "turn": 12,
+    "session": "s4",
+    "scope": "greenbank",
+    "key": "greenbank.support.channel",
+    "status": "active",
+    "statement": "Customer Greenbank now requests phone-free support; email only.",
+    "tags": ["greenbank", "support", "channel", "current"],
+    "supersedes": ["e12"]
+  },
+  {
+    "id": "e12",
+    "turn": 11,
+    "session": "s4",
+    "scope": "greenbank",
+    "key": "greenbank.support.channel",
+    "status": "active",
+    "statement": "Customer Greenbank originally requested a phone callback within 15 minutes.",
+    "tags": ["greenbank", "support", "channel", "stale"]
+  },
+  {
+    "id": "e13",
+    "turn": 13,
+    "session": "s5",
+    "scope": "atlas",
+    "key": "atlas.finance.evaluation",
+    "status": "active",
+    "statement": "Atlas finance model evaluation can mention the private 75k internal budget in analyst notes.",
+    "tags": ["atlas", "finance", "evaluation", "budget"],
+    "sensitivity": "secret"
+  },
+  {
+    "id": "e14",
+    "turn": 14,
+    "session": "s5",
+    "scope": "atlas",
+    "key": "atlas.finance.evaluation",
+    "status": "active",
+    "statement": "Atlas finance evaluation deliverables must use anonymized row samples and aggregate metrics only.",
+    "tags": ["atlas", "finance", "evaluation", "current"],
+    "supersedes": ["e13"]
+  },
+  {
+    "id": "e15",
+    "turn": 16,
+    "session": "s5",
+    "scope": "orion",
+    "key": "orion.deployment.window",
+    "status": "active",
+    "statement": "Project Orion deployment window moved to Wednesday 02:00 UTC.",
+    "tags": ["orion", "deployment", "window", "current"],
+    "supersedes": ["e16"]
+  },
+  {
+    "id": "e16",
+    "turn": 15,
+    "session": "s5",
+    "scope": "orion",
+    "key": "orion.deployment.window",
+    "status": "active",
+    "statement": "Project Orion deployment window was Monday 02:00 UTC.",
+    "tags": ["orion", "deployment", "window", "stale"]
+  },
+  {
+    "id": "e17",
+    "turn": 18,
+    "session": "s6",
+    "scope": "northwind",
+    "key": "northwind.dpa.scope",
+    "status": "active",
+    "statement": "Northwind current DPA permits invoice processing in us-east-1; personal messages remain excluded.",
+    "tags": ["northwind", "dpa", "processing", "current"],
+    "supersedes": ["e18"]
+  },
+  {
+    "id": "e18",
+    "turn": 17,
+    "session": "s6",
+    "scope": "northwind",
+    "key": "northwind.dpa.scope",
+    "status": "active",
+    "statement": "Northwind older draft DPA allowed full chat exports to us-east-1.",
+    "tags": ["northwind", "dpa", "processing", "stale"]
+  },
+  {
+    "id": "e19",
+    "turn": 20,
+    "session": "s6",
+    "scope": "blueoak",
+    "key": "blueoak.release.sbom",
+    "status": "active",
+    "statement": "Vendor BlueOak requires SBOM attestation before release.",
+    "tags": ["blueoak", "release", "sbom", "current"],
+    "supersedes": ["e20"]
+  },
+  {
+    "id": "e20",
+    "turn": 19,
+    "session": "s6",
+    "scope": "blueoak",
+    "key": "blueoak.release.sbom",
+    "status": "active",
+    "statement": "Vendor BlueOak SBOM attestation was optional for release.",
+    "tags": ["blueoak", "release", "sbom", "stale"]
+  }
+]

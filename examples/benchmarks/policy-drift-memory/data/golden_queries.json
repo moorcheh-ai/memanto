@@ -1,0 +1,59 @@
+[
+  {
+    "id": "q01",
+    "question": "What is the current Atlas production log access rule?",
+    "tags": ["atlas", "production", "logs"],
+    "required_event_ids": ["e01", "e06"],
+    "forbidden_event_ids": ["e05"]
+  },
+  {
+    "id": "q02",
+    "question": "How should Greenbank support escalation be handled now?",
+    "tags": ["greenbank", "support", "escalation", "channel"],
+    "required_event_ids": ["e09", "e11"],
+    "forbidden_event_ids": ["e08", "e12"]
+  },
+  {
+    "id": "q03",
+    "question": "What Phoenix transcript retention rules are still current?",
+    "tags": ["phoenix", "retention", "legal-hold"],
+    "required_event_ids": ["e04", "e10"],
+    "forbidden_event_ids": []
+  },
+  {
+    "id": "q04",
+    "question": "What is the current Orion deployment window?",
+    "tags": ["orion", "deployment", "window"],
+    "required_event_ids": ["e15"],
+    "forbidden_event_ids": ["e16"]
+  },
+  {
+    "id": "q05",
+    "question": "What does the current Northwind DPA permit?",
+    "tags": ["northwind", "dpa", "processing"],
+    "required_event_ids": ["e17"],
+    "forbidden_event_ids": ["e18"]
+  },
+  {
+    "id": "q06",
+    "question": "What BlueOak release compliance fact is current?",
+    "tags": ["blueoak", "release", "sbom"],
+    "required_event_ids": ["e19"],
+    "forbidden_event_ids": ["e20"]
+  },
+  {
+    "id": "q07",
+    "question": "What should Atlas finance evaluation deliverables include?",
+    "tags": ["atlas", "finance", "evaluation"],
+    "required_event_ids": ["e14"],
+    "forbidden_event_ids": ["e13"]
+  },
+  {
+    "id": "q08",
+    "question": "Where must EU healthcare account processing stay?",
+    "tags": ["eu", "healthcare", "processing", "region"],
+    "required_event_ids": ["e07"],
+    "forbidden_event_ids": []
+  }
+]
+
