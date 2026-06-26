@@ -2,6 +2,7 @@
 MEMANTO CLI - Core commands (status, serve, ui, main_callback).
 """
 
+import errno
 import os
 import platform
 import shutil
@@ -11,7 +12,9 @@ import sys
 import threading
 import time
 from datetime import datetime
+from ipaddress import ip_address
 from pathlib import Path
+from urllib.parse import urlsplit
 
 import httpx
 import typer
@@ -35,6 +38,84 @@ from memanto.cli.commands._shared import (
     print_logo,
     show_welcome_banner,
 )
+
+
+def _resolve_bind_host(
+    explicit_host: str | None, server_cfg: dict | None = None
+) -> str:
+    """Resolve the interface used by local REST/UI commands.
+
+    ``localhost`` is a client-facing name, not a safe bind default. Bind to the
+    loopback address unless the caller or config explicitly opts into another
+    interface such as ``0.0.0.0``.
+    """
+    configured_host = _host_from_config_url((server_cfg or {}).get("url"))
+    bind_host = (explicit_host or configured_host or "127.0.0.1").strip()
+    if bind_host == "localhost":
+        return "127.0.0.1"
+    return bind_host
+
+
+def _host_from_config_url(configured_url: str | None) -> str | None:
+    """Extract a bindable host from persisted server configuration."""
+    if not configured_url:
+        return None
+
+    value = configured_url.strip()
+    if not value:
+        return None
+
+    try:
+        parsed = urlsplit(value if "://" in value else f"//{value}")
+    except ValueError:
+        return value
+
+    return parsed.hostname or value
+
+
+def _display_host_for_url(bind_host: str) -> str:
+    """Return a user-facing host for local URLs."""
+    if bind_host == "localhost":
+        return "localhost"
+    try:
+        parsed_host = ip_address(bind_host.split("%", 1)[0])
+    except ValueError:
+        if ":" in bind_host and not bind_host.startswith("["):
+            return f"[{bind_host}]"
+        return bind_host
+
+    if parsed_host.is_loopback or parsed_host.is_unspecified:
+        return "localhost"
+    if parsed_host.version == 6:
+        return f"[{bind_host}]"
+    return bind_host
+
+
+def _port_in_use(bind_host: str, port: int) -> bool:
+    """Return whether the requested host/port cannot be bound."""
+    family = socket.AF_INET6 if ":" in bind_host else socket.AF_INET
+    with socket.socket(family, socket.SOCK_STREAM) as sock:
+        try:
+            sock.bind((bind_host, port))
+        except OSError as exc:
+            if exc.errno == errno.EADDRINUSE:
+                return True
+            raise
+    return False
+
+
+def _check_port_available(bind_host: str, port: int) -> None:
+    """Validate that the requested host/port can be bound."""
+    try:
+        port_in_use = _port_in_use(bind_host, port)
+    except OSError as exc:
+        _error(f"Cannot bind to {bind_host}:{port}: {exc}")
+
+    if port_in_use:
+        _error(
+            f"Port {port} is already in use on {bind_host}.",
+            hint=f"MEMANTO may already be running. Try: memanto serve --port {port + 1}",
+        )
 
 
 def _first_run_setup() -> None:
@@ -901,9 +982,7 @@ def serve(
 ):
     """Start MEMANTO server."""
     server_cfg = config_manager.get_server_config()
-    host = host or server_cfg.get("url", "0.0.0.0")
-    if host == "localhost":
-        host = "0.0.0.0"  # Typically want 0.0.0.0 for bind
+    host = _resolve_bind_host(host, server_cfg)
     port = port or server_cfg.get("port", 8000)
 
     console.print(
@@ -940,19 +1019,9 @@ def serve(
             hint="Install it with: pip install uvicorn[standard]",
         )
 
-    # Check if port is already in use
+    _check_port_available(host, port)
 
-    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    result = sock.connect_ex(("localhost", port))
-    sock.close()
-
-    if result == 0:
-        _error(
-            f"Port {port} is already in use.",
-            hint=f"MEMANTO may already be running. Try: memanto serve --port {port + 1}",
-        )
-
-    display_host = "localhost" if host == "0.0.0.0" else host
+    display_host = _display_host_for_url(host)
     console.print("\n[green]Starting local REST API...[/green]")
     console.print(f"[dim]Server URL: http://{display_host}:{port}[/dim]")
     console.print(f"[dim]API Docs: http://{display_host}:{port}/docs[/dim]")
@@ -992,9 +1061,7 @@ def ui(
     import webbrowser
 
     server_cfg = config_manager.get_server_config()
-    host = host or server_cfg.get("url", "0.0.0.0")
-    if host == "localhost":
-        host = "0.0.0.0"
+    host = _resolve_bind_host(host, server_cfg)
     port = port or server_cfg.get("port", 8000)
 
     # Check if configured
@@ -1016,12 +1083,13 @@ def ui(
             hint="Install it with: pip install uvicorn[standard]",
         )
 
-    # Check if port is already in use — if so, just open the browser
-    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    port_in_use = sock.connect_ex(("localhost", port)) == 0
-    sock.close()
+    try:
+        port_in_use = _port_in_use(host, port)
+    except OSError as exc:
+        _error(f"Cannot bind to {host}:{port}: {exc}")
 
-    ui_url = f"http://localhost:{port}/ui"
+    display_host = _display_host_for_url(host)
+    ui_url = f"http://{display_host}:{port}/ui"
 
     def _open_dashboard_window(url: str):
         import subprocess
@@ -1059,7 +1127,7 @@ def ui(
         )
     )
     console.print(f"\n[{BRIGHT}]Dashboard:[/{BRIGHT}]  {ui_url}")
-    console.print(f"[dim]API Docs:   http://localhost:{port}/docs[/dim]")
+    console.print(f"[dim]API Docs:   http://{display_host}:{port}/docs[/dim]")
     console.print("\n[bold]Press CTRL+C to stop.[/bold]\n")
 
     # Open browser after a short delay (in background thread)
