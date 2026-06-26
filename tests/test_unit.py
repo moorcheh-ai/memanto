@@ -9,9 +9,11 @@ from unittest.mock import MagicMock, patch
 
 import jwt
 import pytest
+from fastapi import HTTPException
 
 from memanto.app.config import settings
 from memanto.app.models.session import AgentCreate, AgentPattern, SessionStatus
+from memanto.app.routes import auth_deps
 from memanto.app.services.agent_service import AgentService
 from memanto.app.services.session_service import SessionService
 
@@ -118,6 +120,44 @@ class TestSessionService:
 
         print("✅ Session ended successfully")
         print(f"   Duration: {summary.duration_hours} hours")
+
+    def test_current_session_rejects_deactivated_token(
+        self, session_service, monkeypatch
+    ):
+        """A terminated session token must not authorize memory routes."""
+        session = session_service.create_session(
+            agent_id="test-agent",
+            duration_hours=1,
+        )
+        session_service.end_session("test-agent")
+        monkeypatch.setattr(auth_deps, "get_session_service", lambda: session_service)
+
+        with pytest.raises(HTTPException) as exc_info:
+            auth_deps.get_current_session(session.session_token)
+
+        assert exc_info.value.status_code == 401
+        assert exc_info.value.detail["error"] == "SessionExpired"
+
+    def test_current_session_rejects_replaced_token(self, session_service, monkeypatch):
+        """A validly signed older token must not authorize after renewal/replacement."""
+        first = session_service.create_session(
+            agent_id="test-agent",
+            duration_hours=1,
+        )
+        second = session_service.create_session(
+            agent_id="test-agent",
+            duration_hours=1,
+        )
+        monkeypatch.setattr(auth_deps, "get_session_service", lambda: session_service)
+
+        with pytest.raises(HTTPException) as exc_info:
+            auth_deps.get_current_session(first.session_token)
+
+        assert exc_info.value.status_code == 401
+        assert exc_info.value.detail["error"] == "InvalidSessionToken"
+
+        current = auth_deps.get_current_session(second.session_token)
+        assert current.session_id == second.session_id
 
 
 class TestAgentService:
