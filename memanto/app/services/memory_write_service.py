@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING, Any
 if TYPE_CHECKING:
     from moorcheh_sdk import MoorchehClient
 
-from memanto.app.core import MemoryRecord
+from memanto.app.core import MemoryRecord, ValidationPolicy
 from memanto.app.services.memory_parsing_service import MemoryParsingService
 from memanto.app.utils.errors import MemoryError
 from memanto.app.utils.ids import generate_memory_id
@@ -54,13 +54,14 @@ class MemoryWriteService:
             # Add namespace
             namespace = memory.get_scope().to_namespace()
 
-            # skip validation for speed
-            ## Validate memory
-            # validation_result = self.validation_service.validate_memory(memory, context)
-            ## Use validated memory if modified
-            # if "memory" in validation_result:
-            #     memory = validation_result["memory"]
-            validation_result = {"action": "store", "reason": "MVP direct store"}
+            # Validate memory
+            validation_result = ValidationPolicy.validate_memory(memory, context)
+            if not validation_result.get("valid", True):
+                raise MemoryError(f"Memory validation failed: {validation_result.get('reason', 'Unknown')}")
+
+            # Apply provisional status if needed
+            if validation_result.get("action") == "store_provisional":
+                memory = ValidationPolicy.make_provisional(memory)
 
             from typing import cast
 

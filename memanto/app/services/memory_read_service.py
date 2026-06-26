@@ -630,12 +630,18 @@ class MemoryReadService:
                     # Only include if not expired
                     if expires_dt > now:
                         filtered.append(result)
+                elif isinstance(expires_at, (int, float)):
+                    # Handle integer/float timestamps (unix timestamp)
+                    from datetime import timezone
+                    expires_dt = datetime.fromtimestamp(expires_at, tz=timezone.utc)
+                    if expires_dt > now:
+                        filtered.append(result)
                 else:
-                    # If expires_at is already datetime or not parseable, keep it
-                    filtered.append(result)
-            except (ValueError, AttributeError):
-                # If we can't parse, keep the memory (fail open)
-                filtered.append(result)
+                    # Unknown type - filter out to prevent TTL bypass
+                    pass
+            except (ValueError, AttributeError, OSError):
+                # If we can't parse, filter out to prevent TTL bypass
+                pass
 
         return filtered
 

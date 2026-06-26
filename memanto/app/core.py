@@ -34,10 +34,15 @@ class MemoryScope(BaseModel):
         """Parse namespace back to scope"""
         from typing import cast
 
-        parts = namespace.split("_")
+        parts = namespace.split("_", 2)  # Split into max 3 parts
         if len(parts) != 3 or parts[0] != "memanto":
             raise ValueError(f"Invalid MEMANTO namespace format: {namespace}")
-        return cls(scope_type=cast(ScopeType, parts[1]), scope_id=parts[2])
+
+        scope_type = parts[1]
+        if scope_type not in {"user", "workspace", "agent", "session"}:
+            raise ValueError(f"Invalid scope_type in namespace: {scope_type}")
+
+        return cls(scope_type=cast(ScopeType, scope_type), scope_id=parts[2])
 
 
 class MemoryRecord(BaseModel):
@@ -185,7 +190,9 @@ class MemoryRecord(BaseModel):
 
     def validate(self):
         """Mark memory as validated (increases trust)"""
-        self.validation_count += 1
+        # Cap validation count to prevent score manipulation
+        if self.validation_count < 5:
+            self.validation_count += 1
         self.validated_at = datetime.utcnow()
         self.updated_at = datetime.utcnow()
 
