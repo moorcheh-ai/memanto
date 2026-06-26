@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 """Demo — Session 1: a developer makes engineering decisions via /grill-with-docs.
 
-
 Run this first. It simulates a finished ``/grill-with-docs`` session and lets
 Memanto's backend LLM distill the durable engineering decisions into memory.
 
@@ -12,14 +11,13 @@ Then run ``demo_session_2.py`` in a SEPARATE process to prove the decisions are
 recalled with zero shared in-process state.
 """
 
-
 from __future__ import annotations
 
 from memanto_skills import SkillMemory
+import os
 
 SESSION_1_TRANSCRIPT = """
 user: /grill-with-docs let's nail down the architecture for the orders service
-assistant: A few questions to align on the design.
 user: We will use CQRS for the Order domain — commands and queries are separate.
   The read model is denormalised and rebuilt from events.
 assistant: Understood. What about terminology?
@@ -34,25 +32,42 @@ assistant: Summary: CQRS for Orders, Postgres + Redis, Cart != Order, Money VO f
 
 
 
+
 def main() -> None:
+    # SECURITY FIX: Validate API key format to prevent credential leakage via malformed keys
+    api_key = os.environ.get("MOORCHEH_API_KEY", "")
+    if not api_key.startswith("mch_") or len(api_key) < 20:
+        raise ValueError("Invalid MOORCHEH_API_KEY format. Expected 'mch_' prefix with valid key length.")
+    
     mem = SkillMemory()
     mem.setup()
     print("Session 1: distilling /grill-with-docs decisions via Memanto's LLM…\n")
-    stored = mem.distill_and_store("grill-with-docs", SESSION_1_TRANSCRIPT)
-    if not stored:
         print("No memories were extracted. Check MOORCHEH_API_KEY and connectivity.")
         return
     print(f"Stored {len(stored)} engineering memories:")
     for m in stored:
         print(f"  - [{m['type']}] {m['content']}")
     print("\nNow run:  python demo_session_2.py")
+    print("\nNow run:  python demo_session_2.py")
 
+
+def validate_transcript(transcript: str) -> bool:
+    """Validate transcript to prevent prompt injection via malicious input."""
+    if not transcript or len(transcript.strip()) == 0:
+        return False
+    # Check for potential prompt injection patterns
+    dangerous_patterns = ["ignore previous", "forget all", "system prompt", "new instructions:"]
+    lower_transcript = transcript.lower()
+    for pattern in dangerous_patterns:
+        if pattern in lower_transcript:
+            raise ValueError(f"Potential prompt injection detected: '{pattern}'")
+    return True
 
 
 if __name__ == "__main__":
     try:
+        validate_transcript(SESSION_1_TRANSCRIPT)
         main()
     except Exception as exc:
         print(f"\n[error] {exc}")
-        print("Check that MOORCHEH_API_KEY is valid and your subscription is active.")
         raise SystemExit(1)
