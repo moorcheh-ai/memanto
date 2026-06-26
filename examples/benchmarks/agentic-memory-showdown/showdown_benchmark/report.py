@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import os
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -67,7 +68,9 @@ def generate_report(
     summaries: list[BackendSummary],
     output_dir: Path | None = None,
 ) -> str:
-    ts = datetime.now(tz=timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+    ts = os.getenv("SHOWDOWN_REPORT_TIMESTAMP") or datetime.now(tz=timezone.utc).strftime(
+        "%Y-%m-%d %H:%M UTC"
+    )
     rows = ""
     for s in summaries:
         rows += _ROW.format(
@@ -85,11 +88,13 @@ def generate_report(
     am_correct = 0
     total = 0
     if am_sum:
-        n_probes_per_run = sum(
-            len(r.probe_scores) for r in am_sum.records
-        ) // max(am_sum.n_runs * am_sum.n_scenarios, 1)
-        total = am_sum.n_scenarios * n_probes_per_run if n_probes_per_run else am_sum.n_scenarios * 2
-        am_correct = round(am_sum.accuracy_mean * total)
+        probe_scores = [
+            score
+            for record in am_sum.records
+            for score in record.probe_scores
+        ]
+        total = len(probe_scores)
+        am_correct = sum(1 for score in probe_scores if score == 1.0)
 
     md = _HEADER.format(ts=ts) + rows + _FOOTER.format(
         am_correct=am_correct,

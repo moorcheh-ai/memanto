@@ -51,7 +51,7 @@ def main(argv: list[str] | None = None) -> int:
     ]
 
     live = [b.name for b in backends if getattr(b, "is_live", False)]
-    fallback = [b.name for b in backends if not getattr(b, "is_live", True)]
+    fallback = [b.name for b in backends if not getattr(b, "is_live", False)]
 
     if not args.quiet:
         print("\n🔬 Agentic Memory Showdown")

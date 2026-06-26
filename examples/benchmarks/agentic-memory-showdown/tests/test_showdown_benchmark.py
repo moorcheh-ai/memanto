@@ -1,14 +1,7 @@
 """Pytest test suite — runs fully offline, zero API keys required."""
 from __future__ import annotations
 
-import os
 import pytest
-
-# Ensure offline mode for CI
-os.environ.pop("MOORCHEH_API_KEY", None)
-os.environ.pop("MEM0_API_KEY", None)
-os.environ.pop("OPENAI_API_KEY", None)
-os.environ.pop("OPENROUTER_API_KEY", None)
 
 from showdown_benchmark.backends.offline import (
     ActiveMemoryBackend,
@@ -18,6 +11,18 @@ from showdown_benchmark.backends.offline import (
 from showdown_benchmark.dataset import SCENARIOS
 from showdown_benchmark.judge import score_answer
 from showdown_benchmark.runner import run_benchmark
+
+
+@pytest.fixture(autouse=True)
+def _offline_env(monkeypatch):
+    """Keep tests offline without mutating the process environment at import time."""
+    for name in (
+        "MOORCHEH_API_KEY",
+        "MEM0_API_KEY",
+        "OPENAI_API_KEY",
+        "OPENROUTER_API_KEY",
+    ):
+        monkeypatch.delenv(name, raising=False)
 
 
 # ---------------------------------------------------------------------------

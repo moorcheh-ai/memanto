@@ -12,8 +12,11 @@ Scoring modes
 """
 from __future__ import annotations
 
+import json
 import os
 import re
+import sys
+import urllib.error
 
 
 def score_answer(
@@ -31,7 +34,7 @@ def score_answer(
 
     Staleness penalty:
       If stale_keyword is provided and present in context while
-      expected_keyword is ABSENT, score = 0.25 (wrong answer detected).
+      expected_keyword is ABSENT, score = 0.0 (wrong answer detected).
       If both are present, score = 0.5 (ambiguous / mixed context).
       This rewards active-memory systems that purge stale facts.
     """
@@ -39,8 +42,17 @@ def score_answer(
     if openai_key:
         try:
             return _llm_score(context, query, expected_keyword, explanation, openai_key)
-        except Exception:
-            pass
+        except (
+            OSError,
+            KeyError,
+            ValueError,
+            json.JSONDecodeError,
+            urllib.error.URLError,
+        ) as exc:
+            print(
+                f"Warning: LLM scoring failed; falling back to keyword scoring: {exc}",
+                file=sys.stderr,
+            )
     return _keyword_score(context, expected_keyword, stale_keyword)
 
 
@@ -78,7 +90,6 @@ def _llm_score(
     api_key: str,
 ) -> float:
     """Use GPT-4o-mini to score whether context correctly answers query."""
-    import json
     import urllib.request
 
     prompt = (
@@ -92,8 +103,9 @@ def _llm_score(
         "Reply with a JSON object: {\"score\": <0.0 to 1.0>, \"reason\": \"<one sentence>\"}"
     )
 
-    base_url = os.getenv("OPENAI_API_BASE", "https://api.openai.com/v1")
-    if "openrouter" in (os.getenv("OPENAI_API_BASE") or ""):
+    explicit_base_url = os.getenv("OPENAI_API_BASE")
+    base_url = explicit_base_url or "https://api.openai.com/v1"
+    if not explicit_base_url and os.getenv("OPENROUTER_API_KEY"):
         base_url = "https://openrouter.ai/api/v1"
     model = os.getenv("LLM_MODEL", "gpt-4o-mini")
 
