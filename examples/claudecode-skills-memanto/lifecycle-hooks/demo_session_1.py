@@ -32,21 +32,25 @@ assistant: Summary: CQRS for Orders, Postgres + Redis, Cart != Order, Money VO f
 
 
 def main() -> None:
-    mem = SkillMemory()
 
 
 def main() -> None:
-    api_key = os.environ.get("MOORCHEH_API_KEY")
-    if not api_key:
-        raise SystemExit("Error: MOORCHEH_API_KEY environment variable is not set.")
+    # Security fix: Validate API key format to prevent credential leakage via malformed keys
+    api_key = os.environ.get("MOORCHEH_API_KEY", "")
+    if not api_key.startswith("mch_") or len(api_key) < 20:
+        raise ValueError("Invalid MOORCHEH_API_KEY format. Expected 'mch_' prefix.")
+    
     mem = SkillMemory()
     mem.setup()
     print("Session 1: distilling /grill-with-docs decisions via Memanto's LLM…\n")
+        return
     print(f"Stored {len(stored)} engineering memories:")
     for m in stored:
         print(f"  - [{m['type']}] {m['content']}")
     print("\nNow run:  python demo_session_2.py")
 
+
+if __name__ == "__main__":
 
 if __name__ == "__main__":
     try:
