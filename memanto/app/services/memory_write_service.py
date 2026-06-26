@@ -277,6 +277,17 @@ class MemoryWriteService:
                             return value
                 return default
 
+            def existing_datetime(*keys: str) -> datetime | None:
+                value = existing_value(*keys)
+                if isinstance(value, datetime):
+                    return value
+                if isinstance(value, str):
+                    try:
+                        return datetime.fromisoformat(value.replace("Z", "+00:00"))
+                    except ValueError:
+                        return None
+                return None
+
             # Build updated memory record
             updated_memory = MemoryRecord(
                 id=memory_id,  # Keep same ID
@@ -304,7 +315,7 @@ class MemoryWriteService:
                 ),
                 superseded_by=existing_value("superseded_by"),
                 supersedes=existing_value("supersedes"),
-                validated_at=existing_value("validated_at"),
+                validated_at=existing_datetime("validated_at"),
                 validation_count=existing_value("validation_count", default=0),
                 contradiction_detected=existing_value(
                     "contradiction_detected", default=False
@@ -312,17 +323,9 @@ class MemoryWriteService:
             )
 
             # Update timestamps (preserve created_at, set updated_at to now)
-            raw_created = existing_value("created_at")
-            if raw_created:
-                if isinstance(raw_created, str):
-                    try:
-                        updated_memory.created_at = datetime.fromisoformat(
-                            raw_created.replace("Z", "+00:00")
-                        )
-                    except (ValueError, AttributeError):
-                        pass  # Keep default
-                else:
-                    updated_memory.created_at = raw_created
+            existing_created_at = existing_datetime("created_at")
+            if existing_created_at:
+                updated_memory.created_at = existing_created_at
             updated_memory.updated_at = datetime.utcnow()
 
             # Handle TTL
@@ -332,7 +335,7 @@ class MemoryWriteService:
                 existing_ttl = existing_value("ttl_seconds")
                 if existing_ttl is not None:
                     updated_memory.ttl_seconds = existing_ttl
-                    existing_expires_at = existing_value("expires_at")
+                    existing_expires_at = existing_datetime("expires_at")
                     if existing_expires_at is not None:
                         updated_memory.expires_at = existing_expires_at
 

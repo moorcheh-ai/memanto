@@ -289,7 +289,10 @@ class TestMemoryWriteServiceUpdate:
             "status": "active",
             "tags": ["profile", "ui"],
             "created_at": "2026-01-01T12:00:00",
+            "expires_at": "2026-01-02T12:00:00Z",
+            "ttl_seconds": 86400,
             "provenance": "observed",
+            "validated_at": "2026-01-01T13:00:00Z",
             "validation_count": 2,
             "contradiction_detected": True,
         }
@@ -315,6 +318,9 @@ class TestMemoryWriteServiceUpdate:
         assert uploaded_doc["contradiction_detected"] is True
         assert uploaded_doc["source_ref"] == "ticket-123"
         assert uploaded_doc["tags"] == "profile,ui"
+        assert uploaded_doc["ttl_seconds"] == 86400
+        assert uploaded_doc["expires_at"].startswith("2026-01-02T12:00:00")
+        assert uploaded_doc["validated_at"].startswith("2026-01-01T13:00:00")
 
 
 class TestForgetEndToEnd:
