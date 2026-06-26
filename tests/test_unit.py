@@ -174,6 +174,31 @@ class TestAgentService:
         print(f"   Agent ID: {agent.agent_id}")
         print(f"   Namespace: {agent.namespace}")
 
+    def test_create_agent_uses_explicit_moorcheh_api_key(self, agent_service):
+        """Agent namespace creation must use the request's API key."""
+        agent_create = AgentCreate(
+            agent_id="explicit-key-agent",
+            pattern=AgentPattern.SUPPORT,
+            description="Uses explicit key",
+        )
+
+        with patch(
+            "memanto.app.services.agent_service.get_moorcheh_client"
+        ) as mock_client_factory:
+            mock_client = MagicMock()
+            mock_client.namespaces.create.return_value = {"status": "created"}
+            mock_client_factory.return_value = mock_client
+
+            agent = agent_service.create_agent(
+                agent_create, moorcheh_api_key="explicit-agent-key"
+            )
+
+        mock_client_factory.assert_called_once_with("explicit-agent-key")
+        mock_client.namespaces.create.assert_called_once_with(
+            "memanto_agent_explicit-key-agent", type="text"
+        )
+        assert agent.namespace == "memanto_agent_explicit-key-agent"
+
     def test_list_agents(self, agent_service):
         """Test listing agents"""
         # Create multiple agents
