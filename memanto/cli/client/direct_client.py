@@ -49,10 +49,14 @@ logger = logging.getLogger(__name__)
 # Moorcheh's API Gateway strictly requires lowercase for 'x-api-key'.
 # This string subclass defeats urllib's automatic title-casing.
 class LowerStr(str):
+    """String subclass that preserves lowercase HTTP header names."""
+
     def title(self):
+        """Return the original header key instead of title-casing it."""
         return self
 
     def capitalize(self):
+        """Return the original header key instead of capitalizing it."""
         return self
 
 
@@ -62,10 +66,12 @@ class MoorchehClient:
     """
 
     def __init__(self, api_key: str, base_url: str = "https://api.moorcheh.ai/v1"):
+        """Initialize the raw Moorcheh client with API key and base URL."""
         self.api_key = api_key
         self.base_url = os.environ.get("MOORCHEH_BASE_URL", base_url).rstrip("/")
 
     def _request(self, method: str, endpoint: str, json_data: Any = None) -> Any:
+        """Send a JSON request to the Moorcheh API and return decoded JSON."""
         url = f"{self.base_url}{endpoint}"
 
         headers = {
@@ -99,11 +105,17 @@ class MoorchehClient:
 
     @property
     def documents(self):
+        """Expose document operations with the SDK-compatible shape."""
+
         class Docs:
+            """Adapter for Moorcheh document endpoints."""
+
             def __init__(self, client):
+                """Bind the adapter to the parent raw client."""
                 self.client = client
 
             def upload(self, namespace_name, documents):
+                """Upload documents into a namespace."""
                 return self.client._request(
                     "POST",
                     f"/namespaces/{namespace_name}/documents",
@@ -111,6 +123,7 @@ class MoorchehClient:
                 )
 
             def delete(self, namespace_name, ids):
+                """Delete documents by ID from a namespace."""
                 return self.client._request(
                     "POST",
                     f"/namespaces/{namespace_name}/documents/delete",
@@ -118,6 +131,7 @@ class MoorchehClient:
                 )
 
             def get(self, namespace_name, ids):
+                """Fetch documents by ID from a namespace."""
                 return self.client._request(
                     "POST", f"/namespaces/{namespace_name}/documents/get", {"ids": ids}
                 )
@@ -126,11 +140,17 @@ class MoorchehClient:
 
     @property
     def namespaces(self):
+        """Expose namespace operations with the SDK-compatible shape."""
+
         class NS:
+            """Adapter for Moorcheh namespace endpoints."""
+
             def __init__(self, client):
+                """Bind the adapter to the parent raw client."""
                 self.client = client
 
             def create(self, namespace_name, type="text"):
+                """Create a namespace."""
                 return self.client._request(
                     "POST",
                     "/namespaces",
@@ -138,19 +158,26 @@ class MoorchehClient:
                 )
 
             def list(self):
+                """List namespaces available to the API key."""
                 return self.client._request("GET", "/namespaces")
 
         return NS(self)
 
     @property
     def similarity_search(self):
+        """Expose similarity search operations."""
+
         class Search:
+            """Adapter for Moorcheh search endpoints."""
+
             def __init__(self, client):
+                """Bind the adapter to the parent raw client."""
                 self.client = client
 
             def query(
                 self, namespaces, query, top_k=10, threshold=0.25, kiosk_mode=False
             ):
+                """Run a similarity search over one or more namespaces."""
                 payload = {
                     "namespaces": namespaces,
                     "query": query,
@@ -165,8 +192,13 @@ class MoorchehClient:
 
     @property
     def answer(self):
+        """Expose answer-generation operations."""
+
         class Ans:
+            """Adapter for Moorcheh answer endpoints."""
+
             def __init__(self, client):
+                """Bind the adapter to the parent raw client."""
                 self.client = client
 
             def generate(
@@ -181,6 +213,7 @@ class MoorchehClient:
                 header_prompt=None,
                 footer_prompt=None,
             ):
+                """Generate a RAG answer from namespace memories."""
                 ans_cfg = ConfigManager().get_answer_config()
                 payload = {
                     "namespace": namespace,
@@ -204,6 +237,7 @@ class MoorchehClient:
         return Ans(self)
 
     def close(self):
+        """Match the SDK client API; urllib has no persistent session to close."""
         pass
 
 
