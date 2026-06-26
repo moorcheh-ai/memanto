@@ -366,8 +366,10 @@ class TestMEMANTOAPI:
             app.dependency_overrides.clear()
 
         assert response.status_code == 403
-        assert "other-agent" in response.json()["detail"]
-        assert self.TEST_AGENT_ID in response.json()["detail"]
+        detail = response.json()["detail"]
+        assert detail["error"] == "AuthorizationError"
+        assert "other-agent" in detail["message"]
+        assert self.TEST_AGENT_ID in detail["message"]
 
     @pytest.mark.asyncio
     async def test_edit_memory_returns_404_when_missing(self, client, auth_headers):
@@ -671,8 +673,10 @@ class TestMEMANTOAPI:
             app.dependency_overrides.clear()
 
         assert response.status_code == 403
-        assert "other-agent" in response.json()["detail"]
-        assert self.TEST_AGENT_ID in response.json()["detail"]
+        detail = response.json()["detail"]
+        assert detail["error"] == "AuthorizationError"
+        assert "other-agent" in detail["message"]
+        assert self.TEST_AGENT_ID in detail["message"]
 
     @pytest.mark.asyncio
     async def test_global_status(self, client, auth_headers):

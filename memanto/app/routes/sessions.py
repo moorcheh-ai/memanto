@@ -23,6 +23,7 @@ from memanto.app.services.agent_service import AgentService
 from memanto.app.utils.errors import (
     AgentAlreadyExistsError,
     AgentNotFoundError,
+    AuthorizationError,
     SessionNotFoundError,
     map_error_to_http_exception,
 )
@@ -243,9 +244,10 @@ async def deactivate_agent(
     Requires X-Session-Token header and matching agent_id.
     """
     if session.agent_id != agent_id:
-        raise HTTPException(
-            status_code=403,
-            detail=f"Session is for agent '{session.agent_id}', cannot access '{agent_id}'",
+        raise map_error_to_http_exception(
+            AuthorizationError(
+                f"Session is for agent '{session.agent_id}', cannot access '{agent_id}'"
+            )
         )
 
     try:
