@@ -1,49 +1,107 @@
-"""Memanto client with secure API key handling and input validation."""
+"""Memanto client for memory management."""
+
+from __future__ import annotations
 
 import os
-import re
-from typing import Optional
+import time
+from typing import Any
+
+import requests
+
+from memanto.config import MemantoConfig
+from memanto.types import Memory, MemoryQuery, MemoryResult
 
 
 class MemantoClient:
-    """Secure client for Memanto memory operations."""
-
-    def __init__(self, api_key: Optional[str] = None) -> None:
-        """Initialize client with validated API key.
-        
-        Args:
-            api_key: Optional API key. If not provided, uses MOORCHEH_API_KEY env var.
-            
-        Raises:
-            ValueError: If API key is missing, malformed, or contains suspicious patterns.
-        """
-igon        self.api_key = self._validate_api_key(api_key or os.environ.get("MOORCHEH_API_KEY", ""))
+    """Client for interacting with the Memanto memory service."""
     
-    def _validate_api_key(self, key: str) -> str:
-        """Validate API key format and check for injection attempts.
+    def __init__(self, config: MemantoConfig | None = None) -> None:
+        self.config = config or MemantoConfig()
+        self._session = requests.Session()
+        self._session.headers.update({
+            "Authorization": f"Bearer {self.config.api_key}",
+            "Content-Type": "application/json",
+        })
+        self._last_request_time: float = 0.0
+    
+    def _rate_limit(self) -> None:
+        """Enforce rate limiting between requests."""
+        if self.config.rate_limit_seconds > 0:
+            elapsed = time.time() - self._last_request_time
+            if elapsed < self.config.rate_limit_seconds:
+                time.sleep(self.config.rate_limit_seconds - elapsed)
+            self._last_request_time = time.time()
+    
+    def store_memory(
+        self,
+        content: str,
+        memory_type: str = "general",
+        metadata: dict[str, Any] | None = None,
+    ) -> Memory:
+        """Store a new memory.
         
         Args:
-            key: The API key to validate.
+            content: The memory content to store.
+            memory_type: Category/type of memory.
+            metadata: Optional additional metadata.
             
         Returns:
-            The validated API key.
+            The stored Memory object.
             
         Raises:
-            ValueError: If the key is invalid or potentially malicious.
+            ValueError: If content is empty or too long.
+            requests.HTTPError: On API errors.
         """
-        if not key:
-            raise ValueError("MOORCHEH_API_KEY is required")
-        
-        # Check for common injection patterns that could lead to credential leakage
-        suspicious_patterns = ["\n", "\r", "\x00", "${", "%", "|", ";", "&&", "||"]
-        for pattern in suspicious_patterns:
-            if pattern in key:
-                raise ValueError(f"MOORCHEH_API_KEY contains invalid characters: {repr(pattern)}")
-        
-        # Validate expected format
-        if not re.match(r"^mch_[a-zA-Z0-9]{16,}$", key):
+        if not content or not content.strip():
+            raise ValueError("Memory content cannot be empty")
+        if len(content) > self.config.max_content_length:
             raise ValueError(
-                "MOORCHEH_API_KEY must start with 'mch_' followed by at least 16 alphanumeric characters"
+                f"Content exceeds maximum length of {self.config.max_content_length}"
             )
         
-        return key
+        self._rate_limit()
+        
+        payload = {
+            "content": content.strip(),
+            "type": memory_type,
+            "metadata": metadata or {},
+            "timestamp": time.time(),
+        }
+        
+        response = self._session.post(
+            f"{self.config.base_url}/memories",
+            json=payload,
+            timeout=self.config.timeout,
+        )
+        response.raise_for_status()
+        return Memory(**response.json())
+    
+    def query_memories(
+        self,
+        query: str,
+        limit: int = 10,
+        memory_type: str | None = None,
+    ) -> list[MemoryResult]:
+        """Query stored memories.
+        
+        Args:
+            query: The search query.
+            limit: Maximum number of results.
+            memory_type: Optional filter by memory type.
+            
+        Returns:
+            List of matching memory results.
+        """
+        self._rate_limit()
+        
+        params: dict[str, Any] = {"q": query, "limit": limit}
+        if memory_type:
+            params["type"] = memory_type
+        
+        response = self._session.get(
+            f"{self.config.base_url}/memories/search",
+            params=params,
+            timeout=self.config.timeout,
+        )
+        response.raise_for_status()
+        return [MemoryResult(**item) for item in response.json()]
