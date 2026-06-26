@@ -1,18 +1,18 @@
 """
 Memanto - Your agents focus. Memanto remembers.
-"""Memanto - A companion memory agent with persistent memory for AI agents."""
+"""Memanto - A companion memory agent with persistent memory capabilities."""
 
-from memanto.client import MemantoClient
+from memanto.core import Memanto
 from memanto.config import Config
-from memanto.memory import Memory
-from memanto.errors import MemantoError, AuthenticationError, ConfigurationError
+from memanto.exceptions import (
+    MemantoError,
+    ConfigurationError,
+    APIError,
+    MemoryError,
+)
 
-__all__ = [
-    "MemantoClient",
-    "Config",
-    "Memory",
-    "MemantoError",
-    "AuthenticationError",
-    "ConfigurationError",
-]
+__version__ = "0.1.0"
+
+__all__ = ["Memanto", "Config", "MemantoError", "ConfigurationError", "APIError", "MemoryError"]
+
 """
