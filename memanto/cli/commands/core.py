@@ -66,6 +66,12 @@ def _host_from_config_url(configured_url: str | None) -> str | None:
         return None
 
     try:
+        ip_address(value.split("%", 1)[0])
+        return value
+    except ValueError:
+        pass
+
+    try:
         parsed = urlsplit(value if "://" in value else f"//{value}")
     except ValueError:
         return value

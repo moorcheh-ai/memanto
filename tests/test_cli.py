@@ -6,6 +6,7 @@ Tests all major CLI commands using typer.testing.CliRunner.
 Uses extensive mocking to intercept API calls across all command modules.
 """
 
+import errno
 import json
 import socket
 from unittest.mock import MagicMock, patch
@@ -152,6 +153,18 @@ class TestMEMANTOCLI:
 
         assert _resolve_bind_host("0.0.0.0", server_cfg) == "0.0.0.0"
 
+    def test_server_bind_preserves_bare_ipv6_config_host(self):
+        """Bare IPv6 literals should not be misread as host:port values."""
+        server_cfg = {"url": "2001:db8::1", "port": 8000}
+
+        assert _resolve_bind_host(None, server_cfg) == "2001:db8::1"
+
+    def test_server_bind_preserves_ipv6_zone_config_host(self):
+        """IPv6 zone IDs should pass through before URL parsing."""
+        server_cfg = {"url": "fe80::1%en0", "port": 8000}
+
+        assert _resolve_bind_host(None, server_cfg) == "fe80::1%en0"
+
     def test_server_url_displays_localhost_for_loopback_bind(self):
         """Loopback bind addresses should keep familiar local URLs in output."""
         assert _display_host_for_url("127.0.0.1") == "localhost"
@@ -175,27 +188,38 @@ class TestMEMANTOCLI:
 
     def test_port_check_raises_for_non_port_conflicts(self):
         """Bind failures other than EADDRINUSE should not be reported as in-use."""
-        with pytest.raises(OSError):
-            _port_in_use("203.0.113.1", 0)
+        sock = MagicMock()
+        sock.__enter__.return_value = sock
+        sock.bind.side_effect = OSError(
+            errno.EADDRNOTAVAIL, "Cannot assign requested address"
+        )
+
+        with patch("memanto.cli.commands.core.socket.socket", return_value=sock):
+            with pytest.raises(OSError):
+                _port_in_use("10.0.0.12", 8123)
 
     def test_serve_reports_bind_errors_cleanly(self, mock_all_clients):
         """Non-port-conflict bind failures should use the CLI error panel."""
-        result = runner.invoke(
-            app, ["serve", "--host", "203.0.113.1", "--port", "8123"]
-        )
+        with patch(
+            "memanto.cli.commands.core._port_in_use",
+            side_effect=OSError(errno.EADDRNOTAVAIL, "Cannot assign requested address"),
+        ):
+            result = runner.invoke(app, ["serve", "--host", "10.0.0.12", "--port", "8123"])
 
         assert result.exit_code == 1
-        assert "Cannot bind to 203.0.113.1:8123" in result.stdout
+        assert "Cannot bind to 10.0.0.12:8123" in result.stdout
         assert "Traceback" not in result.stdout
 
     def test_ui_reports_bind_errors_cleanly(self, mock_all_clients):
         """The UI command should not traceback on non-port bind failures."""
-        result = runner.invoke(
-            app, ["ui", "--host", "203.0.113.1", "--port", "8123"]
-        )
+        with patch(
+            "memanto.cli.commands.core._port_in_use",
+            side_effect=OSError(errno.EADDRNOTAVAIL, "Cannot assign requested address"),
+        ):
+            result = runner.invoke(app, ["ui", "--host", "10.0.0.12", "--port", "8123"])
 
         assert result.exit_code == 1
-        assert "Cannot bind to 203.0.113.1:8123" in result.stdout
+        assert "Cannot bind to 10.0.0.12:8123" in result.stdout
         assert "Traceback" not in result.stdout
 
     def test_ui_uses_resolved_host_for_dashboard_urls(self, mock_all_clients):
