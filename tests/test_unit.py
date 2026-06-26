@@ -5,6 +5,7 @@ Tests the session and agent services directly without HTTP layer.
 """
 
 from datetime import datetime
+from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import jwt
@@ -261,11 +262,58 @@ class TestMemoryWriteServiceDelete:
         ],
     )
     def test_delete_memory_handles_backend_shapes(self, response, expected):
+        """Delete memory should treat cloud and on-prem success shapes equally."""
         from memanto.app.services.memory_write_service import MemoryWriteService
 
         client = MagicMock()
         client.documents.delete.return_value = response
         assert MemoryWriteService(client).delete_memory("m1", "ns") is expected
+
+
+class TestDailyAnalysisService:
+    """Unit tests for daily summary and conflict report services."""
+
+    def test_conflict_report_uses_backend_data_dir(self, tmp_path, monkeypatch):
+        """On-prem conflict reports must not share the cloud conflict directory."""
+        from memanto.app.services import daily_analysis_service as service_mod
+        from memanto.app.services.daily_analysis_service import DailyAnalysisService
+
+        monkeypatch.setattr(settings, "MEMANTO_BACKEND", "on-prem")
+        monkeypatch.setattr(Path, "home", classmethod(lambda cls: tmp_path))
+
+        agent_id = "onprem-agent"
+        date = "2026-06-26"
+        sessions_dir = tmp_path / "sessions"
+        sessions_dir.mkdir()
+        (sessions_dir / f"{agent_id}_{date}_sess-1_summary.md").write_text(
+            "# Session Summary\n\n- **Memory ID**: `mem-1`\n",
+            encoding="utf-8",
+        )
+
+        mock_client = MagicMock()
+        mock_client.answer.generate.return_value = {"answer": "[]"}
+        monkeypatch.setattr(service_mod, "get_moorcheh_client", lambda: mock_client)
+
+        service = DailyAnalysisService(
+            sessions_dir=sessions_dir,
+            summaries_dir=tmp_path / "summaries",
+        )
+        result = service.generate_conflict_report(agent_id, date)
+
+        expected_path = (
+            tmp_path
+            / ".memanto"
+            / "on-prem"
+            / "conflicts"
+            / f"{agent_id}_{date}_conflicts.json"
+        )
+        legacy_cloud_path = (
+            tmp_path / ".memanto" / "conflicts" / f"{agent_id}_{date}_conflicts.json"
+        )
+
+        assert result["json_path"] == str(expected_path)
+        assert expected_path.exists()
+        assert not legacy_cloud_path.exists()
 
 
 class TestForgetEndToEnd:
