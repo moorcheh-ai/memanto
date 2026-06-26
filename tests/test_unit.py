@@ -262,6 +262,7 @@ class TestMemoryWriteServiceDelete:
         ],
     )
     def test_delete_memory_handles_backend_shapes(self, response, expected):
+        """Delete memory should treat cloud and on-prem success shapes equally."""
         from memanto.app.services.memory_write_service import MemoryWriteService
 
         client = MagicMock()
@@ -270,6 +271,8 @@ class TestMemoryWriteServiceDelete:
 
 
 class TestDailyAnalysisService:
+    """Unit tests for daily summary and conflict report services."""
+
     def test_conflict_report_uses_backend_data_dir(self, tmp_path, monkeypatch):
         """On-prem conflict reports must not share the cloud conflict directory."""
         from memanto.app.services import daily_analysis_service as service_mod
