@@ -322,6 +322,50 @@ class TestMemoryWriteServiceUpdate:
         assert uploaded_doc["expires_at"].startswith("2026-01-02T12:00:00")
         assert uploaded_doc["validated_at"].startswith("2026-01-01T13:00:00")
 
+    def test_update_memory_preserves_falsey_metadata_without_ttl(self):
+        from memanto.app.services.memory_write_service import MemoryWriteService
+
+        client = MagicMock()
+        client.documents.delete.return_value = {"actual_deletions": 1}
+        client.documents.upload.return_value = {"status": "queued"}
+        existing_memory = {
+            "id": "mem-goal",
+            "title": "Keep falsey metadata",
+            "content": "Original content",
+            "metadata": {
+                "memory_type": "goal",
+                "scope_type": "agent",
+                "scope_id": "test-agent",
+                "actor_id": "tester",
+                "source": "system",
+                "confidence": 0.0,
+                "status": "active",
+                "provenance": "inferred",
+                "validation_count": 0,
+                "contradiction_detected": False,
+            },
+        }
+
+        with patch(
+            "memanto.app.services.memory_read_service.MemoryReadService.get_memory",
+            return_value=existing_memory,
+        ):
+            result = MemoryWriteService(client).update_memory(
+                "mem-goal",
+                "memanto_agent_test-agent",
+                {"title": "Updated title"},
+            )
+
+        assert result["action"] == "updated"
+        uploaded_doc = client.documents.upload.call_args.kwargs["documents"][0]
+        assert uploaded_doc["memory_type"] == "goal"
+        assert uploaded_doc["confidence"] == 0.0
+        assert uploaded_doc["provenance"] == "inferred"
+        assert uploaded_doc["validation_count"] == 0
+        assert uploaded_doc["contradiction_detected"] is False
+        assert "ttl_seconds" not in uploaded_doc
+        assert "expires_at" not in uploaded_doc
+
 
 class TestForgetEndToEnd:
     """End-to-end ``forget`` flow through ``DirectClient``: create agent →
