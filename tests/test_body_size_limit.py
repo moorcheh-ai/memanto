@@ -1,8 +1,10 @@
 """Tests for request body size limiting middleware."""
 
 import asyncio
+import json
 
 from memanto.app.middleware.body_size_limit import RequestBodyLimitMiddleware
+from memanto.app.upload_limits import file_too_large_detail
 
 
 def test_rejects_streamed_body_without_content_length():
@@ -47,3 +49,6 @@ def test_rejects_streamed_body_without_content_length():
 
     assert sent_messages[0]["type"] == "http.response.start"
     assert sent_messages[0]["status"] == 413
+    assert json.loads(sent_messages[1]["body"]) == {
+        "detail": file_too_large_detail(actual_size=6, max_size=5)
+    }
