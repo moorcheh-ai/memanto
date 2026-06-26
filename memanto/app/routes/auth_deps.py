@@ -4,6 +4,8 @@ Authentication Dependencies for V2 API
 Shared authentication utilities to avoid circular imports.
 """
 
+import hmac
+
 from fastapi import Header, HTTPException
 
 from memanto.app.models.session import Session
@@ -83,6 +85,19 @@ def get_current_session(x_session_token: str | None = Header(None)) -> Session:
         if not session:
             raise SessionNotFoundError(
                 f"Session for agent {token_payload.agent_id} not found"
+            )
+
+        if (
+            session.session_id != token_payload.session_id
+            or not hmac.compare_digest(session.session_token, x_session_token)
+        ):
+            raise InvalidSessionTokenError(
+                f"Session token {token_payload.session_id} is not the current active session"
+            )
+
+        if not session.is_active():
+            raise SessionExpiredError(
+                f"Session {session.session_id} is no longer active"
             )
 
         # Auto-renew session if near expiry
