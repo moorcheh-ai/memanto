@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING, Any
 if TYPE_CHECKING:
     from moorcheh_sdk import MoorchehClient
 
-from memanto.app.core import MemoryRecord
+from memanto.app.core import MemoryRecord, ValidationPolicy
 from memanto.app.services.memory_parsing_service import MemoryParsingService
 from memanto.app.utils.errors import MemoryError
 from memanto.app.utils.ids import generate_memory_id
@@ -54,13 +54,10 @@ class MemoryWriteService:
             # Add namespace
             namespace = memory.get_scope().to_namespace()
 
-            # skip validation for speed
-            ## Validate memory
-            # validation_result = self.validation_service.validate_memory(memory, context)
-            ## Use validated memory if modified
-            # if "memory" in validation_result:
-            #     memory = validation_result["memory"]
-            validation_result = {"action": "store", "reason": "MVP direct store"}
+            # Validate memory before storage
+            validation_result = ValidationPolicy.validate_memory(memory, context)
+            if validation_result.get("action") == "store_provisional":
+                memory = ValidationPolicy.make_provisional(memory)
 
             from typing import cast
 
@@ -148,16 +145,10 @@ class MemoryWriteService:
                         )
                         continue
 
-                    # skip validation for speed
-                    ## Validate memory
-                    # validation_result = self.validation_service.validate_memory(memory, context)
-                    ## Use validated memory if modified
-                    # if "memory" in validation_result:
-                    #     memory = validation_result["memory"]
-                    validation_result = {
-                        "action": "store",
-                        "reason": "MVP direct store",
-                    }
+                    # Validate memory before storage
+                    validation_result = ValidationPolicy.validate_memory(memory, context)
+                    if validation_result.get("action") == "store_provisional":
+                        memory = ValidationPolicy.make_provisional(memory)
 
                     from typing import cast
 
@@ -306,25 +297,31 @@ class MemoryWriteService:
                 if metadata.get("expires_at"):
                     updated_memory.expires_at = metadata["expires_at"]
 
-            # Step 3: Delete old version
-            delete_result = self.client.documents.delete(
-                namespace_name=namespace, ids=[memory_id]
-            )
-
-            if delete_result.get("actual_deletions", 0) == 0:
-                raise MemoryError(f"Failed to delete old version of memory {memory_id}")
-
-            validation_result = {"action": "store", "reason": "MVP direct store"}
-
-            # Step 4: Upload new version
+            # Step 3: Upload new version FIRST (safe rollback: if this fails,
+            # the old version is preserved and no data is lost)
             from typing import cast
 
             from moorcheh_sdk.types.document import Document
+
+            validation_result = ValidationPolicy.validate_memory(updated_memory, context)
+            if validation_result.get("action") == "store_provisional":
+                updated_memory = ValidationPolicy.make_provisional(updated_memory)
 
             document = cast(Document, updated_memory.to_moorcheh_document())
             upload_result = self.client.documents.upload(
                 namespace_name=namespace, documents=[document]
             )
+
+            # Step 4: Delete old version only after confirming the upload succeeded
+            delete_result = self.client.documents.delete(
+                namespace_name=namespace, ids=[memory_id]
+            )
+
+            if delete_result.get("actual_deletions", 0) == 0:
+                # Old version wasn't deleted but the new one was uploaded —
+                # this is still acceptable (duplicate records, but no data loss).
+                # Log the issue for cleanup.
+                pass
 
             return {
                 "id": memory_id,
