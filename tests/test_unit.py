@@ -269,7 +269,10 @@ class TestMemoryWriteServiceDelete:
 
 
 class TestMemoryReadService:
+    """Unit tests for memory recall and filtering behavior."""
+
     def test_search_multi_scope_filters_expired_memories(self):
+        """Multi-scope search should hide memories that are past their TTL."""
         from memanto.app.services.memory_read_service import MemoryReadService
 
         client = MagicMock()
