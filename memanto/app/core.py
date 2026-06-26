@@ -115,7 +115,7 @@ class MemoryRecord(BaseModel):
             document["tags"] = ",".join(self.tags)  # Comma-separated for filtering
         if self.expires_at:
             document["expires_at"] = self.expires_at.isoformat()
-        if self.ttl_seconds:
+        if self.ttl_seconds is not None:
             document["ttl_seconds"] = self.ttl_seconds
         if self.superseded_by:
             document["superseded_by"] = self.superseded_by

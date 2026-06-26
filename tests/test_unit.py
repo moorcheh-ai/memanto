@@ -459,6 +459,43 @@ class TestMemoryWriteServiceUpdate:
         assert uploaded_doc["ttl_seconds"] == 3600
         assert uploaded_doc["expires_at"].startswith("2026-01-01T14:00:00")
 
+    def test_update_memory_preserves_zero_ttl_from_existing_memory(self):
+        from memanto.app.services.memory_write_service import MemoryWriteService
+
+        client = MagicMock()
+        client.documents.delete.return_value = {"actual_deletions": 1}
+        client.documents.upload.return_value = {"status": "queued"}
+        existing_memory = {
+            "id": "mem-zero-ttl",
+            "title": "Keep zero TTL",
+            "content": "Original content",
+            "metadata": {
+                "memory_type": "preference",
+                "scope_type": "agent",
+                "scope_id": "test-agent",
+                "actor_id": "tester",
+                "source": "system",
+                "status": "active",
+                "ttl_seconds": 0,
+                "expires_at": "2026-01-01T00:00:00Z",
+            },
+        }
+
+        with patch(
+            "memanto.app.services.memory_read_service.MemoryReadService.get_memory",
+            return_value=existing_memory,
+        ):
+            result = MemoryWriteService(client).update_memory(
+                "mem-zero-ttl",
+                "memanto_agent_test-agent",
+                {"content": "Updated content"},
+            )
+
+        assert result["action"] == "updated"
+        uploaded_doc = client.documents.upload.call_args.kwargs["documents"][0]
+        assert uploaded_doc["ttl_seconds"] == 0
+        assert uploaded_doc["expires_at"].startswith("2026-01-01T00:00:00")
+
 
 class TestForgetEndToEnd:
     """End-to-end ``forget`` flow through ``DirectClient``: create agent →
