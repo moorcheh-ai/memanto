@@ -603,7 +603,6 @@ class DirectClient:
         """
         # Ensure there is a valid, non-expired session for this agent
         session = self._get_validated_session_for_agent(agent_id)
-        _ = session
 
         self._validate_memory_input(memory_type, title, content, confidence)
 
@@ -638,10 +637,9 @@ class DirectClient:
 
         # Log to local session Markdown summary
         if self.session_token:
-            session_id = "unknown"
             self._get_session_service().log_memory_to_session_summary(
                 agent_id=agent_id,
-                session_id=session_id,
+                session_id=session.session_id,
                 memory_record=memory,
                 memory_id=result.get("id"),
             )
@@ -675,7 +673,7 @@ class DirectClient:
             ValueError: If batch is empty or exceeds 100 items.
         """
         # Ensure there is a valid, non-expired session for this agent
-        self._get_validated_session_for_agent(agent_id)
+        session = self._get_validated_session_for_agent(agent_id)
 
         if not memories:
             raise ValueError("Batch must contain at least one memory")
@@ -740,7 +738,7 @@ class DirectClient:
 
         # Log each memory to local session Markdown summary
         if self.session_token:
-            session_id = "unknown"
+            session_id = session.session_id
             session_svc = self._get_session_service()
 
             # Extract per-memory IDs from the batch result
