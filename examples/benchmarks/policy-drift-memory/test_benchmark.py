@@ -1,3 +1,5 @@
+"""Tests for the policy-drift memory benchmark."""
+
 from __future__ import annotations
 
 import importlib.util
@@ -19,6 +21,7 @@ SPEC.loader.exec_module(benchmark)
 
 
 def backend_by_name(report: dict, name: str) -> dict:
+    """Return a backend report by name with a clear failure on misses."""
     for backend in report["backends"]:
         if backend["name"] == name:
             return backend
@@ -26,10 +29,14 @@ def backend_by_name(report: dict, name: str) -> dict:
 
 
 class PolicyDriftBenchmarkTest(unittest.TestCase):
+    """Validate benchmark scoring, output, and dataset path handling."""
+
     def setUp(self) -> None:
+        """Build a fresh benchmark report for each test case."""
         self.report = benchmark.run_benchmark()
 
     def test_active_digest_retrieves_current_policy_state(self) -> None:
+        """Memanto active digest should pass all golden queries."""
         active = backend_by_name(self.report, "memanto_active_digest")
 
         self.assertEqual(active["metrics"]["passed_queries"], 8)
@@ -38,6 +45,7 @@ class PolicyDriftBenchmarkTest(unittest.TestCase):
         self.assertEqual(active["metrics"]["sensitive_leak_rate"], 0.0)
 
     def test_passive_append_only_baseline_exposes_stale_sensitive_facts(self) -> None:
+        """Append-only retrieval should expose stale or sensitive facts."""
         append_only = backend_by_name(self.report, "append_only_log")
 
         self.assertLess(append_only["metrics"]["accuracy"], 1.0)
@@ -45,6 +53,7 @@ class PolicyDriftBenchmarkTest(unittest.TestCase):
         self.assertGreater(append_only["metrics"]["sensitive_leak_rate"], 0.0)
 
     def test_recent_window_baseline_misses_older_current_facts(self) -> None:
+        """Recent-window retrieval should lose older active facts."""
         active = backend_by_name(self.report, "memanto_active_digest")
         recent = backend_by_name(self.report, "recent_window_log")
 
@@ -55,6 +64,7 @@ class PolicyDriftBenchmarkTest(unittest.TestCase):
         )
 
     def test_report_is_deterministic(self) -> None:
+        """Repeated benchmark runs should produce stable metrics."""
         report_a = benchmark.run_benchmark()
         report_b = benchmark.run_benchmark()
 
@@ -80,6 +90,7 @@ class PolicyDriftBenchmarkTest(unittest.TestCase):
                     self.assertEqual(value_a, value_b)
 
     def test_markdown_contains_all_backends(self) -> None:
+        """Markdown output should include every benchmark backend."""
         markdown = benchmark.format_markdown(self.report)
 
         self.assertIn("memanto_active_digest", markdown)
@@ -89,6 +100,7 @@ class PolicyDriftBenchmarkTest(unittest.TestCase):
     def test_custom_dataset_paths_are_reported_without_root_relative_crash(
         self,
     ) -> None:
+        """Custom dataset paths outside the benchmark root should be reported."""
         with tempfile.TemporaryDirectory() as temp_dir:
             temp_path = Path(temp_dir)
             events_path = temp_path / "events.json"

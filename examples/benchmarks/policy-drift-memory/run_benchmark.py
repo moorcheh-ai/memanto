@@ -1,3 +1,5 @@
+"""Run a deterministic benchmark for policy-drift memory retrieval behavior."""
+
 from __future__ import annotations
 
 import argparse
@@ -43,6 +45,8 @@ SECRET_PATTERNS = (
 
 @dataclass(frozen=True)
 class PolicyEvent:
+    """Single policy-memory event used as benchmark corpus input."""
+
     id: str
     turn: int
     session: str
@@ -56,6 +60,7 @@ class PolicyEvent:
 
     @classmethod
     def from_dict(cls, raw: dict[str, Any]) -> PolicyEvent:
+        """Create a policy event from the JSON fixture shape."""
         return cls(
             id=raw["id"],
             turn=int(raw["turn"]),
@@ -72,6 +77,8 @@ class PolicyEvent:
 
 @dataclass(frozen=True)
 class GoldenQuery:
+    """Expected retrieval behavior for one benchmark question."""
+
     id: str
     question: str
     tags: tuple[str, ...]
@@ -80,6 +87,7 @@ class GoldenQuery:
 
     @classmethod
     def from_dict(cls, raw: dict[str, Any]) -> GoldenQuery:
+        """Create a golden query from the JSON fixture shape."""
         return cls(
             id=raw["id"],
             question=raw["question"],
@@ -91,12 +99,16 @@ class GoldenQuery:
 
 @dataclass(frozen=True)
 class RetrievedEvent:
+    """Policy event text returned by a backend retrieval pass."""
+
     event: PolicyEvent
     text: str
 
 
 @dataclass(frozen=True)
 class Retrieval:
+    """Backend retrieval result plus deterministic cost proxies."""
+
     items: tuple[RetrievedEvent, ...]
     scanned_tokens: int
     retrieved_tokens: int
@@ -104,16 +116,19 @@ class Retrieval:
 
 
 def load_events(path: Path = DEFAULT_EVENTS) -> list[PolicyEvent]:
+    """Load policy events from a JSON fixture file."""
     raw_events = json.loads(path.read_text(encoding="utf-8"))
     return [PolicyEvent.from_dict(raw) for raw in raw_events]
 
 
 def load_queries(path: Path = DEFAULT_QUERIES) -> list[GoldenQuery]:
+    """Load golden queries from a JSON fixture file."""
     raw_queries = json.loads(path.read_text(encoding="utf-8"))
     return [GoldenQuery.from_dict(raw) for raw in raw_queries]
 
 
 def tokenize(text: str) -> list[str]:
+    """Tokenize benchmark text into comparable non-stopword terms."""
     return [
         token
         for token in re.findall(r"[a-z0-9]+(?:-[a-z0-9]+)?", text.lower())
@@ -122,10 +137,12 @@ def tokenize(text: str) -> list[str]:
 
 
 def token_count(text: str) -> int:
+    """Count benchmark tokens after applying the shared tokenizer."""
     return len(tokenize(text))
 
 
 def event_terms(event: PolicyEvent) -> set[str]:
+    """Return searchable terms derived from a policy event."""
     terms = set(tokenize(event.statement))
     terms.update(tokenize(event.key.replace(".", " ")))
     terms.update(tokenize(event.scope))
@@ -134,18 +151,21 @@ def event_terms(event: PolicyEvent) -> set[str]:
 
 
 def query_terms(query: GoldenQuery) -> set[str]:
+    """Return searchable terms derived from a golden query."""
     terms = set(tokenize(query.question))
     terms.update(query.tags)
     return terms
 
 
 def relevance_score(event: PolicyEvent, query: GoldenQuery) -> int:
+    """Score how strongly a policy event matches a query."""
     tag_score = len(set(event.tags).intersection(query.tags)) * 5
     term_score = len(event_terms(event).intersection(query_terms(query)))
     return tag_score + term_score
 
 
 def redact_secret_text(text: str) -> str:
+    """Replace benchmark secret patterns with a redaction marker."""
     redacted = text
     for pattern in SECRET_PATTERNS:
         redacted = pattern.sub("[redacted]", redacted)
@@ -153,10 +173,12 @@ def redact_secret_text(text: str) -> str:
 
 
 def contains_unredacted_secret(text: str) -> bool:
+    """Check whether text still contains a benchmark secret pattern."""
     return redact_secret_text(text) != text
 
 
 def dataset_path_label(path: Path) -> str:
+    """Format dataset paths relative to the benchmark root when possible."""
     try:
         return str(path.relative_to(ROOT))
     except ValueError:
@@ -167,6 +189,7 @@ def dataset_path_label(path: Path) -> str:
 
 
 def percentile(values: list[float], pct: float) -> float:
+    """Return the nearest-rank percentile for deterministic metric output."""
     if not values:
         return 0.0
     ordered = sorted(values)
@@ -175,20 +198,26 @@ def percentile(values: list[float], pct: float) -> float:
 
 
 class MemoryBackend:
+    """Common interface for benchmark memory retrieval strategies."""
+
     name = "base"
     description = ""
 
     def __init__(self) -> None:
+        """Initialize an empty backend corpus."""
         self.events: list[PolicyEvent] = []
 
     def ingest(self, events: list[PolicyEvent]) -> None:
+        """Load policy events in chronological order."""
         self.events = sorted(events, key=lambda event: event.turn)
 
     @property
     def stored_tokens(self) -> int:
+        """Return the number of tokens retained after ingestion."""
         return sum(token_count(event.statement) for event in self.events)
 
     def retrieve(self, query: GoldenQuery) -> Retrieval:
+        """Retrieve policy events relevant to a golden query."""
         raise NotImplementedError
 
     def _build_retrieval(
@@ -196,6 +225,7 @@ class MemoryBackend:
         candidates: list[PolicyEvent],
         matches: list[RetrievedEvent],
     ) -> Retrieval:
+        """Build a retrieval result with deterministic cost metrics."""
         scanned_tokens = sum(token_count(event.statement) for event in candidates)
         retrieved_tokens = sum(token_count(item.text) for item in matches)
         latency_proxy_ms = round(
@@ -211,10 +241,13 @@ class MemoryBackend:
 
 
 class AppendOnlyLog(MemoryBackend):
+    """Baseline backend that searches all historical policy events."""
+
     name = "append_only_log"
     description = "Passive full-corpus retrieval without stale fact suppression."
 
     def retrieve(self, query: GoldenQuery) -> Retrieval:
+        """Return every matching historical policy event."""
         scored = [
             (relevance_score(event, query), event)
             for event in self.events
@@ -228,20 +261,25 @@ class AppendOnlyLog(MemoryBackend):
 
 
 class RecentWindowLog(MemoryBackend):
+    """Baseline backend that searches only the most recent events."""
+
     name = "recent_window_log"
     description = "Recent-window baseline with lower context but no durable state."
 
     def __init__(self, window_size: int = 7) -> None:
+        """Initialize a fixed-size recent event window."""
         super().__init__()
         self.window_size = window_size
 
     @property
     def stored_tokens(self) -> int:
+        """Return tokens retained in the recent event window."""
         return sum(
             token_count(event.statement) for event in self.events[-self.window_size :]
         )
 
     def retrieve(self, query: GoldenQuery) -> Retrieval:
+        """Return matching policy events from the recent window."""
         candidates = self.events[-self.window_size :]
         scored = [
             (relevance_score(event, query), event)
@@ -256,16 +294,20 @@ class RecentWindowLog(MemoryBackend):
 
 
 class MemantoActiveDigest(MemoryBackend):
+    """Benchmark backend that keeps current facts and redacts secrets."""
+
     name = "memanto_active_digest"
     description = (
         "Active current-state digest with supersession and sensitive-fact redaction."
     )
 
     def __init__(self) -> None:
+        """Initialize active-state storage."""
         super().__init__()
         self.active_events: list[PolicyEvent] = []
 
     def ingest(self, events: list[PolicyEvent]) -> None:
+        """Keep the latest non-superseded event for each policy key."""
         super().ingest(events)
         superseded: set[str] = set()
         for event in self.events:
@@ -280,12 +322,14 @@ class MemantoActiveDigest(MemoryBackend):
 
     @property
     def stored_tokens(self) -> int:
+        """Return tokens retained after active-state redaction."""
         return sum(
             token_count(redact_secret_text(event.statement))
             for event in self.active_events
         )
 
     def retrieve(self, query: GoldenQuery) -> Retrieval:
+        """Return matching active policy facts with secrets redacted."""
         scored = [
             (relevance_score(event, query), event)
             for event in self.active_events
@@ -304,6 +348,7 @@ def evaluate_backend(
     events: list[PolicyEvent],
     queries: list[GoldenQuery],
 ) -> dict[str, Any]:
+    """Evaluate one backend against the full query set."""
     backend.ingest(events)
     corpus_tokens = sum(token_count(event.statement) for event in events)
     query_results: list[dict[str, Any]] = []
@@ -367,6 +412,7 @@ def run_benchmark(
     events_path: Path = DEFAULT_EVENTS,
     queries_path: Path = DEFAULT_QUERIES,
 ) -> dict[str, Any]:
+    """Run all benchmark backends and return a JSON-serializable report."""
     events = load_events(events_path)
     queries = load_queries(queries_path)
     backends: list[MemoryBackend] = [
@@ -390,6 +436,7 @@ def run_benchmark(
 
 
 def format_markdown(report: dict[str, Any]) -> str:
+    """Render a benchmark report as a markdown summary table."""
     lines = [
         "# Policy Drift Memory Benchmark Results",
         "",
@@ -423,11 +470,13 @@ def format_markdown(report: dict[str, Any]) -> str:
 
 
 def write_text(path: Path, content: str) -> None:
+    """Write text to a path, creating parent directories as needed."""
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(content, encoding="utf-8")
 
 
 def main() -> None:
+    """Parse CLI options, run the benchmark, and emit requested outputs."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--events", type=Path, default=DEFAULT_EVENTS)
     parser.add_argument("--queries", type=Path, default=DEFAULT_QUERIES)
