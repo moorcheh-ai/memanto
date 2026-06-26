@@ -1,18 +1,17 @@
-"""
-Memanto - Your agents focus. Memanto remembers.
-"""Memanto - A companion memory agent with its own intelligence.
-
-This package provides persistent memory capabilities for AI agents,
-backed by the moorcheh.ai retrieval engine.
-"""
+"""Memanto - Memory that AI Agents Love!"""
 
 from memanto.client import MemantoClient
+from memanto.config import MemantoConfig
 from memanto.memory import MemoryManager
-from memanto.config import Config
+from memanto.types import Memory, MemoryQuery, MemoryResult
 
 __all__ = [
     "MemantoClient",
-    "MemoryManager", 
-    "Config",
+    "MemantoConfig", 
+    "MemoryManager",
+    "Memory",
+    "MemoryQuery",
+    "MemoryResult",
 ]
+Memanto - Memory that AI Agents Love!
 """
