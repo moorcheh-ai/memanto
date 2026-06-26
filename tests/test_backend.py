@@ -109,7 +109,10 @@ class TestOnPremClient:
 
 
 class _FakeAnswerConfig:
+    """ConfigManager stub that returns no explicit answer model."""
+
     def get_answer_config(self):
+        """Return answer settings that exercise backend-default model handling."""
         return {
             "answer_limit": 10,
             "temperature": 0.7,
@@ -120,22 +123,30 @@ class _FakeAnswerConfig:
 
 
 class _CaptureAnswer:
+    """Capture answer.generate kwargs while returning a canned response."""
+
     def __init__(self, answer="ok"):
+        """Initialize the fake answer endpoint with a canned answer."""
         self.answer = answer
         self.call_kwargs = None
 
     def generate(self, **kwargs):
+        """Record kwargs and return a Moorcheh-like answer payload."""
         self.call_kwargs = kwargs
         return {"answer": self.answer, "sources": []}
 
 
 class _CaptureMoorcheh:
+    """Small Moorcheh client stub with answer and documents surfaces."""
+
     def __init__(self, answer="ok"):
+        """Initialize fake Moorcheh surfaces used by answer-generation tests."""
         self.answer = _CaptureAnswer(answer)
         self.documents = SimpleNamespace(get=lambda **kwargs: {"items": []})
 
 
 def _stub_answer_client(client, moorcheh):
+    """Patch a CLI client to bypass session validation and use the fake client."""
     client._get_validated_session_for_agent = lambda agent_id: SimpleNamespace(
         namespace=f"memanto_agent_{agent_id}"
     )
@@ -143,7 +154,10 @@ def _stub_answer_client(client, moorcheh):
 
 
 class TestAnswerGenerateKwargs:
+    """Regression tests for omitting unsupported answer.generate kwargs."""
+
     def test_direct_client_omits_none_ai_model_and_threshold(self, monkeypatch):
+        """DirectClient should omit optional kwargs when config resolves to None."""
         from memanto.cli.client import direct_client as direct_mod
 
         monkeypatch.setattr(direct_mod, "ConfigManager", lambda: _FakeAnswerConfig())
@@ -158,6 +172,7 @@ class TestAnswerGenerateKwargs:
         assert "threshold" not in moorcheh.answer.call_kwargs
 
     def test_sdk_client_omits_none_ai_model_and_threshold(self, monkeypatch):
+        """SdkClient should omit optional kwargs when config resolves to None."""
         from memanto.cli.client import sdk_client as sdk_mod
 
         monkeypatch.setattr(sdk_mod, "ConfigManager", lambda: _FakeAnswerConfig())
@@ -172,6 +187,7 @@ class TestAnswerGenerateKwargs:
         assert "threshold" not in moorcheh.answer.call_kwargs
 
     def test_daily_summary_omits_none_ai_model(self, monkeypatch, tmp_path):
+        """Daily summaries should let on-prem use the backend default model."""
         from memanto.app.config import settings
         from memanto.app.services import daily_analysis_service as daily_mod
 
@@ -201,6 +217,7 @@ class TestAnswerGenerateKwargs:
         assert "ai_model" not in moorcheh.answer.call_kwargs
 
     def test_conflict_report_omits_none_ai_model(self, monkeypatch, tmp_path):
+        """Conflict reports should let on-prem use the backend default model."""
         from memanto.app.config import settings
         from memanto.app.services import daily_analysis_service as daily_mod
 

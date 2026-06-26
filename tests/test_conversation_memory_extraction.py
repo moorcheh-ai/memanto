@@ -81,6 +81,7 @@ def test_extract_conversation_memories_normalizes_candidates():
 
 
 def test_extract_on_prem_without_state_omits_ai_model(monkeypatch, tmp_path):
+    """Conversation extraction should omit ai_model when on-prem has no model."""
     from memanto.app.config import settings
 
     monkeypatch.setattr(settings, "MEMANTO_BACKEND", "on-prem")
