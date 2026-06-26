@@ -57,10 +57,12 @@ class ContextSummarizationService:
             Dict with summary memory details
         """
         try:
+            resolved_scope_type = _normalize_scope_type(scope_type)
+
             # Step 1: Retrieve memories from the scope
             search_result = self.read_service.search_memories(
                 query="",  # Empty query to get all
-                scope_type=scope_type,
+                scope_type=resolved_scope_type,
                 scope_id=scope_id,
                 type=memory_types,
                 limit=max_memories,
@@ -88,10 +90,9 @@ class ContextSummarizationService:
                 memory_texts.append(formatted)
 
             # Step 3: Generate AI summary using Moorcheh
-            from memanto.app.constants import ScopeType
             from memanto.app.core import create_memory_scope
 
-            scope = create_memory_scope(cast(ScopeType, scope_type), scope_id)
+            scope = create_memory_scope(resolved_scope_type, scope_id)
             namespace = scope.to_namespace()
 
             summary_prompt = f"""Summarize the following {len(memories)} memories into a concise context summary.
@@ -128,7 +129,6 @@ Provide a clear, organized summary that an AI agent could use to understand the 
             if link_to_originals:
                 summary_metadata["original_memory_ids"] = memory_ids
 
-            resolved_scope_type = _normalize_scope_type(scope_type)
             summary_memory = MemoryRecord(
                 id=generate_memory_id(),
                 type="context",  # Use 'context' type for summaries
