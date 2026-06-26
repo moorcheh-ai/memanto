@@ -19,7 +19,9 @@ can surface them as the "what migrating saves you" preview.
 
 from __future__ import annotations
 
+import hashlib
 import json
+import uuid
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -28,6 +30,7 @@ from typing import Any, cast
 from memanto.cli.migrate.mappers import MAPPERS, type_breakdown
 
 BATCH_LIMIT = 100
+MIGRATION_ID_NAMESPACE = uuid.UUID("c96c2be1-42c1-4db0-a4b3-55a040f7b74c")
 
 
 @dataclass
@@ -73,6 +76,34 @@ def map_export(provider: str, export: dict[str, Any]) -> list[dict[str, Any]]:
 def chunked(items: list[dict[str, Any]], size: int = BATCH_LIMIT):
     for i in range(0, len(items), size):
         yield items[i : i + size]
+
+
+def _content_fingerprint(row: dict[str, Any]) -> str:
+    payload = {
+        "title": row.get("title"),
+        "content": row.get("content"),
+        "source": row.get("source"),
+        "tags": row.get("tags") or [],
+    }
+    return hashlib.sha256(
+        json.dumps(payload, sort_keys=True, default=str).encode("utf-8")
+    ).hexdigest()
+
+
+def _stable_import_id(provider: str, agent_id: str, row: dict[str, Any]) -> str:
+    """Build a retry-stable memory id for one migrated source row."""
+    source_ref = row.get("source_ref")
+    if source_ref:
+        source_identity = f"source_ref:{source_ref}"
+    else:
+        source_identity = f"content:{_content_fingerprint(row)}"
+
+    return str(
+        uuid.uuid5(
+            MIGRATION_ID_NAMESPACE,
+            f"agent:{agent_id}:provider:{provider}:{source_identity}",
+        )
+    )
 
 
 def write_preview(rows: list[dict[str, Any]], dest: Path) -> Path:
@@ -124,6 +155,9 @@ def run_migration(
 
     if dry_run or not rows:
         return summary, rows
+
+    for row in rows:
+        row.setdefault("id", _stable_import_id(provider, agent_id, row))
 
     batches = list(chunked(rows, BATCH_LIMIT))
     summary.batches = len(batches)
