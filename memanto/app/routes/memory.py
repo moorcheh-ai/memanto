@@ -170,9 +170,10 @@ async def remember(
 
     # Enforce session scope: token must match agent_id
     if session.agent_id != agent_id:
-        raise HTTPException(
-            status_code=403,
-            detail=f"Session is for agent '{session.agent_id}', cannot access '{agent_id}'",
+        raise map_error_to_http_exception(
+            AuthorizationError(
+                f"Session is for agent '{session.agent_id}', cannot access '{agent_id}'"
+            )
         )
 
     try:
@@ -257,9 +258,10 @@ async def batch_remember(
     """
     # Enforce session scope: token must match agent_id
     if session.agent_id != agent_id:
-        raise HTTPException(
-            status_code=403,
-            detail=f"Session is for agent '{session.agent_id}', cannot access '{agent_id}'",
+        raise map_error_to_http_exception(
+            AuthorizationError(
+                f"Session is for agent '{session.agent_id}', cannot access '{agent_id}'"
+            )
         )
 
     try:
@@ -524,9 +526,10 @@ async def upload_file(
     - Content-Type: multipart/form-data
     """
     if session.agent_id != agent_id:
-        raise HTTPException(
-            status_code=403,
-            detail=f"Session is for agent '{session.agent_id}', cannot access '{agent_id}'",
+        raise map_error_to_http_exception(
+            AuthorizationError(
+                f"Session is for agent '{session.agent_id}', cannot access '{agent_id}'"
+            )
         )
 
     client = get_moorcheh_client()
@@ -655,9 +658,10 @@ async def recall(
 
     # Enforce session scope
     if session.agent_id != agent_id:
-        raise HTTPException(
-            status_code=403,
-            detail=f"Session is for agent '{session.agent_id}', cannot access '{agent_id}'",
+        raise map_error_to_http_exception(
+            AuthorizationError(
+                f"Session is for agent '{session.agent_id}', cannot access '{agent_id}'"
+            )
         )
 
     recall_cfg = _config_manager.get_recall_config()
@@ -730,9 +734,10 @@ async def answer(
 
     # Enforce session scope
     if session.agent_id != agent_id:
-        raise HTTPException(
-            status_code=403,
-            detail=f"Session is for agent '{session.agent_id}', cannot access '{agent_id}'",
+        raise map_error_to_http_exception(
+            AuthorizationError(
+                f"Session is for agent '{session.agent_id}', cannot access '{agent_id}'"
+            )
         )
 
     client = get_moorcheh_client()
@@ -836,9 +841,10 @@ async def generate_daily_summary(
     POST ``/{agent_id}/conflicts/generate`` or the scheduled job.
     """
     if session.agent_id != agent_id:
-        raise HTTPException(
-            status_code=403,
-            detail=f"Session is for agent '{session.agent_id}', cannot access '{agent_id}'",
+        raise map_error_to_http_exception(
+            AuthorizationError(
+                f"Session is for agent '{session.agent_id}', cannot access '{agent_id}'"
+            )
         )
 
     resolved_date = request.date or datetime.now().strftime("%Y-%m-%d")
@@ -871,9 +877,10 @@ async def generate_conflict_report(
     This is the same work the scheduled task performs.
     """
     if session.agent_id != agent_id:
-        raise HTTPException(
-            status_code=403,
-            detail=f"Session is for agent '{session.agent_id}', cannot access '{agent_id}'",
+        raise map_error_to_http_exception(
+            AuthorizationError(
+                f"Session is for agent '{session.agent_id}', cannot access '{agent_id}'"
+            )
         )
 
     resolved_date = request.date or datetime.now().strftime("%Y-%m-%d")
@@ -909,9 +916,10 @@ async def list_conflicts(
     """
     # Enforce session scope
     if session.agent_id != agent_id:
-        raise HTTPException(
-            status_code=403,
-            detail=f"Session is for agent '{session.agent_id}', cannot access '{agent_id}'",
+        raise map_error_to_http_exception(
+            AuthorizationError(
+                f"Session is for agent '{session.agent_id}', cannot access '{agent_id}'"
+            )
         )
 
     try:
@@ -943,9 +951,10 @@ async def resolve_conflict(
     Uses the same underlying conflict resolution service used by CLI.
     """
     if session.agent_id != agent_id:
-        raise HTTPException(
-            status_code=403,
-            detail=f"Session is for agent '{session.agent_id}', cannot access '{agent_id}'",
+        raise map_error_to_http_exception(
+            AuthorizationError(
+                f"Session is for agent '{session.agent_id}', cannot access '{agent_id}'"
+            )
         )
 
     resolved_date = request.date or datetime.now().strftime("%Y-%m-%d")
@@ -989,9 +998,10 @@ async def recall_as_of(
     - X-Session-Token: {session_token}
     """
     if session.agent_id != agent_id:
-        raise HTTPException(
-            status_code=403,
-            detail=f"Session is for agent '{session.agent_id}', cannot access '{agent_id}'",
+        raise map_error_to_http_exception(
+            AuthorizationError(
+                f"Session is for agent '{session.agent_id}', cannot access '{agent_id}'"
+            )
         )
 
     # request.limit is None → fetch all (no cap). Cost guard only applies when capped.
@@ -1041,9 +1051,10 @@ async def recall_changed_since(
     - X-Session-Token: {session_token}
     """
     if session.agent_id != agent_id:
-        raise HTTPException(
-            status_code=403,
-            detail=f"Session is for agent '{session.agent_id}', cannot access '{agent_id}'",
+        raise map_error_to_http_exception(
+            AuthorizationError(
+                f"Session is for agent '{session.agent_id}', cannot access '{agent_id}'"
+            )
         )
 
     # request.limit is None → fetch all (no cap). Cost guard only applies when capped.
@@ -1094,9 +1105,10 @@ async def recall_recent(
     The session must be for the specified agent_id.
     """
     if session.agent_id != agent_id:
-        raise HTTPException(
-            status_code=403,
-            detail=f"Session is for agent '{session.agent_id}', cannot access '{agent_id}'",
+        raise map_error_to_http_exception(
+            AuthorizationError(
+                f"Session is for agent '{session.agent_id}', cannot access '{agent_id}'"
+            )
         )
 
     # request.limit is None → fetch all (no cap). Cost guard only applies when capped.
