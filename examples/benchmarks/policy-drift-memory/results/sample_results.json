@@ -171,7 +171,6 @@
             "e05"
           ],
           "sensitive_event_ids_retrieved": [
-            "e05",
             "e13"
           ],
           "retrieved_tokens": 69,
@@ -278,8 +277,7 @@
             "e13"
           ],
           "sensitive_event_ids_retrieved": [
-            "e13",
-            "e05"
+            "e13"
           ],
           "retrieved_tokens": 69,
           "scanned_tokens": 203,

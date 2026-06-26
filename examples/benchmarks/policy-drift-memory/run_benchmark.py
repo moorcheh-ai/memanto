@@ -152,6 +152,20 @@ def redact_secret_text(text: str) -> str:
     return redacted
 
 
+def contains_unredacted_secret(text: str) -> bool:
+    return redact_secret_text(text) != text
+
+
+def dataset_path_label(path: Path) -> str:
+    try:
+        return str(path.relative_to(ROOT))
+    except ValueError:
+        try:
+            return str(path.resolve().relative_to(ROOT))
+        except ValueError:
+            return str(path)
+
+
 def percentile(values: list[float], pct: float) -> float:
     if not values:
         return 0.0
@@ -303,6 +317,7 @@ def evaluate_backend(
             item.event.id
             for item in retrieval.items
             if item.event.sensitivity == "secret"
+            and contains_unredacted_secret(item.text)
         ]
         passed = not missing and not forbidden and not sensitive
         query_results.append(
@@ -365,8 +380,8 @@ def run_benchmark(
         "dataset": {
             "events": len(events),
             "queries": len(queries),
-            "source_events": str(events_path.relative_to(ROOT)),
-            "source_queries": str(queries_path.relative_to(ROOT)),
+            "source_events": dataset_path_label(events_path),
+            "source_queries": dataset_path_label(queries_path),
         },
         "backends": [
             evaluate_backend(backend, events, queries) for backend in backends
