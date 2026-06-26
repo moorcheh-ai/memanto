@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Demo — Session 1: a developer makes engineering decisions via /grill-with-docs.
-
+Security Fix: Prevent prompt injection via unescaped transcript content.
 
 Run this first. It simulates a finished ``/grill-with-docs`` session and lets
 Memanto's backend LLM distill the durable engineering decisions into memory.
@@ -10,13 +10,13 @@ Memanto's backend LLM distill the durable engineering decisions into memory.
 
 Then run ``demo_session_2.py`` in a SEPARATE process to prove the decisions are
 recalled with zero shared in-process state.
+"""
 
 from __future__ import annotations
-
+import html
 
 from memanto_skills import SkillMemory
 
-SESSION_1_TRANSCRIPT = """
 SESSION_1_TRANSCRIPT = """
 user: /grill-with-docs let's nail down the architecture for the orders service
 assistant: A few questions to align on the design.
@@ -31,29 +31,32 @@ user: We decided on Postgres for the write side and Redis for the read-model cac
   Always wrap money values in a Money value object — never raw floats.
 assistant: Summary: CQRS for Orders, Postgres + Redis, Cart != Order, Money VO for currency.
 """
+"""
+
+
+def sanitize_transcript(text: str) -> str:
+    """Escape HTML special characters to mitigate prompt injection."""
+    return html.escape(text)
+
 
 def main() -> None:
     mem = SkillMemory()
     mem.setup()
-
     print("Session 1: distilling /grill-with-docs decisions via Memanto's LLM…\n")
-    stored = mem.distill_and_store("grill-with-docs", SESSION_1_TRANSCRIPT)
-    if not stored:
+    safe_transcript = sanitize_transcript(SESSION_1_TRANSCRIPT)
+    stored = mem.distill_and_store("grill-with-docs", safe_transcript)
     if not stored:
         print("No memories were extracted. Check MOORCHEH_API_KEY and connectivity.")
         return
     for m in stored:
         print(f"  - [{m['type']}] {m['content']}")
     print("\nNow run:  python demo_session_2.py")
-    return stored
 
 
-if __name__ == "__main__":
 if __name__ == "__main__":
     try:
+        main()
     except Exception as exc:
         print(f"\n[error] {exc}")
         print("Check that MOORCHEH_API_KEY is valid and your subscription is active.")
-
-        raise SystemExit(1)
         raise SystemExit(1)
