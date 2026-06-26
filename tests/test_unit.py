@@ -273,6 +273,8 @@ class TestMemoryWriteServiceUpdate:
 
     @staticmethod
     def existing_memory() -> dict[str, object]:
+        """Return the pre-update memory shape used by update rollback tests."""
+
         return {
             "id": "mem-1",
             "title": "Original title",
@@ -293,6 +295,8 @@ class TestMemoryWriteServiceUpdate:
         }
 
     def test_update_memory_restores_original_when_replacement_upload_raises(self):
+        """Restore the original when the replacement upload raises an exception."""
+
         from memanto.app.services.memory_write_service import MemoryWriteService
         from memanto.app.utils.errors import MemoryError
 
@@ -325,6 +329,8 @@ class TestMemoryWriteServiceUpdate:
         assert restore_upload["validation_count"] == 2
 
     def test_update_memory_restores_original_when_replacement_upload_fails_status(self):
+        """Restore the original when the replacement upload returns a failed status."""
+
         from memanto.app.services.memory_write_service import MemoryWriteService
         from memanto.app.utils.errors import MemoryError
 
