@@ -85,7 +85,7 @@ cd memanto
 # 2. Create .env file with your Moorcheh API key
 cat > .env << EOF
 MOORCHEH_API_KEY=mk_your_api_key_here
-ALLOWED_ORIGINS=*
+ALLOWED_ORIGINS=[]
 LOG_LEVEL=INFO
 EOF
 

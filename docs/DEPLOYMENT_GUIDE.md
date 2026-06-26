@@ -28,7 +28,7 @@ MOORCHEH_API_KEY=your_moorcheh_api_key_here
 
 # Optional
 LOG_LEVEL=INFO                    # DEBUG, INFO, WARNING, ERROR
-ALLOWED_ORIGINS=*                 # CORS origins (comma-separated)
+ALLOWED_ORIGINS=[]                # CORS origins as a JSON list; leave empty for same-origin UI
 RATE_LIMIT_WRITES=60             # Writes per minute per tenant
 RATE_LIMIT_READS=120             # Reads per minute per tenant
 RATE_LIMIT_ANSWERS=30            # Answer generations per minute
@@ -49,7 +49,7 @@ cp .env.example .env
 # Edit with your settings
 MOORCHEH_API_KEY=your_actual_api_key
 LOG_LEVEL=INFO
-ALLOWED_ORIGINS=https://yourdomain.com,https://app.yourdomain.com
+ALLOWED_ORIGINS=["https://yourdomain.com","https://app.yourdomain.com"]
 ```
 
 ## 🐳 Docker Deployment

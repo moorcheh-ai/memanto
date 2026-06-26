@@ -139,10 +139,51 @@ def mock_moorcheh():
         moorcheh_client.reset_client()
 
 
+def test_safe_cors_origins_rejects_wildcards():
+    """Wildcard CORS must never be allowed for token-bearing UI endpoints."""
+    from memanto.app.main import _safe_cors_origins
+
+    assert _safe_cors_origins(["*", " https://app.example.com/ ", ""]) == [
+        "https://app.example.com"
+    ]
+
+
+def test_cors_middleware_uses_explicit_methods_and_headers():
+    """Credentialed CORS must not allow wildcard methods or headers."""
+    from fastapi.middleware.cors import CORSMiddleware
+
+    cors = next(m for m in app.user_middleware if m.cls is CORSMiddleware)
+
+    assert cors.kwargs["allow_methods"] == [
+        "GET",
+        "POST",
+        "PUT",
+        "PATCH",
+        "DELETE",
+        "OPTIONS",
+    ]
+    assert cors.kwargs["allow_headers"] == [
+        "Authorization",
+        "Content-Type",
+        "X-Session-Token",
+    ]
+
+
 class TestMEMANTOAPI:
     """Contract tests for MEMANTO session-based API"""
 
     TEST_AGENT_ID = "test-api-agent"
+
+    @pytest.mark.asyncio
+    async def test_ui_config_is_not_cors_readable_from_untrusted_origin(self, client):
+        """A malicious website must not be able to read local UI config."""
+        response = await client.get(
+            "/api/ui/config", headers={"Origin": "https://evil.example"}
+        )
+
+        assert response.status_code == 200
+        assert "session_token" in response.json()
+        assert "access-control-allow-origin" not in response.headers
 
     @pytest.mark.asyncio
     async def test_create_agent(self, client, auth_headers):
