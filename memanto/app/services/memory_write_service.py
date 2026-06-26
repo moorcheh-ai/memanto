@@ -356,9 +356,16 @@ class MemoryWriteService:
     ) -> MemoryRecord:
         """Reconstruct a memory record that can restore the deleted original."""
 
-        def field(name: str, default: Any = None) -> Any:
-            value = existing_memory_data.get(name)
-            return default if value is None else value
+        raw_metadata = existing_memory_data.get("metadata", {})
+        metadata = raw_metadata if isinstance(raw_metadata, dict) else {}
+
+        def field(name: str, default: Any = None, *aliases: str) -> Any:
+            for source in (existing_memory_data, metadata):
+                for key in (name, *aliases):
+                    value = source.get(key)
+                    if value is not None:
+                        return value
+            return default
 
         tags = field("tags", [])
         if isinstance(tags, str):
@@ -366,7 +373,7 @@ class MemoryWriteService:
 
         return MemoryRecord(
             id=memory_id,
-            type=field("type", "fact"),
+            type=field("type", "fact", "memory_type"),
             title=field("title", "Restored Memory"),
             content=field("content", existing_memory_data.get("text", "")),
             scope_type=field("scope_type", "agent"),

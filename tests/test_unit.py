@@ -279,19 +279,22 @@ class TestMemoryWriteServiceUpdate:
             "id": "mem-1",
             "title": "Original title",
             "content": "Original content",
-            "type": "fact",
-            "scope_type": "agent",
-            "scope_id": "agent-1",
-            "actor_id": "user-1",
-            "source": "user",
-            "confidence": 0.0,
-            "status": "active",
-            "tags": ["important"],
-            "created_at": "2026-01-01T00:00:00",
-            "updated_at": "2026-01-02T00:00:00",
-            "provenance": "validated",
-            "validation_count": 2,
-            "contradiction_detected": False,
+            "text": "[PREFERENCE] Original title\n\nOriginal content",
+            "metadata": {
+                "memory_type": "preference",
+                "scope_type": "agent",
+                "scope_id": "agent-1",
+                "actor_id": "user-1",
+                "source": "user",
+                "confidence": 0.0,
+                "status": "active",
+                "tags": ["important", "rollback"],
+                "created_at": "2026-01-01T00:00:00",
+                "updated_at": "2026-01-02T00:00:00",
+                "provenance": "validated",
+                "validation_count": 2,
+                "contradiction_detected": False,
+            },
         }
 
     def test_update_memory_restores_original_when_replacement_upload_raises(self):
@@ -324,7 +327,10 @@ class TestMemoryWriteServiceUpdate:
         ]
         assert "New content" in first_upload["text"]
         assert "Original content" in restore_upload["text"]
+        assert restore_upload["memory_type"] == "preference"
+        assert restore_upload["scope_id"] == "agent-1"
         assert restore_upload["confidence"] == 0.0
+        assert restore_upload["tags"] == "important,rollback"
         assert restore_upload["provenance"] == "validated"
         assert restore_upload["validation_count"] == 2
 
@@ -351,6 +357,18 @@ class TestMemoryWriteServiceUpdate:
                 )
 
         assert client.documents.upload.call_count == 2
+        first_upload = client.documents.upload.call_args_list[0].kwargs["documents"][0]
+        restore_upload = client.documents.upload.call_args_list[1].kwargs["documents"][
+            0
+        ]
+        assert "New content" in first_upload["text"]
+        assert "Original content" in restore_upload["text"]
+        assert restore_upload["memory_type"] == "preference"
+        assert restore_upload["scope_id"] == "agent-1"
+        assert restore_upload["confidence"] == 0.0
+        assert restore_upload["tags"] == "important,rollback"
+        assert restore_upload["provenance"] == "validated"
+        assert restore_upload["validation_count"] == 2
 
 
 class TestForgetEndToEnd:
