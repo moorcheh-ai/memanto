@@ -14,10 +14,10 @@ recalled with zero shared in-process state.
 from __future__ import annotations
 
 from memanto_skills import SkillMemory
+import os
 
 SESSION_1_TRANSCRIPT = """
 user: /grill-with-docs let's nail down the architecture for the orders service
-assistant: A few questions to align on the design.
 user: We will use CQRS for the Order domain — commands and queries are separate.
   The read model is denormalised and rebuilt from events.
 assistant: Understood. What about terminology?
@@ -33,22 +33,27 @@ assistant: Summary: CQRS for Orders, Postgres + Redis, Cart != Order, Money VO f
 
 def main() -> None:
     mem = SkillMemory()
+
+
+def main() -> None:
+    api_key = os.environ.get("MOORCHEH_API_KEY")
+    if not api_key:
+        raise SystemExit("Error: MOORCHEH_API_KEY environment variable is not set.")
+    mem = SkillMemory(api_key=api_key)
     mem.setup()
     print("Session 1: distilling /grill-with-docs decisions via Memanto's LLM…\n")
-def main() -> None:
-    mem = SkillMemory()
-    mem.setup()
-    print("Session 1: distilling /grill-with-docs decisions via Memanto's LLM...\n")
     stored = mem.distill_and_store("grill-with-docs", SESSION_1_TRANSCRIPT)
-    if not stored:
-        print("No memories were extracted. Check MOORCHEH_API_KEY and connectivity.")
+    for m in stored:
+        print(f"  - [{m['type']}] {m['content']}")
     print("\nNow run:  python demo_session_2.py")
 
+
+if __name__ == "__main__":
+    try:
 
 if __name__ == "__main__":
     try:
         main()
     except Exception as exc:
         print(f"\n[error] {exc}")
-        print("Check that MOORCHEH_API_KEY is valid and your subscription is active.")
         raise SystemExit(1)
