@@ -157,6 +157,50 @@ class TestSingletonDispatch:
             mclients.moorcheh_client.reset_client()
 
 
+class TestExplicitApiKeyDispatch:
+    class _FakeCloudClient:
+        def __init__(self, api_key):
+            self.api_key = api_key
+
+    def test_sdk_client_uses_constructor_api_key(self):
+        from memanto.app.clients import moorcheh as mclients
+        from memanto.app.config import settings
+        from memanto.cli.client.sdk_client import SdkClient
+
+        original_backend = settings.MEMANTO_BACKEND
+        original_key = settings.MOORCHEH_API_KEY
+        settings.MEMANTO_BACKEND = "cloud"
+        settings.MOORCHEH_API_KEY = "global-key"
+        mclients.moorcheh_client.reset_client()
+        try:
+            with patch.object(mclients, "MoorchehClient", self._FakeCloudClient):
+                client = SdkClient("cli-key")
+                assert client._get_moorcheh().api_key == "cli-key"
+        finally:
+            settings.MEMANTO_BACKEND = original_backend
+            settings.MOORCHEH_API_KEY = original_key
+            mclients.moorcheh_client.reset_client()
+
+    def test_direct_client_uses_constructor_api_key(self):
+        from memanto.app.clients import moorcheh as mclients
+        from memanto.app.config import settings
+        from memanto.cli.client.direct_client import DirectClient
+
+        original_backend = settings.MEMANTO_BACKEND
+        original_key = settings.MOORCHEH_API_KEY
+        settings.MEMANTO_BACKEND = "cloud"
+        settings.MOORCHEH_API_KEY = "global-key"
+        mclients.moorcheh_client.reset_client()
+        try:
+            with patch.object(mclients, "MoorchehClient", self._FakeCloudClient):
+                client = DirectClient("direct-key")
+                assert client._get_moorcheh().api_key == "direct-key"
+        finally:
+            settings.MEMANTO_BACKEND = original_backend
+            settings.MOORCHEH_API_KEY = original_key
+            mclients.moorcheh_client.reset_client()
+
+
 class TestDataDirRouting:
     def test_cloud_uses_default(self, tmp_path, monkeypatch):
         from memanto.app import config as app_config
