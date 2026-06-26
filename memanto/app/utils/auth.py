@@ -23,23 +23,32 @@ class AuthService:
     """Authentication and authorization service"""
 
     def __init__(self):
-        # In production, load from secure storage
-        self.tenant_api_keys = {
-            # Format: api_key -> tenant_info
-            "tk_acme_prod_abc123": {
-                "tenant_id": "acme",
-                "roles": ["admin", "user"],
-                "scopes_allowed": ["user", "workspace", "agent", "session"],
-            },
-            "tk_demo_test_xyz789": {
-                "tenant_id": "demo",
-                "roles": ["user"],
-                "scopes_allowed": ["user", "agent"],
-            },
-        }
+        # Load tenant API keys from environment (JSON string)
+        # Format: {"tk_xxx": {"tenant_id": "acme", "roles": [...], "scopes_allowed": [...]}}
+        import json as _json
 
-        # JWT configuration
-        self.jwt_secret = getattr(settings, "JWT_SECRET", "dev-secret-change-in-prod")
+        raw_keys = getattr(settings, "MEMANTO_TENANT_API_KEYS", "")
+        if raw_keys:
+            try:
+                self.tenant_api_keys = _json.loads(raw_keys)
+            except (_json.JSONDecodeError, TypeError):
+                self.tenant_api_keys = {}
+        else:
+            # Fallback: single production key from env var or dev default
+            prod_key = getattr(settings, "MEMANTO_API_KEY", "")
+            if prod_key:
+                self.tenant_api_keys = {
+                    prod_key: {
+                        "tenant_id": getattr(settings, "MEMANTO_TENANT_ID", "default"),
+                        "roles": ["admin", "user"],
+                        "scopes_allowed": ["user", "workspace", "agent", "session"],
+                    }
+                }
+            else:
+                self.tenant_api_keys = {}
+
+        # JWT configuration — use the shared MEMANTO_SECRET_KEY from settings
+        self.jwt_secret = getattr(settings, "MEMANTO_SECRET_KEY", "dev-secret-change-in-prod")
         self.jwt_algorithm = "HS256"
         self.jwt_issuer = getattr(settings, "JWT_ISSUER", "memanto")
 
