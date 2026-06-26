@@ -268,6 +268,85 @@ class TestMemoryWriteServiceDelete:
         assert MemoryWriteService(client).delete_memory("m1", "ns") is expected
 
 
+class TestMemoryWriteServiceUpdate:
+    """Update writes must not permanently delete the original on upload failure."""
+
+    @staticmethod
+    def existing_memory() -> dict[str, object]:
+        return {
+            "id": "mem-1",
+            "title": "Original title",
+            "content": "Original content",
+            "type": "fact",
+            "scope_type": "agent",
+            "scope_id": "agent-1",
+            "actor_id": "user-1",
+            "source": "user",
+            "confidence": 0.0,
+            "status": "active",
+            "tags": ["important"],
+            "created_at": "2026-01-01T00:00:00",
+            "updated_at": "2026-01-02T00:00:00",
+            "provenance": "validated",
+            "validation_count": 2,
+            "contradiction_detected": False,
+        }
+
+    def test_update_memory_restores_original_when_replacement_upload_raises(self):
+        from memanto.app.services.memory_write_service import MemoryWriteService
+        from memanto.app.utils.errors import MemoryError
+
+        client = MagicMock()
+        client.documents.delete.return_value = {"actual_deletions": 1}
+        client.documents.upload.side_effect = [
+            RuntimeError("backend unavailable"),
+            {"status": "success"},
+        ]
+
+        with patch(
+            "memanto.app.services.memory_read_service.MemoryReadService.get_memory",
+            return_value=self.existing_memory(),
+        ):
+            with pytest.raises(MemoryError, match="restored original memory mem-1"):
+                MemoryWriteService(client).update_memory(
+                    "mem-1", "memanto_agent_agent-1", {"content": "New content"}
+                )
+
+        assert client.documents.delete.call_count == 1
+        assert client.documents.upload.call_count == 2
+        first_upload = client.documents.upload.call_args_list[0].kwargs["documents"][0]
+        restore_upload = client.documents.upload.call_args_list[1].kwargs["documents"][
+            0
+        ]
+        assert "New content" in first_upload["text"]
+        assert "Original content" in restore_upload["text"]
+        assert restore_upload["confidence"] == 0.0
+        assert restore_upload["provenance"] == "validated"
+        assert restore_upload["validation_count"] == 2
+
+    def test_update_memory_restores_original_when_replacement_upload_fails_status(self):
+        from memanto.app.services.memory_write_service import MemoryWriteService
+        from memanto.app.utils.errors import MemoryError
+
+        client = MagicMock()
+        client.documents.delete.return_value = {"actual_deletions": 1}
+        client.documents.upload.side_effect = [
+            {"status": "failed"},
+            {"status": "success"},
+        ]
+
+        with patch(
+            "memanto.app.services.memory_read_service.MemoryReadService.get_memory",
+            return_value=self.existing_memory(),
+        ):
+            with pytest.raises(MemoryError, match="restored original memory mem-1"):
+                MemoryWriteService(client).update_memory(
+                    "mem-1", "memanto_agent_agent-1", {"content": "New content"}
+                )
+
+        assert client.documents.upload.call_count == 2
+
+
 class TestForgetEndToEnd:
     """End-to-end ``forget`` flow through ``DirectClient``: create agent →
     activate → delete_memory. Asserts on-prem's response shape
