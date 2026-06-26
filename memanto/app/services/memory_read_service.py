@@ -175,7 +175,7 @@ class MemoryReadService:
             namespaces = []
             from typing import cast
 
-            from memanto.memanto.app.constants import ScopeType
+            from memanto.app.constants import ScopeType
 
             for scope_def in scopes:
                 scope = create_memory_scope(
@@ -218,6 +218,7 @@ class MemoryReadService:
                 self._format_memory_item(item)
                 for item in search_result.get("results", [])
             ]
+            formatted_results = self._filter_expired_memories(formatted_results)
 
             return {
                 "results": formatted_results,

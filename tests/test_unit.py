@@ -268,6 +268,45 @@ class TestMemoryWriteServiceDelete:
         assert MemoryWriteService(client).delete_memory("m1", "ns") is expected
 
 
+class TestMemoryReadService:
+    def test_search_multi_scope_filters_expired_memories(self):
+        from memanto.app.services.memory_read_service import MemoryReadService
+
+        client = MagicMock()
+        client.similarity_search.query.return_value = {
+            "results": [
+                {
+                    "id": "expired",
+                    "text": "[FACT] Expired\n\nold content",
+                    "memory_type": "fact",
+                    "expires_at": "2000-01-01T00:00:00Z",
+                },
+                {
+                    "id": "active",
+                    "text": "[FACT] Active\n\nnew content",
+                    "memory_type": "fact",
+                    "expires_at": "2999-01-01T00:00:00Z",
+                },
+            ],
+            "execution_time": 0.01,
+        }
+
+        result = MemoryReadService(client).search_multi_scope(
+            query="content",
+            scopes=[
+                {"scope_type": "agent", "scope_id": "agent-a"},
+                {"scope_type": "workspace", "scope_id": "workspace-a"},
+            ],
+        )
+
+        assert [item["id"] for item in result["results"]] == ["active"]
+        assert result["total_found"] == 1
+        assert result["searched_namespaces"] == [
+            "memanto_agent_agent-a",
+            "memanto_workspace_workspace-a",
+        ]
+
+
 class TestForgetEndToEnd:
     """End-to-end ``forget`` flow through ``DirectClient``: create agent →
     activate → delete_memory. Asserts on-prem's response shape
