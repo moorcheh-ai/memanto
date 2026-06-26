@@ -1525,9 +1525,8 @@ class DirectClient:
         """
         Sync agent memories to a project directory's MEMORY.md.
 
-        Uses the cached export at ``~/.memanto/exports/{agent_id}_memory.md``
-        when available. Falls back to a fresh export if
-        the cache file does not exist.
+        Always refreshes the export first so project-local ``MEMORY.md`` files
+        cannot silently lag behind newly written memories.
 
         Args:
             agent_id: Target agent.
@@ -1539,32 +1538,15 @@ class DirectClient:
             (``"cache"`` or ``"fresh"``).
         """
 
-        cache_path = Path.home() / ".memanto" / "exports" / f"{agent_id}_memory.md"
         target_path = Path(project_dir) / "MEMORY.md"
         target_path.parent.mkdir(parents=True, exist_ok=True)
 
-        if cache_path.exists():
-            # Fast path: copy cached export
-            shutil.copy2(str(cache_path), str(target_path))
-            # Count memories from the cached file
-            content = cache_path.read_text(encoding="utf-8")
-            mem_count = content.count("### ")
-            return {
-                "output_path": str(target_path.resolve()),
-                "total_memories": mem_count,
-                "source": "cache",
-            }
-
-        # Fallback: run a fresh export to the default location, then copy
-        logger.debug(
-            "No cached export found, generating fresh export for '%s'", agent_id
-        )
+        logger.debug("Refreshing memory export before syncing '%s'", agent_id)
         export_result = self.export_memory_md(
             agent_id=agent_id,
             limit_per_type=limit_per_type,
         )
 
-        # Now copy the freshly generated export to the project
         exported_path = Path(export_result["output_path"])
         if exported_path.exists():
             shutil.copy2(str(exported_path), str(target_path))

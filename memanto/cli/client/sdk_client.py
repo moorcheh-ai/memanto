@@ -1393,7 +1393,7 @@ class SdkClient:
             Dict with ``output_path``, ``total_memories``, ``source``.
         """
         # Run export function first (ensures ~/.memanto/exports/... is fresh)
-        self.export_memory_md(agent_id=agent_id, limit_per_type=limit_per_type)
+        export_result = self.export_memory_md(agent_id=agent_id, limit_per_type=limit_per_type)
 
         # Perform sync from cache to project
         cache_path = Path.home() / ".memanto" / "exports" / f"{agent_id}_memory.md"
@@ -1408,12 +1408,12 @@ class SdkClient:
             return {
                 "output_path": str(target_path.resolve()),
                 "total_memories": mem_count,
-                "source": "cache",
+                "source": "fresh",
             }
 
         return {
             "output_path": str(target_path.resolve()),
-            "total_memories": 0,
+            "total_memories": export_result.get("total_memories", 0),
             "source": "fresh",
         }
 
