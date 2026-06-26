@@ -133,7 +133,7 @@ class TestAgentService:
             mock_client.namespaces.create.return_value = {"status": "created"}
             mock_client.namespaces.list.return_value = {"namespaces": []}
             mock_client_factory.return_value = mock_client
-            yield mock_client
+            yield mock_client_factory, mock_client
 
     @pytest.fixture
     def temp_dir(self, tmp_path):
@@ -173,6 +173,27 @@ class TestAgentService:
         print("✅ Agent created successfully")
         print(f"   Agent ID: {agent.agent_id}")
         print(f"   Namespace: {agent.namespace}")
+
+    def test_create_agent_uses_explicit_moorcheh_api_key(
+        self, agent_service, mock_moorcheh_client
+    ):
+        """Agent namespace creation must use the request's API key."""
+        agent_create = AgentCreate(
+            agent_id="explicit-key-agent",
+            pattern=AgentPattern.SUPPORT,
+            description="Uses explicit key",
+        )
+        mock_client_factory, mock_client = mock_moorcheh_client
+
+        agent = agent_service.create_agent(
+            agent_create, moorcheh_api_key="explicit-agent-key"
+        )
+
+        mock_client_factory.assert_called_once_with("explicit-agent-key")
+        mock_client.namespaces.create.assert_called_once_with(
+            "memanto_agent_explicit-key-agent", type="text"
+        )
+        assert agent.namespace == "memanto_agent_explicit-key-agent"
 
     def test_list_agents(self, agent_service):
         """Test listing agents"""
@@ -241,6 +262,34 @@ class TestAgentService:
         assert not agent_service.agent_exists("test-agent")
 
         print("✅ Agent deleted successfully")
+
+
+class TestSessionRoutes:
+    """Unit tests for route helpers in the session API."""
+
+    @pytest.mark.asyncio
+    async def test_namespace_item_counts_uses_explicit_moorcheh_api_key(self):
+        """Live namespace counts should use the authenticated cloud key."""
+        from memanto.app.routes import sessions
+
+        with patch.object(
+            sessions.moorcheh_clients, "get_moorcheh_client"
+        ) as mock_client_factory:
+            mock_client = MagicMock()
+            mock_client.namespaces.list.return_value = {
+                "namespaces": [
+                    {
+                        "namespace_name": "memanto_agent_explicit-key-agent",
+                        "item_count": 7,
+                    }
+                ]
+            }
+            mock_client_factory.return_value = mock_client
+
+            counts = await sessions._namespace_item_counts("explicit-route-key")
+
+        mock_client_factory.assert_called_once_with("explicit-route-key")
+        assert counts == {"memanto_agent_explicit-key-agent": 7}
 
 
 class TestMemoryWriteServiceDelete:

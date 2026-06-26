@@ -111,7 +111,7 @@ class SdkClient:
             from memanto.app.clients.moorcheh import get_moorcheh_client
 
             logger.debug("Initializing Moorcheh client via backend dispatcher")
-            self._moorcheh = get_moorcheh_client()
+            self._moorcheh = get_moorcheh_client(self.api_key)
         return self._moorcheh
 
     def _get_write_service(self):
