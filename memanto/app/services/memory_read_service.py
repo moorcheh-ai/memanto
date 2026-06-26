@@ -16,12 +16,16 @@ from memanto.app.utils.errors import MemoryError
 
 
 class MemoryReadService:
+    """Read, search, and filter memories from Moorcheh namespaces."""
+
     def __init__(self, moorcheh_client: "MoorchehClient"):
+        """Initialize the service with a Moorcheh-compatible client."""
         self.client = moorcheh_client
         self._namespace_service = None
 
     @property
     def namespace_service(self):
+        """Return the lazily constructed namespace service."""
         if self._namespace_service is None:
             from memanto.app.services.namespace_service import NamespaceService
 
@@ -424,6 +428,7 @@ class MemoryReadService:
 
             # Sort by created_at descending (most recent first)
             def _created_sort_key(m: dict[str, Any]) -> str:
+                """Return a sortable timestamp string for a memory item."""
                 raw = m.get("created_at")
                 if not raw:
                     return ""
