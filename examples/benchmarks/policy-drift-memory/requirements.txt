@@ -1,0 +1,2 @@
+# Standard library only. Python 3.10+ is sufficient.
+
