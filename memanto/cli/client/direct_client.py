@@ -1158,11 +1158,15 @@ class DirectClient:
         if kiosk_mode and threshold is None:
             threshold = ans_cfg["threshold"]
 
+        limit, threshold, temperature = self._validate_answer_params(
+            question=question,
+            limit=limit,
+            threshold=threshold,
+            temperature=temperature,
+        )
+
         # Ensure there is a valid, non-expired session for this agent
         session = self._get_validated_session_for_agent(agent_id)
-
-        if not question or not question.strip():
-            raise ValueError("Question must be a non-empty string")
 
         # get namespace from session
         namespace = session.namespace
@@ -1624,3 +1628,48 @@ class DirectClient:
             raise ValueError("Search query must be a non-empty string")
         if not 1 <= limit <= 100:
             raise ValueError(f"Limit must be between 1 and 100, got {limit}")
+
+    @staticmethod
+    def _validate_answer_params(
+        question: str,
+        limit: int,
+        threshold: float | None,
+        temperature: float | None,
+    ) -> tuple[int, float | None, float | None]:
+        """Validate RAG answer parameters before calling Moorcheh."""
+        if not question or not question.strip():
+            raise ValueError("Question must be a non-empty string")
+        try:
+            limit_value = int(limit)
+        except (TypeError, ValueError):
+            raise ValueError(f"Limit must be an integer between 1 and 100, got {limit!r}")
+        if not 1 <= limit_value <= 100:
+            raise ValueError(f"Limit must be between 1 and 100, got {limit_value}")
+
+        threshold_value = None
+        if threshold is not None:
+            try:
+                threshold_value = float(threshold)
+            except (TypeError, ValueError):
+                raise ValueError(
+                    f"Threshold must be a number between 0.0 and 1.0, got {threshold!r}"
+                )
+            if not 0.0 <= threshold_value <= 1.0:
+                raise ValueError(
+                    f"Threshold must be between 0.0 and 1.0, got {threshold_value}"
+                )
+
+        temperature_value = None
+        if temperature is not None:
+            try:
+                temperature_value = float(temperature)
+            except (TypeError, ValueError):
+                raise ValueError(
+                    f"Temperature must be a number between 0.0 and 2.0, got {temperature!r}"
+                )
+            if not 0.0 <= temperature_value <= 2.0:
+                raise ValueError(
+                    f"Temperature must be between 0.0 and 2.0, got {temperature_value}"
+                )
+
+        return limit_value, threshold_value, temperature_value
