@@ -104,7 +104,11 @@ Format the output as a Markdown report:
             summary_path = Path(output_path).resolve()
             # Security: prevent path traversal outside data directory
             allowed_base = get_data_dir().resolve()
-            if not str(summary_path).startswith(str(allowed_base)):
+            # Use Path.is_relative_to() for proper path containment check
+            # (string prefix comparison can be bypassed by sibling paths)
+            try:
+                summary_path.relative_to(allowed_base)
+            except ValueError:
                 raise MemoryError(
                     f"output_path must be within the data directory ({allowed_base}), got: {summary_path}"
                 )

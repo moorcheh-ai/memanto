@@ -421,6 +421,9 @@ class MemoryReadService:
 
             unique_memories = self._fetch_all_memories(namespaces, type=type)
 
+            # Filter out superseded memories from recent results
+            unique_memories = [m for m in unique_memories if m.get("status") != "superseded"]
+
             # Sort by created_at descending (most recent first)
             def _created_sort_key(m: dict[str, Any]) -> str:
                 raw = m.get("created_at")
@@ -489,9 +492,6 @@ class MemoryReadService:
                 mem_tags = formatted.get("tags") or []
                 if not any(t in mem_tags for t in tags):
                     continue
-            # Skip superseded memories — they should not appear in active results
-            if formatted.get("status") == "superseded":
-                continue
 
             memories.append(formatted)
 

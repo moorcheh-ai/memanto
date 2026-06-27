@@ -169,8 +169,10 @@ class MemoryRecord(BaseModel):
 
         # Age decay for preferences and observations (fresher = more trustworthy)
         if self.type in ["preference", "observation"]:
-            now = datetime.now(timezone.utc).replace(tzinfo=None)
-            created = self.created_at.replace(tzinfo=None) if self.created_at.tzinfo else self.created_at
+            now = datetime.now(timezone.utc)
+            created = self.created_at
+            if created.tzinfo is None:
+                created = created.replace(tzinfo=timezone.utc)
             age_days = (now - created).days
             if age_days > 90:  # 3 months
                 age_penalty = 0.2
@@ -221,8 +223,10 @@ class MemoryRecord(BaseModel):
         - recommendation: str
         """
         computed_conf = self.compute_confidence()
-        now = datetime.now(timezone.utc).replace(tzinfo=None)
-        created = self.created_at.replace(tzinfo=None) if self.created_at.tzinfo else self.created_at
+        now = datetime.now(timezone.utc)
+        created = self.created_at
+        if created.tzinfo is None:
+            created = created.replace(tzinfo=timezone.utc)
         age_days = (now - created).days
 
         # Determine trust level
