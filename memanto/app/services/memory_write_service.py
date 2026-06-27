@@ -258,6 +258,9 @@ class MemoryWriteService:
                 raise MemoryError(
                     f"Memory {memory_id} not found in namespace {namespace}"
                 )
+            original_document = self._document_from_existing(
+                memory_id, existing_memory_data
+            )
 
             # Step 2: Create updated MemoryRecord
             metadata = (
@@ -265,11 +268,16 @@ class MemoryWriteService:
                 if "metadata" in existing_memory_data
                 else existing_memory_data
             )
+            tags = updates.get("tags", metadata.get("tags", []))
+            if isinstance(tags, str):
+                tags = [tag.strip() for tag in tags.split(",") if tag.strip()]
 
             # Build updated memory record
             updated_memory = MemoryRecord(
                 id=memory_id,  # Keep same ID
-                type=updates.get("type", metadata.get("type", "fact")),
+                type=updates.get(
+                    "type", metadata.get("type", metadata.get("memory_type", "fact"))
+                ),
                 title=updates.get(
                     "title", existing_memory_data.get("title", "Updated Memory")
                 ),
@@ -281,7 +289,7 @@ class MemoryWriteService:
                 source_ref=updates.get("source_ref", metadata.get("source_ref")),
                 confidence=updates.get("confidence", metadata.get("confidence", 0.8)),
                 status=updates.get("status", metadata.get("status", "active")),
-                tags=updates.get("tags", metadata.get("tags", [])),
+                tags=tags,
             )
 
             # Update timestamps (preserve created_at, set updated_at to now)
@@ -322,9 +330,18 @@ class MemoryWriteService:
             from moorcheh_sdk.types.document import Document
 
             document = cast(Document, updated_memory.to_moorcheh_document())
-            upload_result = self.client.documents.upload(
-                namespace_name=namespace, documents=[document]
-            )
+            try:
+                upload_result = self.client.documents.upload(
+                    namespace_name=namespace, documents=[document]
+                )
+                self._raise_for_failed_upload(upload_result, memory_id, "updated")
+            except Exception as upload_error:
+                self._restore_original_memory(
+                    namespace=namespace,
+                    memory_id=memory_id,
+                    original_document=original_document,
+                    upload_error=upload_error,
+                )
 
             return {
                 "id": memory_id,
@@ -338,6 +355,123 @@ class MemoryWriteService:
 
         except Exception as e:
             raise MemoryError(f"Failed to update memory: {e}")
+
+    def _record_from_existing(
+        self, memory_id: str, existing_memory_data: dict[str, Any]
+    ) -> MemoryRecord:
+        """Reconstruct a memory record that can restore the deleted original."""
+
+        raw_metadata = existing_memory_data.get("metadata", {})
+        metadata = raw_metadata if isinstance(raw_metadata, dict) else {}
+
+        def field(name: str, default: Any = None, *aliases: str) -> Any:
+            for source in (existing_memory_data, metadata):
+                for key in (name, *aliases):
+                    value = source.get(key)
+                    if value is not None:
+                        return value
+            return default
+
+        tags = field("tags", [])
+        if isinstance(tags, str):
+            tags = [tag for tag in tags.split(",") if tag]
+
+        return MemoryRecord(
+            id=memory_id,
+            type=field("type", "fact", "memory_type"),
+            title=field("title", "Restored Memory"),
+            content=field("content", existing_memory_data.get("text", "")),
+            scope_type=field("scope_type", "agent"),
+            scope_id=field("scope_id", "unknown"),
+            actor_id=field("actor_id", "unknown"),
+            source=field("source", "system"),
+            source_ref=field("source_ref"),
+            confidence=field("confidence", 0.8),
+            status=field("status", "active"),
+            tags=tags,
+            provenance=field("provenance", "explicit_statement"),
+            superseded_by=field("superseded_by"),
+            supersedes=field("supersedes"),
+            validated_at=field("validated_at"),
+            validation_count=field("validation_count", 0),
+            contradiction_detected=field("contradiction_detected", False),
+            created_at=field("created_at", datetime.utcnow()),
+            updated_at=field("updated_at", datetime.utcnow()),
+            expires_at=field("expires_at"),
+            ttl_seconds=field("ttl_seconds"),
+        )
+
+    def _document_from_existing(
+        self, memory_id: str, existing_memory_data: dict[str, Any]
+    ) -> dict[str, Any]:
+        """Build the document to restore after a failed update upload."""
+
+        if isinstance(existing_memory_data.get("text"), str):
+            metadata = existing_memory_data.get("metadata")
+            document = {
+                key: value
+                for key, value in existing_memory_data.items()
+                if key not in {"content", "metadata", "title"}
+            }
+            if isinstance(metadata, dict):
+                for key, value in metadata.items():
+                    document.setdefault(key, value)
+            if isinstance(document.get("tags"), list):
+                document["tags"] = ",".join(
+                    str(tag).strip() for tag in document["tags"] if str(tag).strip()
+                )
+            document["id"] = memory_id
+            return document
+
+        return self._record_from_existing(
+            memory_id, existing_memory_data
+        ).to_moorcheh_document()
+
+    def _raise_for_failed_upload(
+        self, upload_result: Any, memory_id: str, document_label: str
+    ) -> None:
+        """Treat explicit failed upload statuses as unsuccessful writes."""
+
+        if not isinstance(upload_result, dict):
+            raise MemoryError(
+                f"Upload of {document_label} memory {memory_id} returned an invalid response"
+            )
+
+        status = str(upload_result.get("status", "")).lower()
+        if status in {"failed", "failure", "error"}:
+            raise MemoryError(
+                f"Upload of {document_label} memory {memory_id} failed with status '{status}'"
+            )
+
+    def _restore_original_memory(
+        self,
+        namespace: str,
+        memory_id: str,
+        original_document: dict[str, Any],
+        upload_error: Exception,
+    ) -> None:
+        """Best-effort restore after replacement upload fails post-delete."""
+
+        from typing import cast
+
+        from moorcheh_sdk.types.document import Document
+
+        document = cast(Document, original_document)
+        try:
+            restore_result = self.client.documents.upload(
+                namespace_name=namespace, documents=[document]
+            )
+            self._raise_for_failed_upload(restore_result, memory_id, "original")
+        except Exception as restore_error:
+            raise MemoryError(
+                f"Updated memory upload failed after deleting the original ({upload_error}); "
+                f"failed to restore original memory {memory_id}: {restore_error}"
+            ) from restore_error
+
+        raise MemoryError(
+            f"Updated memory upload failed after deleting the original; "
+            f"restored original memory {memory_id}: {upload_error}"
+        ) from upload_error
 
     def delete_memory(self, memory_id: str, namespace: str) -> bool:
         """Delete memory by ID"""
