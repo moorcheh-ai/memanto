@@ -200,3 +200,6 @@ class TestOnPremStateConfig:
 
         assert os.environ["MOORCHEH_ONPREM_URL"] == "http://127.0.0.1:18080"
         assert os.environ["MOORCHEH_ONPREM_EMBEDDING_PROVIDER"] == "ollama"
+
+        monkeypatch.delenv("MOORCHEH_ONPREM_URL", raising=False)
+        monkeypatch.delenv("MOORCHEH_ONPREM_EMBEDDING_PROVIDER", raising=False)

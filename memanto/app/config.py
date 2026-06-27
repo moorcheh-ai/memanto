@@ -6,6 +6,7 @@ CLI config models have been moved to cli/config/manager.py.
 """
 
 import json
+import logging
 import os
 from pathlib import Path
 
@@ -14,11 +15,14 @@ from dotenv import load_dotenv
 from pydantic import BaseModel
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+logger = logging.getLogger(__name__)
+
 # Load project .env first, then ~/.memanto/.env for the API key
 load_dotenv()
 _memanto_env = Path.home() / ".memanto" / ".env"
 if _memanto_env.exists():
     load_dotenv(_memanto_env, override=True)
+
 
 def _apply_user_config(config_file: Path) -> None:
     """Apply server-facing overrides from the shared user config file."""
@@ -59,7 +63,7 @@ def _apply_user_config(config_file: Path) -> None:
             if _backend:
                 os.environ["MEMANTO_BACKEND"] = str(_backend)
     except Exception:
-        pass
+        logger.debug("Failed to apply user config from %s", config_file, exc_info=True)
 
 
 def _apply_onprem_state(state_path: Path) -> None:
@@ -76,7 +80,7 @@ def _apply_onprem_state(state_path: Path) -> None:
         if _op_embed:
             os.environ["MOORCHEH_ONPREM_EMBEDDING_PROVIDER"] = str(_op_embed)
     except Exception:
-        pass
+        logger.debug("Failed to apply on-prem state from %s", state_path, exc_info=True)
 
 
 # Load model override from ~/.memanto/config.yaml
