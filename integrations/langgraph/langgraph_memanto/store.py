@@ -8,8 +8,7 @@ Mapping between abstractions
 ----------------------------
 
     BaseStore                         ->  Memanto
-    namespace (tuple[str, ...])       ->  agent_id       (``langgraph_<p0>_<p1>...``)
-                                                (underscores in parts escaped as ``__``)
+    namespace (tuple[str, ...])       ->  agent_id       (``langgraph_v2_<encoded-parts>``)
     key (str)                         ->  reserved tag   ``lg:key:<key>``
     value["kind"] / value["type"]     ->  memory_type    (auto-parsed if absent)
     value["title"]                    ->  title          (auto-derived if absent)
@@ -35,6 +34,7 @@ Documented limitations
 from __future__ import annotations
 
 import asyncio
+import base64
 import logging
 import threading
 import time
@@ -387,7 +387,14 @@ class MemantoStore(BaseStore):
             agent_id = agent.get("agent_id") or agent.get("id") or ""
             if agent_id.startswith(self._agent_prefix):
                 ns_str = agent_id[len(self._agent_prefix) :]
-                namespaces.append(self._agent_suffix_to_namespace(ns_str))
+                try:
+                    namespaces.append(self._agent_suffix_to_namespace(ns_str))
+                except ValueError as exc:
+                    logger.warning(
+                        "MemantoStore: skipping invalid LangGraph agent id %r: %s",
+                        agent_id,
+                        exc,
+                    )
 
         if op.match_conditions:
             for cond in op.match_conditions:
@@ -412,11 +419,66 @@ class MemantoStore(BaseStore):
     @staticmethod
     def _namespace_to_agent_suffix(namespace: tuple[str, ...]) -> str:
         if not namespace:
-            return "default"
-        return "_".join(str(part).replace("_", "__") for part in namespace)
+            return "v2_0"
+
+        encoded_parts = []
+        for part in namespace:
+            encoded = base64.urlsafe_b64encode(str(part).encode("utf-8")).decode(
+                "ascii"
+            )
+            encoded = encoded.rstrip("=")
+            encoded_parts.append(f"{len(encoded)}z{encoded}")
+
+        return f"v2_{len(namespace)}_" + "".join(encoded_parts)
 
     @staticmethod
     def _agent_suffix_to_namespace(suffix: str) -> tuple[str, ...]:
+        if suffix.startswith("v2_"):
+            return MemantoStore._decode_v2_agent_suffix(suffix)
+        return MemantoStore._decode_legacy_agent_suffix(suffix)
+
+    @staticmethod
+    def _decode_v2_agent_suffix(suffix: str) -> tuple[str, ...]:
+        count_and_payload = suffix[len("v2_") :]
+        count_text, separator, payload = count_and_payload.partition("_")
+        if not count_text.isdigit():
+            raise ValueError(f"Invalid LangGraph namespace suffix: {suffix!r}")
+
+        part_count = int(count_text)
+        if part_count == 0:
+            if separator or payload:
+                raise ValueError(
+                    f"Invalid empty LangGraph namespace suffix: {suffix!r}"
+                )
+            return ()
+        if not separator:
+            raise ValueError(f"Missing LangGraph namespace payload: {suffix!r}")
+
+        parts: list[str] = []
+        idx = 0
+        for _ in range(part_count):
+            marker = payload.find("z", idx)
+            if marker == -1 or not payload[idx:marker].isdigit():
+                raise ValueError(f"Invalid LangGraph namespace payload: {suffix!r}")
+
+            encoded_len = int(payload[idx:marker])
+            encoded_start = marker + 1
+            encoded_end = encoded_start + encoded_len
+            encoded = payload[encoded_start:encoded_end]
+            if len(encoded) != encoded_len:
+                raise ValueError(f"Truncated LangGraph namespace payload: {suffix!r}")
+
+            padding = "=" * (-len(encoded) % 4)
+            parts.append(base64.urlsafe_b64decode(encoded + padding).decode("utf-8"))
+            idx = encoded_end
+
+        if idx != len(payload):
+            raise ValueError(f"Trailing LangGraph namespace payload: {suffix!r}")
+
+        return tuple(parts)
+
+    @staticmethod
+    def _decode_legacy_agent_suffix(suffix: str) -> tuple[str, ...]:
         if suffix == "default":
             return ()
 
