@@ -657,30 +657,27 @@ class MemoryReadService:
         content = raw_text
 
         if raw_text:
-            lines = raw_text.split("\n\n", 2)  # Split into at most 3 parts
-            first_line = lines[0] if lines else ""
+            first_line, separator, body = raw_text.partition("\n\n")
 
             # Extract title: strip the "[TYPE] " prefix from first line
 
             title_match = re.match(r"^\[.*?\]\s*(.*)$", first_line)
             if title_match:
                 title = title_match.group(1).strip()
-                # Content is the rest after the first line (skip tags section)
-                if len(lines) > 1:
-                    # Check if last part is tags
-                    remaining = lines[1:]
-                    content_parts = []
-                    for part in remaining:
-                        if part.startswith("Tags: "):
-                            continue
-                        content_parts.append(part)
-                    content = "\n\n".join(content_parts) if content_parts else ""
-                else:
-                    content = ""
+                content = body if separator else ""
+                if tags:
+                    before_tags, tag_separator, tag_text = content.rpartition(
+                        "\n\nTags: "
+                    )
+                    if tag_separator:
+                        parsed_tags = [tag.strip() for tag in tag_text.split(",")]
+                        metadata_tags = [str(tag).strip() for tag in tags]
+                        if parsed_tags == metadata_tags:
+                            content = before_tags
             else:
                 # No [TYPE] prefix — use first line as title, rest as content
                 title = first_line.strip()
-                content = "\n\n".join(lines[1:]) if len(lines) > 1 else ""
+                content = body if separator else ""
 
         # Build basic formatted item
         formatted = {

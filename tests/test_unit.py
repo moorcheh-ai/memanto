@@ -288,6 +288,37 @@ class TestMemoryWriteServiceDelete:
         assert MemoryWriteService(client).delete_memory("m1", "ns") is expected
 
 
+class TestMemoryReadServiceFormatting:
+    """Regression coverage for formatting Moorcheh document text."""
+
+    def test_tag_like_content_paragraphs_are_preserved(self):
+        """Keep user-authored body paragraphs that look like serialized tags."""
+        from memanto.app.core import MemoryRecord
+        from memanto.app.services.memory_read_service import MemoryReadService
+
+        memory = MemoryRecord(
+            type="fact",
+            title="Runbook note",
+            content=(
+                "Before deploy, capture the current feature flags.\n\n"
+                "Tags: this is part of the runbook body, not metadata.\n\n"
+                "Then record the rollback owner."
+            ),
+            scope_type="agent",
+            scope_id="ops-agent",
+            actor_id="ops-agent",
+            source="agent",
+            tags=["deploy", "runbook"],
+        )
+
+        formatted = MemoryReadService(MagicMock())._format_memory_item(
+            memory.to_moorcheh_document()
+        )
+
+        assert formatted["content"] == memory.content
+        assert formatted["tags"] == ["deploy", "runbook"]
+
+
 class TestForgetEndToEnd:
     """End-to-end ``forget`` flow through ``DirectClient``: create agent →
     activate → delete_memory. Asserts on-prem's response shape
