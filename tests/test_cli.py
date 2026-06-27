@@ -558,6 +558,7 @@ class TestMEMANTOCLI:
         result = runner.invoke(app, ["agent", "deactivate"])
         assert result.exit_code == 0
         assert "deactivated" in result.stdout.lower()
+        mock_all_clients.deactivate_agent.assert_called_once_with("test-agent")
 
     def test_agent_delete_keep_cloud(self, mock_all_clients):
         """Test 'memanto agent delete --force' keeping cloud memories (default)"""
