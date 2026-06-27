@@ -55,7 +55,7 @@ class MemoryWriteService:
             namespace = memory.get_scope().to_namespace()
 
             # Validate memory
-            from memanto.app.services.memory_validation_service import MemoryValidationService
+            from memanto.app.legacy.memory_validation_service import MemoryValidationService
             validation_service = MemoryValidationService(self.client)
             validation_result = validation_service.validate_memory(memory, context)
             # Use validated memory if modified
@@ -149,7 +149,7 @@ class MemoryWriteService:
                         continue
 
                     # Validate memory
-                    from memanto.app.services.memory_validation_service import MemoryValidationService
+                    from memanto.app.legacy.memory_validation_service import MemoryValidationService
                     validation_service = MemoryValidationService(self.client)
                     validation_result = validation_service.validate_memory(memory, context)
                     # Use validated memory if modified

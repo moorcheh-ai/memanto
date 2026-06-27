@@ -21,10 +21,10 @@ class MemoryValidationService:
     ) -> dict[str, Any]:
         """Validate memory according to policy"""
         try:
-            context = context or {}
+            context = dict(context or {})
 
             # Add repetition check
-            if not context.get("repetition_count"):
+            if context.get("repetition_count") is None:
                 context["repetition_count"] = self._check_repetition(memory)
 
             # Validate using policy
