@@ -798,6 +798,8 @@ def status():
     elif has_session and not server_online:
         try:
             direct = get_client()
+            direct.session_token = active_session_token
+            direct.agent_id = active_agent_id
             session_data = direct.get_session_info()
 
             sess_table = Table(show_header=False, box=None, padding=(0, 2))
