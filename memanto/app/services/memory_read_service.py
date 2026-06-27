@@ -16,12 +16,16 @@ from memanto.app.utils.errors import MemoryError
 
 
 class MemoryReadService:
+    """Read and format memories from Moorcheh-backed namespaces."""
+
     def __init__(self, moorcheh_client: "MoorchehClient"):
+        """Create a memory reader for the provided Moorcheh client."""
         self.client = moorcheh_client
         self._namespace_service = None
 
     @property
     def namespace_service(self):
+        """Lazily construct the namespace service used for read queries."""
         if self._namespace_service is None:
             from memanto.app.services.namespace_service import NamespaceService
 
