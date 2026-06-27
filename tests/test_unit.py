@@ -268,6 +268,33 @@ class TestMemoryWriteServiceDelete:
         assert MemoryWriteService(client).delete_memory("m1", "ns") is expected
 
 
+class TestMemoryReadService:
+    def test_search_multi_scope_builds_namespaces(self):
+        from memanto.app.services.memory_read_service import MemoryReadService
+
+        client = MagicMock()
+        client.similarity_search.query.return_value = {
+            "results": [],
+            "execution_time": 0.01,
+        }
+
+        result = MemoryReadService(client).search_multi_scope(
+            "release notes",
+            scopes=[
+                {"scope_type": "agent", "scope_id": "agent-a"},
+                {"scope_type": "agent", "scope_id": "agent-b"},
+            ],
+        )
+
+        assert result["searched_namespaces"] == [
+            "memanto_agent_agent-a",
+            "memanto_agent_agent-b",
+        ]
+        client.similarity_search.query.assert_called_once()
+        call_kwargs = client.similarity_search.query.call_args.kwargs
+        assert call_kwargs["namespaces"] == result["searched_namespaces"]
+
+
 class TestForgetEndToEnd:
     """End-to-end ``forget`` flow through ``DirectClient``: create agent →
     activate → delete_memory. Asserts on-prem's response shape
