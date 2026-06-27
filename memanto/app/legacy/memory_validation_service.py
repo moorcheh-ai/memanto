@@ -23,10 +23,9 @@ class MemoryValidationService:
         try:
             context = context or {}
 
-            ## Add repetition check
-            # if not context.get("repetition_count"):
-            #     context["repetition_count"] = self._check_repetition(memory)
-            context["repetition_count"] = 0
+            # Add repetition check
+            if not context.get("repetition_count"):
+                context["repetition_count"] = self._check_repetition(memory)
 
             # Validate using policy
             validation_result = self.policy.validate_memory(memory, context)

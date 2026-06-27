@@ -54,13 +54,13 @@ class MemoryWriteService:
             # Add namespace
             namespace = memory.get_scope().to_namespace()
 
-            # skip validation for speed
-            ## Validate memory
-            # validation_result = self.validation_service.validate_memory(memory, context)
-            ## Use validated memory if modified
-            # if "memory" in validation_result:
-            #     memory = validation_result["memory"]
-            validation_result = {"action": "store", "reason": "MVP direct store"}
+            # Validate memory
+            from memanto.app.services.memory_validation_service import MemoryValidationService
+            validation_service = MemoryValidationService(self.client)
+            validation_result = validation_service.validate_memory(memory, context)
+            # Use validated memory if modified
+            if "memory" in validation_result:
+                memory = validation_result["memory"]
 
             from typing import cast
 
@@ -148,16 +148,13 @@ class MemoryWriteService:
                         )
                         continue
 
-                    # skip validation for speed
-                    ## Validate memory
-                    # validation_result = self.validation_service.validate_memory(memory, context)
-                    ## Use validated memory if modified
-                    # if "memory" in validation_result:
-                    #     memory = validation_result["memory"]
-                    validation_result = {
-                        "action": "store",
-                        "reason": "MVP direct store",
-                    }
+                    # Validate memory
+                    from memanto.app.services.memory_validation_service import MemoryValidationService
+                    validation_service = MemoryValidationService(self.client)
+                    validation_result = validation_service.validate_memory(memory, context)
+                    # Use validated memory if modified
+                    if "memory" in validation_result:
+                        memory = validation_result["memory"]
 
                     from typing import cast
 
