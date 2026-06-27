@@ -54,13 +54,14 @@ class MemoryWriteService:
             # Add namespace
             namespace = memory.get_scope().to_namespace()
 
-            # skip validation for speed
-            ## Validate memory
-            # validation_result = self.validation_service.validate_memory(memory, context)
-            ## Use validated memory if modified
-            # if "memory" in validation_result:
-            #     memory = validation_result["memory"]
-            validation_result = {"action": "store", "reason": "MVP direct store"}
+            # Validate memory using ValidationPolicy
+            from memanto.app.core import ValidationPolicy
+
+            validation_result = ValidationPolicy.validate_memory(memory, context)
+
+            # Apply validation policy
+            if validation_result.get("action") == "store_provisional":
+                memory = ValidationPolicy.make_provisional(memory)
 
             from typing import cast
 
@@ -148,16 +149,14 @@ class MemoryWriteService:
                         )
                         continue
 
-                    # skip validation for speed
-                    ## Validate memory
-                    # validation_result = self.validation_service.validate_memory(memory, context)
-                    ## Use validated memory if modified
-                    # if "memory" in validation_result:
-                    #     memory = validation_result["memory"]
-                    validation_result = {
-                        "action": "store",
-                        "reason": "MVP direct store",
-                    }
+                    # Validate memory using ValidationPolicy
+                    from memanto.app.core import ValidationPolicy
+
+                    validation_result = ValidationPolicy.validate_memory(memory, context)
+
+                    # Apply validation policy
+                    if validation_result.get("action") == "store_provisional":
+                        memory = ValidationPolicy.make_provisional(memory)
 
                     from typing import cast
 
@@ -306,25 +305,34 @@ class MemoryWriteService:
                 if metadata.get("expires_at"):
                     updated_memory.expires_at = metadata["expires_at"]
 
-            # Step 3: Delete old version
-            delete_result = self.client.documents.delete(
-                namespace_name=namespace, ids=[memory_id]
-            )
-
-            if delete_result.get("actual_deletions", 0) == 0:
-                raise MemoryError(f"Failed to delete old version of memory {memory_id}")
-
-            validation_result = {"action": "store", "reason": "MVP direct store"}
-
-            # Step 4: Upload new version
+            # Step 3: Upload new version FIRST (prevents data loss if upload fails)
             from typing import cast
 
             from moorcheh_sdk.types.document import Document
+
+            # Validate memory before upload
+            from memanto.app.core import ValidationPolicy
+
+            validation_result = ValidationPolicy.validate_memory(updated_memory, context)
+
+            # Apply validation policy
+            if validation_result.get("action") == "store_provisional":
+                updated_memory = ValidationPolicy.make_provisional(updated_memory)
 
             document = cast(Document, updated_memory.to_moorcheh_document())
             upload_result = self.client.documents.upload(
                 namespace_name=namespace, documents=[document]
             )
+
+            # Step 4: Only delete old version after successful upload
+            delete_result = self.client.documents.delete(
+                namespace_name=namespace, ids=[memory_id]
+            )
+
+            if delete_result.get("actual_deletions", 0) == 0:
+                # Upload succeeded but delete failed - this is acceptable
+                # as the new version is already in place
+                pass
 
             return {
                 "id": memory_id,
