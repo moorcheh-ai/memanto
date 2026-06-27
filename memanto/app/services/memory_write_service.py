@@ -55,7 +55,13 @@ class MemoryWriteService:
     def store_memory(
         self, memory: MemoryRecord, context: dict[str, Any] | None = None
     ) -> dict[str, Any]:
-        """Store memory with validation"""
+        """Store one memory and fail if the backend rejects the upload.
+
+        Moorcheh can acknowledge accepted writes with asynchronous statuses such as
+        ``queued`` or ``processing``. Any other upload status is treated as a
+        rejected write and surfaced as ``MemoryError`` instead of reporting a
+        successful store.
+        """
         try:
             # Generate ID if not provided
             if not memory.id:
