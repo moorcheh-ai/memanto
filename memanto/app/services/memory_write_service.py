@@ -282,6 +282,13 @@ class MemoryWriteService:
                 confidence=updates.get("confidence", metadata.get("confidence", 0.8)),
                 status=updates.get("status", metadata.get("status", "active")),
                 tags=updates.get("tags", metadata.get("tags", [])),
+                # Preserve trust/provenance fields from original
+                provenance=metadata.get("provenance", "explicit_statement"),
+                validation_count=metadata.get("validation_count", 0),
+                contradiction_detected=metadata.get("contradiction_detected", False),
+                validated_at=metadata.get("validated_at"),
+                superseded_by=metadata.get("superseded_by"),
+                supersedes=metadata.get("supersedes"),
             )
 
             # Update timestamps (preserve created_at, set updated_at to now)

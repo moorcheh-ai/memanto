@@ -4,7 +4,7 @@ MEMANTO Core Architecture - Namespace Strategy & Memory Records
 
 import re
 import uuid
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 from pydantic import BaseModel, Field
@@ -34,7 +34,7 @@ class MemoryScope(BaseModel):
         """Parse namespace back to scope"""
         from typing import cast
 
-        parts = namespace.split("_")
+        parts = namespace.split("_", 2)
         if len(parts) != 3 or parts[0] != "memanto":
             raise ValueError(f"Invalid MEMANTO namespace format: {namespace}")
         return cls(scope_type=cast(ScopeType, parts[1]), scope_id=parts[2])
@@ -169,7 +169,9 @@ class MemoryRecord(BaseModel):
 
         # Age decay for preferences and observations (fresher = more trustworthy)
         if self.type in ["preference", "observation"]:
-            age_days = (datetime.utcnow() - self.created_at).days
+            now = datetime.now(timezone.utc).replace(tzinfo=None)
+            created = self.created_at.replace(tzinfo=None) if self.created_at.tzinfo else self.created_at
+            age_days = (now - created).days
             if age_days > 90:  # 3 months
                 age_penalty = 0.2
             elif age_days > 30:  # 1 month
@@ -219,7 +221,9 @@ class MemoryRecord(BaseModel):
         - recommendation: str
         """
         computed_conf = self.compute_confidence()
-        age_days = (datetime.utcnow() - self.created_at).days
+        now = datetime.now(timezone.utc).replace(tzinfo=None)
+        created = self.created_at.replace(tzinfo=None) if self.created_at.tzinfo else self.created_at
+        age_days = (now - created).days
 
         # Determine trust level
         if computed_conf >= 0.8 and not self.contradiction_detected:

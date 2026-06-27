@@ -101,7 +101,13 @@ Format the output as a Markdown report:
             raise MemoryError(f"AI summarization failed: {str(e)}")
 
         if output_path:
-            summary_path = Path(output_path)
+            summary_path = Path(output_path).resolve()
+            # Security: prevent path traversal outside data directory
+            allowed_base = get_data_dir().resolve()
+            if not str(summary_path).startswith(str(allowed_base)):
+                raise MemoryError(
+                    f"output_path must be within the data directory ({allowed_base}), got: {summary_path}"
+                )
             # Ensure parent directories exist
             summary_path.parent.mkdir(parents=True, exist_ok=True)
         else:
