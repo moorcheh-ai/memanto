@@ -9,6 +9,7 @@ Mapping between abstractions
 
     BaseStore                         ->  Memanto
     namespace (tuple[str, ...])       ->  agent_id       (``langgraph_<p0>_<p1>...``)
+                                                (underscores in parts escaped as ``__``)
     key (str)                         ->  reserved tag   ``lg:key:<key>``
     value["kind"] / value["type"]     ->  memory_type    (auto-parsed if absent)
     value["title"]                    ->  title          (auto-derived if absent)
@@ -109,7 +110,7 @@ class MemantoStore(BaseStore):
         self._last_good: dict[tuple[str, ...], list[SearchItem]] = {}
 
     def _ensure_client(self, namespace: tuple[str, ...]) -> tuple[SdkClient, str]:
-        ns_str = "_".join(namespace) or "default"
+        ns_str = self._namespace_to_agent_suffix(namespace)
         agent_id = f"{self._agent_prefix}{ns_str}"
         with self._lock:
             if agent_id in self._client_pool:
@@ -386,10 +387,7 @@ class MemantoStore(BaseStore):
             agent_id = agent.get("agent_id") or agent.get("id") or ""
             if agent_id.startswith(self._agent_prefix):
                 ns_str = agent_id[len(self._agent_prefix) :]
-                if ns_str == "default":
-                    namespaces.append(())
-                else:
-                    namespaces.append(tuple(ns_str.split("_")))
+                namespaces.append(self._agent_suffix_to_namespace(ns_str))
 
         if op.match_conditions:
             for cond in op.match_conditions:
@@ -410,6 +408,39 @@ class MemantoStore(BaseStore):
     # ------------------------------------------------------------------ #
     # Encoding helpers                                                   #
     # ------------------------------------------------------------------ #
+
+    @staticmethod
+    def _namespace_to_agent_suffix(namespace: tuple[str, ...]) -> str:
+        if not namespace:
+            return "default"
+        return "_".join(str(part).replace("_", "__") for part in namespace)
+
+    @staticmethod
+    def _agent_suffix_to_namespace(suffix: str) -> tuple[str, ...]:
+        if suffix == "default":
+            return ()
+
+        parts: list[str] = []
+        current: list[str] = []
+        idx = 0
+        while idx < len(suffix):
+            char = suffix[idx]
+            if char != "_":
+                current.append(char)
+                idx += 1
+                continue
+
+            if idx + 1 < len(suffix) and suffix[idx + 1] == "_":
+                current.append("_")
+                idx += 2
+                continue
+
+            parts.append("".join(current))
+            current = []
+            idx += 1
+
+        parts.append("".join(current))
+        return tuple(parts)
 
     @staticmethod
     def _key_to_tag(key: str) -> str:
