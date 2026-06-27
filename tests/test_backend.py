@@ -180,6 +180,8 @@ class TestDataDirRouting:
 
 
 class TestOnPremStateConfig:
+    """On-prem state should load even when shared cloud config is absent."""
+
     def test_on_prem_state_loads_without_shared_config(self, tmp_path, monkeypatch):
         """On-prem onboarding writes state.json, not necessarily config.yaml."""
         from memanto.app import config as app_config
