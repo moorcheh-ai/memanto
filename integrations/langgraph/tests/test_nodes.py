@@ -77,6 +77,69 @@ def test_dynamic_agent_id_from_config():
     )
 
 
+class SessionTrackingClient:
+    def __init__(self):
+        self.agent_id = "bob"
+        self.session_token = "TOKEN_bob"
+        self.mismatched_calls = []
+        self.remembered = []
+
+    def create_agent(self, *, agent_id, pattern):
+        assert pattern == "tool"
+
+    def activate_agent(self, agent_id, duration_hours=6):
+        self.agent_id = agent_id
+        self.session_token = f"TOKEN_{agent_id}"
+        return {"session_token": self.session_token}
+
+    def recall(self, *, agent_id, query):
+        if self.agent_id != agent_id:
+            self.mismatched_calls.append(("recall", agent_id, self.agent_id))
+            raise AssertionError("recall used another agent's session")
+        return {
+            "memories": [
+                {"title": f"{agent_id} memory", "content": query, "type": "fact"}
+            ]
+        }
+
+    def remember(self, **kwargs):
+        agent_id = kwargs["agent_id"]
+        if self.agent_id != agent_id:
+            self.mismatched_calls.append(("remember", agent_id, self.agent_id))
+            raise AssertionError("remember used another agent's session")
+        self.remembered.append(kwargs)
+        return {"memory_id": f"mem-{agent_id}"}
+
+
+def test_recall_rebinds_stale_dynamic_agent_session_before_call():
+    client = SessionTrackingClient()
+    node = create_recall_node(client=client, agent_id_from_config="agent_id")
+
+    state = {"messages": [HumanMessage(content="private preference")]}
+    config = {"configurable": {"agent_id": "alice"}}
+
+    result = node(state, config=config)
+
+    assert not client.mismatched_calls
+    assert client.agent_id == "alice"
+    assert "private preference" in result["messages"][0].content
+
+
+def test_remember_rebinds_stale_dynamic_agent_session_before_call():
+    client = SessionTrackingClient()
+    node = create_remember_node(client=client, agent_id_from_config="agent_id")
+
+    state = {"messages": [HumanMessage(content="private memory")]}
+    config = {"configurable": {"agent_id": "alice"}}
+
+    result = node(state, config=config)
+
+    assert result == {"messages": []}
+    assert not client.mismatched_calls
+    assert client.agent_id == "alice"
+    assert client.remembered[0]["agent_id"] == "alice"
+
+
 def test_recall_no_human_message():
     client = MagicMock()
     node = create_recall_node(client=client, agent_id="test-agent")

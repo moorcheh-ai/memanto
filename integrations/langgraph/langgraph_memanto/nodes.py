@@ -1,4 +1,5 @@
 import logging
+import threading
 from typing import Any
 
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
@@ -7,6 +8,30 @@ from langchain_core.runnables import RunnableConfig
 from memanto.cli.client.sdk_client import SdkClient
 
 logger = logging.getLogger(__name__)
+_RLOCK_TYPE = type(threading.RLock())
+
+
+def _get_client_session_lock(client: SdkClient) -> threading.RLock:
+    lock = getattr(client, "_memanto_langgraph_session_lock", None)
+    if not isinstance(lock, _RLOCK_TYPE):
+        lock = threading.RLock()
+        try:
+            client._memanto_langgraph_session_lock = lock
+        except Exception:
+            pass
+    return lock
+
+
+def _attr_str_or_none(obj: Any, name: str) -> str | None:
+    value = getattr(obj, name, None)
+    return value if isinstance(value, str) and value else None
+
+
+def _session_can_be_reused(client: SdkClient, agent_id: str) -> bool:
+    session_token = _attr_str_or_none(client, "session_token")
+    if session_token is None:
+        return True
+    return _attr_str_or_none(client, "agent_id") == agent_id
 
 
 def _extract_text_content(content: Any) -> str:
@@ -35,6 +60,8 @@ def create_recall_node(
     and retrieves relevant memories from Memanto.
     """
 
+    session_lock = _get_client_session_lock(client)
+
     def _do_setup(resolved_agent_id: str):
         try:
             client.create_agent(agent_id=resolved_agent_id, pattern="tool")
@@ -43,6 +70,7 @@ def create_recall_node(
         try:
             result = client.activate_agent(resolved_agent_id, duration_hours=6)
             client.session_token = result.get("session_token")
+            client.agent_id = resolved_agent_id
         except Exception:
             pass
 
@@ -75,24 +103,27 @@ def create_recall_node(
             return {"messages": []}
 
         try:
-            # First try assuming the session is already active (saves an API call)
-            result = client.recall(
-                agent_id=resolved_agent_id,
-                query=query,
-            )
-        except Exception:
-            # If there's an error (e.g. no active session), try to setup and retry
-            _do_setup(resolved_agent_id)
-            try:
-                result = client.recall(
-                    agent_id=resolved_agent_id,
-                    query=query,
-                )
-            except Exception as inner_e:
-                logger.error(f"Recall failed after setup: {inner_e}")
-                if output_key:
-                    return {output_key: None}
-                return {"messages": []}
+            with session_lock:
+                if not _session_can_be_reused(client, resolved_agent_id):
+                    _do_setup(resolved_agent_id)
+                try:
+                    # First try assuming the session is already active (saves an API call)
+                    result = client.recall(
+                        agent_id=resolved_agent_id,
+                        query=query,
+                    )
+                except Exception:
+                    # If there's an error (e.g. no active session), try to setup and retry
+                    _do_setup(resolved_agent_id)
+                    result = client.recall(
+                        agent_id=resolved_agent_id,
+                        query=query,
+                    )
+        except Exception as inner_e:
+            logger.error(f"Recall failed after setup: {inner_e}")
+            if output_key:
+                return {output_key: None}
+            return {"messages": []}
         if not result:
             if output_key:
                 return {output_key: None}
@@ -142,6 +173,8 @@ def create_remember_node(
     This node extracts the latest messages and stores them in Memanto.
     """
 
+    session_lock = _get_client_session_lock(client)
+
     def _do_setup(resolved_agent_id: str):
         try:
             client.create_agent(agent_id=resolved_agent_id, pattern="tool")
@@ -150,6 +183,7 @@ def create_remember_node(
         try:
             result = client.activate_agent(resolved_agent_id, duration_hours=6)
             client.session_token = result.get("session_token")
+            client.agent_id = resolved_agent_id
         except Exception:
             pass
 
@@ -192,29 +226,33 @@ def create_remember_node(
         title = content if len(content) <= 50 else content[:47] + "..."
 
         try:
-            # First try assuming the session is already active
-            client.remember(
-                agent_id=resolved_agent_id,
-                memory_type=None,
-                title=title,
-                content=content,
-                source="langgraph-node",
-                provenance="explicit_statement",
-            )
-        except Exception:
-            # If there's an error, try to setup and retry
-            _do_setup(resolved_agent_id)
-            try:
-                client.remember(
-                    agent_id=resolved_agent_id,
-                    memory_type=None,
-                    title=title,
-                    content=content,
-                    source="langgraph-node",
-                    provenance="explicit_statement",
-                )
-            except Exception as inner_e:
-                logger.error(f"Remember failed after setup: {inner_e}")
+            with session_lock:
+                if not _session_can_be_reused(client, resolved_agent_id):
+                    _do_setup(resolved_agent_id)
+                try:
+                    # First try assuming the session is already active
+                    client.remember(
+                        agent_id=resolved_agent_id,
+                        memory_type=None,
+                        title=title,
+                        content=content,
+                        source="langgraph-node",
+                        provenance="explicit_statement",
+                    )
+                except Exception:
+                    # If there's an error, try to setup and retry
+                    _do_setup(resolved_agent_id)
+                    client.remember(
+                        agent_id=resolved_agent_id,
+                        memory_type=None,
+                        title=title,
+                        content=content,
+                        source="langgraph-node",
+                        provenance="explicit_statement",
+                    )
+        except Exception as inner_e:
+            logger.error(f"Remember failed after setup: {inner_e}")
+            return {"messages": []}
         return {"messages": []}
 
     return remember_node
