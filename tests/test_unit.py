@@ -349,6 +349,18 @@ class TestForgetEndToEnd:
 class TestMEMANTOArchitecture:
     """Tests for MEMANTO architecture principles"""
 
+    def test_namespace_roundtrip_preserves_ids_with_underscores(self):
+        """Scope IDs may contain underscores and must round-trip losslessly."""
+        from memanto.app.core import MemoryScope, parse_namespace
+
+        scope = MemoryScope(scope_type="agent", scope_id="customer_support_v2")
+        namespace = scope.to_namespace()
+
+        assert namespace == "memanto_agent_customer_support_v2"
+        parsed = parse_namespace(namespace)
+        assert parsed.scope_type == "agent"
+        assert parsed.scope_id == "customer_support_v2"
+
     def test_no_tenant_id_in_namespace(self):
         """Verify namespace format does NOT include tenant_id"""
         from memanto.app.services.session_service import SessionService
