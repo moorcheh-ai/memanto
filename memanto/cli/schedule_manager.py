@@ -114,6 +114,7 @@ class ScheduleManager:
             }
 
     def _disable_windows(self) -> dict[str, Any]:
+        """Remove the Windows scheduled task if it exists."""
         command = ["schtasks", "/delete", "/tn", self.TASK_NAME, "/f"]
         try:
             subprocess.run(command, capture_output=True, text=True, check=True)
@@ -127,6 +128,7 @@ class ScheduleManager:
             return {"status": "error", "message": f"Failed to remove task: {e.stderr}"}
 
     def _status_windows(self) -> dict[str, Any]:
+        """Query the Windows scheduled task and return enabled status details."""
         command = ["schtasks", "/query", "/tn", self.TASK_NAME, "/fo", "LIST"]
         try:
             result = subprocess.run(command, capture_output=True, text=True, check=True)
@@ -165,6 +167,7 @@ class ScheduleManager:
             return {"status": "error", "message": f"Failed to update crontab: {str(e)}"}
 
     def _disable_unix(self) -> dict[str, Any]:
+        """Remove the managed crontab entry without disturbing other jobs."""
         marker = f"# {self.TASK_NAME}"
         try:
             current_cron = subprocess.run(
@@ -181,6 +184,7 @@ class ScheduleManager:
             return {"status": "error", "message": f"Failed to disable: {str(e)}"}
 
     def _status_unix(self) -> dict[str, Any]:
+        """Inspect the crontab marker used by the managed nightly job."""
         marker = f"# {self.TASK_NAME}"
         try:
             current_cron = subprocess.run(
