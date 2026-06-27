@@ -268,6 +268,44 @@ class TestMemoryWriteServiceDelete:
         assert MemoryWriteService(client).delete_memory("m1", "ns") is expected
 
 
+class TestMemoryWriteServiceBatch:
+    """Batch writes should account for every submitted memory."""
+
+    def _memory(self, content: str):
+        from memanto.app.core import MemoryRecord
+
+        return MemoryRecord(
+            type="fact",
+            title=content,
+            content=content,
+            scope_type="agent",
+            scope_id="test-agent",
+            actor_id="test-agent",
+            source="user",
+        )
+
+    def test_batch_upload_error_counts_pending_items_as_failed(self):
+        from memanto.app.services.memory_write_service import MemoryWriteService
+
+        client = MagicMock()
+        client.documents.upload.return_value = {
+            "status": "error",
+            "message": "backend rejected batch",
+        }
+
+        result = MemoryWriteService(client).batch_store_memories(
+            [self._memory("Batch memory 1"), self._memory("Batch memory 2")]
+        )
+
+        assert result["total_submitted"] == 2
+        assert result["successful"] == 0
+        assert result["failed"] == 2
+        assert [item["status"] for item in result["results"]] == ["error", "error"]
+        assert all(
+            "backend rejected batch" in item["error"] for item in result["results"]
+        )
+
+
 class TestForgetEndToEnd:
     """End-to-end ``forget`` flow through ``DirectClient``: create agent →
     activate → delete_memory. Asserts on-prem's response shape

@@ -13,6 +13,24 @@ from memanto.app.services.memory_parsing_service import MemoryParsingService
 from memanto.app.utils.errors import MemoryError
 from memanto.app.utils.ids import generate_memory_id
 
+_SUCCESSFUL_BATCH_UPLOAD_STATUSES = {
+    "accepted",
+    "complete",
+    "completed",
+    "ok",
+    "pending",
+    "processing",
+    "queued",
+    "success",
+    "uploaded",
+}
+
+
+def _is_successful_batch_upload_status(status: Any) -> bool:
+    """Return whether a backend batch-upload status means the item was accepted."""
+
+    return str(status or "").strip().lower() in _SUCCESSFUL_BATCH_UPLOAD_STATUSES
+
 
 class MemoryWriteService:
     """Persist memory records to Moorcheh-backed namespaces."""
@@ -206,10 +224,18 @@ class MemoryWriteService:
                 for result in results:
                     if result["status"] == "pending":
                         result["status"] = moorcheh_status
+                        if not _is_successful_batch_upload_status(moorcheh_status):
+                            result["error"] = (
+                                upload_result.get("error")
+                                or upload_result.get("message")
+                                or f"Batch upload returned status '{moorcheh_status}'"
+                            )
 
             # Count successes and failures
-            successful = sum(1 for r in results if r["status"] in ["queued", "success"])
-            failed = sum(1 for r in results if r["status"] == "failed")
+            successful = sum(
+                1 for r in results if _is_successful_batch_upload_status(r["status"])
+            )
+            failed = len(results) - successful
 
             return {
                 "total_submitted": len(memories),
