@@ -77,14 +77,15 @@ class ConversationMemoryExtractionService:
         total = 0
         for message in messages:
             line = f"{message['role'].strip()}: {message['content'].strip()}"
-            remaining = self.MAX_CONTENT_CHARS - total
+            separator_chars = 1 if lines else 0
+            remaining = self.MAX_CONTENT_CHARS - total - separator_chars
             if remaining <= 0:
                 break
             if len(line) > remaining:
                 lines.append(line[:remaining])
                 break
             lines.append(line)
-            total += len(line)
+            total += separator_chars + len(line)
         return "\n".join(lines)
 
     def _header_prompt(self, max_memories: int) -> str:
