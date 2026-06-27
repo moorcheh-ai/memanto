@@ -268,6 +268,58 @@ class TestMemoryWriteServiceDelete:
         assert MemoryWriteService(client).delete_memory("m1", "ns") is expected
 
 
+class TestMemoryWriteServiceStore:
+    """Single-memory writes should not mask rejected backend uploads."""
+
+    def test_store_memory_rejects_failed_upload_status(self):
+        """Raise MemoryError when the backend rejects a single upload."""
+
+        from memanto.app.core import MemoryRecord
+        from memanto.app.services.memory_write_service import MemoryWriteService
+        from memanto.app.utils.errors import MemoryError
+
+        client = MagicMock()
+        client.documents.upload.return_value = {
+            "status": "error",
+            "message": "backend rejected memory",
+        }
+        memory = MemoryRecord(
+            type="fact",
+            title="Rejected memory",
+            content="This memory should not be reported as stored.",
+            scope_type="agent",
+            scope_id="test-agent",
+            actor_id="test-agent",
+            source="user",
+        )
+
+        with pytest.raises(MemoryError, match="backend rejected memory"):
+            MemoryWriteService(client).store_memory(memory)
+
+    def test_store_memory_accepts_async_upload_status(self):
+        """Return success details when the backend accepts an async upload."""
+
+        from memanto.app.core import MemoryRecord
+        from memanto.app.services.memory_write_service import MemoryWriteService
+
+        client = MagicMock()
+        client.documents.upload.return_value = {"status": "queued"}
+        memory = MemoryRecord(
+            type="fact",
+            title="Queued memory",
+            content="This memory is accepted asynchronously.",
+            scope_type="agent",
+            scope_id="test-agent",
+            actor_id="test-agent",
+            source="user",
+        )
+
+        result = MemoryWriteService(client).store_memory(memory)
+
+        assert result["status"] == "queued"
+        assert result["namespace"] == "memanto_agent_test-agent"
+
+
 class TestForgetEndToEnd:
     """End-to-end ``forget`` flow through ``DirectClient``: create agent →
     activate → delete_memory. Asserts on-prem's response shape

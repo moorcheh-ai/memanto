@@ -13,6 +13,24 @@ from memanto.app.services.memory_parsing_service import MemoryParsingService
 from memanto.app.utils.errors import MemoryError
 from memanto.app.utils.ids import generate_memory_id
 
+_SUCCESSFUL_UPLOAD_STATUSES = {
+    "accepted",
+    "complete",
+    "completed",
+    "ok",
+    "pending",
+    "processing",
+    "queued",
+    "success",
+    "uploaded",
+}
+
+
+def _is_successful_upload_status(status: Any) -> bool:
+    """Return whether a backend upload status means the write was accepted."""
+
+    return str(status or "").strip().lower() in _SUCCESSFUL_UPLOAD_STATUSES
+
 
 class MemoryWriteService:
     """Persist memory records to Moorcheh-backed namespaces."""
@@ -37,7 +55,13 @@ class MemoryWriteService:
     def store_memory(
         self, memory: MemoryRecord, context: dict[str, Any] | None = None
     ) -> dict[str, Any]:
-        """Store memory with validation"""
+        """Store one memory and fail if the backend rejects the upload.
+
+        Moorcheh can acknowledge accepted writes with asynchronous statuses such as
+        ``queued`` or ``processing``. Any other upload status is treated as a
+        rejected write and surfaced as ``MemoryError`` instead of reporting a
+        successful store.
+        """
         try:
             # Generate ID if not provided
             if not memory.id:
@@ -73,11 +97,19 @@ class MemoryWriteService:
             result = self.client.documents.upload(
                 namespace_name=namespace, documents=[document]
             )
+            moorcheh_status = result.get("status", "unknown")
+
+            if not _is_successful_upload_status(moorcheh_status):
+                detail = result.get("message") or result.get("error")
+                message = f"Upload returned status '{moorcheh_status}'"
+                if detail:
+                    message = f"{message}: {detail}"
+                raise MemoryError(message)
 
             return {
                 "id": memory.id,
                 "namespace": namespace,
-                "status": result.get("status", "unknown"),
+                "status": moorcheh_status,
                 "action": validation_result.get("action", "store"),
                 "reason": validation_result.get("reason", "Stored successfully"),
                 "confidence": memory.confidence,
@@ -85,6 +117,8 @@ class MemoryWriteService:
                 "type": memory.type,
             }
 
+        except MemoryError:
+            raise
         except Exception as e:
             raise MemoryError(f"Failed to store memory: {e}")
 
