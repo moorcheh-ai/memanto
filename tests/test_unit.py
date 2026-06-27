@@ -305,6 +305,23 @@ class TestMemoryWriteServiceBatch:
             "backend rejected batch" in item["error"] for item in result["results"]
         )
 
+    def test_batch_upload_accepts_async_status(self):
+        from memanto.app.services.memory_write_service import MemoryWriteService
+
+        client = MagicMock()
+        client.documents.upload.return_value = {"status": "queued"}
+
+        result = MemoryWriteService(client).batch_store_memories(
+            [self._memory("Batch memory 1"), self._memory("Batch memory 2")]
+        )
+
+        assert result["total_submitted"] == 2
+        assert result["successful"] == 2
+        assert result["failed"] == 0
+        assert [item["status"] for item in result["results"]] == ["queued", "queued"]
+        assert all("error" not in item for item in result["results"])
+        client.documents.upload.assert_called_once()
+
 
 class TestForgetEndToEnd:
     """End-to-end ``forget`` flow through ``DirectClient``: create agent →
