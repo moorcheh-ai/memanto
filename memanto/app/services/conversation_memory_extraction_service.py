@@ -97,7 +97,12 @@ class ConversationMemoryExtractionService:
     def _footer_prompt(self) -> str:
         return (
             "Return only JSON. The JSON must be an array of objects with keys: "
-            "type, title, content, confidence. Confidence must be 0.0 to 1.0."
+            "type, title, content, confidence, date. "
+            "Confidence must be 0.0 to 1.0. "
+            "date is an optional ISO-8601 date string (YYYY-MM-DD) representing "
+            "when the event or fact occurred — infer it from relative expressions "
+            "like 'yesterday', 'last Tuesday', 'two weeks ago', or explicit dates. "
+            "Omit the date key entirely when no temporal context is present."
         )
 
     def _parse_json_answer(self, answer: str) -> Any:
@@ -157,16 +162,26 @@ class ConversationMemoryExtractionService:
                 continue
             seen.add(key)
 
-            normalized.append(
-                {
-                    "type": memory_type,
-                    "title": title,
-                    "content": content,
-                    "confidence": confidence,
-                    "source": "conversation",
-                    "provenance": "inferred",
-                }
-            )
+            candidate: dict[str, Any] = {
+                "type": memory_type,
+                "title": title,
+                "content": content,
+                "confidence": confidence,
+                "source": "conversation",
+                "provenance": "inferred",
+            }
+
+            # Preserve temporal context — without this, relative date expressions
+            # ("yesterday", "last Tuesday") are silently discarded, causing timeline
+            # amnesia: the memory system records WHAT happened but not WHEN.
+            raw_date = item.get("date")
+            if raw_date and isinstance(raw_date, str):
+                date_str = raw_date.strip()
+                import re as _re
+                if _re.match(r"^\d{4}-\d{2}-\d{2}$", date_str):
+                    candidate["date"] = date_str
+
+            normalized.append(candidate)
             if len(normalized) >= max_memories:
                 break
 
