@@ -272,6 +272,7 @@ class TestMemoryWriteServiceBatch:
     """Batch writes should account for every submitted memory."""
 
     def _memory(self, content: str):
+        """Build a minimal memory record for batch-write tests."""
         from memanto.app.core import MemoryRecord
 
         return MemoryRecord(
@@ -285,6 +286,7 @@ class TestMemoryWriteServiceBatch:
         )
 
     def test_batch_upload_error_counts_pending_items_as_failed(self):
+        """Rejected backend batch status should fail every pending item."""
         from memanto.app.services.memory_write_service import MemoryWriteService
 
         client = MagicMock()
@@ -306,6 +308,7 @@ class TestMemoryWriteServiceBatch:
         )
 
     def test_batch_upload_accepts_async_status(self):
+        """Accepted async backend statuses should count as successful writes."""
         from memanto.app.services.memory_write_service import MemoryWriteService
 
         client = MagicMock()
