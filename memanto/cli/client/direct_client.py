@@ -1408,6 +1408,7 @@ class DirectClient:
         from memanto.app.services.memory_export_service import MEMORY_TYPE_ORDER
 
         memories_by_type: dict[str, list] = {}
+        export_errors: list[str] = []
 
         for mem_type in MEMORY_TYPE_ORDER:
             try:
@@ -1418,8 +1419,14 @@ class DirectClient:
                     type=[mem_type],
                 )
                 memories_by_type[mem_type] = result.get("memories", [])
-            except Exception:
-                memories_by_type[mem_type] = []
+            except Exception as exc:
+                export_errors.append(f"{mem_type}: {exc}")
+
+        if export_errors:
+            raise RuntimeError(
+                "Memory export failed; refusing to write a partial MEMORY.md: "
+                + "; ".join(export_errors)
+            )
 
         export_svc = self._get_export_service()
         out = output_path if output_path else None

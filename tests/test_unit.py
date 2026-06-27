@@ -346,6 +346,61 @@ class TestForgetEndToEnd:
         assert result["memory_id"] == "mem-xyz"
 
 
+class TestMemoryExport:
+    """Memory export must not silently replace local MEMORY.md cache with
+    partial data when one of the per-type recall requests fails."""
+
+    @pytest.fixture
+    def direct_client(self, tmp_path, monkeypatch, mock_moorcheh_for_tests):
+        from memanto.cli.client.direct_client import DirectClient
+
+        monkeypatch.setattr(
+            "memanto.app.services.agent_service.get_data_dir",
+            lambda: tmp_path,
+        )
+        monkeypatch.setattr(
+            "memanto.app.services.session_service.get_data_dir",
+            lambda: tmp_path,
+        )
+
+        client = DirectClient(api_key="test-key")
+        client._moorcheh = mock_moorcheh_for_tests
+        client.create_agent("test-agent", "tool", "export test")
+        client.activate_agent("test-agent", duration_hours=1)
+        return client
+
+    def test_export_memory_md_fails_before_writing_partial_export(
+        self, direct_client, tmp_path, monkeypatch
+    ):
+        from memanto.app.services.memory_export_service import MEMORY_TYPE_ORDER
+
+        output_path = tmp_path / "MEMORY.md"
+
+        def fake_recall(*, type, **_kwargs):
+            if type == ["decision"]:
+                raise RuntimeError("backend unavailable")
+            return {
+                "memories": [
+                    {
+                        "title": f"{type[0]} memory",
+                        "content": "should not be written on partial failure",
+                        "type": type[0],
+                    }
+                ]
+            }
+
+        monkeypatch.setattr(direct_client, "recall", fake_recall)
+
+        assert "decision" in MEMORY_TYPE_ORDER
+        with pytest.raises(RuntimeError, match="decision.*backend unavailable"):
+            direct_client.export_memory_md(
+                "test-agent",
+                output_path=str(output_path),
+            )
+
+        assert not output_path.exists()
+
+
 class TestMEMANTOArchitecture:
     """Tests for MEMANTO architecture principles"""
 
