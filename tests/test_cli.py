@@ -135,6 +135,42 @@ class TestMEMANTOCLI:
         assert result.exit_code == 0
         assert "MEMANTO Status" in result.stdout
 
+    def test_status_offline_server_uses_active_session_state(self, mock_all_clients):
+        """Offline status should still show locally validated session details."""
+        from memanto.cli.commands import core
+
+        core.config_manager.is_configured.return_value = True
+        core.config_manager.get_active_session.return_value = (
+            "test-agent",
+            "test-token",
+        )
+        mock_all_clients.agent_id = None
+        mock_all_clients.session_token = None
+
+        def get_session_info():
+            if (
+                mock_all_clients.agent_id != "test-agent"
+                or mock_all_clients.session_token != "test-token"
+            ):
+                raise AssertionError("active session was not attached to client")
+            return {
+                "agent_id": "test-agent",
+                "status": "active",
+                "time_remaining_seconds": 3600,
+                "session_id": "test-session",
+                "namespace": "memanto_agent_test-agent",
+                "pattern": "support",
+            }
+
+        mock_all_clients.get_session_info.side_effect = get_session_info
+
+        with patch("memanto.cli.commands.core.httpx.get", side_effect=Exception):
+            result = runner.invoke(app, ["status"])
+
+        assert result.exit_code == 0
+        assert "memanto_agent_test-agent" in result.stdout
+        assert "activation may be expired" not in result.stdout
+
     # ========================================================================
     # AGENT COMMANDS
     # ========================================================================
