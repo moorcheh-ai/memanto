@@ -848,10 +848,21 @@ def _migrate_load_or_export(
     from memanto.cli.migrate.runner import load_export
 
     if file_path:
+        base_dir = _config_manager.get_migrate_dir(provider).resolve()
         path = Path(file_path).expanduser()
         if not path.exists() or not path.is_file():
             raise HTTPException(
                 status_code=400, detail=f"Export file not found: {file_path}"
+            )
+        path = path.resolve()
+        if path.suffix.lower() != ".json":
+            raise HTTPException(
+                status_code=400, detail="Migration export file must be JSON."
+            )
+        if path != base_dir and base_dir not in path.parents:
+            raise HTTPException(
+                status_code=400,
+                detail="Migration export file must be inside the Memanto migrate directory.",
             )
         return str(path), load_export(path)
 

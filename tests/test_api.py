@@ -1210,6 +1210,75 @@ class TestCWE200ApiKeyLeak:
         assert data["has_active_session"] is True
 
     @pytest.mark.asyncio
+    async def test_migrate_dry_run_rejects_export_file_outside_migrate_dir(
+        self, client, _mock_ui_config_manager, tmp_path
+    ):
+        """UI migration must not read arbitrary server-side JSON files."""
+        migrate_dir = tmp_path / ".memanto" / "migrate" / "mem0"
+        migrate_dir.mkdir(parents=True)
+        _mock_ui_config_manager.get_migrate_dir.return_value = migrate_dir
+
+        outside_file = tmp_path / "private-export.json"
+        outside_file.write_text(
+            json.dumps(
+                {
+                    "summary": {"memory_count": 1},
+                    "memories": [
+                        {
+                            "id": "secret-1",
+                            "memory": "server-side secret should not be previewed",
+                        }
+                    ],
+                }
+            ),
+            encoding="utf-8",
+        )
+
+        resp = await client.post(
+            "/api/ui/migrate/dry-run",
+            json={"provider": "mem0", "file": str(outside_file)},
+        )
+
+        assert resp.status_code == 400
+        assert "migrate directory" in resp.json()["detail"]
+
+    @pytest.mark.asyncio
+    async def test_migrate_dry_run_allows_export_file_inside_migrate_dir(
+        self, client, _mock_ui_config_manager, tmp_path
+    ):
+        """UI migration can still preview exports created in its own workspace."""
+        migrate_dir = tmp_path / ".memanto" / "migrate" / "mem0"
+        migrate_dir.mkdir(parents=True)
+        _mock_ui_config_manager.get_migrate_dir.return_value = migrate_dir
+
+        export_file = migrate_dir / "mem0_export.json"
+        export_file.write_text(
+            json.dumps(
+                {
+                    "summary": {"memory_count": 1},
+                    "memories": [
+                        {
+                            "id": "m1",
+                            "memory": "User prefers concise summaries",
+                            "categories": ["preferences"],
+                        }
+                    ],
+                }
+            ),
+            encoding="utf-8",
+        )
+
+        resp = await client.post(
+            "/api/ui/migrate/dry-run",
+            json={"provider": "mem0", "file": str(export_file)},
+        )
+
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["mapped_count"] == 1
+        assert data["sample"][0]["title"] == "User prefers concise summaries"
+
+    @pytest.mark.asyncio
     async def test_traversal_filename_is_sanitized(
         self, client, auth_headers, mock_moorcheh
     ):
