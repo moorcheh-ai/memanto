@@ -268,6 +268,64 @@ class TestMemoryWriteServiceDelete:
         assert MemoryWriteService(client).delete_memory("m1", "ns") is expected
 
 
+class TestMemoryWriteServiceBatch:
+    """Batch writes should account for every submitted memory."""
+
+    def _memory(self, content: str):
+        """Build a minimal memory record for batch-write tests."""
+        from memanto.app.core import MemoryRecord
+
+        return MemoryRecord(
+            type="fact",
+            title=content,
+            content=content,
+            scope_type="agent",
+            scope_id="test-agent",
+            actor_id="test-agent",
+            source="user",
+        )
+
+    def test_batch_upload_error_counts_pending_items_as_failed(self):
+        """Rejected backend batch status should fail every pending item."""
+        from memanto.app.services.memory_write_service import MemoryWriteService
+
+        client = MagicMock()
+        client.documents.upload.return_value = {
+            "status": "error",
+            "message": "backend rejected batch",
+        }
+
+        result = MemoryWriteService(client).batch_store_memories(
+            [self._memory("Batch memory 1"), self._memory("Batch memory 2")]
+        )
+
+        assert result["total_submitted"] == 2
+        assert result["successful"] == 0
+        assert result["failed"] == 2
+        assert [item["status"] for item in result["results"]] == ["error", "error"]
+        assert all(
+            "backend rejected batch" in item["error"] for item in result["results"]
+        )
+
+    def test_batch_upload_accepts_async_status(self):
+        """Accepted async backend statuses should count as successful writes."""
+        from memanto.app.services.memory_write_service import MemoryWriteService
+
+        client = MagicMock()
+        client.documents.upload.return_value = {"status": "queued"}
+
+        result = MemoryWriteService(client).batch_store_memories(
+            [self._memory("Batch memory 1"), self._memory("Batch memory 2")]
+        )
+
+        assert result["total_submitted"] == 2
+        assert result["successful"] == 2
+        assert result["failed"] == 0
+        assert [item["status"] for item in result["results"]] == ["queued", "queued"]
+        assert all("error" not in item for item in result["results"])
+        client.documents.upload.assert_called_once()
+
+
 class TestForgetEndToEnd:
     """End-to-end ``forget`` flow through ``DirectClient``: create agent →
     activate → delete_memory. Asserts on-prem's response shape
