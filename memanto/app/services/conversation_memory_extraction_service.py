@@ -134,8 +134,10 @@ class ConversationMemoryExtractionService:
         if not isinstance(parsed, list):
             raise ValueError("Memory extraction response must be a JSON array")
 
+        from datetime import date as _date
+
         normalized: list[dict[str, Any]] = []
-        seen: set[tuple[str | None, str]] = set()
+        seen: set[tuple[str | None, str, str | None]] = set()
 
         for item in parsed:
             if not isinstance(item, dict):
@@ -162,7 +164,19 @@ class ConversationMemoryExtractionService:
                 confidence = 0.8
             confidence = max(0.0, min(confidence, 1.0))
 
-            key = (memory_type, re.sub(r"\s+", " ", content).lower())
+            # Parse and validate date before dedup so the key captures temporal
+            # context: the same event on different dates must produce distinct
+            # memories, not collapse into one. fromisoformat() rejects impossible
+            # dates (e.g. 2026-99-99) that a bare YYYY-MM-DD regex would accept.
+            raw_date = item.get("date")
+            validated_date: str | None = None
+            if raw_date and isinstance(raw_date, str):
+                try:
+                    validated_date = _date.fromisoformat(raw_date.strip()).isoformat()
+                except ValueError:
+                    pass
+
+            key = (memory_type, re.sub(r"\s+", " ", content).lower(), validated_date)
             if key in seen:
                 continue
             seen.add(key)
@@ -176,15 +190,8 @@ class ConversationMemoryExtractionService:
                 "provenance": "inferred",
             }
 
-            # Preserve temporal context — without this, relative date expressions
-            # ("yesterday", "last Tuesday") are silently discarded, causing timeline
-            # amnesia: the memory system records WHAT happened but not WHEN.
-            raw_date = item.get("date")
-            if raw_date and isinstance(raw_date, str):
-                date_str = raw_date.strip()
-                import re as _re
-                if _re.match(r"^\d{4}-\d{2}-\d{2}$", date_str):
-                    candidate["date"] = date_str
+            if validated_date is not None:
+                candidate["date"] = validated_date
 
             normalized.append(candidate)
             if len(normalized) >= max_memories:

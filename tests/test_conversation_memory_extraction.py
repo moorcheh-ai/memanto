@@ -199,6 +199,75 @@ def test_footer_prompt_requests_date_field():
     )
 
 
+def test_impossible_calendar_date_is_rejected():
+    """Dates that pass YYYY-MM-DD regex but aren't real (e.g. 2026-99-99) must be dropped."""
+    client = FakeClient(
+        """
+        [
+          {
+            "type": "event",
+            "title": "Impossible event",
+            "content": "Something happened.",
+            "confidence": 0.8,
+            "date": "2026-99-99"
+          }
+        ]
+        """
+    )
+    service = ConversationMemoryExtractionService(client)
+    results = service.extract(
+        namespace="memanto_agent_test",
+        messages=[
+            {"role": "user", "content": "Something happened."},
+            {"role": "assistant", "content": "OK."},
+        ],
+    )
+    assert len(results) == 1
+    assert "date" not in results[0], (
+        "Impossible date '2026-99-99' passed regex validation but must be "
+        "rejected by calendar-aware parsing."
+    )
+
+
+def test_same_event_different_dates_are_not_deduplicated():
+    """Identical content on different dates must yield two distinct memories."""
+    client = FakeClient(
+        """
+        [
+          {
+            "type": "event",
+            "title": "Morning run",
+            "content": "User went for a morning run.",
+            "confidence": 0.9,
+            "date": "2026-06-25"
+          },
+          {
+            "type": "event",
+            "title": "Morning run",
+            "content": "User went for a morning run.",
+            "confidence": 0.9,
+            "date": "2026-06-26"
+          }
+        ]
+        """
+    )
+    service = ConversationMemoryExtractionService(client)
+    results = service.extract(
+        namespace="memanto_agent_test",
+        messages=[
+            {"role": "user", "content": "I went for a run yesterday and today."},
+            {"role": "assistant", "content": "Great habit!"},
+        ],
+        max_memories=5,
+    )
+    assert len(results) == 2, (
+        "Same event on different dates was incorrectly deduplicated — "
+        "the date must be part of the dedup key."
+    )
+    dates = {r["date"] for r in results}
+    assert dates == {"2026-06-25", "2026-06-26"}
+
+
 def test_footer_prompt_anchors_relative_dates_to_today():
     """_footer_prompt must include today's date so relative expressions resolve correctly."""
     from datetime import date
