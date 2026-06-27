@@ -312,6 +312,29 @@ class TestMEMANTOAPI:
         assert "at least one field" in response.json()["detail"]
 
     @pytest.mark.asyncio
+    async def test_edit_memory_rejects_explicit_null_update(self, client, auth_headers):
+        """Test explicit null edits are rejected instead of silently ignored."""
+        app.dependency_overrides[get_current_session] = lambda: Session(
+            session_id="sess-test",
+            session_token="token-test",
+            agent_id=self.TEST_AGENT_ID,
+            namespace=f"memanto_agent_{self.TEST_AGENT_ID}",
+            started_at=datetime.utcnow(),
+            expires_at=datetime.utcnow() + timedelta(hours=1),
+        )
+        try:
+            response = await client.patch(
+                f"/api/v2/agents/{self.TEST_AGENT_ID}/memories/mem-123",
+                headers=auth_headers,
+                json={"title": None},
+            )
+        finally:
+            app.dependency_overrides.clear()
+
+        assert response.status_code == 400
+        assert "Fields cannot be null: title" in response.json()["detail"]
+
+    @pytest.mark.asyncio
     async def test_edit_memory_returns_404_when_missing(self, client, auth_headers):
         """Test that the edit endpoint returns 404 when the target memory does not exist.
 

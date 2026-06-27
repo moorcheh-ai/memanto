@@ -153,7 +153,7 @@ class MemoryEditRequest(BaseModel):
 
     def to_updates(self) -> dict[str, object]:
         """Return only fields explicitly provided by the caller."""
-        return self.model_dump(exclude_none=True)
+        return self.model_dump(exclude_unset=True)
 
 
 @router.post("/{agent_id}/remember", response_model=RememberResponse)
@@ -363,9 +363,20 @@ async def edit_memory(
             detail="Provide at least one field to update.",
         )
 
+    null_fields = [field for field, value in updates.items() if value is None]
+    if null_fields:
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                "Fields cannot be null: "
+                f"{', '.join(sorted(null_fields))}. "
+                "Omit fields you do not want to update."
+            ),
+        )
+
     if "content" in updates:
         content = updates["content"]
-        if content is None or not str(content).strip():
+        if not str(content).strip():
             raise HTTPException(
                 status_code=400,
                 detail="Memory content must be a non-empty string.",
