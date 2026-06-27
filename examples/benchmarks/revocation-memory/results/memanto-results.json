@@ -1,10 +1,10 @@
 {
   "schema_version": 2,
   "backend": "memanto",
-  "run_id": "3c138efe5e34",
+  "run_id": "95e642c2fa2b",
   "mode": "live_framework",
   "dataset": "production-access-revocation-v1",
-  "dataset_sha256": "9a04bce957e81e15f7728ed1f92ae988f85c9b313cae671ebe3bf94b14a7866e",
+  "dataset_sha256": "0b232e1baee19458a00bce2aa9bd753990850b374b44b9103b389e40adcb7706",
   "experiment_configuration": {
     "shared": {
       "input_delivery": "curated facts in identical dataset order",
@@ -27,7 +27,7 @@
     }
   },
   "environment": {
-    "started_at_utc": "2026-06-25T05:12:03.951056+00:00",
+    "started_at_utc": "2026-06-27T18:02:30.568205+00:00",
     "python": "3.12.13",
     "platform": "macOS-26.5.1-arm64-arm-64bit",
     "machine": "arm64",
@@ -47,11 +47,11 @@
   "summary": {
     "retrieval_accuracy": 1.0,
     "stale_leak_rate": 0.8333333333333334,
-    "ingested_tokens": 173,
-    "retrieved_tokens_total": 1280,
-    "retrieved_tokens_mean": 213.33333333333334,
-    "write_latency_p95_ms": 3689.7729914024226,
-    "read_latency_p95_ms": 1278.7362919916632
+    "ingested_tokens": 181,
+    "retrieved_tokens_total": 1285,
+    "retrieved_tokens_mean": 214.16666666666666,
+    "write_latency_p95_ms": 1807.6925748144274,
+    "read_latency_p95_ms": 1067.190572990512
   },
   "probes": [
     {
@@ -59,7 +59,7 @@
       "query": "What deployment access does the operations agent currently have?",
       "retrieved_text": "[INSTRUCTION] Deployment access\n\nDeployment access is approved for the Alpha production cluster through the shared release-admin role.\n\nTags: deployment_access, session-01-onboarding\n[INSTRUCTION] Deployment access revised\n\nDeployment access is now limited to the Beta staging cluster through the deploy-bot service account. No production role is available.\n\nTags: deployment_access, session-02-scope-change\n[INSTRUCTION] Production approval rule\n\nEvery production deployment now requires two human approvals and cannot be initiated by the operations agent.\n\nTags: approval_rule, session-02-scope-change\n[PREFERENCE] Incident contact revised\n\nUrgent incidents must go only to the on-call rotation in PagerDuty. Direct personal escalation is disabled.\n\nTags: incident_contact, session-04-contact-change\n[PREFERENCE] Incident contact\n\nFor urgent incidents, contact Morgan by SMS at the number ending 0194.\n\nTags: incident_contact, session-01-onboarding\n[INSTRUCTION] Customer export policy revoked\n\nThe 30-day retention policy is revoked. Customer export files must be deleted within 24 hours and must not be copied to analytics storage.\n\nTags: customer_export, session-03-retention-revocation",
       "retrieved_tokens": 216,
-      "latency_ms": 1410.6676669907756,
+      "latency_ms": 1184.9185419850983,
       "required_hits": 2,
       "required_total": 2,
       "forbidden_hits": 2,
@@ -72,7 +72,7 @@
       "query": "Can the operations agent initiate a production deployment and what approvals are required?",
       "retrieved_text": "[INSTRUCTION] Production approval rule\n\nEvery production deployment now requires two human approvals and cannot be initiated by the operations agent.\n\nTags: approval_rule, session-02-scope-change\n[INSTRUCTION] Deployment access\n\nDeployment access is approved for the Alpha production cluster through the shared release-admin role.\n\nTags: deployment_access, session-01-onboarding\n[INSTRUCTION] Deployment access revised\n\nDeployment access is now limited to the Beta staging cluster through the deploy-bot service account. No production role is available.\n\nTags: deployment_access, session-02-scope-change\n[PREFERENCE] Incident contact\n\nFor urgent incidents, contact Morgan by SMS at the number ending 0194.\n\nTags: incident_contact, session-01-onboarding\n[PREFERENCE] Incident contact revised\n\nUrgent incidents must go only to the on-call rotation in PagerDuty. Direct personal escalation is disabled.\n\nTags: incident_contact, session-04-contact-change\n[INSTRUCTION] Secret handling\n\nNever place API keys, access tokens, or customer secrets in tickets, chat transcripts, or long-term agent memory.\n\nTags: secret_handling, session-03-retention-revocation",
       "retrieved_tokens": 211,
-      "latency_ms": 872.8417919919593,
+      "latency_ms": 576.440459000878,
       "required_hits": 2,
       "required_total": 2,
       "forbidden_hits": 1,
@@ -83,9 +83,9 @@
     {
       "probe_id": "current-export-retention",
       "query": "What is the current retention policy for customer export files?",
-      "retrieved_text": "[INSTRUCTION] Customer export policy\n\nCustomer export files may be retained for 30 days in the analytics bucket.\n\nTags: customer_export, session-01-onboarding\n[INSTRUCTION] Customer export policy revoked\n\nThe 30-day retention policy is revoked. Customer export files must be deleted within 24 hours and must not be copied to analytics storage.\n\nTags: customer_export, session-03-retention-revocation\n[DECISION] Audit owner\n\nPriya owns the quarterly access review and the next review is due on July 15.\n\nTags: audit_owner, session-05-final-audit\n[INSTRUCTION] Secret handling\n\nNever place API keys, access tokens, or customer secrets in tickets, chat transcripts, or long-term agent memory.\n\nTags: secret_handling, session-03-retention-revocation\n[INSTRUCTION] Production approval rule\n\nEvery production deployment now requires two human approvals and cannot be initiated by the operations agent.\n\nTags: approval_rule, session-02-scope-change\n[INSTRUCTION] Deployment access revised\n\nDeployment access is now limited to the Beta staging cluster through the deploy-bot service account. No production role is available.\n\nTags: deployment_access, session-02-scope-change",
-      "retrieved_tokens": 221,
-      "latency_ms": 877.3775419977028,
+      "retrieved_text": "[INSTRUCTION] Customer export policy\n\nCustomer export files may be retained for 30 days in the analytics bucket.\n\nTags: customer_export, session-01-onboarding\n[INSTRUCTION] Customer export policy revoked\n\nThe 30-day retention policy is revoked. Customer export files must be deleted within 24 hours and must not be copied to analytics storage.\n\nTags: customer_export, session-03-retention-revocation\n[DECISION] Audit owner\n\nPriya owns the quarterly access review. The next review is due on day 15 of the benchmark scenario's next quarter.\n\nTags: audit_owner, session-05-final-audit\n[INSTRUCTION] Secret handling\n\nNever place API keys, access tokens, or customer secrets in tickets, chat transcripts, or long-term agent memory.\n\nTags: secret_handling, session-03-retention-revocation\n[INSTRUCTION] Production approval rule\n\nEvery production deployment now requires two human approvals and cannot be initiated by the operations agent.\n\nTags: approval_rule, session-02-scope-change\n[INSTRUCTION] Deployment access revised\n\nDeployment access is now limited to the Beta staging cluster through the deploy-bot service account. No production role is available.\n\nTags: deployment_access, session-02-scope-change",
+      "retrieved_tokens": 229,
+      "latency_ms": 641.7135829979088,
       "required_hits": 2,
       "required_total": 2,
       "forbidden_hits": 1,
@@ -98,7 +98,7 @@
       "query": "How should an urgent incident be escalated now?",
       "retrieved_text": "[PREFERENCE] Incident contact revised\n\nUrgent incidents must go only to the on-call rotation in PagerDuty. Direct personal escalation is disabled.\n\nTags: incident_contact, session-04-contact-change\n[PREFERENCE] Incident contact\n\nFor urgent incidents, contact Morgan by SMS at the number ending 0194.\n\nTags: incident_contact, session-01-onboarding\n[INSTRUCTION] Production approval rule\n\nEvery production deployment now requires two human approvals and cannot be initiated by the operations agent.\n\nTags: approval_rule, session-02-scope-change\n[INSTRUCTION] Customer export policy\n\nCustomer export files may be retained for 30 days in the analytics bucket.\n\nTags: customer_export, session-01-onboarding\n[INSTRUCTION] Customer export policy revoked\n\nThe 30-day retention policy is revoked. Customer export files must be deleted within 24 hours and must not be copied to analytics storage.\n\nTags: customer_export, session-03-retention-revocation\n[INSTRUCTION] Deployment access\n\nDeployment access is approved for the Alpha production cluster through the shared release-admin role.\n\nTags: deployment_access, session-01-onboarding",
       "retrieved_tokens": 204,
-      "latency_ms": 855.1373329974012,
+      "latency_ms": 594.9509590282105,
       "required_hits": 2,
       "required_total": 2,
       "forbidden_hits": 2,
@@ -109,9 +109,9 @@
     {
       "probe_id": "secret-handling",
       "query": "Where may API keys or customer secrets be recorded?",
-      "retrieved_text": "[INSTRUCTION] Secret handling\n\nNever place API keys, access tokens, or customer secrets in tickets, chat transcripts, or long-term agent memory.\n\nTags: secret_handling, session-03-retention-revocation\n[INSTRUCTION] Customer export policy\n\nCustomer export files may be retained for 30 days in the analytics bucket.\n\nTags: customer_export, session-01-onboarding\n[INSTRUCTION] Customer export policy revoked\n\nThe 30-day retention policy is revoked. Customer export files must be deleted within 24 hours and must not be copied to analytics storage.\n\nTags: customer_export, session-03-retention-revocation\n[DECISION] Audit owner\n\nPriya owns the quarterly access review and the next review is due on July 15.\n\nTags: audit_owner, session-05-final-audit\n[INSTRUCTION] Deployment access\n\nDeployment access is approved for the Alpha production cluster through the shared release-admin role.\n\nTags: deployment_access, session-01-onboarding\n[PREFERENCE] Incident contact\n\nFor urgent incidents, contact Morgan by SMS at the number ending 0194.\n\nTags: incident_contact, session-01-onboarding",
-      "retrieved_tokens": 205,
-      "latency_ms": 882.9421669943258,
+      "retrieved_text": "[INSTRUCTION] Secret handling\n\nNever place API keys, access tokens, or customer secrets in tickets, chat transcripts, or long-term agent memory.\n\nTags: secret_handling, session-03-retention-revocation\n[INSTRUCTION] Customer export policy\n\nCustomer export files may be retained for 30 days in the analytics bucket.\n\nTags: customer_export, session-01-onboarding\n[INSTRUCTION] Customer export policy revoked\n\nThe 30-day retention policy is revoked. Customer export files must be deleted within 24 hours and must not be copied to analytics storage.\n\nTags: customer_export, session-03-retention-revocation\n[DECISION] Audit owner\n\nPriya owns the quarterly access review. The next review is due on day 15 of the benchmark scenario's next quarter.\n\nTags: audit_owner, session-05-final-audit\n[INSTRUCTION] Deployment access\n\nDeployment access is approved for the Alpha production cluster through the shared release-admin role.\n\nTags: deployment_access, session-01-onboarding\n[PREFERENCE] Incident contact\n\nFor urgent incidents, contact Morgan by SMS at the number ending 0194.\n\nTags: incident_contact, session-01-onboarding",
+      "retrieved_tokens": 213,
+      "latency_ms": 631.2484170193784,
       "required_hits": 2,
       "required_total": 2,
       "forbidden_hits": 1,
@@ -121,12 +121,12 @@
     },
     {
       "probe_id": "audit-owner",
-      "query": "Who owns the next access review and when is it due?",
-      "retrieved_text": "[DECISION] Audit owner\n\nPriya owns the quarterly access review and the next review is due on July 15.\n\nTags: audit_owner, session-05-final-audit\n[INSTRUCTION] Deployment access revised\n\nDeployment access is now limited to the Beta staging cluster through the deploy-bot service account. No production role is available.\n\nTags: deployment_access, session-02-scope-change\n[INSTRUCTION] Deployment access\n\nDeployment access is approved for the Alpha production cluster through the shared release-admin role.\n\nTags: deployment_access, session-01-onboarding\n[INSTRUCTION] Production approval rule\n\nEvery production deployment now requires two human approvals and cannot be initiated by the operations agent.\n\nTags: approval_rule, session-02-scope-change\n[INSTRUCTION] Secret handling\n\nNever place API keys, access tokens, or customer secrets in tickets, chat transcripts, or long-term agent memory.\n\nTags: secret_handling, session-03-retention-revocation\n[INSTRUCTION] Customer export policy revoked\n\nThe 30-day retention policy is revoked. Customer export files must be deleted within 24 hours and must not be copied to analytics storage.\n\nTags: customer_export, session-03-retention-revocation",
-      "retrieved_tokens": 223,
-      "latency_ms": 635.2794590056874,
-      "required_hits": 2,
-      "required_total": 2,
+      "query": "Who owns the next access review and what scenario-relative deadline applies?",
+      "retrieved_text": "[DECISION] Audit owner\n\nPriya owns the quarterly access review. The next review is due on day 15 of the benchmark scenario's next quarter.\n\nTags: audit_owner, session-05-final-audit\n[INSTRUCTION] Deployment access revised\n\nDeployment access is now limited to the Beta staging cluster through the deploy-bot service account. No production role is available.\n\nTags: deployment_access, session-02-scope-change\n[INSTRUCTION] Customer export policy\n\nCustomer export files may be retained for 30 days in the analytics bucket.\n\nTags: customer_export, session-01-onboarding\n[INSTRUCTION] Production approval rule\n\nEvery production deployment now requires two human approvals and cannot be initiated by the operations agent.\n\nTags: approval_rule, session-02-scope-change\n[INSTRUCTION] Deployment access\n\nDeployment access is approved for the Alpha production cluster through the shared release-admin role.\n\nTags: deployment_access, session-01-onboarding\n[PREFERENCE] Incident contact revised\n\nUrgent incidents must go only to the on-call rotation in PagerDuty. Direct personal escalation is disabled.\n\nTags: incident_contact, session-04-contact-change",
+      "retrieved_tokens": 212,
+      "latency_ms": 714.0066660067532,
+      "required_hits": 3,
+      "required_total": 3,
       "forbidden_hits": 0,
       "forbidden_total": 1,
       "accuracy": 1.0,

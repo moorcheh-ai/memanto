@@ -121,6 +121,42 @@ class BenchmarkTests(unittest.TestCase):
             benchmark.validate_report(report, dataset),
         )
 
+    def test_report_integrity_recomputes_probe_and_summary_values(self) -> None:
+        dataset = benchmark.load_dataset(Path(__file__).with_name("dataset.json"))
+        report = benchmark.run_backend(
+            "fixture",
+            dataset,
+            limit=6,
+            settle_seconds=0,
+            run_id="fixture",
+        )
+
+        report["probes"][0]["retrieved_tokens"] += 1
+        report["summary"]["retrieval_accuracy"] = 0.25
+        errors = benchmark.validate_report(report, dataset)
+
+        self.assertIn(
+            "probe current-deployment-scope has invalid retrieved_tokens",
+            errors,
+        )
+        self.assertIn("summary retrieval_accuracy does not match probes", errors)
+
+    def test_report_integrity_rejects_backend_configuration_drift(self) -> None:
+        dataset = benchmark.load_dataset(Path(__file__).with_name("dataset.json"))
+        report = benchmark.run_backend(
+            "fixture",
+            dataset,
+            limit=6,
+            settle_seconds=0,
+            run_id="fixture",
+        )
+        report["experiment_configuration"]["backend"]["purpose"] = "live"
+
+        self.assertIn(
+            "experiment_configuration does not match the backend",
+            benchmark.validate_report(report, dataset),
+        )
+
     def test_mem0_configuration_discloses_all_retrieval_toggles(self) -> None:
         configuration = benchmark.experiment_configuration("mem0", limit=6)
 

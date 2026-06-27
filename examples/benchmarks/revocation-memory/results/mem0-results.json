@@ -1,10 +1,10 @@
 {
   "schema_version": 2,
   "backend": "mem0",
-  "run_id": "888344eb0a78",
+  "run_id": "51336342ef44",
   "mode": "live_framework",
   "dataset": "production-access-revocation-v1",
-  "dataset_sha256": "9a04bce957e81e15f7728ed1f92ae988f85c9b313cae671ebe3bf94b14a7866e",
+  "dataset_sha256": "0b232e1baee19458a00bce2aa9bd753990850b374b44b9103b389e40adcb7706",
   "experiment_configuration": {
     "shared": {
       "input_delivery": "curated facts in identical dataset order",
@@ -23,7 +23,7 @@
     }
   },
   "environment": {
-    "started_at_utc": "2026-06-24T07:53:07.712775+00:00",
+    "started_at_utc": "2026-06-27T17:59:15.529014+00:00",
     "python": "3.12.13",
     "platform": "macOS-26.5.1-arm64-arm-64bit",
     "machine": "arm64",
@@ -33,7 +33,7 @@
     "settle_seconds": 0.0,
     "tokenizer": "regex word-and-punctuation proxy",
     "package_versions": {
-      "memanto": "0.1.dev4+g47a766a2a.d20260624",
+      "memanto": "0.1.dev5+g805c3231b",
       "mem0ai": "1.0.1",
       "fastembed": "0.7.4",
       "qdrant-client": "1.16.2",
@@ -43,11 +43,11 @@
   "summary": {
     "retrieval_accuracy": 1.0,
     "stale_leak_rate": 0.8333333333333334,
-    "ingested_tokens": 173,
-    "retrieved_tokens_total": 722,
-    "retrieved_tokens_mean": 120.33333333333333,
-    "write_latency_p95_ms": 23.761149798519906,
-    "read_latency_p95_ms": 9.208208244672278
+    "ingested_tokens": 181,
+    "retrieved_tokens_total": 737,
+    "retrieved_tokens_mean": 122.83333333333333,
+    "write_latency_p95_ms": 30.623174988431856,
+    "read_latency_p95_ms": 5.6513227536925115
   },
   "probes": [
     {
@@ -55,7 +55,7 @@
       "query": "What deployment access does the operations agent currently have?",
       "retrieved_text": "Deployment access is now limited to the Beta staging cluster through the deploy-bot service account. No production role is available.\nDeployment access is approved for the Alpha production cluster through the shared release-admin role.\nEvery production deployment now requires two human approvals and cannot be initiated by the operations agent.\nNever place API keys, access tokens, or customer secrets in tickets, chat transcripts, or long-term agent memory.\nUrgent incidents must go only to the on-call rotation in PagerDuty. Direct personal escalation is disabled.\nCustomer export files may be retained for 30 days in the analytics bucket.",
       "retrieved_tokens": 116,
-      "latency_ms": 9.592457994585857,
+      "latency_ms": 5.775958008598536,
       "required_hits": 2,
       "required_total": 2,
       "forbidden_hits": 2,
@@ -68,7 +68,7 @@
       "query": "Can the operations agent initiate a production deployment and what approvals are required?",
       "retrieved_text": "Every production deployment now requires two human approvals and cannot be initiated by the operations agent.\nDeployment access is now limited to the Beta staging cluster through the deploy-bot service account. No production role is available.\nDeployment access is approved for the Alpha production cluster through the shared release-admin role.\nCustomer export files may be retained for 30 days in the analytics bucket.\nThe 30-day retention policy is revoked. Customer export files must be deleted within 24 hours and must not be copied to analytics storage.\nNever place API keys, access tokens, or customer secrets in tickets, chat transcripts, or long-term agent memory.",
       "retrieved_tokens": 123,
-      "latency_ms": 7.6722079975297675,
+      "latency_ms": 3.7617920024786144,
       "required_hits": 2,
       "required_total": 2,
       "forbidden_hits": 1,
@@ -79,9 +79,9 @@
     {
       "probe_id": "current-export-retention",
       "query": "What is the current retention policy for customer export files?",
-      "retrieved_text": "The 30-day retention policy is revoked. Customer export files must be deleted within 24 hours and must not be copied to analytics storage.\nCustomer export files may be retained for 30 days in the analytics bucket.\nNever place API keys, access tokens, or customer secrets in tickets, chat transcripts, or long-term agent memory.\nDeployment access is now limited to the Beta staging cluster through the deploy-bot service account. No production role is available.\nUrgent incidents must go only to the on-call rotation in PagerDuty. Direct personal escalation is disabled.\nDeployment access is approved for the Alpha production cluster through the shared release-admin role.",
-      "retrieved_tokens": 126,
-      "latency_ms": 7.115790998796001,
+      "retrieved_text": "The 30-day retention policy is revoked. Customer export files must be deleted within 24 hours and must not be copied to analytics storage.\nCustomer export files may be retained for 30 days in the analytics bucket.\nNever place API keys, access tokens, or customer secrets in tickets, chat transcripts, or long-term agent memory.\nDeployment access is now limited to the Beta staging cluster through the deploy-bot service account. No production role is available.\nUrgent incidents must go only to the on-call rotation in PagerDuty. Direct personal escalation is disabled.\nPriya owns the quarterly access review. The next review is due on day 15 of the benchmark scenario's next quarter.",
+      "retrieved_tokens": 133,
+      "latency_ms": 3.2632910006213933,
       "required_hits": 2,
       "required_total": 2,
       "forbidden_hits": 1,
@@ -92,9 +92,9 @@
     {
       "probe_id": "current-incident-contact",
       "query": "How should an urgent incident be escalated now?",
-      "retrieved_text": "Urgent incidents must go only to the on-call rotation in PagerDuty. Direct personal escalation is disabled.\nFor urgent incidents, contact Morgan by SMS at the number ending 0194.\nThe 30-day retention policy is revoked. Customer export files must be deleted within 24 hours and must not be copied to analytics storage.\nEvery production deployment now requires two human approvals and cannot be initiated by the operations agent.\nCustomer export files may be retained for 30 days in the analytics bucket.\nDeployment access is now limited to the Beta staging cluster through the deploy-bot service account. No production role is available.",
+      "retrieved_text": "Urgent incidents must go only to the on-call rotation in PagerDuty. Direct personal escalation is disabled.\nFor urgent incidents, contact Morgan by SMS at the number ending 0194.\nPriya owns the quarterly access review. The next review is due on day 15 of the benchmark scenario's next quarter.\nThe 30-day retention policy is revoked. Customer export files must be deleted within 24 hours and must not be copied to analytics storage.\nEvery production deployment now requires two human approvals and cannot be initiated by the operations agent.\nCustomer export files may be retained for 30 days in the analytics bucket.",
       "retrieved_tokens": 116,
-      "latency_ms": 8.055458994931541,
+      "latency_ms": 5.277416988974437,
       "required_hits": 2,
       "required_total": 2,
       "forbidden_hits": 2,
@@ -107,7 +107,7 @@
       "query": "Where may API keys or customer secrets be recorded?",
       "retrieved_text": "Never place API keys, access tokens, or customer secrets in tickets, chat transcripts, or long-term agent memory.\nCustomer export files may be retained for 30 days in the analytics bucket.\nThe 30-day retention policy is revoked. Customer export files must be deleted within 24 hours and must not be copied to analytics storage.\nDeployment access is now limited to the Beta staging cluster through the deploy-bot service account. No production role is available.\nFor urgent incidents, contact Morgan by SMS at the number ending 0194.\nUrgent incidents must go only to the on-call rotation in PagerDuty. Direct personal escalation is disabled.",
       "retrieved_tokens": 123,
-      "latency_ms": 7.074291992466897,
+      "latency_ms": 4.829874989809468,
       "required_hits": 2,
       "required_total": 2,
       "forbidden_hits": 1,
@@ -117,12 +117,12 @@
     },
     {
       "probe_id": "audit-owner",
-      "query": "Who owns the next access review and when is it due?",
-      "retrieved_text": "Priya owns the quarterly access review and the next review is due on July 15.\nDeployment access is now limited to the Beta staging cluster through the deploy-bot service account. No production role is available.\nCustomer export files may be retained for 30 days in the analytics bucket.\nThe 30-day retention policy is revoked. Customer export files must be deleted within 24 hours and must not be copied to analytics storage.\nDeployment access is approved for the Alpha production cluster through the shared release-admin role.\nUrgent incidents must go only to the on-call rotation in PagerDuty. Direct personal escalation is disabled.",
-      "retrieved_tokens": 118,
-      "latency_ms": 4.8614580009598285,
-      "required_hits": 2,
-      "required_total": 2,
+      "query": "Who owns the next access review and what scenario-relative deadline applies?",
+      "retrieved_text": "Priya owns the quarterly access review. The next review is due on day 15 of the benchmark scenario's next quarter.\nDeployment access is now limited to the Beta staging cluster through the deploy-bot service account. No production role is available.\nThe 30-day retention policy is revoked. Customer export files must be deleted within 24 hours and must not be copied to analytics storage.\nCustomer export files may be retained for 30 days in the analytics bucket.\nDeployment access is approved for the Alpha production cluster through the shared release-admin role.\nUrgent incidents must go only to the on-call rotation in PagerDuty. Direct personal escalation is disabled.",
+      "retrieved_tokens": 126,
+      "latency_ms": 4.03391700820066,
+      "required_hits": 3,
+      "required_total": 3,
       "forbidden_hits": 0,
       "forbidden_total": 1,
       "accuracy": 1.0,

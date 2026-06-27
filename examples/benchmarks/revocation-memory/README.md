@@ -60,6 +60,9 @@ python examples/benchmarks/revocation-memory/benchmark.py \
 Live Memanto run:
 
 ```bash
+python -m venv .venv
+. .venv/bin/activate
+pip install -e .
 export MOORCHEH_API_KEY="..."
 python examples/benchmarks/revocation-memory/benchmark.py \
   --backend memanto \
@@ -73,7 +76,7 @@ Live Mem0 run:
 python -m venv .venv
 . .venv/bin/activate
 pip install -e .
-pip install -r examples/benchmarks/revocation-memory/requirements.txt
+pip install -r examples/benchmarks/revocation-memory/requirements.lock
 python examples/benchmarks/revocation-memory/benchmark.py \
   --backend mem0 \
   --output examples/benchmarks/revocation-memory/results/mem0-results.json

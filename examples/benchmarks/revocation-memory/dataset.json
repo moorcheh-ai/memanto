@@ -88,7 +88,7 @@
           "fact_key": "audit_owner",
           "type": "decision",
           "title": "Audit owner",
-          "content": "Priya owns the quarterly access review and the next review is due on July 15.",
+          "content": "Priya owns the quarterly access review. The next review is due on day 15 of the benchmark scenario's next quarter.",
           "confidence": 0.98
         }
       ]
@@ -127,8 +127,8 @@
     },
     {
       "id": "audit-owner",
-      "query": "Who owns the next access review and when is it due?",
-      "required_terms": ["Priya", "July 15"],
+      "query": "Who owns the next access review and what scenario-relative deadline applies?",
+      "required_terms": ["Priya", "day 15", "next quarter"],
       "forbidden_terms": ["Morgan"]
     }
   ]

@@ -8,6 +8,7 @@ from datetime import datetime, timezone
 import hashlib
 import importlib.metadata
 import json
+import math
 import os
 import platform
 import re
@@ -453,6 +454,8 @@ def validate_report(report: dict[str, Any], dataset: dict[str, Any]) -> list[str
     expected_mode = "smoke_fixture" if backend == "fixture" else "live_framework"
     if backend not in ADAPTERS:
         errors.append(f"unknown backend: {backend!r}")
+    if report.get("schema_version") != 2:
+        errors.append("schema_version must be 2")
     if report.get("mode") != expected_mode:
         errors.append(
             f"mode {report.get('mode')!r} does not match backend {backend!r}"
@@ -484,15 +487,70 @@ def validate_report(report: dict[str, Any], dataset: dict[str, Any]) -> list[str
                     )
         if not isinstance(backend_configuration, dict):
             errors.append("experiment_configuration.backend must be an object")
+        if backend in ADAPTERS and isinstance(shared, dict):
+            retrieval_limit = shared.get("retrieval_limit")
+            if not isinstance(retrieval_limit, int) or retrieval_limit <= 0:
+                errors.append("retrieval_limit must be a positive integer")
+            elif configuration != experiment_configuration(backend, retrieval_limit):
+                errors.append(
+                    "experiment_configuration does not match the backend"
+                )
 
     expected_probe_ids = [probe["id"] for probe in dataset["probes"]]
     actual_probes = report.get("probes")
     if not isinstance(actual_probes, list):
         errors.append("probes must be a list")
         actual_probes = []
-    actual_probe_ids = [probe.get("probe_id") for probe in actual_probes]
+    actual_probe_ids = [
+        probe.get("probe_id") if isinstance(probe, dict) else None
+        for probe in actual_probes
+    ]
     if actual_probe_ids != expected_probe_ids:
         errors.append("probe order or membership does not match the dataset")
+
+    validated_probes: list[dict[str, Any]] = []
+    for expected, actual in zip(dataset["probes"], actual_probes, strict=False):
+        probe_id = expected["id"]
+        if not isinstance(actual, dict):
+            errors.append(f"probe {probe_id} must be an object")
+            continue
+        validated_probes.append(actual)
+        if actual.get("query") != expected["query"]:
+            errors.append(f"probe {probe_id} query does not match the dataset")
+        retrieved_text = actual.get("retrieved_text")
+        if not isinstance(retrieved_text, str):
+            errors.append(f"probe {probe_id} retrieved_text must be a string")
+            continue
+        required_hits, forbidden_hits, accuracy = score_probe(
+            expected, retrieved_text
+        )
+        expected_values = {
+            "retrieved_tokens": token_count(retrieved_text),
+            "required_hits": required_hits,
+            "required_total": len(expected["required_terms"]),
+            "forbidden_hits": forbidden_hits,
+            "forbidden_total": len(expected["forbidden_terms"]),
+            "accuracy": accuracy,
+            "stale_leak": forbidden_hits > 0,
+        }
+        for field, expected_value in expected_values.items():
+            actual_value = actual.get(field)
+            matches = (
+                math.isclose(actual_value, expected_value)
+                if isinstance(expected_value, float)
+                and isinstance(actual_value, (int, float))
+                else actual_value == expected_value
+            )
+            if not matches:
+                errors.append(f"probe {probe_id} has invalid {field}")
+        latency = actual.get("latency_ms")
+        if (
+            not isinstance(latency, (int, float))
+            or isinstance(latency, bool)
+            or not math.isfinite(latency)
+            or latency < 0
+        ):
+            errors.append(f"probe {probe_id} latency_ms must be non-negative")
 
     summary = report.get("summary")
     if not isinstance(summary, dict):
@@ -503,11 +561,93 @@ def validate_report(report: dict[str, Any], dataset: dict[str, Any]) -> list[str
             "stale_leak_rate",
             "ingested_tokens",
             "retrieved_tokens_total",
+            "retrieved_tokens_mean",
             "write_latency_p95_ms",
             "read_latency_p95_ms",
         ):
             if field not in summary:
                 errors.append(f"summary is missing {field}")
+        if len(validated_probes) == len(dataset["probes"]):
+            accuracies = [probe.get("accuracy") for probe in validated_probes]
+            stale_leaks = [probe.get("stale_leak") for probe in validated_probes]
+            retrieved_tokens = [
+                probe.get("retrieved_tokens") for probe in validated_probes
+            ]
+            latencies = [probe.get("latency_ms") for probe in validated_probes]
+            if all(
+                isinstance(value, (int, float)) and not isinstance(value, bool)
+                for value in accuracies
+            ):
+                expected_accuracy = statistics.fmean(accuracies)
+                actual_accuracy = summary.get("retrieval_accuracy")
+                if (
+                    not isinstance(actual_accuracy, (int, float))
+                    or isinstance(actual_accuracy, bool)
+                    or not math.isclose(actual_accuracy, expected_accuracy)
+                ):
+                    errors.append(
+                        "summary retrieval_accuracy does not match probes"
+                    )
+            if all(isinstance(value, bool) for value in stale_leaks):
+                expected_stale_rate = sum(stale_leaks) / len(stale_leaks)
+                actual_stale_rate = summary.get("stale_leak_rate")
+                if (
+                    not isinstance(actual_stale_rate, (int, float))
+                    or isinstance(actual_stale_rate, bool)
+                    or not math.isclose(actual_stale_rate, expected_stale_rate)
+                ):
+                    errors.append("summary stale_leak_rate does not match probes")
+            if all(
+                isinstance(value, int) and not isinstance(value, bool)
+                for value in retrieved_tokens
+            ):
+                expected_total = sum(retrieved_tokens)
+                if summary.get("retrieved_tokens_total") != expected_total:
+                    errors.append(
+                        "summary retrieved_tokens_total does not match probes"
+                    )
+                actual_mean = summary.get("retrieved_tokens_mean")
+                if (
+                    not isinstance(actual_mean, (int, float))
+                    or isinstance(actual_mean, bool)
+                    or not math.isclose(
+                        actual_mean, statistics.fmean(retrieved_tokens)
+                    )
+                ):
+                    errors.append(
+                        "summary retrieved_tokens_mean does not match probes"
+                    )
+            if all(
+                isinstance(value, (int, float)) and not isinstance(value, bool)
+                for value in latencies
+            ):
+                expected_read_p95 = percentile(latencies, 0.95)
+                actual_read_p95 = summary.get("read_latency_p95_ms")
+                if (
+                    not isinstance(actual_read_p95, (int, float))
+                    or isinstance(actual_read_p95, bool)
+                    or not math.isclose(actual_read_p95, expected_read_p95)
+                ):
+                    errors.append(
+                        "summary read_latency_p95_ms does not match probes"
+                    )
+
+        expected_ingested_tokens = sum(
+            token_count(event["content"])
+            for session in dataset["sessions"]
+            for event in session["events"]
+        )
+        if summary.get("ingested_tokens") != expected_ingested_tokens:
+            errors.append("summary ingested_tokens does not match the dataset")
+        for field in ("write_latency_p95_ms", "read_latency_p95_ms"):
+            value = summary.get(field)
+            if (
+                not isinstance(value, (int, float))
+                or isinstance(value, bool)
+                or not math.isfinite(value)
+                or value < 0
+            ):
+                errors.append(f"summary {field} must be non-negative")
     return errors
 
 
