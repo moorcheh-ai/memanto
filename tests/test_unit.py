@@ -398,12 +398,63 @@ class TestClientSessionCache:
         client._get_session_service = MagicMock(return_value=session_service)
 
         client.activate_agent("agent-b", duration_hours=1)
+        assert client._cached_session is None
+
         resolved = client._get_validated_session_for_agent("agent-b")
 
         assert resolved is session_b
         assert client._cached_session is session_b
         session_service.validate_session.assert_called_once_with("token-agent-b")
         session_service.get_session.assert_called_once_with("agent-b")
+
+    @pytest.mark.parametrize(
+        "client_path,client_class_name",
+        [
+            ("memanto.cli.client.sdk_client", "SdkClient"),
+            ("memanto.cli.client.direct_client", "DirectClient"),
+        ],
+    )
+    def test_token_rotation_invalidates_same_agent_cached_session(
+        self, client_path, client_class_name
+    ):
+        import importlib
+
+        client_cls = getattr(importlib.import_module(client_path), client_class_name)
+        client = client_cls.__new__(client_cls)
+        client.session_token = "token-agent-a-new"
+        client.agent_id = "agent-a"
+        client._cached_session = SimpleNamespace(
+            agent_id="agent-a",
+            session_token="token-agent-a-old",
+            namespace="memanto_agent_agent-a",
+        )
+
+        now = datetime.utcnow()
+        current_session = SimpleNamespace(
+            session_id="session-agent-a-new",
+            session_token="token-agent-a-new",
+            agent_id="agent-a",
+            namespace="memanto_agent_agent-a",
+            pattern=AgentPattern.TOOL,
+            status=SessionStatus.ACTIVE,
+            started_at=now,
+            expires_at=now + timedelta(hours=1),
+        )
+        session_service = MagicMock()
+        session_service.validate_session.return_value = SimpleNamespace(
+            agent_id="agent-a"
+        )
+        session_service.get_session.return_value = current_session
+        session_service.check_and_auto_renew.return_value = None
+
+        client._get_session_service = MagicMock(return_value=session_service)
+
+        resolved = client._get_validated_session_for_agent("agent-a")
+
+        assert resolved is current_session
+        assert client._cached_session is current_session
+        session_service.validate_session.assert_called_once_with("token-agent-a-new")
+        session_service.get_session.assert_called_once_with("agent-a")
 
 
 class TestMEMANTOArchitecture:
