@@ -13,17 +13,23 @@ from langgraph_memanto.store import MemantoStore
 
 @pytest.fixture
 def mock_sdk_client():
+    """Patch the SdkClient used by MemantoStore tests."""
+
     with patch("langgraph_memanto.store.SdkClient") as mock:
         yield mock
 
 
 def test_memanto_store_init():
+    """Initialize the store with an API key and empty client pool."""
+
     store = MemantoStore(api_key="test_key")
     assert store.api_key == "test_key"
     assert store._client_pool == {}
 
 
 def test_ensure_client_creates_and_activates(mock_sdk_client):
+    """Create, activate, and cache a namespace-specific Memanto client."""
+
     store = MemantoStore(api_key="test_key")
 
     # Mock the instance returned by SdkClient
@@ -51,6 +57,8 @@ def test_ensure_client_creates_and_activates(mock_sdk_client):
 
 
 def test_ensure_client_empty_namespace(mock_sdk_client):
+    """Map the empty LangGraph namespace to the v2 empty suffix."""
+
     store = MemantoStore(api_key="test_key")
     client_instance = MagicMock()
     mock_sdk_client.return_value = client_instance
@@ -60,6 +68,8 @@ def test_ensure_client_empty_namespace(mock_sdk_client):
 
 
 def test_do_get_recent_success(mock_sdk_client):
+    """Return a keyed item from the recent-memory lookup path."""
+
     store = MemantoStore(api_key="test_key")
     client_instance = MagicMock()
     mock_sdk_client.return_value = client_instance
@@ -97,6 +107,8 @@ def test_do_get_recent_success(mock_sdk_client):
 
 
 def test_do_get_fallback_success(mock_sdk_client):
+    """Use semantic recall when recent-memory lookup misses the key."""
+
     store = MemantoStore(api_key="test_key")
     client_instance = MagicMock()
     mock_sdk_client.return_value = client_instance
@@ -134,6 +146,8 @@ def test_do_get_fallback_success(mock_sdk_client):
 
 
 def test_do_get_not_found(mock_sdk_client):
+    """Return None when recent and semantic lookup both miss."""
+
     store = MemantoStore(api_key="test_key")
     client_instance = MagicMock()
     mock_sdk_client.return_value = client_instance
@@ -148,6 +162,8 @@ def test_do_get_not_found(mock_sdk_client):
 
 
 def test_do_put_success(mock_sdk_client):
+    """Persist a PutOp value through the namespace-encoded agent id."""
+
     store = MemantoStore(api_key="test_key")
     client_instance = MagicMock()
     mock_sdk_client.return_value = client_instance
@@ -172,6 +188,8 @@ def test_do_put_success(mock_sdk_client):
 
 
 def test_do_put_delete_not_supported(mock_sdk_client):
+    """Reject PutOp deletion because Memanto uses conflict resolution."""
+
     store = MemantoStore(api_key="test_key")
     op = PutOp(namespace=("my_ns",), key="my_key", value=None)
 
@@ -182,6 +200,8 @@ def test_do_put_delete_not_supported(mock_sdk_client):
 
 
 def test_do_search_recent(mock_sdk_client):
+    """Search recent memories for wildcard queries."""
+
     store = MemantoStore(api_key="test_key")
     client_instance = MagicMock()
     mock_sdk_client.return_value = client_instance
@@ -209,6 +229,8 @@ def test_do_search_recent(mock_sdk_client):
 
 
 def test_do_search_semantic(mock_sdk_client):
+    """Search semantic memories with type filters."""
+
     store = MemantoStore(api_key="test_key")
     client_instance = MagicMock()
     mock_sdk_client.return_value = client_instance
@@ -242,6 +264,8 @@ def test_do_search_semantic(mock_sdk_client):
 
 
 def test_batch_execution(mock_sdk_client):
+    """Dispatch multiple store operations synchronously."""
+
     store = MemantoStore(api_key="test_key")
     client_instance = MagicMock()
     mock_sdk_client.return_value = client_instance
@@ -262,6 +286,8 @@ def test_batch_execution(mock_sdk_client):
 
 
 def test_do_list_namespaces(mock_sdk_client):
+    """List legacy LangGraph namespaces and ignore unrelated agents."""
+
     store = MemantoStore(api_key="test_key")
     client_instance = MagicMock()
     mock_sdk_client.return_value = client_instance
@@ -285,6 +311,8 @@ def test_do_list_namespaces(mock_sdk_client):
 
 
 def test_ensure_client_escapes_underscores_in_namespace_parts(mock_sdk_client):
+    """Encode underscores inside namespace parts without changing tuple shape."""
+
     store = MemantoStore(api_key="test_key")
     client_instance = MagicMock()
     mock_sdk_client.return_value = client_instance
@@ -303,6 +331,8 @@ def test_ensure_client_escapes_underscores_in_namespace_parts(mock_sdk_client):
 
 
 def test_do_list_namespaces_decodes_v2_underscored_parts(mock_sdk_client):
+    """Decode v2 agent suffixes and match underscored namespace prefixes."""
+
     store = MemantoStore(api_key="test_key")
     client_instance = MagicMock()
     mock_sdk_client.return_value = client_instance
@@ -321,6 +351,8 @@ def test_do_list_namespaces_decodes_v2_underscored_parts(mock_sdk_client):
 
 
 def test_do_list_namespaces_decodes_legacy_double_underscore_suffix(mock_sdk_client):
+    """Keep the temporary double-underscore suffix decoder compatible."""
+
     store = MemantoStore(api_key="test_key")
     client_instance = MagicMock()
     mock_sdk_client.return_value = client_instance
@@ -335,7 +367,27 @@ def test_do_list_namespaces_decodes_legacy_double_underscore_suffix(mock_sdk_cli
     assert namespaces == [("team_alpha", "user_profile")]
 
 
+def test_do_list_namespaces_skips_malformed_v2_suffix(mock_sdk_client):
+    """Skip malformed v2 agent suffixes while returning valid namespaces."""
+
+    store = MemantoStore(api_key="test_key")
+    client_instance = MagicMock()
+    mock_sdk_client.return_value = client_instance
+
+    client_instance.list_agents.return_value = [
+        {"agent_id": "langgraph_v2_2_bogus"},
+        {"agent_id": "langgraph_v2_1_7zbXlfbnM"},
+    ]
+
+    op = ListNamespacesOp()
+    namespaces = store._do_list_namespaces(op)
+
+    assert namespaces == [("my_ns",)]
+
+
 def test_namespace_suffix_round_trips():
+    """Round-trip namespaces through the v2 suffix encoder and decoder."""
+
     namespaces = [
         (),
         ("default",),
@@ -352,6 +404,8 @@ def test_namespace_suffix_round_trips():
 
 
 def test_distinct_namespaces_have_distinct_agent_suffixes():
+    """Keep ambiguous-looking namespace tuples on distinct suffixes."""
+
     namespaces = [(), ("default",), ("a_", "b"), ("a", "_b")]
     suffixes = [MemantoStore._namespace_to_agent_suffix(ns) for ns in namespaces]
 
@@ -359,6 +413,8 @@ def test_distinct_namespaces_have_distinct_agent_suffixes():
 
 
 def test_do_list_namespaces_match_conditions(mock_sdk_client):
+    """Apply prefix match conditions to listed legacy namespaces."""
+
     store = MemantoStore(api_key="test_key")
     client_instance = MagicMock()
     mock_sdk_client.return_value = client_instance

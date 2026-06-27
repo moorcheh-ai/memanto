@@ -418,6 +418,8 @@ class MemantoStore(BaseStore):
 
     @staticmethod
     def _namespace_to_agent_suffix(namespace: tuple[str, ...]) -> str:
+        """Encode a LangGraph namespace tuple into a Memanto-safe agent suffix."""
+
         if not namespace:
             return "v2_0"
 
@@ -433,12 +435,16 @@ class MemantoStore(BaseStore):
 
     @staticmethod
     def _agent_suffix_to_namespace(suffix: str) -> tuple[str, ...]:
+        """Decode a v2 or legacy Memanto agent suffix into a namespace tuple."""
+
         if suffix.startswith("v2_"):
             return MemantoStore._decode_v2_agent_suffix(suffix)
         return MemantoStore._decode_legacy_agent_suffix(suffix)
 
     @staticmethod
     def _decode_v2_agent_suffix(suffix: str) -> tuple[str, ...]:
+        """Decode the reversible v2 length-prefixed namespace suffix."""
+
         count_and_payload = suffix[len("v2_") :]
         count_text, separator, payload = count_and_payload.partition("_")
         if not count_text.isdigit():
@@ -479,6 +485,8 @@ class MemantoStore(BaseStore):
 
     @staticmethod
     def _decode_legacy_agent_suffix(suffix: str) -> tuple[str, ...]:
+        """Decode pre-v2 suffixes for existing LangGraph agents."""
+
         if suffix == "default":
             return ()
 
