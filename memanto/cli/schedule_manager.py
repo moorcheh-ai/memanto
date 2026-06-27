@@ -11,6 +11,8 @@ import sys
 from pathlib import Path
 from typing import Any
 
+from memanto.cli.config.manager import normalize_schedule_time
+
 
 class ScheduleManager:
     """Manages OS-level scheduled tasks for MEMANTO."""
@@ -56,6 +58,11 @@ class ScheduleManager:
         return f'"{self.python_exe}" "{self.cli_main.absolute()}" schedule _run'
 
     def enable(self, time_str: str = "23:55") -> dict[str, Any]:
+        try:
+            time_str = normalize_schedule_time(time_str)
+        except ValueError as e:
+            return {"status": "error", "message": str(e)}
+
         self._remove_legacy_tasks()
         if self.os_type == "Windows":
             return self._enable_windows(time_str)
@@ -131,11 +138,7 @@ class ScheduleManager:
     # Unix/OSX (crontab)
 
     def _enable_unix(self, time_str: str = "23:55") -> dict[str, Any]:
-        try:
-            parts = time_str.split(":")
-            hour, minute = int(parts[0]), int(parts[1])
-        except (ValueError, IndexError):
-            hour, minute = 23, 55
+        hour, minute = (int(part) for part in time_str.split(":"))
 
         marker = f"# {self.TASK_NAME}"
         cron_entry = f"{minute} {hour} * * * {self._command()}  {marker}"

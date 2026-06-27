@@ -13,7 +13,9 @@ import pytest
 from typer.testing import CliRunner
 
 from memanto.app.clients.backend import Backend
+from memanto.cli.config.manager import ConfigManager, normalize_schedule_time
 from memanto.cli.main import app
+from memanto.cli.schedule_manager import ScheduleManager
 
 runner = CliRunner()
 
@@ -814,6 +816,41 @@ class TestMEMANTOCLI:
             result = runner.invoke(app, ["schedule", "status"])
             assert result.exit_code == 0
             assert "ENABLED" in result.stdout
+
+    def test_schedule_time_is_validated_and_normalized(self, tmp_path):
+        """Configured scheduler time must be safe to pass to cron/schtasks."""
+        config = ConfigManager(config_dir=tmp_path)
+
+        config.set_schedule_time("7:05")
+        assert config.get_schedule_time() == "07:05"
+        assert normalize_schedule_time("23:59") == "23:59"
+
+        with pytest.raises(ValueError):
+            config.set_schedule_time("24:00")
+        with pytest.raises(ValueError):
+            config.set_schedule_time("not-a-time")
+        with pytest.raises(ValueError):
+            config.set_schedule_time("\u0667:05")
+
+        config.save_yaml({"schedule_time": "99:99"})
+        assert config.get_schedule_time() == "23:55"
+
+    def test_schedule_enable_rejects_invalid_time_before_os_scheduler(self):
+        """A stale bad config value should not be written into the OS scheduler."""
+        manager = ScheduleManager()
+
+        with (
+            patch.object(manager, "_remove_legacy_tasks") as remove_legacy,
+            patch.object(manager, "_enable_unix") as enable_unix,
+            patch.object(manager, "_enable_windows") as enable_windows,
+        ):
+            result = manager.enable("99:99")
+
+        assert result["status"] == "error"
+        assert "00:00 and 23:59" in result["message"]
+        remove_legacy.assert_not_called()
+        enable_unix.assert_not_called()
+        enable_windows.assert_not_called()
 
     def test_config_show(self, mock_all_clients):
         """Test 'memanto config show'"""

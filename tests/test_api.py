@@ -1209,6 +1209,7 @@ class TestCWE200ApiKeyLeak:
         assert "has_active_session" in data
         assert data["has_active_session"] is True
 
+
     @pytest.mark.asyncio
     async def test_traversal_filename_is_sanitized(
         self, client, auth_headers, mock_moorcheh
@@ -1289,6 +1290,21 @@ class TestCWE200ApiKeyLeak:
         assert response.status_code == 200
         data = response.json()
         assert data["file_name"] == "secret.json"
+
+
+class TestUiConfigValidation:
+    @pytest.mark.asyncio
+    async def test_config_update_rejects_invalid_schedule_time(
+        self, client, _mock_ui_config_manager
+    ):
+        _mock_ui_config_manager.set_schedule_time.side_effect = ValueError(
+            "schedule_time must be between 00:00 and 23:59"
+        )
+
+        resp = await client.patch("/api/ui/config", json={"schedule_time": "24:00"})
+
+        assert resp.status_code == 400
+        assert "schedule_time must be between 00:00 and 23:59" in resp.json()["detail"]
 
 
 class TestFilenameSanitizationLogic:

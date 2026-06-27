@@ -29,6 +29,22 @@ def _normalize_duplicated_api_key(key: str) -> str:
     return key
 
 
+def normalize_schedule_time(time_str: str) -> str:
+    """Validate and normalize daily schedule time to HH:MM."""
+    if not isinstance(time_str, str):
+        raise ValueError("schedule_time must be a string in HH:MM format")
+
+    parts = time_str.strip().split(":")
+    if len(parts) != 2 or not all(part.isascii() and part.isdecimal() for part in parts):
+        raise ValueError("schedule_time must use HH:MM format")
+
+    hour, minute = int(parts[0]), int(parts[1])
+    if not 0 <= hour <= 23 or not 0 <= minute <= 59:
+        raise ValueError("schedule_time must be between 00:00 and 23:59")
+
+    return f"{hour:02d}:{minute:02d}"
+
+
 class ConfigManager:
     """Manages MEMANTO CLI configuration.
 
@@ -392,12 +408,15 @@ class ConfigManager:
         """Get daily summary + conflict time (HH:MM format)."""
         value = self.load_yaml().get("schedule_time")
         if isinstance(value, str) and value:
-            return value
+            try:
+                return normalize_schedule_time(value)
+            except ValueError:
+                return "23:55"
         return "23:55"
 
     def set_schedule_time(self, time_str: str) -> None:
         """Set daily summary + conflict time."""
-        self.set("schedule_time", time_str)
+        self.set("schedule_time", normalize_schedule_time(time_str))
 
     # Active session tracking — sourced from SessionService (~/.memanto/sessions/).
     # CLI and API server both go through here so they always agree.
