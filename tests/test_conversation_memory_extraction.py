@@ -6,21 +6,29 @@ from memanto.app.services.conversation_memory_extraction_service import (
 
 
 class FakeAnswer:
+    """Answer endpoint stub that records generate kwargs."""
+
     def __init__(self, answer):
+        """Initialize the stub with a canned answer string."""
         self._answer = answer
         self.call_kwargs = None
 
     def generate(self, **kwargs):
+        """Record kwargs and return the configured answer payload."""
         self.call_kwargs = kwargs
         return {"answer": self._answer}
 
 
 class FakeClient:
+    """Moorcheh client stub exposing only the answer surface."""
+
     def __init__(self, answer):
+        """Initialize the fake client with a fake answer endpoint."""
         self.answer = FakeAnswer(answer)
 
 
 def test_extract_conversation_memories_normalizes_candidates():
+    """Extraction should normalize, clamp, and deduplicate model candidates."""
     client = FakeClient(
         """
         ```json
@@ -80,7 +88,40 @@ def test_extract_conversation_memories_normalizes_candidates():
     assert "user:" in client.answer.call_kwargs["query"]
 
 
+def test_extract_on_prem_without_state_omits_ai_model(monkeypatch, tmp_path):
+    """Conversation extraction should omit ai_model when on-prem has no model."""
+    from memanto.app.config import settings
+
+    monkeypatch.setattr(settings, "MEMANTO_BACKEND", "on-prem")
+    monkeypatch.setattr(
+        "memanto.app.clients.backend.Path",
+        type("P", (), {"home": classmethod(lambda cls: tmp_path)}),
+    )
+
+    client = FakeClient(
+        """
+        [
+          {
+            "type": "fact",
+            "title": "Local setup",
+            "content": "The user runs an on-prem Moorcheh backend.",
+            "confidence": 0.9
+          }
+        ]
+        """
+    )
+
+    service = ConversationMemoryExtractionService(client)
+    service.extract(
+        namespace="memanto_agent_test",
+        messages=[{"role": "user", "content": "I run Moorcheh locally."}],
+    )
+
+    assert "ai_model" not in client.answer.call_kwargs
+
+
 def test_extract_rejects_non_json_answers():
+    """Extraction should reject answers that cannot be parsed as JSON."""
     service = ConversationMemoryExtractionService(FakeClient("not json"))
 
     with pytest.raises(ValueError, match="valid JSON"):
@@ -91,6 +132,7 @@ def test_extract_rejects_non_json_answers():
 
 
 def test_extract_requires_messages():
+    """Extraction should reject empty conversation payloads."""
     service = ConversationMemoryExtractionService(FakeClient("[]"))
 
     with pytest.raises(ValueError, match="at least one message"):
