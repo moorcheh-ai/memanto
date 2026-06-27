@@ -307,11 +307,9 @@ class MemoryWriteService:
                     updated_memory.expires_at = metadata["expires_at"]
 
             # Step 3: Delete old version
-            delete_result = self.client.documents.delete(
-                namespace_name=namespace, ids=[memory_id]
-            )
+            deleted = self.delete_memory(memory_id, namespace)
 
-            if delete_result.get("actual_deletions", 0) == 0:
+            if not deleted:
                 raise MemoryError(f"Failed to delete old version of memory {memory_id}")
 
             validation_result = {"action": "store", "reason": "MVP direct store"}
