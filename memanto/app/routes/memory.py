@@ -474,11 +474,15 @@ async def extract_memories_from_conversation(
         )
 
         session_service = get_session_service()
+        batch_results = result.get("results", [])
         for index, record in enumerate(memory_records):
-            batch_results = result.get("results", [])
-            memory_id = (
-                batch_results[index].get("id") if index < len(batch_results) else None
-            )
+            batch_result = batch_results[index] if index < len(batch_results) else {}
+            if str(batch_result.get("status", "")).lower() not in {
+                "queued",
+                "success",
+            }:
+                continue
+            memory_id = batch_result.get("id")
             await asyncio.to_thread(
                 session_service.log_memory_to_session_summary,
                 agent_id=agent_id,
