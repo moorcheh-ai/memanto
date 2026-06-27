@@ -1,0 +1,371 @@
+/**
+ * Developer Skills Challenge Solution
+ * 
+ * This implementation provides a type-safe solution for a developer skills challenge.
+ * It includes utility types, functions, and comprehensive test cases.
+ */
+
+// ============================================
+// Core Types
+// ============================================
+
+/**
+ * Represents a developer with their skills and experience
+ */
+interface Developer {
+  name: string;
+  skills: string[];
+  experience: number; // years of experience
+  level: 'junior' | 'mid' | 'senior' | 'lead';
+}
+
+/**
+ * Challenge result with validation and scoring
+ */
+interface ChallengeResult {
+  developer: Developer;
+  score: number;
+  passed: boolean;
+  feedback: string[];
+}
+
+/**
+ * Challenge configuration
+ */
+interface ChallengeConfig {
+  name: string;
+  difficulty: 'easy' | 'medium' | 'hard';
+  requiredSkills: string[];
+  maxScore: number;
+  timeLimit: number; // in minutes
+}
+
+// ============================================
+// Type Utilities
+// ============================================
+
+/**
+ * Type-safe skill validation
+ */
+type ValidSkill = 'TypeScript' | 'JavaScript' | 'React' | 'Node.js' | 'Python' | 'Go' | 'Rust' | 'Docker' | 'Kubernetes' | 'AWS';
+
+/**
+ * Extracts keys from an object type
+ */
+type ObjectKeys<T> = T extends object ? (keyof T)[] : never;
+
+/**
+ * Makes specific properties required
+ */
+type RequiredProps<T, K extends keyof T> = T & { [P in K]-?: T[P] };
+
+// ============================================
+// Core Implementation
+// ============================================
+
+/**
+ * Validates if a developer has the required skills for a challenge
+ */
+function validateDeveloperSkills(
+  developer: Developer,
+  requiredSkills: string[]
+): { valid: boolean; missingSkills: string[] } {
+  const missingSkills = requiredSkills.filter(
+    skill => !developer.skills.includes(skill)
+  );
+
+  return {
+    valid: missingSkills.length === 0,
+    missingSkills
+  };
+}
+
+/**
+ * Calculates experience bonus based on developer's experience
+ */
+function calculateExperienceBonus(experience: number): number {
+  if (experience < 0) {
+    throw new Error('Experience cannot be negative');
+  }
+
+  // Bonus decreases as experience increases (diminishing returns)
+  return Math.min(experience * 0.1, 5);
+}
+
+/**
+ * Evaluates a developer's challenge performance
+ */
+function evaluateChallenge(
+  developer: Developer,
+  challenge: ChallengeConfig,
+  completionTime: number, // in minutes
+  codeQuality: number // 0-100
+): ChallengeResult {
+  const feedback: string[] = [];
+  let score = 0;
+
+  // Validate inputs
+  if (completionTime < 0) {
+    throw new Error('Completion time cannot be negative');
+  }
+  if (codeQuality < 0 || codeQuality > 100) {
+    throw new Error('Code quality must be between 0 and 100');
+  }
+
+  // Check skill requirements
+  const skillValidation = validateDeveloperSkills(developer, challenge.requiredSkills);
+  if (!skillValidation.valid) {
+    feedback.push(`Missing skills: ${skillValidation.missingSkills.join(', ')}`);
+    return {
+      developer,
+      score: 0,
+      passed: false,
+      feedback
+    };
+  }
+
+  // Calculate time bonus
+  const timeRatio = completionTime / challenge.timeLimit;
+  let timeScore: number;
+
+  if (timeRatio <= 0.5) {
+    timeScore = 20; // Completed in half the time
+    feedback.push('Excellent time management');
+  } else if (timeRatio <= 0.8) {
+    timeScore = 15; // Completed within reasonable time
+    feedback.push('Good time management');
+  } else if (timeRatio <= 1.0) {
+    timeScore = 10; // Completed within time limit
+    feedback.push('Completed within time limit');
+  } else {
+    timeScore = 0; // Exceeded time limit
+    feedback.push('Exceeded time limit');
+  }
+
+  // Calculate code quality score
+  const qualityScore = (codeQuality / 100) * 50;
+
+  // Add experience bonus
+  const experienceBonus = calculateExperienceBonus(developer.experience);
+
+  // Calculate total score
+  score = Math.min(
+    timeScore + qualityScore + experienceBonus,
+    challenge.maxScore
+  );
+
+  // Determine if passed
+  const passed = score >= challenge.maxScore * 0.6;
+
+  if (passed) {
+    feedback.push(`Challenge passed with score: ${score.toFixed(1)}/${challenge.maxScore}`);
+  } else {
+    feedback.push(`Challenge failed. Score: ${score.toFixed(1)}/${challenge.maxScore}. Need at least ${challenge.maxScore * 0.6}`);
+  }
+
+  return {
+    developer,
+    score: Math.round(score * 10) / 10, // Round to 1 decimal
+    passed,
+    feedback
+  };
+}
+
+/**
+ * Creates a new developer with validation
+ */
+function createDeveloper(
+  name: string,
+  skills: string[],
+  experience: number,
+  level: Developer['level']
+): Developer {
+  if (!name || name.trim().length === 0) {
+    throw new Error('Developer name is required');
+  }
+  if (experience < 0) {
+    throw new Error('Experience cannot be negative');
+  }
+  if (skills.length === 0) {
+    throw new Error('Developer must have at least one skill');
+  }
+
+  return {
+    name: name.trim(),
+    skills: [...new Set(skills)], // Remove duplicates
+    experience,
+    level
+  };
+}
+
+/**
+ * Creates a challenge configuration with validation
+ */
+function createChallenge(
+  name: string,
+  difficulty: ChallengeConfig['difficulty'],
+  requiredSkills: string[],
+  maxScore: number,
+  timeLimit: number
+): ChallengeConfig {
+  if (!name || name.trim().length === 0) {
+    throw new Error('Challenge name is required');
+  }
+  if (maxScore <= 0) {
+    throw new Error('Max score must be positive');
+  }
+  if (timeLimit <= 0) {
+    throw new Error('Time limit must be positive');
+  }
+  if (requiredSkills.length === 0) {
+    throw new Error('Challenge must require at least one skill');
+  }
+
+  return {
+    name: name.trim(),
+    difficulty,
+    requiredSkills: [...new Set(requiredSkills)], // Remove duplicates
+    maxScore,
+    timeLimit
+  };
+}
+
+// ============================================
+// Test Cases
+// ============================================
+
+/**
+ * Test suite for the challenge system
+ */
+function runTests(): void {
+  console.log('=== Developer Skills Challenge Tests ===\n');
+
+  // Test 1: Create developer
+  console.log('Test 1: Create developer');
+  try {
+    const dev = createDeveloper('Alice', ['TypeScript', 'React', 'Node.js'], 5, 'senior');
+    console.log('✓ Developer created:', dev.name);
+    console.log('  Skills:', dev.skills.join(', '));
+    console.log('  Experience:', dev.experience, 'years');
+    console.log('  Level:', dev.level);
+  } catch (error) {
+    console.error('✗ Failed:', error);
+  }
+  console.log();
+
+  // Test 2: Create challenge
+  console.log('Test 2: Create challenge');
+  try {
+    const challenge = createChallenge(
+      'Build a REST API',
+      'hard',
+      ['TypeScript', 'Node.js'],
+      100,
+      120
+    );
+    console.log('✓ Challenge created:', challenge.name);
+    console.log('  Difficulty:', challenge.difficulty);
+    console.log('  Required skills:', challenge.requiredSkills.join(', '));
+  } catch (error) {
+    console.error('✗ Failed:', error);
+  }
+  console.log();
+
+  // Test 3: Successful challenge completion
+  console.log('Test 3: Successful challenge completion');
+  try {
+    const dev = createDeveloper('Bob', ['TypeScript', 'Node.js', 'Docker'], 3, 'mid');
+    const challenge = createChallenge('Deploy Microservice', 'medium', ['TypeScript', 'Docker'], 80, 90);
+    const result = evaluateChallenge(dev, challenge, 45, 85);
+    console.log('✓ Result:', result.passed ? 'PASSED' : 'FAILED');
+    console.log('  Score:', result.score);
+    console.log('  Feedback:');
+    result.feedback.forEach(f => console.log('    -', f));
+  } catch (error) {
+    console.error('✗ Failed:', error);
+  }
+  console.log();
+
+  // Test 4: Failed challenge (missing skills)
+  console.log('Test 4: Failed challenge (missing skills)');
+  try {
+    const dev = createDeveloper('Charlie', ['Python', 'JavaScript'], 2, 'junior');
+    const challenge = createChallenge('TypeScript Project', 'hard', ['TypeScript', 'React'], 100, 60);
+    const result = evaluateChallenge(dev, challenge, 30, 70);
+    console.log('✓ Result:', result.passed ? 'PASSED' : 'FAILED');
+    console.log('  Score:', result.score);
+    console.log('  Feedback:');
+    result.feedback.forEach(f => console.log('    -', f));
+  } catch (error) {
+    console.error('✗ Failed:', error);
+  }
+  console.log();
+
+  // Test 5: Edge cases
+  console.log('Test 5: Edge cases');
+  
+  // Test 5a: Negative experience
+  try {
+    createDeveloper('Dave', ['TypeScript'], -1, 'junior');
+    console.error('✗ Should have thrown error for negative experience');
+  } catch (error) {
+    console.log('✓ Negative experience handled:', error.message);
+  }
+
+  // Test 5b: Empty name
+  try {
+    createDeveloper('', ['TypeScript'], 1, 'junior');
+    console.error('✗ Should have thrown error for empty name');
+  } catch (error) {
+    console.log('✓ Empty name handled:', error.message);
+  }
+
+  // Test 5c: No skills
+  try {
+    createDeveloper('Eve', [], 1, 'junior');
+    console.error('✗ Should have thrown error for no skills');
+  } catch (error) {
+    console.log('✓ No skills handled:', error.message);
+  }
+
+  // Test 5d: Exceeded time limit
+  try {
+    const dev = createDeveloper('Frank', ['TypeScript'], 1, 'junior');
+    const challenge = createChallenge('Quick Task', 'easy', ['TypeScript'], 50, 30);
+    const result = evaluateChallenge(dev, challenge, 60, 90);
+    console.log('✓ Time exceeded handled');
+    console.log('  Score:', result.score);
+    console.log('  Passed:', result.passed);
+  } catch (error) {
+    console.error('✗ Failed:', error);
+  }
+  console.log();
+
+  // Test 6: Type safety demonstration
+  console.log('Test 6: Type safety');
+  const validSkills: ValidSkill[] = ['TypeScript', 'React', 'Node.js'];
+  console.log('✓ Type-safe skills:', validSkills.join(', '));
+  
+  // This would cause a TypeScript compilation error:
+  // const invalidSkill: ValidSkill = 'InvalidSkill';
+  
+  console.log('✓ TypeScript compilation would catch invalid skills\n');
+
+  console.log('=== All tests completed ===');
+}
+
+// Run tests
+runTests();
+
+// Export for external use
+export {
+  Developer,
+  ChallengeConfig,
+  ChallengeResult,
+  ValidSkill,
+  createDeveloper,
+  createChallenge,
+  evaluateChallenge,
+  validateDeveloperSkills,
+  calculateExperienceBonus
+};
