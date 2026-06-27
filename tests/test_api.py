@@ -1279,6 +1279,37 @@ class TestCWE200ApiKeyLeak:
         assert data["sample"][0]["title"] == "User prefers concise summaries"
 
     @pytest.mark.asyncio
+    async def test_migrate_dry_run_rejects_symlink_escape_from_migrate_dir(
+        self, client, _mock_ui_config_manager, tmp_path
+    ):
+        """Resolved symlinks must not escape the migration workspace."""
+        migrate_dir = tmp_path / ".memanto" / "migrate" / "mem0"
+        migrate_dir.mkdir(parents=True)
+        _mock_ui_config_manager.get_migrate_dir.return_value = migrate_dir
+
+        outside_file = tmp_path / "private-export.json"
+        outside_file.write_text(
+            json.dumps(
+                {
+                    "summary": {"memory_count": 1},
+                    "memories": [{"id": "secret-1", "memory": "secret"}],
+                }
+            ),
+            encoding="utf-8",
+        )
+
+        symlink_file = migrate_dir / "linked-export.json"
+        symlink_file.symlink_to(outside_file)
+
+        resp = await client.post(
+            "/api/ui/migrate/dry-run",
+            json={"provider": "mem0", "file": str(symlink_file)},
+        )
+
+        assert resp.status_code == 400
+        assert "migrate directory" in resp.json()["detail"]
+
+    @pytest.mark.asyncio
     async def test_traversal_filename_is_sanitized(
         self, client, auth_headers, mock_moorcheh
     ):
