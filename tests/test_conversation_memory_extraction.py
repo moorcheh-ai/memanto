@@ -90,6 +90,32 @@ def test_extract_rejects_non_json_answers():
         )
 
 
+def test_extract_keeps_context_when_first_message_exceeds_limit():
+    client = FakeClient(
+        """
+        [
+          {
+            "type": "fact",
+            "title": "Large transcript",
+            "content": "The user pasted a large support transcript.",
+            "confidence": 0.8
+          }
+        ]
+        """
+    )
+    service = ConversationMemoryExtractionService(client)
+
+    service.extract(
+        namespace="memanto_agent_test",
+        messages=[{"role": "user", "content": "A" * 20_000}],
+    )
+
+    query = client.answer.call_kwargs["query"]
+    assert query.startswith("user: ")
+    assert len(query) == service.MAX_CONTENT_CHARS
+    assert "A" in query
+
+
 def test_extract_requires_messages():
     service = ConversationMemoryExtractionService(FakeClient("[]"))
 
