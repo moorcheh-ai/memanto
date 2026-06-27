@@ -5,12 +5,14 @@ from typing import Any
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 from langchain_core.runnables import RunnableConfig
 
+from memanto.app.utils.errors import SessionError
 from memanto.cli.client.sdk_client import SdkClient
 
 logger = logging.getLogger(__name__)
 
 
 def _extract_text_content(content: Any) -> str:
+    """Return plain-text from a LangChain message content value."""
     if isinstance(content, str):
         return content
     elif isinstance(content, list):
@@ -32,14 +34,20 @@ class _PerAgentClientCache:
     isolation, a concurrent _do_setup("bob") would clobber the shared client's
     session_token while agent "alice" is mid-request, causing cross-tenant auth
     failures or silent data leaks.
+
+    The cache is intentionally unbounded: in a typical LangGraph deployment the
+    number of distinct agent IDs active in a single process is naturally bounded
+    by the number of concurrent tenants, so unbounded growth is not a concern.
     """
 
     def __init__(self, template_client: SdkClient) -> None:
+        """Initialise cache, extracting the API key from *template_client*."""
         self._api_key = template_client.api_key
         self._clients: dict[str, SdkClient] = {}
         self._lock = threading.Lock()
 
     def get(self, agent_id: str) -> SdkClient:
+        """Return the SdkClient for *agent_id*, creating one on first access."""
         with self._lock:
             if agent_id not in self._clients:
                 self._clients[agent_id] = SdkClient(api_key=self._api_key)
@@ -224,8 +232,9 @@ def create_remember_node(
                 source="langgraph-node",
                 provenance="explicit_statement",
             )
-        except Exception:
-            # If there's an error, try to setup and retry
+        except SessionError:
+            # SessionError is always raised before any write completes, so
+            # retrying after _do_setup cannot produce duplicate memories.
             _do_setup(agent_client, resolved_agent_id)
             try:
                 agent_client.remember(
@@ -238,6 +247,10 @@ def create_remember_node(
                 )
             except Exception as inner_e:
                 logger.error(f"Remember failed after setup: {inner_e}")
+        except Exception as e:
+            # Non-session errors may occur after the write has started; do not
+            # retry to avoid storing duplicate memories.
+            logger.error(f"Remember failed: {e}")
         return {"messages": []}
 
     return remember_node

@@ -2,6 +2,7 @@ import threading
 from unittest.mock import MagicMock, patch
 
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
+from memanto.app.utils.errors import SessionError as MementoSessionError
 from langgraph_memanto.nodes import (
     _PerAgentClientCache,
     create_recall_node,
@@ -262,7 +263,9 @@ def test_concurrent_recall_nodes_do_not_share_session_state():
     recall_node = create_recall_node(template_client, agent_id_from_config="agent_id")
 
     # Inject per-agent mocks so each cache.get(agent_id) returns the right mock.
-    cache = recall_node.__closure__[0].cell_contents
+    # Locate _cache by name to stay stable if the closure layout changes.
+    freevars = recall_node.__code__.co_freevars
+    cache = recall_node.__closure__[freevars.index("_cache")].cell_contents
     cache._clients = per_agent_mocks.copy()
 
     barrier = threading.Barrier(len(agent_ids))
@@ -292,3 +295,44 @@ def test_concurrent_recall_nodes_do_not_share_session_state():
             f"agent '{aid}' received wrong memories — cross-tenant leak detected.\n"
             f"Got: {memory_text}"
         )
+
+
+def test_remember_retries_only_on_session_error():
+    """SessionError triggers _do_setup + retry; other exceptions do not retry.
+
+    Regression for the broad-except bug: before the fix, any exception (including
+    post-write network errors) would trigger a retry, potentially storing duplicate
+    memories. Now only SessionError — which SdkClient always raises before writing —
+    triggers the retry path.
+    """
+    client = MagicMock()
+    client.activate_agent.return_value = {"session_token": "mock-token"}
+
+    # First call raises SessionError (pre-write), second call succeeds.
+    client.remember.side_effect = [MementoSessionError("no active session"), None]
+
+    node = create_remember_node(client=client, agent_id="test-agent")
+    state = {"messages": [HumanMessage(content="hello")]}
+
+    with patch(_PATCH, return_value=client):
+        result = node(state)
+
+    assert result == {"messages": []}
+    assert client.activate_agent.call_count == 1, "setup must trigger on SessionError"
+    assert client.remember.call_count == 2, "remember must be retried after setup"
+
+
+def test_remember_does_not_retry_on_generic_error():
+    """A non-session exception must NOT trigger a retry (avoids duplicate writes)."""
+    client = MagicMock()
+    client.remember.side_effect = RuntimeError("network timeout")
+
+    node = create_remember_node(client=client, agent_id="test-agent")
+    state = {"messages": [HumanMessage(content="hello")]}
+
+    with patch(_PATCH, return_value=client):
+        result = node(state)
+
+    assert result == {"messages": []}
+    assert client.activate_agent.call_count == 0, "setup must NOT trigger on non-session error"
+    assert client.remember.call_count == 1, "remember must NOT be retried on non-session error"
