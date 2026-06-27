@@ -404,13 +404,20 @@ class MemoryWriteService:
     def _document_from_existing(
         self, memory_id: str, existing_memory_data: dict[str, Any]
     ) -> dict[str, Any]:
-        """Build the exact document to restore after a failed update upload."""
+        """Build the document to restore after a failed update upload."""
 
-        if (
-            isinstance(existing_memory_data.get("text"), str)
-            and existing_memory_data.get("memory_type") is not None
-        ):
-            document = dict(existing_memory_data)
+        if isinstance(existing_memory_data.get("text"), str):
+            metadata = existing_memory_data.get("metadata")
+            document = {
+                key: value
+                for key, value in existing_memory_data.items()
+                if key not in {"content", "metadata", "title"}
+            }
+            if isinstance(metadata, dict):
+                for key, value in metadata.items():
+                    document.setdefault(key, value)
+            if isinstance(document.get("tags"), list):
+                document["tags"] = ",".join(document["tags"])
             document["id"] = document.get("id") or memory_id
             return document
 
