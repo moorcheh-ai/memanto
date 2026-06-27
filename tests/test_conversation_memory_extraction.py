@@ -197,3 +197,17 @@ def test_footer_prompt_requests_date_field():
         "_footer_prompt does not mention 'date' — the LLM will never produce "
         "temporal context, causing systematic timeline amnesia."
     )
+
+
+def test_footer_prompt_anchors_relative_dates_to_today():
+    """_footer_prompt must include today's date so relative expressions resolve correctly."""
+    from datetime import date
+
+    service = ConversationMemoryExtractionService(client=None)
+    footer = service._footer_prompt()
+    today = date.today().isoformat()
+    assert today in footer, (
+        f"_footer_prompt does not include today's date ({today}) — "
+        "the LLM cannot reliably resolve relative expressions like 'yesterday' "
+        "without a reference point (nondeterministic inference)."
+    )

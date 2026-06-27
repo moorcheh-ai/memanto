@@ -67,6 +67,9 @@ class MemoryRecord(BaseModel):
     validation_count: int = 0  # Number of times validated/confirmed
     contradiction_detected: bool = False  # Flag for contradictions
 
+    # Event date — when the fact/event occurred (YYYY-MM-DD), distinct from system timestamps
+    event_date: str | None = None
+
     # Timestamps (auto-populated by server)
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
@@ -123,6 +126,8 @@ class MemoryRecord(BaseModel):
             document["supersedes"] = self.supersedes
         if self.validated_at:
             document["validated_at"] = self.validated_at.isoformat()
+        if self.event_date:
+            document["event_date"] = self.event_date
 
         return document
 

@@ -466,6 +466,7 @@ async def extract_memories_from_conversation(
                 tags=["conversation-extract"],
                 source=item["source"],
                 provenance=cast(ProvenanceType, item["provenance"]),
+                event_date=item.get("date"),
             )
             memory_records.append(memory)
 

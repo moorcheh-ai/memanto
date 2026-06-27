@@ -95,13 +95,18 @@ class ConversationMemoryExtractionService:
         )
 
     def _footer_prompt(self) -> str:
+        from datetime import date
+
+        today = date.today().isoformat()
         return (
             "Return only JSON. The JSON must be an array of objects with keys: "
             "type, title, content, confidence, date. "
             "Confidence must be 0.0 to 1.0. "
+            f"Today's date is {today}. "
             "date is an optional ISO-8601 date string (YYYY-MM-DD) representing "
             "when the event or fact occurred — infer it from relative expressions "
-            "like 'yesterday', 'last Tuesday', 'two weeks ago', or explicit dates. "
+            "like 'yesterday', 'last Tuesday', 'two weeks ago', or explicit dates "
+            f"anchored to today ({today}). "
             "Omit the date key entirely when no temporal context is present."
         )
 
