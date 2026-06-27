@@ -1,4 +1,5 @@
 import logging
+import threading
 from typing import Any
 
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
@@ -23,6 +24,44 @@ def _extract_text_content(content: Any) -> str:
     return str(content)
 
 
+class _PerAgentClientCache:
+    """Thread-safe cache of per-agent-id SdkClient instances.
+
+    Each agent_id gets its own SdkClient so that concurrent LangGraph runs for
+    different tenants never share session_token / agent_id state.  Without this
+    isolation, a concurrent _do_setup("bob") would clobber the shared client's
+    session_token while agent "alice" is mid-request, causing cross-tenant auth
+    failures or silent data leaks.
+    """
+
+    def __init__(self, template_client: SdkClient) -> None:
+        self._api_key = template_client.api_key
+        self._clients: dict[str, SdkClient] = {}
+        self._lock = threading.Lock()
+
+    def get(self, agent_id: str) -> SdkClient:
+        with self._lock:
+            if agent_id not in self._clients:
+                self._clients[agent_id] = SdkClient(api_key=self._api_key)
+            return self._clients[agent_id]
+
+
+def _do_setup(agent_client: SdkClient, resolved_agent_id: str) -> None:
+    """Ensure agent exists and activate a session on *agent_client*.
+
+    Uses the caller-supplied per-agent client, not a shared one, so mutations
+    to session_token / agent_id stay scoped to a single tenant.
+    """
+    try:
+        agent_client.create_agent(agent_id=resolved_agent_id, pattern="tool")
+    except Exception:
+        pass
+    try:
+        agent_client.activate_agent(resolved_agent_id, duration_hours=6)
+    except Exception:
+        pass
+
+
 def create_recall_node(
     client: SdkClient,
     agent_id: str | None = None,
@@ -34,17 +73,7 @@ def create_recall_node(
     This node extracts the query from the most recent human message in the state
     and retrieves relevant memories from Memanto.
     """
-
-    def _do_setup(resolved_agent_id: str):
-        try:
-            client.create_agent(agent_id=resolved_agent_id, pattern="tool")
-        except Exception:
-            pass
-        try:
-            result = client.activate_agent(resolved_agent_id, duration_hours=6)
-            client.session_token = result.get("session_token")
-        except Exception:
-            pass
+    _cache = _PerAgentClientCache(client)
 
     def recall_node(
         state: dict, config: RunnableConfig | None = None
@@ -74,17 +103,19 @@ def create_recall_node(
                 return {output_key: None}
             return {"messages": []}
 
+        agent_client = _cache.get(resolved_agent_id)
+
         try:
             # First try assuming the session is already active (saves an API call)
-            result = client.recall(
+            result = agent_client.recall(
                 agent_id=resolved_agent_id,
                 query=query,
             )
         except Exception:
             # If there's an error (e.g. no active session), try to setup and retry
-            _do_setup(resolved_agent_id)
+            _do_setup(agent_client, resolved_agent_id)
             try:
-                result = client.recall(
+                result = agent_client.recall(
                     agent_id=resolved_agent_id,
                     query=query,
                 )
@@ -141,17 +172,7 @@ def create_remember_node(
 
     This node extracts the latest messages and stores them in Memanto.
     """
-
-    def _do_setup(resolved_agent_id: str):
-        try:
-            client.create_agent(agent_id=resolved_agent_id, pattern="tool")
-        except Exception:
-            pass
-        try:
-            result = client.activate_agent(resolved_agent_id, duration_hours=6)
-            client.session_token = result.get("session_token")
-        except Exception:
-            pass
+    _cache = _PerAgentClientCache(client)
 
     def remember_node(
         state: dict, config: RunnableConfig | None = None
@@ -191,9 +212,11 @@ def create_remember_node(
         content = "\n\n".join(messages_to_remember)
         title = content if len(content) <= 50 else content[:47] + "..."
 
+        agent_client = _cache.get(resolved_agent_id)
+
         try:
             # First try assuming the session is already active
-            client.remember(
+            agent_client.remember(
                 agent_id=resolved_agent_id,
                 memory_type=None,
                 title=title,
@@ -203,9 +226,9 @@ def create_remember_node(
             )
         except Exception:
             # If there's an error, try to setup and retry
-            _do_setup(resolved_agent_id)
+            _do_setup(agent_client, resolved_agent_id)
             try:
-                client.remember(
+                agent_client.remember(
                     agent_id=resolved_agent_id,
                     memory_type=None,
                     title=title,
