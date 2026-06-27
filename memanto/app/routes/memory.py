@@ -298,12 +298,18 @@ async def batch_remember(
         # Log each memory to local MD summary
         session_service = get_session_service()
 
-        for record in memory_records:
+        batch_results = result.get("results", [])
+        successful_statuses = {"queued", "success"}
+        for index, record in enumerate(memory_records):
+            item_result = batch_results[index] if index < len(batch_results) else {}
+            if item_result.get("status") not in successful_statuses:
+                continue
             await asyncio.to_thread(
                 session_service.log_memory_to_session_summary,
                 agent_id=agent_id,
                 session_id=session.session_id,
                 memory_record=record,
+                memory_id=item_result.get("id"),
             )
 
         return {
