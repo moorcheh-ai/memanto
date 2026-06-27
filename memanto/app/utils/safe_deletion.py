@@ -191,7 +191,22 @@ class SafeDeletion:
                 namespace_name=namespace, ids=ids
             )
 
-            deleted_count = delete_result.get("actual_deletions", 0)
+            raw = delete_result.get("actual_deletions")
+            if isinstance(raw, int):
+                deleted_count = raw
+            else:
+                found_ids = None
+                for key in ("deleted_ids", "requested_ids"):
+                    ids_list = delete_result.get(key)
+                    if isinstance(ids_list, list):
+                        found_ids = ids_list
+                        break
+                if found_ids is not None:
+                    deleted_count = len(found_ids)
+                elif str(delete_result.get("status", "")).lower() in {"success", "ok"}:
+                    deleted_count = len(ids)
+                else:
+                    deleted_count = 0
             success = True
             error = None
 
