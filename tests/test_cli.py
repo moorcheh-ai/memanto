@@ -531,6 +531,42 @@ class TestMEMANTOCLI:
         assert result.exit_code == 0
         assert "This is the RAG answer" in result.stdout
 
+    def test_answer_clients_reject_invalid_parameters_before_backend(self):
+        """Programmatic answer calls should mirror the API parameter bounds."""
+        from memanto.cli.client.direct_client import DirectClient
+        from memanto.cli.client.sdk_client import SdkClient
+
+        cases = [
+            ({"limit": 0}, "Limit must be between 1 and 100"),
+            ({"limit": 101}, "Limit must be between 1 and 100"),
+            ({"limit": "many"}, "Limit must be an integer"),
+            ({"limit": 1.5}, "Limit must be an integer"),
+            ({"limit": 5, "threshold": -0.1}, "Threshold must be between 0.0 and 1.0"),
+            ({"limit": 5, "threshold": 1.1}, "Threshold must be between 0.0 and 1.0"),
+            (
+                {"limit": 5, "temperature": -0.1},
+                "Temperature must be between 0.0 and 2.0",
+            ),
+            (
+                {"limit": 5, "temperature": 2.1},
+                "Temperature must be between 0.0 and 2.0",
+            ),
+        ]
+
+        for client_cls in (SdkClient, DirectClient):
+            client = client_cls.__new__(client_cls)
+            for kwargs, message in cases:
+                with (
+                    patch.object(
+                        client_cls, "_get_validated_session_for_agent"
+                    ) as mock_session,
+                    patch.object(client_cls, "_get_moorcheh") as mock_backend,
+                    pytest.raises(ValueError, match=message),
+                ):
+                    client.answer("test-agent", "What is the answer?", **kwargs)
+                mock_session.assert_not_called()
+                mock_backend.assert_not_called()
+
     # ========================================================================
     # SESSION COMMANDS
     # ========================================================================
