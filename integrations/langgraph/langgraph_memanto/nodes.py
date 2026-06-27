@@ -35,16 +35,17 @@ def create_recall_node(
     and retrieves relevant memories from Memanto.
     """
 
-    def _do_setup(resolved_agent_id: str):
+    def _do_setup(local_client: SdkClient, resolved_agent_id: str) -> str | None:
+        """Setup agent and return session token for this request only."""
         try:
-            client.create_agent(agent_id=resolved_agent_id, pattern="tool")
+            local_client.create_agent(agent_id=resolved_agent_id, pattern="tool")
         except Exception:
             pass
         try:
-            result = client.activate_agent(resolved_agent_id, duration_hours=6)
-            client.session_token = result.get("session_token")
+            result = local_client.activate_agent(resolved_agent_id, duration_hours=6)
+            return result.get("session_token")
         except Exception:
-            pass
+            return None
 
     def recall_node(
         state: dict, config: RunnableConfig | None = None
@@ -74,17 +75,27 @@ def create_recall_node(
                 return {output_key: None}
             return {"messages": []}
 
+        # Create a local client instance for this request to prevent cross-tenant leaks
+        # when multiple concurrent requests use different agent_ids
+        local_client = SdkClient(
+            api_key=client.api_key,
+            base_url=client.base_url,
+            session_token=client.session_token,
+        )
+
         try:
             # First try assuming the session is already active (saves an API call)
-            result = client.recall(
+            result = local_client.recall(
                 agent_id=resolved_agent_id,
                 query=query,
             )
         except Exception:
             # If there's an error (e.g. no active session), try to setup and retry
-            _do_setup(resolved_agent_id)
+            session_token = _do_setup(local_client, resolved_agent_id)
+            if session_token:
+                local_client.session_token = session_token
             try:
-                result = client.recall(
+                result = local_client.recall(
                     agent_id=resolved_agent_id,
                     query=query,
                 )
@@ -142,16 +153,17 @@ def create_remember_node(
     This node extracts the latest messages and stores them in Memanto.
     """
 
-    def _do_setup(resolved_agent_id: str):
+    def _do_setup(local_client: SdkClient, resolved_agent_id: str) -> str | None:
+        """Setup agent and return session token for this request only."""
         try:
-            client.create_agent(agent_id=resolved_agent_id, pattern="tool")
+            local_client.create_agent(agent_id=resolved_agent_id, pattern="tool")
         except Exception:
             pass
         try:
-            result = client.activate_agent(resolved_agent_id, duration_hours=6)
-            client.session_token = result.get("session_token")
+            result = local_client.activate_agent(resolved_agent_id, duration_hours=6)
+            return result.get("session_token")
         except Exception:
-            pass
+            return None
 
     def remember_node(
         state: dict, config: RunnableConfig | None = None
@@ -191,9 +203,17 @@ def create_remember_node(
         content = "\n\n".join(messages_to_remember)
         title = content if len(content) <= 50 else content[:47] + "..."
 
+        # Create a local client instance for this request to prevent cross-tenant leaks
+        # when multiple concurrent requests use different agent_ids
+        local_client = SdkClient(
+            api_key=client.api_key,
+            base_url=client.base_url,
+            session_token=client.session_token,
+        )
+
         try:
             # First try assuming the session is already active
-            client.remember(
+            local_client.remember(
                 agent_id=resolved_agent_id,
                 memory_type=None,
                 title=title,
@@ -203,9 +223,11 @@ def create_remember_node(
             )
         except Exception:
             # If there's an error, try to setup and retry
-            _do_setup(resolved_agent_id)
+            session_token = _do_setup(local_client, resolved_agent_id)
+            if session_token:
+                local_client.session_token = session_token
             try:
-                client.remember(
+                local_client.remember(
                     agent_id=resolved_agent_id,
                     memory_type=None,
                     title=title,
