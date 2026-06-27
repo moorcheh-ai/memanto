@@ -122,7 +122,10 @@ async def update_ui_config(updates: dict):
         )
 
     if "schedule_time" in updates:
-        _config_manager.set_schedule_time(updates["schedule_time"])
+        try:
+            _config_manager.set_schedule_time(updates["schedule_time"])
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail=str(e)) from e
 
     if "session" in updates and isinstance(updates["session"], dict):
         data = _config_manager.load_yaml()

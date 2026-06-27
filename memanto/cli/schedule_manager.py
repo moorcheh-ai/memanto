@@ -11,6 +11,8 @@ import sys
 from pathlib import Path
 from typing import Any
 
+from memanto.cli.config.manager import normalize_schedule_time
+
 
 class ScheduleManager:
     """Manages OS-level scheduled tasks for MEMANTO."""
@@ -19,6 +21,7 @@ class ScheduleManager:
     LEGACY_TASK_NAMES = ("MemantoDailySummary",)
 
     def __init__(self):
+        """Capture platform and command paths for scheduler operations."""
         self.os_type = platform.system()
         self.cli_main = Path(__file__).parent / "main.py"
         self.python_exe = sys.executable
@@ -53,21 +56,30 @@ class ScheduleManager:
                 pass
 
     def _command(self) -> str:
+        """Return the shell command used by OS schedulers to run nightly work."""
         return f'"{self.python_exe}" "{self.cli_main.absolute()}" schedule _run'
 
     def enable(self, time_str: str = "23:55") -> dict[str, Any]:
+        """Enable the nightly job after validating the requested HH:MM time."""
+        try:
+            time_str = normalize_schedule_time(time_str)
+        except ValueError as e:
+            return {"status": "error", "message": str(e)}
+
         self._remove_legacy_tasks()
         if self.os_type == "Windows":
             return self._enable_windows(time_str)
         return self._enable_unix(time_str)
 
     def disable(self) -> dict[str, Any]:
+        """Disable the current nightly job and remove older task names."""
         self._remove_legacy_tasks()
         if self.os_type == "Windows":
             return self._disable_windows()
         return self._disable_unix()
 
     def get_status(self) -> dict[str, Any]:
+        """Return whether the OS-level nightly job is currently configured."""
         if self.os_type == "Windows":
             return self._status_windows()
         return self._status_unix()
@@ -75,6 +87,7 @@ class ScheduleManager:
     # Windows (schtasks)
 
     def _enable_windows(self, time_str: str = "23:55") -> dict[str, Any]:
+        """Create or replace the Windows scheduled task for the normalized time."""
         command = [
             "schtasks",
             "/create",
@@ -101,6 +114,7 @@ class ScheduleManager:
             }
 
     def _disable_windows(self) -> dict[str, Any]:
+        """Remove the Windows scheduled task if it exists."""
         command = ["schtasks", "/delete", "/tn", self.TASK_NAME, "/f"]
         try:
             subprocess.run(command, capture_output=True, text=True, check=True)
@@ -114,6 +128,7 @@ class ScheduleManager:
             return {"status": "error", "message": f"Failed to remove task: {e.stderr}"}
 
     def _status_windows(self) -> dict[str, Any]:
+        """Query the Windows scheduled task and return enabled status details."""
         command = ["schtasks", "/query", "/tn", self.TASK_NAME, "/fo", "LIST"]
         try:
             result = subprocess.run(command, capture_output=True, text=True, check=True)
@@ -131,11 +146,8 @@ class ScheduleManager:
     # Unix/OSX (crontab)
 
     def _enable_unix(self, time_str: str = "23:55") -> dict[str, Any]:
-        try:
-            parts = time_str.split(":")
-            hour, minute = int(parts[0]), int(parts[1])
-        except (ValueError, IndexError):
-            hour, minute = 23, 55
+        """Create or replace the crontab entry for the normalized time."""
+        hour, minute = (int(part) for part in time_str.split(":"))
 
         marker = f"# {self.TASK_NAME}"
         cron_entry = f"{minute} {hour} * * * {self._command()}  {marker}"
@@ -155,6 +167,7 @@ class ScheduleManager:
             return {"status": "error", "message": f"Failed to update crontab: {str(e)}"}
 
     def _disable_unix(self) -> dict[str, Any]:
+        """Remove the managed crontab entry without disturbing other jobs."""
         marker = f"# {self.TASK_NAME}"
         try:
             current_cron = subprocess.run(
@@ -171,6 +184,7 @@ class ScheduleManager:
             return {"status": "error", "message": f"Failed to disable: {str(e)}"}
 
     def _status_unix(self) -> dict[str, Any]:
+        """Inspect the crontab marker used by the managed nightly job."""
         marker = f"# {self.TASK_NAME}"
         try:
             current_cron = subprocess.run(
