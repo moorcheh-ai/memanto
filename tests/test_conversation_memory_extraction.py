@@ -229,6 +229,36 @@ def test_impossible_calendar_date_is_rejected():
     )
 
 
+def test_non_dashed_iso_date_is_rejected():
+    """Dates like 20260625 or 2026-W26-4 pass fromisoformat() but must be rejected."""
+    for bad_date in ["20260625", "2026-W26-4", "2026-06-25T10:00:00"]:
+        client = FakeClient(
+            f"""
+            [
+              {{
+                "type": "event",
+                "title": "Some event",
+                "content": "Something happened.",
+                "confidence": 0.8,
+                "date": "{bad_date}"
+              }}
+            ]
+            """
+        )
+        service = ConversationMemoryExtractionService(client)
+        results = service.extract(
+            namespace="memanto_agent_test",
+            messages=[
+                {"role": "user", "content": "Something happened."},
+                {"role": "assistant", "content": "OK."},
+            ],
+        )
+        assert "date" not in results[0], (
+            f"Non-dashed ISO form '{bad_date}' should be rejected — "
+            "only strict YYYY-MM-DD is accepted."
+        )
+
+
 def test_same_event_different_dates_are_not_deduplicated():
     """Identical content on different dates must yield two distinct memories."""
     client = FakeClient(

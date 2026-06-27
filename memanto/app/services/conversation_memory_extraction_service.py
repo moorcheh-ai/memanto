@@ -166,15 +166,18 @@ class ConversationMemoryExtractionService:
 
             # Parse and validate date before dedup so the key captures temporal
             # context: the same event on different dates must produce distinct
-            # memories, not collapse into one. fromisoformat() rejects impossible
-            # dates (e.g. 2026-99-99) that a bare YYYY-MM-DD regex would accept.
+            # memories, not collapse into one. The regex enforces strict
+            # YYYY-MM-DD format (rejects 20260625, 2026-W26-4, datetimes),
+            # then fromisoformat() rejects impossible calendar dates like 2026-99-99.
             raw_date = item.get("date")
             validated_date: str | None = None
             if raw_date and isinstance(raw_date, str):
-                try:
-                    validated_date = _date.fromisoformat(raw_date.strip()).isoformat()
-                except ValueError:
-                    pass
+                date_str = raw_date.strip()
+                if re.match(r"^\d{4}-\d{2}-\d{2}$", date_str):
+                    try:
+                        validated_date = _date.fromisoformat(date_str).isoformat()
+                    except ValueError:
+                        pass
 
             key = (memory_type, re.sub(r"\s+", " ", content).lower(), validated_date)
             if key in seen:
