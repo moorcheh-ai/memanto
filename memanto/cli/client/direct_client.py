@@ -340,7 +340,13 @@ class DirectClient:
         dependency ``get_current_session``.
         """
         # Cache hit: avoid redundant disk I/O and JWT decodes in the same request
-        if self._cached_session and self.agent_id == agent_id:
+        if (
+            self._cached_session
+            and self.agent_id == agent_id
+            and getattr(self._cached_session, "agent_id", None) == agent_id
+            and getattr(self._cached_session, "session_token", None)
+            == self.session_token
+        ):
             return self._cached_session
 
         if not self.session_token or not self.agent_id:
@@ -510,6 +516,7 @@ class DirectClient:
 
         self.session_token = session.session_token
         self.agent_id = agent_id
+        self._cached_session = None
 
         return {
             "session_token": session.session_token,
@@ -533,6 +540,7 @@ class DirectClient:
         summary = self._get_session_service().end_session(agent_id)
         self.session_token = None
         self.agent_id = None
+        self._cached_session = None
         return cast(dict[str, Any], summary.model_dump(mode="json"))
 
     def get_session_info(self) -> dict[str, Any]:
