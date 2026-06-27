@@ -21,6 +21,7 @@ class ScheduleManager:
     LEGACY_TASK_NAMES = ("MemantoDailySummary",)
 
     def __init__(self):
+        """Capture platform and command paths for scheduler operations."""
         self.os_type = platform.system()
         self.cli_main = Path(__file__).parent / "main.py"
         self.python_exe = sys.executable
@@ -55,9 +56,11 @@ class ScheduleManager:
                 pass
 
     def _command(self) -> str:
+        """Return the shell command used by OS schedulers to run nightly work."""
         return f'"{self.python_exe}" "{self.cli_main.absolute()}" schedule _run'
 
     def enable(self, time_str: str = "23:55") -> dict[str, Any]:
+        """Enable the nightly job after validating the requested HH:MM time."""
         try:
             time_str = normalize_schedule_time(time_str)
         except ValueError as e:
@@ -69,12 +72,14 @@ class ScheduleManager:
         return self._enable_unix(time_str)
 
     def disable(self) -> dict[str, Any]:
+        """Disable the current nightly job and remove older task names."""
         self._remove_legacy_tasks()
         if self.os_type == "Windows":
             return self._disable_windows()
         return self._disable_unix()
 
     def get_status(self) -> dict[str, Any]:
+        """Return whether the OS-level nightly job is currently configured."""
         if self.os_type == "Windows":
             return self._status_windows()
         return self._status_unix()
@@ -82,6 +87,7 @@ class ScheduleManager:
     # Windows (schtasks)
 
     def _enable_windows(self, time_str: str = "23:55") -> dict[str, Any]:
+        """Create or replace the Windows scheduled task for the normalized time."""
         command = [
             "schtasks",
             "/create",
@@ -138,6 +144,7 @@ class ScheduleManager:
     # Unix/OSX (crontab)
 
     def _enable_unix(self, time_str: str = "23:55") -> dict[str, Any]:
+        """Create or replace the crontab entry for the normalized time."""
         hour, minute = (int(part) for part in time_str.split(":"))
 
         marker = f"# {self.TASK_NAME}"

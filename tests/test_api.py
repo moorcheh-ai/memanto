@@ -1293,10 +1293,13 @@ class TestCWE200ApiKeyLeak:
 
 
 class TestUiConfigValidation:
+    """UI config updates should reject invalid persisted scheduler values."""
+
     @pytest.mark.asyncio
     async def test_config_update_rejects_invalid_schedule_time(
         self, client, _mock_ui_config_manager
     ):
+        """Invalid schedule_time values are surfaced as HTTP 400 responses."""
         _mock_ui_config_manager.set_schedule_time.side_effect = ValueError(
             "schedule_time must be between 00:00 and 23:59"
         )
