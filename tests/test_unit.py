@@ -456,6 +456,41 @@ class TestClientSessionCache:
         session_service.validate_session.assert_called_once_with("token-agent-a-new")
         session_service.get_session.assert_called_once_with("agent-a")
 
+    @pytest.mark.parametrize(
+        "client_path,client_class_name",
+        [
+            ("memanto.cli.client.sdk_client", "SdkClient"),
+            ("memanto.cli.client.direct_client", "DirectClient"),
+        ],
+    )
+    def test_deactivate_agent_clears_cached_session(
+        self, client_path, client_class_name
+    ):
+        import importlib
+
+        client_cls = getattr(importlib.import_module(client_path), client_class_name)
+        client = client_cls.__new__(client_cls)
+        client.session_token = "token-agent-a"
+        client.agent_id = "agent-a"
+        client._cached_session = SimpleNamespace(
+            agent_id="agent-a",
+            session_token="token-agent-a",
+            namespace="memanto_agent_agent-a",
+        )
+
+        summary = SimpleNamespace(model_dump=MagicMock(return_value={"status": "ended"}))
+        session_service = MagicMock()
+        session_service.end_session.return_value = summary
+        client._get_session_service = MagicMock(return_value=session_service)
+
+        result = client.deactivate_agent("agent-a")
+
+        assert result == {"status": "ended"}
+        assert client.session_token is None
+        assert client.agent_id is None
+        assert client._cached_session is None
+        session_service.end_session.assert_called_once_with("agent-a")
+
 
 class TestMEMANTOArchitecture:
     """Tests for MEMANTO architecture principles"""
