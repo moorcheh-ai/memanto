@@ -2,6 +2,7 @@
 Tests for the backend abstraction (cloud vs on-prem dispatcher).
 """
 
+import os
 from unittest.mock import patch
 
 from memanto.app.clients.backend import (
@@ -158,7 +159,10 @@ class TestSingletonDispatch:
 
 
 class TestDataDirRouting:
+    """Backend-specific data directories should stay isolated."""
+
     def test_cloud_uses_default(self, tmp_path, monkeypatch):
+        """Cloud backend keeps the historical shared data directory."""
         from memanto.app import config as app_config
 
         monkeypatch.setenv("HOME", str(tmp_path))
@@ -168,6 +172,7 @@ class TestDataDirRouting:
         assert app_config.get_data_dir() == tmp_path / ".memanto"
 
     def test_on_prem_uses_subdir(self, tmp_path, monkeypatch):
+        """On-prem backend stores runtime data under its own subdirectory."""
         from memanto.app import config as app_config
 
         monkeypatch.setenv("HOME", str(tmp_path))
@@ -176,3 +181,31 @@ class TestDataDirRouting:
         result = app_config.get_data_dir()
         assert result == tmp_path / ".memanto" / "on-prem"
         assert result.exists()
+
+
+class TestOnPremStateConfig:
+    """On-prem state should load even when shared cloud config is absent."""
+
+    def test_on_prem_state_loads_without_shared_config(self, tmp_path, monkeypatch):
+        """On-prem onboarding writes state.json, not necessarily config.yaml."""
+        from memanto.app import config as app_config
+
+        monkeypatch.delenv("MOORCHEH_ONPREM_URL", raising=False)
+        monkeypatch.delenv("MOORCHEH_ONPREM_EMBEDDING_PROVIDER", raising=False)
+
+        config_path = tmp_path / ".memanto" / "config.yaml"
+        state_path = tmp_path / ".memanto" / "on-prem" / "state.json"
+        state_path.parent.mkdir(parents=True)
+        state_path.write_text(
+            '{"url": "http://127.0.0.1:18080", "embedding_provider": "ollama"}'
+        )
+
+        assert not config_path.exists()
+        app_config._apply_user_config(config_path)
+        app_config._apply_onprem_state(state_path)
+
+        assert os.environ["MOORCHEH_ONPREM_URL"] == "http://127.0.0.1:18080"
+        assert os.environ["MOORCHEH_ONPREM_EMBEDDING_PROVIDER"] == "ollama"
+
+        monkeypatch.delenv("MOORCHEH_ONPREM_URL", raising=False)
+        monkeypatch.delenv("MOORCHEH_ONPREM_EMBEDDING_PROVIDER", raising=False)
