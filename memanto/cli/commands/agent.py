@@ -27,6 +27,7 @@ from memanto.cli.commands._shared import (
     format_current_local_time,
     format_local_time,
     get_client,
+    get_existing_session_client,
 )
 
 
@@ -135,6 +136,15 @@ def agent_deactivate():
         console.print("[yellow]No active agent[/yellow]")
         return
 
+    client = get_existing_session_client()
+
+    try:
+        client.deactivate_agent(active_agent_id)
+    except Exception as e:
+        _error(f"Failed to deactivate agent '{active_agent_id}': {e}")
+
+    # Keep the local active marker in sync even if the client implementation
+    # already cleared it while terminating the session.
     config_manager.clear_active_session()
 
     console.print(f"[green]OK Agent '{active_agent_id}' deactivated[/green]")

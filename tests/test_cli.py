@@ -55,6 +55,15 @@ def mock_all_clients():
             pass
 
         try:
+            p_existing = patch(
+                f"{module}.get_existing_session_client", return_value=client
+            )
+            p_existing.start()
+            patches.append(p_existing)
+        except (ImportError, AttributeError):
+            pass
+
+        try:
             p_cfg = patch(f"{module}.config_manager")
             mock_cfg = p_cfg.start()
             mock_cfg.get_api_key.return_value = "test-api-key"
@@ -555,9 +564,12 @@ class TestMEMANTOCLI:
 
     def test_agent_deactivate(self, mock_all_clients):
         """Test 'memanto agent deactivate'"""
-        result = runner.invoke(app, ["agent", "deactivate"])
+        with patch("memanto.cli.commands.agent.get_client") as renewing_get_client:
+            result = runner.invoke(app, ["agent", "deactivate"])
         assert result.exit_code == 0
         assert "deactivated" in result.stdout.lower()
+        renewing_get_client.assert_not_called()
+        mock_all_clients.deactivate_agent.assert_called_once_with("test-agent")
 
     def test_agent_delete_keep_cloud(self, mock_all_clients):
         """Test 'memanto agent delete --force' keeping cloud memories (default)"""

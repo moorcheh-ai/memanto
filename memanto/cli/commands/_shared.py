@@ -93,8 +93,8 @@ def _warn(message: str) -> None:
     console.print(f"[yellow]Warning:[/yellow] {message}")
 
 
-def get_client() -> SdkClient:
-    """Get configured SDK client or exit if not initialized."""
+def _get_configured_sdk_client() -> SdkClient:
+    """Get a configured SDK client without attaching session state."""
     from memanto.app.clients.backend import Backend
 
     backend = config_manager.get_backend()
@@ -113,11 +113,12 @@ def get_client() -> SdkClient:
         # Ensure env is set for app services on the cloud path.
         os.environ["MOORCHEH_API_KEY"] = api_key
 
-    client = SdkClient(api_key)
+    return SdkClient(api_key)
 
+
+def _restore_active_session(client: SdkClient, *, allow_auto_renew: bool) -> None:
     # Restore active session if available
     active_agent_id, active_session_token = config_manager.get_active_session()
-    session_cfg = config_manager.get_session_config()
 
     if active_session_token and active_agent_id:
         client.session_token = active_session_token
@@ -126,6 +127,10 @@ def get_client() -> SdkClient:
         # Validate the stored token (signature + expiry) and silently re-activate
         # when auto-renew is enabled. The old expiry-only check missed invalid
         # signatures, which broke analyze LLM narratives mid-run.
+        if not allow_auto_renew:
+            return
+
+        session_cfg = config_manager.get_session_config()
         if session_cfg.get("auto_renew_enabled", True):
             session_service = get_session_service()
             needs_reactivate = False
@@ -140,4 +145,16 @@ def get_client() -> SdkClient:
                 except Exception:
                     pass
 
+
+def get_client() -> SdkClient:
+    """Get configured SDK client or exit if not initialized."""
+    client = _get_configured_sdk_client()
+    _restore_active_session(client, allow_auto_renew=True)
+    return client
+
+
+def get_existing_session_client() -> SdkClient:
+    """Get configured SDK client with existing session state but no renewal."""
+    client = _get_configured_sdk_client()
+    _restore_active_session(client, allow_auto_renew=False)
     return client
