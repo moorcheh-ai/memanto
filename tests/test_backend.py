@@ -159,7 +159,10 @@ class TestSingletonDispatch:
 
 
 class TestDataDirRouting:
+    """Backend-specific data directories should stay isolated."""
+
     def test_cloud_uses_default(self, tmp_path, monkeypatch):
+        """Cloud backend keeps the historical shared data directory."""
         from memanto.app import config as app_config
 
         monkeypatch.setenv("HOME", str(tmp_path))
@@ -169,6 +172,7 @@ class TestDataDirRouting:
         assert app_config.get_data_dir() == tmp_path / ".memanto"
 
     def test_on_prem_uses_subdir(self, tmp_path, monkeypatch):
+        """On-prem backend stores runtime data under its own subdirectory."""
         from memanto.app import config as app_config
 
         monkeypatch.setenv("HOME", str(tmp_path))
