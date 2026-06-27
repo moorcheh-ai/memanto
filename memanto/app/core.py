@@ -4,10 +4,10 @@ MEMANTO Core Architecture - Namespace Strategy & Memory Records
 
 import re
 import uuid
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 from typing import Any
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from memanto.app.constants import (
     MemoryType,
@@ -67,8 +67,24 @@ class MemoryRecord(BaseModel):
     validation_count: int = 0  # Number of times validated/confirmed
     contradiction_detected: bool = False  # Flag for contradictions
 
-    # Event date — when the fact/event occurred (YYYY-MM-DD), distinct from system timestamps
-    event_date: str | None = None
+    # Event date — when the fact/event occurred, distinct from system timestamps
+    event_date: date | None = None
+
+    @field_validator("event_date", mode="before")
+    @classmethod
+    def _parse_event_date(cls, v: Any) -> date | None:
+        if v is None:
+            return None
+        if isinstance(v, date):
+            return v
+        if isinstance(v, str):
+            try:
+                return date.fromisoformat(v)
+            except ValueError:
+                raise ValueError(
+                    f"event_date must be a valid YYYY-MM-DD date, got '{v}'"
+                )
+        raise ValueError(f"event_date must be a string or date, got {type(v)}")
 
     # Timestamps (auto-populated by server)
     created_at: datetime = Field(default_factory=datetime.utcnow)
@@ -127,7 +143,7 @@ class MemoryRecord(BaseModel):
         if self.validated_at:
             document["validated_at"] = self.validated_at.isoformat()
         if self.event_date:
-            document["event_date"] = self.event_date
+            document["event_date"] = self.event_date.isoformat()
 
         return document
 

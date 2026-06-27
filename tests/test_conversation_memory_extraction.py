@@ -203,11 +203,15 @@ def test_footer_prompt_anchors_relative_dates_to_today():
     """_footer_prompt must include today's date so relative expressions resolve correctly."""
     from datetime import date
 
+    # Capture the date window before and after the call to avoid a midnight-rollover
+    # flake where the date advances between the _footer_prompt() call and date.today().
+    date_before = date.today().isoformat()
     service = ConversationMemoryExtractionService(client=None)
     footer = service._footer_prompt()
-    today = date.today().isoformat()
-    assert today in footer, (
-        f"_footer_prompt does not include today's date ({today}) — "
+    date_after = date.today().isoformat()
+
+    assert date_before in footer or date_after in footer, (
+        f"_footer_prompt does not include today's date (expected {date_before} or {date_after}) — "
         "the LLM cannot reliably resolve relative expressions like 'yesterday' "
         "without a reference point (nondeterministic inference)."
     )
