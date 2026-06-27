@@ -324,22 +324,16 @@ class MemoryWriteService:
                 namespace_name=namespace, documents=[document]
             )
 
-            # Step 4: Only delete old version after successful upload
-            delete_result = self.client.documents.delete(
-                namespace_name=namespace, ids=[memory_id]
-            )
-
-            if delete_result.get("actual_deletions", 0) == 0:
-                # Upload succeeded but delete failed - this is acceptable
-                # as the new version is already in place
-                pass
+            # Note: documents.upload has upsert semantics - uploading with the same
+            # memory_id automatically overwrites the existing document. No need to
+            # delete the old version separately.
 
             return {
                 "id": memory_id,
                 "namespace": namespace,
                 "status": upload_result.get("status", "unknown"),
                 "action": "updated",
-                "reason": "Memory updated successfully via delete-and-recreate",
+                "reason": "Memory updated successfully via upsert",
                 "validation": validation_result.get("action", "validated"),
                 "updated_fields": list(updates.keys()),
             }
