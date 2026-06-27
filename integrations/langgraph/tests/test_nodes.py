@@ -81,6 +81,7 @@ class SessionTrackingClient:
     def __init__(self):
         self.agent_id = "bob"
         self.session_token = "TOKEN_bob"
+        self._cached_session = type("CachedSession", (), {"agent_id": "bob"})()
         self.mismatched_calls = []
         self.remembered = []
 
@@ -92,10 +93,21 @@ class SessionTrackingClient:
         self.session_token = f"TOKEN_{agent_id}"
         return {"session_token": self.session_token}
 
+    def _assert_session_for(self, operation, agent_id):
+        cached_session = getattr(self, "_cached_session", None)
+        cached_agent_id = getattr(cached_session, "agent_id", None)
+        if (
+            self.agent_id != agent_id
+            or self.session_token != f"TOKEN_{agent_id}"
+            or cached_agent_id not in (None, agent_id)
+        ):
+            self.mismatched_calls.append(
+                (operation, agent_id, self.agent_id, self.session_token)
+            )
+            raise AssertionError(f"{operation} used another agent's session")
+
     def recall(self, *, agent_id, query):
-        if self.agent_id != agent_id:
-            self.mismatched_calls.append(("recall", agent_id, self.agent_id))
-            raise AssertionError("recall used another agent's session")
+        self._assert_session_for("recall", agent_id)
         return {
             "memories": [
                 {"title": f"{agent_id} memory", "content": query, "type": "fact"}
@@ -104,9 +116,7 @@ class SessionTrackingClient:
 
     def remember(self, **kwargs):
         agent_id = kwargs["agent_id"]
-        if self.agent_id != agent_id:
-            self.mismatched_calls.append(("remember", agent_id, self.agent_id))
-            raise AssertionError("remember used another agent's session")
+        self._assert_session_for("remember", agent_id)
         self.remembered.append(kwargs)
         return {"memory_id": f"mem-{agent_id}"}
 
@@ -122,6 +132,8 @@ def test_recall_rebinds_stale_dynamic_agent_session_before_call():
 
     assert not client.mismatched_calls
     assert client.agent_id == "alice"
+    assert client.session_token == "TOKEN_alice"
+    assert client._cached_session is None
     assert "private preference" in result["messages"][0].content
 
 
@@ -137,6 +149,8 @@ def test_remember_rebinds_stale_dynamic_agent_session_before_call():
     assert result == {"messages": []}
     assert not client.mismatched_calls
     assert client.agent_id == "alice"
+    assert client.session_token == "TOKEN_alice"
+    assert client._cached_session is None
     assert client.remembered[0]["agent_id"] == "alice"
 
 

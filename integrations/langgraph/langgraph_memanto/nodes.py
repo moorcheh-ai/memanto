@@ -71,6 +71,7 @@ def create_recall_node(
             result = client.activate_agent(resolved_agent_id, duration_hours=6)
             client.session_token = result.get("session_token")
             client.agent_id = resolved_agent_id
+            client._cached_session = None
         except Exception:
             pass
 
@@ -184,6 +185,7 @@ def create_remember_node(
             result = client.activate_agent(resolved_agent_id, duration_hours=6)
             client.session_token = result.get("session_token")
             client.agent_id = resolved_agent_id
+            client._cached_session = None
         except Exception:
             pass
 
