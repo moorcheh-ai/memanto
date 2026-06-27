@@ -258,7 +258,7 @@ class MemoryWriteService:
                 raise MemoryError(
                     f"Memory {memory_id} not found in namespace {namespace}"
                 )
-            original_memory = self._record_from_existing(
+            original_document = self._document_from_existing(
                 memory_id, existing_memory_data
             )
 
@@ -268,11 +268,16 @@ class MemoryWriteService:
                 if "metadata" in existing_memory_data
                 else existing_memory_data
             )
+            tags = updates.get("tags", metadata.get("tags", []))
+            if isinstance(tags, str):
+                tags = [tag.strip() for tag in tags.split(",") if tag.strip()]
 
             # Build updated memory record
             updated_memory = MemoryRecord(
                 id=memory_id,  # Keep same ID
-                type=updates.get("type", metadata.get("type", "fact")),
+                type=updates.get(
+                    "type", metadata.get("type", metadata.get("memory_type", "fact"))
+                ),
                 title=updates.get(
                     "title", existing_memory_data.get("title", "Updated Memory")
                 ),
@@ -284,7 +289,7 @@ class MemoryWriteService:
                 source_ref=updates.get("source_ref", metadata.get("source_ref")),
                 confidence=updates.get("confidence", metadata.get("confidence", 0.8)),
                 status=updates.get("status", metadata.get("status", "active")),
-                tags=updates.get("tags", metadata.get("tags", [])),
+                tags=tags,
             )
 
             # Update timestamps (preserve created_at, set updated_at to now)
@@ -334,7 +339,7 @@ class MemoryWriteService:
                 self._restore_original_memory(
                     namespace=namespace,
                     memory_id=memory_id,
-                    original_memory=original_memory,
+                    original_document=original_document,
                     upload_error=upload_error,
                 )
 
@@ -396,6 +401,23 @@ class MemoryWriteService:
             ttl_seconds=field("ttl_seconds"),
         )
 
+    def _document_from_existing(
+        self, memory_id: str, existing_memory_data: dict[str, Any]
+    ) -> dict[str, Any]:
+        """Build the exact document to restore after a failed update upload."""
+
+        if (
+            isinstance(existing_memory_data.get("text"), str)
+            and existing_memory_data.get("memory_type") is not None
+        ):
+            document = dict(existing_memory_data)
+            document["id"] = document.get("id") or memory_id
+            return document
+
+        return self._record_from_existing(
+            memory_id, existing_memory_data
+        ).to_moorcheh_document()
+
     def _raise_for_failed_upload(
         self, upload_result: Any, memory_id: str, document_label: str
     ) -> None:
@@ -416,7 +438,7 @@ class MemoryWriteService:
         self,
         namespace: str,
         memory_id: str,
-        original_memory: MemoryRecord,
+        original_document: dict[str, Any],
         upload_error: Exception,
     ) -> None:
         """Best-effort restore after replacement upload fails post-delete."""
@@ -425,7 +447,7 @@ class MemoryWriteService:
 
         from moorcheh_sdk.types.document import Document
 
-        document = cast(Document, original_memory.to_moorcheh_document())
+        document = cast(Document, original_document)
         try:
             restore_result = self.client.documents.upload(
                 namespace_name=namespace, documents=[document]

@@ -297,6 +297,30 @@ class TestMemoryWriteServiceUpdate:
             },
         }
 
+    @staticmethod
+    def raw_existing_memory() -> dict[str, object]:
+        """Return the raw flat Moorcheh document shape used for rollback."""
+
+        return {
+            "id": "mem-raw",
+            "text": "[PREFERENCE] Raw title\n\nRaw content\n\nTags: raw,rollback",
+            "memory_type": "preference",
+            "scope_type": "agent",
+            "scope_id": "agent-raw",
+            "actor_id": "user-raw",
+            "source": "user",
+            "source_ref": "ticket-123",
+            "confidence": 0.25,
+            "status": "active",
+            "tags": "raw,rollback",
+            "created_at": "2026-02-01T00:00:00",
+            "updated_at": "2026-02-02T00:00:00",
+            "provenance": "validated",
+            "validation_count": 3,
+            "contradiction_detected": False,
+            "custom_flat_field": "must-survive",
+        }
+
     def test_update_memory_restores_original_when_replacement_upload_raises(self):
         """Restore the original when the replacement upload raises an exception."""
 
@@ -333,6 +357,39 @@ class TestMemoryWriteServiceUpdate:
         assert restore_upload["tags"] == "important,rollback"
         assert restore_upload["provenance"] == "validated"
         assert restore_upload["validation_count"] == 2
+
+    def test_update_memory_restores_raw_flat_document_without_reformatting(self):
+        """Restore raw Moorcheh documents without rebuilding the text or fields."""
+
+        from memanto.app.services.memory_write_service import MemoryWriteService
+        from memanto.app.utils.errors import MemoryError
+
+        client = MagicMock()
+        client.documents.delete.return_value = {"actual_deletions": 1}
+        client.documents.upload.side_effect = [
+            RuntimeError("backend unavailable"),
+            {"status": "success"},
+        ]
+
+        with patch(
+            "memanto.app.services.memory_read_service.MemoryReadService.get_memory",
+            return_value=self.raw_existing_memory(),
+        ):
+            with pytest.raises(MemoryError, match="restored original memory mem-raw"):
+                MemoryWriteService(client).update_memory(
+                    "mem-raw", "memanto_agent_agent-raw", {"content": "New content"}
+                )
+
+        assert client.documents.upload.call_count == 2
+        restore_upload = client.documents.upload.call_args_list[1].kwargs["documents"][
+            0
+        ]
+        assert restore_upload["text"] == self.raw_existing_memory()["text"]
+        assert restore_upload["memory_type"] == "preference"
+        assert restore_upload["scope_id"] == "agent-raw"
+        assert restore_upload["source_ref"] == "ticket-123"
+        assert restore_upload["custom_flat_field"] == "must-survive"
+        assert "[PREFERENCE] [PREFERENCE]" not in restore_upload["text"]
 
     def test_update_memory_restores_original_when_replacement_upload_fails_status(self):
         """Restore the original when the replacement upload returns a failed status."""
