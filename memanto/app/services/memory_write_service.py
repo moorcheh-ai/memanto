@@ -417,8 +417,10 @@ class MemoryWriteService:
                 for key, value in metadata.items():
                     document.setdefault(key, value)
             if isinstance(document.get("tags"), list):
-                document["tags"] = ",".join(document["tags"])
-            document["id"] = document.get("id") or memory_id
+                document["tags"] = ",".join(
+                    str(tag).strip() for tag in document["tags"] if str(tag).strip()
+                )
+            document["id"] = memory_id
             return document
 
         return self._record_from_existing(

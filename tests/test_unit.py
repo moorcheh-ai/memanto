@@ -321,6 +321,28 @@ class TestMemoryWriteServiceUpdate:
             "custom_flat_field": "must-survive",
         }
 
+    @staticmethod
+    def nested_raw_existing_memory() -> dict[str, object]:
+        """Return a raw text payload whose metadata is still nested."""
+
+        return {
+            "id": "stale-backend-id",
+            "text": "[FACT] Nested raw title\n\nNested raw content",
+            "metadata": {
+                "memory_type": "fact",
+                "scope_type": "agent",
+                "scope_id": "agent-nested",
+                "actor_id": "user-nested",
+                "source": "api",
+                "confidence": 0.1,
+                "tags": [" nested ", "rollback", ""],
+                "created_at": "2026-03-01T00:00:00",
+                "updated_at": "2026-03-02T00:00:00",
+                "nested_only_field": "must-survive",
+            },
+            "custom_top_field": "also-survives",
+        }
+
     def test_update_memory_restores_original_when_replacement_upload_raises(self):
         """Restore the original when the replacement upload raises an exception."""
 
@@ -390,6 +412,46 @@ class TestMemoryWriteServiceUpdate:
         assert restore_upload["source_ref"] == "ticket-123"
         assert restore_upload["custom_flat_field"] == "must-survive"
         assert "[PREFERENCE] [PREFERENCE]" not in restore_upload["text"]
+
+    def test_update_memory_restores_raw_nested_metadata_document(self):
+        """Restore raw text documents with nested metadata as the source of truth."""
+
+        from memanto.app.services.memory_write_service import MemoryWriteService
+        from memanto.app.utils.errors import MemoryError
+
+        client = MagicMock()
+        client.documents.delete.return_value = {"actual_deletions": 1}
+        client.documents.upload.side_effect = [
+            RuntimeError("backend unavailable"),
+            {"status": "success"},
+        ]
+
+        with patch(
+            "memanto.app.services.memory_read_service.MemoryReadService.get_memory",
+            return_value=self.nested_raw_existing_memory(),
+        ):
+            with pytest.raises(
+                MemoryError, match="restored original memory mem-nested"
+            ):
+                MemoryWriteService(client).update_memory(
+                    "mem-nested",
+                    "memanto_agent_agent-nested",
+                    {"content": "New content"},
+                )
+
+        assert client.documents.upload.call_count == 2
+        restore_upload = client.documents.upload.call_args_list[1].kwargs["documents"][
+            0
+        ]
+        assert restore_upload["id"] == "mem-nested"
+        assert restore_upload["text"] == self.nested_raw_existing_memory()["text"]
+        assert restore_upload["memory_type"] == "fact"
+        assert restore_upload["scope_id"] == "agent-nested"
+        assert restore_upload["confidence"] == 0.1
+        assert restore_upload["tags"] == "nested,rollback"
+        assert restore_upload["nested_only_field"] == "must-survive"
+        assert restore_upload["custom_top_field"] == "also-survives"
+        assert "[FACT] [FACT]" not in restore_upload["text"]
 
     def test_update_memory_restores_original_when_replacement_upload_fails_status(self):
         """Restore the original when the replacement upload returns a failed status."""
