@@ -710,6 +710,79 @@ class TestMEMANTOAPI:
         assert response.json()["successful"] == 2
 
     @pytest.mark.asyncio
+    async def test_batch_remember_summary_logs_only_stored_results(
+        self, client, auth_headers, mock_moorcheh
+    ):
+        """Batch summary logs should not claim failed items were stored."""
+        from memanto.app.routes.auth_deps import get_session_service
+        from memanto.app.services.memory_write_service import MemoryWriteService
+
+        await client.post(
+            "/api/v2/agents",
+            headers=auth_headers,
+            json={"agent_id": self.TEST_AGENT_ID},
+        )
+        activate_resp = await client.post(
+            f"/api/v2/agents/{self.TEST_AGENT_ID}/activate", headers=auth_headers
+        )
+        token = activate_resp.json()["session_token"]
+
+        batch_result = {
+            "total_submitted": 2,
+            "successful": 1,
+            "failed": 1,
+            "namespace": "memanto_agent_test-api-agent",
+            "results": [
+                {
+                    "id": "stored-memory-id",
+                    "status": "success",
+                    "action": "store",
+                    "type": "fact",
+                },
+                {
+                    "id": "rejected-memory-id",
+                    "status": "failed",
+                    "action": "rejected",
+                    "error": "unsupported input",
+                    "type": "fact",
+                },
+            ],
+        }
+
+        session_service = get_session_service()
+        headers = {**auth_headers, "X-Session-Token": token}
+        payload = {
+            "memories": [
+                {"content": "Batch success", "type": "fact", "confidence": 0.9},
+                {"content": "Batch failure", "type": "fact", "confidence": 0.8},
+            ]
+        }
+
+        with (
+            patch.object(
+                MemoryWriteService,
+                "batch_store_memories",
+                return_value=batch_result,
+            ),
+            patch.object(
+                session_service, "log_memory_to_session_summary"
+            ) as log_summary,
+        ):
+            response = await client.post(
+                f"/api/v2/agents/{self.TEST_AGENT_ID}/batch-remember",
+                headers=headers,
+                json=payload,
+            )
+
+        assert response.status_code == 200
+        assert response.json()["successful"] == 1
+        assert response.json()["failed"] == 1
+        assert log_summary.call_count == 1
+        call_kwargs = log_summary.call_args.kwargs
+        assert call_kwargs["memory_id"] == "stored-memory-id"
+        assert call_kwargs["memory_record"].content == "Batch success"
+
+    @pytest.mark.asyncio
     async def test_delete_memory_with_session(
         self, client, auth_headers, mock_moorcheh
     ):
