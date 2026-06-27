@@ -540,6 +540,7 @@ class TestMEMANTOCLI:
             ({"limit": 0}, "Limit must be between 1 and 100"),
             ({"limit": 101}, "Limit must be between 1 and 100"),
             ({"limit": "many"}, "Limit must be an integer"),
+            ({"limit": 1.5}, "Limit must be an integer"),
             ({"limit": 5, "threshold": -0.1}, "Threshold must be between 0.0 and 1.0"),
             ({"limit": 5, "threshold": 1.1}, "Threshold must be between 0.0 and 1.0"),
             (

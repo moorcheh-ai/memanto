@@ -1640,7 +1640,22 @@ class DirectClient:
         if not question or not question.strip():
             raise ValueError("Question must be a non-empty string")
         try:
-            limit_value = int(limit)
+            if isinstance(limit, bool):
+                raise ValueError
+            if isinstance(limit, float) and not limit.is_integer():
+                raise ValueError
+            if isinstance(limit, str):
+                stripped_limit = limit.strip()
+                digits = (
+                    stripped_limit[1:]
+                    if stripped_limit[:1] in {"+", "-"}
+                    else stripped_limit
+                )
+                if not digits.isdigit():
+                    raise ValueError
+                limit_value = int(stripped_limit)
+            else:
+                limit_value = int(limit)
         except (TypeError, ValueError):
             raise ValueError(f"Limit must be an integer between 1 and 100, got {limit!r}")
         if not 1 <= limit_value <= 100:
