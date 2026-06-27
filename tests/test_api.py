@@ -887,6 +887,89 @@ class TestMEMANTOAPI:
         assert uploaded_doc["provenance"] == "inferred"
 
     @pytest.mark.asyncio
+    async def test_extract_summary_logs_only_stored_batch_results(
+        self, client, auth_headers, mock_moorcheh
+    ):
+        """Conversation extraction summaries should skip rejected batch items."""
+        await client.post(
+            "/api/v2/agents",
+            headers=auth_headers,
+            json={"agent_id": self.TEST_AGENT_ID},
+        )
+        activate_resp = await client.post(
+            f"/api/v2/agents/{self.TEST_AGENT_ID}/activate", headers=auth_headers
+        )
+        assert activate_resp.status_code == 200, activate_resp.text
+        token = activate_resp.json()["session_token"]
+        headers = {**auth_headers, "X-Session-Token": token}
+
+        mock_moorcheh.answer.generate.return_value = {
+            "answer": json.dumps(
+                [
+                    {
+                        "type": "fact",
+                        "title": "Stored fact",
+                        "content": "The team uses pytest.",
+                        "confidence": 0.9,
+                    },
+                    {
+                        "type": "fact",
+                        "title": "Rejected fact",
+                        "content": "This should not reach the summary.",
+                        "confidence": 0.8,
+                    },
+                ]
+            ),
+            "sources": [],
+        }
+
+        write_service = MagicMock()
+        write_service.batch_store_memories.return_value = {
+            "total_submitted": 2,
+            "successful": 1,
+            "failed": 1,
+            "results": [
+                {"id": "stored-1", "status": "success"},
+                {
+                    "id": "rejected-2",
+                    "status": "failed",
+                    "error": "backend rejected the document",
+                },
+            ],
+        }
+        session_service = MagicMock()
+
+        with (
+            patch("memanto.app.routes.memory.MemoryWriteService") as write_cls,
+            patch(
+                "memanto.app.routes.memory.get_session_service",
+                return_value=session_service,
+            ),
+        ):
+            write_cls.return_value = write_service
+            response = await client.post(
+                f"/api/v2/agents/{self.TEST_AGENT_ID}/remember/extract",
+                headers=headers,
+                json={
+                    "messages": [
+                        {
+                            "role": "user",
+                            "content": "The team uses pytest, but reject the duplicate.",
+                        }
+                    ],
+                },
+            )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["successful"] == 1
+        assert data["failed"] == 1
+        session_service.log_memory_to_session_summary.assert_called_once()
+        call_kwargs = session_service.log_memory_to_session_summary.call_args.kwargs
+        assert call_kwargs["memory_id"] == "stored-1"
+        assert call_kwargs["memory_record"].title == "Stored fact"
+
+    @pytest.mark.asyncio
     async def test_recall_temporal_api(self, client, auth_headers, mock_moorcheh):
         """Test temporal recall modes (POST + JSON body)"""
         await client.post(
