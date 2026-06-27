@@ -5,6 +5,7 @@ Server-side settings (loaded from .env via pydantic-settings).
 CLI config models have been moved to cli/config/manager.py.
 """
 
+import json
 import os
 from pathlib import Path
 
@@ -19,14 +20,14 @@ _memanto_env = Path.home() / ".memanto" / ".env"
 if _memanto_env.exists():
     load_dotenv(_memanto_env, override=True)
 
-# Load model override from ~/.memanto/config.yaml
-_config_file = Path.home() / ".memanto" / "config.yaml"
-if _config_file.exists():
-    try:
-        import yaml
+def _apply_user_config(config_file: Path) -> None:
+    """Apply server-facing overrides from the shared user config file."""
+    if not config_file.exists():
+        return
 
-        with open(_config_file) as f:
-            _data = yaml.safe_load(f)
+    try:
+        with open(config_file) as f:
+            _data = yaml.safe_load(f) or {}
             _memanto = _data.get("memanto", {})
 
             # Answer configuration
@@ -60,22 +61,32 @@ if _config_file.exists():
     except Exception:
         pass
 
-    # On-prem URL lives in ~/.memanto/on-prem/state.json so on-prem onboarding
-    # never has to touch the shared cloud yaml.
-    try:
-        import json as _json
 
-        _state_path = Path.home() / ".memanto" / "on-prem" / "state.json"
-        if _state_path.exists():
-            _state = _json.loads(_state_path.read_text())
-            _op_url = _state.get("url")
-            if _op_url:
-                os.environ["MOORCHEH_ONPREM_URL"] = str(_op_url)
-            _op_embed = _state.get("embedding_provider")
-            if _op_embed:
-                os.environ["MOORCHEH_ONPREM_EMBEDDING_PROVIDER"] = str(_op_embed)
+def _apply_onprem_state(state_path: Path) -> None:
+    """Apply on-prem runtime state independently of the shared config file."""
+    if not state_path.exists():
+        return
+
+    try:
+        _state = json.loads(state_path.read_text())
+        _op_url = _state.get("url")
+        if _op_url:
+            os.environ["MOORCHEH_ONPREM_URL"] = str(_op_url)
+        _op_embed = _state.get("embedding_provider")
+        if _op_embed:
+            os.environ["MOORCHEH_ONPREM_EMBEDDING_PROVIDER"] = str(_op_embed)
     except Exception:
         pass
+
+
+# Load model override from ~/.memanto/config.yaml
+_config_file = Path.home() / ".memanto" / "config.yaml"
+_apply_user_config(_config_file)
+
+# On-prem URL lives in ~/.memanto/on-prem/state.json so on-prem onboarding
+# never has to touch the shared cloud yaml.
+_state_path = Path.home() / ".memanto" / "on-prem" / "state.json"
+_apply_onprem_state(_state_path)
 
 
 # CLI & YAML Format Models (kept for backward compat with config.yaml structure)
