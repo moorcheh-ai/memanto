@@ -27,6 +27,7 @@ from memanto.cli.commands._shared import (
     format_current_local_time,
     format_local_time,
     get_client,
+    get_existing_session_client,
 )
 
 
@@ -135,7 +136,7 @@ def agent_deactivate():
         console.print("[yellow]No active agent[/yellow]")
         return
 
-    client = get_client()
+    client = get_existing_session_client()
 
     try:
         client.deactivate_agent(active_agent_id)
