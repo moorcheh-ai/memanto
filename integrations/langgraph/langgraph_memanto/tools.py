@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Annotated
+from typing import Annotated, Any
 
 from langchain_core.tools import tool
 from pydantic import Field
@@ -23,6 +23,12 @@ VALID_MEMORY_TYPES = (
     "commitment (promises/next steps), "
     "error (failures/mistakes)"
 )
+
+
+def _valid_memory_entries(raw_memories: Any) -> list[dict[str, Any]]:
+    if not isinstance(raw_memories, list):
+        return []
+    return [mem for mem in raw_memories if isinstance(mem, dict)]
 
 
 def create_memanto_tools(client: SdkClient, agent_id: str):
@@ -174,7 +180,7 @@ def create_memanto_tools(client: SdkClient, agent_id: str):
                 type=type_list,
             )
 
-        memories = result.get("memories", [])
+        memories = _valid_memory_entries(result.get("memories", []))
         if not memories:
             return f"No memories found for query: '{query}'"
 

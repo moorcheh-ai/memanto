@@ -99,6 +99,32 @@ def test_memanto_recall_tool_success():
     )
 
 
+def test_memanto_recall_tool_skips_malformed_memory_entries():
+    client = MagicMock()
+    client.recall.return_value = {
+        "memories": [
+            "truncated-row",
+            {
+                "title": "Valid Fact",
+                "content": "This memory should still be shown.",
+                "type": "fact",
+                "confidence": 0.9,
+                "tags": ["valid"],
+            },
+        ]
+    }
+
+    tools = create_memanto_tools(client, "test-agent")
+    recall_tool = next(t for t in tools if t.name == "memanto_recall")
+
+    result = recall_tool.invoke({"query": "test query", "limit": 5, "memory_types": ""})
+
+    assert "Found 1 memories for 'test query'" in result
+    assert "Valid Fact" in result
+    assert "This memory should still be shown." in result
+    assert "truncated-row" not in result
+
+
 def test_memanto_recall_tool_no_results():
     client = MagicMock()
     client.recall.return_value = {"memories": []}
