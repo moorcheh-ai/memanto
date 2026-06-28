@@ -205,13 +205,29 @@ class SkillMemory:
             for m in memories
         ]
         try:
-            self._sdk.batch_remember(agent_id=self.config.agent_id, memories=payload)
-            return list(memories)
+            batch_result = self._sdk.batch_remember(
+                agent_id=self.config.agent_id, memories=payload
+            )
+            failed_indices = _failed_batch_indices(batch_result, len(payload))
+            if not failed_indices:
+                return list(memories)
+
+            persisted = [
+                original
+                for i, original in enumerate(memories)
+                if i not in failed_indices
+            ]
+            retry_pairs = [
+                (memories[i], payload[i])
+                for i in failed_indices
+                if i < len(memories) and i < len(payload)
+            ]
         except Exception as exc:
             logger.debug("batch_remember failed, falling back to remember: %s", exc)
+            persisted = []
+            retry_pairs = list(zip(memories, payload, strict=True))
 
-        persisted: list[dict[str, Any]] = []
-        for original, m in zip(memories, payload, strict=True):
+        for original, m in retry_pairs:
             try:
                 self._sdk.remember(
                     agent_id=self.config.agent_id,
@@ -227,3 +243,29 @@ class SkillMemory:
             except Exception as exc:
                 logger.debug("remember failed for %r: %s", m["title"], exc)
         return persisted
+
+
+def _failed_batch_indices(result: dict[str, Any], expected_count: int) -> set[int]:
+    """Return indexes that still need individual retry after a batch write.
+
+    The SDK returns per-item results for mixed batch outcomes. When that shape
+    is missing but the aggregate says something failed, treat the whole batch as
+    uncertain so callers never report unverified memories as persisted.
+    """
+    if int(result.get("failed") or 0) <= 0:
+        return set()
+
+    raw_results = result.get("results")
+    if not isinstance(raw_results, list) or len(raw_results) != expected_count:
+        return set(range(expected_count))
+
+    failed: set[int] = set()
+    for i, item in enumerate(raw_results):
+        if not isinstance(item, dict):
+            failed.add(i)
+            continue
+        status = str(item.get("status", "")).lower()
+        action = str(item.get("action", "")).lower()
+        if status == "failed" or action == "rejected" or item.get("error"):
+            failed.add(i)
+    return failed

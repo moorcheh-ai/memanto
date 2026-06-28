@@ -102,6 +102,33 @@ class TestDistillAndStore:
         assert len(stored) == 2
         assert len(fake.remembered) == 2  # individual fallback used
 
+    def test_partial_batch_retries_only_failed_items(
+        self, config: SkillsConfig, llm_answer_json: str
+    ) -> None:
+        # batch_remember can return mixed per-item outcomes without raising.
+        # Successful batch items must not be duplicated, and failed items must
+        # not be reported as persisted unless their individual retry works.
+        fake = FakeSdkClient(answer_text=llm_answer_json)
+
+        def partial_batch(agent_id: str, memories: list[dict[str, Any]]) -> dict:
+            fake.batch_calls.append(memories)
+            return {
+                "successful": 1,
+                "failed": 1,
+                "results": [
+                    {"status": "success"},
+                    {"status": "failed", "error": "backend rejected item"},
+                ],
+            }
+
+        fake.batch_remember = partial_batch  # type: ignore[assignment]
+        mem = _mem(config, fake)
+        stored = mem.distill_and_store("tdd", "transcript")
+
+        assert len(stored) == 2
+        assert len(fake.remembered) == 1
+        assert fake.remembered[0]["title"] == "Cart != Order"
+
     def test_llm_failure_falls_back_to_heuristic(self, config: SkillsConfig) -> None:
         fake = FakeSdkClient()
 
