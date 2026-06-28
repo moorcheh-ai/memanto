@@ -28,6 +28,13 @@ from memanto.cli.commands._shared import (
 )
 
 
+def _memory_records(value):
+    """Return only displayable memory records from a recall response."""
+    if not isinstance(value, list):
+        return []
+    return [memory for memory in value if isinstance(memory, dict)]
+
+
 @app.command()
 def remember(
     content: str | None = typer.Argument(None, help="Memory content to store"),
@@ -580,7 +587,7 @@ def recall(
                 )
         elapsed = time.perf_counter() - start
 
-        memories = results.get("memories", [])
+        memories = _memory_records(results.get("memories", []))
 
         if not memories:
             console.print("[yellow]No memories found matching your query[/yellow]")

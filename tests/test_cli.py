@@ -456,6 +456,22 @@ class TestMEMANTOCLI:
         assert "Found 2 memories" in result.stdout
         assert "Found memory 1" in result.stdout
 
+    def test_recall_skips_non_object_memory_records(self, mock_all_clients):
+        """Malformed recall results should not crash memory display."""
+        mock_all_clients.recall.return_value = {
+            "memories": [
+                "truncated memory",
+                {"content": "Found memory 1", "score": 0.9, "type": "fact"},
+            ],
+            "count": 2,
+        }
+
+        result = runner.invoke(app, ["recall", "test query"])
+        assert result.exit_code == 0
+        assert "Found 1 memories" in result.stdout
+        assert "Found memory 1" in result.stdout
+        assert "truncated memory" not in result.stdout
+
     def test_recall_recent(self, mock_all_clients):
         """`memanto recall --recent` lists newest memories chronologically."""
         mock_all_clients.recall_recent.return_value = {
