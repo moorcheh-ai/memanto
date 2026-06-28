@@ -34,6 +34,7 @@ class FakeAgentListClient:
 
 @pytest.mark.asyncio
 async def test_build_server_registers_main_tools(fake_api_key: str) -> None:
+    """Default server assembly exposes main tools and hides admin tools."""
     mcp = build_server(MCPServerSettings())  # type: ignore[call-arg]
     tools = {t.name for t in await mcp.list_tools()}
     assert MAIN_TOOL_NAMES.issubset(tools), (
@@ -49,6 +50,7 @@ async def test_build_server_registers_main_tools(fake_api_key: str) -> None:
 async def test_admin_tools_registered_when_enabled(
     fake_api_key: str, monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    """Admin tools are registered only when the opt-in env var is enabled."""
     monkeypatch.setenv("MEMANTO_EXPOSE_ADMIN", "true")
     mcp = build_server(MCPServerSettings())  # type: ignore[call-arg]
     tools = {t.name for t in await mcp.list_tools()}
@@ -75,6 +77,7 @@ async def test_list_agents_skips_malformed_agent_entries(
 
 @pytest.mark.asyncio
 async def test_server_name_and_instructions(fake_api_key: str) -> None:
+    """Server metadata includes the expected name and memory guidance."""
     mcp = build_server(MCPServerSettings())  # type: ignore[call-arg]
     assert mcp.name == "memanto"
     # Instructions guide the model toward correct memory usage; they must be

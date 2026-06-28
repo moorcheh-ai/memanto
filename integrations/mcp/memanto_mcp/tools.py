@@ -827,6 +827,7 @@ def _register_admin_tools(mcp: Any, lifecycle: MemantoLifecycle) -> None:
         description="List every Memanto agent visible to the current API key.",
     )
     def list_agents() -> AgentListResult:
+        """List valid agent metadata records visible to the current API key."""
         try:
             agents = _valid_agent_entries(lifecycle.client.list_agents())
             return AgentListResult(status="ok", count=len(agents), agents=agents)
