@@ -617,6 +617,33 @@ class TestMEMANTOCLI:
         assert result.exit_code == 0
         assert "Intelligence Snapshot" in result.stdout
 
+    def test_agent_bootstrap_skips_non_object_recall_memories(self, mock_all_clients):
+        """Agent bootstrap ignores malformed recall items and renders valid memories."""
+        mock_all_clients.get_agent.return_value = {
+            "agent_id": "test-agent",
+            "pattern": "support",
+            "namespace": "memanto_agent_test-agent",
+        }
+        mock_all_clients.recall.return_value = {
+            "memories": [
+                "truncated memory",
+                {
+                    "id": "mem-1",
+                    "title": "Support tone",
+                    "content": "Use concise support replies.",
+                    "type": "instruction",
+                    "confidence": 0.9,
+                    "status": "active",
+                    "created_at": "2026-06-01T00:00:00Z",
+                },
+            ]
+        }
+
+        result = runner.invoke(app, ["agent", "bootstrap"])
+
+        assert result.exit_code == 0
+        assert "Support tone" in result.stdout
+
     def test_memory_batch_remember(self, mock_all_clients, tmp_path):
         """Test 'memanto remember --batch'"""
         batch_file = tmp_path / "batch.json"

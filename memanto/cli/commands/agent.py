@@ -7,7 +7,7 @@ import time
 from collections import Counter
 from datetime import datetime
 from pathlib import Path
-from typing import Any, cast
+from typing import Any
 
 import typer
 from rich.panel import Panel
@@ -294,6 +294,12 @@ def agent_bootstrap(
     console.print()
 
     # Helper: fetch memories safely
+    def _memory_records(value: Any) -> list[dict[str, Any]]:
+        """Return only object-shaped memories from a recall response."""
+        if not isinstance(value, list):
+            return []
+        return [item for item in value if isinstance(item, dict)]
+
     def _fetch(
         query: str, type: list[str] | None = None, limit: int = 10
     ) -> list[dict[str, Any]]:
@@ -305,7 +311,7 @@ def agent_bootstrap(
                 limit=limit,
                 type=type,
             )
-            return cast(list[dict[str, Any]], result.get("memories", []))
+            return _memory_records(result.get("memories"))
         except Exception:
             return []
 
