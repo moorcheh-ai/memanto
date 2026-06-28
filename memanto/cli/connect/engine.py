@@ -298,6 +298,29 @@ def _remove_skill(agent: AgentDef, project_path: Path, is_global: bool) -> str |
     return None
 
 
+def _read_json_object(path: Path) -> dict[str, Any]:
+    data = json.loads(path.read_text(encoding="utf-8"))
+    return data if isinstance(data, dict) else {}
+
+
+def _ensure_dict(container: dict[str, Any], key: str) -> dict[str, Any]:
+    value = container.get(key)
+    if isinstance(value, dict):
+        return value
+    replacement: dict[str, Any] = {}
+    container[key] = replacement
+    return replacement
+
+
+def _ensure_list(container: dict[str, Any], key: str) -> list[Any]:
+    value = container.get(key)
+    if isinstance(value, list):
+        return value
+    replacement: list[Any] = []
+    container[key] = replacement
+    return replacement
+
+
 # Internal: Hook configuration (Claude Code)
 
 
@@ -320,14 +343,11 @@ def _install_hooks(agent: AgentDef, project_path: Path, is_global: bool) -> str 
     config_dir.mkdir(parents=True, exist_ok=True)
     settings_path = config_dir / agent.hook_config.settings_file
 
-    if settings_path.exists():
-        settings = json.loads(settings_path.read_text(encoding="utf-8"))
-    else:
-        settings = {}
+    settings = _read_json_object(settings_path) if settings_path.exists() else {}
 
     # Navigate to hook location
-    hooks = settings.setdefault("hooks", {})
-    session_start = hooks.setdefault("SessionStart", [])
+    hooks = _ensure_dict(settings, "hooks")
+    session_start = _ensure_list(hooks, "SessionStart")
 
     # Check if memanto hook already exists
     memanto_exists = any(
@@ -374,17 +394,14 @@ def _install_permissions(
 
     config_dir.mkdir(parents=True, exist_ok=True)
 
-    if perm_path.exists():
-        existing = json.loads(perm_path.read_text(encoding="utf-8"))
-    else:
-        existing = {}
+    existing = _read_json_object(perm_path) if perm_path.exists() else {}
 
     # Merge permissions
     changed = False
     for key, value in agent.permissions_payload.items():
         if key == "permissions":
-            perms = existing.setdefault("permissions", {})
-            allow_list = perms.setdefault("allow", [])
+            perms = _ensure_dict(existing, "permissions")
+            allow_list = _ensure_list(perms, "allow")
             for perm in value.get("allow", []):
                 if perm not in allow_list:
                     allow_list.append(perm)
