@@ -5,16 +5,20 @@ Handles agent creation, listing, and lifecycle management.
 """
 
 import json
+import logging
 from datetime import datetime
 from pathlib import Path
 
 from moorcheh_sdk.exceptions import ConflictError
+from pydantic import ValidationError
 
 from memanto.app.clients.moorcheh import get_moorcheh_client
 from memanto.app.config import get_data_dir
 from memanto.app.core import create_memory_scope
 from memanto.app.models.session import AgentCreate, AgentInfo, AgentList
 from memanto.app.utils.errors import AgentAlreadyExistsError, AgentNotFoundError
+
+logger = logging.getLogger(__name__)
 
 
 class AgentService:
@@ -134,9 +138,13 @@ class AgentService:
         """
         agents = []
         for agent_file in self.agents_dir.glob("*.json"):
-            with open(agent_file) as f:
-                data = json.load(f)
+            try:
+                with open(agent_file) as f:
+                    data = json.load(f)
                 agents.append(AgentInfo(**data))
+            except (OSError, json.JSONDecodeError, TypeError, ValidationError) as exc:
+                logger.warning("Skipping invalid agent metadata %s: %s", agent_file, exc)
+                continue
 
         # Sort by created_at (newest first)
         agents.sort(key=lambda a: a.created_at, reverse=True)

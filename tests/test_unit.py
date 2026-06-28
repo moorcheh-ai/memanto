@@ -191,6 +191,19 @@ class TestAgentService:
 
         print(f"✅ Listed {agent_list.count} agents")
 
+    def test_list_agents_skips_invalid_metadata_files(self, agent_service):
+        """Listing agents should ignore corrupt local metadata files."""
+        agent_service.create_agent(
+            AgentCreate(agent_id="valid-agent", pattern=AgentPattern.SUPPORT),
+            settings.MOORCHEH_API_KEY,
+        )
+        (agent_service.agents_dir / "broken.json").write_text("{not-json")
+
+        agent_list = agent_service.list_agents()
+
+        assert agent_list.count == 1
+        assert [agent.agent_id for agent in agent_list.agents] == ["valid-agent"]
+
     def test_get_agent(self, agent_service):
         """Test getting agent info"""
         # Create agent
