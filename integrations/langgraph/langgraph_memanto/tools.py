@@ -63,12 +63,16 @@ def create_memanto_tools(client: SdkClient, agent_id: str):
         title: Annotated[
             str,
             Field(
+                min_length=1,
+                max_length=100,
                 description="Short title for the memory (max 100 characters).",
             ),
         ],
         content: Annotated[
             str,
             Field(
+                min_length=1,
+                max_length=10000,
                 description="The memory content to store (max 10000 characters). Be concise and atomic.",
             ),
         ],

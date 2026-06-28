@@ -1,6 +1,8 @@
 from unittest.mock import MagicMock
 
+import pytest
 from langgraph_memanto.tools import create_memanto_tools
+from pydantic import ValidationError
 
 
 def test_create_memanto_tools_returns_all_tools():
@@ -68,6 +70,34 @@ def test_memanto_remember_tool_setup_fallback():
     assert client.remember.call_count == 2
     client.create_agent.assert_called_once_with(agent_id="test-agent", pattern="tool")
     client.activate_agent.assert_called_once_with("test-agent", duration_hours=6)
+
+
+@pytest.mark.parametrize(
+    "field,value",
+    [
+        ("title", ""),
+        ("title", "t" * 101),
+        ("content", ""),
+        ("content", "c" * 10001),
+    ],
+)
+def test_memanto_remember_tool_enforces_documented_limits(field, value):
+    client = MagicMock()
+    tools = create_memanto_tools(client, "test-agent")
+    remember_tool = next(t for t in tools if t.name == "memanto_remember")
+    payload = {
+        "memory_type": "fact",
+        "title": "Valid title",
+        "content": "Valid content",
+        "confidence": 0.9,
+        "tags": "",
+    }
+    payload[field] = value
+
+    with pytest.raises(ValidationError):
+        remember_tool.invoke(payload)
+
+    client.remember.assert_not_called()
 
 
 def test_memanto_recall_tool_success():
