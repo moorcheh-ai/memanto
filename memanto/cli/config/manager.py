@@ -231,29 +231,75 @@ class ConfigManager:
 
     # YAML Config (non-sensitive settings)
 
-    def load_yaml(self) -> dict:
-        """Load config.yaml as a plain dict."""
+    def _read_yaml_config(self, strict: bool = False) -> dict:
+        """Load config.yaml as a plain dict.
+
+        Read paths are intentionally tolerant so a broken config does not make
+        harmless status/show commands crash. Write paths pass ``strict=True``
+        before replacing the file, which prevents a malformed existing config
+        from being silently overwritten with defaults.
+        """
         if not self.config_file.exists():
             return {}
         try:
             with open(self.config_file) as f:
                 data = yaml.safe_load(f)
-
-            if not isinstance(data, dict):
-                return {}
-
-            memanto_data = data.get("memanto", {})
-            if not isinstance(memanto_data, dict):
-                return {}
-
-            return memanto_data
-        except Exception:
+        except Exception as e:
+            if strict:
+                raise ValueError(
+                    f"Invalid MEMANTO config YAML at {self.config_file}: {e}"
+                )
             return {}
+
+        if data is None:
+            return {}
+
+        if not isinstance(data, dict):
+            if strict:
+                raise ValueError(
+                    f"Invalid MEMANTO config YAML at {self.config_file}: "
+                    "top-level value must be a mapping"
+                )
+            return {}
+
+        if "memanto" not in data:
+            if strict and data:
+                raise ValueError(
+                    f"Invalid MEMANTO config YAML at {self.config_file}: "
+                    "missing 'memanto' mapping"
+                )
+            return {}
+
+        memanto_data = data.get("memanto", {})
+        if memanto_data is None:
+            if strict:
+                raise ValueError(
+                    f"Invalid MEMANTO config YAML at {self.config_file}: "
+                    "'memanto' must be a mapping"
+                )
+            return {}
+
+        if not isinstance(memanto_data, dict):
+            if strict:
+                raise ValueError(
+                    f"Invalid MEMANTO config YAML at {self.config_file}: "
+                    "'memanto' must be a mapping"
+                )
+            return {}
+
+        return memanto_data
+
+    def load_yaml(self) -> dict:
+        """Load config.yaml as a plain dict."""
+        return self._read_yaml_config(strict=False)
 
     def save_yaml(self, data: dict) -> None:
         """Save dict to config.yaml under the 'memanto' key."""
-        with open(self.config_file, "w") as f:
+        self._read_yaml_config(strict=True)
+        tmp = self.config_file.with_suffix(self.config_file.suffix + ".tmp")
+        with open(tmp, "w") as f:
             yaml.dump({"memanto": data}, f, default_flow_style=False, sort_keys=False)
+        os.replace(tmp, self.config_file)
         try:
             self.config_file.chmod(0o600)
         except OSError:

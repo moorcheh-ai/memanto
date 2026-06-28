@@ -191,6 +191,7 @@ class TestMEMANTOCLI:
         assert "test-agent" in result.stdout
         assert "activated" in result.stdout.lower()
 
+
     # ========================================================================
     # MEMORY OPERATIONS
     # ========================================================================
@@ -1026,6 +1027,46 @@ class TestMEMANTOCLI:
         reports = list(tmp_path.glob("*/migrate-report.md"))
         report_text = reports[0].read_text(encoding="utf-8")
         assert "Recovered after re-activation." in report_text
+
+
+class TestConfigManagerPersistence:
+    """ConfigManager must not destroy an existing config when YAML is invalid."""
+
+    def test_load_yaml_tolerates_malformed_config_for_read_paths(self, tmp_path):
+        from memanto.cli.config.manager import ConfigManager
+
+        manager = ConfigManager(config_dir=tmp_path)
+        broken_yaml = "memanto:\n  server:\n    url: localhost\n    port: [bad\n"
+        manager.config_file.write_text(broken_yaml)
+
+        assert manager.load_yaml() == {}
+
+    def test_set_preserves_malformed_config_instead_of_overwriting(self, tmp_path):
+        from memanto.cli.config.manager import ConfigManager
+
+        manager = ConfigManager(config_dir=tmp_path)
+        broken_yaml = "memanto:\n  server:\n    url: localhost\n    port: [bad\n"
+        manager.config_file.write_text(broken_yaml)
+
+        with pytest.raises(ValueError, match="Invalid MEMANTO config YAML"):
+            manager.set("backend", "cloud")
+
+        assert manager.config_file.read_text() == broken_yaml
+
+    def test_set_preserves_null_memanto_mapping_instead_of_overwriting(
+        self, tmp_path
+    ):
+        from memanto.cli.config.manager import ConfigManager
+
+        manager = ConfigManager(config_dir=tmp_path)
+        broken_yaml = "memanto: null\n"
+        manager.config_file.write_text(broken_yaml)
+
+        assert manager.load_yaml() == {}
+        with pytest.raises(ValueError, match="Invalid MEMANTO config YAML"):
+            manager.set("backend", "cloud")
+
+        assert manager.config_file.read_text() == broken_yaml
 
 
 if __name__ == "__main__":
