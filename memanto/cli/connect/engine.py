@@ -299,11 +299,13 @@ def _remove_skill(agent: AgentDef, project_path: Path, is_global: bool) -> str |
 
 
 def _read_json_object(path: Path) -> dict[str, Any]:
+    """Read a JSON file and return an object shape, falling back to empty dict."""
     data = json.loads(path.read_text(encoding="utf-8"))
     return data if isinstance(data, dict) else {}
 
 
 def _ensure_dict(container: dict[str, Any], key: str) -> dict[str, Any]:
+    """Return a child dict at ``key``, replacing malformed values in place."""
     value = container.get(key)
     if isinstance(value, dict):
         return value
@@ -313,6 +315,7 @@ def _ensure_dict(container: dict[str, Any], key: str) -> dict[str, Any]:
 
 
 def _ensure_list(container: dict[str, Any], key: str) -> list[Any]:
+    """Return a child list at ``key``, replacing malformed values in place."""
     value = container.get(key)
     if isinstance(value, list):
         return value

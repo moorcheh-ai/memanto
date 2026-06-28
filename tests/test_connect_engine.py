@@ -10,6 +10,7 @@ from memanto.cli.connect.engine import _install_hooks, _install_permissions
 
 
 def _load_json(path: Path) -> dict:
+    """Load a settings file and assert the repair path wrote an object."""
     data = json.loads(path.read_text(encoding="utf-8"))
     assert isinstance(data, dict)
     return data
