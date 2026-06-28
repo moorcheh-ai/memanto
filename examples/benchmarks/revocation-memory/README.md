@@ -76,7 +76,7 @@ Live Mem0 run:
 python -m venv .venv
 . .venv/bin/activate
 pip install -e .
-pip install -r examples/benchmarks/revocation-memory/requirements.lock
+pip install -r examples/benchmarks/revocation-memory/requirements-lock.txt
 python examples/benchmarks/revocation-memory/benchmark.py \
   --backend mem0 \
   --output examples/benchmarks/revocation-memory/results/mem0-results.json
