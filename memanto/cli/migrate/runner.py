@@ -86,11 +86,23 @@ def write_preview(rows: list[dict[str, Any]], dest: Path) -> Path:
 
 
 def _source_list(value: Any) -> list[Any]:
+    """Return provider source arrays only when they are actually lists."""
     return value if isinstance(value, list) else []
 
 
 def _source_dicts(value: Any) -> list[dict[str, Any]]:
+    """Return only object entries from a provider source array."""
     return [item for item in _source_list(value) if isinstance(item, dict)]
+
+
+def _supermemory_memory_sources(export: dict[str, Any]) -> list[dict[str, Any]]:
+    """Return Supermemory memory records with text the mapper can import."""
+    records = _source_dicts(export.get("memories"))
+    return [
+        record
+        for record in records
+        if (record.get("content") or record.get("memory") or record.get("text") or "")
+    ]
 
 
 def source_count(provider: str, export: dict[str, Any]) -> int:
@@ -98,7 +110,10 @@ def source_count(provider: str, export: dict[str, Any]) -> int:
     if provider == "letta":
         return len(_source_list(export.get("passages")))
     memories = _source_list(export.get("memories"))
-    if provider == "supermemory" and not memories:
+    if provider == "supermemory":
+        usable_memories = _supermemory_memory_sources(export)
+        if usable_memories:
+            return len(memories)
         # Mirror map_supermemory's fallback: when no extracted memories exist
         # we harvest document chunks, so the summary should reflect that.
         return sum(

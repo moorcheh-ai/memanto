@@ -121,6 +121,7 @@ def _parse_dt(value: Any) -> datetime | None:
 
 
 def _pick_first_dt(record: Any, keys: tuple[str, ...]) -> datetime | None:
+    """Pick the first parseable timestamp from a source object."""
     if not isinstance(record, dict):
         return None
     for key in keys:
@@ -178,6 +179,7 @@ def _attach_footer(content: str, footer: str) -> str:
 
 
 def _now_utc() -> datetime:
+    """Return the current UTC timestamp for migrated rows."""
     return datetime.now(timezone.utc)
 
 
@@ -371,9 +373,10 @@ def map_supermemory(export: dict[str, Any]) -> list[dict[str, Any]]:
     for doc in _dict_records(export.get("documents")):
         doc_tags = [str(t) for t in (doc.get("container_tags") or []) if t]
         doc_id = doc.get("id")
+        detail = doc.get("detail")
         doc_created = _pick_first_dt(
-            doc.get("detail") or doc, ("createdAt", "created_at")
-        )
+            detail, ("createdAt", "created_at")
+        ) or _pick_first_dt(doc, ("createdAt", "created_at"))
         for chunk in _dict_records(doc.get("chunks")):
             content = (chunk.get("content") or chunk.get("text") or "").strip()
             if not content or content in seen:
