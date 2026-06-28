@@ -119,9 +119,16 @@ export class ServerLifecycle {
     const deadline = Date.now() + timeoutMs;
     let lastErr: unknown = null;
     while (Date.now() < deadline) {
-      if (this.process && this.process.exitCode !== null) {
+      if (
+        this.process &&
+        (this.process.exitCode !== null || this.process.signalCode !== null)
+      ) {
+        const reason =
+          this.process.exitCode !== null
+            ? `code ${this.process.exitCode}`
+            : `signal ${this.process.signalCode}`;
         throw new Error(
-          `memanto server exited with code ${this.process.exitCode} before becoming healthy.`,
+          `memanto server exited with ${reason} before becoming healthy.`,
         );
       }
       try {

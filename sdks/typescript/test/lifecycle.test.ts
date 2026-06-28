@@ -97,4 +97,30 @@ describe("ServerLifecycle", () => {
       expect(child.kill).not.toHaveBeenCalled();
     });
   }
+
+  it("reports signaled startup exits without waiting for health timeout", async () => {
+    const life = new ServerLifecycle();
+    const child = Object.assign(new EventEmitter(), {
+      killed: false,
+      exitCode: null,
+      signalCode: "SIGTERM",
+      kill: vi.fn(),
+    }) as unknown as ChildProcess;
+
+    (
+      life as unknown as { process: ChildProcess | null; url: string | null }
+    ).process = child;
+
+    await expect(
+      (
+        life as unknown as {
+          waitForHealth(baseUrl: string, timeoutMs: number): Promise<void>;
+        }
+      ).waitForHealth("http://127.0.0.1:8765", 1_000),
+    ).rejects.toThrow(
+      "memanto server exited with signal SIGTERM before becoming healthy.",
+    );
+
+    expect(child.kill).not.toHaveBeenCalled();
+  });
 });
