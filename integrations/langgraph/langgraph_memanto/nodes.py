@@ -76,12 +76,10 @@ def create_recall_node(
             return {"messages": []}
 
         # Create a local client instance for this request to prevent cross-tenant leaks
-        # when multiple concurrent requests use different agent_ids
-        local_client = SdkClient(
-            api_key=client.api_key,
-            base_url=client.base_url,
-            session_token=client.session_token,
-        )
+        # when multiple concurrent requests use different agent_ids.
+        # SdkClient constructor only accepts api_key; set other attrs after construction.
+        local_client = SdkClient(api_key=client.api_key)
+        local_client.session_token = client.session_token
 
         try:
             # First try assuming the session is already active (saves an API call)
@@ -204,12 +202,10 @@ def create_remember_node(
         title = content if len(content) <= 50 else content[:47] + "..."
 
         # Create a local client instance for this request to prevent cross-tenant leaks
-        # when multiple concurrent requests use different agent_ids
-        local_client = SdkClient(
-            api_key=client.api_key,
-            base_url=client.base_url,
-            session_token=client.session_token,
-        )
+        # when multiple concurrent requests use different agent_ids.
+        # SdkClient constructor only accepts api_key; set other attrs after construction.
+        local_client = SdkClient(api_key=client.api_key)
+        local_client.session_token = client.session_token
 
         try:
             # First try assuming the session is already active
