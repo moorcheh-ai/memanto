@@ -438,6 +438,20 @@ class ConfigManager:
     # Connections registry — tracks which agents have memanto installed where.
     # Forward-only: only updated by future install/remove calls, not backfilled.
 
+    @staticmethod
+    def _normalize_connection_entry(entry) -> dict:
+        if not isinstance(entry, dict):
+            return {"projects": [], "installed_global": False}
+
+        raw_projects = entry.get("projects", [])
+        projects = raw_projects if isinstance(raw_projects, list) else []
+        projects = [p for p in projects if isinstance(p, str) and p]
+
+        return {
+            "projects": projects,
+            "installed_global": entry.get("installed_global") is True,
+        }
+
     def load_connections(self) -> dict:
         """Load the connections registry from ~/.memanto/connections.json."""
         if not self.connections_file.exists():
@@ -445,7 +459,13 @@ class ConfigManager:
         try:
             with open(self.connections_file, encoding="utf-8") as f:
                 data = json.load(f)
-            return data if isinstance(data, dict) else {}
+            if not isinstance(data, dict):
+                return {}
+            return {
+                name: self._normalize_connection_entry(entry)
+                for name, entry in data.items()
+                if isinstance(name, str) and name
+            }
         except Exception:
             return {}
 

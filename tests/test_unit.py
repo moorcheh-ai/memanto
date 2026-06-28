@@ -4,6 +4,7 @@ MEMANTO Core Unit Tests (No Server Required)
 Tests the session and agent services directly without HTTP layer.
 """
 
+import json
 from datetime import datetime
 from unittest.mock import MagicMock, patch
 
@@ -344,6 +345,71 @@ class TestForgetEndToEnd:
         result = client.delete_memory(agent_id="test-agent", memory_id="mem-xyz")
         assert result["status"] == "deleted"
         assert result["memory_id"] == "mem-xyz"
+
+
+class TestConfigManagerConnections:
+    def test_load_connections_normalizes_malformed_entries(self, tmp_path):
+        from memanto.cli.config.manager import ConfigManager
+
+        manager = ConfigManager(config_dir=tmp_path)
+        manager.connections_file.write_text(
+            json.dumps(
+                {
+                    "claude-code": "installed",
+                    "cursor": {
+                        "projects": "not-a-list",
+                        "installed_global": "false",
+                    },
+                    "windsurf": {
+                        "projects": [str(tmp_path / "project"), "", 123],
+                        "installed_global": True,
+                    },
+                }
+            ),
+            encoding="utf-8",
+        )
+
+        assert manager.load_connections() == {
+            "claude-code": {"projects": [], "installed_global": False},
+            "cursor": {"projects": [], "installed_global": False},
+            "windsurf": {
+                "projects": [str(tmp_path / "project")],
+                "installed_global": True,
+            },
+        }
+
+    def test_add_connection_replaces_malformed_agent_entry(self, tmp_path):
+        from memanto.cli.config.manager import ConfigManager
+
+        manager = ConfigManager(config_dir=tmp_path)
+        project_dir = tmp_path / "project"
+        manager.connections_file.write_text(
+            json.dumps({"claude-code": ["bad entry"]}),
+            encoding="utf-8",
+        )
+
+        manager.add_connection("claude-code", str(project_dir), is_global=False)
+
+        data = json.loads(manager.connections_file.read_text(encoding="utf-8"))
+        assert data == {
+            "claude-code": {
+                "projects": [str(project_dir.resolve())],
+                "installed_global": False,
+            }
+        }
+
+    def test_remove_connection_cleans_malformed_agent_entry(self, tmp_path):
+        from memanto.cli.config.manager import ConfigManager
+
+        manager = ConfigManager(config_dir=tmp_path)
+        manager.connections_file.write_text(
+            json.dumps({"claude-code": "bad entry"}),
+            encoding="utf-8",
+        )
+
+        manager.remove_connection("claude-code", str(tmp_path), is_global=False)
+
+        assert json.loads(manager.connections_file.read_text(encoding="utf-8")) == {}
 
 
 class TestMEMANTOArchitecture:
