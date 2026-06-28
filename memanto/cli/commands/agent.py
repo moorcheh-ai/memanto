@@ -3,6 +3,7 @@ MEMANTO CLI - Agent commands (create, list, activate, deactivate, delete, bootst
 """
 
 import json
+import math
 import time
 from collections import Counter
 from datetime import datetime
@@ -373,9 +374,12 @@ def agent_bootstrap(
         if value is None:
             return default
         try:
-            return float(value)
-        except (ValueError, TypeError):
+            confidence = float(value)
+        except (OverflowError, ValueError, TypeError):
             return default
+        if not math.isfinite(confidence):
+            return default
+        return confidence
 
     # Compute aggregates
     type_counter: Counter = Counter()
@@ -396,9 +400,12 @@ def agent_bootstrap(
 
         if mem_conf is not None:
             try:
-                confidence_values.append(float(mem_conf))
-            except (ValueError, TypeError):
+                confidence = float(mem_conf)
+            except (OverflowError, ValueError, TypeError):
                 pass
+            else:
+                if math.isfinite(confidence):
+                    confidence_values.append(confidence)
 
         if mem_created:
             dates.append(str(mem_created))

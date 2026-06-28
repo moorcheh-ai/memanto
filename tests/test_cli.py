@@ -629,14 +629,23 @@ class TestMEMANTOCLI:
         mock_all_clients.recall.return_value = {
             "memories": [
                 {
-                    "id": "mem-1",
-                    "title": "Malformed confidence",
+                    "id": f"mem-{index}",
+                    "title": memory["title"],
                     "content": "Backend returned a non-numeric confidence.",
                     "type": "fact",
-                    "confidence": "high",
+                    "confidence": memory["confidence"],
                     "status": "active",
                     "created_at": "2026-06-28T00:00:00Z",
                 }
+                for index, memory in enumerate(
+                    (
+                        {"confidence": "high", "title": "Malformed confidence"},
+                        {"confidence": "nan", "title": "NaN confidence"},
+                        {"confidence": "inf", "title": "Infinite confidence"},
+                        {"confidence": "1e10000", "title": "Oversized confidence"},
+                    ),
+                    start=1,
+                )
             ]
         }
         output_path = tmp_path / "bootstrap.json"
