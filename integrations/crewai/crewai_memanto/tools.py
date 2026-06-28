@@ -37,6 +37,22 @@ VALID_MEMORY_TYPES = (
 )
 
 
+def _normalize_tags(raw_tags: Any) -> list[str]:
+    """Return semantic tag strings from common Memanto tag shapes."""
+    if isinstance(raw_tags, str):
+        return [tag.strip() for tag in raw_tags.split(",") if tag.strip()]
+    if isinstance(raw_tags, list):
+        return [str(tag).strip() for tag in raw_tags if str(tag).strip()]
+    return []
+
+
+def _valid_recall_memories(raw_memories: Any) -> list[dict[str, Any]]:
+    """Filter recall output to object-shaped memories CrewAI can render."""
+    if not isinstance(raw_memories, list):
+        return []
+    return [mem for mem in raw_memories if isinstance(mem, dict)]
+
+
 class MemantoSetup:
     """
     Manages Memanto agent lifecycle for CrewAI integration.
@@ -255,7 +271,7 @@ class MemantoRecallTool(BaseTool):
             min_similarity=min_similarity,
         )
 
-        memories = result.get("memories", [])
+        memories = _valid_recall_memories(result.get("memories", []))
         if not memories:
             return f"No memories found for query: '{query}'"
 
@@ -265,7 +281,7 @@ class MemantoRecallTool(BaseTool):
             content = mem.get("content", "")
             mem_type = mem.get("type", "unknown")
             confidence = mem.get("confidence", "N/A")
-            tags = mem.get("tags", [])
+            tags = _normalize_tags(mem.get("tags", []))
             tag_str = f" [tags: {', '.join(tags)}]" if tags else ""
 
             lines.append(

@@ -108,6 +108,52 @@ def test_memanto_recall_tool_success():
     )
 
 
+def test_memanto_recall_tool_skips_malformed_memory_rows():
+    client = MagicMock()
+    client.recall.return_value = {
+        "memories": [
+            "truncated row",
+            {
+                "id": "mem-123",
+                "type": "fact",
+                "title": "Fact 1",
+                "content": "Content 1",
+                "confidence": 0.8,
+                "tags": ["test"],
+            },
+        ]
+    }
+
+    tool = MemantoRecallTool(client=client, agent_id="test-agent")
+    result = tool._run(query="test query")
+
+    assert "Found 1 memories for 'test query'" in result
+    assert "Fact 1" in result
+    assert "truncated row" not in result
+
+
+def test_memanto_recall_tool_normalizes_string_tags():
+    client = MagicMock()
+    client.recall.return_value = {
+        "memories": [
+            {
+                "id": "mem-123",
+                "type": "fact",
+                "title": "Fact 1",
+                "content": "Content 1",
+                "confidence": 0.8,
+                "tags": "urgent, client",
+            }
+        ]
+    }
+
+    tool = MemantoRecallTool(client=client, agent_id="test-agent")
+    result = tool._run(query="test query")
+
+    assert "[tags: urgent, client]" in result
+    assert "[tags: u, r, g" not in result
+
+
 def test_memanto_recall_tool_empty():
     client = MagicMock()
     client.recall.return_value = {"memories": []}
