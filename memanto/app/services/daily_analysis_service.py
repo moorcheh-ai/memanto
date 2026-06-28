@@ -21,6 +21,22 @@ from memanto.app.utils.temporal_helpers import (
 )
 
 
+def _unparsed_conflict_report(conflict_text: str) -> dict[str, Any]:
+    """Build a saved conflict entry for model output that is not structured JSON."""
+    return {
+        "type": "conflict",
+        "title": "Unparsed conflict report",
+        "old_memory_id": None,
+        "old_content": None,
+        "new_memory_id": None,
+        "new_content": None,
+        "description": conflict_text,
+        "recommendation": "merge",
+        "resolved": False,
+        "resolution": None,
+    }
+
+
 class DailyAnalysisService:
     """Service for analyzing a day's session MD files — generates the
     daily AI summary and the conflict report.
@@ -219,7 +235,9 @@ Example response format:
                 clean_text = clean_text[:-3].strip()
 
             parsed = json.loads(clean_text)
-            if isinstance(parsed, list):
+            if isinstance(parsed, list) and all(
+                isinstance(item, dict) for item in parsed
+            ):
                 # Filter out self-referencing conflicts (same ID on both sides)
                 parsed = [
                     item
@@ -273,23 +291,12 @@ Example response format:
                                 )
 
                 conflicts_data = parsed
+            elif conflict_text.strip() and conflict_text.strip() != "[]":
+                conflicts_data = [_unparsed_conflict_report(conflict_text)]
         except (json.JSONDecodeError, ValueError):
             # If AI didn't return valid JSON, wrap the raw text as a single conflict
             if conflict_text.strip() and conflict_text.strip() != "[]":
-                conflicts_data = [
-                    {
-                        "type": "conflict",
-                        "title": "Unparsed conflict report",
-                        "old_memory_id": None,
-                        "old_content": None,
-                        "new_memory_id": None,
-                        "new_content": None,
-                        "description": conflict_text,
-                        "recommendation": "merge",
-                        "resolved": False,
-                        "resolution": None,
-                    }
-                ]
+                conflicts_data = [_unparsed_conflict_report(conflict_text)]
 
         # Save structured JSON for interactive resolution
         json_path = conflicts_dir / f"{agent_id}_{date}_conflicts.json"
