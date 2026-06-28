@@ -48,6 +48,7 @@ ASSUMPTIONS: dict[str, Any] = {
 
 
 def _human_bytes(num: float) -> str:
+    """Format a byte count as a compact human-readable string."""
     for unit in ("B", "KB", "MB", "GB", "TB"):
         if abs(num) < 1024.0:
             return f"{num:.2f} {unit}"
@@ -56,10 +57,12 @@ def _human_bytes(num: float) -> str:
 
 
 def _chunk_text(chunk: dict[str, Any]) -> str:
+    """Extract the best available text field from a Supermemory chunk."""
     return chunk.get("content") or chunk.get("text") or ""
 
 
 def _memory_text(memory: dict[str, Any]) -> str:
+    """Extract the best available text field from a Supermemory memory."""
     return memory.get("content") or memory.get("memory") or memory.get("title") or ""
 
 
@@ -216,6 +219,7 @@ def build_report_markdown(
     llm_method: str,
     exported_at: str | None,
 ) -> str:
+    """Build the final Supermemory comparison report markdown."""
     v = metrics["volume"]
     t = metrics["ingestion_tax"]
     s = metrics["storage"]

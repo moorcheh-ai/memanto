@@ -45,6 +45,7 @@ ASSUMPTIONS: dict[str, Any] = {
 
 
 def _human_bytes(num: float) -> str:
+    """Format a byte count as a compact human-readable string."""
     for unit in ("B", "KB", "MB", "GB", "TB"):
         if abs(num) < 1024.0:
             return f"{num:.2f} {unit}"
@@ -53,6 +54,7 @@ def _human_bytes(num: float) -> str:
 
 
 def _memory_text(memory: dict[str, Any]) -> str:
+    """Extract the best available text field from a Mem0 memory record."""
     return (
         memory.get("memory")
         or memory.get("content")
@@ -63,6 +65,7 @@ def _memory_text(memory: dict[str, Any]) -> str:
 
 
 def _entity_type_counts(entities: list[dict[str, Any]]) -> dict[str, int]:
+    """Count normalized Mem0 entity types from export records."""
     counts: dict[str, int] = {}
     for entity in entities:
         entity_type = str(entity.get("type") or "unknown").lower()
@@ -215,6 +218,7 @@ def build_report_markdown(
     llm_method: str,
     exported_at: str | None,
 ) -> str:
+    """Build the final Mem0 comparison report markdown."""
     v = metrics["volume"]
     t = metrics["ingestion_tax"]
     s = metrics["storage"]

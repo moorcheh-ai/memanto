@@ -40,6 +40,7 @@ ASSUMPTIONS: dict[str, Any] = {
 
 
 def _human_bytes(num: float) -> str:
+    """Format a byte count as a compact human-readable string."""
     for unit in ("B", "KB", "MB", "GB", "TB"):
         if abs(num) < 1024.0:
             return f"{num:.2f} {unit}"
@@ -48,6 +49,7 @@ def _human_bytes(num: float) -> str:
 
 
 def _passage_text(passage: dict[str, Any]) -> str:
+    """Extract the best available text field from a Letta passage record."""
     return (
         passage.get("text")
         or passage.get("content")
@@ -58,6 +60,7 @@ def _passage_text(passage: dict[str, Any]) -> str:
 
 
 def _agent_count(export: dict[str, Any], summary: dict[str, Any]) -> int:
+    """Infer the Letta agent count from summary, agents, or legacy fields."""
     if summary.get("agent_count") is not None:
         return int_or_default(summary["agent_count"])
     agents = dict_list_or_empty(export.get("agents"))
@@ -202,6 +205,7 @@ def build_report_markdown(
     llm_method: str,
     exported_at: str | None,
 ) -> str:
+    """Build the final Letta comparison report markdown."""
     v = metrics["volume"]
     t = metrics["ingestion_tax"]
     s = metrics["storage"]
