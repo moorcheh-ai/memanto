@@ -9,13 +9,13 @@ Memanto's backend LLM distill the durable engineering decisions into memory.
 
 Then run ``demo_session_2.py`` in a SEPARATE process to prove the decisions are
 recalled with zero shared in-process state.
+"""
+
 from __future__ import annotations
 
 from memanto_skills import SkillMemory
-import os
 
 SESSION_1_TRANSCRIPT = """
-user: /grill-with-docs let's nail down the architecture for the orders service
 user: /grill-with-docs let's nail down the architecture for the orders service
 assistant: A few questions to align on the design.
 user: We will use CQRS for the Order domain — commands and queries are separate.
@@ -29,31 +29,26 @@ user: We decided on Postgres for the write side and Redis for the read-model cac
   Always wrap money values in a Money value object — never raw floats.
 assistant: Summary: CQRS for Orders, Postgres + Redis, Cart != Order, Money VO for currency.
 """
-
-
 def main() -> None:
     mem = SkillMemory()
-    if not os.environ.get("MOORCHEH_API_KEY"):
-        print("Error: MOORCHEH_API_KEY environment variable is not set.")
-        raise SystemExit(1)
     mem.setup()
-    print("Session 1: distilling /grill-with-docs decisions via Memanto's LLM…\n")
+    print("Session 1: distilling /grill-with-docs decisions via Memanto's LLM...\n")
     stored = mem.distill_and_store("grill-with-docs", SESSION_1_TRANSCRIPT)
+    if not stored:
+        print("No memories were extracted. Check MOORCHEH_API_KEY and connectivity.")
     if not stored:
         print("No memories were extracted. Check MOORCHEH_API_KEY and connectivity.")
         return
     print(f"Stored {len(stored)} engineering memories:")
     for m in stored:
-    for m in stored:
         print(f"  - [{m['type']}] {m['content']}")
     print("\nNow run:  python demo_session_2.py")
-    return None
+
 
 if __name__ == "__main__":
     try:
+        main()
     except Exception as exc:
-        print(f"\n[error] {exc}")
         print(f"\n[error] {exc}")
         print("Check that MOORCHEH_API_KEY is valid and your subscription is active.")
         raise SystemExit(1)
-    main()
