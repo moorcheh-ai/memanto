@@ -127,7 +127,18 @@ def test_is_available_false_when_import_missing(monkeypatch):
 def test_sanitize_agent_id_coerces_charset():
     assert _sanitize_agent_id("Hermes Coder!@#") == "Hermes-Coder"
     assert _sanitize_agent_id("") == "hermes"
-    assert _sanitize_agent_id("a" * 100) == "a" * 64
+    long_id = _sanitize_agent_id("a" * 100)
+    assert len(long_id) == 64
+    assert long_id.startswith("a" * 53 + "-")
+
+
+def test_sanitize_agent_id_avoids_truncation_collisions():
+    first = _sanitize_agent_id("hermes-" + "a" * 80)
+    second = _sanitize_agent_id("hermes-" + "a" * 79 + "b")
+
+    assert first != second
+    assert len(first) <= 64
+    assert len(second) <= 64
 
 
 def test_detect_memory_type():

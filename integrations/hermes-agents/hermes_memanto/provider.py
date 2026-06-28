@@ -26,6 +26,7 @@ provider stays inert.
 
 from __future__ import annotations
 
+import hashlib
 import json
 import logging
 import os
@@ -135,8 +136,15 @@ def _sanitize_agent_id(raw: str) -> str:
     """Coerce to Memanto's id charset (letters, digits, ``-``, ``_``)."""
     cleaned = re.sub(r"[^a-zA-Z0-9_-]", "-", raw or "")
     cleaned = re.sub(r"-+", "-", cleaned).strip("-")
-    cleaned = cleaned[:_MAX_AGENT_ID_LENGTH].strip("-")
-    return cleaned or "hermes"
+    if not cleaned:
+        return "hermes"
+    if len(cleaned) <= _MAX_AGENT_ID_LENGTH:
+        return cleaned
+
+    digest = hashlib.sha256(cleaned.encode("utf-8")).hexdigest()[:10]
+    prefix_len = _MAX_AGENT_ID_LENGTH - len(digest) - 1
+    prefix = cleaned[:prefix_len].rstrip("-_") or "hermes"
+    return f"{prefix}-{digest}"
 
 
 def _detect_memory_type(text: str) -> str:
