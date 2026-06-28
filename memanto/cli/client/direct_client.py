@@ -1500,6 +1500,7 @@ class DirectClient:
                 memories_by_type[mem_type] = []
 
         export_svc = self._get_export_service()
+        memories_by_type = export_svc.normalize_memories_by_type(memories_by_type)
         out = output_path if output_path else None
         written_path = export_svc.write_memory_md(
             agent_id=agent_id,

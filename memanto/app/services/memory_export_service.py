@@ -5,6 +5,7 @@ Generates a structured memory.md file with all 13 memory types
 organized into sections, ready for agent consumption.
 """
 
+from collections.abc import Mapping
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -89,11 +90,25 @@ class MemoryExportService:
     def __init__(self, exports_dir: Path | None = None):
         self.exports_dir = exports_dir or (Path.home() / ".memanto" / "exports")
 
+    def normalize_memories_by_type(
+        self, memories_by_type: Mapping[str, Any]
+    ) -> dict[str, list[dict[str, Any]]]:
+        """Keep only list-backed memory dictionaries for each memory type."""
+        normalized: dict[str, list[dict[str, Any]]] = {}
+        for mem_type, memories in memories_by_type.items():
+            if not isinstance(memories, list):
+                normalized[mem_type] = []
+                continue
+            normalized[mem_type] = [
+                dict(memory) for memory in memories if isinstance(memory, Mapping)
+            ]
+        return normalized
+
     # Public API
     def format_memory_md(
         self,
         agent_id: str,
-        memories_by_type: dict[str, list[dict[str, Any]]],
+        memories_by_type: Mapping[str, Any],
         generated_at: str | None = None,
     ) -> str:
         """
@@ -108,6 +123,7 @@ class MemoryExportService:
             Formatted Markdown string.
         """
         generated_at = generated_at or datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        memories_by_type = self.normalize_memories_by_type(memories_by_type)
 
         total = sum(len(mems) for mems in memories_by_type.values())
         type_counts = {t: len(mems) for t, mems in memories_by_type.items() if mems}
@@ -145,12 +161,12 @@ class MemoryExportService:
                 continue
 
             for mem in memories:
-                title = mem.get("title") or "Untitled"
-                content = (mem.get("content") or "").strip()
+                title = str(mem.get("title") or "Untitled")
+                content = str(mem.get("content") or "").strip()
                 confidence = mem.get("confidence")
                 tags = mem.get("tags", [])
-                created_at = mem.get("created_at", "")
-                status = mem.get("status", "")
+                created_at = str(mem.get("created_at", ""))
+                status = str(mem.get("status", ""))
 
                 lines.append(f"### {title}")
                 lines.append("")
@@ -190,7 +206,7 @@ class MemoryExportService:
     def write_memory_md(
         self,
         agent_id: str,
-        memories_by_type: dict[str, list[dict[str, Any]]],
+        memories_by_type: Mapping[str, Any],
         output_path: Path | None = None,
     ) -> Path:
         """
