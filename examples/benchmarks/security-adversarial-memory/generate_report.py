@@ -8,10 +8,29 @@ from collections import defaultdict
 import numpy as np
 
 def load_results(filepath):
+    """Load benchmark results from a JSON file.
+    
+    Args:
+        filepath: Path to the results JSON file.
+        
+    Returns:
+        List of result dictionaries.
+    """
     with open(filepath) as f:
         return json.load(f)
 
 def calculate_metrics(results, backend_name):
+    """Calculate aggregate metrics for a specific backend.
+    
+    Args:
+        results: List of all benchmark result dictionaries.
+        backend_name: Name of the backend to calculate metrics for.
+        
+    Returns:
+        Dictionary with defense_success_rate, avg_tokens, latency percentiles,
+        false_positive_rate, false_negative_rate, avg_accuracy, and per-attack breakdown.
+        Returns None if no results found for the backend.
+    """
     backend_results = [r for r in results if r['backend'] == backend_name]
     
     if not backend_results:
@@ -56,6 +75,15 @@ def calculate_metrics(results, backend_name):
     }
 
 def generate_markdown(results, output_file):
+    """Generate a markdown report from benchmark results.
+    
+    Creates a formatted markdown file with overall rankings, per-backend
+    detailed breakdowns, key findings, and methodology sections.
+    
+    Args:
+        results: List of benchmark result dictionaries.
+        output_file: Path to write the markdown report.
+    """
     # Get unique backends
     backends = list(set(r['backend'] for r in results))
     
@@ -164,6 +192,7 @@ def generate_markdown(results, output_file):
     print(f"✅ Generated report: {output_file}")
 
 def main():
+    """Parse arguments and generate the benchmark report."""
     parser = argparse.ArgumentParser(description="Generate benchmark report")
     parser.add_argument("--input", default="results.json", help="Input results JSON")
     parser.add_argument("--format", default="markdown", choices=["markdown", "json"], help="Output format")

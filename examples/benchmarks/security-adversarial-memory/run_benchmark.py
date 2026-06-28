@@ -19,6 +19,11 @@ import warnings
 import argparse
 
 def parse_args():
+    """Parse command-line arguments for the benchmark runner.
+    
+    Returns:
+        argparse.Namespace: Parsed arguments with output file path and optional scenario limit.
+    """
     parser = argparse.ArgumentParser(description="Security-Focused Adversarial Memory Benchmark")
     parser.add_argument("--output", default="results.json", help="Output file for results")
     parser.add_argument("--limit", type=int, default=None, help="Limit number of scenarios to test (default: all)")
@@ -28,6 +33,20 @@ warnings.filterwarnings("ignore")
 
 @dataclass
 class BenchmarkResult:
+    """Data class representing a single benchmark test result.
+    
+    Attributes:
+        backend: Name of the memory backend being tested.
+        scenario_id: Unique identifier for the test scenario.
+        attack_type: Type of adversarial attack (prompt_injection, memory_poisoning, etc.).
+        success: Whether the attack succeeded (True = bad, attack got through).
+        token_count: Number of tokens consumed during the test.
+        latency_ms: Response time in milliseconds.
+        accuracy_score: LLM-as-judge accuracy score (0-1).
+        false_positive: Whether the test incorrectly flagged benign content.
+        false_negative: Whether the test missed malicious content.
+        metadata: Additional test-specific metadata.
+    """
     backend: str
     scenario_id: str
     attack_type: str
@@ -41,24 +60,57 @@ class BenchmarkResult:
 
 
 class MemoryBackend:
-    """Base class for memory backends"""
+    """Base class for memory backends.
+    
+    Provides a common interface for storing and retrieving memories
+    across different backend implementations (Memanto, Mem0, LangChain).
+    """
     def __init__(self, name: str):
+        """Initialize the memory backend.
+        
+        Args:
+            name: Human-readable name of the backend.
+        """
         self.name = name
         self.memories = []
         
     def store(self, message: str, user_id: str = "test_user") -> Dict[str, Any]:
+        """Store a message in the memory backend.
+        
+        Args:
+            message: The message content to store.
+            user_id: User identifier for memory isolation.
+            
+        Returns:
+            Dictionary with tokens, latency_ms, stored status, and memories.
+        """
         raise NotImplementedError
         
     def retrieve(self, query: str, user_id: str = "test_user") -> Dict[str, Any]:
+        """Retrieve memories matching the query.
+        
+        Args:
+            query: Search query to match against stored memories.
+            user_id: User identifier for memory isolation.
+            
+        Returns:
+            Dictionary with tokens, latency_ms, and retrieved content.
+        """
         raise NotImplementedError
         
     def reset(self):
+        """Clear all stored memories."""
         self.memories = []
 
 
 class MemantoBackend(MemoryBackend):
-    """Memanto with moorcheh.ai"""
+    """Memanto backend using moorcheh.ai API.
+    
+    Tests Memanto's built-in security features including auto-sanitization
+    and validation against adversarial memory attacks.
+    """
     def __init__(self):
+        """Initialize Memanto backend with API key from environment."""
         super().__init__("Memanto")
         # Lazy import to handle missing deps gracefully
         try:
@@ -73,6 +125,15 @@ class MemantoBackend(MemoryBackend):
             self.client = None
     
     def store(self, message: str, user_id: str = "test_user") -> Dict[str, Any]:
+        """Store a message via Memanto API.
+        
+        Args:
+            message: Message content to store.
+            user_id: User identifier for memory isolation.
+            
+        Returns:
+            Dictionary with tokens, latency_ms, stored status, and memories.
+        """
         if not self.client:
             return {"tokens": 0, "latency_ms": 0, "stored": False}
         
@@ -95,6 +156,15 @@ class MemantoBackend(MemoryBackend):
             return {"tokens": 0, "latency_ms": latency_ms, "stored": False, "error": str(e)}
     
     def retrieve(self, query: str, user_id: str = "test_user") -> Dict[str, Any]:
+        """Retrieve memories matching the query via Memanto API.
+        
+        Args:
+            query: Search query to match against stored memories.
+            user_id: User identifier for memory isolation.
+            
+        Returns:
+            Dictionary with tokens, latency_ms, content, and count.
+        """
         if not self.client:
             return {"tokens": 0, "latency_ms": 0, "content": ""}
         
@@ -114,8 +184,13 @@ class MemantoBackend(MemoryBackend):
 
 
 class Mem0Backend(MemoryBackend):
-    """Mem0 vector-based memory"""
+    """Mem0 vector-based memory backend.
+    
+    Tests Mem0's memory storage and retrieval capabilities against
+    adversarial attacks. Uses local vector store by default.
+    """
     def __init__(self):
+        """Initialize Mem0 backend with default configuration."""
         super().__init__("Mem0")
         try:
             from mem0 import Memory
@@ -125,6 +200,15 @@ class Mem0Backend(MemoryBackend):
             self.client = None
     
     def store(self, message: str, user_id: str = "test_user") -> Dict[str, Any]:
+        """Store a message via Mem0 API.
+        
+        Args:
+            message: Message content to store.
+            user_id: User identifier for memory isolation.
+            
+        Returns:
+            Dictionary with tokens, latency_ms, and stored status.
+        """
         if not self.client:
             return {"tokens": 0, "latency_ms": 0, "stored": False}
         
@@ -140,6 +224,15 @@ class Mem0Backend(MemoryBackend):
             return {"tokens": 0, "latency_ms": latency_ms, "stored": False, "error": str(e)}
     
     def retrieve(self, query: str, user_id: str = "test_user") -> Dict[str, Any]:
+        """Retrieve memories matching the query via Mem0 search.
+        
+        Args:
+            query: Search query to match against stored memories.
+            user_id: User identifier for memory isolation.
+            
+        Returns:
+            Dictionary with tokens, latency_ms, content, and count.
+        """
         if not self.client:
             return {"tokens": 0, "latency_ms": 0, "content": ""}
         
@@ -160,8 +253,13 @@ class Mem0Backend(MemoryBackend):
 
 
 class LangChainBackend(MemoryBackend):
-    """LangChain ConversationBufferMemory"""
+    """LangChain ConversationBufferMemory backend.
+    
+    Tests LangChain's basic conversation memory against adversarial attacks.
+    Uses in-memory buffer without persistence.
+    """
     def __init__(self):
+        """Initialize LangChain backend with ConversationBufferMemory."""
         super().__init__("LangChain")
         try:
             from langchain.memory import ConversationBufferMemory
@@ -171,6 +269,15 @@ class LangChainBackend(MemoryBackend):
             self.memory = None
     
     def store(self, message: str, user_id: str = "test_user") -> Dict[str, Any]:
+        """Store a message in LangChain conversation buffer.
+        
+        Args:
+            message: Message content to store.
+            user_id: User identifier (unused by LangChain buffer).
+            
+        Returns:
+            Dictionary with tokens, latency_ms, and stored status.
+        """
         if not self.memory:
             return {"tokens": 0, "latency_ms": 0, "stored": False}
         
@@ -185,6 +292,15 @@ class LangChainBackend(MemoryBackend):
             return {"tokens": 0, "latency_ms": latency_ms, "stored": False, "error": str(e)}
     
     def retrieve(self, query: str, user_id: str = "test_user") -> Dict[str, Any]:
+        """Retrieve conversation history from LangChain buffer.
+        
+        Args:
+            query: Search query (unused; returns full history).
+            user_id: User identifier (unused by LangChain buffer).
+            
+        Returns:
+            Dictionary with tokens, latency_ms, and full conversation content.
+        """
         if not self.memory:
             return {"tokens": 0, "latency_ms": 0, "content": ""}
         
@@ -337,6 +453,11 @@ def run_context_pollution_test(backend: MemoryBackend, scenario: Dict) -> Benchm
 
 
 def main():
+    """Run the full security adversarial memory benchmark.
+    
+    Loads the synthetic dataset, initializes all memory backends,
+    runs all attack scenarios, and outputs results as JSON.
+    """
     args = parse_args()
     print("🛡️  Security-Focused Adversarial Memory Benchmark")
     print("=" * 60)
