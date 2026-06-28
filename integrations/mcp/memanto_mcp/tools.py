@@ -491,7 +491,7 @@ def register_tools(mcp: Any, lifecycle: MemantoLifecycle) -> None:
                 limit=limit,
                 type=list(type) if type else None,
             )
-            hits = [_to_memory_hit(m) for m in result.get("memories", [])]
+            hits = _to_memory_hits(result.get("memories", []))
             if min_similarity is not None:
                 hits = [h for h in hits if (h.score or 0.0) >= min_similarity]
             return RecallResult(
@@ -544,7 +544,7 @@ def register_tools(mcp: Any, lifecycle: MemantoLifecycle) -> None:
                 limit=limit,
                 type=list(type) if type else None,
             )
-            hits = [_to_memory_hit(m) for m in result.get("memories", [])]
+            hits = _to_memory_hits(result.get("memories", []))
             return RecallResult(
                 status="ok",
                 agent_id=resolved,
@@ -600,7 +600,7 @@ def register_tools(mcp: Any, lifecycle: MemantoLifecycle) -> None:
                 limit=limit,
                 type=list(type) if type else None,
             )
-            hits = [_to_memory_hit(m) for m in result.get("memories", [])]
+            hits = _to_memory_hits(result.get("memories", []))
             return RecallResult(
                 status="ok",
                 agent_id=resolved,
@@ -656,7 +656,7 @@ def register_tools(mcp: Any, lifecycle: MemantoLifecycle) -> None:
                 limit=limit,
                 type=list(type) if type else None,
             )
-            hits = [_to_memory_hit(m) for m in result.get("memories", [])]
+            hits = _to_memory_hits(result.get("memories", []))
             return RecallResult(
                 status="ok",
                 agent_id=resolved,
@@ -890,13 +890,29 @@ def _register_admin_tools(mcp: Any, lifecycle: MemantoLifecycle) -> None:
 # ---------------------------------------------------------------------------
 
 
-def _to_memory_hit(raw: dict[str, Any]) -> MemoryHit:
+def _to_memory_hits(raw_memories: Any) -> list[MemoryHit]:
+    """Map recall response rows, skipping malformed non-object entries."""
+    if not isinstance(raw_memories, list):
+        return []
+
+    hits: list[MemoryHit] = []
+    for raw in raw_memories:
+        hit = _to_memory_hit(raw)
+        if hit is not None:
+            hits.append(hit)
+    return hits
+
+
+def _to_memory_hit(raw: Any) -> MemoryHit | None:
     """Map a Memanto recall result row into the MCP MemoryHit shape.
 
     Memanto returns slightly different keys across endpoints (e.g. ``score``
     vs ``similarity_score``). We coalesce them here so tool consumers see a
     stable schema.
     """
+    if not isinstance(raw, dict):
+        return None
+
     return MemoryHit(
         id=str(raw.get("id")) if raw.get("id") is not None else None,
         type=raw.get("type"),
