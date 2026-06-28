@@ -24,6 +24,14 @@ MAIN_TOOL_NAMES = {
 ADMIN_TOOL_NAMES = {"create_agent", "list_agents", "get_agent", "delete_agent"}
 
 
+class FakeAgentListClient:
+    """Client stub returning one valid agent plus one malformed row."""
+
+    def list_agents(self) -> list[object]:
+        """Return the agent list shape used by the MCP admin tool."""
+        return [{"agent_id": "valid-agent", "pattern": "tool"}, "truncated-row"]
+
+
 @pytest.mark.asyncio
 async def test_build_server_registers_main_tools(fake_api_key: str) -> None:
     mcp = build_server(MCPServerSettings())  # type: ignore[call-arg]
@@ -47,6 +55,22 @@ async def test_admin_tools_registered_when_enabled(
     assert ADMIN_TOOL_NAMES.issubset(tools), (
         f"Missing admin tools: {ADMIN_TOOL_NAMES - tools}"
     )
+
+
+@pytest.mark.asyncio
+async def test_list_agents_skips_malformed_agent_entries(
+    fake_api_key: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """MCP admin listing keeps valid agents when one backend row is malformed."""
+    monkeypatch.setenv("MEMANTO_EXPOSE_ADMIN", "true")
+    mcp = build_server(MCPServerSettings())  # type: ignore[call-arg]
+    mcp._memanto_lifecycle._client = FakeAgentListClient()  # type: ignore[attr-defined]
+
+    _, payload = await mcp.call_tool("list_agents", {})
+
+    assert payload["status"] == "ok"
+    assert payload["count"] == 1
+    assert payload["agents"] == [{"agent_id": "valid-agent", "pattern": "tool"}]
 
 
 @pytest.mark.asyncio

@@ -172,6 +172,13 @@ class AgentListResult(BaseModel):
     message: str | None = None
 
 
+def _valid_agent_entries(raw_agents: Any) -> list[dict[str, Any]]:
+    """Return only object-shaped agent metadata entries."""
+    if not isinstance(raw_agents, list):
+        return []
+    return [agent for agent in raw_agents if isinstance(agent, dict)]
+
+
 # ---------------------------------------------------------------------------
 # Error shaping
 # ---------------------------------------------------------------------------
@@ -821,7 +828,7 @@ def _register_admin_tools(mcp: Any, lifecycle: MemantoLifecycle) -> None:
     )
     def list_agents() -> AgentListResult:
         try:
-            agents = lifecycle.client.list_agents()
+            agents = _valid_agent_entries(lifecycle.client.list_agents())
             return AgentListResult(status="ok", count=len(agents), agents=agents)
         except Exception as exc:
             logger.exception("list_agents failed")
