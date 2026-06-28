@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from typing import Any
 
+import pytest
+
 from memanto.app.utils.errors import AgentNotFoundError
 from memanto_mcp.config import MCPServerSettings
 from memanto_mcp.lifecycle import MemantoLifecycle
@@ -147,16 +149,16 @@ def test_failed_first_activation_does_not_cache_new_client(
 
     lifecycle = MemantoLifecycle(MCPServerSettings())  # type: ignore[call-arg]
 
-    try:
+    with pytest.raises(Exception, match="Failed to activate Memanto session"):
         lifecycle.ensure_ready("agent-a")
-    except Exception:
-        pass
 
     failed_client = FakeSdkClient.instances[-1]
     FakeSdkClient.fail_activate_agents = set()
     recovered_client = lifecycle.ensure_ready("agent-a")
+    cached_client = lifecycle.ensure_ready("agent-a")
 
     assert recovered_client is not failed_client
+    assert cached_client is recovered_client
     assert recovered_client.activated_agents == ["agent-a"]
 
 
@@ -181,3 +183,5 @@ def test_batch_remember_validates_before_lifecycle_side_effects(
     assert result.status == "error"
     # Only the admin client from lifecycle construction should exist.
     assert len(FakeSdkClient.instances) == 1
+    assert FakeSdkClient.instances[0].created_agents == []
+    assert FakeSdkClient.instances[0].activated_agents == []
