@@ -175,7 +175,7 @@ class AgentListResult(BaseModel):
 def _valid_agent_entries(raw_agents: Any) -> list[dict[str, Any]]:
     """Return only object-shaped agent metadata entries."""
     if not isinstance(raw_agents, list):
-        return []
+        raise TypeError("list_agents() must return a list")
     return [agent for agent in raw_agents if isinstance(agent, dict)]
 
 

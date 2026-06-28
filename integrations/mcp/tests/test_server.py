@@ -32,6 +32,14 @@ class FakeAgentListClient:
         return [{"agent_id": "valid-agent", "pattern": "tool"}, "truncated-row"]
 
 
+class FakeBrokenAgentListClient:
+    """Client stub returning a non-list top-level payload."""
+
+    def list_agents(self) -> dict[str, object]:
+        """Return a malformed top-level agent list response."""
+        return {"agents": [{"agent_id": "valid-agent", "pattern": "tool"}]}
+
+
 @pytest.mark.asyncio
 async def test_build_server_registers_main_tools(fake_api_key: str) -> None:
     """Default server assembly exposes main tools and hides admin tools."""
@@ -73,6 +81,23 @@ async def test_list_agents_skips_malformed_agent_entries(
     assert payload["status"] == "ok"
     assert payload["count"] == 1
     assert payload["agents"] == [{"agent_id": "valid-agent", "pattern": "tool"}]
+
+
+@pytest.mark.asyncio
+async def test_list_agents_reports_non_list_agent_payload(
+    fake_api_key: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """MCP admin listing surfaces top-level response contract breaks."""
+    monkeypatch.setenv("MEMANTO_EXPOSE_ADMIN", "true")
+    mcp = build_server(MCPServerSettings())  # type: ignore[call-arg]
+    mcp._memanto_lifecycle._client = FakeBrokenAgentListClient()  # type: ignore[attr-defined]
+
+    _, payload = await mcp.call_tool("list_agents", {})
+
+    assert payload["status"] == "error"
+    assert payload["count"] == 0
+    assert payload["agents"] == []
+    assert "must return a list" in payload["message"]
 
 
 @pytest.mark.asyncio
