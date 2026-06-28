@@ -40,6 +40,12 @@ from memanto.app.services.conversation_memory_extraction_service import (
 from memanto.app.services.memory_read_service import MemoryReadService
 from memanto.app.services.memory_write_service import MemoryWriteService
 from memanto.app.utils.errors import AuthorizationError, map_error_to_http_exception
+from memanto.app.utils.rate_limiting import (
+    enforce_write_rate_limit,
+    enforce_read_rate_limit,
+    enforce_answer_rate_limit,
+    enforce_delete_rate_limit,
+)
 from memanto.app.utils.validation import CostGuard
 from memanto.cli.client.direct_client import DirectClient
 from memanto.cli.config.manager import ConfigManager
@@ -174,6 +180,9 @@ async def remember(
             status_code=403,
             detail=f"Session is for agent '{session.agent_id}', cannot access '{agent_id}'",
         )
+
+    # Rate limit enforcement
+    enforce_write_rate_limit(session.agent_id, session.namespace)
 
     try:
         # Initialize memory write service

@@ -9,6 +9,7 @@ if TYPE_CHECKING:
     from moorcheh_sdk import MoorchehClient
 
 from memanto.app.core import MemoryRecord
+from memanto.app.legacy.memory_validation_service import MemoryValidationService
 from memanto.app.services.memory_parsing_service import MemoryParsingService
 from memanto.app.utils.errors import MemoryError
 from memanto.app.utils.ids import generate_memory_id
@@ -23,6 +24,13 @@ class MemoryWriteService:
         self.client = moorcheh_client
         self._namespace_service = None
         self._parser = MemoryParsingService()
+        self._validation_service = None
+
+    @property
+    def validation_service(self):
+        if self._validation_service is None:
+            self._validation_service = MemoryValidationService(self.client)
+        return self._validation_service
 
     @property
     def namespace_service(self):
@@ -54,12 +62,11 @@ class MemoryWriteService:
             # Add namespace
             namespace = memory.get_scope().to_namespace()
 
-            # skip validation for speed
-            ## Validate memory
-            # validation_result = self.validation_service.validate_memory(memory, context)
-            ## Use validated memory if modified
-            # if "memory" in validation_result:
-            #     memory = validation_result["memory"]
+            # Validate memory before storage
+            validation_result = self.validation_service.validate_memory(memory, context)
+            # Use validated memory if modified
+            if "memory" in validation_result:
+                memory = validation_result["memory"]
             validation_result = {"action": "store", "reason": "MVP direct store"}
 
             from typing import cast
@@ -148,12 +155,11 @@ class MemoryWriteService:
                         )
                         continue
 
-                    # skip validation for speed
-                    ## Validate memory
-                    # validation_result = self.validation_service.validate_memory(memory, context)
-                    ## Use validated memory if modified
-                    # if "memory" in validation_result:
-                    #     memory = validation_result["memory"]
+                    # Validate memory before storage
+                    validation_result = self.validation_service.validate_memory(memory, context)
+                    # Use validated memory if modified
+                    if "memory" in validation_result:
+                        memory = validation_result["memory"]
                     validation_result = {
                         "action": "store",
                         "reason": "MVP direct store",
