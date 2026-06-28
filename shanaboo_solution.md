@@ -10,194 +10,143 @@
 +
 +__version__ = "0.1.0"
 +
-+from memanto.client import MemantoClient
-+from memanto.memory import MemoryManager
-+from memanto.retrieval import RetrievalEngine
++from memanto.core.memory import Memory
++from memanto.core.agent import Agent
++from memanto.core.session import Session
 +
-+__all__ = ["MemantoClient", "MemoryManager", "RetrievalEngine"]
++__all__ = ["Memory", "Agent", "Session"]
 +
 +
-+def get_version() -> str:
-+    return __version__
---- /dev/null
-+++ b/memanto/client.py
-@@ -0,0 +1,180 @@
-+"""Memanto client for interacting with the moorcheh.ai backend."""
++--- a/memanto/core/memory.py
++++ b/memanto/core/memory.py
+@@ -0,0 +1,247 @@
++"""Core memory management with timeline tracking and contradiction resolution."""
 +
 +from __future__ import annotations
 +
 +import hashlib
 +import json
-+import os
-+import time
-+from typing import Any
-+
-+import requests
-+
-+
-+class MemantoError(Exception):
-+    """Base exception for Memanto client errors."""
-+
-+    pass
++import re
++from dataclasses import dataclass, field
++from datetime import datetime, timezone
++from typing import Any, Optional
 +
 +
-+class AuthenticationError(MemantoError):
-+    """Raised when API authentication fails."""
++@dataclass
++class MemoryFact:
++    """A single memory fact with metadata for timeline and source tracking."""
++    
++    content: str
++    timestamp: datetime
++    source: str
++    fact_id: str = field(default_factory=lambda: "")
++    confidence: float = 1.0
++    contradicted_by: Optional[str] = None
++    is_contradiction: bool = False
++    version: int = 1
++    
++    def __post_init__(self):
++        if not self.fact_id:
++            self.fact 
 +
-+    pass
++
++class ContradictionResolver:
++    """Resolves contradictions between memory facts with proper timeline tracking."""
++    
++    CONTRADICTION_PATTERNS = [
++        # Pattern: "X is Y" vs "X is not Y" / "X is Z"
++        (r"(?i)(.+)\s+is\s+(.+)", r"\1\s+is\s+(not\s+)?(?!\\2\b).+"),
++        # Pattern: "always X" vs "never X" / "sometimes X"
++        (r"(?i)always\s+(.+)", r"(never|sometimes|no longer)\s+\1"),
++        # Pattern: "use X" vs "don't use X" / "use Y instead"
++        (r"(?i)use\s+(.+)", r"(don't|do not|never)\s+use\s+\1"),
++        # Pattern: "prefer X" vs "prefer Y" (different objects)
++        (r"(?i)prefer\s+(.+)", r"prefer\s+(?!\\1\b).+"),
++    ]
++    
++    @classmethod
++    def detect_contradiction(cls, fact1: MemoryFact, fact2: MemoryFact) -> bool:
++        """Detect if two facts contradict each other."""
++        # Same fact can't contradict itself
++        if fact1.fact_id == fact2.fact_id:
++            return False
++        
++        # Normalize content for comparison
++        content1 = cls._normalize(fact1.content)
++        content2 = cls._normalize(fact2.content)
++        
++        # Check for direct negation patterns
++        for pattern, negation in cls.CONTRADICTION_PATTERNS:
++            if re.search(pattern, content1) and re.search(negation, content2):
++                if cls._same_subject(content1, content2):
++                    return True
++            if re.search(pattern, content2) and re.search(negation, content1):
++                if cls._same_subject(content1, content2):
++                    return True
++        
++        # Check for temporal contradictions (same subject, different values)
++        if cls._same_subject(content1, content2) and cls._different_predicate(content1, content2):
++            # Check if they have overlapping semantic meaning
++            similarity = cls._semantic_similarity(content1, content2)
++            if similarity > 0.7:  # High semantic overlap suggests potential contradiction
++                return True
++        
++        return False
++    
++    @staticmethod
++    def _normalize(content: str) -> str:
++        """Normalize content for comparison."""
++        content = content.lower().strip()
++        # Remove extra whitespace
++        content = re.sub(r'\s+', ' ', content)
++        return content
++    
++    @staticmethod
++    def _same_subject(content1: str, content2: str) -> bool:
++        """Check if two facts are about the same subject."""
++        # Extract subject (first noun phrase or first few words)
++        words1 = content1.split()[:3]
++        words2 = content2.split()[:3]
++        # Simple heuristic: share at least 2 of first 3 significant words
++        shared = sum(1 for w in words1 if w in words2 and len(w) > 2)
++        return shared >= 1
++    
++    @staticmethod
++    def _different_predicate(content1: str, content2: str) -> bool:
++        """Check if two facts have different predicates/values."""
++        # Simple check: are they different statements?
++        return content1 != content2
++    
++    @staticmethod
++    def _semantic_similarity(content1: str, content2: str) -> float:
++        """Calculate simple semantic similarity between two strings."""
++        # Jaccard similarity on word sets
++        words1 = set(content1.split())
++        words2 = set(content2.split())
++        if not words1 or not words2:
++            return 0.0
++        intersection = words1 & words2
++        union = words1 | words2
++        return len(intersection) / len(union)
++    
++    @classmethod
++    def resolve(cls, old_fact: MemoryFact, new_fact: MemoryFact) -> MemoryFact:
++        """Resolve contradiction by keeping the newer fact with proper attribution."""
++        # The newer fact supersedes the old one
++        new_fact.is_contradiction = True
++        new_fact.version = old_fact.version + 1
++        return new_fact
 +
 +
-+class RateLimitError(MemantoError):
-+    """Raised when rate limit is exceeded."""
-+
-+    pass
-+
-+
-+class MemantoClient:
-+    """Client for the moorcheh.ai memory backend.
-+
-+    Handles authentication, request signing, and basic CRUD operations
-+    for memory entries.
-+    """
-+
-+    DEFAULT_BASE_URL = "https://api.moorcheh.ai/v1"
-+    MAX_RETRIES = 3
-+    RETRY_DELAY = 1.0
-+
-+    def __init__(
-+        self…
-+        self,
-+        api_key: str | None = None,
-+        base_url: str | None = None,
-+    ) -> None:
-+        self.api_key = api_key or os.environ.get("MOORCHEH_API_KEY", "")
-+        if not self.api_key:
-+            raise AuthenticationError(
-+                "API key required. Set MOORCHEH_API_KEY or pass api_key="
-+            )
-+
-+        self.base_url = (base_url or self.DEFAULT_BASE_URL).rstrip("/")
-+        self._session = requests.Session()
-+        self._session.headers.update(
-+            {
-+               e": "application/json",
-+                "X-API-Key": self.api_key,
-+            }
-+        )
-+
-+    def _request(
-+        self,
-+        method: str,
-+        endpoint: str,
-+        **kwargs: Any,
-+    ) -> dict[str, Any]:
-+        """Make an HTTP request with retry logic and rate-limit handling."""
-+        url = f"{self.base_url}{endpoint}"
-+        last_exception: Exception | None = None
-+
-+        for attempt in range(self.MAX_RETRIES):
-+            try:
-+                response = self._session.request(method, url, **kwargs)
-+                response.raise_for_status()
-+                return response.json()
-+            except requests.HTTPError as exc:
-+                if response.status_code == 401:
-+                    raise AuthenticationError("Invalid API key") from exc
-+                if response.status_code == 429:
-+                    if attempt < self.MAX_RETRIES - 1:
-+                        time.sleep(self.RETRY_DELAY * (2 ** attempt))
-+                        continue
-+                    raise RateLimitError("Rate limit exceeded") from exc
-+                raise MemantoError(f"HTTP {response.status_code}: {response.text}") from exc
-+            except requests.RequestException as exc:
-+                last_exception = exc
-+                if attempt < self.MAX_RETRIES - 1:
-+                    time.sleep(self.RETRY_DELAY * (2 ** attempt))
-+                    continue
-+                raise MemantoError(f"Request failed after {self.MAX_RETRIES} attempts") from last_exception
-+
-+        raise MemantoError("Unexpected exit from retry loop")
-+
-+    def store_memory(
-+        self,
-+        content: str,
-+        memory_type: str = "fact",
-+        metadata: dict[str, Any] | None = None,
-+        timestamp: float | None = None,
-+    ) -> dict[str, Any]:
-+        """Store a new memory entry.
-+
-+        Args:
-+            content: The memory content.
-+            memory_type: Category of memory (fact, preference, event, etc.).
-+            metadata: Optional additional metadata.
-+            timestamp: Optional Unix timestamp for when the memory was formed.
-+
-+        Returns:
-+            The created memory entry from the server.
-+        """
-+        payload = {
-+            "content": content,
-+            "type": memory_type,
-+            "metadata": metadata or {},
-+            "timestamp": timestamp or time.time(),
-+        }
-+        return self._request("POST", "/memories", json=payload)
-+
-+    def retrieve_memories(
-+        self,
-+        query: str,
-+        limit: int = 10,
-+        min_relevance: float = 0.0,
-+    ) -> list[dict[str, Any]]:
-+        """Retrieve memories relevant to a query.
-+
-+        Args:
-+            query: The search query.
-+            limit: Maximum number of results.
-+            min_relevance: Minimum relevance score threshold.
-+
-+        Returns:
-+            List of memory entries ordered by relevance.
-+        """
-+        params = {
-+            "q": query,
-+            "limit": limit,
-+            "min_relevance": min_relevance,
-+        }
-+        return self._request("GET", "/memories/search", params=params)
-+
-+    def delete_memory(self, memory_id: str) -> None:
-+        """Delete a memory by ID."""
-+        self._request("DELETE", f"/memories/{memory_id}")
-+
-+    def update_memory(
-+        self,
-+        memory_id: str,
-+        content: str | None = None,
-+        metadata: dict[str, Any] | None = None,
-+    ) -> dict[str, Any]:
-+        """Update an existing memory entry.
-+
-+        Args:
-+            memory_id: ID of the memory to update.
-+            content: New content (optional).
-+            metadata: Metadata to merge (optional).
-+
-+        Returns:
-+            The updated memory entry.
-+        """
-+        payload: dict[str, Any] = {}
-+        if content is not None:
-+            payload["content"] = content
-+        if metadata is not None:
-+            payload["metadata"] = metadata
-+        return self._request("PATCH", f"/memories/{memory_id}", json=payload)
-+
-+    def contradict_memory(
-+        self,
-+        memory_id: str,
-+        new_content: str,
-+        reason: str | None = None,
-+    ) -> dict[str, Any]:
-+        """Mark a memory as contradicted and store the
++class MemoryStore:
++    """Secure memory store with timeline tracking and contradiction handling."""
++    
++    def __init__(self):
++        self._facts: dict[str, MemoryFact] = {}
++        self._timeline_index: list[tuple[datetime, str]] = []  # (timestamp, fact_id)
++        self._contradiction_resolver = ContradictionResolver()
++    
++    def add_fact(self, content: str, source: str, timestamp: Optional[datetime] = None) -> MemoryFact:
++        """Add a fact to memory with automatic contradiction detection."""
++        if not content or not content.strip():
++            raise ValueError("Fact content cannot be empty
