@@ -404,6 +404,7 @@ class TestNamespaceService:
                 {"namespace_name": "memanto_agent_alpha"},
                 {"namespace_name": "other_product"},
                 {"namespace_name": 123},
+                {"namespace_name": 123, "name": "memanto_agent_delta"},
                 {"name": "memanto_agent_beta"},
                 "memanto_agent_gamma",
                 None,
@@ -412,6 +413,7 @@ class TestNamespaceService:
 
         assert NamespaceService(client).list_namespaces() == [
             "memanto_agent_alpha",
+            "memanto_agent_delta",
             "memanto_agent_beta",
             "memanto_agent_gamma",
         ]

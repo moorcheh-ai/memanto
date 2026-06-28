@@ -59,8 +59,10 @@ class NamespaceService:
                 if isinstance(entry, str):
                     namespace_name = entry
                 elif isinstance(entry, dict):
-                    raw_name = entry.get("namespace_name") or entry.get("name")
-                    if not isinstance(raw_name, str):
+                    raw_name = entry.get("namespace_name")
+                    if not isinstance(raw_name, str) or not raw_name:
+                        raw_name = entry.get("name")
+                    if not isinstance(raw_name, str) or not raw_name:
                         continue
                     namespace_name = raw_name
                 else:
