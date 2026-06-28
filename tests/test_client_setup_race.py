@@ -1,22 +1,12 @@
-"""Tests for SkillMemory setup() race-condition fix.
+"""Tests for SkillMemory setup() stale-_ready / retry fix.
 
 Issue #770 — Memanto Bug Challenge.
 
-Bug: ``_ready`` was set to ``True`` AFTER calling ``_create_and_activate``.
-If ``activate_agent`` inside that method raised an exception the flag stayed
-``False``, which is fine … BUT the previous code path also set ``_ready=True``
-unconditionally in ``setup()`` at line 76, meaning any exception thrown by
-``_create_and_activate`` still propagated OUT of ``setup()`` before the flag
-was set.  The *real* race scenario is subtler: if a second concurrent call to
-``setup()`` (from a different hook invocation in the same process) checked
-``_ready`` between the ``activate_agent`` return and the ``_ready=True``
-assignment, it would find ``_ready=False`` and duplicate the whole setup path.
-
-The fix ensures ``_ready`` is only set after every operation in the happy path
-succeeds, AND that a failed ``_create_and_activate`` never silently marks the
-session as ready.
+Covers the stale-_ready bug: if _create_and_activate raises (e.g. network
+error after successful create_agent), _ready must stay False so the next
+invocation retries cleanly rather than returning early on a broken session.
+Also covers the concurrent AgentAlreadyExistsError create race.
 """
-
 from __future__ import annotations
 
 from unittest.mock import MagicMock, call, patch
