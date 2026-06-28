@@ -77,7 +77,9 @@ class MemantoBackend:
         conversation = "\n".join(
             f"{m['role'].capitalize()}: {m['content']}" for m in messages
         )
-        tokens_in = count_tokens(conversation)
+        # Count tokens from raw content only (matches Mem0Backend.add) so the
+        # ingest-token comparison reflects backend cost, not prompt formatting.
+        tokens_in = count_tokens(" ".join(m["content"] for m in messages))
 
         t0 = time.perf_counter()
         response = self._client.messages.create(
@@ -119,7 +121,12 @@ class MemantoBackend:
             topic_words = set(topic.replace("_", " ").split())
             return len(query_words & (hint_words | content_words | topic_words))
 
-        ranked = sorted(user_facts.items(), key=relevance, reverse=True)
+        scored = [(item, relevance(item)) for item in user_facts.items()]
+        ranked = [
+            item
+            for item, score in sorted(scored, key=lambda pair: pair[1], reverse=True)
+            if score > 0
+        ]
         top = ranked[:3]
         result = "; ".join(f"{k.replace('_', ' ')}: {v}" for k, v in top)
         elapsed_ms = (time.perf_counter() - t0) * 1000
