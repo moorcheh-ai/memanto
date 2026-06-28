@@ -2,197 +2,202 @@
 --- a/memanto/__init__.py
 +++ b/memanto/__init__.py
 @@ -0,0 +1,15 @@
-+"""Memanto - A companion memory agent with persistent memory capabilities.
++"""Memanto - Memory that AI Agents Love!
 +
-+This package provides memory management functionality for AI agents,
-+ensuring long-term context retention without token bloat.
++A companion memory agent that lets your agents focus and improve while you
++keep ownership of everything they learn.
 +"""
 +
-+from memanto.core import MemoryManager
-+from memanto.config import Config
-+from memanto.errors import MemantoError, ConfigurationError, APIError
-+
 +__version__ = "0.1.0"
-+__all__ = ["MemoryManager", "Config", "MemantoError", "ConfigurationError", "APIError"]
 +
-+# Ensure critical security checks are initialized
-+from memanto import security
-+security._initialize_security_checks()
++from memanto.client import MemantoClient
++from memanto.memory import MemoryManager
++from memanto.retrieval import RetrievalEngine
++
++__all__ = ["MemantoClient", "MemoryManager", "RetrievalEngine"]
++
++
++def get_version() -> str:
++    return __version__
 --- /dev/null
-+++ b/memanto/security.py
-@@ -0,0 +1,0 @@
-+"""Security module for Memanto - implements input validation and sanitization."""
++++ b/memanto/client.py
+@@ -0,0 +1,180 @@
++"""Memanto client for interacting with the moorcheh.ai backend."""
 +
-+import re
-+import html
-+from typing import Optional
++from __future__ import annotations
 +
-+class SecurityError(Exception):
-+    """Raised when a security violation is detected."""
-+    pass
-+
-+def _initialize_security_checks():
-+    """Initialize security checks at module load time."""
-+    pass
-+
-+def sanitize_input(text: str, max_length: int = 10000) -> str:
-+    """Sanitize user input to prevent injection attacks.
-+    
-+    Args:
-+        text: The input text to sanitize
-+        max_length: Maximum allowed length
-+        
-+    Returns:
-+        Sanitized text
-+        
-+    Raises:
-+        SecurityError: If input contains dangerous patterns
-+    """
-+    if not isinstance(text, str):
-+        raise SecurityError("Input must be a string")
-+    
-+    if len(text) > max_length:
-+        raise SecurityError(f"Input exceeds maximum length of {max_length}")
-+    
-+    # Check for potential prompt injection patterns
-+    dangerous_patterns = [
-+        r'<\s*script[^>]*>',
-+        r'<\?php',
-+        r'<\?xml',
-+        r'<\!DOCTYPE',
-+        r'<\!ENTITY',
-+        r'javascript:',
-+        r'on\w+\s*=',
-+        r'document\.cookie',
-+        r'eval\s*\(',
-+        r'exec\s*\(',
-+    ]
-+    
-+    for pattern in dangerous_patterns:
-+        if re.search(pattern, text, re.IGNORECASE):
-+            raise SecurityError(f"Potentially dangerous input detected: {pattern}")
-+    
-+    # Escape HTML entities
-+    text = html.escape(text)
-+    
-+    return text
-+
-+def validate_api_key(api_key: Optional[str]) -> str:
-+    """Validate API key format.
-+    
-+    Args:
-+        api_key: The API key to validate
-+        
-+    Returns:
-+        The validated API key
-+        
-+    Raises:
-+        SecurityError: If API key is invalid
-+    """
-+    if not api_key:
-+        raise SecurityError("API key is required")
-+    
-+    if not isinstance(api_key, str):
-+        raise SecurityError("API key must be a string")
-+    
-+    # Check for expected format (mch_ prefix)
-+    if not api_key.startswith("mch_"):
-+        raise SecurityError("Invalid API key format. Expected 'mch_' prefix")
-+    
-+    # Minimum length check
-+    if len(api_key) < 10:
-+        raise SecurityError("API key is too short")
-+    
-+    return api_key
-+
-+def validate_memory_content(content: str) -> str:
-+    """Validate and sanitize memory content before storage.
-+    
-+    Args:
-+        content: The memory content to validate
-+        
-+    Returns:
-+        Validated and sanitized content
-+    """
-+    if not content or not isinstance(content, str):
-+        raise SecurityError("Memory content must be a non-empty string")
-+    
-+    # Sanitize the content
-+    sanitized = sanitize_input(content)
-+    
-+    return sanitized
---- /dev/null
-+++ b/memanto/core.py
-@@ -0,0 +1,0 @@
-+"""Core memory management functionality for Memanto."""
-+
++import hashlib
++import json
 +import os
 +import time
-+import hashlib
-+from typing import Optional, List, Dict, Any
-+from dataclasses import dataclass, field
-+from datetime import datetime
++from typing import Any
 +
-+from memanto.security import validate_api_key, validate_memory_content, SecurityError
-+from memanto.errors import ConfigurationError, APIError
++import requests
 +
-+@dataclass
-+class Memory:
-+    """Represents a single memory entry."""
-+    content: str
-+    timestamp: float = field(default_factory=time.time)
-+    source: str = "unknown"
-+    confidence: float = 1.0
-+    metadata: Dict[str, Any] = field(default_factory=dict)
-+    
-+    def __post_init__(self):
-+        """Validate memory after creation."""
-+        if not self.content or not isinstance(self.content, str):
-+            raise ValueError("Memory content must be a non-empty string")
-+        if not 0 <= self.confidence <= 1:
-+            raise ValueError("Confidence must be between 0 and 1")
 +
-+class MemoryManager:
-+    """Manages persistent memory for AI agents.
-+    
-+    This class handles memory storage, retrieval, and maintenance
-+    with proper security checks and validation.
++class MemantoError(Exception):
++    """Base exception for Memanto client errors."""
++
++    pass
++
++
++class AuthenticationError(MemantoError):
++    """Raised when API authentication fails."""
++
++    pass
++
++
++class RateLimitError(MemantoError):
++    """Raised when rate limit is exceeded."""
++
++    pass
++
++
++class MemantoClient:
++    """Client for the moorcheh.ai memory backend.
++
++    Handles authentication, request signing, and basic CRUD operations
++    for memory entries.
 +    """
-+    
-+    def __init__(self, api_key: Optional[str] = None):
-+        """Initialize the memory manager.
-+        
-+        Args:
-+            api_key: Optional API key for moorcheh.ai backend
-+        """
-+        self._api_key = api_key or os.getenv("MOORCHEH_API_KEY")
-+        self._memories: List[Memory] = []
-+        self._max_memories = 10000  # Prevent unbounded growth
-+        self._initialized = True
-+        
-+        # Validate API key if provided
-+        if self._api_key:
++
++    DEFAULT_BASE_URL = "https://api.moorcheh.ai/v1"
++    MAX_RETRIES = 3
++    RETRY_DELAY = 1.0
++
++    def __init__(
++        self…
++        self,
++        api_key: str | None = None,
++        base_url: str | None = None,
++    ) -> None:
++        self.api_key = api_key or os.environ.get("MOORCHEH_API_KEY", "")
++        if not self.api_key:
++            raise AuthenticationError(
++                "API key required. Set MOORCHEH_API_KEY or pass api_key="
++            )
++
++        self.base_url = (base_url or self.DEFAULT_BASE_URL).rstrip("/")
++        self._session = requests.Session()
++        self._session.headers.update(
++            {
++               e": "application/json",
++                "X-API-Key": self.api_key,
++            }
++        )
++
++    def _request(
++        self,
++        method: str,
++        endpoint: str,
++        **kwargs: Any,
++    ) -> dict[str, Any]:
++        """Make an HTTP request with retry logic and rate-limit handling."""
++        url = f"{self.base_url}{endpoint}"
++        last_exception: Exception | None = None
++
++        for attempt in range(self.MAX_RETRIES):
 +            try:
-+                self._api_key = validate_api_key(self._api_key)
-+            except SecurityError:
-+                self._api_key = None
-+    
-+    def add_memory(self, content: str, source: str = "user", confidence: float = 1.0) -> Memory:
-+        """Add a new memory with validation.
-+        
++                response = self._session.request(method, url, **kwargs)
++                response.raise_for_status()
++                return response.json()
++            except requests.HTTPError as exc:
++                if response.status_code == 401:
++                    raise AuthenticationError("Invalid API key") from exc
++                if response.status_code == 429:
++                    if attempt < self.MAX_RETRIES - 1:
++                        time.sleep(self.RETRY_DELAY * (2 ** attempt))
++                        continue
++                    raise RateLimitError("Rate limit exceeded") from exc
++                raise MemantoError(f"HTTP {response.status_code}: {response.text}") from exc
++            except requests.RequestException as exc:
++                last_exception = exc
++                if attempt < self.MAX_RETRIES - 1:
++                    time.sleep(self.RETRY_DELAY * (2 ** attempt))
++                    continue
++                raise MemantoError(f"Request failed after {self.MAX_RETRIES} attempts") from last_exception
++
++        raise MemantoError("Unexpected exit from retry loop")
++
++    def store_memory(
++        self,
++        content: str,
++        memory_type: str = "fact",
++        metadata: dict[str, Any] | None = None,
++        timestamp: float | None = None,
++    ) -> dict[str, Any]:
++        """Store a new memory entry.
++
 +        Args:
-+            content: The memory content
-+            source: Source of the memory
-+            confidence: Confidence score (0-1)
-+            
++            content: The memory content.
++            memory_type: Category of memory (fact, preference, event, etc.).
++            metadata: Optional additional metadata.
++            timestamp: Optional Unix timestamp for when the memory was formed.
++
 +        Returns:
-+            The created Memory object
-+            
-+        Raises:
-+            SecurityError: If content fails validation
-+            ValueError: If parameters are invalid
++            The created memory entry from the server.
 +        """
-+        if not self._initialized:
-+            raise RuntimeError("MemoryManager not properly initialized")
-+        
-+        # Validate and sanitize content
++        payload = {
++            "content": content,
++            "type": memory_type,
++            "metadata": metadata or {},
++            "timestamp": timestamp or time.time(),
++        }
++        return self._request("POST", "/memories", json=payload)
++
++    def retrieve_memories(
++        self,
++        query: str,
++        limit: int = 10,
++        min_relevance: float = 0.0,
++    ) -> list[dict[str, Any]]:
++        """Retrieve memories relevant to a query.
++
++        Args:
++            query: The search query.
++            limit: Maximum number of results.
++            min_relevance: Minimum relevance score threshold.
++
++        Returns:
++            List of memory entries ordered by relevance.
++        """
++        params = {
++            "q": query,
++            "limit": limit,
++            "min_relevance": min_relevance,
++        }
++        return self._request("GET", "/memories/search", params=params)
++
++    def delete_memory(self, memory_id: str) -> None:
++        """Delete a memory by ID."""
++        self._request("DELETE", f"/memories/{memory_id}")
++
++    def update_memory(
++        self,
++        memory_id: str,
++        content: str | None = None,
++        metadata: dict[str, Any] | None = None,
++    ) -> dict[str, Any]:
++        """Update an existing memory entry.
++
++        Args:
++            memory_id: ID of the memory to update.
++            content: New content (optional).
++            metadata: Metadata to merge (optional).
++
++        Returns:
++            The updated memory entry.
++        """
++        payload: dict[str, Any] = {}
++        if content is not None:
++            payload["content"] = content
++        if metadata is not None:
++            payload["metadata"] = metadata
++        return self._request("PATCH", f"/memories/{memory_id}", json=payload)
++
++    def contradict_memory(
++        self,
++        memory_id: str,
++        new_content: str,
++        reason: str | None = None,
++    ) -> dict[str, Any]:
++        """Mark a memory as contradicted and store the
