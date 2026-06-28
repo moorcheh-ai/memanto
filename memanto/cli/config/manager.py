@@ -440,6 +440,7 @@ class ConfigManager:
 
     @staticmethod
     def _normalize_connection_entry(entry) -> dict:
+        """Return a canonical connection entry from possibly malformed JSON."""
         if not isinstance(entry, dict):
             return {"projects": [], "installed_global": False}
 

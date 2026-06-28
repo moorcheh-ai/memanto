@@ -348,7 +348,10 @@ class TestForgetEndToEnd:
 
 
 class TestConfigManagerConnections:
+    """Tests for repairing malformed AI-agent connection registry entries."""
+
     def test_load_connections_normalizes_malformed_entries(self, tmp_path):
+        """Malformed entries load as canonical project/global connection records."""
         from memanto.cli.config.manager import ConfigManager
 
         manager = ConfigManager(config_dir=tmp_path)
@@ -379,6 +382,7 @@ class TestConfigManagerConnections:
         }
 
     def test_add_connection_replaces_malformed_agent_entry(self, tmp_path):
+        """Adding a project connection replaces a malformed per-agent entry."""
         from memanto.cli.config.manager import ConfigManager
 
         manager = ConfigManager(config_dir=tmp_path)
@@ -399,6 +403,7 @@ class TestConfigManagerConnections:
         }
 
     def test_remove_connection_cleans_malformed_agent_entry(self, tmp_path):
+        """Removing from a malformed per-agent entry leaves a clean registry."""
         from memanto.cli.config.manager import ConfigManager
 
         manager = ConfigManager(config_dir=tmp_path)
