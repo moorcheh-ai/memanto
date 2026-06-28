@@ -119,6 +119,31 @@ class TestSessionService:
         print("✅ Session ended successfully")
         print(f"   Duration: {summary.duration_hours} hours")
 
+    def test_get_active_session_clears_dangling_symlink(self, session_service):
+        """Dangling active symlinks should not linger forever."""
+        active_marker = session_service.sessions_dir / "active"
+        active_marker.symlink_to("missing-agent.json")
+
+        assert session_service.get_active_session() is None
+        assert not active_marker.exists()
+        assert not active_marker.is_symlink()
+
+    def test_create_session_replaces_dangling_active_symlink(self, session_service):
+        """A new session should replace a broken active marker."""
+        active_marker = session_service.sessions_dir / "active"
+        active_marker.symlink_to("missing-agent.json")
+
+        session = session_service.create_session(
+            agent_id="test-agent",
+            pattern=AgentPattern.SUPPORT,
+            duration_hours=1,
+        )
+
+        assert session.agent_id == "test-agent"
+        assert active_marker.is_symlink()
+        assert active_marker.readlink().name == "test-agent.json"
+        assert session_service.get_active_session().session_id == session.session_id
+
 
 class TestAgentService:
     """Unit tests for AgentService"""
