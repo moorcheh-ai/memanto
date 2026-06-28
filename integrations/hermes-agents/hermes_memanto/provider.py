@@ -698,7 +698,7 @@ class MemantoMemoryProvider(MemoryProvider):
         if self._write_thread and self._write_thread.is_alive():
             self._write_thread.join(timeout=2.0)
         self._write_thread = threading.Thread(
-            target=_run, daemon=False, name="memanto-memory-write"
+            target=_run, daemon=True, name="memanto-memory-write"
         )
         self._write_thread.start()
 

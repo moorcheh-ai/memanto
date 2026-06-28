@@ -417,6 +417,13 @@ def test_on_memory_write_mirrors_to_memanto(provider):
     assert provider._client.remember_calls[0]["source"] == "hermes-memory"
 
 
+def test_on_memory_write_uses_daemon_thread(provider):
+    provider.on_memory_write("add", "memory", "The deploy pipeline lives in gh actions")
+    assert provider._write_thread is not None
+    assert provider._write_thread.daemon is True
+    provider._write_thread.join(timeout=1)
+
+
 def test_on_memory_write_user_target_is_preference(provider):
     provider.on_memory_write("add", "user", "Name is Jordan")
     provider._write_thread.join(timeout=1)
