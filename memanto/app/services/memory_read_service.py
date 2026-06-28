@@ -627,14 +627,24 @@ class MemoryReadService:
             try:
                 if isinstance(expires_at, str):
                     expires_dt = parse_iso_timestamp(expires_at)
-                    # Only include if not expired
-                    if expires_dt > now:
-                        filtered.append(result)
+                    # Handle both timezone-aware and naive datetimes.
+                    # MemoryRecord.created_at uses datetime.utcnow() (naive)
+                    # while this function uses datetime.now(timezone.utc) (aware).
+                    # Comparing aware vs naive raises TypeError, so we normalize.
+                    if expires_dt.tzinfo is None:
+                        # Naive datetime — compare with naive now
+                        naive_now = datetime.utcnow()
+                        if expires_dt > naive_now:
+                            filtered.append(result)
+                    else:
+                        # Aware datetime — compare with aware now
+                        if expires_dt > now:
+                            filtered.append(result)
                 else:
                     # If expires_at is already datetime or not parseable, keep it
                     filtered.append(result)
-            except (ValueError, AttributeError):
-                # If we can't parse, keep the memory (fail open)
+            except (ValueError, AttributeError, TypeError):
+                # If we can't parse or compare, keep the memory (fail open)
                 filtered.append(result)
 
         return filtered

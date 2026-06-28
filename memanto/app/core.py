@@ -31,13 +31,21 @@ class MemoryScope(BaseModel):
 
     @classmethod
     def from_namespace(cls, namespace: str) -> "MemoryScope":
-        """Parse namespace back to scope"""
+        """Parse namespace back to scope.
+
+        Uses maxsplit=2 so that scope_id values containing underscores
+        are preserved correctly.  E.g. ``memanto_user_john_doe`` parses
+        to scope_type=``user``, scope_id=``john_doe``.
+        """
         from typing import cast
 
-        parts = namespace.split("_")
-        if len(parts) != 3 or parts[0] != "memanto":
+        if not namespace.startswith("memanto_"):
             raise ValueError(f"Invalid MEMANTO namespace format: {namespace}")
-        return cls(scope_type=cast(ScopeType, parts[1]), scope_id=parts[2])
+        remainder = namespace[len("memanto_"):]
+        parts = remainder.split("_", maxsplit=1)
+        if len(parts) != 2:
+            raise ValueError(f"Invalid MEMANTO namespace format: {namespace}")
+        return cls(scope_type=cast(ScopeType, parts[0]), scope_id=parts[1])
 
 
 class MemoryRecord(BaseModel):
