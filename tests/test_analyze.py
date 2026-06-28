@@ -45,7 +45,10 @@ ASSUMPTIONS = {
 
 
 class TestIngestionCost:
+    """Validate ingestion token-cost math used by analysis reports."""
+
     def test_estimate_ingestion_cost(self):
+        """Estimate mixed input and output token costs."""
         result = estimate_ingestion_cost(
             input_tokens=1_000_000,
             output_tokens=500_000,
@@ -61,6 +64,7 @@ class TestIngestionCost:
         assert result["tokens_saved"] == 1_500_000
 
     def test_zero_tokens(self):
+        """Return zero cost when no tokens are processed."""
         result = estimate_ingestion_cost(
             input_tokens=0,
             output_tokens=0,
@@ -72,8 +76,11 @@ class TestIngestionCost:
 
 
 class TestSupermemoryCompare:
+    """Validate Supermemory export metrics, prompts, and reports."""
+
     @staticmethod
     def _sample_export() -> dict:
+        """Build a compact Supermemory export fixture."""
         return {
             "exported_at": "2026-06-04T12:00:00Z",
             "summary": {
@@ -95,6 +102,7 @@ class TestSupermemoryCompare:
         }
 
     def test_compute_metrics(self):
+        """Compute deterministic Supermemory metrics from the fixture."""
         metrics = compute_supermemory_metrics(self._sample_export())
         volume = metrics["volume"]
 
@@ -145,6 +153,7 @@ class TestSupermemoryCompare:
         assert volume["estimated_output_tokens"] == 1
 
     def test_build_llm_prompt_uses_measured_numbers(self):
+        """Ground the Supermemory LLM prompt in measured metrics."""
         metrics = compute_supermemory_metrics(self._sample_export())
         prompt = build_supermemory_llm_prompt(metrics)
 
@@ -158,6 +167,7 @@ class TestSupermemoryCompare:
         assert "Do NOT invent benchmark scores" in prompt
 
     def test_build_report_markdown(self):
+        """Render a Supermemory markdown report with measured sections."""
         metrics = compute_supermemory_metrics(self._sample_export())
         report = build_supermemory_report(
             metrics=metrics,
@@ -178,8 +188,11 @@ class TestSupermemoryCompare:
 
 
 class TestMem0Compare:
+    """Validate Mem0 export metrics, prompts, and reports."""
+
     @staticmethod
     def _sample_export() -> dict:
+        """Build a compact Mem0 export fixture."""
         return {
             "exported_at": "2026-06-04T12:00:00Z",
             "summary": {
@@ -198,6 +211,7 @@ class TestMem0Compare:
         }
 
     def test_compute_metrics(self):
+        """Compute deterministic Mem0 metrics from the fixture."""
         metrics = compute_mem0_metrics(self._sample_export())
         volume = metrics["volume"]
 
@@ -242,6 +256,7 @@ class TestMem0Compare:
         assert volume["estimated_input_tokens"] == 5
 
     def test_build_llm_prompt_uses_measured_numbers(self):
+        """Ground the Mem0 LLM prompt in measured metrics."""
         metrics = compute_mem0_metrics(self._sample_export())
         prompt = build_mem0_llm_prompt(metrics)
 
@@ -255,6 +270,7 @@ class TestMem0Compare:
         assert "Migration considerations" in prompt
 
     def test_build_report_markdown(self):
+        """Render a Mem0 markdown report with measured sections."""
         metrics = compute_mem0_metrics(self._sample_export())
         report = build_mem0_report(
             metrics=metrics,
@@ -274,8 +290,11 @@ class TestMem0Compare:
 
 
 class TestLettaCompare:
+    """Validate Letta export metrics, prompts, and reports."""
+
     @staticmethod
     def _sample_export() -> dict:
+        """Build a compact Letta export fixture."""
         return {
             "exported_at": "2026-06-04T12:00:00Z",
             "export_mode": "all_agents",
@@ -305,6 +324,7 @@ class TestLettaCompare:
         }
 
     def test_compute_metrics(self):
+        """Compute deterministic Letta metrics from the fixture."""
         metrics = compute_letta_metrics(self._sample_export())
         volume = metrics["volume"]
 
@@ -346,6 +366,7 @@ class TestLettaCompare:
         assert volume["estimated_input_tokens"] == 5
 
     def test_build_llm_prompt_uses_measured_numbers(self):
+        """Ground the Letta LLM prompt in measured metrics."""
         metrics = compute_letta_metrics(self._sample_export())
         prompt = build_letta_llm_prompt(metrics)
 
@@ -357,6 +378,7 @@ class TestLettaCompare:
         assert "Migration considerations" in prompt
 
     def test_build_report_markdown(self):
+        """Render a Letta markdown report with measured sections."""
         metrics = compute_letta_metrics(self._sample_export())
         report = build_letta_report(
             metrics=metrics,
