@@ -155,7 +155,7 @@ curl -X POST "http://localhost:8000/api/v2/agents/my-agent/recall" \
 ```bash
 memanto serve --port 8080        # Use different port
 memanto serve --reload           # Auto-reload for development
-memanto serve --host 127.0.0.1   # Localhost only
+memanto serve --host 0.0.0.0     # Expose on all network interfaces
 ```
 
 ### Alternative: Manual Server Management

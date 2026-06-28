@@ -6,13 +6,20 @@ Tests all major CLI commands using typer.testing.CliRunner.
 Uses extensive mocking to intercept API calls across all command modules.
 """
 
+import errno
 import json
+import socket
 from unittest.mock import MagicMock, patch
 
 import pytest
 from typer.testing import CliRunner
 
 from memanto.app.clients.backend import Backend
+from memanto.cli.commands.core import (
+    _display_host_for_url,
+    _port_in_use,
+    _resolve_bind_host,
+)
 from memanto.cli.main import app
 
 runner = CliRunner()
@@ -121,6 +128,145 @@ def mock_all_clients():
 
 class TestMEMANTOCLI:
     """Integration tests for MEMANTO CLI commands"""
+
+    def test_server_bind_defaults_to_loopback_for_localhost_config(self):
+        """`memanto serve` must not expose the local API to the LAN by default."""
+        server_cfg = {"url": "localhost", "port": 8000}
+
+        assert _resolve_bind_host(None, server_cfg) == "127.0.0.1"
+
+    def test_server_bind_extracts_hostname_from_config_url(self):
+        """Persisted server URLs should not be passed directly to socket.bind."""
+        server_cfg = {"url": "http://localhost:8000/api", "port": 8000}
+
+        assert _resolve_bind_host(None, server_cfg) == "127.0.0.1"
+
+    def test_server_bind_extracts_hostname_from_config_host_port(self):
+        """Host:port config values should bind only the host portion."""
+        server_cfg = {"url": "0.0.0.0:8123", "port": 8123}
+
+        assert _resolve_bind_host(None, server_cfg) == "0.0.0.0"
+
+    def test_server_bind_respects_explicit_public_host(self):
+        """Users can still opt into a public bind address explicitly."""
+        server_cfg = {"url": "localhost", "port": 8000}
+
+        assert _resolve_bind_host("0.0.0.0", server_cfg) == "0.0.0.0"
+
+    def test_server_bind_preserves_bare_ipv6_config_host(self):
+        """Bare IPv6 literals should not be misread as host:port values."""
+        server_cfg = {"url": "2001:db8::1", "port": 8000}
+
+        assert _resolve_bind_host(None, server_cfg) == "2001:db8::1"
+
+    def test_server_bind_preserves_ipv6_zone_config_host(self):
+        """IPv6 zone IDs should pass through before URL parsing."""
+        server_cfg = {"url": "fe80::1%en0", "port": 8000}
+
+        assert _resolve_bind_host(None, server_cfg) == "fe80::1%en0"
+
+    def test_server_bind_extracts_bracketed_ipv6_config_host_port(self):
+        """Bracketed IPv6 host:port values should bind the host literal."""
+        server_cfg = {"url": "[2001:db8::1]:8123", "port": 8123}
+
+        assert _resolve_bind_host(None, server_cfg) == "2001:db8::1"
+
+    def test_server_bind_extracts_bracketed_ipv6_zone_config_host_port(self):
+        """Bracketed IPv6 zone host:port values should preserve the zone ID."""
+        server_cfg = {"url": "[fe80::1%en0]:8123", "port": 8123}
+
+        assert _resolve_bind_host(None, server_cfg) == "fe80::1%en0"
+
+    def test_server_bind_decodes_encoded_ipv6_zone_config_url(self):
+        """Full URLs encode IPv6 zone separators, but socket.bind needs raw `%`."""
+        server_cfg = {"url": "http://[fe80::1%25en0]:8123/api", "port": 8123}
+
+        assert _resolve_bind_host(None, server_cfg) == "fe80::1%en0"
+
+    def test_server_bind_decodes_bracketed_encoded_ipv6_zone_config_host_port(self):
+        """Bracketed host:port values may also carry URL-encoded zone IDs."""
+        server_cfg = {"url": "[fe80::1%25en0]:8123", "port": 8123}
+
+        assert _resolve_bind_host(None, server_cfg) == "fe80::1%en0"
+
+    def test_server_url_displays_localhost_for_loopback_bind(self):
+        """Loopback bind addresses should keep familiar local URLs in output."""
+        assert _display_host_for_url("127.0.0.1") == "localhost"
+
+    def test_server_url_displays_localhost_for_ipv6_loopback_bind(self):
+        """IPv6 loopback bind addresses should still produce valid local URLs."""
+        assert _display_host_for_url("::1") == "localhost"
+
+    def test_server_url_brackets_non_loopback_ipv6_bind(self):
+        """Non-loopback IPv6 literals need brackets in printed URLs."""
+        assert _display_host_for_url("2001:db8::1") == "[2001:db8::1]"
+
+    def test_server_url_encodes_ipv6_zone_bind_host(self):
+        """Raw bind-host zone separators must be escaped before URL display."""
+        assert _display_host_for_url("fe80::1%en0") == "[fe80::1%25en0]"
+        assert _display_host_for_url("fe80::1%25en0") == "[fe80::1%25en0]"
+
+    def test_port_check_uses_resolved_bind_host(self):
+        """Port checks should align with the actual bind address."""
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+            sock.bind(("127.0.0.1", 0))
+            sock.listen()
+            port = sock.getsockname()[1]
+
+            assert _port_in_use("127.0.0.1", port) is True
+
+    def test_port_check_raises_for_non_port_conflicts(self):
+        """Bind failures other than EADDRINUSE should not be reported as in-use."""
+        sock = MagicMock()
+        sock.__enter__.return_value = sock
+        sock.bind.side_effect = OSError(
+            errno.EADDRNOTAVAIL, "Cannot assign requested address"
+        )
+
+        with patch("memanto.cli.commands.core.socket.socket", return_value=sock):
+            with pytest.raises(OSError):
+                _port_in_use("10.0.0.12", 8123)
+
+    def test_serve_reports_bind_errors_cleanly(self, mock_all_clients):
+        """Non-port-conflict bind failures should use the CLI error panel."""
+        with patch(
+            "memanto.cli.commands.core._port_in_use",
+            side_effect=OSError(errno.EADDRNOTAVAIL, "Cannot assign requested address"),
+        ):
+            result = runner.invoke(app, ["serve", "--host", "10.0.0.12", "--port", "8123"])
+
+        assert result.exit_code == 1
+        assert "Cannot bind to 10.0.0.12:8123" in result.stdout
+        assert "Traceback" not in result.stdout
+
+    def test_ui_reports_bind_errors_cleanly(self, mock_all_clients):
+        """The UI command should not traceback on non-port bind failures."""
+        with patch(
+            "memanto.cli.commands.core._port_in_use",
+            side_effect=OSError(errno.EADDRNOTAVAIL, "Cannot assign requested address"),
+        ):
+            result = runner.invoke(app, ["ui", "--host", "10.0.0.12", "--port", "8123"])
+
+        assert result.exit_code == 1
+        assert "Cannot bind to 10.0.0.12:8123" in result.stdout
+        assert "Traceback" not in result.stdout
+
+    def test_ui_uses_resolved_host_for_dashboard_urls(self, mock_all_clients):
+        """`memanto ui --host` should report and launch the resolved host."""
+        thread = MagicMock()
+        with (
+            patch("memanto.cli.commands.core._port_in_use", return_value=False),
+            patch("memanto.cli.commands.core.threading.Thread", return_value=thread),
+            patch("uvicorn.run") as mock_run,
+        ):
+            result = runner.invoke(app, ["ui", "--host", "10.0.0.12", "--port", "8123"])
+
+        assert result.exit_code == 0
+        assert "http://10.0.0.12:8123/ui" in result.stdout
+        assert "http://10.0.0.12:8123/docs" in result.stdout
+        thread.start.assert_called_once()
+        mock_run.assert_called_once()
+        assert mock_run.call_args.kwargs["host"] == "10.0.0.12"
 
     def test_base_command_help(self):
         """Test 'memanto --help'"""
