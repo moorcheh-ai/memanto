@@ -165,6 +165,18 @@ class TestMEMANTOCLI:
 
         assert _resolve_bind_host(None, server_cfg) == "fe80::1%en0"
 
+    def test_server_bind_extracts_bracketed_ipv6_config_host_port(self):
+        """Bracketed IPv6 host:port values should bind the host literal."""
+        server_cfg = {"url": "[2001:db8::1]:8123", "port": 8123}
+
+        assert _resolve_bind_host(None, server_cfg) == "2001:db8::1"
+
+    def test_server_bind_extracts_bracketed_ipv6_zone_config_host_port(self):
+        """Bracketed IPv6 zone host:port values should preserve the zone ID."""
+        server_cfg = {"url": "[fe80::1%en0]:8123", "port": 8123}
+
+        assert _resolve_bind_host(None, server_cfg) == "fe80::1%en0"
+
     def test_server_url_displays_localhost_for_loopback_bind(self):
         """Loopback bind addresses should keep familiar local URLs in output."""
         assert _display_host_for_url("127.0.0.1") == "localhost"

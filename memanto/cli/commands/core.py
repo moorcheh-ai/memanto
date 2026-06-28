@@ -65,11 +65,9 @@ def _host_from_config_url(configured_url: str | None) -> str | None:
     if not value:
         return None
 
-    try:
-        ip_address(value.split("%", 1)[0])
-        return value
-    except ValueError:
-        pass
+    ip_literal = _ip_literal_host(value)
+    if ip_literal:
+        return ip_literal
 
     try:
         parsed = urlsplit(value if "://" in value else f"//{value}")
@@ -77,6 +75,22 @@ def _host_from_config_url(configured_url: str | None) -> str | None:
         return value
 
     return parsed.hostname or value
+
+
+def _ip_literal_host(value: str) -> str | None:
+    """Return the bindable host when the config value is an IP literal."""
+    host = value
+    if value.startswith("["):
+        closing_bracket = value.find("]")
+        if closing_bracket == -1:
+            return None
+        host = value[1:closing_bracket]
+
+    try:
+        ip_address(host.split("%", 1)[0])
+    except ValueError:
+        return None
+    return host
 
 
 def _display_host_for_url(bind_host: str) -> str:
