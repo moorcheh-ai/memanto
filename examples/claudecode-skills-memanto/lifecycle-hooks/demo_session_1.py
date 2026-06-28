@@ -2,7 +2,7 @@
 """Demo - Session 1: a developer makes engineering decisions via /grill-with-docs.
 
 Run this first. It simulates a finished ``/grill-with-docs`` session and lets
-Memanto's backend LLM distill the durable engineering decisions into memory.
+Memedo's backend LLM distill the durable engineering decisions into memory.
 
     export MOORCHEH_API_KEY=mch_...
     python demo_session_1.py
@@ -11,13 +11,13 @@ Then run ``demo_session_2.py`` in a SEPARATE process to prove the decisions are
 recalled with zero shared in-process state.
 """
 
-from __future__ import annotations
-
-from memanto_skills import SkillMemory
+from memento_skills import SkillMemory
 
 SESSION_1_TRANSCRIPT = """
 user: /grill-with-docs let's nail down the architecture for the orders service
 assistant: A few questions to align on the design.
+user: We will use CQRS for the Order domain - commands and queries are separate.
+  The read model is denormalised and rebuilt from events.
 user: We will use CQRS for the Order domain — commands and queries are separate.
   The read model is denormalised and rebuilt from events.
 assistant: Understood. What about terminology?
@@ -29,6 +29,7 @@ user: We decided on Postgres for the write side and Redis for the read-model cac
   Always wrap money values in a Money value object — never raw floats.
 assistant: Summary: CQRS for Orders, Postgres + Redis, Cart != Order, Money VO for currency.
 """
+
 def main() -> None:
     mem = SkillMemory()
     mem.setup()
@@ -36,7 +37,6 @@ def main() -> None:
     stored = mem.distill_and_store("grill-with-docs", SESSION_1_TRANSCRIPT)
     if not stored:
         print("No memories were extracted. Check MOORCHEH_API_KEY and connectivity.")
-    if not stored:
         print("No memories were extracted. Check MOORCHEH_API_KEY and connectivity.")
         return
     print(f"Stored {len(stored)} engineering memories:")
