@@ -23,6 +23,11 @@ import anthropic
 
 from .base import BackendStats, count_tokens
 
+_ALLOWED_TOPICS = frozenset({
+    "programming_language", "editor_theme", "diet", "city",
+    "job_title", "team_size", "communication_preference", "company_stack",
+})
+
 # Fixed topic vocabulary — consistent keys ensure reliable conflict resolution.
 # Each topic maps to exactly one current fact; later sessions overwrite earlier ones.
 _EXTRACT_PROMPT = """Extract durable personal facts from this conversation.
@@ -56,7 +61,7 @@ _TOPIC_QUERY_HINTS = {
 
 
 class MemantoBackend:
-    name = "Memanto (active digest)"
+    name = "Memanto (simulation)"
 
     def __init__(self) -> None:
         api_key = os.environ.get("ANTHROPIC_API_KEY")
@@ -78,6 +83,7 @@ class MemantoBackend:
         response = self._client.messages.create(
             model="claude-haiku-4-5-20251001",
             max_tokens=512,
+            temperature=0,
             messages=[{"role": "user", "content": _EXTRACT_PROMPT.format(conversation=conversation)}],
         )
         elapsed_ms = (time.perf_counter() - t0) * 1000
@@ -86,18 +92,21 @@ class MemantoBackend:
         facts = self._parse_facts(raw)
 
         for fact in facts:
+            if not isinstance(fact, dict):
+                continue
             topic = fact.get("topic", "").strip().lower().replace(" ", "_")
             content = fact.get("content", "").strip()
-            if topic and content:
-                # Overwrite — most recent session's fact is authoritative
+            if topic in _ALLOWED_TOPICS and content:
                 self._store[user_id][topic] = content
 
         self.stats.record_ingest(tokens_in, elapsed_ms)
 
     def search(self, query: str, user_id: str) -> str:
         """Return the top-3 most relevant facts from the active digest."""
+        t0 = time.perf_counter()
         user_facts = self._store.get(user_id, {})
         if not user_facts:
+            self.stats.record_retrieve(0, (time.perf_counter() - t0) * 1000)
             return ""
 
         query_words = set(re.sub(r"[^\w\s]", "", query.lower()).split())
@@ -110,7 +119,6 @@ class MemantoBackend:
             topic_words = set(topic.replace("_", " ").split())
             return len(query_words & (hint_words | content_words | topic_words))
 
-        t0 = time.perf_counter()
         ranked = sorted(user_facts.items(), key=relevance, reverse=True)
         top = ranked[:3]
         result = "; ".join(f"{k.replace('_', ' ')}: {v}" for k, v in top)

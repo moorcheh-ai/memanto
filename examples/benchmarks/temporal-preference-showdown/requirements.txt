@@ -1,2 +1,3 @@
-anthropic>=0.40.0
-mem0ai>=0.1.0
+# Versions used for the published benchmark run (2026-06-28)
+anthropic==0.111.0
+mem0ai>=0.1.0  # pin to your installed version: pip show mem0ai | grep Version

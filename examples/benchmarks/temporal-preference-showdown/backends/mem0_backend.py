@@ -8,12 +8,15 @@ Requires: MEM0_API_KEY environment variable.
 """
 from __future__ import annotations
 
+import logging
 import os
 import time
 
 from mem0 import MemoryClient
 
 from .base import BackendStats, count_tokens
+
+logger = logging.getLogger(__name__)
 
 
 class Mem0Backend:
@@ -57,5 +60,8 @@ class Mem0Backend:
         """Delete all memories for a user (clean slate between runs)."""
         try:
             self._client.delete_all(user_id=user_id)
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.warning(
+                "Mem0 delete_all failed for %s: %s — stale memories may affect results",
+                user_id, exc,
+            )

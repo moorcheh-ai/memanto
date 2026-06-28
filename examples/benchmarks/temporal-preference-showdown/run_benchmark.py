@@ -39,10 +39,16 @@ from dataset import QUERIES, SESSIONS, USER_ID
 # ── Accuracy scoring ──────────────────────────────────────────────────────────
 
 def score_answer(retrieved: str, correct_keywords: list[str], stale_keywords: list[str]) -> tuple[bool, bool]:
-    """Return (is_correct, is_stale) based on keyword presence."""
+    """Return (is_correct, is_stale) based on keyword presence.
+
+    A result that contains both current and stale keywords is treated as
+    incorrect: the system failed to resolve the temporal conflict cleanly.
+    """
     text = retrieved.lower()
-    is_correct = any(kw.lower() in text for kw in correct_keywords)
-    is_stale = any(kw.lower() in text for kw in stale_keywords) and not is_correct
+    has_correct = any(kw.lower() in text for kw in correct_keywords)
+    has_stale = any(kw.lower() in text for kw in stale_keywords)
+    is_correct = has_correct and not has_stale
+    is_stale = has_stale and not has_correct
     return is_correct, is_stale
 
 
@@ -238,7 +244,7 @@ def main() -> None:
     if args.dry_run:
         print("⚠️  DRY RUN MODE — using mock backends\n")
         backends = [
-            MockBackend("Memanto (active digest)", correct_rate=0.833),
+            MockBackend("Memanto (simulation)", correct_rate=0.833),
             MockBackend("Mem0 (cloud)", correct_rate=0.5),
         ]
     else:
@@ -257,6 +263,7 @@ def main() -> None:
 
     # Save Markdown
     md_path = args.markdown or "results/results.md"
+    Path(md_path).parent.mkdir(parents=True, exist_ok=True)
     with open(md_path, "w") as f:
         f.write(generate_markdown(results))
     print(f"✅ Markdown report saved to {md_path}")

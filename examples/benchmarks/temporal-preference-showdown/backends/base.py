@@ -1,6 +1,7 @@
 """Shared interface for all memory backends."""
 from __future__ import annotations
 
+import math
 import time
 from dataclasses import dataclass, field
 from typing import Protocol
@@ -25,7 +26,8 @@ class BackendStats:
         if not latencies:
             return 0.0
         sorted_l = sorted(latencies)
-        idx = max(0, int(len(sorted_l) * 0.95) - 1)
+        # ceil-based index: for n=5 → idx 4 (true p95); floor-based undercounts
+        idx = min(len(sorted_l) - 1, math.ceil(len(sorted_l) * 0.95) - 1)
         return round(sorted_l[idx], 1)
 
     @property
@@ -39,7 +41,7 @@ class BackendStats:
 
 def count_tokens(text: str) -> int:
     """Approximate token count (words × 1.3 is close enough for comparison)."""
-    return max(1, int(len(text.split()) * 1.3))
+    return max(0, int(len(text.split()) * 1.3))
 
 
 class MemoryBackend(Protocol):
