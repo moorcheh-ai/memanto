@@ -255,6 +255,7 @@ class TestMemoryReadServiceTemporalFilter:
             {"id": "new", "created_at": "2026-06-28T10:00:00Z"},
             {"id": "old", "created_at": "2026-06-27T10:00:00Z"},
             {"id": "bad", "created_at": "not-a-date"},
+            {"id": "numeric", "created_at": 1782626400},
             {"id": "missing"},
         ]
 

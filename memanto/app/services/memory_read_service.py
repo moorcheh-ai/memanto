@@ -578,8 +578,8 @@ class MemoryReadService:
             if not created_at:
                 return False
             try:
-                created_dt = parse_iso_timestamp(created_at)
-            except (ValueError, AttributeError):
+                created_dt = parse_iso_timestamp(str(created_at))
+            except (ValueError, AttributeError, TypeError):
                 return False
             if after_dt is not None and created_dt < after_dt:
                 return False
