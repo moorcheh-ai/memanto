@@ -143,11 +143,17 @@ _FENCE_RE = re.compile(r"```(?:json)?", re.IGNORECASE)
 
 def _extract_json_array(text: str) -> str | None:
     cleaned = _FENCE_RE.sub("", text).strip()
-    start = cleaned.find("[")
-    end = cleaned.rfind("]")
-    if start == -1 or end == -1 or end <= start:
-        return None
-    return cleaned[start : end + 1]
+    decoder = json.JSONDecoder()
+    for start, char in enumerate(cleaned):
+        if char != "[":
+            continue
+        try:
+            parsed, end = decoder.raw_decode(cleaned[start:])
+        except json.JSONDecodeError:
+            continue
+        if isinstance(parsed, list):
+            return cleaned[start : start + end]
+    return None
 
 
 def _coerce_memory(item: Any) -> dict[str, Any] | None:

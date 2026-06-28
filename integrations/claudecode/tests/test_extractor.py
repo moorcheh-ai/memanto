@@ -22,6 +22,15 @@ class TestParseLlmMemories:
         assert len(mems) == 1
         assert mems[0]["type"] == "fact"
 
+    def test_ignores_bracketed_prose_before_json_array(self) -> None:
+        text = (
+            "Extraction notes [draft]: checked the transcript.\n"
+            '[{"type":"decision","title":"Queue","content":"Use a durable queue."}]'
+        )
+        mems = extractor.parse_llm_memories(text)
+        assert len(mems) == 1
+        assert mems[0]["title"] == "Queue"
+
     def test_invalid_type_coerced_to_learning(self) -> None:
         mems = extractor.parse_llm_memories(
             '[{"type":"nonsense","content":"something durable"}]'
