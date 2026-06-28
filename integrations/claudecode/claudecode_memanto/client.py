@@ -61,6 +61,12 @@ class SkillMemory:
         for the common case (the agent already exists) this costs one network
         call instead of two. Creation only happens on AgentNotFoundError.
 
+        ``_ready`` is only set to ``True`` after the *entire* setup succeeds.
+        This prevents a broken half-initialised session from being treated as
+        ready: if ``activate_agent`` raises inside ``_create_and_activate``,
+        the next ``setup()`` call will correctly retry instead of returning
+        early on the stale ``_ready=True`` flag.
+
         Exceptions propagate to the caller. Hook entry points are wrapped in
         ``_common.run()``, which catches all exceptions and exits 0, so a
         failed setup never blocks Claude Code. Demo scripts and the CLI surface
@@ -73,6 +79,10 @@ class SkillMemory:
             self._sdk.activate_agent(agent_id, duration_hours=_SESSION_HOURS)
         except AgentNotFoundError:
             self._create_and_activate(agent_id)
+        # Only mark ready after the full activation path succeeds.  If
+        # _create_and_activate raises (e.g. activate_agent fails after the
+        # create call), _ready stays False so the next invocation retries
+        # cleanly rather than skipping setup on a broken session.
         self._ready = True
 
     def _create_and_activate(self, agent_id: str) -> None:
