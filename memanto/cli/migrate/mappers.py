@@ -73,8 +73,15 @@ def _coerce_type(raw: str | None) -> str | None:
     return t if t in VALID_MEMORY_TYPES else None
 
 
-def _scope_tag(scope: dict[str, Any] | None) -> str | None:
-    if not scope:
+def _dict_records(value: Any) -> list[dict[str, Any]]:
+    """Return only object records from provider-owned arrays."""
+    if not isinstance(value, list):
+        return []
+    return [item for item in value if isinstance(item, dict)]
+
+
+def _scope_tag(scope: Any) -> str | None:
+    if not isinstance(scope, dict):
         return None
     for k, v in scope.items():
         if v:
@@ -113,7 +120,9 @@ def _parse_dt(value: Any) -> datetime | None:
     return None
 
 
-def _pick_first_dt(record: dict[str, Any], keys: tuple[str, ...]) -> datetime | None:
+def _pick_first_dt(record: Any, keys: tuple[str, ...]) -> datetime | None:
+    if not isinstance(record, dict):
+        return None
     for key in keys:
         dt = _parse_dt(record.get(key))
         if dt is not None:
@@ -182,7 +191,7 @@ def map_mem0(export: dict[str, Any]) -> list[dict[str, Any]]:
     rows: list[dict[str, Any]] = []
     migrated_at = _now_utc()
 
-    for mem in export.get("memories", []) or []:
+    for mem in _dict_records(export.get("memories")):
         content = (mem.get("memory") or mem.get("content") or "").strip()
         if not content:
             continue
@@ -245,7 +254,7 @@ def map_letta(export: dict[str, Any]) -> list[dict[str, Any]]:
     rows: list[dict[str, Any]] = []
     migrated_at = _now_utc()
 
-    for passage in export.get("passages", []) or []:
+    for passage in _dict_records(export.get("passages")):
         content = (passage.get("text") or passage.get("content") or "").strip()
         if not content:
             continue
@@ -311,7 +320,7 @@ def map_supermemory(export: dict[str, Any]) -> list[dict[str, Any]]:
     seen: set[str] = set()
     migrated_at = _now_utc()
 
-    for mem in export.get("memories", []) or []:
+    for mem in _dict_records(export.get("memories")):
         content = (
             mem.get("content") or mem.get("memory") or mem.get("text") or ""
         ).strip()
@@ -359,13 +368,13 @@ def map_supermemory(export: dict[str, Any]) -> list[dict[str, Any]]:
         return rows
 
     # Fallback: harvest chunk text when extracted memories are empty.
-    for doc in export.get("documents", []) or []:
+    for doc in _dict_records(export.get("documents")):
         doc_tags = [str(t) for t in (doc.get("container_tags") or []) if t]
         doc_id = doc.get("id")
         doc_created = _pick_first_dt(
             doc.get("detail") or doc, ("createdAt", "created_at")
         )
-        for chunk in doc.get("chunks", []) or []:
+        for chunk in _dict_records(doc.get("chunks")):
             content = (chunk.get("content") or chunk.get("text") or "").strip()
             if not content or content in seen:
                 continue
