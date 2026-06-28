@@ -87,9 +87,9 @@ class MemantoLifecycle:
         """
         with self._lock:
             client = self._clients.get(agent_id)
-            if client is None:
+            is_new_client = client is None
+            if is_new_client:
                 client = SdkClient(api_key=self._settings.api_key_value())
-                self._clients[agent_id] = client
 
             if agent_id not in self._ensured_agents:
                 self._ensure_agent_exists_locked(client, agent_id)
@@ -101,6 +101,9 @@ class MemantoLifecycle:
             ):
                 self._activate_locked(client, agent_id)
                 self._activated_agents.add(agent_id)
+
+            if is_new_client:
+                self._clients[agent_id] = client
 
         return client
 

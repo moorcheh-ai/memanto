@@ -377,7 +377,6 @@ def register_tools(mcp: Any, lifecycle: MemantoLifecycle) -> None:
     ) -> BatchRememberResult:
         try:
             resolved = lifecycle.resolve_agent_id(agent_id)
-            client = lifecycle.ensure_ready(resolved)
             # Validate before round-trip so we fail fast with a clear error.
             for i, item in enumerate(memories):
                 if not isinstance(item, dict):
@@ -401,6 +400,7 @@ def register_tools(mcp: Any, lifecycle: MemantoLifecycle) -> None:
                         f"Choose one of: {sorted(VALID_PROVENANCE_TYPES)}"
                     )
 
+            client = lifecycle.ensure_ready(resolved)
             result = client.batch_remember(
                 agent_id=resolved,
                 memories=memories,
