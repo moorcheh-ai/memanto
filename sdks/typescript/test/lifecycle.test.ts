@@ -1,4 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
+import type { ChildProcess } from "node:child_process";
+import { EventEmitter } from "node:events";
 import { createServer, type Server } from "node:http";
 import { AddressInfo } from "node:net";
 import { ServerLifecycle } from "../src/lifecycle.js";
@@ -64,5 +66,30 @@ describe("ServerLifecycle", () => {
 
     expect(fetchSpy).not.toHaveBeenCalled();
     fetchSpy.mockRestore();
+  });
+
+  it("does not hang when stopping an already exited child process", async () => {
+    const life = new ServerLifecycle();
+    const child = Object.assign(new EventEmitter(), {
+      killed: false,
+      exitCode: 1,
+      signalCode: null,
+      kill: vi.fn(),
+    }) as unknown as ChildProcess;
+
+    (
+      life as unknown as { process: ChildProcess | null; url: string | null }
+    ).process = child;
+    (
+      life as unknown as { process: ChildProcess | null; url: string | null }
+    ).url = "http://127.0.0.1:8765";
+
+    const result = await Promise.race([
+      life.stop().then(() => "stopped"),
+      new Promise((resolve) => setTimeout(() => resolve("timeout"), 50)),
+    ]);
+
+    expect(result).toBe("stopped");
+    expect(child.kill).not.toHaveBeenCalled();
   });
 });

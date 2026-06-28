@@ -96,7 +96,14 @@ export class ServerLifecycle {
     const child = this.process;
     this.process = null;
     this.url = null;
-    if (!child || child.killed) return;
+    if (
+      !child ||
+      child.killed ||
+      child.exitCode !== null ||
+      child.signalCode !== null
+    ) {
+      return;
+    }
 
     let exited = false;
     await new Promise<void>((resolve, reject) => {
