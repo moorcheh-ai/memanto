@@ -44,20 +44,32 @@ class NamespaceService:
         try:
             all_namespaces = self.client.namespaces.list()
 
-            # Extract namespace names from response
-            if isinstance(all_namespaces, dict) and "namespaces" in all_namespaces:
-                namespace_list = [
-                    ns["namespace_name"] for ns in all_namespaces["namespaces"]
-                ]
-            else:
-                namespace_list = all_namespaces
+            entries = (
+                all_namespaces.get("namespaces", [])
+                if isinstance(all_namespaces, dict)
+                else all_namespaces
+            )
+            if isinstance(entries, str):
+                entries = [entries]
+            if not isinstance(entries, (list, tuple)):
+                entries = []
 
-            # Filter MEMANTO namespaces
-            memanto_namespaces = [
-                ns for ns in namespace_list if ns.startswith("memanto_")
-            ]
+            namespace_list: list[str] = []
+            for entry in entries:
+                if isinstance(entry, str):
+                    namespace_name = entry
+                elif isinstance(entry, dict):
+                    raw_name = entry.get("namespace_name") or entry.get("name")
+                    if not isinstance(raw_name, str):
+                        continue
+                    namespace_name = raw_name
+                else:
+                    continue
 
-            return memanto_namespaces
+                if namespace_name.startswith("memanto_"):
+                    namespace_list.append(namespace_name)
+
+            return namespace_list
 
         except Exception as e:
             raise NamespaceError(f"Failed to list namespaces: {e}")

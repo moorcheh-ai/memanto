@@ -391,5 +391,40 @@ class TestMEMANTOArchitecture:
         print("   ✅ NO tenant_id in token!")
 
 
+class TestNamespaceService:
+    """Namespace listing should tolerate malformed backend entries."""
+
+    def test_list_namespaces_skips_malformed_entries(self):
+        """One malformed namespace record should not hide valid MEMANTO namespaces."""
+        from memanto.app.services.namespace_service import NamespaceService
+
+        client = MagicMock()
+        client.namespaces.list.return_value = {
+            "namespaces": [
+                {"namespace_name": "memanto_agent_alpha"},
+                {"namespace_name": "other_product"},
+                {"namespace_name": 123},
+                {"name": "memanto_agent_beta"},
+                "memanto_agent_gamma",
+                None,
+            ]
+        }
+
+        assert NamespaceService(client).list_namespaces() == [
+            "memanto_agent_alpha",
+            "memanto_agent_beta",
+            "memanto_agent_gamma",
+        ]
+
+    def test_list_namespaces_ignores_non_iterable_namespace_container(self):
+        """Malformed namespace containers should return an empty list."""
+        from memanto.app.services.namespace_service import NamespaceService
+
+        client = MagicMock()
+        client.namespaces.list.return_value = {"namespaces": {"not": "a list"}}
+
+        assert NamespaceService(client).list_namespaces() == []
+
+
 if __name__ == "__main__":
     pytest.main([__file__, "-v", "-s"])
