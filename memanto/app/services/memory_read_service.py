@@ -537,10 +537,17 @@ class MemoryReadService:
             elif min_confidence >= 0.5:
                 filter_parts.append("#confidence:medium")
 
-        # Add custom metadata filters
+        # Add custom metadata filters.
+        # Strip whitespace and the Moorcheh filter sentinel (#) from caller-
+        # supplied keys and values so that a crafted input like
+        # {"foo": "bar #status:active"} cannot inject extra filter tokens into
+        # the query string.
         if metadata_filters:
             for key, value in metadata_filters.items():
-                filter_parts.append(f"#{key}:{value}")
+                safe_key = str(key).strip().replace("#", "").replace(" ", "_")
+                safe_value = str(value).strip().replace("#", "").replace(" ", "_")
+                if safe_key and safe_value:
+                    filter_parts.append(f"#{safe_key}:{safe_value}")
 
         # Combine query with filters
         if filter_parts:
@@ -630,12 +637,16 @@ class MemoryReadService:
                     # Only include if not expired
                     if expires_dt > now:
                         filtered.append(result)
-                else:
-                    # If expires_at is already datetime or not parseable, keep it
-                    filtered.append(result)
+                elif isinstance(expires_at, datetime):
+                    tz_aware = expires_at if expires_at.tzinfo else expires_at.replace(tzinfo=timezone.utc)
+                    if tz_aware > now:
+                        filtered.append(result)
+                # Any other type: fail closed — treat as expired and exclude.
+                # A malformed expires_at must not bypass TTL enforcement.
             except (ValueError, AttributeError):
-                # If we can't parse, keep the memory (fail open)
-                filtered.append(result)
+                # Cannot parse expiry — fail closed: exclude the memory.
+                # Failing open here would let a crafted expires_at bypass TTL.
+                pass
 
         return filtered
 

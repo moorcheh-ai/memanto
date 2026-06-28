@@ -140,7 +140,7 @@ class MemoryWriteService:
                         results.append(
                             {
                                 "id": memory.id,
-                                "status": "failed",
+                                "status": "rejected",
                                 "action": "rejected",
                                 "reason": "All memories in batch must be in same namespace",
                                 "error": f"Expected namespace {first_namespace}, got {namespace}",
@@ -207,14 +207,17 @@ class MemoryWriteService:
                     if result["status"] == "pending":
                         result["status"] = moorcheh_status
 
-            # Count successes and failures
+            # Count successes, failures, and namespace-rejected items separately
+            # so that successful + failed + rejected == total_submitted always.
             successful = sum(1 for r in results if r["status"] in ["queued", "success"])
             failed = sum(1 for r in results if r["status"] == "failed")
+            rejected = sum(1 for r in results if r["status"] == "rejected")
 
             return {
                 "total_submitted": len(memories),
                 "successful": successful,
                 "failed": failed,
+                "rejected": rejected,
                 "namespace": first_namespace,
                 "results": results,
             }
@@ -306,17 +309,11 @@ class MemoryWriteService:
                 if metadata.get("expires_at"):
                     updated_memory.expires_at = metadata["expires_at"]
 
-            # Step 3: Delete old version
-            delete_result = self.client.documents.delete(
-                namespace_name=namespace, ids=[memory_id]
-            )
-
-            if delete_result.get("actual_deletions", 0) == 0:
-                raise MemoryError(f"Failed to delete old version of memory {memory_id}")
-
-            validation_result = {"action": "store", "reason": "MVP direct store"}
-
-            # Step 4: Upload new version
+            # Step 3: Upload new version FIRST — then delete the old one.
+            # Reversing the order prevents permanent data loss: if the upload
+            # fails the original document is still present and the caller can
+            # retry. The old delete-then-upload order could leave the namespace
+            # with no document at all when the upload step raised an exception.
             from typing import cast
 
             from moorcheh_sdk.types.document import Document
@@ -326,13 +323,21 @@ class MemoryWriteService:
                 namespace_name=namespace, documents=[document]
             )
 
+            # Step 4: Delete old version only after the new one is safely stored.
+            delete_result = self.client.documents.delete(
+                namespace_name=namespace, ids=[memory_id]
+            )
+
+            if delete_result.get("actual_deletions", 0) == 0:
+                raise MemoryError(f"Failed to delete old version of memory {memory_id}")
+
             return {
                 "id": memory_id,
                 "namespace": namespace,
                 "status": upload_result.get("status", "unknown"),
                 "action": "updated",
-                "reason": "Memory updated successfully via delete-and-recreate",
-                "validation": validation_result.get("action", "validated"),
+                "reason": "Memory updated successfully via upload-then-delete",
+                "validation": "store",
                 "updated_fields": list(updates.keys()),
             }
 
