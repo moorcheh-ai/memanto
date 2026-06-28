@@ -183,6 +183,18 @@ def test_format_recall_block_renders_types_and_scores():
     assert "[fact] Lives in Berlin" in block
 
 
+def test_format_recall_block_skips_malformed_entries():
+    block = _format_recall_block(
+        [
+            "truncated-row",
+            {"type": "fact", "content": "Lives in Berlin", "score": 0.91},
+        ],
+        max_results=10,
+    )
+    assert "Lives in Berlin" in block
+    assert "truncated-row" not in block
+
+
 def test_format_recall_block_empty():
     assert _format_recall_block([], max_results=10) == ""
 
@@ -477,6 +489,21 @@ def test_recall_tool_formats_results(provider):
     assert result["count"] == 1
     assert result["results"][0]["score"] == 77
     assert result["results"][0]["type"] == "fact"
+
+
+def test_recall_tool_skips_malformed_results(provider):
+    provider._client.recall_results = [
+        "truncated-row",
+        {
+            "id": "m1",
+            "type": "fact",
+            "content": "Lives in Berlin",
+            "similarity_score": 0.77,
+        },
+    ]
+    result = json.loads(provider.handle_tool_call("memanto_recall", {"query": "where"}))
+    assert result["count"] == 1
+    assert result["results"][0]["content"] == "Lives in Berlin"
 
 
 def test_answer_tool(provider):

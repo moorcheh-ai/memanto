@@ -222,7 +222,7 @@ def _is_trivial_message(text: str) -> bool:
     return bool(_TRIVIAL_RE.match((text or "").strip()))
 
 
-def _memory_score(raw: dict) -> float | None:
+def _memory_score(raw: dict[str, Any]) -> float | None:
     """Coalesce the score key Memanto uses across endpoints."""
     score = raw.get("score")
     if score is None:
@@ -233,10 +233,17 @@ def _memory_score(raw: dict) -> float | None:
         return None
 
 
+def _valid_memory_entries(raw_memories: Any) -> list[dict[str, Any]]:
+    """Return only object-shaped memory records from a recall response."""
+    if not isinstance(raw_memories, list):
+        return []
+    return [item for item in raw_memories if isinstance(item, dict)]
+
+
 def _format_recall_block(memories: list[dict], max_results: int) -> str:
     """Render recall hits into a context block for prefetch injection."""
     lines = []
-    for item in (memories or [])[:max_results]:
+    for item in _valid_memory_entries(memories)[:max_results]:
         content = (item.get("content") or item.get("title") or "").strip()
         content = _RECALL_TAG_RE.sub("", content).strip()
         if not content:
@@ -783,7 +790,7 @@ class MemantoMemoryProvider(MemoryProvider):
                 min_confidence=self._min_confidence,
             )
             formatted = []
-            for item in memories:
+            for item in _valid_memory_entries(memories):
                 entry: dict[str, Any] = {
                     "id": item.get("id"),
                     "type": item.get("type"),
