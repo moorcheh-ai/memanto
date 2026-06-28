@@ -6,15 +6,14 @@ A companion memory agent that lets your agents focus and improve while you
 keep ownership of everything they learn.
 """
 
-from memanto.client import MemantoClient
-from memanto.config import Config
-from memanto.memory import MemoryManager
-
-__all__ = [
-    "MemantoClient",
-    "Config", 
-    "MemoryManager",
-]
-
 __version__ = "0.1.0"
+
+from memanto.core import Memory, MemoryConfig
+from memanto.errors import MemantoError, APIError, AuthenticationError
+
+__all__ = ["Memory", "MemoryConfig", "MemantoError", "APIError", "AuthenticationError"]
+
+
+def get_version() -> str:
+    return __version__
 """
