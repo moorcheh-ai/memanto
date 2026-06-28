@@ -16,6 +16,16 @@ from memanto.app.services.agent_service import AgentService
 from memanto.app.services.session_service import SessionService
 
 
+def _symlink_to_or_skip(link, target):
+    try:
+        link.symlink_to(target)
+    except (OSError, NotImplementedError) as exc:
+        pytest.skip(f"Symlink support required for this regression test: {exc}")
+
+    if not link.is_symlink():
+        pytest.skip("Symlink support required for this regression test")
+
+
 class TestSessionService:
     """Unit tests for SessionService"""
 
@@ -118,6 +128,31 @@ class TestSessionService:
 
         print("✅ Session ended successfully")
         print(f"   Duration: {summary.duration_hours} hours")
+
+    def test_get_active_session_clears_dangling_symlink(self, session_service):
+        """Dangling active symlinks should not linger forever."""
+        active_marker = session_service.sessions_dir / "active"
+        _symlink_to_or_skip(active_marker, "missing-agent.json")
+
+        assert session_service.get_active_session() is None
+        assert not active_marker.exists()
+        assert not active_marker.is_symlink()
+
+    def test_create_session_replaces_dangling_active_symlink(self, session_service):
+        """A new session should replace a broken active marker."""
+        active_marker = session_service.sessions_dir / "active"
+        _symlink_to_or_skip(active_marker, "missing-agent.json")
+
+        session = session_service.create_session(
+            agent_id="test-agent",
+            pattern=AgentPattern.SUPPORT,
+            duration_hours=1,
+        )
+
+        assert session.agent_id == "test-agent"
+        assert active_marker.is_symlink()
+        assert active_marker.readlink().name == "test-agent.json"
+        assert session_service.get_active_session().session_id == session.session_id
 
 
 class TestAgentService:

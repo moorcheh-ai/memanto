@@ -199,7 +199,7 @@ class SessionService:
             Session object or None if no active session or session is expired
         """
         active_link = self.sessions_dir / "active"
-        if not active_link.exists():
+        if not active_link.exists() and not active_link.is_symlink():
             return None
 
         # Read symlink (or file on Windows)
@@ -212,6 +212,7 @@ class SessionService:
 
         session = self.get_session(agent_id)
         if not session:
+            self._clear_active_session()
             return None
 
         # If session is expired, clear the stale active marker and return None
@@ -431,7 +432,7 @@ class SessionService:
         active_link = self.sessions_dir / "active"
 
         # Remove existing active link
-        if active_link.exists():
+        if active_link.exists() or active_link.is_symlink():
             active_link.unlink()
 
         # Create new active marker
@@ -446,7 +447,7 @@ class SessionService:
     def _clear_active_session(self) -> None:
         """Clear active session marker"""
         active_link = self.sessions_dir / "active"
-        if active_link.exists():
+        if active_link.exists() or active_link.is_symlink():
             active_link.unlink()
 
     def clear_active_session(self) -> None:
