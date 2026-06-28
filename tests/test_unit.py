@@ -243,6 +243,47 @@ class TestAgentService:
         print("✅ Agent deleted successfully")
 
 
+class TestMemoryReadServiceTemporalFilter:
+    """Temporal post-filtering should isolate malformed result timestamps."""
+
+    def test_created_after_skips_invalid_result_timestamps(self):
+        """One malformed memory timestamp must not disable the whole filter."""
+        from memanto.app.services.memory_read_service import MemoryReadService
+
+        service = MemoryReadService(MagicMock())
+        results = [
+            {"id": "new", "created_at": "2026-06-28T10:00:00Z"},
+            {"id": "old", "created_at": "2026-06-27T10:00:00Z"},
+            {"id": "bad", "created_at": "not-a-date"},
+            {"id": "missing"},
+        ]
+
+        filtered = service._apply_temporal_filter(
+            results,
+            created_after="2026-06-28T00:00:00Z",
+        )
+
+        assert [item["id"] for item in filtered] == ["new"]
+
+    def test_created_before_skips_invalid_result_timestamps(self):
+        """Malformed memory timestamps should be dropped before upper-bound checks."""
+        from memanto.app.services.memory_read_service import MemoryReadService
+
+        service = MemoryReadService(MagicMock())
+        results = [
+            {"id": "old", "created_at": "2026-06-27T10:00:00Z"},
+            {"id": "new", "created_at": "2026-06-28T10:00:00Z"},
+            {"id": "bad", "created_at": "not-a-date"},
+        ]
+
+        filtered = service._apply_temporal_filter(
+            results,
+            created_before="2026-06-28T00:00:00Z",
+        )
+
+        assert [item["id"] for item in filtered] == ["old"]
+
+
 class TestMemoryWriteServiceDelete:
     """``delete_memory`` must report success for both cloud and on-prem
     response shapes. Cloud returns ``actual_deletions``; on-prem's

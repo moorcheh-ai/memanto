@@ -568,14 +568,32 @@ class MemoryReadService:
 
         filtered = results
 
+        def _created_at_matches(
+            result: dict[str, Any],
+            *,
+            after_dt=None,
+            before_dt=None,
+        ) -> bool:
+            created_at = result.get("created_at")
+            if not created_at:
+                return False
+            try:
+                created_dt = parse_iso_timestamp(created_at)
+            except (ValueError, AttributeError):
+                return False
+            if after_dt is not None and created_dt < after_dt:
+                return False
+            if before_dt is not None and created_dt > before_dt:
+                return False
+            return True
+
         if created_after:
             try:
                 after_dt = parse_iso_timestamp(created_after)
                 filtered = [
                     r
                     for r in filtered
-                    if r.get("created_at")
-                    and parse_iso_timestamp(r["created_at"]) >= after_dt
+                    if _created_at_matches(r, after_dt=after_dt)
                 ]
             except (ValueError, AttributeError):
                 pass  # Skip invalid timestamps
@@ -586,8 +604,7 @@ class MemoryReadService:
                 filtered = [
                     r
                     for r in filtered
-                    if r.get("created_at")
-                    and parse_iso_timestamp(r["created_at"]) <= before_dt
+                    if _created_at_matches(r, before_dt=before_dt)
                 ]
             except (ValueError, AttributeError):
                 pass  # Skip invalid timestamps
