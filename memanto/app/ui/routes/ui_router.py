@@ -423,6 +423,7 @@ async def list_conflict_scans(agent_id: str | None = None):
                 continue
             if not isinstance(conflicts, list):
                 conflicts = []
+            conflicts = [c for c in conflicts if isinstance(c, dict)]
             # astimezone() stamps the local offset so the browser compares it
             # as an absolute instant against memory created_at (no TZ skew).
             scanned_at = dt.fromtimestamp(path.stat().st_mtime).astimezone().isoformat()

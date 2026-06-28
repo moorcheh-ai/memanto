@@ -976,10 +976,14 @@ def conflicts(
     )
     with open(json_path, encoding="utf-8") as f:
         all_conflicts = json.load(f)
+    if not isinstance(all_conflicts, list):
+        all_conflicts = []
 
     # Map unresolved conflicts to their original indices
     unresolved_indices = [
-        idx for idx, c in enumerate(all_conflicts) if not c.get("resolved", False)
+        idx
+        for idx, c in enumerate(all_conflicts)
+        if isinstance(c, dict) and not c.get("resolved", False)
     ]
 
     resolved_count = 0

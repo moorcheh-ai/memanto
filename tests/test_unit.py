@@ -4,6 +4,7 @@ MEMANTO Core Unit Tests (No Server Required)
 Tests the session and agent services directly without HTTP layer.
 """
 
+import json
 from datetime import datetime
 from unittest.mock import MagicMock, patch
 
@@ -344,6 +345,62 @@ class TestForgetEndToEnd:
         result = client.delete_memory(agent_id="test-agent", memory_id="mem-xyz")
         assert result["status"] == "deleted"
         assert result["memory_id"] == "mem-xyz"
+
+
+class TestConflictFileResilience:
+    """Conflict list/resolve should tolerate malformed persisted JSON entries."""
+
+    def _write_conflicts(self, tmp_path, agent_id, date, payload):
+        """Write a conflict report under the temporary Memanto home."""
+        conflicts_dir = tmp_path / ".memanto" / "conflicts"
+        conflicts_dir.mkdir(parents=True)
+        path = conflicts_dir / f"{agent_id}_{date}_conflicts.json"
+        path.write_text(json.dumps(payload), encoding="utf-8")
+        return path
+
+    def test_list_conflicts_skips_malformed_entries(self, tmp_path, monkeypatch):
+        """Non-object entries in the conflict file must not crash listing."""
+        from pathlib import Path
+
+        from memanto.cli.client.direct_client import DirectClient
+
+        monkeypatch.setattr(Path, "home", lambda: tmp_path)
+        self._write_conflicts(
+            tmp_path,
+            "agent-a",
+            "2026-06-28",
+            [
+                "truncated",
+                {"title": "resolved", "resolved": True},
+                {"title": "real conflict", "resolved": False},
+                7,
+            ],
+        )
+
+        conflicts = DirectClient(api_key="test-key").list_conflicts(
+            "agent-a", "2026-06-28"
+        )
+
+        assert conflicts == [{"title": "real conflict", "resolved": False}]
+
+    def test_resolve_conflict_rejects_malformed_entry(self, tmp_path, monkeypatch):
+        """Resolving a malformed conflict entry should fail with a clear error."""
+        from pathlib import Path
+
+        from memanto.cli.client.direct_client import DirectClient
+
+        monkeypatch.setattr(Path, "home", lambda: tmp_path)
+        self._write_conflicts(
+            tmp_path,
+            "agent-a",
+            "2026-06-28",
+            ["truncated", {"title": "real conflict", "resolved": False}],
+        )
+
+        with pytest.raises(ValueError, match="Conflict entry 0 is malformed"):
+            DirectClient(api_key="test-key").resolve_conflict(
+                "agent-a", "2026-06-28", 0, "keep_both"
+            )
 
 
 class TestMEMANTOArchitecture:

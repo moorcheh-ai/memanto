@@ -1308,7 +1308,13 @@ class DirectClient:
             all_conflicts = json.load(f)
 
         # Return only unresolved conflicts
-        return [c for c in all_conflicts if not c.get("resolved", False)]
+        if not isinstance(all_conflicts, list):
+            return []
+        return [
+            c
+            for c in all_conflicts
+            if isinstance(c, dict) and not c.get("resolved", False)
+        ]
 
     def resolve_conflict(
         self,
@@ -1350,12 +1356,17 @@ class DirectClient:
         with open(json_path, encoding="utf-8") as f:
             all_conflicts = json.load(f)
 
+        if not isinstance(all_conflicts, list):
+            raise ValueError("Conflict report is malformed: expected a JSON array")
+
         if conflict_index < 0 or conflict_index >= len(all_conflicts):
             raise ValueError(
                 f"Conflict index {conflict_index} out of range (0-{len(all_conflicts) - 1})"
             )
 
         conflict = all_conflicts[conflict_index]
+        if not isinstance(conflict, dict):
+            raise ValueError(f"Conflict entry {conflict_index} is malformed")
         old_id = conflict.get("old_memory_id")
         new_id = conflict.get("new_memory_id")
 
