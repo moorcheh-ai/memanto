@@ -16,6 +16,11 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from typing import Any
 
+from memanto.cli.analyze._shape import (
+    dict_list_or_empty,
+    dict_or_empty,
+    int_or_default,
+)
 from memanto.cli.analyze.ingestion_cost import (
     DEFAULT_INPUT_USD_PER_1M,
     DEFAULT_OUTPUT_USD_PER_1M,
@@ -67,13 +72,13 @@ def _entity_type_counts(entities: list[dict[str, Any]]) -> dict[str, int]:
 
 def compute_metrics(export: dict[str, Any]) -> dict[str, Any]:
     """Compute deterministic comparison metrics from a Mem0 export."""
-    summary = export.get("summary", {}) or {}
-    entities = export.get("entities", []) or []
-    memories = export.get("memories", []) or []
+    summary = dict_or_empty(export.get("summary"))
+    entities = dict_list_or_empty(export.get("entities"))
+    memories = dict_list_or_empty(export.get("memories"))
 
-    entity_count = int(summary.get("entity_count") or len(entities))
-    scope_count = int(summary.get("scope_count") or 0)
-    memory_count = int(summary.get("memory_count") or len(memories))
+    entity_count = int_or_default(summary.get("entity_count") or len(entities))
+    scope_count = int_or_default(summary.get("scope_count"))
+    memory_count = int_or_default(summary.get("memory_count") or len(memories))
     entity_types = _entity_type_counts(entities)
 
     total_chars = sum(len(_memory_text(memory)) for memory in memories)

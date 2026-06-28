@@ -12,6 +12,11 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from typing import Any
 
+from memanto.cli.analyze._shape import (
+    dict_list_or_empty,
+    dict_or_empty,
+    int_or_default,
+)
 from memanto.cli.analyze.ingestion_cost import (
     DEFAULT_INPUT_USD_PER_1M,
     DEFAULT_OUTPUT_USD_PER_1M,
@@ -54,8 +59,8 @@ def _passage_text(passage: dict[str, Any]) -> str:
 
 def _agent_count(export: dict[str, Any], summary: dict[str, Any]) -> int:
     if summary.get("agent_count") is not None:
-        return int(summary["agent_count"])
-    agents = export.get("agents", []) or []
+        return int_or_default(summary["agent_count"])
+    agents = dict_list_or_empty(export.get("agents"))
     if agents:
         return len(agents)
     if export.get("agent_id"):
@@ -65,11 +70,11 @@ def _agent_count(export: dict[str, Any], summary: dict[str, Any]) -> int:
 
 def compute_metrics(export: dict[str, Any]) -> dict[str, Any]:
     """Compute deterministic comparison metrics from a Letta export."""
-    summary = export.get("summary", {}) or {}
-    passages = export.get("passages", []) or []
+    summary = dict_or_empty(export.get("summary"))
+    passages = dict_list_or_empty(export.get("passages"))
 
     agent_count = _agent_count(export, summary)
-    passage_count = int(summary.get("passage_count") or len(passages))
+    passage_count = int_or_default(summary.get("passage_count") or len(passages))
 
     total_chars = sum(len(_passage_text(passage)) for passage in passages)
 

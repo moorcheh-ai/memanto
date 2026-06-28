@@ -124,6 +124,26 @@ class TestSupermemoryCompare:
         assert latency["speedup_x"] == 3.3
         assert latency["ms_saved_per_query"] == 210
 
+    def test_compute_metrics_skips_malformed_export_shapes(self):
+        """Malformed Supermemory report inputs should not crash metrics."""
+        export = {
+            "summary": "not-a-summary-object",
+            "documents": [
+                "not-a-document-object",
+                {"chunks": ["not-a-chunk-object", {"content": "a" * 8}]},
+            ],
+            "memories": ["not-a-memory-object", {"content": "b" * 4}],
+        }
+
+        metrics = compute_supermemory_metrics(export)
+        volume = metrics["volume"]
+
+        assert volume["documents"] == 1
+        assert volume["chunks"] == 1
+        assert volume["memories"] == 1
+        assert volume["estimated_input_tokens"] == 2
+        assert volume["estimated_output_tokens"] == 1
+
     def test_build_llm_prompt_uses_measured_numbers(self):
         metrics = compute_supermemory_metrics(self._sample_export())
         prompt = build_supermemory_llm_prompt(metrics)
@@ -203,6 +223,23 @@ class TestMem0Compare:
         assert latency["mem0_read_ms"] == 499
         assert latency["speedup_x"] == 5.5
         assert latency["ms_saved_per_query"] == 409
+
+    def test_compute_metrics_skips_malformed_export_shapes(self):
+        """Malformed Mem0 report inputs should not crash metrics."""
+        export = {
+            "summary": "not-a-summary-object",
+            "entities": ["not-an-entity-object", {"type": "User"}],
+            "memories": ["not-a-memory-object", {"memory": "a" * 8}],
+        }
+
+        metrics = compute_mem0_metrics(export)
+        volume = metrics["volume"]
+
+        assert volume["entities"] == 1
+        assert volume["memories"] == 1
+        assert volume["entity_types"] == {"user": 1}
+        assert volume["estimated_content_tokens"] == 2
+        assert volume["estimated_input_tokens"] == 5
 
     def test_build_llm_prompt_uses_measured_numbers(self):
         metrics = compute_mem0_metrics(self._sample_export())
@@ -291,6 +328,22 @@ class TestLettaCompare:
         assert latency["letta_read_ms"] == 450
         assert latency["speedup_x"] == 5.0
         assert latency["ms_saved_per_query"] == 360
+
+    def test_compute_metrics_skips_malformed_export_shapes(self):
+        """Malformed Letta report inputs should not crash metrics."""
+        export = {
+            "summary": "not-a-summary-object",
+            "agents": ["not-an-agent-object", {"id": "agent-test-123"}],
+            "passages": ["not-a-passage-object", {"text": "a" * 8}],
+        }
+
+        metrics = compute_letta_metrics(export)
+        volume = metrics["volume"]
+
+        assert volume["agents"] == 1
+        assert volume["passages"] == 1
+        assert volume["estimated_content_tokens"] == 2
+        assert volume["estimated_input_tokens"] == 5
 
     def test_build_llm_prompt_uses_measured_numbers(self):
         metrics = compute_letta_metrics(self._sample_export())

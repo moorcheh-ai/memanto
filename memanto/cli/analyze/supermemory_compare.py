@@ -16,6 +16,11 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from typing import Any
 
+from memanto.cli.analyze._shape import (
+    dict_list_or_empty,
+    dict_or_empty,
+    int_or_default,
+)
 from memanto.cli.analyze.ingestion_cost import (
     DEFAULT_INPUT_USD_PER_1M,
     DEFAULT_OUTPUT_USD_PER_1M,
@@ -60,20 +65,25 @@ def _memory_text(memory: dict[str, Any]) -> str:
 
 def compute_metrics(export: dict[str, Any]) -> dict[str, Any]:
     """Compute deterministic comparison metrics from a Supermemory export."""
-    summary = export.get("summary", {}) or {}
-    documents = export.get("documents", []) or []
-    memories = export.get("memories", []) or []
+    summary = dict_or_empty(export.get("summary"))
+    documents = dict_list_or_empty(export.get("documents"))
+    memories = dict_list_or_empty(export.get("memories"))
 
-    doc_count = int(summary.get("document_count") or len(documents))
-    chunk_count = int(summary.get("chunk_count") or 0)
-    memory_count = int(summary.get("memory_entry_count") or len(memories))
-    tag_count = int(summary.get("container_tag_count") or 0)
-    connection_count = int(summary.get("connection_count") or 0)
+    valid_chunks = [
+        chunk
+        for doc in documents
+        for chunk in dict_list_or_empty(doc.get("chunks"))
+    ]
+
+    doc_count = int_or_default(summary.get("document_count") or len(documents))
+    chunk_count = int_or_default(summary.get("chunk_count") or len(valid_chunks))
+    memory_count = int_or_default(summary.get("memory_entry_count") or len(memories))
+    tag_count = int_or_default(summary.get("container_tag_count"))
+    connection_count = int_or_default(summary.get("connection_count"))
 
     input_chars = 0
-    for doc in documents:
-        for chunk in doc.get("chunks", []) or []:
-            input_chars += len(_chunk_text(chunk))
+    for chunk in valid_chunks:
+        input_chars += len(_chunk_text(chunk))
     output_chars = sum(len(_memory_text(memory)) for memory in memories)
     total_chars = input_chars + output_chars
 
