@@ -4,6 +4,7 @@ detect-conflicts, conflicts).
 """
 
 import json
+import math
 import sys
 import time
 from datetime import datetime
@@ -26,6 +27,23 @@ from memanto.cli.commands._shared import (
     get_client,
     parse_relative_time,
 )
+
+
+def _answer_context_records(value):
+    """Return only displayable context memory records from answer output."""
+    if not isinstance(value, list):
+        return []
+    return [memory for memory in value if isinstance(memory, dict)]
+
+
+def _context_score(value):
+    try:
+        score = float(value)
+    except (TypeError, ValueError, OverflowError):
+        return 0.0
+    if not math.isfinite(score):
+        return 0.0
+    return score
 
 
 @app.command()
@@ -710,7 +728,7 @@ def answer(
         elapsed = time.perf_counter() - start
 
         answer = result.get("answer", "No answer generated")
-        context = result.get("context_memories", [])
+        context = _answer_context_records(result.get("context_memories", []))
 
         # Display answer
         console.print(
@@ -726,8 +744,9 @@ def answer(
         if context:
             console.print(f"\n[dim]Used {len(context)} memories as context:[/dim]")
             for i, mem in enumerate(context, 1):
+                score = _context_score(mem.get("score", 0))
                 console.print(
-                    f"  {i}. {mem.get('title', 'Untitled')} (score: {mem.get('score', 0):.3f})"
+                    f"  {i}. {mem.get('title', 'Untitled')} (score: {score:.3f})"
                 )
 
         console.print(f"[dim]Completed in {elapsed:.2f}s[/dim]")

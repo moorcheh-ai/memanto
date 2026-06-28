@@ -531,6 +531,25 @@ class TestMEMANTOCLI:
         assert result.exit_code == 0
         assert "This is the RAG answer" in result.stdout
 
+    def test_answer_skips_malformed_context_memories(self, mock_all_clients):
+        """Malformed answer context should not crash response display."""
+        mock_all_clients.answer.return_value = {
+            "answer": "This is the RAG answer.",
+            "context_memories": [
+                "truncated context",
+                {"title": "Useful context", "score": "0.875"},
+                {"title": "Unscored context", "score": "nan"},
+            ],
+        }
+
+        result = runner.invoke(app, ["answer", "What is the answer?"])
+        assert result.exit_code == 0
+        assert "This is the RAG answer" in result.stdout
+        assert "Used 2 memories as context" in result.stdout
+        assert "Useful context (score: 0.875)" in result.stdout
+        assert "Unscored context (score: 0.000)" in result.stdout
+        assert "truncated context" not in result.stdout
+
     # ========================================================================
     # SESSION COMMANDS
     # ========================================================================
