@@ -269,7 +269,11 @@ class TestMemoryWriteServiceDelete:
 
 
 class TestMemoryReadService:
+    """Unit coverage for memory read service helpers."""
+
     def test_search_multi_scope_builds_namespaces(self):
+        """Verify multi-scope search forwards the expected namespaces."""
+
         from memanto.app.services.memory_read_service import MemoryReadService
 
         client = MagicMock()
