@@ -1,4 +1,3 @@
-<!-- markdownlint-disable MD033 -->
 <p align="center">
     <a href="https://www.memanto.ai/">
     <img alt="MEMANTO Logo" src="https://github.com/moorcheh-ai/memanto/raw/main/assets/memanto-logo.svg" width="500">
@@ -34,24 +33,24 @@
     <a href="https://deepwiki.com/moorcheh-ai/memanto"><img alt="Ask DeepWiki" src="https://deepwiki.com/badge.svg"></a>
     <a href="https://opensource.org/licenses/MIT"><img alt="License: MIT" src="https://img.shields.io/badge/License-MIT-yellow.svg"></a>
     <a href="https://pypi.org/project/memanto/"><img alt="PyPI Version" src="https://img.shields.io/pypi/v/memanto.svg?color=%2334D058"></a>
-  </a>
+    <a href="https://x.com/moorcheh_ai" target="_blank"><img src="https://img.shields.io/twitter/url/https/twitter.com/langchain.svg?style=social&label=Follow%20%40Moorcheh.ai" alt="Twitter / X"></a>
 </p>
 
-<p align="center"><a href="https://trendshift.io/repositories/27378" target="_blank"><img src="https://trendshift.io/api/badge/repositories/27378" alt="moorcheh-ai%2Fmemanto | Trendshift" style="width: 250px; height: 55px;" width="250" height="55"/></a></p>  <!-- markdownlint-disable MD013 -->
+
+<p align="center"><a href="https://trendshift.io/repositories/27378" target="_blank"><img src="https://trendshift.io/api/badge/repositories/27378" alt="moorcheh-ai%2Fmemanto | Trendshift" style="width: 250px; height: 55px;" width="250" height="55"/></a></p>
 
 <p align="center">
-  <a href="https://www.star-history.com/?repos=moorcheh-ai%2Fmemanto&type=date&legend=top-left">
   <a href="https://www.star-history.com/?repos=moorcheh-ai%2Fmemanto&type=date&legend=top-left">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=moorcheh-ai/memanto&type=date&theme=dark&legend=top-left" />
     <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=moorcheh-ai/memanto&type=date&legend=top-left" />
     <img alt="Star History Chart" src="https://api.star-history.com/chart?repos=moorcheh-ai/memanto&type=date&legend=top-left" />
+  </picture>
+  </a>
 </p>
 
 
-<!-- markdownlint-enable MD033 -->
----
-## What
+
 ---
 ## What Is MEMANTO?
 
@@ -70,10 +69,33 @@ Most memory tools today are passive infrastructure: agents have to query them, p
         <h2 style="margin-top: 8px;">With Memanto Connected</strong></h2>
         <img src="https://github.com/moorcheh-ai/memanto/raw/main/assets/After.gif" alt="After" width="1100" style="border-radius: 8px;">
     </div>
-  </div>
-</div>
 
-## Get started in 2 minutes
+
+---
+## What is Memanto?
+
+Memanto is a **companion memory agent** that gives AI agents persistent, long-term memory. It runs entirely on your machine, requires no API keys (beyond the free Moorcheh backend), and works with Claude Code, Cursor, Codex, and 14+ other AI coding agents.
+
+### Key Features
+
+- **🔄 Persistent Memory Across Sessions** — Your agents remember decisions, preferences, and context across sessions without token bloat
+- **🔍 Information-Theoretic Search** — Built on Moorcheh's retrieval engine for accurate, context-aware memory recall
+- **🔒 100% Local & Private** — Runs on your machine; you own all your data
+- **🧠 Active Memory Management** — Automatically distills, organizes, and retrieves relevant memories
+- **🛠️ Framework Agnostic** — Works with any AI agent through simple Python APIs or CLI
+
+---
+
+## Quick Start
+
+### Prerequisites
+
+- Python 3.10+
+- A free Moorcheh API key (get one at [moorcheh.ai](https://moorcheh.ai))
+
+### Installation
+
+
 
 Works on macOS, Linux, and Windows.
 
