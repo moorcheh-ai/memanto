@@ -177,6 +177,18 @@ class TestMEMANTOCLI:
 
         assert _resolve_bind_host(None, server_cfg) == "fe80::1%en0"
 
+    def test_server_bind_decodes_encoded_ipv6_zone_config_url(self):
+        """Full URLs encode IPv6 zone separators, but socket.bind needs raw `%`."""
+        server_cfg = {"url": "http://[fe80::1%25en0]:8123/api", "port": 8123}
+
+        assert _resolve_bind_host(None, server_cfg) == "fe80::1%en0"
+
+    def test_server_bind_decodes_bracketed_encoded_ipv6_zone_config_host_port(self):
+        """Bracketed host:port values may also carry URL-encoded zone IDs."""
+        server_cfg = {"url": "[fe80::1%25en0]:8123", "port": 8123}
+
+        assert _resolve_bind_host(None, server_cfg) == "fe80::1%en0"
+
     def test_server_url_displays_localhost_for_loopback_bind(self):
         """Loopback bind addresses should keep familiar local URLs in output."""
         assert _display_host_for_url("127.0.0.1") == "localhost"
@@ -188,6 +200,11 @@ class TestMEMANTOCLI:
     def test_server_url_brackets_non_loopback_ipv6_bind(self):
         """Non-loopback IPv6 literals need brackets in printed URLs."""
         assert _display_host_for_url("2001:db8::1") == "[2001:db8::1]"
+
+    def test_server_url_encodes_ipv6_zone_bind_host(self):
+        """Raw bind-host zone separators must be escaped before URL display."""
+        assert _display_host_for_url("fe80::1%en0") == "[fe80::1%25en0]"
+        assert _display_host_for_url("fe80::1%25en0") == "[fe80::1%25en0]"
 
     def test_port_check_uses_resolved_bind_host(self):
         """Port checks should align with the actual bind address."""

@@ -74,7 +74,9 @@ def _host_from_config_url(configured_url: str | None) -> str | None:
     except ValueError:
         return value
 
-    return parsed.hostname or value
+    if parsed.hostname:
+        return _decode_ipv6_zone(parsed.hostname)
+    return value
 
 
 def _ip_literal_host(value: str) -> str | None:
@@ -86,6 +88,7 @@ def _ip_literal_host(value: str) -> str | None:
             return None
         host = value[1:closing_bracket]
 
+    host = _decode_ipv6_zone(host)
     try:
         ip_address(host.split("%", 1)[0])
     except ValueError:
@@ -93,22 +96,37 @@ def _ip_literal_host(value: str) -> str | None:
     return host
 
 
+def _decode_ipv6_zone(host: str) -> str:
+    """Convert URL-encoded IPv6 zone separators to socket-bind form."""
+    return host.replace("%25", "%", 1)
+
+
+def _encode_ipv6_zone(host: str) -> str:
+    """Convert socket-bind IPv6 zone separators to URL display form."""
+    raw_host = _decode_ipv6_zone(host)
+    if "%" not in raw_host:
+        return raw_host
+    address, zone = raw_host.split("%", 1)
+    return f"{address}%25{zone}"
+
+
 def _display_host_for_url(bind_host: str) -> str:
     """Return a user-facing host for local URLs."""
     if bind_host == "localhost":
         return "localhost"
+    normalized_host = _decode_ipv6_zone(bind_host)
     try:
-        parsed_host = ip_address(bind_host.split("%", 1)[0])
+        parsed_host = ip_address(normalized_host.split("%", 1)[0])
     except ValueError:
         if ":" in bind_host and not bind_host.startswith("["):
-            return f"[{bind_host}]"
+            return f"[{_encode_ipv6_zone(bind_host)}]"
         return bind_host
 
     if parsed_host.is_loopback or parsed_host.is_unspecified:
         return "localhost"
     if parsed_host.version == 6:
-        return f"[{bind_host}]"
-    return bind_host
+        return f"[{_encode_ipv6_zone(bind_host)}]"
+    return normalized_host
 
 
 def _port_in_use(bind_host: str, port: int) -> bool:
