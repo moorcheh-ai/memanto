@@ -268,6 +268,42 @@ class TestMemoryWriteServiceDelete:
         assert MemoryWriteService(client).delete_memory("m1", "ns") is expected
 
 
+class TestMemoryReadServiceFormat:
+    """Memory formatting should prefer nested metadata without losing falsey values."""
+
+    def test_format_memory_item_preserves_falsey_metadata_values(self):
+        from memanto.app.services.memory_read_service import MemoryReadService
+
+        service = MemoryReadService(MagicMock())
+
+        formatted = service._format_memory_item(
+            {
+                "id": "mem-1",
+                "text": "[FACT] Zero confidence\n\nStored with explicit falsey values.",
+                "metadata": {
+                    "memory_type": "fact",
+                    "confidence": 0.0,
+                    "tags": [],
+                    "validation_count": 0,
+                    "contradiction_detected": False,
+                    "ttl_seconds": 0,
+                },
+                # Flat fields should not replace valid falsey nested metadata.
+                "confidence": 0.95,
+                "tags": "stale",
+                "validation_count": 7,
+                "contradiction_detected": True,
+                "ttl_seconds": 3600,
+            }
+        )
+
+        assert formatted["confidence"] == 0.0
+        assert formatted["tags"] == []
+        assert formatted["validation_count"] == 0
+        assert formatted["contradiction_detected"] is False
+        assert formatted["ttl_seconds"] == 0
+
+
 class TestForgetEndToEnd:
     """End-to-end ``forget`` flow through ``DirectClient``: create agent →
     activate → delete_memory. Asserts on-prem's response shape
