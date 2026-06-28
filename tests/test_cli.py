@@ -1053,6 +1053,21 @@ class TestConfigManagerPersistence:
 
         assert manager.config_file.read_text() == broken_yaml
 
+    def test_set_preserves_null_memanto_mapping_instead_of_overwriting(
+        self, tmp_path
+    ):
+        from memanto.cli.config.manager import ConfigManager
+
+        manager = ConfigManager(config_dir=tmp_path)
+        broken_yaml = "memanto: null\n"
+        manager.config_file.write_text(broken_yaml)
+
+        assert manager.load_yaml() == {}
+        with pytest.raises(ValueError, match="Invalid MEMANTO config YAML"):
+            manager.set("backend", "cloud")
+
+        assert manager.config_file.read_text() == broken_yaml
+
 
 if __name__ == "__main__":
     pytest.main([__file__, "-v", "-s"])

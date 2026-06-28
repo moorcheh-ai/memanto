@@ -272,6 +272,11 @@ class ConfigManager:
 
         memanto_data = data.get("memanto", {})
         if memanto_data is None:
+            if strict:
+                raise ValueError(
+                    f"Invalid MEMANTO config YAML at {self.config_file}: "
+                    "'memanto' must be a mapping"
+                )
             return {}
 
         if not isinstance(memanto_data, dict):
