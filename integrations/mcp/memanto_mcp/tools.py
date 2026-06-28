@@ -483,6 +483,7 @@ def register_tools(mcp: Any, lifecycle: MemantoLifecycle) -> None:
         ] = None,
         agent_id: AgentIdField = None,
     ) -> RecallResult:
+        """Run semantic recall and return normalized MCP memory hits."""
         try:
             resolved = lifecycle.ensure_ready(lifecycle.resolve_agent_id(agent_id))
             result = lifecycle.client.recall(
@@ -537,6 +538,7 @@ def register_tools(mcp: Any, lifecycle: MemantoLifecycle) -> None:
         ] = None,
         agent_id: AgentIdField = None,
     ) -> RecallResult:
+        """Return recent memories as normalized MCP memory hits."""
         try:
             resolved = lifecycle.ensure_ready(lifecycle.resolve_agent_id(agent_id))
             result = lifecycle.client.recall_recent(
@@ -592,6 +594,7 @@ def register_tools(mcp: Any, lifecycle: MemantoLifecycle) -> None:
         ] = None,
         agent_id: AgentIdField = None,
     ) -> RecallResult:
+        """Return point-in-time memories as normalized MCP memory hits."""
         try:
             resolved = lifecycle.ensure_ready(lifecycle.resolve_agent_id(agent_id))
             result = lifecycle.client.recall_as_of(
@@ -648,6 +651,7 @@ def register_tools(mcp: Any, lifecycle: MemantoLifecycle) -> None:
         ] = None,
         agent_id: AgentIdField = None,
     ) -> RecallResult:
+        """Return changed memories as normalized MCP memory hits."""
         try:
             resolved = lifecycle.ensure_ready(lifecycle.resolve_agent_id(agent_id))
             result = lifecycle.client.recall_changed_since(
