@@ -175,7 +175,7 @@ class MemoryReadService:
             namespaces = []
             from typing import cast
 
-            from memanto.memanto.app.constants import ScopeType
+            from memanto.app.constants import ScopeType
 
             for scope_def in scopes:
                 scope = create_memory_scope(
