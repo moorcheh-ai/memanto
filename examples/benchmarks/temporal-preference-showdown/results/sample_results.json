@@ -1,0 +1,118 @@
+{
+  "Memanto (active digest)": {
+    "accuracy_pct": 100.0,
+    "stale_rate_pct": 0.0,
+    "tokens_ingested": 429,
+    "tokens_retrieved": 164,
+    "ingest_p95_ms": 1126.0,
+    "retrieve_p95_ms": 0.0,
+    "queries": [
+      {
+        "query_id": "q1",
+        "query": "What programming language does Alex prefer for backend development?",
+        "retrieved": "programming language: Python is the standardized language across the company; communication preference: Prefers voice calls over Slack messages for async work communication.; job title: Engineering Le",
+        "correct": true,
+        "stale": false,
+        "explanation": "Evolved: Python \u2192 Go \u2192 Python/FastAPI \u2192 Python (company-wide)"
+      },
+      {
+        "query_id": "q2",
+        "query": "Where does Alex live?",
+        "retrieved": "city: Recently moved to Berlin from London.; job title: Engineering Lead; programming language: Python is the standardized language across the company",
+        "correct": true,
+        "stale": false,
+        "explanation": "Moved from London to Berlin in session 2"
+      },
+      {
+        "query_id": "q3",
+        "query": "What is Alex's current role and team size?",
+        "retrieved": "team size: Team of 8 people; job title: Engineering Lead; programming language: Python is the standardized language across the company",
+        "correct": true,
+        "stale": false,
+        "explanation": "Promoted: Backend dev \u2192 Senior Engineer \u2192 Engineering Lead (8 people)"
+      },
+      {
+        "query_id": "q4",
+        "query": "What is Alex's diet?",
+        "retrieved": "programming language: Python is the standardized language across the company; diet: Pescatarian diet, eats fish but not other meat.; job title: Engineering Lead",
+        "correct": true,
+        "stale": false,
+        "explanation": "Changed from vegetarian to pescatarian in session 4"
+      },
+      {
+        "query_id": "q5",
+        "query": "Does Alex prefer dark mode or light mode?",
+        "retrieved": "editor theme: Uses light mode; job title: Engineering Lead; city: Recently moved to Berlin from London.",
+        "correct": true,
+        "stale": false,
+        "explanation": "Switched from dark to light mode in session 5 due to headaches"
+      },
+      {
+        "query_id": "q6",
+        "query": "How does Alex prefer to communicate asynchronously?",
+        "retrieved": "city: Recently moved to Berlin from London.; communication preference: Prefers voice calls over Slack messages for async work communication.; job title: Engineering Lead",
+        "correct": true,
+        "stale": false,
+        "explanation": "Switched from Slack to voice calls in session 4"
+      }
+    ]
+  },
+  "Mem0 (cloud)": {
+    "accuracy_pct": 33.3,
+    "stale_rate_pct": 0.0,
+    "tokens_ingested": 392,
+    "tokens_retrieved": 342,
+    "ingest_p95_ms": 614.2,
+    "retrieve_p95_ms": 879.9,
+    "queries": [
+      {
+        "query_id": "q1",
+        "query": "What programming language does Alex prefer for backend development?",
+        "retrieved": "User migrated their entire backend to the Go programming language after three months of learning Go User now prefers Go over Python for backend development, citing its performance advantages User relo",
+        "correct": true,
+        "stale": false,
+        "explanation": "Evolved: Python \u2192 Go \u2192 Python/FastAPI \u2192 Python (company-wide)"
+      },
+      {
+        "query_id": "q2",
+        "query": "Where does Alex live?",
+        "retrieved": "User relocated from London to Berlin in May 2026, noting that London was too expensive User now prefers Go over Python for backend development, citing its performance advantages User migrated their en",
+        "correct": true,
+        "stale": false,
+        "explanation": "Moved from London to Berlin in session 2"
+      },
+      {
+        "query_id": "q3",
+        "query": "What is Alex's current role and team size?",
+        "retrieved": "User relocated from London to Berlin in May 2026, noting that London was too expensive User migrated their entire backend to the Go programming language after three months of learning Go User now pref",
+        "correct": false,
+        "stale": false,
+        "explanation": "Promoted: Backend dev \u2192 Senior Engineer \u2192 Engineering Lead (8 people)"
+      },
+      {
+        "query_id": "q4",
+        "query": "What is Alex's diet?",
+        "retrieved": "User relocated from London to Berlin in May 2026, noting that London was too expensive User now prefers Go over Python for backend development, citing its performance advantages User migrated their en",
+        "correct": false,
+        "stale": false,
+        "explanation": "Changed from vegetarian to pescatarian in session 4"
+      },
+      {
+        "query_id": "q5",
+        "query": "Does Alex prefer dark mode or light mode?",
+        "retrieved": "User now prefers Go over Python for backend development, citing its performance advantages User relocated from London to Berlin in May 2026, noting that London was too expensive User migrated their en",
+        "correct": false,
+        "stale": false,
+        "explanation": "Switched from dark to light mode in session 5 due to headaches"
+      },
+      {
+        "query_id": "q6",
+        "query": "How does Alex prefer to communicate asynchronously?",
+        "retrieved": "User now prefers Go over Python for backend development, citing its performance advantages User relocated from London to Berlin in May 2026, noting that London was too expensive User migrated their en",
+        "correct": false,
+        "stale": false,
+        "explanation": "Switched from Slack to voice calls in session 4"
+      }
+    ]
+  }
+}
