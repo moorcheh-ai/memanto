@@ -368,6 +368,15 @@ def agent_bootstrap(
         console.print(f"\n[dim]Completed in {elapsed:.2f}s[/dim]")
         return
 
+    def _confidence_float(value: Any, default: float = 0.0) -> float:
+        """Return a display-safe confidence value for untrusted memory metadata."""
+        if value is None:
+            return default
+        try:
+            return float(value)
+        except (ValueError, TypeError):
+            return default
+
     # Compute aggregates
     type_counter: Counter = Counter()
     status_counter: Counter = Counter()
@@ -408,7 +417,7 @@ def agent_bootstrap(
 
     key_knowledge = sorted(
         key_knowledge_raw,
-        key=lambda m: float(m.get("confidence") or 0),
+        key=lambda m: _confidence_float(m.get("confidence")),
         reverse=True,
     )
 
@@ -478,7 +487,7 @@ def agent_bootstrap(
                 _snippet(mem.get("title") or "Untitled", 40),
                 _snippet(mem.get("content") or ""),
                 mem.get("type") or "—",
-                f"{float(mem.get('confidence') or 0):.2f}",
+                f"{_confidence_float(mem.get('confidence')):.2f}",
                 format_local_time(mem.get("created_at")) or "—",
             )
 
@@ -509,7 +518,7 @@ def agent_bootstrap(
                 _snippet(mem.get("title") or "Untitled", 40),
                 _snippet(mem.get("content") or ""),
                 mem.get("type") or "—",
-                f"{float(mem.get('confidence') or 0):.2f}",
+                f"{_confidence_float(mem.get('confidence')):.2f}",
                 format_local_time(mem.get("created_at")) or "—",
             )
 
@@ -531,7 +540,7 @@ def agent_bootstrap(
     for mem_type, label in type_labels.items():
         mems = sorted(
             type_samples.get(mem_type, []),
-            key=lambda m: float(m.get("confidence") or 0),
+            key=lambda m: _confidence_float(m.get("confidence")),
             reverse=True,
         )[:5]
 
@@ -549,7 +558,7 @@ def agent_bootstrap(
                 str(i),
                 _snippet(mem.get("title") or "Untitled", 40),
                 _snippet(mem.get("content") or ""),
-                f"{float(mem.get('confidence') or 0):.2f}",
+                f"{_confidence_float(mem.get('confidence')):.2f}",
             )
 
         console.print(Panel(type_table, title=f"{label} (Top 5)", border_style=ACCENT))
@@ -619,7 +628,7 @@ def agent_bootstrap(
                     _mem_to_dict(m)
                     for m in sorted(
                         type_samples.get(t, []),
-                        key=lambda m: float(m.get("confidence") or 0),
+                        key=lambda m: _confidence_float(m.get("confidence")),
                         reverse=True,
                     )[:5]
                 ]

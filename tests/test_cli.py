@@ -617,6 +617,39 @@ class TestMEMANTOCLI:
         assert result.exit_code == 0
         assert "Intelligence Snapshot" in result.stdout
 
+    def test_agent_bootstrap_handles_invalid_confidence(
+        self, mock_all_clients, tmp_path
+    ):
+        """Agent bootstrap should not crash on malformed confidence metadata."""
+        mock_all_clients.get_agent.return_value = {
+            "agent_id": "test-agent",
+            "pattern": "support",
+            "namespace": "memanto_agent_test-agent",
+        }
+        mock_all_clients.recall.return_value = {
+            "memories": [
+                {
+                    "id": "mem-1",
+                    "title": "Malformed confidence",
+                    "content": "Backend returned a non-numeric confidence.",
+                    "type": "fact",
+                    "confidence": "high",
+                    "status": "active",
+                    "created_at": "2026-06-28T00:00:00Z",
+                }
+            ]
+        }
+        output_path = tmp_path / "bootstrap.json"
+
+        result = runner.invoke(
+            app, ["agent", "bootstrap", "--output", str(output_path)]
+        )
+
+        assert result.exit_code == 0
+        report = json.loads(output_path.read_text())
+        assert report["key_knowledge"][0]["title"] == "Malformed confidence"
+        assert report["memory_overview"]["avg_confidence"] == 0.0
+
     def test_memory_batch_remember(self, mock_all_clients, tmp_path):
         """Test 'memanto remember --batch'"""
         batch_file = tmp_path / "batch.json"
