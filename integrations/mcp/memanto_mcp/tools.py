@@ -375,30 +375,10 @@ def register_tools(mcp: Any, lifecycle: MemantoLifecycle) -> None:
         agent_id: AgentIdField = None,
     ) -> BatchRememberResult:
         try:
-            resolved = lifecycle.ensure_ready(lifecycle.resolve_agent_id(agent_id))
             # Validate before round-trip so we fail fast with a clear error.
-            for i, item in enumerate(memories):
-                if not isinstance(item, dict):
-                    raise ValueError(
-                        f"memories[{i}] must be an object, got {type(item).__name__}"
-                    )
-                if "content" not in item or not str(item["content"]).strip():
-                    raise ValueError(
-                        f"memories[{i}] is missing required field 'content'"
-                    )
-                m_type = item.get("type", "fact")
-                if m_type not in VALID_MEMORY_TYPES:
-                    raise ValueError(
-                        f"memories[{i}].type={m_type!r} is not a valid memory type. "
-                        f"Choose one of: {sorted(VALID_MEMORY_TYPES)}"
-                    )
-                prov = item.get("provenance", "explicit_statement")
-                if prov not in VALID_PROVENANCE_TYPES:
-                    raise ValueError(
-                        f"memories[{i}].provenance={prov!r} is not valid. "
-                        f"Choose one of: {sorted(VALID_PROVENANCE_TYPES)}"
-                    )
+            _validate_batch_memories(memories)
 
+            resolved = lifecycle.ensure_ready(lifecycle.resolve_agent_id(agent_id))
             result = lifecycle.client.batch_remember(
                 agent_id=resolved,
                 memories=memories,
@@ -926,3 +906,26 @@ def _normalize_tags(raw_tags: Any) -> list[str]:
     if isinstance(raw_tags, list):
         return [str(tag).strip() for tag in raw_tags if str(tag).strip()]
     return []
+
+
+def _validate_batch_memories(memories: list[dict[str, Any]]) -> None:
+    """Validate raw MCP batch payloads before any lifecycle side effects."""
+    for i, item in enumerate(memories):
+        if not isinstance(item, dict):
+            raise ValueError(
+                f"memories[{i}] must be an object, got {type(item).__name__}"
+            )
+        if "content" not in item or not str(item["content"]).strip():
+            raise ValueError(f"memories[{i}] is missing required field 'content'")
+        m_type = item.get("type", "fact")
+        if m_type not in VALID_MEMORY_TYPES:
+            raise ValueError(
+                f"memories[{i}].type={m_type!r} is not a valid memory type. "
+                f"Choose one of: {sorted(VALID_MEMORY_TYPES)}"
+            )
+        prov = item.get("provenance", "explicit_statement")
+        if prov not in VALID_PROVENANCE_TYPES:
+            raise ValueError(
+                f"memories[{i}].provenance={prov!r} is not valid. "
+                f"Choose one of: {sorted(VALID_PROVENANCE_TYPES)}"
+            )
