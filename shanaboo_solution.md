@@ -10,143 +10,151 @@
 +
 +__version__ = "0.1.0"
 +
-+from memanto.core.memory import Memory
-+from memanto.core.agent import Agent
-+from memanto.core.session import Session
++from memanto.client import MemantoClient
++from memanto.memory import MemoryManager
++from memanto.errors import MemantoError, AuthenticationError, RateLimitError
 +
-+__all__ = ["Memory", "Agent", "Session"]
++__all__ = ["MemantoClient", "MemoryManager", "MemantoError", "AuthenticationError", "RateLimitError"]
 +
 +
-+--- a/memanto/core/memory.py
-+++ b/memanto/core/memory.py
-@@ -0,0 +1,247 @@
-+"""Core memory management with timeline tracking and contradiction resolution."""
++--- /dev/null
++++ b/memanto/client.py
+@@ -0,0 +1,156 @@
++"""Memanto API client with secure credential handling and connection management."""
 +
 +from __future__ import annotations
 +
-+import hashlib
-+import json
++import os
 +import re
-+from dataclasses import dataclass, field
-+from datetime import datetime, timezone
-+from typing import Any, Optional
++import time
++import urllib.parse
++from typing import Any
++
++import requests
++
++from memanto.errors import AuthenticationError, MemantoError, RateLimitError
 +
 +
-+@dataclass
-+class MemoryFact:
-+    """A single memory fact with metadata for timeline and source tracking."""
-+    
-+    content: str
-+    timestamp: datetime
-+    source: str
-+    fact_id: str = field(default_factory=lambda: "")
-+    confidence: float = 1.0
-+    contradicted_by: Optional[str] = None
-+    is_contradiction: bool = False
-+    version: int = 1
-+    
-+    def __post_init__(self):
-+        if not self.fact_id:
-+            self.fact 
++def _mask_key(key: str | None) -> str:
++    """Mask an API key for safe logging."""
++    if not key:
++        return "<not set>"
++    if len(key) <= 8:
++        return "***"
++    return key[:4] + "..." + key[-4:]
 +
 +
-+class ContradictionResolver:
-+    """Resolves contradictions between memory facts with proper timeline tracking."""
-+    
-+    CONTRADICTION_PATTERNS = [
-+        # Pattern: "X is Y" vs "X is not Y" / "X is Z"
-+        (r"(?i)(.+)\s+is\s+(.+)", r"\1\s+is\s+(not\s+)?(?!\\2\b).+"),
-+        # Pattern: "always X" vs "never X" / "sometimes X"
-+        (r"(?i)always\s+(.+)", r"(never|sometimes|no longer)\s+\1"),
-+        # Pattern: "use X" vs "don't use X" / "use Y instead"
-+        (r"(?i)use\s+(.+)", r"(don't|do not|never)\s+use\s+\1"),
-+        # Pattern: "prefer X" vs "prefer Y" (different objects)
-+        (r"(?i)prefer\s+(.+)", r"prefer\s+(?!\\1\b).+"),
-+    ]
-+    
-+    @classmethod
-+    def detect_contradiction(cls, fact1: MemoryFact, fact2: MemoryFact) -> bool:
-+        """Detect if two facts contradict each other."""
-+        # Same fact can't contradict itself
-+        if fact1.fact_id == fact2.fact_id:
-+            return False
-+        
-+        # Normalize content for comparison
-+        content1 = cls._normalize(fact1.content)
-+        content2 = cls._normalize(fact2.content)
-+        
-+        # Check for direct negation patterns
-+        for pattern, negation in cls.CONTRADICTION_PATTERNS:
-+            if re.search(pattern, content1) and re.search(negation, content2):
-+                if cls._same_subject(content1, content2):
-+                    return True
-+            if re.search(pattern, content2) and re.search(negation, content1):
-+                if cls._same_subject(content1, content2):
-+                    return True
-+        
-+        # Check for temporal contradictions (same subject, different values)
-+        if cls._same_subject(content1, content2) and cls._different_predicate(content1, content2):
-+            # Check if they have overlapping semantic meaning
-+            similarity = cls._semantic_similarity(content1, content2)
-+            if similarity > 0.7:  # High semantic overlap suggests potential contradiction
-+                return True
-+        
-+        return False
-+    
-+    @staticmethod
-+    def _normalize(content: str) -> str:
-+        """Normalize content for comparison."""
-+        content = content.lower().strip()
-+        # Remove extra whitespace
-+        content = re.sub(r'\s+', ' ', content)
-+        return content
-+    
-+    @staticmethod
-+    def _same_subject(content1: str, content2: str) -> bool:
-+        """Check if two facts are about the same subject."""
-+        # Extract subject (first noun phrase or first few words)
-+        words1 = content1.split()[:3]
-+        words2 = content2.split()[:3]
-+        # Simple heuristic: share at least 2 of first 3 significant words
-+        shared = sum(1 for w in words1 if w in words2 and len(w) > 2)
-+        return shared >= 1
-+    
-+    @staticmethod
-+    def _different_predicate(content1: str, content2: str) -> bool:
-+        """Check if two facts have different predicates/values."""
-+        # Simple check: are they different statements?
-+        return content1 != content2
-+    
-+    @staticmethod
-+    def _semantic_similarity(content1: str, content2: str) -> float:
-+        """Calculate simple semantic similarity between two strings."""
-+        # Jaccard similarity on word sets
-+        words1 = set(content1.split())
-+        words2 = set(content2.split())
-+        if not words1 or not words2:
-+            return 0.0
-+        intersection = words1 & words2
-+        union = words1 | words2
-+        return len(intersection) / len(union)
-+    
-+    @classmethod
-+    def resolve(cls, old_fact: MemoryFact, new_fact: MemoryFact) -> MemoryFact:
-+        """Resolve contradiction by keeping the newer fact with proper attribution."""
-+        # The newer fact supersedes the old one
-+        new_fact.is_contradiction = True
-+        new_fact.version = old_fact.version + 1
-+        return new_fact
++class MemantoClient:
++    """Secure client for the moorcheh.ai memory backend.
 +
++    Features:
++    - API key validation at initialization
++    - Secure header handling (no key leakage in logs/exceptions)
++    - Connection pooling via requests.Session
++    - Automatic retry with exponential backoff on 429/5xx
++    - Timeout enforcement to prevent hanging
++    """
 +
-+class MemoryStore:
-+    """Secure memory store with timeline tracking and contradiction handling."""
-+    
-+    def __init__(self):
-+        self._facts: dict[str, MemoryFact] = {}
-+        self._timeline_index: list[tuple[datetime, str]] = []  # (timestamp, fact_id)
-+        self._contradiction_resolver = ContradictionResolver()
-+    
-+    def add_fact(self, content: str, source: str, timestamp: Optional[datetime] = None) -> MemoryFact:
-+        """Add a fact to memory with automatic contradiction detection."""
-+        if not content or not content.strip():
-+            raise ValueError("Fact content cannot be empty
++    DEFAULT_BASE_URL = "https://api.moorcheh.ai"
++    MAX_RETRIES = 3
++    BACKOFF_BASE = 1.0  # seconds
++
++    def __init__(
++        self,
++        api_key: str | None = None,
++        base_url: str | None = None,
++        timeout: float = 30.0,
++    ) -> None:
++        self._api_key = self._resolve_api_key(api_key)
++        self._base_url = self._resolve_base_url(base_url)
++        self._timeout = timeout
++        self._session = requests.Session()
++        self._session.headers.update(self._auth_headers())
++
++    def _resolve_api_key(self, api_key: str | None) -> str:
++        """Resolve API key from parameter or environment, with validation."""
++        key = api_key or os.environ.get("MOORCHEH_API_KEY")
++        if not key:
++            raise AuthenticationError(
++                "MOORCHEH_API_KEY not provided. Set it as an environment variable "
++                "or pass it to the MemantoClient constructor."
++            )
++        # Basic format validation to catch copy-paste errors early
++        if not re.match(r"^mch_[a-zA-Z0-9]{32,}$", key):
++            raise AuthenticationError(
++                f"Invalid API key format: {_mask_key(key)}. "
++                "Expected format: mch_<alphanumeric> (at least 32 chars after prefix)."
++            )
++        return key
++
++    def _resolve_base_url(self, base_url: str | None) -> str:
++        """Validate and normalize the base URL."""
++        url = base_url or os.environ.get("MOORCHEH_BASE_URL", self.DEFAULT_BASE_URL)
++        parsed = urllib.parse.urlparse(url)
++        if parsed.scheme not in ("https", "http"):
++            raise MemantoError(f"Invalid base URL scheme: {url}. Must be http or https.")
++        return url.rstrip("/")
++
++    def _auth_headers(self) -> dict[str, str]:
++        """Generate authorization headers."""
++        return {
++            "Authorization": f"Bearer {self._api_key}",
++            "Content-Type": "application/json",
++            "User-Agent": "memanto-python/0.1.0",
++        }
++
++    def _request(
++        self,
++        method: str,
++        path: str,
++        *,
++        retries: int = 0,
++        **kwargs: Any,
++    ) -> requests.Response:
++        """Make an HTTP request with retry logic and timeout."""
++        url = f"{self._base_url}{path}"
++        # Inject timeout if not already present
++        if "timeout" not in kwargs:
++            kwargs["timeout"] = self._timeout
++
++        try:
++            response = self._session.request(method, url, **kwargs)
++            response.raise_for_status()
++            return response
++        except requests.exceptions.HTTPError as exc:
++            if exc.response.status_code == 401:
++                raise AuthenticationError("Invalid API key. Please check your credentials.") from exc
++            if exc.response.status_code == 429:
++                if retries < self.MAX_RETRIES:
++                    wait = self.BACKOFF_BASE * (2 ** retries)
++                    time.sleep(wait)
++                    return self._request(method, path, retries=retries + 1, **kwargs)
++                to_raise = RateLimitError("Rate limit exceeded. Max retries reached.")
++                raise to_raise from exc
++            if 500 <= exc.response.status_code < 600 and retries < self.MAX_RETRIES:
++                wait = self.BACKOFF_BASE * (2 ** retries)
++                time.sleep(wait)
++                return self._request(method, path, retries=retries + 1, **kwargs)
++            raise MemantoError(f"API request failed: {exc}") from exc
++        except requests.exceptions.Timeout as exc:
++            raise MemantoError(f"Request to {url} timed out after {self._timeout}s") from exc
++        except requests.exceptions.RequestException as exc:
++            raise MemantoError(f"Network error: {exc}") from exc
++
++    def get(self, path: str, **kwargs: Any) -> requests.Response:
++        return self._request("GET", path, **kwargs)
++
++    def post(self, path: str, **kwargs: Any) -> requests.Response:
++        return self._request("POST", path, **kwargs)
++
++    def put(self, path: str, **kwargs: Any) -> requests.Response:
++        return self._request("PUT", path, **kwargs)
++
++    def delete(self, path: str, **kwargs: Any) -> requests.Response:
++        return self._request("DELETE", path, **kwargs)
++
++    def close(self) -> None:
++        """Close the underlying session to free connections."""
++        self._session.close()
++
++    def __enter__(self) -> MemantoClient
