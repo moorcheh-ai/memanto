@@ -257,6 +257,7 @@ class MemantoRecallTool(BaseTool):
         memory_types: str = "",
         min_similarity: float | None = None,
     ) -> str:
+        """Recall memories and render only well-formed rows for CrewAI."""
         type_list = (
             [t.strip() for t in memory_types.split(",") if t.strip()]
             if memory_types

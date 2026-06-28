@@ -109,6 +109,7 @@ def test_memanto_recall_tool_success():
 
 
 def test_memanto_recall_tool_skips_malformed_memory_rows():
+    """Malformed recall rows do not hide valid CrewAI memory results."""
     client = MagicMock()
     client.recall.return_value = {
         "memories": [
@@ -133,6 +134,7 @@ def test_memanto_recall_tool_skips_malformed_memory_rows():
 
 
 def test_memanto_recall_tool_normalizes_string_tags():
+    """String tags render as semantic tags instead of characters."""
     client = MagicMock()
     client.recall.return_value = {
         "memories": [
