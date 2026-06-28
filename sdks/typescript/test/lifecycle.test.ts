@@ -68,28 +68,33 @@ describe("ServerLifecycle", () => {
     fetchSpy.mockRestore();
   });
 
-  it("does not hang when stopping an already exited child process", async () => {
-    const life = new ServerLifecycle();
-    const child = Object.assign(new EventEmitter(), {
-      killed: false,
-      exitCode: 1,
-      signalCode: null,
-      kill: vi.fn(),
-    }) as unknown as ChildProcess;
+  for (const stoppedState of [
+    { name: "exitCode", exitCode: 1, signalCode: null },
+    { name: "signalCode", exitCode: null, signalCode: "SIGTERM" },
+  ] as const) {
+    it(`does not hang when stopping an already exited child process with ${stoppedState.name}`, async () => {
+      const life = new ServerLifecycle();
+      const child = Object.assign(new EventEmitter(), {
+        killed: false,
+        exitCode: stoppedState.exitCode,
+        signalCode: stoppedState.signalCode,
+        kill: vi.fn(),
+      }) as unknown as ChildProcess;
 
-    (
-      life as unknown as { process: ChildProcess | null; url: string | null }
-    ).process = child;
-    (
-      life as unknown as { process: ChildProcess | null; url: string | null }
-    ).url = "http://127.0.0.1:8765";
+      (
+        life as unknown as { process: ChildProcess | null; url: string | null }
+      ).process = child;
+      (
+        life as unknown as { process: ChildProcess | null; url: string | null }
+      ).url = "http://127.0.0.1:8765";
 
-    const result = await Promise.race([
-      life.stop().then(() => "stopped"),
-      new Promise((resolve) => setTimeout(() => resolve("timeout"), 50)),
-    ]);
+      const result = await Promise.race([
+        life.stop().then(() => "stopped"),
+        new Promise((resolve) => setTimeout(() => resolve("timeout"), 50)),
+      ]);
 
-    expect(result).toBe("stopped");
-    expect(child.kill).not.toHaveBeenCalled();
-  });
+      expect(result).toBe("stopped");
+      expect(child.kill).not.toHaveBeenCalled();
+    });
+  }
 });
