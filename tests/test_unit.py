@@ -410,10 +410,12 @@ class TestMEMANTOArchitecture:
         print(f"   Fields: {list(payload.keys())}")
         print("   ✅ NO tenant_id in token!")
 
+
 def test_conflict_report_handles_non_object_json_items(tmp_path, monkeypatch):
     """Malformed conflict-item schemas should be preserved instead of crashing."""
     import json
     from unittest.mock import MagicMock
+
     from memanto.app.services import daily_analysis_service as module
 
     sessions_dir = tmp_path / "sessions"
@@ -440,12 +442,13 @@ def test_conflict_report_handles_non_object_json_items(tmp_path, monkeypatch):
     assert result["status"] == "success"
     assert result["conflict_count"] == 1
 
-    conflicts_path = tmp_path / ".memanto" / "conflicts" / (
-        "agent-1_2026-06-28_conflicts.json"
+    conflicts_path = (
+        tmp_path / ".memanto" / "conflicts" / ("agent-1_2026-06-28_conflicts.json")
     )
     conflicts = json.loads(conflicts_path.read_text(encoding="utf-8"))
     assert conflicts[0]["title"] == "Unparsed conflict report"
     assert conflicts[0]["description"] == '["not an object", 1]'
+
 
 if __name__ == "__main__":
     pytest.main([__file__, "-v", "-s"])

@@ -123,14 +123,13 @@ class ConflictResolveRequest(BaseModel):
     """Request body for resolving a conflict"""
 
     conflict_index: int = Field(..., ge=0, description="Conflict index to resolve")
-    action: Literal[
-        "keep_old", "keep_new", "keep_both", "remove_both", "manual"
-    ] = Field(
-        ...,
-        description=(
-            "Resolution action: keep_old, keep_new, keep_both, "
-            "remove_both, manual"
-        ),
+    action: Literal["keep_old", "keep_new", "keep_both", "remove_both", "manual"] = (
+        Field(
+            ...,
+            description=(
+                "Resolution action: keep_old, keep_new, keep_both, remove_both, manual"
+            ),
+        )
     )
     date: str | None = Field(
         None, description="Conflict report date (YYYY-MM-DD). Defaults to today."
