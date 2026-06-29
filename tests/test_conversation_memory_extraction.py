@@ -98,6 +98,39 @@ def test_extract_omits_unset_active_ai_model(monkeypatch):
     assert "ai_model" not in client.answer.call_kwargs
 
 
+def test_extract_skips_bracketed_prose_before_json_array():
+    client = FakeClient(
+        """
+        Extraction notes [draft]: scanned transcript for durable facts.
+        [
+          {
+            "type": "fact",
+            "title": "Deployment window",
+            "content": "The user deploys production services after 18:00 UTC.",
+            "confidence": 0.88
+          }
+        ]
+        """
+    )
+
+    service = ConversationMemoryExtractionService(client)
+    candidates = service.extract(
+        namespace="memanto_agent_test",
+        messages=[{"role": "user", "content": "I deploy production after 18:00 UTC."}],
+    )
+
+    assert candidates == [
+        {
+            "type": "fact",
+            "title": "Deployment window",
+            "content": "The user deploys production services after 18:00 UTC.",
+            "confidence": 0.88,
+            "source": "conversation",
+            "provenance": "inferred",
+        }
+    ]
+
+
 def test_extract_rejects_non_json_answers():
     service = ConversationMemoryExtractionService(FakeClient("not json"))
 

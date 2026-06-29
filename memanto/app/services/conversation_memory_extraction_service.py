@@ -121,10 +121,16 @@ class ConversationMemoryExtractionService:
         try:
             return json.loads(text)
         except json.JSONDecodeError:
-            start = text.find("[")
-            end = text.rfind("]")
-            if start != -1 and end != -1 and end > start:
-                return json.loads(text[start : end + 1])
+            decoder = json.JSONDecoder()
+            for match in re.finditer(r"[\[{]", text):
+                try:
+                    parsed, end = decoder.raw_decode(text[match.start() :])
+                except json.JSONDecodeError:
+                    continue
+                if not text[match.start() + end :].strip():
+                    return parsed
+                if isinstance(parsed, list):
+                    return parsed
             raise ValueError("Memory extraction did not return valid JSON")
 
     def _normalize_candidates(
