@@ -1106,6 +1106,66 @@ class TestMEMANTOAPI:
         assert data["action"] == "keep_new"
 
     @pytest.mark.asyncio
+    async def test_conflicts_resolve_rejects_invalid_action(
+        self, client, auth_headers
+    ):
+        """Invalid conflict actions should fail validation before business logic."""
+        await client.post(
+            "/api/v2/agents",
+            headers=auth_headers,
+            json={"agent_id": self.TEST_AGENT_ID},
+        )
+        activate_resp = await client.post(
+            f"/api/v2/agents/{self.TEST_AGENT_ID}/activate", headers=auth_headers
+        )
+        token = activate_resp.json()["session_token"]
+        headers = {**auth_headers, "X-Session-Token": token}
+
+        with patch("memanto.app.routes.memory.DirectClient") as mock_client_cls:
+            response = await client.post(
+                f"/api/v2/agents/{self.TEST_AGENT_ID}/conflicts/resolve",
+                headers=headers,
+                json={
+                    "date": "2026-05-08",
+                    "conflict_index": 0,
+                    "action": "delete_everything",
+                },
+            )
+
+        assert response.status_code == 422
+        mock_client_cls.return_value.resolve_conflict.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_conflicts_resolve_requires_manual_content(
+        self, client, auth_headers
+    ):
+        """Manual conflict resolution needs replacement content."""
+        await client.post(
+            "/api/v2/agents",
+            headers=auth_headers,
+            json={"agent_id": self.TEST_AGENT_ID},
+        )
+        activate_resp = await client.post(
+            f"/api/v2/agents/{self.TEST_AGENT_ID}/activate", headers=auth_headers
+        )
+        token = activate_resp.json()["session_token"]
+        headers = {**auth_headers, "X-Session-Token": token}
+
+        with patch("memanto.app.routes.memory.DirectClient") as mock_client_cls:
+            response = await client.post(
+                f"/api/v2/agents/{self.TEST_AGENT_ID}/conflicts/resolve",
+                headers=headers,
+                json={
+                    "date": "2026-05-08",
+                    "conflict_index": 0,
+                    "action": "manual",
+                },
+            )
+
+        assert response.status_code == 422
+        mock_client_cls.return_value.resolve_conflict.assert_not_called()
+
+    @pytest.mark.asyncio
     async def test_upload_file_with_session(self, client, auth_headers, mock_moorcheh):
         """Test file upload to agent's memory namespace"""
         # Setup agent and session
