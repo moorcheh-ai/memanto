@@ -21,22 +21,6 @@ from memanto.app.utils.temporal_helpers import (
 )
 
 
-def _unparsed_conflict_report(conflict_text: str) -> dict[str, Any]:
-    """Build a saved conflict entry for model output that is not structured JSON."""
-    return {
-        "type": "conflict",
-        "title": "Unparsed conflict report",
-        "old_memory_id": None,
-        "old_content": None,
-        "new_memory_id": None,
-        "new_content": None,
-        "description": conflict_text,
-        "recommendation": "merge",
-        "resolved": False,
-        "resolution": None,
-    }
-
-
 class DailyAnalysisService:
     """Service for analyzing a day's session MD files — generates the
     daily AI summary and the conflict report.
@@ -235,68 +219,83 @@ Example response format:
                 clean_text = clean_text[:-3].strip()
 
             parsed = json.loads(clean_text)
-            if isinstance(parsed, list) and all(
+            if not isinstance(parsed, list) or not all(
                 isinstance(item, dict) for item in parsed
             ):
-                # Filter out self-referencing conflicts (same ID on both sides)
-                parsed = [
-                    item
-                    for item in parsed
-                    if not (
-                        item.get("old_memory_id")
-                        and item.get("new_memory_id")
-                        and item["old_memory_id"] == item["new_memory_id"]
-                    )
-                ]
-                # Add resolved=False, resolution, and timestamps to each conflict
-                for item in parsed:
-                    item.setdefault("resolved", False)
-                    item.setdefault("resolution", None)
+                raise ValueError(
+                    "AI response parsed as JSON but is not a list of objects"
+                )
 
-                    # Fetch timestamps and source
-                    for prefix in ["old", "new"]:
-                        mem_id = item.get(f"{prefix}_memory_id")
-                        # Default values
-                        item[f"{prefix}_created_at"] = None
-                        item[f"{prefix}_source"] = "unknown"
+            # Filter out self-referencing conflicts (same ID on both sides)
+            parsed = [
+                item
+                for item in parsed
+                if not (
+                    item.get("old_memory_id")
+                    and item.get("new_memory_id")
+                    and item["old_memory_id"] == item["new_memory_id"]
+                )
+            ]
+            # Add resolved=False, resolution, and timestamps to each conflict
+            for item in parsed:
+                item.setdefault("resolved", False)
+                item.setdefault("resolution", None)
 
-                        if mem_id:
-                            try:
-                                doc_result = client.documents.get(
-                                    namespace_name=namespace, ids=[mem_id]
+                # Fetch timestamps and source
+                for prefix in ["old", "new"]:
+                    mem_id = item.get(f"{prefix}_memory_id")
+                    # Default values
+                    item[f"{prefix}_created_at"] = None
+                    item[f"{prefix}_source"] = "unknown"
+
+                    if mem_id:
+                        try:
+                            doc_result = client.documents.get(
+                                namespace_name=namespace, ids=[mem_id]
+                            )
+                            # Note: Moorcheh SDK documents.get returns the list under "items", not "documents" contrary to its typed response model
+                            doc_dict = cast(dict[str, Any], doc_result)
+                            if doc_dict and doc_dict.get("items"):
+                                doc = doc_dict["items"][0]
+                                metadata = doc.get("metadata") or {}
+
+                                # Fallback to flat fields if metadata object is empty
+                                created_at = metadata.get("created_at") or doc.get(
+                                    "created_at"
                                 )
-                                # Note: Moorcheh SDK documents.get returns the list under "items", not "documents" contrary to its typed response model
-                                doc_dict = cast(dict[str, Any], doc_result)
-                                if doc_dict and doc_dict.get("items"):
-                                    doc = doc_dict["items"][0]
-                                    metadata = doc.get("metadata") or {}
-
-                                    # Fallback to flat fields if metadata object is empty
-                                    created_at = metadata.get("created_at") or doc.get(
-                                        "created_at"
-                                    )
-                                    source = (
-                                        metadata.get("source")
-                                        or doc.get("source")
-                                        or "unknown"
-                                    )
-
-                                    item[f"{prefix}_created_at"] = format_local_time(
-                                        created_at
-                                    )
-                                    item[f"{prefix}_source"] = source
-                            except Exception as e:
-                                print(
-                                    f"Note: Could not fetch metadata for memory {mem_id}: {e}"
+                                source = (
+                                    metadata.get("source")
+                                    or doc.get("source")
+                                    or "unknown"
                                 )
 
-                conflicts_data = parsed
-            elif conflict_text.strip() and conflict_text.strip() != "[]":
-                conflicts_data = [_unparsed_conflict_report(conflict_text)]
+                                item[f"{prefix}_created_at"] = format_local_time(
+                                    created_at
+                                )
+                                item[f"{prefix}_source"] = source
+                        except Exception as e:
+                            print(
+                                f"Note: Could not fetch metadata for memory {mem_id}: {e}"
+                            )
+
+            conflicts_data = parsed
         except (json.JSONDecodeError, ValueError):
-            # If AI didn't return valid JSON, wrap the raw text as a single conflict
+            # If AI didn't return valid JSON (or returned wrong shape), wrap the raw text as a single conflict
             if conflict_text.strip() and conflict_text.strip() != "[]":
-                conflicts_data = [_unparsed_conflict_report(conflict_text)]
+                conflicts_data = [
+                    {
+                        "type": "conflict",
+                        "title": "Unparsed conflict report",
+                        "old_memory_id": None,
+                        "old_content": None,
+                        "new_memory_id": None,
+                        "new_content": None,
+                        "description": conflict_text,
+                        "recommendation": "merge",
+                        "resolved": False,
+                        "resolution": None,
+                    }
+                ]
 
         # Save structured JSON for interactive resolution
         json_path = conflicts_dir / f"{agent_id}_{date}_conflicts.json"
