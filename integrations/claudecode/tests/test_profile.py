@@ -76,6 +76,27 @@ class TestFormatContextBlock:
         ).format_context_block()
         assert "456" in block
 
+    def test_falsy_scalar_content_values_are_preserved(self) -> None:
+        block = MemoryProfile(
+            [
+                {"type": "fact", "content": 0, "title": "fallback"},
+                {"type": "fact", "content": False, "title": "fallback"},
+                {"type": "fact", "content": 0.0, "title": "fallback"},
+            ]
+        ).format_context_block()
+
+        assert "  - 0\n" in block
+        assert "  - False\n" in block
+        assert "  - 0.0\n" in block
+        assert "fallback" not in block
+
+    def test_missing_content_falls_back_to_title(self) -> None:
+        block = MemoryProfile(
+            [{"type": "fact", "title": "fallback title"}]
+        ).format_context_block()
+
+        assert "fallback title" in block
+
     def test_content_present(self, sample_memories: list[dict[str, Any]]) -> None:
         block = MemoryProfile(sample_memories).format_context_block()
         assert "Always use Vitest" in block

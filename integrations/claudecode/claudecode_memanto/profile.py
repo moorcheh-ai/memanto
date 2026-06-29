@@ -131,7 +131,10 @@ class MemoryProfile:
 
 
 def _render_memory(mem: dict[str, Any]) -> str:
-    content = str(mem.get("content") or mem.get("title") or "").strip()
+    raw_content = mem.get("content")
+    if raw_content is None:
+        raw_content = mem.get("title", "")
+    content = str(raw_content).strip()
     confidence = mem.get("confidence")
     if isinstance(confidence, (int, float)) and confidence < 0.6:
         return f"{content} (tentative)"
