@@ -1,16 +1,18 @@
-"""Memanto - Memory that AI Agents Love!"""
+"""
+Memanto - Memory that AI Agents Love!
+"""Memanto - Memory that AI Agents Love!
 
-__version__ = "0.1.0"
+A companion memory agent that lets your agents focus and improve while you
+keep ownership of everything they learn.
+"""
 
-# Import key classes for easy access
-from memanto.core import Memanto
-from memanto.config import Config
-from memanto.exceptions import MemantoError, ConfigurationError, APIError
+from memanto.core import (
+    Memanto,
+    MemoryConfig,
+    MemoryEntry,
+    ContradictionHandler,
+    TimelineTracker,
+)
 
-__all__ = [
-    "Memanto",
-    "Config", 
-    "MemantoError",
-    "ConfigurationError",
-    "APIError",
-]
+__all__ = ["Memanto", "MemoryConfig", "MemoryEntry", "ContradictionHandler", "TimelineTracker"]
+"""
