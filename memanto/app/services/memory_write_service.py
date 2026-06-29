@@ -306,6 +306,38 @@ class MemoryWriteService:
                 if metadata.get("expires_at"):
                     updated_memory.expires_at = metadata["expires_at"]
 
+            original_memory = MemoryRecord(
+                id=memory_id,
+                type=metadata.get("type", "fact"),
+                title=existing_memory_data.get("title", "Restored Memory"),
+                content=existing_memory_data.get("content", ""),
+                scope_type=metadata.get("scope_type", "agent"),
+                scope_id=metadata.get("scope_id", "unknown"),
+                actor_id=metadata.get("actor_id", "unknown"),
+                source=metadata.get("source", "system"),
+                source_ref=metadata.get("source_ref"),
+                confidence=metadata.get("confidence", 0.8),
+                status=metadata.get("status", "active"),
+                tags=metadata.get("tags", []),
+            )
+            if raw_created:
+                original_memory.created_at = updated_memory.created_at
+            if metadata.get("updated_at"):
+                raw_updated = metadata["updated_at"]
+                if isinstance(raw_updated, str):
+                    try:
+                        original_memory.updated_at = datetime.fromisoformat(
+                            raw_updated.replace("Z", "+00:00")
+                        )
+                    except (ValueError, AttributeError):
+                        pass
+                else:
+                    original_memory.updated_at = raw_updated
+            if metadata.get("ttl_seconds"):
+                original_memory.ttl_seconds = metadata["ttl_seconds"]
+                if metadata.get("expires_at"):
+                    original_memory.expires_at = metadata["expires_at"]
+
             # Step 3: Delete old version
             delete_result = self.client.documents.delete(
                 namespace_name=namespace, ids=[memory_id]
@@ -322,9 +354,25 @@ class MemoryWriteService:
             from moorcheh_sdk.types.document import Document
 
             document = cast(Document, updated_memory.to_moorcheh_document())
-            upload_result = self.client.documents.upload(
-                namespace_name=namespace, documents=[document]
-            )
+            try:
+                upload_result = self.client.documents.upload(
+                    namespace_name=namespace, documents=[document]
+                )
+            except Exception as upload_error:
+                original_document = cast(
+                    Document, original_memory.to_moorcheh_document()
+                )
+                try:
+                    self.client.documents.upload(
+                        namespace_name=namespace, documents=[original_document]
+                    )
+                except Exception as rollback_error:
+                    raise MemoryError(
+                        f"Failed to upload updated memory {memory_id}; rollback also failed"
+                    ) from rollback_error
+                raise MemoryError(
+                    f"Failed to upload updated memory {memory_id}; restored original version"
+                ) from upload_error
 
             return {
                 "id": memory_id,

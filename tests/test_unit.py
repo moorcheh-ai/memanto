@@ -288,6 +288,91 @@ class TestMemoryWriteServiceDelete:
         assert MemoryWriteService(client).delete_memory("m1", "ns") is expected
 
 
+class TestMemoryWriteServiceUpdate:
+    """Regression tests for update_memory's delete-and-recreate flow."""
+
+    @staticmethod
+    def _existing_memory() -> dict[str, object]:
+        return {
+            "id": "mem-1",
+            "type": "fact",
+            "title": "Original title",
+            "content": "Original content",
+            "scope_type": "agent",
+            "scope_id": "agent-1",
+            "actor_id": "agent-1",
+            "source": "user",
+            "source_ref": "chat-1",
+            "confidence": 0.9,
+            "status": "active",
+            "tags": ["stable"],
+        }
+
+    def test_update_memory_restores_original_when_reupload_fails(self):
+        """A failed update upload must not leave the original memory deleted."""
+        from memanto.app.services.memory_write_service import MemoryWriteService
+        from memanto.app.utils.errors import MemoryError
+
+        existing_memory = self._existing_memory()
+        client = MagicMock()
+        client.documents.delete.return_value = {"actual_deletions": 1}
+        client.documents.upload.side_effect = [
+            RuntimeError("upload unavailable"),
+            {"status": "restored"},
+        ]
+
+        with patch(
+            "memanto.app.services.memory_read_service.MemoryReadService"
+        ) as read_service_cls:
+            read_service_cls.return_value.get_memory.return_value = existing_memory
+
+            with pytest.raises(MemoryError, match="Failed to update memory"):
+                MemoryWriteService(client).update_memory(
+                    "mem-1",
+                    "memanto_agent_agent-1",
+                    {"content": "Updated content"},
+                )
+
+        assert client.documents.upload.call_count == 2
+        restored_document = client.documents.upload.call_args_list[1].kwargs[
+            "documents"
+        ][0]
+        assert restored_document["id"] == "mem-1"
+        assert restored_document["text"].startswith(
+            "[FACT] Original title\n\nOriginal content"
+        )
+        assert restored_document["scope_id"] == "agent-1"
+        assert restored_document["tags"] == "stable"
+
+    def test_update_memory_reports_when_restore_also_fails(self):
+        """A failed rollback must be reported distinctly from a restored update."""
+        from memanto.app.services.memory_write_service import MemoryWriteService
+        from memanto.app.utils.errors import MemoryError
+
+        client = MagicMock()
+        client.documents.delete.return_value = {"actual_deletions": 1}
+        client.documents.upload.side_effect = [
+            RuntimeError("upload unavailable"),
+            RuntimeError("rollback unavailable"),
+        ]
+
+        with patch(
+            "memanto.app.services.memory_read_service.MemoryReadService"
+        ) as read_service_cls:
+            read_service_cls.return_value.get_memory.return_value = (
+                self._existing_memory()
+            )
+
+            with pytest.raises(MemoryError, match="rollback also failed"):
+                MemoryWriteService(client).update_memory(
+                    "mem-1",
+                    "memanto_agent_agent-1",
+                    {"content": "Updated content"},
+                )
+
+        assert client.documents.upload.call_count == 2
+
+
 class TestForgetEndToEnd:
     """End-to-end ``forget`` flow through ``DirectClient``: create agent →
     activate → delete_memory. Asserts on-prem's response shape
