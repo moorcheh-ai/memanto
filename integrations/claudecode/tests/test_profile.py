@@ -13,6 +13,24 @@ class TestFromRecall:
         assert not MemoryProfile.from_recall({})
         assert len(MemoryProfile.from_recall({"memories": []})) == 0
 
+    def test_malformed_recall_shape_is_ignored(self) -> None:
+        assert not MemoryProfile.from_recall("backend timeout")  # type: ignore[arg-type]
+        assert not MemoryProfile.from_recall({"memories": "not-a-list"})
+
+    def test_malformed_recall_entries_are_skipped_before_filtering(self) -> None:
+        profile = MemoryProfile.from_recall(
+            {
+                "memories": [
+                    "truncated row",
+                    None,
+                    {"type": "fact", "content": "Keep valid hits", "score": 0.9},
+                ]
+            },
+            min_similarity=0.5,
+        )
+        assert len(profile) == 1
+        assert profile.memories[0]["content"] == "Keep valid hits"
+
     def test_similarity_floor_filters(
         self, sample_memories: list[dict[str, Any]]
     ) -> None:
@@ -51,6 +69,12 @@ class TestFormatContextBlock:
             [{"type": "fact", "content": "maybe true", "confidence": 0.3}]
         ).format_context_block()
         assert "(tentative)" in block
+
+    def test_unusual_scalar_fields_render_without_crashing(self) -> None:
+        block = MemoryProfile(
+            [{"type": 123, "content": 456, "confidence": "high"}]
+        ).format_context_block()
+        assert "456" in block
 
     def test_content_present(self, sample_memories: list[dict[str, Any]]) -> None:
         block = MemoryProfile(sample_memories).format_context_block()
