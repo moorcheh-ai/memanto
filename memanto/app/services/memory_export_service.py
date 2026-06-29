@@ -9,6 +9,8 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+from memanto.app.utils.validation import validate_safe_id
+
 # Memory type metadata: (label, emoji, description)
 MEMORY_TYPE_META = {
     "fact": (
@@ -206,6 +208,7 @@ class MemoryExportService:
             Absolute Path to the written file.
         """
         if output_path is None:
+            validate_safe_id(agent_id, "agent_id")
             self.exports_dir.mkdir(parents=True, exist_ok=True)
             output_path = self.exports_dir / f"{agent_id}_memory.md"
         else:

@@ -452,3 +452,81 @@ def test_conflict_report_handles_non_object_json_items(tmp_path, monkeypatch):
 
 if __name__ == "__main__":
     pytest.main([__file__, "-v", "-s"])
+
+
+class TestValidateSafeId:
+    """Unit tests for validate_safe_id path-traversal guard."""
+
+    def test_valid_ids_are_accepted(self):
+        from memanto.app.utils.validation import validate_safe_id
+
+        for valid in ['my-agent', 'agent_1', 'AGENT', 'agent-123', 'a', 'Agent_B-2']:
+            assert validate_safe_id(valid, 'agent_id') == valid
+
+    def test_path_traversal_dotdot_rejected(self):
+        from memanto.app.utils.validation import validate_safe_id
+
+        with pytest.raises(ValueError, match='invalid characters'):
+            validate_safe_id('../etc/passwd', 'agent_id')
+
+    def test_slash_in_id_rejected(self):
+        from memanto.app.utils.validation import validate_safe_id
+
+        with pytest.raises(ValueError, match='invalid characters'):
+            validate_safe_id('agent/hack', 'agent_id')
+
+    def test_null_byte_rejected(self):
+        from memanto.app.utils.validation import validate_safe_id
+
+        with pytest.raises(ValueError, match='invalid characters'):
+            validate_safe_id('agent\x00', 'agent_id')
+
+    def test_empty_id_rejected(self):
+        from memanto.app.utils.validation import validate_safe_id
+
+        with pytest.raises(ValueError, match='must not be empty'):
+            validate_safe_id('', 'agent_id')
+
+    def test_path_traversal_blocked_in_agent_service(self, tmp_path):
+        """Ensure AgentService._get_agent_file raises on traversal attempt."""
+        from memanto.app.services.agent_service import AgentService
+
+        svc = AgentService(agents_dir=tmp_path / 'agents')
+
+        with pytest.raises(ValueError, match='invalid characters'):
+            svc._get_agent_file('../../etc/shadow')
+
+        # Confirm no files were created outside the agents dir
+        assert not (tmp_path / 'etc').exists()
+
+    def test_path_traversal_blocked_in_session_service(self, tmp_path):
+        """Ensure SessionService.get_session raises on traversal attempt."""
+        from memanto.app.services.session_service import SessionService
+
+        svc = SessionService(
+            secret_key='test-secret-key-min-32-bytes-1234',
+            sessions_dir=tmp_path / 'sessions',
+        )
+
+        with pytest.raises(ValueError, match='invalid characters'):
+            svc.get_session('../../etc/shadow')
+
+        assert not (tmp_path / 'etc').exists()
+
+    def test_path_traversal_blocked_via_date_in_daily_analysis(self, tmp_path):
+        """Ensure DailyAnalysisService raises on traversal attempt via date param."""
+        from memanto.app.services.daily_analysis_service import DailyAnalysisService
+
+        svc = DailyAnalysisService(
+            sessions_dir=tmp_path / 'sessions',
+            summaries_dir=tmp_path / 'summaries',
+        )
+
+        with pytest.raises(ValueError, match='invalid characters'):
+            svc.generate_summary('agent1', '../../etc/passwd')
+
+        with pytest.raises(ValueError, match='invalid characters'):
+            svc.generate_conflict_report('agent1', '../../etc/passwd')
+
+        assert not (tmp_path / 'etc').exists()
+

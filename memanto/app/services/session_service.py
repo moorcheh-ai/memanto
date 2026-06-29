@@ -31,6 +31,7 @@ from memanto.app.utils.errors import (
 )
 from memanto.app.utils.ids import generate_id
 from memanto.app.utils.temporal_helpers import utc_now
+from memanto.app.utils.validation import validate_safe_id
 
 _session_service = None
 logger = logging.getLogger(__name__)
@@ -199,6 +200,7 @@ class SessionService:
         Returns:
             Session object or None if not found
         """
+        validate_safe_id(agent_id, "agent_id")
         session_file = self.sessions_dir / f"{agent_id}.json"
         return self._load_session_file(session_file)
 
@@ -336,6 +338,7 @@ class SessionService:
 
     def _save_session(self, session: Session) -> None:
         """Save session to file"""
+        validate_safe_id(session.agent_id, "agent_id")
         session_file = self.sessions_dir / f"{session.agent_id}.json"
         with open(session_file, "w") as f:
             json.dump(session.model_dump(mode="json"), f, indent=2)
@@ -370,6 +373,8 @@ class SessionService:
             memory_id: The Moorcheh memory ID (if available)
         """
         # Get the timestamp of memory to determine the date string
+        validate_safe_id(agent_id, "agent_id")
+        validate_safe_id(session_id, "session_id")
         dt_now = getattr(memory_record, "created_at", utc_now())
         timestamp = dt_now.strftime("%Y-%m-%d %H:%M:%S")
         date_str = dt_now.strftime("%Y-%m-%d")
@@ -452,6 +457,7 @@ class SessionService:
 
     def _set_active_session(self, agent_id: str) -> None:
         """Mark session as active"""
+        validate_safe_id(agent_id, "agent_id")
         active_link = self.sessions_dir / "active"
 
         # Remove existing active link

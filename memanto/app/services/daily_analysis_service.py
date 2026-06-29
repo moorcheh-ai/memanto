@@ -15,6 +15,7 @@ from memanto.app.config import get_data_dir, settings
 from memanto.app.core import agent_namespace
 from memanto.app.services.session_service import get_session_service
 from memanto.app.utils.errors import MemoryError
+from memanto.app.utils.validation import validate_safe_id
 from memanto.app.utils.temporal_helpers import (
     format_current_local_time,
     format_local_time,
@@ -49,6 +50,8 @@ class DailyAnalysisService:
         """
         Generate a daily natural language summary for an agent and date.
         """
+        validate_safe_id(agent_id, "agent_id")
+        validate_safe_id(date, "date")
         # Find all relevant session MD files
         pattern = f"{agent_id}_{date}_*_summary.md"
         session_files = list(self.sessions_dir.glob(pattern))
@@ -140,6 +143,8 @@ Format the output as a Markdown report:
         conflicts_dir = Path.home() / ".memanto" / "conflicts"
         conflicts_dir.mkdir(parents=True, exist_ok=True)
 
+        validate_safe_id(agent_id, "agent_id")
+        validate_safe_id(date, "date")
         pattern = f"{agent_id}_{date}_*_summary.md"
         session_files = list(self.sessions_dir.glob(pattern))
 

@@ -159,3 +159,27 @@ def validate_request_size(
                 "max_size": max_size,
             },
         )
+
+
+import re
+
+
+def validate_safe_id(value: str, field_name: str = "id") -> str:
+    """
+    Reject agent_id / session_id values that would escape the storage directory.
+
+    Path traversal via f-strings such as
+        sessions_dir / f"{agent_id}.json"
+    allows a caller to write files outside the intended directory when
+    agent_id contains '..' or OS-level path separators.
+
+    Only alphanumeric characters, hyphens, and underscores are allowed.
+    """
+    if not value:
+        raise ValueError(f"{field_name} must not be empty")
+    if not re.match(r'^[A-Za-z0-9_-]+$', value):
+        raise ValueError(
+            f"{field_name} '{value}' contains invalid characters. "
+            "Only letters, digits, hyphens, and underscores are allowed."
+        )
+    return value
