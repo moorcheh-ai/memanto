@@ -1106,9 +1106,7 @@ class TestMEMANTOAPI:
         assert data["action"] == "keep_new"
 
     @pytest.mark.asyncio
-    async def test_conflicts_resolve_rejects_invalid_action(
-        self, client, auth_headers
-    ):
+    async def test_conflicts_resolve_rejects_invalid_action(self, client, auth_headers):
         """Invalid conflict actions should fail validation before business logic."""
         await client.post(
             "/api/v2/agents",
