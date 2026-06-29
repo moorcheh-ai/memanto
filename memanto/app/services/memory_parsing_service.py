@@ -129,7 +129,7 @@ class MemoryParsingService:
                     r"\b(?:assign|assigned|responsible for|owner is|by tomorrow|by eod|by end of day)\b",
                     4,
                 ),
-                (r"\b(?:remind me to|don't forget to|need a reminder)\b", 6),
+                (r"\b(?:remind\s+(?:\w+|the\s+\w+)\s+to|don't forget to|need a reminder)\b", 6),
             ]
         ],
         "event": [

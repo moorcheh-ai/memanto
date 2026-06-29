@@ -190,3 +190,14 @@ def test_fuzzy_fallback_does_not_fire_on_unrelated_text():
     parser.parse_memory(memory)
 
     assert memory.type == "fact"
+
+
+def test_remind_other_people_than_me():
+    parser = MemoryParsingService()
+
+    memory = make_memory("remind the team to email the report tomorrow")
+
+    parser.parse_memory(memory)
+
+    assert memory.type == "commitment"
+
