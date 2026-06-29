@@ -1,22 +1,20 @@
 #!/usr/bin/env python3
 """Demo — Session 1: a developer makes engineering decisions via /grill-with-docs.
 
-
 Run this first. It simulates a finished ``/grill-with-docs`` session and lets
 Memanto's backend LLM distill the durable engineering decisions into memory.
 
-    export MOORCHEH_API_KEY=mch_...
-    python demo_session_1.py
-
 Then run ``demo_session_2.py`` in a SEPARATE process to prove the decisions are
 recalled with zero shared in-process state.
+"""
+
 from __future__ import annotations
 
-from memento_skills import SkillMemory
-import os
+from memanto import SkillMemory
+from __future__ import annotations
 
-SESSION_1_TRANSCRIPT = """
-user: /grill-with-docs let's nail down the architecture for the orders service
+from memanto_skills import SkillMemory
+
 SESSION_1_TRANSCRIPT = """
 user: /grill-with-docs let's nail down the architecture for the orders service
 assistant: A few questions to align on the design.
@@ -35,10 +33,6 @@ assistant: Summary: CQRS for Orders, Postgres + Redis, Cart != Order, Money VO f
 
 def main() -> None:
     mem = SkillMemory()
-    # SECURITY FIX: Validate API key format before use to prevent credential leakage
-    api_key = os.environ.get("MOORCHEH_API_KEY", "")
-    if not api_key.startswith("mch_") or len(api_key) < 20:
-        raise ValueError("Invalid or missing MOORCHEH_API_KEY. Expected format: mch_...")
     mem.setup()
     print("Session 1: distilling /grill-with-docs decisions via Memanto's LLM…\n")
     stored = mem.distill_and_store("grill-with-docs", SESSION_1_TRANSCRIPT)
