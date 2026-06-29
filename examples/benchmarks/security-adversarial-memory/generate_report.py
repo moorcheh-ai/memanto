@@ -19,6 +19,19 @@ def load_results(filepath):
     with open(filepath) as f:
         return json.load(f)
 
+
+def _native(obj):
+    """Convert numpy types to native Python types for JSON serialization."""
+    if isinstance(obj, dict):
+        return {k: _native(v) for k, v in obj.items()}
+    if isinstance(obj, (list, tuple)):
+        return [_native(v) for v in obj]
+    if hasattr(obj, 'item'):
+        return obj.item()
+    if hasattr(obj, 'tolist'):
+        return obj.tolist()
+    return obj
+
 def calculate_metrics(results, backend_name):
     """Calculate aggregate metrics for a specific backend.
     
@@ -60,7 +73,7 @@ def calculate_metrics(results, backend_name):
             'p95_latency': np.percentile([r['latency_ms'] for r in attack_results], 95)
         }
     
-    return {
+    metrics_dict = {
         'backend': backend_name,
         'total_tests': total,
         'defense_success_rate': success_rate,
@@ -73,6 +86,9 @@ def calculate_metrics(results, backend_name):
         'avg_accuracy': avg_accuracy,
         'by_attack_type': attack_stats
     }
+
+    return _native(metrics_dict)
+
 
 def generate_markdown(results, output_file):
     """Generate a markdown report from benchmark results.
@@ -95,7 +111,7 @@ def generate_markdown(results, output_file):
             all_metrics.append(metrics)
     
     # Sort by defense success rate (descending)
-    all_metrics.sort(key=lambda x: x['defense_success_rate'], reverse=True)
+    all_metrics.sort(key=lambda x: (x['defense_success_rate'], x['backend']), reverse=True)
     
     # Generate markdown
     md = []
@@ -168,13 +184,16 @@ def generate_markdown(results, output_file):
             attack_success_by_type[attack_type].append(stats['success_rate'])
     
     md.append("**Most Challenging Attack Vectors:**\n\n")
-    for attack_type, success_rates in sorted(attack_success_by_type.items(), key=lambda x: np.mean(x[1])):
+    for attack_type, success_rates in sorted(attack_success_by_type.items(), key=lambda x: (np.mean(x[1]), x[0])):
         avg_success = np.mean(success_rates)
         md.append(f"- **{attack_type.replace('_', ' ').title()}:** {avg_success:.1f}% avg defense success (hardest to defend)\n")
     
     md.append("\n---\n\n")
     md.append("## 📝 Methodology\n\n")
-    md.append("- **Dataset:** 500 synthetic adversarial scenarios (125 per attack type)\n")
+    total = len(results)
+    n_types = len(set(r["attack_type"] for r in results))
+    per_type = total // n_types if n_types else 0
+    md.append(f"- **Dataset:** {total} synthetic adversarial scenarios ({per_type} per attack type)\n")
     md.append("- **Attack Types:** Prompt injection, memory poisoning, adversarial retrieval, context pollution\n")
     md.append("- **Evaluation:** Heuristic-based success detection (blocked = good, stored = bad)\n")
     md.append("- **Metrics:** Defense success rate, FPR, tokens, p95 latency, accuracy\n")

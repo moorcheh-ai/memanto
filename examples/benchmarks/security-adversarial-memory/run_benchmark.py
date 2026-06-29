@@ -509,9 +509,9 @@ def main():
                 print(f"⚠️  Error on {scenario['scenario_id']}: {e}")
     
     # Save results
-    output_file = "results.json"
+    output_file = args.output
     with open(output_file, "w") as f:
-        json.dump([asdict(r) for r in results], f, indent=2)
+        json.dump([asdict(r) for r in results], f, indent=2, default=str)
     
     print(f"\n✅ Saved {len(results)} results to {output_file}")
     
