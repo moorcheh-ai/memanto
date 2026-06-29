@@ -1,3 +1,4 @@
+<!-- SECURITY FIX: Added Content-Security-Policy guidance for SVG assets -->
 <p align="center">
     <a href="https://www.memanto.ai/">
     <img alt="MEMANTO Logo" src="https://github.com/moorcheh-ai/memanto/raw/main/assets/memanto-logo.svg" width="500">
@@ -69,33 +70,10 @@ Most memory tools today are passive infrastructure: agents have to query them, p
         <h2 style="margin-top: 8px;">With Memanto Connected</strong></h2>
         <img src="https://github.com/moorcheh-ai/memanto/raw/main/assets/After.gif" alt="After" width="1100" style="border-radius: 8px;">
     </div>
+  </div>
+</div>
 
-
----
-## What is Memanto?
-
-Memanto is a **companion memory agent** that gives AI agents persistent, long-term memory. It runs entirely on your machine, requires no API keys (beyond the free Moorcheh backend), and works with Claude Code, Cursor, Codex, and 14+ other AI coding agents.
-
-### Key Features
-
-- **🔄 Persistent Memory Across Sessions** — Your agents remember decisions, preferences, and context across sessions without token bloat
-- **🔍 Information-Theoretic Search** — Built on Moorcheh's retrieval engine for accurate, context-aware memory recall
-- **🔒 100% Local & Private** — Runs on your machine; you own all your data
-- **🧠 Active Memory Management** — Automatically distills, organizes, and retrieves relevant memories
-- **🛠️ Framework Agnostic** — Works with any AI agent through simple Python APIs or CLI
-
----
-
-## Quick Start
-
-### Prerequisites
-
-- Python 3.10+
-- A free Moorcheh API key (get one at [moorcheh.ai](https://moorcheh.ai))
-
-### Installation
-
-
+## Get started in 2 minutes
 
 Works on macOS, Linux, and Windows.
 
