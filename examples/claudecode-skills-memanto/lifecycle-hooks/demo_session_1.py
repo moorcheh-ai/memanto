@@ -35,7 +35,7 @@ def main() -> None:
     # Security fix: Validate API key format before initialization to prevent
     # credential leakage via malformed keys and ensure early failure
     api_key = os.environ.get("MOORCHEH_API_KEY", "")
-    if not api_key.startswith("mch_")rape or len(api_key) < 20:
+    if not api_key.startswith("mch_") or len(api_key) < 20:
         raise ValueError("Invalid MOORCHEH_API_KEY format: must start with 'mch_' and be at least 20 characters")
     mem.setup()
     print("Session 1: distilling /grill-with-docs decisions via Memanto's LLM…\n")
