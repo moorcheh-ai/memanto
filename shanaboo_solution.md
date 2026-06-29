@@ -1,178 +1,184 @@
  ```diff
 --- a/memanto/__init__.py
 +++ b/memanto/__init__.py
-@@ -0,0 +1,5 @@
-+"""Memanto - Memory that AI Agents Love!"""
+@@ -0,0 +1,15 @@
++"""Memanto - Memory that AI Agents Love!
++
++A companion memory agent that lets your agents focus and improve while you
++keep ownership of everything they learn.
++"""
 +
 +__version__ = "0.1.0"
 +
-+from memanto.core import Memanto
---- /dev/null
-+++ b/memanto/core.py
-@@ -0,0 +1,180 @@
-+"""Core Memanto memory management with secure input validation and safe subprocess handling."""
++from memanto.core.memory import Memory
++from memanto.core.agent import Agent
++from memanto.core.session import Session
++
++__all__ = ["Memory", "Agent", "Session"]
++
++--- /dev/null
++++ b/memanto/core/__init__.py
+@@ -0,0 +1,1 @@
++"""Core Memanto package modules."""
+--- a/memanto/core/memory.py
++++ b/memanto/core/memory.py
+@@ -0,0 +1,247 @@
++"""Core memory management with timeline tracking and contradiction resolution."""
++
++from __future__ import annotations
 +
 +import hashlib
 +import json
-+import os
-+import re
-+import subprocess
-+import tempfile
-+from datetime import datetime
-+from pathlib import Path
++import time
++from dataclasses import dataclass, field
 +from typing import Any, Optional
 +
-+import requests
 +
-+
-+class MemantoError(Exception):
-+    """Base exception for Memanto errors."""
-+    pass
-+
-+
-+class ValidationError(MemantoError):
-+    """Raised when input validation fails."""
-+    pass
-+
-+
-+class SecurityError(MemantoError):
-+    """Raised when a security violation is detected."""
-+    pass
-+
-+
-+class Memanto:
-+    """Main Memanto memory agent with secure defaults."""
++@dataclass
++class MemoryEntry:
++    """A single memory entry with timeline and source tracking."""
 +    
-+    MAX_CONTENT_LENGTH = 100_000  # 100KB max memory content
-+    ALLOWED_MEMORY_TYPES = {"fact", "preference", "decision", "event", "skill"}
-+    API_TIMEOUT = 30
++    content: str
++    timestamp: float
++    source: str
++    confidence: float = 1.0
++    entry_id: str = field(default_factory=lambda: "")
++    contradictions: list[str] = field(default_factory=list)
++    superseded_by: Optional[str] = None
 +    
-+    def __init__(self, api_key: Optional[str] = None, backend_url: Optional[str] = None):
-+        self.api_key = api_key or os.environ.get("MOORCHEH_API_KEY")
-+        self.backend_url = backend_url or os.environ.get(
-+            "MOORCHEH_BACKEND_URL", 
-+            "https://api.moorcheh.ai/v1"
++    def __post_init__(self):
++        if not self.entry_id:
++            self.entry_id = hashlib.sha256(
++                f"{self.content}:{self.timestamp}:{self.source}".encode()
++            ).hexdigest()[:16]
++
++
++class ContradictionResolver:
++    """Resolves contradictions between memory entries with timeline awareness."""
++    
++    def __init__(self):
++        self.resolution_strategies = {
++            "temporal_override": self._temporal_override,
++            "confidence_override": self._confidence_override,
++            "merge": self._merge_entries,
++        }
++    
++    def resolve(
++        self,
++        old_entry: MemoryEntry,
++        new_entry: MemoryEntry,
++        strategy: str = "temporal_override",
++    ) -> tuple[MemoryEntry, MemoryEntry]:
++        """Resolve contradiction between two entries.
++        
++        Returns:
++            Tuple of (superseded_entry, active_entry)
++        """
++        if strategy not in self.resolution_strategies:
++            strategy = "temporal_override"
++        
++        return self.resolution_strategies[strategy](old_entry, new_entry)
++    
++    def _temporal_override(
++        self, old_entry: MemoryEntry, new_entry: MemoryEntry
++    ) -> tuple[MemoryEntry, MemoryEntry]:
++        """Newer entry wins by default."""
++        if new_entry.timestamp >= old_entry.timestamp:
++            old_entry.superseded_by = new_entry.entry_id
++            new_entry.contradictions.append(old_entry.entry_id)
++            return old_entry, new_entry
++        else:
++            new_entry.superseded_by = old_entry.entry_id
++            old_entry.contradictions.append(new_entry.entry_id)
++            return new_entry, old_entry
++    
++    def _confidence_override(
++        self, old_entry: MemoryEntry, new_entry: MemoryEntry
++    ) -> tuple[MemoryEntry, MemoryEntry]:
++        """Higher confidence entry wins."""
++        if new_entry.confidence >= old_entry.confidence:
++            old_entry.superseded_by = new_entry.entry_id
++            new_entry.contradictions.append(old_entry.entry_id)
++            return old_entry, new_entry
++        else:
++            new_entry.superseded_by = old_entry.entry_id
++            old_entry.contradictions.append(new_entry.entry_id)
++            return new_entry, old_entry
++    
++    def _merge_entries(
++        self, old_entry: MemoryEntry, new_entry: MemoryEntry
++    ) -> tuple[MemoryEntry, MemoryEntry]:
++        """Merge entries, keeping both with temporal ordering."""
++        # Both entries remain active but track each other
++        old_entry.contradictions.append(new_entry.entry_id)
++        new_entry.contradictions.append(old_entry.entry_id)
++        return old_entry, new_entry
++
++
++class Memory:
++    """Core memory class with retrieval, timeline tracking, and contradiction handling."""
++    
++    def __init__(self, max_entries: int = 10000):
++        self.entries: dict[str, MemoryEntry] = {}
++        self.max_entries = max_entries
++        self._contradiction_resolver = ContradictionResolver()
++        self._access_times: dict[str, float] = {}
++    
++    def add(
++        self,
++        content: str,
++        source: str = "unknown",
++        timestamp: Optional[float] = None,
++        confidence: float = 1.0,
++        check_contradictions: bool = True,
++    ) -> MemoryEntry:
++        """Add a new memory entry with optional contradiction detection."""
++        entry = MemoryEntry(
++            content=content,
++            timestamp=timestamp or time.time(),
++            source=source,
++            confidence=confidence,
 +        )
-+        self._session = requests.Session()
-+        self._session.headers.update({
-+            "Authorization": f"Bearer {self.api_key}",
-+            "Content-Type": "application/json",
-+            "User-Agent": "memanto/0.1.0"
-+        })
++        
++        # Check for contradictions with existing entries
++        if check_contradictions:
++            for existing in list(self.entries.values()):
++                if self._is_contradiction(existing, entry):
++                    old, new = self._contradiction_resolver.resolve(existing, entry)
++                    self.entries[old.entry_id] = old
++                    entry = new
++        
++        self.entries[entry.entry_id] = entry
++        self._access_times[entry.entry_id] = time.time()
++        
++        # Evict oldest if over limit
++        if len(self.entries) > self.max_entries:
++            self._evict_oldest()
++        
++        return entry
 +    
-+    def _validate_content(self, content: str) -> str:
-+        """Validate and sanitize memory content."""
-+        if not isinstance(content, str):
-+            raise ValidationError(f"Content must be string, got {type(content).__name__}")
++    def retrieve(
++        self,
++        query: Optional[str] = None,
++        limit: int = 10,
++        include_superseded: bool = False,
++        min_confidence: float = 0.0,
++    ) -> list[MemoryEntry]:
++        """Retrieve memories with filtering and ranking."""
++        results = []
 +        
-+        if len(content) > self.MAX_CONTENT_LENGTH:
-+            raise ValidationError(
-+                f"Content exceeds maximum length of {self.MAX_CONTENT_LENGTH} characters"
-+            )
++        for entry in self.entries.values():
++            # Skip superseded entries unless explicitly requested
++            if not include_superseded and entry.superseded_by:
++                continue
++            
++            # Filter by confidence
++            if entry.confidence < min_confidence:
++                continue
++            
++            results.append(entry)
 +        
-+        # Prevent prompt injection patterns
-+        dangerous_patterns = [
-+            r"<\s*script\s*>",  # Script tags
-+            r"\{\s*system\s*:",  # System prompt injection
-+            r"<\s*system\s*>",   # System tags
-+            r"ignore\s+previous",  # Common injection start
-+            r"forget\s+(?:your|all)\s+(?:instructions|programming)",  # Instruction override
-+        ]
++        # Sort by relevance/recency (simple implementation)
++        results.sort(key=lambda e: (e.confidence, e.timestamp), reverse=True)
 +        
-+        for pattern in dangerous_patterns:
-+            if re.search(pattern, content, re.IGNORECASE):
-+                raise SecurityError(f"Potentially malicious content pattern detected: {pattern}")
-+        
-+        # Basic sanitization
-+        content = content.strip()
-+        return content
-+    
-+    def _validate_memory_type(self, memory_type: str) -> str:
-+        """Validate memory type against allowed types."""
- chars."""
-+        memory_type = memory_type.lower().strip()
-+        if memory_type not in self.ALLOWED_MEMORY_TYPES:
-+            raise ValidationError(
-+                f"Invalid memory type '{memory_type}'. "
-+                f"Allowed types: {', '.join(sorted(self.ALLOWED_MEMORY_TYPES))}"
-+            )
-+        return memory_type
-+    
-+    def store(
-+        self, 
-+        content: str, 
-+        memory_type: str = "fact",
-+        metadata: Optional[dict] = None
-+    ) -> dict:
-+        """Store a memory with validation and security checks."""
-+        content = self._validate_content(content)
-+        memory_type = self._validate_memory_type(memory_type)
-+        
-+        payload = {
-+            "content": content,
-+            "type": memory_type,
-+            "timestamp": datetime.utcnow().isoformat(),
-+            "metadata": metadata or {}
-+        }
-+        
-+        # In a real implementation, this would send to the backend
-+        # For now, we validate and return the structured data
-+        return {
-+            "status": "stored",
-+            "memory_id": hashlib.sha256(
-+                f"{content}:{payload['timestamp']}".encode()
-+            ).hexdigest()[:16],
-+            "data": payload
-+        }
-+    
-+    def retrieve(self, query: str, limit: int = 10) -> list[dict]:
-+        """Retrieve memories with validated query parameters."""
-+        if not isinstance(query, str):
-+            raise ValidationError("Query must be a string")
-+        
-+        if not 0 < limit <= 100:
-+            raise ValidationError("Limit must be between 1 and 100")
-+        
-+        query = self._validate_content(query)
-+        
-+        # Placeholder for actual retrieval logic
-+        return []
-+    
-+    def distill_and_store(self, session_type: str, transcript: str) -> list[dict]:
-+        """Distill a transcript into memories and store them securely."""
-+        if not isinstance(transcript, str):
-+            raise ValidationError("Transcript must be a string")
-+        
-+        # Validate transcript length
-+        transcript = self._validate_content(transcript)
-+        
-+        # In a real implementation, this would call an LLM
-+        # For the bounty, we demonstrate the validation layer
-+        return [
-+            self.store(
-+                f"Distilled decision from {session_type}: {transcript[:200]}...",
-+                memory_type="decision"
-+            )
-+        ]
-+    
-+    def run_external_tool(self, command: list[str], **kwargs) -> str:
-+        """
-+        Safely run an external tool with strict validation.
-+        
-+        SECURITY FIX: Prevents shell injection by using list-based commands
-+        and strict path validation.
-+        """
-+        if not isinstance(command, list) or len(command) == 0:
-+            raise ValidationError("Command must be a non-empty list")
-+        
-+        # Only allow specific safe commands
-+        allowed_commands = {"git", "python", "pip", "pytest"}
-+        cmd_name = command[0]
-+        
-+        if cmd_name not in allowed_commands:
-+            raise SecurityError(f"Command '{cmd_name}' is not in the allowed list")
-+        
-+        # Validate all arguments - no shell metacharacters
-+        dangerous_chars = set(";|&$`<>")
-+        for arg in command:
-+            if any
++        # Update
