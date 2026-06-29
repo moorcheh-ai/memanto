@@ -220,6 +220,9 @@ class MemoryReadService:
 
             # Apply TTL enforcement - filter out expired memories
             all_results = self._filter_expired_memories(all_results)
+            all_results = self._filter_inactive_memories(
+                all_results, status_filter=status_filter
+            )
 
             if min_confidence is not None:
                 all_results = self._filter_by_min_confidence(
@@ -443,6 +446,7 @@ class MemoryReadService:
                 return {"results": [], "total_found": 0}
 
             unique_memories = self._fetch_all_memories(namespaces, type=type, tags=tags)
+            unique_memories = self._filter_inactive_memories(unique_memories)
 
             if created_after or created_before:
                 unique_memories = self._apply_temporal_filter(
@@ -551,6 +555,26 @@ class MemoryReadService:
             except (TypeError, ValueError):
                 continue
         return fallback, fetch_index
+
+    def _filter_inactive_memories(
+        self,
+        results: list[dict[str, Any]],
+        status_filter: list[str] | str | None = None,
+    ) -> list[dict[str, Any]]:
+        """Remove inactive memories unless explicitly requested."""
+        if status_filter is None:
+            requested_statuses: set[str] = set()
+        elif isinstance(status_filter, str):
+            requested_statuses = {status_filter.lower()}
+        else:
+            requested_statuses = {str(status).lower() for status in status_filter}
+
+        hidden_statuses = {"deleted", "superseded"} - requested_statuses
+        return [
+            result
+            for result in results
+            if str(result.get("status") or "active").lower() not in hidden_statuses
+        ]
 
     def _build_filtered_query(
         self,

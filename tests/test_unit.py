@@ -832,6 +832,108 @@ class TestClientApiKeyDispatch:
         assert calls == ["mk_instance_specific_key"]
 
 
+class TestMemoryReadServiceRecallStatus:
+    """Recall should not surface inactive memory records."""
+
+    @staticmethod
+    def _memory_item(memory_id: str, status: str) -> dict[str, object]:
+        return {
+            "id": memory_id,
+            "text": f"[FACT] {memory_id}\n\nStored fact",
+            "memory_type": "fact",
+            "agent_id": "agent-1",
+            "actor_id": "agent-1",
+            "source": "user",
+            "confidence": 0.9,
+            "status": status,
+            "created_at": "2026-01-01T00:00:00+00:00",
+            "updated_at": "2026-01-01T00:00:00+00:00",
+        }
+
+    def test_search_memories_filters_superseded_and_deleted_results(self):
+        """Standard recall must not return stale inactive memories."""
+        from memanto.app.services.memory_read_service import MemoryReadService
+
+        client = MagicMock()
+        client.similarity_search.query.return_value = {
+            "results": [
+                self._memory_item("active", "active"),
+                self._memory_item("superseded", "superseded"),
+                self._memory_item("deleted", "deleted"),
+            ],
+            "execution_time": 0,
+        }
+
+        result = MemoryReadService(client).search_memories("stored", agent_id="agent-1")
+
+        assert [item["id"] for item in result["results"]] == ["active"]
+
+    def test_search_memories_preserves_explicit_deleted_filter(self):
+        """Explicit deleted recall must preserve deleted memories only."""
+        from memanto.app.services.memory_read_service import MemoryReadService
+
+        client = MagicMock()
+        client.similarity_search.query.return_value = {
+            "results": [
+                self._memory_item("active", "active"),
+                self._memory_item("deleted", "deleted"),
+                self._memory_item("superseded", "superseded"),
+            ],
+            "execution_time": 0,
+        }
+
+        result = MemoryReadService(client).search_memories(
+            "stored",
+            agent_id="agent-1",
+            status_filter=["deleted"],
+        )
+
+        assert [item["id"] for item in result["results"]] == ["active", "deleted"]
+
+    def test_search_memories_preserves_explicit_superseded_filter(self):
+        """Explicit superseded recall must preserve superseded memories only."""
+        from memanto.app.services.memory_read_service import MemoryReadService
+
+        client = MagicMock()
+        client.similarity_search.query.return_value = {
+            "results": [
+                self._memory_item("active", "active"),
+                self._memory_item("deleted", "deleted"),
+                self._memory_item("superseded", "superseded"),
+            ],
+            "execution_time": 0,
+        }
+
+        result = MemoryReadService(client).search_memories(
+            "stored",
+            agent_id="agent-1",
+            status_filter=["superseded"],
+        )
+
+        assert [item["id"] for item in result["results"]] == [
+            "active",
+            "superseded",
+        ]
+
+    def test_search_recent_filters_superseded_and_deleted_results(self):
+        """Recent recall must not return stale inactive memories."""
+        from memanto.app.services.memory_read_service import MemoryReadService
+
+        client = MagicMock()
+        client.documents.fetch_text_data.return_value = {
+            "items": [
+                self._memory_item("active", "active"),
+                self._memory_item("superseded", "superseded"),
+                self._memory_item("deleted", "deleted"),
+            ],
+            "pagination": {"has_more": False},
+        }
+
+        result = MemoryReadService(client).search_recent("agent-1")
+
+        assert [item["id"] for item in result["results"]] == ["active"]
+
+
 class TestForgetEndToEnd:
     """End-to-end ``forget`` flow through ``DirectClient``: create agent →
     activate → delete_memory. Asserts on-prem's response shape
