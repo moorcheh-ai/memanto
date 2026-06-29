@@ -122,6 +122,7 @@ class ConversationMemoryExtractionService:
             return json.loads(text)
         except json.JSONDecodeError:
             decoder = json.JSONDecoder()
+            fallback_array: Any | None = None
             for match in re.finditer(r"[\[{]", text):
                 try:
                     parsed, end = decoder.raw_decode(text[match.start() :])
@@ -130,7 +131,9 @@ class ConversationMemoryExtractionService:
                 if not text[match.start() + end :].strip():
                     return parsed
                 if isinstance(parsed, list):
-                    return parsed
+                    fallback_array = parsed
+            if fallback_array is not None:
+                return fallback_array
             raise ValueError("Memory extraction did not return valid JSON")
 
     def _normalize_candidates(

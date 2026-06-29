@@ -131,6 +131,39 @@ def test_extract_skips_bracketed_prose_before_json_array():
     ]
 
 
+def test_extract_keeps_scanning_after_array_with_trailing_prose():
+    client = FakeClient(
+        """
+        Notes: [] means no durable facts in a segment.
+        [
+          {
+            "type": "fact",
+            "title": "Timezone",
+            "content": "The user schedules maintenance in UTC.",
+            "confidence": 0.82
+          }
+        ]
+        """
+    )
+
+    service = ConversationMemoryExtractionService(client)
+    candidates = service.extract(
+        namespace="memanto_agent_test",
+        messages=[{"role": "user", "content": "Schedule maintenance in UTC."}],
+    )
+
+    assert candidates == [
+        {
+            "type": "fact",
+            "title": "Timezone",
+            "content": "The user schedules maintenance in UTC.",
+            "confidence": 0.82,
+            "source": "conversation",
+            "provenance": "inferred",
+        }
+    ]
+
+
 def test_extract_rejects_non_json_answers():
     service = ConversationMemoryExtractionService(FakeClient("not json"))
 
