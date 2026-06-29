@@ -1539,27 +1539,40 @@ class DirectClient:
             Dict with ``output_path``, ``total_memories``, ``source``
             (``"cache"`` or ``"fresh"``).
         """
-        self.export_memory_md(agent_id=agent_id, limit_per_type=limit_per_type)
+        export_result = self.export_memory_md(
+            agent_id=agent_id, limit_per_type=limit_per_type
+        )
 
         cache_path = Path.home() / ".memanto" / "exports" / f"{agent_id}_memory.md"
         target_path = Path(project_dir) / "MEMORY.md"
         target_path.parent.mkdir(parents=True, exist_ok=True)
 
-        if cache_path.exists():
-            # Copy the freshly updated cache.
-            shutil.copy2(str(cache_path), str(target_path))
-            content = cache_path.read_text(encoding="utf-8")
-            mem_count = content.count("### ")
-            return {
-                "output_path": str(target_path.resolve()),
-                "total_memories": mem_count,
-                "source": "cache",
-            }
+        source_path = cache_path
+        source_label = "cache"
+        if not source_path.exists():
+            raw_export_path = export_result.get("output_path")
+            if raw_export_path:
+                source_path = Path(str(raw_export_path))
+                source_label = "fresh"
 
+        if not source_path.exists():
+            raise FileNotFoundError(
+                "Fresh memory export did not create a readable MEMORY.md source"
+            )
+
+        # Copy the freshly updated export.
+        if source_path.resolve() != target_path.resolve():
+            shutil.copy2(str(source_path), str(target_path))
+
+        if not target_path.exists():
+            raise FileNotFoundError("Memory sync did not create project MEMORY.md")
+
+        content = target_path.read_text(encoding="utf-8")
+        mem_count = content.count("### ")
         return {
             "output_path": str(target_path.resolve()),
-            "total_memories": 0,
-            "source": "fresh",
+            "total_memories": mem_count,
+            "source": source_label,
         }
 
     # Health Check

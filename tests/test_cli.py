@@ -819,6 +819,36 @@ class TestMEMANTOCLI:
 
         assert not (project_dir / "MEMORY.md").exists()
 
+    def test_direct_memory_sync_fails_when_fresh_export_missing(
+        self, tmp_path, monkeypatch
+    ):
+        """Sync must not report success unless a MEMORY.md source exists."""
+        from memanto.cli.client import direct_client as direct_mod
+        from memanto.cli.client.direct_client import DirectClient
+
+        fake_home = tmp_path / "home"
+        cache_dir = fake_home / ".memanto" / "exports"
+        cache_dir.mkdir(parents=True)
+        project_dir = tmp_path / "project"
+
+        monkeypatch.setattr(direct_mod.Path, "home", lambda: fake_home)
+
+        client = DirectClient.__new__(DirectClient)
+        missing_export = cache_dir / "victim_memory.md"
+        monkeypatch.setattr(
+            client,
+            "export_memory_md",
+            lambda **_: {
+                "output_path": str(missing_export),
+                "total_memories": 1,
+            },
+        )
+
+        with pytest.raises(FileNotFoundError, match="did not create"):
+            client.sync_memory_to_project("victim", str(project_dir))
+
+        assert not (project_dir / "MEMORY.md").exists()
+
     def test_schedule_commands(self, mock_all_clients):
         """Test schedule commands"""
         with patch("memanto.cli.commands.schedule.ScheduleManager") as mock_manager_cls:
