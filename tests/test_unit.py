@@ -268,6 +268,59 @@ class TestMemoryWriteServiceDelete:
         assert MemoryWriteService(client).delete_memory("m1", "ns") is expected
 
 
+class TestMemoryReadServiceMultiScope:
+    """Multi-scope search is the cross-agent retrieval path. It should build
+    each scope namespace and delegate to Moorcheh without importing a
+    non-existent nested package."""
+
+    def test_search_multi_scope_builds_namespaces(self):
+        from memanto.app.services.memory_read_service import MemoryReadService
+
+        client = MagicMock()
+        client.similarity_search.query.return_value = {
+            "results": [
+                {
+                    "id": "mem-1",
+                    "text": "[FACT] Deployment target\n\nProd runs in us-east-1.",
+                    "metadata": {
+                        "memory_type": "fact",
+                        "status": "active",
+                        "created_at": "2026-06-29T00:00:00Z",
+                        "updated_at": "2026-06-29T00:00:00Z",
+                    },
+                    "score": 0.91,
+                }
+            ],
+            "execution_time": 0.01,
+        }
+
+        result = MemoryReadService(client).search_multi_scope(
+            query="deployment",
+            scopes=[
+                {"scope_type": "agent", "scope_id": "support-agent"},
+                {"scope_type": "workspace", "scope_id": "launch-room"},
+            ],
+            limit=5,
+        )
+
+        client.similarity_search.query.assert_called_once_with(
+            query="deployment",
+            namespaces=[
+                "memanto_agent_support-agent",
+                "memanto_workspace_launch-room",
+            ],
+            top_k=5,
+            threshold=None,
+            kiosk_mode=False,
+        )
+        assert result["total_found"] == 1
+        assert result["searched_namespaces"] == [
+            "memanto_agent_support-agent",
+            "memanto_workspace_launch-room",
+        ]
+        assert result["results"][0]["title"] == "Deployment target"
+
+
 class TestForgetEndToEnd:
     """End-to-end ``forget`` flow through ``DirectClient``: create agent →
     activate → delete_memory. Asserts on-prem's response shape
