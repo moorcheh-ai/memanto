@@ -783,6 +783,42 @@ class TestMEMANTOCLI:
         assert result.exit_code == 0
         assert "Synced 5 memories" in result.stdout
 
+    def test_direct_memory_sync_requires_session_even_with_cached_export(
+        self, tmp_path, monkeypatch
+    ):
+        """A stale cached export must not bypass agent session checks.
+
+        ``sync_memory_to_project`` previously copied
+        ``~/.memanto/exports/{agent}_memory.md`` without first validating the
+        requested agent session, so any local caller that knew another
+        ``agent_id`` could copy that cached MEMORY.md into a project.
+        """
+        from memanto.app.utils.errors import SessionError
+        from memanto.cli.client import direct_client as direct_mod
+        from memanto.cli.client.direct_client import DirectClient
+
+        fake_home = tmp_path / "home"
+        cache_dir = fake_home / ".memanto" / "exports"
+        cache_dir.mkdir(parents=True)
+        (cache_dir / "victim_memory.md").write_text(
+            "### Private memory\nsecret\n", encoding="utf-8"
+        )
+        project_dir = tmp_path / "project"
+
+        monkeypatch.setattr(direct_mod.Path, "home", lambda: fake_home)
+
+        client = DirectClient.__new__(DirectClient)
+
+        def reject_victim(agent_id: str):
+            raise SessionError(f"No active session for {agent_id}")
+
+        monkeypatch.setattr(client, "_get_validated_session_for_agent", reject_victim)
+
+        with pytest.raises(SessionError, match="No active session for victim"):
+            client.sync_memory_to_project("victim", str(project_dir))
+
+        assert not (project_dir / "MEMORY.md").exists()
+
     def test_schedule_commands(self, mock_all_clients):
         """Test schedule commands"""
         with patch("memanto.cli.commands.schedule.ScheduleManager") as mock_manager_cls:
