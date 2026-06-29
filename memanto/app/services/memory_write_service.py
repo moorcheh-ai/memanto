@@ -298,6 +298,38 @@ class MemoryWriteService:
                     updated_memory.created_at = raw_created
             updated_memory.updated_at = datetime.utcnow()
 
+            # 保留 supersession 相关字段 —— 这些字段记录了 memory 的历史
+            # supersession 状态，update（修改 content/title 等）不应丢失它们。
+            # 特别是 superseded_at：search_as_of 依赖它判断 supersession 时间，
+            # 丢失会导致时间线失忆（详见 docs/bounty_reports/timeline_amnesia_supersession.md）。
+            raw_superseded_by = (
+                updates.get("superseded_by")
+                if "superseded_by" in updates
+                else metadata.get("superseded_by")
+            )
+            if raw_superseded_by:
+                updated_memory.superseded_by = raw_superseded_by
+
+            raw_supersedes = (
+                updates.get("supersedes")
+                if "supersedes" in updates
+                else metadata.get("supersedes")
+            )
+            if raw_supersedes:
+                updated_memory.supersedes = raw_supersedes
+
+            raw_superseded_at = metadata.get("superseded_at")
+            if raw_superseded_at:
+                if isinstance(raw_superseded_at, str):
+                    try:
+                        updated_memory.superseded_at = datetime.fromisoformat(
+                            raw_superseded_at.replace("Z", "+00:00")
+                        )
+                    except (ValueError, AttributeError):
+                        pass
+                elif isinstance(raw_superseded_at, datetime):
+                    updated_memory.superseded_at = raw_superseded_at
+
             # Handle TTL
             if "ttl_seconds" in updates:
                 updated_memory.set_ttl(updates["ttl_seconds"])

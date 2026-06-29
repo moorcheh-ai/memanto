@@ -288,12 +288,16 @@ class MemoryReadService:
 
                 # Skip if superseded before as_of_date
                 if memory.get("superseded_by"):
-                    # Memory was superseded - check if supersession happened before as_of_date
-                    updated_at = memory.get("updated_at")
-                    if updated_at:
+                    # 优先用 superseded_at（独立的 supersession 时间戳），
+                    # fallback 到 updated_at（向后兼容旧数据）。
+                    # 不能只用 updated_at，因为它会被 validate()/
+                    # detect_contradiction()/update_memory() 等操作刷新，
+                    # 导致 supersession 时间被误判为更晚。
+                    supersede_ts = memory.get("superseded_at") or memory.get("updated_at")
+                    if supersede_ts:
                         try:
-                            updated_dt = parse_iso_timestamp(updated_at)
-                            if updated_dt <= as_of_dt:
+                            supersede_dt = parse_iso_timestamp(supersede_ts)
+                            if supersede_dt <= as_of_dt:
                                 continue  # Already superseded at as_of_date
                         except (ValueError, AttributeError):
                             pass
@@ -769,6 +773,7 @@ class MemoryReadService:
         contradiction_detected = get_field("contradiction_detected") or False
         superseded_by = get_field("superseded_by")
         supersedes = get_field("supersedes")
+        superseded_at_str = get_field("superseded_at")
         validated_at_str = get_field("validated_at")
 
         # Parse validated_at timestamp
@@ -845,6 +850,8 @@ class MemoryReadService:
             formatted["superseded_by"] = superseded_by
         if supersedes:
             formatted["supersedes"] = supersedes
+        if superseded_at_str:
+            formatted["superseded_at"] = superseded_at_str
         if validated_at:
             formatted["validated_at"] = validated_at.isoformat()
 

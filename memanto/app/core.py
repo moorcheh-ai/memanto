@@ -63,6 +63,10 @@ class MemoryRecord(BaseModel):
     provenance: ProvenanceType = "explicit_statement"
     superseded_by: str | None = None  # Memory ID that supersedes this one
     supersedes: str | None = None  # Memory ID that this supersedes
+    # 独立的 supersession 时间戳 —— mark_superseded 时设置。
+    # 不能复用 updated_at，因为 validate()/detect_contradiction()/update_memory()
+    # 等操作也会刷新 updated_at，会导致 search_as_of 误判 supersession 时间。
+    superseded_at: datetime | None = None
     validated_at: datetime | None = None  # Last validation timestamp
     validation_count: int = 0  # Number of times validated/confirmed
     contradiction_detected: bool = False  # Flag for contradictions
@@ -121,6 +125,8 @@ class MemoryRecord(BaseModel):
             document["superseded_by"] = self.superseded_by
         if self.supersedes:
             document["supersedes"] = self.supersedes
+        if self.superseded_at:
+            document["superseded_at"] = self.superseded_at.isoformat()
         if self.validated_at:
             document["validated_at"] = self.validated_at.isoformat()
 
@@ -184,7 +190,14 @@ class MemoryRecord(BaseModel):
         return round(final, 2)
 
     def validate(self):
-        """Mark memory as validated (increases trust)"""
+        """Mark memory as validated (increases trust).
+
+        对已 superseded 的记忆调用 validate() 是无意义的（它已被更新版本取代），
+        且会污染 updated_at，导致 search_as_of 误判 supersession 时间。
+        因此对 superseded 记忆直接跳过，不修改任何字段。
+        """
+        if self.status == "superseded":
+            return
         self.validation_count += 1
         self.validated_at = datetime.utcnow()
         self.updated_at = datetime.utcnow()
@@ -194,13 +207,25 @@ class MemoryRecord(BaseModel):
             self.provenance = "validated"
 
     def mark_superseded(self, superseded_by_id: str):
-        """Mark this memory as superseded by a newer one"""
+        """Mark this memory as superseded by a newer one.
+
+        同时记录 superseded_at —— 独立于 updated_at 的时间戳，
+        供 search_as_of 准确判断 supersession 发生的时间点。
+        """
         self.superseded_by = superseded_by_id
         self.status = "superseded"
-        self.updated_at = datetime.utcnow()
+        now = datetime.utcnow()
+        self.updated_at = now
+        self.superseded_at = now
 
     def detect_contradiction(self):
-        """Flag memory as contradicted (lowers trust)"""
+        """Flag memory as contradicted (lowers trust).
+
+        对已 superseded 的记忆跳过，避免污染 updated_at 导致
+        search_as_of 时间线失忆。
+        """
+        if self.status == "superseded":
+            return
         self.contradiction_detected = True
         self.updated_at = datetime.utcnow()
 
