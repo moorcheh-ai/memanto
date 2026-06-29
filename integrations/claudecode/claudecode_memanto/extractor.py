@@ -148,11 +148,11 @@ def _extract_json_array(text: str) -> str | None:
         if char != "[":
             continue
         try:
-            parsed, end = decoder.raw_decode(cleaned[start:])
+            parsed, end = decoder.raw_decode(cleaned, start)
         except json.JSONDecodeError:
             continue
         if isinstance(parsed, list):
-            return cleaned[start : start + end]
+            return cleaned[start:end]
     return None
 
 
