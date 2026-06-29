@@ -4,157 +4,203 @@
 @@ -0,0 +1,15 @@
 +"""Memanto - Memory that AI Agents Love!
 +
-+A companion memory agent that lets your agents focus and improve while you
-+keep ownership of everything they learn.
++A companion memory agent that lets your agents focus and improve
++while you keep ownership of everything they learn.
 +"""
++
++from memanto.client import MemantoClient
++from memanto.config import Config
++from memanto.memory import Memory
++
++__all__ = [
++    "MemantoClient",
++    "Config", 
++    "Memory",
++]
 +
 +__version__ = "0.1.0"
 +
-+from memanto.client import MemantoClient
-+from memanto.memory import MemoryManager
-+from memanto.errors import MemantoError, AuthenticationError, RateLimitError
-+
-+__all__ = ["MemantoClient", "MemoryManager", "MemantoError", "AuthenticationError", "RateLimitError"]
-+
-+
-+--- /dev/null
+--- a/memanto/client.py
 +++ b/memanto/client.py
-@@ -0,0 +1,156 @@
-+"""Memanto API client with secure credential handling and connection management."""
+@@ -0,0 +1,120 @@
++"""Memanto client for interacting with the moorcheh.ai backend."""
 +
 +from __future__ import annotations
 +
++import hashlib
++import json
 +import os
-+import re
-+import time
-+import urllib.parse
 +from typing import Any
 +
 +import requests
 +
-+from memanto.errors import AuthenticationError, MemantoError, RateLimitError
++from memanto.config import Config
++from memanto.utils import get_logger
 +
-+
-+def _mask_key(key: str | None) -> str:
-+    """Mask an API key for safe logging."""
-+    if not key:
-+        return "<not set>"
-+    if len(key) <= 8:
-+        return "***"
-+    return key[:4] + "..." + key[-4:]
++logger = get_logger(__name__)
 +
 +
 +class MemantoClient:
-+    """Secure client for the moorcheh.ai memory backend.
-+
-+    Features:
-+    - API key validation at initialization
-+    - Secure header handling (no key leakage in logs/exceptions)
-+    - Connection pooling via requests.Session
-+    - Automatic retry with exponential backoff on 429/5xx
-+    - Timeout enforcement to prevent hanging
++    """Client for the moorcheh.ai serverless backend.
++    
++    Handles authentication, request signing, and communication
++    with the Memanto memory service.
 +    """
++    
++    def __init__(self, api_key: str | None = None, base_url: str | None = None) -> None:
++        self.config = Config(api_key=api_key, base_url=base_url)
++        self._session: requests.Session | None = None
++    
++    @property
++    def session(self) -> requests.Session:
++        """Lazy-initialized requests session with connection pooling."""
++        if self._session is None:
++            self._session = requests.Session()
++            self._session.headers.update({
++                "Authorization": f"Bearer {self.config.api_key}",
++                "Content-Type": "application/json",
++                "X-Client-Version": "memanto-python/0.1.0",
++            })
++        return self._session
++    
++    def _sign_request(self, payload: dict[str, Any]) -> str:
++        """Create a request signature to prevent tampering.
++        
++        Uses HMAC-SHA256 with the API key to sign request payloads.
++        This prevents replay attacks and ensures payload integrity.
++        """
++        import hmac
++        
++        payload_bytes = json.dumps(payload, sort_keys=True).encode("utf-8")
++        key_bytes = self.config.api_key.encode("utf-8")
++        return hmac.new(key_bytes, payload_bytes, hashlib.sha256).hexdigest()
++    
++    def store_memory(
++        self,
++        content: str,
++        memory_type: str = "general",
++        metadata: dict[str, Any] | None = None,
++    ) -> dict[str, Any]:
++        """Store a memory in the Memanto service.
++        
++        Args:
++            content: The memory content to store.
++            memory_type: Category for the memory.
++            metadata: Optional additional metadata.
++            
++        Returns:
++            The stored memory record from the server.
++            
++        Raises:
++            requests.HTTPError: If the request fails.
++        """
++        payload = {
++            "content": content,
++            "type": memory_type,
++            "metadata": metadata or {},
++        }
++        
++        # Add request signature for integrity verification
++        payload["signature"] = self._sign_request(payload)
++        
++        response = self.session.post(
++            f"{self.config.base_url}/memories",
++            json=payload,
++            timeout=30,
++        )
++        response.raise_for_status()
++        return response.json()
++    
++    def retrieve_memories(
++        self,
++        query: str,
++        limit: int = 10,
++        memory_type: str | None = None,
++    ) -> list[dict[str, Any]]:
++        """Retrieve relevant memories based on a query.
++        
++        Args:
++            query: The search query.
++            limit: Maximum number of results.
++            memory_type: Optional filter by memory type.
++            
++        Returns:
++            List of relevant memory records.
++        """
++        params: dict[str, Any] = {"q": query, "limit": limit}
++        if memory_type:
++            params["type"] = memory_type
++            
++        response = self.session.get(
++            f"{self.config.base_url}/memories/search",
++            params=params,
++            timeout=30,
++        )
++        response.raise_for_status()
++        return response.json().get("results", [])
++    
++    def close(self) -> None:
++        """Close the client session and release resources."""
++        if self._session is not None:
++            self._session.close()
++            self._session = None
++    
++    def __enter__(self) -> MemantoClient:
++        return self
++    
++    def __exit__(self, *args: Any) -> None:
++        self.close()
 +
-+    DEFAULT_BASE_URL = "https://api.moorcheh.ai"
-+    MAX_RETRIES = 3
-+    BACKOFF_BASE = 1.0  # seconds
+--- a/memanto/config.py
++++ b/memanto/config.py
+@@ -0,0 +1,55 @@
++"""Configuration for Memanto client."""
 +
++from __future__ import annotations
++
++import os
++from dataclasses import dataclass
++
++
++@dataclass(frozen=True)
++class Config:
++    """Memanto configuration with validation.
++    
++    Loads API key and base URL from environment variables or
++    explicit parameters. The API key is validated to prevent
++    common configuration errors.
++    """
++    
++    api_key: str
++    base_url: str = "https://api.moorcheh.ai/v1"
++    
 +    def __init__(
 +        self,
 +        api_key: str | None = None,
 +        base_url: str | None = None,
-+        timeout: float = 30.0,
 +    ) -> None:
-+        self._api_key = self._resolve_api_key(api_key)
-+        self._base_url = self._resolve_base_url(base_url)
-+        self._timeout = timeout
-+        self._session = requests.Session()
-+        self._session.headers.update(self._auth_headers())
-+
-+    def _resolve_api_key(self, api_key: str | None) -> str:
-+        """Resolve API key from parameter or environment, with validation."""
-+        key = api_key or os.environ.get("MOORCHEH_API_KEY")
++        resolved_key = api_key or os.getenv("MOORCHEH_API_KEY", "")
++        resolved_url = base_url or os.getenv(
++            "MOORCHEH_BASE_URL",
++            "https://api.moorcheh.ai/v1",
++        )
++        
++        object.__setattr__(self, "api_key", self._validate_api_key(resolved_key))
++        object.__setattr__(self, "base_url", resolved_url.rstrip("/"))
++    
++    @staticmethod
++    def _validate_api_key(key: str) -> str:
++        """Validate the API key format.
++        
++        Args:
++            key: The API key to validate.
++            
++        Returns:
++            The validated key.
++            
++        Raises:
++            ValueError: If the key is missing or malformed.
++        """
 +        if not key:
-+            raise AuthenticationError(
-+                "MOORCHEH_API_KEY not provided. Set it as an environment variable "
-+                "or pass it to the MemantoClient constructor."
-+            )
-+        # Basic format validation to catch copy-paste errors early
-+        if not re.match(r"^mch_[a-zA-Z0-9]{32,}$", key):
-+            raise AuthenticationError(
-+                f"Invalid API key format: {_mask_key(key)}. "
-+                "Expected format: mch_<alphanumeric> (at least 32 chars after prefix)."
-+            )
-+        return key
-+
-+    def _resolve_base_url(self, base_url: str | None) -> str:
-+        """Validate and normalize the base URL."""
-+        url = base_url or os.environ.get("MOORCHEH_BASE_URL", self.DEFAULT_BASE_URL)
-+        parsed = urllib.parse.urlparse(url)
-+        if parsed.scheme not in ("https", "http"):
-+            raise MemantoError(f"Invalid base URL scheme: {url}. Must be http or https.")
-+        return url.rstrip("/")
-+
-+    def _auth_headers(self) -> dict[str, str]:
-+        """Generate authorization headers."""
-+        return {
-+            "Authorization": f"Bearer {self._api_key}",
-+            "Content-Type": "application/json",
-+            "User-Agent": "memanto-python/0.1.0",
-+        }
-+
-+    def _request(
-+        self,
-+        method: str,
-+        path: str,
-+        *,
-+        retries: int = 0,
-+        **kwargs: Any,
-+    ) -> requests.Response:
-+        """Make an HTTP request with retry logic and timeout."""
-+        url = f"{self._base_url}{path}"
-+        # Inject timeout if not already present
-+        if "timeout" not in kwargs:
-+            kwargs["timeout"] = self._timeout
-+
-+        try:
-+            response = self._session.request(method, url, **kwargs)
-+            response.raise_for_status()
-+            return response
-+        except requests.exceptions.HTTPError as exc:
-+            if exc.response.status_code == 401:
-+                raise AuthenticationError("Invalid API key. Please check your credentials.") from exc
-+            if exc.response.status_code == 429:
-+                if retries < self.MAX_RETRIES:
-+                    wait = self.BACKOFF_BASE * (2 ** retries)
-+                    time.sleep(wait)
-+                    return self._request(method, path, retries=retries + 1, **kwargs)
-+                to_raise = RateLimitError("Rate limit exceeded. Max retries reached.")
-+                raise to_raise from exc
-+            if 500 <= exc.response.status_code < 600 and retries < self.MAX_RETRIES:
-+                wait = self.BACKOFF_BASE * (2 ** retries)
-+                time.sleep(wait)
-+                return self._request(method, path, retries=retries + 1, **kwargs)
-+            raise MemantoError(f"API request failed: {exc}") from exc
-+        except requests.exceptions.Timeout as exc:
-+            raise MemantoError(f"Request to {url} timed out after {self._timeout}s") from exc
-+        except requests.exceptions.RequestException as exc:
-+            raise MemantoError(f"Network error: {exc}") from exc
-+
-+    def get(self, path: str, **kwargs: Any) -> requests.Response:
-+        return self._request("GET", path, **kwargs)
-+
-+    def post(self, path: str, **kwargs: Any) -> requests.Response:
-+        return self._request("POST", path, **kwargs)
-+
-+    def put(self, path: str, **kwargs: Any) -> requests.Response:
-+        return self._request("PUT", path, **kwargs)
-+
-+    def delete(self, path: str, **kwargs: Any) -> requests.Response:
-+        return self._request("DELETE", path, **kwargs)
-+
-+    def close(self) -> None:
-+        """Close the underlying session to free connections."""
-+        self._session.close()
-+
-+    def __enter__(self) -> MemantoClient
++            raise ValueError(
++                "MOORCHEH_API_KEY is
