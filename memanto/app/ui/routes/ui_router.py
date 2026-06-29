@@ -4,13 +4,14 @@ MEMANTO Web UI Router
 Serves the Web UI static files and provides UI-specific API endpoints.
 """
 
+import ipaddress
 import os
 import signal
 import time
 from pathlib import Path
 from typing import Any
 
-from fastapi import APIRouter, BackgroundTasks, HTTPException
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request
 from fastapi.responses import FileResponse, HTMLResponse
 from fastapi.staticfiles import StaticFiles
 
@@ -28,6 +29,41 @@ _config_manager = ConfigManager()
 
 # Path to the static directory
 STATIC_DIR = Path(__file__).parent.parent / "static"
+
+
+def _is_loopback(host: str | None) -> bool:
+    """Return True if *host* is any loopback address (IPv4, IPv6, or IPv4-mapped IPv6)."""
+    if host is None:
+        return False
+    try:
+        addr = ipaddress.ip_address(host)
+        if addr.is_loopback:
+            return True
+        # ::ffff:127.0.0.1 – IPv4-mapped IPv6 – is_loopback returns False
+        ipv4_mapped = getattr(addr, "ipv4_mapped", None)
+        return ipv4_mapped is not None and ipv4_mapped.is_loopback
+    except ValueError:
+        return False
+
+
+async def _require_local(request: Request) -> None:
+    """Reject requests that do not originate from the loopback interface.
+
+    UI management endpoints (shutdown, browse, config update, API key update)
+    are designed for local desktop use only.  Allowing them from arbitrary
+    network addresses would let any reachable host kill the server, enumerate
+    the filesystem, or replace API credentials without authentication.
+    """
+    client_host = request.client.host if request.client else None
+    if not _is_loopback(client_host):
+        raise HTTPException(
+            status_code=403,
+            detail=(
+                "UI management endpoints are only accessible from localhost. "
+                f"Request origin: {client_host}"
+            ),
+        )
+
 
 
 def _build_ui_direct_client() -> DirectClient | None:
@@ -56,7 +92,7 @@ def _build_ui_direct_client() -> DirectClient | None:
 
 
 @router.get("/api/ui/config")
-async def get_ui_config():
+async def get_ui_config(_: None = Depends(_require_local)):
     """
     Get current MEMANTO configuration for the Web UI.
 
@@ -106,7 +142,7 @@ async def get_ui_config():
 
 
 @router.patch("/api/ui/config")
-async def update_ui_config(updates: dict):
+async def update_ui_config(updates: dict, _: None = Depends(_require_local)):
     """
     Update non-sensitive MEMANTO configuration from the Web UI.
 
@@ -263,7 +299,7 @@ def _update_onprem_answer(ans: dict) -> None:
 
 
 @router.post("/api/ui/onprem/restart")
-async def restart_onprem_backend():
+async def restart_onprem_backend(_: None = Depends(_require_local)):
     """Bounce the on-prem moorcheh stack so it re-reads ``~/.moorcheh/config.json``.
 
     ``moorcheh down`` + ``moorcheh up`` (with embedding flags recovered from
@@ -342,7 +378,7 @@ async def restart_onprem_backend():
 
 
 @router.put("/api/ui/api-key")
-async def update_api_key(body: dict):
+async def update_api_key(body: dict, _: None = Depends(_require_local)):
     """
     Update the Moorcheh API key from the Web UI.
     Expects: {"api_key": "new-key-value"}
@@ -356,7 +392,7 @@ async def update_api_key(body: dict):
 
 
 @router.get("/api/ui/conflicts")
-async def list_conflicts(agent_id: str | None = None, date: str | None = None):
+async def list_conflicts(agent_id: str | None = None, date: str | None = None, _: None = Depends(_require_local)):
     """
     List unresolved conflicts for an agent.
     Uses DirectClient.list_conflicts under the hood.
@@ -387,7 +423,7 @@ async def list_conflicts(agent_id: str | None = None, date: str | None = None):
 
 
 @router.get("/api/ui/conflict-scans")
-async def list_conflict_scans(agent_id: str | None = None):
+async def list_conflict_scans(agent_id: str | None = None, _: None = Depends(_require_local)):
     """
     Return, per day, when the conflict scan last ran for an agent.
 
@@ -404,6 +440,10 @@ async def list_conflict_scans(agent_id: str | None = None):
         if not aid:
             return {"scans": {}, "agent_id": None}
         agent_id = aid
+
+    # Guard against glob-special characters that would leak cross-agent conflict data
+    if not re.match(r"^[A-Za-z0-9_-]+$", agent_id):
+        raise HTTPException(status_code=400, detail="Invalid agent_id: must match [A-Za-z0-9_-]+")
 
     conflicts_dir = Path.home() / ".memanto" / "conflicts"
     scans: dict[str, dict] = {}
@@ -437,7 +477,7 @@ async def list_conflict_scans(agent_id: str | None = None):
 
 
 @router.get("/api/ui/daily-summary")
-async def read_daily_summary(agent_id: str | None = None, date: str | None = None):
+async def read_daily_summary(agent_id: str | None = None, date: str | None = None, _: None = Depends(_require_local)):
     """
     Return the existing daily summary for an agent/date if one was already
     generated. Does NOT trigger generation — that's the POST endpoint.
@@ -478,7 +518,7 @@ async def read_daily_summary(agent_id: str | None = None, date: str | None = Non
 
 
 @router.post("/api/ui/daily-summary")
-async def generate_daily_summary(body: dict | None = None):
+async def generate_daily_summary(body: dict | None = None, _: None = Depends(_require_local)):
     """
     Trigger an on-demand daily summary for the active agent.
     Expects (optional): {"agent_id": "...", "date": "YYYY-MM-DD",
@@ -510,7 +550,7 @@ async def generate_daily_summary(body: dict | None = None):
 
 
 @router.post("/api/ui/conflicts/generate")
-async def generate_conflict_report(body: dict | None = None):
+async def generate_conflict_report(body: dict | None = None, _: None = Depends(_require_local)):
     """
     Trigger an on-demand conflict report for the active agent. This is the
     same work the scheduled task performs.
@@ -539,7 +579,7 @@ async def generate_conflict_report(body: dict | None = None):
 
 
 @router.post("/api/ui/conflicts/resolve")
-async def resolve_conflict(body: dict):
+async def resolve_conflict(body: dict, _: None = Depends(_require_local)):
     """
     Resolve a single conflict.
     Expects: {"agent_id": "...", "date": "...", "conflict_index": 0, "action": "keep_old"|"keep_new"|"keep_both"|"remove_both"|"manual", "manual_content": "..."}
@@ -581,7 +621,7 @@ async def resolve_conflict(body: dict):
 
 
 @router.get("/api/ui/connections")
-async def get_connections():
+async def get_connections(_: None = Depends(_require_local)):
     """List all supported agents merged with the local connections registry.
 
     Returns the agent catalog from `agent_registry`, each enriched with what's
@@ -628,7 +668,10 @@ async def get_connections():
 
 
 @router.get("/api/ui/browse")
-async def browse_path(path: str | None = None):
+async def browse_path(
+    path: str | None = None,
+    _: None = Depends(_require_local),
+):
     """List subdirectories of a given path (server-side folder picker).
 
     Defaults to the user's home directory when ``path`` is missing or invalid.
@@ -686,7 +729,7 @@ async def browse_path(path: str | None = None):
 
 
 @router.post("/api/ui/connections/install")
-async def connections_install(body: dict):
+async def connections_install(body: dict, _: None = Depends(_require_local)):
     """Install MEMANTO integration for one or more agents at a given location.
 
     Body: {"agents": ["claude-code", ...], "project_dir": "/abs/path", "is_global": false}
@@ -721,7 +764,7 @@ async def connections_install(body: dict):
 
 
 @router.post("/api/ui/connections/uninstall")
-async def connections_uninstall(body: dict):
+async def connections_uninstall(body: dict, _: None = Depends(_require_local)):
     """Remove MEMANTO integration for a single agent at a given location.
 
     Body: {"agent": "claude-code", "project_dir": "/abs/path", "is_global": false}
@@ -759,7 +802,10 @@ async def connections_uninstall(body: dict):
 
 
 @router.post("/api/ui/shutdown")
-async def shutdown_server(background_tasks: BackgroundTasks):
+async def shutdown_server(
+    background_tasks: BackgroundTasks,
+    _: None = Depends(_require_local),
+):
     """
     Gracefully shutdown the MEMANTO server.
     Called by the UI when the browser tab is closed.
@@ -892,7 +938,7 @@ def _migrate_get_metrics_fn(provider: str):
 
 
 @router.post("/api/ui/migrate/dry-run")
-async def migrate_dry_run(body: dict):
+async def migrate_dry_run(body: dict, _: None = Depends(_require_local)):
     """Preview a migration without writing.
 
     Body: ``{provider, file?, api_key?}``. Returns the mapped row count,
@@ -950,7 +996,7 @@ async def migrate_dry_run(body: dict):
 
 
 @router.post("/api/ui/migrate/import")
-async def migrate_import(body: dict):
+async def migrate_import(body: dict, _: None = Depends(_require_local)):
     """Run an end-to-end migration.
 
     Body: ``{provider, file?, api_key?, agent_id?}``. Loads-or-exports,
