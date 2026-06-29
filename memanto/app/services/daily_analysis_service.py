@@ -15,6 +15,7 @@ from memanto.app.config import get_data_dir, settings
 from memanto.app.core import create_memory_scope
 from memanto.app.services.session_service import get_session_service
 from memanto.app.utils.errors import MemoryError
+from memanto.app.utils.validation import validate_output_path
 from memanto.app.utils.temporal_helpers import (
     format_current_local_time,
     format_local_time,
@@ -49,6 +50,11 @@ class DailyAnalysisService:
         """
         Generate a daily natural language summary for an agent and date.
         """
+        # Validate output_path before any I/O so traversal attempts fail fast.
+        resolved_output = validate_output_path(
+            output_path,
+            base_dir=self.summaries_dir.parent,
+        )
         # Find all relevant session MD files
         pattern = f"{agent_id}_{date}_*_summary.md"
         session_files = list(self.sessions_dir.glob(pattern))
@@ -100,10 +106,9 @@ Format the output as a Markdown report:
         except Exception as e:
             raise MemoryError(f"AI summarization failed: {str(e)}")
 
-        if output_path:
-            summary_path = Path(output_path)
-            # Ensure parent directories exist
-            summary_path.parent.mkdir(parents=True, exist_ok=True)
+        if resolved_output is not None:
+            resolved_output.parent.mkdir(parents=True, exist_ok=True)
+            summary_path = resolved_output
         else:
             summary_path = self.summaries_dir / f"{agent_id}_{date}.md"
 

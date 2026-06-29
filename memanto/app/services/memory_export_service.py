@@ -209,7 +209,11 @@ class MemoryExportService:
             self.exports_dir.mkdir(parents=True, exist_ok=True)
             output_path = self.exports_dir / f"{agent_id}_memory.md"
         else:
-            output_path = Path(output_path)
+            from memanto.app.utils.validation import validate_output_path
+            output_path = validate_output_path(
+                str(output_path),
+                base_dir=self.exports_dir.parent,
+            )
             output_path.parent.mkdir(parents=True, exist_ok=True)
 
         content = self.format_memory_md(agent_id, memories_by_type)

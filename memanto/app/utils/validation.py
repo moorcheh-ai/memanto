@@ -2,6 +2,7 @@
 Input Validation and Cost Guards for MEMANTO
 """
 
+from pathlib import Path
 from typing import Any
 
 from fastapi import HTTPException
@@ -159,3 +160,45 @@ def validate_request_size(
                 "max_size": max_size,
             },
         )
+
+
+def validate_output_path(output_path: str | None, base_dir: Path | None = None) -> Path | None:
+    """Restrict *output_path* to a safe base directory to prevent path traversal writes.
+
+    An authenticated caller who supplies ``output_path="/etc/cron.d/evil"`` could
+    overwrite arbitrary files on the server.  This guard resolves the requested path
+    and ensures it remains inside *base_dir* (defaults to ``~/.memanto/``).
+
+    Args:
+        output_path: Raw path string from the API request, or ``None``.
+        base_dir: Allowed parent directory.  Defaults to ``~/.memanto``.
+
+    Returns:
+        Resolved ``Path`` when *output_path* is provided, ``None`` otherwise.
+
+    Raises:
+        HTTPException(400): When the resolved path escapes *base_dir*.
+    """
+    if output_path is None:
+        return None
+
+    safe_base = (base_dir or Path.home() / ".memanto").resolve()
+    try:
+        candidate = Path(output_path)
+        if not candidate.is_absolute():
+            candidate = safe_base / candidate
+        resolved = candidate.resolve()
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid output_path")
+
+    try:
+        resolved.relative_to(safe_base)
+    except ValueError:
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                f"output_path must be inside {safe_base}. "
+                "Absolute paths that escape the agent data directory are not allowed."
+            ),
+        )
+    return resolved
