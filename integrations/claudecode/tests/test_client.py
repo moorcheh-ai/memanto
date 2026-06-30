@@ -129,6 +129,26 @@ class TestDistillAndStore:
         assert len(fake.remembered) == 1
         assert fake.remembered[0]["title"] == "Cart != Order"
 
+    def test_partial_batch_retries_all_when_failed_count_is_ambiguous(
+        self, config: SkillsConfig, llm_answer_json: str
+    ) -> None:
+        fake = FakeSdkClient(answer_text=llm_answer_json)
+
+        def ambiguous_batch(agent_id: str, memories: list[dict[str, Any]]) -> dict:
+            fake.batch_calls.append(memories)
+            return {
+                "successful": 1,
+                "failed": 1,
+                "results": [{"status": "success"}, {"status": "success"}],
+            }
+
+        fake.batch_remember = ambiguous_batch  # type: ignore[assignment]
+        mem = _mem(config, fake)
+        stored = mem.distill_and_store("tdd", "transcript")
+
+        assert len(stored) == 2
+        assert len(fake.remembered) == 2
+
     def test_llm_failure_falls_back_to_heuristic(self, config: SkillsConfig) -> None:
         fake = FakeSdkClient()
 

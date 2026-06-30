@@ -252,7 +252,8 @@ def _failed_batch_indices(result: dict[str, Any], expected_count: int) -> set[in
     is missing but the aggregate says something failed, treat the whole batch as
     uncertain so callers never report unverified memories as persisted.
     """
-    if int(result.get("failed") or 0) <= 0:
+    failed_count = int(result.get("failed") or 0)
+    if failed_count <= 0:
         return set()
 
     raw_results = result.get("results")
@@ -268,4 +269,6 @@ def _failed_batch_indices(result: dict[str, Any], expected_count: int) -> set[in
         action = str(item.get("action", "")).lower()
         if status == "failed" or action == "rejected" or item.get("error"):
             failed.add(i)
+    if len(failed) < failed_count:
+        return set(range(expected_count))
     return failed
