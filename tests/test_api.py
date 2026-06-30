@@ -1201,6 +1201,33 @@ class TestMEMANTOAPI:
         assert data["status"] == "uploaded"
 
     @pytest.mark.asyncio
+    async def test_upload_file_rejects_oversized_body(
+        self, client, auth_headers, mock_moorcheh, monkeypatch
+    ):
+        """Oversized uploads must fail before calling the Moorcheh client."""
+        await client.post(
+            "/api/v2/agents",
+            headers=auth_headers,
+            json={"agent_id": self.TEST_AGENT_ID},
+        )
+        activate_resp = await client.post(
+            f"/api/v2/agents/{self.TEST_AGENT_ID}/activate", headers=auth_headers
+        )
+        token = activate_resp.json()["session_token"]
+
+        monkeypatch.setattr("memanto.app.routes.memory.MAX_UPLOAD_BYTES", 4)
+
+        headers = {**auth_headers, "X-Session-Token": token}
+        response = await client.post(
+            f"/api/v2/agents/{self.TEST_AGENT_ID}/upload-file",
+            headers=headers,
+            files={"file": ("notes.txt", b"12345", "text/plain")},
+        )
+
+        assert response.status_code == 413
+        mock_moorcheh.documents.upload_file.assert_not_called()
+
+    @pytest.mark.asyncio
     async def test_upload_file_unsupported_extension(self, client, auth_headers):
         """Test that unsupported file types are rejected"""
         await client.post(
