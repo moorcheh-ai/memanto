@@ -118,7 +118,9 @@ class MemoryWriteService:
             raise MemoryError(f"Failed to store memory: {e}")
 
     def batch_store_memories(
-        self, memories: list[MemoryRecord], context: dict[str, Any] | None = None
+        self,
+        memories: list[MemoryRecord],
+        context: dict[str, Any] | list[dict[str, Any] | None] | None = None,
     ) -> dict[str, Any]:
         """
         Store multiple memories in batch leveraging Moorcheh's 100 docs/request capability
@@ -147,7 +149,7 @@ class MemoryWriteService:
             # Enforce server-side timestamps for batch (single timestamp for all)
             now = datetime.utcnow()
 
-            for memory in memories:
+            for index, memory in enumerate(memories):
                 try:
                     # Generate ID if not provided
                     if not memory.id:
@@ -177,8 +179,16 @@ class MemoryWriteService:
                         )
                         continue
 
-                    # Validate memory before storage
-                    validation_result = self.validation_service.validate_memory(memory, context)
+                    # Validate memory before storage. Batch callers may pass either
+                    # one shared context dict or a per-memory context list.
+                    item_context = (
+                        context[index]
+                        if isinstance(context, list) and index < len(context)
+                        else context
+                    )
+                    validation_result = self.validation_service.validate_memory(
+                        memory, item_context if isinstance(item_context, dict) else None
+                    )
                     # Use validated memory if modified
                     if "memory" in validation_result:
                         memory = validation_result["memory"]

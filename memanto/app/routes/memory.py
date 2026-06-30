@@ -216,14 +216,16 @@ async def remember(
             context={"user_confirmed": request.user_confirmed},
         )
 
-        # Log to local session Markdown summary
-        session_service = get_session_service()
-        await asyncio.to_thread(
-            session_service.log_memory_to_session_summary,
-            agent_id=agent_id,
-            session_id=session.session_id,
-            memory_record=memory,
-        )
+        if result.get("action", "store") in {"store", "store_provisional"}:
+            # Log to local session Markdown summary only when validation accepted
+            # the write; rejected/quarantined memories must not appear there.
+            session_service = get_session_service()
+            await asyncio.to_thread(
+                session_service.log_memory_to_session_summary,
+                agent_id=agent_id,
+                session_id=session.session_id,
+                memory_record=memory,
+            )
 
         # skip trust_score() computation
         ## Compute trust score for response
@@ -234,7 +236,9 @@ async def remember(
             "agent_id": agent_id,
             "session_id": session.session_id,
             "namespace": session.namespace,
-            "status": "queued",
+            "status": result.get("status", "queued")
+            if result.get("action") not in {"store", "store_provisional"}
+            else "queued",
             "provenance": request.provenance,
             "confidence": request.confidence,
             # Resolved memory type (auto-parsed when not explicitly provided)
@@ -303,21 +307,31 @@ async def batch_remember(
             )
             memory_records.append(memory)
 
-        batch_user_confirmed = request.user_confirmed or all(
-            item.user_confirmed for item in request.memories
-        )
+        item_contexts = [
+            {"user_confirmed": bool(request.user_confirmed or item.user_confirmed)}
+            for item in request.memories
+        ]
 
-        # Store in batch
+        # Store in batch with per-memory validation context so mixed
+        # confirmed/unconfirmed batches retain item-level confirmation state.
         result = await asyncio.to_thread(
             write_service.batch_store_memories,
             memory_records,
-            context={"user_confirmed": batch_user_confirmed},
+            context=item_contexts,
         )
 
         # Log each memory to local MD summary
         session_service = get_session_service()
 
+        accepted_ids = {
+            item["id"]
+            for item in result["results"]
+            if item.get("action", "store") in {"store", "store_provisional"}
+            and item.get("status") in {"queued", "success", "store", "store_provisional"}
+        }
         for record in memory_records:
+            if record.id not in accepted_ids:
+                continue
             await asyncio.to_thread(
                 session_service.log_memory_to_session_summary,
                 agent_id=agent_id,

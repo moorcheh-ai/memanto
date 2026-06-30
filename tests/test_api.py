@@ -694,10 +694,13 @@ class TestMEMANTOAPI:
         token = activate_resp.json()["session_token"]
         headers = {**auth_headers, "X-Session-Token": token}
 
-        with patch(
-            "memanto.app.services.memory_write_service.MemoryWriteService.store_memory",
-            return_value={"id": "mem-ctx", "type": "fact", "status": "success"},
-        ) as store_memory:
+        with (
+            patch(
+                "memanto.app.services.memory_write_service.MemoryWriteService.store_memory",
+                return_value={"id": "mem-ctx", "type": "fact", "status": "success", "action": "store"},
+            ) as store_memory,
+            patch("memanto.app.routes.memory.enforce_write_rate_limit") as enforce_write_rate_limit,
+        ):
             response = await client.post(
                 f"/api/v2/agents/{self.TEST_AGENT_ID}/remember",
                 headers=headers,
@@ -709,8 +712,52 @@ class TestMEMANTOAPI:
             )
 
         assert response.status_code == 200
+        enforce_write_rate_limit.assert_called_once_with(
+            self.TEST_AGENT_ID, f"memanto_agent_{self.TEST_AGENT_ID}"
+        )
         _, kwargs = store_memory.call_args
         assert kwargs["context"] == {"user_confirmed": True}
+
+    @pytest.mark.asyncio
+    async def test_remember_rejected_validation_not_logged_as_queued(
+        self, client, auth_headers
+    ):
+        """Rejected validation results are returned and not logged locally."""
+        await client.post(
+            "/api/v2/agents",
+            headers=auth_headers,
+            json={"agent_id": self.TEST_AGENT_ID},
+        )
+        activate_resp = await client.post(
+            f"/api/v2/agents/{self.TEST_AGENT_ID}/activate", headers=auth_headers
+        )
+        token = activate_resp.json()["session_token"]
+        headers = {**auth_headers, "X-Session-Token": token}
+
+        with (
+            patch(
+                "memanto.app.services.memory_write_service.MemoryWriteService.store_memory",
+                return_value={
+                    "id": "mem-rejected",
+                    "type": "fact",
+                    "status": "rejected",
+                    "action": "reject",
+                    "reason": "Needs confirmation",
+                },
+            ),
+            patch(
+                "memanto.app.services.session_service.SessionService.log_memory_to_session_summary"
+            ) as log_memory,
+        ):
+            response = await client.post(
+                f"/api/v2/agents/{self.TEST_AGENT_ID}/remember",
+                headers=headers,
+                json={"content": "Unconfirmed memory", "type": "fact"},
+            )
+
+        assert response.status_code == 200
+        assert response.json()["status"] == "rejected"
+        log_memory.assert_not_called()
 
     @pytest.mark.asyncio
     async def test_batch_remember_api(self, client, auth_headers, mock_moorcheh):
@@ -754,7 +801,7 @@ class TestMEMANTOAPI:
     async def test_batch_remember_passes_user_confirmed_validation_context(
         self, client, auth_headers
     ):
-        """Batch remember forwards batch-level user_confirmed to validation."""
+        """Batch remember forwards per-item user_confirmed validation contexts."""
         await client.post(
             "/api/v2/agents",
             headers=auth_headers,
@@ -781,14 +828,15 @@ class TestMEMANTOAPI:
                 f"/api/v2/agents/{self.TEST_AGENT_ID}/batch-remember",
                 headers=headers,
                 json={
-                    "user_confirmed": True,
-                    "memories": [{"content": "Confirmed batch", "type": "fact"}],
+                    "memories": [
+                        {"content": "Confirmed batch", "type": "fact", "user_confirmed": True}
+                    ],
                 },
             )
 
         assert response.status_code == 200
         _, kwargs = batch_store.call_args
-        assert kwargs["context"] == {"user_confirmed": True}
+        assert kwargs["context"] == [{"user_confirmed": True}]
 
     @pytest.mark.asyncio
     async def test_delete_memory_with_session(

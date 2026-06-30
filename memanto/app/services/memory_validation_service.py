@@ -25,8 +25,9 @@ class ValidationPolicy:
         """
         context = context or {}
 
-        # High-confidence memory types require validation.
-        if memory.type in ["fact", "preference"]:
+        # High-confidence memory types require validation. Keep this in sync
+        # with the settings-backed public requirements API.
+        if memory.type in settings.REQUIRE_VALIDATION_FOR:
             return ValidationPolicy._validate_critical_memory(memory, context)
 
         return {"valid": True, "action": "store", "reason": "Non-critical memory type"}
@@ -77,8 +78,9 @@ class MemoryValidationService:
     ) -> dict[str, Any]:
         """Validate memory according to policy."""
         try:
-            context = context or {}
-            context.setdefault("repetition_count", 0)
+            context = dict(context or {})
+            if "repetition_count" not in context:
+                context["repetition_count"] = self._check_repetition(memory)
 
             validation_result = self.policy.validate_memory(memory, context)
 

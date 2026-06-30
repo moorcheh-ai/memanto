@@ -40,8 +40,13 @@ def test_store_memory_preserves_validation_result_and_modified_memory():
         }
     )
 
-    result = service.store_memory(make_memory(), context={"user_confirmed": False})
+    context = {"user_confirmed": False}
+    memory = make_memory()
+    result = service.store_memory(memory, context=context)
 
+    service._validation_service.validate_memory.assert_called_once()
+    _, validation_context = service._validation_service.validate_memory.call_args.args
+    assert validation_context == context
     assert result["action"] == "store_provisional"
     assert result["reason"] == "Requires validation"
     assert result["memory_status"] == "provisional"
@@ -73,11 +78,14 @@ def test_batch_store_memories_skips_rejected_items_but_uploads_allowed_items():
         {"valid": True, "action": "store", "reason": "User confirmed"},
     ]
 
+    contexts = [{"user_confirmed": False}, {"user_confirmed": True}]
     result = service.batch_store_memories(
         [make_memory(id="reject-me"), make_memory(id="store-me")],
-        context={"user_confirmed": True},
+        context=contexts,
     )
 
+    assert service._validation_service.validate_memory.call_args_list[0].args[1] == contexts[0]
+    assert service._validation_service.validate_memory.call_args_list[1].args[1] == contexts[1]
     assert result["total_submitted"] == 2
     assert result["successful"] == 1
     assert result["failed"] == 1
@@ -87,3 +95,19 @@ def test_batch_store_memories_skips_rejected_items_but_uploads_allowed_items():
     uploaded_docs = client.documents.upload.call_args.kwargs["documents"]
     assert len(uploaded_docs) == 1
     assert uploaded_docs[0]["id"] == "store-me"
+
+
+def test_validation_service_computes_repetition_count_when_missing():
+    service, _ = make_service({"valid": True, "action": "store", "reason": "Repeated content"})
+    service._validation_service._check_repetition = MagicMock(return_value=2)
+
+    service._validation_service.validate_memory.side_effect = None
+    from memanto.app.services.memory_validation_service import MemoryValidationService
+
+    validation_service = MemoryValidationService(MagicMock())
+    validation_service._check_repetition = MagicMock(return_value=2)
+    result = validation_service.validate_memory(make_memory(confidence=0.5), context={"user_confirmed": False})
+
+    assert result["action"] == "store"
+    assert result["reason"] == "Repeated content"
+    validation_service._check_repetition.assert_called_once()
