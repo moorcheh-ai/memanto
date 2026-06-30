@@ -38,9 +38,13 @@ def _stub_moorcheh_sdk() -> None:
     doc_mod.Document = dict  # type: ignore[attr-defined]
     sdk.types = types_mod  # type: ignore[attr-defined]
     types_mod.document = doc_mod
+    exc_mod = ModuleType("moorcheh_sdk.exceptions")
+    exc_mod.ConflictError = type("ConflictError", (Exception,), {})  # type: ignore[attr-defined]
+    sdk.exceptions = exc_mod  # type: ignore[attr-defined]
     sys.modules.setdefault("moorcheh_sdk", sdk)
     sys.modules.setdefault("moorcheh_sdk.types", types_mod)
     sys.modules.setdefault("moorcheh_sdk.types.document", doc_mod)
+    sys.modules.setdefault("moorcheh_sdk.exceptions", exc_mod)
 
 _stub_moorcheh_sdk()
 
@@ -114,6 +118,18 @@ class TestUpdateMemoryRaceCondition:
             "— a failed upload would permanently destroy the original memory"
         )
 
+        # Verify the uploaded document carries the new content so we know the
+        # new version survived into storage before the old one was removed.
+        upload_call = client.documents.upload.call_args
+        assert upload_call is not None, "upload was never called with arguments"
+        documents = upload_call.kwargs.get("documents") or (
+            upload_call.args[1] if len(upload_call.args) > 1 else upload_call.args[0] if upload_call.args else []
+        )
+        assert documents, "upload was called with no documents"
+        assert "Updated content" in str(documents), (
+            "uploaded document does not contain the updated content — new version was not committed"
+        )
+
     def test_original_preserved_when_upload_fails(self):
         """If upload raises, delete must never be called (original stays intact)."""
         from memanto.app.services.memory_write_service import MemoryWriteService
@@ -169,6 +185,10 @@ class TestQueryInjection:
         # value becomes 'active_extra_tokens' — only one filter token
         token_count = result.count("#status:")
         assert token_count == 1, f"expected 1 #status: token, got {token_count}"
+        # the exact normalised token must appear verbatim
+        assert "#status:active_extra_tokens" in result, (
+            f"expected '#status:active_extra_tokens' in query, got: {result!r}"
+        )
 
     def test_clean_filter_passes_through(self):
         """Normal filters with no injection chars must work correctly."""

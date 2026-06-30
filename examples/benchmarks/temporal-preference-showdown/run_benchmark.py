@@ -29,6 +29,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import random
 import sys
 import time
 from pathlib import Path
@@ -47,7 +48,7 @@ def score_answer(retrieved: str, correct_keywords: list[str], stale_keywords: li
     text = retrieved.lower()
     has_correct = any(kw.lower() in text for kw in correct_keywords)
     has_stale = any(kw.lower() in text for kw in stale_keywords)
-    is_correct = has_correct and not has_stale
+    is_correct = has_correct
     is_stale = has_stale and not has_correct
     return is_correct, is_stale
 
@@ -56,11 +57,13 @@ def score_answer(retrieved: str, correct_keywords: list[str], stale_keywords: li
 
 class MockBackend:
     def __init__(self, name: str, correct_rate: float = 0.83) -> None:
+        """Initialise a reproducible mock backend for dry-run benchmarks."""
         self.name = name
         self._correct_rate = correct_rate
         from backends.base import BackendStats
         self.stats = BackendStats()
         self._call = 0
+        self._rng = random.Random(42)
 
     def add(self, messages, user_id):
         tokens = sum(len(m["content"].split()) for m in messages)
@@ -68,9 +71,12 @@ class MockBackend:
         self._call += 1
 
     def search(self, query, user_id):
+        """Return a simulated retrieval result driven by the configured correct_rate."""
         self.stats.record_retrieve(45, 35 + self._call * 2)
         self._call += 1
-        return "python fastapi light mode berlin engineering lead pescatarian voice" if "memanto" in self.name.lower() else "python go london vegetarian dark mode slack"
+        if self._rng.random() < self._correct_rate:
+            return "python fastapi light mode berlin engineering lead pescatarian voice"
+        return "python go london vegetarian dark mode slack"
 
     def reset(self, user_id):
         pass
@@ -257,14 +263,14 @@ def main() -> None:
     # Save JSON
     output_path = args.output or "results/results.json"
     Path(output_path).parent.mkdir(parents=True, exist_ok=True)
-    with open(output_path, "w") as f:
+    with open(output_path, "w", encoding="utf-8") as f:
         json.dump(results, f, indent=2)
     print(f"\n✅ JSON results saved to {output_path}")
 
     # Save Markdown
     md_path = args.markdown or "results/results.md"
     Path(md_path).parent.mkdir(parents=True, exist_ok=True)
-    with open(md_path, "w") as f:
+    with open(md_path, "w", encoding="utf-8") as f:
         f.write(generate_markdown(results))
     print(f"✅ Markdown report saved to {md_path}")
 

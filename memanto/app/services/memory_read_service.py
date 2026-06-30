@@ -518,17 +518,23 @@ class MemoryReadService:
         # Add memory type filters
         if type:
             for mem_type in type:
-                filter_parts.append(f"#memory_type:{mem_type}")
+                safe_type = str(mem_type).strip().replace("#", "").replace(" ", "_")
+                if safe_type:
+                    filter_parts.append(f"#memory_type:{safe_type}")
 
         # Add tag filters (keyword syntax)
         if tags:
             for tag in tags:
-                filter_parts.append(f"#{tag}")
+                safe_tag = str(tag).strip().replace("#", "").replace(" ", "_")
+                if safe_tag:
+                    filter_parts.append(f"#{safe_tag}")
 
         # Add status filters
         if status_filter:
             for status in status_filter:
-                filter_parts.append(f"#status:{status}")
+                safe_status = str(status).strip().replace("#", "").replace(" ", "_")
+                if safe_status:
+                    filter_parts.append(f"#status:{safe_status}")
 
         # Add confidence filter (convert to category if needed)
         if min_confidence is not None:

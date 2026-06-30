@@ -119,4 +119,5 @@ QUERIES = [
     },
 ]
 
-USER_ID = "alex_benchmark_2026"
+import uuid as _uuid
+USER_ID = f"alex_benchmark_{_uuid.uuid4().hex[:8]}"

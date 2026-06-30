@@ -47,8 +47,9 @@ class TestBackendStats(unittest.TestCase):
         s = BackendStats()
         for ms in [10, 20, 30, 40, 100]:
             s.record_retrieve(10, float(ms))
-        # p95 of [10,20,30,40,100] → idx = int(5*0.95)-1 = 3 → 40
-        self.assertEqual(s.retrieve_p95_ms, 40.0)
+        # p95 of [10,20,30,40,100] via linear interpolation:
+        # rank = (5-1)*0.95 = 3.8 → lo=3 (40), hi=4 (100), interp = 40 + 0.8*60 = 88.0
+        self.assertEqual(s.retrieve_p95_ms, 88.0)
 
     def test_token_accumulation(self):
         s = BackendStats()

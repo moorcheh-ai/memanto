@@ -212,6 +212,9 @@ class MemoryWriteService:
             successful = sum(1 for r in results if r["status"] in ["queued", "success"])
             failed = sum(1 for r in results if r["status"] == "failed")
             rejected = sum(1 for r in results if r["status"] == "rejected")
+            # Absorb any non-standard upload statuses (e.g. "processing", "unknown")
+            # into failed so the invariant holds regardless of backend response shape.
+            failed += len(results) - successful - failed - rejected
 
             return {
                 "total_submitted": len(memories),
