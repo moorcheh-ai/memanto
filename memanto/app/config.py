@@ -6,6 +6,8 @@ CLI config models have been moved to cli/config/manager.py.
 """
 
 import os
+import secrets
+import warnings
 from pathlib import Path
 
 import yaml  # type: ignore[import-untyped]
@@ -78,6 +80,11 @@ if _config_file.exists():
         pass
 
 
+def _generate_default_secret_key() -> str:
+    """Generate a random 64-character hex secret key."""
+    return secrets.token_hex(32)
+
+
 # CLI & YAML Format Models (kept for backward compat with config.yaml structure)
 class ServerConfig(BaseModel):
     """Server configuration"""
@@ -127,10 +134,10 @@ class Settings(BaseSettings):
     DEBUG: bool = False
 
     # CORS Configuration
-    ALLOWED_ORIGINS: list[str] = ["*"]
+    ALLOWED_ORIGINS: list[str] = ["http://localhost:8000"]
 
     # Session Configuration
-    MEMANTO_SECRET_KEY: str = "memanto-default-secret-change-in-production"
+    MEMANTO_SECRET_KEY: str = ""
     SESSION_DEFAULT_DURATION_HOURS: int = 6
     SESSION_AUTO_EXTEND: bool = True
     SESSION_EXTEND_THRESHOLD_MINUTES: int = 30
@@ -173,6 +180,19 @@ class Settings(BaseSettings):
 
 # Global settings instance
 settings = Settings()
+
+# Warn and auto-generate if secret key is still the default
+if not settings.MEMANTO_SECRET_KEY or settings.MEMANTO_SECRET_KEY == "memanto-default-secret-change-in-production":
+    _generated = _generate_default_secret_key()
+    settings.MEMANTO_SECRET_KEY = _generated
+    warnings.warn(
+        "MEMANTO_SECRET_KEY is not set or is the insecure default. "
+        "A random key has been auto-generated for this session. "
+        "Set MEMANTO_SECRET_KEY in your .env file for persistence.\n"
+        f"  Auto-generated key: {_generated}",
+        UserWarning,
+        stacklevel=2,
+    )
 
 
 def get_data_dir() -> Path:

@@ -57,15 +57,10 @@ class SessionService:
         Initialize session service
 
         Args:
-            secret_key: Secret key for JWT signing (defaults to env var or generated)
+            secret_key: Secret key for JWT signing (defaults to settings value)
             sessions_dir: Directory for session storage (defaults to ~/.memanto/sessions/)
         """
-        resolved_secret_key = (
-            secret_key
-            or os.getenv("MEMANTO_SECRET_KEY")
-            or "memanto-default-secret-change-in-production"
-        )
-        self.secret_key: str = resolved_secret_key
+        self.secret_key: str = secret_key or settings.MEMANTO_SECRET_KEY
         self.sessions_dir = sessions_dir or get_data_dir() / "sessions"
         self.sessions_dir.mkdir(parents=True, exist_ok=True)
 
