@@ -25,6 +25,10 @@ class ChangeControlBenchmarkTests(unittest.TestCase):
         self.assertEqual(active["secret_leak_rate"], 0.0)
         self.assertGreater(append_only["stale_conflict_rate"], active["stale_conflict_rate"])
 
+    def test_secret_leaks_use_actual_synthetic_values(self) -> None:
+        self.assertTrue(run_benchmark.has_synthetic_secret_leak(["prod-live-should-not-leak"]))
+        self.assertFalse(run_benchmark.has_synthetic_secret_leak(["checkout_v1", "Tuesday 10:00 UTC"]))
+
     def test_report_files_are_written(self) -> None:
         report = run_benchmark.run_benchmark()
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -41,4 +45,3 @@ class ChangeControlBenchmarkTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
-

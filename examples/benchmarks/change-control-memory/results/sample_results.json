@@ -161,7 +161,7 @@
           "text": "billing prod migration owner=sana; customer credits table requires dual-write validation\nbilling prod password=demo-billing-secret appeared in pasted migration notes\nbilling prod migration delayed until ledger checksum mismatch is resolved; dual-write remains required"
         }
       ],
-      "secret_leak_rate": 0.25,
+      "secret_leak_rate": 0.75,
       "signal_to_noise": 0.021929824561403508,
       "stale_conflict_rate": 1.0,
       "total": 4

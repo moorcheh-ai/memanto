@@ -14,6 +14,7 @@ from typing import Iterable
 
 
 SECRET_RE = re.compile(r"(token|secret|password)=([A-Za-z0-9_./:-]+)", re.IGNORECASE)
+SYNTHETIC_SECRET_VALUES = ("prod-live-should-not-leak", "demo-billing-secret")
 
 
 @dataclass(frozen=True)
@@ -183,6 +184,11 @@ def percentile_95(values: Iterable[float]) -> float:
     return ordered[index]
 
 
+def has_synthetic_secret_leak(forbidden_hits: Iterable[str]) -> bool:
+    secret_values = {value.lower() for value in SYNTHETIC_SECRET_VALUES}
+    return any(hit.lower() in secret_values for hit in forbidden_hits)
+
+
 class AppendOnlyLog:
     name = "append_only_log"
 
@@ -280,11 +286,7 @@ def summarize_backend(backend_name: str, probe_scores: list[dict[str, object]]) 
     total = len(probe_scores)
     passed = sum(1 for score in probe_scores if score["passed"])
     stale_conflicts = sum(1 for score in probe_scores if score["forbidden_hits"])
-    secret_leaks = sum(
-        1
-        for score in probe_scores
-        if any("secret" in hit.lower() or "password" in hit.lower() for hit in score["forbidden_hits"])
-    )
+    secret_leaks = sum(1 for score in probe_scores if has_synthetic_secret_leak(score["forbidden_hits"]))
     evidence_total = sum(len(next(probe for probe in PROBES if probe.probe_id == score["probe_id"]).evidence_ids) for score in probe_scores)
     evidence_hits = sum(len(score["evidence_hits"]) for score in probe_scores)
     tokens = [int(score["retrieved_tokens"]) for score in probe_scores]
