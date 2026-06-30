@@ -7,10 +7,12 @@ Serves the Web UI static files and provides UI-specific API endpoints.
 import os
 import signal
 import time
+from ipaddress import ip_address
 from pathlib import Path
+from secrets import compare_digest
 from typing import Any
 
-from fastapi import APIRouter, BackgroundTasks, HTTPException
+from fastapi import APIRouter, BackgroundTasks, Depends, Header, HTTPException, Request
 from fastapi.responses import FileResponse, HTMLResponse
 from fastapi.staticfiles import StaticFiles
 
@@ -21,10 +23,36 @@ from memanto.cli.config.manager import ConfigManager
 from memanto.cli.connect.agent_registry import AGENT_REGISTRY, list_agents
 from memanto.cli.connect.engine import install_agent, remove_agent
 
-router = APIRouter()
-
 # Shared ConfigManager instance (reads from ~/.memanto/)
 _config_manager = ConfigManager()
+
+
+def _require_trusted_ui_request(
+    request: Request, authorization: str | None = Header(None)
+) -> None:
+    """Protect UI helper APIs from remote unauthenticated callers."""
+
+    client_host = request.client.host if request.client else ""
+    try:
+        if client_host and ip_address(client_host).is_loopback:
+            return
+    except ValueError:
+        if client_host in {"localhost", "testclient"}:
+            return
+
+    api_key = _config_manager.get_api_key()
+    if api_key and authorization:
+        scheme, _, token = authorization.partition(" ")
+        if scheme.lower() == "bearer" and compare_digest(token, api_key):
+            return
+
+    raise HTTPException(
+        status_code=403,
+        detail="UI API requests must originate from localhost or use the configured API key.",
+    )
+
+
+router = APIRouter(dependencies=[Depends(_require_trusted_ui_request)])
 
 # Path to the static directory
 STATIC_DIR = Path(__file__).parent.parent / "static"
