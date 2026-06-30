@@ -3,6 +3,7 @@ MEMANTO FastAPI Application
 """
 
 from contextlib import asynccontextmanager
+from warnings import warn
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -58,6 +59,15 @@ def _validate_startup_dependencies() -> None:
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
+    # Warn if CORS is misconfigured
+    origins = settings.ALLOWED_ORIGINS
+    if isinstance(origins, list) and "*" in origins:
+        warn(
+            "CORS allows all origins (`*`) — this is permissive. "
+            "Set ALLOWED_ORIGINS to specific origins in production.",
+            UserWarning,
+            stacklevel=2,
+        )
     _validate_startup_dependencies()
     yield
 
