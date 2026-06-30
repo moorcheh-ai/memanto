@@ -93,6 +93,34 @@ def test_do_get_recent_success(mock_sdk_client):
     )
 
 
+def test_do_get_recovers_key_from_comma_separated_tags(mock_sdk_client):
+    store = MemantoStore(api_key="test_key")
+    client_instance = MagicMock()
+    mock_sdk_client.return_value = client_instance
+
+    client_instance.recall_recent.return_value = {
+        "memories": [
+            {
+                "id": "mem-123",
+                "tags": "lg:key:my_key,urgent",
+                "type": "fact",
+                "title": "my_key",
+                "content": "some content",
+                "confidence": 0.8,
+                "created_at": "2023-01-01T00:00:00Z",
+                "updated_at": "2023-01-01T00:00:00Z",
+            }
+        ]
+    }
+
+    op = GetOp(namespace=("my_ns",), key="my_key")
+    item = store._do_get(op)
+
+    assert item is not None
+    assert item.key == "my_key"
+    assert item.value["tags"] == ["urgent"]
+
+
 def test_do_get_fallback_success(mock_sdk_client):
     store = MemantoStore(api_key="test_key")
     client_instance = MagicMock()
