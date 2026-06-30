@@ -182,7 +182,7 @@ class MemoryReadService:
             namespaces = []
             from typing import cast
 
-            from memanto.memanto.app.constants import ScopeType
+            from memanto.app.constants import ScopeType
 
             for scope_def in scopes:
                 scope = create_memory_scope(
@@ -224,6 +224,7 @@ class MemoryReadService:
             formatted_results = [
                 self._format_memory_item(item)
                 for item in search_result.get("results", [])
+                if isinstance(item, dict)
             ]
 
             return {

@@ -444,6 +444,34 @@ class TestMemoryReadServiceMalformedItems:
         assert result["total_found"] == 1
         assert result["results"][0]["id"] == "memory-1"
 
+    def test_multi_scope_search_skips_non_object_result_items(self):
+        from memanto.app.services.memory_read_service import MemoryReadService
+
+        client = MagicMock()
+        client.similarity_search.query.return_value = {
+            "results": [
+                "truncated row",
+                {
+                    "id": "memory-1",
+                    "text": "[FACT] Valid memory\n\nbody",
+                    "metadata": {
+                        "memory_type": "fact",
+                        "created_at": "2026-01-01T00:00:00+00:00",
+                    },
+                },
+            ],
+            "execution_time": 0.1,
+        }
+
+        result = MemoryReadService(client).search_multi_scope(
+            "valid",
+            scopes=[{"scope_type": "agent", "scope_id": "agent-1"}],
+        )
+
+        assert result["total_found"] == 1
+        assert result["results"][0]["id"] == "memory-1"
+        assert result["searched_namespaces"] == ["memanto_agent_agent-1"]
+
 
 class TestMEMANTOArchitecture:
     """Tests for MEMANTO architecture principles"""
