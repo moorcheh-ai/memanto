@@ -186,7 +186,7 @@ def percentile_95(values: Iterable[float]) -> float:
 
 def has_synthetic_secret_leak(forbidden_hits: Iterable[str]) -> bool:
     secret_values = {value.lower() for value in SYNTHETIC_SECRET_VALUES}
-    return any(hit.lower() in secret_values for hit in forbidden_hits)
+    return any(secret in hit.lower() for hit in forbidden_hits for secret in secret_values)
 
 
 class AppendOnlyLog:

@@ -27,6 +27,11 @@ class ChangeControlBenchmarkTests(unittest.TestCase):
 
     def test_secret_leaks_use_actual_synthetic_values(self) -> None:
         self.assertTrue(run_benchmark.has_synthetic_secret_leak(["prod-live-should-not-leak"]))
+        self.assertTrue(
+            run_benchmark.has_synthetic_secret_leak(
+                ["revoked rollback credential was prod-live-should-not-leak"]
+            )
+        )
         self.assertFalse(run_benchmark.has_synthetic_secret_leak(["checkout_v1", "Tuesday 10:00 UTC"]))
 
     def test_report_files_are_written(self) -> None:
