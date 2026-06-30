@@ -42,8 +42,13 @@ from dataset import QUERIES, SESSIONS, USER_ID
 def score_answer(retrieved: str, correct_keywords: list[str], stale_keywords: list[str]) -> tuple[bool, bool]:
     """Return (is_correct, is_stale) based on keyword presence.
 
-    A result that contains both current and stale keywords is treated as
-    incorrect: the system failed to resolve the temporal conflict cleanly.
+    Correct-wins semantics: if the current fact is present the answer counts
+    as correct regardless of whether a stale keyword also appears.  This
+    handles transition sentences ("switched from Go to Python") correctly —
+    the current state IS communicated, so the recall is a hit.
+
+    is_stale is only True when stale keywords appear and no correct keyword
+    does, meaning the system returned an outdated fact with no correction.
     """
     text = retrieved.lower()
     has_correct = any(kw.lower() in text for kw in correct_keywords)
@@ -71,12 +76,17 @@ class MockBackend:
         self._call += 1
 
     def search(self, query, user_id):
-        """Return a simulated retrieval result driven by the configured correct_rate."""
+        """Return a simulated retrieval result driven by the configured correct_rate.
+
+        The stale path contains ONLY stale keywords (no correct keywords) so
+        that correct_rate genuinely controls the fraction of correct answers
+        under the correct-wins scoring semantics.
+        """
         self.stats.record_retrieve(45, 35 + self._call * 2)
         self._call += 1
         if self._rng.random() < self._correct_rate:
             return "python fastapi light mode berlin engineering lead pescatarian voice"
-        return "python go london vegetarian dark mode slack"
+        return "go golang london vegetarian dark mode slack"
 
     def reset(self, user_id):
         pass
