@@ -209,12 +209,18 @@ class MemoryWriteService:
 
             # Count successes, failures, and namespace-rejected items separately
             # so that successful + failed + rejected == total_submitted always.
-            successful = sum(1 for r in results if r["status"] in ["queued", "success"])
+            _known = {"queued", "success", "failed", "rejected"}
+            successful = sum(1 for r in results if r["status"] in {"queued", "success"})
             failed = sum(1 for r in results if r["status"] == "failed")
             rejected = sum(1 for r in results if r["status"] == "rejected")
             # Absorb any non-standard upload statuses (e.g. "processing", "unknown")
             # into failed so the invariant holds regardless of backend response shape.
+            # Also normalise the per-item status so callers reconciling the results
+            # list against the summary counts don't see conflicting values.
             failed += len(results) - successful - failed - rejected
+            for r in results:
+                if r["status"] not in _known:
+                    r["status"] = "failed"
 
             return {
                 "total_submitted": len(memories),

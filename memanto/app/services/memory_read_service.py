@@ -522,17 +522,20 @@ class MemoryReadService:
                 if safe_type:
                     filter_parts.append(f"#memory_type:{safe_type}")
 
-        # Add tag filters (keyword syntax)
+        # Add tag filters (keyword syntax).
+        # Strip "#", ":", and spaces — a colon in a tag would be parsed by
+        # Moorcheh as a key:value pair (e.g. tags=["status:inactive"] would
+        # emit "#status:inactive", hijacking the status filter namespace).
         if tags:
             for tag in tags:
-                safe_tag = str(tag).strip().replace("#", "").replace(" ", "_")
+                safe_tag = str(tag).strip().replace("#", "").replace(":", "").replace(" ", "_")
                 if safe_tag:
                     filter_parts.append(f"#{safe_tag}")
 
         # Add status filters
         if status_filter:
             for status in status_filter:
-                safe_status = str(status).strip().replace("#", "").replace(" ", "_")
+                safe_status = str(status).strip().replace("#", "").replace(":", "").replace(" ", "_")
                 if safe_status:
                     filter_parts.append(f"#status:{safe_status}")
 
@@ -544,14 +547,13 @@ class MemoryReadService:
                 filter_parts.append("#confidence:medium")
 
         # Add custom metadata filters.
-        # Strip whitespace and the Moorcheh filter sentinel (#) from caller-
-        # supplied keys and values so that a crafted input like
-        # {"foo": "bar #status:active"} cannot inject extra filter tokens into
-        # the query string.
+        # Strip "#", ":", and whitespace from caller-supplied keys and values
+        # so that crafted inputs like {"foo": "bar #status:active"} or
+        # tags=["status:inactive"] cannot inject extra Moorcheh filter tokens.
         if metadata_filters:
             for key, value in metadata_filters.items():
-                safe_key = str(key).strip().replace("#", "").replace(" ", "_")
-                safe_value = str(value).strip().replace("#", "").replace(" ", "_")
+                safe_key = str(key).strip().replace("#", "").replace(":", "").replace(" ", "_")
+                safe_value = str(value).strip().replace("#", "").replace(":", "").replace(" ", "_")
                 if safe_key and safe_value:
                     filter_parts.append(f"#{safe_key}:{safe_value}")
 
