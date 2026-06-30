@@ -241,6 +241,7 @@ def test_concurrent_agent_ids_do_not_cross_contaminate():
             }
 
     violations: list[str] = []
+    worker_errors: list[str] = []
 
     for _ in range(10):
         client = _StrictClient()
@@ -249,22 +250,27 @@ def test_concurrent_agent_ids_do_not_cross_contaminate():
         barrier = threading.Barrier(2)
 
         def run(node: Any, name: str) -> None:
-            barrier.wait()  # start both threads at exactly the same instant
-            result = node({"messages": [HumanMessage(content="hi")]})
-            if f"secret-{name}" not in str(result):
-                violations.append(
-                    f"{name} got wrong/empty memories (session clobber?): {result}"
-                )
+            try:
+                barrier.wait()  # start both threads at exactly the same instant
+                result = node({"messages": [HumanMessage(content="hi")]})
+                if f"secret-{name}" not in str(result):
+                    violations.append(
+                        f"{name} got wrong/empty memories (session clobber?): {result}"
+                    )
+            except Exception as exc:  # noqa: BLE001
+                worker_errors.append(f"{name}: {exc}")
 
         threads = [
-            threading.Thread(target=run, args=(alice_node, "alice")),
-            threading.Thread(target=run, args=(bob_node, "bob")),
+            threading.Thread(target=run, args=(alice_node, "alice"), name="alice"),
+            threading.Thread(target=run, args=(bob_node, "bob"), name="bob"),
         ]
         for t in threads:
             t.start()
         for t in threads:
             t.join(timeout=5)
+        assert all(not t.is_alive() for t in threads), "worker thread did not finish"
 
+    assert not worker_errors, f"Worker thread raised: {worker_errors[0]}"
     assert not violations, (
         f"Cross-tenant session clobber detected in {len(violations)} case(s): "
         + violations[0]
