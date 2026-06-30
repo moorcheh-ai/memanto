@@ -3,7 +3,7 @@ MEMANTO Core Architecture - Namespace Strategy & Memory Records
 """
 
 import uuid
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 from pydantic import BaseModel, Field
@@ -42,9 +42,9 @@ class MemoryRecord(BaseModel):
     # Provenance
     provenance: ProvenanceType = "explicit_statement"
 
-    # Timestamps (auto-populated by server)
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    # Timestamps (auto-populated by server, always timezone-aware UTC)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     expires_at: datetime | None = None
     ttl_seconds: int | None = None
 
@@ -99,4 +99,4 @@ class MemoryRecord(BaseModel):
     def set_ttl(self, seconds: int):
         """Set TTL and expiration"""
         self.ttl_seconds = seconds
-        self.expires_at = datetime.utcnow() + timedelta(seconds=seconds)
+        self.expires_at = datetime.now(timezone.utc) + timedelta(seconds=seconds)
