@@ -2,8 +2,8 @@ repos:
   - repo: local
     hooks:
       - id: ruff-check
-        name: ruff lint
-        entry: uv run ruff check .
+        name: ruff lint (BLE blind-except + S security + RUF rules)
+        entry: uv run ruff check --fix .
         language: system
         pass_filenames: false
         always_run: true
