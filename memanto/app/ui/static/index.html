@@ -2660,6 +2660,14 @@
             const opts = { method, headers };
             if (body) opts.body = JSON.stringify(body);
             const res = await fetch(path, opts);
+            const renewedToken = res.headers.get('X-Session-Token');
+            if (renewedToken) {
+                S.token = renewedToken;
+                if (S.config) {
+                    S.config.session_token = renewedToken;
+                    S.config.has_active_session = true;
+                }
+            }
             if (!res.ok) {
                 const err = await res.json().catch(() => ({ detail: res.statusText }));
                 let msg = err.detail || err;

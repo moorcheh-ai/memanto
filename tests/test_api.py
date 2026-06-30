@@ -251,6 +251,48 @@ class TestMEMANTOAPI:
         assert response.json()["status"] == "queued"
 
     @pytest.mark.asyncio
+    async def test_auto_renewed_session_returns_replacement_token(
+        self, client, auth_headers, mock_moorcheh
+    ):
+        """A request that auto-renews must expose the fresh token to the client."""
+        from memanto.app.services.session_service import get_session_service
+        from memanto.app.utils.temporal_helpers import utc_now
+
+        await client.post(
+            "/api/v2/agents",
+            headers=auth_headers,
+            json={"agent_id": self.TEST_AGENT_ID},
+        )
+        activate_response = await client.post(
+            f"/api/v2/agents/{self.TEST_AGENT_ID}/activate", headers=auth_headers
+        )
+        old_token = activate_response.json()["session_token"]
+
+        session_service = get_session_service()
+        session = session_service.get_session(self.TEST_AGENT_ID)
+        assert session is not None
+        session.expires_at = utc_now() + timedelta(minutes=1)
+        session_service._save_session(session)
+
+        mock_moorcheh.similarity_search.query.return_value = {"results": []}
+        response = await client.post(
+            f"/api/v2/agents/{self.TEST_AGENT_ID}/recall",
+            headers={**auth_headers, "X-Session-Token": old_token},
+            json={"query": "anything"},
+        )
+
+        assert response.status_code == 200
+        assert response.headers["X-Session-Renewed"] == "true"
+        renewed_token = response.headers["X-Session-Token"]
+        assert renewed_token
+        assert renewed_token != old_token
+
+        renewed_payload = session_service.validate_session(renewed_token)
+        stored_session = session_service.get_session(self.TEST_AGENT_ID)
+        assert stored_session is not None
+        assert renewed_payload.session_id == stored_session.session_id
+
+    @pytest.mark.asyncio
     async def test_edit_memory_with_session(self, client, auth_headers):
         """Test updating one memory with session token."""
         app.dependency_overrides[get_current_session] = lambda: Session(

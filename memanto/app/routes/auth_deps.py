@@ -4,7 +4,7 @@ Authentication Dependencies for V2 API
 Shared authentication utilities to avoid circular imports.
 """
 
-from fastapi import Header, HTTPException
+from fastapi import Header, HTTPException, Response
 
 from memanto.app.models.session import Session
 from memanto.app.services.session_service import get_session_service
@@ -55,7 +55,9 @@ def verify_moorcheh_api_key() -> str:
     return get_moorcheh_api_key()
 
 
-def get_current_session(x_session_token: str | None = Header(None)) -> Session:
+def get_current_session(
+    response: Response, x_session_token: str | None = Header(None)
+) -> Session:
     """
     Get and validate current session
 
@@ -91,6 +93,8 @@ def get_current_session(x_session_token: str | None = Header(None)) -> Session:
         )
         if renewed:
             session = renewed
+            response.headers["X-Session-Token"] = renewed.session_token
+            response.headers["X-Session-Renewed"] = "true"
 
         return session
 
