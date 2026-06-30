@@ -97,10 +97,16 @@ class MockBackend:
         self._call += 1
         if self._rng.random() < self._correct_rate:
             return "python fastapi light mode berlin engineering lead pescatarian voice"
-        return "python go london vegetarian dark mode slack"
+        # Stale path contains ONLY stale keywords so that _correct_rate genuinely
+        # controls the correct-answer fraction under correct-wins scoring semantics.
+        return "go golang london vegetarian dark mode slack"
 
     def reset(self, user_id: str) -> None:
-        """No-op: mock backend has no persistent state to clear."""
+        """Reset accumulated stats and RNG so the instance can be reused across runs."""
+        from backends.base import BackendStats
+        self.stats = BackendStats()
+        self._call = 0
+        self._rng = random.Random(42)
 
 
 # ── Main benchmark runner ─────────────────────────────────────────────────────

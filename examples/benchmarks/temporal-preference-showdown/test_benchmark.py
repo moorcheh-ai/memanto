@@ -102,7 +102,10 @@ class TestDataset(unittest.TestCase):
     def test_stale_and_correct_are_disjoint(self):
         """Correct and stale keyword sets must not overlap within any query."""
         for q in QUERIES:
-            overlap = set(q["correct_keywords"]) & set(q["stale_keywords"])
+            # Normalize to lowercase to match how score_answer compares keywords.
+            correct = {kw.lower() for kw in q["correct_keywords"]}
+            stale = {kw.lower() for kw in q["stale_keywords"]}
+            overlap = correct & stale
             self.assertEqual(overlap, set(), f"Query {q['id']} has overlapping keywords")
 
 
@@ -126,7 +129,9 @@ class TestMockBackend(unittest.TestCase):
         backend = MockBackend("always-correct", correct_rate=1.0)
         for _ in range(10):
             result = backend.search("query", "user1")
-            self.assertIn("python", result)
+            # "fastapi" is unique to the correct path; the stale path only has
+            # "go golang" so this assertion catches regressions in both directions.
+            self.assertIn("fastapi", result)
 
     def test_mock_zero_correct_rate(self):
         """With correct_rate=0.0 every search must return the stale answer."""
