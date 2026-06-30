@@ -295,17 +295,22 @@ class TestMemoryWriteServiceUpdate:
     def _existing_memory() -> dict[str, object]:
         return {
             "id": "mem-1",
-            "type": "fact",
             "title": "Original title",
             "content": "Original content",
-            "scope_type": "agent",
-            "scope_id": "agent-1",
-            "actor_id": "agent-1",
-            "source": "user",
-            "source_ref": "chat-1",
-            "confidence": 0.9,
-            "status": "active",
-            "tags": ["stable"],
+            "metadata": {
+                "memory_type": "preference",
+                "actor_id": "agent-1",
+                "source": "user",
+                "source_ref": "chat-1",
+                "confidence": 0.9,
+                "status": "active",
+                "tags": "stable,verified",
+                "provenance": "validated",
+                "created_at": "2024-01-01T00:00:00Z",
+                "updated_at": "2024-01-02T00:00:00Z",
+                "ttl_seconds": 3600,
+                "expires_at": "2024-01-04T00:00:00Z",
+            },
         }
 
     def test_update_memory_restores_original_when_reupload_fails(self):
@@ -334,15 +339,29 @@ class TestMemoryWriteServiceUpdate:
                 )
 
         assert client.documents.upload.call_count == 2
+        assert (
+            client.documents.upload.call_args_list[0].kwargs["namespace_name"]
+            == "memanto_agent_agent-1"
+        )
+        assert (
+            client.documents.upload.call_args_list[1].kwargs["namespace_name"]
+            == "memanto_agent_agent-1"
+        )
         restored_document = client.documents.upload.call_args_list[1].kwargs[
             "documents"
         ][0]
         assert restored_document["id"] == "mem-1"
         assert restored_document["text"].startswith(
-            "[FACT] Original title\n\nOriginal content"
+            "[PREFERENCE] Original title\n\nOriginal content"
         )
-        assert restored_document["scope_id"] == "agent-1"
-        assert restored_document["tags"] == "stable"
+        assert restored_document["memory_type"] == "preference"
+        assert restored_document["agent_id"] == "agent-1"
+        assert restored_document["tags"] == "stable,verified"
+        assert restored_document["provenance"] == "validated"
+        assert restored_document["created_at"] == "2024-01-01T00:00:00+00:00"
+        assert restored_document["updated_at"] == "2024-01-02T00:00:00+00:00"
+        assert restored_document["ttl_seconds"] == 3600
+        assert restored_document["expires_at"] == "2024-01-04T00:00:00+00:00"
 
     def test_update_memory_reports_when_restore_also_fails(self):
         """A failed rollback must be reported distinctly from a restored update."""
@@ -371,6 +390,10 @@ class TestMemoryWriteServiceUpdate:
                 )
 
         assert client.documents.upload.call_count == 2
+        assert (
+            client.documents.upload.call_args_list[1].kwargs["namespace_name"]
+            == "memanto_agent_agent-1"
+        )
 
 
 class TestForgetEndToEnd:

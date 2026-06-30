@@ -267,10 +267,30 @@ class MemoryWriteService:
                     f"in namespace {namespace}"
                 )
 
+            def parse_datetime(value: Any) -> datetime | None:
+                if isinstance(value, datetime):
+                    return value
+                if isinstance(value, str):
+                    try:
+                        return datetime.fromisoformat(value.replace("Z", "+00:00"))
+                    except (ValueError, AttributeError):
+                        return None
+                return None
+
+            def normalize_tags(value: Any) -> list[str]:
+                if isinstance(value, str):
+                    return [tag.strip() for tag in value.split(",") if tag.strip()]
+                if isinstance(value, list):
+                    return value
+                return []
+
+            memory_type = metadata.get("memory_type", metadata.get("type", "fact"))
+            tags = normalize_tags(metadata.get("tags", []))
+
             # Build updated memory record
             updated_memory = MemoryRecord(
                 id=memory_id,  # Keep same ID
-                type=updates.get("type", metadata.get("type", "fact")),
+                type=updates.get("type", memory_type),
                 title=updates.get(
                     "title", existing_memory_data.get("title", "Updated Memory")
                 ),
@@ -281,21 +301,14 @@ class MemoryWriteService:
                 source_ref=updates.get("source_ref", metadata.get("source_ref")),
                 confidence=updates.get("confidence", metadata.get("confidence", 0.8)),
                 status=updates.get("status", metadata.get("status", "active")),
-                tags=updates.get("tags", metadata.get("tags", [])),
+                tags=updates.get("tags", tags),
             )
 
             # Update timestamps (preserve created_at, set updated_at to now)
             raw_created = metadata.get("created_at")
-            if raw_created:
-                if isinstance(raw_created, str):
-                    try:
-                        updated_memory.created_at = datetime.fromisoformat(
-                            raw_created.replace("Z", "+00:00")
-                        )
-                    except (ValueError, AttributeError):
-                        pass  # Keep default
-                else:
-                    updated_memory.created_at = raw_created
+            parsed_created = parse_datetime(raw_created)
+            if parsed_created:
+                updated_memory.created_at = parsed_created
             updated_memory.updated_at = datetime.utcnow()
 
             # Handle TTL
@@ -303,40 +316,34 @@ class MemoryWriteService:
                 updated_memory.set_ttl(updates["ttl_seconds"])
             elif metadata.get("ttl_seconds"):
                 updated_memory.ttl_seconds = metadata["ttl_seconds"]
-                if metadata.get("expires_at"):
-                    updated_memory.expires_at = metadata["expires_at"]
+                parsed_expires_at = parse_datetime(metadata.get("expires_at"))
+                if parsed_expires_at:
+                    updated_memory.expires_at = parsed_expires_at
 
             original_memory = MemoryRecord(
                 id=memory_id,
-                type=metadata.get("type", "fact"),
+                type=memory_type,
                 title=existing_memory_data.get("title", "Restored Memory"),
                 content=existing_memory_data.get("content", ""),
-                scope_type=metadata.get("scope_type", "agent"),
-                scope_id=metadata.get("scope_id", "unknown"),
+                agent_id=agent_id,
                 actor_id=metadata.get("actor_id", "unknown"),
                 source=metadata.get("source", "system"),
                 source_ref=metadata.get("source_ref"),
                 confidence=metadata.get("confidence", 0.8),
                 status=metadata.get("status", "active"),
-                tags=metadata.get("tags", []),
+                tags=tags,
+                provenance=metadata.get("provenance", "explicit_statement"),
             )
-            if raw_created:
-                original_memory.created_at = updated_memory.created_at
-            if metadata.get("updated_at"):
-                raw_updated = metadata["updated_at"]
-                if isinstance(raw_updated, str):
-                    try:
-                        original_memory.updated_at = datetime.fromisoformat(
-                            raw_updated.replace("Z", "+00:00")
-                        )
-                    except (ValueError, AttributeError):
-                        pass
-                else:
-                    original_memory.updated_at = raw_updated
+            if parsed_created:
+                original_memory.created_at = parsed_created
+            parsed_updated = parse_datetime(metadata.get("updated_at"))
+            if parsed_updated:
+                original_memory.updated_at = parsed_updated
             if metadata.get("ttl_seconds"):
                 original_memory.ttl_seconds = metadata["ttl_seconds"]
-                if metadata.get("expires_at"):
-                    original_memory.expires_at = metadata["expires_at"]
+                parsed_expires_at = parse_datetime(metadata.get("expires_at"))
+                if parsed_expires_at:
+                    original_memory.expires_at = parsed_expires_at
 
             # Step 3: Delete old version
             delete_result = self.client.documents.delete(
