@@ -1,3 +1,6 @@
+import threading
+import time
+from typing import Any
 from unittest.mock import MagicMock
 
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
@@ -189,3 +192,80 @@ def test_skips_when_no_agent_id():
 
     client.recall.assert_not_called()
     client.remember.assert_not_called()
+
+
+def test_concurrent_agent_ids_do_not_cross_contaminate():
+    """Two recall nodes for different agent_ids sharing one client must not
+    clobber session_token / agent_id when called concurrently (issue #884).
+
+    _StrictClient mirrors the SdkClient invariant that the active agent_id must
+    match the caller's.  Without the per-client lock, thread-A activates "alice",
+    thread-B activates "bob" (clobber), and thread-A's retry-recall raises a
+    SessionError which is silently swallowed — returning no memories.
+    Runs 10 iterations with simultaneous thread starts so the race window is
+    reliably hit even without the fix.
+    """
+
+    class _StrictClient:
+        def __init__(self) -> None:
+            self.agent_id: str | None = None
+            self.session_token: str | None = None
+
+        def create_agent(self, agent_id: str, pattern: str | None = None) -> None:
+            pass
+
+        def activate_agent(
+            self, agent_id: str, duration_hours: int | None = None
+        ) -> dict[str, str]:
+            self.agent_id = agent_id
+            self.session_token = f"tok-{agent_id}"
+            # Yield the GIL so the other thread can race in and clobber
+            # agent_id before this thread's retry-recall executes.
+            time.sleep(0.001)
+            return {"session_token": self.session_token}
+
+        def recall(self, agent_id: str, query: str) -> dict[str, Any]:
+            if self.agent_id != agent_id:
+                raise RuntimeError(
+                    f"cross-tenant: client.agent_id={self.agent_id!r}, "
+                    f"recall for {agent_id!r}"
+                )
+            return {
+                "memories": [
+                    {
+                        "title": f"{agent_id}-mem",
+                        "content": f"secret-{agent_id}",
+                        "type": "fact",
+                    }
+                ]
+            }
+
+    violations: list[str] = []
+
+    for _ in range(10):
+        client = _StrictClient()
+        alice_node = create_recall_node(client=client, agent_id="alice")
+        bob_node = create_recall_node(client=client, agent_id="bob")
+        barrier = threading.Barrier(2)
+
+        def run(node: Any, name: str) -> None:
+            barrier.wait()  # start both threads at exactly the same instant
+            result = node({"messages": [HumanMessage(content="hi")]})
+            if f"secret-{name}" not in str(result):
+                violations.append(
+                    f"{name} got wrong/empty memories (session clobber?): {result}"
+                )
+
+        threads = [
+            threading.Thread(target=run, args=(alice_node, "alice")),
+            threading.Thread(target=run, args=(bob_node, "bob")),
+        ]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join(timeout=5)
+
+    assert not violations, (
+        f"Cross-tenant session clobber detected in {len(violations)} case(s): "
+        + violations[0]
+    )

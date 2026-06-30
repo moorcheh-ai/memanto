@@ -1,4 +1,5 @@
 import logging
+import threading
 from typing import Any
 
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
@@ -7,6 +8,24 @@ from langchain_core.runnables import RunnableConfig
 from memanto.cli.client.sdk_client import SdkClient
 
 logger = logging.getLogger(__name__)
+
+# SdkClient holds a single active (session_token, agent_id) pair — mutated by
+# activate_agent().  Without a lock, concurrent nodes sharing the same client
+# can race: thread-A activates "alice", thread-B activates "bob" (clobber),
+# thread-A retries recall("alice") and gets a SessionError because the client
+# now believes the active agent is "bob".  The lock makes the
+# activate → api-call sequence atomic per client instance.
+_CLIENT_SETUP_LOCKS: dict[int, threading.Lock] = {}
+_CLIENT_SETUP_LOCKS_MUTEX = threading.Lock()
+
+
+def _get_client_lock(client: Any) -> threading.Lock:
+    """Return (creating if needed) the exclusive setup lock for *client*."""
+    cid = id(client)
+    with _CLIENT_SETUP_LOCKS_MUTEX:
+        if cid not in _CLIENT_SETUP_LOCKS:
+            _CLIENT_SETUP_LOCKS[cid] = threading.Lock()
+        return _CLIENT_SETUP_LOCKS[cid]
 
 
 def _extract_text_content(content: Any) -> str:
@@ -34,17 +53,6 @@ def create_recall_node(
     This node extracts the query from the most recent human message in the state
     and retrieves relevant memories from Memanto.
     """
-
-    def _do_setup(resolved_agent_id: str):
-        try:
-            client.create_agent(agent_id=resolved_agent_id, pattern="tool")
-        except Exception:
-            pass
-        try:
-            result = client.activate_agent(resolved_agent_id, duration_hours=6)
-            client.session_token = result.get("session_token")
-        except Exception:
-            pass
 
     def recall_node(
         state: dict, config: RunnableConfig | None = None
@@ -81,18 +89,29 @@ def create_recall_node(
                 query=query,
             )
         except Exception:
-            # If there's an error (e.g. no active session), try to setup and retry
-            _do_setup(resolved_agent_id)
-            try:
-                result = client.recall(
-                    agent_id=resolved_agent_id,
-                    query=query,
-                )
-            except Exception as inner_e:
-                logger.error(f"Recall failed after setup: {inner_e}")
-                if output_key:
-                    return {output_key: None}
-                return {"messages": []}
+            # Session not active or agent_id mismatch — set up under a per-client
+            # lock so no concurrent thread can overwrite the session between our
+            # activate_agent() call and the retry recall().
+            with _get_client_lock(client):
+                try:
+                    client.create_agent(agent_id=resolved_agent_id, pattern="tool")
+                except Exception:
+                    pass
+                try:
+                    client.activate_agent(resolved_agent_id, duration_hours=6)
+                except Exception:
+                    pass
+                try:
+                    result = client.recall(
+                        agent_id=resolved_agent_id,
+                        query=query,
+                    )
+                except Exception as inner_e:
+                    logger.error(f"Recall failed after setup: {inner_e}")
+                    if output_key:
+                        return {output_key: None}
+                    return {"messages": []}
+
         if not result:
             if output_key:
                 return {output_key: None}
@@ -141,17 +160,6 @@ def create_remember_node(
 
     This node extracts the latest messages and stores them in Memanto.
     """
-
-    def _do_setup(resolved_agent_id: str):
-        try:
-            client.create_agent(agent_id=resolved_agent_id, pattern="tool")
-        except Exception:
-            pass
-        try:
-            result = client.activate_agent(resolved_agent_id, duration_hours=6)
-            client.session_token = result.get("session_token")
-        except Exception:
-            pass
 
     def remember_node(
         state: dict, config: RunnableConfig | None = None
@@ -202,19 +210,29 @@ def create_remember_node(
                 provenance="explicit_statement",
             )
         except Exception:
-            # If there's an error, try to setup and retry
-            _do_setup(resolved_agent_id)
-            try:
-                client.remember(
-                    agent_id=resolved_agent_id,
-                    memory_type=None,
-                    title=title,
-                    content=content,
-                    source="langgraph-node",
-                    provenance="explicit_statement",
-                )
-            except Exception as inner_e:
-                logger.error(f"Remember failed after setup: {inner_e}")
+            # Session not active or agent_id mismatch — set up under a per-client
+            # lock so no concurrent thread can overwrite the session between our
+            # activate_agent() call and the retry remember().
+            with _get_client_lock(client):
+                try:
+                    client.create_agent(agent_id=resolved_agent_id, pattern="tool")
+                except Exception:
+                    pass
+                try:
+                    client.activate_agent(resolved_agent_id, duration_hours=6)
+                except Exception:
+                    pass
+                try:
+                    client.remember(
+                        agent_id=resolved_agent_id,
+                        memory_type=None,
+                        title=title,
+                        content=content,
+                        source="langgraph-node",
+                        provenance="explicit_statement",
+                    )
+                except Exception as inner_e:
+                    logger.error(f"Remember failed after setup: {inner_e}")
         return {"messages": []}
 
     return remember_node
