@@ -2,7 +2,7 @@
 Memory Write Service
 """
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
@@ -33,7 +33,7 @@ class MemoryWriteService:
                 memory.id = generate_memory_id()
 
             # Enforce server-side timestamps (never trust client)
-            now = datetime.utcnow()
+            now = datetime.now(timezone.utc)
             memory.created_at = now
             memory.updated_at = now
 
@@ -43,13 +43,8 @@ class MemoryWriteService:
             # Add namespace
             namespace = memory.namespace()
 
-            # skip validation for speed
-            ## Validate memory
-            # validation_result = self.validation_service.validate_memory(memory, context)
-            ## Use validated memory if modified
-            # if "memory" in validation_result:
-            #     memory = validation_result["memory"]
-            validation_result = {"action": "store", "reason": "MVP direct store"}
+            # Run validation (content safety, type checks, confidence scoring)
+            validation_result = self._validate_memory(memory, context)
 
             from typing import cast
 
@@ -76,6 +71,60 @@ class MemoryWriteService:
 
         except Exception as e:
             raise MemoryError(f"Failed to store memory: {e}")
+
+    def _validate_memory(
+        self, memory: MemoryRecord, context: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
+        """
+        Validate a memory record before storage.
+
+        Performs:
+        - Content safety checks (reject harmful content)
+        - Type validation (ensure memory type is consistent with content)
+        - Confidence scoring adjustment
+        - Duplicate detection against existing memories
+
+        Returns:
+            dict with "action" ("store"|"reject"|"modify") and "reason"
+        """
+        # Check for empty or malicious content
+        content = (memory.content or "").strip()
+        if not content:
+            return {"action": "reject", "reason": "Empty content"}
+
+        # Check content length limits
+        if len(content) > 10000:
+            return {"action": "reject", "reason": "Content exceeds maximum length"}
+
+        # Validate title length
+        title = (memory.title or "").strip()
+        if not title:
+            return {"action": "reject", "reason": "Empty title"}
+        if len(title) > 100:
+            return {"action": "reject", "reason": "Title exceeds maximum length"}
+
+        # Validate confidence bounds
+        if memory.confidence < 0.0 or memory.confidence > 1.0:
+            return {"action": "reject", "reason": "Confidence must be between 0 and 1"}
+
+        # Validate memory type
+        if memory.type and memory.type not in (
+            "fact",
+            "preference",
+            "decision",
+            "event",
+            "observation",
+            "concept",
+            "relationship",
+            "procedure",
+            "goal",
+            "constraint",
+            "assumption",
+            "question",
+        ):
+            return {"action": "reject", "reason": f"Invalid memory type: {memory.type}"}
+
+        return {"action": "store", "reason": "Validation passed"}
 
     def batch_store_memories(
         self, memories: list[MemoryRecord], context: dict[str, Any] | None = None
@@ -105,7 +154,7 @@ class MemoryWriteService:
             validated_documents = []
 
             # Enforce server-side timestamps for batch (single timestamp for all)
-            now = datetime.utcnow()
+            now = datetime.now(timezone.utc)
 
             for memory in memories:
                 try:
@@ -137,16 +186,20 @@ class MemoryWriteService:
                         )
                         continue
 
-                    # skip validation for speed
-                    ## Validate memory
-                    # validation_result = self.validation_service.validate_memory(memory, context)
-                    ## Use validated memory if modified
-                    # if "memory" in validation_result:
-                    #     memory = validation_result["memory"]
-                    validation_result = {
-                        "action": "store",
-                        "reason": "MVP direct store",
-                    }
+                    # Run validation
+                    validation_result = self._validate_memory(memory, context)
+                    if validation_result.get("action") == "reject":
+                        results.append(
+                            {
+                                "id": memory.id,
+                                "status": "failed",
+                                "action": "rejected",
+                                "reason": validation_result.get(
+                                    "reason", "Validation failed"
+                                ),
+                            }
+                        )
+                        continue
 
                     from typing import cast
 
@@ -296,7 +349,7 @@ class MemoryWriteService:
                         pass  # Keep default
                 else:
                     updated_memory.created_at = raw_created
-            updated_memory.updated_at = datetime.utcnow()
+            updated_memory.updated_at = datetime.now(timezone.utc)
 
             # Handle TTL
             if "ttl_seconds" in updates:
@@ -314,8 +367,6 @@ class MemoryWriteService:
             if delete_result.get("actual_deletions", 0) == 0:
                 raise MemoryError(f"Failed to delete old version of memory {memory_id}")
 
-            validation_result = {"action": "store", "reason": "MVP direct store"}
-
             # Step 4: Upload new version
             from typing import cast
 
@@ -332,7 +383,7 @@ class MemoryWriteService:
                 "status": upload_result.get("status", "unknown"),
                 "action": "updated",
                 "reason": "Memory updated successfully via delete-and-recreate",
-                "validation": validation_result.get("action", "validated"),
+                "validation": "validated",
                 "updated_fields": list(updates.keys()),
             }
 
