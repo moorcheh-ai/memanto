@@ -729,7 +729,7 @@ class MemoryReadService:
             filtered = [
                 r
                 for r in filtered
-                if any(tag in r.get("tags", "").split(",") for tag in tags)
+                if any(tag in self._normalize_tags(r.get("tags")) for tag in tags)
             ]
 
         # Apply limit
@@ -755,13 +755,7 @@ class MemoryReadService:
             return metadata.get(field_name) or item.get(flat_name)
 
         # Parse tags - can be comma-separated string or array
-        tags_value = get_field("tags")
-        if isinstance(tags_value, str):
-            tags = tags_value.split(",") if tags_value else []
-        elif isinstance(tags_value, list):
-            tags = tags_value
-        else:
-            tags = []
+        tags = self._normalize_tags(get_field("tags"))
 
         # Extract provenance & trust fields
         provenance = get_field("provenance") or "explicit_statement"
@@ -884,3 +878,11 @@ class MemoryReadService:
         #     pass
 
         return formatted
+
+    @staticmethod
+    def _normalize_tags(tags_value: Any) -> list[str]:
+        if isinstance(tags_value, str):
+            return [tag.strip() for tag in tags_value.split(",") if tag.strip()]
+        if isinstance(tags_value, list):
+            return [str(tag).strip() for tag in tags_value if str(tag).strip()]
+        return []

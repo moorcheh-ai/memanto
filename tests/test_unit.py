@@ -346,6 +346,38 @@ class TestForgetEndToEnd:
         assert result["memory_id"] == "mem-xyz"
 
 
+class TestMemoryReadServiceTagFiltering:
+    def test_as_of_tag_filter_matches_comma_separated_tags_with_spaces(self):
+        from memanto.app.services.memory_read_service import MemoryReadService
+
+        client = MagicMock()
+        client.documents.fetch_text_data.return_value = {
+            "items": [
+                {
+                    "id": "memory-1",
+                    "text": "[FACT] Tagged memory\n\nbody",
+                    "metadata": {
+                        "agent_id": "agent-1",
+                        "memory_type": "fact",
+                        "tags": "alpha, beta",
+                        "created_at": "2026-01-01T00:00:00+00:00",
+                    },
+                }
+            ],
+            "pagination": {"has_more": False},
+        }
+
+        result = MemoryReadService(client).search_as_of(
+            as_of_date="2026-01-02T00:00:00+00:00",
+            agent_id="agent-1",
+            tags=["beta"],
+        )
+
+        assert result["total_found"] == 1
+        assert result["results"][0]["id"] == "memory-1"
+        assert result["results"][0]["tags"] == ["alpha", "beta"]
+
+
 class TestMEMANTOArchitecture:
     """Tests for MEMANTO architecture principles"""
 
