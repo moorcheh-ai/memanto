@@ -25,6 +25,11 @@ class Mem0Backend:
     index_wait_s = 10
 
     def __init__(self) -> None:
+        """Initialise the Mem0 cloud client using the MEM0_API_KEY env variable.
+
+        Raises:
+            EnvironmentError: If MEM0_API_KEY is not set in the environment.
+        """
         api_key = os.environ.get("MEM0_API_KEY")
         if not api_key:
             raise EnvironmentError("MEM0_API_KEY is not set")

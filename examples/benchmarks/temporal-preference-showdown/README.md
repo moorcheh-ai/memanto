@@ -83,7 +83,7 @@ Instant local keyword retrieval     Cloud API call (~880ms)
 ### Prerequisites
 
 ```bash
-pip install anthropic>=0.40.0 mem0ai>=0.1.0
+pip install -r requirements.txt
 ```
 
 ### Environment Variables

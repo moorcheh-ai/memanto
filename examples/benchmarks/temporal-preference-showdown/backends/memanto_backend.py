@@ -64,6 +64,11 @@ class MemantoBackend:
     name = "Memanto (simulation)"
 
     def __init__(self) -> None:
+        """Initialise the Anthropic client and empty per-user fact store.
+
+        Raises:
+            EnvironmentError: If ANTHROPIC_API_KEY is not set in the environment.
+        """
         api_key = os.environ.get("ANTHROPIC_API_KEY")
         if not api_key:
             raise EnvironmentError("ANTHROPIC_API_KEY is not set")
@@ -135,10 +140,17 @@ class MemantoBackend:
         return result
 
     def reset(self, user_id: str) -> None:
+        """Remove all stored facts for *user_id* (clean slate between benchmark runs)."""
         self._store.pop(user_id, None)
 
     @staticmethod
     def _parse_facts(raw: str) -> list[dict]:
+        """Parse a JSON array of fact objects from raw LLM output.
+
+        Handles both clean JSON and LLM responses wrapped in fenced code blocks.
+        Falls back to a bracket-search extraction on partial JSON.  Returns an
+        empty list if no valid array can be parsed.
+        """
         text = raw.strip()
         fenced = re.search(r"```(?:json)?\s*(.*?)```", text, flags=re.DOTALL)
         if fenced:

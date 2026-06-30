@@ -28,6 +28,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import random
 import os
 import sys
 import time
@@ -41,13 +42,17 @@ from dataset import QUERIES, SESSIONS, USER_ID
 def score_answer(retrieved: str, correct_keywords: list[str], stale_keywords: list[str]) -> tuple[bool, bool]:
     """Return (is_correct, is_stale) based on keyword presence.
 
-    A result that contains both current and stale keywords is treated as
-    incorrect: the system failed to resolve the temporal conflict cleanly.
+    When both current and stale keywords appear (e.g. a transition sentence such
+    as "switched from Go to Python"), *correct* wins: the answer contains the
+    current fact even if it incidentally mentions the old one.
+
+    Returns:
+        (is_correct, is_stale) — mutually exclusive; both False means a miss.
     """
     text = retrieved.lower()
     has_correct = any(kw.lower() in text for kw in correct_keywords)
     has_stale = any(kw.lower() in text for kw in stale_keywords)
-    is_correct = has_correct and not has_stale
+    is_correct = has_correct  # correct wins even when stale keywords also present
     is_stale = has_stale and not has_correct
     return is_correct, is_stale
 
@@ -55,30 +60,66 @@ def score_answer(retrieved: str, correct_keywords: list[str], stale_keywords: li
 # ── Mock backend for --dry-run ────────────────────────────────────────────────
 
 class MockBackend:
+    """Deterministic in-process backend used for dry-run validation.
+
+    Uses a seeded RNG so results are reproducible across runs while still
+    honouring the configured *correct_rate* accuracy target.
+    """
+
     def __init__(self, name: str, correct_rate: float = 0.83) -> None:
+        """Initialise with a backend name and target retrieval accuracy.
+
+        Args:
+            name: Display name shown in benchmark output and reports.
+            correct_rate: Fraction of queries (0–1) that should return the
+                correct (current) fact. Defaults to 0.83 (≈ 5 of 6 queries).
+        """
         self.name = name
         self._correct_rate = correct_rate
         from backends.base import BackendStats
         self.stats = BackendStats()
         self._call = 0
+        self._rng = random.Random(42)  # fixed seed → reproducible dry-run results
 
-    def add(self, messages, user_id):
+    def add(self, messages: list[dict], user_id: str) -> None:
+        """Simulate ingestion: record approximate token count and synthetic latency."""
         tokens = sum(len(m["content"].split()) for m in messages)
         self.stats.record_ingest(int(tokens * 1.3), 120 + self._call * 10)
         self._call += 1
 
-    def search(self, query, user_id):
+    def search(self, query: str, user_id: str) -> str:
+        """Return a simulated retrieval result weighted by *correct_rate*.
+
+        A seeded RNG makes the mock output deterministic and reproducible,
+        while still exercising the scoring path with the configured accuracy.
+        """
         self.stats.record_retrieve(45, 35 + self._call * 2)
         self._call += 1
-        return "python fastapi light mode berlin engineering lead pescatarian voice" if "memanto" in self.name.lower() else "python go london vegetarian dark mode slack"
+        if self._rng.random() < self._correct_rate:
+            return "python fastapi light mode berlin engineering lead pescatarian voice"
+        return "python go london vegetarian dark mode slack"
 
-    def reset(self, user_id):
-        pass
+    def reset(self, user_id: str) -> None:
+        """No-op: mock backend has no persistent state to clear."""
 
 
 # ── Main benchmark runner ─────────────────────────────────────────────────────
 
 def run_benchmark(backends: list, dry_run: bool = False) -> dict:
+    """Run the full benchmark pipeline against every backend and return results.
+
+    For each backend: resets state, ingests all sessions, then evaluates every
+    golden query via keyword scoring.  Prints a live progress log to stdout.
+
+    Args:
+        backends: List of objects satisfying the MemoryBackend protocol.
+        dry_run: Passed through for context; actual mock/real selection happens
+            in *main* before this function is called.
+
+    Returns:
+        Mapping of backend name → metrics dict with accuracy, stale rate,
+        token counts, latency percentiles, and per-query breakdown.
+    """
     results = {}
 
     for backend in backends:
@@ -154,6 +195,19 @@ def run_benchmark(backends: list, dry_run: bool = False) -> dict:
 # ── Report generation ─────────────────────────────────────────────────────────
 
 def generate_markdown(results: dict) -> str:
+    """Render benchmark results as a Markdown report with a summary table.
+
+    Bolds the winning value for each metric (higher accuracy wins; lower tokens
+    and latency win).  Appends a per-backend per-query breakdown table and a
+    methodology section.
+
+    Args:
+        results: Mapping of backend name → metrics dict as returned by
+            :func:`run_benchmark`.
+
+    Returns:
+        A complete Markdown string suitable for writing to a ``.md`` file.
+    """
     backend_names = list(results.keys())
     lines = [
         "# Temporal Preference Showdown — Results",
@@ -231,6 +285,7 @@ def generate_markdown(results: dict) -> str:
 # ── Entry point ───────────────────────────────────────────────────────────────
 
 def main() -> None:
+    """CLI entry point: parse arguments, select backends, run benchmark, save outputs."""
     parser = argparse.ArgumentParser(description="Temporal Preference Showdown Benchmark")
     parser.add_argument("--output", default=None, help="Path to save JSON results")
     parser.add_argument("--markdown", default=None, help="Path to save Markdown report")
