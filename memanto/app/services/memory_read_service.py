@@ -45,7 +45,7 @@ class MemoryReadService:
                 memory = self._format_memory_item(items[0])
 
                 # Apply TTL enforcement
-                filtered = self._filter_expired_memories([memory])
+                filtered = self._filter_expired_memories([memory], namespace)
                 if filtered:
                     return filtered[0]
                 else:
@@ -129,8 +129,9 @@ class MemoryReadService:
                     created_before=created_before,
                 )
 
-            # Apply TTL enforcement - filter out expired memories
-            all_results = self._filter_expired_memories(all_results)
+            # Apply TTL enforcement - filter out expired memories AND clean them from backend
+            # We don't know which namespace each result came from, so pass None
+            all_results = self._filter_expired_memories(all_results, None)
 
             # Apply pagination (offset + limit)
             paginated_results = all_results[offset : offset + limit]
@@ -381,7 +382,7 @@ class MemoryReadService:
         seen_ids: set[str] = set()
         memories: list[dict[str, Any]] = []
         for item in items:
-            # Skip summary chunks — only return real memory documents
+            # Skip summary chunks -- only return real memory documents
             if isinstance(item, dict) and item.get("is_summary"):
                 continue
             formatted = self._format_memory_item(item)
@@ -399,7 +400,9 @@ class MemoryReadService:
 
             memories.append(formatted)
 
-        return self._filter_expired_memories(memories)
+        # We don't know which namespace each memory came from for paginated fetch,
+        # so pass None for namespace -- expiry cleanup is best-effort here
+        return self._filter_expired_memories(memories, None)
 
     def _build_filtered_query(
         self,
@@ -501,17 +504,46 @@ class MemoryReadService:
 
         return filtered
 
+    def _delete_expired_backend(
+        self, memory_id: str, namespace: str | None
+    ) -> None:
+        """
+        Delete an expired memory from the Moorcheh backend.
+
+        This prevents unbounded accumulation of expired documents that would
+        otherwise waste storage and degrade query performance over time.
+
+        Args:
+            memory_id: The ID of the expired memory to delete
+            namespace: The namespace containing the memory (best-effort if None)
+        """
+        if not memory_id or not namespace:
+            return  # Can't delete without both ID and namespace
+        try:
+            self.client.documents.delete(
+                namespace_name=namespace, ids=[memory_id]
+            )
+        except Exception:
+            # Best-effort cleanup -- don't let deletion failures bubble up
+            # to the caller who is just trying to read memories.
+            pass
+
     def _filter_expired_memories(
-        self, results: list[dict[str, Any]]
+        self,
+        results: list[dict[str, Any]],
+        namespace: str | None,
     ) -> list[dict[str, Any]]:
         """
-        Filter out memories that have expired based on their expires_at timestamp
+        Filter out memories that have expired based on their expires_at timestamp,
+        AND delete them from the backend to prevent unbounded accumulation.
 
         This provides application-level TTL enforcement since Moorcheh doesn't
         automatically delete expired documents.
 
         Args:
             results: List of formatted memory items
+            namespace: The namespace these memories belong to (used for backend cleanup).
+                       Pass None if unknown (cleanup is skipped per-item without namespace).
 
         Returns:
             Filtered list with expired memories removed
@@ -537,6 +569,18 @@ class MemoryReadService:
                     # Only include if not expired
                     if expires_dt > now:
                         filtered.append(result)
+                    else:
+                        # Memory has expired -- delete from backend
+                        mem_id = result.get("id")
+                        if mem_id:
+                            # Determine namespace from result or use passed namespace
+                            ns = namespace
+                            if not ns:
+                                # Try to extract agent_id from the result
+                                agent_id = result.get("agent_id")
+                                if agent_id:
+                                    ns = agent_namespace(agent_id)
+                            self._delete_expired_backend(mem_id, ns)
                 else:
                     # If expires_at is already datetime or not parseable, keep it
                     filtered.append(result)
@@ -678,7 +722,7 @@ class MemoryReadService:
                 else:
                     content = ""
             else:
-                # No [TYPE] prefix — use first line as title, rest as content
+                # No [TYPE] prefix -- use first line as title, rest as content
                 title = first_line.strip()
                 content = "\n\n".join(lines[1:]) if len(lines) > 1 else ""
 
