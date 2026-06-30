@@ -346,6 +346,105 @@ class TestForgetEndToEnd:
         assert result["memory_id"] == "mem-xyz"
 
 
+class TestMemoryReadServiceMalformedItems:
+    def test_get_memory_skips_non_object_document_items(self):
+        from memanto.app.services.memory_read_service import MemoryReadService
+
+        client = MagicMock()
+        client.documents.get.return_value = {
+            "items": [
+                "truncated row",
+                {
+                    "id": "memory-1",
+                    "text": "[FACT] Valid memory\n\nbody",
+                    "metadata": {
+                        "memory_type": "fact",
+                        "created_at": "2026-01-01T00:00:00+00:00",
+                    },
+                },
+            ]
+        }
+
+        result = MemoryReadService(client).get_memory("memory-1", "memanto_agent_a")
+
+        assert result is not None
+        assert result["id"] == "memory-1"
+
+    def test_recent_search_skips_non_object_document_items(self):
+        from memanto.app.services.memory_read_service import MemoryReadService
+
+        client = MagicMock()
+        client.documents.fetch_text_data.return_value = {
+            "items": [
+                "truncated row",
+                {
+                    "id": "memory-1",
+                    "text": "[FACT] Valid memory\n\nbody",
+                    "metadata": {
+                        "memory_type": "fact",
+                        "created_at": "2026-01-01T00:00:00+00:00",
+                    },
+                },
+            ],
+            "pagination": {"has_more": False},
+        }
+
+        result = MemoryReadService(client).search_recent("agent-1")
+
+        assert result["total_found"] == 1
+        assert result["results"][0]["id"] == "memory-1"
+
+    def test_recent_search_treats_non_object_metadata_as_empty(self):
+        from memanto.app.services.memory_read_service import MemoryReadService
+
+        client = MagicMock()
+        client.documents.fetch_text_data.return_value = {
+            "items": [
+                {
+                    "id": "memory-1",
+                    "text": "[FACT] Valid memory\n\nbody",
+                    "metadata": "truncated metadata",
+                    "memory_type": "fact",
+                    "created_at": "2026-01-01T00:00:00+00:00",
+                },
+            ],
+            "pagination": {"has_more": False},
+        }
+
+        result = MemoryReadService(client).search_recent("agent-1")
+
+        assert result["total_found"] == 1
+        assert result["results"][0]["id"] == "memory-1"
+        assert result["results"][0]["type"] == "fact"
+
+    def test_similarity_search_skips_non_object_result_items(self):
+        from memanto.app.services.memory_read_service import MemoryReadService
+
+        client = MagicMock()
+        client.similarity_search.query.return_value = {
+            "results": [
+                "truncated row",
+                {
+                    "id": "memory-1",
+                    "text": "[FACT] Valid memory\n\nbody",
+                    "metadata": {
+                        "memory_type": "fact",
+                        "created_at": "2026-01-01T00:00:00+00:00",
+                    },
+                },
+            ],
+            "execution_time": 0.1,
+        }
+
+        service = MemoryReadService(client)
+        service._get_search_namespaces = lambda *_, **__: ["memanto_agent_agent-1"]
+
+        result = service.search_memories("valid")
+
+        assert result["total_found"] == 1
+        assert result["results"][0]["id"] == "memory-1"
+
+
 class TestMEMANTOArchitecture:
     """Tests for MEMANTO architecture principles"""
 

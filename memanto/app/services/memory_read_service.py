@@ -42,14 +42,17 @@ class MemoryReadService:
 
             items: list[Any] = cast(list[Any], result.get("items", []))
             if items and isinstance(items, list) and len(items) > 0:
-                memory = self._format_memory_item(items[0])
+                for item in items:
+                    if not isinstance(item, dict):
+                        continue
+                    memory = self._format_memory_item(item)
 
-                # Apply TTL enforcement
-                filtered = self._filter_expired_memories([memory])
-                if filtered:
-                    return filtered[0]
-                else:
-                    return None  # Memory has expired
+                    # Apply TTL enforcement
+                    filtered = self._filter_expired_memories([memory])
+                    if filtered:
+                        return filtered[0]
+
+                return None
 
             return None
 
@@ -120,7 +123,11 @@ class MemoryReadService:
             search_items = search_result.get("results", [])
 
             # Format results
-            all_results = [self._format_memory_item(item) for item in search_items]
+            all_results = [
+                self._format_memory_item(item)
+                for item in search_items
+                if isinstance(item, dict)
+            ]
 
             # Apply temporal filtering (post-processing since Moorcheh metadata filters are string-based)
             if created_after or created_before:
@@ -474,8 +481,10 @@ class MemoryReadService:
         seen_ids: set[str] = set()
         memories: list[dict[str, Any]] = []
         for item in items:
+            if not isinstance(item, dict):
+                continue
             # Skip summary chunks — only return real memory documents
-            if isinstance(item, dict) and item.get("is_summary"):
+            if item.get("is_summary"):
                 continue
             formatted = self._format_memory_item(item)
             mid = formatted.get("id")
@@ -746,6 +755,8 @@ class MemoryReadService:
 
         # Check if metadata is in nested format (Moorcheh API spec)
         metadata = item.get("metadata", {})
+        if not isinstance(metadata, dict):
+            metadata = {}
 
         # Helper to get field from either nested metadata or flat structure
         def get_field(field_name, flat_field_name=None):
