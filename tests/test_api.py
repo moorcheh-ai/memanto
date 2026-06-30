@@ -679,6 +679,40 @@ class TestMEMANTOAPI:
         assert response.status_code == 404
 
     @pytest.mark.asyncio
+    async def test_remember_passes_user_confirmed_validation_context(
+        self, client, auth_headers
+    ):
+        """Single remember forwards user_confirmed to validation context."""
+        await client.post(
+            "/api/v2/agents",
+            headers=auth_headers,
+            json={"agent_id": self.TEST_AGENT_ID},
+        )
+        activate_resp = await client.post(
+            f"/api/v2/agents/{self.TEST_AGENT_ID}/activate", headers=auth_headers
+        )
+        token = activate_resp.json()["session_token"]
+        headers = {**auth_headers, "X-Session-Token": token}
+
+        with patch(
+            "memanto.app.services.memory_write_service.MemoryWriteService.store_memory",
+            return_value={"id": "mem-ctx", "type": "fact", "status": "success"},
+        ) as store_memory:
+            response = await client.post(
+                f"/api/v2/agents/{self.TEST_AGENT_ID}/remember",
+                headers=headers,
+                json={
+                    "content": "Confirmed memory",
+                    "type": "fact",
+                    "user_confirmed": True,
+                },
+            )
+
+        assert response.status_code == 200
+        _, kwargs = store_memory.call_args
+        assert kwargs["context"] == {"user_confirmed": True}
+
+    @pytest.mark.asyncio
     async def test_batch_remember_api(self, client, auth_headers, mock_moorcheh):
         """Test batch storage via API"""
         await client.post(
@@ -696,18 +730,65 @@ class TestMEMANTOAPI:
 
         headers = {**auth_headers, "X-Session-Token": token}
         payload = {
+            "user_confirmed": True,
             "memories": [
                 {"content": "Batch 1", "type": "fact", "confidence": 0.9},
                 {"content": "Batch 2", "type": "fact", "confidence": 0.8},
-            ]
+            ],
         }
-        response = await client.post(
-            f"/api/v2/agents/{self.TEST_AGENT_ID}/batch-remember",
-            headers=headers,
-            json=payload,
-        )
+        with patch(
+            "memanto.app.routes.memory.enforce_write_rate_limit"
+        ) as enforce_write_rate_limit:
+            response = await client.post(
+                f"/api/v2/agents/{self.TEST_AGENT_ID}/batch-remember",
+                headers=headers,
+                json=payload,
+            )
         assert response.status_code == 200
         assert response.json()["successful"] == 2
+        enforce_write_rate_limit.assert_called_once_with(
+            self.TEST_AGENT_ID, f"memanto_agent_{self.TEST_AGENT_ID}"
+        )
+
+    @pytest.mark.asyncio
+    async def test_batch_remember_passes_user_confirmed_validation_context(
+        self, client, auth_headers
+    ):
+        """Batch remember forwards batch-level user_confirmed to validation."""
+        await client.post(
+            "/api/v2/agents",
+            headers=auth_headers,
+            json={"agent_id": self.TEST_AGENT_ID},
+        )
+        activate_resp = await client.post(
+            f"/api/v2/agents/{self.TEST_AGENT_ID}/activate", headers=auth_headers
+        )
+        token = activate_resp.json()["session_token"]
+        headers = {**auth_headers, "X-Session-Token": token}
+
+        with patch(
+            "memanto.app.services.memory_write_service.MemoryWriteService.batch_store_memories",
+            return_value={
+                "total_submitted": 1,
+                "successful": 1,
+                "failed": 0,
+                "results": [
+                    {"id": "mem-batch", "status": "success", "action": "store"}
+                ],
+            },
+        ) as batch_store:
+            response = await client.post(
+                f"/api/v2/agents/{self.TEST_AGENT_ID}/batch-remember",
+                headers=headers,
+                json={
+                    "user_confirmed": True,
+                    "memories": [{"content": "Confirmed batch", "type": "fact"}],
+                },
+            )
+
+        assert response.status_code == 200
+        _, kwargs = batch_store.call_args
+        assert kwargs["context"] == {"user_confirmed": True}
 
     @pytest.mark.asyncio
     async def test_delete_memory_with_session(

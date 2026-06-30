@@ -42,9 +42,6 @@ from memanto.app.services.memory_write_service import MemoryWriteService
 from memanto.app.utils.errors import AuthorizationError, map_error_to_http_exception
 from memanto.app.utils.rate_limiting import (
     enforce_write_rate_limit,
-    enforce_read_rate_limit,
-    enforce_answer_rate_limit,
-    enforce_delete_rate_limit,
 )
 from memanto.app.utils.validation import CostGuard
 from memanto.cli.client.direct_client import DirectClient
@@ -213,7 +210,11 @@ async def remember(
         )
 
         # Store memory in agent's namespace.
-        result = await asyncio.to_thread(write_service.store_memory, memory)
+        result = await asyncio.to_thread(
+            write_service.store_memory,
+            memory,
+            context={"user_confirmed": request.user_confirmed},
+        )
 
         # Log to local session Markdown summary
         session_service = get_session_service()
@@ -271,6 +272,9 @@ async def batch_remember(
             detail=f"Session is for agent '{session.agent_id}', cannot access '{agent_id}'",
         )
 
+    # Rate limit enforcement
+    enforce_write_rate_limit(session.agent_id, session.namespace)
+
     try:
         # Initialize memory write service
         write_service = MemoryWriteService(client)
@@ -299,9 +303,15 @@ async def batch_remember(
             )
             memory_records.append(memory)
 
+        batch_user_confirmed = request.user_confirmed or all(
+            item.user_confirmed for item in request.memories
+        )
+
         # Store in batch
         result = await asyncio.to_thread(
-            write_service.batch_store_memories, memory_records
+            write_service.batch_store_memories,
+            memory_records,
+            context={"user_confirmed": batch_user_confirmed},
         )
 
         # Log each memory to local MD summary

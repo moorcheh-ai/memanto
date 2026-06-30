@@ -72,6 +72,10 @@ class BatchRememberItem(BaseModel):
         "explicit_statement",
         description="How memory was obtained (explicit_statement, inferred, observed, etc.)",
     )
+    user_confirmed: bool = Field(
+        False,
+        description="Whether the user explicitly confirmed this memory content",
+    )
 
 
 class RememberRequest(BatchRememberItem):
@@ -86,6 +90,10 @@ class BatchRememberRequest(BaseModel):
         min_length=1,
         max_length=100,
         description="List of memories to store (max 100)",
+    )
+    user_confirmed: bool = Field(
+        False,
+        description="Whether all batch memories were explicitly confirmed by the user",
     )
 
 

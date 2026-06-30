@@ -9,10 +9,12 @@ if TYPE_CHECKING:
     from moorcheh_sdk import MoorchehClient
 
 from memanto.app.core import MemoryRecord
-from memanto.app.legacy.memory_validation_service import MemoryValidationService
 from memanto.app.services.memory_parsing_service import MemoryParsingService
+from memanto.app.services.memory_validation_service import MemoryValidationService
 from memanto.app.utils.errors import MemoryError
 from memanto.app.utils.ids import generate_memory_id
+
+STORAGE_ACTIONS = {"store", "store_provisional"}
 
 
 class MemoryWriteService:
@@ -31,6 +33,14 @@ class MemoryWriteService:
         if self._validation_service is None:
             self._validation_service = MemoryValidationService(self.client)
         return self._validation_service
+
+    @staticmethod
+    def _storage_status_for_validation_action(action: str) -> str:
+        if action == "reject":
+            return "rejected"
+        if action == "quarantine":
+            return "quarantined"
+        return action
 
     @property
     def namespace_service(self):
@@ -67,7 +77,19 @@ class MemoryWriteService:
             # Use validated memory if modified
             if "memory" in validation_result:
                 memory = validation_result["memory"]
-            validation_result = {"action": "store", "reason": "MVP direct store"}
+
+            action = validation_result.get("action", "store")
+            if action not in STORAGE_ACTIONS:
+                return {
+                    "id": memory.id,
+                    "namespace": namespace,
+                    "status": self._storage_status_for_validation_action(action),
+                    "action": action,
+                    "reason": validation_result.get("reason", "Rejected by validation"),
+                    "confidence": memory.confidence,
+                    "memory_status": memory.status,
+                    "type": memory.type,
+                }
 
             from typing import cast
 
@@ -160,10 +182,21 @@ class MemoryWriteService:
                     # Use validated memory if modified
                     if "memory" in validation_result:
                         memory = validation_result["memory"]
-                    validation_result = {
-                        "action": "store",
-                        "reason": "MVP direct store",
-                    }
+
+                    action = validation_result.get("action", "store")
+                    if action not in STORAGE_ACTIONS:
+                        results.append(
+                            {
+                                "id": memory.id,
+                                "status": "failed",
+                                "action": action,
+                                "reason": validation_result.get(
+                                    "reason", "Rejected by validation"
+                                ),
+                                "type": memory.type,
+                            }
+                        )
+                        continue
 
                     from typing import cast
 
