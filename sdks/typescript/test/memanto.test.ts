@@ -1,6 +1,9 @@
 import { afterEach, describe, expect, it } from "vitest";
+import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { createServer, type Server, type IncomingMessage } from "node:http";
 import { AddressInfo } from "node:net";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { Memanto } from "../src/index.js";
 
 interface Recorded {
@@ -66,7 +69,23 @@ function startFakeApi(): Promise<{
             confidence: 0.9,
             type: "fact",
           });
-        if (url === "/api/v2/agents/test-agent/recall")
+        if (url === "/api/v2/agents/test-agent/upload-file")
+          return reply(
+            200,
+            {
+              agent_id: "test-agent",
+              file_name: "memory.txt",
+              status: "uploaded",
+            },
+            { "X-Session-Token": "multipart-renewed-token" },
+          );
+        if (url === "/api/v2/agents/test-agent/recall") {
+          if ((JSON.parse(body) as { query?: string }).query === "fail")
+            return reply(
+              500,
+              { detail: "intentional failure" },
+              { "X-Session-Token": "error-renewed-token" },
+            );
           return reply(
             200,
             {
@@ -78,6 +97,7 @@ function startFakeApi(): Promise<{
             },
             { "X-Session-Token": "renewed-token" },
           );
+        }
         return reply(404, { detail: "unknown route" });
       });
     });
@@ -149,6 +169,45 @@ describe("Memanto", () => {
     expect(recalls).toHaveLength(2);
     expect(recalls[0]?.headers["x-session-token"]).toBe("fake-token");
     expect(recalls[1]?.headers["x-session-token"]).toBe("renewed-token");
+  });
+
+  it("uses a token renewed by a multipart upload", async () => {
+    const api = await startFakeApi();
+    cleanupFns.push(api.close);
+    const dir = await mkdtemp(join(tmpdir(), "memanto-sdk-"));
+    cleanupFns.push(() => rm(dir, { recursive: true, force: true }));
+    const path = join(dir, "memory.txt");
+    await writeFile(path, "remember this");
+
+    const m = new Memanto({ agentId: "test-agent", baseUrl: api.url });
+    cleanupFns.push(() => m.close());
+
+    await m.uploadFile({ path });
+    await m.recall({ query: "after upload" });
+
+    const recall = api.recorded.find((r) => r.url.endsWith("/recall"));
+    expect(recall?.headers["x-session-token"]).toBe(
+      "multipart-renewed-token",
+    );
+  });
+
+  it("keeps a replacement token returned with an error response", async () => {
+    const api = await startFakeApi();
+    cleanupFns.push(api.close);
+
+    const m = new Memanto({ agentId: "test-agent", baseUrl: api.url });
+    cleanupFns.push(() => m.close());
+
+    await expect(m.recall({ query: "fail" })).rejects.toThrow(
+      /intentional failure/,
+    );
+    await m.recall({ query: "after error" });
+
+    const recalls = api.recorded.filter((r) => r.url.endsWith("/recall"));
+    expect(recalls).toHaveLength(2);
+    expect(recalls[1]?.headers["x-session-token"]).toBe(
+      "error-renewed-token",
+    );
   });
 
   it("rejects empty agentId", () => {

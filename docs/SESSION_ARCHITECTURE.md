@@ -433,7 +433,10 @@ When an authenticated API request reaches the configured renewal threshold,
 Memanto replaces the persisted session and returns the replacement JWT in the
 `X-Session-Token` response header. Raw HTTP clients must store that value for
 their next request because the previous token is no longer active. The web UI
-and TypeScript SDK update their session token automatically.
+and TypeScript SDK update their session token automatically. Browser clients
+running on a different origin must configure an explicit `ALLOWED_ORIGINS`
+allowlist; Memanto does not expose replacement credentials when that setting
+contains the wildcard origin.
 
 ---
 

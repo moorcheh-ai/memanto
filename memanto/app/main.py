@@ -79,7 +79,10 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
-    expose_headers=["X-Session-Token"],
+    # Never expose replacement credentials to arbitrary cross-origin pages.
+    # Same-origin clients can read this header without CORS; cross-origin
+    # deployments must configure an explicit ALLOWED_ORIGINS allowlist.
+    expose_headers=([] if "*" in settings.ALLOWED_ORIGINS else ["X-Session-Token"]),
 )
 
 # Include routers

@@ -248,9 +248,7 @@ class TestMEMANTOAPI:
         assert first_response.status_code == 200
         replacement_token = first_response.headers["X-Session-Token"]
         assert replacement_token != original_token
-        assert (
-            first_response.headers["Access-Control-Expose-Headers"] == "X-Session-Token"
-        )
+        assert "Access-Control-Expose-Headers" not in first_response.headers
 
         # Renewal replaces the stored session. The old token is invalid, while
         # the token returned in the response keeps the client authenticated.
