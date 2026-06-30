@@ -185,11 +185,13 @@ settings = Settings()
 if not settings.MEMANTO_SECRET_KEY or settings.MEMANTO_SECRET_KEY == "memanto-default-secret-change-in-production":
     _generated = _generate_default_secret_key()
     settings.MEMANTO_SECRET_KEY = _generated
+    # NOTE: Intentionally NOT logging the generated key value. The key is
+    # assigned to settings.MEMANTO_SECRET_KEY and is available at runtime.
+    # Anyone with log access should NOT be able to recover the signing key.
     warnings.warn(
         "MEMANTO_SECRET_KEY is not set or is the insecure default. "
         "A random key has been auto-generated for this session. "
-        "Set MEMANTO_SECRET_KEY in your .env file for persistence.\n"
-        f"  Auto-generated key: {_generated}",
+        "Set MEMANTO_SECRET_KEY in your .env file for persistence.",
         UserWarning,
         stacklevel=2,
     )
