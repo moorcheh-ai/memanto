@@ -441,6 +441,99 @@ class TestMEMANTOCLI:
         assert forwarded_updates["tags"] == ["a", "b"]
         assert result["status"] == "updated"
 
+    def test_batch_remember_direct_client_ignores_malformed_result_rows(
+        self, mock_all_clients
+    ):
+        from unittest.mock import MagicMock, patch
+
+        from memanto.cli.client.direct_client import DirectClient
+
+        mock_write_service = MagicMock()
+        mock_write_service.batch_store_memories.return_value = {
+            "total_submitted": 2,
+            "successful": 2,
+            "failed": 0,
+            "results": ["truncated row", {"id": "mem-2"}],
+        }
+        mock_session = MagicMock()
+        mock_session.namespace = "memanto_agent_test-agent"
+        mock_summary = MagicMock()
+
+        with (
+            patch.object(
+                DirectClient, "_get_write_service", return_value=mock_write_service
+            ),
+            patch.object(
+                DirectClient,
+                "_get_validated_session_for_agent",
+                return_value=mock_session,
+            ),
+            patch.object(
+                DirectClient, "_get_session_service", return_value=mock_summary
+            ),
+        ):
+            client = DirectClient.__new__(DirectClient)
+            client.api_key = "test-api-key"
+            client.base_url = "https://api.moorcheh.ai/v1"
+            client.session_token = "test-token"
+
+            result = client.batch_remember(
+                "test-agent",
+                [
+                    {"content": "first"},
+                    {"content": "second"},
+                ],
+            )
+
+        assert result["successful"] == 2
+        first_call, second_call = mock_summary.log_memory_to_session_summary.call_args_list
+        assert first_call.kwargs["memory_id"] is None
+        assert second_call.kwargs["memory_id"] == "mem-2"
+
+    def test_batch_remember_sdk_client_ignores_malformed_result_rows(
+        self, mock_all_clients
+    ):
+        from unittest.mock import MagicMock, patch
+
+        from memanto.cli.client.sdk_client import SdkClient
+
+        mock_write_service = MagicMock()
+        mock_write_service.batch_store_memories.return_value = {
+            "total_submitted": 2,
+            "successful": 2,
+            "failed": 0,
+            "results": ["truncated row", {"id": "mem-2"}],
+        }
+        mock_session = MagicMock()
+        mock_session.namespace = "memanto_agent_test-agent"
+        mock_summary = MagicMock()
+
+        with (
+            patch.object(
+                SdkClient, "_get_write_service", return_value=mock_write_service
+            ),
+            patch.object(
+                SdkClient, "_get_validated_session_for_agent", return_value=mock_session
+            ),
+            patch.object(SdkClient, "_get_session_service", return_value=mock_summary),
+        ):
+            client = SdkClient.__new__(SdkClient)
+            client.api_key = "test-api-key"
+            client.session_token = "test-token"
+
+            result = client.batch_remember(
+                "test-agent",
+                [
+                    {"content": "first"},
+                    {"content": "second"},
+                ],
+            )
+
+        assert result["successful"] == 2
+        first_call, second_call = mock_summary.log_memory_to_session_summary.call_args_list
+        assert first_call.kwargs["memory_id"] is None
+        assert second_call.kwargs["memory_id"] == "mem-2"
+
     def test_recall(self, mock_all_clients):
         """Test 'memanto recall'"""
         mock_all_clients.recall.return_value = {

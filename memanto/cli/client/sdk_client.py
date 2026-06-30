@@ -576,7 +576,8 @@ class SdkClient:
             batch_results = result.get("results", [])
 
             for i, mem in enumerate(memory_records):
-                mem_id = batch_results[i].get("id") if i < len(batch_results) else None
+                batch_item = batch_results[i] if i < len(batch_results) else None
+                mem_id = batch_item.get("id") if isinstance(batch_item, dict) else None
                 session_svc.log_memory_to_session_summary(
                     agent_id=agent_id,
                     session_id=session_id,
