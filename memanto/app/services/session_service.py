@@ -6,15 +6,17 @@ Uses JWT tokens for stateless authentication.
 """
 
 import json
+import logging
 import os
 from datetime import timedelta
 from pathlib import Path
 from typing import Any
 
 import jwt
+from pydantic import ValidationError
 
 from memanto.app.config import get_data_dir, settings
-from memanto.app.core import create_memory_scope
+from memanto.app.core import agent_namespace
 from memanto.app.models.session import (
     AgentPattern,
     Session,
@@ -31,6 +33,7 @@ from memanto.app.utils.ids import generate_id
 from memanto.app.utils.temporal_helpers import utc_now
 
 _session_service = None
+logger = logging.getLogger(__name__)
 
 
 def get_session_service() -> "SessionService":
@@ -68,12 +71,11 @@ class SessionService:
 
     def _generate_namespace(self, agent_id: str) -> str:
         """
-        Generate namespace for agent using core MemoryScope
+        Generate the Moorcheh namespace for an agent.
 
-        Format: memanto_{scope}_{scope_id}
+        Format: memanto_agent_{agent_id}
         """
-        scope = create_memory_scope(scope_type="agent", scope_id=agent_id)
-        return scope.to_namespace()
+        return agent_namespace(agent_id)
 
     def _generate_session_id(self) -> str:
         """Generate unique session ID"""
@@ -165,6 +167,20 @@ class SessionService:
                 raise SessionExpiredError(
                     f"Session {token.session_id} expired at {token.expires_at}"
                 )
+            try:
+                session = self.get_session(token.agent_id)
+                if (
+                    not session
+                    or session.session_id != token.session_id
+                    or not session.is_active()
+                ):
+                    raise InvalidSessionTokenError(
+                        f"Session {token.session_id} is no longer active"
+                    )
+            except (OSError, json.JSONDecodeError, ValidationError) as exc:
+                raise InvalidSessionTokenError(
+                    f"Session {token.session_id} is no longer active"
+                ) from exc
 
             return token
 
@@ -184,12 +200,7 @@ class SessionService:
             Session object or None if not found
         """
         session_file = self.sessions_dir / f"{agent_id}.json"
-        if not session_file.exists():
-            return None
-
-        with open(session_file) as f:
-            data = json.load(f)
-            return Session(**data)
+        return self._load_session_file(session_file)
 
     def get_active_session(self) -> Session | None:
         """
@@ -329,6 +340,19 @@ class SessionService:
         with open(session_file, "w") as f:
             json.dump(session.model_dump(mode="json"), f, indent=2)
 
+    def _load_session_file(self, session_file: Path) -> Session | None:
+        """Load one session file, treating corrupt local state as absent."""
+        if not session_file.exists():
+            return None
+
+        try:
+            with open(session_file) as f:
+                data = json.load(f)
+            return Session(**data)
+        except (OSError, json.JSONDecodeError, TypeError, ValidationError) as exc:
+            logger.warning("Skipping invalid session file %s: %s", session_file, exc)
+            return None
+
     def log_memory_to_session_summary(
         self,
         agent_id: str,
@@ -462,8 +486,8 @@ class SessionService:
         """
         sessions = []
         for session_file in self.sessions_dir.glob("*.json"):
-            with open(session_file) as f:
-                data = json.load(f)
-                sessions.append(Session(**data))
+            session = self._load_session_file(session_file)
+            if session is not None:
+                sessions.append(session)
 
         return sorted(sessions, key=lambda s: s.started_at, reverse=True)

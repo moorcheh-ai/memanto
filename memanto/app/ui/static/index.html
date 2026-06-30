@@ -3412,15 +3412,13 @@
                     m.status === 'superseded' ? '<span class="badge badge-warning">superseded</span>' :
                         `<span class="badge badge-info">${m.status || '—'}</span>`;
                 const provBadge = m.provenance ? `<span class="badge badge-accent">${m.provenance}</span>` : '—';
-                const contradicted = m.contradiction_detected ? ' <span class="badge badge-error">⚠ contradicted</span>' : '';
-                const validated = (m.validation_count && m.validation_count > 0) ? ` <span class="badge badge-success">✓×${m.validation_count}</span>` : '';
                 const mJson = attrEsc(JSON.stringify(m));
                 html += `<tr class="${expandable ? 'expandable' : ''}" onclick="toggleRow('exp-${i}')">
             <td style="color:var(--text-primary);font-weight:500">${escHtml(trunc(m.title || 'Untitled', 60))}</td>
             <td><span class="badge badge-info">${m.type || '—'}</span></td>
             <td>${m.source ? `<span class="badge badge-accent">${escHtml(m.source)}</span>` : '—'}</td>
             <td>${confBadge(m.confidence)}</td>
-            <td>${statusBadge}${contradicted}${validated}</td>
+            <td>${statusBadge}</td>
             <td>${provBadge}</td>
             <td style="white-space:nowrap">${fmtDate(m.created_at)}</td>
             <td style="font-size:11px">${escHtml(trunc(tags, 40))}</td>
@@ -4298,6 +4296,195 @@
             }
         }
 
+        function buildConflictBannerEl(scanDate, scan, staleCount) {
+            if (staleCount > 0) {
+                const div = document.createElement('div');
+                div.style.cssText = 'background:rgba(239,68,68,0.12);border:1px solid var(--error);border-radius:8px;padding:12px 14px;margin-bottom:16px;font-size:13px;color:var(--text-secondary)';
+                const strong = document.createElement('strong');
+                strong.style.color = 'var(--error)';
+                strong.textContent = `${staleCount} ${staleCount === 1 ? 'memory' : 'memories'}`;
+                div.append(document.createTextNode('⚠ '), strong);
+                if (scan) {
+                    div.append(document.createTextNode(` stored since the last conflict scan (${fmtDate(scan.scanned_at)}) for ${scanDate}. `));
+                } else {
+                    div.append(document.createTextNode(` stored since the last conflict scan — this day has never been scanned for ${scanDate}. `));
+                }
+                const tail = document.createElement('span');
+                const tailTpl = document.createElement('template');
+                tailTpl.innerHTML = 'Click <strong>Detect Conflicts Now</strong> to re-check.';
+                tail.appendChild(tailTpl.content.cloneNode(true));
+                div.appendChild(tail);
+                return div;
+            }
+            if (scan) {
+                const div = document.createElement('div');
+                div.style.cssText = 'color:var(--text-dim);font-size:12px;margin-bottom:16px';
+                div.textContent = `Last conflict scan for ${scanDate}: ${fmtDate(scan.scanned_at)}.`;
+                return div;
+            }
+            return null;
+        }
+
+        function renderConflictsEmpty(container, bannerEl) {
+            container.replaceChildren();
+            if (bannerEl) container.appendChild(bannerEl);
+            const wrap = document.createElement('div');
+            wrap.style.cssText = 'text-align:center;padding:60px 20px';
+            const icon = document.createElement('div');
+            icon.style.cssText = 'font-size:48px;margin-bottom:16px;opacity:0.3';
+            icon.textContent = '✓';
+            const title = document.createElement('p');
+            title.style.cssText = 'color:var(--success);font-size:16px;font-weight:600;margin-bottom:8px';
+            title.textContent = 'No Conflicts';
+            const descTpl = document.createElement('template');
+            descTpl.innerHTML = '<p style="color:var(--text-dim);font-size:13px">All memories are consistent. Click <strong>Detect Conflicts Now</strong> above (or run <code style="font-family:var(--font-mono);color:var(--accent)">memanto detect-conflicts</code>) to scan for new conflicts.</p>';
+            wrap.append(icon, title, descTpl.content.cloneNode(true));
+            container.appendChild(wrap);
+        }
+
+        function buildConflictMetaBlock(memoryId, timestamp, source) {
+            const block = document.createElement('div');
+            block.style.cssText = 'margin-top:12px;display:flex;flex-direction:column;gap:4px;font-size:10px;font-family:var(--font-mono);color:var(--text-dim)';
+            const idRow = document.createElement('div');
+            idRow.append('ID: ', spanSecondary(memoryId));
+            const whenRow = document.createElement('div');
+            whenRow.append('When: ', spanSecondary(fmtDate(timestamp)));
+            const srcRow = document.createElement('div');
+            srcRow.append('Source: ', spanSecondary(source || 'unknown'));
+            block.append(idRow, whenRow, srcRow);
+            return block;
+        }
+
+        function spanSecondary(text) {
+            const span = document.createElement('span');
+            span.style.color = 'var(--text-secondary)';
+            span.textContent = text ?? '—';
+            return span;
+        }
+
+        function conflictActionBtn(label, className, onClick) {
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = `btn btn-sm ${className}`;
+            btn.textContent = label;
+            btn.addEventListener('click', onClick);
+            return btn;
+        }
+
+        function buildConflictCard(c, i, rawAgentId, rawDate) {
+            const ctype = (c.type || 'conflict').toUpperCase();
+            const explanation = c.explanation || c.reason || 'Conflicting information detected.';
+
+            const card = document.createElement('div');
+            card.className = 'conflict-card';
+            card.id = `conflict-${i}`;
+
+            const header = document.createElement('div');
+            header.className = 'conflict-header';
+            const headerLeft = document.createElement('div');
+            const typeSpan = document.createElement('span');
+            typeSpan.className = 'conflict-type';
+            typeSpan.textContent = ctype;
+            const badge = document.createElement('span');
+            badge.className = 'badge badge-warning';
+            badge.style.marginLeft = '8px';
+            badge.textContent = 'Unresolved';
+            headerLeft.append(typeSpan, badge);
+            const indexSpan = document.createElement('span');
+            indexSpan.style.cssText = 'font-size:11px;color:var(--text-dim);font-family:var(--font-mono)';
+            indexSpan.textContent = `#${i}`;
+            header.append(headerLeft, indexSpan);
+
+            const expl = document.createElement('p');
+            expl.style.cssText = 'color:var(--text-secondary);font-size:13px;margin-bottom:16px;line-height:1.6';
+            expl.textContent = explanation;
+
+            const memories = document.createElement('div');
+            memories.className = 'conflict-memories';
+
+            const oldMem = document.createElement('div');
+            oldMem.className = 'conflict-memory';
+            const oldLabel = document.createElement('div');
+            oldLabel.className = 'conflict-memory-label';
+            oldLabel.textContent = 'Old Memory';
+            const oldContent = document.createElement('div');
+            oldContent.className = 'conflict-memory-content';
+            oldContent.textContent = c.old_content || c.old_memory || '—';
+            oldMem.append(oldLabel, oldContent);
+            if (c.old_memory_id) {
+                oldMem.appendChild(buildConflictMetaBlock(c.old_memory_id, c.old_created_at || c.old_timestamp, c.old_source));
+            }
+
+            const newMem = document.createElement('div');
+            newMem.className = 'conflict-memory';
+            const newLabel = document.createElement('div');
+            newLabel.className = 'conflict-memory-label';
+            newLabel.textContent = 'New Memory';
+            const newContent = document.createElement('div');
+            newContent.className = 'conflict-memory-content';
+            newContent.textContent = c.new_content || c.new_memory || '—';
+            newMem.append(newLabel, newContent);
+            if (c.new_memory_id) {
+                newMem.appendChild(buildConflictMetaBlock(c.new_memory_id, c.new_created_at || c.new_timestamp, c.new_source));
+            }
+
+            memories.append(oldMem, newMem);
+
+            const actions = document.createElement('div');
+            actions.className = 'conflict-actions';
+            actions.append(
+                conflictActionBtn('Keep Old', 'btn-secondary', () => resolveConflict(i, rawAgentId, rawDate, 'keep_old')),
+                conflictActionBtn('Keep New', 'btn-primary', () => resolveConflict(i, rawAgentId, rawDate, 'keep_new')),
+                conflictActionBtn('Keep Both', 'btn-secondary', () => resolveConflict(i, rawAgentId, rawDate, 'keep_both')),
+                conflictActionBtn('Remove Both', 'btn-danger', () => resolveConflict(i, rawAgentId, rawDate, 'remove_both')),
+                conflictActionBtn('Manual', 'btn-secondary', () => showManualResolve(i)),
+            );
+
+            const manual = document.createElement('div');
+            manual.id = `manual-${i}`;
+            manual.style.cssText = 'display:none;margin-top:12px';
+            const formGroup = document.createElement('div');
+            formGroup.className = 'form-group';
+            const manualLabel = document.createElement('label');
+            manualLabel.textContent = 'Manual Replacement Content';
+            const textarea = document.createElement('textarea');
+            textarea.id = `manualContent-${i}`;
+            textarea.placeholder = 'Enter the correct merged content...';
+            textarea.style.minHeight = '60px';
+            formGroup.append(manualLabel, textarea);
+            const submitBtn = conflictActionBtn('Submit Manual Resolution', 'btn-primary', () => {
+                const content = textarea.value.trim();
+                if (!content) {
+                    toast('Enter manual replacement content before submitting.', 'warning');
+                    textarea.focus();
+                    return;
+                }
+                resolveConflict(i, rawAgentId, rawDate, 'manual', content);
+            });
+            manual.append(formGroup, submitBtn);
+
+            card.append(header, expl, memories, actions, manual);
+            return card;
+        }
+
+        function renderConflictsList(container, bannerEl, conflicts, rawAgentId, rawDate) {
+            container.replaceChildren();
+            if (bannerEl) container.appendChild(bannerEl);
+
+            const summary = document.createElement('p');
+            summary.style.cssText = 'color:var(--text-secondary);margin-bottom:20px;font-size:13px';
+            const countStrong = document.createElement('strong');
+            countStrong.style.color = 'var(--warning)';
+            countStrong.textContent = String(conflicts.length);
+            const agentStrong = document.createElement('strong');
+            agentStrong.style.color = 'var(--accent)';
+            agentStrong.textContent = rawAgentId;
+            summary.append('Found ', countStrong, ' unresolved conflict(s) for ', agentStrong, ` on ${rawDate}`);
+
+            container.appendChild(summary);
+            conflicts.forEach((c, i) => container.appendChild(buildConflictCard(c, i, rawAgentId, rawDate)));
+        }
+
         async function loadConflicts() {
             const container = document.getElementById('conflictsContent');
             container.innerHTML = '<div class="loading-overlay"><span class="spinner"></span> Loading conflicts...</div>';
@@ -4314,79 +4501,22 @@
                 const scanDate = data.date || date;
                 const scan = (S.conflictScans || {})[scanDate];
                 const staleCount = staleMemCountForDay(scanDate);
-                let banner = '';
-                if (staleCount > 0) {
-                    banner = `<div style="background:rgba(239,68,68,0.12);border:1px solid var(--error);border-radius:8px;padding:12px 14px;margin-bottom:16px;font-size:13px;color:var(--text-secondary)">⚠ <strong style="color:var(--error)">${staleCount} ${staleCount === 1 ? 'memory' : 'memories'}</strong> stored since the last conflict scan${scan ? ` (${fmtDate(scan.scanned_at)})` : ' — this day has never been scanned'} for ${scanDate}. Click <strong>Detect Conflicts Now</strong> to re-check.</div>`;
-                } else if (scan) {
-                    banner = `<div style="color:var(--text-dim);font-size:12px;margin-bottom:16px">Last conflict scan for ${scanDate}: ${fmtDate(scan.scanned_at)}.</div>`;
-                }
+                const rawAgentId = data.agent_id || '';
+                const rawDate = data.date || date;
+                const bannerEl = buildConflictBannerEl(scanDate, scan, staleCount);
 
                 if (!conflicts.length) {
-                    container.innerHTML = banner + `
-                <div style="text-align:center;padding:60px 20px">
-                    <div style="font-size:48px;margin-bottom:16px;opacity:0.3">✓</div>
-                    <p style="color:var(--success);font-size:16px;font-weight:600;margin-bottom:8px">No Conflicts</p>
-                    <p style="color:var(--text-dim);font-size:13px">All memories are consistent. Click <strong>Detect Conflicts Now</strong> above (or run <code style="font-family:var(--font-mono);color:var(--accent)">memanto detect-conflicts</code>) to scan for new conflicts.</p>
-                </div>`;
+                    renderConflictsEmpty(container, bannerEl);
                     return;
                 }
 
-                let html = banner + `<p style="color:var(--text-secondary);margin-bottom:20px;font-size:13px">Found <strong style="color:var(--warning)">${conflicts.length}</strong> unresolved conflict(s) for <strong style="color:var(--accent)">${data.agent_id}</strong> on ${data.date}</p>`;
-
-                conflicts.forEach((c, i) => {
-                    const ctype = (c.type || 'conflict').toUpperCase();
-                    const explanation = c.explanation || c.reason || 'Conflicting information detected.';
-
-                    html += `
-            <div class="conflict-card" id="conflict-${i}">
-                <div class="conflict-header">
-                    <div>
-                        <span class="conflict-type">${escHtml(ctype)}</span>
-                        <span class="badge badge-warning" style="margin-left:8px">Unresolved</span>
-                    </div>
-                    <span style="font-size:11px;color:var(--text-dim);font-family:var(--font-mono)">#${i}</span>
-                </div>
-                <p style="color:var(--text-secondary);font-size:13px;margin-bottom:16px;line-height:1.6">${escHtml(explanation)}</p>
-                <div class="conflict-memories">
-                    <div class="conflict-memory">
-                        <div class="conflict-memory-label">Old Memory</div>
-                        <div class="conflict-memory-content">${escHtml(c.old_content || c.old_memory || '—')}</div>
-                        ${c.old_memory_id ? `<div style="margin-top:12px;display:flex;flex-direction:column;gap:4px;font-size:10px;font-family:var(--font-mono);color:var(--text-dim)">
-                            <div>ID: <span style="color:var(--text-secondary)">${c.old_memory_id}</span></div>
-                            <div>When: <span style="color:var(--text-secondary)">${fmtDate(c.old_created_at || c.old_timestamp)}</span></div>
-                            <div>Source: <span style="color:var(--text-secondary)">${escHtml(c.old_source || 'unknown')}</span></div>
-                        </div>` : ''}
-                    </div>
-                    <div class="conflict-memory">
-                        <div class="conflict-memory-label">New Memory</div>
-                        <div class="conflict-memory-content">${escHtml(c.new_content || c.new_memory || '—')}</div>
-                        ${c.new_memory_id ? `<div style="margin-top:12px;display:flex;flex-direction:column;gap:4px;font-size:10px;font-family:var(--font-mono);color:var(--text-dim)">
-                            <div>ID: <span style="color:var(--text-secondary)">${c.new_memory_id}</span></div>
-                            <div>When: <span style="color:var(--text-secondary)">${fmtDate(c.new_created_at || c.new_timestamp)}</span></div>
-                            <div>Source: <span style="color:var(--text-secondary)">${escHtml(c.new_source || 'unknown')}</span></div>
-                        </div>` : ''}
-                    </div>
-                </div>
-                <div class="conflict-actions">
-                    <button class="btn btn-sm btn-secondary" onclick="resolveConflict(${i}, '${data.agent_id}', '${data.date}', 'keep_old')">Keep Old</button>
-                    <button class="btn btn-sm btn-primary" onclick="resolveConflict(${i}, '${data.agent_id}', '${data.date}', 'keep_new')">Keep New</button>
-                    <button class="btn btn-sm btn-secondary" onclick="resolveConflict(${i}, '${data.agent_id}', '${data.date}', 'keep_both')">Keep Both</button>
-                    <button class="btn btn-sm btn-danger" onclick="resolveConflict(${i}, '${data.agent_id}', '${data.date}', 'remove_both')">Remove Both</button>
-                    <button class="btn btn-sm btn-secondary" onclick="showManualResolve(${i}, '${data.agent_id}', '${data.date}')">Manual</button>
-                </div>
-                <div id="manual-${i}" style="display:none;margin-top:12px">
-                    <div class="form-group">
-                        <label>Manual Replacement Content</label>
-                        <textarea id="manualContent-${i}" placeholder="Enter the correct merged content..." style="min-height:60px"></textarea>
-                    </div>
-                    <button class="btn btn-sm btn-primary" onclick="resolveConflict(${i}, '${data.agent_id}', '${data.date}', 'manual', document.getElementById('manualContent-${i}').value)">Submit Manual Resolution</button>
-                </div>
-            </div>`;
-                });
-
-                container.innerHTML = html;
+                renderConflictsList(container, bannerEl, conflicts, rawAgentId, rawDate);
             } catch (e) {
-                container.innerHTML = `<p style="color:var(--error);padding:20px">Failed to load conflicts: ${e.message}</p>`;
+                container.replaceChildren();
+                const err = document.createElement('p');
+                err.style.cssText = 'color:var(--error);padding:20px';
+                err.textContent = `Failed to load conflicts: ${e.message}`;
+                container.appendChild(err);
             }
         }
 

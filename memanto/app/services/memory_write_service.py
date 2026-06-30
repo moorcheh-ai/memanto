@@ -24,7 +24,6 @@ class MemoryWriteService:
         """Initialize the service with a Moorcheh client."""
 
         self.client = moorcheh_client
-        self._namespace_service = None
         self._parser = MemoryParsingService()
         self._validation_service = None
 
@@ -41,16 +40,6 @@ class MemoryWriteService:
         if action == "quarantine":
             return "quarantined"
         return action
-
-    @property
-    def namespace_service(self):
-        """Lazily create the namespace service used for memory scopes."""
-
-        if self._namespace_service is None:
-            from memanto.app.services.namespace_service import NamespaceService
-
-            self._namespace_service = NamespaceService(self.client)
-        return self._namespace_service
 
     def store_memory(
         self, memory: MemoryRecord, context: dict[str, Any] | None = None
@@ -70,7 +59,7 @@ class MemoryWriteService:
             memory = self._parser.parse_memory(memory)
 
             # Add namespace
-            namespace = memory.get_scope().to_namespace()
+            namespace = memory.namespace()
 
             # Validate memory before storage
             validation_result = self.validation_service.validate_memory(memory, context)
@@ -162,7 +151,7 @@ class MemoryWriteService:
                     memory = self._parser.parse_memory(memory)
 
                     # Add namespace
-                    namespace = memory.get_scope().to_namespace()
+                    namespace = memory.namespace()
 
                     if first_namespace is None:
                         first_namespace = namespace
@@ -315,6 +304,18 @@ class MemoryWriteService:
                 else existing_memory_data
             )
 
+            # The namespace (memanto_agent_{agent_id}) is authoritative for the
+            # agent_id; fall back to it when stored metadata predates the flat
+            # agent_id field so the rewritten record keeps correct metadata.
+            agent_id = metadata.get("agent_id")
+            if not agent_id and namespace.startswith("memanto_agent_"):
+                agent_id = namespace.removeprefix("memanto_agent_")
+            if not agent_id:
+                raise MemoryError(
+                    f"Cannot determine agent_id for memory {memory_id} "
+                    f"in namespace {namespace}"
+                )
+
             # Build updated memory record
             updated_memory = MemoryRecord(
                 id=memory_id,  # Keep same ID
@@ -323,8 +324,7 @@ class MemoryWriteService:
                     "title", existing_memory_data.get("title", "Updated Memory")
                 ),
                 content=updates.get("content", existing_memory_data.get("content", "")),
-                scope_type=metadata.get("scope_type", "agent"),
-                scope_id=metadata.get("scope_id", "unknown"),
+                agent_id=agent_id,
                 actor_id=updates.get("actor_id", metadata.get("actor_id", "unknown")),
                 source=updates.get("source", metadata.get("source", "system")),
                 source_ref=updates.get("source_ref", metadata.get("source_ref")),
@@ -413,12 +413,3 @@ class MemoryWriteService:
 
         except Exception as e:
             raise MemoryError(f"Failed to delete memory: {e}")
-
-    def _ensure_namespace(self, memory: MemoryRecord) -> str:
-        """Ensure namespace exists for memory"""
-        from typing import cast
-
-        namespace = self.namespace_service.create_namespace(
-            cast(Any, memory.scope_type), memory.scope_id
-        )
-        return cast(str, namespace)

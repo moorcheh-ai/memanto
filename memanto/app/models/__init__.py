@@ -3,11 +3,11 @@ MEMANTO API Models
 """
 
 from datetime import datetime
-from typing import Any
+from typing import Any, Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
-from memanto.app.constants import MemoryType, ScopeType, SourceType, StatusType
+from memanto.app.constants import MemoryType, SourceType, StatusType
 
 
 # Request Models
@@ -17,8 +17,7 @@ class MemoryStoreRequest(BaseModel):
     type: MemoryType
     title: str = Field(max_length=100)
     content: str = Field(max_length=10000)
-    scope_type: ScopeType
-    scope_id: str
+    agent_id: str
     actor_id: str
     source: SourceType
     source_ref: str | None = None
@@ -48,8 +47,7 @@ class MemoryBatchWriteRequest(BaseModel):
     memories: list[MemoryBatchItem] = Field(
         ..., min_length=1, max_length=100, description="1-100 memories per batch"
     )
-    scope_type: ScopeType
-    scope_id: str
+    agent_id: str
     actor_id: str
     user_confirmed: bool = False
 
@@ -129,21 +127,17 @@ class ExtractMemoriesRequest(BaseModel):
     )
 
 
-class SupersedeRequest(BaseModel):
-    """Request body for supersede endpoint"""
-
-    new_memory_id: str = Field(
-        ..., description="ID of new memory that supersedes the old one"
-    )
-
-
 class ConflictResolveRequest(BaseModel):
     """Request body for resolving a conflict"""
 
     conflict_index: int = Field(..., ge=0, description="Conflict index to resolve")
-    action: str = Field(
-        ...,
-        description="Resolution action: keep_old, keep_new, keep_both, remove_both, manual",
+    action: Literal["keep_old", "keep_new", "keep_both", "remove_both", "manual"] = (
+        Field(
+            ...,
+            description=(
+                "Resolution action: keep_old, keep_new, keep_both, remove_both, manual"
+            ),
+        )
     )
     date: str | None = Field(
         None, description="Conflict report date (YYYY-MM-DD). Defaults to today."
@@ -154,6 +148,14 @@ class ConflictResolveRequest(BaseModel):
     manual_type: str | None = Field(
         None, description="Optional memory type for manual action"
     )
+
+    @model_validator(mode="after")
+    def validate_manual_resolution(self) -> "ConflictResolveRequest":
+        if self.action == "manual" and not (
+            self.manual_content and self.manual_content.strip()
+        ):
+            raise ValueError("manual_content is required when action is 'manual'")
+        return self
 
 
 class AnswerRequest(BaseModel):
@@ -190,53 +192,21 @@ class MemoryUpdateRequest(BaseModel):
 
 class MemorySearchRequest(BaseModel):
     query: str
-    scope_type: ScopeType | None = None
-    scope_id: str | None = None
+    agent_id: str | None = None
     memory_types: list[MemoryType] | None = None
     tags: list[str] | None = None
-    limit: int = Field(default=10, ge=1, le=100)
-
-
-class ScopeDefinition(BaseModel):
-    """Individual scope for multi-scope search"""
-
-    scope_type: ScopeType
-    scope_id: str
-
-
-class MemoryMultiScopeSearchRequest(BaseModel):
-    """Request to search across multiple scopes simultaneously"""
-
-    query: str
-    scopes: list[ScopeDefinition] = Field(
-        ..., min_length=1, max_length=10, description="1-10 scopes to search across"
-    )
-    memory_types: list[MemoryType] | None = None
-    tags: list[str] | None = None
-    min_confidence: float | None = Field(None, ge=0.0, le=1.0)
-    status_filter: list[str] | None = None
-    min_similarity_score: float | None = Field(
-        None, ge=0.0, le=1.0, description="Minimum similarity score threshold"
-    )
     limit: int = Field(default=10, ge=1, le=100)
 
 
 class MemoryAnswerRequest(BaseModel):
     query: str
-    scope_type: ScopeType | None = None
-    scope_id: str | None = None
-
-
-class NamespaceCreateRequest(BaseModel):
-    scope_type: ScopeType
-    scope_id: str
+    agent_id: str | None = None
 
 
 class ContextSummarizationRequest(BaseModel):
     """Request to summarize context in a scope"""
 
-    scope_type: ScopeType
-    scope_id: str
+    agent_id: str
     actor_id: str
     summary_title: str = Field(default="Context Summary", max_length=100)
     memory_types: list[MemoryType] | None = None
@@ -249,8 +219,7 @@ class CustomSummarizationRequest(BaseModel):
 
     memory_ids: list[str] = Field(..., min_length=1, max_length=100)
     namespace: str
-    scope_type: ScopeType
-    scope_id: str
+    agent_id: str
     actor_id: str
     summary_title: str = Field(default="Custom Summary", max_length=100)
 
@@ -258,8 +227,7 @@ class CustomSummarizationRequest(BaseModel):
 class ConversationCompressionRequest(BaseModel):
     """Request to compress old conversation history"""
 
-    scope_type: ScopeType
-    scope_id: str
+    agent_id: str
     actor_id: str
     days_to_compress: int = Field(default=7, ge=1, le=365)
     keep_recent_count: int = Field(default=10, ge=0, le=50)
@@ -273,8 +241,7 @@ class MemoryResponse(BaseModel):
     type: MemoryType
     title: str
     content: str
-    scope_type: ScopeType
-    scope_id: str
+    agent_id: str
     actor_id: str
     source: SourceType
     source_ref: str | None
@@ -339,20 +306,6 @@ class MemoryAnswerResponse(BaseModel):
     namespace: str
 
 
-class NamespaceResponse(BaseModel):
-    """Response returned after creating or fetching a namespace."""
-
-    namespace: str
-    scope_type: ScopeType
-    scope_id: str
-    created: bool
-
-
-class NamespaceListResponse(BaseModel):
-    namespaces: list[str]
-    total: int
-
-
 class SummarizationResponse(BaseModel):
     """Response from context summarization"""
 
@@ -410,15 +363,9 @@ class MemoryItem(BaseModel):
     ttl_seconds: int | None = None
     actor_id: str | None = None
     source: str | None = None
-    scope_type: str | None = None
-    scope_id: str | None = None
+    agent_id: str | None = None
     score: float | None = None
     provenance: str = "explicit_statement"
-    validation_count: int = 0
-    contradiction_detected: bool = False
-    superseded_by: str | None = None
-    supersedes: str | None = None
-    validated_at: str | None = None
     change_type: str | None = None
 
 

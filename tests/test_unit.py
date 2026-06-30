@@ -119,6 +119,26 @@ class TestSessionService:
         print("✅ Session ended successfully")
         print(f"   Duration: {summary.duration_hours} hours")
 
+    def test_get_active_session_ignores_invalid_session_file(self, session_service):
+        """A corrupt active session file should not crash status checks."""
+        active_marker = session_service.sessions_dir / "active"
+        active_marker.write_text("broken-agent")
+        (session_service.sessions_dir / "broken-agent.json").write_text("{")
+
+        assert session_service.get_active_session() is None
+
+    def test_list_sessions_skips_invalid_session_files(self, session_service):
+        """One corrupt session record must not hide all valid sessions."""
+        valid_session = session_service.create_session(
+            agent_id="valid-agent",
+            duration_hours=1,
+        )
+        (session_service.sessions_dir / "broken-agent.json").write_text("{")
+
+        sessions = session_service.list_sessions()
+
+        assert [session.agent_id for session in sessions] == [valid_session.agent_id]
+
 
 class TestAgentService:
     """Unit tests for AgentService"""
@@ -389,6 +409,45 @@ class TestMEMANTOArchitecture:
         print("✅ JWT token structure correct")
         print(f"   Fields: {list(payload.keys())}")
         print("   ✅ NO tenant_id in token!")
+
+
+def test_conflict_report_handles_non_object_json_items(tmp_path, monkeypatch):
+    """Malformed conflict-item schemas should be preserved instead of crashing."""
+    import json
+    from unittest.mock import MagicMock
+
+    from memanto.app.services import daily_analysis_service as module
+
+    sessions_dir = tmp_path / "sessions"
+    summaries_dir = tmp_path / "summaries"
+    sessions_dir.mkdir()
+    (sessions_dir / "agent-1_2026-06-28_001_summary.md").write_text(
+        "# Session\n\nRemembered a conflicting preference.",
+        encoding="utf-8",
+    )
+
+    client = MagicMock()
+    client.answer.generate.return_value = {"answer": '["not an object", 1]'}
+    monkeypatch.setattr(module, "get_moorcheh_client", lambda: client)
+    monkeypatch.setattr(module, "get_active_llm_model", lambda _: "test-model")
+    monkeypatch.setattr(module.Path, "home", classmethod(lambda cls: tmp_path))
+
+    service = module.DailyAnalysisService(
+        sessions_dir=sessions_dir,
+        summaries_dir=summaries_dir,
+    )
+
+    result = service.generate_conflict_report("agent-1", "2026-06-28")
+
+    assert result["status"] == "success"
+    assert result["conflict_count"] == 1
+
+    conflicts_path = (
+        tmp_path / ".memanto" / "conflicts" / ("agent-1_2026-06-28_conflicts.json")
+    )
+    conflicts = json.loads(conflicts_path.read_text(encoding="utf-8"))
+    assert conflicts[0]["title"] == "Unparsed conflict report"
+    assert conflicts[0]["description"] == '["not an object", 1]'
 
 
 if __name__ == "__main__":

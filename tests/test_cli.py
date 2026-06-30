@@ -209,6 +209,21 @@ class TestMEMANTOCLI:
         assert "stored successfully" in result.stdout.lower()
         assert "mem-123" in result.stdout
 
+    def test_remember_short_content_honors_custom_title(self, mock_all_clients):
+        """Short memories should still use an explicit --title."""
+        mock_all_clients.remember.return_value = {
+            "memory_id": "mem-123",
+            "status": "queued",
+        }
+
+        result = runner.invoke(
+            app, ["remember", "Short memory", "--title", "Custom Title"]
+        )
+
+        assert result.exit_code == 0
+        mock_all_clients.remember.assert_called_once()
+        assert mock_all_clients.remember.call_args.kwargs["title"] == "Custom Title"
+
     def test_edit(self, mock_all_clients):
         """Test 'memanto edit' updates selected memory fields."""
         mock_all_clients.update_memory.return_value = {

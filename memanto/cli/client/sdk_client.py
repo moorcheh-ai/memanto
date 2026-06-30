@@ -454,8 +454,7 @@ class SdkClient:
             type=resolved_memory_type,
             title=title,
             content=content,
-            scope_type="agent",
-            scope_id=agent_id,
+            agent_id=agent_id,
             actor_id=agent_id,
             confidence=confidence,
             tags=tags or [],
@@ -541,8 +540,7 @@ class SdkClient:
                 "type": raw_type,
                 "title": title,
                 "content": raw_content,
-                "scope_type": "agent",
-                "scope_id": agent_id,
+                "agent_id": agent_id,
                 "actor_id": agent_id,
                 "confidence": item.get("confidence", 0.8),
                 "tags": item.get("tags", []),
@@ -851,8 +849,7 @@ class SdkClient:
         )
         result = self._get_read_service().search_memories(
             query=query,
-            scope_type="agent",
-            scope_id=agent_id,
+            agent_id=agent_id,
             type=type,
             tags=tags,
             min_similarity_score=min_similarity,
@@ -1228,10 +1225,9 @@ class SdkClient:
         new_id = conflict.get("new_memory_id")
 
         # Get namespace for memory operations
-        from memanto.app.core import create_memory_scope
+        from memanto.app.core import agent_namespace
 
-        scope = create_memory_scope("agent", agent_id)
-        namespace = scope.to_namespace()
+        namespace = agent_namespace(agent_id)
 
         write_service = self._get_write_service()
         result_details: dict[str, Any] = {"action": action}
@@ -1300,8 +1296,7 @@ class SdkClient:
                 type=resolved_type,
                 title=title,
                 content=manual_content,
-                scope_type="agent",
-                scope_id=agent_id,
+                agent_id=agent_id,
                 actor_id=agent_id,
                 confidence=0.9,
                 tags=["conflict-resolution"],

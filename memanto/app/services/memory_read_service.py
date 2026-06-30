@@ -11,7 +11,7 @@ if TYPE_CHECKING:
 
 from memanto.app.clients.backend import get_active_llm_model
 from memanto.app.config import settings
-from memanto.app.core import create_memory_scope
+from memanto.app.core import agent_namespace
 from memanto.app.utils.errors import MemoryError
 
 
@@ -59,8 +59,7 @@ class MemoryReadService:
     def search_memories(
         self,
         query: str,
-        scope_type: str | None = None,
-        scope_id: str | None = None,
+        agent_id: str | None = None,
         type: list[str] | None = None,
         tags: list[str] | None = None,
         min_confidence: float | None = None,
@@ -82,7 +81,7 @@ class MemoryReadService:
         """
         try:
             # Determine namespaces to search
-            namespaces = self._get_search_namespaces(scope_type, scope_id)
+            namespaces = self._get_search_namespaces(agent_id)
 
             if not namespaces:
                 return {"results": [], "total_found": 0, "execution_time": 0}
@@ -152,85 +151,6 @@ class MemoryReadService:
         except Exception as e:
             raise MemoryError(f"Failed to search memories: {e}")
 
-    def search_multi_scope(
-        self,
-        query: str,
-        scopes: list[dict[str, str]],
-        type: list[str] | None = None,
-        tags: list[str] | None = None,
-        min_confidence: float | None = None,
-        status_filter: list[str] | None = None,
-        limit: int = 10,
-        min_similarity_score: float | None = None,
-        metadata_filters: dict[str, Any] | None = None,
-    ) -> dict[str, Any]:
-        """
-        Search across multiple scopes simultaneously
-
-        Leverages Moorcheh's multi-namespace search capability
-        with optional threshold filtering via kiosk_mode
-        """
-        try:
-            # Build namespaces from scopes
-            namespaces = []
-            from typing import cast
-
-            from memanto.memanto.app.constants import ScopeType
-
-            for scope_def in scopes:
-                scope = create_memory_scope(
-                    scope_type=cast(ScopeType, scope_def["scope_type"]),
-                    scope_id=scope_def["scope_id"],
-                )
-                namespaces.append(scope.to_namespace())
-
-            if not namespaces:
-                return {"results": [], "total_found": 0, "execution_time": 0}
-
-            # Build enhanced query with filters
-            enhanced_query = self._build_filtered_query(
-                query=query,
-                type=type,
-                tags=tags,
-                min_confidence=min_confidence,
-                status_filter=status_filter,
-                metadata_filters=metadata_filters,
-            )
-
-            # Build query parameters
-            top_k = limit
-
-            # Perform cross-namespace search. Same kiosk_mode caveat as
-            # search_memories: min_similarity=0.0 means "no filter".
-            use_kiosk = (
-                min_similarity_score is not None and 0 < min_similarity_score <= 1
-            )
-            search_result = self.client.similarity_search.query(
-                query=enhanced_query,
-                namespaces=namespaces,
-                top_k=top_k,
-                threshold=min_similarity_score if use_kiosk else None,
-                kiosk_mode=use_kiosk,
-            )
-
-            # Format results
-            formatted_results = [
-                self._format_memory_item(item)
-                for item in search_result.get("results", [])
-            ]
-
-            return {
-                "results": formatted_results,
-                "total_found": len(formatted_results),
-                "query": query,
-                "enhanced_query": enhanced_query,
-                "searched_namespaces": namespaces,
-                "execution_time": search_result.get("execution_time", 0),
-            }
-
-        except Exception as e:
-            raise MemoryError(f"Failed to search across multiple scopes: {e}")
-
     def search_as_of(
         self,
         as_of_date: str,
@@ -244,8 +164,7 @@ class MemoryReadService:
 
         Returns memories that were:
         1. Created before or at as_of_date
-        2. NOT superseded before as_of_date
-        3. NOT expired at as_of_date
+        2. NOT expired at as_of_date
 
         Args:
             as_of_date: ISO timestamp for point-in-time (e.g., "2025-11-01T00:00:00Z")
@@ -259,7 +178,7 @@ class MemoryReadService:
 
             as_of_dt = parse_iso_timestamp(as_of_date)
 
-            namespaces = self._get_search_namespaces("agent", agent_id)
+            namespaces = self._get_search_namespaces(agent_id)
             if not namespaces:
                 return {
                     "results": [],
@@ -285,18 +204,6 @@ class MemoryReadService:
                             continue  # Already expired at as_of_date
                     except (ValueError, AttributeError):
                         pass
-
-                # Skip if superseded before as_of_date
-                if memory.get("superseded_by"):
-                    # Memory was superseded - check if supersession happened before as_of_date
-                    updated_at = memory.get("updated_at")
-                    if updated_at:
-                        try:
-                            updated_dt = parse_iso_timestamp(updated_at)
-                            if updated_dt <= as_of_dt:
-                                continue  # Already superseded at as_of_date
-                        except (ValueError, AttributeError):
-                            pass
 
                 valid_memories.append(memory)
 
@@ -339,7 +246,7 @@ class MemoryReadService:
 
             since_dt = parse_iso_timestamp(since_date)
 
-            namespaces = self._get_search_namespaces("agent", agent_id)
+            namespaces = self._get_search_namespaces(agent_id)
             if not namespaces:
                 return {"results": [], "total_found": 0, "since_date": since_date}
 
@@ -415,7 +322,7 @@ class MemoryReadService:
         try:
             from memanto.app.utils.temporal_helpers import parse_iso_timestamp
 
-            namespaces = self._get_search_namespaces("agent", agent_id)
+            namespaces = self._get_search_namespaces(agent_id)
             if not namespaces:
                 return {"results": [], "total_found": 0}
 
@@ -640,25 +547,13 @@ class MemoryReadService:
         return filtered
 
     def generate_answer(
-        self, query: str, scope_type: str | None = None, scope_id: str | None = None
+        self, query: str, agent_id: str | None = None
     ) -> dict[str, Any]:
         """Generate AI answer from memories"""
         try:
             # Determine namespace for answer generation
-            if scope_type and scope_id:
-                from typing import cast
-
-                from memanto.app.constants import ScopeType
-
-                scope_type_resolved = (
-                    scope_type
-                    if scope_type in {"user", "workspace", "agent", "session"}
-                    else "agent"
-                )
-                scope = create_memory_scope(
-                    cast(ScopeType, scope_type_resolved), scope_id
-                )
-                namespace = scope.to_namespace()
+            if agent_id:
+                namespace = agent_namespace(agent_id)
             else:
                 # Use first available namespace
                 namespaces = self.namespace_service.list_namespaces()
@@ -684,23 +579,13 @@ class MemoryReadService:
         except Exception as e:
             raise MemoryError(f"Failed to generate answer: {e}")
 
-    def _get_search_namespaces(
-        self, scope_type: str | None = None, scope_id: str | None = None
-    ) -> list[str]:
+    def _get_search_namespaces(self, agent_id: str | None = None) -> list[str]:
         """Get namespaces to search based on filters"""
         from typing import cast
 
-        from memanto.app.constants import ScopeType
-
-        if scope_type and scope_id:
-            # Search specific scope
-            scope_type_resolved = (
-                scope_type
-                if scope_type in {"user", "workspace", "agent", "session"}
-                else "agent"
-            )
-            scope = create_memory_scope(cast(ScopeType, scope_type_resolved), scope_id)
-            return [cast(str, scope.to_namespace())]
+        if agent_id:
+            # Search a specific agent's namespace
+            return [agent_namespace(agent_id)]
         else:
             # Search all namespaces
             return cast(list[str], self.namespace_service.list_namespaces())
@@ -763,23 +648,8 @@ class MemoryReadService:
         else:
             tags = []
 
-        # Extract provenance & trust fields
+        # Extract provenance
         provenance = get_field("provenance") or "explicit_statement"
-        validation_count = get_field("validation_count") or 0
-        contradiction_detected = get_field("contradiction_detected") or False
-        superseded_by = get_field("superseded_by")
-        supersedes = get_field("supersedes")
-        validated_at_str = get_field("validated_at")
-
-        # Parse validated_at timestamp
-        validated_at = None
-        if validated_at_str:
-            try:
-                validated_at = datetime.fromisoformat(
-                    validated_at_str.replace("Z", "+00:00")
-                )
-            except (ValueError, AttributeError):
-                pass
 
         # Parse title and content from Moorcheh document text format:
         raw_text = item.get("text", "")
@@ -831,56 +701,10 @@ class MemoryReadService:
             "actor_id": get_field("actor_id"),
             "source": get_field("source"),
             "source_ref": get_field("source_ref"),
-            "scope_type": get_field("scope_type"),
-            "scope_id": get_field("scope_id"),
+            "agent_id": get_field("agent_id"),
             "score": item.get("score"),  # Search relevance score
-            # Provenance & Trust fields
+            # Provenance
             "provenance": provenance,
-            "validation_count": validation_count,
-            "contradiction_detected": contradiction_detected,
         }
-
-        # Add optional trust fields
-        if superseded_by:
-            formatted["superseded_by"] = superseded_by
-        if supersedes:
-            formatted["supersedes"] = supersedes
-        if validated_at:
-            formatted["validated_at"] = validated_at.isoformat()
-
-        # skip trust score computation reconstructs MemoryRecord and runs compute_confidence() + trust_score() per result. Skipped for speed.
-        ## Compute trust score if we have all required fields
-        # try:
-        ## Reconstruct MemoryRecord to use compute_confidence and trust_score methods
-        #     created_at_str = get_field("created_at")
-        #     created_at = datetime.fromisoformat(created_at_str.replace('Z', '+00:00')) if created_at_str else datetime.utcnow()
-        #     memory_rec = MemoryRecord(
-        #         id=item.get("id"),
-        #         type=get_field("memory_type", "memory_type") or "fact",
-        #         title="", # Not stored in search results
-        #         content=item.get("text", ""),
-        #         scope_type=get_field("scope_type") or "agent",
-        #         scope_id=get_field("scope_id") or "unknown",
-        #         actor_id=get_field("actor_id") or "unknown",
-        #         source=get_field("source") or "agent",
-        #         confidence=get_field("confidence") or 0.8,
-        #         status=get_field("status") or "active",
-        #         provenance=provenance,
-        #         validation_count=validation_count,
-        #         contradiction_detected=contradiction_detected,
-        #         created_at=created_at,
-        #         validated_at=validated_at
-        #     )
-        #     if superseded_by:
-        #         memory_rec.superseded_by = superseded_by
-        #     if supersedes:
-        #         memory_rec.supersedes = supersedes
-
-        # Add computed confidence and trust score
-        #     formatted["computed_confidence"] = memory_rec.compute_confidence()
-        #     formatted["trust_score"] = memory_rec.trust_score()
-        # except Exception as e:
-        ## If computation fails, just return basic formatted item
-        #     pass
 
         return formatted

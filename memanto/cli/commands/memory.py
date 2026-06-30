@@ -252,7 +252,7 @@ def remember(
             result = client.remember(
                 agent_id=agent_id,
                 memory_type=memory_type,
-                title=title or content[:50] + "..." if len(content) > 50 else content,
+                title=title or (content[:50] + "..." if len(content) > 50 else content),
                 content=content,
                 confidence=confidence,
                 tags=tag_list,

@@ -12,7 +12,7 @@ from moorcheh_sdk.exceptions import ConflictError
 
 from memanto.app.clients.moorcheh import get_moorcheh_client
 from memanto.app.config import get_data_dir
-from memanto.app.core import create_memory_scope
+from memanto.app.core import agent_namespace
 from memanto.app.models.session import AgentCreate, AgentInfo, AgentList
 from memanto.app.utils.errors import AgentAlreadyExistsError, AgentNotFoundError
 
@@ -32,12 +32,11 @@ class AgentService:
 
     def _generate_namespace(self, agent_id: str) -> str:
         """
-        Generate namespace for agent using core MemoryScope
+        Generate the Moorcheh namespace for an agent.
 
-        Format: memanto_{scope}_{scope_id}
+        Format: memanto_agent_{agent_id}
         """
-        scope = create_memory_scope(scope_type="agent", scope_id=agent_id)
-        return scope.to_namespace()
+        return agent_namespace(agent_id)
 
     def _get_agent_file(self, agent_id: str) -> Path:
         """Get file path for agent metadata"""
