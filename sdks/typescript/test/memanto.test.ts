@@ -27,8 +27,15 @@ function startFakeApi(): Promise<{
         });
 
         const url = req.url ?? "";
-        const reply = (status: number, payload: unknown) => {
-          res.writeHead(status, { "Content-Type": "application/json" });
+        const reply = (
+          status: number,
+          payload: unknown,
+          headers: Record<string, string> = {},
+        ) => {
+          res.writeHead(status, {
+            "Content-Type": "application/json",
+            ...headers,
+          });
           res.end(JSON.stringify(payload));
         };
 
@@ -60,13 +67,17 @@ function startFakeApi(): Promise<{
             type: "fact",
           });
         if (url === "/api/v2/agents/test-agent/recall")
-          return reply(200, {
-            agent_id: "test-agent",
-            session_id: "sess-1",
-            query: "anything",
-            memories: [],
-            count: 0,
-          });
+          return reply(
+            200,
+            {
+              agent_id: "test-agent",
+              session_id: "sess-1",
+              query: "anything",
+              memories: [],
+              count: 0,
+            },
+            { "X-Session-Token": "renewed-token" },
+          );
         return reply(404, { detail: "unknown route" });
       });
     });
@@ -122,6 +133,22 @@ describe("Memanto", () => {
 
     const res = await m.recall({ query: "coffee" });
     expect(res).toMatchObject({ count: 0 });
+  });
+
+  it("uses the replacement token returned after automatic renewal", async () => {
+    const api = await startFakeApi();
+    cleanupFns.push(api.close);
+
+    const m = new Memanto({ agentId: "test-agent", baseUrl: api.url });
+    cleanupFns.push(() => m.close());
+
+    await m.recall({ query: "first" });
+    await m.recall({ query: "second" });
+
+    const recalls = api.recorded.filter((r) => r.url.endsWith("/recall"));
+    expect(recalls).toHaveLength(2);
+    expect(recalls[0]?.headers["x-session-token"]).toBe("fake-token");
+    expect(recalls[1]?.headers["x-session-token"]).toBe("renewed-token");
   });
 
   it("rejects empty agentId", () => {

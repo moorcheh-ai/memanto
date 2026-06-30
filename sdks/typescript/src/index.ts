@@ -436,6 +436,7 @@ export class Memanto {
       headers,
       body: body === undefined ? undefined : JSON.stringify(body),
     });
+    this.captureRenewedSession(res);
     if (!res.ok) throw await asError(res, `${method} ${path} failed`);
     if (res.status === 204) return undefined as T;
     return (await res.json()) as T;
@@ -452,8 +453,14 @@ export class Memanto {
       headers: { "X-Session-Token": this.sessionToken ?? "" },
       body: form,
     });
+    this.captureRenewedSession(res);
     if (!res.ok) throw await asError(res, `POST ${path} failed`);
     return (await res.json()) as T;
+  }
+
+  private captureRenewedSession(res: Response): void {
+    const token = res.headers.get("X-Session-Token");
+    if (token) this.sessionToken = token;
   }
 }
 

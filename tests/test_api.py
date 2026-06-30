@@ -214,6 +214,62 @@ class TestMEMANTOAPI:
         assert data["agent_id"] == self.TEST_AGENT_ID
 
     @pytest.mark.asyncio
+    async def test_auto_renew_returns_replacement_session_token(
+        self, client, auth_headers, mock_moorcheh, monkeypatch
+    ):
+        """A client can continue after automatic session renewal."""
+        await client.post(
+            "/api/v2/agents",
+            headers=auth_headers,
+            json={"agent_id": self.TEST_AGENT_ID},
+        )
+        activate_response = await client.post(
+            f"/api/v2/agents/{self.TEST_AGENT_ID}/activate",
+            headers=auth_headers,
+        )
+        original_token = activate_response.json()["session_token"]
+
+        # Force the newly created session inside the auto-renew threshold.
+        monkeypatch.setattr(settings, "SESSION_EXTEND_THRESHOLD_MINUTES", 10_000)
+        mock_moorcheh.similarity_search.query.return_value = {
+            "results": [],
+            "total_found": 0,
+        }
+        first_response = await client.post(
+            f"/api/v2/agents/{self.TEST_AGENT_ID}/recall/recent",
+            headers={
+                **auth_headers,
+                "X-Session-Token": original_token,
+                "Origin": "https://example.test",
+            },
+            json={},
+        )
+
+        assert first_response.status_code == 200
+        replacement_token = first_response.headers["X-Session-Token"]
+        assert replacement_token != original_token
+        assert (
+            first_response.headers["Access-Control-Expose-Headers"] == "X-Session-Token"
+        )
+
+        # Renewal replaces the stored session. The old token is invalid, while
+        # the token returned in the response keeps the client authenticated.
+        monkeypatch.setattr(settings, "SESSION_EXTEND_THRESHOLD_MINUTES", 0)
+        stale_response = await client.post(
+            f"/api/v2/agents/{self.TEST_AGENT_ID}/recall/recent",
+            headers={**auth_headers, "X-Session-Token": original_token},
+            json={},
+        )
+        assert stale_response.status_code == 401
+
+        continued_response = await client.post(
+            f"/api/v2/agents/{self.TEST_AGENT_ID}/recall/recent",
+            headers={**auth_headers, "X-Session-Token": replacement_token},
+            json={},
+        )
+        assert continued_response.status_code == 200
+
+    @pytest.mark.asyncio
     async def test_remember_with_session(self, client, auth_headers, mock_moorcheh):
         """Test storing memory with session token"""
         # Setup session
