@@ -401,8 +401,10 @@ class MemoryReadService:
             memories.append(formatted)
 
         # We don't know which namespace each memory came from for paginated fetch,
-        # so pass None for namespace -- expiry cleanup is best-effort here
-        return self._filter_expired_memories(memories, None)
+        # so pass None for namespace -- expiry cleanup is best-effort here.
+        # Pass delete_expired=False so expired memories are preserved for
+        # historical queries (search_as_of, search_changed_since, search_recent).
+        return self._filter_expired_memories(memories, None, delete_expired=False)
 
     def _build_filtered_query(
         self,
@@ -532,6 +534,7 @@ class MemoryReadService:
         self,
         results: list[dict[str, Any]],
         namespace: str | None,
+        delete_expired: bool = True,
     ) -> list[dict[str, Any]]:
         """
         Filter out memories that have expired based on their expires_at timestamp,
@@ -544,6 +547,9 @@ class MemoryReadService:
             results: List of formatted memory items
             namespace: The namespace these memories belong to (used for backend cleanup).
                        Pass None if unknown (cleanup is skipped per-item without namespace).
+            delete_expired: When True (default), expired memories are deleted from the
+                            backend. Pass False for historical queries so expired
+                            memories are only filtered out of results but not removed.
 
         Returns:
             Filtered list with expired memories removed
@@ -571,16 +577,20 @@ class MemoryReadService:
                         filtered.append(result)
                     else:
                         # Memory has expired -- delete from backend
-                        mem_id = result.get("id")
-                        if mem_id:
-                            # Determine namespace from result or use passed namespace
-                            ns = namespace
-                            if not ns:
-                                # Try to extract agent_id from the result
-                                agent_id = result.get("agent_id")
-                                if agent_id:
-                                    ns = agent_namespace(agent_id)
-                            self._delete_expired_backend(mem_id, ns)
+                        # Only delete when caller requested it (current-time paths).
+                        # Historical queries (search_as_of, etc.) pass delete_expired=False
+                        # to preserve expired memories for point-in-time reconstruction.
+                        if delete_expired:
+                            mem_id = result.get("id")
+                            if mem_id:
+                                # Determine namespace from result or use passed namespace
+                                ns = namespace
+                                if not ns:
+                                    # Try to extract agent_id from the result
+                                    agent_id = result.get("agent_id")
+                                    if agent_id:
+                                        ns = agent_namespace(agent_id)
+                                self._delete_expired_backend(mem_id, ns)
                 else:
                     # If expires_at is already datetime or not parseable, keep it
                     filtered.append(result)
