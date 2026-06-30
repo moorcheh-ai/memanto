@@ -25,6 +25,14 @@ from memanto.app.utils.temporal_helpers import (
 # injection attacks via crafted memory content.
 _MAX_PROMPT_CONTENT_LENGTH = 20000
 
+# Boundary markers used in prompt templates. If user content contains
+# these strings it could prematurely terminate the data section and
+# re-enter instruction scope. Strip them from user content.
+_BOUNDARY_MARKERS = [
+    "--- DATA BOUNDARY ---",
+    "--- END DATA BOUNDARY ---",
+]
+
 
 def _sanitize_for_prompt(raw: str, max_len: int = _MAX_PROMPT_CONTENT_LENGTH) -> str:
     """Truncate and sanitize user content before including in an LLM prompt.
@@ -32,11 +40,19 @@ def _sanitize_for_prompt(raw: str, max_len: int = _MAX_PROMPT_CONTENT_LENGTH) ->
     This is a defense-in-depth measure: user memory content is placed
     behind a clear delimiter boundary so the model can distinguish
     instructions from data.
+
+    Boundary markers are stripped from the content so an attacker cannot
+    embed them to prematurely close the data section and re-enter the
+    instruction scope in the template.
     """
     if not raw:
         return "(empty)"
-    truncated = raw[:max_len]
-    if len(raw) > max_len:
+    # Strip boundary markers that could break out of the data section
+    result = raw
+    for marker in _BOUNDARY_MARKERS:
+        result = result.replace(marker, "[BOUNDARY-STRIPPED]")
+    truncated = result[:max_len]
+    if len(result) > max_len:
         truncated += "\n[... content truncated ...]"
     return truncated
 
@@ -99,7 +115,7 @@ Each element must be an object with these exact keys:
 If there are NO conflicts, return an empty array: []
 
 Example response format:
-[{{"type": "contradiction", "title": "Database preference changed", "old_memory_id": "abc-123", "old_content": "We use PostgreSQL", "new_memory_id": "def-456", "new_content": "We migrated to MongoDB", "description": "New memory contradicts old database preference", "recommendation": "keep_new"}}]
+[{"type": "contradiction", "title": "Database preference changed", "old_memory_id": "abc-123", "old_content": "We use PostgreSQL", "new_memory_id": "def-456", "new_content": "We migrated to MongoDB", "description": "New memory contradicts old database preference", "recommendation": "keep_new"}]
 """
 
 
