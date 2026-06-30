@@ -50,7 +50,7 @@ class Mem0Backend:
     def search(self, query: str, user_id: str) -> str:
         """Retrieve relevant memories for a query."""
         t0 = time.perf_counter()
-        results = self._client.search(query, filters={"user_id": user_id}, limit=3)
+        results = self._client.search(query, filters={"user_id": user_id}, top_k=3)
         elapsed_ms = (time.perf_counter() - t0) * 1000
 
         memories = results if isinstance(results, list) else results.get("results", [])
