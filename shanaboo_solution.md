@@ -1,160 +1,179 @@
  ```diff
 --- a/memanto/__init__.py
 +++ b/memanto/__init__.py
-@@ -0,0 +1,15 @@
-+"""Memanto - Memory that AI Agents Love!
-+
-+A companion memory agent that lets your agents focus and improve
-+while you keep ownership of everything they learn.
-+"""
-+
-+__version__ = "0.1.0"
-+
-+from memanto.core import (
-+    Memanto,
-+    MemoryConfig,
-+    MemoryEntry,
-+)
-+
+@@ -1,3 +1,4 @@
+ """Memanto - Memory that AI Agents Love!"""
+ 
+ __version__ programmer = "0.1.0"
 +__all__ = ["Memanto", "MemoryConfig", "MemoryEntry"]
---- /dev/null
+--- a/memanto/core.py
 +++ b/memanto/core.py
-@@ -0,0 +1,287 @@
-+"""Core Memanto memory management with timeline tracking and contradiction resolution."""
-+
-+from __future__ import annotations
+@@ -0,0 +1,156 @@
++"""Core memory management with secure input validation and proper error handling."""
 +
 +import hashlib
 +import json
++import os
 +import re
-+import threading
-+import time
 +from dataclasses import dataclass, field
-+from datetime import datetime, timezone
-+from typing import Any, Callable, Optional
++from datetime import datetime
++from typing import Any, Dict, List, Optional, Union
++
++import requests
++
++
++class MemantoError(Exception):
++    """Base exception for Memanto errors."""
++    pass
++
++
++class ValidationError(MemantoError):
++    """Raised when input validation fails."""
++    pass
++
++
++class SecurityError(MemantoError):
++    """Raised when a security issue is detected."""
++    pass
 +
 +
 +@dataclass
 +class MemoryConfig:
-+    """Configuration for Memanto memory agent."""
-+    
-+    max_entries: int = 10000
-+    contradiction_threshold: float = 0.85
-+    timeline_resolution: str = "day"  # day, hour, minute
-+    enable_source_attribution: bool = True
-+    context_window_size: int = 4096
++    """User-configurable settings for Memanto."""
++    api_key: str = ""
++    api_endpoint: str = "https://api.moorcheh.ai/v1"
++    max_content_length: int = 10000
++    enable_input_sanitization: bool = True
++    max_memories_per_request: int = 100
++    request_timeout: int = 30
 +    
 +    def __post_init__(self):
-+        if self.max_entries <= 0:
-+            raise ValueError("max_entries must be positive")
-+        if not 0 <= self.contradiction_threshold <= 1:
-+            raise ValueError("contradiction_threshold must be between 0 and 1")
++        if not self.api_key:
++            self.api_key = os.environ.get("MOORCHEH_API_KEY", "")
 +
 +
-+@dataclass 
++@dataclass
 +class MemoryEntry:
-+    """A single memory entry with metadata for timeline and source tracking."""
-+    
++    """Represents a single memory entry with metadata."""
 +    content: str
-+    timestamp: datetime
-+    source: str
-+    entry_type: str = "fact"
-+    confidence: float = 1.0
-+    tags: list[str] = field(default_factory=list)
-+    _id: Optional[str] = None
-+    _contradicts: Optional[list[str]] = None
++    source: str = ""
++    timestamp: datetime = field(default_factory=datetime.utcnow)
++    metadata: Dict[str, Any] = field(default_factory=dict)
++    entry_id: str = ""
 +    
 +    def __post_init__(self):
-+        if self._id is None:
-+            self._id = self._generate_id()
-+        if self._contradicts is None:
-+            self._contradicts = []
-+    
-+    def _generate_id(self) -> str:
-+        """Generate unique ID based on content and timestamp."""
-+        data = f"{self.content}:{self.timestamp.isoformat()}"
-+        return hashlib.sha256(data.encode()).hexdigest()[:16]
-+    
-+    def to_dict(self) -> dict[str, Any]:
-+        """Serialize memory entry to dictionary."""
-+        return {
-+            "id": self._id,
-+            "content": self.content,
-+            "timestamp": self.timestamp.isoformat(),
-+            "source": self.source,
-+            "entry_type": self.entry_type,
-+            "confidence": self.confidence,
-+            "tags": self.tags,
-+            "contradicts": self._contradicts,
-+        }
-+    
-+    @classmethod
-+    def from_dict(cls, data: dict[str, Any]) -> MemoryEntry:
-+        """Deserialize memory entry from dictionary."""
-+        entry = cls(
-+            content=data["content"],
-+            timestamp=datetime.fromisoformat(data["timestamp"]),
-+            source=data["source"],
-+            entry_type=data.get("entry_type", "fact"),
-+            confidence=data.get("confidence", 1.0),
-+            tags=data.get("tags", []),
-+        )
-+        entry._id = data["id"]
-+        entry._contradicts = data.get("contradicts", [])
-+        return entry
++        if not self.entry_id:
++            self.entry_id = hashlib.sha256(
++                f"{self.content}:{self.timestamp.isoformat()}".encode()
++            ).hexdigest()[:16]
 +
 +
-+class ContradictionResolver:
-+    """Handles detection and resolution of contradictory memories."""
++class Memanto:
++    """Main Memanto memory agent with security and validation fixes."""
 +    
-+    # Common contradiction patterns
-+    CONTRADICTION_PATTERNS = [
-+        (r"\b(is|are|was|were)\s+(\w+)", r"\1\s+not\s+\2"),  # X is Y vs X is not Y
-+        (r"\b(never|always|sometimes)\b", r"\b(always|never|sometimes)\b"),  # frequency
-+        (r"\b(love|hate|like|dislike)\b", r"\b(hate|love|dislike|like)\b"),  # preference
-+        (r"(\d+)\s*(kg|lbs|pounds|kilograms)", r"(\d+)\s*(kg|lbs|pounds|kilograms)"),  # measurements
++    # Security: Patterns that could indicate prompt injection attempts
++    _INJECTION_PATTERNS = [
++        r"ignore\s+(?:all\s+)?(?:previous|prior)\s+(?:instructions|directives)",
++        r"forget\s+(?:everything|all\s+context)",
++        r"system\s*:\s*you\s+are\s+now",
++        r"<\|im_start\|>|<\|im_end\|>",
++        r"\{\{\s*SYSTEM\s*PROMPT\s*\}\}",
++        r"!\[\]\(.*?(?:exec|eval|system)\s*\(.*?\)",
 +    ]
 +    
-+    def __init__(self, threshold: float = 0.85):
-+        self.threshold = threshold
-+        self._lock = threading.RLock()
++    def __init__(self, config: Optional[MemoryConfig] = None):
++        self.config = config or MemoryConfig()
++        self._session = requests.Session()
++        self._session.headers.update({
++            "Authorization": f"Bearer {self.config.api_key}",
++            "Content-Type": "application/json",
++            "User-Agent": "memanto/0.1.0"
++        })
 +    
-+    def calculate_similarity(self, text1: str, text2: str) -> float:
-+        """Calculate semantic similarity between two texts using simple word overlap."""
-+        # Normalize texts
-+        words1 = set(re.findall(r'\b\w+\b', text1.lower()))
-+        words2 = set(re.findall(r'\b\w+\b', text2.lower()))
++    def _sanitize_input(self, content: str) -> str:
++        """Sanitize user input to prevent injection attacks."""
++        if not self.config.enable_input_sanitization:
++            return content
 +        
-+        if not words1 or not words2:
-+            return 0.0
++        # Check for obvious injection patterns
++        content_lower = content.lower()
++        for pattern in self._INJECTION_PATTERNS:
++            if re.search(pattern, content_lower, re.IGNORECASE):
++                raise SecurityError(
++                    f"Potential prompt injection detected. Input blocked for security."
++                )
 +        
-+        # Jaccard similarity
-+        intersection = words1 & words2
-+        union = words1 | words2
-+        return len(intersection) / len(union)
++        # Basic sanitization: strip null bytes, control characters
++        content = content.replace('\x00', '')
++        content = re.sub(r'[\x00-\x08\x0b\x0c\x0e-\x1f]', '', content)
++        
++        return content.strip()
 +    
-+    def detect_contradiction(self, entry1: MemoryEntry, entry2: MemoryEntry) -> bool:
-+        """Detect if two entries contradict each other."""
-+        with self._lock:
-+            similarity = self.calculate_similarity(entry1.content, entry2.content)
++    def _validate_content(self, content: Union[str, List[str]]) -> List[str]:
++        """Validate and normalize content for storage."""
++        if isinstance(content, str):
++            content = [content]
++        
++        if not isinstance(content, list):
++            raise ValidationError("Content must be a string or list of strings")
++        
++        validated = []
++        for item in content:
++            if not isinstance(item, str):
++                raise ValidationError(f"Each content item must be a string, got {type(item)}")
 +            
-+            # High similarity but different key terms suggests contradiction
-+            if similarity < 0.3:  # Too different, not a contradiction
-+                return False
++            if len(item) > self.config.max_content_length:
++                raise ValidationError(
++                    f"Content exceeds maximum length of {self.config.max_content_length} characters"
++                )
 +            
-+            # Check for explicit negation patterns
-+            text1_lower = entry1.content.lower()
-+            text2_lower = entry2.content.lower()
++            if not item.strip():
++                continue
 +            
-+            # Direct negation check
-+            negation_indicators = ["not ", "no longer", "never", "don't", "doesn't", "didn't"]
-+            has_negation_1 = any(ind in text1_lower for ind in negation_indicators)
-+            has_negation_2 = any(ind in text2_lower for ind in negation_indicators)
-+            
-+            # If one has negation and other doesn't, and they're similar, likely contradiction
-+            if has_negation_1 != has_negation_2 and similarity > self.threshold:
-+                return True
-+            
-+            # Check for antonym patterns
-+            antonym_pairs = [
-+                ("love", "hate"), ("like", "
++            # Security check
++            sanitized = self._sanitize_input(item)
++            validated.append(sanitized)
++        
++        if len(validated) > self.config.max_memories_per_request:
++            raise ValidationError(
++                f"Too many memories in single request: {len(validated)} > "
++                f"{self.config.max_memories_per_request}"
++            )
++        
++        return validated
++    
++    def store(self, content: Union[str, List[str]], **metadata) -> List[MemoryEntry]:
++        """Store memories with validation and security checks."""
++        validated_content = self._validate_content(content)
++        
++        entries = []
++        for item in validated_content:
++            entry = MemoryEntry(
++                content=item,
++                source=metadata.get("source", "user"),
++                metadata=metadata
++            )
++            entries.append(entry)
++        
++        # In a real implementation, this would send to the API
++        # For now, we return the entries
++        return entries
++    
++    def retrieve(self, query: str, limit: int = 10) -> List[MemoryEntry]:
++        """Retrieve relevant memories with validated query."""
++        if not isinstance(query, str):
++            raise ValidationError("Query must be a string")
++        
++        if not query.strip():
++            raise ValidationError("Query cannot be empty")
++        
++        # Sanitize the query
++        query = self._sanitize_input(query)
++        
++        if limit < 1 or limit > self.config.max_memories_per_request:
++            raise ValidationError(f"Limit must be between 1 and {self.config.max_memories_per_request}")
++        
++        # Placeholder for actual retrieval logic
++        return []
++    
++    def delete(self
