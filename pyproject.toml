@@ -144,12 +144,11 @@ ignore = [
     "B008",   # do not perform function calls in argument defaults
     "C901",   # too complex
     "W191",   # indentation contains tabs
-    "S101",   # assert used — pytest uses assert everywhere in tests
-    "S311",   # random for non-crypto — seeded Random(42) is intentional in benchmarks
     "RUF012", # mutable class variable — conflicts with Pydantic patterns
 ]
 
 [tool.ruff.lint.per-file-ignores]
+# S101: pytest uses assert everywhere; S311: seeded Random(42) is intentional
 "tests/**/*.py" = ["S101", "BLE001"]
 "integrations/**/tests/**/*.py" = ["S101", "BLE001"]
 "examples/**/*.py" = ["S101", "S311", "BLE001"]
