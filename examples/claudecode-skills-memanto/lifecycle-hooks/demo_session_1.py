@@ -31,46 +31,24 @@ assistant: Summary: CQRS for Orders, Postgres + Redis, Cart != Order, Money VO f
 """
 
 
+
+
 def main() -> None:
+    # Validate API key exists before attempting setup to fail fast with clear error
+    if not os.getenv("MOORCHEH_API_KEY"):
+        raise SystemExit("Error: MOORCHEH_API_KEY environment variable is not set.")
     mem = SkillMemory()
-    # SECURITY FIX: Validate API key format before initialization to prevent
-    # credential leakage via error messages and avoid unnecessary API calls
-    api_key = os.environ.get("MOORCHEH_API_KEY", "")
-    _validate_api_key(api_key)
     mem.setup()
     print("Session 1: distilling /grill-with-docs decisions via Memanto's LLM…\n")
-    stored = mem.distill_and_store("grill-with-docs", SESSION_1_TRANSCRIPT)
-    if not stored:
         print("No memories were extracted. Check MOORCHEH_API_KEY and connectivity.")
         return
     print(f"Stored {len(stored)} engineering memories:")
     for m in stored:
+        print(f"  - [{m['type']}] {m['content']}")
     print("\nNow run:  python demo_session_2.py")
 
 
-def _validate_api_key(api_key: str) -> None:
-    """Validate API key format to prevent injection and credential leakage.
-    
-    Raises:
-        ValueError: If the API key format is invalid.
-    """
-    if not api_key:
-        raise ValueError("MOORCHEH_API_KEY environment variable is required")
-    if not api_key.startswith("mch_"):
-        raise ValueError("MOORCHEH_API_KEY must start with 'mch_' prefix")
-    # Prevent potential log injection / credential exfiltration via newlines
-    if "\n" in api_key or "\r" in api_key:
-        raise ValueError("MOORCHEH_API_KEY contains invalid characters")
-    # Prevent overly long keys that could indicate injection attacks
-    if len(api_key) > 256:
-        raise ValueError("MOORCHEH_API_KEY exceeds maximum allowed length")
-
 
 if __name__ == "__main__":
-    try:
-        main()
-        main()
-    except Exception as exc:
-        print(f"\n[error] {exc}")
-        print("Check that MOORCHEH_API_KEY is valid and your subscription is active.")
-        raise SystemExit(1)
+    main()
+
