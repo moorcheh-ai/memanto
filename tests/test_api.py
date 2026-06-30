@@ -839,6 +839,67 @@ class TestMEMANTOAPI:
         assert kwargs["context"] == [{"user_confirmed": True}]
 
     @pytest.mark.asyncio
+    async def test_batch_remember_logs_accepted_non_failure_status(
+        self, client, auth_headers
+    ):
+        """Accepted batch writes are logged unless validation explicitly failed."""
+        await client.post(
+            "/api/v2/agents",
+            headers=auth_headers,
+            json={"agent_id": self.TEST_AGENT_ID},
+        )
+        activate_resp = await client.post(
+            f"/api/v2/agents/{self.TEST_AGENT_ID}/activate", headers=auth_headers
+        )
+        token = activate_resp.json()["session_token"]
+        headers = {**auth_headers, "X-Session-Token": token}
+
+        def batch_result(memory_records, context=None):
+            return {
+                "total_submitted": 2,
+                "successful": 1,
+                "failed": 1,
+                "results": [
+                    {
+                        "id": memory_records[0].id,
+                        "status": "persisted",
+                        "action": "store",
+                    },
+                    {
+                        "id": memory_records[1].id,
+                        "status": "rejected",
+                        "action": "store_provisional",
+                    },
+                ],
+            }
+
+        with (
+            patch(
+                "memanto.app.services.memory_write_service.MemoryWriteService.batch_store_memories",
+                side_effect=batch_result,
+            ),
+            patch(
+                "memanto.app.services.session_service.SessionService.log_memory_to_session_summary"
+            ) as log_memory,
+        ):
+            response = await client.post(
+                f"/api/v2/agents/{self.TEST_AGENT_ID}/batch-remember",
+                headers=headers,
+                json={
+                    "memories": [
+                        {"content": "Accepted custom status", "type": "fact"},
+                        {"content": "Rejected status", "type": "fact"},
+                    ],
+                },
+            )
+
+        assert response.status_code == 200
+        assert response.json()["results"][0]["status"] == "persisted"
+        log_memory.assert_called_once()
+        _, kwargs = log_memory.call_args
+        assert kwargs["memory_record"].content == "Accepted custom status"
+
+    @pytest.mark.asyncio
     async def test_delete_memory_with_session(
         self, client, auth_headers, mock_moorcheh
     ):

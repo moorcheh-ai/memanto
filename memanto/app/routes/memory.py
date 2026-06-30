@@ -327,7 +327,7 @@ async def batch_remember(
             item["id"]
             for item in result["results"]
             if item.get("action", "store") in {"store", "store_provisional"}
-            and item.get("status") in {"queued", "success", "store", "store_provisional"}
+            and item.get("status") not in {"failed", "rejected", "quarantined"}
         }
         for record in memory_records:
             if record.id not in accepted_ids:
