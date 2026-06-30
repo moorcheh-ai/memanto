@@ -6,13 +6,15 @@ A companion memory agent that lets your agents focus and improve while you
 keep ownership of everything they learn.
 """
 
-from memanto.core import (
-    Memanto,
-    MemoryConfig,
-    MemoryEntry,
-    ContradictionHandler,
-    TimelineTracker,
-)
+from memanto.client import MemantoClient
+from memanto.config import MemantoConfig
+from memanto.exceptions import MemantoError, AuthenticationError, RateLimitError
 
-__all__ = ["Memanto", "MemoryConfig", "MemoryEntry", "ContradictionHandler", "TimelineTracker"]
+__all__ = [
+    "MemantoClient",
+    "MemantoConfig", 
+    "MemantoError",
+    "AuthenticationError",
+    "RateLimitError",
+]
 """
