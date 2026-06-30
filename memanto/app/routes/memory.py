@@ -476,8 +476,9 @@ async def extract_memories_from_conversation(
         session_service = get_session_service()
         for index, record in enumerate(memory_records):
             batch_results = result.get("results", [])
+            batch_item = batch_results[index] if index < len(batch_results) else None
             memory_id = (
-                batch_results[index].get("id") if index < len(batch_results) else None
+                batch_item.get("id") if isinstance(batch_item, dict) else None
             )
             await asyncio.to_thread(
                 session_service.log_memory_to_session_summary,

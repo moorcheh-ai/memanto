@@ -887,6 +887,75 @@ class TestMEMANTOAPI:
         assert uploaded_doc["provenance"] == "inferred"
 
     @pytest.mark.asyncio
+    async def test_extract_memories_ignores_malformed_batch_result_rows(
+        self, client, auth_headers
+    ):
+        """Malformed per-item batch rows must not hide successful extraction."""
+        await client.post(
+            "/api/v2/agents",
+            headers=auth_headers,
+            json={"agent_id": self.TEST_AGENT_ID},
+        )
+        activate_resp = await client.post(
+            f"/api/v2/agents/{self.TEST_AGENT_ID}/activate", headers=auth_headers
+        )
+        assert activate_resp.status_code == 200, activate_resp.text
+        token = activate_resp.json()["session_token"]
+        headers = {**auth_headers, "X-Session-Token": token}
+
+        candidates = [
+            {
+                "type": "fact",
+                "title": "First",
+                "content": "First extracted memory.",
+                "confidence": 0.8,
+                "source": "conversation",
+                "provenance": "inferred",
+            },
+            {
+                "type": "fact",
+                "title": "Second",
+                "content": "Second extracted memory.",
+                "confidence": 0.8,
+                "source": "conversation",
+                "provenance": "inferred",
+            },
+        ]
+        batch_result = {
+            "total_submitted": 2,
+            "successful": 2,
+            "failed": 0,
+            "results": ["truncated row", {"id": "mem-2"}],
+        }
+
+        with (
+            patch(
+                "memanto.app.routes.memory.ConversationMemoryExtractionService"
+            ) as mock_extractor_cls,
+            patch("memanto.app.routes.memory.MemoryWriteService") as mock_write_cls,
+        ):
+            mock_extractor_cls.return_value.extract.return_value = candidates
+            mock_write_cls.return_value.batch_store_memories.return_value = batch_result
+
+            response = await client.post(
+                f"/api/v2/agents/{self.TEST_AGENT_ID}/remember/extract",
+                headers=headers,
+                json={
+                    "messages": [
+                        {
+                            "role": "user",
+                            "content": "The project uses pytest for tests.",
+                        }
+                    ],
+                },
+            )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["successful"] == 2
+        assert data["results"][0] == "truncated row"
+
+    @pytest.mark.asyncio
     async def test_recall_temporal_api(self, client, auth_headers, mock_moorcheh):
         """Test temporal recall modes (POST + JSON body)"""
         await client.post(
