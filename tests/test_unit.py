@@ -288,6 +288,80 @@ class TestMemoryWriteServiceDelete:
         assert MemoryWriteService(client).delete_memory("m1", "ns") is expected
 
 
+class TestMemoryWriteServiceUpdate:
+    """``update_memory`` must accept the same delete response shapes."""
+
+    def test_update_memory_accepts_onprem_delete_shape(self):
+        from memanto.app.services.memory_write_service import MemoryWriteService
+
+        client = MagicMock()
+        client.documents.delete.return_value = {
+            "status": "success",
+            "deleted_ids": ["mem-abc"],
+        }
+        client.documents.upload.return_value = {"status": "queued"}
+        existing = {
+            "title": "Old title",
+            "content": "Old content",
+            "metadata": {
+                "agent_id": "test-agent",
+                "actor_id": "user",
+                "source": "api",
+                "created_at": "2026-01-01T00:00:00",
+                "type": "fact",
+                "confidence": 0.7,
+                "status": "active",
+                "tags": ["preference"],
+            },
+        }
+
+        with patch(
+            "memanto.app.services.memory_read_service.MemoryReadService.get_memory",
+            return_value=existing,
+        ):
+            result = MemoryWriteService(client).update_memory(
+                "mem-abc",
+                "memanto_agent_test-agent",
+                {"content": "Updated content"},
+            )
+
+        assert result["status"] == "queued"
+        assert result["action"] == "updated"
+        assert result["updated_fields"] == ["content"]
+        client.documents.delete.assert_called_once_with(
+            namespace_name="memanto_agent_test-agent", ids=["mem-abc"]
+        )
+        client.documents.upload.assert_called_once()
+
+    def test_update_memory_rejects_empty_onprem_delete_shape(self):
+        from memanto.app.services.memory_write_service import MemoryWriteService
+        from memanto.app.utils.errors import MemoryError
+
+        client = MagicMock()
+        client.documents.delete.return_value = {
+            "status": "success",
+            "deleted_ids": [],
+        }
+        existing = {
+            "title": "Old title",
+            "content": "Old content",
+            "metadata": {"agent_id": "test-agent"},
+        }
+
+        with patch(
+            "memanto.app.services.memory_read_service.MemoryReadService.get_memory",
+            return_value=existing,
+        ):
+            with pytest.raises(MemoryError, match="Failed to delete old version"):
+                MemoryWriteService(client).update_memory(
+                    "mem-abc",
+                    "memanto_agent_test-agent",
+                    {"content": "Updated content"},
+                )
+
+        client.documents.upload.assert_not_called()
+
+
 class TestForgetEndToEnd:
     """End-to-end ``forget`` flow through ``DirectClient``: create agent →
     activate → delete_memory. Asserts on-prem's response shape
