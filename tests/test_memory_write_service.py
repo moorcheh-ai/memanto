@@ -9,6 +9,7 @@ def make_memory(**overrides):
         "type": "fact",
         "title": "User location",
         "content": "The user lives in Can Tho.",
+        "agent_id": "agent-1",
         "scope_type": "agent",
         "scope_id": "agent-1",
         "actor_id": "agent-1",

@@ -794,6 +794,47 @@ class TestMEMANTOAPI:
         log_memory.assert_not_called()
 
     @pytest.mark.asyncio
+    async def test_remember_failed_store_action_not_logged_as_queued(
+        self, client, auth_headers
+    ):
+        """Accepted validation actions keep failed backend status and skip local log."""
+        await client.post(
+            "/api/v2/agents",
+            headers=auth_headers,
+            json={"agent_id": self.TEST_AGENT_ID},
+        )
+        activate_resp = await client.post(
+            f"/api/v2/agents/{self.TEST_AGENT_ID}/activate", headers=auth_headers
+        )
+        token = activate_resp.json()["session_token"]
+        headers = {**auth_headers, "X-Session-Token": token}
+
+        with (
+            patch(
+                "memanto.app.services.memory_write_service.MemoryWriteService.store_memory",
+                return_value={
+                    "id": "mem-failed",
+                    "type": "fact",
+                    "status": "failed",
+                    "action": "store",
+                    "reason": "backend upload failed",
+                },
+            ),
+            patch(
+                "memanto.app.services.session_service.SessionService.log_memory_to_session_summary"
+            ) as log_memory,
+        ):
+            response = await client.post(
+                f"/api/v2/agents/{self.TEST_AGENT_ID}/remember",
+                headers=headers,
+                json={"content": "Backend failed memory", "type": "fact"},
+            )
+
+        assert response.status_code == 200
+        assert response.json()["status"] == "failed"
+        log_memory.assert_not_called()
+
+    @pytest.mark.asyncio
     async def test_batch_remember_api(self, client, auth_headers, mock_moorcheh):
         """Test batch storage via API"""
         await client.post(

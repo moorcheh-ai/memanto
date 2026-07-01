@@ -220,9 +220,16 @@ async def remember(
             context={"user_confirmed": request.user_confirmed},
         )
 
-        if result.get("action", "store") in {"store", "store_provisional"}:
+        action = result.get("action", "store")
+        status = result.get("status", "queued")
+        accepted_write = (
+            action in {"store", "store_provisional"}
+            and status not in {"failed", "rejected", "quarantined"}
+        )
+
+        if accepted_write:
             # Log to local session Markdown summary only when validation accepted
-            # the write; rejected/quarantined memories must not appear there.
+            # the write and the backend did not report a storage failure.
             session_service = get_session_service()
             await asyncio.to_thread(
                 session_service.log_memory_to_session_summary,
@@ -240,9 +247,7 @@ async def remember(
             "agent_id": agent_id,
             "session_id": session.session_id,
             "namespace": session.namespace,
-            "status": result.get("status", "queued")
-            if result.get("action") not in {"store", "store_provisional"}
-            else "queued",
+            "status": "queued" if accepted_write else status,
             "provenance": request.provenance,
             "confidence": request.confidence,
             # Resolved memory type (auto-parsed when not explicitly provided)
