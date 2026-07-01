@@ -76,6 +76,32 @@ def test_ensure_client_encodes_underscore_namespace_without_collision(mock_sdk_c
     )
 
 
+def test_ensure_client_encodes_legacy_reserved_namespace_suffixes(mock_sdk_client):
+    store = MemantoStore(api_key="test_key")
+    client_instance = MagicMock()
+    mock_sdk_client.return_value = client_instance
+
+    _, empty_agent_id = store._ensure_client(())
+    _, default_agent_id = store._ensure_client(("default",))
+    _, encoded_agent_id = store._ensure_client(("team_a",))
+    _, encoded_looking_agent_id = store._ensure_client(("ns", "6x7465616d5f61"))
+
+    assert empty_agent_id == "langgraph_default"
+    assert default_agent_id == "langgraph_ns_7x64656661756c74"
+    assert encoded_agent_id == "langgraph_ns_6x7465616d5f61"
+    assert encoded_looking_agent_id == (
+        "langgraph_ns_2x6e73_ex3678373436353631366435663631"
+    )
+    assert len(
+        {
+            empty_agent_id,
+            default_agent_id,
+            encoded_agent_id,
+            encoded_looking_agent_id,
+        }
+    ) == 4
+
+
 def test_do_get_recent_success(mock_sdk_client):
     store = MemantoStore(api_key="test_key")
     client_instance = MagicMock()
@@ -310,13 +336,21 @@ def test_do_list_namespaces_decodes_encoded_underscore_namespaces(mock_sdk_clien
         {"agent_id": "langgraph_default"},
         {"agent_id": "langgraph_team_a"},
         {"agent_id": "langgraph_ns_6x7465616d5f61"},
+        {"agent_id": "langgraph_ns_foo"},
+        {"agent_id": "langgraph_ns_1x61"},
         {"agent_id": "unrelated_agent"},
     ]
 
     op = ListNamespacesOp()
     namespaces = store._do_list_namespaces(op)
 
-    assert namespaces == [(), ("team", "a"), ("team_a",)]
+    assert namespaces == [
+        (),
+        ("ns", "1x61"),
+        ("ns", "foo"),
+        ("team", "a"),
+        ("team_a",),
+    ]
 
 
 def test_do_list_namespaces_match_conditions(mock_sdk_client):
