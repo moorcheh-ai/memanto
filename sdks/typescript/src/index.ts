@@ -436,17 +436,26 @@ export class Memanto {
       await this.lifecycle.start();
     }
     const baseUrl = this.lifecycle.baseUrl;
-    const headers: Record<string, string> = {
-      "Content-Type": "application/json",
+    const send = () => {
+      const headers: Record<string, string> = {
+        "Content-Type": "application/json",
+      };
+      if (requireSession) {
+        headers["X-Session-Token"] = this.sessionToken ?? "";
+      }
+      return fetch(`${baseUrl}${path}`, {
+        method,
+        headers,
+        body: body === undefined ? undefined : JSON.stringify(body),
+      });
     };
-    if (requireSession) {
-      headers["X-Session-Token"] = this.sessionToken ?? "";
+
+    let res = await send();
+    if (requireSession && isSessionAuthFailure(res.status)) {
+      await this.refreshSession();
+      res = await send();
     }
-    const res = await fetch(`${baseUrl}${path}`, {
-      method,
-      headers,
-      body: body === undefined ? undefined : JSON.stringify(body),
-    });
+
     if (!res.ok) throw await asError(res, `${method} ${path} failed`);
     if (res.status === 204) return undefined as T;
     return (await res.json()) as T;
@@ -458,14 +467,32 @@ export class Memanto {
   ): Promise<T> {
     await this.ensureReady();
     const baseUrl = this.lifecycle.baseUrl;
-    const res = await fetch(`${baseUrl}${path}`, {
-      method: "POST",
-      headers: { "X-Session-Token": this.sessionToken ?? "" },
-      body: form,
-    });
+    const send = () =>
+      fetch(`${baseUrl}${path}`, {
+        method: "POST",
+        headers: { "X-Session-Token": this.sessionToken ?? "" },
+        body: form,
+      });
+
+    let res = await send();
+    if (isSessionAuthFailure(res.status)) {
+      await this.refreshSession();
+      res = await send();
+    }
+
     if (!res.ok) throw await asError(res, `POST ${path} failed`);
     return (await res.json()) as T;
   }
+
+  private async refreshSession(): Promise<void> {
+    this.sessionToken = null;
+    this.starting = null;
+    await this.ensureReady();
+  }
+}
+
+function isSessionAuthFailure(status: number): boolean {
+  return status === 401 || status === 403;
 }
 
 async function asError(res: Response, prefix: string): Promise<Error> {

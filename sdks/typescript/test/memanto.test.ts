@@ -10,14 +10,29 @@ interface Recorded {
   body: string;
 }
 
-function startFakeApi(agentId = "test-agent"): Promise<{
+interface FakeApiOptions {
+  agentId?: string;
+  expireFirstRemember?: boolean;
+}
+
+function startFakeApi(agentIdOrOptions: string | FakeApiOptions = "test-agent"): Promise<{
   url: string;
   recorded: Recorded[];
   close: () => void;
 }> {
+  const options =
+    typeof agentIdOrOptions === "string"
+      ? { agentId: agentIdOrOptions }
+      : agentIdOrOptions;
+  const agentId = options.agentId ?? "test-agent";
   const encodedAgentId = encodeURIComponent(agentId);
+
   return new Promise((resolve) => {
     const recorded: Recorded[] = [];
+    let agentExists = false;
+    let activationCount = 0;
+    let rememberCount = 0;
+
     const srv: Server = createServer((req, res) => {
       collectBody(req).then((body) => {
         recorded.push({
@@ -45,38 +60,55 @@ function startFakeApi(agentId = "test-agent"): Promise<{
             pattern: "default",
             time_remaining_seconds: 3600,
           });
-        if (url.startsWith(`/api/v2/agents/${encodedAgentId}/activate`))
+        if (url.startsWith(`/api/v2/agents/${encodedAgentId}/activate`)) {
+          activationCount += 1;
+          const token = options.expireFirstRemember
+            ? `fake-token-${activationCount}`
+            : "fake-token";
           return reply(200, {
-            session_token: "fake-token",
+            session_token: token,
             agent_id: agentId,
-            session_id: "sess-1",
+            session_id: `sess-${activationCount}`,
             namespace: "memanto_agent_test_agent",
             started_at: new Date().toISOString(),
             expires_at: new Date(Date.now() + 3600_000).toISOString(),
             status: "active",
             pattern: "default",
           });
-        if (url === `/api/v2/agents/${encodedAgentId}` && req.method === "GET")
-          return reply(404, { detail: "not found" });
-        if (url === "/api/v2/agents" && req.method === "POST")
+        }
+        if (url === `/api/v2/agents/${encodedAgentId}` && req.method === "GET") {
+          return agentExists
+            ? reply(200, { agent_id: agentId })
+            : reply(404, { detail: "not found" });
+        }
+        if (url === "/api/v2/agents" && req.method === "POST") {
+          agentExists = true;
           return reply(201, { agent_id: agentId });
-        if (url === `/api/v2/agents/${encodedAgentId}` && req.method === "DELETE")
+        }
+        if (url === `/api/v2/agents/${encodedAgentId}` && req.method === "DELETE") {
+          agentExists = false;
           return reply(200, { agent_id: agentId, deleted: true });
-        if (url === `/api/v2/agents/${encodedAgentId}/remember`)
+        }
+        if (url === `/api/v2/agents/${encodedAgentId}/remember`) {
+          rememberCount += 1;
+          if (options.expireFirstRemember && rememberCount === 1) {
+            return reply(401, { detail: "session expired" });
+          }
           return reply(200, {
             memory_id: "mem-1",
             agent_id: agentId,
-            session_id: "sess-1",
+            session_id: `sess-${activationCount}`,
             namespace: "memanto_agent_test_agent",
             status: "queued",
             provenance: "explicit_statement",
             confidence: 0.9,
             type: "fact",
           });
+        }
         if (url === `/api/v2/agents/${encodedAgentId}/recall`)
           return reply(200, {
             agent_id: agentId,
-            session_id: "sess-1",
+            session_id: `sess-${activationCount}`,
             query: "anything",
             memories: [],
             count: 0,
@@ -175,6 +207,24 @@ describe("Memanto", () => {
       "GET /api/v2/status",
     ]);
     expect(api.recorded[0]?.headers["x-session-token"]).toBeUndefined();
+  });
+
+  it("refreshes an expired session token and retries once", async () => {
+    const api = await startFakeApi({ expireFirstRemember: true });
+    cleanupFns.push(api.close);
+
+    const m = new Memanto({ agentId: "test-agent", baseUrl: api.url });
+    cleanupFns.push(() => m.close());
+
+    const res = await m.remember({ content: "Het likes tea" });
+    expect(res).toMatchObject({ memory_id: "mem-1", status: "queued" });
+
+    const activations = api.recorded.filter((r) => r.url.endsWith("/activate"));
+    const remembers = api.recorded.filter((r) => r.url.endsWith("/remember"));
+    expect(activations).toHaveLength(2);
+    expect(remembers).toHaveLength(2);
+    expect(remembers[0]?.headers["x-session-token"]).toBe("fake-token-1");
+    expect(remembers[1]?.headers["x-session-token"]).toBe("fake-token-2");
   });
 
   it("rejects empty agentId", () => {
