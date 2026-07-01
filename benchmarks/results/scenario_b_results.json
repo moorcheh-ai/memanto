@@ -1,84 +1,22 @@
 {
-  "scenario": "B - Shifting Persona & Temporal Tracking",
+  "scenario": "B",
   "memanto": {
     "system": "Memanto",
+    "api_mode": "dummy",
     "sessions_completed": 5,
     "total_preferences_stored": 15,
     "mean_latency": 0.0,
     "accuracy_score": "2/3",
-    "accuracy_percent": 66.7,
-    "session_details": [
-      {
-        "session": 1,
-        "preferences_stored": 3,
-        "items_recalled": 3,
-        "latency_seconds": 0.0
-      },
-      {
-        "session": 2,
-        "preferences_stored": 3,
-        "items_recalled": 5,
-        "latency_seconds": 0.0
-      },
-      {
-        "session": 3,
-        "preferences_stored": 3,
-        "items_recalled": 5,
-        "latency_seconds": 0.0
-      },
-      {
-        "session": 4,
-        "preferences_stored": 3,
-        "items_recalled": 5,
-        "latency_seconds": 0.0
-      },
-      {
-        "session": 5,
-        "preferences_stored": 3,
-        "items_recalled": 5,
-        "latency_seconds": 0.0
-      }
-    ]
+    "accuracy_percent": 66.7
   },
   "mem0": {
     "system": "Mem0",
+    "api_mode": "dummy",
     "sessions_completed": 5,
     "total_preferences_stored": 15,
     "mean_latency": 0.0,
     "accuracy_score": "1/3",
-    "accuracy_percent": 33.3,
-    "session_details": [
-      {
-        "session": 1,
-        "preferences_stored": 3,
-        "items_recalled": 1,
-        "latency_seconds": 0.0
-      },
-      {
-        "session": 2,
-        "preferences_stored": 3,
-        "items_recalled": 2,
-        "latency_seconds": 0.0
-      },
-      {
-        "session": 3,
-        "preferences_stored": 3,
-        "items_recalled": 3,
-        "latency_seconds": 0.0
-      },
-      {
-        "session": 4,
-        "preferences_stored": 3,
-        "items_recalled": 4,
-        "latency_seconds": 0.0
-      },
-      {
-        "session": 5,
-        "preferences_stored": 3,
-        "items_recalled": 5,
-        "latency_seconds": 0.0
-      }
-    ]
+    "accuracy_percent": 33.3
   },
-  "timestamp": "2026-07-02T03:27:31.484933"
+  "timestamp": "2026-07-02T03:38:57.669849"
 }

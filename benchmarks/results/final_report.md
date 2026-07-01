@@ -1,26 +1,42 @@
 # Memanto vs Mem0 — Benchmark Report
 
-Generated: 2026-07-02 03:27
+Generated: 2026-07-02 03:38
 
 ---
 
-## Scenario A: Context-Overhead & Latency Sprint
 
-| Metric | Memanto | Mem0 |
-|---|---|---|
-| Total Input Tokens | 2760 | 2760 |
-| Total Retrieved Tokens | 8295 | 8295 |
-| Mean Latency (s) | 0.0 | 0.0 |
-| p95 Latency (s) | 0.0 | 0.0 |
-| Avg Results/Query | 2.7 | 2.7 |
+## A: Context & Latency
 
 
-## Scenario B: Shifting Persona & Temporal Tracking
+**Memanto** (mode: dummy)
+- total_input_tokens: 2760
+- total_retrieved_tokens: 8295
+- mean_latency: 0.0
+- p95_latency: 0.0
+- avg_results_per_query: 2.7
+- runs_completed: 3
 
-| Metric | Memanto | Mem0 |
-|---|---|---|
-| Sessions Completed | 5 | 5 |
-| Total Preferences Stored | 15 | 15 |
-| Mean Latency (s) | 0.0 | 0.0 |
-| Accuracy | 2/3 (66.7%) | 1/3 (33.3%) |
+**Mem0** (mode: dummy)
+- total_input_tokens: 2760
+- total_retrieved_tokens: 8295
+- mean_latency: 0.0
+- p95_latency: 0.0
+- avg_results_per_query: 2.7
+- runs_completed: 3
 
+## B: Temporal Tracking
+
+
+**Memanto** (mode: dummy)
+- sessions_completed: 5
+- total_preferences_stored: 15
+- mean_latency: 0.0
+- accuracy_score: 2/3
+- accuracy_percent: 66.7
+
+**Mem0** (mode: dummy)
+- sessions_completed: 5
+- total_preferences_stored: 15
+- mean_latency: 0.0
+- accuracy_score: 1/3
+- accuracy_percent: 33.3
