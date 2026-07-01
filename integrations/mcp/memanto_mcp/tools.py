@@ -403,14 +403,7 @@ def register_tools(mcp: Any, lifecycle: MemantoLifecycle) -> None:
                 agent_id=resolved,
                 memories=memories,
             )
-            sub_results = [
-                BatchRememberItemResult(
-                    id=r.get("id"),
-                    status=r.get("status", "queued"),
-                    error=r.get("error"),
-                )
-                for r in result.get("results", [])
-            ]
+            sub_results = _to_batch_item_results(result.get("results"))
             return BatchRememberResult(
                 status="ok",
                 agent_id=resolved,
@@ -915,3 +908,22 @@ def _to_memory_hit(raw: dict[str, Any]) -> MemoryHit:
             else raw.get("similarity_score")
         ),
     )
+
+
+def _to_batch_item_results(raw_results: Any) -> list[BatchRememberItemResult]:
+    """Normalize per-item batch results without failing on malformed rows."""
+    if not isinstance(raw_results, list):
+        return []
+
+    items: list[BatchRememberItemResult] = []
+    for raw in raw_results:
+        if not isinstance(raw, dict):
+            continue
+        items.append(
+            BatchRememberItemResult(
+                id=raw.get("id"),
+                status=str(raw.get("status") or "queued"),
+                error=raw.get("error"),
+            )
+        )
+    return items
