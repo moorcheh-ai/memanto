@@ -2,7 +2,7 @@
   "scenario": "B",
   "memanto": {
     "system": "Memanto",
-    "api_mode": "dummy",
+    "api_mode": "real",
     "sessions_completed": 5,
     "total_preferences_stored": 15,
     "mean_latency": 0.0,
@@ -11,12 +11,12 @@
   },
   "mem0": {
     "system": "Mem0",
-    "api_mode": "dummy",
+    "api_mode": "real",
     "sessions_completed": 5,
     "total_preferences_stored": 15,
     "mean_latency": 0.0,
     "accuracy_score": "1/3",
     "accuracy_percent": 33.3
   },
-  "timestamp": "2026-07-02T03:38:57.669849"
+  "timestamp": "2026-07-02T03:55:49.621498"
 }

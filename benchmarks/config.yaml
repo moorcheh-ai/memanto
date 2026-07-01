@@ -1,13 +1,13 @@
 # Memanto Benchmarking Config
-# Fill in your API keys below
+# Fill in your API keys below before running
 
 # Moorcheh API Key — get one at https://moorcheh.ai
 MOORCHEH_API_KEY: "your-moorcheh-api-key-here"
 
-# OpenAI API Key — for LLM-as-a-Judge
+# OpenAI API Key — for Mem0 embeddings + LLM-as-a-Judge
 OPENAI_API_KEY: "your-openai-api-key-here"
 
 # Benchmark settings
-runs: 3
-warmup_runs: 2
-turns_per_run: 10
+runs: 2
+warmup_runs: 1
+turns_per_run: 5

@@ -53,13 +53,11 @@ def get_memanto_store():
 
 
 def get_mem0_store():
-    if HAS_KEYS:
-        try:
-            from mem0 import Memory
-            return Memory()
-        except ImportError:
-            pass
-    return DummyMem0Store()
+    try:
+        from mem0 import Memory
+        return Memory()
+    except:
+        return DummyMem0Store()
 
 
 class DummyMemantoStore:

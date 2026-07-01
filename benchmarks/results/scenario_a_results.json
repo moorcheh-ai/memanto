@@ -1,24 +1,22 @@
 {
-  "scenario": "A - Context-Overhead & Latency Sprint",
+  "scenario": "A",
   "memanto": {
-    "system": "Memanto",
-    "api_mode": "dummy",
-    "total_input_tokens": 2760,
-    "total_retrieved_tokens": 8295,
-    "mean_latency": 0.0,
-    "p95_latency": 0.0,
-    "avg_results_per_query": 2.7,
-    "runs_completed": 3
+    "system": "Memanto (Moorcheh)",
+    "mode": "real",
+    "total_input_chars": 1008,
+    "total_retrieved_chars": 2620,
+    "mean_latency": 1.837,
+    "p95_latency": 2.204,
+    "avg_results_per_query": 2.4
   },
   "mem0": {
     "system": "Mem0",
-    "api_mode": "dummy",
-    "total_input_tokens": 2760,
-    "total_retrieved_tokens": 8295,
+    "mode": "real",
+    "total_input_chars": 1008,
+    "total_retrieved_chars": 2626,
     "mean_latency": 0.0,
     "p95_latency": 0.0,
-    "avg_results_per_query": 2.7,
-    "runs_completed": 3
+    "avg_results_per_query": 2.4
   },
-  "timestamp": "2026-07-02T03:38:57.598675"
+  "timestamp": "2026-07-02T03:55:01.284388"
 }
