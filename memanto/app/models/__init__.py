@@ -5,13 +5,24 @@ MEMANTO API Models
 from datetime import datetime
 from typing import Any, Literal
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 from memanto.app.constants import MemoryType, SourceType, StatusType
+from memanto.app.utils.validation import validate_memory_tags
+
+
+class MemoryTagsMixin:
+    """Apply shared memory tag bounds to request models that accept tags."""
+
+    @field_validator("tags", check_fields=False)
+    @classmethod
+    def validate_tags(cls, v: list[str] | None) -> list[str] | None:
+        """Normalize and bound tag lists for API payloads."""
+        return validate_memory_tags(v)
 
 
 # Request Models
-class MemoryStoreRequest(BaseModel):
+class MemoryStoreRequest(MemoryTagsMixin, BaseModel):
     """Request body for storing a single memory."""
 
     type: MemoryType
@@ -27,7 +38,7 @@ class MemoryStoreRequest(BaseModel):
     user_confirmed: bool = False
 
 
-class MemoryBatchItem(BaseModel):
+class MemoryBatchItem(MemoryTagsMixin, BaseModel):
     """Single memory item for batch write"""
 
     type: MemoryType
@@ -52,7 +63,7 @@ class MemoryBatchWriteRequest(BaseModel):
     user_confirmed: bool = False
 
 
-class BatchRememberItem(BaseModel):
+class BatchRememberItem(MemoryTagsMixin, BaseModel):
     """Single memory item in a batch-remember request"""
 
     content: str = Field(..., max_length=10000, description="Memory content")
@@ -182,7 +193,7 @@ class MemoryUpdateRequest(BaseModel):
     user_confirmed: bool = False
 
 
-class MemorySearchRequest(BaseModel):
+class MemorySearchRequest(MemoryTagsMixin, BaseModel):
     query: str
     agent_id: str | None = None
     memory_types: list[MemoryType] | None = None

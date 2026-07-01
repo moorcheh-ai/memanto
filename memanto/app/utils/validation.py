@@ -2,10 +2,13 @@
 Input Validation and Cost Guards for MEMANTO
 """
 
+import re
 from typing import Any
 
 from fastapi import HTTPException
 from pydantic import BaseModel, Field, validator
+
+MEMORY_TAG_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*$")
 
 
 class InputLimits:
@@ -14,6 +17,9 @@ class InputLimits:
     # Text limits
     MAX_TEXT_LENGTH = 10000  # characters
     MAX_METADATA_SIZE = 5000  # bytes
+    MAX_TAG_COUNT = 50
+    MAX_TAG_LENGTH = 128  # characters per tag
+    MAX_TAGS_SIZE = 2000  # serialized bytes across all tags
 
     # Query limits
     MAX_K = 100  # maximum results
@@ -159,3 +165,42 @@ def validate_request_size(
                 "max_size": max_size,
             },
         )
+
+
+def validate_memory_tags(tags: list[str] | None) -> list[str] | None:
+    """Normalize and bound memory tags before they are serialized into documents."""
+    if tags is None:
+        return None
+
+    if len(tags) > InputLimits.MAX_TAG_COUNT:
+        raise ValueError(
+            f"Memory tags exceed maximum count of {InputLimits.MAX_TAG_COUNT}"
+        )
+
+    normalized_tags = []
+    for index, tag in enumerate(tags):
+        if not isinstance(tag, str):
+            raise ValueError(f"Memory tag at index {index} must be a string")
+        normalized = tag.strip()
+        if not normalized:
+            raise ValueError(f"Memory tag at index {index} must be non-empty")
+        if len(normalized) > InputLimits.MAX_TAG_LENGTH:
+            raise ValueError(
+                f"Memory tag at index {index} exceeds maximum length of "
+                f"{InputLimits.MAX_TAG_LENGTH} characters"
+            )
+        if not MEMORY_TAG_RE.fullmatch(normalized):
+            raise ValueError(
+                f"Memory tag at index {index} contains unsupported characters. "
+                "Use letters, numbers, dots, underscores, and hyphens."
+            )
+        normalized_tags.append(normalized)
+
+    tags_size = len(",".join(normalized_tags).encode("utf-8"))
+    if tags_size > InputLimits.MAX_TAGS_SIZE:
+        raise ValueError(
+            f"Memory tags exceed maximum serialized size of "
+            f"{InputLimits.MAX_TAGS_SIZE} bytes"
+        )
+
+    return normalized_tags

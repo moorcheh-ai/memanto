@@ -6,7 +6,7 @@ import uuid
 from datetime import datetime, timedelta
 from typing import Any
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from memanto.app.constants import (
     MemoryType,
@@ -14,6 +14,7 @@ from memanto.app.constants import (
     SourceType,
     StatusType,
 )
+from memanto.app.utils.validation import validate_memory_tags
 
 
 def agent_namespace(agent_id: str) -> str:
@@ -47,6 +48,12 @@ class MemoryRecord(BaseModel):
     updated_at: datetime = Field(default_factory=datetime.utcnow)
     expires_at: datetime | None = None
     ttl_seconds: int | None = None
+
+    @field_validator("tags")
+    @classmethod
+    def validate_tags(cls, v: list[str]) -> list[str]:
+        """Keep serialized tag payloads within memory document limits."""
+        return validate_memory_tags(v) or []
 
     def to_moorcheh_document(self) -> dict[str, Any]:
         """

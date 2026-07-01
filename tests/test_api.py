@@ -13,6 +13,7 @@ from memanto.app.config import settings
 from memanto.app.main import app
 from memanto.app.models.session import Session
 from memanto.app.routes.auth_deps import get_current_session
+from memanto.app.utils.validation import InputLimits
 
 # Set test environment
 os.environ["MOORCHEH_API_KEY"] = "test-api-key"
@@ -251,6 +252,102 @@ class TestMEMANTOAPI:
         assert response.json()["status"] == "queued"
 
     @pytest.mark.asyncio
+    async def test_remember_rejects_oversized_tags_before_upload(
+        self, client, auth_headers, mock_moorcheh
+    ):
+        """Tags are serialized into indexed text, so they must be bounded."""
+        await client.post(
+            "/api/v2/agents",
+            headers=auth_headers,
+            json={"agent_id": self.TEST_AGENT_ID},
+        )
+        activate_response = await client.post(
+            f"/api/v2/agents/{self.TEST_AGENT_ID}/activate", headers=auth_headers
+        )
+        session_token = activate_response.json()["session_token"]
+        headers = {**auth_headers, "X-Session-Token": session_token}
+        mock_moorcheh.documents.upload.reset_mock()
+
+        response = await client.post(
+            f"/api/v2/agents/{self.TEST_AGENT_ID}/remember",
+            headers=headers,
+            json={
+                "content": "tiny memory",
+                "tags": ["x" * (InputLimits.MAX_TAG_LENGTH + 1)],
+            },
+        )
+
+        assert response.status_code == 422
+        assert "tag" in str(response.json()).lower()
+        mock_moorcheh.documents.upload.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_remember_rejects_filter_like_tags_before_upload(
+        self, client, auth_headers, mock_moorcheh
+    ):
+        """Tags must not smuggle Moorcheh filter syntax into later searches."""
+        await client.post(
+            "/api/v2/agents",
+            headers=auth_headers,
+            json={"agent_id": self.TEST_AGENT_ID},
+        )
+        activate_response = await client.post(
+            f"/api/v2/agents/{self.TEST_AGENT_ID}/activate", headers=auth_headers
+        )
+        session_token = activate_response.json()["session_token"]
+        headers = {**auth_headers, "X-Session-Token": session_token}
+        mock_moorcheh.documents.upload.reset_mock()
+
+        response = await client.post(
+            f"/api/v2/agents/{self.TEST_AGENT_ID}/remember",
+            headers=headers,
+            json={
+                "content": "tiny memory",
+                "tags": ["safe #status:deleted"],
+            },
+        )
+
+        assert response.status_code == 422
+        assert "tag" in str(response.json()).lower()
+        mock_moorcheh.documents.upload.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_remember_rejects_aggregate_tag_payload_before_upload(
+        self, client, auth_headers, mock_moorcheh
+    ):
+        """Individually valid tags cannot exceed the aggregate tag payload limit."""
+        await client.post(
+            "/api/v2/agents",
+            headers=auth_headers,
+            json={"agent_id": self.TEST_AGENT_ID},
+        )
+        activate_response = await client.post(
+            f"/api/v2/agents/{self.TEST_AGENT_ID}/activate", headers=auth_headers
+        )
+        session_token = activate_response.json()["session_token"]
+        headers = {**auth_headers, "X-Session-Token": session_token}
+        mock_moorcheh.documents.upload.reset_mock()
+        tags = [
+            f"tag{index:02d}" + "x" * (InputLimits.MAX_TAG_LENGTH - 5)
+            for index in range(
+                (InputLimits.MAX_TAGS_SIZE // InputLimits.MAX_TAG_LENGTH) + 2
+            )
+        ]
+
+        response = await client.post(
+            f"/api/v2/agents/{self.TEST_AGENT_ID}/remember",
+            headers=headers,
+            json={
+                "content": "tiny memory",
+                "tags": tags,
+            },
+        )
+
+        assert response.status_code == 422
+        assert "tag" in str(response.json()).lower()
+        mock_moorcheh.documents.upload.assert_not_called()
+
+    @pytest.mark.asyncio
     async def test_edit_memory_with_session(self, client, auth_headers):
         """Test updating one memory with session token."""
         app.dependency_overrides[get_current_session] = lambda: Session(
@@ -310,6 +407,33 @@ class TestMEMANTOAPI:
 
         assert response.status_code == 400
         assert "at least one field" in response.json()["detail"]
+
+    @pytest.mark.asyncio
+    async def test_edit_memory_rejects_oversized_tags_before_update(
+        self, client, auth_headers
+    ):
+        """Oversized tag updates should fail validation before touching storage."""
+        app.dependency_overrides[get_current_session] = lambda: Session(
+            session_id="sess-test",
+            session_token="token-test",
+            agent_id=self.TEST_AGENT_ID,
+            namespace=f"memanto_agent_{self.TEST_AGENT_ID}",
+            started_at=datetime.utcnow(),
+            expires_at=datetime.utcnow() + timedelta(hours=1),
+        )
+        try:
+            with patch("memanto.app.routes.memory.MemoryWriteService") as mock_cls:
+                response = await client.patch(
+                    f"/api/v2/agents/{self.TEST_AGENT_ID}/memories/mem-123",
+                    headers=auth_headers,
+                    json={"tags": ["x" * (InputLimits.MAX_TAG_LENGTH + 1)]},
+                )
+        finally:
+            app.dependency_overrides.clear()
+
+        assert response.status_code == 422
+        assert "tag" in str(response.json()).lower()
+        mock_cls.assert_not_called()
 
     @pytest.mark.asyncio
     async def test_edit_memory_returns_404_when_missing(self, client, auth_headers):
@@ -744,6 +868,41 @@ class TestMEMANTOAPI:
         )
         assert response.status_code == 200
         assert response.json()["successful"] == 2
+
+    @pytest.mark.asyncio
+    async def test_batch_remember_rejects_oversized_tags_before_upload(
+        self, client, auth_headers, mock_moorcheh
+    ):
+        """Batch items cannot bypass text limits with oversized tag payloads."""
+        await client.post(
+            "/api/v2/agents",
+            headers=auth_headers,
+            json={"agent_id": self.TEST_AGENT_ID},
+        )
+        activate_resp = await client.post(
+            f"/api/v2/agents/{self.TEST_AGENT_ID}/activate", headers=auth_headers
+        )
+        token = activate_resp.json()["session_token"]
+        headers = {**auth_headers, "X-Session-Token": token}
+        mock_moorcheh.documents.upload.reset_mock()
+
+        response = await client.post(
+            f"/api/v2/agents/{self.TEST_AGENT_ID}/batch-remember",
+            headers=headers,
+            json={
+                "memories": [
+                    {
+                        "content": "Batch 1",
+                        "type": "fact",
+                        "tags": ["x" * (InputLimits.MAX_TAG_LENGTH + 1)],
+                    }
+                ]
+            },
+        )
+
+        assert response.status_code == 422
+        assert "tag" in str(response.json()).lower()
+        mock_moorcheh.documents.upload.assert_not_called()
 
     @pytest.mark.asyncio
     async def test_delete_memory_with_session(

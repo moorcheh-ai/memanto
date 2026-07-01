@@ -39,7 +39,7 @@ from memanto.app.utils.errors import (
     SessionExpiredError,
     SessionNotFoundError,
 )
-from memanto.app.utils.validation import InputLimits
+from memanto.app.utils.validation import InputLimits, validate_memory_tags
 from memanto.cli.config.manager import ConfigManager
 
 logger = logging.getLogger(__name__)
@@ -969,6 +969,7 @@ class DirectClient:
         self._get_validated_session_for_agent(agent_id)
 
         self._validate_query(query, limit)
+        tags = validate_memory_tags(tags)
 
         logger.debug(
             "Recall for agent '%s': query='%s', limit=%d", agent_id, query, limit

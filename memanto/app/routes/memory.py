@@ -40,7 +40,7 @@ from memanto.app.services.conversation_memory_extraction_service import (
 from memanto.app.services.memory_read_service import MemoryReadService
 from memanto.app.services.memory_write_service import MemoryWriteService
 from memanto.app.utils.errors import AuthorizationError, map_error_to_http_exception
-from memanto.app.utils.validation import CostGuard
+from memanto.app.utils.validation import CostGuard, validate_memory_tags
 from memanto.cli.client.direct_client import DirectClient
 from memanto.cli.config.manager import ConfigManager
 
@@ -138,6 +138,12 @@ class MemoryEditRequest(BaseModel):
     confidence: float | None = Field(default=None, ge=0.0, le=1.0)
     tags: list[str] | None = None
     source: str | None = None
+
+    @field_validator("tags")
+    @classmethod
+    def validate_tags(cls, v: list[str] | None) -> list[str] | None:
+        """Validate tag updates before they reach memory storage."""
+        return validate_memory_tags(v)
 
     def to_updates(self) -> dict[str, object]:
         return self.model_dump(exclude_none=True)

@@ -345,6 +345,43 @@ class TestMEMANTOCLI:
 
         mock_write_service.update_memory.assert_not_called()
 
+    def test_direct_recall_rejects_filter_like_tags(self, mock_all_clients):
+        """Direct recall tags must not inject Moorcheh filter syntax."""
+        from unittest.mock import MagicMock, patch
+
+        import pytest
+
+        from memanto.cli.client.direct_client import DirectClient
+
+        mock_read_service = MagicMock()
+        mock_session = MagicMock()
+        mock_session.namespace = "memanto_agent_test-agent"
+
+        with (
+            patch.object(
+                DirectClient, "_get_read_service", return_value=mock_read_service
+            ),
+            patch.object(
+                DirectClient,
+                "_get_validated_session_for_agent",
+                return_value=mock_session,
+            ),
+        ):
+            client = DirectClient.__new__(DirectClient)
+            client.api_key = "test-api-key"
+            client.base_url = "https://api.moorcheh.ai/v1"
+
+            with pytest.raises(ValueError, match="unsupported characters"):
+                client.recall(
+                    agent_id="test-agent",
+                    query="hello",
+                    limit=10,
+                    min_similarity=0.0,
+                    tags=["safe #status:deleted"],
+                )
+
+        mock_read_service.search_memories.assert_not_called()
+
     def test_edit_sdk_rejects_unknown_field(self, mock_all_clients):
         """SdkClient.update_memory must enforce the same field allowlist as
         the API route. CodeRabbit review 2026-06-14T14:03:20Z flagged that
@@ -377,6 +414,40 @@ class TestMEMANTOCLI:
                 )
 
         mock_write_service.update_memory.assert_not_called()
+
+    def test_sdk_recall_rejects_filter_like_tags(self, mock_all_clients):
+        """SDK recall applies the shared tag syntax guard before search."""
+        from unittest.mock import MagicMock, patch
+
+        import pytest
+
+        from memanto.cli.client.sdk_client import SdkClient
+
+        mock_read_service = MagicMock()
+        mock_session = MagicMock()
+        mock_session.namespace = "memanto_agent_test-agent"
+
+        with (
+            patch.object(
+                SdkClient, "_get_read_service", return_value=mock_read_service
+            ),
+            patch.object(
+                SdkClient, "_get_validated_session_for_agent", return_value=mock_session
+            ),
+        ):
+            client = SdkClient.__new__(SdkClient)
+            client.api_key = "test-api-key"
+
+            with pytest.raises(ValueError, match="unsupported characters"):
+                client.recall(
+                    agent_id="test-agent",
+                    query="hello",
+                    limit=10,
+                    min_similarity=0.0,
+                    tags=["safe #status:deleted"],
+                )
+
+        mock_read_service.search_memories.assert_not_called()
 
     def test_edit_sdk_rejects_blank_content(self, mock_all_clients):
         """SdkClient.update_memory must reject blank content strings."""
