@@ -14,6 +14,7 @@ from memanto.app.config import settings
 from memanto.app.models.session import AgentCreate, AgentPattern, SessionStatus
 from memanto.app.services.agent_service import AgentService
 from memanto.app.services.session_service import SessionService
+from memanto.cli.schedule_manager import ScheduleManager
 
 
 class TestSessionService:
@@ -448,6 +449,45 @@ def test_conflict_report_handles_non_object_json_items(tmp_path, monkeypatch):
     conflicts = json.loads(conflicts_path.read_text(encoding="utf-8"))
     assert conflicts[0]["title"] == "Unparsed conflict report"
     assert conflicts[0]["description"] == '["not an object", 1]'
+
+
+def test_schedule_time_parser_rejects_out_of_range_values():
+    """User-edited schedule config cannot write invalid cron/schtasks times."""
+    manager = ScheduleManager()
+
+    assert manager._parse_schedule_time("05:07") == (5, 7, "05:07")
+    assert manager._parse_schedule_time("24:00") == (23, 55, "23:55")
+    assert manager._parse_schedule_time("23:60") == (23, 55, "23:55")
+    assert manager._parse_schedule_time("not-a-time") == (23, 55, "23:55")
+
+
+def test_enable_unix_sanitizes_invalid_schedule_time():
+    manager = ScheduleManager()
+    manager.os_type = "Linux"
+
+    with patch("memanto.cli.schedule_manager.subprocess.run") as mock_run:
+        mock_run.return_value = MagicMock(stdout="")
+        result = manager._enable_unix("99:99")
+
+    assert result["status"] == "success"
+    assert "23:55" in result["message"]
+    crontab_write = mock_run.call_args_list[1]
+    assert crontab_write.args[0] == ["crontab", "-"]
+    assert "55 23 * * *" in crontab_write.kwargs["input"]
+    assert "99 99 * * *" not in crontab_write.kwargs["input"]
+
+
+def test_enable_windows_sanitizes_invalid_schedule_time():
+    manager = ScheduleManager()
+    manager.os_type = "Windows"
+
+    with patch("memanto.cli.schedule_manager.subprocess.run") as mock_run:
+        result = manager._enable_windows("99:99")
+
+    assert result["status"] == "success"
+    assert "23:55" in result["message"]
+    command = mock_run.call_args.args[0]
+    assert command[command.index("/st") + 1] == "23:55"
 
 
 if __name__ == "__main__":

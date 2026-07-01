@@ -55,6 +55,30 @@ class ScheduleManager:
     def _command(self) -> str:
         return f'"{self.python_exe}" "{self.cli_main.absolute()}" schedule _run'
 
+    def _parse_schedule_time(self, time_str: str) -> tuple[int, int, str]:
+        """Return a cron/schtasks-safe hour, minute, and normalized HH:MM.
+
+        Configuration values are user-editable, so they can drift outside the
+        scheduler's accepted range (for example ``99:99``). Previously Unix
+        installs wrote those invalid values directly to crontab and Windows
+        installs handed them to ``schtasks``, which either disabled the nightly
+        memory-maintenance job or made setup fail with a platform-specific
+        error. Fall back to the documented default when the configured time is
+        malformed or out of range.
+        """
+
+        try:
+            parts = time_str.split(":")
+            if len(parts) != 2:
+                raise ValueError
+            hour, minute = int(parts[0]), int(parts[1])
+            if not (0 <= hour <= 23 and 0 <= minute <= 59):
+                raise ValueError
+        except (AttributeError, ValueError):
+            hour, minute = 23, 55
+
+        return hour, minute, f"{hour:02d}:{minute:02d}"
+
     def enable(self, time_str: str = "23:55") -> dict[str, Any]:
         self._remove_legacy_tasks()
         if self.os_type == "Windows":
@@ -75,6 +99,7 @@ class ScheduleManager:
     # Windows (schtasks)
 
     def _enable_windows(self, time_str: str = "23:55") -> dict[str, Any]:
+        _hour, _minute, normalized_time = self._parse_schedule_time(time_str)
         command = [
             "schtasks",
             "/create",
@@ -85,14 +110,14 @@ class ScheduleManager:
             "/sc",
             "daily",
             "/st",
-            time_str,
+            normalized_time,
             "/f",
         ]
         try:
             subprocess.run(command, capture_output=True, text=True, check=True)
             return {
                 "status": "success",
-                "message": f"Scheduled task created for {time_str} daily.",
+                "message": f"Scheduled task created for {normalized_time} daily.",
             }
         except subprocess.CalledProcessError as e:
             return {
@@ -131,11 +156,7 @@ class ScheduleManager:
     # Unix/OSX (crontab)
 
     def _enable_unix(self, time_str: str = "23:55") -> dict[str, Any]:
-        try:
-            parts = time_str.split(":")
-            hour, minute = int(parts[0]), int(parts[1])
-        except (ValueError, IndexError):
-            hour, minute = 23, 55
+        hour, minute, normalized_time = self._parse_schedule_time(time_str)
 
         marker = f"# {self.TASK_NAME}"
         cron_entry = f"{minute} {hour} * * * {self._command()}  {marker}"
@@ -149,7 +170,7 @@ class ScheduleManager:
             subprocess.run(["crontab", "-"], input=new_cron, text=True, check=True)
             return {
                 "status": "success",
-                "message": f"Crontab entry added for {time_str} daily.",
+                "message": f"Crontab entry added for {normalized_time} daily.",
             }
         except Exception as e:
             return {"status": "error", "message": f"Failed to update crontab: {str(e)}"}
