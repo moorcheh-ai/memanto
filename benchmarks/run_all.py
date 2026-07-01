@@ -3,12 +3,24 @@
 import json, os, subprocess, sys
 from datetime import datetime
 
+SCRIPTS = [
+    "benchmark_a_context_latency.py",
+    "benchmark_b_persona_tracking.py",
+]
+
+
 def run(script):
     print(f"\n{'='*60}\nRunning {script}...\n{'='*60}")
-    r = subprocess.run([sys.executable, script], capture_output=True, text=True, timeout=60)
+    try:
+        r = subprocess.run([sys.executable, script], capture_output=True, text=True, timeout=60)
+    except subprocess.TimeoutExpired:
+        print(f"⏱️  {script} timed out after 60s")
+        return False
     print(r.stdout)
-    if r.stderr: print("STDERR:", r.stderr[:300])
+    if r.stderr:
+        print(f"STDERR: {r.stderr[:300]}")
     return r.returncode == 0
+
 
 def report():
     os.makedirs("results", exist_ok=True)
@@ -27,9 +39,23 @@ def report():
                 for k, v in s.items():
                     if k not in ["system","api_mode"]:
                         lines.append(f"- {k}: {v}")
-        except: lines.append("\n⚠️ No results\n")
-    with open("results/final_report.md","w") as f: f.write("\n".join(lines))
-    print("\n".join(lines))
+        except (FileNotFoundError, json.JSONDecodeError, KeyError):
+            lines.append("\n⚠️ No results\n")
+    report_text = "\n".join(lines)
+    with open("results/final_report.md","w") as f:
+        f.write(report_text)
+    print(report_text)
 
-run("benchmark_a_context_latency.py") and run("benchmark_b_persona_tracking.py")
-report()
+
+def main():
+    success = True
+    for script in SCRIPTS:
+        if not run(script):
+            success = False
+    report()
+    if not success:
+        sys.exit(1)
+
+
+if __name__ == "__main__":
+    main()

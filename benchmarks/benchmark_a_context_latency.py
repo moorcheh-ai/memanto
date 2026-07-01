@@ -4,20 +4,20 @@ Benchmark A: Context-Overhead & Latency Sprint
 Real Memanto (Moorcheh) vs Mem0 comparison.
 """
 
-import json, os, time, statistics, yaml
+import json, os, sys, time, statistics, math, yaml
 from datetime import datetime
 
 CONFIG_PATH = os.path.join(os.path.dirname(__file__), "config.yaml")
-HAS_REAL = False
-MOORCHEH_KEY = ""
-OPENAI_KEY = ""
+HAS_MOORCHEH_KEY = False
+HAS_OPENAI_KEY = False
 
 if os.path.exists(CONFIG_PATH):
     with open(CONFIG_PATH) as f:
         cfg = yaml.safe_load(f) or {}
-    MOORCHEH_KEY = cfg.get("MOORCHEH_API_KEY", "")
-    OPENAI_KEY = cfg.get("OPENAI_API_KEY", "")
-    HAS_REAL = bool(MOORCHEH_KEY) and MOORCHEH_KEY != "your-moorcheh-api-key-here"
+    mk = cfg.get("MOORCHEH_API_KEY", "")
+    ok = cfg.get("OPENAI_API_KEY", "")
+    HAS_MOORCHEH_KEY = bool(mk) and mk != "your-moorcheh-api-key-here"
+    HAS_OPENAI_KEY = bool(ok) and ok != "your-openai-api-key-here"
 
 NUM_TURNS = 5
 NUM_RUNS = 2
@@ -32,24 +32,31 @@ TECHNICAL_LOGS = [
 
 
 def create_memanto_store():
-    from moorcheh_sdk import MoorchehClient
-    from moorcheh_sdk.resources.search import Search
-    client = MoorchehClient(api_key=MOORCHEH_KEY)
-    # Create namespace
-    ns_name = f"ba-{int(time.time()*1000) % 100000}"
-    client.namespaces.create(namespace_name=ns_name, type='text')
-    return {"client": client, "namespace": ns_name, "type": "memanto", "search": Search(client)}
+    """Create a real Memanto (Moorcheh) store if keys are available, else Dummy."""
+    if not HAS_MOORCHEH_KEY:
+        return DummyMemantoStore()
+    try:
+        from moorcheh_sdk import MoorchehClient
+        client = MoorchehClient(api_key=os.environ.get("MOORCHEH_API_KEY"))
+        ns_name = f"ba-{int(time.time()*1000) % 100000}"
+        client.namespaces.create(namespace_name=ns_name, type='text')
+        return {"client": client, "namespace": ns_name, "type": "memanto"}
+    except Exception as e:
+        print(f"  Memanto real init failed, falling back to dummy: {e}", file=sys.stderr)
+        return DummyMemantoStore()
 
 
 def create_mem0_store():
-    if OPENAI_KEY and OPENAI_KEY != "your-openai-api-key-here":
-        try:
-            os.environ["OPENAI_API_KEY"] = OPENAI_KEY
-            from mem0 import Memory
-            return {"memory": Memory(), "type": "mem0"}
-        except:
-            pass
-    return DummyMem0Store()
+    """Create a real Mem0 store if keys are available, else Dummy."""
+    if not HAS_OPENAI_KEY:
+        return DummyMem0Store()
+    try:
+        os.environ["OPENAI_API_KEY"] = os.environ.get("OPENAI_API_KEY", "")
+        from mem0 import Memory
+        return {"memory": Memory(), "type": "mem0"}
+    except Exception as e:
+        print(f"  Mem0 real init failed, falling back to dummy: {e}", file=sys.stderr)
+        return DummyMem0Store()
 
 
 def store_document(store, doc_id, text, metadata=None):
@@ -66,15 +73,31 @@ def store_document(store, doc_id, text, metadata=None):
 def search_store(store, query, limit=3):
     stype = store["type"] if isinstance(store, dict) else getattr(store, "type", "")
     if stype == "memanto":
-        result = store["search"].query(namespaces=[store["namespace"]], query=query, top_k=limit)
-        return result.get("results", [])
+        try:
+            result = store["client"].search.query(
+                namespaces=[store["namespace"]], query=query, top_k=limit
+            )
+            return result.get("results", [])
+        except AttributeError:
+            return {}
     else:
         return store.search(query, limit=limit)
+
+
+def compute_p95(values):
+    """Compute the 95th percentile using ceiling-based rank."""
+    if not values:
+        return 0.0
+    sorted_v = sorted(values)
+    idx = math.ceil(len(sorted_v) * 0.95) - 1
+    idx = max(0, min(idx, len(sorted_v) - 1))
+    return sorted_v[idx]
 
 
 class DummyMemantoStore:
     def __init__(self):
         self.memories = []
+        self.type = "dummy_memanto"
     def add(self, key, value):
         self.memories.append((key, value))
     def search(self, query, limit=3):
@@ -97,17 +120,27 @@ def benchmark_system(name, factory, logs):
         store = factory()
         turn_metrics = []
         for i, log_entry in enumerate(logs[:NUM_TURNS]):
-            start = time.time()
-            if HAS_REAL:
+            try:
+                start = time.time()
                 store_document(store, f"log_{run}_{i}", log_entry, {"run": run, "turn": i})
                 retrieved = search_store(store, "What happened in this system?", limit=3)
-            else:
-                store.add(f"log_{i}", {"content": log_entry})
-                retrieved = store.search("What happened?", limit=3)
-                # Convert dummy store results to list of dicts
-                if retrieved and not isinstance(retrieved[0], dict):
-                    retrieved = [{"text": r.get("content", "")} for r in (retrieved or [])]
-            latency = time.time() - start
+                latency = time.time() - start
+            except Exception as e:
+                # On failure, record a failed turn and carry on
+                print(f"  Turn {i+1} failed: {e}", file=sys.stderr)
+                turn_metrics.append({
+                    "turn": i + 1,
+                    "input_chars": len(log_entry),
+                    "retrieved_chars": 0,
+                    "latency_seconds": 0.0,
+                    "num_results": 0,
+                    "error": str(e),
+                })
+                continue
+
+            # Normalise dummy vs real result format
+            if retrieved and not isinstance(retrieved[0], dict):
+                retrieved = [{"text": r.get("content", "")} for r in (retrieved or [])]
             turn_metrics.append({
                 "turn": i + 1,
                 "input_chars": len(log_entry),
@@ -119,17 +152,15 @@ def benchmark_system(name, factory, logs):
 
     all_lat = [t["latency_seconds"] for run in results for t in run]
     all_ret = [t["retrieved_chars"] for run in results for t in run]
-    sorted_lat = sorted(all_lat)
-    p95_idx = int(len(sorted_lat) * 0.95)
 
     return {
         "system": name,
-        "mode": "real" if HAS_REAL else "dummy",
+        "mode": "real" if HAS_MOORCHEH_KEY else "dummy",
         "total_input_chars": sum(t["input_chars"] for run in results for t in run),
         "total_retrieved_chars": sum(all_ret),
-        "mean_latency": round(statistics.mean(all_lat), 3),
-        "p95_latency": round(sorted_lat[p95_idx] if p95_idx < len(sorted_lat) else sorted_lat[-1], 3),
-        "avg_results_per_query": round(statistics.mean([t["num_results"] for run in results for t in run]), 1),
+        "mean_latency": round(statistics.mean(all_lat), 3) if all_lat else 0,
+        "p95_latency": round(compute_p95(all_lat), 3),
+        "avg_results_per_query": round(statistics.mean([t["num_results"] for run in results for t in run]), 1) if all_lat else 0,
     }
 
 
@@ -138,7 +169,7 @@ def main():
     print("Benchmark A: Context-Overhead & Latency Sprint")
     print("=" * 60)
     print(f"\nRuns: {NUM_RUNS} | Turns: {NUM_TURNS}")
-    print(f"Mode: {'REAL API' if HAS_REAL else 'DUMMY (no real keys)'}")
+    print(f"Mode: {'REAL API' if HAS_MOORCHEH_KEY else 'DUMMY (no real keys)'}")
     print()
 
     r1 = benchmark_system("Memanto (Moorcheh)", create_memanto_store, TECHNICAL_LOGS)

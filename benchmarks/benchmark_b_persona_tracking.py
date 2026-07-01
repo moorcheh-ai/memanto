@@ -41,6 +41,30 @@ PREFERENCE_STREAMS = [
      "User wants a separate workout playlist: high energy, 80s rock only"],
 ]
 
+# ── Shared dummy stores ─────────────────────────────────────
+
+class DummyMemantoStore:
+    def __init__(self):
+        self.memories = []
+    def add(self, key, value):
+        self.memories.append((key, value))
+    def search(self, query, limit=5):
+        results = [{"content": v.get("content",""), "score":0.8} for _,v in self.memories[-10:]]
+        return results[:limit]
+
+
+class DummyMem0Store:
+    def __init__(self):
+        self.memories = {}
+        self.type = "dummy_mem0"
+    def add(self, key, value):
+        self.memories[key] = value
+    def search(self, query, limit=5):
+        results = [{"content": v.get("content",""), "score":0.7} for _,v in list(self.memories.items())[-10:]]
+        return results[:limit]
+
+
+# ── Store factories ─────────────────────────────────────────
 
 def get_memanto_store():
     if HAS_KEYS:
@@ -60,33 +84,15 @@ def get_mem0_store():
         return DummyMem0Store()
 
 
-class DummyMemantoStore:
-    def __init__(self):
-        self.memories = []
-    def add(self, key, value):
-        self.memories.append((key, value))
-    def search(self, query, limit=5):
-        results = [{"content": v.get("content",""), "score":0.8} for _,v in self.memories[-10:]]
-        return results[:limit]
-
-
-class DummyMem0Store:
-    def __init__(self):
-        self.memories = {}
-    def add(self, key, value):
-        self.memories[key] = value
-    def search(self, query, limit=5):
-        results = [{"content": v.get("content",""), "score":0.7} for _,v in list(self.memories.items())[-10:]]
-        return results[:limit]
-
+# ── Test runner ─────────────────────────────────────────────
 
 def test_system(name, store_factory, streams):
     store = store_factory()
     session_results = []
     for sidx, prefs in enumerate(streams):
         start = time.time()
-        for pref in prefs:
-            store.add(f"pref_s{sidx}", {"content": pref, "session": sidx})
+        for pidx, pref in enumerate(prefs):
+            store.add(f"pref_s{sidx}_p{pidx}", {"content": pref, "session": sidx})
         recalled = store.search("What music does the user currently enjoy?", limit=5)
         session_results.append({
             "session": sidx + 1,
@@ -121,14 +127,15 @@ def main():
     print(f"API mode: {'REAL (keys detected)' if HAS_KEYS else 'DUMMY (no keys)'}")
     print()
 
-    for name, factory in [("Memanto", get_memanto_store), ("Mem0", get_mem0_store)]:
-        r = test_system(name, factory, PREFERENCE_STREAMS)
-        print(f"{name}: Accuracy {r['accuracy_score']} | Latency {r['mean_latency']}s")
+    # Run once, store results, reuse for both console and JSON
+    r1 = test_system("Memanto", get_memanto_store, PREFERENCE_STREAMS)
+    r2 = test_system("Mem0", get_mem0_store, PREFERENCE_STREAMS)
+    print(f"  Memanto: Accuracy {r1['accuracy_score']} | Latency {r1['mean_latency']}s")
+    print(f"  Mem0: Accuracy {r2['accuracy_score']} | Latency {r2['mean_latency']}s")
 
     os.makedirs("results", exist_ok=True)
     with open("results/scenario_b_results.json", "w") as f:
-        json.dump({"scenario":"B","memanto":test_system("Memanto",get_memanto_store,PREFERENCE_STREAMS),
-                   "mem0":test_system("Mem0",get_mem0_store,PREFERENCE_STREAMS),
+        json.dump({"scenario":"B","memanto": r1, "mem0": r2,
                    "timestamp":datetime.now().isoformat()}, f, indent=2)
     print(f"\n✅ Results saved")
 
