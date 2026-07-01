@@ -474,12 +474,19 @@ try:
     )
     print(f"    小文件上传状态码: {resp.status_code}")
     # 伪造 Content-Length 测试: 声明 10 字节但发送 100MB+
-    chunk = b"X" * (10 * 1024 * 1024)
+    # 注意: requests 使用 data= 时会自动覆盖 Content-Length,
+    # 需使用 data 生成器来绕过 requests 的自动计算
+    class _ChunkedFake:
+        """生成器类，使 requests 不会自动设置 Content-Length"""
+        def __init__(self):
+            self._data = b"X" * (10 * 1024 * 1024)  # 10MB
+        def __iter__(self):
+            yield self._data
     headers_fake = {"Content-Type": "application/octet-stream",
                     "Content-Length": "10"}
     resp2 = requests.post(
         f"{TARGET}/api/v2/upload",
-        data=chunk * 11,  # ~110MB
+        data=_ChunkedFake(),
         headers=headers_fake,
         timeout=3
     )
@@ -564,32 +571,45 @@ if not resolved_secret_key or resolved_secret_key == "memanto-default-secret-cha
 
 当前建议仅检查 `Content-Length` 请求头，这可以被攻击者伪造。推荐改用**流式读取 + 字节计数器**或框架级中间件：
 
-**方案 A：FastAPI UploadFile 字节计数器（推荐）**
+**方案 A：FastAPI UploadFile 流式验证（推荐）**
 ```python
 from fastapi import UploadFile, HTTPException
+import tempfile
+import os
 
 MAX_FILE_SIZE = 100 * 1024 * 1024  # 100MB
 
-async def validate_upload_size(file: UploadFile) -> bytes:
+async def validate_upload_stream(file: UploadFile) -> str:
+    """流式验证文件大小并写入临时文件（不缓冲到内存）"""
     bytes_read = 0
-    chunks = []
-    while True:
-        chunk = await file.read(8192)  # 8KB 流式读取
-        if not chunk:
-            break
-        bytes_read += len(chunk)
-        if bytes_read > MAX_FILE_SIZE:
-            raise HTTPException(status_code=413, detail="File too large")
-        chunks.append(chunk)
-    return b"".join(chunks)
+    tmp = tempfile.NamedTemporaryFile(delete=False)
+    try:
+        while True:
+            chunk = await file.read(8192)
+            if not chunk:
+                break
+            bytes_read += len(chunk)
+            if bytes_read > MAX_FILE_SIZE:
+                raise HTTPException(status_code=413, detail="File too large")
+            tmp.write(chunk)  # 写入磁盘而非内存
+        tmp_path = tmp.name
+        tmp.close()
+        return tmp_path  # 返回临时文件路径供下游使用
+    except Exception:
+        tmp.close()
+        os.unlink(tmp.name)
+        raise
 
 # 使用方式
-file_bytes = await validate_upload_size(file)
+tmp_path = await validate_upload_stream(file)
+# 下游从 tmp_path 读取文件内容
 ```
 
-**方案 B：Starlette 请求体大小中间件**
+**方案 B：Starlette/ASGI 中间件（使用 `request.body()` 避免流耗尽）**
 ```python
 from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.requests import Request
+import io
 
 class MaxBodySizeMiddleware(BaseHTTPMiddleware):
     def __init__(self, app, max_size: int = 100 * 1024 * 1024):
@@ -600,17 +620,30 @@ class MaxBodySizeMiddleware(BaseHTTPMiddleware):
         content_length = request.headers.get("content-length")
         if content_length and int(content_length) > self.max_size:
             raise HTTPException(status_code=413, detail="File too large")
-        # 额外检查实际发送内容（处理伪造 Content-Length）
+        # 使用 request.body() 读取并重建 Request，避免耗尽 stream
         if request.method in ("POST", "PUT", "PATCH"):
-            actual = 0
-            async for chunk in request.stream():
-                actual += len(chunk)
-                if actual > self.max_size:
-                    raise HTTPException(status_code=413, detail="File too large")
+            body = await request.body()
+            if len(body) > self.max_size:
+                raise HTTPException(status_code=413, detail="File too large")
+            # 重建 Request 对象，使下游仍可读取 body
+            new_request = Request(request.scope, receiver=io.BytesIO(body))
+            return await call_next(new_request)
         return await call_next(request)
 ```
 
-**方案 C：使用 FastAPI 内置中间件**（如 `max_request_size`）
+**方案 C：ASGI 服务器级别限制（推荐生产环境）**
+在 Uvicorn / Gunicorn 级别配置，而非应用层：
+
+```bash
+# Uvicorn 启动时限制请求体大小
+uvicorn main:app --limit-max-request-body-size=104857600  # 100MB
+
+# 或通过反向代理（如 nginx）
+# nginx.conf:
+# client_max_body_size 100M;
+```
+
+> **注意**：FastAPI/Starlette 本身**没有**内置的 `max_request_size` 中间件。请求体大小限制通常在 **ASGI 服务器层**（Uvicorn 的 `--limit-max-request-body-size`）或**反向代理层**（nginx `client_max_body_size`）实现。应用层方案 A（流式验证）提供了额外安全层，可以防御伪造 Content-Length 的攻击。
 
 ### 漏洞六：JWT 验证
 ```python
