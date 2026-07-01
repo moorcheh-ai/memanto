@@ -46,13 +46,14 @@ def test_batch_remember_skips_malformed_item_results() -> None:
     lifecycle = FakeLifecycle(
         {
             "namespace": "memanto_agent_test-agent",
-            "total_submitted": 3,
-            "successful": 2,
+            "total_submitted": 4,
+            "successful": 3,
             "failed": 1,
             "results": [
                 "stored",
                 {"id": "mem-2", "status": "queued"},
                 {"id": "mem-3", "status": "failed", "error": "backend rejected"},
+                {"id": 123, "status": None, "error": {"reason": "coerced"}},
             ],
         }
     )
@@ -63,13 +64,16 @@ def test_batch_remember_skips_malformed_item_results() -> None:
             {"content": "First memory"},
             {"content": "Second memory"},
             {"content": "Third memory"},
+            {"content": "Fourth memory"},
         ],
         agent_id="test-agent",
     )
 
     assert result.status == "ok"
-    assert result.total_submitted == 3
-    assert result.successful == 2
+    assert result.total_submitted == 4
+    assert result.successful == 3
     assert result.failed == 1
-    assert [item.id for item in result.results] == ["mem-2", "mem-3"]
+    assert [item.id for item in result.results] == ["mem-2", "mem-3", "123"]
     assert result.results[1].error == "backend rejected"
+    assert result.results[2].status == "queued"
+    assert result.results[2].error == "{'reason': 'coerced'}"

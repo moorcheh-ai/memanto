@@ -910,6 +910,10 @@ def _to_memory_hit(raw: dict[str, Any]) -> MemoryHit:
     )
 
 
+def _string_or_none(value: Any) -> str | None:
+    return str(value) if value is not None else None
+
+
 def _to_batch_item_results(raw_results: Any) -> list[BatchRememberItemResult]:
     """Normalize per-item batch results without failing on malformed rows."""
     if not isinstance(raw_results, list):
@@ -919,11 +923,14 @@ def _to_batch_item_results(raw_results: Any) -> list[BatchRememberItemResult]:
     for raw in raw_results:
         if not isinstance(raw, dict):
             continue
-        items.append(
-            BatchRememberItemResult(
-                id=raw.get("id"),
-                status=str(raw.get("status") or "queued"),
-                error=raw.get("error"),
+        try:
+            items.append(
+                BatchRememberItemResult(
+                    id=_string_or_none(raw.get("id")),
+                    status=str(raw.get("status") or "queued"),
+                    error=_string_or_none(raw.get("error")),
+                )
             )
-        )
+        except (TypeError, ValueError):
+            continue
     return items
