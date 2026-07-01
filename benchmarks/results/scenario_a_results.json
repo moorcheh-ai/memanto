@@ -1,0 +1,22 @@
+{
+  "scenario": "A - Context-Overhead & Latency Sprint",
+  "memanto": {
+    "system": "Memanto",
+    "total_input_tokens": 2760,
+    "total_retrieved_tokens": 8295,
+    "mean_latency": 0.0,
+    "p95_latency": 0.0,
+    "avg_results_per_query": 2.7,
+    "runs_completed": 3
+  },
+  "mem0": {
+    "system": "Mem0",
+    "total_input_tokens": 2760,
+    "total_retrieved_tokens": 8295,
+    "mean_latency": 0.0,
+    "p95_latency": 0.0,
+    "avg_results_per_query": 2.7,
+    "runs_completed": 3
+  },
+  "timestamp": "2026-07-02T03:27:31.431643"
+}
