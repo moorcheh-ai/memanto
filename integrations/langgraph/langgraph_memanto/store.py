@@ -8,7 +8,8 @@ Mapping between abstractions
 ----------------------------
 
     BaseStore                         ->  Memanto
-    namespace (tuple[str, ...])       ->  agent_id       (``langgraph_<p0>_<p1>...``)
+    namespace (tuple[str, ...])       ->  agent_id       (legacy ``langgraph_<p0>_<p1>...``
+                                               or encoded when needed)
     key (str)                         ->  reserved tag   ``lg:key:<key>``
     value["kind"] / value["type"]     ->  memory_type    (auto-parsed if absent)
     value["title"]                    ->  title          (auto-derived if absent)
@@ -103,14 +104,14 @@ class MemantoStore(BaseStore):
         self._lock = threading.RLock()
         self._client_pool: dict[str, SdkClient] = {}
         self._agent_prefix = "langgraph_"
+        self._encoded_namespace_prefix = f"{self._agent_prefix}ns_"
         # (namespace, query, limit, type, min_sim) -> (timestamp, list[SearchItem])
         self._search_cache: dict[tuple, tuple[float, list[SearchItem]]] = {}
         # Survives 429s without flashing the UI panel to zero.
         self._last_good: dict[tuple[str, ...], list[SearchItem]] = {}
 
     def _ensure_client(self, namespace: tuple[str, ...]) -> tuple[SdkClient, str]:
-        ns_str = "_".join(namespace) or "default"
-        agent_id = f"{self._agent_prefix}{ns_str}"
+        agent_id = self._namespace_to_agent_id(namespace)
         with self._lock:
             if agent_id in self._client_pool:
                 return self._client_pool[agent_id], agent_id
@@ -384,12 +385,9 @@ class MemantoStore(BaseStore):
         namespaces = []
         for agent in agents:
             agent_id = agent.get("agent_id") or agent.get("id") or ""
-            if agent_id.startswith(self._agent_prefix):
-                ns_str = agent_id[len(self._agent_prefix) :]
-                if ns_str == "default":
-                    namespaces.append(())
-                else:
-                    namespaces.append(tuple(ns_str.split("_")))
+            namespace = self._agent_id_to_namespace(agent_id)
+            if namespace is not None:
+                namespaces.append(namespace)
 
         if op.match_conditions:
             for cond in op.match_conditions:
@@ -414,6 +412,54 @@ class MemantoStore(BaseStore):
     @staticmethod
     def _key_to_tag(key: str) -> str:
         return f"{_KEY_TAG_PREFIX}{key}"
+
+    def _namespace_to_agent_id(self, namespace: tuple[str, ...]) -> str:
+        if not namespace:
+            return f"{self._agent_prefix}default"
+
+        parts = tuple(str(part) for part in namespace)
+        if all(part and "_" not in part for part in parts):
+            return f"{self._agent_prefix}{'_'.join(parts)}"
+
+        encoded = "_".join(self._encode_namespace_part(part) for part in parts)
+        return f"{self._encoded_namespace_prefix}{encoded}"
+
+    def _agent_id_to_namespace(self, agent_id: str) -> tuple[str, ...] | None:
+        if not agent_id.startswith(self._agent_prefix):
+            return None
+
+        ns_str = agent_id[len(self._agent_prefix) :]
+        if ns_str == "default":
+            return ()
+
+        if agent_id.startswith(self._encoded_namespace_prefix):
+            encoded = agent_id[len(self._encoded_namespace_prefix) :]
+            try:
+                return tuple(
+                    self._decode_namespace_part(part) for part in encoded.split("_")
+                )
+            except (UnicodeDecodeError, ValueError):
+                logger.warning(
+                    "MemantoStore: failed to decode encoded LangGraph namespace %r",
+                    agent_id,
+                )
+
+        # Backward compatibility for agents created before namespace encoding.
+        return tuple(ns_str.split("_"))
+
+    @staticmethod
+    def _encode_namespace_part(part: str) -> str:
+        raw = part.encode("utf-8")
+        return f"{len(raw):x}x{raw.hex()}"
+
+    @staticmethod
+    def _decode_namespace_part(part: str) -> str:
+        length_hex, encoded = part.split("x", 1)
+        raw = bytes.fromhex(encoded)
+        expected_length = int(length_hex, 16)
+        if len(raw) != expected_length:
+            raise ValueError("encoded namespace component length mismatch")
+        return raw.decode("utf-8")
 
     @staticmethod
     def _tags_to_key(tags: list[str]) -> str | None:

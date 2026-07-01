@@ -56,6 +56,26 @@ def test_ensure_client_empty_namespace(mock_sdk_client):
     assert agent_id == "langgraph_default"
 
 
+def test_ensure_client_encodes_underscore_namespace_without_collision(mock_sdk_client):
+    store = MemantoStore(api_key="test_key")
+    client_instance = MagicMock()
+    mock_sdk_client.return_value = client_instance
+
+    _, underscored_agent_id = store._ensure_client(("team_a",))
+    _, split_agent_id = store._ensure_client(("team", "a"))
+
+    assert underscored_agent_id == "langgraph_ns_6x7465616d5f61"
+    assert split_agent_id == "langgraph_team_a"
+    assert underscored_agent_id != split_agent_id
+
+    client_instance.create_agent.assert_any_call(
+        agent_id="langgraph_ns_6x7465616d5f61", pattern="tool"
+    )
+    client_instance.create_agent.assert_any_call(
+        agent_id="langgraph_team_a", pattern="tool"
+    )
+
+
 def test_do_get_recent_success(mock_sdk_client):
     store = MemantoStore(api_key="test_key")
     client_instance = MagicMock()
@@ -89,7 +109,7 @@ def test_do_get_recent_success(mock_sdk_client):
     assert item.value["kind"] == "fact"
 
     client_instance.recall_recent.assert_called_once_with(
-        agent_id="langgraph_my_ns", limit=100
+        agent_id="langgraph_ns_5x6d795f6e73", limit=100
     )
 
 
@@ -123,7 +143,10 @@ def test_do_get_fallback_success(mock_sdk_client):
     assert item is not None
     assert item.value["content"] == "fallback content"
     client_instance.recall.assert_called_once_with(
-        agent_id="langgraph_my_ns", query="my_key", limit=100, tags=["lg:key:my_key"]
+        agent_id="langgraph_ns_5x6d795f6e73",
+        query="my_key",
+        limit=100,
+        tags=["lg:key:my_key"],
     )
 
 
@@ -154,7 +177,7 @@ def test_do_put_success(mock_sdk_client):
     store._do_put(op)
 
     client_instance.remember.assert_called_once_with(
-        agent_id="langgraph_my_ns",
+        agent_id="langgraph_ns_5x6d795f6e73",
         memory_type="fact",
         title="fact title",
         content="my new fact",
@@ -198,7 +221,7 @@ def test_do_search_recent(mock_sdk_client):
     assert len(items) == 1
     assert items[0].key == "key1"
     client_instance.recall_recent.assert_called_once_with(
-        agent_id="langgraph_my_ns", limit=100, type=None
+        agent_id="langgraph_ns_5x6d795f6e73", limit=100, type=None
     )
 
 
@@ -226,7 +249,7 @@ def test_do_search_semantic(mock_sdk_client):
     assert len(items) == 1
     assert items[0].key == "key2"
     client_instance.recall.assert_called_once_with(
-        agent_id="langgraph_my_ns",
+        agent_id="langgraph_ns_5x6d795f6e73",
         query="test query",
         limit=10,
         type=["observation"],
@@ -276,6 +299,24 @@ def test_do_list_namespaces(mock_sdk_client):
     assert ("my", "ns") in namespaces
     assert ("other", "ns", "sub") in namespaces
     assert len(namespaces) == 3
+
+
+def test_do_list_namespaces_decodes_encoded_underscore_namespaces(mock_sdk_client):
+    store = MemantoStore(api_key="test_key")
+    client_instance = MagicMock()
+    mock_sdk_client.return_value = client_instance
+
+    client_instance.list_agents.return_value = [
+        {"agent_id": "langgraph_default"},
+        {"agent_id": "langgraph_team_a"},
+        {"agent_id": "langgraph_ns_6x7465616d5f61"},
+        {"agent_id": "unrelated_agent"},
+    ]
+
+    op = ListNamespacesOp()
+    namespaces = store._do_list_namespaces(op)
+
+    assert namespaces == [(), ("team", "a"), ("team_a",)]
 
 
 def test_do_list_namespaces_match_conditions(mock_sdk_client):
