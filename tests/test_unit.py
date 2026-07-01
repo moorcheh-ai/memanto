@@ -304,8 +304,7 @@ class TestMemoryReadServiceFormatting:
                 "Tags: this is part of the runbook body, not metadata.\n\n"
                 "Then record the rollback owner."
             ),
-            scope_type="agent",
-            scope_id="ops-agent",
+            agent_id="ops-agent",
             actor_id="ops-agent",
             source="agent",
             tags=["deploy", "runbook"],
