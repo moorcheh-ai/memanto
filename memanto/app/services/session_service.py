@@ -6,7 +6,6 @@ Uses JWT tokens for stateless authentication.
 """
 
 import json
-import secrets
 import logging
 import os
 from datetime import timedelta
@@ -64,7 +63,7 @@ class SessionService:
         resolved_secret_key = (
             secret_key
             or os.getenv("MEMANTO_SECRET_KEY")
-            or secrets.token_hex(32)
+            or ""
         )
         self.secret_key: str = resolved_secret_key
         self.sessions_dir = sessions_dir or get_data_dir() / "sessions"
