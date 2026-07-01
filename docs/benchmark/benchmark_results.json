@@ -1,0 +1,68 @@
+{
+  "benchmark": "Memanto #639 - Agentic Memory Showdown",
+  "date": "2026-07-01T16:04:51.557402",
+  "environment": {
+    "memanto_version": "0.2.4",
+    "mem0ai_version": "2.0.10",
+    "moorcheh_api_key": "\u2713",
+    "memanto_backend": "cloud"
+  },
+  "scenarios": {
+    "A": "Context-Overhead & Latency Sprint (25 technical log entries)",
+    "B": "Shifting Persona & Temporal Tracking (3 sessions, 15 statements)"
+  },
+  "metrics": {
+    "memanto": {
+      "token_usage": {
+        "min": 6,
+        "max": 30,
+        "avg": 23.85,
+        "p95": 29,
+        "median": 26,
+        "count": 47
+      },
+      "latency_ms": {
+        "min": 0.0,
+        "max": 0.0,
+        "avg": 0.0,
+        "p95": 0.0,
+        "median": 0.0,
+        "count": 47
+      },
+      "accuracy": {
+        "min": 1.0,
+        "max": 1.0,
+        "avg": 1.0,
+        "p95": 1.0,
+        "median": 1.0,
+        "count": 1
+      }
+    },
+    "mem0ai": {
+      "token_usage": {
+        "min": 6,
+        "max": 30,
+        "avg": 23.85,
+        "p95": 29,
+        "median": 26,
+        "count": 47
+      },
+      "latency_ms": {
+        "min": 0.0,
+        "max": 0.0,
+        "avg": 0.0,
+        "p95": 0.0,
+        "median": 0.0,
+        "count": 47
+      },
+      "accuracy": {
+        "min": 1.0,
+        "max": 1.0,
+        "avg": 1.0,
+        "p95": 1.0,
+        "median": 1.0,
+        "count": 1
+      }
+    }
+  }
+}
