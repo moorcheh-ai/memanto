@@ -63,8 +63,11 @@ class SessionService:
         resolved_secret_key = (
             secret_key
             or os.getenv("MEMANTO_SECRET_KEY")
-            or "memanto-default-secret-change-in-production"
         )
+        if not resolved_secret_key:
+            raise RuntimeError(
+                "MEMANTO_SECRET_KEY is not configured. Set a strong secret before starting MEMANTO."
+            )
         self.secret_key: str = resolved_secret_key
         self.sessions_dir = sessions_dir or get_data_dir() / "sessions"
         self.sessions_dir.mkdir(parents=True, exist_ok=True)
