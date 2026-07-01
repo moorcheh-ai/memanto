@@ -275,3 +275,65 @@ def test_concurrent_agent_ids_do_not_cross_contaminate():
         f"Cross-tenant session clobber detected in {len(violations)} case(s): "
         + violations[0]
     )
+
+
+def test_concurrent_remember_nodes_do_not_cross_contaminate():
+    """create_remember_node has the same setup/retry block as create_recall_node
+    and must also be safe under concurrent calls for different agent_ids.
+    """
+
+    class _StrictRememberClient:
+        def __init__(self) -> None:
+            self.agent_id: str | None = None
+
+        def create_agent(self, agent_id: str, pattern: str | None = None) -> None:
+            pass
+
+        def activate_agent(
+            self, agent_id: str, duration_hours: int | None = None
+        ) -> dict[str, str]:
+            self.agent_id = agent_id
+            time.sleep(0.001)
+            return {"session_token": f"tok-{agent_id}"}
+
+        def remember(self, agent_id: str, **kwargs: Any) -> None:
+            if self.agent_id != agent_id:
+                raise RuntimeError(
+                    f"cross-tenant: client.agent_id={self.agent_id!r}, "
+                    f"remember for {agent_id!r}"
+                )
+
+    violations: list[str] = []
+    worker_errors: list[str] = []
+
+    for _ in range(10):
+        client = _StrictRememberClient()
+        alice_node = create_remember_node(client=client, agent_id="alice")
+        bob_node = create_remember_node(client=client, agent_id="bob")
+        barrier = threading.Barrier(2)
+
+        def run_remember(node: Any, name: str) -> None:
+            try:
+                barrier.wait()
+                node({"messages": [HumanMessage(content=f"I am {name}")]})
+            except Exception as exc:  # noqa: BLE001
+                violations.append(f"{name}: {exc}")
+
+        threads = [
+            threading.Thread(
+                target=run_remember, args=(alice_node, "alice"), name="alice"
+            ),
+            threading.Thread(
+                target=run_remember, args=(bob_node, "bob"), name="bob"
+            ),
+        ]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join(timeout=5)
+        assert all(not t.is_alive() for t in threads), "worker thread did not finish"
+
+    assert not worker_errors, f"Worker thread raised: {worker_errors[0]}"
+    assert not violations, (
+        f"Cross-tenant session clobber in remember_node: {violations[0]}"
+    )

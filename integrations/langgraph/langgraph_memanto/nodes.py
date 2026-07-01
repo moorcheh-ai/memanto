@@ -1,5 +1,6 @@
 import logging
 import threading
+import weakref
 from typing import Any
 
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
@@ -15,17 +16,22 @@ logger = logging.getLogger(__name__)
 # thread-A retries recall("alice") and gets a SessionError because the client
 # now believes the active agent is "bob".  The lock makes the
 # activate → api-call sequence atomic per client instance.
-_CLIENT_SETUP_LOCKS: dict[int, threading.Lock] = {}
+#
+# WeakValueDictionary keyed by client object: when a client is garbage-collected
+# the entry is removed automatically, preventing unbounded accumulation of stale
+# locks for short-lived SdkClient instances.
+_CLIENT_SETUP_LOCKS: weakref.WeakValueDictionary = weakref.WeakValueDictionary()
 _CLIENT_SETUP_LOCKS_MUTEX = threading.Lock()
 
 
 def _get_client_lock(client: Any) -> threading.Lock:
     """Return (creating if needed) the exclusive setup lock for *client*."""
-    cid = id(client)
     with _CLIENT_SETUP_LOCKS_MUTEX:
-        if cid not in _CLIENT_SETUP_LOCKS:
-            _CLIENT_SETUP_LOCKS[cid] = threading.Lock()
-        return _CLIENT_SETUP_LOCKS[cid]
+        lock = _CLIENT_SETUP_LOCKS.get(client)
+        if lock is None:
+            lock = threading.Lock()
+            _CLIENT_SETUP_LOCKS[client] = lock
+        return lock
 
 
 def _extract_text_content(content: Any) -> str:
