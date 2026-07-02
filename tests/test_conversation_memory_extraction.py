@@ -80,6 +80,44 @@ def test_extract_conversation_memories_normalizes_candidates():
     assert "user:" in client.answer.call_kwargs["query"]
 
 
+def test_extract_drops_secret_like_candidates():
+    client = FakeClient(
+        """
+        [
+          {
+            "type": "fact",
+            "title": "Deployment token",
+            "content": "The production API key is sk-test-1234567890abcdef.",
+            "confidence": 0.99
+          },
+          {
+            "type": "preference",
+            "title": "Review style",
+            "content": "The user prefers short pull request summaries.",
+            "confidence": 0.9
+          }
+        ]
+        """
+    )
+
+    service = ConversationMemoryExtractionService(client)
+    candidates = service.extract(
+        namespace="memanto_agent_test",
+        messages=[{"role": "user", "content": "Keep summaries short."}],
+    )
+
+    assert candidates == [
+        {
+            "type": "preference",
+            "title": "Review style",
+            "content": "The user prefers short pull request summaries.",
+            "confidence": 0.9,
+            "source": "conversation",
+            "provenance": "inferred",
+        }
+    ]
+
+
 def test_extract_rejects_non_json_answers():
     service = ConversationMemoryExtractionService(FakeClient("not json"))
 

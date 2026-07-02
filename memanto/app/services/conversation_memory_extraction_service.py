@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import json
 import re
-from typing import Any
+from typing import Any, ClassVar
 
 from memanto.app.constants import VALID_MEMORY_TYPES
 
@@ -20,6 +20,20 @@ class ConversationMemoryExtractionService:
     MAX_MESSAGES = 200
     MAX_MEMORIES = 100
     MAX_CONTENT_CHARS = 12_000
+    SENSITIVE_VALUE_PATTERNS: ClassVar[tuple[re.Pattern[str], ...]] = (
+        re.compile(
+            r"\b(?:api[_\s-]?key|secret|password|passwd|token|credential|authorization|bearer)\b"
+            r"\s*(?:[:=]|is|was)\s*\S+",
+            re.IGNORECASE,
+        ),
+        re.compile(r"\b(?:sk|mch)-[A-Za-z0-9][A-Za-z0-9_-]{10,}\b"),
+        re.compile(r"\bgh[pousr]_[A-Za-z0-9_]{20,}\b"),
+        re.compile(r"\bAKIA[0-9A-Z]{16}\b"),
+        re.compile(
+            r"\beyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\b"
+        ),
+        re.compile(r"-----BEGIN [A-Z ]*PRIVATE KEY-----"),
+    )
 
     def __init__(self, client: Any) -> None:
         self.client = client
@@ -146,6 +160,9 @@ class ConversationMemoryExtractionService:
             title = str(item.get("title") or content[:80]).strip()
             title = title[:100]
 
+            if self._contains_sensitive_value(title, content):
+                continue
+
             try:
                 confidence = float(item.get("confidence", 0.8))
             except (TypeError, ValueError):
@@ -174,3 +191,7 @@ class ConversationMemoryExtractionService:
             raise ValueError("Memory extraction produced no usable candidates")
 
         return normalized
+
+    def _contains_sensitive_value(self, *values: str) -> bool:
+        text = "\n".join(value for value in values if value)
+        return any(pattern.search(text) for pattern in self.SENSITIVE_VALUE_PATTERNS)
