@@ -430,6 +430,18 @@ async def extract_memories_from_conversation(
                 "count": len(candidates),
             }
 
+        if not candidates:
+            return {
+                "agent_id": agent_id,
+                "session_id": session.session_id,
+                "dry_run": False,
+                "candidates": [],
+                "total_submitted": 0,
+                "successful": 0,
+                "failed": 0,
+                "results": [],
+            }
+
         write_service = MemoryWriteService(client)
 
         from typing import cast

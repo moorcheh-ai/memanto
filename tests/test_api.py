@@ -923,6 +923,57 @@ class TestMEMANTOAPI:
         assert uploaded_doc["provenance"] == "inferred"
 
     @pytest.mark.asyncio
+    async def test_extract_memories_from_conversation_sensitive_only_noops(
+        self, client, auth_headers, mock_moorcheh
+    ):
+        """Sensitive-only extraction returns a clean no-op response."""
+        await client.post(
+            "/api/v2/agents",
+            headers=auth_headers,
+            json={"agent_id": self.TEST_AGENT_ID},
+        )
+        activate_resp = await client.post(
+            f"/api/v2/agents/{self.TEST_AGENT_ID}/activate", headers=auth_headers
+        )
+        assert activate_resp.status_code == 200, activate_resp.text
+        token = activate_resp.json()["session_token"]
+        headers = {**auth_headers, "X-Session-Token": token}
+
+        mock_moorcheh.answer.generate.return_value = {
+            "answer": json.dumps(
+                [
+                    {
+                        "type": "fact",
+                        "title": "Deployment token",
+                        "content": "Use token: ghp_1234567890abcdef1234567890abcdef1234",
+                        "confidence": 0.99,
+                    }
+                ]
+            ),
+            "sources": [],
+        }
+
+        response = await client.post(
+            f"/api/v2/agents/{self.TEST_AGENT_ID}/remember/extract",
+            headers=headers,
+            json={
+                "messages": [
+                    {"role": "user", "content": "Never persist this token."}
+                ],
+            },
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["dry_run"] is False
+        assert data["candidates"] == []
+        assert data["total_submitted"] == 0
+        assert data["successful"] == 0
+        assert data["failed"] == 0
+        assert data["results"] == []
+        mock_moorcheh.documents.upload.assert_not_called()
+
+    @pytest.mark.asyncio
     async def test_recall_temporal_api(self, client, auth_headers, mock_moorcheh):
         """Test temporal recall modes (POST + JSON body)"""
         await client.post(

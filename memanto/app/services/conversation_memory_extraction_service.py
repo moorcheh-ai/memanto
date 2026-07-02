@@ -23,7 +23,7 @@ class ConversationMemoryExtractionService:
     SENSITIVE_VALUE_PATTERNS: ClassVar[tuple[re.Pattern[str], ...]] = (
         re.compile(
             r"\b(?:api[_\s-]?key|secret|password|passwd|token|credential|authorization|bearer)\b"
-            r"\s*(?:[:=]|is|was)\s*\S+",
+            r"\s*[:=]\s*\S+",
             re.IGNORECASE,
         ),
         re.compile(r"\b(?:sk|mch)-[A-Za-z0-9][A-Za-z0-9_-]{10,}\b"),
@@ -140,6 +140,7 @@ class ConversationMemoryExtractionService:
 
         normalized: list[dict[str, Any]] = []
         seen: set[tuple[str | None, str]] = set()
+        skipped_sensitive = 0
 
         for item in parsed:
             if not isinstance(item, dict):
@@ -161,6 +162,7 @@ class ConversationMemoryExtractionService:
             title = title[:100]
 
             if self._contains_sensitive_value(title, content):
+                skipped_sensitive += 1
                 continue
 
             try:
@@ -188,6 +190,8 @@ class ConversationMemoryExtractionService:
                 break
 
         if not normalized:
+            if skipped_sensitive:
+                return []
             raise ValueError("Memory extraction produced no usable candidates")
 
         return normalized

@@ -118,6 +118,56 @@ def test_extract_drops_secret_like_candidates():
     ]
 
 
+def test_extract_keeps_non_secret_token_prose():
+    client = FakeClient(
+        """
+        [
+          {
+            "type": "fact",
+            "title": "Token budget",
+            "content": "The parser token budget should stay under 1000 characters.",
+            "confidence": 0.8
+          }
+        ]
+        """
+    )
+
+    service = ConversationMemoryExtractionService(client)
+    candidates = service.extract(
+        namespace="memanto_agent_test",
+        messages=[{"role": "user", "content": "Keep parser output small."}],
+    )
+
+    assert len(candidates) == 1
+    assert candidates[0]["title"] == "Token budget"
+    assert candidates[0]["content"] == (
+        "The parser token budget should stay under 1000 characters."
+    )
+
+
+def test_extract_returns_empty_when_only_secret_like_candidates():
+    client = FakeClient(
+        """
+        [
+          {
+            "type": "fact",
+            "title": "Deployment token",
+            "content": "Use token: ghp_1234567890abcdef1234567890abcdef1234",
+            "confidence": 0.99
+          }
+        ]
+        """
+    )
+
+    service = ConversationMemoryExtractionService(client)
+    candidates = service.extract(
+        namespace="memanto_agent_test",
+        messages=[{"role": "user", "content": "Never store this token."}],
+    )
+
+    assert candidates == []
+
+
 def test_extract_rejects_non_json_answers():
     service = ConversationMemoryExtractionService(FakeClient("not json"))
 
