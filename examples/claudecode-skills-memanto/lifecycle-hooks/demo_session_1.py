@@ -9,13 +9,13 @@ Memanto's backend LLM distill the durable engineering decisions into memory.
 
 Then run ``demo_session_2.py`` in a SEPARATE process to prove the decisions are
 recalled with zero shared in-process state.
+"""
+
 from __future__ import annotations
 
 from memanto_skills import SkillMemory
-import os
 
 SESSION_1_TRANSCRIPT = """
-user: /grill-with-docs let's nail down the architecture for the orders service
 user: /grill-with-docs let's nail down the architecture for the orders service
 assistant: A few questions to align on the design.
 user: We will use CQRS for the Order domain — commands and queries are separate.
@@ -31,24 +31,24 @@ assistant: Summary: CQRS for Orders, Postgres + Redis, Cart != Order, Money VO f
 """
 
 
-
-
 def main() -> None:
-    # Validate API key exists before attempting setup to fail fast with clear error
-    if not os.getenv("MOORCHEH_API_KEY"):
-        raise SystemExit("Error: MOORCHEH_API_KEY environment variable is not set.")
     mem = SkillMemory()
     mem.setup()
     print("Session 1: distilling /grill-with-docs decisions via Memanto's LLM…\n")
+def main() -> None:
+    mem = SkillMemory()
+    mem.setup()
+    print("Session 1: distilling /grill-with-docs decisions via Memanto's LLM...\n")
+    stored = mem.distill_and_store("grill-with-docs", SESSION_1_TRANSCRIPT)
+    if not stored:
         print("No memories were extracted. Check MOORCHEH_API_KEY and connectivity.")
-        return
-    print(f"Stored {len(stored)} engineering memories:")
-    for m in stored:
-        print(f"  - [{m['type']}] {m['content']}")
     print("\nNow run:  python demo_session_2.py")
 
 
-
 if __name__ == "__main__":
-    main()
-
+    try:
+        main()
+    except Exception as exc:
+        print(f"\n[error] {exc}")
+        print("Check that MOORCHEH_API_KEY is valid and your subscription is active.")
+        raise SystemExit(1)
