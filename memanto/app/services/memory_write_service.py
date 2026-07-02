@@ -349,7 +349,16 @@ class MemoryWriteService:
             elif metadata.get("ttl_seconds"):
                 updated_memory.ttl_seconds = metadata["ttl_seconds"]
                 if metadata.get("expires_at"):
-                    updated_memory.expires_at = metadata["expires_at"]
+                    raw_expiry = metadata["expires_at"]
+                    if isinstance(raw_expiry, str):
+                        try:
+                            updated_memory.expires_at = datetime.fromisoformat(
+                                raw_expiry.replace("Z", "+00:00")
+                            )
+                        except (ValueError, AttributeError):
+                            pass
+                    elif isinstance(raw_expiry, datetime):
+                        updated_memory.expires_at = raw_expiry
 
             # Step 3: Upload new version (overwrites existing document with same ID)
             from typing import Any, cast

@@ -48,6 +48,11 @@ class MemoryRecord(BaseModel):
     expires_at: datetime | None = None
     ttl_seconds: int | None = None
 
+    def model_post_init(self, _context: Any) -> None:
+        """Compute expires_at when ttl_seconds is provided via constructor."""
+        if self.ttl_seconds is not None and self.expires_at is None:
+            self.expires_at = datetime.utcnow() + timedelta(seconds=self.ttl_seconds)
+
     def to_moorcheh_document(self) -> dict[str, Any]:
         """
         Convert to Moorcheh document format with flat metadata fields.
@@ -86,7 +91,10 @@ class MemoryRecord(BaseModel):
         if self.tags:
             document["tags"] = ",".join(self.tags)  # Comma-separated for filtering
         if self.expires_at:
-            document["expires_at"] = self.expires_at.isoformat()
+            if isinstance(self.expires_at, datetime):
+                document["expires_at"] = self.expires_at.isoformat()
+            else:
+                document["expires_at"] = str(self.expires_at)
         if self.ttl_seconds:
             document["ttl_seconds"] = self.ttl_seconds
 
