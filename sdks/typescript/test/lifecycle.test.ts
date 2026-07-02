@@ -1,6 +1,8 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { spawn, type ChildProcess } from "node:child_process";
 import { createServer, type Server } from "node:http";
 import { AddressInfo } from "node:net";
+import { setTimeout as sleep } from "node:timers/promises";
 import { ServerLifecycle } from "../src/lifecycle.js";
 
 function startFakeHealthyServer(): Promise<{ url: string; close: () => void }> {
@@ -64,5 +66,27 @@ describe("ServerLifecycle", () => {
 
     expect(fetchSpy).not.toHaveBeenCalled();
     fetchSpy.mockRestore();
+  });
+
+  it("stop resolves when the spawned process has already exited", async () => {
+    const child = spawn(process.execPath, ["-e", "process.exit(0)"], {
+      stdio: "ignore",
+    });
+    await new Promise<void>((resolve) => child.once("exit", () => resolve()));
+
+    const life = new ServerLifecycle();
+    const internals = life as unknown as {
+      process: ChildProcess | null;
+      url: string | null;
+    };
+    internals.process = child;
+    internals.url = "http://127.0.0.1:1";
+
+    const result = await Promise.race([
+      life.stop().then(() => "stopped"),
+      sleep(200).then(() => "timed-out"),
+    ]);
+
+    expect(result).toBe("stopped");
   });
 });
