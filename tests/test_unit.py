@@ -14,6 +14,7 @@ from memanto.app.config import settings
 from memanto.app.models.session import AgentCreate, AgentPattern, SessionStatus
 from memanto.app.services.agent_service import AgentService
 from memanto.app.services.session_service import SessionService
+from memanto.app.utils.errors import ValidationError as MemantoValidationError
 
 
 class TestSessionService:
@@ -139,6 +140,25 @@ class TestSessionService:
 
         assert [session.agent_id for session in sessions] == [valid_session.agent_id]
 
+    @pytest.mark.parametrize("agent_id", ["../escaped", "..\\escaped", "bad/id"])
+    def test_session_agent_id_cannot_escape_session_dir(
+        self, session_service, agent_id
+    ):
+        """Agent ids used as filenames must not escape the session directory."""
+        with pytest.raises(MemantoValidationError):
+            session_service.create_session(agent_id=agent_id, duration_hours=1)
+
+        assert not (session_service.sessions_dir.parent / "escaped.json").exists()
+
+    def test_active_session_rejects_unsafe_marker(self, session_service):
+        """A tampered active marker must not make get_active_session read outside."""
+        (session_service.sessions_dir / "active").write_text("../escaped")
+        (session_service.sessions_dir.parent / "escaped.json").write_text("{}")
+
+        assert session_service.get_active_session() is None
+
+        assert (session_service.sessions_dir.parent / "escaped.json").exists()
+
 
 class TestAgentService:
     """Unit tests for AgentService"""
@@ -261,6 +281,14 @@ class TestAgentService:
         assert not agent_service.agent_exists("test-agent")
 
         print("✅ Agent deleted successfully")
+
+    @pytest.mark.parametrize("agent_id", ["../escaped", "..\\escaped", "bad/id"])
+    def test_agent_file_access_rejects_path_like_ids(self, agent_service, agent_id):
+        """Agent metadata lookups must stay confined to the agents directory."""
+        with pytest.raises(MemantoValidationError):
+            agent_service.agent_exists(agent_id)
+
+        assert not (agent_service.agents_dir.parent / "escaped.json").exists()
 
 
 class TestMemoryWriteServiceDelete:

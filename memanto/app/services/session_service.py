@@ -13,10 +13,10 @@ from pathlib import Path
 from typing import Any
 
 import jwt
-from pydantic import ValidationError
+from pydantic import ValidationError as PydanticValidationError
 
 from memanto.app.config import get_data_dir, settings
-from memanto.app.core import agent_namespace
+from memanto.app.core import agent_namespace, validate_agent_id
 from memanto.app.models.session import (
     AgentPattern,
     Session,
@@ -28,6 +28,9 @@ from memanto.app.utils.errors import (
     InvalidSessionTokenError,
     SessionExpiredError,
     SessionNotFoundError,
+)
+from memanto.app.utils.errors import (
+    ValidationError as MemantoValidationError,
 )
 from memanto.app.utils.ids import generate_id
 from memanto.app.utils.temporal_helpers import utc_now
@@ -99,6 +102,8 @@ class SessionService:
         Returns:
             Session object with JWT token
         """
+        self._validate_agent_id(agent_id)
+
         # Use config default if not explicitly provided
         if duration_hours is None:
             duration_hours = settings.SESSION_DEFAULT_DURATION_HOURS
@@ -177,7 +182,12 @@ class SessionService:
                     raise InvalidSessionTokenError(
                         f"Session {token.session_id} is no longer active"
                     )
-            except (OSError, json.JSONDecodeError, ValidationError) as exc:
+            except (
+                OSError,
+                json.JSONDecodeError,
+                PydanticValidationError,
+                MemantoValidationError,
+            ) as exc:
                 raise InvalidSessionTokenError(
                     f"Session {token.session_id} is no longer active"
                 ) from exc
@@ -199,6 +209,7 @@ class SessionService:
         Returns:
             Session object or None if not found
         """
+        self._validate_agent_id(agent_id)
         session_file = self.sessions_dir / f"{agent_id}.json"
         return self._load_session_file(session_file)
 
@@ -221,7 +232,11 @@ class SessionService:
             with open(active_link) as f:
                 agent_id = f.read().strip()
 
-        session = self.get_session(agent_id)
+        try:
+            session = self.get_session(agent_id)
+        except MemantoValidationError:
+            self._clear_active_session()
+            return None
         if not session:
             return None
 
@@ -336,6 +351,7 @@ class SessionService:
 
     def _save_session(self, session: Session) -> None:
         """Save session to file"""
+        self._validate_agent_id(session.agent_id)
         session_file = self.sessions_dir / f"{session.agent_id}.json"
         with open(session_file, "w") as f:
             json.dump(session.model_dump(mode="json"), f, indent=2)
@@ -349,7 +365,12 @@ class SessionService:
             with open(session_file) as f:
                 data = json.load(f)
             return Session(**data)
-        except (OSError, json.JSONDecodeError, TypeError, ValidationError) as exc:
+        except (
+            OSError,
+            json.JSONDecodeError,
+            TypeError,
+            PydanticValidationError,
+        ) as exc:
             logger.warning("Skipping invalid session file %s: %s", session_file, exc)
             return None
 
@@ -452,6 +473,7 @@ class SessionService:
 
     def _set_active_session(self, agent_id: str) -> None:
         """Mark session as active"""
+        self._validate_agent_id(agent_id)
         active_link = self.sessions_dir / "active"
 
         # Remove existing active link
@@ -476,6 +498,13 @@ class SessionService:
     def clear_active_session(self) -> None:
         """Public alias: clear the active-session marker without ending the session."""
         self._clear_active_session()
+
+    def _validate_agent_id(self, agent_id: str) -> None:
+        """Reject unsafe agent ids before they are used as local filenames."""
+        try:
+            validate_agent_id(agent_id)
+        except ValueError as exc:
+            raise MemantoValidationError(str(exc)) from exc
 
     def list_sessions(self) -> list[Session]:
         """

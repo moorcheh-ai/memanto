@@ -12,9 +12,13 @@ from moorcheh_sdk.exceptions import ConflictError
 
 from memanto.app.clients.moorcheh import get_moorcheh_client
 from memanto.app.config import get_data_dir
-from memanto.app.core import agent_namespace
+from memanto.app.core import agent_namespace, validate_agent_id
 from memanto.app.models.session import AgentCreate, AgentInfo, AgentList
-from memanto.app.utils.errors import AgentAlreadyExistsError, AgentNotFoundError
+from memanto.app.utils.errors import (
+    AgentAlreadyExistsError,
+    AgentNotFoundError,
+    ValidationError,
+)
 
 
 class AgentService:
@@ -40,6 +44,10 @@ class AgentService:
 
     def _get_agent_file(self, agent_id: str) -> Path:
         """Get file path for agent metadata"""
+        try:
+            validate_agent_id(agent_id)
+        except ValueError as exc:
+            raise ValidationError(str(exc)) from exc
         return self.agents_dir / f"{agent_id}.json"
 
     def create_agent(

@@ -2,6 +2,7 @@
 MEMANTO Core Architecture - Namespace Strategy & Memory Records
 """
 
+import re
 import uuid
 from datetime import datetime, timedelta
 from typing import Any
@@ -15,9 +16,20 @@ from memanto.app.constants import (
     StatusType,
 )
 
+AGENT_ID_PATTERN = re.compile(r"^[a-zA-Z0-9_-]+$")
+
+
+def validate_agent_id(agent_id: str) -> None:
+    """Ensure an agent id is safe to use in namespaces and local filenames."""
+    if not isinstance(agent_id, str) or not AGENT_ID_PATTERN.fullmatch(agent_id):
+        raise ValueError(
+            "agent_id must contain only letters, numbers, hyphens, and underscores"
+        )
+
 
 def agent_namespace(agent_id: str) -> str:
     """Map an agent_id to its Moorcheh namespace: memanto_agent_{agent_id}."""
+    validate_agent_id(agent_id)
     return f"memanto_agent_{agent_id}"
 
 
