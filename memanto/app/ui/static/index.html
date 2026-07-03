@@ -2652,6 +2652,9 @@
         // State
         const S = { config: null, agentId: null, token: null, apiKey: null, memories: [], charts: {}, connections: [], activeConnection: null, cwd: '' };
 
+        /**
+         * Persist a replacement session token returned after automatic renewal.
+         */
         function captureRenewedSession(res) {
             const token = res.headers.get('X-Session-Token');
             if (!token) return;

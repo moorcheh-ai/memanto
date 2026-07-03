@@ -458,6 +458,7 @@ export class Memanto {
     return (await res.json()) as T;
   }
 
+  /** Persist a replacement session token returned after automatic renewal. */
   private captureRenewedSession(res: Response): void {
     const token = res.headers.get("X-Session-Token");
     if (token) this.sessionToken = token;
