@@ -12,6 +12,7 @@ from typing import Any
 from pydantic import BaseModel, Field
 
 from memanto.app.utils.temporal_helpers import as_utc_naive, utc_now
+from memanto.app.utils.validation import AGENT_ID_PATTERN
 
 
 class SessionStatus(str, Enum):
@@ -33,7 +34,11 @@ class AgentPattern(str, Enum):
 class SessionCreate(BaseModel):
     """Request to create/activate a session"""
 
-    agent_id: str = Field(..., description="Agent identifier")
+    agent_id: str = Field(
+        ...,
+        description="Agent identifier (alphanumeric, hyphens, underscores)",
+        pattern=AGENT_ID_PATTERN,
+    )
     duration_hours: int | None = Field(
         default=None,
         description="Session duration in hours (default: from server config)",
@@ -43,7 +48,7 @@ class SessionCreate(BaseModel):
 class SessionToken(BaseModel):
     """JWT token payload structure"""
 
-    agent_id: str
+    agent_id: str = Field(..., pattern=AGENT_ID_PATTERN)
     namespace: str
     session_id: str
     started_at: datetime
@@ -55,7 +60,7 @@ class Session(BaseModel):
 
     session_id: str
     session_token: str
-    agent_id: str
+    agent_id: str = Field(..., pattern=AGENT_ID_PATTERN)
     namespace: str
     started_at: datetime
     expires_at: datetime
@@ -80,7 +85,7 @@ class SessionInfo(BaseModel):
     """Session information response"""
 
     session_id: str
-    agent_id: str
+    agent_id: str = Field(..., pattern=AGENT_ID_PATTERN)
     namespace: str
     started_at: datetime
     expires_at: datetime
@@ -93,7 +98,7 @@ class SessionSummary(BaseModel):
     """Summary of ended session"""
 
     session_id: str
-    agent_id: str
+    agent_id: str = Field(..., pattern=AGENT_ID_PATTERN)
     started_at: datetime
     ended_at: datetime
     duration_hours: float
@@ -107,7 +112,7 @@ class AgentCreate(BaseModel):
     agent_id: str = Field(
         ...,
         description="Unique agent identifier (alphanumeric, hyphens, underscores)",
-        pattern=r"^[a-zA-Z0-9_-]+$",
+        pattern=AGENT_ID_PATTERN,
     )
     pattern: AgentPattern = Field(
         default=AgentPattern.SUPPORT,
@@ -121,7 +126,7 @@ class AgentCreate(BaseModel):
 class AgentInfo(BaseModel):
     """Agent information"""
 
-    agent_id: str
+    agent_id: str = Field(..., pattern=AGENT_ID_PATTERN)
     namespace: str
     pattern: AgentPattern
     description: str | None = None

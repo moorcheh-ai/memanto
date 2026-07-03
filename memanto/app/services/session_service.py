@@ -32,7 +32,7 @@ from memanto.app.utils.errors import (
 )
 from memanto.app.utils.ids import generate_id
 from memanto.app.utils.temporal_helpers import as_utc_naive, utc_now
-from memanto.app.utils.validation import validate_safe_id
+from memanto.app.utils.validation import validate_agent_id, validate_safe_id
 
 _session_service = None
 logger = logging.getLogger(__name__)
@@ -121,7 +121,7 @@ class SessionService:
 
         Format: memanto_agent_{agent_id}
         """
-        return agent_namespace(agent_id)
+        return agent_namespace(validate_agent_id(agent_id))
 
     def _generate_session_id(self) -> str:
         """Generate unique session ID"""
@@ -145,6 +145,8 @@ class SessionService:
         Returns:
             Session object with JWT token
         """
+        agent_id = validate_agent_id(agent_id)
+
         # Use config default if not explicitly provided
         if duration_hours is None:
             duration_hours = settings.SESSION_DEFAULT_DURATION_HOURS
@@ -245,8 +247,7 @@ class SessionService:
         Returns:
             Session object or None if not found
         """
-        validate_safe_id(agent_id, "agent_id")
-        session_file = self.sessions_dir / f"{agent_id}.json"
+        session_file = self.sessions_dir / f"{validate_agent_id(agent_id)}.json"
         return self._load_session_file(session_file)
 
     def get_active_session(self) -> Session | None:
@@ -268,7 +269,11 @@ class SessionService:
             with open(active_link) as f:
                 agent_id = f.read().strip()
 
-        session = self.get_session(agent_id)
+        try:
+            session = self.get_session(validate_agent_id(agent_id))
+        except ValueError:
+            self._clear_active_session()
+            return None
         if not session:
             return None
 
@@ -292,7 +297,7 @@ class SessionService:
         Raises:
             SessionNotFoundError: If session doesn't exist
         """
-        session = self.get_session(agent_id)
+        session = self.get_session(validate_agent_id(agent_id))
         if not session:
             raise SessionNotFoundError(f"No session found for agent {agent_id}")
 
@@ -365,7 +370,7 @@ class SessionService:
         if not settings.SESSION_AUTO_RENEW_ENABLED:
             return None
 
-        session = self.get_session(agent_id)
+        session = self.get_session(validate_agent_id(agent_id))
         if not session or not session.is_active():
             return None
 
@@ -383,8 +388,7 @@ class SessionService:
 
     def _save_session(self, session: Session) -> None:
         """Save session to file"""
-        validate_safe_id(session.agent_id, "agent_id")
-        session_file = self.sessions_dir / f"{session.agent_id}.json"
+        session_file = self.sessions_dir / f"{validate_agent_id(session.agent_id)}.json"
         with open(session_file, "w") as f:
             json.dump(session.model_dump(mode="json"), f, indent=2)
 
@@ -424,6 +428,7 @@ class SessionService:
         timestamp = dt_now.strftime("%Y-%m-%d %H:%M:%S")
         date_str = dt_now.strftime("%Y-%m-%d")
 
+        agent_id = validate_agent_id(agent_id)
         summary_file = (
             self.sessions_dir / f"{agent_id}_{date_str}_{session_id}_summary.md"
         )
@@ -486,6 +491,7 @@ class SessionService:
         timestamp = dt_now.strftime("%Y-%m-%d %H:%M:%S")
         date_str = dt_now.strftime("%Y-%m-%d")
 
+        agent_id = validate_agent_id(agent_id)
         summary_file = (
             self.sessions_dir / f"{agent_id}_{date_str}_{session_id}_summary.md"
         )
@@ -513,6 +519,7 @@ class SessionService:
             active_link.unlink()
 
         # Create new active marker
+        agent_id = validate_agent_id(agent_id)
         # On Windows, write agent_id to file instead of symlink
         try:
             active_link.symlink_to(f"{agent_id}.json")

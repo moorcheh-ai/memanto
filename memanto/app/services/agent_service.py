@@ -15,7 +15,7 @@ from memanto.app.config import get_data_dir
 from memanto.app.core import agent_namespace
 from memanto.app.models.session import AgentCreate, AgentInfo, AgentList
 from memanto.app.utils.errors import AgentAlreadyExistsError, AgentNotFoundError
-from memanto.app.utils.validation import validate_safe_id
+from memanto.app.utils.validation import validate_agent_id
 
 
 class AgentService:
@@ -37,12 +37,11 @@ class AgentService:
 
         Format: memanto_agent_{agent_id}
         """
-        return agent_namespace(agent_id)
+        return agent_namespace(validate_agent_id(agent_id))
 
     def _get_agent_file(self, agent_id: str) -> Path:
         """Get file path for agent metadata"""
-        validate_safe_id(agent_id, "agent_id")
-        return self.agents_dir / f"{agent_id}.json"
+        return self.agents_dir / f"{validate_agent_id(agent_id)}.json"
 
     def create_agent(
         self, agent_create: AgentCreate, moorcheh_api_key: str

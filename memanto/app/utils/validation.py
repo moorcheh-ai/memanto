@@ -10,6 +10,26 @@ from fastapi import HTTPException
 from pydantic import BaseModel, Field, validator
 
 
+AGENT_ID_PATTERN = r"^[a-zA-Z0-9_-]+$"
+_AGENT_ID_RE = re.compile(AGENT_ID_PATTERN)
+
+
+def validate_agent_id(agent_id: str) -> str:
+    """Validate agent IDs before using them in namespaces or local file paths.
+
+    Agent IDs are interpolated into filenames such as
+    ``~/.memanto/agents/{agent_id}.json`` and
+    ``~/.memanto/sessions/{agent_id}.json``. Keep the runtime check in one
+    place so callers that bypass the API/Pydantic request model cannot smuggle
+    path separators (for example ``../``) into those file operations.
+    """
+    if not isinstance(agent_id, str) or not _AGENT_ID_RE.fullmatch(agent_id):
+        raise ValueError(
+            "Invalid agent_id. Use only letters, numbers, hyphens, and underscores."
+        )
+    return agent_id
+
+
 class InputLimits:
     """Input size and cost limits"""
 

@@ -67,6 +67,20 @@ class TestSessionService:
         print(f"   Namespace: {session.namespace}")
         print(f"   Expires in: {time_diff / 3600:.2f} hours")
 
+    def test_create_session_rejects_path_traversal_agent_id(self, session_service, tmp_path):
+        """Session files must stay inside the configured sessions directory."""
+        outside_target = tmp_path / "outside.json"
+
+        with pytest.raises(ValueError, match="Invalid agent_id"):
+            session_service.create_session(agent_id="../outside", duration_hours=1)
+
+        assert not outside_target.exists()
+
+    def test_get_session_rejects_path_traversal_agent_id(self, session_service):
+        """Lookup paths must not be attacker-controlled through agent_id."""
+        with pytest.raises(ValueError, match="Invalid agent_id"):
+            session_service.get_session("../outside")
+
     def test_validate_session(self, session_service):
         """Test session validation"""
         # Create session
@@ -305,6 +319,14 @@ class TestAgentService:
         print("✅ Agent created successfully")
         print(f"   Agent ID: {agent.agent_id}")
         print(f"   Namespace: {agent.namespace}")
+
+    def test_agent_service_rejects_path_traversal_agent_id(self, agent_service):
+        """Agent metadata reads/deletes must not escape the agents directory."""
+        with pytest.raises(ValueError, match="Invalid agent_id"):
+            agent_service.get_agent("../outside")
+
+        with pytest.raises(ValueError, match="Invalid agent_id"):
+            agent_service.delete_agent("../outside")
 
     def test_list_agents(self, agent_service):
         """Test listing agents"""
