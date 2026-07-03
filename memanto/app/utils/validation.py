@@ -25,7 +25,8 @@ def validate_agent_id(agent_id: str) -> str:
     """
     if not isinstance(agent_id, str) or not _AGENT_ID_RE.fullmatch(agent_id):
         raise ValueError(
-            "Invalid agent_id. Use only letters, numbers, hyphens, and underscores."
+            "Invalid agent_id contains invalid characters. "
+            "Use only letters, numbers, hyphens, and underscores."
         )
     return agent_id
 

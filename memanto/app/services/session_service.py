@@ -225,7 +225,7 @@ class SessionService:
                     raise InvalidSessionTokenError(
                         f"Session {token.session_id} is no longer active"
                     )
-            except (OSError, json.JSONDecodeError, ValidationError) as exc:
+            except (OSError, ValueError, json.JSONDecodeError, ValidationError) as exc:
                 raise InvalidSessionTokenError(
                     f"Session {token.session_id} is no longer active"
                 ) from exc
@@ -511,7 +511,7 @@ class SessionService:
 
     def _set_active_session(self, agent_id: str) -> None:
         """Mark session as active"""
-        validate_safe_id(agent_id, "agent_id")
+        agent_id = validate_agent_id(agent_id)
         active_link = self.sessions_dir / "active"
 
         # Remove existing active link
@@ -519,7 +519,6 @@ class SessionService:
             active_link.unlink()
 
         # Create new active marker
-        agent_id = validate_agent_id(agent_id)
         # On Windows, write agent_id to file instead of symlink
         try:
             active_link.symlink_to(f"{agent_id}.json")

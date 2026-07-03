@@ -14,6 +14,7 @@ from memanto.app.config import settings
 from memanto.app.models.session import AgentCreate, AgentPattern, Session, SessionStatus
 from memanto.app.services.agent_service import AgentService
 from memanto.app.services.session_service import SessionService
+from memanto.app.utils.errors import InvalidSessionTokenError
 
 
 class TestSessionService:
@@ -175,6 +176,14 @@ class TestSessionService:
             "sess-older",
         ]
 
+    def test_validate_session_translates_invalid_agent_id_lookup(self, session_service):
+        """Invalid persisted/legacy token agent ids should use invalid-token errors."""
+        session = session_service.create_session(agent_id="test-agent", duration_hours=1)
+
+        with patch.object(session_service, "get_session", side_effect=ValueError):
+            with pytest.raises(InvalidSessionTokenError, match="no longer active"):
+                session_service.validate_session(session.session_token)
+
     def test_validate_expired_session(self, session_service):
         """Test session validation fails for expired session"""
         # Create session with very short duration
@@ -252,6 +261,16 @@ class TestSessionService:
         (session_service.sessions_dir / "broken-agent.json").write_text("{")
 
         assert session_service.get_active_session() is None
+
+    def test_set_active_session_validates_before_replacing_marker(self, session_service):
+        """An invalid agent id must not delete the currently active marker."""
+        active_marker = session_service.sessions_dir / "active"
+        active_marker.write_text("current-agent")
+
+        with pytest.raises(ValueError, match="Invalid agent_id"):
+            session_service._set_active_session("../outside")
+
+        assert active_marker.read_text() == "current-agent"
 
     def test_list_sessions_skips_invalid_session_files(self, session_service):
         """One corrupt session record must not hide all valid sessions."""
