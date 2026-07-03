@@ -365,6 +365,18 @@ class TestForgetEndToEnd:
         assert result["status"] == "deleted"
         assert result["memory_id"] == "mem-xyz"
 
+    def test_batch_remember_rejects_blank_content(self, direct_client):
+        """Direct batch writes should reject whitespace-only memory content."""
+        client, moorcheh = direct_client
+
+        with pytest.raises(ValueError, match="non-empty string"):
+            client.batch_remember(
+                agent_id="test-agent",
+                memories=[{"content": "   ", "type": "fact"}],
+            )
+
+        moorcheh.documents.upload.assert_not_called()
+
 
 class TestMEMANTOArchitecture:
     """Tests for MEMANTO architecture principles"""
