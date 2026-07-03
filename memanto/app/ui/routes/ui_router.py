@@ -788,6 +788,7 @@ async def shutdown_server(background_tasks: BackgroundTasks):
         return {"status": "ignored", "reason": "Not in UI mode"}
 
     def kill_server():
+        """Stop the local UI process after the shutdown response is sent."""
         time.sleep(0.5)  # Allow the response to send before killing
         try:
             os.kill(os.getpid(), signal.SIGINT)
@@ -1040,6 +1041,7 @@ def mount_ui_static(app):
         # picks up the latest UI without a hard refresh after upgrades.
         @app.get("/ui", response_class=HTMLResponse, include_in_schema=False)
         async def serve_ui():
+            """Serve the UI shell with cache-busting headers."""
             index_path = STATIC_DIR / "index.html"
             if index_path.exists():
                 return FileResponse(

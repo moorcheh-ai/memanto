@@ -1373,6 +1373,7 @@ class TestCWE200ApiKeyLeak:
     async def test_config_endpoint_does_not_return_api_key(
         self, client, _mock_ui_config_manager
     ):
+        """Ensure the UI config endpoint omits the raw API key."""
         resp = await client.get("/api/ui/config")
         assert resp.status_code == 200
         data = resp.json()
@@ -1630,61 +1631,77 @@ class TestFilenameSanitizationLogic:
         return original_name
 
     def test_normal_filename(self):
+        """Leave a simple safe filename unchanged."""
         assert self.sanitize("notes.txt") == "notes.txt"
 
     def test_normal_filename_with_spaces(self):
+        """Preserve spaces in otherwise safe filenames."""
         assert self.sanitize("my notes.pdf") == "my notes.pdf"
 
     def test_normal_filename_uppercase(self):
+        """Preserve filename case while sanitizing."""
         assert self.sanitize("REPORT.DOCX") == "REPORT.DOCX"
 
     def test_simple_traversal(self):
+        """Strip parent directory traversal from a filename."""
         result = self.sanitize("../../../etc/passwd")
         assert result == "passwd"
         assert "/" not in result
         assert ".." not in result
 
     def test_deep_traversal(self):
+        """Strip repeated traversal segments down to the basename."""
         result = self.sanitize("../../../../../../../../etc/shadow")
         assert result == "shadow"
 
     def test_traversal_to_txt(self):
+        """Retain the safe basename extension after traversal stripping."""
         result = self.sanitize("../../sensitive.txt")
         assert result == "sensitive.txt"
         assert ".." not in result
 
     def test_windows_traversal(self):
+        """Exercise Windows-style traversal input."""
         result = self.sanitize("..\\..\\..\\windows\\win.ini")
         assert "/" not in result
 
     def test_mixed_traversal(self):
+        """Handle traversal to a filename with an extension."""
         result = self.sanitize("../../../etc/passwd.txt")
         assert result == "passwd.txt"
 
     def test_absolute_path_linux(self):
+        """Reduce an absolute POSIX path to its basename."""
         result = self.sanitize("/etc/passwd")
         assert result == "passwd"
 
     def test_absolute_path_deep(self):
+        """Reduce a deep absolute path to its basename."""
         result = self.sanitize("/var/www/html/config.php")
         assert result == "config.php"
 
     def test_none_filename(self):
+        """Default a missing filename to the upload placeholder."""
         assert self.sanitize(None) == "upload"
 
     def test_empty_filename(self):
+        """Default an empty filename to the upload placeholder."""
         assert self.sanitize("") == "upload"
 
     def test_dot_filename(self):
+        """Default a single-dot filename to the upload placeholder."""
         assert self.sanitize(".") == "upload"
 
     def test_dotdot_filename(self):
+        """Default a double-dot filename to the upload placeholder."""
         assert self.sanitize("..") == "upload"
 
     def test_only_slashes(self):
+        """Default a root-only path to the upload placeholder."""
         assert self.sanitize("/") == "upload"
 
     def test_dotfile(self):
+        """Allow safe dotfiles to keep their basename."""
         result = self.sanitize(".env")
         assert result == ".env"
 
@@ -1693,12 +1710,14 @@ class TestRealpathGuard:
     """Verify the defense-in-depth realpath check prevents escape."""
 
     def test_safe_path_passes(self):
+        """A normal temp-file target must stay inside its temp dir."""
         tmp_dir = tempfile.mkdtemp()
         safe_name = "report.pdf"
         tmp_path = os.path.join(tmp_dir, safe_name)
         assert os.path.realpath(tmp_path).startswith(os.path.realpath(tmp_dir) + os.sep)
 
     def test_traversal_path_fails(self):
+        """A resolved traversal path must fail the temp-dir prefix check."""
         tmp_dir = tempfile.mkdtemp()
         malicious_path = os.path.join(tmp_dir, "..", "..", "etc", "passwd")
         assert not os.path.realpath(malicious_path).startswith(
