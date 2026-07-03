@@ -418,14 +418,15 @@ class MemoryParsingService:
         if best_max < self.MIN_RULE_SCORE:
             return None
 
-        # Ambiguity guard: only block when exactly two types are tied with weak signals.
-        # When 3+ types match with the same max score, TYPE_PRIORITY tiebreaker resolves it.
-        if len(ranked) > 1:
+        # Ambiguity guard: only block when exactly two types are tied with weak signals
+        # and tied cumulative scores, preserving the original tiebreaker consistency.
+        if len(ranked) >= 2:
             _, (second_total, second_max) = ranked[1]
             if (
-                best_max < 4
+                len(ranked) == 2
+                and best_max < 4
                 and best_max == second_max
-                and len(ranked) == 2
+                and best_total == second_total
             ):
                 return None
 
