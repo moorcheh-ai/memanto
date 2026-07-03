@@ -1,0 +1,4 @@
+# Optional dependencies for live framework adapters.
+# The offline smoke benchmark only uses the Python standard library.
+httpx>=0.25.0
+mem0ai>=0.1.0

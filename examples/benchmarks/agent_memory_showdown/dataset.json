@@ -1,0 +1,99 @@
+{
+  "name": "agent_memory_showdown_dynamic_preferences_v1",
+  "description": "Small, deterministic benchmark fixture for accuracy/resource-footprint checks across agent memory frameworks. It mixes evolving user preferences, operational facts, and noisy incident context.",
+  "memories": [
+    {
+      "id": "m001",
+      "timestamp": "2026-01-03T09:00:00Z",
+      "type": "fact",
+      "title": "Deployment target",
+      "content": "Jordan's production deployment target is the Kubernetes cluster atlas-prod in us-east-1.",
+      "tags": ["deployment", "cluster"]
+    },
+    {
+      "id": "m002",
+      "timestamp": "2026-01-04T14:30:00Z",
+      "type": "preference",
+      "title": "Old Python indentation preference",
+      "content": "Jordan prefers tabs for Python indentation in generated code.",
+      "tags": ["coding-style", "python"]
+    },
+    {
+      "id": "m003",
+      "timestamp": "2026-01-05T10:15:00Z",
+      "type": "event",
+      "title": "Incident root cause",
+      "content": "Incident INC-881 was caused by a stale Redis replica serving feature flag reads during deploy validation.",
+      "tags": ["incident", "redis", "feature-flags"]
+    },
+    {
+      "id": "m004",
+      "timestamp": "2026-01-06T16:45:00Z",
+      "type": "observation",
+      "title": "Noisy deploy log excerpt",
+      "content": "Deploy log shard 17: canary pods restarted twice, cache warmup completed, 2xx traffic stayed above 99.7%, and unrelated package mirror retries added noise to the incident timeline.",
+      "tags": ["deployment", "logs", "noise"]
+    },
+    {
+      "id": "m005",
+      "timestamp": "2026-01-07T11:00:00Z",
+      "type": "preference",
+      "title": "Current Python indentation preference",
+      "content": "Jordan's current Python indentation preference is 4 spaces in generated code.",
+      "tags": ["coding-style", "python"]
+    },
+    {
+      "id": "m006",
+      "timestamp": "2026-01-08T13:20:00Z",
+      "type": "instruction",
+      "title": "Release latency gate",
+      "content": "For release readiness answers, Jordan requires the service p95 latency gate to stay below 250 ms.",
+      "tags": ["release", "latency", "slo"]
+    },
+    {
+      "id": "m007",
+      "timestamp": "2026-01-09T08:05:00Z",
+      "type": "relationship",
+      "title": "Security reviewer",
+      "content": "Priya owns security review sign-off for Jordan's payments-service releases.",
+      "tags": ["security", "payments-service"]
+    }
+  ],
+  "questions": [
+    {
+      "id": "q001",
+      "query": "What Python indentation style does Jordan prefer now?",
+      "expected_terms": ["4 spaces"],
+      "forbidden_terms": ["tabs"],
+      "top_k": 1
+    },
+    {
+      "id": "q002",
+      "query": "Which Kubernetes cluster is Jordan deploying to production?",
+      "expected_terms": ["atlas-prod", "us-east-1"],
+      "forbidden_terms": [],
+      "top_k": 2
+    },
+    {
+      "id": "q003",
+      "query": "What p95 latency gate should release readiness answers enforce?",
+      "expected_terms": ["250 ms"],
+      "forbidden_terms": [],
+      "top_k": 2
+    },
+    {
+      "id": "q004",
+      "query": "Who owns security review sign-off for payments-service releases?",
+      "expected_terms": ["Priya"],
+      "forbidden_terms": [],
+      "top_k": 2
+    },
+    {
+      "id": "q005",
+      "query": "What caused incident INC-881?",
+      "expected_terms": ["stale Redis replica", "feature flag reads"],
+      "forbidden_terms": [],
+      "top_k": 2
+    }
+  ]
+}
