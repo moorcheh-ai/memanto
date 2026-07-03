@@ -516,12 +516,18 @@ class SdkClient:
         memory_records = []
         for i, item in enumerate(memories):
             raw_content = item.get("content", "")
-            if not raw_content:
-                raise ValueError(f"Memory at index {i} has no content")
+            if not isinstance(raw_content, str) or not raw_content.strip():
+                raise ValueError(f"Memory at index {i} has no non-empty content")
 
             raw_title = item.get("title")
             title = raw_title or (
                 raw_content[:47] + "..." if len(raw_content) > 50 else raw_content
+            )
+            self._validate_memory_input(
+                item.get("type"),
+                title,
+                raw_content,
+                item.get("confidence", 0.8),
             )
             raw_type = item.get("type")
 

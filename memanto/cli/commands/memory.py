@@ -207,6 +207,12 @@ def remember(
                     f"Item {i} is missing required 'content' field.",
                     hint="Each object must have at least a 'content' field.",
                 )
+            content_value = item["content"]
+            if not isinstance(content_value, str) or not content_value.strip():
+                _error(
+                    f"Item {i} has no non-empty content.",
+                    hint="Each content value must be a non-empty string.",
+                )
 
         try:
             with console.status(

@@ -648,6 +648,19 @@ class TestMEMANTOCLI:
         assert result.exit_code == 0
         assert "Stored 2/2 memories successfully" in result.stdout
 
+    def test_memory_batch_remember_rejects_blank_content(
+        self, mock_all_clients, tmp_path
+    ):
+        """Batch input must reject whitespace-only memories like single writes do."""
+        batch_file = tmp_path / "batch.json"
+        batch_file.write_text(json.dumps([{"content": "   "}]))
+
+        result = runner.invoke(app, ["remember", "--batch", str(batch_file)])
+
+        assert result.exit_code != 0
+        assert "non-empty content" in result.stdout
+        mock_all_clients.batch_remember.assert_not_called()
+
     def test_remember_from_conversation_dry_run(self, mock_all_clients, tmp_path):
         """Test 'memanto remember --from-conversation --dry-run'"""
         conversation_file = tmp_path / "messages.json"

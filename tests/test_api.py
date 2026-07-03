@@ -746,6 +746,31 @@ class TestMEMANTOAPI:
         assert response.json()["successful"] == 2
 
     @pytest.mark.asyncio
+    async def test_batch_remember_rejects_blank_content_api(
+        self, client, auth_headers, mock_moorcheh
+    ):
+        """Batch API rejects whitespace-only content before storing memories."""
+        await client.post(
+            "/api/v2/agents",
+            headers=auth_headers,
+            json={"agent_id": self.TEST_AGENT_ID},
+        )
+        activate_resp = await client.post(
+            f"/api/v2/agents/{self.TEST_AGENT_ID}/activate", headers=auth_headers
+        )
+        token = activate_resp.json()["session_token"]
+
+        headers = {**auth_headers, "X-Session-Token": token}
+        response = await client.post(
+            f"/api/v2/agents/{self.TEST_AGENT_ID}/batch-remember",
+            headers=headers,
+            json={"memories": [{"content": "   ", "type": "fact"}]},
+        )
+
+        assert response.status_code == 422
+        mock_moorcheh.documents.upload.assert_not_called()
+
+    @pytest.mark.asyncio
     async def test_delete_memory_with_session(
         self, client, auth_headers, mock_moorcheh
     ):
