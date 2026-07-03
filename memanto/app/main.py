@@ -76,7 +76,9 @@ app = FastAPI(
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.ALLOWED_ORIGINS,
-    allow_credentials=True,
+    # A wildcard origin must never be combined with credentialed CORS.
+    # Explicit allowlists retain credential support for trusted deployments.
+    allow_credentials="*" not in settings.ALLOWED_ORIGINS,
     allow_methods=["*"],
     allow_headers=["*"],
     # Never expose replacement credentials to arbitrary cross-origin pages.
