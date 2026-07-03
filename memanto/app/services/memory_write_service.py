@@ -322,6 +322,15 @@ class MemoryWriteService:
             from moorcheh_sdk.types.document import Document
 
             document = cast(Document, updated_memory.to_moorcheh_document())
+
+            # Preserve extra metadata fields from the existing record (e.g. original_id
+            # in on-prem data_store.json) that aren't part of the MemoryRecord schema.
+            existing_meta = existing_memory_data.get("metadata", existing_memory_data)
+            if isinstance(existing_meta, dict):
+                for key in existing_meta:
+                    if key not in document and key != "text":
+                        document[key] = existing_meta[key]
+
             upload_result = self.client.documents.upload(
                 namespace_name=namespace, documents=[document]
             )
