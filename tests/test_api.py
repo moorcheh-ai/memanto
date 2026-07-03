@@ -1400,6 +1400,10 @@ class TestCWE200ApiKeyLeak:
         assert "has_active_session" in data
         assert data["has_active_session"] is True
 
+
+class TestSummaryConflictValidation:
+    """Regression tests for UI summary and conflict path validation."""
+
     @pytest.mark.asyncio
     async def test_daily_summary_rejects_traversal_agent_id(
         self, client, tmp_path, _mock_ui_config_manager
@@ -1536,6 +1540,12 @@ class TestCWE200ApiKeyLeak:
 
         assert resp.status_code == 400
         mock_direct_client.resolve_conflict.assert_not_called()
+
+
+class TestFilenameSanitizationApi:
+    """Regression tests for API upload filename sanitization."""
+
+    TEST_AGENT_ID = "test-agent"
 
     @pytest.mark.asyncio
     async def test_traversal_filename_is_sanitized(
