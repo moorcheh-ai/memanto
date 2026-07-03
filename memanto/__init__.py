@@ -8,12 +8,11 @@ keep ownership of everything they learn.
 
 __version__ = "0.1.0"
 
-from memanto.core import Memanto
-from memanto.types import Memory, MemoryQuery, MemoryResult
+from memanto.core import (
+    Memanto,
+    MemoryConfig,
+    MemoryStore,
+)
 
-__all__ = ["Memanto", "Memory", "MemoryQuery", "MemoryResult"]
-
-
-def get_version() -> str:
-    return __version__
+__all__ = ["Memanto", "MemoryConfig", "MemoryStore"]
 """
