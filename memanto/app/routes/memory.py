@@ -7,6 +7,7 @@ Replaces legacy agent memory endpoints with session-based auth.
 
 import asyncio
 import os
+import shutil
 import tempfile
 from datetime import date, datetime, time, timezone
 from pathlib import Path
@@ -47,6 +48,29 @@ from memanto.cli.config.manager import ConfigManager
 router = APIRouter()
 
 _config_manager = ConfigManager()
+MAX_UPLOAD_BYTES = 5 * 1024 * 1024 * 1024
+UPLOAD_COPY_CHUNK_BYTES = 1024 * 1024
+
+
+async def _write_upload_to_path(
+    file: UploadFile,
+    tmp_path: str,
+    max_bytes: int = MAX_UPLOAD_BYTES,
+    chunk_size: int = UPLOAD_COPY_CHUNK_BYTES,
+) -> int:
+    """Stream an UploadFile to disk without materializing the full body in RAM."""
+
+    total_size = 0
+    with open(tmp_path, "wb") as tmp:
+        while chunk := await file.read(chunk_size):
+            total_size += len(chunk)
+            if total_size > max_bytes:
+                raise HTTPException(
+                    status_code=413,
+                    detail="File exceeds the 5GB upload limit.",
+                )
+            tmp.write(chunk)
+    return total_size
 
 
 class RecallRequest(BaseModel):
@@ -527,9 +551,6 @@ async def upload_file(
     try:
         namespace = session.namespace
 
-        # Write upload to a temp file so moorcheh SDK can read it
-        # Use original filename so the SDK records it as the source
-        file_bytes = await file.read()
         tmp_dir = tempfile.mkdtemp()
         tmp_path = os.path.join(tmp_dir, original_name)
         # Defense-in-depth: verify resolved path is within tmp_dir
@@ -541,14 +562,13 @@ async def upload_file(
                 detail="Invalid filename",
             )
         try:
-            with open(tmp_path, "wb") as tmp:
-                tmp.write(file_bytes)
+            # Write upload to a temp file so moorcheh SDK can read it.
+            # Use original filename so the SDK records it as the source.
+            uploaded_size = await _write_upload_to_path(file, tmp_path)
             result = await asyncio.to_thread(
                 client.documents.upload_file, namespace, tmp_path
             )
         finally:
-            import shutil
-
             shutil.rmtree(tmp_dir, ignore_errors=True)
 
         return {
@@ -556,11 +576,15 @@ async def upload_file(
             "session_id": session.session_id,
             "namespace": namespace,
             "file_name": original_name,
-            "file_size": result.get("fileSize"),
+            "file_size": result.get("fileSize")
+            or result.get("file_size")
+            or uploaded_size,
             "status": "uploaded" if result.get("success") else "failed",
             "message": result.get("message", ""),
         }
 
+    except HTTPException:
+        raise
     except Exception as e:
         raise map_error_to_http_exception(e)
 

@@ -7,6 +7,7 @@ from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from fastapi import HTTPException
 from httpx import ASGITransport, AsyncClient
 
 from memanto.app.config import settings
@@ -1201,6 +1202,38 @@ class TestMEMANTOAPI:
         assert data["status"] == "uploaded"
 
     @pytest.mark.asyncio
+    async def test_upload_file_accepts_onprem_file_size_shape(
+        self, client, auth_headers, mock_moorcheh
+    ):
+        """The route should preserve on-prem's snake_case file_size response."""
+        await client.post(
+            "/api/v2/agents",
+            headers=auth_headers,
+            json={"agent_id": self.TEST_AGENT_ID},
+        )
+        activate_resp = await client.post(
+            f"/api/v2/agents/{self.TEST_AGENT_ID}/activate", headers=auth_headers
+        )
+        token = activate_resp.json()["session_token"]
+
+        mock_moorcheh.documents.upload_file.return_value = {
+            "success": True,
+            "message": "Upload job submitted",
+            "file_name": "notes.txt",
+            "file_size": 2048,
+        }
+
+        headers = {**auth_headers, "X-Session-Token": token}
+        response = await client.post(
+            f"/api/v2/agents/{self.TEST_AGENT_ID}/upload-file",
+            headers=headers,
+            files={"file": ("notes.txt", b"chunked test content", "text/plain")},
+        )
+
+        assert response.status_code == 200
+        assert response.json()["file_size"] == 2048
+
+    @pytest.mark.asyncio
     async def test_upload_file_unsupported_extension(self, client, auth_headers):
         """Test that unsupported file types are rejected"""
         await client.post(
@@ -1240,6 +1273,54 @@ class TestMEMANTOAPI:
         )
 
         assert response.status_code in (401, 403, 422)
+
+
+class _ChunkedUpload:
+    """Minimal async UploadFile stand-in for copy-loop regression tests."""
+
+    def __init__(self, chunks: list[bytes]):
+        self._chunks = chunks
+        self.read_sizes: list[int] = []
+
+    async def read(self, size: int = -1) -> bytes:
+        if size < 0:
+            raise AssertionError("upload copy must not perform an unbounded read")
+        self.read_sizes.append(size)
+        if not self._chunks:
+            return b""
+        return self._chunks.pop(0)
+
+
+class TestUploadFileStreaming:
+    @pytest.mark.asyncio
+    async def test_upload_copy_streams_in_bounded_chunks(self, tmp_path):
+        """Large uploads must be copied without reading the whole body at once."""
+        from memanto.app.routes.memory import _write_upload_to_path
+
+        upload = _ChunkedUpload([b"abcd", b"ef"])
+        tmp_file = tmp_path / "notes.txt"
+
+        written = await _write_upload_to_path(
+            upload, str(tmp_file), max_bytes=10, chunk_size=4
+        )
+
+        assert written == 6
+        assert tmp_file.read_bytes() == b"abcdef"
+        assert upload.read_sizes == [4, 4, 4]
+
+    @pytest.mark.asyncio
+    async def test_upload_copy_rejects_files_over_limit(self, tmp_path):
+        """The backend enforces the advertised upload limit while streaming."""
+        from memanto.app.routes.memory import _write_upload_to_path
+
+        upload = _ChunkedUpload([b"12345", b"67890"])
+
+        with pytest.raises(HTTPException) as exc_info:
+            await _write_upload_to_path(
+                upload, str(tmp_path / "too-large.txt"), max_bytes=9, chunk_size=5
+            )
+
+        assert exc_info.value.status_code == 413
 
 
 @pytest.fixture
