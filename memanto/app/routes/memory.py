@@ -14,6 +14,7 @@ from pathlib import Path
 
 from fastapi import APIRouter, Body, Depends, File, HTTPException, Query, UploadFile
 from pydantic import BaseModel, Field, field_validator
+from starlette.concurrency import run_in_threadpool
 
 from memanto.app.clients.backend import get_active_llm_model
 from memanto.app.clients.moorcheh import get_moorcheh_client
@@ -55,21 +56,25 @@ UPLOAD_COPY_CHUNK_BYTES = 1024 * 1024
 async def _write_upload_to_path(
     file: UploadFile,
     tmp_path: str,
-    max_bytes: int = MAX_UPLOAD_BYTES,
+    max_bytes: int | None = None,
     chunk_size: int = UPLOAD_COPY_CHUNK_BYTES,
 ) -> int:
     """Stream an UploadFile to disk without materializing the full body in RAM."""
 
     total_size = 0
-    with open(tmp_path, "wb") as tmp:
+    size_limit = MAX_UPLOAD_BYTES if max_bytes is None else max_bytes
+    tmp = await run_in_threadpool(open, tmp_path, "wb")
+    try:
         while chunk := await file.read(chunk_size):
             total_size += len(chunk)
-            if total_size > max_bytes:
+            if total_size > size_limit:
                 raise HTTPException(
                     status_code=413,
                     detail="File exceeds the 5GB upload limit.",
                 )
-            tmp.write(chunk)
+            await run_in_threadpool(tmp.write, chunk)
+    finally:
+        await run_in_threadpool(tmp.close)
     return total_size
 
 
@@ -571,14 +576,18 @@ async def upload_file(
         finally:
             shutil.rmtree(tmp_dir, ignore_errors=True)
 
+        result_file_size = result.get("fileSize")
+        if result_file_size is None:
+            result_file_size = result.get("file_size")
+        if result_file_size is None:
+            result_file_size = uploaded_size
+
         return {
             "agent_id": agent_id,
             "session_id": session.session_id,
             "namespace": namespace,
             "file_name": original_name,
-            "file_size": result.get("fileSize")
-            or result.get("file_size")
-            or uploaded_size,
+            "file_size": result_file_size,
             "status": "uploaded" if result.get("success") else "failed",
             "message": result.get("message", ""),
         }

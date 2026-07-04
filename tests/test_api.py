@@ -1220,7 +1220,7 @@ class TestMEMANTOAPI:
             "success": True,
             "message": "Upload job submitted",
             "file_name": "notes.txt",
-            "file_size": 2048,
+            "file_size": 0,
         }
 
         headers = {**auth_headers, "X-Session-Token": token}
@@ -1231,7 +1231,37 @@ class TestMEMANTOAPI:
         )
 
         assert response.status_code == 200
-        assert response.json()["file_size"] == 2048
+        assert response.json()["file_size"] == 0
+
+    @pytest.mark.asyncio
+    async def test_upload_file_returns_413_when_stream_exceeds_limit(
+        self, client, auth_headers, mock_moorcheh, monkeypatch
+    ):
+        """The route should preserve the streaming limit's HTTP 413 response."""
+        from memanto.app.routes import memory as memory_route
+
+        await client.post(
+            "/api/v2/agents",
+            headers=auth_headers,
+            json={"agent_id": self.TEST_AGENT_ID},
+        )
+        activate_resp = await client.post(
+            f"/api/v2/agents/{self.TEST_AGENT_ID}/activate", headers=auth_headers
+        )
+        token = activate_resp.json()["session_token"]
+
+        monkeypatch.setattr(memory_route, "MAX_UPLOAD_BYTES", 3)
+
+        headers = {**auth_headers, "X-Session-Token": token}
+        response = await client.post(
+            f"/api/v2/agents/{self.TEST_AGENT_ID}/upload-file",
+            headers=headers,
+            files={"file": ("notes.txt", b"abcd", "text/plain")},
+        )
+
+        assert response.status_code == 413
+        assert response.json()["detail"] == "File exceeds the 5GB upload limit."
+        mock_moorcheh.documents.upload_file.assert_not_called()
 
     @pytest.mark.asyncio
     async def test_upload_file_unsupported_extension(self, client, auth_headers):
