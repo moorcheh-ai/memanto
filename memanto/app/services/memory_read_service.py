@@ -401,7 +401,8 @@ class MemoryReadService:
 
         return self._filter_expired_memories(memories)
 
-    def _is_summary_item(self, item: Any) -> bool:
+    @staticmethod
+    def _is_summary_item(item: Any) -> bool:
         """Return true when a Moorcheh item is a summary/helper chunk."""
         if not isinstance(item, dict):
             return False
