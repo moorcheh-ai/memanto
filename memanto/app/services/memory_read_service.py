@@ -381,7 +381,7 @@ class MemoryReadService:
         seen_ids: set[str] = set()
         memories: list[dict[str, Any]] = []
         for item in items:
-            # Skip summary chunks — only return real memory documents
+            # Skip summary chunks ? only return real memory documents
             if isinstance(item, dict) and item.get("is_summary"):
                 continue
             formatted = self._format_memory_item(item)
@@ -642,9 +642,14 @@ class MemoryReadService:
         # Parse tags - can be comma-separated string or array
         tags_value = get_field("tags")
         if isinstance(tags_value, str):
-            tags = tags_value.split(",") if tags_value else []
+            tags = [tag.strip() for tag in tags_value.split(",") if tag.strip()]
         elif isinstance(tags_value, list):
-            tags = tags_value
+            tags = []
+            for tag in tags_value:
+                if isinstance(tag, str):
+                    tag = tag.strip()
+                if tag:
+                    tags.append(tag)
         else:
             tags = []
 
@@ -678,7 +683,7 @@ class MemoryReadService:
                 else:
                     content = ""
             else:
-                # No [TYPE] prefix — use first line as title, rest as content
+                # No [TYPE] prefix ? use first line as title, rest as content
                 title = first_line.strip()
                 content = "\n\n".join(lines[1:]) if len(lines) > 1 else ""
 
