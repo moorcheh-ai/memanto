@@ -525,6 +525,31 @@ class TestMEMANTOAPI:
         assert "memory_type:fact" in call_kwargs["query"]
 
     @pytest.mark.asyncio
+    async def test_recall_accepts_tag_filter(self, client, auth_headers, mock_moorcheh):
+        """Test recall request forwards tag filters to the read service."""
+        await client.post(
+            "/api/v2/agents",
+            headers=auth_headers,
+            json={"agent_id": self.TEST_AGENT_ID},
+        )
+        activate_resp = await client.post(
+            f"/api/v2/agents/{self.TEST_AGENT_ID}/activate", headers=auth_headers
+        )
+        token = activate_resp.json()["session_token"]
+
+        headers = {**auth_headers, "X-Session-Token": token}
+        payload = {"query": "deployment notes", "tags": ["release"]}
+        response = await client.post(
+            f"/api/v2/agents/{self.TEST_AGENT_ID}/recall",
+            headers=headers,
+            json=payload,
+        )
+
+        assert response.status_code == 200
+        call_kwargs = mock_moorcheh.similarity_search.query.call_args.kwargs
+        assert "#release" in call_kwargs["query"]
+
+    @pytest.mark.asyncio
     async def test_get_agent(self, client, auth_headers):
         """Test getting agent details"""
         await client.post(

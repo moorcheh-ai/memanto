@@ -56,6 +56,7 @@ class RecallRequest(BaseModel):
         default=None, ge=0.0, le=1.0, description="Minimum similarity score (0-1)"
     )
     type: list[str] | None = Field(default=None, description="Memory type filters")
+    tags: list[str] | None = Field(default=None, description="Tag filters")
 
 
 class RecallAsOfRequest(BaseModel):
@@ -661,6 +662,7 @@ async def recall(
             query=request.query,
             agent_id=agent_id,
             type=request.type,
+            tags=request.tags,
             min_similarity_score=min_similarity,
             limit=limit,
         )
