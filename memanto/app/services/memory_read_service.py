@@ -286,19 +286,11 @@ class MemoryReadService:
                     except (ValueError, AttributeError):
                         pass
 
-            # Sort by parsed timestamps so mixed UTC offsets compare correctly.
-            def _changed_sort_key(memory: dict[str, Any]) -> datetime:
-                raw = memory.get("updated_at") or memory.get("created_at")
-                if not raw:
-                    return datetime.min.replace(tzinfo=timezone.utc)
-                try:
-                    return parse_iso_timestamp(str(raw))
-                except (ValueError, AttributeError):
-                    return datetime.min.replace(tzinfo=timezone.utc)
-
             # Sort by updated_at descending (most recent first)
             changed_memories.sort(
-                key=_changed_sort_key,
+                key=lambda memory: self._temporal_sort_key(
+                    memory.get("updated_at") or memory.get("created_at")
+                ),
                 reverse=True,
             )
 
@@ -331,8 +323,6 @@ class MemoryReadService:
             limit: Max results to return
         """
         try:
-            from memanto.app.utils.temporal_helpers import parse_iso_timestamp
-
             namespaces = self._get_search_namespaces(agent_id)
             if not namespaces:
                 return {"results": [], "total_found": 0}
@@ -340,22 +330,27 @@ class MemoryReadService:
             unique_memories = self._fetch_all_memories(namespaces, type=type)
 
             # Sort by created_at descending (most recent first)
-            def _created_sort_key(m: dict[str, Any]) -> str:
-                raw = m.get("created_at")
-                if not raw:
-                    return ""
-                try:
-                    return parse_iso_timestamp(str(raw)).isoformat()
-                except Exception:
-                    return ""
-
-            unique_memories.sort(key=_created_sort_key, reverse=True)
+            unique_memories.sort(
+                key=lambda memory: self._temporal_sort_key(memory.get("created_at")),
+                reverse=True,
+            )
 
             results = unique_memories if limit is None else unique_memories[:limit]
             return {"results": results, "total_found": len(results)}
 
         except Exception as e:
             raise MemoryError(f"Failed to retrieve recent memories: {e}")
+
+    @staticmethod
+    def _temporal_sort_key(raw: Any) -> datetime:
+        if not raw:
+            return datetime.min.replace(tzinfo=timezone.utc)
+        try:
+            from memanto.app.utils.temporal_helpers import parse_iso_timestamp
+
+            return parse_iso_timestamp(str(raw))
+        except (ValueError, AttributeError):
+            return datetime.min.replace(tzinfo=timezone.utc)
 
     def _fetch_all_memories(
         self,
