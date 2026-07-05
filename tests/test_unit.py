@@ -288,6 +288,30 @@ class TestMemoryWriteServiceDelete:
         assert MemoryWriteService(client).delete_memory("m1", "ns") is expected
 
 
+class TestMemoryReadServiceFormatting:
+    def test_format_memory_item_preserves_falsey_metadata_values(self):
+        from memanto.app.services.memory_read_service import MemoryReadService
+
+        item = {
+            "id": "m1",
+            "text": "[FACT] Budget cap\n\nKeep spending at zero.",
+            "confidence": 0.8,
+            "status": "active",
+            "metadata": {
+                "memory_type": "fact",
+                "confidence": 0.0,
+                "status": "",
+                "tags": [],
+            },
+        }
+
+        formatted = MemoryReadService(MagicMock())._format_memory_item(item)
+
+        assert formatted["confidence"] == 0.0
+        assert formatted["status"] == ""
+        assert formatted["tags"] == []
+
+
 class TestForgetEndToEnd:
     """End-to-end ``forget`` flow through ``DirectClient``: create agent →
     activate → delete_memory. Asserts on-prem's response shape

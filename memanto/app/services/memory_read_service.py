@@ -636,8 +636,11 @@ class MemoryReadService:
         def get_field(field_name, flat_field_name=None):
             """Get field from metadata object or fallback to flat field"""
             flat_name = flat_field_name or field_name
-            # Try metadata object first (API spec), then flat field (fallback)
-            return metadata.get(field_name) or item.get(flat_name)
+            # Try metadata object first (API spec), then flat field (fallback).
+            # Preserve valid falsey metadata values such as confidence=0.0.
+            if field_name in metadata and metadata[field_name] is not None:
+                return metadata[field_name]
+            return item.get(flat_name)
 
         # Parse tags - can be comma-separated string or array
         tags_value = get_field("tags")
