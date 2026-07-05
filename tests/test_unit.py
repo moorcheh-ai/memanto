@@ -321,6 +321,38 @@ class TestMemoryWriteServiceBatch:
         assert uploaded_doc["updated_at"] == updated_at.isoformat()
 
 
+class TestMemoryReadServiceTemporal:
+    def test_search_changed_since_sorts_mixed_timezone_timestamps(self, monkeypatch):
+        from memanto.app.services.memory_read_service import MemoryReadService
+
+        service = MemoryReadService(MagicMock())
+        monkeypatch.setattr(service, "_get_search_namespaces", lambda agent_id: ["ns"])
+        monkeypatch.setattr(
+            service,
+            "_fetch_all_memories",
+            lambda namespaces, type=None, tags=None: [
+                {
+                    "id": "older",
+                    "created_at": "2024-01-01T00:00:00Z",
+                    "updated_at": "2024-01-03T00:30:00+02:00",
+                },
+                {
+                    "id": "newer",
+                    "created_at": "2024-01-01T00:00:00Z",
+                    "updated_at": "2024-01-02T23:00:00Z",
+                },
+            ],
+        )
+
+        result = service.search_changed_since(
+            "2024-01-01T00:00:00Z",
+            "agent-1",
+            limit=None,
+        )
+
+        assert [memory["id"] for memory in result["results"]] == ["newer", "older"]
+
+
 class TestForgetEndToEnd:
     """End-to-end ``forget`` flow through ``DirectClient``: create agent →
     activate → delete_memory. Asserts on-prem's response shape

@@ -286,9 +286,20 @@ class MemoryReadService:
                     except (ValueError, AttributeError):
                         pass
 
+            # Sort by parsed timestamps so mixed UTC offsets compare correctly.
+            def _changed_sort_key(memory: dict[str, Any]) -> datetime:
+                raw = memory.get("updated_at") or memory.get("created_at")
+                if not raw:
+                    return datetime.min.replace(tzinfo=timezone.utc)
+                try:
+                    return parse_iso_timestamp(str(raw))
+                except (ValueError, AttributeError):
+                    return datetime.min.replace(tzinfo=timezone.utc)
+
             # Sort by updated_at descending (most recent first)
             changed_memories.sort(
-                key=lambda m: m.get("updated_at", m.get("created_at", "")), reverse=True
+                key=_changed_sort_key,
+                reverse=True,
             )
 
             # Apply limit
