@@ -104,7 +104,8 @@ class MemoryWriteService:
             results = []
             validated_documents = []
 
-            # Enforce server-side timestamps for batch (single timestamp for all)
+            # Use one timestamp for regular batch writes while preserving
+            # explicit source timestamps passed by migration/import callers.
             now = datetime.utcnow()
 
             for memory in memories:
@@ -113,9 +114,10 @@ class MemoryWriteService:
                     if not memory.id:
                         memory.id = generate_memory_id()
 
-                    # Enforce server-side timestamps (never trust client)
-                    memory.created_at = now
-                    memory.updated_at = now
+                    if "created_at" not in memory.model_fields_set:
+                        memory.created_at = now
+                    if "updated_at" not in memory.model_fields_set:
+                        memory.updated_at = now
 
                     memory = self._parser.parse_memory(memory)
 

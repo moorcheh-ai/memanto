@@ -4,7 +4,7 @@ MEMANTO Core Unit Tests (No Server Required)
 Tests the session and agent services directly without HTTP layer.
 """
 
-from datetime import datetime
+from datetime import datetime, timezone
 from unittest.mock import MagicMock, patch
 
 import jwt
@@ -286,6 +286,39 @@ class TestMemoryWriteServiceDelete:
         client = MagicMock()
         client.documents.delete.return_value = response
         assert MemoryWriteService(client).delete_memory("m1", "ns") is expected
+
+
+class TestMemoryWriteServiceBatch:
+    """Batch writes are also used by migrations, so explicit source
+    timestamps must survive the upload document conversion."""
+
+    def test_batch_store_preserves_explicit_source_timestamps(self):
+        from memanto.app.core import MemoryRecord
+        from memanto.app.services.memory_write_service import MemoryWriteService
+
+        client = MagicMock()
+        client.documents.upload.return_value = {"status": "success"}
+        created_at = datetime(2024, 1, 2, 3, 4, 5, tzinfo=timezone.utc)
+        updated_at = datetime(2024, 1, 3, 4, 5, 6, tzinfo=timezone.utc)
+        memory = MemoryRecord(
+            type="fact",
+            title="Imported memory",
+            content="Historical imported memory",
+            agent_id="agent-1",
+            actor_id="agent-1",
+            source="imported",
+            provenance="imported",
+            created_at=created_at,
+            updated_at=updated_at,
+        )
+
+        result = MemoryWriteService(client).batch_store_memories([memory])
+
+        assert result["successful"] == 1
+        upload_kwargs = client.documents.upload.call_args.kwargs
+        uploaded_doc = upload_kwargs["documents"][0]
+        assert uploaded_doc["created_at"] == created_at.isoformat()
+        assert uploaded_doc["updated_at"] == updated_at.isoformat()
 
 
 class TestForgetEndToEnd:
