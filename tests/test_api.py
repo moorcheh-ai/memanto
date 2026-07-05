@@ -12,6 +12,7 @@ from httpx import ASGITransport, AsyncClient
 from memanto.app.config import settings
 from memanto.app.main import app
 from memanto.app.models.session import Session
+from memanto.app.routes import memory as memory_routes
 from memanto.app.routes.auth_deps import get_current_session
 
 # Set test environment
@@ -1199,6 +1200,37 @@ class TestMEMANTOAPI:
         assert data["agent_id"] == self.TEST_AGENT_ID
         assert data["file_name"] == "notes.txt"
         assert data["status"] == "uploaded"
+
+    @pytest.mark.asyncio
+    async def test_upload_file_rejects_oversized_file_before_sdk_upload(
+        self, client, auth_headers, mock_moorcheh, monkeypatch
+    ):
+        """Oversized uploads should fail before the SDK receives a temp file."""
+        monkeypatch.setattr(memory_routes, "MAX_UPLOAD_FILE_SIZE", 10)
+        monkeypatch.setattr(memory_routes, "UPLOAD_CHUNK_SIZE", 4)
+
+        await client.post(
+            "/api/v2/agents",
+            headers=auth_headers,
+            json={"agent_id": self.TEST_AGENT_ID},
+        )
+        activate_resp = await client.post(
+            f"/api/v2/agents/{self.TEST_AGENT_ID}/activate", headers=auth_headers
+        )
+        token = activate_resp.json()["session_token"]
+
+        mock_moorcheh.documents.upload_file.reset_mock()
+
+        headers = {**auth_headers, "X-Session-Token": token}
+        response = await client.post(
+            f"/api/v2/agents/{self.TEST_AGENT_ID}/upload-file",
+            headers=headers,
+            files={"file": ("large.txt", b"01234567890", "text/plain")},
+        )
+
+        assert response.status_code == 413
+        assert response.json()["detail"]["error"] == "file_too_large"
+        mock_moorcheh.documents.upload_file.assert_not_called()
 
     @pytest.mark.asyncio
     async def test_upload_file_unsupported_extension(self, client, auth_headers):
