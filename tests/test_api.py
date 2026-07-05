@@ -1341,6 +1341,19 @@ class TestCWE200ApiKeyLeak:
         assert resp.status_code == 403
 
     @pytest.mark.asyncio
+    async def test_ui_config_rejects_proxied_loopback_without_api_key(
+        self, _mock_ui_config_manager
+    ):
+        transport = ASGITransport(app=app, client=("127.0.0.1", 4242))
+        async with AsyncClient(transport=transport, base_url="http://test") as remote:
+            resp = await remote.get(
+                "/api/ui/config",
+                headers={"X-Forwarded-For": "203.0.113.10"},
+            )
+
+        assert resp.status_code == 403
+
+    @pytest.mark.asyncio
     async def test_ui_config_allows_remote_configured_api_key(
         self, _mock_ui_config_manager
     ):

@@ -26,6 +26,19 @@ from memanto.cli.connect.engine import install_agent, remove_agent
 # Shared ConfigManager instance (reads from ~/.memanto/)
 _config_manager = ConfigManager()
 
+_PROXY_HEADER_NAMES = {
+    "forwarded",
+    "x-forwarded-for",
+    "x-forwarded-host",
+    "x-forwarded-proto",
+    "x-real-ip",
+}
+
+
+def _has_proxy_headers(request: Request) -> bool:
+    """Return true when a request carries common reverse-proxy headers."""
+    return any(name in request.headers for name in _PROXY_HEADER_NAMES)
+
 
 def _require_trusted_ui_request(
     request: Request, authorization: str | None = Header(None)
@@ -33,11 +46,16 @@ def _require_trusted_ui_request(
     """Protect UI helper APIs from remote unauthenticated callers."""
 
     client_host = request.client.host if request.client else ""
+    has_proxy_headers = _has_proxy_headers(request)
     try:
-        if client_host and ip_address(client_host).is_loopback:
+        if (
+            client_host
+            and ip_address(client_host).is_loopback
+            and not has_proxy_headers
+        ):
             return
     except ValueError:
-        if client_host in {"localhost", "testclient"}:
+        if client_host in {"localhost", "testclient"} and not has_proxy_headers:
             return
 
     api_key = _config_manager.get_api_key()
@@ -48,7 +66,7 @@ def _require_trusted_ui_request(
 
     raise HTTPException(
         status_code=403,
-        detail="UI API requests must originate from localhost or use the configured API key.",
+        detail="UI API requests must come from direct localhost access or use the configured API key.",
     )
 
 

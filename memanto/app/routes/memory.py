@@ -47,6 +47,7 @@ from memanto.cli.config.manager import ConfigManager
 router = APIRouter()
 
 _config_manager = ConfigManager()
+MAX_UPLOAD_BYTES = 5 * 1024 * 1024 * 1024
 
 
 class RecallRequest(BaseModel):
@@ -530,6 +531,8 @@ async def upload_file(
         # Write upload to a temp file so moorcheh SDK can read it
         # Use original filename so the SDK records it as the source
         file_bytes = await file.read()
+        if len(file_bytes) > MAX_UPLOAD_BYTES:
+            raise HTTPException(status_code=413, detail="Uploaded file is too large")
         tmp_dir = tempfile.mkdtemp()
         tmp_path = os.path.join(tmp_dir, original_name)
         # Defense-in-depth: verify resolved path is within tmp_dir
@@ -561,6 +564,8 @@ async def upload_file(
             "message": result.get("message", ""),
         }
 
+    except HTTPException:
+        raise
     except Exception as e:
         raise map_error_to_http_exception(e)
 
