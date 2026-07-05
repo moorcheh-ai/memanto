@@ -288,6 +288,50 @@ class TestMemoryWriteServiceDelete:
         assert MemoryWriteService(client).delete_memory("m1", "ns") is expected
 
 
+class TestMemoryReadServiceFetchAll:
+    def test_fetch_all_memories_skips_nested_summary_items(self):
+        from memanto.app.services.memory_read_service import MemoryReadService
+
+        client = MagicMock()
+        client.documents.fetch_text_data.return_value = {
+            "items": [
+                {
+                    "id": "real-memory",
+                    "text": "[FACT] Useful memory\n\nKeep this in recall.",
+                    "metadata": {
+                        "memory_type": "fact",
+                        "created_at": "2026-07-01T00:00:00Z",
+                    },
+                },
+                {
+                    "id": "nested-summary",
+                    "text": "Batch summary chunk",
+                    "metadata": {
+                        "is_summary": True,
+                        "memory_type": "context",
+                    },
+                },
+                {
+                    "id": "string-summary",
+                    "text": "Uploaded file summary chunk",
+                    "is_summary": "true",
+                    "metadata": {
+                        "memory_type": "context",
+                    },
+                },
+            ],
+            "pagination": {"has_more": False},
+        }
+
+        result = MemoryReadService(client).search_recent(
+            agent_id="agent-1",
+            limit=None,
+        )
+
+        assert [memory["id"] for memory in result["results"]] == ["real-memory"]
+        assert result["total_found"] == 1
+
+
 class TestForgetEndToEnd:
     """End-to-end ``forget`` flow through ``DirectClient``: create agent →
     activate → delete_memory. Asserts on-prem's response shape

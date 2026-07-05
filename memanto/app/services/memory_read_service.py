@@ -382,7 +382,7 @@ class MemoryReadService:
         memories: list[dict[str, Any]] = []
         for item in items:
             # Skip summary chunks — only return real memory documents
-            if isinstance(item, dict) and item.get("is_summary"):
+            if self._is_summary_item(item):
                 continue
             formatted = self._format_memory_item(item)
             mid = formatted.get("id")
@@ -400,6 +400,20 @@ class MemoryReadService:
             memories.append(formatted)
 
         return self._filter_expired_memories(memories)
+
+    def _is_summary_item(self, item: Any) -> bool:
+        """Return true when a Moorcheh item is a summary/helper chunk."""
+        if not isinstance(item, dict):
+            return False
+
+        raw = item.get("is_summary")
+        metadata = item.get("metadata")
+        if raw is None and isinstance(metadata, dict):
+            raw = metadata.get("is_summary")
+
+        if isinstance(raw, str):
+            return raw.strip().lower() in {"1", "true", "yes"}
+        return bool(raw)
 
     def _build_filtered_query(
         self,
