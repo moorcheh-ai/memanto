@@ -657,30 +657,35 @@ class MemoryReadService:
         content = raw_text
 
         if raw_text:
-            lines = raw_text.split("\n\n", 2)  # Split into at most 3 parts
+            # Split into all \n\n-delimited segments so that the Tags: suffix
+            # can be reliably identified as the *last* segment, even when the
+            # content itself contains multiple paragraphs (multiple \n\n).
+            lines = raw_text.split("\n\n")
             first_line = lines[0] if lines else ""
 
             # Extract title: strip the "[TYPE] " prefix from first line
-
             title_match = re.match(r"^\[.*?\]\s*(.*)$", first_line)
             if title_match:
                 title = title_match.group(1).strip()
-                # Content is the rest after the first line (skip tags section)
+                # Content is everything between the title and the Tags suffix
                 if len(lines) > 1:
-                    # Check if last part is tags
-                    remaining = lines[1:]
-                    content_parts = []
-                    for part in remaining:
-                        if part.startswith("Tags: "):
-                            continue
-                        content_parts.append(part)
-                    content = "\n\n".join(content_parts) if content_parts else ""
+                    content_lines = lines[1:]
+                    # The Tags suffix (if any) is always the last segment.
+                    # Only strip it when the document actually has tags in
+                    # its flat metadata — otherwise a "Tags: ..." paragraph
+                    # in the content itself would be silently eaten.
+                    if content_lines and tags and content_lines[-1].startswith("Tags: "):
+                        content_lines = content_lines[:-1]
+                    content = "\n\n".join(content_lines) if content_lines else ""
                 else:
                     content = ""
             else:
                 # No [TYPE] prefix — use first line as title, rest as content
                 title = first_line.strip()
-                content = "\n\n".join(lines[1:]) if len(lines) > 1 else ""
+                content_parts = lines[1:]
+                if content_parts and tags and content_parts[-1].startswith("Tags: "):
+                    content_parts = content_parts[:-1]
+                content = "\n\n".join(content_parts) if content_parts else ""
 
         # Build basic formatted item
         formatted = {
