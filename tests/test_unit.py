@@ -287,6 +287,52 @@ class TestMemoryWriteServiceDelete:
         client.documents.delete.return_value = response
         assert MemoryWriteService(client).delete_memory("m1", "ns") is expected
 
+    def test_update_memory_accepts_onprem_delete_response(self, monkeypatch):
+        from memanto.app.services.memory_write_service import MemoryWriteService
+
+        client = MagicMock()
+        client.documents.delete.return_value = {
+            "status": "success",
+            "deleted_ids": ["m1"],
+        }
+        client.documents.upload.return_value = {"status": "success"}
+
+        class FakeReadService:
+            def __init__(self, client):
+                self.client = client
+
+            def get_memory(self, memory_id, namespace):
+                return {
+                    "id": memory_id,
+                    "type": "fact",
+                    "title": "Old title",
+                    "content": "Old content",
+                    "agent_id": "agent-1",
+                    "actor_id": "agent-1",
+                    "source": "manual",
+                    "confidence": 0.8,
+                    "status": "active",
+                    "tags": [],
+                }
+
+        monkeypatch.setattr(
+            "memanto.app.services.memory_read_service.MemoryReadService",
+            FakeReadService,
+        )
+
+        result = MemoryWriteService(client).update_memory(
+            "m1",
+            "memanto_agent_agent-1",
+            {"title": "Updated title"},
+        )
+
+        assert result["status"] == "success"
+        client.documents.delete.assert_called_once_with(
+            namespace_name="memanto_agent_agent-1",
+            ids=["m1"],
+        )
+        client.documents.upload.assert_called_once()
+
 
 class TestForgetEndToEnd:
     """End-to-end ``forget`` flow through ``DirectClient``: create agent →
