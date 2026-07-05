@@ -1290,6 +1290,7 @@ class DirectClient:
         Returns:
             List of unresolved conflict dicts.
         """
+        self._get_validated_session_for_agent(agent_id)
 
         if not date:
             date = datetime.now().strftime("%Y-%m-%d")
@@ -1331,6 +1332,7 @@ class DirectClient:
         Returns:
             Dict with resolution result.
         """
+        session = self._get_validated_session_for_agent(agent_id)
 
         valid_actions = {"keep_old", "keep_new", "keep_both", "remove_both", "manual"}
         if action not in valid_actions:
@@ -1356,10 +1358,9 @@ class DirectClient:
         old_id = conflict.get("old_memory_id")
         new_id = conflict.get("new_memory_id")
 
-        # Get namespace for memory operations
-        from memanto.app.core import agent_namespace
-
-        namespace = agent_namespace(agent_id)
+        # Use the validated session namespace so conflict resolution cannot
+        # operate on a different agent than the active session.
+        namespace = session.namespace
 
         write_service = self._get_write_service()
         result_details = {"action": action}

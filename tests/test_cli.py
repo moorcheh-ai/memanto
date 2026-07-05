@@ -456,6 +456,111 @@ class TestMEMANTOCLI:
         assert forwarded_updates["tags"] == ["a", "b"]
         assert result["status"] == "updated"
 
+    @pytest.mark.parametrize(
+        "client_cls,module_path",
+        [
+            ("memanto.cli.client.direct_client.DirectClient", "memanto.cli.client.direct_client"),
+            ("memanto.cli.client.sdk_client.SdkClient", "memanto.cli.client.sdk_client"),
+        ],
+    )
+    def test_conflict_list_requires_active_agent_session(
+        self, client_cls, module_path, tmp_path
+    ):
+        """Conflict reports are agent-scoped local state and must not be
+        readable unless the requested agent matches the active session."""
+        from importlib import import_module
+
+        from memanto.app.utils.errors import SessionError
+
+        module_name, class_name = client_cls.rsplit(".", 1)
+        client_type = getattr(import_module(module_name), class_name)
+        client = client_type.__new__(client_type)
+
+        conflicts_dir = tmp_path / ".memanto" / "conflicts"
+        conflicts_dir.mkdir(parents=True)
+        (conflicts_dir / "other-agent_2026-07-05_conflicts.json").write_text(
+            json.dumps([{"title": "private conflict", "resolved": False}]),
+            encoding="utf-8",
+        )
+
+        with (
+            patch(f"{module_path}.Path.home", return_value=tmp_path),
+            patch.object(
+                client_type,
+                "_get_validated_session_for_agent",
+                side_effect=SessionError("active session is for a different agent"),
+            ) as validate,
+        ):
+            with pytest.raises(SessionError):
+                client.list_conflicts("other-agent", "2026-07-05")
+
+        validate.assert_called_once_with("other-agent")
+
+    @pytest.mark.parametrize(
+        "client_cls,module_path",
+        [
+            ("memanto.cli.client.direct_client.DirectClient", "memanto.cli.client.direct_client"),
+            ("memanto.cli.client.sdk_client.SdkClient", "memanto.cli.client.sdk_client"),
+        ],
+    )
+    def test_conflict_resolution_uses_validated_session_namespace(
+        self, client_cls, module_path, tmp_path
+    ):
+        """Destructive conflict resolution must run against the namespace
+        returned by the validated session, not just a recomputed user string."""
+        from importlib import import_module
+
+        module_name, class_name = client_cls.rsplit(".", 1)
+        client_type = getattr(import_module(module_name), class_name)
+        client = client_type.__new__(client_type)
+
+        conflicts_dir = tmp_path / ".memanto" / "conflicts"
+        conflicts_dir.mkdir(parents=True)
+        conflict_path = conflicts_dir / "agent-1_2026-07-05_conflicts.json"
+        conflict_path.write_text(
+            json.dumps(
+                [
+                    {
+                        "old_memory_id": "old-memory",
+                        "new_memory_id": "new-memory",
+                        "resolved": False,
+                    }
+                ]
+            ),
+            encoding="utf-8",
+        )
+
+        mock_session = MagicMock()
+        mock_session.namespace = "memanto_agent_agent-1"
+        mock_write_service = MagicMock()
+        mock_write_service.delete_memory.return_value = True
+
+        with (
+            patch(f"{module_path}.Path.home", return_value=tmp_path),
+            patch.object(
+                client_type,
+                "_get_validated_session_for_agent",
+                return_value=mock_session,
+            ) as validate,
+            patch.object(
+                client_type, "_get_write_service", return_value=mock_write_service
+            ),
+        ):
+            result = client.resolve_conflict(
+                agent_id="agent-1",
+                date="2026-07-05",
+                conflict_index=0,
+                action="keep_old",
+            )
+
+        validate.assert_called_once_with("agent-1")
+        mock_write_service.delete_memory.assert_called_once_with(
+            "new-memory", "memanto_agent_agent-1"
+        )
+        updated = json.loads(conflict_path.read_text(encoding="utf-8"))
+        assert updated[0]["resolved"] is True
+        assert result["status"] == "resolved"
+
     def test_recall(self, mock_all_clients):
         """Test 'memanto recall'"""
         mock_all_clients.recall.return_value = {
