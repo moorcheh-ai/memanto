@@ -239,12 +239,7 @@ class MemantoStore(BaseStore):
         confidence = float(value.pop("confidence", 0.8))
         confidence = max(0.0, min(1.0, confidence))
 
-        raw_tags = value.pop("tags", []) or []
-        if isinstance(raw_tags, str):
-            raw_tags = [t.strip() for t in raw_tags.split(",") if t.strip()]
-        elif not isinstance(raw_tags, (list, tuple, set)):
-            raw_tags = [str(raw_tags)]
-
+        raw_tags = self._normalize_tag_values(value.pop("tags", []))
         user_tags = [
             str(t) for t in raw_tags if not str(t).startswith(_RESERVED_PREFIX)
         ]
@@ -290,7 +285,7 @@ class MemantoStore(BaseStore):
             type_filter = [type_filter]
         # SearchOp uses "min_confidence"; SdkClient.recall() uses "min_similarity"
         min_similarity = filter_dict.get("min_confidence")
-        extra_tags = list(filter_dict.get("tags", []) or [])
+        extra_tags = self._normalize_tag_values(filter_dict.get("tags", []))
 
         cache_key = (
             op.namespace_prefix,
@@ -421,6 +416,18 @@ class MemantoStore(BaseStore):
             if t.startswith(_KEY_TAG_PREFIX):
                 return t[len(_KEY_TAG_PREFIX) :]
         return None
+
+    @staticmethod
+    def _normalize_tag_values(raw: Any) -> list[str]:
+        if raw is None:
+            return []
+        if isinstance(raw, str):
+            values = raw.split(",")
+        elif isinstance(raw, (list, tuple, set)):
+            values = raw
+        else:
+            values = [raw]
+        return [text for value in values if (text := str(value).strip())]
 
     @staticmethod
     def _stringify(value: dict[str, Any]) -> str:
