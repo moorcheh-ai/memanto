@@ -288,6 +288,57 @@ class TestMemoryWriteServiceDelete:
         assert MemoryWriteService(client).delete_memory("m1", "ns") is expected
 
 
+class TestMemoryReadServiceSearch:
+    def test_search_memories_fetches_extra_rows_before_temporal_filtering(
+        self, monkeypatch
+    ):
+        from memanto.app.services.memory_read_service import MemoryReadService
+
+        client = MagicMock()
+        client.similarity_search.query.return_value = {
+            "results": [
+                {
+                    "id": "old-1",
+                    "text": "[FACT] Old one\n\nExpired before filter",
+                    "metadata": {
+                        "memory_type": "fact",
+                        "created_at": "2024-01-01T00:00:00Z",
+                    },
+                },
+                {
+                    "id": "old-2",
+                    "text": "[FACT] Old two\n\nAlso before filter",
+                    "metadata": {
+                        "memory_type": "fact",
+                        "created_at": "2024-01-02T00:00:00Z",
+                    },
+                },
+                {
+                    "id": "fresh",
+                    "text": "[FACT] Fresh\n\nStill eligible",
+                    "metadata": {
+                        "memory_type": "fact",
+                        "created_at": "2024-02-01T00:00:00Z",
+                    },
+                },
+            ],
+            "execution_time": 0.01,
+        }
+        service = MemoryReadService(client)
+        monkeypatch.setattr(service, "_get_search_namespaces", lambda agent_id: ["ns"])
+
+        result = service.search_memories(
+            "memory",
+            agent_id="agent-1",
+            limit=1,
+            created_after="2024-01-15T00:00:00Z",
+        )
+
+        client.similarity_search.query.assert_called_once()
+        assert client.similarity_search.query.call_args.kwargs["top_k"] == 100
+        assert [memory["id"] for memory in result["results"]] == ["fresh"]
+
+
 class TestForgetEndToEnd:
     """End-to-end ``forget`` flow through ``DirectClient``: create agent →
     activate → delete_memory. Asserts on-prem's response shape

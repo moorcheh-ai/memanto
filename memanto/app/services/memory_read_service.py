@@ -98,9 +98,13 @@ class MemoryReadService:
                 metadata_filters=metadata_filters,
             )
 
-            # Build query parameters
-            # Request extra results to handle offset (Moorcheh doesn't have native offset support)
-            requested_limit = limit + offset
+            # Build query parameters.
+            # Request extra results to handle offset (Moorcheh doesn't have
+            # native offset support). When filters are applied client-side
+            # after retrieval, fetch the backend page cap so valid lower-ranked
+            # memories are not lost before post-processing.
+            has_post_filters = bool(created_after or created_before)
+            requested_limit = 100 if has_post_filters else limit + offset
             top_k = min(requested_limit, 100)  # Moorcheh max is 100
 
             # Perform search with server-side filtering.
