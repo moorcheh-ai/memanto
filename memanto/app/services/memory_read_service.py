@@ -680,7 +680,7 @@ class MemoryReadService:
             else:
                 # No [TYPE] prefix — use first line as title, rest as content
                 title = first_line.strip()
-                content = "\n\n".join(lines[1:]) if len(lines) > 1 else ""
+                content = "\n\n".join(lines[1:]) if len(lines) > 1 else raw_text
 
         # Build basic formatted item
         formatted = {

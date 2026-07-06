@@ -366,6 +366,39 @@ class TestForgetEndToEnd:
         assert result["memory_id"] == "mem-xyz"
 
 
+class TestMemoryReadFormatting:
+    """Regression tests for read-back formatting of Moorcheh documents."""
+
+    def test_plain_single_paragraph_text_keeps_content(self):
+        from memanto.app.services.memory_read_service import MemoryReadService
+
+        formatted = MemoryReadService(MagicMock())._format_memory_item(
+            {
+                "id": "plain-doc",
+                "text": "Plain uploaded document content",
+                "metadata": {"memory_type": "artifact"},
+            }
+        )
+
+        assert formatted["title"] == "Plain uploaded document content"
+        assert formatted["content"] == "Plain uploaded document content"
+        assert formatted["text"] == "Plain uploaded document content"
+
+    def test_typed_memory_formatting_stays_unchanged(self):
+        from memanto.app.services.memory_read_service import MemoryReadService
+
+        formatted = MemoryReadService(MagicMock())._format_memory_item(
+            {
+                "id": "typed-doc",
+                "text": "[FACT] Stored title\n\nStored body",
+                "memory_type": "fact",
+            }
+        )
+
+        assert formatted["title"] == "Stored title"
+        assert formatted["content"] == "Stored body"
+
+
 class TestMEMANTOArchitecture:
     """Tests for MEMANTO architecture principles"""
 
