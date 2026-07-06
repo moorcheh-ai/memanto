@@ -14,6 +14,8 @@ from memanto.app.config import settings
 from memanto.app.core import agent_namespace
 from memanto.app.utils.errors import MemoryError
 
+SEARCH_OVERFETCH_BUFFER = 10
+
 
 class MemoryReadService:
     def __init__(self, moorcheh_client: "MoorchehClient"):
@@ -98,39 +100,47 @@ class MemoryReadService:
                 metadata_filters=metadata_filters,
             )
 
-            # Build query parameters
-            # Request extra results to handle offset (Moorcheh doesn't have native offset support)
-            requested_limit = limit + offset
-            top_k = min(requested_limit, 100)  # Moorcheh max is 100
-
             # Perform search with server-side filtering.
             # Only enable kiosk_mode when the caller actually set a positive
             # threshold; min_similarity=0.0 means "no filter", but on-prem
             # kiosk_mode + threshold=0.0 still filters everything out.
             use_kiosk = min_similarity_score is not None and min_similarity_score > 0
-            search_result = self.client.similarity_search.query(
-                query=enhanced_query,
-                namespaces=namespaces,
-                top_k=top_k,
-                threshold=min_similarity_score if use_kiosk else None,
-                kiosk_mode=use_kiosk,
-            )
 
-            search_items = search_result.get("results", [])
-
-            # Format results
-            all_results = [self._format_memory_item(item) for item in search_items]
-
-            # Apply temporal filtering (post-processing since Moorcheh metadata filters are string-based)
-            if created_after or created_before:
-                all_results = self._apply_temporal_filter(
-                    all_results,
-                    created_after=created_after,
-                    created_before=created_before,
+            def run_search(top_k: int) -> tuple[dict[str, Any], list[dict[str, Any]]]:
+                search_result = self.client.similarity_search.query(
+                    query=enhanced_query,
+                    namespaces=namespaces,
+                    top_k=top_k,
+                    threshold=min_similarity_score if use_kiosk else None,
+                    kiosk_mode=use_kiosk,
                 )
 
-            # Apply TTL enforcement - filter out expired memories
-            all_results = self._filter_expired_memories(all_results)
+                # Format results and apply local filters.
+                all_results = [
+                    self._format_memory_item(item)
+                    for item in search_result.get("results", [])
+                ]
+
+                # Apply temporal filtering (post-processing since Moorcheh metadata filters are string-based)
+                if created_after or created_before:
+                    all_results = self._apply_temporal_filter(
+                        all_results,
+                        created_after=created_after,
+                        created_before=created_before,
+                    )
+
+                # Apply TTL enforcement - filter out expired memories
+                return search_result, self._filter_expired_memories(all_results)
+
+            # Request the caller's window plus a small buffer first. TTL and
+            # temporal filters run locally, so widen to the backend cap only
+            # when the initial page was not enough to fill the requested slice.
+            initial_top_k = min(limit + offset + SEARCH_OVERFETCH_BUFFER, 100)
+            search_result, all_results = run_search(initial_top_k)
+
+            needs_more = len(all_results) < offset + limit and initial_top_k < 100
+            if needs_more:
+                search_result, all_results = run_search(100)
 
             # Apply pagination (offset + limit)
             paginated_results = all_results[offset : offset + limit]

@@ -4,7 +4,7 @@ MEMANTO Core Unit Tests (No Server Required)
 Tests the session and agent services directly without HTTP layer.
 """
 
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from unittest.mock import MagicMock, patch
 
 import jwt
@@ -286,6 +286,59 @@ class TestMemoryWriteServiceDelete:
         client = MagicMock()
         client.documents.delete.return_value = response
         assert MemoryWriteService(client).delete_memory("m1", "ns") is expected
+
+
+class TestMemoryReadServiceSearch:
+    def test_search_fetches_extra_rows_before_ttl_filtering(self, monkeypatch):
+        from memanto.app.services.memory_read_service import MemoryReadService
+
+        now = datetime.now(timezone.utc)
+        expired_at = (now - timedelta(days=1)).isoformat()
+        valid_until = (now + timedelta(days=1)).isoformat()
+        search_items = [
+            {
+                "id": f"expired-memory-{index}",
+                "text": "[FACT] Expired\n\nOld answer",
+                "metadata": {
+                    "memory_type": "fact",
+                    "created_at": "2025-01-01T00:00:00Z",
+                    "expires_at": expired_at,
+                },
+            }
+            for index in range(11)
+        ]
+        search_items.append(
+            {
+                "id": "valid-memory",
+                "text": "[FACT] Valid\n\nCurrent answer",
+                "metadata": {
+                    "memory_type": "fact",
+                    "created_at": "2025-01-02T00:00:00Z",
+                    "expires_at": valid_until,
+                },
+            }
+        )
+
+        def query(**kwargs):
+            return {
+                "results": search_items[: kwargs["top_k"]],
+                "execution_time": 0.01,
+            }
+
+        client = MagicMock()
+        client.similarity_search.query.side_effect = query
+        service = MemoryReadService(client)
+        monkeypatch.setattr(service, "_get_search_namespaces", lambda agent_id: ["ns"])
+
+        result = service.search_memories("answer", agent_id="agent-1", limit=1)
+
+        top_k_calls = [
+            call.kwargs["top_k"]
+            for call in client.similarity_search.query.call_args_list
+        ]
+        assert top_k_calls == [11, 100]
+        assert [memory["id"] for memory in result["results"]] == ["valid-memory"]
+        assert result["total_available"] == 1
 
 
 class TestForgetEndToEnd:
