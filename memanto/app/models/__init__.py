@@ -8,6 +8,7 @@ from typing import Any, Literal
 from pydantic import BaseModel, Field, field_validator, model_validator
 
 from memanto.app.constants import MemoryType, SourceType, StatusType
+from memanto.app.core import require_non_blank_text
 
 
 # Request Models
@@ -29,9 +30,7 @@ class MemoryStoreRequest(BaseModel):
     @field_validator("title", "content")
     @classmethod
     def validate_non_blank_text(cls, value: str) -> str:
-        if not isinstance(value, str) or not value.strip():
-            raise ValueError("Memory title and content must be non-empty")
-        return value
+        return require_non_blank_text(value)
 
 
 class MemoryBatchItem(BaseModel):
@@ -50,9 +49,7 @@ class MemoryBatchItem(BaseModel):
     @field_validator("title", "content")
     @classmethod
     def validate_non_blank_text(cls, value: str) -> str:
-        if not isinstance(value, str) or not value.strip():
-            raise ValueError("Memory title and content must be non-empty")
-        return value
+        return require_non_blank_text(value)
 
 
 class MemoryBatchWriteRequest(BaseModel):
@@ -88,9 +85,7 @@ class BatchRememberItem(BaseModel):
     @field_validator("content", "title")
     @classmethod
     def validate_non_blank_text(cls, value: str | None) -> str | None:
-        if value is not None and not value.strip():
-            raise ValueError("Memory title and content must be non-empty")
-        return value
+        return require_non_blank_text(value)
 
 
 class RememberRequest(BatchRememberItem):

@@ -44,11 +44,31 @@ def test_memory_record_rejects_blank_title() -> None:
             },
         ),
         (
+            MemoryStoreRequest,
+            {
+                "type": "fact",
+                "title": "\t\n ",
+                "content": "valid content",
+                "agent_id": "agent-1",
+                "actor_id": "agent-1",
+                "source": "agent",
+            },
+        ),
+        (
             MemoryBatchItem,
             {
                 "type": "fact",
                 "title": "valid title",
                 "content": "\t\n ",
+                "source": "agent",
+            },
+        ),
+        (
+            MemoryBatchItem,
+            {
+                "type": "fact",
+                "title": "\t\n ",
+                "content": "valid content",
                 "source": "agent",
             },
         ),

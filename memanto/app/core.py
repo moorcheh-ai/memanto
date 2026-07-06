@@ -21,6 +21,21 @@ def agent_namespace(agent_id: str) -> str:
     return f"memanto_agent_{agent_id}"
 
 
+def require_non_blank_text(value: Any) -> Any:
+    """Reject empty/whitespace-only memory text before persistence.
+
+    Pydantic's ``max_length`` constraint accepts ``""`` and ``"   "``.
+    Those values produce useless Moorcheh documents such as ``[FACT]\n\n``
+    and pollute retrieval with blank memories, so enforce semantic content
+    at every memory input boundary.
+    """
+    if value is None:
+        return value
+    if not isinstance(value, str) or not value.strip():
+        raise ValueError("Memory title and content must be non-empty")
+    return value
+
+
 class MemoryRecord(BaseModel):
     """Structured memory record with standardized format"""
 
@@ -51,16 +66,7 @@ class MemoryRecord(BaseModel):
     @field_validator("title", "content")
     @classmethod
     def _require_non_blank_text(cls, value: str) -> str:
-        """Reject empty/whitespace-only memory text before persistence.
-
-        Pydantic's ``max_length`` constraint accepts ``""`` and ``"   "``.
-        Those values produce useless Moorcheh documents such as ``[FACT]\n\n``
-        and pollute retrieval with blank memories, so enforce semantic content
-        at the core record boundary used by API, SDK, and batch writes.
-        """
-        if not isinstance(value, str) or not value.strip():
-            raise ValueError("Memory title and content must be non-empty")
-        return value
+        return require_non_blank_text(value)
 
     def to_moorcheh_document(self) -> dict[str, Any]:
         """
