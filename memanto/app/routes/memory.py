@@ -48,6 +48,27 @@ router = APIRouter()
 
 _config_manager = ConfigManager()
 
+ALLOWED_UPLOAD_EXTENSIONS = {".pdf", ".docx", ".xlsx", ".json", ".txt", ".csv", ".md"}
+MAX_UPLOAD_SIZE_BYTES = 5 * 1024 * 1024 * 1024
+UPLOAD_CHUNK_SIZE_BYTES = 1024 * 1024
+
+
+async def _write_upload_file_to_path(file: UploadFile, path: str) -> int:
+    bytes_written = 0
+    with open(path, "wb") as tmp:
+        while chunk := await file.read(UPLOAD_CHUNK_SIZE_BYTES):
+            bytes_written += len(chunk)
+            if bytes_written > MAX_UPLOAD_SIZE_BYTES:
+                raise HTTPException(
+                    status_code=413,
+                    detail=(
+                        "File exceeds maximum upload size of "
+                        f"{MAX_UPLOAD_SIZE_BYTES} bytes"
+                    ),
+                )
+            tmp.write(chunk)
+    return bytes_written
+
 
 class RecallRequest(BaseModel):
     query: str = Field(..., min_length=1, description="Search query")
@@ -231,6 +252,8 @@ async def remember(
             "type": result.get("type"),
         }
 
+    except HTTPException:
+        raise
     except Exception as e:
         raise map_error_to_http_exception(e)
 
@@ -510,15 +533,14 @@ async def upload_file(
     client = get_moorcheh_client()
 
     # Validate file extension before reading
-    ALLOWED_EXTENSIONS = {".pdf", ".docx", ".xlsx", ".json", ".txt", ".csv", ".md"}
     # Sanitize filename: strip directory components to prevent path traversal (CWE-22)
     original_name = Path(file.filename or "upload").name
     # Guard against empty or dot-only filenames after sanitization
     if not original_name or original_name in (".", ".."):
         original_name = "upload"
     suffix = Path(original_name).suffix.lower()
-    if suffix not in ALLOWED_EXTENSIONS:
-        allowed_str = ", ".join(sorted(ALLOWED_EXTENSIONS))
+    if suffix not in ALLOWED_UPLOAD_EXTENSIONS:
+        allowed_str = ", ".join(sorted(ALLOWED_UPLOAD_EXTENSIONS))
         raise HTTPException(
             status_code=400,
             detail=f"File type '{suffix}' is not supported. Allowed types: {allowed_str}",
@@ -529,7 +551,6 @@ async def upload_file(
 
         # Write upload to a temp file so moorcheh SDK can read it
         # Use original filename so the SDK records it as the source
-        file_bytes = await file.read()
         tmp_dir = tempfile.mkdtemp()
         tmp_path = os.path.join(tmp_dir, original_name)
         # Defense-in-depth: verify resolved path is within tmp_dir
@@ -541,8 +562,7 @@ async def upload_file(
                 detail="Invalid filename",
             )
         try:
-            with open(tmp_path, "wb") as tmp:
-                tmp.write(file_bytes)
+            bytes_written = await _write_upload_file_to_path(file, tmp_path)
             result = await asyncio.to_thread(
                 client.documents.upload_file, namespace, tmp_path
             )
@@ -556,11 +576,13 @@ async def upload_file(
             "session_id": session.session_id,
             "namespace": namespace,
             "file_name": original_name,
-            "file_size": result.get("fileSize"),
+            "file_size": result.get("fileSize", bytes_written),
             "status": "uploaded" if result.get("success") else "failed",
             "message": result.get("message", ""),
         }
 
+    except HTTPException:
+        raise
     except Exception as e:
         raise map_error_to_http_exception(e)
 

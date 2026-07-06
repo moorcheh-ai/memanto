@@ -7,11 +7,13 @@ from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from fastapi import HTTPException
 from httpx import ASGITransport, AsyncClient
 
 from memanto.app.config import settings
 from memanto.app.main import app
 from memanto.app.models.session import Session
+from memanto.app.routes import memory as memory_routes
 from memanto.app.routes.auth_deps import get_current_session
 
 # Set test environment
@@ -1225,6 +1227,32 @@ class TestMEMANTOAPI:
         assert response.status_code == 400
 
     @pytest.mark.asyncio
+    async def test_upload_file_over_size_limit_returns_413(
+        self, client, auth_headers, mock_moorcheh, monkeypatch
+    ):
+        """Oversized uploads return 413 before calling the SDK."""
+        await client.post(
+            "/api/v2/agents",
+            headers=auth_headers,
+            json={"agent_id": self.TEST_AGENT_ID},
+        )
+        activate_resp = await client.post(
+            f"/api/v2/agents/{self.TEST_AGENT_ID}/activate", headers=auth_headers
+        )
+        token = activate_resp.json()["session_token"]
+
+        monkeypatch.setattr(memory_routes, "MAX_UPLOAD_SIZE_BYTES", 5)
+        headers = {**auth_headers, "X-Session-Token": token}
+        response = await client.post(
+            f"/api/v2/agents/{self.TEST_AGENT_ID}/upload-file",
+            headers=headers,
+            files={"file": ("notes.txt", b"too large", "text/plain")},
+        )
+
+        assert response.status_code == 413
+        mock_moorcheh.documents.upload_file.assert_not_called()
+
+    @pytest.mark.asyncio
     async def test_upload_file_requires_session(self, client, auth_headers):
         """Test that upload requires a valid session token"""
         await client.post(
@@ -1454,6 +1482,39 @@ class TestFilenameSanitizationLogic:
     def test_dotfile(self):
         result = self.sanitize(".env")
         assert result == ".env"
+
+
+class TestUploadFileStreaming:
+    """Direct tests for chunked upload writes."""
+
+    class ChunkedUpload:
+        def __init__(self, chunks: list[bytes]):
+            self.chunks = list(chunks)
+
+        async def read(self, size: int = -1) -> bytes:
+            return self.chunks.pop(0) if self.chunks else b""
+
+    @pytest.mark.asyncio
+    async def test_writes_upload_in_chunks(self, tmp_path):
+        upload = self.ChunkedUpload([b"alpha", b"beta", b"gamma"])
+        target = tmp_path / "upload.txt"
+
+        size = await memory_routes._write_upload_file_to_path(upload, str(target))
+
+        assert size == len(b"alphabetagamma")
+        assert target.read_bytes() == b"alphabetagamma"
+
+    @pytest.mark.asyncio
+    async def test_rejects_upload_over_size_limit(self, tmp_path, monkeypatch):
+        monkeypatch.setattr(memory_routes, "MAX_UPLOAD_SIZE_BYTES", 5)
+        upload = self.ChunkedUpload([b"abc", b"def"])
+
+        with pytest.raises(HTTPException) as exc_info:
+            await memory_routes._write_upload_file_to_path(
+                upload, str(tmp_path / "upload.txt")
+            )
+
+        assert exc_info.value.status_code == 413
 
 
 class TestRealpathGuard:
