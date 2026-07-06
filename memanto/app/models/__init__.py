@@ -5,7 +5,7 @@ MEMANTO API Models
 from datetime import datetime
 from typing import Any, Literal
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 from memanto.app.constants import MemoryType, SourceType, StatusType
 
@@ -26,6 +26,13 @@ class MemoryStoreRequest(BaseModel):
     ttl_seconds: int | None = None
     user_confirmed: bool = False
 
+    @field_validator("title", "content")
+    @classmethod
+    def validate_non_blank_text(cls, value: str) -> str:
+        if not isinstance(value, str) or not value.strip():
+            raise ValueError("Memory title and content must be non-empty")
+        return value
+
 
 class MemoryBatchItem(BaseModel):
     """Single memory item for batch write"""
@@ -39,6 +46,13 @@ class MemoryBatchItem(BaseModel):
     tags: list[str] = Field(default_factory=list)
     ttl_seconds: int | None = None
     id: str | None = None  # Optional custom ID
+
+    @field_validator("title", "content")
+    @classmethod
+    def validate_non_blank_text(cls, value: str) -> str:
+        if not isinstance(value, str) or not value.strip():
+            raise ValueError("Memory title and content must be non-empty")
+        return value
 
 
 class MemoryBatchWriteRequest(BaseModel):
@@ -70,6 +84,13 @@ class BatchRememberItem(BaseModel):
         "explicit_statement",
         description="How memory was obtained (explicit_statement, inferred, observed, etc.)",
     )
+
+    @field_validator("content", "title")
+    @classmethod
+    def validate_non_blank_text(cls, value: str | None) -> str | None:
+        if value is not None and not value.strip():
+            raise ValueError("Memory title and content must be non-empty")
+        return value
 
 
 class RememberRequest(BatchRememberItem):

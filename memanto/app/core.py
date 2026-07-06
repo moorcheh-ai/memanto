@@ -6,7 +6,7 @@ import uuid
 from datetime import datetime, timedelta
 from typing import Any
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from memanto.app.constants import (
     MemoryType,
@@ -47,6 +47,20 @@ class MemoryRecord(BaseModel):
     updated_at: datetime = Field(default_factory=datetime.utcnow)
     expires_at: datetime | None = None
     ttl_seconds: int | None = None
+
+    @field_validator("title", "content")
+    @classmethod
+    def _require_non_blank_text(cls, value: str) -> str:
+        """Reject empty/whitespace-only memory text before persistence.
+
+        Pydantic's ``max_length`` constraint accepts ``""`` and ``"   "``.
+        Those values produce useless Moorcheh documents such as ``[FACT]\n\n``
+        and pollute retrieval with blank memories, so enforce semantic content
+        at the core record boundary used by API, SDK, and batch writes.
+        """
+        if not isinstance(value, str) or not value.strip():
+            raise ValueError("Memory title and content must be non-empty")
+        return value
 
     def to_moorcheh_document(self) -> dict[str, Any]:
         """
