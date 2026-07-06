@@ -903,7 +903,7 @@ def _to_memory_hit(raw: dict[str, Any]) -> MemoryHit:
         title=raw.get("title"),
         content=raw.get("content"),
         confidence=raw.get("confidence"),
-        tags=list(raw.get("tags") or []),
+        tags=_normalize_tags(raw.get("tags")),
         status=raw.get("status"),
         source=raw.get("source"),
         source_ref=raw.get("source_ref"),
@@ -915,3 +915,18 @@ def _to_memory_hit(raw: dict[str, Any]) -> MemoryHit:
             else raw.get("similarity_score")
         ),
     )
+
+
+def _normalize_tags(raw_tags: Any) -> list[str]:
+    """Return tags as a clean string list for MCP clients.
+
+    Core Memanto paths usually return tags as a list, but some backend and SDK
+    surfaces expose the stored comma-separated metadata string. Treating that
+    string with ``list(...)`` turns ``"alpha,beta"`` into characters, which
+    makes agent-side filtering and display misleading.
+    """
+    if isinstance(raw_tags, str):
+        return [tag.strip() for tag in raw_tags.split(",") if tag.strip()]
+    if isinstance(raw_tags, list):
+        return [str(tag).strip() for tag in raw_tags if str(tag).strip()]
+    return []
