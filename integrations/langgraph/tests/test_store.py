@@ -235,6 +235,41 @@ def test_do_search_semantic(mock_sdk_client):
     )
 
 
+def test_do_search_accepts_comma_separated_tag_filter(mock_sdk_client):
+    store = MemantoStore(api_key="test_key")
+    client_instance = MagicMock()
+    mock_sdk_client.return_value = client_instance
+
+    client_instance.recall.return_value = {
+        "memories": [
+            {
+                "id": "mem-789",
+                "tags": ["lg:key:key3", "project", "urgent"],
+                "type": "fact",
+                "content": "tagged memory",
+            }
+        ]
+    }
+
+    op = SearchOp(
+        namespace_prefix=("my_ns",),
+        query="tagged",
+        filter={"tags": "project, urgent"},
+    )
+    items = store._do_search(op)
+
+    assert len(items) == 1
+    assert items[0].key == "key3"
+    client_instance.recall.assert_called_once_with(
+        agent_id="langgraph_my_ns",
+        query="tagged",
+        limit=10,
+        type=None,
+        tags=["project", "urgent"],
+        min_similarity=None,
+    )
+
+
 def test_batch_execution(mock_sdk_client):
     store = MemantoStore(api_key="test_key")
     client_instance = MagicMock()
