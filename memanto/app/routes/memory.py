@@ -55,7 +55,8 @@ UPLOAD_CHUNK_SIZE_BYTES = 1024 * 1024
 
 async def _write_upload_file_to_path(file: UploadFile, path: str) -> int:
     bytes_written = 0
-    with open(path, "wb") as tmp:
+    tmp = await asyncio.to_thread(open, path, "wb")
+    try:
         while chunk := await file.read(UPLOAD_CHUNK_SIZE_BYTES):
             bytes_written += len(chunk)
             if bytes_written > MAX_UPLOAD_SIZE_BYTES:
@@ -66,7 +67,9 @@ async def _write_upload_file_to_path(file: UploadFile, path: str) -> int:
                         f"{MAX_UPLOAD_SIZE_BYTES} bytes"
                     ),
                 )
-            tmp.write(chunk)
+            await asyncio.to_thread(tmp.write, chunk)
+    finally:
+        await asyncio.to_thread(tmp.close)
     return bytes_written
 
 

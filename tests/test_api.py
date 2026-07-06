@@ -1492,7 +1492,13 @@ class TestUploadFileStreaming:
             self.chunks = list(chunks)
 
         async def read(self, size: int = -1) -> bytes:
-            return self.chunks.pop(0) if self.chunks else b""
+            if not self.chunks:
+                return b""
+            chunk = self.chunks.pop(0)
+            if size < 0 or len(chunk) <= size:
+                return chunk
+            self.chunks.insert(0, chunk[size:])
+            return chunk[:size]
 
     @pytest.mark.asyncio
     async def test_writes_upload_in_chunks(self, tmp_path):
@@ -1515,6 +1521,17 @@ class TestUploadFileStreaming:
             )
 
         assert exc_info.value.status_code == 413
+
+    @pytest.mark.asyncio
+    async def test_allows_upload_at_exact_size_limit(self, tmp_path, monkeypatch):
+        monkeypatch.setattr(memory_routes, "MAX_UPLOAD_SIZE_BYTES", 5)
+        upload = self.ChunkedUpload([b"abcde"])
+        target = tmp_path / "upload.txt"
+
+        size = await memory_routes._write_upload_file_to_path(upload, str(target))
+
+        assert size == 5
+        assert target.read_bytes() == b"abcde"
 
 
 class TestRealpathGuard:
