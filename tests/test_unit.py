@@ -294,36 +294,41 @@ class TestMemoryReadServiceSearch:
     ):
         from memanto.app.services.memory_read_service import MemoryReadService
 
+        search_items = [
+            {
+                "id": "old-1",
+                "text": "[FACT] Old one\n\nExpired before filter",
+                "metadata": {
+                    "memory_type": "fact",
+                    "created_at": "2024-01-01T00:00:00Z",
+                },
+            },
+            {
+                "id": "old-2",
+                "text": "[FACT] Old two\n\nAlso before filter",
+                "metadata": {
+                    "memory_type": "fact",
+                    "created_at": "2024-01-02T00:00:00Z",
+                },
+            },
+            {
+                "id": "fresh",
+                "text": "[FACT] Fresh\n\nStill eligible",
+                "metadata": {
+                    "memory_type": "fact",
+                    "created_at": "2024-02-01T00:00:00Z",
+                },
+            },
+        ]
+
+        def query(**kwargs):
+            return {
+                "results": search_items[: kwargs["top_k"]],
+                "execution_time": 0.01,
+            }
+
         client = MagicMock()
-        client.similarity_search.query.return_value = {
-            "results": [
-                {
-                    "id": "old-1",
-                    "text": "[FACT] Old one\n\nExpired before filter",
-                    "metadata": {
-                        "memory_type": "fact",
-                        "created_at": "2024-01-01T00:00:00Z",
-                    },
-                },
-                {
-                    "id": "old-2",
-                    "text": "[FACT] Old two\n\nAlso before filter",
-                    "metadata": {
-                        "memory_type": "fact",
-                        "created_at": "2024-01-02T00:00:00Z",
-                    },
-                },
-                {
-                    "id": "fresh",
-                    "text": "[FACT] Fresh\n\nStill eligible",
-                    "metadata": {
-                        "memory_type": "fact",
-                        "created_at": "2024-02-01T00:00:00Z",
-                    },
-                },
-            ],
-            "execution_time": 0.01,
-        }
+        client.similarity_search.query.side_effect = query
         service = MemoryReadService(client)
         monkeypatch.setattr(service, "_get_search_namespaces", lambda agent_id: ["ns"])
 
