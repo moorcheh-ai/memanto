@@ -7,7 +7,7 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, Field, model_validator
 
-from memanto.app.constants import MemoryType, SourceType, StatusType
+from memanto.app.constants import MemoryType, ProvenanceType, SourceType, StatusType
 
 
 # Request Models
@@ -66,7 +66,7 @@ class BatchRememberItem(BaseModel):
     confidence: float = Field(0.8, ge=0.0, le=1.0, description="Confidence score (0-1)")
     tags: list[str] | None = Field(None, description="Tags for this memory")
     source: str = Field("agent", description="Source of memory")
-    provenance: str = Field(
+    provenance: ProvenanceType = Field(
         "explicit_statement",
         description="How memory was obtained (explicit_statement, inferred, observed, etc.)",
     )
