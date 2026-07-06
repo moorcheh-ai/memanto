@@ -263,6 +263,17 @@ class ConfigManager:
         """Get a top-level YAML config value."""
         return self.load_yaml().get(key, default)
 
+    def _get_section(self, key: str) -> dict:
+        """Return a config section only when it is a mapping.
+
+        ``config.yaml`` is user-editable, so a malformed section such as
+        ``recall: []`` or ``server: "localhost"`` must not crash read paths that
+        merely need to apply defaults. Treat non-mapping section values like a
+        missing section and let setters replace them with a fresh dict.
+        """
+        value = self.load_yaml().get(key, {})
+        return value if isinstance(value, dict) else {}
+
     def set(self, key: str, value) -> None:
         """Set a top-level YAML config value."""
         data = self.load_yaml()
@@ -273,7 +284,7 @@ class ConfigManager:
 
     def get_server_url(self) -> str:
         """Get MEMANTO server URL."""
-        server = self.load_yaml().get("server", {})
+        server = self._get_section("server")
         host = server.get("url", "localhost")
         port = server.get("port", 8000)
         return f"http://{host}:{port}"
@@ -281,7 +292,7 @@ class ConfigManager:
     def get_server_config(self) -> dict:
         """Get server config dict with defaults."""
         defaults = {"url": "localhost", "port": 8000, "auto_start": False}
-        defaults.update(self.load_yaml().get("server", {}))
+        defaults.update(self._get_section("server"))
         return defaults
 
     def get_session_config(self) -> dict:
@@ -294,7 +305,7 @@ class ConfigManager:
             "auto_renew_enabled": True,
             "auto_renew_interval_hours": 6,
         }
-        defaults.update(self.load_yaml().get("session", {}))
+        defaults.update(self._get_section("session"))
         return defaults
 
     def get_cli_config(self) -> dict:
@@ -305,7 +316,7 @@ class ConfigManager:
             "auto_title": True,
             "color_output": True,
         }
-        defaults.update(self.load_yaml().get("cli", {}))
+        defaults.update(self._get_section("cli"))
         return defaults
 
     def get_answer_config(self) -> dict:
@@ -319,6 +330,8 @@ class ConfigManager:
         """
         data = self.load_yaml()
         answer = data.get("answer", {})
+        if not isinstance(answer, dict):
+            answer = {}
 
         defaults = {
             "model": "anthropic.claude-sonnet-4-6",
@@ -362,8 +375,7 @@ class ConfigManager:
 
     def get_recall_config(self) -> dict:
         """Get Recall/Top-N config dict with defaults."""
-        data = self.load_yaml()
-        recall = data.get("recall", {})
+        recall = self._get_section("recall")
 
         defaults = {"limit": 10, "min_similarity": 0.0}
         defaults.update(recall)
