@@ -328,10 +328,7 @@ class ConfigManager:
         knobs (temperature/threshold/answer_limit/kiosk_mode) are shared
         because they describe how to query, not which provider to hit.
         """
-        data = self.load_yaml()
-        answer = data.get("answer", {})
-        if not isinstance(answer, dict):
-            answer = {}
+        answer = self._get_section("answer")
 
         defaults = {
             "model": "anthropic.claude-sonnet-4-6",
