@@ -8,6 +8,7 @@ async def client():
     # Use ASGITransport to test the FastAPI app directly
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
         yield ac
+    app.dependency_overrides.clear()
 
 @pytest.mark.asyncio
 async def test_remember_with_invalid_provenance(client):
