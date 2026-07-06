@@ -5,11 +5,15 @@ from memanto.app.main import app
 
 @pytest.fixture
 async def client():
+    # Use ASGITransport to test the FastAPI app directly
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
         yield ac
 
 @pytest.mark.asyncio
 async def test_remember_with_invalid_provenance(client):
+    # Setup test headers & mock session dependency
+    auth_headers = {"Authorization": "Bearer test-api-key"}
+    
     from datetime import datetime, timezone
     from memanto.app.models.session import Session
     
@@ -35,7 +39,7 @@ async def test_remember_with_invalid_provenance(client):
             json={
                 "content": "This is a test memory",
                 "type": "fact",
-                "provenance": "invalid_provenance_value_123" # Here we use an invalid provenance value to trigger validation error
+                "provenance": "invalid_provenance_value_123"
             }
         )
         
@@ -91,3 +95,35 @@ async def test_batch_remember_with_invalid_provenance(client):
         assert response.status_code == 422
         data = response.json()
         assert "detail" in data
+
+@pytest.mark.asyncio
+async def test_daily_summary_output_path_rejected(client):
+    from datetime import datetime, timezone
+    from memanto.app.models.session import Session
+    from memanto.app.routes.auth_deps import get_current_session
+    
+    mock_session = Session(
+        session_id="mock-session-id",
+        session_token="mock-token",
+        agent_id="test_agent",
+        actor_id="test_actor",
+        moorcheh_api_key="test-api-key",
+        namespace="memanto_agent_test_agent",
+        started_at=datetime.now(timezone.utc),
+        expires_at=datetime.now(timezone.utc)
+    )
+    
+    app.dependency_overrides[get_current_session] = lambda: mock_session
+    
+    response = await client.post(
+        "/api/v2/agents/test_agent/daily-summary",
+        headers={"X-Session-Token": "mock-token"},
+        json={
+            "output_path": "/etc/cron.d/malicious_cron"
+        }
+    )
+    
+    assert response.status_code == 400
+    data = response.json()
+    assert "detail" in data
+    assert "output_path" in data["detail"]

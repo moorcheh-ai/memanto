@@ -800,6 +800,12 @@ async def generate_daily_summary(
     POST ``/{agent_id}/conflicts/generate`` or the scheduled job.
     """
     enforce_session_scope(session, agent_id)
+    
+    if request.output_path:
+        raise HTTPException(
+            status_code=400,
+            detail="Custom output_path is not allowed via the API endpoint.",
+        )
 
     resolved_date = request.date or datetime.now().strftime("%Y-%m-%d")
     try:
