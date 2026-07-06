@@ -101,6 +101,8 @@ class MemoryReadService:
             # Build query parameters
             # Request extra results to handle offset (Moorcheh doesn't have native offset support)
             requested_limit = limit + offset
+            if min_confidence is not None:
+                requested_limit = 100
             top_k = min(requested_limit, 100)  # Moorcheh max is 100
 
             # Perform search with server-side filtering.

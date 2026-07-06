@@ -35,6 +35,7 @@ class _FakeSimilaritySearch:
 
     def query(self, **kwargs):
         self.last_query = kwargs["query"]
+        self.last_top_k = kwargs["top_k"]
         return {
             "results": self.results,
             "execution_time": 0,
@@ -60,6 +61,52 @@ def test_search_memories_applies_numeric_min_confidence_after_retrieval():
     assert [memory["id"] for memory in result["results"]] == ["high"]
     assert "#confidence:high" not in client.similarity_search.last_query
     assert "#confidence:medium" not in client.similarity_search.last_query
+    assert client.similarity_search.last_top_k == 100
+
+
+def test_min_confidence_fetches_beyond_initial_page_before_filtering():
+    client = _FakeClient(
+        [
+            {
+                "id": "low",
+                "text": "[FACT] Low confidence\n\nRelevant but weak memory",
+                "memory_type": "fact",
+                "scope_type": "agent",
+                "scope_id": "agent-1",
+                "actor_id": "agent-1",
+                "source": "user",
+                "confidence": 0.41,
+                "status": "active",
+                "created_at": "2026-06-25T00:00:00Z",
+                "updated_at": "2026-06-25T00:00:00Z",
+            },
+            {
+                "id": "high",
+                "text": "[FACT] High confidence\n\nRelevant memory",
+                "memory_type": "fact",
+                "scope_type": "agent",
+                "scope_id": "agent-1",
+                "actor_id": "agent-1",
+                "source": "user",
+                "confidence": 0.91,
+                "status": "active",
+                "created_at": "2026-06-25T00:00:00Z",
+                "updated_at": "2026-06-25T00:00:00Z",
+            },
+        ]
+    )
+    service = MemoryReadService(client)
+
+    result = service.search_memories(
+        query="relevant",
+        agent_id="agent-1",
+        min_confidence=0.8,
+        limit=1,
+    )
+
+    assert [memory["id"] for memory in result["results"]] == ["high"]
+    assert result["total_available"] == 1
+    assert result["has_more"] is False
 
 
 def test_zero_min_confidence_preserves_results_without_confidence_field():
