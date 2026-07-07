@@ -18,7 +18,7 @@ from pydantic import BaseModel, Field, field_validator
 from memanto.app.clients.backend import get_active_llm_model
 from memanto.app.clients.moorcheh import get_moorcheh_client
 from memanto.app.config import settings
-from memanto.app.constants import VALID_MEMORY_TYPES
+from memanto.app.constants import VALID_MEMORY_TYPES, MemoryType
 from memanto.app.core import MemoryRecord
 from memanto.app.models import (
     AnswerRequest,
@@ -69,7 +69,9 @@ class RecallRequest(BaseModel):
     min_similarity: float | None = Field(
         default=None, ge=0.0, le=1.0, description="Minimum similarity score (0-1)"
     )
-    type: list[str] | None = Field(default=None, description="Memory type filters")
+    type: list[MemoryType] | None = Field(
+        default=None, description="Memory type filters"
+    )
 
 
 class RecallAsOfRequest(BaseModel):
@@ -80,7 +82,9 @@ class RecallAsOfRequest(BaseModel):
         description="Point-in-time — YYYY-MM-DD (defaults to end of day) or full ISO datetime e.g. 2025-11-01T14:30:00Z",
     )
     limit: int | None = Field(default=None, ge=1, description="Max results")
-    type: list[str] | None = Field(default=None, description="Memory type filters")
+    type: list[MemoryType] | None = Field(
+        default=None, description="Memory type filters"
+    )
 
     @field_validator("as_of", mode="before")
     @classmethod
@@ -117,7 +121,9 @@ class RecallChangedSinceRequest(BaseModel):
         description="Start of change window — YYYY-MM-DD (defaults to start of day) or full ISO datetime e.g. 2025-11-01T00:00:00Z",
     )
     limit: int | None = Field(default=None, ge=1, description="Max results")
-    type: list[str] | None = Field(default=None, description="Memory type filters")
+    type: list[MemoryType] | None = Field(
+        default=None, description="Memory type filters"
+    )
 
     @field_validator("since", mode="before")
     @classmethod
@@ -150,7 +156,9 @@ class RecallRecentRequest(BaseModel):
     """Request body for retrieving recent memories."""
 
     limit: int | None = Field(default=None, ge=1, description="Max results")
-    type: list[str] | None = Field(default=None, description="Memory type filters")
+    type: list[MemoryType] | None = Field(
+        default=None, description="Memory type filters"
+    )
 
 
 class MemoryEditRequest(BaseModel):
