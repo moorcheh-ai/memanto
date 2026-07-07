@@ -44,7 +44,8 @@ def create_memanto_tools(client: SdkClient, agent_id: str):
                 client.activate_agent(agent_id, duration_hours=6)
             except Exception:
                 pass
-            _setup_done = True
+            else:
+                _setup_done = True
 
     @tool
     def memanto_remember(
