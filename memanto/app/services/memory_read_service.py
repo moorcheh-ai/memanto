@@ -11,6 +11,7 @@ if TYPE_CHECKING:
 
 from memanto.app.clients.backend import get_active_llm_model
 from memanto.app.config import settings
+from memanto.app.constants import VALID_MEMORY_TYPES
 from memanto.app.core import agent_namespace
 from memanto.app.utils.errors import MemoryError
 
@@ -153,6 +154,8 @@ class MemoryReadService:
                 "execution_time": search_result.get("execution_time", 0),
             }
 
+        except MemoryError:
+            raise
         except Exception as e:
             raise MemoryError(f"Failed to search memories: {e}")
 
@@ -429,6 +432,7 @@ class MemoryReadService:
 
         # Add memory type filters
         if type:
+            self._validate_memory_type_filters(type)
             for mem_type in type:
                 filter_parts.append(f"#memory_type:{mem_type}")
 
@@ -456,6 +460,16 @@ class MemoryReadService:
         if filter_parts:
             return f"{query} {' '.join(filter_parts)}"
         return query
+
+    @staticmethod
+    def _validate_memory_type_filters(types: list[str]) -> None:
+        """Reject invalid memory type filters before query-string composition."""
+        for mem_type in types:
+            if mem_type not in VALID_MEMORY_TYPES:
+                valid = ", ".join(sorted(VALID_MEMORY_TYPES))
+                raise MemoryError(
+                    f"Invalid memory type filter '{mem_type}'. Must be one of: {valid}."
+                )
 
     def _apply_temporal_filter(
         self,
