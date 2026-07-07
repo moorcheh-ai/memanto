@@ -111,6 +111,12 @@ def test_memanto_remember_retries_setup_after_activation_failure():
     assert client.create_agent.call_count == 2
     assert client.activate_agent.call_count == 2
 
+    fast_path_result = remember_tool.invoke(payload)
+
+    assert fast_path_result == "Memory stored: mem-789"
+    assert client.create_agent.call_count == 2
+    assert client.activate_agent.call_count == 2
+
 
 def test_memanto_recall_tool_success():
     client = MagicMock()
