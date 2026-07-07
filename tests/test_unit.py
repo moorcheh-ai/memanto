@@ -362,6 +362,42 @@ class TestMemoryWriteServiceDelete:
 
 
 class TestMemoryReadServiceFormatting:
+    def test_format_memory_item_only_strips_valid_memory_type_prefix(self):
+        from memanto.app.services.memory_read_service import MemoryReadService
+
+        item = {
+            "id": "m-rfc",
+            "text": "[RFC] Retention rules\n\nKeep session notes for 30 days.",
+            "metadata": {
+                "memory_type": "artifact",
+                "confidence": 0.9,
+                "status": "active",
+            },
+        }
+
+        formatted = MemoryReadService(MagicMock())._format_memory_item(item)
+
+        assert formatted["title"] == "[RFC] Retention rules"
+        assert formatted["content"] == "Keep session notes for 30 days."
+
+    def test_format_memory_item_still_parses_valid_memory_type_prefix(self):
+        from memanto.app.services.memory_read_service import MemoryReadService
+
+        item = {
+            "id": "m-fact",
+            "text": "[FACT] Deployment target\n\nUse Base for x402 settlement.",
+            "metadata": {
+                "memory_type": "fact",
+                "confidence": 0.9,
+                "status": "active",
+            },
+        }
+
+        formatted = MemoryReadService(MagicMock())._format_memory_item(item)
+
+        assert formatted["title"] == "Deployment target"
+        assert formatted["content"] == "Use Base for x402 settlement."
+
     def test_format_memory_item_preserves_falsey_metadata_values(self):
         from memanto.app.services.memory_read_service import MemoryReadService
 

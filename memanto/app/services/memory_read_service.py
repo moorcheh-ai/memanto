@@ -11,6 +11,7 @@ if TYPE_CHECKING:
 
 from memanto.app.clients.backend import get_active_llm_model
 from memanto.app.config import settings
+from memanto.app.constants import VALID_MEMORY_TYPES
 from memanto.app.core import agent_namespace
 from memanto.app.utils.errors import MemoryError
 
@@ -686,9 +687,10 @@ class MemoryReadService:
 
             # Extract title: strip the "[TYPE] " prefix from first line
 
-            title_match = re.match(r"^\[.*?\]\s*(.*)$", first_line)
-            if title_match:
-                title = title_match.group(1).strip()
+            title_match = re.match(r"^\[([^\]]+)\]\s*(.*)$", first_line)
+            label = title_match.group(1).strip().lower() if title_match else ""
+            if title_match and label in VALID_MEMORY_TYPES:
+                title = title_match.group(2).strip()
                 # Content is the rest after the first line (skip tags section)
                 if len(lines) > 1:
                     # Check if last part is tags
