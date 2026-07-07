@@ -190,3 +190,17 @@ def test_fuzzy_fallback_does_not_fire_on_unrelated_text():
     parser.parse_memory(memory)
 
     assert memory.type == "fact"
+
+
+def test_ambiguity_guard_not_bypassed_by_auxiliary_verbs():
+    parser = MemoryParsingService()
+
+    # Scenario 1: With auxiliary verb 'is'
+    memory1 = make_memory("The project uses Django and it is maintained, and we decded on Postgres")
+    parser.parse_memory(memory1)
+    assert memory1.type == "decision"
+
+    # Scenario 2: Without auxiliary verb 'is' (gets)
+    memory2 = make_memory("The project uses Django and it gets maintained, and we decded on Postgres")
+    parser.parse_memory(memory2)
+    assert memory2.type == "decision"
