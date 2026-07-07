@@ -1,4 +1,7 @@
+import pytest
+
 from memanto.app.services.memory_read_service import MemoryReadService
+from memanto.app.utils.errors import MemoryError
 
 
 class _FakeSimilaritySearch:
@@ -89,3 +92,18 @@ def test_zero_min_confidence_preserves_results_without_confidence_field():
     )
 
     assert [memory["id"] for memory in result["results"]] == ["legacy"]
+
+
+def test_search_memories_rejects_invalid_type_filter_before_query():
+    client = _FakeClient()
+    service = MemoryReadService(client)
+
+    with pytest.raises(MemoryError, match="Invalid memory type filter"):
+        service.search_memories(
+            query="relevant",
+            agent_id="agent-1",
+            type=["fact #status:deleted"],
+            limit=10,
+        )
+
+    assert client.similarity_search.last_query is None
