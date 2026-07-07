@@ -103,6 +103,9 @@ def bug3_content_filter():
 
     # Get first available agent
     agents = httpx.get(f"{BASE}/api/v2/agents", timeout=10).json()
+    if not agents.get("agents"):
+        print("  No agents available. Create one first via the API.")
+        return
     agent_id = agents["agents"][0]["agent_id"]
 
     tests = [
