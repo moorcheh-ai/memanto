@@ -525,6 +525,32 @@ class TestMEMANTOAPI:
         assert "memory_type:fact" in call_kwargs["query"]
 
     @pytest.mark.asyncio
+    async def test_recall_rejects_invalid_type_filter_before_search(
+        self, client, auth_headers, mock_moorcheh
+    ):
+        """Invalid type filters must not be spliced into Moorcheh query syntax."""
+        await client.post(
+            "/api/v2/agents",
+            headers=auth_headers,
+            json={"agent_id": self.TEST_AGENT_ID},
+        )
+        activate_resp = await client.post(
+            f"/api/v2/agents/{self.TEST_AGENT_ID}/activate", headers=auth_headers
+        )
+        token = activate_resp.json()["session_token"]
+
+        headers = {**auth_headers, "X-Session-Token": token}
+        payload = {"query": "test query", "type": ["fact #status:deleted"]}
+        response = await client.post(
+            f"/api/v2/agents/{self.TEST_AGENT_ID}/recall",
+            headers=headers,
+            json=payload,
+        )
+
+        assert response.status_code == 422
+        mock_moorcheh.similarity_search.query.assert_not_called()
+
+    @pytest.mark.asyncio
     async def test_get_agent(self, client, auth_headers):
         """Test getting agent details"""
         await client.post(
