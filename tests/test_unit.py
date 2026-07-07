@@ -360,6 +360,41 @@ class TestMemoryWriteServiceDelete:
         )
         client.documents.upload.assert_called_once()
 
+    def test_update_memory_preserves_existing_provenance(self):
+        from memanto.app.services.memory_write_service import MemoryWriteService
+
+        client = MagicMock()
+        client.documents.delete.return_value = {"actual_deletions": 1}
+        client.documents.upload.return_value = {"status": "queued"}
+        existing_memory = {
+            "id": "mem-1",
+            "type": "fact",
+            "title": "Imported title",
+            "content": "Imported content",
+            "agent_id": "test-agent",
+            "actor_id": "tester",
+            "source": "migration",
+            "source_ref": "mem0:42",
+            "provenance": "imported",
+            "confidence": 0.8,
+            "status": "active",
+            "tags": [],
+        }
+
+        with patch(
+            "memanto.app.services.memory_read_service.MemoryReadService.get_memory",
+            return_value=existing_memory,
+        ):
+            MemoryWriteService(client).update_memory(
+                "mem-1",
+                "memanto_agent_test-agent",
+                {"content": "Updated imported content"},
+            )
+
+        uploaded_document = client.documents.upload.call_args.kwargs["documents"][0]
+        assert uploaded_document["provenance"] == "imported"
+        assert uploaded_document["source_ref"] == "mem0:42"
+
 
 class TestMemoryReadServiceFormatting:
     def test_format_memory_item_preserves_falsey_metadata_values(self):

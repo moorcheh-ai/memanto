@@ -279,6 +279,9 @@ class MemoryWriteService:
                 actor_id=updates.get("actor_id", metadata.get("actor_id", "unknown")),
                 source=updates.get("source", metadata.get("source", "system")),
                 source_ref=updates.get("source_ref", metadata.get("source_ref")),
+                provenance=updates.get(
+                    "provenance", metadata.get("provenance", "explicit_statement")
+                ),
                 confidence=updates.get("confidence", metadata.get("confidence", 0.8)),
                 status=updates.get("status", metadata.get("status", "active")),
                 tags=updates.get("tags", metadata.get("tags", [])),
