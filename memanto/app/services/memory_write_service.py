@@ -43,12 +43,6 @@ class MemoryWriteService:
             # Add namespace
             namespace = memory.namespace()
 
-            # skip validation for speed
-            ## Validate memory
-            # validation_result = self.validation_service.validate_memory(memory, context)
-            ## Use validated memory if modified
-            # if "memory" in validation_result:
-            #     memory = validation_result["memory"]
             validation_result = {"action": "store", "reason": "MVP direct store"}
 
             from typing import cast
@@ -82,13 +76,6 @@ class MemoryWriteService:
     ) -> dict[str, Any]:
         """
         Store multiple memories in batch leveraging Moorcheh's 100 docs/request capability
-
-        Args:
-            memories: List of MemoryRecord objects to store (max 100)
-            context: Optional context dict with validation info
-
-        Returns:
-            Dict with batch operation results including success/failure counts
         """
         try:
             if not memories:
@@ -99,33 +86,27 @@ class MemoryWriteService:
                     f"Batch size {len(memories)} exceeds Moorcheh's limit of 100 documents per request"
                 )
 
-            # Ensure all memories are in same namespace
             first_namespace = None
             results = []
             validated_documents = []
 
-            # Enforce server-side timestamps for batch (single timestamp for all)
             now = datetime.utcnow()
 
             for memory in memories:
                 try:
-                    # Generate ID if not provided
                     if not memory.id:
                         memory.id = generate_memory_id()
 
-                    # Enforce server-side timestamps (never trust client)
                     memory.created_at = now
                     memory.updated_at = now
 
                     memory = self._parser.parse_memory(memory)
 
-                    # Add namespace
                     namespace = memory.namespace()
 
                     if first_namespace is None:
                         first_namespace = namespace
                     elif namespace != first_namespace:
-                        # Different namespaces - reject this memory
                         results.append(
                             {
                                 "id": memory.id,
@@ -137,12 +118,6 @@ class MemoryWriteService:
                         )
                         continue
 
-                    # skip validation for speed
-                    ## Validate memory
-                    # validation_result = self.validation_service.validate_memory(memory, context)
-                    ## Use validated memory if modified
-                    # if "memory" in validation_result:
-                    #     memory = validation_result["memory"]
                     validation_result = {
                         "action": "store",
                         "reason": "MVP direct store",
@@ -152,11 +127,9 @@ class MemoryWriteService:
 
                     from moorcheh_sdk.types.document import Document
 
-                    # Convert to Moorcheh document
                     document = cast(Document, memory.to_moorcheh_document())
                     validated_documents.append(document)
 
-                    # Store validation result for later
                     results.append(
                         {
                             "id": memory.id,
@@ -181,7 +154,6 @@ class MemoryWriteService:
                         }
                     )
 
-            # Upload all validated documents in single batch to Moorcheh
             if validated_documents and first_namespace:
                 from typing import cast
 
@@ -190,13 +162,11 @@ class MemoryWriteService:
                     documents=validated_documents,
                 )
 
-                # Update results with upload status
                 moorcheh_status = upload_result.get("status", "unknown")
                 for result in results:
                     if result["status"] == "pending":
                         result["status"] = moorcheh_status
 
-            # Count successes and failures
             successful = sum(1 for r in results if r["status"] in ["queued", "success"])
             failed = sum(1 for r in results if r["status"] == "failed")
 
@@ -220,26 +190,10 @@ class MemoryWriteService:
     ) -> dict[str, Any]:
         """
         Update existing memory using delete-and-recreate pattern
-
-        Since Moorcheh doesn't support in-place updates, we:
-        1. Retrieve the existing memory
-        2. Apply updates to create new version
-        3. Delete old version
-        4. Upload new version with same ID
-
-        Args:
-            memory_id: ID of memory to update
-            namespace: Namespace containing the memory
-            updates: Dict of fields to update
-            context: Optional validation context
-
-        Returns:
-            Dict with update result
         """
         try:
             from memanto.app.services.memory_read_service import MemoryReadService
 
-            # Step 1: Retrieve existing memory
             read_service = MemoryReadService(self.client)
             existing_memory_data = read_service.get_memory(memory_id, namespace)
 
@@ -248,16 +202,12 @@ class MemoryWriteService:
                     f"Memory {memory_id} not found in namespace {namespace}"
                 )
 
-            # Step 2: Create updated MemoryRecord
             metadata = (
                 existing_memory_data.get("metadata", {})
                 if "metadata" in existing_memory_data
                 else existing_memory_data
             )
 
-            # The namespace (memanto_agent_{agent_id}) is authoritative for the
-            # agent_id; fall back to it when stored metadata predates the flat
-            # agent_id field so the rewritten record keeps correct metadata.
             agent_id = metadata.get("agent_id")
             if not agent_id and namespace.startswith("memanto_agent_"):
                 agent_id = namespace.removeprefix("memanto_agent_")
@@ -267,9 +217,8 @@ class MemoryWriteService:
                     f"in namespace {namespace}"
                 )
 
-            # Build updated memory record
             updated_memory = MemoryRecord(
-                id=memory_id,  # Keep same ID
+                id=memory_id,
                 type=updates.get("type", metadata.get("type", "fact")),
                 title=updates.get(
                     "title", existing_memory_data.get("title", "Updated Memory")
@@ -284,7 +233,6 @@ class MemoryWriteService:
                 tags=updates.get("tags", metadata.get("tags", [])),
             )
 
-            # Update timestamps (preserve created_at, set updated_at to now)
             raw_created = metadata.get("created_at")
             if raw_created:
                 if isinstance(raw_created, str):
@@ -293,12 +241,11 @@ class MemoryWriteService:
                             raw_created.replace("Z", "+00:00")
                         )
                     except (ValueError, AttributeError):
-                        pass  # Keep default
+                        pass
                 else:
                     updated_memory.created_at = raw_created
             updated_memory.updated_at = datetime.utcnow()
 
-            # Handle TTL
             if "ttl_seconds" in updates:
                 updated_memory.set_ttl(updates["ttl_seconds"])
             elif metadata.get("ttl_seconds"):
@@ -306,7 +253,6 @@ class MemoryWriteService:
                 if metadata.get("expires_at"):
                     updated_memory.expires_at = metadata["expires_at"]
 
-            # Step 3: Delete old version
             from typing import Any, cast
 
             delete_result = cast(
@@ -319,7 +265,6 @@ class MemoryWriteService:
 
             validation_result = {"action": "store", "reason": "MVP direct store"}
 
-            # Step 4: Upload new version
             from typing import cast
 
             from moorcheh_sdk.types.document import Document
@@ -341,6 +286,117 @@ class MemoryWriteService:
 
         except Exception as e:
             raise MemoryError(f"Failed to update memory: {e}")
+
+    def supersede_memory(
+        self,
+        old_memory_id: str,
+        namespace: str,
+        new_memory_data: dict[str, Any],
+        reason: str | None = None,
+    ) -> dict[str, Any]:
+        """
+        Supersede an existing memory with a new version.
+
+        1. Fetches the old memory
+        2. Marks it inactive with superseded_by tag
+        3. Stores the new memory with supersedes tag linking back
+        """
+        from typing import cast
+
+        from moorcheh_sdk.types.document import Document
+
+        from memanto.app.constants import MemoryType, ProvenanceType
+        from memanto.app.services.memory_read_service import MemoryReadService
+
+        read_service = MemoryReadService(self.client)
+
+        # Step 1: Fetch old memory
+        existing = read_service.get_memory(old_memory_id, namespace)
+        if not existing:
+            raise MemoryError(f"Memory {old_memory_id} not found in namespace {namespace}")
+
+        # Step 2: Generate new memory ID
+        new_memory_id = generate_memory_id()
+
+        # Step 3: Mark old memory as superseded
+        old_metadata = existing.get("metadata", existing)
+        agent_id = old_metadata.get("agent_id")
+        if not agent_id and namespace.startswith("memanto_agent_"):
+            agent_id = namespace.removeprefix("memanto_agent_")
+
+        superseded_record = MemoryRecord(
+            id=old_memory_id,
+            type=cast(MemoryType, existing.get("type", "fact")),
+            title=existing.get("title", ""),
+            content=existing.get("content", ""),
+            agent_id=agent_id,
+            actor_id=old_metadata.get("actor_id", "unknown"),
+            source=old_metadata.get("source", "system"),
+            source_ref=old_metadata.get("source_ref"),
+            confidence=old_metadata.get("confidence", 0.8),
+            status="superseded",
+            tags=existing.get("tags", []),
+            provenance=cast(ProvenanceType, old_metadata.get("provenance", "explicit_statement")),
+        )
+        superseded_record.updated_at = datetime.utcnow()
+
+        raw_created = old_metadata.get("created_at")
+        if raw_created:
+            if isinstance(raw_created, str):
+                try:
+                    superseded_record.created_at = datetime.fromisoformat(
+                        raw_created.replace("Z", "+00:00")
+                    )
+                except (ValueError, AttributeError):
+                    pass
+            else:
+                superseded_record.created_at = raw_created
+
+        superseded_record.tags = list(
+            set(superseded_record.tags or []) | {f"superseded_by:{new_memory_id}"}
+        )
+        if reason:
+            superseded_record.tags.append(f"supersede_reason:{reason}")
+
+        # Delete old, re-upload as superseded
+        self.client.documents.delete(namespace_name=namespace, ids=[old_memory_id])
+        self.client.documents.upload(
+            namespace_name=namespace,
+            documents=[cast(Document, superseded_record.to_moorcheh_document())],
+        )
+
+        # Step 4: Store new memory
+        new_record = MemoryRecord(
+            id=new_memory_id,
+            type=cast(MemoryType, new_memory_data.get("type", existing.get("type", "fact"))),
+            title=new_memory_data.get("title", "Updated Memory"),
+            content=new_memory_data["content"],
+            agent_id=agent_id,
+            actor_id=new_memory_data.get("actor_id", old_metadata.get("actor_id", "unknown")),
+            source=new_memory_data.get("source", old_metadata.get("source", "system")),
+            confidence=new_memory_data.get("confidence", 0.8),
+            tags=list(set(new_memory_data.get("tags", [])) | {f"supersedes:{old_memory_id}"}),
+            provenance=cast(ProvenanceType, new_memory_data.get("provenance", "corrected")),
+            status="active",
+        )
+        now = datetime.utcnow()
+        new_record.created_at = now
+        new_record.updated_at = now
+
+        upload_result = self.client.documents.upload(
+            namespace_name=namespace,
+            documents=[cast(Document, new_record.to_moorcheh_document())],
+        )
+
+        return {
+            "old_memory_id": old_memory_id,
+            "new_memory_id": new_memory_id,
+            "namespace": namespace,
+            "status": upload_result.get("status", "unknown"),
+            "reason": reason,
+            "supersedes": old_memory_id,
+            "superseded_by": new_memory_id,
+        }
 
     def delete_memory(self, memory_id: str, namespace: str) -> bool:
         """Delete memory by ID"""

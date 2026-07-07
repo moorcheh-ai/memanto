@@ -70,6 +70,7 @@ class MemoryReadService:
         created_after: str | None = None,
         created_before: str | None = None,
         metadata_filters: dict[str, Any] | None = None,
+        include_superseded: bool = False, 
     ) -> dict[str, Any]:
         """
         Search memories with filters leveraging Moorcheh's native metadata filtering
@@ -120,6 +121,13 @@ class MemoryReadService:
 
             # Format results
             all_results = [self._format_memory_item(item) for item in search_items]
+
+            # Filter out superseded memories unless caller opts in
+            if not include_superseded:
+             all_results = [
+                 r for r in all_results
+                 if not any(t.startswith("superseded_by:") for t in (r.get("tags") or []))
+            ]
 
             # Apply temporal filtering (post-processing since Moorcheh metadata filters are string-based)
             if created_after or created_before:
@@ -732,3 +740,5 @@ class MemoryReadService:
         }
 
         return formatted
+    
+    

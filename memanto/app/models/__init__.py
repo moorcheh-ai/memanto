@@ -2,6 +2,8 @@
 MEMANTO API Models
 """
 
+
+
 from datetime import datetime
 from typing import Any, Literal
 
@@ -426,3 +428,12 @@ class AnswerResponse(BaseModel):
     answer: str
     sources: list[Any] = Field(default_factory=list)
     namespace: str
+
+class MemorySupersedeRequest(BaseModel):
+    """Request to supersede an existing memory with a corrected version."""
+
+    memory_id: str = Field(..., description="Memory ID to supersede (mark inactive)")
+    superseding_memory: dict[str, Any] = Field(
+        ..., description="New memory data that replaces the old one"
+    )
+    reason: str | None = Field(None, description="Reason for superseding")

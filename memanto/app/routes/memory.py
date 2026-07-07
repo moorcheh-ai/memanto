@@ -27,6 +27,7 @@ from memanto.app.models import (
     BatchRememberResponse,
     ConflictResolveRequest,
     ExtractMemoriesRequest,
+    MemorySupersedeRequest,
     RecallResponse,
     RememberRequest,
     RememberResponse,
@@ -70,6 +71,7 @@ class RecallRequest(BaseModel):
         default=None, ge=0.0, le=1.0, description="Minimum similarity score (0-1)"
     )
     type: list[str] | None = Field(default=None, description="Memory type filters")
+    include_superseded: bool = Field(default=False, description="Include superseded (inactive) memories")
 
 
 class RecallAsOfRequest(BaseModel):
@@ -689,6 +691,7 @@ async def recall(
             type=request.type,
             min_similarity_score=min_similarity,
             limit=limit,
+            include_superseded=request.include_superseded,
         )
 
         memories = result.get("results", [])
@@ -1097,4 +1100,62 @@ async def recall_recent(
         }
 
     except Exception as e:
+        raise map_error_to_http_exception(e)
+    
+class MemorySupersedeResponse(BaseModel):
+    agent_id: str
+    session_id: str
+    old_memory_id: str
+    new_memory_id: str
+    namespace: str
+    status: str
+    reason: str | None = None
+
+
+@router.post("/{agent_id}/memories/{memory_id}/supersede", response_model=MemorySupersedeResponse)
+async def supersede_memory(
+    agent_id: str,
+    memory_id: str,
+    request: MemorySupersedeRequest = Body(...),
+    session: Session = Depends(get_current_session),
+    client=Depends(get_moorcheh_client),
+):
+    """
+    Supersede a memory with a corrected version.
+
+    The old memory is kept but marked inactive (status: superseded).
+    The new memory links back to the old one via tags (supersedes:<old_id>).
+    The old memory links forward via tags (superseded_by:<new_id>).
+
+    Use recall with include_superseded=true to see full history.
+
+    Requires:
+    - X-Session-Token: {session_token}
+    """
+    enforce_session_scope(session, agent_id)
+
+    if "content" not in request.superseding_memory:
+        raise HTTPException(status_code=400, detail="superseding_memory must include 'content'")
+
+    try:
+        write_service = MemoryWriteService(client)
+        result = await asyncio.to_thread(
+            write_service.supersede_memory,
+            old_memory_id=memory_id,
+            namespace=session.namespace,
+            new_memory_data=request.superseding_memory,
+            reason=request.reason,
+        )
+        return {
+            "agent_id": agent_id,
+            "session_id": session.session_id,
+            "old_memory_id": memory_id,
+            "new_memory_id": result["new_memory_id"],
+            "namespace": session.namespace,
+            "status": result.get("status", "superseded"),
+            "reason": request.reason,
+        }
+    except Exception as e:
+        if "not found" in str(e).lower():
+            raise HTTPException(status_code=404, detail=f"Memory '{memory_id}' not found.")
         raise map_error_to_http_exception(e)
