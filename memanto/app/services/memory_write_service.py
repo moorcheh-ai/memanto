@@ -306,20 +306,11 @@ class MemoryWriteService:
                 if metadata.get("expires_at"):
                     updated_memory.expires_at = metadata["expires_at"]
 
-            # Step 3: Delete old version
-            from typing import Any, cast
 
-            delete_result = cast(
-                dict[str, Any],
-                self.client.documents.delete(namespace_name=namespace, ids=[memory_id]),
-            )
-
-            if not self._deletion_succeeded(delete_result):
-                raise MemoryError(f"Failed to delete old version of memory {memory_id}")
-
+            # Step 3: Upload new version FIRST (before deleting old)
+            # This prevents data loss if delete succeeds but upload fails
             validation_result = {"action": "store", "reason": "MVP direct store"}
 
-            # Step 4: Upload new version
             from typing import cast
 
             from moorcheh_sdk.types.document import Document
@@ -328,6 +319,23 @@ class MemoryWriteService:
             upload_result = self.client.documents.upload(
                 namespace_name=namespace, documents=[document]
             )
+
+            if upload_result.get("status") not in ("success", "queued", "ok"):
+                raise MemoryError(
+                    f"Failed to upload updated memory {memory_id}: {upload_result.get('status')}"
+                )
+
+            # Step 4: Now safely delete old version (new version already stored)
+            from typing import Any
+            delete_result = cast(
+                dict[str, Any],
+                self.client.documents.delete(namespace_name=namespace, ids=[memory_id]),
+            )
+
+            if not self._deletion_succeeded(delete_result):
+                # New version is already stored safely above; old version deletion
+                # failure is non-fatal — the memory update is still correct.
+                pass
 
             return {
                 "id": memory_id,
