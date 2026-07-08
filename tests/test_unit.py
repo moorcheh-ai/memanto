@@ -244,6 +244,19 @@ class TestAgentService:
 
         print(f"✅ Listed {agent_list.count} agents")
 
+    def test_list_agents_skips_invalid_agent_files(self, agent_service):
+        """One corrupt agent metadata file must not hide valid agents."""
+        agent_service.create_agent(
+            AgentCreate(agent_id="valid-agent", pattern=AgentPattern.SUPPORT),
+            settings.MOORCHEH_API_KEY,
+        )
+        (agent_service.agents_dir / "broken-agent.json").write_text("{")
+
+        agent_list = agent_service.list_agents()
+
+        assert agent_list.count == 1
+        assert [agent.agent_id for agent in agent_list.agents] == ["valid-agent"]
+
     def test_get_agent(self, agent_service):
         """Test getting agent info"""
         # Create agent
@@ -258,6 +271,12 @@ class TestAgentService:
         assert agent.pattern == AgentPattern.PROJECT
 
         print("✅ Agent retrieved successfully")
+
+    def test_get_agent_treats_invalid_agent_file_as_missing(self, agent_service):
+        """A corrupt agent metadata file should behave like absent local state."""
+        (agent_service.agents_dir / "broken-agent.json").write_text("{")
+
+        assert agent_service.get_agent("broken-agent") is None
 
     def test_update_agent_stats(self, agent_service):
         """Test updating agent statistics"""
