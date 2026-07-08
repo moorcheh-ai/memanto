@@ -60,15 +60,23 @@ class RateLimiter:
 
         # Thread-safe rate limit check
         with self._lock:
-            # Clean old requests outside window
-            request_times = self.requests[key]
-            while request_times and request_times[0] <= now - limit.window:
-                request_times.popleft()
+            # Use .get() to avoid defaultdict auto-creating empty deques
+            request_times = self.requests.get(key)
 
-            # Clean up empty deques to prevent memory leak
-            if not request_times and key in self.requests:
-                del self.requests[key]
-                request_times = self.requests[key]
+            if request_times is not None:
+                # Clean old requests outside window
+                while request_times and request_times[0] <= now - limit.window:
+                    request_times.popleft()
+
+                # Clean up empty deques to prevent memory leak
+                if not request_times:
+                    del self.requests[key]
+                    request_times = None
+
+            if request_times is None:
+                # No recent requests - allow and record
+                self.requests[key] = deque([now])
+                return True, None
 
             # Check if under limit
             if len(request_times) < limit.requests:
