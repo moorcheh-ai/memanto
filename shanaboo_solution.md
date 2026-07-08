@@ -5,10 +5,11 @@
 +"""Memanto Benchmarking Suite."""
 +
 +__version__ = "0.1.0"
+\ No newline at end of file
 --- /dev/null
-+++ b/benchmarks/config.py
-@@ -0,0 +1,67 @@
-+"""Configuration for the benchmarking suite."""
++++ b	benchmarks/config.py
+@@ -0,0 +1,42 @@
++"""Benchmark configuration and constants."""
 +
 +import os
 +from dataclasses import dataclass
@@ -19,184 +20,164 @@
 +class BenchmarkConfig:
 +    """Configuration for benchmark runs."""
 +    
-+    # API Keys
-+    openai_api_key: Optional[str] = None
-+    anthropic_api_key: Optional[str] = None
++    # Dataset sizes
++    small_dataset_size: int = 100
++    medium_dataset_size: int = 1000
++    large_dataset_size: int = 10000
 +    
-+    # Benchmark settings
-+    num_conversations: int = 100
-+    conversation_length: int = 20  # turns per conversation
-+    num_entities: int = 50  # distinct facts/entities to remember
-+    seed: int = 42
++    # Query counts per benchmark
++    queries_per_benchmark: int = 100
 +    
-+    # Metrics
-+    track_latency: bool = True
-+    track_tokens: bool = True
-+    track_accuracy: bool = True
++    # Latency percentiles to track
++    latency_percentiles: tuple = (50, 90, 95, 99)
++    
++    # Token counting
++    tokens_per_character: float = 0.25  # Approximate
++    
++    # Concurrency settings
++    max_concurrent_requests: int = 10
 +    
 +    # Output
-+    output_dir: str = "benchmark_results"
-+    save_traces: bool = False
++    results_dir: str = "benchmark_results"
++    save_raw_results: bool = True
++    
++    # Framework-specific settings
++    memanto_url: str = "http://localhost:8000"
++    mem0_api_key: Optional[str] = None
++    zep_api_key: Optional[str] = None
 +    
 +    def __post_init__(self):
-+        """Load from environment variables if not set."""
-+        if self.openai_api_key is None:
-+            self.openai_api_key = os.getenv("OPENAI_API_KEY")
-+        if self.anthropic_api_key is None:
-+            self.anthropic_api_key = os.getenv("ANTHROPIC_API_KEY")
-+
-+
-+# Default benchmark scenarios
-+SCENARIOS = {
-+    "personal_assistant": {
-+        "name": "Personal Assistant",
-+        "description": "Multi-session personal assistant with preference learning",
-+        "turns": 50,
-+        "sessions": 5,
-+        "complexity": "medium",
-+    },
-+    "customer_support": {
-+        "name": "Customer Support",
-+        "description": "Long-running customer support with issue tracking",
-+        "turns": 100,
-+        "sessions": 10,
-+        "complexity": "high",
-+    },
-+    "research_assistant": {
-+        "name": "Research Assistant",
-+        "description": "Accumulating knowledge across research sessions",
-+        "turns": 75,
-+        "sessions": 8,
-+        "complexity": "high",
-+    },
-+    "simple_qa": {
-+        "name": "Simple Q&A",
-+        "description": "Basic question answering with memory",
-+        "turns": 20,
-+        "sessions": 3,
-+        "complexity": "low",
-+    },
-+}
++        """Load environment variables."""
++        self.mem0_api_key = os.getenv("MEM0_API_KEY")
++        self.zep_api_key = os.getenv("ZEP_API_KEY")
++        if not os.path.exists(self.results_dir):
++            os.makedirs(self.results_dir)
+\ No newline at end of file
 --- /dev/null
-+++ b/benchmarks/core/__init__.py
-@@ -0,0 +1,12 @@
-+"""Core benchmarking components."""
++++ b	benchmarks/datasets.py
+@@ -0,0 +1,218 @@
++"""Synthetic and real-world datasets for memory benchmarking."""
 +
-+from benchmarks.core.benchmark import BenchmarkRunner
-+from benchmarks.core.metrics import MetricsCollector, BenchmarkMetrics
-+from benchmarks.core.scenarios import ScenarioLoader
-+from benchmarks.core.tracker import ResourceTracker
-+
-+__all__ = [
-+    "BenchmarkRunner",
-+    "MetricsCollector",
-+    "BenchmarkMetrics",
-+    "ScenarioLoader",
-+    "ResourceTracker",
-+]
---- /dev/null
-+++ b/benchmarks/core/benchmark.py
-@@ -0,0 +1,248 @@
-+"""Main benchmark runner."""
-+
-+import asyncio
 +import json
-+import time
-+from pathlib import Path
-+from typing import Any, Callable, Dict, List, Optional, Type
-+
-+from benchmarks.config import BenchmarkConfig, SCENARIOS
-+from benchmarks.core.metrics import BenchmarkMetrics, MetricsCollector
-+from benchmarks.core.tracker import ResourceTracker
++import random
++import uuid
++from dataclasses import dataclass
++from datetime import datetime, timedelta
++from typing import Dict, List, Optional
 +
 +
-+class BenchmarkRunner:
-+    """Orchestrates benchmark execution across memory systems."""
++@dataclass
++class MemoryEntry:
++    """A single memory entry for testing."""
++    id: str
++    content: str
++    timestamp: datetime
++    metadata: Dict
++    agent_id: str
++    session_id: str
++
++
++class SyntheticDataset:
++    """Generate synthetic memory datasets with controlled properties."""
 +    
-+    def __init__(self, config: Optional[BenchmarkConfig] = None):
-+        self.config = config or BenchmarkConfig()
-+        self.metrics_collector = MetricsCollector()
-+        self.resource_tracker = ResourceTracker()
-+        self.results: Dict[str, Any] = {}
++    def __init__(self, seed: int = 42):
++        self.seed = seed
++        random.seed(seed)
 +        
-+    def register_system(
++    def generate_conversation_memory(
 +        self,
-+        name: str,
-+        system_class: Type,
-+        **system_kwargs
-+    ) -> None:
-+        """Register a memory system for benchmarking."""
-+        self.systems[name] = {
-+            "class": system_class,
-+            "kwargs": system_kwargs,
++        num_entries: int = 1000,
++        num_agents: int = 10,
++        avg_entries_per_session: int = 20,
++        preference_ratio: float = 0.3,
++    ) -> List[MemoryEntry]:
++        """Generate realistic conversation memory entries."""
++        
++        templates = {
++            "preference": [
++                "User prefers {preference}",
++                "I like {preference}",
++                "My favorite {category} is {preference}",
++                "I always choose {preference} for {category}",
++                "I dislike {negative}",
++                "I prefer {preference} over {alternative}",
++            ],
++            "fact": [
++                "I work at {company}",
++                "I live in {city}",
++                "My name is {name}",
++                "I have {number} years of experience",
++                "I studied at {university}",
++            ],
++            "task": [
++                "Remind me to {task} at {time}",
++                "Schedule a meeting for {time}",
++                "I need to {task} by {deadline}",
++                "Don't forget to {task}",
++            ],
 +        }
-+    
-+    def __init__(self, *args, **kwargs):
-+        super().__init__(*args, **kwargs)
-+        self.systems: Dict[str, Dict] = {}
-+        self._initialized = True
-+    
-+    async def run_benchmark(
-+        self,
-+        scenario_name: str,
-+        systems: Optional[Dict[str, Any]] = None,
-+    ) -> Dict[str, Any]:
-+        """Run a benchmark scenario against all registered systems."""
-+        if not hasattr(self, '_initialized'):
-+            self.__init__()
 +        
-+        scenario_config = SCENARIOS.get(scenario_name)
-+        if not scenario_config:
-+            raise ValueError(f"Unknown scenario: {scenario_name}")
++        preferences = [
++            ("dark mode", "UI theme", "light mode"),
++            ("Python", "programming language", "JavaScript"),
++            ("email", "communication", "phone calls"),
++            ("morning", "work time", "evening"),
++            ("concise responses", "response style", "detailed explanations"),
++        ]
 +        
-+        print(f"\n{'='*60}")
-+        print(f"Running Benchmark: {scenario_config['name']}")
-+        print(f"Description: {scenario_config['description']}")
-+        print(f"{'='*60}\n")
++        entries = []
++        base_time = datetime.now() - timedelta(days=30)
 +        
-+        results = {}
-+        systems_to_test = systems or self.systems
-+        
-+        for system_name, system_info in systems_to_test.items():
-+            print(f"\nTesting: {system_name}")
-+            print("-" * 40)
++        for i in range(num_entries):
++            agent_id = f"agent_{random.randint(0, num_agents - 1)}"
++            session_id = f"session_{i // avg_entries_per_session}"
 +            
-+            metrics = await self._run_single_system(
-+                system_name,
-+                system_info,
-+                scenario_config,
++            if random.random() < preference_ratio:
++                pref, cat, alt = random.choice(preferences)
++                template = random.choice(templates["preference"])
++                content = template.format(preference=pref, category=cat, alternative=alt, negative=alt)
++                meta = {"type": "preference", "category": cat, "confidence": random.uniform(0.7, 1.0)}
++            else:
++                template = random.choice(templates["fact"] + templates["task"])
++                content = template.format(
++                    company="Acme Corp",
++                    city="San Francisco",
++                    name="Alice",
++                    number=random.randint(1, 20),
++                    university="MIT",
++                    task="review the proposal",
++                    time="3 PM",
++                    deadline="Friday",
++                )
++                meta = {"type": "fact" if "fact" in template else "task", "confidence": random.uniform(0.5, 1.0)}
++            
++            entry = MemoryEntry(
++                id=str(uuid.uuid4()),
++                content=content,
++                timestamp=base_time + timedelta(hours=i),
++                metadata=meta,
++                agent_id=agent_id,
++                session_id=session_id,
 +            )
-+            results[system_name] = metrics
-+        
-+        self.results[scenario_name] = results
-+        return results
++            entries.append(entry)
++            
++        return entries
 +    
-+    async def _run_single_system(
++    def generate_preference_resolution_dataset(
 +        self,
-+        system_name: str,
-+        system_info: Dict,
-+        scenario_config: Dict,
-+    ) -> BenchmarkMetrics:
-+        """Run benchmark for a single system."""
-+        # Initialize system
-+        system_class = system_info["class"]
-+        system = system_class(**system_info.get("kwargs", {}))
++        num_profiles: int = 50,
++        preferences_per_profile: int = 20,
++        contradictions_per_profile: int = 5,
++    ) -> List[MemoryEntry]:
++        """Generate dataset with explicit contradictions for testing resolution."""
 +        
-+        metrics = BenchmarkMetrics(
-+            system_name=system_name,
-+            scenario_name=scenario_config["name"],
-+        )
++        entries = []
++        base_time = datetime.now() - timedelta(days=60)
 +        
-+        # Track resource usage
-+        with self.resource_tracker.track() as tracker:
-+            start_time = time.perf_counter()
-+            
-+            # Run the scenario
-+            await self._execute_scenario(
-+                system,
-+                scenario_config,
-+                metrics,
-+                tracker,
-+            )
-+            
-+            total_time
++        preference_pairs = [
++            ("prefers dark mode", "prefers light mode", "UI theme"),
++            ("likes Python", "likes JavaScript", "programming language"),
++            ("prefers email", "prefers Slack", "communication"),
++            ("morning person", "night owl", "work schedule"),
++            ("concise responses", "detailed explanations", "communication style"),
++
