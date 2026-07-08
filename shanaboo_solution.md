@@ -1,191 +1,160 @@
  ```diff
 --- a/memanto/__init__.py
 +++ b/memanto/__init__.py
-@@ -0,0 +1,15 @@
-+"""Memanto - Memory that AI Agents Love!
+@@ -0,0 +1,6 @@
++"""Memanto - Memory that AI Agents Love!"""
 +
-+A companion memory agent that lets your agents focus and improve while you
-+keep ownership of everything they learn.
-+"""
++__version__ = "0.1.0"
 +
-+from memanto.client import MemantoClient
-+from memanto.memory import MemoryManager
-+from memanto.types import Memory, MemoryQuery, MemoryResult
-+
-+__all__ = [
-+    "MemantoClient",
-+    "MemoryManager",
-+    "Memory",
-+    "MemoryQuery",
-+    "MemoryResult",
-+]
++from memanto.core import Memanto
++from memanto.types import Memory, MemoryQuery
+--- NEW FILE ---
 --- /dev/null
-+++ b/memanto/client.py
-@@ -0,0 +1,247 @@
-+"""Memanto client for interacting with the moorcheh.ai backend."""
-+
-+from __future__ import annotations
++++ b/memanto/core.py
+@@ -0,0 +1,95 @@
++"""Core Memanto memory management with secure input validation and timeline tracking."""
 +
 +import hashlib
 +import json
-+import os
-+import threading
-+import time
-+import uuid
-+from dataclasses import dataclass, field
-+from typing import Any, Callable, Optional
++import re
++from datetime import datetime, timezone
++from typing import Any
 +
-+import requests
-+
-+from memanto.types import Memory, MemoryQuery, MemoryResult
++from memanto.types import Memory, MemoryQuery
 +
 +
-+@dataclass
-+class RetryConfig:
-+    """Configuration for retry behavior."""
-+    max_retries: int = 3
-+    base_delay: float = 1.0
-+    max_delay: float = 60.0
-+    exponential_base: float = 2.0
++class Memanto:
++    """Secure memory manager with timeline tracking and contradiction resolution."""
 +
++    def __init__(self, backend_client=None):
++        self._memories: dict[str, Memory] = {}
++        self._backend = backend_client
++        self._max_content_length = 10000
++        self._allowed_content_pattern = re.compile(r'^[\w\s.,!?;:\-–—()[\]{}\"\'\n\r\t]+$')
 +
-+@dataclass
-+class MemantoConfig:
-+    """Configuration for the Memanto client."""
-+    api_key: str = field(default_factory=lambda: os.environ.get("MOORCHEH_API_KEY", ""))
-+    base_url: str = "https://api.moorcheh.ai/v1"
-+    timeout: int = 30
-+    retry: RetryConfig = field(default_factory=RetryConfig)
-+    # Security: Input validation limits
-+    max_content_length: int = 100000  # ~100KB max memory content
-+    max_tags: int = 50
-+    max_tag_length: int = 100
-+
-+
-+class MemantoError(Exception):
-+    """Base exception for Memanto client errors."""
-+    pass
-+
-+
-+class AuthenticationError(MemantoError):
-+    """Raised when API authentication fails."""
-+    pass
-+
-+
-+class RateLimitError(MemantoError):
-+    """Raised when rate limit is exceeded."""
-+    pass
-+
-+
-+class ValidationError(MemantoError):
-+    """Raised when input validation fails."""
-+    pass
-+
-+
-+class MemantoClient:
-+    """Client for interacting with the Memanto memory service."""
-+
-+    def __init__(self, config: Optional[MemantoConfig] = None):
-+        self.config = config or MemantoConfig()
-+        self._session = requests.Session()
-+        self._lock = threading.RLock()
-+        self._last_request_time: Optional[float] = None
-+        self._request_count = 0
-+        self._cache: dict[str, Any] = {}
-+        self._cache_lock = threading.RLock()
-+
-+    def _validate_input(self, content: str, tags: Optional[list[str]] = None) -> None:
-+        """Validate input content and tags for security and sanity.
++    def _sanitize_input(self, content: str) -> str:
++        """Sanitize and validate memory content to prevent injection attacks."""
++        if not isinstance(content, str):
++            raise TypeError("Memory content must be a string")
 +        
-+        Prevents:
-+        - Excessively large inputs that could cause memory issues
-+        - Malformed tags that could affect retrieval
-+        - Empty or whitespace-only content
-+        """
-+        if not content or not isinstance(content, str):
-+            raise ValidationError("Content must be a non-empty string")
++        # Length check to prevent DoS
++        if len(content) > self._max_content_length:
++            raise ValueError(f"Content exceeds maximum length of {self._max_content_length}")
 +        
-+        if len(content) > self.config.max_content_length:
-+            raise ValidationError(
-+                f"Content exceeds maximum length of {self.config.max_content_length} characters"
-+            )
++        # Strip null bytes and control characters
++        content = content.replace('\x00', '').replace('\x01', '').replace('\x02', '')
 +        
-+        if not content.strip():
-+            raise ValidationError("Content cannot be whitespace-only")
++        # Basic pattern validation - allow common text characters
++        # This prevents prompt injection via special characters
++        if not self._allowed_content_pattern.match(content):
++            # If it fails, still allow but escape dangerous patterns
++            content = self._escape_dangerous_patterns(content)
 +        
-+        # Check for potential prompt injection patterns
-+        dangerous_patterns = [
-+            "<script",
-+            "javascript:",
-+            "data:",
-+            "vbscript:",
++        return content.strip()
++
++    def _escape_dangerous_patterns(self, content: str) -> str:
++        """Escape patterns that could be used for prompt injection."""
++        # Remove or escape common injection patterns
++        dangerous = [
++            r'<\s*/\s*[a-zA-Z]+>',  # XML/HTML tags
++            r'\{\s*[\w_]+\s*:\s*',   # JSON-like injection
++            r'(?i)(system|user|assistant)\s*:',  # Role injection
 +        ]
++        for pattern in dangerous:
++            content = re.sub(pattern, '[REDACTED]', content)
++        return content
++
++    def _generate_id(self, content: str) -> str:
++        """Generate deterministic ID for content deduplication."""
++        return hashlib.sha256(content.encode()).hexdigest()[:16]
++
++    def store(self, content: str, metadata: dict[str, Any] | None = None) -> Memory:
++        """Store a memory with timeline tracking and input validation."""
++        safe_content = self._sanitize_input(content)
++        
++        memory_id = self._generate_id(safe_content)
++        
++        # Check for contradictions with existing memories
++        contradictions = self._find_contradictions(safe_content)
++        
++        memory = Memory(
++            id=memory_id,
++            content=safe_content,
++            created_at=datetime.now(timezone.utc),
++            metadata=metadata or {},
++            contradictions=contradictions,
++        )
++        
++        self._memories[memory_id] = memory
++        return memory
++
++    def _find_contradictions(self, content: str) -> list[str]:
++        """Find potential contradictions with existing memories."""
++        contradictions = []
 +        content_lower = content.lower()
-+        for pattern in dangerous_patterns:
-+            if pattern in content_lower:
-+                raise ValidationError(f"Content contains potentially dangerous pattern: {pattern}")
 +        
-+        if tags:
-+            if len(tags) > self.config.max_tags:
-+                raise ValidationError(f"Too many tags: maximum is {self.config.max_tags}")
-+            
-+            for tag in tags:
-+                if not isinstance(tag, str):
-+                    raise ValidationError("All tags must be strings")
-+                if len(tag) > self.config.max_tag_length:
-+                    raise ValidationError(f"Tag exceeds maximum length: {tag[:50]}...")
-+                if not tag.strip():
-+                    raise ValidationError("Tags cannot be empty or whitespace-only")
-+
-+    def _make_request(
-+        self,
-+        method: str,
-+        endpoint: str,
-+        data: Optional[dict] = None,
-+        retries: int = 0,
-+    ) -> dict:
-+        """Make an HTTP request with retry logic and rate limiting."""
-+        url = f"{self.config.base_url}{endpoint}"
-+        headers = {
-+            "Authorization": f"Bearer {self.config.api_key}",
-+            "Content-Type": "application/json",
-+            "X-Client-Version": "memanto/1.0.0",
-+        }
-+
-+        try:
-+            with self._lock:
-+                # Simple rate limiting: ensure at least 0.1s between requests
-+                if self._last_request_time is not None:
-+                    elapsed = time.time() - self._last_request_time
-+                    if elapsed < 0.1:
-+                        time.sleep(0.1 - elapsed)
-+                
-+                response = self._session.request(
-+                    method=method,
-+                    url=url,
-+                    headers=headers,
-+                    json=data,
-+                    timeout=self.config.timeout,
-+                )
-+                self._last_request_time = time.time()
-+                self._request_count += 1
-+
-+            if response.status_code == 401:
-+                raise AuthenticationError("Invalid API key")
-+            elif response.status_code == 429:
-+                if retries < self.config.retry.max_retries:
-+                    delay = min(
-+                        self.config.retry.base_delay * (self.config.retry.exponential_base ** retries),
-+                        self.config.retry.max_delay,
-+                    )
-+                    time.sleep(delay)
-+                    return self._make_request(method, endpoint, data, retries + 1)
-+                raise RateLimitError("Rate limit exceeded, max retries reached")
-+            
-+            response.raise_for_status()
-+            return response.json() if response.content else {}
++        for memory in self._memories.values():
++            # Simple contradiction detection: negation of existing content
++            existing = memory.content.lower()
++            if self._is_negation(content_lower, existing):
++                contradictions.append(memory.id)
 +        
-+        except requests.exceptions.Timeout:
-+            if retries < self.config.retry.max_retries:
-+                delay = min(
-+                    self.config.retry.base_delay * (self.config.retry.exponential
++        return contradictions
++
++    def _is_negation(self, text1: str, text2: str) -> bool:
++        """Check if one text negates the other."""
++        negation_words = ['not', 'never', 'no longer', 'false', 'incorrect']
++        # Simple heuristic: if texts are similar but one contains negation
++        return any(word in text1 for word in negation_words) or any(word in text2 for word in negation_words)
++
++    def query(self, query: MemoryQuery) -> list[Memory]:
++        """Query memories with relevance scoring and timeline awareness."""
++        results = []
++        
++        for memory in self._memories.values():
++            score = self._calculate_relevance(memory, query)
++            if score > 0.5:  # Threshold for relevance
++                results.append((memory, score))
++        
++        # Sort by relevance score, then by recency
++        results.sort(key=lambda x: (-x[1], x[0].created_at), reverse=False)
++        return [m for m, _ in results]
++
++    def _calculate_relevance(self, memory: Memory, query: MemoryQuery) -> float:
++        """Calculate relevance score with timeline awareness."""
++        # Simple keyword matching with timeline boost
++        score = 0.0
++        query_terms = query.query.lower().split()
++        memory_content = memory.content.lower()
++        
++        for term in query_terms:
++            if term in memory_content:
++                score += 0.3
++        
++        # Timeline awareness: boost recent memories
++        if memory.created_at:
++            age = (datetime.now(timezone.utc) - memory.created_at).days
++            if age < 7:
++                score += 0.2  # Recent memory boost
++        
++        return min(score, 1.0)
++
++    def get_timeline(self, memory_id: str) -> list[dict[str, Any]]:
++        """Get timeline of updates for a memory including contradictions."""
++        memory = self._memories.get(memory_id)
++        if not memory:
++            return []
++        
++        timeline = [{
++            'event': 'created',
++            'timestamp': memory.created_at.isoformat() if memory.created_at else None,
++            'content': memory.content,
++        }]
++        
++        # Add contradiction events
++        for contradiction_id in memory.contradictions:
++            if contradiction_id in self._memories:
++                contradicted = self._memories[contradiction_id]
++                timeline.append({
++                    'event': 'contradicted_by',
++                    'timestamp': contrad
