@@ -1,3 +1,4 @@
+from moorcheh_sdk.exceptions import APIError
 """
 Memory Write Service
 """
@@ -326,7 +327,7 @@ class MemoryWriteService:
                         namespace_name=namespace, documents=[document]
                     )
                     break
-                except (ConnectionError, TimeoutError, OSError) as upload_err:
+                except (ConnectionError, TimeoutError, OSError, APIError) as upload_err:
                     last_upload_error = upload_err
                     if attempt < 2:
                         _time.sleep(2 ** attempt)
