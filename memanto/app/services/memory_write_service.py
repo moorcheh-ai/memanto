@@ -219,7 +219,7 @@ class MemoryWriteService:
         context: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         """
-        Update existing memory using delete-and-recreate pattern
+        Update existing memory using same-ID overwrite pattern
 
         Since Moorcheh doesn't support in-place updates, we:
         1. Retrieve the existing memory
@@ -334,9 +334,9 @@ class MemoryWriteService:
             return {
                 "id": memory_id,
                 "namespace": namespace,
-                "status": upload_result.get("status", "unknown"),
+                "status": status,
                 "action": "updated",
-                "reason": "Memory updated successfully via delete-and-recreate",
+                "reason": "Memory updated successfully via same-ID overwrite",
                 "validation": validation_result.get("action", "validated"),
                 "updated_fields": list(updates.keys()),
             }
