@@ -440,12 +440,13 @@ class TestMemoryWriteServiceUpdate:
         client = MagicMock()
         client.documents.upload.return_value = {"status": "failed"}
 
-        with pytest.raises(MemoryError, match="Failed to upload updated memory mem-1"):
+        with pytest.raises(MemoryError) as exc_info:
             MemoryWriteService(client).update_memory(
                 "mem-1",
                 "memanto_agent_agent-1",
                 {"content": "New content"},
             )
+        assert str(exc_info.value) == "Failed to upload updated memory mem-1: failed"
 
         client.documents.delete.assert_not_called()
 
