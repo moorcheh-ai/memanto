@@ -345,6 +345,8 @@ class MemoryWriteService:
                 "updated_fields": list(updates.keys()),
             }
 
+        except MemoryError:
+            raise
         except Exception as e:
             raise MemoryError(f"Failed to update memory: {e}")
 
