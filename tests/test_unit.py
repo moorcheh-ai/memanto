@@ -320,14 +320,10 @@ class TestMemoryWriteServiceDelete:
         client.documents.delete.return_value = response
         assert MemoryWriteService(client).delete_memory("m1", "ns") is expected
 
-    def test_update_memory_accepts_onprem_delete_response(self):
+    def test_update_memory_does_not_require_onprem_delete_response(self):
         from memanto.app.services.memory_write_service import MemoryWriteService
 
         client = MagicMock()
-        client.documents.delete.return_value = {
-            "status": "success",
-            "deleted_ids": ["mem-1"],
-        }
         client.documents.upload.return_value = {"status": "queued"}
         existing_memory = {
             "id": "mem-1",
@@ -355,9 +351,7 @@ class TestMemoryWriteServiceDelete:
 
         assert result["action"] == "updated"
         assert result["status"] == "queued"
-        client.documents.delete.assert_called_once_with(
-            namespace_name="memanto_agent_test-agent", ids=["mem-1"]
-        )
+        client.documents.delete.assert_not_called()
         client.documents.upload.assert_called_once()
 
 
@@ -382,6 +376,121 @@ class TestMemoryReadServiceFormatting:
 
         assert formatted["confidence"] == 0.0
         assert formatted["tags"] == []
+
+
+class TestMemoryWriteServiceUpdate:
+    """``update_memory`` must preserve the old memory until the replacement
+    upload has been accepted by Moorcheh."""
+
+    @pytest.fixture
+    def existing_memory(self):
+        return {
+            "id": "mem-1",
+            "title": "Old title",
+            "content": "Old content",
+            "metadata": {
+                "agent_id": "agent-1",
+                "type": "fact",
+                "actor_id": "user",
+                "source": "test",
+                "confidence": 0.9,
+                "status": "active",
+                "tags": ["regression"],
+            },
+        }
+
+    @pytest.fixture
+    def memory_reader(self, monkeypatch, existing_memory):
+        from memanto.app.services.memory_read_service import MemoryReadService
+
+        def get_memory(self, memory_id, namespace):
+            return existing_memory
+
+        monkeypatch.setattr(MemoryReadService, "get_memory", get_memory)
+
+    def test_update_memory_uses_same_id_overwrite_without_delete(self, memory_reader):
+        from memanto.app.services.memory_write_service import MemoryWriteService
+
+        client = MagicMock()
+        client.documents.upload.return_value = {"status": "queued"}
+        namespace = "memanto_agent_agent-1"
+
+        result = MemoryWriteService(client).update_memory(
+            "mem-1",
+            namespace,
+            {"content": "New content"},
+        )
+
+        assert result["status"] == "queued"
+        client.documents.delete.assert_not_called()
+        client.documents.upload.assert_called_once()
+
+        upload_kwargs = client.documents.upload.call_args.kwargs
+        assert upload_kwargs["namespace_name"] == namespace
+        document = upload_kwargs["documents"][0]
+        assert document["id"] == "mem-1"
+        assert "New content" in document["text"]
+
+    def test_update_memory_upload_failure_does_not_delete_old_memory(
+        self, memory_reader
+    ):
+        from memanto.app.services.memory_write_service import MemoryWriteService
+        from memanto.app.utils.errors import MemoryError
+
+        client = MagicMock()
+        client.documents.upload.return_value = {"status": "failed"}
+
+        with pytest.raises(MemoryError, match="Failed to upload updated memory mem-1"):
+            MemoryWriteService(client).update_memory(
+                "mem-1",
+                "memanto_agent_agent-1",
+                {"content": "New content"},
+            )
+
+        client.documents.delete.assert_not_called()
+
+    def test_update_memory_preserves_type_and_provenance_from_metadata(
+        self, monkeypatch
+    ):
+        from memanto.app.services.memory_read_service import MemoryReadService
+        from memanto.app.services.memory_write_service import MemoryWriteService
+
+        existing_memory = {
+            "id": "mem-2",
+            "title": "Architecture decision",
+            "content": "Use same-ID document replacement for edits.",
+            "metadata": {
+                "agent_id": "agent-1",
+                "memory_type": "decision",
+                "actor_id": "user",
+                "source": "test",
+                "source_ref": "issue-770",
+                "confidence": 0.95,
+                "status": "active",
+                "tags": ["integrity"],
+                "provenance": "validated",
+            },
+        }
+
+        def get_memory(self, memory_id, namespace):
+            return existing_memory
+
+        monkeypatch.setattr(MemoryReadService, "get_memory", get_memory)
+
+        client = MagicMock()
+        client.documents.upload.return_value = {"status": "queued"}
+
+        MemoryWriteService(client).update_memory(
+            "mem-2",
+            "memanto_agent_agent-1",
+            {"content": "Updated without losing original metadata."},
+        )
+
+        document = client.documents.upload.call_args.kwargs["documents"][0]
+        assert document["memory_type"] == "decision"
+        assert document["provenance"] == "validated"
+        assert document["source_ref"] == "issue-770"
+        assert document["tags"] == "integrity"
 
 
 class TestForgetEndToEnd:
