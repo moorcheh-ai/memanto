@@ -219,13 +219,15 @@ class MemoryWriteService:
         context: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         """
-        Update existing memory using delete-and-recreate pattern
+        Update existing memory using SDK upsert pattern
 
-        Since Moorcheh doesn't support in-place updates, we:
+        Moorcheh SDK performs upsert (overwrite) when uploading a document
+        with an existing ID, so we:
         1. Retrieve the existing memory
         2. Apply updates to create new version
-        3. Delete old version
-        4. Upload new version with same ID
+        3. Upload new version with same ID (overwrites old via upsert)
+
+        If the upload fails, the old version remains intact - no data loss.
 
         Args:
             memory_id: ID of memory to update
@@ -306,52 +308,43 @@ class MemoryWriteService:
                 if metadata.get("expires_at"):
                     updated_memory.expires_at = metadata["expires_at"]
 
-            # Step 3: Delete old version (Moorcheh doesn't support in-place updates,
-            # so delete-then-recreate with same ID is the correct pattern)
+            # Step 3: Upload new version with same ID (Moorcheh SDK performs upsert:
+            # uploading a document with an existing ID overwrites it, so no explicit
+            # delete is needed. If upload fails after retries, the old version
+            # remains intact - eliminating the data loss window.)
             from typing import Any, cast
-
-            delete_result = cast(
-                dict[str, Any],
-                self.client.documents.delete(namespace_name=namespace, ids=[memory_id]),
-            )
-
-            if not self._deletion_succeeded(delete_result):
-                raise MemoryError(f"Failed to delete old version of memory {memory_id}")
-
-            validation_result = {"action": "store", "reason": "MVP direct store"}
-
-            # Step 4: Upload new version with same ID (retry to prevent data loss
-            # if the upload fails after deletion)
             from moorcheh_sdk.types.document import Document
 
             document = cast(Document, updated_memory.to_moorcheh_document())
 
             upload_result = None
             last_upload_error = None
+            import time as _time
             for attempt in range(3):
                 try:
                     upload_result = self.client.documents.upload(
                         namespace_name=namespace, documents=[document]
                     )
                     break
-                except Exception as upload_err:
+                except (ConnectionError, TimeoutError, OSError) as upload_err:
                     last_upload_error = upload_err
                     if attempt < 2:
-                        import time as _time
                         _time.sleep(2 ** attempt)
 
             if upload_result is None:
                 raise MemoryError(
                     f"Failed to upload updated memory {memory_id} after 3 attempts. "
-                    f"Old version was deleted. Error: {last_upload_error}"
+                    f"Old version is still intact. Error: {last_upload_error}"
                 )
+
+            validation_result = {"action": "store", "reason": "MVP direct store"}
 
             return {
                 "id": memory_id,
                 "namespace": namespace,
                 "status": upload_result.get("status", "unknown"),
                 "action": "updated",
-                "reason": "Memory updated successfully via delete-and-recreate",
+                "reason": "Memory updated successfully via upsert",
                 "validation": validation_result.get("action", "validated"),
                 "updated_fields": list(updates.keys()),
             }
