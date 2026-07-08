@@ -307,9 +307,11 @@ class MemoryWriteService:
                     updated_memory.expires_at = metadata["expires_at"]
 
 
-            # Step 3: Upload new version FIRST (before deleting old)
-            # This prevents data loss if delete succeeds but upload fails
-            validation_result = {"action": "store", "reason": "MVP direct store"}
+
+            # Step 3: Upload new version (same-ID overwrite semantics)
+            # Moorcheh documents are immutable by ID — upload with the same memory_id
+            # replaces the old document atomically on the server side. No local delete needed.
+            validation_result = {'action': 'store', 'reason': 'MVP direct store'}
 
             from typing import cast
 
@@ -320,23 +322,15 @@ class MemoryWriteService:
                 namespace_name=namespace, documents=[document]
             )
 
-            if upload_result.get("status") not in ("success", "queued", "ok"):
+            status = upload_result.get('status', 'unknown')
+            if status not in ('success', 'queued', 'ok'):
                 raise MemoryError(
-                    f"Failed to upload updated memory {memory_id}: {upload_result.get('status')}"
+                    f'Failed to upload updated memory {memory_id}: {status}'
                 )
 
-            # Step 4: Now safely delete old version (new version already stored)
-            from typing import Any
-            delete_result = cast(
-                dict[str, Any],
-                self.client.documents.delete(namespace_name=namespace, ids=[memory_id]),
-            )
-
-            if not self._deletion_succeeded(delete_result):
-                # New version is already stored safely above; old version deletion
-                # failure is non-fatal — the memory update is still correct.
-                pass
-
+            # Upload succeeded (or queued for async processing). The old version
+            # is replaced on the server by this same-ID upload — no local delete needed.
+            # Returning early avoids a race where we'd delete the just-uploaded doc.
             return {
                 "id": memory_id,
                 "namespace": namespace,
