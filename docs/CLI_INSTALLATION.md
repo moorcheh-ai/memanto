@@ -351,13 +351,13 @@ memanto/
 
 ### Entry Point
 
-**[pyproject.toml:25](pyproject.toml#L25)**
+**[pyproject.toml](../pyproject.toml)**
 ```toml
 [project.scripts]
-memanto = "cli.main:app"
+memanto = "memanto.cli.main:app"
 ```
 
-This creates the `memanto` command that runs the Typer app in `cli/main.py`.
+This creates the `memanto` command that runs the Typer app in `memanto/cli/main.py`.
 
 ### Configuration File
 

@@ -70,7 +70,7 @@ Open a feature request at https://github.com/moorcheh-ai/memanto/issues and incl
 
 ### Prerequisites
 
-- Python 3.10–3.12
+- Python 3.10-3.14
 - [`uv`](https://github.com/astral-sh/uv) (recommended) or `pip`
 - A Moorcheh API key from https://console.moorcheh.ai/api-keys
 
@@ -86,7 +86,7 @@ cd memanto
 **With uv (recommended):**
 
 ```bash
-uv sync --group dev
+uv sync --all-extras --dev
 ```
 
 **With pip:**
@@ -107,7 +107,7 @@ cp .env.example .env
 ### 4. Install pre-commit hooks
 
 ```bash
-pre-commit install
+uv run pre-commit install
 ```
 
 The hooks run `uv run ruff check`, `uv run ruff format --check`, and `uv run mypy` on every commit automatically.
@@ -167,16 +167,16 @@ uv run pre-commit run --all-files
 
 ```bash
 # Run the full test suite
-pytest
+uv run pytest
 
 # Run a specific test file
-pytest tests/test_cli.py
+uv run pytest tests/test_cli.py
 
 # Run with verbose output
-pytest -v
+uv run pytest -v
 
 # Run and stop on first failure
-pytest -x
+uv run pytest -x
 ```
 
 Tests require a valid `MOORCHEH_API_KEY` in your environment or `.env` file for any integration tests. Unit tests that don't hit the network will run without a key.
@@ -210,8 +210,8 @@ Tests require a valid `MOORCHEH_API_KEY` in your environment or `.env` file for 
 4. **Ensure all checks pass:**
 
    ```bash
-   pre-commit run --all-files
-   pytest
+   uv run pre-commit run --all-files
+   uv run pytest
    ```
 
 5. **Push your branch** and open a pull request against `main`.

@@ -135,7 +135,7 @@ MEMANTO implements multiple security layers:
 - Structured logging with PII redaction
 - Safe deletion with audit trail
 
-For detailed security architecture, see [SECURITY_ISOLATION_ONE_PAGER.md](SECURITY_ISOLATION_ONE_PAGER.md).
+For detailed session and namespace isolation architecture, see [docs/SESSION_ARCHITECTURE.md](docs/SESSION_ARCHITECTURE.md).
 
 ---
 

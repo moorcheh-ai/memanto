@@ -40,7 +40,7 @@ They're not interchangeable. We use both, each for its proper job.
 ```bash
 python -m venv venv
 source venv/bin/activate            # Windows: venv\Scripts\activate
-pip install -r requirements.txt
+pip install -r ../requirements.txt
 cp .env.example .env
 # Edit .env and add MOORCHEH_API_KEY and OPENROUTER_API_KEY
 ```
@@ -186,6 +186,6 @@ These are documented up-front rather than papered over.
 ## See also
 
 * [Memanto documentation](https://docs.memanto.ai)
-* [`examples/crewai-memory/`](../crewai-memory/) the CrewAI sibling demo, same 13-type memory story.
+* [`examples/crewai-memory/`](../../crewai-memory/) the CrewAI sibling demo, same 13-type memory story.
 * [LangGraph: Add Memory](https://docs.langchain.com/oss/python/langgraph/add-memory)
 * [LangGraph: Store API reference](https://reference.langchain.com/python/langgraph/store)

@@ -116,25 +116,27 @@ curl http://localhost:8000/health
 git clone https://github.com/your-org/memanto.git
 cd memanto
 
-# 2. Install Python dependencies (requires Python 3.8+)
+# 2. Install Python dependencies (requires Python 3.10+)
 pip install uv  # Modern Python package manager
-uv sync         # Installs all dependencies
+uv sync --all-extras --dev
 
 # Or use traditional pip
-pip install -r requirements.txt
+python -m venv .venv
+source .venv/bin/activate  # Windows: .venv\Scripts\activate
+pip install -e ".[all]"
 
 # 3. Create .env file
 cp .env.example .env
 # Edit .env and add your MOORCHEH_API_KEY
 
-# 4. Test Moorcheh connectivity
-uv run python test_moorcheh.py
+# 4. Verify the CLI install
+uv run memanto --version
 
 # 5. Start MEMANTO
-uv run python app/main.py
+uv run memanto serve
 
 # Or with auto-reload for development
-uvicorn app.main:app --reload
+uv run uvicorn memanto.app.main:app --reload
 ```
 
 ### Option 3: Cloud Deployment
@@ -413,18 +415,15 @@ asyncio.run(main())
 
 ## Step 5: Choose Your Agent Pattern
 
-MEMANTO supports 6 different agent patterns. Choose the one that fits your use case:
+MEMANTO supports three agent patterns. Choose the one that fits your use case:
 
 | Pattern | Best For | Guide |
 |---------|----------|-------|
-| **Support Agent** | Customer service, helpdesk | [Pattern 1](AGENT_INTEGRATION_GUIDE.md#pattern-1-support-agent---customer-preference-memory) |
-| **Project Agent** | Decision tracking, governance | [Pattern 2](AGENT_INTEGRATION_GUIDE.md#pattern-2-project-agent---decision-tracking) |
-| **Tool-Heavy Agent** | Multi-step workflows, pipelines | [Pattern 3](AGENT_INTEGRATION_GUIDE.md#pattern-3-tool-heavy-agent---artifact-management) |
-| **Collaborative Agent** | Multi-agent systems | [Pattern 4](AGENT_INTEGRATION_GUIDE.md#pattern-4-long-running-session-with-context-compression) |
-| **Long-Running Session** | Extended conversations (weeks/months) | [Pattern 4](AGENT_INTEGRATION_GUIDE.md#pattern-4-long-running-session-with-context-compression) |
-| **Multi-Scope Analytics** | Cross-user insights, recommendations | [Pattern 5](AGENT_INTEGRATION_GUIDE.md#pattern-5-multi-scope-agent---cross-user-intelligence) |
+| **Support Agent** | Customer service, helpdesk, user preferences | [V2 Quick Start](V2_QUICK_START.md#agent-patterns) |
+| **Project Agent** | Project management, decisions, task tracking | [V2 Quick Start](V2_QUICK_START.md#agent-patterns) |
+| **Tool Agent** | API integrations, automation, multi-step workflows | [V2 Quick Start](V2_QUICK_START.md#agent-patterns) |
 
-See [AGENT_PATTERNS_OVERVIEW.md](AGENT_PATTERNS_OVERVIEW.md) for a complete comparison.
+See [AGENT_INTEGRATION_GUIDE.md](AGENT_INTEGRATION_GUIDE.md) for practical integration examples.
 
 ---
 
@@ -437,20 +436,20 @@ See [AGENT_PATTERNS_OVERVIEW.md](AGENT_PATTERNS_OVERVIEW.md) for a complete comp
    - Best practices and error handling
    - Performance optimization tips
 
-2. **Explore Advanced Features**:
-   - [Batch Operations](ENHANCEMENTS_SUMMARY.md#1-batch-write-operations) - Store 100 memories in 1 API call
-   - [Context Summarization](ENHANCEMENTS_SUMMARY.md#10-context-summarization-service) - Auto-compress old conversations
-   - [Multi-Scope Search](ENHANCEMENTS_SUMMARY.md#3-multi-scope-search) - Query across users simultaneously
+2. **Read Memory Best Practices**: [AGENT_MEMORY_BEST_PRACTICES.md](AGENT_MEMORY_BEST_PRACTICES.md)
+   - Memory type guidance
+   - Practical storage and recall patterns
+   - Quality, safety, and validation recommendations
 
 3. **Review API Documentation**:
    - Interactive: http://localhost:8000/docs
-   - Architecture: [ARCHITECTURE_ONE_PAGER.md](ARCHITECTURE_ONE_PAGER.md)
-   - All Enhancements: [ENHANCEMENTS_SUMMARY.md](ENHANCEMENTS_SUMMARY.md)
+   - Session architecture: [SESSION_ARCHITECTURE.md](SESSION_ARCHITECTURE.md)
+   - TypeScript SDK: [../sdks/typescript/README.md](../sdks/typescript/README.md)
 
 ### For AI Agents (Runtime)
 
 If you're an AI agent reading this:
- - See [AGENT_RUNTIME_GUIDE.md](AGENT_RUNTIME_GUIDE.md) for runtime API usage
+ - See [AGENT_INTEGRATION_GUIDE.md](AGENT_INTEGRATION_GUIDE.md) for runtime integration patterns
  - API Reference: http://your-memanto-url/docs
  - Quick start: Use `/api/v2/agents/{id}/remember` and `/api/v2/agents/{id}/recall` endpoints
 
@@ -462,7 +461,7 @@ If you're an AI agent reading this:
 
 ```bash
 # Check if Moorcheh API key is valid
-uv run python test_moorcheh.py
+uv run memanto status
 
 # Check logs
 docker logs <container-id>
@@ -524,8 +523,8 @@ Now that MEMANTO is running, you're ready to build memory-enabled AI agents!
 **Recommended reading order:**
 1. ✅ You are here: GETTING_STARTED.md
 2. → [AGENT_INTEGRATION_GUIDE.md](AGENT_INTEGRATION_GUIDE.md) - Complete code examples
-3. → [AGENT_PATTERNS_OVERVIEW.md](AGENT_PATTERNS_OVERVIEW.md) - Choose your pattern
-4. → [ENHANCEMENTS_SUMMARY.md](ENHANCEMENTS_SUMMARY.md) - Advanced features
-5. → [ARCHITECTURE_ONE_PAGER.md](ARCHITECTURE_ONE_PAGER.md) - System design
+3. → [AGENT_MEMORY_BEST_PRACTICES.md](AGENT_MEMORY_BEST_PRACTICES.md) - Memory quality guidance
+4. → [SESSION_ARCHITECTURE.md](SESSION_ARCHITECTURE.md) - System design
+5. → [DEPLOYMENT_GUIDE.md](DEPLOYMENT_GUIDE.md) - Production deployment
 
 **Happy building!** 🚀

@@ -505,10 +505,10 @@ curl -X POST ".../recall/changed-since" -H "Content-Type: application/json" \
 
 ## Resources
 
-- **API Reference**: [AGENT_RUNTIME_GUIDE.md](AGENT_RUNTIME_GUIDE.md)
+- **API Reference**: http://localhost:8000/docs
 - **Best Practices**: [AGENT_MEMORY_BEST_PRACTICES.md](AGENT_MEMORY_BEST_PRACTICES.md)
 - **Visualization**: [TIMELINE_VISUALIZATION_EXAMPLES.md](TIMELINE_VISUALIZATION_EXAMPLES.md)
-- **Temporal Helpers**: [app/utils/temporal_helpers.py](app/utils/temporal_helpers.py)
+- **Temporal Helpers**: [../memanto/app/utils/temporal_helpers.py](../memanto/app/utils/temporal_helpers.py)
 
 ---
 

@@ -545,8 +545,8 @@ POST /recall/changed-since
 
 ## Resources
 
-- **MEMANTO API**: [AGENT_RUNTIME_GUIDE.md](AGENT_RUNTIME_GUIDE.md)
-- **Temporal Helpers**: [app/utils/temporal_helpers.py](app/utils/temporal_helpers.py)
+- **MEMANTO API**: http://localhost:8000/docs
+- **Temporal Helpers**: [../memanto/app/utils/temporal_helpers.py](../memanto/app/utils/temporal_helpers.py)
 - **Best Practices**: [AGENT_MEMORY_BEST_PRACTICES.md](AGENT_MEMORY_BEST_PRACTICES.md)
 
 ---
