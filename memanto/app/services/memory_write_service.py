@@ -221,11 +221,10 @@ class MemoryWriteService:
         """
         Update existing memory using same-ID overwrite pattern
 
-        Since Moorcheh doesn't support in-place updates, we:
+        Since Moorcheh overwrites documents by ID, we:
         1. Retrieve the existing memory
-        2. Apply updates to create new version
-        3. Delete old version
-        4. Upload new version with same ID
+        2. Apply updates to create a replacement version
+        3. Upload the replacement with the same ID
 
         Args:
             memory_id: ID of memory to update
@@ -270,7 +269,9 @@ class MemoryWriteService:
             # Build updated memory record
             updated_memory = MemoryRecord(
                 id=memory_id,  # Keep same ID
-                type=updates.get("type", metadata.get("type", "fact")),
+                type=updates.get(
+                    "type", metadata.get("type", metadata.get("memory_type", "fact"))
+                ),
                 title=updates.get(
                     "title", existing_memory_data.get("title", "Updated Memory")
                 ),
@@ -282,6 +283,10 @@ class MemoryWriteService:
                 confidence=updates.get("confidence", metadata.get("confidence", 0.8)),
                 status=updates.get("status", metadata.get("status", "active")),
                 tags=updates.get("tags", metadata.get("tags", [])),
+                provenance=updates.get(
+                    "provenance",
+                    metadata.get("provenance", "explicit_statement"),
+                ),
             )
 
             # Update timestamps (preserve created_at, set updated_at to now)
@@ -306,12 +311,11 @@ class MemoryWriteService:
                 if metadata.get("expires_at"):
                     updated_memory.expires_at = metadata["expires_at"]
 
-
-
             # Step 3: Upload new version (same-ID overwrite semantics)
-            # Moorcheh documents are immutable by ID — upload with the same memory_id
-            # replaces the old document atomically on the server side. No local delete needed.
-            validation_result = {'action': 'store', 'reason': 'MVP direct store'}
+            # Moorcheh documents are immutable by ID; uploading with the same
+            # memory_id replaces the old document server-side. No local delete
+            # is needed, so there is no destructive gap between delete/upload.
+            validation_result = {"action": "store", "reason": "MVP direct store"}
 
             from typing import cast
 
@@ -322,14 +326,14 @@ class MemoryWriteService:
                 namespace_name=namespace, documents=[document]
             )
 
-            status = upload_result.get('status', 'unknown')
-            if status not in ('success', 'queued', 'ok'):
+            status = upload_result.get("status", "unknown")
+            if status not in ("success", "queued", "ok"):
                 raise MemoryError(
-                    f'Failed to upload updated memory {memory_id}: {status}'
+                    f"Failed to upload updated memory {memory_id}: {status}"
                 )
 
             # Upload succeeded (or queued for async processing). The old version
-            # is replaced on the server by this same-ID upload — no local delete needed.
+            # is replaced on the server by this same-ID upload; no local delete needed.
             # Returning early avoids a race where we'd delete the just-uploaded doc.
             return {
                 "id": memory_id,
