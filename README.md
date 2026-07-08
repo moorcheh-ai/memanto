@@ -40,13 +40,13 @@
 <p align="center"><a href="https://trendshift.io/repositories/27378" target="_blank"><img src="https://trendshift.io/api/badge/repositories/27378" alt="moorcheh-ai%2Fmemanto | Trendshift" style="width: 250px; height: 55px;" width="250" height="55"/></a></p>
 
 <p align="center">
-  <a href="https://www.star-history.com/?repos=moorcheh-ai%2Fmemanto&type=date&legend=top-left">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=moorcheh-ai/memanto&type=date&theme=dark&legend=top-left" />
-    <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=moorcheh-ai/memanto&type=date&legend=top-left" />
-    <img alt="Star History Chart" src="https://api.star-history.com/chart?repos=moorcheh-ai/memanto&type=date&legend=top-left" />
-  </picture>
-  </a>
+    <a href="https://www.star-history.com/?repos=moorcheh-ai%2Fmemanto&type=date&legend=top-left">
+     <picture>
+       <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=moorcheh-ai/memanto&type=date&theme=dark&legend=top-left&sealed_token=F0cHJrwopUW4YPi2zfB_I0fyL6fMN9vthMIbna4RgBRF8_XghWY1qhlffjMsgfqvqxVNnGiVnHGC7PKwgrUjBZ_rV-rBfekLZGYgRPBJHkMFy2JVJzXa3A" />
+       <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=moorcheh-ai/memanto&type=date&legend=top-left&sealed_token=F0cHJrwopUW4YPi2zfB_I0fyL6fMN9vthMIbna4RgBRF8_XghWY1qhlffjMsgfqvqxVNnGiVnHGC7PKwgrUjBZ_rV-rBfekLZGYgRPBJHkMFy2JVJzXa3A" />
+       <img alt="Star History Chart" src="https://api.star-history.com/chart?repos=moorcheh-ai/memanto&type=date&legend=top-left&sealed_token=F0cHJrwopUW4YPi2zfB_I0fyL6fMN9vthMIbna4RgBRF8_XghWY1qhlffjMsgfqvqxVNnGiVnHGC7PKwgrUjBZ_rV-rBfekLZGYgRPBJHkMFy2JVJzXa3A" />
+     </picture>
+    </a>
 </p>
 
 

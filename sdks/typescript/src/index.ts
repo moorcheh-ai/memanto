@@ -334,10 +334,17 @@ export class Memanto {
     return (await res.json()) as unknown;
   }
 
+  /** Delete the bound agent and clear any cached session for it. */
   async deleteAgent() {
-    return this.request("DELETE", `/api/v2/agents/${this.agentId}`, undefined, {
-      requireSession: false,
-    });
+    const result = await this.request(
+      "DELETE",
+      `/api/v2/agents/${this.agentId}`,
+      undefined,
+      { requireSession: false },
+    );
+    this.sessionToken = null;
+    this.starting = null;
+    return result;
   }
 
   async deactivate() {

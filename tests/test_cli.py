@@ -456,6 +456,98 @@ class TestMEMANTOCLI:
         assert forwarded_updates["tags"] == ["a", "b"]
         assert result["status"] == "updated"
 
+    @pytest.mark.parametrize(
+        ("status", "expires_delta_seconds"),
+        [
+            ("active", -1),
+            ("terminated", 3600),
+        ],
+    )
+    @pytest.mark.parametrize("client_path", ["direct_client", "sdk_client"])
+    def test_cached_client_session_must_still_be_active(
+        self, mock_all_clients, client_path, status, expires_delta_seconds
+    ):
+        from datetime import timedelta
+
+        from memanto.app.models.session import Session
+        from memanto.app.utils.errors import SessionExpiredError
+        from memanto.app.utils.temporal_helpers import utc_now
+
+        if client_path == "direct_client":
+            from memanto.cli.client.direct_client import DirectClient as Client
+        else:
+            from memanto.cli.client.sdk_client import SdkClient as Client
+
+        client = Client("test-api-key")
+        client.agent_id = "test-agent"
+        client.session_token = "test-token"
+        client._cached_session = Session(
+            session_id="sess-test",
+            session_token="test-token",
+            agent_id="test-agent",
+            namespace="memanto_agent_test-agent",
+            started_at=utc_now() - timedelta(hours=1),
+            expires_at=utc_now() + timedelta(seconds=expires_delta_seconds),
+            status=status,
+        )
+
+        with pytest.raises(SessionExpiredError, match="no longer active"):
+            client._get_validated_session_for_agent("test-agent")
+
+        assert client._cached_session is None
+
+    @pytest.mark.parametrize("client_path", ["direct_client", "sdk_client"])
+    def test_client_session_cache_is_agent_scoped(self, mock_all_clients, client_path):
+        from datetime import timedelta
+        from types import SimpleNamespace
+        from unittest.mock import MagicMock
+
+        from memanto.app.models.session import Session
+        from memanto.app.utils.temporal_helpers import utc_now
+
+        if client_path == "direct_client":
+            from memanto.cli.client.direct_client import DirectClient as Client
+        else:
+            from memanto.cli.client.sdk_client import SdkClient as Client
+
+        old_session = Session(
+            session_id="sess-old",
+            session_token="old-token",
+            agent_id="old-agent",
+            namespace="memanto_agent_old-agent",
+            started_at=utc_now() - timedelta(minutes=5),
+            expires_at=utc_now() + timedelta(hours=1),
+            status="active",
+        )
+        new_session = Session(
+            session_id="sess-new",
+            session_token="new-token",
+            agent_id="new-agent",
+            namespace="memanto_agent_new-agent",
+            started_at=utc_now(),
+            expires_at=utc_now() + timedelta(hours=1),
+            status="active",
+        )
+
+        session_service = MagicMock()
+        session_service.validate_session.return_value = SimpleNamespace(
+            agent_id="new-agent"
+        )
+        session_service.get_session.return_value = new_session
+        session_service.check_and_auto_renew.return_value = None
+
+        client = Client("test-api-key")
+        client.agent_id = "new-agent"
+        client.session_token = "new-token"
+        client._cached_session = old_session
+        client._session_service = session_service
+
+        session = client._get_validated_session_for_agent("new-agent")
+
+        assert session is new_session
+        assert client._cached_session is new_session
+        session_service.validate_session.assert_called_once_with("new-token")
+
     def test_recall(self, mock_all_clients):
         """Test 'memanto recall'"""
         mock_all_clients.recall.return_value = {
