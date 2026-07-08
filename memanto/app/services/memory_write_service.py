@@ -1,4 +1,3 @@
-from moorcheh_sdk.exceptions import APIError
 """
 Memory Write Service
 """
@@ -9,6 +8,7 @@ from typing import TYPE_CHECKING, Any
 if TYPE_CHECKING:
     from moorcheh_sdk import MoorchehClient
 
+from moorcheh_sdk.exceptions import APIError
 from memanto.app.core import MemoryRecord
 from memanto.app.services.memory_parsing_service import MemoryParsingService
 from memanto.app.utils.errors import MemoryError
