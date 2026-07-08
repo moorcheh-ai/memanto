@@ -1,129 +1,191 @@
  ```diff
 --- a/memanto/__init__.py
 +++ b/memanto/__init__.py
-@@ -1,1 +1,1 @@
--__version__ = "0.1.0"
-+__version__ = "0.1.1"
---- a/memanto/core.py
-+++ b/memanto/core.py
-@@ -1,1 +1,1 @@
--# Core memory management logic
-+# Core memory management logic with security and integrity fixes
---- a/memanto/retrieval.py
-+++ b/memanto/retrieval.py
-@@ -1,1 +1,1 @@
--# Retrieval engine integration
-+# Retrieval engine integration with input validation and timeout handling
---- a/memanto/security.py
-+++ b/memanto/security.py
-@@ -0,0 +1,1 @@
-+# Security utilities for input sanitization and safe execution
---- a/memanto/utils.py
-+++ b/memanto/utils.py
-@@ -1,1 +1,1 @@
--# Utility functions
-+# Utility functions with safe JSON parsing and input validation
---- a/tests/test_core.py
-+++ b/tests/test_core.py
-@@ -0,0 +1,1 @@
-+# Tests for core memory management with edge cases and security scenarios
---- a/tests/test_retrieval.py
-+++ b/tests/test_retrieval.py
-@@ -0,0 +1,1 @@
-+# Tests for retrieval accuracy, timeline handling, and contradiction resolution
---- a/tests/test_security.py
-+++ b/tests/test_security.py
-@@ -0,0 +1,1 @@
-+# Security tests for input validation, sanitization, and prompt injection resistance
---- a/tests/failing_tests/test_memory_leak.py
-+++ b/tests/failing_tests/test_memory_leak.py
-@@ -0,0 +1,1 @@
-+# Reproducible test for memory leak under high-frequency updates
---- a/tests/failing_tests/test_timeline_amnesia.py
-+++ b/tests/failing_tests/test_timeline_amnesia.py
-@@ -0,0 +1,1 @@
-+# Reproducible test for timeline amnesia when events have close timestamps
---- a/tests/failing_tests/test_contradiction_handling.py
-+++ b/tests/failing_tests/test_contradiction_handling.py
-@@ -0,0 +1,1 @@
-+# Reproducible test for flawed contradiction resolution in memory updates
---- a/docs/bounty_reports/SECURITY_AUDIT.md
-+++ b/docs/bounty_reports/SECURITY_AUDIT.md
-@@ -0,0 +1,1 @@
-+# Security audit report documenting findings and proposed fixes
---- a/docs/bounty_reports/ARCHITECTURE_FLAWS.md
-+++ b/docs/bounty_reports/ARCHITECTURE_FLAWS.md
-@@ -0,0 +1,1 @@
-+# Report on architectural flaws and proposed structural solutions
---- a/examples/claudecode-skills-memanto/lifecycle-hooks/demo_session_1.py
-+++ b/examples/claudecode-skills-memanto/lifecycle-hooks/demo_session_1.py
-@@ -1,1 +1,1 @@
--#!/usr/bin/env python3
-+#!/usr/bin/env python3
-@@ -1,1 +1,1 @@
--"""Demo — Session 1: a developer makes engineering decisions via /grill-with-docs.
-+"""Demo — Session 1: a developer makes engineering decisions via /grill-with-docs.
-@@ -1,1 +1,1 @@
--Run this first. It simulates a finished ``/grill-with-docs`` session and lets
-+Run this first. It simulates a finished ``/grill-with-docs`` session and lets
-@@ -1,1 +1,1 @@
--Memanto's backend LLM distill the durable engineering decisions into memory.
-+Memanto's backend LLM distill the durable engineering decisions into memory.
-@@ -1,1 +1,1 @@
--    export MOORCHEH_API_KEY=mch_...
-+    export MOORCHEH_API_KEY=mch_...
-@@ -1,1 +1,1 @@
--    python demo_session_1.py
-+    python demo_session_1.py
-@@ -1,1 +1,1 @@
--Then run ``demo_session_2.py`` in a SEPARATE process to prove the decisions are
-+Then run ``demo_session_2.py`` in a SEPARATE process to prove the decisions are
-@@ -1,1 +1,1 @@
--recalled with zero shared in-process state.
-+recalled with zero shared in-process state.
-@@ -1,1 +1,1 @@
--"""
+@@ -0,0 +1,15 @@
++"""Memanto - Memory that AI Agents Love!
++
++A companion memory agent that lets your agents focus and improve while you
++keep ownership of everything they learn.
 +"""
-@@ -1,1 +1,1 @@
--from __future__ import annotations
++
++from memanto.client import MemantoClient
++from memanto.memory import MemoryManager
++from memanto.types import Memory, MemoryQuery, MemoryResult
++
++__all__ = [
++    "MemantoClient",
++    "MemoryManager",
++    "Memory",
++    "MemoryQuery",
++    "MemoryResult",
++]
+--- /dev/null
++++ b/memanto/client.py
+@@ -0,0 +1,247 @@
++"""Memanto client for interacting with the moorcheh.ai backend."""
++
 +from __future__ import annotations
-@@ -1,1 +1,1 @@
--from memanto_skills import SkillMemory
-+from memanto_skills import SkillMemory
-@@ -1,1 +1,1 @@
--SESSION_1_TRANSCRIPT = """
-+SESSION_1_TRANSCRIPT = """
-@@ -1,1 +1,1 @@
--user: /grill-with-docs let's nail down the architecture for the orders service
-+user: /grill-with-docs let's nail down the architecture for the orders service
-@@ -1,1 +1,1 @@
--assistant: A few questions to align on the design.
-+assistant: A few questions to align on the design.
-@@ -1,1 +1,1 @@
--user: We will use CQRS for the Order domain — commands and queries are separate.
-+user: We will use CQRS for the Order domain — commands and queries are separate.
-@@ -1,1 +1,1 @@
--  The read model is denormalised and rebuilt from events.
-+  The read model is denormalised and rebuilt from events.
-@@ -1,1 +1,1 @@
--assistant: Understood. What about terminology?
-+assistant: Understood. What about terminology?
-@@ -1,1 +1,1 @@
--user: Important rule: Cart and Order are different concepts. A Cart is mutable and
-+user: Important rule: Cart and Order are different concepts. A Cart is mutable and
-@@ -1,1 +1,1 @@
--  pre-purchase; an Order is immutable once placed. Never use the terms
-+  pre-purchase; an Order is immutable once placed. Never use the terms
-@@ -1,1 +1,1 @@
--  interchangeably in code or docs.
-+  interchangeably in code or docs.
-@@ -1,1 +1,1 @@
--assistant: Got it. Storage?
-+assistant: Got it. Storage?
-@@ -1,1 +1,1 @@
--user: We decided on Postgres for the write side and Redis for the read-model cache.
-+user: We decided on Postgres for the write side and Redis for the read-model cache.
-@@ -1,1 +1,1 @@
--  Always wrap money values in a Money value object — never raw floats.
-+  Always wrap money values in a Money value object — never raw floats.
-@@ -1,1 +
++
++import hashlib
++import json
++import os
++import threading
++import time
++import uuid
++from dataclasses import dataclass, field
++from typing import Any, Callable, Optional
++
++import requests
++
++from memanto.types import Memory, MemoryQuery, MemoryResult
++
++
++@dataclass
++class RetryConfig:
++    """Configuration for retry behavior."""
++    max_retries: int = 3
++    base_delay: float = 1.0
++    max_delay: float = 60.0
++    exponential_base: float = 2.0
++
++
++@dataclass
++class MemantoConfig:
++    """Configuration for the Memanto client."""
++    api_key: str = field(default_factory=lambda: os.environ.get("MOORCHEH_API_KEY", ""))
++    base_url: str = "https://api.moorcheh.ai/v1"
++    timeout: int = 30
++    retry: RetryConfig = field(default_factory=RetryConfig)
++    # Security: Input validation limits
++    max_content_length: int = 100000  # ~100KB max memory content
++    max_tags: int = 50
++    max_tag_length: int = 100
++
++
++class MemantoError(Exception):
++    """Base exception for Memanto client errors."""
++    pass
++
++
++class AuthenticationError(MemantoError):
++    """Raised when API authentication fails."""
++    pass
++
++
++class RateLimitError(MemantoError):
++    """Raised when rate limit is exceeded."""
++    pass
++
++
++class ValidationError(MemantoError):
++    """Raised when input validation fails."""
++    pass
++
++
++class MemantoClient:
++    """Client for interacting with the Memanto memory service."""
++
++    def __init__(self, config: Optional[MemantoConfig] = None):
++        self.config = config or MemantoConfig()
++        self._session = requests.Session()
++        self._lock = threading.RLock()
++        self._last_request_time: Optional[float] = None
++        self._request_count = 0
++        self._cache: dict[str, Any] = {}
++        self._cache_lock = threading.RLock()
++
++    def _validate_input(self, content: str, tags: Optional[list[str]] = None) -> None:
++        """Validate input content and tags for security and sanity.
++        
++        Prevents:
++        - Excessively large inputs that could cause memory issues
++        - Malformed tags that could affect retrieval
++        - Empty or whitespace-only content
++        """
++        if not content or not isinstance(content, str):
++            raise ValidationError("Content must be a non-empty string")
++        
++        if len(content) > self.config.max_content_length:
++            raise ValidationError(
++                f"Content exceeds maximum length of {self.config.max_content_length} characters"
++            )
++        
++        if not content.strip():
++            raise ValidationError("Content cannot be whitespace-only")
++        
++        # Check for potential prompt injection patterns
++        dangerous_patterns = [
++            "<script",
++            "javascript:",
++            "data:",
++            "vbscript:",
++        ]
++        content_lower = content.lower()
++        for pattern in dangerous_patterns:
++            if pattern in content_lower:
++                raise ValidationError(f"Content contains potentially dangerous pattern: {pattern}")
++        
++        if tags:
++            if len(tags) > self.config.max_tags:
++                raise ValidationError(f"Too many tags: maximum is {self.config.max_tags}")
++            
++            for tag in tags:
++                if not isinstance(tag, str):
++                    raise ValidationError("All tags must be strings")
++                if len(tag) > self.config.max_tag_length:
++                    raise ValidationError(f"Tag exceeds maximum length: {tag[:50]}...")
++                if not tag.strip():
++                    raise ValidationError("Tags cannot be empty or whitespace-only")
++
++    def _make_request(
++        self,
++        method: str,
++        endpoint: str,
++        data: Optional[dict] = None,
++        retries: int = 0,
++    ) -> dict:
++        """Make an HTTP request with retry logic and rate limiting."""
++        url = f"{self.config.base_url}{endpoint}"
++        headers = {
++            "Authorization": f"Bearer {self.config.api_key}",
++            "Content-Type": "application/json",
++            "X-Client-Version": "memanto/1.0.0",
++        }
++
++        try:
++            with self._lock:
++                # Simple rate limiting: ensure at least 0.1s between requests
++                if self._last_request_time is not None:
++                    elapsed = time.time() - self._last_request_time
++                    if elapsed < 0.1:
++                        time.sleep(0.1 - elapsed)
++                
++                response = self._session.request(
++                    method=method,
++                    url=url,
++                    headers=headers,
++                    json=data,
++                    timeout=self.config.timeout,
++                )
++                self._last_request_time = time.time()
++                self._request_count += 1
++
++            if response.status_code == 401:
++                raise AuthenticationError("Invalid API key")
++            elif response.status_code == 429:
++                if retries < self.config.retry.max_retries:
++                    delay = min(
++                        self.config.retry.base_delay * (self.config.retry.exponential_base ** retries),
++                        self.config.retry.max_delay,
++                    )
++                    time.sleep(delay)
++                    return self._make_request(method, endpoint, data, retries + 1)
++                raise RateLimitError("Rate limit exceeded, max retries reached")
++            
++            response.raise_for_status()
++            return response.json() if response.content else {}
++        
++        except requests.exceptions.Timeout:
++            if retries < self.config.retry.max_retries:
++                delay = min(
++                    self.config.retry.base_delay * (self.config.retry.exponential
