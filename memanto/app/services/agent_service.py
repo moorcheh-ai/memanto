@@ -5,10 +5,12 @@ Handles agent creation, listing, and lifecycle management.
 """
 
 import json
+import logging
 from datetime import datetime
 from pathlib import Path
 
 from moorcheh_sdk.exceptions import ConflictError
+from pydantic import ValidationError
 
 from memanto.app.clients.moorcheh import get_moorcheh_client
 from memanto.app.config import get_data_dir
@@ -16,6 +18,8 @@ from memanto.app.core import agent_namespace
 from memanto.app.models.session import AgentCreate, AgentInfo, AgentList
 from memanto.app.utils.errors import AgentAlreadyExistsError, AgentNotFoundError
 from memanto.app.utils.validation import validate_safe_id
+
+logger = logging.getLogger(__name__)
 
 
 class AgentService:
@@ -122,9 +126,7 @@ class AgentService:
         if not agent_file.exists():
             return None
 
-        with open(agent_file) as f:
-            data = json.load(f)
-            return AgentInfo(**data)
+        return self._load_agent_file(agent_file)
 
     def list_agents(self) -> AgentList:
         """
@@ -135,9 +137,9 @@ class AgentService:
         """
         agents = []
         for agent_file in self.agents_dir.glob("*.json"):
-            with open(agent_file) as f:
-                data = json.load(f)
-                agents.append(AgentInfo(**data))
+            agent = self._load_agent_file(agent_file)
+            if agent is not None:
+                agents.append(agent)
 
         # Sort by created_at (newest first)
         agents.sort(key=lambda a: a.created_at, reverse=True)
@@ -210,3 +212,16 @@ class AgentService:
         agent_file = self._get_agent_file(agent.agent_id)
         with open(agent_file, "w") as f:
             json.dump(agent.model_dump(mode="json"), f, indent=2)
+
+    def _load_agent_file(self, agent_file: Path) -> AgentInfo | None:
+        """Load one agent metadata file, treating corrupt local state as absent."""
+        if not agent_file.exists():
+            return None
+
+        try:
+            with open(agent_file) as f:
+                data = json.load(f)
+            return AgentInfo(**data)
+        except (OSError, json.JSONDecodeError, TypeError, ValidationError) as exc:
+            logger.warning("Skipping invalid agent file %s: %s", agent_file, exc)
+            return None
