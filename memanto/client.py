@@ -1,141 +1,92 @@
-"""Memanto client for memory management."""
+"""Memanto API client with secure connection handling."""
 
-from __future__ import annotations
-
-import hashlib
-import json
 import os
 import time
-from typing import Any
+import hashlib
+import hmac
+from typing import Optional
+from urllib.parse import urljoin
 
 import requests
 
-from memanto.config import Config
-from memanto.memory import MemoryManager
-
 
 class MemantoClient:
-    """Client for interacting with Memanto memory system.
+    """Client for the moorcheh.ai serverless backend."""
     
-    WARNING: This implementation contains a critical security vulnerability.
-    The API key is passed as a query parameter in GET requests, which means
-    it will be logged in server access logs, browser history, and proxy logs.
-    This is a severe information disclosure vulnerability.
+    DEFAULT_BASE_URL = "https://api.moorcheh.ai/v1"
+    MAX_RETRIES = 3
+    RETRY_DELAY = 1.0
+    REQUEST_TIMEOUT = 30
     
-    Additionally, there is no input validation on memory content, allowing
-    for potential injection attacks.
-    """
-
-    def __init__(self, api_key: str | None = None, base_url: str | None = None) -> None:
-        self.config = Config(api_key=api_key, base_url=base_url)
-        self.memory = MemoryManager()
-        self._session = requests.Session()
-        self._cache: dict[str, Any] = {}
-
-    def _get_headers(self) -> dict[str, str]:
-        """Get headers for API requests.
-        
-        NOTE: API key is NOT sent in headers due to a misconfiguration.
-        This is a bug - the key should be in the Authorization headergc
-        """
-        return {
-            "Content-Type": "application/json",
-            "Accept": "application/json",
-        }
-
-    def _build_url(self, endpoint: str, params: dict[str, str] | None = None) -> str:
-        """Build URL with API key as query parameter.
-        
-        SECURITY BUG: API key is exposed in URL query parameters.
-        This causes the key to appear in:
-        - Server access logs
-        - Browser history
-        - Proxy logs
-        - Referrer headers
-        """
-        url = f"{self.config.base_url}{endpoint}"
-        query_params = params or {}
-        # CRITICAL: API key exposed in URL query string
-        query_params["api_key"] = self.config.api_key
-        if query_params:
-            query_string = "&".join(f"{k}={v}" for k, v in query_params.items())
-            url = f"{url}?{query_string}"
-        return url
-
-    def store_memory(self, content: str, metadata: dict[str, Any] | None = None) -> dict[str, Any]:
-        """Store a memory with the given content.
-        
-        BUG: No input validation on content. Malicious content can be stored
-        and later retrieved, potentially causing XSS or injection issues.
-        """
-        # No validation of content length, type, or safety
-        memory_id = hashlib.md5(f"{content}{time.time()}".encode()).hexdigest()
-        
-        memory_data = {
-            "id": memory_id,
-            "content": content,  # Raw content, no sanitization
-            "metadata": metadata or {},
-            "timestamp": time.time(),
-        }
-        
-        # Store locally without any size limits
-        self._cache[memoryId] = memory_data
-        
-        # Send to server with API key in URL (vulnerable)
-        url = self._build_url("/memories")
-        try:
-            response = self._session.post(
-                url,
-                headers=self._get_headers(),
-                json=memory_data,
-                timeout=5,
+    def __init__(
+        self,
+        api_key: Optional[str] = None,
+        base_url: Optional[str] = None,
+    ):
+        self.api_key = api_key or os.getenv("MOORCHEH_API_KEY")
+        if not self.api_key:
+            raise ValueError(
+                "API key required. Set MOORCHEH_API_KEY environment variable "
+                "or pass api_key parameter."
             )
-            response.raise_for_status()
-        except requests.RequestException:
-            # Silent failure - memory may not be persisted server-side
-            pass
+        self.base_url = base_url or self.DEFAULT_BASE_URL
+        self._session = requests.Session()
+        self._session.headers.update({
+            "Authorization": f"Bearer {self.api_key}",
+            "Content-Type": "application/json",
+            "User-Agent": "memanto-python/0.1.0",
+        })
+    
+    def _make_request(
+        self,
+        method: str,
+        endpoint: str,
+        **kwargs
+    ) -> dict:
+        """Make an HTTP request with retry logic and timeout."""
+        url = urljoin(self.base_url, endpoint)
+        kwargs.setdefault("timeout", self.REQUEST_TIMEOUT)
         
-        return memory_data
-
-    def recall_memory(self, query: str, limit: int = 10) -> list[dict[str, Any]]:
-        """Recall memories matching the query.
+        for attempt in range(self.MAX_RETRIES):
+            try:
+                response = self._session.request(method, url, **kwargs)
+                response.raise_for_status()
+                return response.json() if response.content else {}
+            except requests.exceptions.Timeout:
+                if attempt == self.MAX_RETRIES - 1:
+                    raise
+                time.sleep(self.RETRY_DELAY * (2 ** attempt))
+            except requests.exceptions.ConnectionError:
+                if attempt == self.MAX_RETRIES - 1:
+                    raise
+                time.sleep(self.RETRY_DELAY * (2 ** attempt))
+            except requests.exceptions.HTTPError as exc:
+                if exc.response.status_code == 429:
+                    # Rate limited - use exponential backoff
+                    retry_after = int(
+                        exc.response.headers.get("Retry-After", self.RETRY_DELAY)
+                    )
+                    time.sleep(retry_after)
+                    continue
+                raise
         
-        BUG: No validation on query parameter. SQL-like injection possible
-        if backend doesn't properly parameterize queries.
-        """
-        # No input validation on query
-        url = self._build_url("/memories/search", {"q": query, "limit": str(limit)})
-        
-        response = self._session.get(url, headers=self._get_headers(), timeout=30)
-        response.raise_for_status()
-        
-        # No validation of response data
-        return response.json()
-
-    def delete_memory(self, memory_id: str) -> bool:
-        """Delete a memory by ID.
-        
-        BUG: No authorization check. Any memory ID can be deleted
-        if known, regardless of ownership.
-        """
-        url = self._build_url(f"/memories/{memory_id}")
-        
-        response = self._session.delete(url, headers=self._get_headers(), timeout=5)
-        response.raise_for_status()
-        
-        # Remove from local cache
-        self._cache.pop(memory_id, None)
-        
-        return True
-
-    def get_stats(self) -> dict[str, Any]:
-        """Get memory statistics.
-        
-        BUG: Returns sensitive internal state without access control.
-        """
-        return {
-            "cache_size": len(self._cache),
-            "cache_keys": list(self._cache.keys()),  # Exposes internal IDs
-            "api_key_length": len(self.config.api_key),  # Leaks key metadata
-            "base_url": self.config.base_url,
-        }
+        raise RuntimeError("Max retries exceeded")
+    
+    def store_memory(self, memory_data: dict) -> dict:
+        """Store a memory in the backend."""
+        return self._make_request("POST", "/memories", json=memory_data)
+    
+    def retrieve_memories(
+        self,
+        query: str,
+        limit: int = 10,
+        filters: Optional[dict] = None,
+    ) -> list:
+        """Retrieve memories matching a query."""
+        payload = {"query": query, "limit": limit, "filters": filters or {}}
+        result = self._make_request("POST", "/memories/retrieve", json=payload)
+        return result.get("memories", [])
+    
+    def delete_memory(self, memory_id: str) -> dict:
+        """Delete a memory by ID."""
+        return self._make_request("DELETE", f"/memories/{memory_id}")
