@@ -546,6 +546,72 @@ def test_conflict_report_handles_non_object_json_items(tmp_path, monkeypatch):
     assert conflicts[0]["description"] == '["not an object", 1]'
 
 
+@pytest.mark.parametrize(
+    "client_class_path",
+    [
+        "memanto.cli.client.direct_client.DirectClient",
+        "memanto.cli.client.sdk_client.SdkClient",
+    ],
+)
+@pytest.mark.parametrize(
+    "agent_id,date",
+    [
+        ("../../outside", "2026-06-28"),
+        ("agent-1", "../../outside"),
+    ],
+)
+def test_conflict_list_rejects_path_traversal_keys(
+    client_class_path, agent_id, date, tmp_path, monkeypatch
+):
+    """Conflict readers must not resolve reports outside the conflicts dir."""
+    module_name, class_name = client_class_path.rsplit(".", 1)
+    module = __import__(module_name, fromlist=[class_name])
+    client_cls = getattr(module, class_name)
+
+    outside = tmp_path / "outside_2026-06-28_conflicts.json"
+    outside.write_text('[{"title": "leaked", "resolved": false}]', encoding="utf-8")
+    monkeypatch.setattr(module.Path, "home", classmethod(lambda cls: tmp_path))
+
+    client = client_cls.__new__(client_cls)
+
+    with pytest.raises(ValueError, match="invalid characters"):
+        client.list_conflicts(agent_id, date)
+
+
+@pytest.mark.parametrize(
+    "client_class_path",
+    [
+        "memanto.cli.client.direct_client.DirectClient",
+        "memanto.cli.client.sdk_client.SdkClient",
+    ],
+)
+@pytest.mark.parametrize(
+    "agent_id,date",
+    [
+        ("../../outside", "2026-06-28"),
+        ("agent-1", "../../outside"),
+    ],
+)
+def test_conflict_resolve_rejects_path_traversal_keys(
+    client_class_path, agent_id, date, tmp_path, monkeypatch
+):
+    """Conflict resolvers must not write reports outside the conflicts dir."""
+    module_name, class_name = client_class_path.rsplit(".", 1)
+    module = __import__(module_name, fromlist=[class_name])
+    client_cls = getattr(module, class_name)
+
+    outside = tmp_path / "outside_2026-06-28_conflicts.json"
+    outside.write_text(
+        '[{"old_memory_id": "old", "resolved": false}]', encoding="utf-8"
+    )
+    monkeypatch.setattr(module.Path, "home", classmethod(lambda cls: tmp_path))
+
+    client = client_cls.__new__(client_cls)
+
+    with pytest.raises(ValueError, match="invalid characters"):
+        client.resolve_conflict(agent_id, date, 0, "keep_both")
+
+
 if __name__ == "__main__":
     pytest.main([__file__, "-v", "-s"])
 
