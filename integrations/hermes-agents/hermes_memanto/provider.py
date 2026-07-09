@@ -550,13 +550,14 @@ class MemantoMemoryProvider(MemoryProvider):
         if not self._api_key:
             return
         try:
-            self._client = _MemantoClient(
+            client = _MemantoClient(
                 self._api_key,
                 self._agent_id,
                 pattern=self._config["pattern"],
                 auto_create=self._config["auto_create"],
                 session_duration_hours=self._config["session_duration_hours"],
             )
+            self._client = client
             self._active = True
         except Exception:
             logger.warning("Memanto initialization failed", exc_info=True)
@@ -567,13 +568,16 @@ class MemantoMemoryProvider(MemoryProvider):
         # Warm up the session in the background so the first turn's recall does
         # not also pay agent-create + activate latency.
         self._warmup_thread = threading.Thread(
-            target=self._warmup, daemon=True, name="memanto-warmup"
+            target=self._warmup,
+            args=(client,),
+            daemon=True,
+            name="memanto-warmup",
         )
         self._warmup_thread.start()
 
-    def _warmup(self) -> None:
+    def _warmup(self, client: _MemantoClient) -> None:
         try:
-            self._client.ensure_session()
+            client.ensure_session()
         except Exception:
             logger.debug("Memanto warmup activation failed", exc_info=True)
 

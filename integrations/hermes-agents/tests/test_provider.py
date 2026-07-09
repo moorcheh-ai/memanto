@@ -302,6 +302,44 @@ def test_ensure_session_backs_off_then_allows_retry():
     assert client._client.activate_calls == 2
 
 
+def test_warmup_binds_client_at_schedule_time(monkeypatch, tmp_path):
+    """A delayed warmup must not activate a client from a later session."""
+    from hermes_memanto import provider as mod
+
+    scheduled = []
+
+    class DeferredThread:
+        def __init__(self, target=None, args=(), kwargs=None, daemon=None, name=None):
+            scheduled.append(
+                {"target": target, "args": args, "kwargs": kwargs or {}, "name": name}
+            )
+
+        def start(self):
+            pass
+
+        def is_alive(self):
+            return False
+
+        def join(self, timeout=None):
+            pass
+
+    monkeypatch.setenv("MOORCHEH_API_KEY", "test-key")
+    monkeypatch.setattr(PROVIDER_MOD, FakeClient)
+    monkeypatch.setattr(mod.threading, "Thread", DeferredThread)
+
+    p = MemantoMemoryProvider()
+    p.initialize("s1", hermes_home=str(tmp_path), agent_identity="first")
+    first_client = p._client
+
+    p.initialize("s2", hermes_home=str(tmp_path), agent_identity="second")
+    second_client = p._client
+
+    scheduled[0]["target"](*scheduled[0]["args"], **scheduled[0]["kwargs"])
+
+    assert first_client.ensure_calls == 1
+    assert second_client.ensure_calls == 0
+
+
 # -- Prefetch -----------------------------------------------------------------
 
 
