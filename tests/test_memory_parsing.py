@@ -195,9 +195,24 @@ def test_fuzzy_fallback_does_not_fire_on_unrelated_text():
 def test_remind_other_people_than_me():
     parser = MemoryParsingService()
 
-    memory = make_memory("remind the team to email the report tomorrow")
+    # Single-word after remind/remind the
+    m1 = make_memory("remind the team to email the report tomorrow")
+    parser.parse_memory(m1)
+    assert m1.type == "commitment"
 
-    parser.parse_memory(memory)
+    # Multi-word after remind the
+    m2 = make_memory("remind the product team to email the report tomorrow")
+    parser.parse_memory(m2)
+    assert m2.type == "commitment"
 
-    assert memory.type == "commitment"
+    # Multi-word after remind (without the)
+    m3 = make_memory("remind my direct reports to join the sync tomorrow")
+    parser.parse_memory(m3)
+    assert m3.type == "commitment"
+
+    # Long multi-word after remind the
+    m4 = make_memory("remind the entire frontend engineering team to deploy next week")
+    parser.parse_memory(m4)
+    assert m4.type == "commitment"
+
 
