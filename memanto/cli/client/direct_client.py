@@ -709,7 +709,7 @@ class DirectClient:
         memory_records = []
         for i, item in enumerate(memories):
             raw_content = item.get("content", "")
-            if not raw_content:
+            if not isinstance(raw_content, str) or not raw_content.strip():
                 raise ValueError(f"Memory at index {i} has no content")
 
             raw_title = item.get("title")

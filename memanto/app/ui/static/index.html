@@ -2657,7 +2657,7 @@
             const headers = { 'Content-Type': 'application/json' };
             if (S.apiKey) headers['Authorization'] = `Bearer ${S.apiKey}`;
             if (S.token) headers['X-Session-Token'] = S.token;
-            const opts = { method, headers };
+            const opts = { method, headers, credentials: 'same-origin' };
             if (body) opts.body = JSON.stringify(body);
             const res = await fetch(path, opts);
             if (!res.ok) {
@@ -2668,6 +2668,10 @@
             }
             if (res.status === 204) return null;
             return res.json();
+        }
+
+        function hasActiveSession() {
+            return !!(S.agentId && (S.token || (S.config && S.config.has_active_session)));
         }
 
         // Toast
@@ -2805,7 +2809,7 @@
             try {
                 S.config = await api('GET', '/api/ui/config');
                 S.agentId = S.config.active_agent_id;
-                S.token = S.config.session_token;
+                S.token = null;
                 if (S.config.api_key_configured) {
                     S.apiKey = S.config.api_key || null;
                 }
@@ -2926,12 +2930,12 @@
             if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Activating...'; }
             try {
                 const session = await api('POST', `/api/v2/agents/${agentId}/activate`);
-                // Adopt the new session so all subsequent operations use it
+                // Adopt the active session; browser calls authenticate via the
+                // HttpOnly same-origin cookie set by the server.
                 S.agentId = session.agent_id;
-                S.token = session.session_token;
+                S.token = null;
                 if (S.config) {
                     S.config.active_agent_id = session.agent_id;
-                    S.config.session_token = session.session_token;
                     S.config.has_active_session = true;
                 }
                 // Invalidate cached views tied to the previous agent
@@ -2955,7 +2959,6 @@
                 S.token = null;
                 if (S.config) {
                     S.config.active_agent_id = null;
-                    S.config.session_token = null;
                     S.config.has_active_session = false;
                 }
                 S._explorerLoaded = false;
@@ -3026,7 +3029,7 @@
                 profile.innerHTML = '<p style="color:var(--text-dim)">No active agent. <a href="#" onclick="goToPage(\'agents\');return false" style="color:var(--accent);text-decoration:none">Go to the Agents page</a> to activate one.</p>';
             }
 
-            if (S.token && S.agentId) {
+            if (hasActiveSession()) {
                 try {
                     const sess = await api('GET', '/api/v2/status');
                     const hrs = Math.floor((sess.time_remaining_seconds || 0) / 3600);
@@ -3110,7 +3113,7 @@
         // PLAYGROUND - REMEMBER
         // ================================================================
         async function doRemember() {
-            if (!S.agentId || !S.token) { toast('No active agent/session. Activate via CLI first.', 'error'); return; }
+            if (!hasActiveSession()) { toast('No active agent/session. Activate via CLI first.', 'error'); return; }
             const content = document.getElementById('remContent').value.trim();
             if (!content) { toast('Memory content is required', 'error'); return; }
             const title = document.getElementById('remTitle').value.trim() || (content.length > 47 ? content.substring(0, 47) + '...' : content);
@@ -3141,7 +3144,7 @@
         // PLAYGROUND - ANSWER (RAG)
         // ================================================================
         async function doAnswer() {
-            if (!S.agentId || !S.token) { toast('No active agent/session', 'error'); return; }
+            if (!hasActiveSession()) { toast('No active agent/session', 'error'); return; }
             const input = document.getElementById('askInput');
             const q = input.value.trim();
             if (!q) return;
@@ -3169,7 +3172,7 @@
         // PLAYGROUND - RECALL
         // ================================================================
         async function doRecall() {
-            if (!S.agentId || !S.token) { toast('No active agent/session', 'error'); return; }
+            if (!hasActiveSession()) { toast('No active agent/session', 'error'); return; }
             const q = document.getElementById('recQuery').value.trim();
             if (!q) { toast('Search query is required', 'error'); return; }
             const body = { query: q, limit: parseInt(document.getElementById('recLimit').value) || 10 };
@@ -3194,7 +3197,7 @@
         const MAX_UPLOAD_BYTES = 5 * 1024 * 1024 * 1024; // 5GB — mirrors the backend/SDK limit
 
         async function doUpload() {
-            if (!S.agentId || !S.token) { toast('No active agent/session. Activate an agent first.', 'error'); return; }
+            if (!hasActiveSession()) { toast('No active agent/session. Activate an agent first.', 'error'); return; }
             const input = document.getElementById('uplFile');
             const file = input.files && input.files[0];
             if (!file) { toast('Choose a file to upload', 'error'); return; }
@@ -3221,7 +3224,7 @@
             btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Uploading...';
             out.innerHTML = '';
             try {
-                const res = await fetch(`/api/v2/agents/${S.agentId}/upload-file`, { method: 'POST', headers, body: fd });
+                const res = await fetch(`/api/v2/agents/${S.agentId}/upload-file`, { method: 'POST', headers, body: fd, credentials: 'same-origin' });
                 const data = await res.json().catch(() => ({ detail: res.statusText }));
                 if (!res.ok) {
                     let msg = data.detail || res.statusText;
@@ -3340,7 +3343,7 @@
         // MEMORY EXPLORER
         // ================================================================
         async function loadExplorer(asOfDate) {
-            if (!S.agentId || !S.token) {
+            if (!hasActiveSession()) {
                 document.getElementById('explorerTable').innerHTML = '<p style="color:var(--text-dim);padding:20px">No active agent. <a href="#" onclick="goToPage(\'agents\');return false" style="color:var(--accent);text-decoration:none">Go to the Agents page</a> to activate one.</p>';
                 return;
             }
@@ -3447,7 +3450,7 @@
         // full refetch.
         async function forgetMemory(memoryId, btn, ev) {
             if (ev) { ev.stopPropagation(); ev.preventDefault(); }
-            if (!S.agentId || !S.token) { toast('No active agent/session', 'error'); return; }
+            if (!hasActiveSession()) { toast('No active agent/session', 'error'); return; }
             if (!memoryId) { toast('Memory ID missing', 'error'); return; }
             const ok = await confirmDialog({
                 title: 'Forget memory?',
@@ -3616,7 +3619,7 @@
         }
 
         async function fetchRecentMemories() {
-            if (!S.agentId || !S.token) return;
+            if (!hasActiveSession()) return;
             try {
                 const res = await api('POST', `/api/v2/agents/${S.agentId}/recall/recent`, {});
                 S.history = res.memories || [];
@@ -3625,7 +3628,7 @@
 
         async function loadHistory() {
             const box = document.getElementById('historyContent');
-            if (!S.agentId || !S.token) {
+            if (!hasActiveSession()) {
                 box.innerHTML = '<p style="color:var(--text-dim);padding:20px">No active agent. <a href="#" onclick="goToPage(\'agents\');return false" style="color:var(--accent);text-decoration:none">Go to the Agents page</a> to activate one.</p>';
                 return;
             }
@@ -4560,7 +4563,7 @@
         // ANALYTICS
         // ================================================================
         async function loadAnalytics() {
-            if (!S.agentId || !S.token) {
+            if (!hasActiveSession()) {
                 document.getElementById('analyticsCards').innerHTML = '<p style="color:var(--text-dim);padding:20px">Activate an agent to see analytics</p>';
                 return;
             }
@@ -4764,7 +4767,7 @@
                 </button>
             `).join('');
 
-            const noActiveSession = !S.agentId || !S.token;
+            const noActiveSession = !hasActiveSession();
             const agentBanner = noActiveSession
                 ? `<div class="mig-error-banner" style="margin-bottom:18px">No active agent/session. <a href="#" onclick="goToPage('agents');return false" style="color:inherit;text-decoration:underline">Activate one</a> before importing.</div>`
                 : '';
@@ -4813,7 +4816,7 @@
                         </div>`}
                     <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:18px">
                         <button class="btn btn-secondary" onclick="runMigratePreview()">Preview (dry run)</button>
-                        <button class="btn btn-primary" onclick="runMigrateImport()" ${(S.agentId && S.token) ? '' : 'disabled style="opacity:0.5;cursor:not-allowed"'}>Import now</button>
+                        <button class="btn btn-primary" onclick="runMigrateImport()" ${hasActiveSession() ? '' : 'disabled style="opacity:0.5;cursor:not-allowed"'}>Import now</button>
                     </div>
                 </div>
             `;
@@ -4920,7 +4923,7 @@
         }
 
         async function runMigrateImport() {
-            if (!S.agentId || !S.token) { toast('Activate an agent/session first', 'error'); return; }
+            if (!hasActiveSession()) { toast('Activate an agent/session first', 'error'); return; }
             const body = migrateBody();
             if (!body) return;
             const ok = await confirmDialog({
@@ -5146,7 +5149,7 @@
         async function loadConnectionMemories(conn) {
             const box = document.getElementById('connMemories');
             if (!box) return;
-            if (!S.agentId || !S.token) {
+            if (!hasActiveSession()) {
                 box.innerHTML = '<p style="color:var(--text-dim);padding:12px 0;font-size:13px">No active Memanto agent. <a href="#" onclick="goToPage(\'agents\');return false" style="color:var(--accent);text-decoration:none">Activate one</a> to see memories from this connection.</p>';
                 return;
             }

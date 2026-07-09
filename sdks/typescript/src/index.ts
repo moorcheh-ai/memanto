@@ -135,6 +135,7 @@ interface SessionRecord {
 export class Memanto {
   private readonly lifecycle: ServerLifecycle;
   private readonly agentId: string;
+  private readonly encodedAgentId: string;
   private readonly autoCreate: boolean;
   private sessionToken: string | null = null;
   private starting: Promise<void> | null = null;
@@ -142,6 +143,7 @@ export class Memanto {
   constructor(opts: MemantoOptions) {
     if (!opts.agentId) throw new Error("Memanto: agentId is required");
     this.agentId = opts.agentId;
+    this.encodedAgentId = encodeURIComponent(opts.agentId);
     this.autoCreate = opts.autoCreate ?? true;
     this.lifecycle = new ServerLifecycle(opts);
   }
@@ -151,7 +153,7 @@ export class Memanto {
   // ---------------------------------------------------------------------------
 
   async remember(input: RememberInput) {
-    return this.request("POST", `/api/v2/agents/${this.agentId}/remember`, {
+    return this.request("POST", `/api/v2/agents/${this.encodedAgentId}/remember`, {
       content: input.content,
       type: input.type,
       title: input.title,
@@ -165,7 +167,7 @@ export class Memanto {
   async batchRemember(items: BatchRememberItem[]) {
     return this.request(
       "POST",
-      `/api/v2/agents/${this.agentId}/batch-remember`,
+      `/api/v2/agents/${this.encodedAgentId}/batch-remember`,
       {
         memories: items.map((m) => ({
           content: m.content,
@@ -183,7 +185,7 @@ export class Memanto {
   async extractMemories(input: ExtractMemoriesInput) {
     return this.request(
       "POST",
-      `/api/v2/agents/${this.agentId}/remember/extract`,
+      `/api/v2/agents/${this.encodedAgentId}/remember/extract`,
       {
         messages: input.messages,
         dry_run: input.dryRun,
@@ -196,7 +198,7 @@ export class Memanto {
   async deleteMemory(memoryId: string) {
     return this.request(
       "DELETE",
-      `/api/v2/agents/${this.agentId}/memories/${encodeURIComponent(memoryId)}`,
+      `/api/v2/agents/${this.encodedAgentId}/memories/${encodeURIComponent(memoryId)}`,
     );
   }
 
@@ -207,7 +209,7 @@ export class Memanto {
     const blob = new Blob([new Uint8Array(bytes)]);
     form.append("file", blob, input.filename ?? basename(input.path));
     return this.requestMultipart(
-      `/api/v2/agents/${this.agentId}/upload-file`,
+      `/api/v2/agents/${this.encodedAgentId}/upload-file`,
       form,
     );
   }
@@ -217,7 +219,7 @@ export class Memanto {
   // ---------------------------------------------------------------------------
 
   async recall(input: RecallInput) {
-    return this.request("POST", `/api/v2/agents/${this.agentId}/recall`, {
+    return this.request("POST", `/api/v2/agents/${this.encodedAgentId}/recall`, {
       query: input.query,
       limit: input.limit,
       min_similarity: input.minSimilarity,
@@ -228,7 +230,7 @@ export class Memanto {
   async recallAsOf(input: RecallAsOfInput) {
     return this.request(
       "POST",
-      `/api/v2/agents/${this.agentId}/recall/as-of`,
+      `/api/v2/agents/${this.encodedAgentId}/recall/as-of`,
       { as_of: input.asOf, limit: input.limit, type: input.type },
     );
   }
@@ -236,7 +238,7 @@ export class Memanto {
   async recallChangedSince(input: RecallChangedSinceInput) {
     return this.request(
       "POST",
-      `/api/v2/agents/${this.agentId}/recall/changed-since`,
+      `/api/v2/agents/${this.encodedAgentId}/recall/changed-since`,
       { since: input.since, limit: input.limit, type: input.type },
     );
   }
@@ -244,13 +246,13 @@ export class Memanto {
   async recallRecent(input: RecallRecentInput = {}) {
     return this.request(
       "POST",
-      `/api/v2/agents/${this.agentId}/recall/recent`,
+      `/api/v2/agents/${this.encodedAgentId}/recall/recent`,
       { limit: input.limit, type: input.type },
     );
   }
 
   async answer(input: AnswerInput) {
-    return this.request("POST", `/api/v2/agents/${this.agentId}/answer`, {
+    return this.request("POST", `/api/v2/agents/${this.encodedAgentId}/answer`, {
       question: input.question,
       limit: input.limit,
       threshold: input.threshold,
@@ -267,7 +269,7 @@ export class Memanto {
   async dailySummary(input: DailySummaryInput = {}) {
     return this.request(
       "POST",
-      `/api/v2/agents/${this.agentId}/daily-summary`,
+      `/api/v2/agents/${this.encodedAgentId}/daily-summary`,
       { date: input.date, output_path: input.outputPath },
     );
   }
@@ -275,7 +277,7 @@ export class Memanto {
   async generateConflicts(input: ConflictDateInput = {}) {
     return this.request(
       "POST",
-      `/api/v2/agents/${this.agentId}/conflicts/generate`,
+      `/api/v2/agents/${this.encodedAgentId}/conflicts/generate`,
       { date: input.date },
     );
   }
@@ -284,14 +286,14 @@ export class Memanto {
     const qs = input.date ? `?date=${encodeURIComponent(input.date)}` : "";
     return this.request(
       "GET",
-      `/api/v2/agents/${this.agentId}/conflicts${qs}`,
+      `/api/v2/agents/${this.encodedAgentId}/conflicts${qs}`,
     );
   }
 
   async resolveConflict(input: ResolveConflictInput) {
     return this.request(
       "POST",
-      `/api/v2/agents/${this.agentId}/conflicts/resolve`,
+      `/api/v2/agents/${this.encodedAgentId}/conflicts/resolve`,
       {
         conflict_index: input.conflictIndex,
         action: input.action,
@@ -313,7 +315,7 @@ export class Memanto {
   }
 
   async getAgent() {
-    return this.request("GET", `/api/v2/agents/${this.agentId}`, undefined, {
+    return this.request("GET", `/api/v2/agents/${this.encodedAgentId}`, undefined, {
       requireSession: false,
     });
   }
@@ -338,7 +340,7 @@ export class Memanto {
   async deleteAgent() {
     const result = await this.request(
       "DELETE",
-      `/api/v2/agents/${this.agentId}`,
+      `/api/v2/agents/${this.encodedAgentId}`,
       undefined,
       { requireSession: false },
     );
@@ -350,7 +352,7 @@ export class Memanto {
   async deactivate() {
     const result = await this.request(
       "POST",
-      `/api/v2/agents/${this.agentId}/deactivate`,
+      `/api/v2/agents/${this.encodedAgentId}/deactivate`,
     );
     this.sessionToken = null;
     this.starting = null;
@@ -358,7 +360,9 @@ export class Memanto {
   }
 
   async status() {
-    return this.request("GET", `/api/v2/status`);
+    return this.request("GET", `/api/v2/status`, undefined, {
+      requireSession: false,
+    });
   }
 
   // ---------------------------------------------------------------------------
@@ -394,7 +398,7 @@ export class Memanto {
 
   private async createAgentIfMissing(): Promise<void> {
     const baseUrl = this.lifecycle.baseUrl;
-    const res = await fetch(`${baseUrl}/api/v2/agents/${this.agentId}`);
+    const res = await fetch(`${baseUrl}/api/v2/agents/${this.encodedAgentId}`);
     if (res.ok) return;
     if (res.status !== 404) {
       throw await asError(res, "Failed to look up agent");
@@ -411,7 +415,7 @@ export class Memanto {
 
   private async activate(): Promise<void> {
     const baseUrl = this.lifecycle.baseUrl;
-    const res = await fetch(`${baseUrl}/api/v2/agents/${this.agentId}/activate`, {
+    const res = await fetch(`${baseUrl}/api/v2/agents/${this.encodedAgentId}/activate`, {
       method: "POST",
     });
     if (!res.ok) throw await asError(res, "Failed to activate agent");

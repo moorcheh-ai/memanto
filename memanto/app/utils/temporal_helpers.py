@@ -13,6 +13,13 @@ def utc_now() -> datetime:
     return datetime.now(timezone.utc).replace(tzinfo=None)
 
 
+def as_utc_naive(dt: datetime) -> datetime:
+    """Normalize aware datetimes to the naive UTC format used in session storage."""
+    if dt.tzinfo is None:
+        return dt
+    return dt.astimezone(timezone.utc).replace(tzinfo=None)
+
+
 def parse_iso_timestamp(ts_str: str) -> datetime:
     """
     Parse an ISO formatted timestamp string into an aware UTC datetime object.

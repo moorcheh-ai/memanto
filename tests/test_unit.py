@@ -4,14 +4,14 @@ MEMANTO Core Unit Tests (No Server Required)
 Tests the session and agent services directly without HTTP layer.
 """
 
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from unittest.mock import MagicMock, patch
 
 import jwt
 import pytest
 
 from memanto.app.config import settings
-from memanto.app.models.session import AgentCreate, AgentPattern, SessionStatus
+from memanto.app.models.session import AgentCreate, AgentPattern, Session, SessionStatus
 from memanto.app.services.agent_service import AgentService
 from memanto.app.services.session_service import SessionService
 
@@ -81,6 +81,85 @@ class TestSessionService:
         assert token_payload.namespace == "memanto_agent_test-agent"
 
         print("✅ Session validation successful")
+
+    def test_session_status_handles_aware_expiration_timestamp(self):
+        """Session status helpers must handle ISO timestamps with a UTC timezone."""
+        session = Session(
+            session_id="sess-test",
+            session_token="token-test",
+            agent_id="test-agent",
+            namespace="memanto_agent_test-agent",
+            started_at="2026-03-19T14:00:00Z",
+            expires_at=(datetime.now(timezone.utc) + timedelta(hours=1)).isoformat(),
+            status=SessionStatus.ACTIVE,
+        )
+
+        assert session.is_expired() is False
+        assert session.is_active() is True
+        assert session.time_remaining().total_seconds() > 0
+
+    def test_validate_session_handles_aware_expiration_timestamp(self, session_service):
+        """JWT payloads with timezone-aware datetimes should validate cleanly."""
+        token = jwt.encode(
+            {
+                "agent_id": "test-agent",
+                "namespace": "memanto_agent_test-agent",
+                "session_id": "sess-test",
+                "started_at": "2026-03-19T14:00:00Z",
+                "expires_at": (
+                    datetime.now(timezone.utc) + timedelta(hours=1)
+                ).isoformat(),
+            },
+            session_service.secret_key,
+            algorithm="HS256",
+        )
+
+        from memanto.app.models.session import SessionStatus
+
+        mock_session = Session(
+            session_id="sess-test",
+            session_token=token,
+            agent_id="test-agent",
+            namespace="memanto_agent_test-agent",
+            started_at=datetime(2026, 3, 19, 14, 0, 0),
+            expires_at=datetime.now(timezone.utc) + timedelta(hours=1),
+            status=SessionStatus.ACTIVE,
+        )
+        with patch.object(session_service, "get_session", return_value=mock_session):
+            payload = session_service.validate_session(token)
+
+        assert payload.agent_id == "test-agent"
+        assert payload.expires_at.tzinfo is not None
+
+    def test_list_sessions_handles_mixed_started_at_timezone(self, session_service):
+        """Session listing should sort mixed aware and naive started_at values."""
+        older_session = Session(
+            session_id="sess-older",
+            session_token="token-older",
+            agent_id="older-agent",
+            namespace="memanto_agent_older-agent",
+            started_at=datetime(2026, 3, 19, 13, 0, 0),
+            expires_at=datetime(2099, 3, 19, 20, 0, 0),
+            status=SessionStatus.ACTIVE,
+        )
+        newer_session = Session(
+            session_id="sess-newer",
+            session_token="token-newer",
+            agent_id="newer-agent",
+            namespace="memanto_agent_newer-agent",
+            started_at="2026-03-19T14:00:00Z",
+            expires_at="2099-03-19T20:00:00Z",
+            status=SessionStatus.ACTIVE,
+        )
+        session_service._save_session(older_session)
+        session_service._save_session(newer_session)
+
+        sessions = session_service.list_sessions()
+
+        assert [session.session_id for session in sessions] == [
+            "sess-newer",
+            "sess-older",
+        ]
 
     def test_validate_expired_session(self, session_service):
         """Test session validation fails for expired session"""
@@ -460,6 +539,64 @@ class TestForgetEndToEnd:
         result = client.delete_memory(agent_id="test-agent", memory_id="mem-xyz")
         assert result["status"] == "deleted"
         assert result["memory_id"] == "mem-xyz"
+
+
+class TestMemoryWriteServiceTimestamps:
+    """Imported memories should keep source chronology during migration."""
+
+    def test_batch_store_preserves_imported_created_at(self):
+        from memanto.app.core import MemoryRecord
+        from memanto.app.services.memory_write_service import MemoryWriteService
+
+        client = MagicMock()
+        client.documents.upload.return_value = {"status": "success"}
+        service = MemoryWriteService(client)
+        source_created = datetime(2020, 1, 2, 3, 4, 5, tzinfo=timezone.utc)
+
+        memory = MemoryRecord(
+            type="preference",
+            title="Imported fact",
+            content="Original imported memory",
+            agent_id="test-agent",
+            actor_id="test-agent",
+            source="mem0",
+            provenance="imported",
+            created_at=source_created,
+        )
+
+        service.batch_store_memories([memory])
+
+        uploaded = client.documents.upload.call_args.kwargs["documents"][0]
+        assert uploaded["created_at"] == "2020-01-02T03:04:05"
+        assert memory.created_at.tzinfo is None
+
+    def test_batch_store_overrides_non_imported_created_at(self):
+        from memanto.app.core import MemoryRecord
+        from memanto.app.services.memory_write_service import MemoryWriteService
+
+        client = MagicMock()
+        client.documents.upload.return_value = {"status": "success"}
+        service = MemoryWriteService(client)
+        source_created = datetime(2020, 1, 2, 3, 4, 5, tzinfo=timezone.utc)
+
+        memory = MemoryRecord(
+            title="User fact",
+            content="Fresh user memory",
+            agent_id="test-agent",
+            actor_id="test-agent",
+            source="user",
+            provenance="explicit_statement",
+            created_at=source_created,
+        )
+
+        before_store = datetime.utcnow()
+        service.batch_store_memories([memory])
+        after_store = datetime.utcnow()
+
+        uploaded = client.documents.upload.call_args.kwargs["documents"][0]
+        assert not uploaded["created_at"].startswith("2020-01-02T03:04:05")
+        parsed_created_at = datetime.fromisoformat(uploaded["created_at"])
+        assert before_store <= parsed_created_at <= after_store
 
 
 class TestMEMANTOArchitecture:

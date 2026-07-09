@@ -4,7 +4,7 @@ Authentication Dependencies for V2 API
 Shared authentication utilities to avoid circular imports.
 """
 
-from fastapi import Header, HTTPException
+from fastapi import Cookie, Header, HTTPException, Request, Response
 
 from memanto.app.models.session import Session
 from memanto.app.services.session_service import get_session_service
@@ -14,6 +14,33 @@ from memanto.app.utils.errors import (
     SessionNotFoundError,
     map_error_to_http_exception,
 )
+
+SESSION_COOKIE_NAME = "memanto_session_token"
+
+
+def set_session_cookie(
+    response: Response, session_token: str, request: Request
+) -> None:
+    """Store the browser UI session token outside JavaScript-readable state.
+
+    MEMANTO defaults to binding 0.0.0.0 with no built-in TLS (see docker-compose.yml
+    and Settings.HOST), so a hardcoded Secure=True would silently stop browsers from
+    ever sending the cookie back over the plain-HTTP deployment this ships with by
+    default. Mark it Secure only when the current request actually arrived over HTTPS.
+    """
+    response.set_cookie(
+        SESSION_COOKIE_NAME,
+        session_token,
+        httponly=True,
+        samesite="strict",
+        secure=request.url.scheme == "https",
+        path="/",
+    )
+
+
+def clear_session_cookie(response: Response) -> None:
+    """Clear the browser UI session cookie."""
+    response.delete_cookie(SESSION_COOKIE_NAME, path="/")
 
 
 def get_moorcheh_api_key() -> str:
@@ -55,7 +82,12 @@ def verify_moorcheh_api_key() -> str:
     return get_moorcheh_api_key()
 
 
-def get_current_session(x_session_token: str | None = Header(None)) -> Session:
+def get_current_session(
+    request: Request,
+    response: Response,
+    x_session_token: str | None = Header(None),
+    session_cookie: str | None = Cookie(None, alias=SESSION_COOKIE_NAME),
+) -> Session:
     """
     Get and validate current session
 
@@ -68,7 +100,8 @@ def get_current_session(x_session_token: str | None = Header(None)) -> Session:
     Raises:
         HTTPException: If session is invalid or expired
     """
-    if not x_session_token:
+    session_token = x_session_token or session_cookie
+    if not session_token:
         raise HTTPException(
             status_code=401, detail="Missing session token. Use X-Session-Token header."
         )
@@ -76,7 +109,7 @@ def get_current_session(x_session_token: str | None = Header(None)) -> Session:
     session_service = get_session_service()
 
     try:
-        token_payload = session_service.validate_session(x_session_token)
+        token_payload = session_service.validate_session(session_token)
 
         # Get session from storage
         session = session_service.get_session(token_payload.agent_id)
@@ -91,6 +124,13 @@ def get_current_session(x_session_token: str | None = Header(None)) -> Session:
         )
         if renewed:
             session = renewed
+            # The renewed session gets a new session_id/token, invalidating
+            # the one the caller just presented. Browser callers authenticate
+            # via the HttpOnly cookie (never re-read the token in JS), so
+            # without this the cookie goes stale and the very next request
+            # fails signature/session_id validation.
+            if session_cookie:
+                set_session_cookie(response, renewed.session_token, request)
 
         return session
 
