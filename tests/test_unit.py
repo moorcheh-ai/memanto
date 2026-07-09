@@ -450,6 +450,27 @@ class TestMemoryWriteServiceUpdate:
 
         client.documents.delete.assert_not_called()
 
+    def test_update_memory_timeout_does_not_delete_old_memory(
+        self, memory_reader
+    ):
+        from memanto.app.services.memory_write_service import MemoryWriteService
+        from memanto.app.utils.errors import MemoryError
+
+        client = MagicMock()
+        client.documents.delete.return_value = {"actual_deletions": 1}
+        client.documents.upload.side_effect = TimeoutError("network timeout")
+
+        with pytest.raises(
+            MemoryError, match="^Failed to update memory: network timeout$"
+        ):
+            MemoryWriteService(client).update_memory(
+                "mem-1",
+                "memanto_agent_agent-1",
+                {"content": "New content"},
+            )
+
+        client.documents.delete.assert_not_called()
+
     def test_update_memory_preserves_type_and_provenance_from_metadata(
         self, monkeypatch
     ):
