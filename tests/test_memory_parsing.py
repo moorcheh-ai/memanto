@@ -13,8 +13,7 @@ def make_memory(content: str, memory_type: MemoryType | None = None) -> MemoryRe
         title="test",
         actor_id="user",
         source="test",
-        scope_type="agent",
-        scope_id="test",
+        agent_id="test",
     )
     if memory_type is None:
         cast(Any, memory).type = None

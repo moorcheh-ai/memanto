@@ -1,0 +1,18 @@
+{
+  "$schema": "https://code.claude.com/schemas/plugin-manifest.json",
+  "name": "memanto-skills",
+  "displayName": "Memanto Engineering Memory",
+  "description": "Cross-session engineering memory for Claude Code skills, powered by Memanto. Recalls past architectural decisions before a skill runs and distills new ones after — automatically, via lifecycle hooks.",
+  "version": "0.1.0",
+  "author": {
+    "name": "Moorcheh AI",
+    "url": "https://memanto.ai"
+  },
+  "homepage": "https://memanto.ai",
+  "repository": "https://github.com/moorcheh-ai/memanto",
+  "license": "MIT",
+  "keywords": ["memanto", "memory", "skills", "hooks", "claude-code", "mattpocock"],
+  "skills": [
+    "./skills/memanto-companion"
+  ]
+}

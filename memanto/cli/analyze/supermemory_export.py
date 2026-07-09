@@ -1,7 +1,19 @@
 """
-Export all Supermemory account data to JSON (documents, chunks, memories, connections).
+Export all Supermemory account data to JSON (documents, chunks, memories,
+connections).
 
-Used by ``memanto analyze supermemory``.
+Used by ``memanto migrate supermemory``. Pure ``httpx`` — no Supermemory
+SDK dependency, so users don't have to install ``supermemory`` and we
+don't break when the SDK changes its surface.
+
+Endpoints (Supermemory REST API — https://docs.supermemory.ai):
+    POST /v3/documents/list                     list documents (paginated)
+    GET  /v3/documents/{id}                     document detail (tags, etc.)
+    GET  /v3/documents/{id}/chunks              RAG chunks for a document
+    GET  /v3/connections/list                   list connections
+    POST /v4/memories/list                      list memory entries by container tag
+
+Auth: ``Authorization: Bearer <api_key>``.
 """
 
 from __future__ import annotations
@@ -17,6 +29,7 @@ import httpx
 API_BASE = "https://api.supermemory.ai"
 DOC_PAGE_SIZE = 200
 MEMORY_PAGE_SIZE = 200
+REQUEST_TIMEOUT_S = 120.0
 
 REDUNDANT_DOC_KEYS = frozenset(
     {
@@ -32,6 +45,33 @@ REDUNDANT_DOC_KEYS = frozenset(
         "url",
     }
 )
+
+
+def _headers(api_key: str) -> dict[str, str]:
+    return {
+        "Authorization": f"Bearer {api_key}",
+        "Content-Type": "application/json",
+    }
+
+
+def api_request(
+    api_key: str,
+    method: str,
+    path: str,
+    body: dict | None = None,
+) -> Any:
+    """Single-shot HTTP helper used by every Supermemory call below."""
+    url = f"{API_BASE}{path}"
+    with httpx.Client(timeout=REQUEST_TIMEOUT_S) as http:
+        if method == "GET":
+            resp = http.get(url, headers=_headers(api_key))
+        elif method == "POST":
+            resp = http.post(url, headers=_headers(api_key), json=body or {})
+        else:
+            raise ValueError(method)
+    if resp.status_code >= 400:
+        raise RuntimeError(f"{path} -> {resp.status_code}: {resp.text[:500]}")
+    return resp.json() if resp.content else {}
 
 
 def dedupe_by_id(
@@ -51,45 +91,13 @@ def dedupe_by_id(
     return unique
 
 
-def model_to_dict(obj: Any) -> Any:
-    if obj is None:
-        return None
-    if hasattr(obj, "model_dump"):
-        return obj.model_dump()
-    if isinstance(obj, list):
-        return [model_to_dict(x) for x in obj]
-    if isinstance(obj, dict):
-        return {k: model_to_dict(v) for k, v in obj.items()}
-    return obj
-
-
-def api_json(
-    api_key: str,
-    method: str,
-    path: str,
-    body: dict | None = None,
-) -> Any:
-    headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
-    url = f"{API_BASE}{path}"
-    with httpx.Client(timeout=120.0) as http:
-        if method == "GET":
-            resp = http.get(url, headers=headers)
-        elif method == "POST":
-            resp = http.post(url, headers=headers, json=body or {})
-        else:
-            raise ValueError(method)
-    if resp.status_code >= 400:
-        raise RuntimeError(f"{path} -> {resp.status_code}: {resp.text[:500]}")
-    return resp.json() if resp.content else {}
-
-
 def tags_from_obj(obj: dict[str, Any]) -> list[str]:
     raw = obj.get("container_tags") or obj.get("containerTags") or []
     return [str(t) for t in raw if t]
 
 
 def paginate_documents(
-    client: Any,
+    api_key: str,
     *,
     include_content: bool,
 ) -> tuple[list[dict[str, Any]], dict[str, Any]]:
@@ -98,14 +106,18 @@ def paginate_documents(
     pagination_meta: dict[str, Any] = {}
 
     while True:
-        resp = client.documents.list(
-            limit=DOC_PAGE_SIZE,
-            page=page,
-            include_content=include_content,
-            sort="createdAt",
-            order="desc",
+        data = api_request(
+            api_key,
+            "POST",
+            "/v3/documents/list",
+            {
+                "limit": DOC_PAGE_SIZE,
+                "page": page,
+                "includeContent": include_content,
+                "sort": "createdAt",
+                "order": "desc",
+            },
         )
-        data = model_to_dict(resp)
         batch = data.get("memories") or data.get("documents") or []
         if not batch:
             break
@@ -124,7 +136,6 @@ def paginate_documents(
 
 
 def enrich_documents(
-    client: Any,
     api_key: str,
     documents: list[dict[str, Any]],
     *,
@@ -145,15 +156,18 @@ def enrich_documents(
         entry = dict(doc)
 
         try:
-            detail = model_to_dict(client.documents.get(doc_id))
-            entry["detail"] = detail
-            entry["container_tags"] = tags_from_obj(detail) or tags_from_obj(entry)
+            detail = api_request(api_key, "GET", f"/v3/documents/{doc_id}")
+            if isinstance(detail, dict):
+                entry["detail"] = detail
+                entry["container_tags"] = tags_from_obj(detail) or tags_from_obj(entry)
         except Exception as exc:
             entry["detail_error"] = str(exc)
 
         if fetch_chunks:
             try:
-                chunk_data = api_json(api_key, "GET", f"/v3/documents/{doc_id}/chunks")
+                chunk_data = api_request(
+                    api_key, "GET", f"/v3/documents/{doc_id}/chunks"
+                )
                 raw_chunks = chunk_data.get("chunks") or []
                 entry["chunks"] = dedupe_by_id(raw_chunks)
                 entry["chunk_total"] = len(entry["chunks"])
@@ -190,7 +204,7 @@ def paginate_memories_for_tag(api_key: str, tag: str) -> list[dict[str, Any]]:
     page = 1
 
     while True:
-        data = api_json(
+        data = api_request(
             api_key,
             "POST",
             "/v4/memories/list",
@@ -277,12 +291,19 @@ def collect_memories_deduped(
     return all_memories, by_tag
 
 
-def fetch_connections(client: Any) -> list[dict[str, Any]]:
+def fetch_connections(api_key: str) -> list[dict[str, Any]]:
     try:
-        resp = client.connections.list()
-        return model_to_dict(resp) or []
+        resp = api_request(api_key, "GET", "/v3/connections/list")
     except Exception:
         return []
+    if isinstance(resp, list):
+        return [c for c in resp if isinstance(c, dict)]
+    if isinstance(resp, dict):
+        for key in ("connections", "results", "data"):
+            batch = resp.get(key)
+            if isinstance(batch, list):
+                return [c for c in batch if isinstance(c, dict)]
+    return []
 
 
 def run_supermemory_export(
@@ -295,27 +316,17 @@ def run_supermemory_export(
     Export full Supermemory account data and write JSON into *dest_dir*.
 
     Always fetches: all documents (with detail), RAG chunks, memory entries per
-    container tag, and connections — matching the default export script behavior.
+    container tag, and connections.
 
     Returns the written file path and the full export dict.
     """
-    try:
-        from supermemory import Supermemory
-    except ImportError as exc:
-        raise ImportError(
-            "Supermemory SDK is required. Install with: pip install supermemory"
-        ) from exc
-
-    client = Supermemory(api_key=api_key)
-
     if on_progress:
         on_progress("Listing documents...")
-    documents, doc_pagination = paginate_documents(client, include_content=False)
+    documents, doc_pagination = paginate_documents(api_key, include_content=False)
 
     if on_progress:
         on_progress(f"Enriching {len(documents)} documents...")
     documents = enrich_documents(
-        client,
         api_key,
         documents,
         include_content=False,
@@ -326,7 +337,7 @@ def run_supermemory_export(
 
     if on_progress:
         on_progress("Fetching connections...")
-    connections = fetch_connections(client)
+    connections = fetch_connections(api_key)
 
     container_tags = discover_container_tags(documents, connections)
 
@@ -361,7 +372,7 @@ def run_supermemory_export(
             "Documents keep memory_ids only (not full memory objects).",
             "chunks": "Each document includes chunks[] from GET /v3/documents/{id}/chunks",
             "content": "Full document text is in chunks[] per document.",
-            "tags": "Tags are taken from documents.get (list often omits dashboard default tags).",
+            "tags": "Tags taken from GET /v3/documents/{id} detail (list often omits dashboard defaults).",
         },
     }
 

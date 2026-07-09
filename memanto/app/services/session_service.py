@@ -6,15 +6,18 @@ Uses JWT tokens for stateless authentication.
 """
 
 import json
+import logging
 import os
+import secrets
 from datetime import timedelta
 from pathlib import Path
 from typing import Any
 
 import jwt
+from pydantic import ValidationError
 
 from memanto.app.config import get_data_dir, settings
-from memanto.app.core import create_memory_scope
+from memanto.app.core import agent_namespace
 from memanto.app.models.session import (
     AgentPattern,
     Session,
@@ -29,8 +32,10 @@ from memanto.app.utils.errors import (
 )
 from memanto.app.utils.ids import generate_id
 from memanto.app.utils.temporal_helpers import utc_now
+from memanto.app.utils.validation import validate_safe_id
 
 _session_service = None
+logger = logging.getLogger(__name__)
 
 
 def get_session_service() -> "SessionService":
@@ -57,23 +62,66 @@ class SessionService:
             secret_key: Secret key for JWT signing (defaults to env var or generated)
             sessions_dir: Directory for session storage (defaults to ~/.memanto/sessions/)
         """
-        resolved_secret_key = (
-            secret_key
-            or os.getenv("MEMANTO_SECRET_KEY")
-            or "memanto-default-secret-change-in-production"
-        )
-        self.secret_key: str = resolved_secret_key
         self.sessions_dir = sessions_dir or get_data_dir() / "sessions"
         self.sessions_dir.mkdir(parents=True, exist_ok=True)
+        resolved_secret_key = (
+            secret_key
+            or settings.MEMANTO_SECRET_KEY
+            or self._generate_secure_secret_key()
+        )
+        self.secret_key: str = resolved_secret_key
+
+    def _generate_secure_secret_key(self) -> str:
+        """Generate (or reuse) a persisted fallback secret for JWT signing.
+
+        Persisted alongside the sessions directory so sessions survive
+        process restarts instead of every new process invalidating all
+        existing session tokens. Created atomically (O_CREAT | O_EXCL) with
+        restrictive permissions from the moment of creation, so concurrent
+        first-start processes can't race each other into using divergent
+        secrets and there's no window where the file is world-readable. An
+        existing-but-empty file (e.g. left behind by a crash mid-write) is
+        treated as absent and rewritten.
+        """
+        secret_file = self.sessions_dir.parent / "secret_key"
+        existing = self._read_persisted_secret(secret_file)
+        if existing is not None:
+            return existing
+
+        secret = secrets.token_hex(32)
+        try:
+            fd = os.open(str(secret_file), os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
+        except FileExistsError:
+            # Lost a race to another process, or the file is a stale empty stub.
+            existing = self._read_persisted_secret(secret_file)
+            if existing is not None:
+                return existing
+            fd = os.open(str(secret_file), os.O_WRONLY | os.O_TRUNC, 0o600)
+        try:
+            os.write(fd, secret.encode())
+        finally:
+            os.close(fd)
+        try:
+            secret_file.chmod(0o600)
+        except OSError:
+            pass  # Windows may not support chmod
+        return secret
+
+    @staticmethod
+    def _read_persisted_secret(secret_file: Path) -> str | None:
+        """Read the persisted JWT secret, treating a missing/empty file as absent."""
+        if not secret_file.exists():
+            return None
+        content = secret_file.read_text().strip()
+        return content or None
 
     def _generate_namespace(self, agent_id: str) -> str:
         """
-        Generate namespace for agent using core MemoryScope
+        Generate the Moorcheh namespace for an agent.
 
-        Format: memanto_{scope}_{scope_id}
+        Format: memanto_agent_{agent_id}
         """
-        scope = create_memory_scope(scope_type="agent", scope_id=agent_id)
-        return scope.to_namespace()
+        return agent_namespace(agent_id)
 
     def _generate_session_id(self) -> str:
         """Generate unique session ID"""
@@ -165,6 +213,20 @@ class SessionService:
                 raise SessionExpiredError(
                     f"Session {token.session_id} expired at {token.expires_at}"
                 )
+            try:
+                session = self.get_session(token.agent_id)
+                if (
+                    not session
+                    or session.session_id != token.session_id
+                    or not session.is_active()
+                ):
+                    raise InvalidSessionTokenError(
+                        f"Session {token.session_id} is no longer active"
+                    )
+            except (OSError, json.JSONDecodeError, ValidationError) as exc:
+                raise InvalidSessionTokenError(
+                    f"Session {token.session_id} is no longer active"
+                ) from exc
 
             return token
 
@@ -183,13 +245,9 @@ class SessionService:
         Returns:
             Session object or None if not found
         """
+        validate_safe_id(agent_id, "agent_id")
         session_file = self.sessions_dir / f"{agent_id}.json"
-        if not session_file.exists():
-            return None
-
-        with open(session_file) as f:
-            data = json.load(f)
-            return Session(**data)
+        return self._load_session_file(session_file)
 
     def get_active_session(self) -> Session | None:
         """
@@ -325,9 +383,23 @@ class SessionService:
 
     def _save_session(self, session: Session) -> None:
         """Save session to file"""
+        validate_safe_id(session.agent_id, "agent_id")
         session_file = self.sessions_dir / f"{session.agent_id}.json"
         with open(session_file, "w") as f:
             json.dump(session.model_dump(mode="json"), f, indent=2)
+
+    def _load_session_file(self, session_file: Path) -> Session | None:
+        """Load one session file, treating corrupt local state as absent."""
+        if not session_file.exists():
+            return None
+
+        try:
+            with open(session_file) as f:
+                data = json.load(f)
+            return Session(**data)
+        except (OSError, json.JSONDecodeError, TypeError, ValidationError) as exc:
+            logger.warning("Skipping invalid session file %s: %s", session_file, exc)
+            return None
 
     def log_memory_to_session_summary(
         self,
@@ -346,6 +418,8 @@ class SessionService:
             memory_id: The Moorcheh memory ID (if available)
         """
         # Get the timestamp of memory to determine the date string
+        validate_safe_id(agent_id, "agent_id")
+        validate_safe_id(session_id, "session_id")
         dt_now = getattr(memory_record, "created_at", utc_now())
         timestamp = dt_now.strftime("%Y-%m-%d %H:%M:%S")
         date_str = dt_now.strftime("%Y-%m-%d")
@@ -362,6 +436,12 @@ class SessionService:
         title = getattr(memory_record, "title", "Untitled")
         content = getattr(memory_record, "content", "")
         confidence = getattr(memory_record, "confidence", 1.0)
+        # Fall back to the record's own id so the ID is logged on every path
+        memory_id = memory_id or getattr(memory_record, "id", None)
+        source = getattr(memory_record, "source", None)
+        provenance = getattr(memory_record, "provenance", None)
+        status = getattr(memory_record, "status", None)
+        tags = getattr(memory_record, "tags", None)
 
         with open(summary_file, "a", encoding="utf-8") as f:
             if write_header:
@@ -373,6 +453,14 @@ class SessionService:
             if memory_id:
                 f.write(f"- **Memory ID**: `{memory_id}`\n")
             f.write(f"- **Confidence**: `{confidence}`\n")
+            if status:
+                f.write(f"- **Status**: `{status}`\n")
+            if source:
+                f.write(f"- **Source**: `{source}`\n")
+            if provenance:
+                f.write(f"- **Provenance**: `{provenance}`\n")
+            if tags:
+                f.write(f"- **Tags**: {', '.join(f'`{t}`' for t in tags)}\n")
             f.write("- **Content**:\n")
             f.write(f"> {content.replace(chr(10), chr(10) + '> ')}\n\n")
             f.write("---\n\n")
@@ -391,6 +479,9 @@ class SessionService:
             session_id: The current session's identifier
             memory_id: The Moorcheh memory ID that was deleted
         """
+        validate_safe_id(agent_id, "agent_id")
+        validate_safe_id(session_id, "session_id")
+
         dt_now = utc_now()
         timestamp = dt_now.strftime("%Y-%m-%d %H:%M:%S")
         date_str = dt_now.strftime("%Y-%m-%d")
@@ -414,6 +505,7 @@ class SessionService:
 
     def _set_active_session(self, agent_id: str) -> None:
         """Mark session as active"""
+        validate_safe_id(agent_id, "agent_id")
         active_link = self.sessions_dir / "active"
 
         # Remove existing active link
@@ -448,8 +540,8 @@ class SessionService:
         """
         sessions = []
         for session_file in self.sessions_dir.glob("*.json"):
-            with open(session_file) as f:
-                data = json.load(f)
-                sessions.append(Session(**data))
+            session = self._load_session_file(session_file)
+            if session is not None:
+                sessions.append(session)
 
         return sorted(sessions, key=lambda s: s.started_at, reverse=True)

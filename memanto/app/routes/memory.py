@@ -7,6 +7,7 @@ Replaces legacy agent memory endpoints with session-based auth.
 
 import asyncio
 import os
+import re
 import tempfile
 from datetime import date, datetime, time, timezone
 from pathlib import Path
@@ -17,28 +18,52 @@ from pydantic import BaseModel, Field, field_validator
 from memanto.app.clients.backend import get_active_llm_model
 from memanto.app.clients.moorcheh import get_moorcheh_client
 from memanto.app.config import settings
+from memanto.app.constants import VALID_MEMORY_TYPES
 from memanto.app.core import MemoryRecord
 from memanto.app.models import (
     AnswerRequest,
+    AnswerResponse,
     BatchRememberRequest,
+    BatchRememberResponse,
     ConflictResolveRequest,
+    ExtractMemoriesRequest,
+    RecallResponse,
     RememberRequest,
+    RememberResponse,
+    TemporalRecallResponse,
+    UploadFileResponse,
 )
 from memanto.app.models.session import Session
 from memanto.app.routes.auth_deps import get_current_session, get_session_service
+from memanto.app.services.conversation_memory_extraction_service import (
+    ConversationMemoryExtractionService,
+)
 from memanto.app.services.memory_read_service import MemoryReadService
 from memanto.app.services.memory_write_service import MemoryWriteService
 from memanto.app.utils.errors import AuthorizationError, map_error_to_http_exception
-from memanto.app.utils.validation import CostGuard
+from memanto.app.utils.validation import CostGuard, validate_safe_id
 from memanto.cli.client.direct_client import DirectClient
 from memanto.cli.config.manager import ConfigManager
 
 router = APIRouter()
 
 _config_manager = ConfigManager()
+_SAFE_DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
+
+
+def _validate_summary_key(agent_id: str, date_str: str) -> None:
+    """Reject identifiers that are unsafe for summary/conflict file paths."""
+    if not _SAFE_DATE_RE.fullmatch(date_str):
+        raise HTTPException(status_code=400, detail="Invalid summary identifier")
+    try:
+        validate_safe_id(agent_id, "agent_id")
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid summary identifier")
 
 
 class RecallRequest(BaseModel):
+    """Request body for semantic memory recall."""
+
     query: str = Field(..., min_length=1, description="Search query")
     limit: int | None = Field(default=None, ge=1, description="Max results")
     min_similarity: float | None = Field(
@@ -48,6 +73,8 @@ class RecallRequest(BaseModel):
 
 
 class RecallAsOfRequest(BaseModel):
+    """Request body for point-in-time memory recall."""
+
     as_of: datetime = Field(
         ...,
         description="Point-in-time — YYYY-MM-DD (defaults to end of day) or full ISO datetime e.g. 2025-11-01T14:30:00Z",
@@ -58,6 +85,7 @@ class RecallAsOfRequest(BaseModel):
     @field_validator("as_of", mode="before")
     @classmethod
     def parse_as_of(cls, v: object) -> datetime:
+        """Parse date-only or ISO datetime inputs into an aware timestamp."""
         if isinstance(v, datetime):
             return v if v.tzinfo else v.replace(tzinfo=timezone.utc)
         if isinstance(v, date):
@@ -82,6 +110,8 @@ class RecallAsOfRequest(BaseModel):
 
 
 class RecallChangedSinceRequest(BaseModel):
+    """Request body for querying memories changed since a timestamp."""
+
     since: datetime = Field(
         ...,
         description="Start of change window — YYYY-MM-DD (defaults to start of day) or full ISO datetime e.g. 2025-11-01T00:00:00Z",
@@ -92,6 +122,7 @@ class RecallChangedSinceRequest(BaseModel):
     @field_validator("since", mode="before")
     @classmethod
     def parse_since(cls, v: object) -> datetime:
+        """Parse date-only or ISO datetime inputs for change filtering."""
         if isinstance(v, datetime):
             return v if v.tzinfo else v.replace(tzinfo=timezone.utc)
         if isinstance(v, date):
@@ -116,11 +147,38 @@ class RecallChangedSinceRequest(BaseModel):
 
 
 class RecallRecentRequest(BaseModel):
+    """Request body for retrieving recent memories."""
+
     limit: int | None = Field(default=None, ge=1, description="Max results")
     type: list[str] | None = Field(default=None, description="Memory type filters")
 
 
-@router.post("/{agent_id}/remember")
+class MemoryEditRequest(BaseModel):
+    """Request body for partial memory record updates."""
+
+    title: str | None = Field(default=None, max_length=100)
+    content: str | None = Field(default=None, max_length=10000)
+    type: str | None = None
+    confidence: float | None = Field(default=None, ge=0.0, le=1.0)
+    tags: list[str] | None = None
+    source: str | None = None
+
+    def to_updates(self) -> dict[str, object]:
+        """Return only fields the caller explicitly wants to update."""
+        return self.model_dump(exclude_none=True)
+
+
+def enforce_session_scope(session: Session, agent_id: str) -> None:
+    """Ensure a session can only access the agent scope it was issued for."""
+    if session.agent_id != agent_id:
+        raise map_error_to_http_exception(
+            AuthorizationError(
+                f"Session is for agent '{session.agent_id}', cannot access '{agent_id}'"
+            )
+        )
+
+
+@router.post("/{agent_id}/remember", response_model=RememberResponse)
 async def remember(
     agent_id: str,
     request: RememberRequest = Body(...),
@@ -146,12 +204,7 @@ async def remember(
     CostGuard.validate_text_length(request.content, "Memory content")
 
     # Enforce session scope: token must match agent_id
-    if session.agent_id != agent_id:
-        raise map_error_to_http_exception(
-            Exception(
-                f"Session is for agent '{session.agent_id}', cannot access '{agent_id}'"
-            )
-        )
+    enforce_session_scope(session, agent_id)
 
     try:
         # Initialize memory write service
@@ -172,8 +225,7 @@ async def remember(
             type=cast(MemoryType, request.type),
             title=resolved_title,
             content=request.content,
-            scope_type="agent",
-            scope_id=agent_id,
+            agent_id=agent_id,
             actor_id=agent_id,
             confidence=request.confidence,
             tags=request.tags or [],
@@ -193,10 +245,6 @@ async def remember(
             memory_record=memory,
         )
 
-        # skip trust_score() computation
-        ## Compute trust score for response
-        # trust_score = memory.trust_score()
-
         return {
             "memory_id": result["id"],
             "agent_id": agent_id,
@@ -207,15 +255,13 @@ async def remember(
             "confidence": request.confidence,
             # Resolved memory type (auto-parsed when not explicitly provided)
             "type": result.get("type"),
-            # "computed_confidence": trust_score["computed_confidence"],
-            # "trust_level": trust_score["trust_level"]
         }
 
     except Exception as e:
         raise map_error_to_http_exception(e)
 
 
-@router.post("/{agent_id}/batch-remember")
+@router.post("/{agent_id}/batch-remember", response_model=BatchRememberResponse)
 async def batch_remember(
     agent_id: str,
     request: BatchRememberRequest = Body(...),
@@ -234,12 +280,7 @@ async def batch_remember(
     The session must be for the specified agent_id.
     """
     # Enforce session scope: token must match agent_id
-    if session.agent_id != agent_id:
-        raise map_error_to_http_exception(
-            Exception(
-                f"Session is for agent '{session.agent_id}', cannot access '{agent_id}'"
-            )
-        )
+    enforce_session_scope(session, agent_id)
 
     try:
         # Initialize memory write service
@@ -259,8 +300,7 @@ async def batch_remember(
                 type=cast(MemoryType, item.type),
                 title=title,
                 content=item.content,
-                scope_type="agent",
-                scope_id=agent_id,
+                agent_id=agent_id,
                 actor_id=agent_id,
                 confidence=item.confidence,
                 tags=item.tags or [],
@@ -299,7 +339,178 @@ async def batch_remember(
         raise map_error_to_http_exception(e)
 
 
-@router.post("/{agent_id}/upload-file")
+@router.patch("/{agent_id}/memories/{memory_id}")
+async def edit_memory(
+    agent_id: str,
+    memory_id: str,
+    request: MemoryEditRequest = Body(...),
+    session: Session = Depends(get_current_session),
+    client=Depends(get_moorcheh_client),
+):
+    """
+    Update one memory in the active agent's namespace (Session-based).
+
+    Requires:
+    - X-Session-Token: {session_token}
+
+    The session must be for the specified agent_id.
+    """
+    enforce_session_scope(session, agent_id)
+
+    updates = request.to_updates()
+    if not updates:
+        raise HTTPException(
+            status_code=400,
+            detail="Provide at least one field to update.",
+        )
+
+    if "content" in updates:
+        content = updates["content"]
+        if content is None or not str(content).strip():
+            raise HTTPException(
+                status_code=400,
+                detail="Memory content must be a non-empty string.",
+            )
+        CostGuard.validate_text_length(str(content), "Memory content")
+    if "confidence" in updates:
+        confidence = updates["confidence"]
+        try:
+            confidence_value = float(confidence)  # type: ignore[arg-type]
+        except (TypeError, ValueError):
+            raise HTTPException(
+                status_code=400,
+                detail=f"Confidence must be a number between 0.0 and 1.0, got {confidence!r}.",
+            )
+        if not 0.0 <= confidence_value <= 1.0:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Confidence must be between 0.0 and 1.0, got {confidence_value}.",
+            )
+    if "type" in updates and updates["type"] not in VALID_MEMORY_TYPES:
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                f"Invalid memory_type '{updates['type']}'. "
+                f"Must be one of: {', '.join(sorted(VALID_MEMORY_TYPES))}."
+            ),
+        )
+
+    try:
+        write_service = MemoryWriteService(client)
+        result = await asyncio.to_thread(
+            write_service.update_memory, memory_id, session.namespace, updates
+        )
+        return {
+            "agent_id": agent_id,
+            "session_id": session.session_id,
+            "namespace": session.namespace,
+            "memory_id": memory_id,
+            "status": result.get("status", "updated"),
+            "action": result.get("action", "updated"),
+            "updated_fields": result.get("updated_fields", list(updates.keys())),
+        }
+
+    except Exception as e:
+        if "not found" in str(e).lower():
+            raise HTTPException(
+                status_code=404, detail=f"Memory '{memory_id}' was not found."
+            )
+        raise map_error_to_http_exception(e)
+
+
+@router.post("/{agent_id}/remember/extract")
+async def extract_memories_from_conversation(
+    agent_id: str,
+    request: ExtractMemoriesRequest = Body(...),
+    session: Session = Depends(get_current_session),
+    client=Depends(get_moorcheh_client),
+):
+    """
+    Extract typed memory candidates from chat-style conversation turns.
+
+    Requires:
+    - X-Session-Token: {session_token}
+
+    When dry_run is true, candidates are returned without writing. Otherwise the
+    candidates are persisted through the same batch memory path used by
+    /batch-remember.
+    """
+    enforce_session_scope(session, agent_id)
+
+    try:
+        extraction_service = ConversationMemoryExtractionService(client)
+        candidates = await asyncio.to_thread(
+            extraction_service.extract,
+            namespace=session.namespace,
+            messages=[message.model_dump(mode="json") for message in request.messages],
+            max_memories=request.max_memories,
+            ai_model=request.ai_model,
+        )
+
+        if request.dry_run:
+            return {
+                "agent_id": agent_id,
+                "session_id": session.session_id,
+                "dry_run": True,
+                "candidates": candidates,
+                "count": len(candidates),
+            }
+
+        write_service = MemoryWriteService(client)
+
+        from typing import cast
+
+        from memanto.app.constants import MemoryType, ProvenanceType
+
+        memory_records = []
+        for item in candidates:
+            memory = MemoryRecord(
+                type=cast(MemoryType, item.get("type")),
+                title=item["title"],
+                content=item["content"],
+                agent_id=agent_id,
+                actor_id=agent_id,
+                confidence=item["confidence"],
+                tags=["conversation-extract"],
+                source=item["source"],
+                provenance=cast(ProvenanceType, item["provenance"]),
+            )
+            memory_records.append(memory)
+
+        result = await asyncio.to_thread(
+            write_service.batch_store_memories, memory_records
+        )
+
+        session_service = get_session_service()
+        for index, record in enumerate(memory_records):
+            batch_results = result.get("results", [])
+            memory_id = (
+                batch_results[index].get("id") if index < len(batch_results) else None
+            )
+            await asyncio.to_thread(
+                session_service.log_memory_to_session_summary,
+                agent_id=agent_id,
+                session_id=session.session_id,
+                memory_record=record,
+                memory_id=memory_id,
+            )
+
+        return {
+            "agent_id": agent_id,
+            "session_id": session.session_id,
+            "dry_run": False,
+            "candidates": candidates,
+            "total_submitted": result["total_submitted"],
+            "successful": result["successful"],
+            "failed": result["failed"],
+            "results": result["results"],
+        }
+
+    except Exception as e:
+        raise map_error_to_http_exception(e)
+
+
+@router.post("/{agent_id}/upload-file", response_model=UploadFileResponse)
 async def upload_file(
     agent_id: str,
     file: UploadFile = File(
@@ -320,18 +531,17 @@ async def upload_file(
     - X-Session-Token: {session_token}
     - Content-Type: multipart/form-data
     """
-    if session.agent_id != agent_id:
-        raise map_error_to_http_exception(
-            Exception(
-                f"Session is for agent '{session.agent_id}', cannot access '{agent_id}'"
-            )
-        )
+    enforce_session_scope(session, agent_id)
 
     client = get_moorcheh_client()
 
     # Validate file extension before reading
     ALLOWED_EXTENSIONS = {".pdf", ".docx", ".xlsx", ".json", ".txt", ".csv", ".md"}
-    original_name = file.filename or "upload"
+    # Sanitize filename: strip directory components to prevent path traversal (CWE-22)
+    original_name = Path(file.filename or "upload").name
+    # Guard against empty or dot-only filenames after sanitization
+    if not original_name or original_name in (".", ".."):
+        original_name = "upload"
     suffix = Path(original_name).suffix.lower()
     if suffix not in ALLOWED_EXTENSIONS:
         allowed_str = ", ".join(sorted(ALLOWED_EXTENSIONS))
@@ -348,6 +558,14 @@ async def upload_file(
         file_bytes = await file.read()
         tmp_dir = tempfile.mkdtemp()
         tmp_path = os.path.join(tmp_dir, original_name)
+        # Defense-in-depth: verify resolved path is within tmp_dir
+        if not os.path.realpath(tmp_path).startswith(
+            os.path.realpath(tmp_dir) + os.sep
+        ):
+            raise HTTPException(
+                status_code=400,
+                detail="Invalid filename",
+            )
         try:
             with open(tmp_path, "wb") as tmp:
                 tmp.write(file_bytes)
@@ -388,12 +606,7 @@ async def delete_memory(
 
     The session must be for the specified agent_id.
     """
-    if session.agent_id != agent_id:
-        raise map_error_to_http_exception(
-            AuthorizationError(
-                f"Session is for agent '{session.agent_id}', cannot access '{agent_id}'"
-            )
-        )
+    enforce_session_scope(session, agent_id)
 
     try:
         write_service = MemoryWriteService(client)
@@ -422,7 +635,7 @@ async def delete_memory(
         raise map_error_to_http_exception(e)
 
 
-@router.post("/{agent_id}/recall")
+@router.post("/{agent_id}/recall", response_model=RecallResponse)
 async def recall(
     agent_id: str,
     request: RecallRequest = Body(...),
@@ -440,12 +653,7 @@ async def recall(
     CostGuard.validate_query_length(request.query)
 
     # Enforce session scope
-    if session.agent_id != agent_id:
-        raise map_error_to_http_exception(
-            Exception(
-                f"Session is for agent '{session.agent_id}', cannot access '{agent_id}'"
-            )
-        )
+    enforce_session_scope(session, agent_id)
 
     recall_cfg = _config_manager.get_recall_config()
     raw_limit = (
@@ -477,8 +685,7 @@ async def recall(
         result = await asyncio.to_thread(
             read_service.search_memories,
             query=request.query,
-            scope_type="agent",
-            scope_id=agent_id,
+            agent_id=agent_id,
             type=request.type,
             min_similarity_score=min_similarity,
             limit=limit,
@@ -498,7 +705,7 @@ async def recall(
         raise map_error_to_http_exception(e)
 
 
-@router.post("/{agent_id}/answer")
+@router.post("/{agent_id}/answer", response_model=AnswerResponse)
 async def answer(
     agent_id: str,
     request: AnswerRequest = Body(...),
@@ -516,12 +723,7 @@ async def answer(
     CostGuard.validate_query_length(request.question)
 
     # Enforce session scope
-    if session.agent_id != agent_id:
-        raise map_error_to_http_exception(
-            Exception(
-                f"Session is for agent '{session.agent_id}', cannot access '{agent_id}'"
-            )
-        )
+    enforce_session_scope(session, agent_id)
 
     client = get_moorcheh_client()
 
@@ -594,17 +796,24 @@ async def answer(
 
 
 class DailySummaryRequest(BaseModel):
+    """Request body for on-demand daily summary generation."""
+
     date: str | None = Field(
         default=None,
         description="Date string YYYY-MM-DD. Defaults to today.",
     )
     output_path: str | None = Field(
         default=None,
-        description="Optional custom output path for the summary MD file.",
+        description=(
+            "Accepted for backwards compatibility but ignored; summaries use "
+            "the server-controlled output location."
+        ),
     )
 
 
 class ConflictDetectRequest(BaseModel):
+    """Request body for on-demand conflict report generation."""
+
     date: str | None = Field(
         default=None,
         description="Date string YYYY-MM-DD. Defaults to today.",
@@ -623,20 +832,16 @@ async def generate_daily_summary(
     Conflict detection is a separate concern — see
     POST ``/{agent_id}/conflicts/generate`` or the scheduled job.
     """
-    if session.agent_id != agent_id:
-        raise map_error_to_http_exception(
-            Exception(
-                f"Session is for agent '{session.agent_id}', cannot access '{agent_id}'"
-            )
-        )
+    enforce_session_scope(session, agent_id)
 
     resolved_date = request.date or datetime.now().strftime("%Y-%m-%d")
+    _validate_summary_key(agent_id, resolved_date)
     try:
         result = await asyncio.to_thread(
             DirectClient(settings.MOORCHEH_API_KEY).generate_daily_summary,
             agent_id,
             resolved_date,
-            request.output_path,
+            None,
         )
         return {
             "agent_id": agent_id,
@@ -659,14 +864,10 @@ async def generate_conflict_report(
 
     This is the same work the scheduled task performs.
     """
-    if session.agent_id != agent_id:
-        raise map_error_to_http_exception(
-            Exception(
-                f"Session is for agent '{session.agent_id}', cannot access '{agent_id}'"
-            )
-        )
+    enforce_session_scope(session, agent_id)
 
     resolved_date = request.date or datetime.now().strftime("%Y-%m-%d")
+    _validate_summary_key(agent_id, resolved_date)
     try:
         result = await asyncio.to_thread(
             DirectClient(settings.MOORCHEH_API_KEY).generate_conflict_report,
@@ -698,23 +899,20 @@ async def list_conflicts(
     The session must be for the specified agent_id.
     """
     # Enforce session scope
-    if session.agent_id != agent_id:
-        raise map_error_to_http_exception(
-            Exception(
-                f"Session is for agent '{session.agent_id}', cannot access '{agent_id}'"
-            )
-        )
+    enforce_session_scope(session, agent_id)
 
+    resolved_date = date or datetime.now().strftime("%Y-%m-%d")
+    _validate_summary_key(agent_id, resolved_date)
     try:
         conflicts = await asyncio.to_thread(
             DirectClient(settings.MOORCHEH_API_KEY).list_conflicts,
             agent_id,
-            date,
+            resolved_date,
         )
         return {
             "agent_id": agent_id,
             "session_id": session.session_id,
-            "date": date or datetime.now().strftime("%Y-%m-%d"),
+            "date": resolved_date,
             "conflicts": conflicts,
             "count": len(conflicts),
         }
@@ -733,14 +931,10 @@ async def resolve_conflict(
 
     Uses the same underlying conflict resolution service used by CLI.
     """
-    if session.agent_id != agent_id:
-        raise map_error_to_http_exception(
-            Exception(
-                f"Session is for agent '{session.agent_id}', cannot access '{agent_id}'"
-            )
-        )
+    enforce_session_scope(session, agent_id)
 
     resolved_date = request.date or datetime.now().strftime("%Y-%m-%d")
+    _validate_summary_key(agent_id, resolved_date)
     try:
         result = await asyncio.to_thread(
             DirectClient(settings.MOORCHEH_API_KEY).resolve_conflict,
@@ -762,7 +956,7 @@ async def resolve_conflict(
         raise map_error_to_http_exception(e)
 
 
-@router.post("/{agent_id}/recall/as-of")
+@router.post("/{agent_id}/recall/as-of", response_model=TemporalRecallResponse)
 async def recall_as_of(
     agent_id: str,
     request: RecallAsOfRequest = Body(...),
@@ -780,12 +974,7 @@ async def recall_as_of(
     Requires:
     - X-Session-Token: {session_token}
     """
-    if session.agent_id != agent_id:
-        raise map_error_to_http_exception(
-            Exception(
-                f"Session is for agent '{session.agent_id}', cannot access '{agent_id}'"
-            )
-        )
+    enforce_session_scope(session, agent_id)
 
     # request.limit is None → fetch all (no cap). Cost guard only applies when capped.
     limit = request.limit
@@ -816,7 +1005,7 @@ async def recall_as_of(
         raise map_error_to_http_exception(e)
 
 
-@router.post("/{agent_id}/recall/changed-since")
+@router.post("/{agent_id}/recall/changed-since", response_model=TemporalRecallResponse)
 async def recall_changed_since(
     agent_id: str,
     request: RecallChangedSinceRequest = Body(...),
@@ -833,12 +1022,7 @@ async def recall_changed_since(
     Requires:
     - X-Session-Token: {session_token}
     """
-    if session.agent_id != agent_id:
-        raise map_error_to_http_exception(
-            Exception(
-                f"Session is for agent '{session.agent_id}', cannot access '{agent_id}'"
-            )
-        )
+    enforce_session_scope(session, agent_id)
 
     # request.limit is None → fetch all (no cap). Cost guard only applies when capped.
     limit = request.limit
@@ -869,7 +1053,7 @@ async def recall_changed_since(
         raise map_error_to_http_exception(e)
 
 
-@router.post("/{agent_id}/recall/recent")
+@router.post("/{agent_id}/recall/recent", response_model=TemporalRecallResponse)
 async def recall_recent(
     agent_id: str,
     request: RecallRecentRequest = Body(...),
@@ -887,12 +1071,7 @@ async def recall_recent(
 
     The session must be for the specified agent_id.
     """
-    if session.agent_id != agent_id:
-        raise map_error_to_http_exception(
-            Exception(
-                f"Session is for agent '{session.agent_id}', cannot access '{agent_id}'"
-            )
-        )
+    enforce_session_scope(session, agent_id)
 
     # request.limit is None → fetch all (no cap). Cost guard only applies when capped.
     limit = request.limit

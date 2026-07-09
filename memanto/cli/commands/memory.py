@@ -4,6 +4,7 @@ detect-conflicts, conflicts).
 """
 
 import json
+import sys
 import time
 from datetime import datetime
 from pathlib import Path
@@ -55,6 +56,26 @@ def remember(
     batch: str | None = typer.Option(
         None, "--batch", help="Path to JSON file with batch memories (array of objects)"
     ),
+    from_conversation: str | None = typer.Option(
+        None,
+        "--from-conversation",
+        help="Path to JSON conversation messages, or '-' to read from stdin",
+    ),
+    dry_run: bool = typer.Option(
+        False,
+        "--dry-run",
+        help="Preview extracted conversation memories without storing them",
+    ),
+    max_memories: int = typer.Option(
+        20,
+        "--max-memories",
+        help="Maximum memories to extract from a conversation",
+    ),
+    ai_model: str | None = typer.Option(
+        None,
+        "--ai-model",
+        help="Optional model override for conversation extraction",
+    ),
 ):
     """Store a new memory for the active agent.
 
@@ -72,8 +93,86 @@ def remember(
     client = get_client()
     agent_id = active_agent_id
 
+    # Conversation extraction mode
+    if from_conversation:
+        if batch or content:
+            _error(
+                "--from-conversation cannot be combined with CONTENT or --batch.",
+                hint="Use one input mode at a time.",
+            )
+        if max_memories < 1 or max_memories > 100:
+            _error("--max-memories must be between 1 and 100.")
+
+        try:
+            if from_conversation == "-":
+                raw = sys.stdin.read()
+            else:
+                conversation_path = Path(from_conversation)
+                if not conversation_path.exists():
+                    _error(
+                        f"File not found: {from_conversation}",
+                        hint="Provide a valid path to a JSON file.",
+                    )
+                raw = conversation_path.read_text(encoding="utf-8")
+            messages = json.loads(raw)
+        except json.JSONDecodeError as e:
+            _error(
+                f"Invalid JSON: {e}",
+                hint="Conversation file must contain an array of {role, content} objects.",
+            )
+
+        if not isinstance(messages, list):
+            _error("Conversation JSON must contain an array of message objects.")
+
+        try:
+            with console.status(
+                "[cyan]Extracting memories from conversation...", spinner="dots"
+            ):
+                result = client.extract_memories_from_conversation(
+                    agent_id=agent_id,
+                    messages=messages,
+                    dry_run=dry_run,
+                    max_memories=max_memories,
+                    ai_model=ai_model,
+                )
+            elapsed = time.perf_counter() - start
+            candidates = result.get("candidates", [])
+
+            if dry_run:
+                console.print(
+                    f"[yellow]Dry run:[/yellow] extracted {len(candidates)} memory candidate(s)."
+                )
+            else:
+                successful = result.get("successful", 0)
+                failed = result.get("failed", 0)
+                total = result.get("total_submitted", len(candidates))
+                console.print(
+                    f"[green]Stored {successful}/{total} extracted memories[/green]"
+                    + (f" [yellow]({failed} failed)[/yellow]" if failed else "")
+                )
+
+            for i, item in enumerate(candidates, 1):
+                console.print(
+                    Panel(
+                        f"[bold]{item.get('title', 'Untitled')}[/bold]\n\n"
+                        f"{item.get('content', '')}\n\n"
+                        f"[dim]Type: {item.get('type', 'fact')} | "
+                        f"Confidence: {item.get('confidence', 0.8):.2f}[/dim]",
+                        title=f"Candidate {i}",
+                        border_style="yellow" if dry_run else SUCCESS,
+                    )
+                )
+            console.print(f"[dim]Completed in {elapsed:.2f}s[/dim]")
+        except Exception as e:
+            _error(f"Failed to extract memories: {e}")
+
+        return
+
     # Batch mode
     if batch:
+        if dry_run:
+            _error("--dry-run is only supported with --from-conversation.")
+
         batch_path = Path(batch)
         if not batch_path.exists():
             _error(
@@ -153,7 +252,7 @@ def remember(
             result = client.remember(
                 agent_id=agent_id,
                 memory_type=memory_type,
-                title=title or content[:50] + "..." if len(content) > 50 else content,
+                title=title or (content[:50] + "..." if len(content) > 50 else content),
                 content=content,
                 confidence=confidence,
                 tags=tag_list,
@@ -170,6 +269,70 @@ def remember(
 
     except Exception as e:
         _error(f"Failed to store memory: {e}")
+
+
+@app.command()
+def edit(
+    memory_id: str = typer.Argument(..., help="Memory ID to update"),
+    title: str | None = typer.Option(None, "--title", help="New memory title"),
+    content: str | None = typer.Option(None, "--content", help="New memory content"),
+    memory_type: str | None = typer.Option(
+        None, "--type", "-t", help="New memory type"
+    ),
+    confidence: float | None = typer.Option(
+        None, "--confidence", "-c", help="New confidence score (0.0-1.0)"
+    ),
+    tags: str | None = typer.Option(None, "--tags", help="New comma-separated tags"),
+    source: str | None = typer.Option(None, "--source", "-s", help="New memory source"),
+):
+    """Update fields on an existing memory for the active agent."""
+    start = time.perf_counter()
+    active_agent_id, active_session_token = config_manager.get_active_session()
+
+    if not active_agent_id or not active_session_token:
+        _error(
+            "No active agent.", hint="Run 'memanto agent activate <agent-id>' first."
+        )
+
+    updates: dict[str, object] = {}
+    if title is not None:
+        updates["title"] = title
+    if content is not None:
+        updates["content"] = content
+    if memory_type is not None:
+        updates["type"] = memory_type
+    if confidence is not None:
+        updates["confidence"] = confidence
+    if tags is not None:
+        updates["tags"] = [t.strip() for t in tags.split(",") if t.strip()]
+    if source is not None:
+        updates["source"] = source
+
+    if not updates:
+        _error(
+            "No update fields provided.",
+            hint="Pass at least one of: --title, --content, --type, --confidence, --tags, --source.",
+        )
+
+    client = get_client()
+
+    try:
+        with console.status("[cyan]Updating memory...", spinner="dots"):
+            result = client.update_memory(
+                agent_id=active_agent_id,
+                memory_id=memory_id,
+                updates=updates,
+            )
+        elapsed = time.perf_counter() - start
+
+        updated_fields = ", ".join(result.get("updated_fields", updates.keys()))
+        console.print("[green]Memory updated successfully![/green]")
+        console.print(f"[dim]Memory ID: {result.get('memory_id', memory_id)}[/dim]")
+        console.print(f"[dim]Updated fields: {updated_fields}[/dim]")
+        console.print(f"[dim]Completed in {elapsed:.2f}s[/dim]")
+
+    except Exception as e:
+        _error(f"Failed to update memory: {e}")
 
 
 @app.command()
@@ -447,6 +610,10 @@ def recall(
             created = memory.get("created_at") or ""
             status = memory.get("status") or "active"
             change_type = memory.get("change_type")
+            source = memory.get("source") or ""
+            source_ref = memory.get("source_ref") or ""
+            provenance = memory.get("provenance") or ""
+            mem_tags = memory.get("tags") or []
 
             # Determine memory source from ID pattern
             id_str = memory.get("id", "unknown")
@@ -469,10 +636,24 @@ def recall(
             if created:
                 panel_content += f"\n[dim]Created: {format_local_time(created)}[/dim]"
             elif "_summary_" in id_str or "_chunk_" in id_str:
-                file_source = memory.get("source") or ""
-                if file_source:
-                    panel_content += f"\n[dim]Source file: {file_source}[/dim]"
                 panel_content += "\n[dim]Created: not available (file upload)[/dim]"
+
+            # Show provenance metadata. `source` is unified: it holds the
+            # uploaded file name for file-upload memories and the origin
+            # (user, agent, ...) for everything else.
+            origin_parts = []
+            if source:
+                origin_parts.append(f"Source: {source}")
+            if source_ref:
+                origin_parts.append(f"Ref: {source_ref}")
+            if provenance:
+                origin_parts.append(f"Provenance: {provenance}")
+            if origin_parts:
+                panel_content += f"\n[dim]{' | '.join(origin_parts)}[/dim]"
+
+            # Show tags when present
+            if mem_tags:
+                panel_content += f"\n[dim]Tags: {', '.join(mem_tags)}[/dim]"
 
             # Show status for non-standard queries
             if temporal_mode != "standard" and status != "active":

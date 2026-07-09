@@ -28,7 +28,7 @@ COMMAND_MODULES = [
     "memanto.cli.commands.connect",
     "memanto.cli.commands.memory_mgmt",
     "memanto.cli.commands.schedule",
-    "memanto.cli.commands.analyze",
+    "memanto.cli.commands.migrate",
 ]
 
 
@@ -208,6 +208,345 @@ class TestMEMANTOCLI:
         assert result.exit_code == 0
         assert "stored successfully" in result.stdout.lower()
         assert "mem-123" in result.stdout
+
+    def test_remember_short_content_honors_custom_title(self, mock_all_clients):
+        """Short memories should still use an explicit --title."""
+        mock_all_clients.remember.return_value = {
+            "memory_id": "mem-123",
+            "status": "queued",
+        }
+
+        result = runner.invoke(
+            app, ["remember", "Short memory", "--title", "Custom Title"]
+        )
+
+        assert result.exit_code == 0
+        mock_all_clients.remember.assert_called_once()
+        assert mock_all_clients.remember.call_args.kwargs["title"] == "Custom Title"
+
+    def test_edit(self, mock_all_clients):
+        """Test 'memanto edit' updates selected memory fields."""
+        mock_all_clients.update_memory.return_value = {
+            "memory_id": "mem-123",
+            "status": "success",
+            "updated_fields": ["title", "tags"],
+        }
+
+        result = runner.invoke(
+            app,
+            [
+                "edit",
+                "mem-123",
+                "--title",
+                "Updated title",
+                "--tags",
+                "alpha,beta",
+            ],
+        )
+
+        assert result.exit_code == 0
+        assert "updated successfully" in result.stdout.lower()
+        mock_all_clients.update_memory.assert_called_once_with(
+            agent_id="test-agent",
+            memory_id="mem-123",
+            updates={"title": "Updated title", "tags": ["alpha", "beta"]},
+        )
+
+    def test_edit_requires_field(self, mock_all_clients):
+        """Test 'memanto edit' rejects an empty update."""
+        result = runner.invoke(app, ["edit", "mem-123"])
+
+        assert result.exit_code != 0
+        assert "No update fields provided" in result.stdout
+        mock_all_clients.update_memory.assert_not_called()
+
+    def test_edit_normalizes_string_confidence_to_float(self, mock_all_clients):
+        """String `confidence` values like '0.7' must be coerced to float
+        before reaching the write service. CodeRabbit review
+        2026-06-14T14:03:20Z on PR #633 flagged the direct-client path
+        forwarded the raw string.
+
+        Asserts the value forwarded to `update_memory` is a numeric `float`,
+        not the original `"0.7"` string.
+        """
+        from unittest.mock import MagicMock, patch
+
+        from memanto.cli.client.direct_client import DirectClient
+
+        mock_write_service = MagicMock()
+        mock_write_service.update_memory.return_value = {
+            "memory_id": "mem-123",
+            "status": "updated",
+            "action": "updated",
+            "updated_fields": ["confidence"],
+        }
+        mock_session = MagicMock()
+        mock_session.namespace = "memanto_agent_test-agent"
+        mock_session.session_token = "test-token"
+
+        with (
+            patch.object(
+                DirectClient, "_get_write_service", return_value=mock_write_service
+            ),
+            patch.object(
+                DirectClient,
+                "_get_validated_session_for_agent",
+                return_value=mock_session,
+            ),
+        ):
+            client = DirectClient.__new__(DirectClient)
+            client.api_key = "test-api-key"
+            client.base_url = "https://api.moorcheh.ai/v1"
+            result = client.update_memory(
+                agent_id="test-agent",
+                memory_id="mem-123",
+                updates={"confidence": "0.7"},
+            )
+
+        # update_memory(memory_id, namespace, updates) is called positionally
+        forwarded_updates = mock_write_service.update_memory.call_args.args[2]
+        forwarded_confidence = forwarded_updates["confidence"]
+        assert isinstance(forwarded_confidence, float)
+        assert forwarded_confidence == 0.7
+        assert result["status"] == "updated"
+
+    def test_edit_rejects_invalid_confidence_string(self, mock_all_clients):
+        """Non-numeric string confidence like 'high' must be rejected on
+        the direct-client path (same contract as the API route)."""
+        from unittest.mock import MagicMock, patch
+
+        from memanto.cli.client.direct_client import DirectClient
+
+        mock_write_service = MagicMock()
+        mock_session = MagicMock()
+        mock_session.namespace = "memanto_agent_test-agent"
+
+        with (
+            patch.object(
+                DirectClient, "_get_write_service", return_value=mock_write_service
+            ),
+            patch.object(
+                DirectClient,
+                "_get_validated_session_for_agent",
+                return_value=mock_session,
+            ),
+        ):
+            client = DirectClient.__new__(DirectClient)
+            client.api_key = "test-api-key"
+            client.base_url = "https://api.moorcheh.ai/v1"
+            import pytest
+
+            with pytest.raises(ValueError, match="Confidence must be a number"):
+                client.update_memory(
+                    agent_id="test-agent",
+                    memory_id="mem-123",
+                    updates={"confidence": "high"},
+                )
+
+        mock_write_service.update_memory.assert_not_called()
+
+    def test_edit_sdk_rejects_unknown_field(self, mock_all_clients):
+        """SdkClient.update_memory must enforce the same field allowlist as
+        the API route. CodeRabbit review 2026-06-14T14:03:20Z flagged that
+        the SDK path forwarded unknown fields straight to the write service."""
+        from unittest.mock import MagicMock, patch
+
+        from memanto.cli.client.sdk_client import SdkClient
+
+        mock_write_service = MagicMock()
+        mock_session = MagicMock()
+        mock_session.namespace = "memanto_agent_test-agent"
+
+        with (
+            patch.object(
+                SdkClient, "_get_write_service", return_value=mock_write_service
+            ),
+            patch.object(
+                SdkClient, "_get_validated_session_for_agent", return_value=mock_session
+            ),
+        ):
+            client = SdkClient.__new__(SdkClient)
+            client.api_key = "test-api-key"
+            import pytest
+
+            with pytest.raises(ValueError, match="Unknown update field"):
+                client.update_memory(
+                    agent_id="test-agent",
+                    memory_id="mem-123",
+                    updates={"malicious_field": "x"},
+                )
+
+        mock_write_service.update_memory.assert_not_called()
+
+    def test_edit_sdk_rejects_blank_content(self, mock_all_clients):
+        """SdkClient.update_memory must reject blank content strings."""
+        from unittest.mock import MagicMock, patch
+
+        from memanto.cli.client.sdk_client import SdkClient
+
+        mock_write_service = MagicMock()
+        mock_session = MagicMock()
+        mock_session.namespace = "memanto_agent_test-agent"
+
+        with (
+            patch.object(
+                SdkClient, "_get_write_service", return_value=mock_write_service
+            ),
+            patch.object(
+                SdkClient, "_get_validated_session_for_agent", return_value=mock_session
+            ),
+        ):
+            client = SdkClient.__new__(SdkClient)
+            client.api_key = "test-api-key"
+            import pytest
+
+            with pytest.raises(ValueError, match="non-empty string"):
+                client.update_memory(
+                    agent_id="test-agent",
+                    memory_id="mem-123",
+                    updates={"content": "   "},
+                )
+
+        mock_write_service.update_memory.assert_not_called()
+
+    def test_edit_sdk_normalizes_confidence_and_accepts_valid_payload(
+        self, mock_all_clients
+    ):
+        """SdkClient.update_memory must coerce string confidence and accept
+        the full valid payload set, matching the API route contract."""
+        from unittest.mock import MagicMock, patch
+
+        from memanto.cli.client.sdk_client import SdkClient
+
+        mock_write_service = MagicMock()
+        mock_write_service.update_memory.return_value = {
+            "memory_id": "mem-123",
+            "status": "updated",
+            "action": "updated",
+            "updated_fields": ["confidence", "tags"],
+        }
+        mock_session = MagicMock()
+        mock_session.namespace = "memanto_agent_test-agent"
+
+        with (
+            patch.object(
+                SdkClient, "_get_write_service", return_value=mock_write_service
+            ),
+            patch.object(
+                SdkClient, "_get_validated_session_for_agent", return_value=mock_session
+            ),
+        ):
+            client = SdkClient.__new__(SdkClient)
+            client.api_key = "test-api-key"
+            result = client.update_memory(
+                agent_id="test-agent",
+                memory_id="mem-123",
+                updates={"confidence": "0.5", "tags": ["a", "b"]},
+            )
+
+        call_args = mock_write_service.update_memory.call_args
+        # update_memory(memory_id, namespace, updates) is called positionally
+        forwarded_updates = (
+            call_args.args[2]
+            if len(call_args.args) > 2
+            else call_args.kwargs.get("updates")
+        )
+        assert isinstance(forwarded_updates["confidence"], float)
+        assert forwarded_updates["confidence"] == 0.5
+        assert forwarded_updates["tags"] == ["a", "b"]
+        assert result["status"] == "updated"
+
+    @pytest.mark.parametrize(
+        ("status", "expires_delta_seconds"),
+        [
+            ("active", -1),
+            ("terminated", 3600),
+        ],
+    )
+    @pytest.mark.parametrize("client_path", ["direct_client", "sdk_client"])
+    def test_cached_client_session_must_still_be_active(
+        self, mock_all_clients, client_path, status, expires_delta_seconds
+    ):
+        from datetime import timedelta
+
+        from memanto.app.models.session import Session
+        from memanto.app.utils.errors import SessionExpiredError
+        from memanto.app.utils.temporal_helpers import utc_now
+
+        if client_path == "direct_client":
+            from memanto.cli.client.direct_client import DirectClient as Client
+        else:
+            from memanto.cli.client.sdk_client import SdkClient as Client
+
+        client = Client("test-api-key")
+        client.agent_id = "test-agent"
+        client.session_token = "test-token"
+        client._cached_session = Session(
+            session_id="sess-test",
+            session_token="test-token",
+            agent_id="test-agent",
+            namespace="memanto_agent_test-agent",
+            started_at=utc_now() - timedelta(hours=1),
+            expires_at=utc_now() + timedelta(seconds=expires_delta_seconds),
+            status=status,
+        )
+
+        with pytest.raises(SessionExpiredError, match="no longer active"):
+            client._get_validated_session_for_agent("test-agent")
+
+        assert client._cached_session is None
+
+    @pytest.mark.parametrize("client_path", ["direct_client", "sdk_client"])
+    def test_client_session_cache_is_agent_scoped(self, mock_all_clients, client_path):
+        from datetime import timedelta
+        from types import SimpleNamespace
+        from unittest.mock import MagicMock
+
+        from memanto.app.models.session import Session
+        from memanto.app.utils.temporal_helpers import utc_now
+
+        if client_path == "direct_client":
+            from memanto.cli.client.direct_client import DirectClient as Client
+        else:
+            from memanto.cli.client.sdk_client import SdkClient as Client
+
+        old_session = Session(
+            session_id="sess-old",
+            session_token="old-token",
+            agent_id="old-agent",
+            namespace="memanto_agent_old-agent",
+            started_at=utc_now() - timedelta(minutes=5),
+            expires_at=utc_now() + timedelta(hours=1),
+            status="active",
+        )
+        new_session = Session(
+            session_id="sess-new",
+            session_token="new-token",
+            agent_id="new-agent",
+            namespace="memanto_agent_new-agent",
+            started_at=utc_now(),
+            expires_at=utc_now() + timedelta(hours=1),
+            status="active",
+        )
+
+        session_service = MagicMock()
+        session_service.validate_session.return_value = SimpleNamespace(
+            agent_id="new-agent"
+        )
+        session_service.get_session.return_value = new_session
+        session_service.check_and_auto_renew.return_value = None
+
+        client = Client("test-api-key")
+        client.agent_id = "new-agent"
+        client.session_token = "new-token"
+        client._cached_session = old_session
+        client._session_service = session_service
+
+        session = client._get_validated_session_for_agent("new-agent")
+
+        assert session is new_session
+        assert client._cached_session is new_session
+        session_service.validate_session.assert_called_once_with("new-token")
 
     def test_recall(self, mock_all_clients):
         """Test 'memanto recall'"""
@@ -401,6 +740,98 @@ class TestMEMANTOCLI:
         assert result.exit_code == 0
         assert "Stored 2/2 memories successfully" in result.stdout
 
+    def test_remember_from_conversation_dry_run(self, mock_all_clients, tmp_path):
+        """Test 'memanto remember --from-conversation --dry-run'"""
+        conversation_file = tmp_path / "messages.json"
+        conversation_file.write_text(
+            json.dumps(
+                [
+                    {"role": "user", "content": "I prefer short PR summaries."},
+                    {"role": "assistant", "content": "I will remember that."},
+                ]
+            )
+        )
+        mock_all_clients.extract_memories_from_conversation.return_value = {
+            "dry_run": True,
+            "candidates": [
+                {
+                    "type": "preference",
+                    "title": "PR summary preference",
+                    "content": "The user prefers short PR summaries.",
+                    "confidence": 0.9,
+                }
+            ],
+            "count": 1,
+        }
+
+        result = runner.invoke(
+            app,
+            ["remember", "--from-conversation", str(conversation_file), "--dry-run"],
+        )
+
+        assert result.exit_code == 0
+        assert "Dry run" in result.stdout
+        assert "PR summary preference" in result.stdout
+        mock_all_clients.extract_memories_from_conversation.assert_called_once()
+        call_kwargs = (
+            mock_all_clients.extract_memories_from_conversation.call_args.kwargs
+        )
+        assert call_kwargs["dry_run"] is True
+        assert call_kwargs["messages"][0]["role"] == "user"
+
+    def test_remember_from_conversation_stores_extracted_memories(
+        self, mock_all_clients, tmp_path
+    ):
+        """Conversation extraction stores candidates when dry-run is not used."""
+        conversation_file = tmp_path / "messages.json"
+        conversation_file.write_text(
+            json.dumps([{"role": "user", "content": "The project uses pytest."}])
+        )
+        mock_all_clients.extract_memories_from_conversation.return_value = {
+            "dry_run": False,
+            "successful": 1,
+            "total_submitted": 1,
+            "failed": 0,
+            "candidates": [
+                {
+                    "type": "fact",
+                    "title": "Test framework",
+                    "content": "The project uses pytest.",
+                    "confidence": 0.85,
+                }
+            ],
+        }
+
+        result = runner.invoke(
+            app,
+            ["remember", "--from-conversation", str(conversation_file)],
+        )
+
+        assert result.exit_code == 0
+        assert "Stored 1/1 extracted memories" in result.stdout
+        mock_all_clients.extract_memories_from_conversation.assert_called_once()
+
+    def test_remember_from_conversation_rejects_batch_combo(
+        self, mock_all_clients, tmp_path
+    ):
+        """Conversation extraction is mutually exclusive with batch mode."""
+        conversation_file = tmp_path / "messages.json"
+        conversation_file.write_text(json.dumps([{"role": "user", "content": "x"}]))
+
+        result = runner.invoke(
+            app,
+            [
+                "remember",
+                "--from-conversation",
+                str(conversation_file),
+                "--batch",
+                str(conversation_file),
+            ],
+        )
+
+        assert result.exit_code != 0
+        assert "cannot be combined" in result.stdout
+
     def test_daily_summary(self, mock_all_clients):
         """Test 'memanto daily-summary' (summary only — no conflicts)."""
         mock_all_clients.generate_daily_summary.return_value = {
@@ -503,44 +934,47 @@ class TestMEMANTOCLI:
         assert result.exit_code == 0
         assert "MEMANTO Agent Integrations" in result.stdout
 
-    def test_analyze_help(self):
-        """Test 'memanto analyze --help'"""
-        result = runner.invoke(app, ["analyze", "--help"])
+    def test_migrate_help(self):
+        """Test 'memanto migrate --help'"""
+        result = runner.invoke(app, ["migrate", "--help"])
         assert result.exit_code == 0
         assert "supermemory" in result.stdout.lower()
         assert "mem0" in result.stdout.lower()
         assert "letta" in result.stdout.lower()
 
-    def test_analyze_supermemory_export(self, mock_all_clients, tmp_path):
-        """Test 'memanto analyze supermemory' end-to-end with mocked export + LLM."""
+    def _write_export_file(self, tmp_path, name, export):
+        """Helper: dump an export dict to JSON so migrate can load it via --file."""
+        path = tmp_path / name
+        path.write_text(json.dumps(export), encoding="utf-8")
+        return path
+
+    def test_migrate_supermemory_dry_run(self, mock_all_clients, tmp_path):
+        """'memanto migrate supermemory --file ... --dry-run' renders a savings report."""
         export = {
             "exported_at": "2026-06-04T00:00:00Z",
             "summary": {
                 "document_count": 2,
                 "chunk_count": 5,
-                "memory_entry_count": 3,
+                "memory_entry_count": 1,
                 "container_tag_count": 1,
                 "connection_count": 0,
             },
             "documents": [],
-            "memories": [],
+            "memories": [
+                {"id": "m1", "content": "team uses Python", "container_tag": "eng"},
+            ],
         }
-        export_file = tmp_path / "supermemory_export.json"
+        export_file = self._write_export_file(
+            tmp_path, "supermemory_export.json", export
+        )
 
-        # Moorcheh answer endpoint returns a markdown narrative.
+        # Moorcheh answer endpoint returns a markdown narrative for the report.
         mock_all_clients.answer.return_value = {
             "answer": "## Executive summary\nMigrating saves tokens.",
         }
 
-        with (
-            patch("memanto.cli.commands.analyze.config_manager") as mock_cfg,
-            patch(
-                "memanto.cli.commands.analyze.run_supermemory_export",
-                return_value=(export_file, export),
-            ) as mock_export,
-        ):
-            mock_cfg.get_supermemory_api_key.return_value = "sm_test_key"
-            mock_cfg.get_analyze_dir.return_value = tmp_path
+        with patch("memanto.cli.commands.migrate.config_manager") as mock_cfg:
+            mock_cfg.get_migrate_dir.return_value = tmp_path
             mock_cfg.get_active_session.return_value = ("test-agent", "test-token")
             mock_cfg.get_answer_config.return_value = {
                 "model": "anthropic.claude-sonnet-4-6"
@@ -548,31 +982,27 @@ class TestMEMANTOCLI:
 
             result = runner.invoke(
                 app,
-                ["analyze", "supermemory", "--api-key", "sm_test_key"],
+                ["migrate", "supermemory", "--file", str(export_file), "--dry-run"],
             )
 
         assert result.exit_code == 0, result.stdout
-        assert "Analysis complete" in result.stdout
-        mock_export.assert_called_once()
-        mock_cfg.set_supermemory_api_key.assert_called_with("sm_test_key")
-        assert mock_export.call_args[0][0] == "sm_test_key"
+        assert "Dry run complete" in result.stdout
 
-        # A timestamped run folder with the report was created under tmp_path.
-        reports = list(tmp_path.glob("*/analyze-report.md"))
+        reports = list(tmp_path.glob("*/migrate-report.md"))
         assert len(reports) == 1
         report_text = reports[0].read_text(encoding="utf-8")
         assert "Memanto vs. Supermemory" in report_text
         assert "Executive summary" in report_text
         assert "Method & assumptions" in report_text
 
-    def test_analyze_mem0_export(self, mock_all_clients, tmp_path):
-        """Test 'memanto analyze mem0' end-to-end with mocked export + LLM."""
+    def test_migrate_mem0_dry_run(self, mock_all_clients, tmp_path):
+        """'memanto migrate mem0 --file ... --dry-run' maps and renders a report."""
         export = {
             "exported_at": "2026-06-04T00:00:00Z",
             "summary": {
                 "entity_count": 2,
                 "scope_count": 2,
-                "memory_count": 5,
+                "memory_count": 2,
             },
             "entities": [
                 {"id": "user:alice", "name": "alice", "type": "user"},
@@ -583,21 +1013,14 @@ class TestMEMANTOCLI:
                 {"id": "m2", "memory": "Timezone is PST"},
             ],
         }
-        export_file = tmp_path / "mem0_export.json"
+        export_file = self._write_export_file(tmp_path, "mem0_export.json", export)
 
         mock_all_clients.answer.return_value = {
             "answer": "## Executive summary\nMigrating from Mem0 saves tokens.",
         }
 
-        with (
-            patch("memanto.cli.commands.analyze.config_manager") as mock_cfg,
-            patch(
-                "memanto.cli.commands.analyze.run_mem0_export",
-                return_value=(export_file, export),
-            ) as mock_export,
-        ):
-            mock_cfg.get_mem0_api_key.return_value = "m0_test_key"
-            mock_cfg.get_analyze_dir.return_value = tmp_path
+        with patch("memanto.cli.commands.migrate.config_manager") as mock_cfg:
+            mock_cfg.get_migrate_dir.return_value = tmp_path
             mock_cfg.get_active_session.return_value = ("test-agent", "test-token")
             mock_cfg.get_answer_config.return_value = {
                 "model": "anthropic.claude-sonnet-4-6"
@@ -605,24 +1028,21 @@ class TestMEMANTOCLI:
 
             result = runner.invoke(
                 app,
-                ["analyze", "mem0", "--api-key", "m0_test_key"],
+                ["migrate", "mem0", "--file", str(export_file), "--dry-run"],
             )
 
         assert result.exit_code == 0, result.stdout
-        assert "Analysis complete" in result.stdout
-        mock_export.assert_called_once()
-        mock_cfg.set_mem0_api_key.assert_called_with("m0_test_key")
-        assert mock_export.call_args[0][0] == "m0_test_key"
+        assert "Dry run complete" in result.stdout
 
-        reports = list(tmp_path.glob("*/analyze-report.md"))
+        reports = list(tmp_path.glob("*/migrate-report.md"))
         assert len(reports) == 1
         report_text = reports[0].read_text(encoding="utf-8")
         assert "Memanto vs. Mem0" in report_text
         assert "Executive summary" in report_text
         assert "Method & assumptions" in report_text
 
-    def test_analyze_letta_export(self, mock_all_clients, tmp_path):
-        """Test 'memanto analyze letta' end-to-end with mocked export + LLM."""
+    def test_migrate_letta_dry_run(self, mock_all_clients, tmp_path):
+        """'memanto migrate letta --file ... --dry-run' maps and renders a report."""
         export = {
             "exported_at": "2026-06-04T00:00:00Z",
             "export_mode": "all_agents",
@@ -640,21 +1060,14 @@ class TestMEMANTOCLI:
                 {"id": "p2", "text": "Timezone is PST"},
             ],
         }
-        export_file = tmp_path / "letta_export.json"
+        export_file = self._write_export_file(tmp_path, "letta_export.json", export)
 
         mock_all_clients.answer.return_value = {
             "answer": "## Executive summary\nMigrating from Letta saves tokens.",
         }
 
-        with (
-            patch("memanto.cli.commands.analyze.config_manager") as mock_cfg,
-            patch(
-                "memanto.cli.commands.analyze.run_letta_export",
-                return_value=(export_file, export),
-            ) as mock_export,
-        ):
-            mock_cfg.get_letta_api_key.return_value = "let_test_key"
-            mock_cfg.get_analyze_dir.return_value = tmp_path
+        with patch("memanto.cli.commands.migrate.config_manager") as mock_cfg:
+            mock_cfg.get_migrate_dir.return_value = tmp_path
             mock_cfg.get_active_session.return_value = ("test-agent", "test-token")
             mock_cfg.get_answer_config.return_value = {
                 "model": "anthropic.claude-sonnet-4-6"
@@ -662,26 +1075,23 @@ class TestMEMANTOCLI:
 
             result = runner.invoke(
                 app,
-                ["analyze", "letta", "--api-key", "let_test_key"],
+                ["migrate", "letta", "--file", str(export_file), "--dry-run"],
             )
 
         assert result.exit_code == 0, result.stdout
-        assert "Analysis complete" in result.stdout
-        mock_export.assert_called_once()
-        mock_cfg.set_letta_api_key.assert_called_with("let_test_key")
-        assert mock_export.call_args[0][0] == "let_test_key"
+        assert "Dry run complete" in result.stdout
 
-        reports = list(tmp_path.glob("*/analyze-report.md"))
+        reports = list(tmp_path.glob("*/migrate-report.md"))
         assert len(reports) == 1
         report_text = reports[0].read_text(encoding="utf-8")
         assert "Memanto vs. Letta" in report_text
         assert "Executive summary" in report_text
         assert "Method & assumptions" in report_text
 
-    def test_analyze_narrative_retries_on_invalid_session(
+    def test_migrate_narrative_retries_on_invalid_session(
         self, mock_all_clients, tmp_path
     ):
-        """Analyze re-activates the agent when the Moorcheh session token is invalid."""
+        """Migrate re-activates the agent when the Moorcheh session token is invalid."""
         from memanto.app.utils.errors import InvalidSessionTokenError
 
         export = {
@@ -691,7 +1101,7 @@ class TestMEMANTOCLI:
             "agents": [{"id": "agent-1", "name": "lette"}],
             "passages": [{"id": "p1", "text": "hello"}],
         }
-        export_file = tmp_path / "letta_export.json"
+        export_file = self._write_export_file(tmp_path, "letta_export.json", export)
 
         mock_all_clients.answer.side_effect = [
             InvalidSessionTokenError(
@@ -704,15 +1114,8 @@ class TestMEMANTOCLI:
             "session_token": "new-token",
         }
 
-        with (
-            patch("memanto.cli.commands.analyze.config_manager") as mock_cfg,
-            patch(
-                "memanto.cli.commands.analyze.run_letta_export",
-                return_value=(export_file, export),
-            ),
-        ):
-            mock_cfg.get_letta_api_key.return_value = "let_test_key"
-            mock_cfg.get_analyze_dir.return_value = tmp_path
+        with patch("memanto.cli.commands.migrate.config_manager") as mock_cfg:
+            mock_cfg.get_migrate_dir.return_value = tmp_path
             mock_cfg.get_active_session.return_value = ("test-agent", "stale-token")
             mock_cfg.get_answer_config.return_value = {
                 "model": "anthropic.claude-sonnet-4-6"
@@ -720,14 +1123,14 @@ class TestMEMANTOCLI:
 
             result = runner.invoke(
                 app,
-                ["analyze", "letta", "--api-key", "let_test_key"],
+                ["migrate", "letta", "--file", str(export_file), "--dry-run"],
             )
 
         assert result.exit_code == 0, result.stdout
         mock_all_clients.activate_agent.assert_called_once_with("test-agent")
         assert mock_all_clients.answer.call_count == 2
 
-        reports = list(tmp_path.glob("*/analyze-report.md"))
+        reports = list(tmp_path.glob("*/migrate-report.md"))
         report_text = reports[0].read_text(encoding="utf-8")
         assert "Recovered after re-activation." in report_text
 

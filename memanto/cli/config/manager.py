@@ -128,6 +128,12 @@ class ConfigManager:
         path.mkdir(parents=True, exist_ok=True)
         return path
 
+    def get_migrate_dir(self, provider: str) -> Path:
+        """Base directory for a provider's migrate artifacts (export + report)."""
+        path = self.config_dir / "migrate" / provider
+        path.mkdir(parents=True, exist_ok=True)
+        return path
+
     def is_configured(self) -> bool:
         """Check if the active backend is configured.
 

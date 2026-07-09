@@ -104,3 +104,6 @@ temp/
 
 # Generated version file
 **/_version.py
+
+# npm pack output
+*.tgz

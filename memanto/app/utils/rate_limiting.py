@@ -38,19 +38,12 @@ class RateLimiter:
             "health": RateLimit(300, 60),  # 300/min
         }
 
-    def _get_key(
-        self, operation: str, agent_id: str, scope_id: str | None = None
-    ) -> str:
+    def _get_key(self, operation: str, agent_id: str) -> str:
         """Generate rate limit key"""
-        if operation in ["memory_write", "memory_delete"] and scope_id:
-            # Per-scope limits
-            return f"{operation}:{agent_id}:{scope_id}"
-        else:
-            # Per-agent limits
-            return f"{operation}:{agent_id}"
+        return f"{operation}:{agent_id}"
 
     def check_rate_limit(
-        self, operation: str, agent_id: str, scope_id: str | None = None
+        self, operation: str, agent_id: str
     ) -> tuple[bool, int | None]:
         """
         Check if request is within rate limit
@@ -60,7 +53,7 @@ class RateLimiter:
             return True, None
 
         limit = self.limits[operation]
-        key = self._get_key(operation, agent_id, scope_id)
+        key = self._get_key(operation, agent_id)
         now = time.time()
 
         # Clean old requests outside window
@@ -79,11 +72,9 @@ class RateLimiter:
 
         return False, retry_after
 
-    def enforce_rate_limit(
-        self, operation: str, agent_id: str, scope_id: str | None = None
-    ):
+    def enforce_rate_limit(self, operation: str, agent_id: str):
         """Enforce rate limit, raise HTTPException if exceeded"""
-        allowed, retry_after = self.check_rate_limit(operation, agent_id, scope_id)
+        allowed, retry_after = self.check_rate_limit(operation, agent_id)
 
         if not allowed:
             # Log rate limit event
@@ -96,7 +87,6 @@ class RateLimiter:
                 status_code=429,
                 latency_ms=0,
                 agent_id=agent_id,
-                scope_id=scope_id,
                 errors=["rate_limit_triggered"],
             )
 
@@ -116,9 +106,9 @@ class RateLimiter:
 rate_limiter = RateLimiter()
 
 
-def enforce_write_rate_limit(agent_id: str, scope_id: str):
+def enforce_write_rate_limit(agent_id: str):
     """Enforce rate limit for memory write operations"""
-    rate_limiter.enforce_rate_limit("memory_write", agent_id, scope_id)
+    rate_limiter.enforce_rate_limit("memory_write", agent_id)
 
 
 def enforce_read_rate_limit(agent_id: str):
@@ -131,9 +121,9 @@ def enforce_answer_rate_limit(agent_id: str):
     rate_limiter.enforce_rate_limit("memory_answer", agent_id)
 
 
-def enforce_delete_rate_limit(agent_id: str, scope_id: str):
+def enforce_delete_rate_limit(agent_id: str):
     """Enforce rate limit for memory delete operations"""
-    rate_limiter.enforce_rate_limit("memory_delete", agent_id, scope_id)
+    rate_limiter.enforce_rate_limit("memory_delete", agent_id)
 
 
 def enforce_namespace_rate_limit(operation: str, agent_id: str):

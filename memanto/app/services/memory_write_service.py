@@ -21,18 +21,7 @@ class MemoryWriteService:
         """Initialize the service with a Moorcheh client."""
 
         self.client = moorcheh_client
-        self._namespace_service = None
         self._parser = MemoryParsingService()
-
-    @property
-    def namespace_service(self):
-        """Lazily create the namespace service used for memory scopes."""
-
-        if self._namespace_service is None:
-            from memanto.app.services.namespace_service import NamespaceService
-
-            self._namespace_service = NamespaceService(self.client)
-        return self._namespace_service
 
     def store_memory(
         self, memory: MemoryRecord, context: dict[str, Any] | None = None
@@ -52,7 +41,7 @@ class MemoryWriteService:
             memory = self._parser.parse_memory(memory)
 
             # Add namespace
-            namespace = memory.get_scope().to_namespace()
+            namespace = memory.namespace()
 
             # skip validation for speed
             ## Validate memory
@@ -131,7 +120,7 @@ class MemoryWriteService:
                     memory = self._parser.parse_memory(memory)
 
                     # Add namespace
-                    namespace = memory.get_scope().to_namespace()
+                    namespace = memory.namespace()
 
                     if first_namespace is None:
                         first_namespace = namespace
@@ -266,6 +255,18 @@ class MemoryWriteService:
                 else existing_memory_data
             )
 
+            # The namespace (memanto_agent_{agent_id}) is authoritative for the
+            # agent_id; fall back to it when stored metadata predates the flat
+            # agent_id field so the rewritten record keeps correct metadata.
+            agent_id = metadata.get("agent_id")
+            if not agent_id and namespace.startswith("memanto_agent_"):
+                agent_id = namespace.removeprefix("memanto_agent_")
+            if not agent_id:
+                raise MemoryError(
+                    f"Cannot determine agent_id for memory {memory_id} "
+                    f"in namespace {namespace}"
+                )
+
             # Build updated memory record
             updated_memory = MemoryRecord(
                 id=memory_id,  # Keep same ID
@@ -274,8 +275,7 @@ class MemoryWriteService:
                     "title", existing_memory_data.get("title", "Updated Memory")
                 ),
                 content=updates.get("content", existing_memory_data.get("content", "")),
-                scope_type=metadata.get("scope_type", "agent"),
-                scope_id=metadata.get("scope_id", "unknown"),
+                agent_id=agent_id,
                 actor_id=updates.get("actor_id", metadata.get("actor_id", "unknown")),
                 source=updates.get("source", metadata.get("source", "system")),
                 source_ref=updates.get("source_ref", metadata.get("source_ref")),
@@ -307,11 +307,14 @@ class MemoryWriteService:
                     updated_memory.expires_at = metadata["expires_at"]
 
             # Step 3: Delete old version
-            delete_result = self.client.documents.delete(
-                namespace_name=namespace, ids=[memory_id]
+            from typing import Any, cast
+
+            delete_result = cast(
+                dict[str, Any],
+                self.client.documents.delete(namespace_name=namespace, ids=[memory_id]),
             )
 
-            if delete_result.get("actual_deletions", 0) == 0:
+            if not self._deletion_succeeded(delete_result):
                 raise MemoryError(f"Failed to delete old version of memory {memory_id}")
 
             validation_result = {"action": "store", "reason": "MVP direct store"}
@@ -349,27 +352,18 @@ class MemoryWriteService:
                 self.client.documents.delete(namespace_name=namespace, ids=[memory_id]),
             )
 
-            # Cloud returns ``actual_deletions``; on-prem's /items/delete only
-            # returns ``deleted_ids`` (and ``status``). Mirror the cloud SDK's
-            # ``_deletion_processed_count`` so both backends report success.
-            raw = result.get("actual_deletions")
-            if isinstance(raw, int):
-                return raw > 0
-            for key in ("deleted_ids", "requested_ids"):
-                ids = result.get(key)
-                if isinstance(ids, list):
-                    return len(ids) > 0
-            # Some on-prem builds only return ``{"status": "success"}``.
-            return str(result.get("status", "")).lower() in {"success", "ok"}
+            return self._deletion_succeeded(result)
 
         except Exception as e:
             raise MemoryError(f"Failed to delete memory: {e}")
 
-    def _ensure_namespace(self, memory: MemoryRecord) -> str:
-        """Ensure namespace exists for memory"""
-        from typing import cast
-
-        namespace = self.namespace_service.create_namespace(
-            cast(Any, memory.scope_type), memory.scope_id
-        )
-        return cast(str, namespace)
+    @staticmethod
+    def _deletion_succeeded(result: dict[str, Any]) -> bool:
+        """Return True for cloud and on-prem successful deletion shapes."""
+        raw = result.get("actual_deletions")
+        if isinstance(raw, int):
+            return raw > 0
+        ids = result.get("deleted_ids")
+        if isinstance(ids, list):
+            return len(ids) > 0
+        return str(result.get("status", "")).lower() in {"success", "ok"}
