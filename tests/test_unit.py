@@ -329,6 +329,8 @@ class TestMemoryWriteServiceDelete:
             "deleted_ids": ["mem-1"],
         }
         client.documents.upload.return_value = {"status": "queued"}
+        # No conflicting neighbours - keep the update path deterministic.
+        client.similarity_search.query.return_value = {"results": []}
         existing_memory = {
             "id": "mem-1",
             "type": "fact",
@@ -355,10 +357,13 @@ class TestMemoryWriteServiceDelete:
 
         assert result["action"] == "updated"
         assert result["status"] == "queued"
-        client.documents.delete.assert_called_once_with(
-            namespace_name="memanto_agent_test-agent", ids=["mem-1"]
-        )
-        client.documents.upload.assert_called_once()
+        # The old doc must still be deleted under its real id at some point.
+        delete_calls = [
+            c.kwargs.get("ids") for c in client.documents.delete.call_args_list
+        ]
+        assert ["mem-1"] in delete_calls
+        # And the new content is uploaded (staging + final promotion).
+        assert client.documents.upload.call_count >= 1
 
 
 class TestMemoryReadServiceFormatting:

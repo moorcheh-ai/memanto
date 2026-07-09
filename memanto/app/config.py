@@ -162,6 +162,11 @@ class Settings(BaseSettings):
     PROVISIONAL_TTL_SECONDS: int = 3600  # 1 hour
     PROVISIONAL_MAX_CONFIDENCE: float = 0.5
 
+    # Conflict Resolution Configuration
+    # Similarity score above which a new memory is treated as superseding
+    # an existing active memory of the same type in the same namespace.
+    CONFLICT_SIMILARITY_THRESHOLD: float = 0.82
+
     # Schedule Configuration
     MEMANTO_SCHEDULE_TIME: str = "23:55"
 

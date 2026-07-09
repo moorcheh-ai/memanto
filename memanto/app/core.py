@@ -42,6 +42,9 @@ class MemoryRecord(BaseModel):
     # Provenance
     provenance: ProvenanceType = "explicit_statement"
 
+    # Set when this memory has been superseded by a newer, conflicting one.
+    superseded_by: str | None = None
+
     # Timestamps (auto-populated by server)
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
@@ -89,6 +92,8 @@ class MemoryRecord(BaseModel):
             document["expires_at"] = self.expires_at.isoformat()
         if self.ttl_seconds:
             document["ttl_seconds"] = self.ttl_seconds
+        if self.superseded_by:
+            document["superseded_by"] = self.superseded_by
 
         return document
 
@@ -100,3 +105,50 @@ class MemoryRecord(BaseModel):
         """Set TTL and expiration"""
         self.ttl_seconds = seconds
         self.expires_at = datetime.utcnow() + timedelta(seconds=seconds)
+
+
+class ValidationPolicy:
+    """
+    Decides what happens to a new memory before it's persisted.
+
+    Memory types listed in settings.REQUIRE_VALIDATION_FOR ("fact",
+    "preference" by default) are treated as consequential enough that
+    they shouldn't be trusted at full confidence on a single, unconfirmed
+    mention. Everything else is stored as-is. This intentionally stays
+    simple (no LLM call) so it doesn't add latency/cost to every write.
+    """
+
+    def validate_memory(self, memory: "MemoryRecord", context: dict[str, Any]) -> dict[str, Any]:
+        from memanto.app.config import settings
+
+        if memory.type not in settings.REQUIRE_VALIDATION_FOR:
+            return {"action": "store", "reason": "Non-critical memory type; stored directly"}
+
+        repetition_count = context.get("repetition_count", 0)
+        trusted_source = memory.source in {"tool", "system"} and memory.confidence >= 0.85
+        corroborated = repetition_count >= 2 or memory.provenance in {"validated", "corrected"}
+
+        if trusted_source or corroborated:
+            return {
+                "action": "store",
+                "reason": (
+                    f"Critical memory type '{memory.type}' met validation "
+                    f"requirements (repetition={repetition_count}, source={memory.source})"
+                ),
+            }
+
+        return {
+            "action": "store_provisional",
+            "reason": (
+                f"Critical memory type '{memory.type}' has not been corroborated "
+                "(no repeated mention, not from a trusted source) - stored provisionally"
+            ),
+        }
+
+    def make_provisional(self, memory: "MemoryRecord") -> "MemoryRecord":
+        from memanto.app.config import settings
+
+        memory.status = "provisional"
+        memory.confidence = min(memory.confidence, settings.PROVISIONAL_MAX_CONFIDENCE)
+        memory.set_ttl(settings.PROVISIONAL_TTL_SECONDS)
+        return memory

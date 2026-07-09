@@ -2,6 +2,7 @@
 Memory Write Service
 """
 
+import uuid
 from datetime import datetime
 from typing import TYPE_CHECKING, Any
 
@@ -9,7 +10,9 @@ if TYPE_CHECKING:
     from moorcheh_sdk import MoorchehClient
 
 from memanto.app.core import MemoryRecord
+from memanto.app.services.conflict_resolution_service import ConflictResolutionService
 from memanto.app.services.memory_parsing_service import MemoryParsingService
+from memanto.app.services.memory_validation_service import MemoryValidationService
 from memanto.app.utils.errors import MemoryError
 from memanto.app.utils.ids import generate_memory_id
 
@@ -22,6 +25,8 @@ class MemoryWriteService:
 
         self.client = moorcheh_client
         self._parser = MemoryParsingService()
+        self._validation_service = MemoryValidationService(moorcheh_client)
+        self._conflict_service = ConflictResolutionService(moorcheh_client)
 
     def store_memory(
         self, memory: MemoryRecord, context: dict[str, Any] | None = None
@@ -43,13 +48,12 @@ class MemoryWriteService:
             # Add namespace
             namespace = memory.namespace()
 
-            # skip validation for speed
-            ## Validate memory
-            # validation_result = self.validation_service.validate_memory(memory, context)
-            ## Use validated memory if modified
-            # if "memory" in validation_result:
-            #     memory = validation_result["memory"]
-            validation_result = {"action": "store", "reason": "MVP direct store"}
+            # Validate memory (may downgrade it to provisional in-place)
+            validation_result = self._validation_service.validate_memory(
+                memory, context
+            )
+            if "memory" in validation_result:
+                memory = validation_result["memory"]
 
             from typing import cast
 
@@ -63,6 +67,19 @@ class MemoryWriteService:
                 namespace_name=namespace, documents=[document]
             )
 
+            # Check whether this memory contradicts/replaces an existing
+            # active one, and if so, mark the older one superseded. Skip
+            # this for memories that were just stored provisionally -
+            # unconfirmed information shouldn't be allowed to bump
+            # something that was already trusted.
+            superseded_ids: list[str] = []
+            if validation_result.get("action") != "store_provisional":
+                conflicts = self._conflict_service.find_conflicts(memory)
+                if conflicts:
+                    superseded_ids = self._conflict_service.supersede(
+                        conflicts, memory.id, namespace, self
+                    )
+
             return {
                 "id": memory.id,
                 "namespace": namespace,
@@ -72,6 +89,7 @@ class MemoryWriteService:
                 "confidence": memory.confidence,
                 "memory_status": memory.status,
                 "type": memory.type,
+                "superseded_ids": superseded_ids,
             }
 
         except Exception as e:
@@ -103,6 +121,7 @@ class MemoryWriteService:
             first_namespace = None
             results = []
             validated_documents = []
+            stored_memories: list[tuple[MemoryRecord, dict[str, Any]]] = []
 
             # Enforce server-side timestamps for batch (single timestamp for all)
             now = datetime.utcnow()
@@ -137,16 +156,11 @@ class MemoryWriteService:
                         )
                         continue
 
-                    # skip validation for speed
-                    ## Validate memory
-                    # validation_result = self.validation_service.validate_memory(memory, context)
-                    ## Use validated memory if modified
-                    # if "memory" in validation_result:
-                    #     memory = validation_result["memory"]
-                    validation_result = {
-                        "action": "store",
-                        "reason": "MVP direct store",
-                    }
+                    validation_result = self._validation_service.validate_memory(
+                        memory, context
+                    )
+                    if "memory" in validation_result:
+                        memory = validation_result["memory"]
 
                     from typing import cast
 
@@ -155,6 +169,7 @@ class MemoryWriteService:
                     # Convert to Moorcheh document
                     document = cast(Document, memory.to_moorcheh_document())
                     validated_documents.append(document)
+                    stored_memories.append((memory, validation_result))
 
                     # Store validation result for later
                     results.append(
@@ -195,6 +210,20 @@ class MemoryWriteService:
                 for result in results:
                     if result["status"] == "pending":
                         result["status"] = moorcheh_status
+
+                # Now that everything's durably written, check each stored
+                # memory against existing memories for conflicts. Skipped for
+                # provisional memories - unconfirmed info shouldn't supersede
+                # something already trusted. Same namespace for the whole
+                # batch, so this only needs first_namespace.
+                for memory, validation_result in stored_memories:
+                    if validation_result.get("action") == "store_provisional":
+                        continue
+                    conflicts = self._conflict_service.find_conflicts(memory)
+                    if conflicts:
+                        self._conflict_service.supersede(
+                            conflicts, memory.id, cast(str, first_namespace), self
+                        )
 
             # Count successes and failures
             successful = sum(1 for r in results if r["status"] in ["queued", "success"])
@@ -282,6 +311,9 @@ class MemoryWriteService:
                 confidence=updates.get("confidence", metadata.get("confidence", 0.8)),
                 status=updates.get("status", metadata.get("status", "active")),
                 tags=updates.get("tags", metadata.get("tags", [])),
+                superseded_by=updates.get(
+                    "superseded_by", metadata.get("superseded_by")
+                ),
             )
 
             # Update timestamps (preserve created_at, set updated_at to now)
@@ -306,39 +338,77 @@ class MemoryWriteService:
                 if metadata.get("expires_at"):
                     updated_memory.expires_at = metadata["expires_at"]
 
-            # Step 3: Delete old version
+            # Moorcheh doesn't support in-place updates, so a rewrite still
+            # needs a delete + re-upload under the same id somewhere in the
+            # process. The previous version of this method deleted the old
+            # doc *first*, which meant a failure on the re-upload (timeout,
+            # backend error, whatever) silently destroyed the memory with no
+            # way back. Instead:
+            #   1. upload the new content under a temporary id (old doc is
+            #      untouched the whole time - if this fails, nothing changed)
+            #   2. only once that's confirmed, delete the old doc
+            #   3. re-upload the new content under the real id
+            #   4. clean up the temporary copy
+            # If step 3 fails after step 2 succeeded, the original id is
+            # briefly gone, but the content isn't lost - it's sitting under
+            # the staging id, and the error says so.
             from typing import Any, cast
+
+            from moorcheh_sdk.types.document import Document
+
+            document = cast(Document, updated_memory.to_moorcheh_document())
+            staging_id = f"{memory_id}__staging_{uuid.uuid4().hex[:8]}"
+            staged_document = cast(Document, dict(document))
+            staged_document["id"] = staging_id
+
+            self.client.documents.upload(
+                namespace_name=namespace, documents=[staged_document]
+            )
 
             delete_result = cast(
                 dict[str, Any],
                 self.client.documents.delete(namespace_name=namespace, ids=[memory_id]),
             )
-
             if not self._deletion_succeeded(delete_result):
+                # Old doc is still there - just clean up the stray staged
+                # copy and bail, nothing lost either way.
+                try:
+                    self.client.documents.delete(
+                        namespace_name=namespace, ids=[staging_id]
+                    )
+                except Exception:
+                    pass
                 raise MemoryError(f"Failed to delete old version of memory {memory_id}")
 
-            validation_result = {"action": "store", "reason": "MVP direct store"}
+            try:
+                upload_result = self.client.documents.upload(
+                    namespace_name=namespace, documents=[document]
+                )
+            except Exception as promote_error:
+                raise MemoryError(
+                    f"Failed to finalize update for memory {memory_id}: "
+                    f"{promote_error}. The updated content was not lost - it's "
+                    f"stored under temporary id '{staging_id}' in namespace "
+                    f"'{namespace}'. Retry the update, or restore it manually."
+                )
 
-            # Step 4: Upload new version
-            from typing import cast
-
-            from moorcheh_sdk.types.document import Document
-
-            document = cast(Document, updated_memory.to_moorcheh_document())
-            upload_result = self.client.documents.upload(
-                namespace_name=namespace, documents=[document]
-            )
+            try:
+                self.client.documents.delete(namespace_name=namespace, ids=[staging_id])
+            except Exception:
+                # A leftover staging doc is clutter, not a correctness problem.
+                pass
 
             return {
                 "id": memory_id,
                 "namespace": namespace,
                 "status": upload_result.get("status", "unknown"),
                 "action": "updated",
-                "reason": "Memory updated successfully via delete-and-recreate",
-                "validation": validation_result.get("action", "validated"),
+                "reason": "Memory updated successfully via stage-then-swap",
                 "updated_fields": list(updates.keys()),
             }
 
+        except MemoryError:
+            raise
         except Exception as e:
             raise MemoryError(f"Failed to update memory: {e}")
 
