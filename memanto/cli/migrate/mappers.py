@@ -93,7 +93,7 @@ def _parse_dt(value: Any) -> datetime | None:
         return None
     if isinstance(value, datetime):
         return value if value.tzinfo else value.replace(tzinfo=timezone.utc)
-    if isinstance(value, (int, float)):
+    if isinstance(value, int | float):
         try:
             return datetime.fromtimestamp(float(value), tz=timezone.utc)
         except (OverflowError, OSError, ValueError):
@@ -131,7 +131,7 @@ def _format_supporting_data(items: list[tuple[str, Any]]) -> str:
     for label, value in items:
         if value in (None, "", [], {}):
             continue
-        if isinstance(value, (list, tuple)):
+        if isinstance(value, list | tuple):
             value = ", ".join(str(v) for v in value if v not in (None, ""))
             if not value:
                 continue
@@ -170,6 +170,17 @@ def _attach_footer(content: str, footer: str) -> str:
 
 def _now_utc() -> datetime:
     return datetime.now(timezone.utc)
+
+
+def _supermemory_chunk_dedupe_key(
+    *, doc_id: Any, chunk_id: Any, content: str, tags: list[str]
+) -> tuple[str, ...]:
+    """Keep Supermemory fallback chunks distinct by source scope."""
+    if doc_id and chunk_id:
+        return ("source", str(doc_id), str(chunk_id))
+    if doc_id:
+        return ("document", str(doc_id), content)
+    return ("content", content, *tags)
 
 
 # --------------------------------------------------------------------------
@@ -308,7 +319,7 @@ def map_supermemory(export: dict[str, Any]) -> list[dict[str, Any]]:
     back to the source via ``source_ref``.
     """
     rows: list[dict[str, Any]] = []
-    seen: set[str] = set()
+    seen: set[str | tuple[str, ...]] = set()
     migrated_at = _now_utc()
 
     for mem in export.get("memories", []) or []:
@@ -367,9 +378,15 @@ def map_supermemory(export: dict[str, Any]) -> list[dict[str, Any]]:
         )
         for chunk in doc.get("chunks", []) or []:
             content = (chunk.get("content") or chunk.get("text") or "").strip()
-            if not content or content in seen:
+            dedupe_key = _supermemory_chunk_dedupe_key(
+                doc_id=doc_id,
+                chunk_id=chunk.get("id"),
+                content=content,
+                tags=doc_tags,
+            )
+            if not content or dedupe_key in seen:
                 continue
-            seen.add(content)
+            seen.add(dedupe_key)
             footer = _format_supporting_data(
                 [
                     (
