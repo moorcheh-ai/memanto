@@ -2,6 +2,7 @@
 Memory Write Service
 """
 
+import time
 from datetime import datetime
 from typing import TYPE_CHECKING, Any
 
@@ -219,26 +220,7 @@ class MemoryWriteService:
         updates: dict[str, Any],
         context: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
-        """
-        Update existing memory using SDK upsert pattern
-
-        Moorcheh SDK performs upsert (overwrite) when uploading a document
-        with an existing ID, so we:
-        1. Retrieve the existing memory
-        2. Apply updates to create new version
-        3. Upload new version with same ID (overwrites old via upsert)
-
-        If the upload fails, the old version remains intact - no data loss.
-
-        Args:
-            memory_id: ID of memory to update
-            namespace: Namespace containing the memory
-            updates: Dict of fields to update
-            context: Optional validation context
-
-        Returns:
-            Dict with update result
-        """
+        """Update memory via SDK upsert (upload-overwrites by ID)."""
         try:
             from memanto.app.services.memory_read_service import MemoryReadService
 
@@ -309,10 +291,7 @@ class MemoryWriteService:
                 if metadata.get("expires_at"):
                     updated_memory.expires_at = metadata["expires_at"]
 
-            # Step 3: Upload new version with same ID (Moorcheh SDK performs upsert:
-            # uploading a document with an existing ID overwrites it, so no explicit
-            # delete is needed. If upload fails after retries, the old version
-            # remains intact - eliminating the data loss window.)
+            # Step 3: upload with same ID = upsert, old data preserved if this fails
             from typing import Any, cast
             from moorcheh_sdk.types.document import Document
 
@@ -320,7 +299,6 @@ class MemoryWriteService:
 
             upload_result = None
             last_upload_error = None
-            import time as _time
             for attempt in range(3):
                 try:
                     upload_result = self.client.documents.upload(
@@ -330,7 +308,7 @@ class MemoryWriteService:
                 except (ConnectionError, TimeoutError, OSError, APIError) as upload_err:
                     last_upload_error = upload_err
                     if attempt < 2:
-                        _time.sleep(2 ** attempt)
+                        time.sleep(attempt + 1)
 
             if upload_result is None:
                 raise MemoryError(
