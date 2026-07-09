@@ -307,11 +307,14 @@ class MemoryWriteService:
                     updated_memory.expires_at = metadata["expires_at"]
 
             # Step 3: Delete old version
-            delete_result = self.client.documents.delete(
-                namespace_name=namespace, ids=[memory_id]
+            from typing import Any, cast
+
+            delete_result = cast(
+                dict[str, Any],
+                self.client.documents.delete(namespace_name=namespace, ids=[memory_id]),
             )
 
-            if delete_result.get("actual_deletions", 0) == 0:
+            if not self._deletion_succeeded(delete_result):
                 raise MemoryError(f"Failed to delete old version of memory {memory_id}")
 
             validation_result = {"action": "store", "reason": "MVP direct store"}
@@ -349,18 +352,18 @@ class MemoryWriteService:
                 self.client.documents.delete(namespace_name=namespace, ids=[memory_id]),
             )
 
-            # Cloud returns ``actual_deletions``; on-prem's /items/delete only
-            # returns ``deleted_ids`` (and ``status``). Mirror the cloud SDK's
-            # ``_deletion_processed_count`` so both backends report success.
-            raw = result.get("actual_deletions")
-            if isinstance(raw, int):
-                return raw > 0
-            for key in ("deleted_ids", "requested_ids"):
-                ids = result.get(key)
-                if isinstance(ids, list):
-                    return len(ids) > 0
-            # Some on-prem builds only return ``{"status": "success"}``.
-            return str(result.get("status", "")).lower() in {"success", "ok"}
+            return self._deletion_succeeded(result)
 
         except Exception as e:
             raise MemoryError(f"Failed to delete memory: {e}")
+
+    @staticmethod
+    def _deletion_succeeded(result: dict[str, Any]) -> bool:
+        """Return True for cloud and on-prem successful deletion shapes."""
+        raw = result.get("actual_deletions")
+        if isinstance(raw, int):
+            return raw > 0
+        ids = result.get("deleted_ids")
+        if isinstance(ids, list):
+            return len(ids) > 0
+        return str(result.get("status", "")).lower() in {"success", "ok"}

@@ -7,6 +7,7 @@ Replaces legacy agent memory endpoints with session-based auth.
 
 import asyncio
 import os
+import re
 import tempfile
 from datetime import date, datetime, time, timezone
 from pathlib import Path
@@ -40,16 +41,29 @@ from memanto.app.services.conversation_memory_extraction_service import (
 from memanto.app.services.memory_read_service import MemoryReadService
 from memanto.app.services.memory_write_service import MemoryWriteService
 from memanto.app.utils.errors import AuthorizationError, map_error_to_http_exception
-from memanto.app.utils.validation import CostGuard
+from memanto.app.utils.validation import CostGuard, validate_safe_id
 from memanto.cli.client.direct_client import DirectClient
 from memanto.cli.config.manager import ConfigManager
 
 router = APIRouter()
 
 _config_manager = ConfigManager()
+_SAFE_DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
+
+
+def _validate_summary_key(agent_id: str, date_str: str) -> None:
+    """Reject identifiers that are unsafe for summary/conflict file paths."""
+    if not _SAFE_DATE_RE.fullmatch(date_str):
+        raise HTTPException(status_code=400, detail="Invalid summary identifier")
+    try:
+        validate_safe_id(agent_id, "agent_id")
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid summary identifier")
 
 
 class RecallRequest(BaseModel):
+    """Request body for semantic memory recall."""
+
     query: str = Field(..., min_length=1, description="Search query")
     limit: int | None = Field(default=None, ge=1, description="Max results")
     min_similarity: float | None = Field(
@@ -59,6 +73,8 @@ class RecallRequest(BaseModel):
 
 
 class RecallAsOfRequest(BaseModel):
+    """Request body for point-in-time memory recall."""
+
     as_of: datetime = Field(
         ...,
         description="Point-in-time — YYYY-MM-DD (defaults to end of day) or full ISO datetime e.g. 2025-11-01T14:30:00Z",
@@ -69,6 +85,7 @@ class RecallAsOfRequest(BaseModel):
     @field_validator("as_of", mode="before")
     @classmethod
     def parse_as_of(cls, v: object) -> datetime:
+        """Parse date-only or ISO datetime inputs into an aware timestamp."""
         if isinstance(v, datetime):
             return v if v.tzinfo else v.replace(tzinfo=timezone.utc)
         if isinstance(v, date):
@@ -93,6 +110,8 @@ class RecallAsOfRequest(BaseModel):
 
 
 class RecallChangedSinceRequest(BaseModel):
+    """Request body for querying memories changed since a timestamp."""
+
     since: datetime = Field(
         ...,
         description="Start of change window — YYYY-MM-DD (defaults to start of day) or full ISO datetime e.g. 2025-11-01T00:00:00Z",
@@ -103,6 +122,7 @@ class RecallChangedSinceRequest(BaseModel):
     @field_validator("since", mode="before")
     @classmethod
     def parse_since(cls, v: object) -> datetime:
+        """Parse date-only or ISO datetime inputs for change filtering."""
         if isinstance(v, datetime):
             return v if v.tzinfo else v.replace(tzinfo=timezone.utc)
         if isinstance(v, date):
@@ -127,11 +147,15 @@ class RecallChangedSinceRequest(BaseModel):
 
 
 class RecallRecentRequest(BaseModel):
+    """Request body for retrieving recent memories."""
+
     limit: int | None = Field(default=None, ge=1, description="Max results")
     type: list[str] | None = Field(default=None, description="Memory type filters")
 
 
 class MemoryEditRequest(BaseModel):
+    """Request body for partial memory record updates."""
+
     title: str | None = Field(default=None, max_length=100)
     content: str | None = Field(default=None, max_length=10000)
     type: str | None = None
@@ -140,10 +164,12 @@ class MemoryEditRequest(BaseModel):
     source: str | None = None
 
     def to_updates(self) -> dict[str, object]:
+        """Return only fields the caller explicitly wants to update."""
         return self.model_dump(exclude_none=True)
 
 
 def enforce_session_scope(session: Session, agent_id: str) -> None:
+    """Ensure a session can only access the agent scope it was issued for."""
     if session.agent_id != agent_id:
         raise map_error_to_http_exception(
             AuthorizationError(
@@ -770,17 +796,24 @@ async def answer(
 
 
 class DailySummaryRequest(BaseModel):
+    """Request body for on-demand daily summary generation."""
+
     date: str | None = Field(
         default=None,
         description="Date string YYYY-MM-DD. Defaults to today.",
     )
     output_path: str | None = Field(
         default=None,
-        description="Optional custom output path for the summary MD file.",
+        description=(
+            "Accepted for backwards compatibility but ignored; summaries use "
+            "the server-controlled output location."
+        ),
     )
 
 
 class ConflictDetectRequest(BaseModel):
+    """Request body for on-demand conflict report generation."""
+
     date: str | None = Field(
         default=None,
         description="Date string YYYY-MM-DD. Defaults to today.",
@@ -802,12 +835,13 @@ async def generate_daily_summary(
     enforce_session_scope(session, agent_id)
 
     resolved_date = request.date or datetime.now().strftime("%Y-%m-%d")
+    _validate_summary_key(agent_id, resolved_date)
     try:
         result = await asyncio.to_thread(
             DirectClient(settings.MOORCHEH_API_KEY).generate_daily_summary,
             agent_id,
             resolved_date,
-            request.output_path,
+            None,
         )
         return {
             "agent_id": agent_id,
@@ -833,6 +867,7 @@ async def generate_conflict_report(
     enforce_session_scope(session, agent_id)
 
     resolved_date = request.date or datetime.now().strftime("%Y-%m-%d")
+    _validate_summary_key(agent_id, resolved_date)
     try:
         result = await asyncio.to_thread(
             DirectClient(settings.MOORCHEH_API_KEY).generate_conflict_report,
@@ -866,16 +901,18 @@ async def list_conflicts(
     # Enforce session scope
     enforce_session_scope(session, agent_id)
 
+    resolved_date = date or datetime.now().strftime("%Y-%m-%d")
+    _validate_summary_key(agent_id, resolved_date)
     try:
         conflicts = await asyncio.to_thread(
             DirectClient(settings.MOORCHEH_API_KEY).list_conflicts,
             agent_id,
-            date,
+            resolved_date,
         )
         return {
             "agent_id": agent_id,
             "session_id": session.session_id,
-            "date": date or datetime.now().strftime("%Y-%m-%d"),
+            "date": resolved_date,
             "conflicts": conflicts,
             "count": len(conflicts),
         }
@@ -897,6 +934,7 @@ async def resolve_conflict(
     enforce_session_scope(session, agent_id)
 
     resolved_date = request.date or datetime.now().strftime("%Y-%m-%d")
+    _validate_summary_key(agent_id, resolved_date)
     try:
         result = await asyncio.to_thread(
             DirectClient(settings.MOORCHEH_API_KEY).resolve_conflict,

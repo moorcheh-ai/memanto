@@ -119,6 +119,39 @@ class TestSessionService:
         print("✅ Session ended successfully")
         print(f"   Duration: {summary.duration_hours} hours")
 
+    def test_settings_default_does_not_embed_public_jwt_secret(self, monkeypatch):
+        """Default settings must not contain the publicly known JWT secret."""
+        from memanto.app.config import Settings
+
+        monkeypatch.delenv("MEMANTO_SECRET_KEY", raising=False)
+
+        assert Settings(_env_file=None).MEMANTO_SECRET_KEY == ""
+
+    def test_missing_session_secret_generates_persisted_fallback(
+        self, temp_dir, monkeypatch
+    ):
+        """Missing MEMANTO_SECRET_KEY should generate a random, persisted JWT secret.
+
+        The secret must survive process restarts (same data root -> same
+        secret, so existing session tokens keep validating) while still
+        differing across installs (different data roots -> different secrets,
+        so no single predictable secret is shared everywhere).
+        """
+        monkeypatch.delenv("MEMANTO_SECRET_KEY", raising=False)
+        monkeypatch.setattr(settings, "MEMANTO_SECRET_KEY", "")
+
+        first = SessionService(sessions_dir=temp_dir / "sessions-1")
+        second = SessionService(sessions_dir=temp_dir / "sessions-2")
+
+        assert first.secret_key != "memanto-default-secret-change-in-production"
+        assert len(first.secret_key) >= 32
+        assert first.secret_key == second.secret_key
+
+        other_root = SessionService(
+            sessions_dir=temp_dir / "other-install" / "sessions"
+        )
+        assert other_root.secret_key != first.secret_key
+
     def test_get_active_session_ignores_invalid_session_file(self, session_service):
         """A corrupt active session file should not crash status checks."""
         active_marker = session_service.sessions_dir / "active"
@@ -276,7 +309,7 @@ class TestMemoryWriteServiceDelete:
             ({"status": "success", "deleted_ids": ["m1"]}, True),
             ({"status": "success", "deleted_ids": []}, False),
             ({"status": "success"}, True),
-            ({"requested_ids": ["m1"]}, True),
+            ({"requested_ids": ["m1"]}, False),
             ({}, False),
         ],
     )
@@ -286,6 +319,69 @@ class TestMemoryWriteServiceDelete:
         client = MagicMock()
         client.documents.delete.return_value = response
         assert MemoryWriteService(client).delete_memory("m1", "ns") is expected
+
+    def test_update_memory_accepts_onprem_delete_response(self):
+        from memanto.app.services.memory_write_service import MemoryWriteService
+
+        client = MagicMock()
+        client.documents.delete.return_value = {
+            "status": "success",
+            "deleted_ids": ["mem-1"],
+        }
+        client.documents.upload.return_value = {"status": "queued"}
+        existing_memory = {
+            "id": "mem-1",
+            "type": "fact",
+            "title": "Original title",
+            "content": "Original content",
+            "scope_type": "agent",
+            "scope_id": "test-agent",
+            "actor_id": "tester",
+            "source": "manual",
+            "confidence": 0.8,
+            "status": "active",
+            "tags": [],
+        }
+
+        with patch(
+            "memanto.app.services.memory_read_service.MemoryReadService.get_memory",
+            return_value=existing_memory,
+        ):
+            result = MemoryWriteService(client).update_memory(
+                "mem-1",
+                "memanto_agent_test-agent",
+                {"content": "Updated content"},
+            )
+
+        assert result["action"] == "updated"
+        assert result["status"] == "queued"
+        client.documents.delete.assert_called_once_with(
+            namespace_name="memanto_agent_test-agent", ids=["mem-1"]
+        )
+        client.documents.upload.assert_called_once()
+
+
+class TestMemoryReadServiceFormatting:
+    def test_format_memory_item_preserves_falsey_metadata_values(self):
+        from memanto.app.services.memory_read_service import MemoryReadService
+
+        item = {
+            "id": "m-low",
+            "text": "[FACT] Low confidence\n\nThis memory is intentionally weak.",
+            "metadata": {
+                "memory_type": "fact",
+                "confidence": 0.0,
+                "status": "active",
+                "tags": [],
+                "validation_count": 0,
+                "contradiction_detected": False,
+            },
+        }
+
+        formatted = MemoryReadService(MagicMock())._format_memory_item(item)
+
+        assert formatted["confidence"] == 0.0
+        assert formatted["tags"] == []
 
 
 class TestForgetEndToEnd:
@@ -452,3 +548,80 @@ def test_conflict_report_handles_non_object_json_items(tmp_path, monkeypatch):
 
 if __name__ == "__main__":
     pytest.main([__file__, "-v", "-s"])
+
+
+class TestValidateSafeId:
+    """Unit tests for validate_safe_id path-traversal guard."""
+
+    def test_valid_ids_are_accepted(self):
+        from memanto.app.utils.validation import validate_safe_id
+
+        for valid in ["my-agent", "agent_1", "AGENT", "agent-123", "a", "Agent_B-2"]:
+            assert validate_safe_id(valid, "agent_id") == valid
+
+    def test_path_traversal_dotdot_rejected(self):
+        from memanto.app.utils.validation import validate_safe_id
+
+        with pytest.raises(ValueError, match="invalid characters"):
+            validate_safe_id("../etc/passwd", "agent_id")
+
+    def test_slash_in_id_rejected(self):
+        from memanto.app.utils.validation import validate_safe_id
+
+        with pytest.raises(ValueError, match="invalid characters"):
+            validate_safe_id("agent/hack", "agent_id")
+
+    def test_null_byte_rejected(self):
+        from memanto.app.utils.validation import validate_safe_id
+
+        with pytest.raises(ValueError, match="invalid characters"):
+            validate_safe_id("agent\x00", "agent_id")
+
+    def test_empty_id_rejected(self):
+        from memanto.app.utils.validation import validate_safe_id
+
+        with pytest.raises(ValueError, match="must not be empty"):
+            validate_safe_id("", "agent_id")
+
+    def test_path_traversal_blocked_in_agent_service(self, tmp_path):
+        """Ensure AgentService._get_agent_file raises on traversal attempt."""
+        from memanto.app.services.agent_service import AgentService
+
+        svc = AgentService(agents_dir=tmp_path / "agents")
+
+        with pytest.raises(ValueError, match="invalid characters"):
+            svc._get_agent_file("../../etc/shadow")
+
+        # Confirm no files were created outside the agents dir
+        assert not (tmp_path / "etc").exists()
+
+    def test_path_traversal_blocked_in_session_service(self, tmp_path):
+        """Ensure SessionService.get_session raises on traversal attempt."""
+        from memanto.app.services.session_service import SessionService
+
+        svc = SessionService(
+            secret_key="test-secret-key-min-32-bytes-1234",
+            sessions_dir=tmp_path / "sessions",
+        )
+
+        with pytest.raises(ValueError, match="invalid characters"):
+            svc.get_session("../../etc/shadow")
+
+        assert not (tmp_path / "etc").exists()
+
+    def test_path_traversal_blocked_via_date_in_daily_analysis(self, tmp_path):
+        """Ensure DailyAnalysisService raises on traversal attempt via date param."""
+        from memanto.app.services.daily_analysis_service import DailyAnalysisService
+
+        svc = DailyAnalysisService(
+            sessions_dir=tmp_path / "sessions",
+            summaries_dir=tmp_path / "summaries",
+        )
+
+        with pytest.raises(ValueError, match="invalid characters"):
+            svc.generate_summary("agent1", "../../etc/passwd")
+
+        with pytest.raises(ValueError, match="invalid characters"):
+            svc.generate_conflict_report("agent1", "../../etc/passwd")
+
+        assert not (tmp_path / "etc").exists()

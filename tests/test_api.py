@@ -1106,6 +1106,37 @@ class TestMEMANTOAPI:
         assert data["action"] == "keep_new"
 
     @pytest.mark.asyncio
+    async def test_conflicts_generate_api_rejects_traversal_date(
+        self, client, auth_headers
+    ):
+        """The session API must reject conflict report dates that escape paths."""
+        await client.post(
+            "/api/v2/agents",
+            headers=auth_headers,
+            json={"agent_id": self.TEST_AGENT_ID},
+        )
+        activate_resp = await client.post(
+            f"/api/v2/agents/{self.TEST_AGENT_ID}/activate", headers=auth_headers
+        )
+        token = activate_resp.json()["session_token"]
+        headers = {**auth_headers, "X-Session-Token": token}
+
+        with patch("memanto.app.routes.memory.DirectClient") as mock_client_cls:
+            mock_client = mock_client_cls.return_value
+            mock_client.generate_conflict_report.return_value = {
+                "conflicts": {"status": "success"}
+            }
+
+            response = await client.post(
+                f"/api/v2/agents/{self.TEST_AGENT_ID}/conflicts/generate",
+                headers=headers,
+                json={"date": "../../outside"},
+            )
+
+        assert response.status_code == 400
+        mock_client.generate_conflict_report.assert_not_called()
+
+    @pytest.mark.asyncio
     async def test_conflicts_resolve_rejects_invalid_action(self, client, auth_headers):
         """Invalid conflict actions should fail validation before business logic."""
         await client.post(
@@ -1162,6 +1193,70 @@ class TestMEMANTOAPI:
 
         assert response.status_code == 422
         mock_client_cls.return_value.resolve_conflict.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_daily_summary_api_ignores_client_output_path(
+        self, client, auth_headers
+    ):
+        """The session API must not pass client-controlled output paths to disk writes."""
+        await client.post(
+            "/api/v2/agents",
+            headers=auth_headers,
+            json={"agent_id": self.TEST_AGENT_ID},
+        )
+        activate_resp = await client.post(
+            f"/api/v2/agents/{self.TEST_AGENT_ID}/activate", headers=auth_headers
+        )
+        token = activate_resp.json()["session_token"]
+        headers = {**auth_headers, "X-Session-Token": token}
+
+        with patch("memanto.app.routes.memory.DirectClient") as mock_client_cls:
+            mock_client = mock_client_cls.return_value
+            mock_client.generate_daily_summary.return_value = {
+                "summary": {"status": "success"},
+                "export": {"status": "ok"},
+            }
+
+            response = await client.post(
+                f"/api/v2/agents/{self.TEST_AGENT_ID}/daily-summary",
+                headers=headers,
+                json={"date": "2026-06-27", "output_path": "../../outside.md"},
+            )
+
+        assert response.status_code == 200
+        mock_client.generate_daily_summary.assert_called_once_with(
+            self.TEST_AGENT_ID, "2026-06-27", None
+        )
+
+    @pytest.mark.asyncio
+    async def test_daily_summary_api_rejects_traversal_date(self, client, auth_headers):
+        """The session API must reject dates that would escape summary filenames."""
+        await client.post(
+            "/api/v2/agents",
+            headers=auth_headers,
+            json={"agent_id": self.TEST_AGENT_ID},
+        )
+        activate_resp = await client.post(
+            f"/api/v2/agents/{self.TEST_AGENT_ID}/activate", headers=auth_headers
+        )
+        token = activate_resp.json()["session_token"]
+        headers = {**auth_headers, "X-Session-Token": token}
+
+        with patch("memanto.app.routes.memory.DirectClient") as mock_client_cls:
+            mock_client = mock_client_cls.return_value
+            mock_client.generate_daily_summary.return_value = {
+                "summary": {"status": "success"},
+                "export": {"status": "ok"},
+            }
+
+            response = await client.post(
+                f"/api/v2/agents/{self.TEST_AGENT_ID}/daily-summary",
+                headers=headers,
+                json={"date": "../../outside"},
+            )
+
+        assert response.status_code == 400
+        mock_client.generate_daily_summary.assert_not_called()
 
     @pytest.mark.asyncio
     async def test_upload_file_with_session(self, client, auth_headers, mock_moorcheh):
@@ -1267,11 +1362,12 @@ def _mock_ui_config_manager():
 
 
 class TestCWE200ApiKeyLeak:
-    TEST_AGENT_ID = "test-agent"
     """
     PoC test for CWE-200: API key leaked in plaintext via /api/ui/config endpoint.
     Verify that the raw API key is never returned (it is completely removed).
     """
+
+    TEST_AGENT_ID = "test-agent"
 
     @pytest.mark.asyncio
     async def test_config_endpoint_does_not_return_api_key(
@@ -1302,6 +1398,143 @@ class TestCWE200ApiKeyLeak:
         # Session status field should be present (replaces sensitive session_token)
         assert "has_active_session" in data
         assert data["has_active_session"] is True
+
+    @pytest.mark.asyncio
+    async def test_daily_summary_rejects_traversal_agent_id(
+        self, client, tmp_path, _mock_ui_config_manager
+    ):
+        """The UI summary reader must reject agent IDs that escape the data dir."""
+        data_dir = tmp_path / "data"
+        (data_dir / "summaries").mkdir(parents=True)
+        outside = tmp_path / "outside_2026-06-27.md"
+        outside.write_text("sensitive summary outside data dir", encoding="utf-8")
+
+        with patch("memanto.app.config.get_data_dir", return_value=data_dir):
+            resp = await client.get(
+                "/api/ui/daily-summary",
+                params={"agent_id": "../../outside", "date": "2026-06-27"},
+            )
+
+        assert resp.status_code == 400
+
+    @pytest.mark.asyncio
+    async def test_daily_summary_rejects_newline_suffixed_agent_id(
+        self, client, tmp_path, _mock_ui_config_manager
+    ):
+        """The UI summary reader must reject control characters in agent IDs."""
+        data_dir = tmp_path / "data"
+        (data_dir / "summaries").mkdir(parents=True)
+
+        with patch("memanto.app.config.get_data_dir", return_value=data_dir):
+            resp = await client.get(
+                "/api/ui/daily-summary",
+                params={"agent_id": "agent-1\n", "date": "2026-06-27"},
+            )
+
+        assert resp.status_code == 400
+
+    @pytest.mark.asyncio
+    async def test_generate_daily_summary_ignores_client_output_path(
+        self, client, _mock_ui_config_manager
+    ):
+        """The UI summary generator must ignore client-controlled output paths."""
+        mock_direct_client = MagicMock()
+        mock_direct_client.generate_daily_summary.return_value = {
+            "output_path": "/tmp/memanto/summaries/agent-1_2026-06-27.md",
+            "total_memories": 0,
+        }
+
+        with patch(
+            "memanto.app.ui.routes.ui_router._build_ui_direct_client",
+            return_value=mock_direct_client,
+        ):
+            resp = await client.post(
+                "/api/ui/daily-summary",
+                json={
+                    "agent_id": "agent-1",
+                    "date": "2026-06-27",
+                    "output_path": "../../outside.md",
+                },
+            )
+
+        assert resp.status_code == 200
+        mock_direct_client.generate_daily_summary.assert_called_once_with(
+            agent_id="agent-1", date="2026-06-27", output_path=None
+        )
+
+    @pytest.mark.asyncio
+    async def test_conflicts_list_rejects_traversal_agent_id(
+        self, client, _mock_ui_config_manager
+    ):
+        """The UI conflict list must reject traversal in agent IDs."""
+        mock_direct_client = MagicMock()
+
+        with patch(
+            "memanto.app.ui.routes.ui_router._build_ui_direct_client",
+            return_value=mock_direct_client,
+        ):
+            resp = await client.get(
+                "/api/ui/conflicts",
+                params={"agent_id": "../../outside", "date": "2026-06-27"},
+            )
+
+        assert resp.status_code == 400
+        mock_direct_client.list_conflicts.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_conflict_scans_rejects_glob_agent_id(
+        self, client, _mock_ui_config_manager
+    ):
+        """The UI conflict scan listing must reject glob-style agent IDs."""
+        resp = await client.get(
+            "/api/ui/conflict-scans",
+            params={"agent_id": "agent-*"},
+        )
+
+        assert resp.status_code == 400
+
+    @pytest.mark.asyncio
+    async def test_generate_conflict_report_rejects_traversal_date(
+        self, client, _mock_ui_config_manager
+    ):
+        """The UI conflict generator must reject dates that escape paths."""
+        mock_direct_client = MagicMock()
+
+        with patch(
+            "memanto.app.ui.routes.ui_router._build_ui_direct_client",
+            return_value=mock_direct_client,
+        ):
+            resp = await client.post(
+                "/api/ui/conflicts/generate",
+                json={"agent_id": "agent-1", "date": "../../outside"},
+            )
+
+        assert resp.status_code == 400
+        mock_direct_client.generate_conflict_report.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_resolve_conflict_rejects_traversal_agent_id(
+        self, client, _mock_ui_config_manager
+    ):
+        """The UI conflict resolver must reject traversal in agent IDs."""
+        mock_direct_client = MagicMock()
+
+        with patch(
+            "memanto.app.ui.routes.ui_router._build_ui_direct_client",
+            return_value=mock_direct_client,
+        ):
+            resp = await client.post(
+                "/api/ui/conflicts/resolve",
+                json={
+                    "agent_id": "../../outside",
+                    "date": "2026-06-27",
+                    "conflict_index": 0,
+                    "action": "keep_new",
+                },
+            )
+
+        assert resp.status_code == 400
+        mock_direct_client.resolve_conflict.assert_not_called()
 
     @pytest.mark.asyncio
     async def test_traversal_filename_is_sanitized(

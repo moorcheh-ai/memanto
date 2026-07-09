@@ -48,6 +48,8 @@ function startFakeApi(): Promise<{
           return reply(404, { detail: "not found" });
         if (url === "/api/v2/agents" && req.method === "POST")
           return reply(201, { agent_id: "test-agent" });
+        if (url === "/api/v2/agents/test-agent" && req.method === "DELETE")
+          return reply(200, { agent_id: "test-agent", deleted: true });
         if (url === "/api/v2/agents/test-agent/remember")
           return reply(200, {
             memory_id: "mem-1",
@@ -122,6 +124,27 @@ describe("Memanto", () => {
 
     const res = await m.recall({ query: "coffee" });
     expect(res).toMatchObject({ count: 0 });
+  });
+
+  it("rebootstraps after deleting the active agent", async () => {
+    const api = await startFakeApi();
+    cleanupFns.push(api.close);
+
+    const m = new Memanto({ agentId: "test-agent", baseUrl: api.url });
+    cleanupFns.push(() => m.close());
+
+    await m.remember({ content: "Het likes coffee" });
+    await m.deleteAgent();
+    api.recorded.length = 0;
+
+    await m.remember({ content: "Het likes tea" });
+
+    expect(api.recorded.map((r) => `${r.method} ${r.url}`)).toEqual([
+      "GET /api/v2/agents/test-agent",
+      "POST /api/v2/agents",
+      "POST /api/v2/agents/test-agent/activate",
+      "POST /api/v2/agents/test-agent/remember",
+    ]);
   });
 
   it("rejects empty agentId", () => {

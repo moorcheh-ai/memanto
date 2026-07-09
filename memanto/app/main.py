@@ -72,11 +72,29 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+
+def _validate_cors_settings(
+    allowed_origins: list[str], allow_credentials: bool
+) -> None:
+    """Raise ValueError when wildcard origins and allow_credentials are combined.
+
+    Starlette reflects the request Origin (instead of returning '*') when both
+    allow_all_origins=True and allow_credentials=True, which lets any website make
+    credentialed cross-origin requests — a CORS misconfiguration.
+    """
+    if "*" in allowed_origins and allow_credentials:
+        raise ValueError(
+            "CORS misconfiguration: CORS_ALLOW_CREDENTIALS=true is incompatible with "
+            "ALLOWED_ORIGINS=['*']. Specify explicit trusted origins when enabling credentials."
+        )
+
+
 # Add CORS middleware
+_validate_cors_settings(settings.ALLOWED_ORIGINS, settings.CORS_ALLOW_CREDENTIALS)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.ALLOWED_ORIGINS,
-    allow_credentials=True,
+    allow_credentials=settings.CORS_ALLOW_CREDENTIALS,
     allow_methods=["*"],
     allow_headers=["*"],
 )
