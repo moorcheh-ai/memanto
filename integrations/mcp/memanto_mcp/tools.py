@@ -490,6 +490,7 @@ def register_tools(mcp: Any, lifecycle: MemantoLifecycle) -> None:
                 query=query,
                 limit=limit,
                 type=list(type) if type else None,
+                min_similarity=min_similarity,
             )
             hits = [_to_memory_hit(m) for m in result.get("memories", [])]
             if min_similarity is not None:
