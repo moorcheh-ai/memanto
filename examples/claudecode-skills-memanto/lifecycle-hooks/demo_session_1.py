@@ -8,22 +8,14 @@ Memanto's backend LLM distill the durable engineering decisions into memory.
     python demo_session_1.py
 
 Then run ``demo_session_2.py`` in a SEPARATE process to prove the decisions are
+recalled with zero shared in-process state.
 
 from __future__ import annotations
 
-try:
-    from memanto.integrations.claude_skills import SkillMemory
-except ImportError:
-    try:
-        from memanto_skills import SkillMemory
-    except ImportError:
-        raise ImportError(
-            "Could not import SkillMemory. Please install memanto with: pip install memanto[skills]"
-        )
+from memanto import Memory
 
 SESSION_1_TRANSCRIPT = """
 user: /grill-with-docs let's nail down the architecture for the orders service
-SESSION_1_TRANSCRIPT = """
 user: /grill-with-docs let's nail down the architecture for the orders service
 assistant: A few questions to align on the design.
 user: We will use CQRS for the Order domain — commands and queries are separate.
@@ -39,13 +31,13 @@ assistant: Summary: CQRS for Orders, Postgres + Redis, Cart != Order, Money VO f
 """
 
 
+
 def main() -> None:
-    mem = SkillMemory()
-    mem.setup()
+    mem = Memory()
+    # Memory() auto-initializes; no explicit setup() needed
     print("Session 1: distilling /grill-with-docs decisions via Memanto's LLM…\n")
     stored = mem.distill_and_store("grill-with-docs", SESSION_1_TRANSCRIPT)
     if not stored:
-        print("No memories were extracted. Check MOORCHEH_API_KEY and connectivity.")
         return
     print(f"Stored {len(stored)} engineering memories:")
     for m in stored:
