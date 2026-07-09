@@ -37,6 +37,17 @@ VALID_MEMORY_TYPES = (
 )
 
 
+def _normalize_tags(raw: Any) -> list[str]:
+    """Normalize backend/user tag values for stable display and API calls."""
+    if raw is None:
+        return []
+    if isinstance(raw, str):
+        return [tag.strip() for tag in raw.split(",") if tag.strip()]
+    if isinstance(raw, (list, tuple, set)):
+        return [str(tag).strip() for tag in raw if str(tag).strip()]
+    return [str(raw).strip()]
+
+
 class MemantoSetup:
     """
     Manages Memanto agent lifecycle for CrewAI integration.
@@ -192,7 +203,7 @@ class MemantoRememberTool(BaseTool):
         confidence: float,
         tags: str = "",
     ) -> str:
-        tag_list = [t.strip() for t in tags.split(",") if t.strip()] if tags else []
+        tag_list = _normalize_tags(tags)
 
         result = self._client.remember(
             agent_id=self._agent_id,
@@ -265,7 +276,7 @@ class MemantoRecallTool(BaseTool):
             content = mem.get("content", "")
             mem_type = mem.get("type", "unknown")
             confidence = mem.get("confidence", "N/A")
-            tags = mem.get("tags", [])
+            tags = _normalize_tags(mem.get("tags"))
             tag_str = f" [tags: {', '.join(tags)}]" if tags else ""
 
             lines.append(

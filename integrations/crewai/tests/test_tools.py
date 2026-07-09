@@ -108,6 +108,49 @@ def test_memanto_recall_tool_success():
     )
 
 
+def test_memanto_recall_tool_formats_string_tags():
+    client = MagicMock()
+    client.recall.return_value = {
+        "memories": [
+            {
+                "id": "mem-123",
+                "type": "fact",
+                "title": "Fact 1",
+                "content": "Content 1",
+                "confidence": 0.8,
+                "tags": "alpha,beta",
+            }
+        ]
+    }
+
+    tool = MemantoRecallTool(client=client, agent_id="test-agent")
+    result = tool._run(query="test query")
+
+    assert "[tags: alpha, beta]" in result
+    assert "[tags: a, l, p" not in result
+
+
+def test_memanto_recall_tool_formats_scalar_tags():
+    client = MagicMock()
+    client.recall.return_value = {
+        "memories": [
+            {
+                "id": "mem-123",
+                "type": "fact",
+                "title": "Fact 1",
+                "content": "Content 1",
+                "confidence": 0.8,
+                "tags": 42,
+            }
+        ]
+    }
+
+    tool = MemantoRecallTool(client=client, agent_id="test-agent")
+    result = tool._run(query="test query")
+
+    assert "[tags: 42]" in result
+
+
 def test_memanto_recall_tool_empty():
     client = MagicMock()
     client.recall.return_value = {"memories": []}
