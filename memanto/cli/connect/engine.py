@@ -329,11 +329,18 @@ def _install_hooks(agent: AgentDef, project_path: Path, is_global: bool) -> str 
     hooks = settings.setdefault("hooks", {})
     session_start = hooks.setdefault("SessionStart", [])
 
-    # Check if memanto hook already exists
+    expected_commands = {
+        hook.get("command")
+        for hook in agent.hook_config.hook_payload.get("hooks", [])
+        if isinstance(hook, dict) and hook.get("command")
+    }
+
+    # Check if the specific MEMANTO sync hook already exists. A user may have
+    # unrelated hooks that mention "memanto" but do not perform memory sync.
     memanto_exists = any(
         isinstance(group, dict)
         and any(
-            isinstance(h, dict) and "memanto" in h.get("command", "")
+            isinstance(h, dict) and h.get("command") in expected_commands
             for h in group.get("hooks", [])
         )
         for group in session_start
