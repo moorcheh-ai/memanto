@@ -36,7 +36,7 @@ from memanto.app.utils.errors import (
     SessionExpiredError,
     SessionNotFoundError,
 )
-from memanto.app.utils.validation import InputLimits
+from memanto.app.utils.validation import InputLimits, validate_safe_id
 from memanto.cli.config.manager import ConfigManager
 
 logger = logging.getLogger(__name__)
@@ -47,6 +47,13 @@ __all__ = ["SdkClient"]
 _MAX_BATCH_SIZE = 100
 _MAX_TITLE_LENGTH = 100
 _MAX_CONTENT_LENGTH = InputLimits.MAX_TEXT_LENGTH
+
+
+def _conflict_report_path(agent_id: str, date: str) -> Path:
+    """Return the validated local conflict-report path for an agent/date key."""
+    validate_safe_id(agent_id, "agent_id")
+    validate_safe_id(date, "date")
+    return Path.home() / ".memanto" / "conflicts" / f"{agent_id}_{date}_conflicts.json"
 
 
 class SdkClient:
@@ -1184,9 +1191,7 @@ class SdkClient:
         if not date:
             date = datetime.now().strftime("%Y-%m-%d")
 
-        json_path = (
-            Path.home() / ".memanto" / "conflicts" / f"{agent_id}_{date}_conflicts.json"
-        )
+        json_path = _conflict_report_path(agent_id, date)
 
         if not json_path.exists():
             return []
@@ -1227,9 +1232,7 @@ class SdkClient:
                 f"Invalid action '{action}'. Must be one of: {', '.join(sorted(valid_actions))}"
             )
 
-        json_path = (
-            Path.home() / ".memanto" / "conflicts" / f"{agent_id}_{date}_conflicts.json"
-        )
+        json_path = _conflict_report_path(agent_id, date)
         if not json_path.exists():
             raise ValueError(f"No conflict report found for {agent_id} on {date}")
 
