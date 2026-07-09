@@ -276,11 +276,11 @@ class MemantoStore(BaseStore):
     def _do_search(self, op: SearchOp) -> list[SearchItem]:
         """Retrieve memories matching the namespace.
 
-        Uses ``recall_recent`` for wildcard queries (avoids semantic bias
-        when the caller just wants all recent memories in a namespace) and
-        ``recall()`` for actual semantic queries. A single call is made in
-        both cases; namespace isolation is enforced client-side via tag
-        AND-matching after retrieval.
+        Uses ``recall_recent`` for unfiltered wildcard queries (avoids
+        semantic bias when the caller just wants all recent memories in a
+        namespace) and ``recall()`` for semantic or tag-filtered queries. A
+        single call is made in both cases; namespace isolation is enforced
+        by the selected Memanto agent.
         """
         query = op.query or "*"
         filter_dict = op.filter or {}
@@ -313,7 +313,7 @@ class MemantoStore(BaseStore):
         client, agent_id = self._ensure_client(op.namespace_prefix)
 
         try:
-            if query == "*" and not min_similarity:
+            if query == "*" and not min_similarity and not extra_tags:
                 # recall_recent: no semantic bias, returns newest memories first
                 result = client.recall_recent(
                     agent_id=agent_id,

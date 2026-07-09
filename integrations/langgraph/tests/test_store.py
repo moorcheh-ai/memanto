@@ -202,6 +202,43 @@ def test_do_search_recent(mock_sdk_client):
     )
 
 
+def test_do_search_wildcard_with_tags_uses_backend_tag_filter(mock_sdk_client):
+    store = MemantoStore(api_key="test_key")
+    client_instance = MagicMock()
+    mock_sdk_client.return_value = client_instance
+
+    client_instance.recall.return_value = {
+        "memories": [
+            {
+                "id": "mem-789",
+                "tags": ["lg:key:key3", "project:apollo"],
+                "type": "fact",
+                "title": "key3",
+                "content": "older tagged memory",
+            }
+        ]
+    }
+
+    op = SearchOp(
+        namespace_prefix=("my_ns",),
+        query="*",
+        filter={"tags": ["project:apollo"]},
+    )
+    items = store._do_search(op)
+
+    assert len(items) == 1
+    assert items[0].key == "key3"
+    client_instance.recall_recent.assert_not_called()
+    client_instance.recall.assert_called_once_with(
+        agent_id="langgraph_my_ns",
+        query="*",
+        limit=10,
+        type=None,
+        tags=["project:apollo"],
+        min_similarity=None,
+    )
+
+
 def test_do_search_semantic(mock_sdk_client):
     store = MemantoStore(api_key="test_key")
     client_instance = MagicMock()
