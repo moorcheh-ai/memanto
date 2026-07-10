@@ -95,3 +95,19 @@ def test_extract_requires_messages():
 
     with pytest.raises(ValueError, match="at least one message"):
         service.extract(namespace="memanto_agent_test", messages=[])
+
+
+def test_conversation_text_preserves_latest_messages_when_budget_is_exceeded():
+    service = ConversationMemoryExtractionService(FakeClient("[]"))
+    latest_decision = "FINAL DECISION: deploy to Tokyo on Friday"
+    messages = [
+        {"role": "user", "content": "old context " + ("x" * 12_000)},
+        {"role": "assistant", "content": "acknowledged"},
+        {"role": "user", "content": latest_decision},
+    ]
+
+    query = service._conversation_text(messages)
+
+    assert len(query) <= service.MAX_CONTENT_CHARS
+    assert latest_decision in query
+    assert query.endswith(f"user: {latest_decision}")

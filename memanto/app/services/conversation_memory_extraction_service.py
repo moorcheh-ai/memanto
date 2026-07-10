@@ -75,13 +75,24 @@ class ConversationMemoryExtractionService:
     def _conversation_text(self, messages: list[dict[str, str]]) -> str:
         lines: list[str] = []
         total = 0
-        for message in messages:
+        # Recent turns usually contain the latest decisions and corrections.
+        # Build from the end, then restore chronological order for the model.
+        for message in reversed(messages):
             line = f"{message['role'].strip()}: {message['content'].strip()}"
-            total += len(line)
-            if total > self.MAX_CONTENT_CHARS:
+            separator_length = 1 if lines else 0
+            remaining = self.MAX_CONTENT_CHARS - total - separator_length
+            if remaining <= 0:
                 break
+
+            truncated = len(line) > remaining
+            if truncated:
+                line = line[:remaining]
             lines.append(line)
-        return "\n".join(lines)
+            total += separator_length + len(line)
+            if truncated:
+                break
+
+        return "\n".join(reversed(lines))
 
     def _header_prompt(self, max_memories: int) -> str:
         memory_types = ", ".join(sorted(VALID_MEMORY_TYPES))
