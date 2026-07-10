@@ -12,12 +12,20 @@ import time
 from pathlib import Path
 from typing import Any
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request
+from fastapi import (
+    APIRouter,
+    BackgroundTasks,
+    Depends,
+    HTTPException,
+    Request,
+    Response,
+)
 from fastapi.responses import FileResponse, HTMLResponse
 from fastapi.staticfiles import StaticFiles
 
 from memanto.app.clients.backend import Backend
 from memanto.app.config import settings
+from memanto.app.routes.auth_deps import clear_session_cookie, set_session_cookie
 from memanto.app.utils.validation import validate_safe_id
 from memanto.cli.client.direct_client import DirectClient
 from memanto.cli.config.manager import ConfigManager
@@ -109,7 +117,9 @@ def _build_ui_direct_client() -> DirectClient | None:
 
 
 @router.get("/api/ui/config")
-async def get_ui_config(_: None = Depends(_require_local)):
+async def get_ui_config(
+    request: Request, response: Response, _: None = Depends(_require_local)
+):
     """
     Get current MEMANTO configuration for the Web UI.
 
@@ -126,6 +136,10 @@ async def get_ui_config(_: None = Depends(_require_local)):
     active_agent_id, active_session_token = _config_manager.get_active_session()
     backend = _config_manager.get_backend().value
     onprem_cfg = _config_manager.get_onprem_config()
+    if active_session_token:
+        set_session_cookie(response, active_session_token, request)
+    else:
+        clear_session_cookie(response)
 
     return {
         "api_key_configured": bool(api_key),
@@ -152,7 +166,6 @@ async def get_ui_config(_: None = Depends(_require_local)):
         "recall": recall_cfg,
         "schedule_time": schedule_time,
         "active_agent_id": active_agent_id,
-        "session_token": active_session_token,
         "has_active_session": bool(active_session_token),
         "ui_mode": settings.MEMANTO_UI_MODE,
     }

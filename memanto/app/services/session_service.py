@@ -31,7 +31,7 @@ from memanto.app.utils.errors import (
     SessionNotFoundError,
 )
 from memanto.app.utils.ids import generate_id
-from memanto.app.utils.temporal_helpers import utc_now
+from memanto.app.utils.temporal_helpers import as_utc_naive, utc_now
 from memanto.app.utils.validation import validate_safe_id
 
 _session_service = None
@@ -209,7 +209,7 @@ class SessionService:
             token = SessionToken(**payload)
 
             # Validate expiration
-            if utc_now() > token.expires_at:
+            if utc_now() > as_utc_naive(token.expires_at):
                 raise SessionExpiredError(
                     f"Session {token.session_id} expired at {token.expires_at}"
                 )
@@ -297,7 +297,7 @@ class SessionService:
             raise SessionNotFoundError(f"No session found for agent {agent_id}")
 
         ended_at = utc_now()
-        duration = (ended_at - session.started_at).total_seconds() / 3600
+        duration = (ended_at - as_utc_naive(session.started_at)).total_seconds() / 3600
 
         # Update session status
         session.status = SessionStatus.TERMINATED
@@ -509,7 +509,7 @@ class SessionService:
         active_link = self.sessions_dir / "active"
 
         # Remove existing active link
-        if active_link.exists():
+        if active_link.exists() or active_link.is_symlink():
             active_link.unlink()
 
         # Create new active marker
@@ -524,12 +524,38 @@ class SessionService:
     def _clear_active_session(self) -> None:
         """Clear active session marker"""
         active_link = self.sessions_dir / "active"
-        if active_link.exists():
+        if active_link.exists() or active_link.is_symlink():
             active_link.unlink()
 
     def clear_active_session(self) -> None:
         """Public alias: clear the active-session marker without ending the session."""
         self._clear_active_session()
+
+    def delete_session(self, agent_id: str) -> bool:
+        """
+        Remove persisted session state for an agent.
+
+        Used when an agent is deleted: the agent metadata is gone, so a saved
+        session for that agent must not remain usable through X-Session-Token.
+        """
+        active_link = self.sessions_dir / "active"
+        active_agent_id: str | None = None
+
+        if active_link.is_symlink():
+            active_agent_id = active_link.readlink().stem
+        elif active_link.exists():
+            with open(active_link) as f:
+                active_agent_id = f.read().strip()
+
+        session_file = self.sessions_dir / f"{agent_id}.json"
+        deleted = session_file.exists()
+        if deleted:
+            session_file.unlink()
+
+        if active_agent_id == agent_id:
+            self._clear_active_session()
+
+        return deleted
 
     def list_sessions(self) -> list[Session]:
         """
@@ -544,4 +570,4 @@ class SessionService:
             if session is not None:
                 sessions.append(session)
 
-        return sorted(sessions, key=lambda s: s.started_at, reverse=True)
+        return sorted(sessions, key=lambda s: as_utc_naive(s.started_at), reverse=True)

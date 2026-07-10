@@ -15,6 +15,7 @@ from memanto.app.services.memory_parsing_service import MemoryParsingService
 from memanto.app.services.memory_validation_service import MemoryValidationService
 from memanto.app.utils.errors import MemoryError
 from memanto.app.utils.ids import generate_memory_id
+from memanto.app.utils.temporal_helpers import as_utc_naive
 
 
 class MemoryWriteService:
@@ -27,6 +28,26 @@ class MemoryWriteService:
         self._parser = MemoryParsingService()
         self._validation_service = MemoryValidationService(moorcheh_client)
         self._conflict_service = ConflictResolutionService(moorcheh_client)
+        self._namespace_service = None
+
+    @property
+    def namespace_service(self):
+        """Lazily create the namespace service used for memory scopes."""
+
+        if self._namespace_service is None:
+            from memanto.app.services.namespace_service import NamespaceService
+
+            self._namespace_service = NamespaceService(self.client)
+        return self._namespace_service
+
+    def _apply_timestamps(self, memory: MemoryRecord, now: datetime) -> None:
+        """Apply server timestamps while preserving imported source chronology."""
+        if memory.provenance == "imported":
+            memory.created_at = as_utc_naive(memory.created_at)
+            memory.updated_at = as_utc_naive(memory.updated_at)
+            return
+        memory.created_at = now
+        memory.updated_at = now
 
     def store_memory(
         self, memory: MemoryRecord, context: dict[str, Any] | None = None
@@ -37,10 +58,8 @@ class MemoryWriteService:
             if not memory.id:
                 memory.id = generate_memory_id()
 
-            # Enforce server-side timestamps (never trust client)
             now = datetime.utcnow()
-            memory.created_at = now
-            memory.updated_at = now
+            self._apply_timestamps(memory, now)
 
             # Auto parse memory type
             memory = self._parser.parse_memory(memory)
@@ -132,9 +151,7 @@ class MemoryWriteService:
                     if not memory.id:
                         memory.id = generate_memory_id()
 
-                    # Enforce server-side timestamps (never trust client)
-                    memory.created_at = now
-                    memory.updated_at = now
+                    self._apply_timestamps(memory, now)
 
                     memory = self._parser.parse_memory(memory)
 
