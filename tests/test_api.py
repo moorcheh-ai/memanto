@@ -189,6 +189,22 @@ class TestMEMANTOAPI:
         assert response.status_code == 401
 
     @pytest.mark.asyncio
+    async def test_create_agent_with_non_ascii_authorization_header_is_rejected(
+        self, client
+    ):
+        """Non-ASCII bearer tokens should fail auth without a server error."""
+        payload = {
+            "agent_id": "unicode-key-agent",
+            "pattern": "support",
+        }
+        response = await client.post(
+            "/api/v2/agents",
+            headers={"Authorization": "Bearer wrong-key-é"},
+            json=payload,
+        )
+        assert response.status_code == 401
+
+    @pytest.mark.asyncio
     async def test_create_agent_fails_when_server_key_missing(self, client):
         """Test failure when server API key is not configured"""
         payload = {
