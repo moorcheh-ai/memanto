@@ -12,6 +12,7 @@ from memanto.app.core import MemoryRecord
 from memanto.app.services.memory_parsing_service import MemoryParsingService
 from memanto.app.utils.errors import MemoryError
 from memanto.app.utils.ids import generate_memory_id
+from memanto.app.utils.temporal_helpers import as_utc_naive
 
 
 class MemoryWriteService:
@@ -22,6 +23,26 @@ class MemoryWriteService:
 
         self.client = moorcheh_client
         self._parser = MemoryParsingService()
+        self._namespace_service = None
+
+    @property
+    def namespace_service(self):
+        """Lazily create the namespace service used for memory scopes."""
+
+        if self._namespace_service is None:
+            from memanto.app.services.namespace_service import NamespaceService
+
+            self._namespace_service = NamespaceService(self.client)
+        return self._namespace_service
+
+    def _apply_timestamps(self, memory: MemoryRecord, now: datetime) -> None:
+        """Apply server timestamps while preserving imported source chronology."""
+        if memory.provenance == "imported":
+            memory.created_at = as_utc_naive(memory.created_at)
+            memory.updated_at = as_utc_naive(memory.updated_at)
+            return
+        memory.created_at = now
+        memory.updated_at = now
 
     def store_memory(
         self, memory: MemoryRecord, context: dict[str, Any] | None = None
@@ -32,10 +53,8 @@ class MemoryWriteService:
             if not memory.id:
                 memory.id = generate_memory_id()
 
-            # Enforce server-side timestamps (never trust client)
             now = datetime.utcnow()
-            memory.created_at = now
-            memory.updated_at = now
+            self._apply_timestamps(memory, now)
 
             # Auto parse memory type
             memory = self._parser.parse_memory(memory)
@@ -113,9 +132,7 @@ class MemoryWriteService:
                     if not memory.id:
                         memory.id = generate_memory_id()
 
-                    # Enforce server-side timestamps (never trust client)
-                    memory.created_at = now
-                    memory.updated_at = now
+                    self._apply_timestamps(memory, now)
 
                     memory = self._parser.parse_memory(memory)
 
@@ -307,11 +324,14 @@ class MemoryWriteService:
                     updated_memory.expires_at = metadata["expires_at"]
 
             # Step 3: Delete old version
-            delete_result = self.client.documents.delete(
-                namespace_name=namespace, ids=[memory_id]
+            from typing import Any, cast
+
+            delete_result = cast(
+                dict[str, Any],
+                self.client.documents.delete(namespace_name=namespace, ids=[memory_id]),
             )
 
-            if delete_result.get("actual_deletions", 0) == 0:
+            if not self._deletion_succeeded(delete_result):
                 raise MemoryError(f"Failed to delete old version of memory {memory_id}")
 
             validation_result = {"action": "store", "reason": "MVP direct store"}
@@ -349,18 +369,18 @@ class MemoryWriteService:
                 self.client.documents.delete(namespace_name=namespace, ids=[memory_id]),
             )
 
-            # Cloud returns ``actual_deletions``; on-prem's /items/delete only
-            # returns ``deleted_ids`` (and ``status``). Mirror the cloud SDK's
-            # ``_deletion_processed_count`` so both backends report success.
-            raw = result.get("actual_deletions")
-            if isinstance(raw, int):
-                return raw > 0
-            for key in ("deleted_ids", "requested_ids"):
-                ids = result.get(key)
-                if isinstance(ids, list):
-                    return len(ids) > 0
-            # Some on-prem builds only return ``{"status": "success"}``.
-            return str(result.get("status", "")).lower() in {"success", "ok"}
+            return self._deletion_succeeded(result)
 
         except Exception as e:
             raise MemoryError(f"Failed to delete memory: {e}")
+
+    @staticmethod
+    def _deletion_succeeded(result: dict[str, Any]) -> bool:
+        """Return True for cloud and on-prem successful deletion shapes."""
+        raw = result.get("actual_deletions")
+        if isinstance(raw, int):
+            return raw > 0
+        ids = result.get("deleted_ids")
+        if isinstance(ids, list):
+            return len(ids) > 0
+        return str(result.get("status", "")).lower() in {"success", "ok"}

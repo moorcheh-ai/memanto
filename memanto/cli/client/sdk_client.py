@@ -171,9 +171,24 @@ class SdkClient:
         Return the active session for *agent_id*, validating it like the FastAPI
         dependency ``get_current_session``.
         """
-        # Cache hit: avoid redundant disk I/O and JWT decodes in the same request
-        if self._cached_session and self.agent_id == agent_id:
-            return self._cached_session
+        # Cache hit: avoid redundant JWT decodes while the session remains
+        # active. Still runs the same near-expiry auto-renew check as the
+        # cold path below, so long-lived clients keep renewing instead of
+        # eventually hitting SessionExpiredError.
+        if self._cached_session:
+            if self.agent_id == agent_id and self._cached_session.agent_id == agent_id:
+                if not self._cached_session.is_active():
+                    self._cached_session = None
+                    raise SessionExpiredError(
+                        f"Cached session for agent {agent_id} is no longer active"
+                    )
+                session_service = self._get_session_service()
+                renewed = session_service.check_and_auto_renew(agent_id=agent_id)
+                if renewed:
+                    self._cached_session = renewed
+                    self.session_token = renewed.session_token
+                return self._cached_session
+            self._cached_session = None
 
         if not self.session_token or not self.agent_id:
             raise SessionError(
@@ -299,6 +314,10 @@ class SdkClient:
         """
         logger.debug("Deleting agent '%s'", agent_id)
         self._get_agent_service().delete_agent(agent_id)
+        if self.agent_id == agent_id:
+            self.session_token = None
+            self.agent_id = None
+            self._cached_session = None
         return {"status": "deleted", "agent_id": agent_id}
 
     # Session Management
@@ -339,6 +358,7 @@ class SdkClient:
 
         self.session_token = session.session_token
         self.agent_id = agent_id
+        self._cached_session = session
 
         return {
             "session_token": session.session_token,
@@ -362,6 +382,7 @@ class SdkClient:
         summary = self._get_session_service().end_session(agent_id)
         self.session_token = None
         self.agent_id = None
+        self._cached_session = None
         return cast(dict[str, Any], summary.model_dump(mode="json"))
 
     def get_session_info(self) -> dict[str, Any]:
@@ -516,7 +537,7 @@ class SdkClient:
         memory_records = []
         for i, item in enumerate(memories):
             raw_content = item.get("content", "")
-            if not raw_content:
+            if not isinstance(raw_content, str) or not raw_content.strip():
                 raise ValueError(f"Memory at index {i} has no content")
 
             raw_title = item.get("title")
@@ -796,14 +817,17 @@ class SdkClient:
             namespace_name=namespace,
             file_path=path,
         )
+        file_size = result.get("fileSize")
+        if file_size is None:
+            file_size = result.get("file_size", 0)
 
         return {
             "agent_id": agent_id,
             "namespace": namespace,
             "success": result.get("success", False),
             "message": result.get("message", ""),
-            "file_name": result.get("fileName", path.name),
-            "file_size": result.get("fileSize", 0),
+            "file_name": result.get("fileName") or result.get("file_name", path.name),
+            "file_size": file_size,
         }
 
     def recall(

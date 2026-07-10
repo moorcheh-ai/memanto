@@ -7,7 +7,12 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
-from memanto.app.constants import MemoryType, SourceType, StatusType
+from memanto.app.constants import (
+    VALID_PROVENANCE_TYPES,
+    MemoryType,
+    SourceType,
+    StatusType,
+)
 from memanto.app.core import require_non_blank_text
 
 
@@ -87,6 +92,16 @@ class BatchRememberItem(BaseModel):
     def validate_non_blank_text(cls, value: str | None) -> str | None:
         return require_non_blank_text(value)
 
+    @field_validator("provenance")
+    @classmethod
+    def provenance_must_be_valid(cls, value: str) -> str:
+        if value not in VALID_PROVENANCE_TYPES:
+            valid_provenance = ", ".join(sorted(VALID_PROVENANCE_TYPES))
+            raise ValueError(
+                f"Invalid provenance '{value}'. Must be one of: {valid_provenance}."
+            )
+        return value
+
 
 class RememberRequest(BatchRememberItem):
     """Request body for remember endpoint"""
@@ -108,6 +123,22 @@ class ConversationMessage(BaseModel):
 
     role: str = Field(..., min_length=1, max_length=50)
     content: str = Field(..., min_length=1, max_length=10000)
+
+    @field_validator("role")
+    @classmethod
+    def role_must_not_be_blank(cls, value: str) -> str:
+        """Reject message roles that contain only whitespace."""
+        if not value.strip():
+            raise ValueError("role must be a non-empty string")
+        return value
+
+    @field_validator("content")
+    @classmethod
+    def content_must_not_be_blank(cls, value: str) -> str:
+        """Reject message content that contains only whitespace."""
+        if not value.strip():
+            raise ValueError("content must be a non-empty string")
+        return value
 
 
 class ExtractMemoriesRequest(BaseModel):
@@ -186,6 +217,14 @@ class AnswerRequest(BaseModel):
         None, description="AI model to use for generating the answer"
     )
     kiosk_mode: bool = Field(False, description="Kiosk mode setting")
+
+    @field_validator("question")
+    @classmethod
+    def question_must_not_be_blank(cls, value: str) -> str:
+        """Reject questions that contain only whitespace."""
+        if not value.strip():
+            raise ValueError("question must be a non-empty string")
+        return value
 
 
 class MemoryUpdateRequest(BaseModel):

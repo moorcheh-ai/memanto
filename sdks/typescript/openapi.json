@@ -102,6 +102,22 @@
               ],
               "title": "X-Session-Token"
             }
+          },
+          {
+            "name": "memanto_session_token",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Memanto Session Token"
+            }
           }
         ],
         "requestBody": {
@@ -171,6 +187,22 @@
                 }
               ],
               "title": "X-Session-Token"
+            }
+          },
+          {
+            "name": "memanto_session_token",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Memanto Session Token"
             }
           }
         ],
@@ -251,6 +283,22 @@
               ],
               "title": "X-Session-Token"
             }
+          },
+          {
+            "name": "memanto_session_token",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Memanto Session Token"
+            }
           }
         ],
         "requestBody": {
@@ -326,6 +374,22 @@
               ],
               "title": "X-Session-Token"
             }
+          },
+          {
+            "name": "memanto_session_token",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Memanto Session Token"
+            }
           }
         ],
         "responses": {
@@ -383,6 +447,22 @@
                 }
               ],
               "title": "X-Session-Token"
+            }
+          },
+          {
+            "name": "memanto_session_token",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Memanto Session Token"
             }
           }
         ],
@@ -451,6 +531,22 @@
                 }
               ],
               "title": "X-Session-Token"
+            }
+          },
+          {
+            "name": "memanto_session_token",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Memanto Session Token"
             }
           }
         ],
@@ -522,6 +618,22 @@
               ],
               "title": "X-Session-Token"
             }
+          },
+          {
+            "name": "memanto_session_token",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Memanto Session Token"
+            }
           }
         ],
         "requestBody": {
@@ -591,6 +703,22 @@
                 }
               ],
               "title": "X-Session-Token"
+            }
+          },
+          {
+            "name": "memanto_session_token",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Memanto Session Token"
             }
           }
         ],
@@ -662,6 +790,22 @@
               ],
               "title": "X-Session-Token"
             }
+          },
+          {
+            "name": "memanto_session_token",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Memanto Session Token"
+            }
           }
         ],
         "requestBody": {
@@ -728,6 +872,22 @@
                 }
               ],
               "title": "X-Session-Token"
+            }
+          },
+          {
+            "name": "memanto_session_token",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Memanto Session Token"
             }
           }
         ],
@@ -814,6 +974,22 @@
               ],
               "title": "X-Session-Token"
             }
+          },
+          {
+            "name": "memanto_session_token",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Memanto Session Token"
+            }
           }
         ],
         "responses": {
@@ -871,6 +1047,22 @@
                 }
               ],
               "title": "X-Session-Token"
+            }
+          },
+          {
+            "name": "memanto_session_token",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Memanto Session Token"
             }
           }
         ],
@@ -939,6 +1131,22 @@
                 }
               ],
               "title": "X-Session-Token"
+            }
+          },
+          {
+            "name": "memanto_session_token",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Memanto Session Token"
             }
           }
         ],
@@ -1010,6 +1218,22 @@
               ],
               "title": "X-Session-Token"
             }
+          },
+          {
+            "name": "memanto_session_token",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Memanto Session Token"
+            }
           }
         ],
         "requestBody": {
@@ -1079,6 +1303,22 @@
                 }
               ],
               "title": "X-Session-Token"
+            }
+          },
+          {
+            "name": "memanto_session_token",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Memanto Session Token"
             }
           }
         ],
@@ -1347,6 +1587,22 @@
                 }
               ],
               "title": "X-Session-Token"
+            }
+          },
+          {
+            "name": "memanto_session_token",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Memanto Session Token"
             }
           }
         ],
@@ -1698,7 +1954,7 @@
           "Web UI"
         ],
         "summary": "Generate Daily Summary",
-        "description": "Trigger an on-demand daily summary for the active agent.\nExpects (optional): {\"agent_id\": \"...\", \"date\": \"YYYY-MM-DD\",\n                     \"output_path\": \"...\"}",
+        "description": "Trigger an on-demand daily summary for the active agent.\nExpects (optional): {\"agent_id\": \"...\", \"date\": \"YYYY-MM-DD\"}",
         "operationId": "generate_daily_summary_api_ui_daily_summary_post",
         "requestBody": {
           "content": {
@@ -2600,7 +2856,8 @@
           }
         },
         "type": "object",
-        "title": "ConflictDetectRequest"
+        "title": "ConflictDetectRequest",
+        "description": "Request body for on-demand conflict report generation."
       },
       "ConflictResolveRequest": {
         "properties": {
@@ -2612,6 +2869,13 @@
           },
           "action": {
             "type": "string",
+            "enum": [
+              "keep_old",
+              "keep_new",
+              "keep_both",
+              "remove_both",
+              "manual"
+            ],
             "title": "Action",
             "description": "Resolution action: keep_old, keep_new, keep_both, remove_both, manual"
           },
@@ -2707,11 +2971,12 @@
               }
             ],
             "title": "Output Path",
-            "description": "Optional custom output path for the summary MD file."
+            "description": "Accepted for backwards compatibility but ignored; summaries use the server-controlled output location."
           }
         },
         "type": "object",
-        "title": "DailySummaryRequest"
+        "title": "DailySummaryRequest",
+        "description": "Request body for on-demand daily summary generation."
       },
       "ExtractMemoriesRequest": {
         "properties": {
@@ -2877,7 +3142,8 @@
           }
         },
         "type": "object",
-        "title": "MemoryEditRequest"
+        "title": "MemoryEditRequest",
+        "description": "Request body for partial memory record updates."
       },
       "MemoryItem": {
         "properties": {
@@ -3097,7 +3363,8 @@
         "required": [
           "as_of"
         ],
-        "title": "RecallAsOfRequest"
+        "title": "RecallAsOfRequest",
+        "description": "Request body for point-in-time memory recall."
       },
       "RecallChangedSinceRequest": {
         "properties": {
@@ -3140,7 +3407,8 @@
         "required": [
           "since"
         ],
-        "title": "RecallChangedSinceRequest"
+        "title": "RecallChangedSinceRequest",
+        "description": "Request body for querying memories changed since a timestamp."
       },
       "RecallRecentRequest": {
         "properties": {
@@ -3174,7 +3442,8 @@
           }
         },
         "type": "object",
-        "title": "RecallRecentRequest"
+        "title": "RecallRecentRequest",
+        "description": "Request body for retrieving recent memories."
       },
       "RecallRequest": {
         "properties": {
@@ -3231,7 +3500,8 @@
         "required": [
           "query"
         ],
-        "title": "RecallRequest"
+        "title": "RecallRequest",
+        "description": "Request body for semantic memory recall."
       },
       "RecallResponse": {
         "properties": {
