@@ -452,10 +452,15 @@ class MemoryReadService:
             for key, value in metadata_filters.items():
                 filter_parts.append(f"#{key}:{value}")
 
-        # Combine query with filters
+        # Combine query with filters.
+        # CRITICAL: Escape '#' in the user query so attackers can't inject
+        # Moorcheh's #key:value filter syntax via malicious query strings.
+        # Without this, a query like "foo #memory_type:secret" would add a
+        # memory_type:secret filter alongside the intended system filters.
+        safe_query = query.replace("#", "\\#")
         if filter_parts:
-            return f"{query} {' '.join(filter_parts)}"
-        return query
+            return f"{safe_query} {' '.join(filter_parts)}"
+        return safe_query
 
     def _apply_temporal_filter(
         self,
