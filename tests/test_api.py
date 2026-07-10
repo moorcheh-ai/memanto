@@ -163,15 +163,30 @@ class TestMEMANTOAPI:
         assert "metadata" not in data
 
     @pytest.mark.asyncio
-    async def test_create_agent_without_authorization_header(self, client):
-        """Test creating a new agent using server-configured API key"""
+    async def test_create_agent_without_authorization_header_is_rejected(self, client):
+        """Agent creation must not be available to unauthenticated callers."""
         payload = {
             "agent_id": "server-key-agent",
             "pattern": "support",
         }
         response = await client.post("/api/v2/agents", json=payload)
-        assert response.status_code == 201
-        assert response.json()["agent_id"] == "server-key-agent"
+        assert response.status_code == 401
+
+    @pytest.mark.asyncio
+    async def test_create_agent_with_wrong_authorization_header_is_rejected(
+        self, client
+    ):
+        """Agent lifecycle endpoints must verify the presented bearer token."""
+        payload = {
+            "agent_id": "wrong-key-agent",
+            "pattern": "support",
+        }
+        response = await client.post(
+            "/api/v2/agents",
+            headers={"Authorization": "Bearer wrong-key"},
+            json=payload,
+        )
+        assert response.status_code == 401
 
     @pytest.mark.asyncio
     async def test_create_agent_fails_when_server_key_missing(self, client):
@@ -212,6 +227,21 @@ class TestMEMANTOAPI:
         assert "session_token" in data
         assert "session_id" in data
         assert data["agent_id"] == self.TEST_AGENT_ID
+
+    @pytest.mark.asyncio
+    async def test_activate_session_without_authorization_header_is_rejected(
+        self, client, auth_headers
+    ):
+        """Unauthenticated callers must not be able to mint session tokens."""
+        await client.post(
+            "/api/v2/agents",
+            headers=auth_headers,
+            json={"agent_id": self.TEST_AGENT_ID, "pattern": "support"},
+        )
+
+        response = await client.post(f"/api/v2/agents/{self.TEST_AGENT_ID}/activate")
+        assert response.status_code == 401
+        assert "session_token" not in response.text
 
     @pytest.mark.asyncio
     async def test_remember_with_session(self, client, auth_headers, mock_moorcheh):

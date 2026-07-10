@@ -37,7 +37,6 @@ from memanto.app.routes import memory  # noqa: E402
 from memanto.app.routes.auth_deps import (  # noqa: E402
     clear_session_cookie,
     get_current_session,
-    get_moorcheh_api_key,
     get_session_service,
     set_session_cookie,
     verify_moorcheh_api_key,
@@ -81,7 +80,7 @@ async def _namespace_item_counts(moorcheh_api_key: str) -> dict[str, int]:
 
 @router.post("/agents", response_model=AgentInfo, status_code=201)
 async def create_agent(
-    agent_create: AgentCreate, moorcheh_api_key: str = Depends(get_moorcheh_api_key)
+    agent_create: AgentCreate, moorcheh_api_key: str = Depends(verify_moorcheh_api_key)
 ):
     """
     Create a new MEMANTO agent

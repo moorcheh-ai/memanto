@@ -4,6 +4,8 @@ Authentication Dependencies for V2 API
 Shared authentication utilities to avoid circular imports.
 """
 
+import secrets
+
 from fastapi import Cookie, Header, HTTPException, Request, Response
 
 from memanto.app.models.session import Session
@@ -73,13 +75,35 @@ def get_moorcheh_api_key() -> str:
     )
 
 
-def verify_moorcheh_api_key() -> str:
+def verify_moorcheh_api_key(authorization: str | None = Header(None)) -> str:
     """
-    Return configured Moorcheh API key.
+    Verify the incoming bearer token against the configured Moorcheh API key.
 
-    Runtime connectivity is validated at startup and via /health.
+    Runtime connectivity is validated at startup and via /health. The configured
+    key remains server-owned, but callers must still prove they know it before
+    they can create agents or mint session tokens.
     """
-    return get_moorcheh_api_key()
+    configured_key = get_moorcheh_api_key()
+    if configured_key == "on-prem":
+        return configured_key
+
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(
+            status_code=401,
+            detail="Missing or invalid Authorization header. Use Bearer token.",
+        )
+
+    provided_key = authorization.removeprefix("Bearer ").strip()
+    try:
+        provided_key_bytes = provided_key.encode("ascii")
+        configured_key_bytes = configured_key.encode("ascii")
+    except UnicodeEncodeError:
+        raise HTTPException(status_code=401, detail="Invalid API key")
+
+    if not secrets.compare_digest(provided_key_bytes, configured_key_bytes):
+        raise HTTPException(status_code=401, detail="Invalid API key")
+
+    return configured_key
 
 
 def get_current_session(
