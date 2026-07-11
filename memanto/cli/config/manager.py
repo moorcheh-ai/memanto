@@ -10,6 +10,7 @@ Handles configuration persistence:
 import importlib
 import json
 import os
+import re
 from pathlib import Path
 
 from dotenv import load_dotenv, set_key
@@ -397,6 +398,10 @@ class ConfigManager:
 
     def set_schedule_time(self, time_str: str) -> None:
         """Set daily summary + conflict time."""
+        if not isinstance(time_str, str) or not re.fullmatch(
+            r"(?:[01]\d|2[0-3]):[0-5]\d", time_str
+        ):
+            raise ValueError("schedule_time must use 24-hour HH:MM format")
         self.set("schedule_time", time_str)
 
     # Active session tracking — sourced from SessionService (~/.memanto/sessions/).

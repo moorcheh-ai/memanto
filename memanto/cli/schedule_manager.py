@@ -6,6 +6,7 @@ Schedules a nightly job that runs daily-summary followed by detect-conflicts
 """
 
 import platform
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -56,6 +57,13 @@ class ScheduleManager:
         return f'"{self.python_exe}" "{self.cli_main.absolute()}" schedule _run'
 
     def enable(self, time_str: str = "23:55") -> dict[str, Any]:
+        if not isinstance(time_str, str) or not re.fullmatch(
+            r"(?:[01]\d|2[0-3]):[0-5]\d", time_str
+        ):
+            return {
+                "status": "error",
+                "message": "Invalid schedule time; expected 24-hour HH:MM format.",
+            }
         self._remove_legacy_tasks()
         if self.os_type == "Windows":
             return self._enable_windows(time_str)
