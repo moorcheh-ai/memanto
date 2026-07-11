@@ -1,0 +1,89 @@
+"""
+Regression tests for two silent memory-integrity bugs in MemoryReadService:
+
+1. ``_format_memory_item`` used to wipe or corrupt content when the stored
+   text contained a line beginning with ``"Tags: "`` (either as the content
+   itself or inside multi-paragraph content).
+2. ``_apply_temporal_filter`` used to disable the ENTIRE created_after /
+   created_before window if any single record had a missing/unparseable
+   ``created_at``, leaking out-of-window memories.
+
+Both paths are pure Python and need no Moorcheh client, network, or API key.
+"""
+
+from memanto.app.services.memory_read_service import MemoryReadService
+
+
+def _service() -> MemoryReadService:
+    # These methods never touch the client; a sentinel is enough.
+    return MemoryReadService(moorcheh_client=object())
+
+
+def _wire(memory_type: str, title: str, content: str, tags: list[str]) -> dict:
+    """Reproduce MemoryRecord.to_moorcheh_document's text/metadata layout."""
+    text = f"[{memory_type.upper()}] {title}\n\n{content}"
+    item: dict = {"text": text, "memory_type": memory_type}
+    if tags:
+        text = f"{text}\n\nTags: {', '.join(tags)}"
+        item["text"] = text
+        item["tags"] = ",".join(tags)
+    return item
+
+
+# --- Bug 1: content parsing ------------------------------------------------
+
+
+def test_content_starting_with_tags_is_not_wiped():
+    item = _wire("fact", "Ticket note", "Tags: bug and urgent are the labels", [])
+    out = _service()._format_memory_item(item)
+    assert out["content"] == "Tags: bug and urgent are the labels"
+    assert out["title"] == "Ticket note"
+
+
+def test_multi_paragraph_content_keeps_paragraphs_and_strips_tags():
+    item = _wire("fact", "T", "para1\n\npara2", ["a", "b"])
+    out = _service()._format_memory_item(item)
+    assert out["content"] == "para1\n\npara2"
+    assert out["tags"] == ["a", "b"]
+
+
+def test_normal_content_with_tags_roundtrips():
+    item = _wire("fact", "T", "single body", ["x"])
+    out = _service()._format_memory_item(item)
+    assert out["content"] == "single body"
+    assert out["tags"] == ["x"]
+
+
+def test_normal_content_without_tags_roundtrips():
+    item = _wire("fact", "T", "just the body", [])
+    out = _service()._format_memory_item(item)
+    assert out["content"] == "just the body"
+
+
+# --- Bug 2: temporal filter fail-open --------------------------------------
+
+
+def test_one_bad_timestamp_does_not_disable_window():
+    results = [
+        {"id": "old", "created_at": "2020-01-01T00:00:00Z"},
+        {"id": "bad", "created_at": "not-a-timestamp"},
+        {"id": "june", "created_at": "2026-06-15T00:00:00Z"},
+    ]
+    out = _service()._apply_temporal_filter(
+        results, created_after="2026-06-01T00:00:00Z", created_before=None
+    )
+    # Only the in-window record survives; the 2020 record must NOT leak through,
+    # and the unparseable record is skipped individually.
+    assert [r["id"] for r in out] == ["june"]
+
+
+def test_created_before_excludes_later_and_bad_records():
+    results = [
+        {"id": "early", "created_at": "2026-01-01T00:00:00Z"},
+        {"id": "bad", "created_at": None},
+        {"id": "late", "created_at": "2026-12-31T00:00:00Z"},
+    ]
+    out = _service()._apply_temporal_filter(
+        results, created_after=None, created_before="2026-06-01T00:00:00Z"
+    )
+    assert [r["id"] for r in out] == ["early"]
