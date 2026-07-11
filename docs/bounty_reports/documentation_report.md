@@ -136,4 +136,3 @@ if __name__ == "__main__":
     print("\n=== Testing Contradiction Handling ===")
     test_contradiction_handling()
 ```
-```
