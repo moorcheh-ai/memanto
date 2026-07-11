@@ -73,7 +73,26 @@ def validate_memory_source_ref(value: str | None) -> str | None:
 
 
 # Request Models
-class MemoryStoreRequest(BaseModel):
+class _BoundedMetadataMixin(BaseModel):
+    """Shared validators for memory metadata fields."""
+
+    @field_validator("source", check_fields=False)
+    @classmethod
+    def source_must_be_bounded(cls, value: str) -> str:
+        return validate_memory_source(value)
+
+    @field_validator("source_ref", check_fields=False)
+    @classmethod
+    def source_ref_must_be_bounded(cls, value: str | None) -> str | None:
+        return validate_memory_source_ref(value)
+
+    @field_validator("tags", check_fields=False)
+    @classmethod
+    def tags_must_be_bounded(cls, value: list[str]) -> list[str]:
+        return validate_memory_tags(value) or []
+
+
+class MemoryStoreRequest(_BoundedMetadataMixin):
     """Request body for storing a single memory."""
 
     type: MemoryType
@@ -94,23 +113,8 @@ class MemoryStoreRequest(BaseModel):
         """Ensure stored memories contain useful non-blank content."""
         return _validate_non_blank_content(value)
 
-    @field_validator("source")
-    @classmethod
-    def source_must_be_bounded(cls, value: str) -> str:
-        return validate_memory_source(value)
 
-    @field_validator("source_ref")
-    @classmethod
-    def source_ref_must_be_bounded(cls, value: str | None) -> str | None:
-        return validate_memory_source_ref(value)
-
-    @field_validator("tags")
-    @classmethod
-    def tags_must_be_bounded(cls, value: list[str]) -> list[str]:
-        return validate_memory_tags(value) or []
-
-
-class MemoryBatchItem(BaseModel):
+class MemoryBatchItem(_BoundedMetadataMixin):
     """Single memory item for batch write"""
 
     type: MemoryType
@@ -128,21 +132,6 @@ class MemoryBatchItem(BaseModel):
     def validate_content(cls, value: str) -> str:
         """Ensure batch memory items contain useful non-blank content."""
         return _validate_non_blank_content(value)
-
-    @field_validator("source")
-    @classmethod
-    def source_must_be_bounded(cls, value: str) -> str:
-        return validate_memory_source(value)
-
-    @field_validator("source_ref")
-    @classmethod
-    def source_ref_must_be_bounded(cls, value: str | None) -> str | None:
-        return validate_memory_source_ref(value)
-
-    @field_validator("tags")
-    @classmethod
-    def tags_must_be_bounded(cls, value: list[str]) -> list[str]:
-        return validate_memory_tags(value) or []
 
 
 class MemoryBatchWriteRequest(BaseModel):
