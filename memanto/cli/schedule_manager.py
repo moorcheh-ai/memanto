@@ -58,6 +58,7 @@ class ScheduleManager:
         return f'"{self.python_exe}" "{self.cli_main.absolute()}" schedule _run'
 
     def enable(self, time_str: str = "23:55") -> dict[str, Any]:
+        """Install the nightly job when ``time_str`` is a valid 24-hour time."""
         if not isinstance(time_str, str) or not SCHEDULE_TIME_RE.fullmatch(time_str):
             return {
                 "status": "error",
@@ -138,6 +139,7 @@ class ScheduleManager:
     # Unix/OSX (crontab)
 
     def _enable_unix(self, time_str: str = "23:55") -> dict[str, Any]:
+        """Add a validated nightly schedule to the current user's crontab."""
         hour, minute = (int(part) for part in time_str.split(":"))
 
         marker = f"# {self.TASK_NAME}"
