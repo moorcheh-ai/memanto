@@ -24,22 +24,28 @@ class AuthService:
 
     def __init__(self):
         # In production, load from secure storage
-        self.tenant_api_keys = {
-            # Format: api_key -> tenant_info
-            "tk_acme_prod_abc123": {
-                "tenant_id": "acme",
-                "roles": ["admin", "user"],
-                "scopes_allowed": ["user", "workspace", "agent", "session"],
-            },
-            "tk_demo_test_xyz789": {
-                "tenant_id": "demo",
-                "roles": ["user"],
-                "scopes_allowed": ["user", "agent"],
-            },
-        }
+        # SECURITY: API keys should be loaded from environment or secure storage,
+        # not hardcoded in source code.
+        # Load from MEMANTO_API_KEYS environment variable as JSON dict.
+        import json as _json
+        _keys_str = os.environ.get("MEMANTO_API_KEYS", "{}")
+        try:
+            self.tenant_api_keys = _json.loads(_keys_str)
+        except (_json.JSONDecodeError, TypeError):
+            self.tenant_api_keys = {}
 
         # JWT configuration
-        self.jwt_secret = getattr(settings, "JWT_SECRET", "dev-secret-change-in-prod")
+        # SECURITY: JWT_SECRET must be explicitly configured in production.
+        # Using a default secret allows JWT forgery.
+        secret = getattr(settings, "JWT_SECRET", None)
+        if not secret:
+            import warnings
+            warnings.warn(
+                "JWT_SECRET not configured! Authentication will be disabled. "
+                "Set JWT_SECRET in your environment or .env file."
+            )
+            secret = os.environ.get("JWT_SECRET", "")
+        self.jwt_secret = secret
         self.jwt_algorithm = "HS256"
         self.jwt_issuer = getattr(settings, "JWT_ISSUER", "memanto")
 
