@@ -6,11 +6,12 @@ Schedules a nightly job that runs daily-summary followed by detect-conflicts
 """
 
 import platform
-import re
 import subprocess
 import sys
 from pathlib import Path
 from typing import Any
+
+from memanto.cli.schedule_time import SCHEDULE_TIME_RE
 
 
 class ScheduleManager:
@@ -57,9 +58,7 @@ class ScheduleManager:
         return f'"{self.python_exe}" "{self.cli_main.absolute()}" schedule _run'
 
     def enable(self, time_str: str = "23:55") -> dict[str, Any]:
-        if not isinstance(time_str, str) or not re.fullmatch(
-            r"(?:[01]\d|2[0-3]):[0-5]\d", time_str
-        ):
+        if not isinstance(time_str, str) or not SCHEDULE_TIME_RE.fullmatch(time_str):
             return {
                 "status": "error",
                 "message": "Invalid schedule time; expected 24-hour HH:MM format.",
@@ -139,11 +138,7 @@ class ScheduleManager:
     # Unix/OSX (crontab)
 
     def _enable_unix(self, time_str: str = "23:55") -> dict[str, Any]:
-        try:
-            parts = time_str.split(":")
-            hour, minute = int(parts[0]), int(parts[1])
-        except (ValueError, IndexError):
-            hour, minute = 23, 55
+        hour, minute = (int(part) for part in time_str.split(":"))
 
         marker = f"# {self.TASK_NAME}"
         cron_entry = f"{minute} {hour} * * * {self._command()}  {marker}"

@@ -10,12 +10,12 @@ Handles configuration persistence:
 import importlib
 import json
 import os
-import re
 from pathlib import Path
 
 from dotenv import load_dotenv, set_key
 
 from memanto.app.clients.backend import Backend, parse_backend
+from memanto.cli.schedule_time import SCHEDULE_TIME_RE
 
 yaml = importlib.import_module("yaml")
 
@@ -398,9 +398,7 @@ class ConfigManager:
 
     def set_schedule_time(self, time_str: str) -> None:
         """Set daily summary + conflict time."""
-        if not isinstance(time_str, str) or not re.fullmatch(
-            r"(?:[01]\d|2[0-3]):[0-5]\d", time_str
-        ):
+        if not isinstance(time_str, str) or not SCHEDULE_TIME_RE.fullmatch(time_str):
             raise ValueError("schedule_time must use 24-hour HH:MM format")
         self.set("schedule_time", time_str)
 
