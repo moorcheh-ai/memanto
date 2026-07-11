@@ -867,6 +867,34 @@ class TestMEMANTOAPI:
         mock_moorcheh.documents.upload.assert_not_called()
 
     @pytest.mark.asyncio
+    async def test_remember_rejects_oversized_metadata_labels(
+        self, client, auth_headers, mock_moorcheh
+    ):
+        """Tags/source metadata should be bounded before expanding upload text."""
+        await client.post(
+            "/api/v2/agents",
+            headers=auth_headers,
+            json={"agent_id": self.TEST_AGENT_ID},
+        )
+        activate_resp = await client.post(
+            f"/api/v2/agents/{self.TEST_AGENT_ID}/activate", headers=auth_headers
+        )
+        token = activate_resp.json()["session_token"]
+
+        headers = {**auth_headers, "X-Session-Token": token}
+        response = await client.post(
+            f"/api/v2/agents/{self.TEST_AGENT_ID}/remember",
+            headers=headers,
+            json={
+                "content": "Small content should not hide oversized tags",
+                "tags": ["x" * 65],
+            },
+        )
+
+        assert response.status_code == 422
+        mock_moorcheh.documents.upload.assert_not_called()
+
+    @pytest.mark.asyncio
     async def test_global_status_no_active_session(self, client):
         """Test GET /api/v2/status returns 404 when no session is active"""
         response = await client.get("/api/v2/status")
@@ -953,6 +981,38 @@ class TestMEMANTOAPI:
                         "content": "Invalid provenance should not be batched",
                         "type": "fact",
                         "provenance": "guessed",
+                    }
+                ]
+            },
+        )
+
+        assert response.status_code == 422
+        mock_moorcheh.documents.upload.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_batch_remember_rejects_too_many_tags(
+        self, client, auth_headers, mock_moorcheh
+    ):
+        """Batch writes should reject unbounded tag metadata before upload."""
+        await client.post(
+            "/api/v2/agents",
+            headers=auth_headers,
+            json={"agent_id": self.TEST_AGENT_ID},
+        )
+        activate_resp = await client.post(
+            f"/api/v2/agents/{self.TEST_AGENT_ID}/activate", headers=auth_headers
+        )
+        token = activate_resp.json()["session_token"]
+
+        headers = {**auth_headers, "X-Session-Token": token}
+        response = await client.post(
+            f"/api/v2/agents/{self.TEST_AGENT_ID}/batch-remember",
+            headers=headers,
+            json={
+                "memories": [
+                    {
+                        "content": "Batch item with too many tags",
+                        "tags": [f"tag-{index}" for index in range(21)],
                     }
                 ]
             },
