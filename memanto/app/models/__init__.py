@@ -22,6 +22,56 @@ def _validate_non_blank_content(value: str) -> str:
     return value
 
 
+MAX_TAG_COUNT = 20
+MAX_TAG_LENGTH = 64
+MAX_SOURCE_LENGTH = 128
+MAX_SOURCE_REF_LENGTH = 512
+
+
+def validate_memory_tags(value: list[str] | None) -> list[str] | None:
+    """Bound tags before they are copied into search text and metadata."""
+    if value is None:
+        return value
+    if len(value) > MAX_TAG_COUNT:
+        raise ValueError(f"tags cannot contain more than {MAX_TAG_COUNT} entries")
+
+    cleaned = []
+    for tag in value:
+        cleaned_tag = tag.strip()
+        if not cleaned_tag:
+            raise ValueError("tags cannot contain blank values")
+        if len(cleaned_tag) > MAX_TAG_LENGTH:
+            raise ValueError(
+                f"tags cannot exceed {MAX_TAG_LENGTH} characters per entry"
+            )
+        cleaned.append(cleaned_tag)
+    return cleaned
+
+
+def validate_memory_source(value: str) -> str:
+    """Bound source labels before they are stored in document metadata."""
+    cleaned_source = value.strip()
+    if not cleaned_source:
+        raise ValueError("source must be a non-empty string")
+    if len(cleaned_source) > MAX_SOURCE_LENGTH:
+        raise ValueError(f"source cannot exceed {MAX_SOURCE_LENGTH} characters")
+    return cleaned_source
+
+
+def validate_memory_source_ref(value: str | None) -> str | None:
+    """Bound optional source references before storage."""
+    if value is None:
+        return value
+    cleaned_source_ref = value.strip()
+    if not cleaned_source_ref:
+        return None
+    if len(cleaned_source_ref) > MAX_SOURCE_REF_LENGTH:
+        raise ValueError(
+            f"source_ref cannot exceed {MAX_SOURCE_REF_LENGTH} characters"
+        )
+    return cleaned_source_ref
+
+
 # Request Models
 class MemoryStoreRequest(BaseModel):
     """Request body for storing a single memory."""
@@ -44,6 +94,21 @@ class MemoryStoreRequest(BaseModel):
         """Ensure stored memories contain useful non-blank content."""
         return _validate_non_blank_content(value)
 
+    @field_validator("source")
+    @classmethod
+    def source_must_be_bounded(cls, value: str) -> str:
+        return validate_memory_source(value)
+
+    @field_validator("source_ref")
+    @classmethod
+    def source_ref_must_be_bounded(cls, value: str | None) -> str | None:
+        return validate_memory_source_ref(value)
+
+    @field_validator("tags")
+    @classmethod
+    def tags_must_be_bounded(cls, value: list[str]) -> list[str]:
+        return validate_memory_tags(value) or []
+
 
 class MemoryBatchItem(BaseModel):
     """Single memory item for batch write"""
@@ -63,6 +128,21 @@ class MemoryBatchItem(BaseModel):
     def validate_content(cls, value: str) -> str:
         """Ensure batch memory items contain useful non-blank content."""
         return _validate_non_blank_content(value)
+
+    @field_validator("source")
+    @classmethod
+    def source_must_be_bounded(cls, value: str) -> str:
+        return validate_memory_source(value)
+
+    @field_validator("source_ref")
+    @classmethod
+    def source_ref_must_be_bounded(cls, value: str | None) -> str | None:
+        return validate_memory_source_ref(value)
+
+    @field_validator("tags")
+    @classmethod
+    def tags_must_be_bounded(cls, value: list[str]) -> list[str]:
+        return validate_memory_tags(value) or []
 
 
 class MemoryBatchWriteRequest(BaseModel):
@@ -100,6 +180,16 @@ class BatchRememberItem(BaseModel):
     def validate_content(cls, value: str) -> str:
         """Ensure session memory writes contain useful non-blank content."""
         return _validate_non_blank_content(value)
+
+    @field_validator("source")
+    @classmethod
+    def source_must_be_bounded(cls, value: str) -> str:
+        return validate_memory_source(value)
+
+    @field_validator("tags")
+    @classmethod
+    def tags_must_be_bounded(cls, value: list[str] | None) -> list[str] | None:
+        return validate_memory_tags(value)
 
     @field_validator("provenance")
     @classmethod
