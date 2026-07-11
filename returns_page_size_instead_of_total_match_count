@@ -1,0 +1,197 @@
+Target Repository: moorcheh-ai/memanto Affected File: memanto/app/services/memory_read_service.py Method: search_memories() Severity: Medium (incorrect API contract — breaks pagination for downstream consumers) Bounty Classification: Logic bug — incorrect variable binding in return statement
+
+1. Finding
+The search_memories() method in memory_read_service.py constructs a return dictionary containing two fields that appear to describe result counts:
+
+total_found — intended to convey the total number of matching results
+total_available — also intended to convey the total number of matching results
+Both fields are present, but total_found is assigned the length of the paginated slice rather than the full result set. Specifically:
+# pagination
+paginated_results = all_results[offset : offset + limit]   # sliced to page size
+has_more = len(all_results) > offset + limit
+
+return {
+    "results": paginated_results,
+    "total_found": len(paginated_results),       # ← BUG: always ≤ limit
+    "total_available": len(all_results),          # ← correct total
+    "offset": offset,
+    "limit": limit,
+    "has_more": has_more,
+    "query": query,
+    "enhanced_query": enhanced_query,
+    "execution_time": search_result.get("execution_time", 0),                                                         
+  Because paginated_results = all_results[offset : offset + limit], len(paginated_results) always equals limit (or fewer for the final page). The field total_found therefore contains no information beyond what is already available from limit and len(results). It is indistinguishable from the page size.
+
+2. Current State on main Branch (Verified)
+The buggy line is present in the latest commit on main at the time of this report:
+
+Repository: moorcheh-ai/memanto File: memanto/app/services/memory_read_service.py Line: Inside the return block of search_memories() — the dict key "total_found" is bound to len(paginated_results).
+
+Verified by fetching the raw file directly from: https://raw.githubusercontent.com/moorcheh-ai/memanto/main/memanto/app/services/memory_read_service.py
+
+The return block reads:
+ return {
+    "results": paginated_results,
+    "total_found": len(paginated_results),       # ← BUG: page size, not total
+    "total_available": len(all_results),          # ← correctly uses all_results
+    ...
+}
+  Scenario	Expected total_found	Actual total_found
+25 total matches, page 1 (limit=10, offset=0)	25	10
+25 total matches, page 2 (limit=10, offset=10)	25	10
+25 total matches, page 3 (limit=10, offset=20)	25	5
+In every case, total_found is indistinguishable from the page size limit (or less for the last page). The only way a consumer can determine the true total is to ignore total_found entirely and use total_available instead — but the field name total_found strongly suggests it should carry the total count.
+
+4. Measurable Impact
+Applications that rely on total_found to determine the total number of matching records may stop requesting additional pages prematurely or display incorrect pagination metadata.
+
+Concrete example: A client using cursor-based pagination with a loop like:
+
+python
+
+
+
+offset = 0
+limit = 10
+all_results = []
+while offset < total_found:   # ← reads total_found from response
+    resp = search(limit=limit, offset=offset)
+    all_results.extend(resp["results"])
+    offset += limit
+    total_found = resp["total_found"]
+This loop terminates after the first page because:
+Page 1: total_found=10, offset becomes 10, 10 < 10 is False → loop exits after 10 of 25 results.
+The consumer has no way to detect the truncation because has_more is computed from len(all_results) > offset + limit (which uses the correct all_results), so has_more=True should tell the client to continue. But if the client prefers total_found as its authoritative source (a reasonable interpretation of the field name), it exits early.
+
+Even if the consumer uses has_more instead, the total_found field misleads any logging, monitoring, or UI layer that displays a count.
+
+5. Reproducibility
+Prerequisites
+A working Memanto development environment with pytest
+The moorcheh_sdk mockable (the test uses unittest.mock / mocker)
+ Test Script
+Create tests/test_total_found_bug.py:
+"""
+Reproducer for the total_found bug.
+
+Run with:
+    pytest tests/test_total_found_bug.py -v
+"""
+import pytest
+from memanto.app.services.memory_read_service import MemoryReadService
+
+
+def test_search_total_found_equals_total_available(mocker):
+    """
+    total_found must reflect the total number of matching records,
+    not the page size.
+
+    Given 25 matching memories and a request for page 1 (limit=10, offset=0):
+        total_found == 25  (total matching)
+        total_available == 25
+        len(results) == 10  (page size)
+    """
+    # Arrange: mock Moorcheh client to return 25 items
+    mock_client = mocker.MagicMock()
+    mock_client.similarity_search.query.return_value = {
+        "results": [
+            {"id": f"mem_{i}", "text": f"[FACT] test result {i}", "metadata": {}}
+            for i in range(25)
+        ]
+    }
+    service = MemoryReadService(mock_client)
+
+    # Act: request page 1 with limit=10, offset=0
+    result = service.search_memories(
+        query="test",
+        agent_id="test_agent",
+        limit=10,
+        offset=0,
+    )
+
+    # Assert
+    assert result["total_found"] == 25, (
+        f"Expected total_found=25 (total matching records), "
+        f"got {result['total_found']}. "
+        f"This indicates total_found is returning the page size "
+        f"instead of the total count."
+    )
+    assert result["total_available"] == 25, (
+        f"Expected total_available=25, got {result['total_available']}"
+    )
+    assert len(result["results"]) == 10, (
+        f"Expected page size = 10, got {len(result['results'])}"
+    )
+
+
+def test_search_total_found_on_second_page(mocker):
+    """
+    total_found must be consistent across pages — it should report
+    the same total regardless of which page is requested.
+    """
+    mock_client = mocker.MagicMock()
+    mock_client.similarity_search.query.return_value = {
+        "results": [
+            {"id": f"mem_{i}", "text": f"[FACT] test {i}", "metadata": {}}
+            for i in range(25)
+        ]
+    }
+    service = MemoryReadService(mock_client)
+
+    # Act: page 2
+    result = service.search_memories(
+        query="test",
+        agent_id="test_agent",
+        limit=10,
+        offset=10,
+    )
+
+    # Assert: total_found should still be 25, not 10
+    assert result["total_found"] == 25, (
+        f"On page 2, expected total_found=25, got {result['total_found']}"
+    )
+    assert result["total_available"] == 25
+    assert len(result["results"]) == 10
+ Expected Test Result
+Both tests fail on the current main branch:
+FAILED tests/test_total_found_bug.py::test_search_total_found_equals_total_available -
+AssertionError: Expected total_found=25 (total matching records), got 10.
+6. Root Cause Analysis
+The bug is a simple variable binding error. Two variables hold different counts:
+
+
+
+Variable	Content	Length
+all_results	All matching results after filtering	Total matches (e.g., 25)
+paginated_results	Slice: all_results[offset : offset + limit]	Page size (e.g., 10)
+The return statement binds total_found to len(paginated_results) instead of len(all_results). The correct total is already computed and available — it is used for the sibling field total_available — but total_found accidentally points to the wrong variable.
+The presence of both total_found and total_available with the same intended meaning suggests a refactoring artifact: the two fields may have been introduced at different times or by different authors, and the assignment to total_found was never updated after the pagination slicing was added.
+
+7. Fix
+One-line change in memory_read_service.py
+diff
+
+
+
+         return {
+             "results": paginated_results,
+-            "total_found": len(paginated_results),
++            "total_found": len(all_results),
+             "total_available": len(all_results),
+             "offset": offset,
+             "limit": limit,
+After the fix, total_found and total_available will always be equal (both reflect the total matching count), and total_found will be consistent regardless of which page is requested.
+
+Verification
+Re-run the test above. Both tests should pass:
+Verification
+Re-run the test above. Both tests should pass:
+
+
+
+
+tests/test_total_found_bug.py::test_search_total_found_equals_total_available PASSED
+tests/test_total_found_bug.py::test_search_total_found_on_second_page PASSED
+8. References
+Affected file on main: memanto/app/services/memory_read_service.py
+The search_memories() return block (lines ~195–210)                                                                                                                                              
