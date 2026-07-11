@@ -9,7 +9,7 @@ This report analyzes logical limitations identified during a software quality re
 ## 1. Description of Logical Limitations
 
 ### A. Temporal Chronology Loss (Timeline Amnesia)
-In [memory_write_service.py](file:///c:/Users/HP/OneDrive/bountyhub%20project/memanto/app/services/memory_write_service.py), the `_apply_timestamps` method forces the `created_at` and `updated_at` properties of a `MemoryRecord` to the current system time (`datetime.utcnow()`) unless the memory provenance is explicitly marked as `"imported"`. 
+In [memory_write_service.py](../../memanto/app/services/memory_write_service.py), the `_apply_timestamps` method forces the `created_at` and `updated_at` properties of a `MemoryRecord` to the current system time (`datetime.utcnow()`) unless the memory provenance is explicitly marked as `"imported"`. 
 
 ```python
 def _apply_timestamps(self, memory: MemoryRecord, now: datetime) -> None:
@@ -54,8 +54,13 @@ from memanto.app.services.memory_write_service import MemoryWriteService
 
 # Mock MoorchehClient to test local logic flow
 class DummyDocuments:
+    def __init__(self):
+        self.stored_docs = {}
+
     def upload(self, namespace_name: str, documents: list[dict[str, Any]]):
-        # Return success status similar to the real Moorcheh API response
+        if namespace_name not in self.stored_docs:
+            self.stored_docs[namespace_name] = []
+        self.stored_docs[namespace_name].extend(documents)
         return {"status": "success", "uploaded": len(documents)}
 
 class DummyMoorchehClient:
@@ -91,10 +96,7 @@ def test_chronology_overwrite():
     
     # Assert whether the timeline timestamp was preserved
     time_difference = abs((processed_created_at - historical_time).total_seconds())
-    if time_difference > 10:
-        print("-> ALERT: Timeline chronology was overwritten with the current system time!")
-    else:
-        print("-> Success: Chronology preserved.")
+    assert time_difference <= 10
 
 def test_contradiction_handling():
     client = DummyMoorchehClient()
@@ -124,9 +126,14 @@ def test_contradiction_handling():
     print(f"Statement 2 Status: {res_2['status']} (Action: {res_2['action']})")
     print("-> Note: Both conflicting facts co-exist in storage with no deduplication or resolution.")
 
+    # Inspect the updated mock storage dictionary and assert coexistence
+    stored_docs = client.documents.stored_docs.get("memanto_agent_test_agent", [])
+    assert len(stored_docs) == 2
+
 if __name__ == "__main__":
     print("=== Testing Timeline Chronology ===")
     test_chronology_overwrite()
     print("\n=== Testing Contradiction Handling ===")
     test_contradiction_handling()
+```
 ```
