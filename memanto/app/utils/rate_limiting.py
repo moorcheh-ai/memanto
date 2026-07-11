@@ -50,7 +50,26 @@ class RateLimiter:
         Returns: (allowed, retry_after_seconds)
         """
         if operation not in self.limits:
-            return True, None
+            # Fail-closed: unknown operations are denied by default.
+            # This prevents silent rate-limit bypass when new operations
+            # are added without registering limits. (See #1438)
+            from memanto.app.utils.logging import MemantoLogger
+            MemantoLogger.log_request(
+                request_id="rate_limit_unknown",
+                route=f"/{operation}",
+                method="POST",
+                status_code=429,
+                latency_ms=0,
+                agent_id=agent_id,
+                errors=["unknown_rate_limit_operation"],
+            )
+            raise HTTPException(
+                status_code=429,
+                detail={
+                    "error": "rate_limit_config_error",
+                    "message": f"No rate limit configured for operation '{operation}'",
+                },
+            )
 
         limit = self.limits[operation]
         key = self._get_key(operation, agent_id)
