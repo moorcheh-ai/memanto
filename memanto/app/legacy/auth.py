@@ -30,21 +30,21 @@ class AuthService:
         import json as _json
         _keys_str = os.environ.get("MEMANTO_API_KEYS", "{}")
         try:
-            self.tenant_api_keys = _json.loads(_keys_str)
+            _parsed = _json.loads(_keys_str)
+            self.tenant_api_keys = _parsed if isinstance(_parsed, dict) else {}
         except (_json.JSONDecodeError, TypeError):
             self.tenant_api_keys = {}
 
         # JWT configuration
         # SECURITY: JWT_SECRET must be explicitly configured in production.
         # Using a default secret allows JWT forgery.
-        secret = getattr(settings, "JWT_SECRET", None)
+        secret = getattr(settings, "JWT_SECRET", None) or os.environ.get("JWT_SECRET")
         if not secret:
             import warnings
             warnings.warn(
-                "JWT_SECRET not configured! Authentication will be disabled. "
+                "JWT_SECRET not configured! JWT authentication will be disabled. "
                 "Set JWT_SECRET in your environment or .env file."
             )
-            secret = os.environ.get("JWT_SECRET", "")
         self.jwt_secret = secret
         self.jwt_algorithm = "HS256"
         self.jwt_issuer = getattr(settings, "JWT_ISSUER", "memanto")
@@ -64,6 +64,8 @@ class AuthService:
 
     def authenticate_jwt(self, token: str) -> AuthenticatedUser | None:
         """Authenticate using JWT"""
+        if not self.jwt_secret:
+            return None
         try:
             payload = jwt.decode(
                 token,
