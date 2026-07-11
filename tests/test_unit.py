@@ -762,3 +762,22 @@ class TestValidateSafeId:
             svc.generate_conflict_report("agent1", "../../etc/passwd")
 
         assert not (tmp_path / "etc").exists()
+
+
+class TestMemoryMetadataBounds:
+    """Unit coverage for bounded metadata labels used in memory documents."""
+
+    def test_memory_edit_rejects_oversized_source(self):
+        from pydantic import ValidationError
+
+        from memanto.app.routes.memory import MemoryEditRequest
+
+        with pytest.raises(ValidationError):
+            MemoryEditRequest(source="x" * 129)
+
+    def test_memory_edit_strips_valid_tags(self):
+        from memanto.app.routes.memory import MemoryEditRequest
+
+        request = MemoryEditRequest(tags=[" project ", "important"])
+
+        assert request.tags == ["project", "important"]
