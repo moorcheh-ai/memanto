@@ -17,7 +17,8 @@ Mapping between abstractions
     value["tags"]                     ->  user tags (non-reserved)
     SearchOp.query                    ->  recall query   (``recall_recent`` if ``"*"``)
     SearchOp.filter["type"]           ->  type filter
-    SearchOp.filter["min_confidence"] ->  min_similarity
+    SearchOp.filter["min_similarity"] ->  semantic similarity threshold
+    SearchOp.filter["min_confidence"] ->  memory confidence threshold
 
 Documented limitations
 ----------------------
@@ -103,7 +104,7 @@ class MemantoStore(BaseStore):
         self._lock = threading.RLock()
         self._client_pool: dict[str, SdkClient] = {}
         self._agent_prefix = "langgraph_"
-        # (namespace, query, limit, type, min_sim) -> (timestamp, list[SearchItem])
+        # (namespace, query, limit, tags, type, min_sim, min_conf) -> (timestamp, items)
         self._search_cache: dict[tuple, tuple[float, list[SearchItem]]] = {}
         # Survives 429s without flashing the UI panel to zero.
         self._last_good: dict[tuple[str, ...], list[SearchItem]] = {}
@@ -288,8 +289,8 @@ class MemantoStore(BaseStore):
         type_filter = filter_dict.get("type") or filter_dict.get("kind")
         if isinstance(type_filter, str):
             type_filter = [type_filter]
-        # SearchOp uses "min_confidence"; SdkClient.recall() uses "min_similarity"
-        min_similarity = filter_dict.get("min_confidence")
+        min_similarity = filter_dict.get("min_similarity")
+        min_confidence = filter_dict.get("min_confidence")
         extra_tags = list(filter_dict.get("tags", []) or [])
 
         cache_key = (
@@ -299,6 +300,7 @@ class MemantoStore(BaseStore):
             tuple(extra_tags),
             tuple(type_filter) if type_filter else None,
             min_similarity,
+            min_confidence,
         )
         with self._lock:
             cached = self._search_cache.get(cache_key)
@@ -348,6 +350,10 @@ class MemantoStore(BaseStore):
         for mem in result.get("memories", []):
             tags = mem.get("tags") or []
             if extra_tags and not all(t in tags for t in extra_tags):
+                continue
+            if min_confidence is not None and not self._passes_min_confidence(
+                mem, min_confidence
+            ):
                 continue
             key = self._tags_to_key(tags) or mem.get("id", "")
             out.append(self._memory_to_search_item(mem, op.namespace_prefix, key))
@@ -421,6 +427,18 @@ class MemantoStore(BaseStore):
             if t.startswith(_KEY_TAG_PREFIX):
                 return t[len(_KEY_TAG_PREFIX) :]
         return None
+
+    @staticmethod
+    def _passes_min_confidence(mem: dict[str, Any], min_confidence: Any) -> bool:
+        try:
+            threshold = float(min_confidence)
+        except (TypeError, ValueError):
+            return False
+        try:
+            confidence = float(mem.get("confidence"))
+        except (TypeError, ValueError):
+            return threshold <= 0
+        return confidence >= threshold
 
     @staticmethod
     def _stringify(value: dict[str, Any]) -> str:
