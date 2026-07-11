@@ -45,30 +45,37 @@ In every case, total_found is indistinguishable from the page size limit (or les
 4. Measurable Impact
 Applications that rely on total_found to determine the total number of matching records may stop requesting additional pages prematurely or display incorrect pagination metadata.
 
-Concrete example: A client using cursor-based pagination with a loop like:
+Concrete example: A client using offset-based pagination with a loop like:
 
 python
 
-
-
 offset = 0
 limit = 10
-all_results = []
-while offset < total_found:   # ← reads total_found from response
-    resp = search(limit=limit, offset=offset)
-    all_results.extend(resp["results"])
-    offset += limit
-    total_found = resp["total_found"]
+
+resp = search(limit=limit, offset=offset)
+total_found = resp["total_found"]
+all_results = resp["results"]
+
+offset += limit
+
+while offset < total_found:
+resp = search(limit=limit, offset=offset)
+all_results.extend(resp["results])
+offset += limit
+
 This loop terminates after the first page because:
-Page 1: total_found=10, offset becomes 10, 10 < 10 is False → loop exits after 10 of 25 results.
+Page 1: total_found=10, offset becomes 10, and the condition 
+10 < 10 is False, so the loop exits after fetching 10 of 25 results.
+if total_found correctly reported 25, the loop would continue to request the remaining pages.
 The consumer has no way to detect the truncation because has_more is computed from len(all_results) > offset + limit (which uses the correct all_results), so has_more=True should tell the client to continue. But if the client prefers total_found as its authoritative source (a reasonable interpretation of the field name), it exits early.
 
 Even if the consumer uses has_more instead, the total_found field misleads any logging, monitoring, or UI layer that displays a count.
 
 5. Reproducibility
 Prerequisites
-A working Memanto development environment with pytest
-The moorcheh_sdk mockable (the test uses unittest.mock / mocker)
+pytest
+pytest-mock (required because the test uses the mocker fixture)
+A working Memanto development environment 
  Test Script
 Create tests/test_total_found_bug.py:
 """
