@@ -47,6 +47,16 @@ def test_multi_paragraph_content_keeps_paragraphs_and_strips_tags():
     assert out["tags"] == ["a", "b"]
 
 
+def test_embedded_tags_paragraph_with_real_tags():
+    # Content whose first paragraph starts with "Tags: " AND a genuine trailing
+    # tags block: only the LAST block is metadata, so rpartition (not any match)
+    # must be used. This is the case the fix hinges on.
+    item = _wire("fact", "T", "Tags: this is user content, not metadata", ["urgent"])
+    out = _service()._format_memory_item(item)
+    assert out["content"] == "Tags: this is user content, not metadata"
+    assert out["tags"] == ["urgent"]
+
+
 def test_normal_content_with_tags_roundtrips():
     item = _wire("fact", "T", "single body", ["x"])
     out = _service()._format_memory_item(item)
