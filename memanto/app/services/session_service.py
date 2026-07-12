@@ -422,7 +422,6 @@ class SessionService:
             memory_id: The Moorcheh memory ID (if available)
         """
         # Get the timestamp of memory to determine the date string
-        validate_safe_id(agent_id, "agent_id")
         validate_safe_id(session_id, "session_id")
         dt_now = getattr(memory_record, "created_at", utc_now())
         timestamp = dt_now.strftime("%Y-%m-%d %H:%M:%S")
@@ -484,7 +483,6 @@ class SessionService:
             session_id: The current session's identifier
             memory_id: The Moorcheh memory ID that was deleted
         """
-        validate_safe_id(agent_id, "agent_id")
         validate_safe_id(session_id, "session_id")
 
         dt_now = utc_now()
