@@ -34,15 +34,26 @@ def create_recall_node(
     This node extracts the query from the most recent human message in the state
     and retrieves relevant memories from Memanto.
     """
+    import copy
+    import threading
 
-    def _do_setup(resolved_agent_id: str):
+    clients_lock = threading.Lock()
+    clients: dict[str, SdkClient] = {}
+
+    def _get_client_for_agent(resolved_agent_id: str) -> SdkClient:
+        with clients_lock:
+            if resolved_agent_id not in clients:
+                clients[resolved_agent_id] = copy.copy(client)
+            return clients[resolved_agent_id]
+
+    def _do_setup(local_client: SdkClient, resolved_agent_id: str):
         try:
-            client.create_agent(agent_id=resolved_agent_id, pattern="tool")
+            local_client.create_agent(agent_id=resolved_agent_id, pattern="tool")
         except Exception:
             pass
         try:
-            result = client.activate_agent(resolved_agent_id, duration_hours=6)
-            client.session_token = result.get("session_token")
+            result = local_client.activate_agent(resolved_agent_id, duration_hours=6)
+            local_client.session_token = result.get("session_token")
         except Exception:
             pass
 
@@ -62,6 +73,8 @@ def create_recall_node(
                 return {output_key: None}
             return {"messages": []}
 
+        local_client = _get_client_for_agent(resolved_agent_id)
+
         # Extract query from the latest human message
         query = None
         for msg in reversed(state.get("messages", [])):
@@ -76,15 +89,15 @@ def create_recall_node(
 
         try:
             # First try assuming the session is already active (saves an API call)
-            result = client.recall(
+            result = local_client.recall(
                 agent_id=resolved_agent_id,
                 query=query,
             )
         except Exception:
             # If there's an error (e.g. no active session), try to setup and retry
-            _do_setup(resolved_agent_id)
+            _do_setup(local_client, resolved_agent_id)
             try:
-                result = client.recall(
+                result = local_client.recall(
                     agent_id=resolved_agent_id,
                     query=query,
                 )
@@ -141,15 +154,26 @@ def create_remember_node(
 
     This node extracts the latest messages and stores them in Memanto.
     """
+    import copy
+    import threading
 
-    def _do_setup(resolved_agent_id: str):
+    clients_lock = threading.Lock()
+    clients: dict[str, SdkClient] = {}
+
+    def _get_client_for_agent(resolved_agent_id: str) -> SdkClient:
+        with clients_lock:
+            if resolved_agent_id not in clients:
+                clients[resolved_agent_id] = copy.copy(client)
+            return clients[resolved_agent_id]
+
+    def _do_setup(local_client: SdkClient, resolved_agent_id: str):
         try:
-            client.create_agent(agent_id=resolved_agent_id, pattern="tool")
+            local_client.create_agent(agent_id=resolved_agent_id, pattern="tool")
         except Exception:
             pass
         try:
-            result = client.activate_agent(resolved_agent_id, duration_hours=6)
-            client.session_token = result.get("session_token")
+            result = local_client.activate_agent(resolved_agent_id, duration_hours=6)
+            local_client.session_token = result.get("session_token")
         except Exception:
             pass
 
@@ -166,6 +190,8 @@ def create_remember_node(
                 "No agent_id available for remember node, skipping memory storage."
             )
             return {"messages": []}
+
+        local_client = _get_client_for_agent(resolved_agent_id)
 
         # Only retain the latest human and/or AI message
         messages_to_remember = []
@@ -193,7 +219,7 @@ def create_remember_node(
 
         try:
             # First try assuming the session is already active
-            client.remember(
+            local_client.remember(
                 agent_id=resolved_agent_id,
                 memory_type=None,
                 title=title,
@@ -203,9 +229,9 @@ def create_remember_node(
             )
         except Exception:
             # If there's an error, try to setup and retry
-            _do_setup(resolved_agent_id)
+            _do_setup(local_client, resolved_agent_id)
             try:
-                client.remember(
+                local_client.remember(
                     agent_id=resolved_agent_id,
                     memory_type=None,
                     title=title,
