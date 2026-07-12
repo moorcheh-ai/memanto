@@ -441,6 +441,41 @@ class TestMemoryWriteServiceDelete:
 
 
 class TestMemoryReadServiceFormatting:
+    def test_search_memories_reports_lookahead_result(self):
+        from memanto.app.services.memory_read_service import MemoryReadService
+
+        client = MagicMock()
+        search_results = [
+            {
+                "id": "memory-1",
+                "text": "[FACT] First\n\nFirst content",
+                "memory_type": "fact",
+            },
+            {
+                "id": "memory-2",
+                "text": "[FACT] Second\n\nSecond content",
+                "memory_type": "fact",
+            },
+        ]
+        client.similarity_search.query.side_effect = lambda **kwargs: {
+            "results": search_results[: kwargs["top_k"]]
+        }
+        service = MemoryReadService(client)
+
+        result = service.search_memories(
+            "memory", agent_id="agent-1", limit=1, offset=0
+        )
+
+        assert [item["id"] for item in result["results"]] == ["memory-1"]
+        assert result["has_more"] is True
+        client.similarity_search.query.assert_called_once_with(
+            query="memory",
+            namespaces=["memanto_agent_agent-1"],
+            top_k=2,
+            threshold=None,
+            kiosk_mode=False,
+        )
+
     def test_format_memory_item_preserves_falsey_metadata_values(self):
         from memanto.app.services.memory_read_service import MemoryReadService
 
