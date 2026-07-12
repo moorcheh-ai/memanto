@@ -1365,6 +1365,7 @@ class SdkClient:
 
         memories_by_type: dict[str, list] = {}
 
+        exceptions = []
         for mem_type in MEMORY_TYPE_ORDER:
             try:
                 result = self.recall(
@@ -1374,8 +1375,15 @@ class SdkClient:
                     type=[mem_type],
                 )
                 memories_by_type[mem_type] = result.get("memories", [])
-            except Exception:
+            except Exception as e:
+                exceptions.append(e)
                 memories_by_type[mem_type] = []
+
+        if len(exceptions) == len(MEMORY_TYPE_ORDER):
+            raise ConnectionError(
+                f"Failed to export memories: Backend unreachable or all recall requests failed. "
+                f"First error: {exceptions[0]}"
+            )
 
         export_svc = self._get_export_service()
         out = output_path if output_path else None
