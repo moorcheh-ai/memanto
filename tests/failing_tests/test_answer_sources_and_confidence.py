@@ -26,28 +26,28 @@ def mock_client_with_sources():
     return client
 
 
-def test_legacy_answer_endpoint_returns_real_sources(mock_client_with_sources):
+def test_generate_answer_returns_real_sources_and_confidence(mock_client_with_sources):
     """
-    POST /answer (memanto/app/legacy/memory.py) MUST return sources
+    MemoryReadService.generate_answer() MUST return sources
     extracted from the Moorcheh response, not an empty list.
     """
     from memanto.app.services.memory_read_service import MemoryReadService
-    
+
     service = MemoryReadService(mock_client_with_sources)
-    
+
     # Call generate_answer (which the legacy endpoint wraps)
     result = service.generate_answer(
         query="How does photosynthesis work?",
         scope_type="agent",
         scope_id="test",
     )
-    
+
     # Assert sources are forwarded from SDK response
     assert "sources" in result, "generate_answer() must return 'sources'"
     assert len(result["sources"]) == 3, f"Expected 3 sources, got {len(result['sources'])}"
     assert result["sources"][0]["id"] == "mem_001"
     assert result["sources"][0]["score"] == 0.92
-    
+
     # Assert confidence is computed from sources, not hardcoded
     assert "confidence" in result
     expected_confidence = round((0.92 + 0.85 + 0.71) / 3, 3)
@@ -84,7 +84,7 @@ def test_confidence_is_derived_from_sources_not_hardcoded():
     confidence must reflect them (average relevance score, etc.)
     """
     from memanto.app.services.memory_read_service import MemoryReadService
-    
+
     # Mock client with sources that produce avg != 0.8
     client = MagicMock()
     client.answer.generate.return_value = {
@@ -95,26 +95,52 @@ def test_confidence_is_derived_from_sources_not_hardcoded():
             {"id": "c", "score": 0.5},
         ],
     }
-    
+
     service = MemoryReadService(client)
-    
-    # Stub namespace_service
-    with patch.object(type(service), "namespace_service", new_callable=PropertyMock) as mock_prop:
-        mock_ns = MagicMock()
-        mock_ns.list_namespaces.return_value = ["agent_test"]
-        mock_prop.return_value = mock_ns
-        
-        result = service.generate_answer(
-            query="test query",
-            scope_type="agent",
-            scope_id="test",
-        )
-    
+
+    result = service.generate_answer(
+        query="test query",
+        scope_type="agent",
+        scope_id="test",
+    )
+
     # Expected confidence from real sources
     expected_avg = round((0.9 + 0.7 + 0.5) / 3, 3)  # 0.7
     assert expected_avg != 0.8  # sanity check
-    
+
     # Assert production code computes confidence from sources
     assert result["confidence"] == expected_avg, f"Expected {expected_avg}, got {result['confidence']}"
     assert result["confidence"] != 0.8, "confidence must not be hardcoded to 0.8"
 
+
+def test_confidence_handles_malformed_source_scores():
+    """
+    Malformed source scores (non-numeric) must be skipped, not crash.
+    Bounty #770 hardening: try/except around float(score).
+    """
+    from memanto.app.services.memory_read_service import MemoryReadService
+
+    client = MagicMock()
+    client.answer.generate.return_value = {
+        "answer": "Test answer",
+        "sources": [
+            {"id": "a", "score": 0.9},
+            {"id": "b", "score": "high"},  # malformed
+            {"id": "c", "score": 0.5},
+            {"id": "d"},                  # no score key
+            {"id": "e", "score": None},   # None score
+        ],
+    }
+
+    service = MemoryReadService(client)
+
+    result = service.generate_answer(
+        query="test query",
+        scope_type="agent",
+        scope_id="test",
+    )
+
+    # Only valid numeric scores (0.9 and 0.5) should be averaged
+    expected_confidence = round((0.9 + 0.5) / 2, 3)
+    assert result["confidence"] == expected_confidence, f"Expected {expected_confidence}, got {result['confidence']}"
+    assert result["sources"]  # all sources still forwarded
