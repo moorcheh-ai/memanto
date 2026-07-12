@@ -98,10 +98,11 @@ class MemoryReadService:
                 metadata_filters=metadata_filters,
             )
 
-            # Build query parameters
-            # Request extra results to handle offset (Moorcheh doesn't have native offset support)
-            requested_limit = limit + offset
-            top_k = min(requested_limit, 100)  # Moorcheh max is 100
+            # Fetch one row beyond the requested page so ``has_more`` can be
+            # derived from actual search results. Moorcheh caps similarity
+            # search at 100 rows.
+            page_end = offset + limit
+            top_k = min(page_end + 1, 100)
 
             # Perform search with server-side filtering.
             # Only enable kiosk_mode when the caller actually set a positive
@@ -138,8 +139,8 @@ class MemoryReadService:
                 )
 
             # Apply pagination (offset + limit)
-            paginated_results = all_results[offset : offset + limit]
-            has_more = len(all_results) > offset + limit
+            has_more = len(all_results) > page_end
+            paginated_results = all_results[offset:page_end]
 
             return {
                 "results": paginated_results,
