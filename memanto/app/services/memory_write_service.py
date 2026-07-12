@@ -338,13 +338,68 @@ class MemoryWriteService:
 
             # Step 4: Upload new version
             from typing import cast
-
             from moorcheh_sdk.types.document import Document
 
             document = cast(Document, updated_memory.to_moorcheh_document())
-            upload_result = self.client.documents.upload(
-                namespace_name=namespace, documents=[document]
-            )
+            try:
+                upload_result = self.client.documents.upload(
+                    namespace_name=namespace, documents=[document]
+                )
+            except Exception as upload_err:
+                # Rollback: Re-upload the original document since deletion succeeded but update failed
+                try:
+                    original_record = MemoryRecord(
+                        id=memory_id,
+                        type=metadata.get("type", "fact"),
+                        title=existing_memory_data.get("title", "Original Memory"),
+                        content=existing_memory_data.get("content", ""),
+                        agent_id=agent_id,
+                        actor_id=metadata.get("actor_id", "unknown"),
+                        source=metadata.get("source", "system"),
+                        source_ref=metadata.get("source_ref"),
+                        confidence=metadata.get("confidence", 0.8),
+                        status=metadata.get("status", "active"),
+                        tags=metadata.get("tags", []),
+                    )
+                    if raw_created:
+                        if isinstance(raw_created, str):
+                            try:
+                                original_record.created_at = datetime.fromisoformat(
+                                    raw_created.replace("Z", "+00:00")
+                                )
+                            except Exception:
+                                pass
+                        else:
+                            original_record.created_at = raw_created
+                    raw_updated = metadata.get("updated_at")
+                    if raw_updated:
+                        if isinstance(raw_updated, str):
+                            try:
+                                original_record.updated_at = datetime.fromisoformat(
+                                    raw_updated.replace("Z", "+00:00")
+                                )
+                            except Exception:
+                                pass
+                        else:
+                            original_record.updated_at = raw_updated
+
+                    if metadata.get("ttl_seconds"):
+                        original_record.ttl_seconds = metadata["ttl_seconds"]
+                        if metadata.get("expires_at"):
+                            original_record.expires_at = metadata["expires_at"]
+
+                    orig_doc = cast(Document, original_record.to_moorcheh_document())
+                    self.client.documents.upload(
+                        namespace_name=namespace, documents=[orig_doc]
+                    )
+                except Exception as rollback_err:
+                    import logging
+                    logging.getLogger(__name__).error(
+                        f"Rollback failed during update_memory failure: {rollback_err}"
+                    )
+                raise MemoryError(
+                    f"Failed to upload new version of memory {memory_id}, original state restored: {upload_err}"
+                )
 
             return {
                 "id": memory_id,
