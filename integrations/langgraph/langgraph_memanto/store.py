@@ -40,6 +40,7 @@ import time
 from collections.abc import Iterable
 from datetime import datetime, timezone
 from typing import Any
+from urllib.parse import quote, unquote
 
 from langgraph.store.base import (
     BaseStore,
@@ -56,6 +57,7 @@ from memanto.cli.client.sdk_client import SdkClient
 logger = logging.getLogger(__name__)
 
 _KEY_TAG_PREFIX = "lg:key:"
+_ENCODED_KEY_TAG_PREFIX = "lg:key:v1:"
 _RESERVED_PREFIX = "lg:"
 
 _VALID_MEMORY_TYPES = {
@@ -413,10 +415,15 @@ class MemantoStore(BaseStore):
 
     @staticmethod
     def _key_to_tag(key: str) -> str:
+        if "," in key:
+            return f"{_ENCODED_KEY_TAG_PREFIX}{quote(key, safe='')}"
         return f"{_KEY_TAG_PREFIX}{key}"
 
     @staticmethod
     def _tags_to_key(tags: list[str]) -> str | None:
+        for t in tags:
+            if t.startswith(_ENCODED_KEY_TAG_PREFIX):
+                return unquote(t[len(_ENCODED_KEY_TAG_PREFIX) :])
         for t in tags:
             if t.startswith(_KEY_TAG_PREFIX):
                 return t[len(_KEY_TAG_PREFIX) :]
