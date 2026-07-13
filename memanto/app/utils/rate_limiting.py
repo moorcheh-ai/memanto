@@ -50,7 +50,7 @@ class RateLimiter:
         Returns: (allowed, retry_after_seconds)
         """
         if operation not in self.limits:
-            return True, None
+            raise ValueError(f"Unknown rate-limited operation: {operation}")
 
         limit = self.limits[operation]
         key = self._get_key(operation, agent_id)
@@ -74,7 +74,16 @@ class RateLimiter:
 
     def enforce_rate_limit(self, operation: str, agent_id: str):
         """Enforce rate limit, raise HTTPException if exceeded"""
-        allowed, retry_after = self.check_rate_limit(operation, agent_id)
+        try:
+            allowed, retry_after = self.check_rate_limit(operation, agent_id)
+        except ValueError as exc:
+            raise HTTPException(
+                status_code=500,
+                detail={
+                    "error": "rate_limit_misconfigured",
+                    "message": str(exc),
+                },
+            )
 
         if not allowed:
             # Log rate limit event

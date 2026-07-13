@@ -3,7 +3,6 @@ Safer Deletion with Audit Logging for MEMANTO
 """
 
 import json
-import re
 from dataclasses import asdict, dataclass
 from datetime import datetime
 from typing import Any
@@ -159,12 +158,9 @@ class SafeDeletion:
     @staticmethod
     def _is_valid_memory_id(memory_id: str) -> bool:
         """Validate memory ID format"""
-        if not memory_id or len(memory_id) < 4:
-            return False
+        from memanto.app.utils.ids import is_valid_memory_id
 
-        # Should match our ID generation pattern
-
-        return bool(re.match(r"^[a-zA-Z0-9_-]+$", memory_id))
+        return is_valid_memory_id(memory_id)
 
     @staticmethod
     def perform_safe_deletion(
