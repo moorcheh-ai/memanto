@@ -77,13 +77,24 @@ class RateLimiter:
         try:
             allowed, retry_after = self.check_rate_limit(operation, agent_id)
         except ValueError as exc:
+            from memanto.app.utils.logging import MemantoLogger
+
+            MemantoLogger.log_request(
+                request_id="rate_limit",
+                route=f"/{operation}",
+                method="POST",
+                status_code=500,
+                latency_ms=0,
+                agent_id=agent_id,
+                errors=["rate_limit_misconfigured"],
+            )
             raise HTTPException(
                 status_code=500,
                 detail={
                     "error": "rate_limit_misconfigured",
                     "message": str(exc),
                 },
-            )
+            ) from exc
 
         if not allowed:
             # Log rate limit event

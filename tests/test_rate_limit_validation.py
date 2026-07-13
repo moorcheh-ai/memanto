@@ -1,3 +1,5 @@
+import json
+
 import pytest
 from fastapi import HTTPException
 
@@ -13,7 +15,7 @@ def test_unknown_rate_limit_operation_fails_closed():
         limiter.check_rate_limit("namespace_list", "agent-1")
 
 
-def test_enforce_rate_limit_reports_misconfiguration_for_unknown_operation():
+def test_enforce_rate_limit_reports_misconfiguration_for_unknown_operation(capsys):
     limiter = RateLimiter()
 
     with pytest.raises(HTTPException) as exc_info:
@@ -21,6 +23,12 @@ def test_enforce_rate_limit_reports_misconfiguration_for_unknown_operation():
 
     assert exc_info.value.status_code == 500
     assert exc_info.value.detail["error"] == "rate_limit_misconfigured"
+
+    log_entry = json.loads(capsys.readouterr().out)
+    assert log_entry["status_code"] == 500
+    assert log_entry["route"] == "/namespace_list"
+    assert log_entry["agent_id"] == "agent-1"
+    assert log_entry["errors"] == ["rate_limit_misconfigured"]
 
 
 def test_known_rate_limit_operation_still_allows_first_request():
