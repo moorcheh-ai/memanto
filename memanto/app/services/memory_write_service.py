@@ -215,7 +215,11 @@ class MemoryWriteService:
 
             # Count successes and failures
             successful = sum(1 for r in results if r["status"] in ["queued", "success"])
-            failed = sum(1 for r in results if r["status"] == "failed")
+            # Anything not positively acknowledged by the backend is not a
+            # successful upload. In particular, Moorcheh can return a terminal
+            # aggregate status such as ``partial`` or ``unknown``; leaving
+            # those out of both counters silently loses documents.
+            failed = len(results) - successful
 
             return {
                 "total_submitted": len(memories),

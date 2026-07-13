@@ -599,6 +599,36 @@ class TestMemoryWriteServiceTimestamps:
         assert before_store <= parsed_created_at <= after_store
 
 
+class TestMemoryWriteServiceBatchCounts:
+    """Batch summaries must account for every submitted memory."""
+
+    def test_partial_uploads_are_counted_as_unconfirmed_failures(self):
+        from memanto.app.core import MemoryRecord
+        from memanto.app.services.memory_write_service import MemoryWriteService
+
+        client = MagicMock()
+        client.documents.upload.return_value = {"status": "partial"}
+        service = MemoryWriteService(client)
+        memories = [
+            MemoryRecord(
+                title=f"Memory {index}",
+                content=f"Content {index}",
+                agent_id="test-agent",
+                actor_id="test-agent",
+                source="user",
+                provenance="explicit_statement",
+            )
+            for index in range(2)
+        ]
+
+        result = service.batch_store_memories(memories)
+
+        assert result["successful"] == 0
+        assert result["failed"] == 2
+        assert result["successful"] + result["failed"] == result["total_submitted"]
+        assert all(item["status"] == "partial" for item in result["results"])
+
+
 class TestMEMANTOArchitecture:
     """Tests for MEMANTO architecture principles"""
 
