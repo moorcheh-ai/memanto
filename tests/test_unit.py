@@ -544,6 +544,107 @@ class TestForgetEndToEnd:
 class TestMemoryWriteServiceTimestamps:
     """Imported memories should keep source chronology during migration."""
 
+    def test_mem0_mapper_preserves_expiration(self):
+        """A Mem0 TTL must not become a permanent Memanto memory."""
+        from memanto.cli.migrate.mappers import map_mem0
+
+        rows = map_mem0(
+            {
+                "memories": [
+                    {
+                        "id": "expired-memory",
+                        "memory": "The user's old address",
+                        "expiration_date": "2095-01-02T03:04:05Z",
+                    }
+                ]
+            }
+        )
+
+        assert rows[0]["expires_at"] == datetime(
+            2095, 1, 2, 3, 4, 5, tzinfo=timezone.utc
+        )
+
+    def test_mem0_mapper_skips_already_expired_memory(self):
+        """Expired source data must not be resurrected by migration."""
+        from memanto.cli.migrate.mappers import map_mem0
+
+        rows = map_mem0(
+            {
+                "memories": [
+                    {
+                        "id": "expired-memory",
+                        "memory": "The user's old address",
+                        "expiration_date": "2020-01-02T03:04:05Z",
+                    }
+                ]
+            }
+        )
+
+        assert rows == []
+
+    def test_batch_store_preserves_imported_expiration(self):
+        from memanto.app.core import MemoryRecord
+        from memanto.app.services.memory_write_service import MemoryWriteService
+
+        client = MagicMock()
+        client.documents.upload.return_value = {"status": "success"}
+        source_expiration = datetime(2025, 1, 2, 3, 4, 5, tzinfo=timezone.utc)
+        memory = MemoryRecord(
+            type="fact",
+            title="Imported expiring fact",
+            content="This source memory has a retention deadline",
+            agent_id="test-agent",
+            actor_id="test-agent",
+            source="mem0",
+            provenance="imported",
+            expires_at=source_expiration,
+        )
+
+        MemoryWriteService(client).batch_store_memories([memory])
+
+        uploaded = client.documents.upload.call_args.kwargs["documents"][0]
+        assert uploaded["expires_at"] == "2025-01-02T03:04:05+00:00"
+
+    @pytest.mark.parametrize(
+        "client_class_path",
+        [
+            "memanto.cli.client.sdk_client.SdkClient",
+            "memanto.cli.client.direct_client.DirectClient",
+        ],
+    )
+    def test_batch_clients_forward_imported_expiration(self, client_class_path):
+        """Both migration-capable clients must carry expiry into storage."""
+        import importlib
+
+        module_name, class_name = client_class_path.rsplit(".", 1)
+        client_class = getattr(importlib.import_module(module_name), class_name)
+        client = client_class.__new__(client_class)
+        client.session_token = None
+        client._get_validated_session_for_agent = MagicMock()
+        write_service = MagicMock()
+        write_service.batch_store_memories.return_value = {
+            "total_submitted": 1,
+            "successful": 1,
+            "failed": 0,
+            "results": [{"id": "imported-memory", "status": "success"}],
+        }
+        client._get_write_service = MagicMock(return_value=write_service)
+
+        client.batch_remember(
+            agent_id="test-agent",
+            memories=[
+                {
+                    "content": "A temporary imported fact",
+                    "source": "mem0",
+                    "provenance": "imported",
+                    "expires_at": "2095-01-02T03:04:05Z",
+                }
+            ],
+        )
+
+        record = write_service.batch_store_memories.call_args.args[0][0]
+        assert record.expires_at == datetime(2095, 1, 2, 3, 4, 5, tzinfo=timezone.utc)
+
     def test_batch_store_preserves_imported_created_at(self):
         from memanto.app.core import MemoryRecord
         from memanto.app.services.memory_write_service import MemoryWriteService

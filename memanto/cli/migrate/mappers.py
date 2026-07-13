@@ -16,6 +16,7 @@ accepted by ``SdkClient.batch_remember``:
         "provenance": "imported",
         "created_at": datetime, # original source timestamp (when present)
         "updated_at": datetime, # migration time = now
+        "expires_at": datetime, # original expiration timestamp (when present)
     }
 
 Mappers extract every useful field from the source. Anything that maps
@@ -202,6 +203,11 @@ def map_mem0(export: dict[str, Any]) -> list[dict[str, Any]]:
 
         created_at = _pick_first_dt(mem, ("created_at", "createdAt"))
         expires_at = _pick_first_dt(mem, ("expiration_date", "expires_at"))
+        # An expired source memory must not be resurrected as a searchable,
+        # permanent Memanto record. Future expirations are carried through so
+        # the source retention policy remains intact after migration.
+        if expires_at is not None and expires_at <= migrated_at:
+            continue
 
         # Anything we couldn't slot directly goes into the footer.
         footer = _format_supporting_data(
@@ -230,6 +236,7 @@ def map_mem0(export: dict[str, Any]) -> list[dict[str, Any]]:
                 "provenance": "imported",
                 "created_at": created_at,
                 "updated_at": migrated_at,
+                "expires_at": expires_at,
             }
         )
     return rows
