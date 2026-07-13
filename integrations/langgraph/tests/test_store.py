@@ -165,6 +165,27 @@ def test_do_put_success(mock_sdk_client):
     )
 
 
+def test_do_put_escapes_commas_in_key_tags(mock_sdk_client):
+    """LangGraph keys may contain commas; tags are comma-serialized downstream."""
+    store = MemantoStore(api_key="test_key")
+    client_instance = MagicMock()
+    mock_sdk_client.return_value = client_instance
+
+    op = PutOp(namespace=("my_ns",), key="thread,checkpoint", value={"content": "c"})
+    store._do_put(op)
+
+    client_instance.remember.assert_called_once()
+    assert client_instance.remember.call_args.kwargs["tags"] == [
+        "lg:key:v1:thread%2Ccheckpoint"
+    ]
+
+
+def test_tags_to_key_unescapes_encoded_key_tags():
+    assert MemantoStore._tags_to_key(["lg:key:v1:thread%2Ccheckpoint"]) == (
+        "thread,checkpoint"
+    )
+
+
 def test_do_put_delete_not_supported(mock_sdk_client):
     store = MemantoStore(api_key="test_key")
     op = PutOp(namespace=("my_ns",), key="my_key", value=None)
