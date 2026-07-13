@@ -285,6 +285,12 @@ class MemoryWriteService:
                 )
 
             # Build updated memory record
+            # Preserve original_id if it exists (prevents breaking links on update)
+            preserved_original_id = existing_memory_data.get("original_id")
+            metadata_for_construction = dict(metadata)
+            if preserved_original_id:
+                metadata_for_construction["original_id"] = preserved_original_id
+
             updated_memory = MemoryRecord(
                 id=memory_id,  # Keep same ID
                 type=updates.get("type", metadata.get("type", "fact")),
