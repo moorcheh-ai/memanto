@@ -12,6 +12,23 @@ from memanto.app.core import MemoryRecord
 from memanto.app.services.memory_parsing_service import MemoryParsingService
 from memanto.app.utils.errors import MemoryError
 from memanto.app.utils.ids import generate_memory_id
+from memanto.app.utils.temporal_helpers import as_utc_naive
+
+SUCCESSFUL_UPLOAD_STATUSES = {"queued", "success", "ok"}
+
+# Trust fields removed from the active schema on 2026-06-29 (see
+# memanto/app/legacy/REMOVED.md). Old on-prem data_store.json records may still
+# carry them; they must never be copied forward on update or we resurrect dead
+# schema that no live read/write flow populates.
+_REMOVED_TRUST_FIELDS = frozenset(
+    {
+        "superseded_by",
+        "supersedes",
+        "validated_at",
+        "validation_count",
+        "contradiction_detected",
+    }
+)
 
 
 class MemoryWriteService:
@@ -22,6 +39,26 @@ class MemoryWriteService:
 
         self.client = moorcheh_client
         self._parser = MemoryParsingService()
+        self._namespace_service = None
+
+    @property
+    def namespace_service(self):
+        """Lazily create the namespace service used for memory scopes."""
+
+        if self._namespace_service is None:
+            from memanto.app.services.namespace_service import NamespaceService
+
+            self._namespace_service = NamespaceService(self.client)
+        return self._namespace_service
+
+    def _apply_timestamps(self, memory: MemoryRecord, now: datetime) -> None:
+        """Apply server timestamps while preserving imported source chronology."""
+        if memory.provenance == "imported":
+            memory.created_at = as_utc_naive(memory.created_at)
+            memory.updated_at = as_utc_naive(memory.updated_at)
+            return
+        memory.created_at = now
+        memory.updated_at = now
 
     def store_memory(
         self, memory: MemoryRecord, context: dict[str, Any] | None = None
@@ -32,10 +69,8 @@ class MemoryWriteService:
             if not memory.id:
                 memory.id = generate_memory_id()
 
-            # Enforce server-side timestamps (never trust client)
             now = datetime.utcnow()
-            memory.created_at = now
-            memory.updated_at = now
+            self._apply_timestamps(memory, now)
 
             # Auto parse memory type
             memory = self._parser.parse_memory(memory)
@@ -113,9 +148,7 @@ class MemoryWriteService:
                     if not memory.id:
                         memory.id = generate_memory_id()
 
-                    # Enforce server-side timestamps (never trust client)
-                    memory.created_at = now
-                    memory.updated_at = now
+                    self._apply_timestamps(memory, now)
 
                     memory = self._parser.parse_memory(memory)
 
@@ -197,8 +230,12 @@ class MemoryWriteService:
                         result["status"] = moorcheh_status
 
             # Count successes and failures
-            successful = sum(1 for r in results if r["status"] in ["queued", "success"])
-            failed = sum(1 for r in results if r["status"] == "failed")
+            successful = sum(
+                1
+                for r in results
+                if str(r["status"]).lower() in SUCCESSFUL_UPLOAD_STATUSES
+            )
+            failed = sum(1 for r in results if str(r["status"]).lower() == "failed")
 
             return {
                 "total_submitted": len(memories),
@@ -322,6 +359,22 @@ class MemoryWriteService:
             from moorcheh_sdk.types.document import Document
 
             document = cast(Document, updated_memory.to_moorcheh_document())
+
+            # Preserve extra metadata fields from the existing record (e.g. original_id
+            # in on-prem data_store.json) that aren't part of the MemoryRecord schema.
+            existing_meta = existing_memory_data.get("metadata", existing_memory_data)
+            if isinstance(existing_meta, dict):
+                # ``document`` is a TypedDict; cast to a plain dict to attach
+                # extra schema-external keys (e.g. original_id) dynamically.
+                extra_document = cast(dict[str, Any], document)
+                for key in existing_meta:
+                    if (
+                        key not in document
+                        and key != "text"
+                        and key not in _REMOVED_TRUST_FIELDS
+                    ):
+                        extra_document[key] = existing_meta[key]
+
             upload_result = self.client.documents.upload(
                 namespace_name=namespace, documents=[document]
             )

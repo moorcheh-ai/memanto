@@ -12,6 +12,21 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js",
       "require": "./dist/index.cjs"
+    },
+    "./ai-sdk": {
+      "types": "./dist/integrations/ai-sdk.d.ts",
+      "import": "./dist/integrations/ai-sdk.js",
+      "require": "./dist/integrations/ai-sdk.cjs"
+    },
+    "./openai": {
+      "types": "./dist/integrations/openai.d.ts",
+      "import": "./dist/integrations/openai.js",
+      "require": "./dist/integrations/openai.cjs"
+    },
+    "./mastra": {
+      "types": "./dist/integrations/mastra.d.ts",
+      "import": "./dist/integrations/mastra.js",
+      "require": "./dist/integrations/mastra.cjs"
     }
   },
   "files": [
@@ -28,11 +43,36 @@
     "test:watch": "vitest"
   },
   "devDependencies": {
+    "@ai-sdk/openai": "^4.0.11",
     "@hey-api/openapi-ts": "^0.99.0",
+    "@mastra/core": "^1.50.1",
     "@types/node": "^20.0.0",
+    "ai": "^7.0.22",
+    "openai": "^6.46.0",
     "tsup": "^8.0.0",
     "typescript": "^5.4.0",
-    "vitest": "^4.1.9"
+    "vitest": "^4.1.9",
+    "zod": "^4.4.3"
+  },
+  "peerDependencies": {
+    "@mastra/core": ">=1.0.0",
+    "ai": ">=5.0.0",
+    "openai": ">=4.55.0",
+    "zod": ">=3.23.0"
+  },
+  "peerDependenciesMeta": {
+    "@mastra/core": {
+      "optional": true
+    },
+    "ai": {
+      "optional": true
+    },
+    "openai": {
+      "optional": true
+    },
+    "zod": {
+      "optional": true
+    }
   },
   "engines": {
     "node": ">=20"

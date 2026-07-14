@@ -11,8 +11,22 @@ if TYPE_CHECKING:
 
 from memanto.app.clients.backend import get_active_llm_model
 from memanto.app.config import settings
+from memanto.app.constants import VALID_MEMORY_TYPES
 from memanto.app.core import agent_namespace
 from memanto.app.utils.errors import MemoryError
+
+_FILTER_TOKEN_RE = re.compile(r"^[A-Za-z0-9_.-]+$")
+
+
+def _validate_filter_token(value: Any, field_name: str) -> str:
+    """Return a safe Moorcheh filter token or reject query-syntax injection."""
+    token = str(value).strip()
+    if not token or not _FILTER_TOKEN_RE.fullmatch(token):
+        raise ValueError(
+            f"Invalid {field_name} filter value: only letters, digits, '.', '_', "
+            "and '-' are allowed"
+        )
+    return token
 
 
 class MemoryReadService:
@@ -430,16 +444,21 @@ class MemoryReadService:
         # Add memory type filters
         if type:
             for mem_type in type:
+                mem_type = _validate_filter_token(mem_type, "memory_type")
+                if mem_type not in VALID_MEMORY_TYPES:
+                    raise ValueError(f"Invalid memory_type filter value: {mem_type}")
                 filter_parts.append(f"#memory_type:{mem_type}")
 
         # Add tag filters (keyword syntax)
         if tags:
             for tag in tags:
+                tag = _validate_filter_token(tag, "tag")
                 filter_parts.append(f"#{tag}")
 
         # Add status filters
         if status_filter:
             for status in status_filter:
+                status = _validate_filter_token(status, "status")
                 filter_parts.append(f"#status:{status}")
 
         # Numeric confidence is stored as a number in memory documents. Applying
@@ -450,6 +469,8 @@ class MemoryReadService:
         # Add custom metadata filters
         if metadata_filters:
             for key, value in metadata_filters.items():
+                key = _validate_filter_token(key, "metadata key")
+                value = _validate_filter_token(value, f"metadata '{key}'")
                 filter_parts.append(f"#{key}:{value}")
 
         # Combine query with filters

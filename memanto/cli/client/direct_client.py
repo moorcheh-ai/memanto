@@ -709,7 +709,7 @@ class DirectClient:
         memory_records = []
         for i, item in enumerate(memories):
             raw_content = item.get("content", "")
-            if not raw_content:
+            if not isinstance(raw_content, str) or not raw_content.strip():
                 raise ValueError(f"Memory at index {i} has no content")
 
             raw_title = item.get("title")
@@ -1502,6 +1502,7 @@ class DirectClient:
         from memanto.app.services.memory_export_service import MEMORY_TYPE_ORDER
 
         memories_by_type: dict[str, list] = {}
+        failed_types = 0
 
         for mem_type in MEMORY_TYPE_ORDER:
             try:
@@ -1514,6 +1515,18 @@ class DirectClient:
                 memories_by_type[mem_type] = result.get("memories", [])
             except Exception:
                 memories_by_type[mem_type] = []
+                failed_types += 1
+
+        if failed_types == len(MEMORY_TYPE_ORDER):
+            # Every recall failed (e.g. the backend is unreachable) rather
+            # than each type genuinely having zero memories. Raise instead
+            # of writing an empty export — callers may otherwise overwrite
+            # a good cache/MEMORY.md with nothing. See sync_memory_to_project.
+            raise ConnectionError(
+                f"Failed to recall any memories for agent '{agent_id}' — "
+                "the backend appears unreachable. Refusing to write an "
+                "empty export."
+            )
 
         export_svc = self._get_export_service()
         out = output_path if output_path else None

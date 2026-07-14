@@ -54,6 +54,26 @@ On the first call, the SDK:
 
 When `close()` is called (or the Node process exits), the server is sent `SIGTERM`.
 
+## On-prem (no API key)
+
+The SDK is a thin wrapper around the Memanto server, so backend selection lives in Memanto — not in this SDK. To run fully on-prem (no Moorcheh API key), configure it once with the CLI:
+
+```bash
+uvx memanto
+```
+
+Pick the **on-prem** backend when prompted. This sets up the local Moorcheh server (Docker) and writes the on-prem config to `~/.memanto/`.
+
+After that, use the SDK normally — **no `apiKey` needed:**
+
+```ts
+const memanto = new Memanto({ agentId: "my-agent" });
+```
+
+The spawned `memanto serve` inherits the on-prem config from `~/.memanto/`, and the client authenticates with a session token only. Alternatively, point `baseUrl` at an on-prem server you started yourself.
+
+> Requires Docker (for the Moorcheh on-prem server) in addition to `uv`. The SDK does not start the Moorcheh container itself — the `uvx memanto` setup does.
+
 ## API
 
 ### `new Memanto(options)`

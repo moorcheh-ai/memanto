@@ -537,7 +537,7 @@ class SdkClient:
         memory_records = []
         for i, item in enumerate(memories):
             raw_content = item.get("content", "")
-            if not raw_content:
+            if not isinstance(raw_content, str) or not raw_content.strip():
                 raise ValueError(f"Memory at index {i} has no content")
 
             raw_title = item.get("title")
@@ -817,14 +817,17 @@ class SdkClient:
             namespace_name=namespace,
             file_path=path,
         )
+        file_size = result.get("fileSize")
+        if file_size is None:
+            file_size = result.get("file_size", 0)
 
         return {
             "agent_id": agent_id,
             "namespace": namespace,
             "success": result.get("success", False),
             "message": result.get("message", ""),
-            "file_name": result.get("fileName", path.name),
-            "file_size": result.get("fileSize", 0),
+            "file_name": result.get("fileName") or result.get("file_name", path.name),
+            "file_size": file_size,
         }
 
     def recall(
@@ -1361,6 +1364,7 @@ class SdkClient:
         from memanto.app.services.memory_export_service import MEMORY_TYPE_ORDER
 
         memories_by_type: dict[str, list] = {}
+        failed_types = 0
 
         for mem_type in MEMORY_TYPE_ORDER:
             try:
@@ -1373,6 +1377,18 @@ class SdkClient:
                 memories_by_type[mem_type] = result.get("memories", [])
             except Exception:
                 memories_by_type[mem_type] = []
+                failed_types += 1
+
+        if failed_types == len(MEMORY_TYPE_ORDER):
+            # Every recall failed (e.g. the backend is unreachable) rather
+            # than each type genuinely having zero memories. Raise instead
+            # of writing an empty export — callers may otherwise overwrite
+            # a good cache/MEMORY.md with nothing. See sync_memory_to_project.
+            raise ConnectionError(
+                f"Failed to recall any memories for agent '{agent_id}' — "
+                "the backend appears unreachable. Refusing to write an "
+                "empty export."
+            )
 
         export_svc = self._get_export_service()
         out = output_path if output_path else None
@@ -1406,15 +1422,30 @@ class SdkClient:
             limit_per_type: Max memories per type for fresh export (default 25).
 
         Returns:
-            Dict with ``output_path``, ``total_memories``, ``source``.
+            Dict with ``output_path``, ``total_memories``, ``source``
+            (``"cache"``, ``"fresh"``, or ``"stale-cache"`` if a refresh
+            failed and a previous export was reused instead).
         """
-        # Run export function first (ensures ~/.memanto/exports/... is fresh)
-        self.export_memory_md(agent_id=agent_id, limit_per_type=limit_per_type)
-
-        # Perform sync from cache to project
         cache_path = Path.home() / ".memanto" / "exports" / f"{agent_id}_memory.md"
         target_path = Path(project_dir) / "MEMORY.md"
         target_path.parent.mkdir(parents=True, exist_ok=True)
+
+        try:
+            # Run export function first (ensures ~/.memanto/exports/... is fresh)
+            self.export_memory_md(agent_id=agent_id, limit_per_type=limit_per_type)
+        except ConnectionError:
+            if cache_path.exists():
+                # Backend unreachable, but we have a previously good export —
+                # serve that instead of wiping the project's MEMORY.md.
+                shutil.copy2(str(cache_path), str(target_path))
+                content = cache_path.read_text(encoding="utf-8")
+                mem_count = content.count("### ")
+                return {
+                    "output_path": str(target_path.resolve()),
+                    "total_memories": mem_count,
+                    "source": "stale-cache",
+                }
+            raise
 
         if cache_path.exists():
             # Copy freshly updated cache to project
