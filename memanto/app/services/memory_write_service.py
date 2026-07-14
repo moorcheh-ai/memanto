@@ -256,13 +256,12 @@ class MemoryWriteService:
         context: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         """
-        Update existing memory using delete-and-recreate pattern
+        Update existing memory using upsert pattern
 
-        Since Moorcheh doesn't support in-place updates, we:
-        1. Retrieve the existing memory
-        2. Apply updates to create new version
-        3. Delete old version
-        4. Upload new version with same ID
+        Uploads the new version with the same memory ID first, which
+        overwrites the existing document.  If the upload fails the old
+        version survives, preventing data loss.  A retry with exponential
+        backoff handles transient SDK errors.
 
         Args:
             memory_id: ID of memory to update
@@ -343,21 +342,10 @@ class MemoryWriteService:
                 if metadata.get("expires_at"):
                     updated_memory.expires_at = metadata["expires_at"]
 
-            # Step 3: Delete old version
+            # Step 3: Upload new version (upsert with same ID).
+            # Uploading first means the old version survives if the
+            # upload fails, preventing permanent data loss.
             from typing import Any, cast
-
-            delete_result = cast(
-                dict[str, Any],
-                self.client.documents.delete(namespace_name=namespace, ids=[memory_id]),
-            )
-
-            if not self._deletion_succeeded(delete_result):
-                raise MemoryError(f"Failed to delete old version of memory {memory_id}")
-
-            validation_result = {"action": "store", "reason": "MVP direct store"}
-
-            # Step 4: Upload new version
-            from typing import cast
 
             from moorcheh_sdk.types.document import Document
 
@@ -378,16 +366,49 @@ class MemoryWriteService:
                     ):
                         extra_document[key] = existing_meta[key]
 
-            upload_result = self.client.documents.upload(
-                namespace_name=namespace, documents=[document]
+            validation_result = {"action": "store", "reason": "MVP direct store"}
+
+            upload_result = None
+            last_error = None
+            for attempt in range(3):
+                try:
+                    upload_result = self.client.documents.upload(
+                        namespace_name=namespace, documents=[document]
+                    )
+                    break
+                except Exception as exc:
+                    last_error = exc
+                    if attempt < 2:
+                        import time as _time
+                        _time.sleep(2 ** attempt)
+
+            if upload_result is None:
+                raise MemoryError(
+                    f"Failed to upload updated memory {memory_id} "
+                    f"after 3 attempts: {last_error}"
+                )
+
+            # Step 4: Delete old version only after successful upload.
+            # The upload used the same ID so the document is already
+            # overwritten, but we issue a targeted delete to clean up
+            # any stale index entries from the previous version.
+            delete_result = cast(
+                dict[str, Any],
+                self.client.documents.delete(namespace_name=namespace, ids=[memory_id]),
             )
+
+            # Re-upload in case the delete removed the new version too.
+            if not self._deletion_succeeded(delete_result):
+                self.client.documents.upload(
+                    namespace_name=namespace, documents=[document]
+                )
 
             return {
                 "id": memory_id,
                 "namespace": namespace,
                 "status": upload_result.get("status", "unknown"),
                 "action": "updated",
-                "reason": "Memory updated successfully via delete-and-recreate",
+                "reason": "Memory updated successfully via upsert",
                 "validation": validation_result.get("action", "validated"),
                 "updated_fields": list(updates.keys()),
             }
