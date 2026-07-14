@@ -2,6 +2,7 @@
 Rate Limiting for MEMANTO
 """
 
+import threading
 import time
 from collections import defaultdict, deque
 from dataclasses import dataclass
@@ -23,6 +24,7 @@ class RateLimiter:
     def __init__(self):
         # Storage: key -> deque of timestamps
         self.requests = defaultdict(deque)
+        self._lock = threading.Lock()
 
         # Rate limit configurations
         self.limits = {
@@ -56,21 +58,36 @@ class RateLimiter:
         key = self._get_key(operation, agent_id)
         now = time.time()
 
-        # Clean old requests outside window
-        request_times = self.requests[key]
-        while request_times and request_times[0] <= now - limit.window:
-            request_times.popleft()
+        # Thread-safe rate limit check
+        with self._lock:
+            # Use .get() to avoid defaultdict auto-creating empty deques
+            request_times = self.requests.get(key)
 
-        # Check if under limit
-        if len(request_times) < limit.requests:
-            request_times.append(now)
-            return True, None
+            if request_times is not None:
+                # Clean old requests outside window
+                while request_times and request_times[0] <= now - limit.window:
+                    request_times.popleft()
 
-        # Rate limited - calculate retry after
-        oldest_request = request_times[0]
-        retry_after = int(oldest_request + limit.window - now) + 1
+                # Clean up empty deques to prevent memory leak
+                if not request_times:
+                    del self.requests[key]
+                    request_times = None
 
-        return False, retry_after
+            if request_times is None:
+                # No recent requests - allow and record
+                self.requests[key] = deque([now])
+                return True, None
+
+            # Check if under limit
+            if len(request_times) < limit.requests:
+                request_times.append(now)
+                return True, None
+
+            # Rate limited - calculate retry after
+            oldest_request = request_times[0]
+            retry_after = int(oldest_request + limit.window - now) + 1
+
+            return False, retry_after
 
     def enforce_rate_limit(self, operation: str, agent_id: str):
         """Enforce rate limit, raise HTTPException if exceeded"""
