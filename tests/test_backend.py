@@ -191,12 +191,34 @@ class TestConflictReportDataDirRouting:
         conflicts_dir = tmp_path / ".memanto" / "on-prem" / "conflicts"
         conflicts_dir.mkdir(parents=True)
         report = conflicts_dir / "agent-1_2026-06-28_conflicts.json"
-        report.write_text(
-            json.dumps([{"title": "on-prem conflict", "resolved": False}]),
+        on_prem_conflicts = [{"title": "on-prem conflict", "resolved": False}]
+        report.write_text(json.dumps(on_prem_conflicts), encoding="utf-8")
+
+        cloud_dir = tmp_path / ".memanto" / "conflicts"
+        cloud_dir.mkdir(parents=True)
+        cloud_report = cloud_dir / report.name
+        cloud_conflicts = [{"title": "cloud conflict", "resolved": False}]
+        cloud_report.write_text(
+            json.dumps(cloud_conflicts),
             encoding="utf-8",
         )
 
         for client_cls in (DirectClient, SdkClient):
-            client = client_cls.__new__(client_cls)
+            report.write_text(json.dumps(on_prem_conflicts), encoding="utf-8")
+            client = client_cls(api_key="dummy-key")
             conflicts = client.list_conflicts("agent-1", "2026-06-28")
             assert [item["title"] for item in conflicts] == ["on-prem conflict"]
+
+            monkeypatch.setattr(client, "_get_write_service", lambda: object())
+            client.resolve_conflict("agent-1", "2026-06-28", 0, "keep_both")
+
+            assert json.loads(report.read_text(encoding="utf-8")) == [
+                {
+                    "title": "on-prem conflict",
+                    "resolved": True,
+                    "resolution": "keep_both",
+                }
+            ]
+            assert (
+                json.loads(cloud_report.read_text(encoding="utf-8")) == cloud_conflicts
+            )
