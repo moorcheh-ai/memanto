@@ -1866,6 +1866,29 @@ class TestCWE200ApiKeyLeak:
         assert resp.status_code == 400
 
     @pytest.mark.asyncio
+    async def test_conflict_scans_uses_active_backend_data_dir(
+        self, client, _mock_ui_config_manager, tmp_path, monkeypatch
+    ):
+        """The UI must not expose cloud conflict scans while on-prem is active."""
+        from memanto.app import config as app_config
+
+        monkeypatch.setattr(app_config.settings, "MEMANTO_BACKEND", "on-prem")
+        monkeypatch.setattr(app_config.Path, "home", classmethod(lambda cls: tmp_path))
+        conflicts_dir = tmp_path / ".memanto" / "on-prem" / "conflicts"
+        conflicts_dir.mkdir(parents=True)
+        (conflicts_dir / "agent-1_2026-06-27_conflicts.json").write_text(
+            "[]", encoding="utf-8"
+        )
+
+        resp = await client.get(
+            "/api/ui/conflict-scans",
+            params={"agent_id": "agent-1"},
+        )
+
+        assert resp.status_code == 200
+        assert "2026-06-27" in resp.json()["scans"]
+
+    @pytest.mark.asyncio
     async def test_generate_conflict_report_rejects_traversal_date(
         self, client, _mock_ui_config_manager
     ):

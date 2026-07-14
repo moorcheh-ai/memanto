@@ -11,6 +11,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, cast
 
+from memanto.app.config import get_data_dir
 from memanto.app.constants import (
     ALLOWED_UPDATE_FIELDS as _ALLOWED_UPDATE_FIELDS,
 )
@@ -1147,7 +1148,7 @@ class SdkClient:
         Generate the conflict report for an agent/date.
 
         Runs the LLM conflict-detection pass over the day's session
-        memories and writes the JSON report to ``~/.memanto/conflicts/``.
+        memories and writes the JSON report under the active backend's data dir.
 
         Args:
             agent_id: Target agent.
@@ -1187,9 +1188,7 @@ class SdkClient:
         if not date:
             date = datetime.now().strftime("%Y-%m-%d")
 
-        json_path = (
-            Path.home() / ".memanto" / "conflicts" / f"{agent_id}_{date}_conflicts.json"
-        )
+        json_path = get_data_dir() / "conflicts" / f"{agent_id}_{date}_conflicts.json"
 
         if not json_path.exists():
             return []
@@ -1230,9 +1229,7 @@ class SdkClient:
                 f"Invalid action '{action}'. Must be one of: {', '.join(sorted(valid_actions))}"
             )
 
-        json_path = (
-            Path.home() / ".memanto" / "conflicts" / f"{agent_id}_{date}_conflicts.json"
-        )
+        json_path = get_data_dir() / "conflicts" / f"{agent_id}_{date}_conflicts.json"
         if not json_path.exists():
             raise ValueError(f"No conflict report found for {agent_id} on {date}")
 

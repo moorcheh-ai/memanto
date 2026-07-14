@@ -12,6 +12,7 @@ from pathlib import Path
 import typer
 from rich.panel import Panel
 
+from memanto.app.config import get_data_dir
 from memanto.cli.commands._shared import (
     BOLD_PRIMARY,
     BRIGHT,
@@ -971,9 +972,7 @@ def conflicts(
 
     # Load full conflict list to get original indices
 
-    json_path = (
-        Path.home() / ".memanto" / "conflicts" / f"{agent_id}_{date}_conflicts.json"
-    )
+    json_path = get_data_dir() / "conflicts" / f"{agent_id}_{date}_conflicts.json"
     with open(json_path, encoding="utf-8") as f:
         all_conflicts = json.load(f)
 

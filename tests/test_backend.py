@@ -176,3 +176,27 @@ class TestDataDirRouting:
         result = app_config.get_data_dir()
         assert result == tmp_path / ".memanto" / "on-prem"
         assert result.exists()
+
+
+class TestConflictReportDataDirRouting:
+    def test_clients_read_conflicts_from_active_backend(self, tmp_path, monkeypatch):
+        import json
+
+        from memanto.app import config as app_config
+        from memanto.cli.client.direct_client import DirectClient
+        from memanto.cli.client.sdk_client import SdkClient
+
+        monkeypatch.setattr(app_config.settings, "MEMANTO_BACKEND", "on-prem")
+        monkeypatch.setattr(app_config.Path, "home", classmethod(lambda cls: tmp_path))
+        conflicts_dir = tmp_path / ".memanto" / "on-prem" / "conflicts"
+        conflicts_dir.mkdir(parents=True)
+        report = conflicts_dir / "agent-1_2026-06-28_conflicts.json"
+        report.write_text(
+            json.dumps([{"title": "on-prem conflict", "resolved": False}]),
+            encoding="utf-8",
+        )
+
+        for client_cls in (DirectClient, SdkClient):
+            client = client_cls.__new__(client_cls)
+            conflicts = client.list_conflicts("agent-1", "2026-06-28")
+            assert [item["title"] for item in conflicts] == ["on-prem conflict"]
