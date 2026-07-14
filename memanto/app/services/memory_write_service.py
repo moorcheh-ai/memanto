@@ -2,16 +2,35 @@
 Memory Write Service
 """
 
+import time
 from datetime import datetime
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from moorcheh_sdk import MoorchehClient
 
+from moorcheh_sdk.exceptions import APIError
 from memanto.app.core import MemoryRecord
 from memanto.app.services.memory_parsing_service import MemoryParsingService
 from memanto.app.utils.errors import MemoryError
 from memanto.app.utils.ids import generate_memory_id
+from memanto.app.utils.temporal_helpers import as_utc_naive
+
+SUCCESSFUL_UPLOAD_STATUSES = {"queued", "success", "ok"}
+
+# Trust fields removed from the active schema on 2026-06-29 (see
+# memanto/app/legacy/REMOVED.md). Old on-prem data_store.json records may still
+# carry them; they must never be copied forward on update or we resurrect dead
+# schema that no live read/write flow populates.
+_REMOVED_TRUST_FIELDS = frozenset(
+    {
+        "superseded_by",
+        "supersedes",
+        "validated_at",
+        "validation_count",
+        "contradiction_detected",
+    }
+)
 
 
 class MemoryWriteService:
@@ -22,6 +41,26 @@ class MemoryWriteService:
 
         self.client = moorcheh_client
         self._parser = MemoryParsingService()
+        self._namespace_service = None
+
+    @property
+    def namespace_service(self):
+        """Lazily create the namespace service used for memory scopes."""
+
+        if self._namespace_service is None:
+            from memanto.app.services.namespace_service import NamespaceService
+
+            self._namespace_service = NamespaceService(self.client)
+        return self._namespace_service
+
+    def _apply_timestamps(self, memory: MemoryRecord, now: datetime) -> None:
+        """Apply server timestamps while preserving imported source chronology."""
+        if memory.provenance == "imported":
+            memory.created_at = as_utc_naive(memory.created_at)
+            memory.updated_at = as_utc_naive(memory.updated_at)
+            return
+        memory.created_at = now
+        memory.updated_at = now
 
     def store_memory(
         self, memory: MemoryRecord, context: dict[str, Any] | None = None
@@ -32,10 +71,8 @@ class MemoryWriteService:
             if not memory.id:
                 memory.id = generate_memory_id()
 
-            # Enforce server-side timestamps (never trust client)
             now = datetime.utcnow()
-            memory.created_at = now
-            memory.updated_at = now
+            self._apply_timestamps(memory, now)
 
             # Auto parse memory type
             memory = self._parser.parse_memory(memory)
@@ -44,11 +81,6 @@ class MemoryWriteService:
             namespace = memory.namespace()
 
             # skip validation for speed
-            ## Validate memory
-            # validation_result = self.validation_service.validate_memory(memory, context)
-            ## Use validated memory if modified
-            # if "memory" in validation_result:
-            #     memory = validation_result["memory"]
             validation_result = {"action": "store", "reason": "MVP direct store"}
 
             from typing import cast
@@ -113,9 +145,7 @@ class MemoryWriteService:
                     if not memory.id:
                         memory.id = generate_memory_id()
 
-                    # Enforce server-side timestamps (never trust client)
-                    memory.created_at = now
-                    memory.updated_at = now
+                    self._apply_timestamps(memory, now)
 
                     memory = self._parser.parse_memory(memory)
 
@@ -137,12 +167,6 @@ class MemoryWriteService:
                         )
                         continue
 
-                    # skip validation for speed
-                    ## Validate memory
-                    # validation_result = self.validation_service.validate_memory(memory, context)
-                    ## Use validated memory if modified
-                    # if "memory" in validation_result:
-                    #     memory = validation_result["memory"]
                     validation_result = {
                         "action": "store",
                         "reason": "MVP direct store",
@@ -197,8 +221,12 @@ class MemoryWriteService:
                         result["status"] = moorcheh_status
 
             # Count successes and failures
-            successful = sum(1 for r in results if r["status"] in ["queued", "success"])
-            failed = sum(1 for r in results if r["status"] == "failed")
+            successful = sum(
+                1
+                for r in results
+                if str(r["status"]).lower() in SUCCESSFUL_UPLOAD_STATUSES
+            )
+            failed = sum(1 for r in results if str(r["status"]).lower() == "failed")
 
             return {
                 "total_submitted": len(memories),
@@ -218,24 +246,7 @@ class MemoryWriteService:
         updates: dict[str, Any],
         context: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
-        """
-        Update existing memory using delete-and-recreate pattern
-
-        Since Moorcheh doesn't support in-place updates, we:
-        1. Retrieve the existing memory
-        2. Apply updates to create new version
-        3. Delete old version
-        4. Upload new version with same ID
-
-        Args:
-            memory_id: ID of memory to update
-            namespace: Namespace containing the memory
-            updates: Dict of fields to update
-            context: Optional validation context
-
-        Returns:
-            Dict with update result
-        """
+        """Update memory via SDK upsert (upload-overwrites by ID)."""
         try:
             from memanto.app.services.memory_read_service import MemoryReadService
 
@@ -306,35 +317,52 @@ class MemoryWriteService:
                 if metadata.get("expires_at"):
                     updated_memory.expires_at = metadata["expires_at"]
 
-            # Step 3: Delete old version
+            # Step 3: upload with same ID = upsert, old data preserved if this fails
             from typing import Any, cast
-
-            delete_result = cast(
-                dict[str, Any],
-                self.client.documents.delete(namespace_name=namespace, ids=[memory_id]),
-            )
-
-            if not self._deletion_succeeded(delete_result):
-                raise MemoryError(f"Failed to delete old version of memory {memory_id}")
-
-            validation_result = {"action": "store", "reason": "MVP direct store"}
-
-            # Step 4: Upload new version
-            from typing import cast
-
             from moorcheh_sdk.types.document import Document
 
             document = cast(Document, updated_memory.to_moorcheh_document())
-            upload_result = self.client.documents.upload(
-                namespace_name=namespace, documents=[document]
-            )
+
+            # Preserve extra metadata fields from the existing record (e.g. original_id
+            # in on-prem data_store.json) that aren't part of the MemoryRecord schema.
+            existing_meta = existing_memory_data.get("metadata", existing_memory_data)
+            if isinstance(existing_meta, dict):
+                extra_document = cast(dict[str, Any], document)
+                for key in existing_meta:
+                    if (
+                        key not in document
+                        and key != "text"
+                        and key not in _REMOVED_TRUST_FIELDS
+                    ):
+                        extra_document[key] = existing_meta[key]
+
+            upload_result = None
+            last_upload_error = None
+            for attempt in range(3):
+                try:
+                    upload_result = self.client.documents.upload(
+                        namespace_name=namespace, documents=[document]
+                    )
+                    break
+                except (ConnectionError, TimeoutError, OSError, APIError) as upload_err:
+                    last_upload_error = upload_err
+                    if attempt < 2:
+                        time.sleep(attempt + 1)
+
+            if upload_result is None:
+                raise MemoryError(
+                    f"Failed to upload updated memory {memory_id} after 3 attempts. "
+                    f"Old version is still intact. Error: {last_upload_error}"
+                )
+
+            validation_result = {"action": "store", "reason": "MVP direct store"}
 
             return {
                 "id": memory_id,
                 "namespace": namespace,
                 "status": upload_result.get("status", "unknown"),
                 "action": "updated",
-                "reason": "Memory updated successfully via delete-and-recreate",
+                "reason": "Memory updated successfully via upsert",
                 "validation": validation_result.get("action", "validated"),
                 "updated_fields": list(updates.keys()),
             }
