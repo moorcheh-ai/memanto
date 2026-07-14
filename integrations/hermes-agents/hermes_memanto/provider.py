@@ -26,12 +26,14 @@ provider stays inert.
 
 from __future__ import annotations
 
+import hashlib
 import json
 import logging
 import os
 import re
 import threading
 import time
+import unicodedata
 from pathlib import Path
 from typing import Any
 
@@ -132,9 +134,27 @@ def _as_bool(value: Any, default: bool) -> bool:
 
 
 def _sanitize_agent_id(raw: str) -> str:
-    """Coerce to Memanto's id charset (letters, digits, ``-``, ``_``)."""
-    cleaned = re.sub(r"[^a-zA-Z0-9_-]", "-", raw or "")
+    """Coerce to Memanto's id charset without collapsing Unicode identities.
+
+    Memanto agent IDs are ASCII-only.  Simply deleting/replacing non-ASCII
+    characters maps every fully non-Latin Hermes identity to ``"hermes"``
+    (and can map mixed-script identities to the same short ASCII suffix),
+    which makes otherwise unrelated profiles share a memory namespace.  Keep
+    the readable ASCII portion, but add a stable digest whenever Unicode had
+    to be removed so the mapping remains deterministic and collision-safe.
+    """
+    normalized = unicodedata.normalize("NFKC", raw or "")
+    contains_unicode = any(ord(char) > 127 for char in normalized)
+    cleaned = re.sub(r"[^a-zA-Z0-9_-]", "-", normalized)
     cleaned = re.sub(r"-+", "-", cleaned).strip("-")
+
+    if contains_unicode:
+        digest = hashlib.sha256(normalized.encode("utf-8")).hexdigest()[:10]
+        suffix = f"-{digest}"
+        readable = (cleaned or "hermes")[: _MAX_AGENT_ID_LENGTH - len(suffix)]
+        readable = readable.rstrip("-") or "hermes"
+        return f"{readable}{suffix}"
+
     cleaned = cleaned[:_MAX_AGENT_ID_LENGTH].strip("-")
     return cleaned or "hermes"
 
