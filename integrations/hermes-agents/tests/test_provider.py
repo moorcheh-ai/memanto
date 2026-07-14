@@ -149,6 +149,15 @@ def test_sanitize_agent_id_hashes_unicode_in_mixed_script_identities():
     assert second.startswith("alpha-")
 
 
+def test_sanitize_agent_id_handles_malformed_unicode_without_collisions():
+    surrogate_a = _sanitize_agent_id("\ud800")
+    surrogate_b = _sanitize_agent_id("\ud801")
+
+    assert surrogate_a != surrogate_b
+    assert surrogate_a.startswith("hermes-")
+    assert surrogate_b.startswith("hermes-")
+
+
 def test_sanitize_agent_id_normalizes_equivalent_unicode():
     assert _sanitize_agent_id("caf\N{LATIN SMALL LETTER E WITH ACUTE}") == _sanitize_agent_id(
         "cafe\N{COMBINING ACUTE ACCENT}"
