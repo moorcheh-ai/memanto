@@ -130,6 +130,31 @@ def test_sanitize_agent_id_coerces_charset():
     assert _sanitize_agent_id("a" * 100) == "a" * 64
 
 
+def test_sanitize_agent_id_keeps_non_latin_identities_isolated():
+    chinese_a = _sanitize_agent_id("李雷")
+    chinese_b = _sanitize_agent_id("韩梅梅")
+    cyrillic = _sanitize_agent_id("Алиса")
+
+    assert len({chinese_a, chinese_b, cyrillic}) == 3
+    assert all(value.startswith("hermes-") for value in (chinese_a, chinese_b, cyrillic))
+    assert all(len(value) <= 64 for value in (chinese_a, chinese_b, cyrillic))
+
+
+def test_sanitize_agent_id_hashes_unicode_in_mixed_script_identities():
+    first = _sanitize_agent_id("团队-alpha")
+    second = _sanitize_agent_id("项目-alpha")
+
+    assert first != second
+    assert first.startswith("alpha-")
+    assert second.startswith("alpha-")
+
+
+def test_sanitize_agent_id_normalizes_equivalent_unicode():
+    assert _sanitize_agent_id("caf\N{LATIN SMALL LETTER E WITH ACUTE}") == _sanitize_agent_id(
+        "cafe\N{COMBINING ACUTE ACCENT}"
+    )
+
+
 def test_detect_memory_type():
     assert _detect_memory_type("User prefers dark mode") == "preference"
     assert _detect_memory_type("We decided to use Postgres") == "decision"
