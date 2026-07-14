@@ -546,6 +546,21 @@ class TestMemoryWriteServiceUpdate:
         assert document["id"] == "mem-1"
         assert "New content" in document["text"]
 
+    def test_update_memory_accepts_case_insensitive_success_status(self, memory_reader):
+        from memanto.app.services.memory_write_service import MemoryWriteService
+
+        client = MagicMock()
+        client.documents.upload.return_value = {"status": "OK"}
+
+        result = MemoryWriteService(client).update_memory(
+            "mem-1",
+            "memanto_agent_agent-1",
+            {"content": "New content"},
+        )
+
+        assert result["status"] == "OK"
+        client.documents.delete.assert_not_called()
+
     def test_update_memory_upload_failure_does_not_delete_old_memory(
         self, memory_reader
     ):

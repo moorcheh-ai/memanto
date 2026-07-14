@@ -380,7 +380,7 @@ class MemoryWriteService:
             )
 
             status = upload_result.get("status", "unknown")
-            if status not in ("success", "queued", "ok"):
+            if str(status).lower() not in SUCCESSFUL_UPLOAD_STATUSES:
                 raise MemoryError(
                     f"Failed to upload updated memory {memory_id}: {status}"
                 )
