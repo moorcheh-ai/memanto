@@ -144,12 +144,14 @@ def _sanitize_agent_id(raw: str) -> str:
     to be removed so the mapping remains deterministic and collision-safe.
     """
     normalized = unicodedata.normalize("NFKC", raw or "")
-    contains_unicode = any(ord(char) > 127 for char in normalized)
+    contains_unicode = not normalized.isascii()
     cleaned = re.sub(r"[^a-zA-Z0-9_-]", "-", normalized)
     cleaned = re.sub(r"-+", "-", cleaned).strip("-")
 
     if contains_unicode:
-        digest = hashlib.sha256(normalized.encode("utf-8")).hexdigest()[:10]
+        digest = hashlib.sha256(
+            normalized.encode("utf-8", errors="surrogatepass")
+        ).hexdigest()[:10]
         suffix = f"-{digest}"
         readable = (cleaned or "hermes")[: _MAX_AGENT_ID_LENGTH - len(suffix)]
         readable = readable.rstrip("-") or "hermes"
