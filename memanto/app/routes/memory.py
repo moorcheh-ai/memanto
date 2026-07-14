@@ -61,23 +61,6 @@ def _validate_summary_key(agent_id: str, date_str: str) -> None:
         raise HTTPException(status_code=400, detail="Invalid summary identifier")
 
 
-def _validate_memory_type_filters(value: list[str] | None) -> list[str] | None:
-    """Validate optional memory type filters against supported memory types."""
-    if value is None:
-        return value
-
-    invalid = [
-        memory_type for memory_type in value if memory_type not in VALID_MEMORY_TYPES
-    ]
-    if invalid:
-        valid_types = ", ".join(sorted(VALID_MEMORY_TYPES))
-        raise ValueError(
-            f"Invalid memory type filter(s): {', '.join(invalid)}. "
-            f"Must be one of: {valid_types}."
-        )
-    return value
-
-
 class RecallRequest(BaseModel):
     """Request body for semantic memory recall."""
 
@@ -87,20 +70,6 @@ class RecallRequest(BaseModel):
         default=None, ge=0.0, le=1.0, description="Minimum similarity score (0-1)"
     )
     type: list[str] | None = Field(default=None, description="Memory type filters")
-
-    @field_validator("query")
-    @classmethod
-    def query_must_not_be_blank(cls, value: str) -> str:
-        """Reject recall queries that contain only whitespace."""
-        if not value.strip():
-            raise ValueError("query must be a non-empty string")
-        return value
-
-    @field_validator("type")
-    @classmethod
-    def type_filters_must_be_valid(cls, value: list[str] | None) -> list[str] | None:
-        """Reject recall filters that are not supported memory types."""
-        return _validate_memory_type_filters(value)
 
 
 class RecallAsOfRequest(BaseModel):
@@ -112,12 +81,6 @@ class RecallAsOfRequest(BaseModel):
     )
     limit: int | None = Field(default=None, ge=1, description="Max results")
     type: list[str] | None = Field(default=None, description="Memory type filters")
-
-    @field_validator("type")
-    @classmethod
-    def type_filters_must_be_valid(cls, value: list[str] | None) -> list[str] | None:
-        """Reject as-of recall filters that are not supported memory types."""
-        return _validate_memory_type_filters(value)
 
     @field_validator("as_of", mode="before")
     @classmethod
@@ -156,12 +119,6 @@ class RecallChangedSinceRequest(BaseModel):
     limit: int | None = Field(default=None, ge=1, description="Max results")
     type: list[str] | None = Field(default=None, description="Memory type filters")
 
-    @field_validator("type")
-    @classmethod
-    def type_filters_must_be_valid(cls, value: list[str] | None) -> list[str] | None:
-        """Reject changed-since recall filters that are not supported memory types."""
-        return _validate_memory_type_filters(value)
-
     @field_validator("since", mode="before")
     @classmethod
     def parse_since(cls, v: object) -> datetime:
@@ -194,12 +151,6 @@ class RecallRecentRequest(BaseModel):
 
     limit: int | None = Field(default=None, ge=1, description="Max results")
     type: list[str] | None = Field(default=None, description="Memory type filters")
-
-    @field_validator("type")
-    @classmethod
-    def type_filters_must_be_valid(cls, value: list[str] | None) -> list[str] | None:
-        """Reject recent-recall filters that are not supported memory types."""
-        return _validate_memory_type_filters(value)
 
 
 class MemoryEditRequest(BaseModel):
@@ -604,6 +555,7 @@ async def upload_file(
 
         # Write upload to a temp file so moorcheh SDK can read it
         # Use original filename so the SDK records it as the source
+        file_bytes = await file.read()
         tmp_dir = tempfile.mkdtemp()
         tmp_path = os.path.join(tmp_dir, original_name)
         # Defense-in-depth: verify resolved path is within tmp_dir
@@ -614,30 +566,9 @@ async def upload_file(
                 status_code=400,
                 detail="Invalid filename",
             )
-        # Stream file to disk in 1 MB chunks instead of loading it all into
-        # memory at once. Without this, a 5 GB upload would allocate ~5 GB of
-        # RAM in a single Python bytes object, making the server trivially
-        # exhaustible under concurrent large-file uploads.
-        _MAX_UPLOAD_BYTES = 5 * 1024 * 1024 * 1024  # 5 GB as documented
-        _CHUNK_SIZE = 1024 * 1024  # 1 MB
         try:
-            total_bytes = 0
             with open(tmp_path, "wb") as tmp:
-                while True:
-                    chunk = await file.read(_CHUNK_SIZE)
-                    if not chunk:
-                        break
-                    total_bytes += len(chunk)
-                    if total_bytes > _MAX_UPLOAD_BYTES:
-                        raise HTTPException(
-                            status_code=413,
-                            detail={
-                                "error": "file_too_large",
-                                "message": "File exceeds the maximum upload size of 5 GB",
-                                "max_bytes": _MAX_UPLOAD_BYTES,
-                            },
-                        )
-                    await asyncio.to_thread(tmp.write, chunk)
+                tmp.write(file_bytes)
             result = await asyncio.to_thread(
                 client.documents.upload_file, namespace, tmp_path
             )
@@ -646,16 +577,12 @@ async def upload_file(
 
             shutil.rmtree(tmp_dir, ignore_errors=True)
 
-        file_size = result.get("fileSize")
-        if file_size is None:
-            file_size = result.get("file_size")
-
         return {
             "agent_id": agent_id,
             "session_id": session.session_id,
             "namespace": namespace,
             "file_name": original_name,
-            "file_size": file_size,
+            "file_size": result.get("fileSize"),
             "status": "uploaded" if result.get("success") else "failed",
             "message": result.get("message", ""),
         }
@@ -808,7 +735,7 @@ async def answer(
         if request.temperature is not None
         else settings.ANSWER_TEMPERATURE
     )
-    resolved_ai_model = (
+    ai_model = (
         request.ai_model
         if request.ai_model is not None
         else get_active_llm_model(settings.ANSWER_MODEL)
@@ -839,12 +766,11 @@ async def answer(
             "query": request.question,
             "top_k": limit,
             "temperature": temperature,
+            "ai_model": ai_model,
             "kiosk_mode": request.kiosk_mode,
             "header_prompt": header_prompt,
             "footer_prompt": footer_prompt,
         }
-        if resolved_ai_model is not None:
-            generate_kwargs["ai_model"] = resolved_ai_model
         if request.kiosk_mode:
             generate_kwargs["threshold"] = (
                 request.threshold if request.threshold is not None else 0.15

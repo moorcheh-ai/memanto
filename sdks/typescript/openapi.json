@@ -102,22 +102,6 @@
               ],
               "title": "X-Session-Token"
             }
-          },
-          {
-            "name": "memanto_session_token",
-            "in": "cookie",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Memanto Session Token"
-            }
           }
         ],
         "requestBody": {
@@ -187,22 +171,6 @@
                 }
               ],
               "title": "X-Session-Token"
-            }
-          },
-          {
-            "name": "memanto_session_token",
-            "in": "cookie",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Memanto Session Token"
             }
           }
         ],
@@ -283,22 +251,6 @@
               ],
               "title": "X-Session-Token"
             }
-          },
-          {
-            "name": "memanto_session_token",
-            "in": "cookie",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Memanto Session Token"
-            }
           }
         ],
         "requestBody": {
@@ -374,22 +326,6 @@
               ],
               "title": "X-Session-Token"
             }
-          },
-          {
-            "name": "memanto_session_token",
-            "in": "cookie",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Memanto Session Token"
-            }
           }
         ],
         "responses": {
@@ -447,22 +383,6 @@
                 }
               ],
               "title": "X-Session-Token"
-            }
-          },
-          {
-            "name": "memanto_session_token",
-            "in": "cookie",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Memanto Session Token"
             }
           }
         ],
@@ -531,22 +451,6 @@
                 }
               ],
               "title": "X-Session-Token"
-            }
-          },
-          {
-            "name": "memanto_session_token",
-            "in": "cookie",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Memanto Session Token"
             }
           }
         ],
@@ -618,22 +522,6 @@
               ],
               "title": "X-Session-Token"
             }
-          },
-          {
-            "name": "memanto_session_token",
-            "in": "cookie",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Memanto Session Token"
-            }
           }
         ],
         "requestBody": {
@@ -703,22 +591,6 @@
                 }
               ],
               "title": "X-Session-Token"
-            }
-          },
-          {
-            "name": "memanto_session_token",
-            "in": "cookie",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Memanto Session Token"
             }
           }
         ],
@@ -790,22 +662,6 @@
               ],
               "title": "X-Session-Token"
             }
-          },
-          {
-            "name": "memanto_session_token",
-            "in": "cookie",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Memanto Session Token"
-            }
           }
         ],
         "requestBody": {
@@ -872,22 +728,6 @@
                 }
               ],
               "title": "X-Session-Token"
-            }
-          },
-          {
-            "name": "memanto_session_token",
-            "in": "cookie",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Memanto Session Token"
             }
           }
         ],
@@ -974,22 +814,6 @@
               ],
               "title": "X-Session-Token"
             }
-          },
-          {
-            "name": "memanto_session_token",
-            "in": "cookie",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Memanto Session Token"
-            }
           }
         ],
         "responses": {
@@ -1047,22 +871,6 @@
                 }
               ],
               "title": "X-Session-Token"
-            }
-          },
-          {
-            "name": "memanto_session_token",
-            "in": "cookie",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Memanto Session Token"
             }
           }
         ],
@@ -1131,22 +939,6 @@
                 }
               ],
               "title": "X-Session-Token"
-            }
-          },
-          {
-            "name": "memanto_session_token",
-            "in": "cookie",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Memanto Session Token"
             }
           }
         ],
@@ -1218,22 +1010,6 @@
               ],
               "title": "X-Session-Token"
             }
-          },
-          {
-            "name": "memanto_session_token",
-            "in": "cookie",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Memanto Session Token"
-            }
           }
         ],
         "requestBody": {
@@ -1304,22 +1080,6 @@
               ],
               "title": "X-Session-Token"
             }
-          },
-          {
-            "name": "memanto_session_token",
-            "in": "cookie",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Memanto Session Token"
-            }
           }
         ],
         "requestBody": {
@@ -1357,6 +1117,26 @@
       }
     },
     "/api/v2/agents": {
+      "get": {
+        "tags": [
+          "Sessions & Agents"
+        ],
+        "summary": "List Agents",
+        "description": "List all agents for this Moorcheh account\n\nReturns agents sorted by creation date (newest first). The ``memory_count``\nof each agent is populated with the live document count from its Moorcheh\nnamespace rather than the stale value in local metadata.",
+        "operationId": "list_agents_api_v2_agents_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgentList"
+                }
+              }
+            }
+          }
+        }
+      },
       "post": {
         "tags": [
           "Sessions & Agents"
@@ -1364,49 +1144,15 @@
         "summary": "Create Agent",
         "description": "Create a new MEMANTO agent\n\nCreates:\n- Agent metadata in ~/.memanto/agents/\n- Moorcheh namespace: memanto_agent_{agent_id}\n\nThe agent is ready to activate once created.",
         "operationId": "create_agent_api_v2_agents_post",
-        "parameters": [
-          {
-            "name": "authorization",
-            "in": "header",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Authorization"
-            }
-          },
-          {
-            "name": "X-Api-Key",
-            "in": "header",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "X-Api-Key"
-            }
-          }
-        ],
         "requestBody": {
-          "required": true,
           "content": {
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/AgentCreate"
               }
             }
-          }
+          },
+          "required": true
         },
         "responses": {
           "201": {
@@ -1415,70 +1161,6 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/AgentInfo"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      },
-      "get": {
-        "tags": [
-          "Sessions & Agents"
-        ],
-        "summary": "List Agents",
-        "description": "List all agents for this Moorcheh account\n\nReturns agents sorted by creation date (newest first). The ``memory_count``\nof each agent is populated with the live document count from its Moorcheh\nnamespace rather than the stale value in local metadata.",
-        "operationId": "list_agents_api_v2_agents_get",
-        "parameters": [
-          {
-            "name": "authorization",
-            "in": "header",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Authorization"
-            }
-          },
-          {
-            "name": "X-Api-Key",
-            "in": "header",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "X-Api-Key"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/AgentList"
                 }
               }
             }
@@ -1512,38 +1194,6 @@
             "schema": {
               "type": "string",
               "title": "Agent Id"
-            }
-          },
-          {
-            "name": "authorization",
-            "in": "header",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Authorization"
-            }
-          },
-          {
-            "name": "X-Api-Key",
-            "in": "header",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "X-Api-Key"
             }
           }
         ],
@@ -1598,38 +1248,6 @@
               "title": "Delete-Backup-Too"
             },
             "description": "Delete Moorcheh namespace backup"
-          },
-          {
-            "name": "authorization",
-            "in": "header",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Authorization"
-            }
-          },
-          {
-            "name": "X-Api-Key",
-            "in": "header",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "X-Api-Key"
-            }
           }
         ],
         "responses": {
@@ -1670,38 +1288,6 @@
             "schema": {
               "type": "string",
               "title": "Agent Id"
-            }
-          },
-          {
-            "name": "authorization",
-            "in": "header",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Authorization"
-            }
-          },
-          {
-            "name": "X-Api-Key",
-            "in": "header",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "X-Api-Key"
             }
           }
         ],
@@ -1762,54 +1348,6 @@
               ],
               "title": "X-Session-Token"
             }
-          },
-          {
-            "name": "authorization",
-            "in": "header",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Authorization"
-            }
-          },
-          {
-            "name": "X-Api-Key",
-            "in": "header",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "X-Api-Key"
-            }
-          },
-          {
-            "name": "memanto_session_token",
-            "in": "cookie",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Memanto Session Token"
-            }
           }
         ],
         "responses": {
@@ -1842,42 +1380,8 @@
           "Sessions & Agents"
         ],
         "summary": "Get Status",
-        "description": "Get current active session status.\n\nRequires management credential or loopback origin (same as other\nagent-lifecycle endpoints). Reads the active session from local state.",
+        "description": "Get current active session status.\n\nNo parameters required \u2014 reads the active session from local state.",
         "operationId": "get_status_api_v2_status_get",
-        "parameters": [
-          {
-            "name": "authorization",
-            "in": "header",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Authorization"
-            }
-          },
-          {
-            "name": "X-Api-Key",
-            "in": "header",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "X-Api-Key"
-            }
-          }
-        ],
         "responses": {
           "200": {
             "description": "Successful Response",
@@ -1885,16 +1389,6 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/SessionInfo"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
                 }
               }
             }
@@ -1968,7 +1462,7 @@
           "Web UI"
         ],
         "summary": "Restart Onprem Backend",
-        "description": "Bounce the on-prem moorcheh stack so it re-reads ``~/.moorcheh/config.json``.\n\n``moorcheh down`` + ``moorcheh up`` (with embedding flags recovered from\nstate.json / config.json). Waits up to ~6 minutes total (5min for\n``up``, 60s for ``/health``).\n\nA module-level async lock prevents concurrent restart requests from\ninterleaving ``down``/``up`` calls against the same Moorcheh stack,\nwhich can leave the backend in an inconsistent state.",
+        "description": "Bounce the on-prem moorcheh stack so it re-reads ``~/.moorcheh/config.json``.\n\n``moorcheh down`` + ``moorcheh up`` (with embedding flags recovered from\nstate.json / config.json). Blocks for up to ~6 minutes total (5min for\n``up``, 60s for ``/health``).",
         "operationId": "restart_onprem_backend_api_ui_onprem_restart_post",
         "responses": {
           "200": {

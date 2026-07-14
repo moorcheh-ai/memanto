@@ -172,12 +172,7 @@ def memory_sync(
     source = result.get("source", "unknown")
     out_path = result.get("output_path", "unknown")
 
-    if source == "cache":
-        source_label = "cached export"
-    elif source == "stale-cache":
-        source_label = "stale cache (backend unreachable)"
-    else:
-        source_label = "fresh export"
+    source_label = "cached export" if source == "cache" else "fresh export"
 
     if total == 0:
         console.print("\n[yellow]No memories found for this agent.[/yellow]")
@@ -185,12 +180,6 @@ def memory_sync(
     else:
         console.print(f"\n[green]OK Synced {total} memories successfully![/green]")
         console.print(f"[dim]Source: {source_label}[/dim]")
-
-    if source == "stale-cache":
-        console.print(
-            "[yellow]Warning: backend was unreachable; reused the previous "
-            "export. Memories may be out of date.[/yellow]"
-        )
 
     console.print(f"[dim]Output: {out_path}[/dim]")
     console.print(f"[dim]Completed in {elapsed:.2f}s[/dim]")

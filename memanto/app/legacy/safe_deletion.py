@@ -108,7 +108,8 @@ class SafeDeletion:
 
     @staticmethod
     def validate_deletion_request(
-        scope_type: str, scope_id: str, ids: list[str], authenticated_scope_id: str
+        scope_type: str, scope_id: str, ids: list[str], authenticated_scope_id: str,
+        authenticated_scope_type: str | None = None,
     ):
         """Validate deletion request"""
 
@@ -119,6 +120,16 @@ class SafeDeletion:
                 detail={
                     "error": "scope_mismatch",
                     "message": f"Cannot delete from scope {scope_id} when authenticated as {authenticated_scope_id}",
+                },
+            )
+
+        # 1b. Require correct scope_type to prevent cross-namespace deletion
+        if authenticated_scope_type is not None and scope_type != authenticated_scope_type:
+            raise HTTPException(
+                status_code=403,
+                detail={
+                    "error": "scope_type_mismatch",
+                    "message": f"Cannot delete from scope_type '{scope_type}' when authenticated as '{authenticated_scope_type}'",
                 },
             )
 
@@ -242,6 +253,7 @@ def validate_and_delete_memories(
     actor_id: str,
     request_id: str,
     moorcheh_client,
+    authenticated_scope_type: str | None = None,
 ) -> dict[str, Any]:
     """Main function for safe memory deletion"""
 
@@ -251,6 +263,7 @@ def validate_and_delete_memories(
         scope_id=scope_id,
         ids=ids,
         authenticated_scope_id=authenticated_scope_id,
+        authenticated_scope_type=authenticated_scope_type,
     )
 
     # Perform deletion with audit

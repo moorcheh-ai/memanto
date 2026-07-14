@@ -10,12 +10,11 @@ interface Recorded {
   body: string;
 }
 
-function startFakeApi(agentId = "test-agent"): Promise<{
+function startFakeApi(): Promise<{
   url: string;
   recorded: Recorded[];
   close: () => void;
 }> {
-  const encodedAgentId = encodeURIComponent(agentId);
   return new Promise((resolve) => {
     const recorded: Recorded[] = [];
     const srv: Server = createServer((req, res) => {
@@ -34,21 +33,10 @@ function startFakeApi(agentId = "test-agent"): Promise<{
         };
 
         if (url === "/health") return reply(200, { status: "ok" });
-        if (url === "/api/v2/status" && req.method === "GET")
-          return reply(200, {
-            session_id: "existing-session",
-            agent_id: "existing-agent",
-            namespace: "memanto_agent_existing_agent",
-            started_at: new Date().toISOString(),
-            expires_at: new Date(Date.now() + 3600_000).toISOString(),
-            status: "active",
-            pattern: "default",
-            time_remaining_seconds: 3600,
-          });
-        if (url.startsWith(`/api/v2/agents/${encodedAgentId}/activate`))
+        if (url.startsWith("/api/v2/agents/test-agent/activate"))
           return reply(200, {
             session_token: "fake-token",
-            agent_id: agentId,
+            agent_id: "test-agent",
             session_id: "sess-1",
             namespace: "memanto_agent_test_agent",
             started_at: new Date().toISOString(),
@@ -56,16 +44,16 @@ function startFakeApi(agentId = "test-agent"): Promise<{
             status: "active",
             pattern: "default",
           });
-        if (url === `/api/v2/agents/${encodedAgentId}` && req.method === "GET")
+        if (url === "/api/v2/agents/test-agent" && req.method === "GET")
           return reply(404, { detail: "not found" });
         if (url === "/api/v2/agents" && req.method === "POST")
-          return reply(201, { agent_id: agentId });
-        if (url === `/api/v2/agents/${encodedAgentId}` && req.method === "DELETE")
-          return reply(200, { agent_id: agentId, deleted: true });
-        if (url === `/api/v2/agents/${encodedAgentId}/remember`)
+          return reply(201, { agent_id: "test-agent" });
+        if (url === "/api/v2/agents/test-agent" && req.method === "DELETE")
+          return reply(200, { agent_id: "test-agent", deleted: true });
+        if (url === "/api/v2/agents/test-agent/remember")
           return reply(200, {
             memory_id: "mem-1",
-            agent_id: agentId,
+            agent_id: "test-agent",
             session_id: "sess-1",
             namespace: "memanto_agent_test_agent",
             status: "queued",
@@ -73,9 +61,9 @@ function startFakeApi(agentId = "test-agent"): Promise<{
             confidence: 0.9,
             type: "fact",
           });
-        if (url === `/api/v2/agents/${encodedAgentId}/recall`)
+        if (url === "/api/v2/agents/test-agent/recall")
           return reply(200, {
-            agent_id: agentId,
+            agent_id: "test-agent",
             session_id: "sess-1",
             query: "anything",
             memories: [],
@@ -159,52 +147,7 @@ describe("Memanto", () => {
     ]);
   });
 
-  it("reads status without bootstrapping an agent session", async () => {
-    const api = await startFakeApi();
-    cleanupFns.push(api.close);
-
-    const m = new Memanto({ agentId: "test-agent", baseUrl: api.url });
-    cleanupFns.push(() => m.close());
-
-    const res = await m.status();
-    expect(res).toMatchObject({
-      session_id: "existing-session",
-      agent_id: "existing-agent",
-    });
-    expect(api.recorded.map((r) => `${r.method} ${r.url}`)).toEqual([
-      "GET /api/v2/status",
-    ]);
-    expect(api.recorded[0]?.headers["x-session-token"]).toBeUndefined();
-  });
-
   it("rejects empty agentId", () => {
     expect(() => new Memanto({ agentId: "" })).toThrow(/agentId is required/);
-  });
-
-  it("percent-encodes agentId in URL path segments", async () => {
-    const agentId = "team/alpha?mode=prod#frag";
-    const api = await startFakeApi(agentId);
-    cleanupFns.push(api.close);
-
-    const m = new Memanto({ agentId, baseUrl: api.url });
-    cleanupFns.push(() => m.close());
-
-    await m.remember({ content: "Scoped agent ids must stay in one path segment" });
-
-    const encodedAgentId = encodeURIComponent(agentId);
-    expect(api.recorded.map((r) => r.url)).toContain(
-      `/api/v2/agents/${encodedAgentId}`,
-    );
-    expect(api.recorded.map((r) => r.url)).toContain(
-      `/api/v2/agents/${encodedAgentId}/activate`,
-    );
-    expect(api.recorded.map((r) => r.url)).toContain(
-      `/api/v2/agents/${encodedAgentId}/remember`,
-    );
-
-    const create = api.recorded.find(
-      (r) => r.method === "POST" && r.url === "/api/v2/agents",
-    );
-    expect(JSON.parse(create?.body ?? "{}")).toMatchObject({ agent_id: agentId });
   });
 });
