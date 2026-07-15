@@ -98,4 +98,51 @@ describe("ServerLifecycle", () => {
     expect(spawnMock).toHaveBeenCalledTimes(1);
     fetchSpy.mockRestore();
   });
+
+  it("does not let a stale startup failure clear a newer promise", async () => {
+    const life = new ServerLifecycle();
+    let rejectStartup!: (reason: Error) => void;
+    const stale = new Promise<string>((_, reject) => {
+      rejectStartup = reject;
+    });
+    const internals = life as unknown as {
+      startOnce: () => Promise<string>;
+      starting: Promise<string> | null;
+    };
+    vi.spyOn(internals, "startOnce").mockReturnValue(stale);
+
+    const first = life.start();
+    const replacement = Promise.resolve("http://127.0.0.1:9000");
+    internals.starting = replacement;
+    rejectStartup(new Error("startup failed"));
+
+    await expect(first).rejects.toThrow("startup failed");
+    expect(internals.starting).toBe(replacement);
+  });
+
+  it("waits for an in-flight start before stopping its process", async () => {
+    const child = Object.assign(new EventEmitter(), {
+      exitCode: null,
+      killed: false,
+      kill: vi.fn(),
+    });
+    child.kill.mockImplementation(() => {
+      child.killed = true;
+      queueMicrotask(() => child.emit("exit", 0));
+      return true;
+    });
+    spawnMock.mockReturnValue(child);
+    const fetchSpy = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValue({ ok: true } as Response);
+
+    const life = new ServerLifecycle();
+    const starting = life.start();
+    await life.stop();
+    await starting;
+
+    expect(child.kill).toHaveBeenCalledTimes(1);
+    expect(() => life.baseUrl).toThrow(/Server not started/);
+    fetchSpy.mockRestore();
+  });
 });

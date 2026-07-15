@@ -47,13 +47,14 @@ export class ServerLifecycle {
   async start(): Promise<string> {
     if (this.url) return this.url;
 
-    if (!this.starting) {
-      this.starting = this.startOnce();
-    }
+    this.starting ??= this.startOnce();
+    const starting = this.starting;
     try {
-      return await this.starting;
+      return await starting;
     } catch (err) {
-      this.starting = null;
+      if (this.starting === starting) {
+        this.starting = null;
+      }
       throw err;
     }
   }
@@ -106,10 +107,21 @@ export class ServerLifecycle {
   }
 
   async stop(): Promise<void> {
+    const starting = this.starting;
+    if (starting) {
+      try {
+        await starting;
+      } catch {
+        // A failed startup leaves no healthy server to preserve.
+      }
+    }
+
     const child = this.process;
     this.process = null;
     this.url = null;
-    this.starting = null;
+    if (this.starting === starting) {
+      this.starting = null;
+    }
     if (!child || child.killed) return;
 
     let exited = false;
