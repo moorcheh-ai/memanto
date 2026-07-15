@@ -32,6 +32,10 @@ from memanto.app.constants import (
 from memanto.app.constants import (
     ProvenanceType as MemoryProvenance,
 )
+from memanto.app.utils.conflict_helpers import (
+    attempt_conflict_delete,
+    resolution_has_failures,
+)
 from memanto.app.utils.errors import (
     AgentNotFoundError,
     InvalidSessionTokenError,
@@ -1386,83 +1390,70 @@ class DirectClient:
         result_details = {"action": action}
 
         if action == "keep_old":
-            # Keep old, delete new
-            if new_id:
-                try:
-                    write_service.delete_memory(new_id, namespace)
-                    result_details["deleted"] = new_id
-                except Exception as e:
-                    result_details["warning"] = f"Could not delete new memory: {e}"
+            attempt_conflict_delete(
+                write_service, new_id, namespace, result_details, label="new"
+            )
 
         elif action == "keep_new":
-            # Keep new, delete old
-            if old_id:
-                try:
-                    write_service.delete_memory(old_id, namespace)
-                    result_details["deleted"] = old_id
-                except Exception as e:
-                    result_details["warning"] = f"Could not delete old memory: {e}"
+            attempt_conflict_delete(
+                write_service, old_id, namespace, result_details, label="old"
+            )
 
         elif action == "keep_both":
-            # No-op — both memories remain active
             result_details["note"] = "Both memories kept as-is"
 
         elif action == "remove_both":
-            # Delete both memories
             for mem_id, label in [(old_id, "old"), (new_id, "new")]:
-                if mem_id:
-                    try:
-                        write_service.delete_memory(mem_id, namespace)
-                        result_details[f"deleted_{label}"] = mem_id
-                    except Exception as e:
-                        result_details[f"warning_{label}"] = (
-                            f"Could not delete {label} memory: {e}"
-                        )
+                attempt_conflict_delete(
+                    write_service, mem_id, namespace, result_details, label=label
+                )
 
         elif action == "manual":
             if not manual_content:
                 raise ValueError("manual_content is required when action is 'manual'")
 
-            # Delete both, store manual replacement
             for mem_id, label in [(old_id, "old"), (new_id, "new")]:
-                if mem_id:
-                    try:
-                        write_service.delete_memory(mem_id, namespace)
-                        result_details[f"deleted_{label}"] = mem_id
-                    except Exception as e:
-                        result_details[f"warning_{label}"] = (
-                            f"Could not delete {label} memory: {e}"
-                        )
+                attempt_conflict_delete(
+                    write_service, mem_id, namespace, result_details, label=label
+                )
 
-            # Store the manual replacement
-            mem_type = manual_type or conflict.get("type", "fact")
-            if not isinstance(mem_type, str):
-                mem_type = "fact"
-            # Map conflict types to valid memory types
-            if mem_type not in _VALID_MEMORY_TYPES:
-                mem_type = "fact"
-            resolved_type = cast(MemoryType, mem_type)
+            if not resolution_has_failures(result_details):
+                mem_type = manual_type or conflict.get("type", "fact")
+                if not isinstance(mem_type, str):
+                    mem_type = "fact"
+                if mem_type not in _VALID_MEMORY_TYPES:
+                    mem_type = "fact"
+                resolved_type = cast(MemoryType, mem_type)
 
-            from memanto.app.core import MemoryRecord
+                from memanto.app.core import MemoryRecord
 
-            title = (
-                manual_content[:47] + "..."
-                if len(manual_content) > 50
-                else manual_content
-            )
-            memory = MemoryRecord(
-                type=resolved_type,
-                title=title,
-                content=manual_content,
-                agent_id=agent_id,
-                actor_id=agent_id,
-                confidence=0.9,
-                tags=["conflict-resolution"],
-                source="user",
-                provenance="corrected",
-            )
-            store_result = write_service.store_memory(memory)
-            result_details["new_memory_id"] = store_result.get("id")
+                title = (
+                    manual_content[:47] + "..."
+                    if len(manual_content) > 50
+                    else manual_content
+                )
+                memory = MemoryRecord(
+                    type=resolved_type,
+                    title=title,
+                    content=manual_content,
+                    agent_id=agent_id,
+                    actor_id=agent_id,
+                    confidence=0.9,
+                    tags=["conflict-resolution"],
+                    source="user",
+                    provenance="corrected",
+                )
+                store_result = write_service.store_memory(memory)
+                result_details["new_memory_id"] = store_result.get("id")
+                store_status = str(store_result.get("status", "")).lower()
+                if store_status not in {"queued", "success", "ok"}:
+                    result_details["warning"] = (
+                        f"Manual replacement memory was not stored (status={store_status})"
+                    )
+
+        if resolution_has_failures(result_details):
+            result_details["status"] = "failed"
+            return result_details
 
         # Mark conflict as resolved in the JSON file
         all_conflicts[conflict_index]["resolved"] = True

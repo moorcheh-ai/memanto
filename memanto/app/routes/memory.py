@@ -39,7 +39,10 @@ from memanto.app.services.conversation_memory_extraction_service import (
     ConversationMemoryExtractionService,
 )
 from memanto.app.services.memory_read_service import MemoryReadService
-from memanto.app.services.memory_write_service import MemoryWriteService
+from memanto.app.services.memory_write_service import (
+    SUCCESSFUL_UPLOAD_STATUSES,
+    MemoryWriteService,
+)
 from memanto.app.utils.errors import AuthorizationError, map_error_to_http_exception
 from memanto.app.utils.validation import CostGuard, validate_safe_id
 from memanto.cli.client.direct_client import DirectClient
@@ -285,7 +288,18 @@ async def remember(
         # Store memory in agent's namespace.
         result = await asyncio.to_thread(write_service.store_memory, memory)
 
-        # Log to local session Markdown summary
+        upload_status = str(result.get("status", "unknown")).lower()
+        if upload_status not in SUCCESSFUL_UPLOAD_STATUSES:
+            raise HTTPException(
+                status_code=502,
+                detail={
+                    "message": "Memory upload to backend did not succeed",
+                    "memory_id": result.get("id"),
+                    "backend_status": result.get("status"),
+                },
+            )
+
+        # Log to local session Markdown summary only after confirmed upload.
         session_service = get_session_service()
         await asyncio.to_thread(
             session_service.log_memory_to_session_summary,
@@ -299,7 +313,7 @@ async def remember(
             "agent_id": agent_id,
             "session_id": session.session_id,
             "namespace": session.namespace,
-            "status": "queued",
+            "status": result.get("status", "unknown"),
             "provenance": request.provenance,
             "confidence": request.confidence,
             # Resolved memory type (auto-parsed when not explicitly provided)
@@ -363,16 +377,22 @@ async def batch_remember(
             write_service.batch_store_memories, memory_records
         )
 
-        # Log each memory to local MD summary
+        # Log each successfully stored memory to local MD summary.
         session_service = get_session_service()
+        successful_ids = {
+            item["id"]
+            for item in result["results"]
+            if str(item.get("status", "")).lower() in SUCCESSFUL_UPLOAD_STATUSES
+        }
 
         for record in memory_records:
-            await asyncio.to_thread(
-                session_service.log_memory_to_session_summary,
-                agent_id=agent_id,
-                session_id=session.session_id,
-                memory_record=record,
-            )
+            if record.id in successful_ids:
+                await asyncio.to_thread(
+                    session_service.log_memory_to_session_summary,
+                    agent_id=agent_id,
+                    session_id=session.session_id,
+                    memory_record=record,
+                )
 
         return {
             "agent_id": agent_id,

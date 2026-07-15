@@ -14,6 +14,7 @@ from memanto.app.clients.moorcheh import get_moorcheh_client
 from memanto.app.config import get_data_dir, settings
 from memanto.app.core import agent_namespace
 from memanto.app.services.session_service import get_session_service
+from memanto.app.utils.conflict_helpers import merge_conflict_reports
 from memanto.app.utils.errors import MemoryError
 from memanto.app.utils.temporal_helpers import (
     format_current_local_time,
@@ -312,6 +313,20 @@ Example response format:
 
         # Save structured JSON for interactive resolution
         json_path = conflicts_dir / f"{agent_id}_{date}_conflicts.json"
+        existing_conflicts: list[dict[str, Any]] = []
+        if json_path.exists():
+            try:
+                with open(json_path, encoding="utf-8") as f:
+                    loaded = json.load(f)
+                if isinstance(loaded, list):
+                    existing_conflicts = loaded
+            except (json.JSONDecodeError, OSError) as exc:
+                print(
+                    f"Warning: Could not load existing conflict report {json_path}: {exc}"
+                )
+
+        conflicts_data = merge_conflict_reports(existing_conflicts, conflicts_data)
+
         with open(json_path, "w", encoding="utf-8") as f:
             json.dump(conflicts_data, f, indent=2, default=str)
 
