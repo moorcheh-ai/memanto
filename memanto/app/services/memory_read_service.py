@@ -500,28 +500,28 @@ class MemoryReadService:
         filtered = results
 
         if created_after:
-            try:
-                after_dt = parse_iso_timestamp(created_after)
-                filtered = [
-                    r
-                    for r in filtered
-                    if r.get("created_at")
-                    and parse_iso_timestamp(r["created_at"]) >= after_dt
-                ]
-            except (ValueError, AttributeError):
-                pass  # Skip invalid timestamps
+            after_dt = parse_iso_timestamp(created_after)
+
+            def _after(item: dict[str, Any]) -> bool:
+                try:
+                    raw = item.get("created_at")
+                    return bool(raw) and parse_iso_timestamp(raw) >= after_dt
+                except (ValueError, AttributeError):
+                    return False
+
+            filtered = [r for r in filtered if _after(r)]
 
         if created_before:
-            try:
-                before_dt = parse_iso_timestamp(created_before)
-                filtered = [
-                    r
-                    for r in filtered
-                    if r.get("created_at")
-                    and parse_iso_timestamp(r["created_at"]) <= before_dt
-                ]
-            except (ValueError, AttributeError):
-                pass  # Skip invalid timestamps
+            before_dt = parse_iso_timestamp(created_before)
+
+            def _before(item: dict[str, Any]) -> bool:
+                try:
+                    raw = item.get("created_at")
+                    return bool(raw) and parse_iso_timestamp(raw) <= before_dt
+                except (ValueError, AttributeError):
+                    return False
+
+            filtered = [r for r in filtered if _before(r)]
 
         return filtered
 

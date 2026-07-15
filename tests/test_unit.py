@@ -498,6 +498,23 @@ class TestMemoryReadServiceFormatting:
         assert formatted["confidence"] == 0.0
         assert formatted["tags"] == []
 
+    def test_temporal_filter_excludes_bad_timestamp_without_disabling_boundary(self):
+        """One corrupt record must not make an as-of boundary fail open."""
+        from memanto.app.services.memory_read_service import MemoryReadService
+
+        results = [
+            {"id": "bad", "created_at": "not-a-timestamp"},
+            {"id": "past", "created_at": "2024-12-31T23:59:59Z"},
+            {"id": "future", "created_at": "2025-01-01T00:00:01Z"},
+        ]
+
+        filtered = MemoryReadService(MagicMock())._apply_temporal_filter(
+            results,
+            created_before="2025-01-01T00:00:00Z",
+        )
+
+        assert [item["id"] for item in filtered] == ["past"]
+
 
 class TestMemoryWriteServiceBatch:
     def test_batch_store_counts_ok_upload_status_as_success(self):
