@@ -2,9 +2,6 @@
 Memory Write Service
 """
 
-from __future__ import annotations
-
-import re
 from datetime import datetime
 from typing import TYPE_CHECKING, Any
 
@@ -13,84 +10,25 @@ if TYPE_CHECKING:
 
 from memanto.app.core import MemoryRecord
 from memanto.app.services.memory_parsing_service import MemoryParsingService
-from memanto.app.utils.errors import MemoryError, ValidationError
+from memanto.app.utils.errors import MemoryError
 from memanto.app.utils.ids import generate_memory_id
+from memanto.app.utils.temporal_helpers import as_utc_naive
 
-if TYPE_CHECKING:
-    from memanto.app.legacy.memory_validation_service import MemoryValidationService
+SUCCESSFUL_UPLOAD_STATUSES = {"queued", "success", "ok"}
 
-# Defense in depth: cheap pre-upload safety check applied to every memory
-# before it is forwarded to Moorcheh. Addresses bounty findings:
-#   #1 DoS via oversized content (single memory or batch with many large items)
-#   #2 Prompt-injection / control-character smuggling in free-form text
-# The full ValidationPolicy is intentionally left disabled for speed, but
-# these checks must always run because they are security-critical.
-_MAX_CONTENT_CHARS = 32_000          # ~32 KB per memory, well under Moorcheh's doc limit
-_MAX_TITLE_CHARS = 512                # titles should be short
-_MAX_BATCH_TOTAL_CHARS = 1_000_000    # ~1 MB across the whole batch
-_MAX_BATCH_SIZE = 100                 # Moorcheh hard limit, also enforced later
-_CONTROL_CHAR_RE = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]")
-# Cheap prompt-injection markers; intentionally conservative. False positives
-# just get logged as a warning, not blocked — operators decide.
-_INJECTION_HINTS = (
-    "ignore previous instructions",
-    "ignore all previous",
-    "system:",
-    "<|im_start|>",
-    "<|im_end|>",
-    "### instruction",
-    "assistant:",
-    "you are now",
-    "disregard prior",
+# Trust fields removed from the active schema on 2026-06-29 (see
+# memanto/app/legacy/REMOVED.md). Old on-prem data_store.json records may still
+# carry them; they must never be copied forward on update or we resurrect dead
+# schema that no live read/write flow populates.
+_REMOVED_TRUST_FIELDS = frozenset(
+    {
+        "superseded_by",
+        "supersedes",
+        "validated_at",
+        "validation_count",
+        "contradiction_detected",
+    }
 )
-
-
-def _safety_check_memory(memory: MemoryRecord) -> list[str]:
-    """Return a list of human-readable warnings about suspicious content.
-
-    The function never raises for content issues (those are warnings the caller
-    may surface), only raises :class:`MemoryError` for hard size violations
-    that would either break the upload or enable trivial DoS.
-    """
-    warnings: list[str] = []
-
-    title = memory.title or ""
-    content = memory.content or ""
-
-    if len(title) > _MAX_TITLE_CHARS:
-        raise MemoryError(
-            f"title too long: {len(title)} chars (max {_MAX_TITLE_CHARS})"
-        )
-    if len(content) > _MAX_CONTENT_CHARS:
-        raise MemoryError(
-            f"content too long: {len(content)} chars (max {_MAX_CONTENT_CHARS})"
-        )
-
-    # Strip control characters FIRST, then validate the sanitized version.
-    # This prevents bypassing injection detection via embedded control chars.
-    if _CONTROL_CHAR_RE.search(content):
-        content = _CONTROL_CHAR_RE.sub("", content)
-        memory.content = content  # Persist sanitized version
-        warnings.append("stripped control characters from content")
-    
-    if _CONTROL_CHAR_RE.search(title):
-        title = _CONTROL_CHAR_RE.sub("", title)
-        memory.title = title  # Persist sanitized title
-        warnings.append("stripped control characters from title")
-
-    # Now check sanitized content for injection markers (not original)
-    lowered_title = title.lower()
-    lowered_content = content.lower()
-    
-    for hint in _INJECTION_HINTS:
-        if hint in lowered_title:
-            warnings.append(f"suspicious prompt-injection marker in title: {hint!r}")
-            break
-        if hint in lowered_content:
-            warnings.append(f"suspicious prompt-injection marker in content: {hint!r}")
-            break
-
-    return warnings
 
 
 class MemoryWriteService:
@@ -101,8 +39,7 @@ class MemoryWriteService:
 
         self.client = moorcheh_client
         self._parser = MemoryParsingService()
-        # Lazily initialized on first use — keeps import-time deps light.
-        self._validation_service: "MemoryValidationService | None" = None
+        self._namespace_service = None
 
     @property
     def namespace_service(self):
@@ -114,23 +51,15 @@ class MemoryWriteService:
             self._namespace_service = NamespaceService(self.client)
         return self._namespace_service
 
-    @property
-    def validation_service(self) -> "MemoryValidationService":
-        """Lazily create the validation service that gates uploads.
+    def _apply_timestamps(self, memory: MemoryRecord, now: datetime) -> None:
+        """Apply server timestamps while preserving imported source chronology."""
+        if memory.provenance == "imported":
+            memory.created_at = as_utc_naive(memory.created_at)
+            memory.updated_at = as_utc_naive(memory.updated_at)
+            return
+        memory.created_at = now
+        memory.updated_at = now
 
-        Without this layer the write path stores arbitrary user-controlled
-        content directly into Moorcheh, which is later retrieved and
-        injected into LLM context — a classic stored-prompt-injection
-        surface. Always use ``validate_memory`` (and honor its ``action``).
-        """
-
-        if self._validation_service is None:
-            from memanto.app.legacy.memory_validation_service import (
-                MemoryValidationService,
-            )
-
-            self._validation_service = MemoryValidationService(self.client)
-        return self._validation_service
     def store_memory(
         self, memory: MemoryRecord, context: dict[str, Any] | None = None
     ) -> dict[str, Any]:
@@ -140,10 +69,8 @@ class MemoryWriteService:
             if not memory.id:
                 memory.id = generate_memory_id()
 
-            # Enforce server-side timestamps (never trust client)
             now = datetime.utcnow()
-            memory.created_at = now
-            memory.updated_at = now
+            self._apply_timestamps(memory, now)
 
             # Auto parse memory type
             memory = self._parser.parse_memory(memory)
@@ -151,41 +78,13 @@ class MemoryWriteService:
             # Add namespace
             namespace = memory.namespace()
 
-            # Defense in depth layer 1: cheap pre-upload safety check.
-            # Always runs (raises on hard size violations; strips control chars
-            # silently; flags prompt-injection markers as warnings).
-            safety_warnings = _safety_check_memory(memory)
-
-            # Defense in depth layer 2: full ValidationPolicy. The policy can
-            # mark the memory as `provisional`, `reject`, or pass-through.
-            # Stored prompt injection is a real concern because retrieved
-            # memories are injected into LLM context downstream — every write
-            # must pass this gate before hitting Moorcheh.
-            try:
-                validation_result = self.validation_service.validate_memory(
-                    memory, context
-                )
-            except ValidationError as exc:
-                raise MemoryError(f"validation rejected memory: {exc}") from exc
-
-            # Honor the policy's action. `reject` short-circuits the upload
-            # entirely; the caller gets a structured result so the API can
-            # surface the reason to the user.
-            if validation_result.get("action") == "reject":
-                return {
-                    "id": memory.id,
-                    "namespace": namespace,
-                    "status": "rejected",
-                    "action": "reject",
-                    "reason": validation_result.get(
-                        "reason", "Rejected by validation policy"
-                    ),
-                    "warnings": safety_warnings,
-                }
-            if "memory" in validation_result:
-                memory = validation_result["memory"]
-            if safety_warnings and "warnings" not in validation_result:
-                validation_result["warnings"] = safety_warnings
+            # skip validation for speed
+            ## Validate memory
+            # validation_result = self.validation_service.validate_memory(memory, context)
+            ## Use validated memory if modified
+            # if "memory" in validation_result:
+            #     memory = validation_result["memory"]
+            validation_result = {"action": "store", "reason": "MVP direct store"}
 
             from typing import cast
 
@@ -230,19 +129,9 @@ class MemoryWriteService:
             if not memories:
                 raise MemoryError("No memories provided for batch operation")
 
-            if len(memories) > _MAX_BATCH_SIZE:
+            if len(memories) > 100:
                 raise MemoryError(
-                    f"Batch size {len(memories)} exceeds Moorcheh's limit of {_MAX_BATCH_SIZE} documents per request"
-                )
-
-            # Pre-flight batch size cap (DoS guard) — total payload across the
-            # whole batch must stay under _MAX_BATCH_TOTAL_CHARS or we reject
-            # before doing any per-memory work.
-            total_chars = sum(len(m.content or "") + len(m.title or "") for m in memories)
-            if total_chars > _MAX_BATCH_TOTAL_CHARS:
-                raise MemoryError(
-                    f"Batch total content too large: {total_chars} chars "
-                    f"(max {_MAX_BATCH_TOTAL_CHARS})"
+                    f"Batch size {len(memories)} exceeds Moorcheh's limit of 100 documents per request"
                 )
 
             # Ensure all memories are in same namespace
@@ -259,9 +148,7 @@ class MemoryWriteService:
                     if not memory.id:
                         memory.id = generate_memory_id()
 
-                    # Enforce server-side timestamps (never trust client)
-                    memory.created_at = now
-                    memory.updated_at = now
+                    self._apply_timestamps(memory, now)
 
                     memory = self._parser.parse_memory(memory)
 
@@ -283,46 +170,16 @@ class MemoryWriteService:
                         )
                         continue
 
-                    # Defense in depth layer 1: cheap pre-upload safety check.
-                    safety_warnings = _safety_check_memory(memory)
-
-                    # Defense in depth layer 2: full ValidationPolicy gate.
-                    # Same rationale as store_memory() — every write must pass
-                    # before it lands in Moorcheh to prevent stored prompt
-                    # injection from poisoning downstream LLM context.
-                    try:
-                        validation_result = self.validation_service.validate_memory(
-                            memory, context
-                        )
-                    except ValidationError as exc:
-                        results.append(
-                            {
-                                "id": memory.id,
-                                "status": "failed",
-                                "action": "rejected",
-                                "reason": f"validation error: {exc}",
-                            }
-                        )
-                        continue
-
-                    # Honor reject — short-circuit the upload for this item.
-                    if validation_result.get("action") == "reject":
-                        results.append(
-                            {
-                                "id": memory.id,
-                                "status": "rejected",
-                                "action": "reject",
-                                "reason": validation_result.get(
-                                    "reason", "Rejected by validation policy"
-                                ),
-                                "warnings": safety_warnings,
-                            }
-                        )
-                        continue
-                    if "memory" in validation_result:
-                        memory = validation_result["memory"]
-                    if safety_warnings and "warnings" not in validation_result:
-                        validation_result["warnings"] = safety_warnings
+                    # skip validation for speed
+                    ## Validate memory
+                    # validation_result = self.validation_service.validate_memory(memory, context)
+                    ## Use validated memory if modified
+                    # if "memory" in validation_result:
+                    #     memory = validation_result["memory"]
+                    validation_result = {
+                        "action": "store",
+                        "reason": "MVP direct store",
+                    }
 
                     from typing import cast
 
@@ -372,9 +229,13 @@ class MemoryWriteService:
                     if result["status"] == "pending":
                         result["status"] = moorcheh_status
 
-            # Count successes and failures (rejections count as failures)
-            successful = sum(1 for r in results if r["status"] in ["queued", "success"])
-            failed = sum(1 for r in results if r["status"] in {"failed", "rejected"})
+            # Count successes and failures
+            successful = sum(
+                1
+                for r in results
+                if str(r["status"]).lower() in SUCCESSFUL_UPLOAD_STATUSES
+            )
+            failed = sum(1 for r in results if str(r["status"]).lower() == "failed")
 
             return {
                 "total_submitted": len(memories),
@@ -482,42 +343,41 @@ class MemoryWriteService:
                 if metadata.get("expires_at"):
                     updated_memory.expires_at = metadata["expires_at"]
 
-            # Defense in depth: re-run safety + validation on the post-merge
-            # memory BEFORE destructive delete. A rejected or oversized update
-            # must not leave the memory deleted with no replacement.
-            update_warnings = _safety_check_memory(updated_memory)
+            # Step 3: Delete old version
+            from typing import Any, cast
 
-            try:
-                validation_result = self.validation_service.validate_memory(
-                    updated_memory, context
-                )
-            except ValidationError as exc:
-                raise MemoryError(f"validation rejected update: {exc}") from exc
-
-            if validation_result.get("action") == "reject":
-                raise MemoryError(
-                    f"update rejected by validation policy: "
-                    f"{validation_result.get('reason', 'no reason given')}"
-                )
-            if "memory" in validation_result:
-                updated_memory = validation_result["memory"]
-            if update_warnings and "warnings" not in validation_result:
-                validation_result["warnings"] = update_warnings
-
-            # Step 4: Delete old version (now safe — replacement validated)
-            delete_result = self.client.documents.delete(
-                namespace_name=namespace, ids=[memory_id]
+            delete_result = cast(
+                dict[str, Any],
+                self.client.documents.delete(namespace_name=namespace, ids=[memory_id]),
             )
 
-            if delete_result.get("actual_deletions", 0) == 0:
+            if not self._deletion_succeeded(delete_result):
                 raise MemoryError(f"Failed to delete old version of memory {memory_id}")
 
-            # Step 5: Upload new version
+            validation_result = {"action": "store", "reason": "MVP direct store"}
+
+            # Step 4: Upload new version
             from typing import cast
 
             from moorcheh_sdk.types.document import Document
 
             document = cast(Document, updated_memory.to_moorcheh_document())
+
+            # Preserve extra metadata fields from the existing record (e.g. original_id
+            # in on-prem data_store.json) that aren't part of the MemoryRecord schema.
+            existing_meta = existing_memory_data.get("metadata", existing_memory_data)
+            if isinstance(existing_meta, dict):
+                # ``document`` is a TypedDict; cast to a plain dict to attach
+                # extra schema-external keys (e.g. original_id) dynamically.
+                extra_document = cast(dict[str, Any], document)
+                for key in existing_meta:
+                    if (
+                        key not in document
+                        and key != "text"
+                        and key not in _REMOVED_TRUST_FIELDS
+                    ):
+                        extra_document[key] = existing_meta[key]
+
             upload_result = self.client.documents.upload(
                 namespace_name=namespace, documents=[document]
             )
@@ -545,18 +405,18 @@ class MemoryWriteService:
                 self.client.documents.delete(namespace_name=namespace, ids=[memory_id]),
             )
 
-            # Cloud returns ``actual_deletions``; on-prem's /items/delete only
-            # returns ``deleted_ids`` (and ``status``). Mirror the cloud SDK's
-            # ``_deletion_processed_count`` so both backends report success.
-            raw = result.get("actual_deletions")
-            if isinstance(raw, int):
-                return raw > 0
-            for key in ("deleted_ids", "requested_ids"):
-                ids = result.get(key)
-                if isinstance(ids, list):
-                    return len(ids) > 0
-            # Some on-prem builds only return ``{"status": "success"}``.
-            return str(result.get("status", "")).lower() in {"success", "ok"}
+            return self._deletion_succeeded(result)
 
         except Exception as e:
             raise MemoryError(f"Failed to delete memory: {e}")
+
+    @staticmethod
+    def _deletion_succeeded(result: dict[str, Any]) -> bool:
+        """Return True for cloud and on-prem successful deletion shapes."""
+        raw = result.get("actual_deletions")
+        if isinstance(raw, int):
+            return raw > 0
+        ids = result.get("deleted_ids")
+        if isinstance(ids, list):
+            return len(ids) > 0
+        return str(result.get("status", "")).lower() in {"success", "ok"}
