@@ -1,7 +1,15 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { EventEmitter } from "node:events";
 import { createServer, type Server } from "node:http";
 import { AddressInfo } from "node:net";
 import { ServerLifecycle } from "../src/lifecycle.js";
+
+const spawnMock = vi.hoisted(() => vi.fn());
+
+vi.mock("node:child_process", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("node:child_process")>()),
+  spawn: spawnMock,
+}));
 
 function startFakeHealthyServer(): Promise<{ url: string; close: () => void }> {
   return new Promise((resolve) => {
@@ -63,6 +71,31 @@ describe("ServerLifecycle", () => {
     await life.start();
 
     expect(fetchSpy).not.toHaveBeenCalled();
+    fetchSpy.mockRestore();
+  });
+
+  it("coalesces concurrent starts into one server process", async () => {
+    const child = Object.assign(new EventEmitter(), {
+      exitCode: null,
+      killed: false,
+      kill: vi.fn(),
+    });
+    child.kill.mockImplementation(() => {
+      child.killed = true;
+      queueMicrotask(() => child.emit("exit", 0));
+      return true;
+    });
+    spawnMock.mockReturnValue(child);
+    const fetchSpy = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValue({ ok: true } as Response);
+
+    const life = new ServerLifecycle();
+    const [first, second] = await Promise.all([life.start(), life.start()]);
+    cleanupFns.push(() => life.stop());
+
+    expect(first).toBe(second);
+    expect(spawnMock).toHaveBeenCalledTimes(1);
     fetchSpy.mockRestore();
   });
 });

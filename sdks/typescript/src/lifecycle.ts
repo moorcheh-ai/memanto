@@ -32,6 +32,7 @@ export interface ServerOptions {
 export class ServerLifecycle {
   private process: ChildProcess | null = null;
   private url: string | null = null;
+  private starting: Promise<string> | null = null;
   private cleanupRegistered = false;
 
   constructor(private readonly opts: ServerOptions = {}) {}
@@ -46,6 +47,18 @@ export class ServerLifecycle {
   async start(): Promise<string> {
     if (this.url) return this.url;
 
+    if (!this.starting) {
+      this.starting = this.startOnce();
+    }
+    try {
+      return await this.starting;
+    } catch (err) {
+      this.starting = null;
+      throw err;
+    }
+  }
+
+  private async startOnce(): Promise<string> {
     if (this.opts.baseUrl) {
       this.url = this.opts.baseUrl.replace(/\/$/, "");
       return this.url;
@@ -96,6 +109,7 @@ export class ServerLifecycle {
     const child = this.process;
     this.process = null;
     this.url = null;
+    this.starting = null;
     if (!child || child.killed) return;
 
     let exited = false;
