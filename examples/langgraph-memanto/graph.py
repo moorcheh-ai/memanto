@@ -38,6 +38,7 @@ class AgentState(TypedDict):
     LangGraph session state only.
     Durable long-term memory is handled externally by Memanto.
     """
+
     messages: Annotated[Sequence[BaseMessage], add_messages]
     session_id: str
 
@@ -67,10 +68,14 @@ def make_recall_node(client):
     This enables cross-session recall even in a completely fresh
     Python process with a brand-new LangGraph execution state.
     """
-    def recall_node(state: AgentState) -> dict:
 
+    def recall_node(state: AgentState) -> dict:
         last_human = next(
-            (m.content for m in reversed(state["messages"]) if isinstance(m, HumanMessage)),
+            (
+                m.content
+                for m in reversed(state["messages"])
+                if isinstance(m, HumanMessage)
+            ),
             "recent conversation context",
         )
 
@@ -85,13 +90,17 @@ def make_recall_node(client):
         if memories:
             context_parts.append("📚 Relevant past memories:")
             for memory in memories:
-                context_parts.append(f"  [{memory.get('id','?')}] {memory.get('content','')[:200]}")
+                context_parts.append(
+                    f"  [{memory.get('id', '?')}] {memory.get('content', '')[:200]}"
+                )
         if preferences:
             context_parts.append("👤 User preferences:")
             for pref in preferences:
-                context_parts.append(f"  • {pref.get('content','')}")
+                context_parts.append(f"  • {pref.get('content', '')}")
 
-        context = "\n".join(context_parts) if context_parts else "No prior memories found."
+        context = (
+            "\n".join(context_parts) if context_parts else "No prior memories found."
+        )
 
         combined_system_prompt = (
             f"{SYSTEM_PROMPT.strip()}\n\n"
@@ -100,7 +109,9 @@ def make_recall_node(client):
         )
 
         return {
-            "messages": [SystemMessage(id="memanto_context", content=combined_system_prompt)]
+            "messages": [
+                SystemMessage(id="memanto_context", content=combined_system_prompt)
+            ]
         }
 
     return recall_node
@@ -110,6 +121,7 @@ def make_agent_node(llm_with_tools):
     def agent_node(state: AgentState) -> dict:
         response = llm_with_tools.invoke(list(state["messages"]))
         return {"messages": [response]}
+
     return agent_node
 
 
@@ -154,7 +166,9 @@ def build_graph(
 
     workflow.add_edge(START, "recall")
     workflow.add_edge("recall", "agent")
-    workflow.add_conditional_edges("agent", should_continue, {"tools": "tools", END: END})
+    workflow.add_conditional_edges(
+        "agent", should_continue, {"tools": "tools", END: END}
+    )
     workflow.add_edge("tools", "agent")
 
     return workflow.compile()

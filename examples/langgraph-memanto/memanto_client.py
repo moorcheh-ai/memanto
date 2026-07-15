@@ -18,22 +18,33 @@ import requests
 logger = logging.getLogger(__name__)
 
 VALID_TYPES = {
-    "instruction","fact","decision","goal","commitment",
-    "preference","relationship","context","event","learning",
-    "observation","artifact","error",
+    "instruction",
+    "fact",
+    "decision",
+    "goal",
+    "commitment",
+    "preference",
+    "relationship",
+    "context",
+    "event",
+    "learning",
+    "observation",
+    "artifact",
+    "error",
 }
 
 
 class MeMantoClient:
-
     def __init__(
         self,
         base_url: str | None = None,
         api_key: str | None = None,
         agent_id: str = "langgraph-agent",
     ):
-        self.base_url = (base_url or os.getenv("MEMANTO_BASE_URL","http://127.0.0.1:8000")).rstrip("/")
-        self.api_key  = api_key or os.getenv("MOORCHEH_API_KEY","")
+        self.base_url = (
+            base_url or os.getenv("MEMANTO_BASE_URL", "http://127.0.0.1:8000")
+        ).rstrip("/")
+        self.api_key = api_key or os.getenv("MOORCHEH_API_KEY", "")
         self.agent_id = agent_id
         self._token: str | None = None
 
@@ -58,7 +69,10 @@ class MeMantoClient:
         try:
             r = self._http.post(
                 self._url("/api/v2/agents"),
-                json={"agent_id": self.agent_id, "description": "LangGraph integration"},
+                json={
+                    "agent_id": self.agent_id,
+                    "description": "LangGraph integration",
+                },
                 timeout=10,
             )
             if r.status_code not in (200, 201, 409):
@@ -88,8 +102,13 @@ class MeMantoClient:
             response = method(url, **kwargs)
         return response
 
-    def remember(self, content: str, memory_type: str = "observation",
-                 tags: list[str] | None = None, metadata: dict | None = None) -> dict:
+    def remember(
+        self,
+        content: str,
+        memory_type: str = "observation",
+        tags: list[str] | None = None,
+        metadata: dict | None = None,
+    ) -> dict:
         if memory_type not in VALID_TYPES:
             memory_type = "observation"
         payload = {
@@ -100,8 +119,12 @@ class MeMantoClient:
         }
         try:
             r = self._request_with_retry(
-                self._http.post, self._aurl("/remember"),
-                json=payload, headers=self._headers(), timeout=15)
+                self._http.post,
+                self._aurl("/remember"),
+                json=payload,
+                headers=self._headers(),
+                timeout=15,
+            )
             r.raise_for_status()
             mem = r.json()
             if not mem.get("id") and mem.get("memory_id"):
@@ -115,14 +138,20 @@ class MeMantoClient:
             logger.error("Remember failed: %s", exc)
             return {"id": None, "content": content, "error": str(exc)}
 
-    def recall(self, query: str, limit: int = 5, memory_type: str | None = None) -> list[dict]:
+    def recall(
+        self, query: str, limit: int = 5, memory_type: str | None = None
+    ) -> list[dict]:
         payload: dict = {"query": query, "limit": limit}
         if memory_type:
             payload["type"] = memory_type
         try:
             r = self._request_with_retry(
-                self._http.post, self._aurl("/recall"),
-                json=payload, headers=self._headers(), timeout=15)
+                self._http.post,
+                self._aurl("/recall"),
+                json=payload,
+                headers=self._headers(),
+                timeout=15,
+            )
             r.raise_for_status()
             return r.json().get("memories", [])
         except Exception as exc:
@@ -132,8 +161,12 @@ class MeMantoClient:
     def answer(self, question: str) -> str:
         try:
             r = self._request_with_retry(
-                self._http.post, self._aurl("/answer"),
-                json={"question": question}, headers=self._headers(), timeout=20)
+                self._http.post,
+                self._aurl("/answer"),
+                json={"question": question},
+                headers=self._headers(),
+                timeout=20,
+            )
             r.raise_for_status()
             return r.json().get("answer", "")
         except Exception as exc:
@@ -158,8 +191,12 @@ class MeMantoClient:
         }
         try:
             r = self._request_with_retry(
-                self._http.post, self._aurl("/remember"),
-                json=payload, headers=self._headers(), timeout=15)
+                self._http.post,
+                self._aurl("/remember"),
+                json=payload,
+                headers=self._headers(),
+                timeout=15,
+            )
             r.raise_for_status()
             mem = r.json()
             logger.info("Stored correction memory %s", mem.get("id"))

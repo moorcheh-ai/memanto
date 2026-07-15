@@ -20,6 +20,7 @@ Usage:
     # Mock mode (no server or LLM needed — for Asciinema recording)
     python run.py --mock
 """
+
 import argparse
 import os
 import sys
@@ -33,6 +34,7 @@ BANNER = """
 
 
 # ── Mock mode (offline, no LLM/server) ────────────────────────────────────────
+
 
 def run_mock():
     """Fully offline demo — record this for Asciinema."""
@@ -63,10 +65,16 @@ def run_mock():
     time.sleep(0.4)
 
     facts = [
-        ("Quantum error correction requires ~1000 physical qubits per logical qubit.", "fact"),
-        ("Surface codes are the leading error correction approach in 2025.",            "fact"),
-        ("User prefers concise bullet-point summaries.",                                "preference"),
-        ("User is focused on near-term practical applications, not theory.",            "preference"),
+        (
+            "Quantum error correction requires ~1000 physical qubits per logical qubit.",
+            "fact",
+        ),
+        ("Surface codes are the leading error correction approach in 2025.", "fact"),
+        ("User prefers concise bullet-point summaries.", "preference"),
+        (
+            "User is focused on near-term practical applications, not theory.",
+            "preference",
+        ),
     ]
     print("\n  [Memanto] Storing memories...")
     stored = []
@@ -112,21 +120,26 @@ def run_mock():
     print(f"  🔄 Correcting [{old_id}]...")
     time.sleep(0.5)
     import uuid as _u
+
     new_id = f"mem_{_u.uuid4().hex[:8]}"
     db[new_id] = {
-        "id": new_id, "content": new_fact, "type": "fact", "score": 0.99,
-        "metadata": {"previous_content": old_fact, "correction": True}
+        "id": new_id,
+        "content": new_fact,
+        "type": "fact",
+        "score": 0.99,
+        "metadata": {"previous_content": old_fact, "correction": True},
     }
     print(f"  ✅ New corrected memory stored: [{new_id}]")
     print(f"     └─ Old fact preserved in metadata.previous_content of [{new_id}]")
 
-    print(f"\n{'─'*60}")
+    print(f"\n{'─' * 60}")
     print("  ✨  Demo complete!")
     print("  💾  All memories persist in Memanto — recall them in any future session.")
-    print(f"{'─'*60}\n")
+    print(f"{'─' * 60}\n")
 
 
 # ── Live mode ──────────────────────────────────────────────────────────────────
+
 
 def run_live(session_type: str, args):
     from graph import build_graph
@@ -162,7 +175,7 @@ def run_live(session_type: str, args):
         messages = []
         while True:
             user_input = input("  👤 You: ").strip()
-            if user_input.lower() in ("quit","exit","q"):
+            if user_input.lower() in ("quit", "exit", "q"):
                 break
             messages.append(HumanMessage(content=user_input))
             state = {"messages": messages, "session_id": session_id}
@@ -185,14 +198,21 @@ def run_live(session_type: str, args):
 
 # ── Entry ──────────────────────────────────────────────────────────────────────
 
+
 def main():
     p = argparse.ArgumentParser(description="LangGraph + Memanto demo")
-    p.add_argument("--mock",    action="store_true", help="Offline mode, no server/LLM needed")
-    p.add_argument("--session", choices=["research","recall","chat"], default="research")
-    p.add_argument("--url",       default=os.getenv("MEMANTO_BASE_URL","http://127.0.0.1:8000"))
-    p.add_argument("--api-key",   default=os.getenv("MOORCHEH_API_KEY",""))
+    p.add_argument(
+        "--mock", action="store_true", help="Offline mode, no server/LLM needed"
+    )
+    p.add_argument(
+        "--session", choices=["research", "recall", "chat"], default="research"
+    )
+    p.add_argument(
+        "--url", default=os.getenv("MEMANTO_BASE_URL", "http://127.0.0.1:8000")
+    )
+    p.add_argument("--api-key", default=os.getenv("MOORCHEH_API_KEY", ""))
     p.add_argument("--namespace", default="langgraph-agent")
-    p.add_argument("--model",     default="gpt-4o")
+    p.add_argument("--model", default="gpt-4o")
     args = p.parse_args()
 
     if args.mock:

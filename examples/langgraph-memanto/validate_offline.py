@@ -12,6 +12,7 @@ Proves:
 Run:
     python validate_offline.py
 """
+
 import os
 import sys
 
@@ -25,6 +26,7 @@ def main():
     print("\n[1/3] Checking imports...")
     try:
         import ast
+
         for fname in ["memanto_client.py", "tools.py", "graph.py", "run.py"]:
             path = os.path.join(os.path.dirname(__file__), fname)
             with open(path, encoding="utf-8") as fh:
@@ -42,6 +44,7 @@ def main():
         from contextlib import redirect_stdout
 
         from run import run_mock
+
         buf = io.StringIO()
         with redirect_stdout(buf):
             run_mock()
@@ -50,7 +53,9 @@ def main():
         assert "SESSION A" in output, "SESSION A missing"
         assert "SESSION B" in output, "SESSION B missing"
         assert "recall_node" in output, "recall_node missing"
-        assert "New corrected memory stored" in output, "contradiction correction missing"
+        assert "New corrected memory stored" in output, (
+            "contradiction correction missing"
+        )
         print("  ✅ Session A stored memories")
         print("  ✅ Session B recalled memories via recall_node")
         print("  ✅ Contradiction correction stored new memory")
@@ -62,15 +67,16 @@ def main():
     print("\n[3/3] Verifying contradiction handling...")
     try:
         import uuid
+
         db = {}
         old_fact = "~1000 physical qubits per logical qubit"
-        new_fact  = "~100 physical qubits per logical qubit (Google 2025)"
+        new_fact = "~100 physical qubits per logical qubit (Google 2025)"
         new_id = f"mem_{uuid.uuid4().hex[:8]}"
         db[new_id] = {
             "id": new_id,
             "content": new_fact,
             "type": "fact",
-            "metadata": {"previous_content": old_fact, "correction": True}
+            "metadata": {"previous_content": old_fact, "correction": True},
         }
         assert db[new_id]["content"] == new_fact
         assert db[new_id]["metadata"]["previous_content"] == old_fact

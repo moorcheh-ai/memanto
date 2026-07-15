@@ -31,6 +31,7 @@ Usage:
   python benchmark.py --skip-mem0       # Memanto only
   python benchmark.py --sessions 1,2,3  # subset of sessions
 """
+
 from __future__ import annotations
 
 import argparse
@@ -56,6 +57,7 @@ RECALL_LIMIT = 10  # identical for both systems
 
 # ── Data structures ─────────────────────────────────────────────────────────
 
+
 @dataclass
 class TurnResult:
     system: str
@@ -67,6 +69,7 @@ class TurnResult:
     tokens_out: int
     success: bool
     error: str = ""
+
 
 @dataclass
 class EvalResult:
@@ -82,6 +85,7 @@ class EvalResult:
     latency_s: float
     tokens_used: int
 
+
 @dataclass
 class BenchmarkResults:
     experiment_id: str
@@ -95,14 +99,15 @@ class BenchmarkResults:
         for sys in systems:
             sys_turns = [r for r in self.turn_results if r.system == sys]
             store_turns = [r for r in sys_turns if r.operation == "store"]
-            recall_turns = [r for r in sys_turns if r.operation in ("recall", "temporal_recall")]
+            recall_turns = [
+                r for r in sys_turns if r.operation in ("recall", "temporal_recall")
+            ]
             sys_evals = [r for r in self.eval_results if r.system == sys]
 
             store_latencies = [r.latency_s for r in store_turns if r.success]
             recall_latencies = [r.latency_s for r in recall_turns if r.success]
             accuracy = (
-                statistics.mean(r.judge_score for r in sys_evals)
-                if sys_evals else 0.0
+                statistics.mean(r.judge_score for r in sys_evals) if sys_evals else 0.0
             )
 
             # Per query-type accuracy
@@ -111,7 +116,8 @@ class BenchmarkResults:
                 qt_evals = [r for r in sys_evals if r.query_type == qt]
                 type_accuracy[qt] = (
                     round(statistics.mean(r.judge_score for r in qt_evals), 3)
-                    if qt_evals else None
+                    if qt_evals
+                    else None
                 )
 
             summary[sys] = {
@@ -138,17 +144,22 @@ def _p95(values: list[float]) -> float:
 
 # ── Memanto adapter ─────────────────────────────────────────────────────────
 
+
 class MemantoAdapter:
     """
     Memanto memory adapter.
     Uses moorcheh-sdk: namespaces, documents, similarity_search, answer.
     Also exercises temporal endpoints: recall/as-of, recall/changed-since.
     """
+
     name = "Memanto"
 
-    def __init__(self, api_key: str, namespace: str, base_url: str = "http://localhost:8000"):
+    def __init__(
+        self, api_key: str, namespace: str, base_url: str = "http://localhost:8000"
+    ):
         from moorcheh_sdk import MoorchehClient
         from moorcheh_sdk.types.document import Document
+
         self._Document = Document
         self._client = MoorchehClient(api_key=api_key)
         self.namespace = namespace
@@ -163,7 +174,9 @@ class MemantoAdapter:
             if "already exists" not in str(e).lower():
                 raise
 
-    def store(self, text: str, session: int, turn: int) -> tuple[float, int, int, bool, str]:
+    def store(
+        self, text: str, session: int, turn: int
+    ) -> tuple[float, int, int, bool, str]:
         tokens_in = _count_tokens(text)
         start = time.perf_counter()
         try:
@@ -179,13 +192,18 @@ class MemantoAdapter:
             latency = time.perf_counter() - start
             # Record session timestamp after last turn of session
             import datetime
-            self._session_timestamps[session] = datetime.datetime.utcnow().isoformat() + "Z"
+
+            self._session_timestamps[session] = (
+                datetime.datetime.utcnow().isoformat() + "Z"
+            )
             return latency, tokens_in, 0, True, ""
         except Exception as e:
             latency = time.perf_counter() - start
             return latency, tokens_in, 0, False, str(e)
 
-    def recall(self, query: str, limit: int = RECALL_LIMIT) -> tuple[float, int, int, bool, str, str]:
+    def recall(
+        self, query: str, limit: int = RECALL_LIMIT
+    ) -> tuple[float, int, int, bool, str, str]:
         tokens_in = _count_tokens(query)
         start = time.perf_counter()
         try:
@@ -197,7 +215,8 @@ class MemantoAdapter:
             items = response.results if hasattr(response, "results") else []
             texts = [
                 (i.text if hasattr(i, "text") else i.get("text", ""))
-                for i in items if i
+                for i in items
+                if i
             ]
             answer = "\n".join(t for t in texts if t)
             tokens_out = _count_tokens(answer)
@@ -207,9 +226,12 @@ class MemantoAdapter:
             latency = time.perf_counter() - start
             return latency, tokens_in, 0, False, str(e), ""
 
-    def temporal_recall_as_of(self, query: str, as_of_session: int) -> tuple[float, int, int, bool, str, str]:
+    def temporal_recall_as_of(
+        self, query: str, as_of_session: int
+    ) -> tuple[float, int, int, bool, str, str]:
         """Memanto-exclusive: retrieve memories as they existed at end of a session."""
         import requests
+
         tokens_in = _count_tokens(query)
         ts = self._session_timestamps.get(as_of_session, "")
         if not ts:
@@ -241,16 +263,21 @@ class MemantoAdapter:
 
 # ── Mem0 adapter ─────────────────────────────────────────────────────────────
 
+
 class Mem0Adapter:
     """Mem0 cloud memory adapter using mem0ai SDK."""
+
     name = "Mem0"
 
     def __init__(self, api_key: str, user_id: str):
         from mem0 import MemoryClient
+
         self._client = MemoryClient(api_key=api_key)
         self.user_id = user_id
 
-    def store(self, text: str, session: int, turn: int) -> tuple[float, int, int, bool, str]:
+    def store(
+        self, text: str, session: int, turn: int
+    ) -> tuple[float, int, int, bool, str]:
         tokens_in = _count_tokens(text)
         messages = [{"role": "user", "content": text}]
         start = time.perf_counter()
@@ -262,7 +289,9 @@ class Mem0Adapter:
             latency = time.perf_counter() - start
             return latency, tokens_in, 0, False, str(e)
 
-    def recall(self, query: str, limit: int = RECALL_LIMIT) -> tuple[float, int, int, bool, str, str]:
+    def recall(
+        self, query: str, limit: int = RECALL_LIMIT
+    ) -> tuple[float, int, int, bool, str, str]:
         tokens_in = _count_tokens(query)
         start = time.perf_counter()
         try:
@@ -285,6 +314,7 @@ class Mem0Adapter:
 
 # ── LLM Judge ────────────────────────────────────────────────────────────────
 
+
 def judge_answer(
     question: str,
     system_answer: str,
@@ -294,10 +324,19 @@ def judge_answer(
     anthropic_key: str,
 ) -> tuple[float, str, int]:
     import anthropic
+
     client = anthropic.Anthropic(api_key=anthropic_key)
 
-    must_check = f"\nThe answer SHOULD mention: {', '.join(must_contain)}" if must_contain else ""
-    must_not_check = f"\nThe answer MUST NOT contain: {', '.join(must_not_contain)}" if must_not_contain else ""
+    must_check = (
+        f"\nThe answer SHOULD mention: {', '.join(must_contain)}"
+        if must_contain
+        else ""
+    )
+    must_not_check = (
+        f"\nThe answer MUST NOT contain: {', '.join(must_not_contain)}"
+        if must_not_contain
+        else ""
+    )
 
     prompt = f"""You are an impartial judge evaluating a memory system's retrieval accuracy on preference drift.
 
@@ -326,6 +365,7 @@ Respond ONLY with: {{"score": 0.0, "reasoning": "..."}}"""
         )
         raw = response.content[0].text.strip()
         import re
+
         clean = re.sub(r"```(?:json)?|```", "", raw).strip()
         parsed = json.loads(clean)
         tokens = response.usage.input_tokens + response.usage.output_tokens
@@ -336,11 +376,13 @@ Respond ONLY with: {{"score": 0.0, "reasoning": "..."}}"""
 
 # ── Token counter ─────────────────────────────────────────────────────────────
 
+
 def _count_tokens(text: str) -> int:
     return max(1, len(text) // 4)
 
 
 # ── Main benchmark ─────────────────────────────────────────────────────────────
+
 
 def run_benchmark(
     skip_mem0: bool = False,
@@ -358,7 +400,9 @@ def run_benchmark(
         print("⚠️  MEM0_API_KEY not set — running Memanto only (use --skip-mem0)")
         skip_mem0 = True
     if not anthropic_key:
-        print("⚠️  ANTHROPIC_API_KEY not set — skipping LLM judge, using keyword fallback")
+        print(
+            "⚠️  ANTHROPIC_API_KEY not set — skipping LLM judge, using keyword fallback"
+        )
 
     conversations = json.loads((DATA_DIR / "persona_conversations.json").read_text())
     golden_qa = json.loads((DATA_DIR / "golden_qa.json").read_text())
@@ -390,8 +434,14 @@ def run_benchmark(
 
     # Init adapters
     print("\n🧪 Initializing systems...")
-    memanto = MemantoAdapter(api_key=moorcheh_key, namespace=MEMANTO_NAMESPACE, base_url=memanto_url)
-    mem0 = Mem0Adapter(api_key=mem0_key, user_id=f"benchmark-{EXPERIMENT_ID}") if not skip_mem0 else None
+    memanto = MemantoAdapter(
+        api_key=moorcheh_key, namespace=MEMANTO_NAMESPACE, base_url=memanto_url
+    )
+    mem0 = (
+        Mem0Adapter(api_key=mem0_key, user_id=f"benchmark-{EXPERIMENT_ID}")
+        if not skip_mem0
+        else None
+    )
     adapters = [memanto] + ([mem0] if mem0 else [])
     print(f"  ✅ Running: {[a.name for a in adapters]}")
 
@@ -420,17 +470,19 @@ def run_benchmark(
 
         for adapter in adapters:
             latency, ti, to, ok, err = adapter.store(text, session, turn)
-            results.turn_results.append(TurnResult(
-                system=adapter.name,
-                session=session,
-                turn=turn,
-                operation="store",
-                latency_s=round(latency, 4),
-                tokens_in=ti,
-                tokens_out=to,
-                success=ok,
-                error=err,
-            ))
+            results.turn_results.append(
+                TurnResult(
+                    system=adapter.name,
+                    session=session,
+                    turn=turn,
+                    operation="store",
+                    latency_s=round(latency, 4),
+                    tokens_in=ti,
+                    tokens_out=to,
+                    success=ok,
+                    error=err,
+                )
+            )
             status = "✅" if ok else f"❌ {err}"
             print(f"    [{adapter.name}] store {latency:.3f}s {status}")
 
@@ -438,27 +490,33 @@ def run_benchmark(
         if turn == session_last_turn.get(session, 0):
             session_qs = [q for q in golden_qa if q["after_session"] == session]
             if session_qs:
-                print(f"\n  🔍 Evaluating {len(session_qs)} question(s) after session {session}...")
+                print(
+                    f"\n  🔍 Evaluating {len(session_qs)} question(s) after session {session}..."
+                )
                 for qa in session_qs:
                     for adapter in adapters:
                         lat, ti, to, ok, err, answer = adapter.recall(qa["question"])
-                        results.turn_results.append(TurnResult(
-                            system=adapter.name,
-                            session=session,
-                            turn=turn,
-                            operation="recall",
-                            latency_s=round(lat, 4),
-                            tokens_in=ti,
-                            tokens_out=to,
-                            success=ok,
-                            error=err,
-                        ))
+                        results.turn_results.append(
+                            TurnResult(
+                                system=adapter.name,
+                                session=session,
+                                turn=turn,
+                                operation="recall",
+                                latency_s=round(lat, 4),
+                                tokens_in=ti,
+                                tokens_out=to,
+                                success=ok,
+                                error=err,
+                            )
+                        )
 
                         # Judge
                         score, reasoning, judge_tokens = 0.0, "no judge", 0
                         if anthropic_key and ok:
                             score, reasoning, judge_tokens = judge_answer(
-                                qa["question"], answer, qa["golden_answer"],
+                                qa["question"],
+                                answer,
+                                qa["golden_answer"],
                                 qa.get("must_contain", []),
                                 qa.get("must_not_contain", []),
                                 anthropic_key,
@@ -469,23 +527,29 @@ def run_benchmark(
                             mnc = qa.get("must_not_contain", [])
                             hits = sum(1 for kw in mc if kw.lower() in answer.lower())
                             bad = sum(1 for kw in mnc if kw.lower() in answer.lower())
-                            score = (hits / len(mc) if mc else 1.0) * (0.0 if bad else 1.0)
+                            score = (hits / len(mc) if mc else 1.0) * (
+                                0.0 if bad else 1.0
+                            )
                             reasoning = f"keyword: {hits}/{len(mc)} must_contain, {bad} must_not_contain violations"
 
-                        results.eval_results.append(EvalResult(
-                            question_id=qa["id"],
-                            system=adapter.name,
-                            after_session=session,
-                            question=qa["question"],
-                            query_type=qa.get("query_type", "recency"),
-                            system_answer=answer,
-                            golden_answer=qa["golden_answer"],
-                            judge_score=score,
-                            judge_reasoning=reasoning,
-                            latency_s=round(lat, 4),
-                            tokens_used=to + judge_tokens,
-                        ))
-                        print(f"    [{adapter.name}] {qa['id']} ({qa.get('query_type','?')}) score={score:.2f} lat={lat:.3f}s")
+                        results.eval_results.append(
+                            EvalResult(
+                                question_id=qa["id"],
+                                system=adapter.name,
+                                after_session=session,
+                                question=qa["question"],
+                                query_type=qa.get("query_type", "recency"),
+                                system_answer=answer,
+                                golden_answer=qa["golden_answer"],
+                                judge_score=score,
+                                judge_reasoning=reasoning,
+                                latency_s=round(lat, 4),
+                                tokens_used=to + judge_tokens,
+                            )
+                        )
+                        print(
+                            f"    [{adapter.name}] {qa['id']} ({qa.get('query_type', '?')}) score={score:.2f} lat={lat:.3f}s"
+                        )
 
     # ── Temporal recall demo (Memanto-exclusive) ───────────────────────────
     print("\n⏱️  Temporal recall demo (Memanto-exclusive)...")
@@ -494,19 +558,25 @@ def run_benchmark(
         (3, "What is the user's opinion on Tarkovsky?"),
     ]
     for as_of_session, query in temporal_queries:
-        lat, ti, to, ok, err, answer = memanto.temporal_recall_as_of(query, as_of_session)
-        results.turn_results.append(TurnResult(
-            system="Memanto",
-            session=as_of_session,
-            turn=0,
-            operation="temporal_recall",
-            latency_s=round(lat, 4),
-            tokens_in=ti,
-            tokens_out=to,
-            success=ok,
-            error=err,
-        ))
-        print(f"  recall/as-of session {as_of_session}: {'✅' if ok else '❌'} ({lat:.3f}s)")
+        lat, ti, to, ok, err, answer = memanto.temporal_recall_as_of(
+            query, as_of_session
+        )
+        results.turn_results.append(
+            TurnResult(
+                system="Memanto",
+                session=as_of_session,
+                turn=0,
+                operation="temporal_recall",
+                latency_s=round(lat, 4),
+                tokens_in=ti,
+                tokens_out=to,
+                success=ok,
+                error=err,
+            )
+        )
+        print(
+            f"  recall/as-of session {as_of_session}: {'✅' if ok else '❌'} ({lat:.3f}s)"
+        )
 
     # Teardown
     for adapter in adapters:
@@ -537,11 +607,26 @@ def print_results_table(results: BenchmarkResults):
     print()
     print("  " + "-" * 70)
 
-    row("Total Tokens Ingested", *[str(summary[s]["total_tokens_ingested"]) for s in systems])
-    row("Total Tokens Retrieved", *[str(summary[s]["total_tokens_retrieved"]) for s in systems])
-    row("Store p95 Latency (s)", *[str(summary[s]["store_p95_latency_s"]) for s in systems])
-    row("Recall p95 Latency (s)", *[str(summary[s]["recall_p95_latency_s"]) for s in systems])
-    row("Overall Retrieval Accuracy", *[f"{summary[s]['retrieval_accuracy']:.1%}" for s in systems])
+    row(
+        "Total Tokens Ingested",
+        *[str(summary[s]["total_tokens_ingested"]) for s in systems],
+    )
+    row(
+        "Total Tokens Retrieved",
+        *[str(summary[s]["total_tokens_retrieved"]) for s in systems],
+    )
+    row(
+        "Store p95 Latency (s)",
+        *[str(summary[s]["store_p95_latency_s"]) for s in systems],
+    )
+    row(
+        "Recall p95 Latency (s)",
+        *[str(summary[s]["recall_p95_latency_s"]) for s in systems],
+    )
+    row(
+        "Overall Retrieval Accuracy",
+        *[f"{summary[s]['retrieval_accuracy']:.1%}" for s in systems],
+    )
 
     print()
     print(f"  {'Accuracy by Query Type':<{col_w}}", end="")
@@ -560,9 +645,13 @@ def print_results_table(results: BenchmarkResults):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Memanto vs Mem0 — Shifting Persona Benchmark")
+    parser = argparse.ArgumentParser(
+        description="Memanto vs Mem0 — Shifting Persona Benchmark"
+    )
     parser.add_argument("--skip-mem0", action="store_true", help="Run Memanto only")
-    parser.add_argument("--dry-run", action="store_true", help="Validate config, no API calls")
+    parser.add_argument(
+        "--dry-run", action="store_true", help="Validate config, no API calls"
+    )
     parser.add_argument("--sessions", help="Comma-separated session numbers e.g. 1,2,3")
     args = parser.parse_args()
 
@@ -572,7 +661,9 @@ def main():
     print(f"   Experiment ID: {EXPERIMENT_ID}")
     conversations = json.loads((DATA_DIR / "persona_conversations.json").read_text())
     golden_qa = json.loads((DATA_DIR / "golden_qa.json").read_text())
-    print(f"   Dataset: {len(conversations)} turns, {max(c['session'] for c in conversations)} sessions, {sum(1 for c in conversations if c.get('contradiction'))} contradictions, {len(golden_qa)} eval questions\n")
+    print(
+        f"   Dataset: {len(conversations)} turns, {max(c['session'] for c in conversations)} sessions, {sum(1 for c in conversations if c.get('contradiction'))} contradictions, {len(golden_qa)} eval questions\n"
+    )
 
     results = run_benchmark(
         skip_mem0=args.skip_mem0,
@@ -584,12 +675,17 @@ def main():
         print_results_table(results)
 
         out = RESULTS_DIR / f"{EXPERIMENT_ID}.json"
-        out.write_text(json.dumps({
-            "config": results.config,
-            "summary": results.summary(),
-            "turn_results": [asdict(r) for r in results.turn_results],
-            "eval_results": [asdict(r) for r in results.eval_results],
-        }, indent=2))
+        out.write_text(
+            json.dumps(
+                {
+                    "config": results.config,
+                    "summary": results.summary(),
+                    "turn_results": [asdict(r) for r in results.turn_results],
+                    "eval_results": [asdict(r) for r in results.eval_results],
+                },
+                indent=2,
+            )
+        )
         print(f"\n💾 Full results saved → {out}")
 
 
