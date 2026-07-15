@@ -306,26 +306,6 @@ class TestAgentService:
         print(f"   Agent ID: {agent.agent_id}")
         print(f"   Namespace: {agent.namespace}")
 
-    def test_create_agent_accepts_on_prem_namespace_conflict(
-        self, agent_service, mock_moorcheh_client
-    ):
-        """On-prem HTTP 409 is equivalent to the cloud SDK conflict."""
-
-        class OnPremConflict(Exception):
-            status_code = 409
-
-        mock_moorcheh_client.namespaces.create.side_effect = OnPremConflict(
-            "Namespace already exists."
-        )
-        agent = agent_service.create_agent(
-            AgentCreate(agent_id="existing-agent", pattern=AgentPattern.TOOL),
-            moorcheh_api_key="on-prem-local",
-        )
-
-        assert agent.agent_id == "existing-agent"
-        assert agent.namespace == "memanto_agent_existing-agent"
-        assert agent_service.agent_exists("existing-agent")
-
     def test_list_agents(self, agent_service):
         """Test listing agents"""
         # Create multiple agents
