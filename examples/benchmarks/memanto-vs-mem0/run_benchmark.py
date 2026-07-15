@@ -15,6 +15,8 @@ import logging
 import sys
 
 from dotenv import load_dotenv
+from harness import run_benchmark
+from reporter import print_report, save_results
 
 load_dotenv()
 
@@ -23,9 +25,6 @@ logging.basicConfig(
     format="%(asctime)s  %(levelname)-8s  %(message)s",
     datefmt="%H:%M:%S",
 )
-
-from harness import run_benchmark
-from reporter import print_report, save_results
 
 
 def main() -> None:

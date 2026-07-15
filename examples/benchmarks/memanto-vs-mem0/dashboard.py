@@ -14,6 +14,7 @@ import json
 import sys
 from pathlib import Path
 
+import pandas as pd
 import streamlit as st
 from dotenv import load_dotenv
 
@@ -28,7 +29,8 @@ st.set_page_config(
     layout="wide",
 )
 
-st.markdown("""
+st.markdown(
+    """
 <style>
 .metric-card {
     background: #1e1e2e;
@@ -46,10 +48,13 @@ st.markdown("""
     display: inline-block;
 }
 </style>
-""", unsafe_allow_html=True)
+""",
+    unsafe_allow_html=True,
+)
 
 
 # ── helpers ───────────────────────────────────────────────────────────────
+
 
 def load_latest_result() -> dict | None:
     files = sorted(RESULTS_DIR.glob("benchmark_*.json"), reverse=True)
@@ -111,7 +116,9 @@ st.caption(
 )
 
 if result_data is None:
-    st.info("No results loaded. Use the sidebar to run the benchmark or load a saved result.")
+    st.info(
+        "No results loaded. Use the sidebar to run the benchmark or load a saved result."
+    )
     st.stop()
 
 systems = result_data["systems"]
@@ -126,8 +133,10 @@ for i, name in enumerate(sys_names):
     with cols[i]:
         score = m.get("total_eval_score", 0)
         max_s = m.get("max_possible_eval_score", 1)
-        pct   = m.get("eval_score_pct", 0)
-        st.metric(label=f"{name} — Eval Score", value=f"{score}/{max_s}", delta=f"{pct:.0f}%")
+        pct = m.get("eval_score_pct", 0)
+        st.metric(
+            label=f"{name} — Eval Score", value=f"{score}/{max_s}", delta=f"{pct:.0f}%"
+        )
 
 # winner (only when judge scores actually exist)
 has_eval_scores = all(len(systems[n].get("eval_scores", [])) > 0 for n in sys_names)
@@ -142,7 +151,6 @@ st.divider()
 
 # ── token comparison ──────────────────────────────────────────────────────
 st.markdown("## Token Efficiency")
-import pandas as pd
 
 token_data = {
     "Metric": ["Tokens Ingested", "Tokens Recalled", "Total Tokens"],
@@ -190,14 +198,13 @@ st.divider()
 # ── per-query accuracy breakdown ──────────────────────────────────────────
 
 # Check if eval scores exist
-has_scores = any(
-    len(systems[n].get("eval_scores", [])) > 0
-    for n in sys_names
-)
+has_scores = any(len(systems[n].get("eval_scores", [])) > 0 for n in sys_names)
 
 if has_scores:
     st.markdown("## Retrieval Accuracy — Per Query (LLM Judge)")
-    st.caption("Each query scored 0–15 (accuracy + staleness avoidance + precision). Max = 15.")
+    st.caption(
+        "Each query scored 0–15 (accuracy + staleness avoidance + precision). Max = 15."
+    )
 
     # Load query metadata
     data_path = Path(__file__).parent / "data" / "executive_shadow.json"
@@ -214,10 +221,14 @@ if has_scores:
             "Domain": qm["domain"],
         }
         for name in sys_names:
-            sc_list = [s for s in systems[name].get("eval_scores", []) if s["query_id"] == qid]
+            sc_list = [
+                s for s in systems[name].get("eval_scores", []) if s["query_id"] == qid
+            ]
             if sc_list:
                 sc = sc_list[0]
-                row[f"{name} (acc/stale/prec)"] = f"{sc['accuracy']}/{sc['staleness_avoidance']}/{sc['precision']} = {sc['total']}"
+                row[f"{name} (acc/stale/prec)"] = (
+                    f"{sc['accuracy']}/{sc['staleness_avoidance']}/{sc['precision']} = {sc['total']}"
+                )
                 row[f"{name}_total"] = sc["total"]
             else:
                 row[f"{name} (acc/stale/prec)"] = "—"
@@ -225,7 +236,9 @@ if has_scores:
         rows.append(row)
 
     df_scores = pd.DataFrame(rows)
-    display_cols = ["Query", "Type", "Domain"] + [f"{n} (acc/stale/prec)" for n in sys_names]
+    display_cols = ["Query", "Type", "Domain"] + [
+        f"{n} (acc/stale/prec)" for n in sys_names
+    ]
     st.dataframe(df_scores[display_cols], use_container_width=True, hide_index=True)
 
     # Score totals chart
@@ -233,7 +246,9 @@ if has_scores:
     for name in sys_names:
         total = sum(r.get(f"{name}_total", 0) for r in rows)
         max_s = len(rows) * 15
-        total_row[f"{name} (acc/stale/prec)"] = f"{total}/{max_s} ({total/max_s*100:.0f}%)"
+        total_row[f"{name} (acc/stale/prec)"] = (
+            f"{total}/{max_s} ({total / max_s * 100:.0f}%)"
+        )
 
     st.divider()
     st.markdown("## Score Breakdown by Dimension")
@@ -262,9 +277,7 @@ if has_scores:
         st.markdown(f"**Query:** {qm['query']}")
         st.markdown(f"**Golden answer:** {qm['golden_answer']}")
         st.markdown(f"**Test type:** `{qm['tests']}` | **Domain:** `{qm['domain']}`")
-        st.markdown(
-            f"**Stale signals to avoid:** `{', '.join(qm['stale_signals'])}`"
-        )
+        st.markdown(f"**Stale signals to avoid:** `{', '.join(qm['stale_signals'])}`")
         st.markdown(
             f"**Current signals expected:** `{', '.join(qm['current_signals'])}`"
         )
@@ -272,11 +285,17 @@ if has_scores:
         cols = st.columns(len(sys_names))
         for i, name in enumerate(sys_names):
             with cols[i]:
-                sc_list = [s for s in systems[name].get("eval_scores", []) if s["query_id"] == selected_qid]
+                sc_list = [
+                    s
+                    for s in systems[name].get("eval_scores", [])
+                    if s["query_id"] == selected_qid
+                ]
                 if sc_list:
                     sc = sc_list[0]
                     st.markdown(f"**{name}** — Score: {sc['total']}/15")
-                    st.markdown(f"`acc={sc['accuracy']} stale={sc['staleness_avoidance']} prec={sc['precision']}`")
+                    st.markdown(
+                        f"`acc={sc['accuracy']} stale={sc['staleness_avoidance']} prec={sc['precision']}`"
+                    )
                     st.caption(f"Reasoning: {sc['reasoning']}")
                     with st.expander("Recalled answer"):
                         st.text(sc["recalled_answer"])
@@ -284,7 +303,9 @@ if has_scores:
                     st.markdown(f"**{name}** — no score data")
 
 else:
-    st.info("No LLM judge scores in this result. Re-run without `--skip-judge` to see accuracy metrics.")
+    st.info(
+        "No LLM judge scores in this result. Re-run without `--skip-judge` to see accuracy metrics."
+    )
 
 st.divider()
 st.caption(

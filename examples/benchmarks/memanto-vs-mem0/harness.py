@@ -38,13 +38,15 @@ DATA_FILE = Path(__file__).parent / "data" / "executive_shadow.json"
 # Result containers
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class SystemResult:
     """All results for one memory system."""
+
     system: str
     ingest_results: list[IngestResult] = field(default_factory=list)
     recall_results: list[RecallResult] = field(default_factory=list)
-    eval_scores:    list[EvalScore]    = field(default_factory=list)
+    eval_scores: list[EvalScore] = field(default_factory=list)
 
     # ── computed metrics ──────────────────────────────────────────────────
 
@@ -118,6 +120,7 @@ class SystemResult:
 @dataclass
 class BenchmarkResult:
     """Final results for the full benchmark run."""
+
     scenario_title: str
     systems: dict[str, SystemResult]
     judge_model: str
@@ -132,6 +135,7 @@ class BenchmarkResult:
 # ---------------------------------------------------------------------------
 # Harness
 # ---------------------------------------------------------------------------
+
 
 def run_benchmark(
     memanto_api_key: str | None = None,
@@ -154,11 +158,11 @@ def run_benchmark(
     with open(DATA_FILE, encoding="utf-8") as f:
         scenario = json.load(f)
 
-    title        = scenario["title"]
-    user_id      = scenario["user_id"]
-    sessions     = scenario["sessions"]
+    title = scenario["title"]
+    user_id = scenario["user_id"]
+    sessions = scenario["sessions"]
     eval_queries = scenario["evaluation_queries"]
-    meta         = scenario["metadata"]
+    meta = scenario["metadata"]
 
     run_ts = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
 
@@ -199,7 +203,10 @@ def run_benchmark(
                 sr.ingest_results.append(result)
                 logger.info(
                     "[%s] %s → %.2fs, %d tokens",
-                    sname, session["id"], result.latency_s, result.tokens_ingested,
+                    sname,
+                    session["id"],
+                    result.latency_s,
+                    result.tokens_ingested,
                 )
                 # Small pause between sessions to respect rate limits
                 time.sleep(0.5)
@@ -214,7 +221,9 @@ def run_benchmark(
                 time.sleep(3)
 
             # ── Recall all queries ────────────────────────────────────────
-            logger.info("[%s] Running %d evaluation queries...", sname, len(eval_queries))
+            logger.info(
+                "[%s] Running %d evaluation queries...", sname, len(eval_queries)
+            )
             for eq in eval_queries:
                 logger.info("[%s] Query: %s", sname, eq["id"])
                 recall = adapter.recall(
@@ -225,8 +234,11 @@ def run_benchmark(
                 sr.recall_results.append(recall)
                 logger.info(
                     "[%s] %s → %.2fs, %d tokens, %d memories",
-                    sname, eq["id"], recall.latency_s,
-                    recall.tokens_used, len(recall.memories_returned),
+                    sname,
+                    eq["id"],
+                    recall.latency_s,
+                    recall.tokens_used,
+                    len(recall.memories_returned),
                 )
                 time.sleep(0.3)
 
@@ -249,9 +261,12 @@ def run_benchmark(
                     sr.eval_scores.append(score)
                     logger.info(
                         "[%s] %s → acc=%d stale=%d prec=%d total=%d",
-                        sname, eq["id"],
-                        score.accuracy, score.staleness_avoidance,
-                        score.precision, score.total,
+                        sname,
+                        eq["id"],
+                        score.accuracy,
+                        score.staleness_avoidance,
+                        score.precision,
+                        score.total,
                     )
                     time.sleep(0.5)
 

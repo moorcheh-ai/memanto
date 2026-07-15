@@ -16,22 +16,24 @@ from typing import Any
 @dataclass
 class IngestResult:
     """Result from ingesting one session."""
+
     system: str
     session_id: str
     latency_s: float
-    tokens_ingested: int       # tokens sent to the memory system
+    tokens_ingested: int  # tokens sent to the memory system
     raw_response: Any = None
 
 
 @dataclass
 class RecallResult:
     """Result from a single recall query."""
+
     system: str
     query_id: str
     query: str
     answer: str
     latency_s: float
-    tokens_used: int           # tokens in the recall round-trip
+    tokens_used: int  # tokens in the recall round-trip
     memories_returned: list[str] = field(default_factory=list)
     raw_response: Any = None
 

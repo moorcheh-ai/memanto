@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import logging
 import os
+import uuid as _uuid
 
 from memanto.app.utils.errors import AgentAlreadyExistsError
 from memanto.cli.client.sdk_client import SdkClient
@@ -17,12 +18,6 @@ from memanto.cli.client.sdk_client import SdkClient
 from .base import IngestResult, MemoryAdapter, RecallResult
 
 logger = logging.getLogger(__name__)
-
-
-import uuid as _uuid
-
-
-import uuid as _uuid
 
 
 class MemantoAdapter(MemoryAdapter):
@@ -91,7 +86,7 @@ class MemantoAdapter(MemoryAdapter):
         memories_payload = [
             {
                 "content": m["content"],
-                "type": None,         # let Memanto's auto-parser classify
+                "type": None,  # let Memanto's auto-parser classify
                 "title": f"{session_id} turn",
                 "tags": [f"session:{session_id}", "benchmark"],
                 "confidence": 0.9,

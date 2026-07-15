@@ -41,6 +41,7 @@ class Mem0Adapter(MemoryAdapter):
         # Lazy import so the benchmark can import this file even if mem0ai
         # is not installed (it will fail at runtime when used, not at import).
         from mem0 import MemoryClient  # type: ignore[import]
+
         self._client = MemoryClient(api_key=_key)
         self._user_id: str | None = None
 
@@ -104,6 +105,7 @@ class Mem0Adapter(MemoryAdapter):
         Returns the number of memories found, or 0 on timeout.
         """
         import time as _time
+
         deadline = _time.monotonic() + timeout_s
         while _time.monotonic() < deadline:
             try:

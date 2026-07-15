@@ -27,15 +27,14 @@ def _fmt(val: float, decimals: int = 2) -> str:
 def print_report(result: BenchmarkResult) -> None:
     """Print a formatted benchmark report to the terminal."""
     try:
-        from rich.console import Console
-        from rich.table import Table
-        from rich import box
-        _rich = True
+        import importlib.util
+
+        _rich = importlib.util.find_spec("rich") is not None
     except ImportError:
         _rich = False
 
     systems = list(result.systems.values())
-    names   = [s.system for s in systems]
+    names = [s.system for s in systems]
 
     print("\n")
     print("=" * 70)
@@ -59,9 +58,9 @@ def _print_rich(
     systems: list[SystemResult],
     names: list[str],
 ) -> None:
+    from rich import box
     from rich.console import Console
     from rich.table import Table
-    from rich import box
 
     console = Console()
 
@@ -105,7 +104,11 @@ def _print_rich(
 
     # ── Accuracy table ────────────────────────────────────────────────────
     if all(len(s.eval_scores) > 0 for s in systems):
-        a = Table(title="Retrieval Accuracy (LLM Judge — max 15 per query)", box=box.ROUNDED, show_lines=True)
+        a = Table(
+            title="Retrieval Accuracy (LLM Judge — max 15 per query)",
+            box=box.ROUNDED,
+            show_lines=True,
+        )
         a.add_column("Query", style="bold", width=35)
         a.add_column("Type", width=24)
         for name in names:
@@ -121,6 +124,7 @@ def _print_rich(
 
         # Load query metadata
         import json as _json
+
         data_path = Path(__file__).parent / "data" / "executive_shadow.json"
         with open(data_path) as f:
             scenario = _json.load(f)
@@ -134,7 +138,9 @@ def _print_rich(
             for name in names:
                 sc = by_sys.get(name)
                 if sc:
-                    row.append(f"{sc.accuracy}/{sc.staleness_avoidance}/{sc.precision} = [bold]{sc.total}[/bold]")
+                    row.append(
+                        f"{sc.accuracy}/{sc.staleness_avoidance}/{sc.precision} = [bold]{sc.total}[/bold]"
+                    )
                 else:
                     row.append("—")
             a.add_row(*row)
@@ -165,20 +171,23 @@ def _print_plain(
     def row(label: str, vals: list[str]) -> None:
         print(f"{label:<32}" + "".join(f"{v:>{col_w}}" for v in vals))
 
-    row("Tokens ingested",     [str(s.total_tokens_ingested) for s in systems])
-    row("Tokens recalled",     [str(s.total_tokens_recalled) for s in systems])
-    row("Total tokens",        [str(s.total_tokens) for s in systems])
-    row("p95 ingest latency",  [_fmt(s.p95_ingest_latency)+"s" for s in systems])
-    row("p95 recall latency",  [_fmt(s.p95_recall_latency)+"s" for s in systems])
-    row("Mean recall latency", [_fmt(s.mean_recall_latency)+"s" for s in systems])
+    row("Tokens ingested", [str(s.total_tokens_ingested) for s in systems])
+    row("Tokens recalled", [str(s.total_tokens_recalled) for s in systems])
+    row("Total tokens", [str(s.total_tokens) for s in systems])
+    row("p95 ingest latency", [_fmt(s.p95_ingest_latency) + "s" for s in systems])
+    row("p95 recall latency", [_fmt(s.p95_recall_latency) + "s" for s in systems])
+    row("Mean recall latency", [_fmt(s.mean_recall_latency) + "s" for s in systems])
 
     if all(len(s.eval_scores) > 0 for s in systems):
         print()
-        row("Accuracy score",       [str(s.total_accuracy_score) for s in systems])
-        row("Staleness score",       [str(s.total_staleness_score) for s in systems])
-        row("Precision score",       [str(s.total_precision_score) for s in systems])
-        row("Total eval score",      [f"{s.total_eval_score}/{s.max_possible_eval_score}" for s in systems])
-        row("Eval score %",          [f"{s.eval_score_pct:.1f}%" for s in systems])
+        row("Accuracy score", [str(s.total_accuracy_score) for s in systems])
+        row("Staleness score", [str(s.total_staleness_score) for s in systems])
+        row("Precision score", [str(s.total_precision_score) for s in systems])
+        row(
+            "Total eval score",
+            [f"{s.total_eval_score}/{s.max_possible_eval_score}" for s in systems],
+        )
+        row("Eval score %", [f"{s.eval_score_pct:.1f}%" for s in systems])
 
 
 def save_results(result: BenchmarkResult) -> Path:
@@ -205,19 +214,19 @@ def save_results(result: BenchmarkResult) -> Path:
         "systems": {
             name: {
                 "metrics": {
-                    "total_tokens_ingested":  sr.total_tokens_ingested,
-                    "total_tokens_recalled":  sr.total_tokens_recalled,
-                    "total_tokens":           sr.total_tokens,
-                    "p95_ingest_latency_s":   round(sr.p95_ingest_latency, 4),
-                    "p95_recall_latency_s":   round(sr.p95_recall_latency, 4),
-                    "mean_recall_latency_s":  round(sr.mean_recall_latency, 4),
-                    "total_eval_score":       sr.total_eval_score,
-                    "max_possible_eval_score":sr.max_possible_eval_score,
-                    "eval_score_pct":         round(sr.eval_score_pct, 1),
+                    "total_tokens_ingested": sr.total_tokens_ingested,
+                    "total_tokens_recalled": sr.total_tokens_recalled,
+                    "total_tokens": sr.total_tokens,
+                    "p95_ingest_latency_s": round(sr.p95_ingest_latency, 4),
+                    "p95_recall_latency_s": round(sr.p95_recall_latency, 4),
+                    "mean_recall_latency_s": round(sr.mean_recall_latency, 4),
+                    "total_eval_score": sr.total_eval_score,
+                    "max_possible_eval_score": sr.max_possible_eval_score,
+                    "eval_score_pct": round(sr.eval_score_pct, 1),
                 },
-                "ingest_results":  _serialise(sr.ingest_results),
-                "recall_results":  _serialise(sr.recall_results),
-                "eval_scores":     _serialise(sr.eval_scores),
+                "ingest_results": _serialise(sr.ingest_results),
+                "recall_results": _serialise(sr.recall_results),
+                "eval_scores": _serialise(sr.eval_scores),
             }
             for name, sr in result.systems.items()
         },

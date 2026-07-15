@@ -85,6 +85,7 @@ Score this answer."""
 @dataclass
 class EvalScore:
     """Scores for a single query against one system."""
+
     system: str
     query_id: str
     query: str
@@ -120,9 +121,7 @@ class LLMJudge:
         if not _key:
             raise ValueError("OPENROUTER_API_KEY is required for the LLM judge")
 
-        self.model = model or os.environ.get(
-            "JUDGE_MODEL", "openai/gpt-4o-mini"
-        )
+        self.model = model or os.environ.get("JUDGE_MODEL", "openai/gpt-4o-mini")
         self._client = OpenAI(
             api_key=_key,
             base_url="https://openrouter.ai/api/v1",
@@ -155,7 +154,7 @@ class LLMJudge:
                     model=self.model,
                     messages=[
                         {"role": "system", "content": JUDGE_SYSTEM_PROMPT},
-                        {"role": "user",   "content": user_msg},
+                        {"role": "user", "content": user_msg},
                     ],
                     temperature=0.0,
                     max_tokens=300,
@@ -169,13 +168,14 @@ class LLMJudge:
                         raw = raw[4:]
                 # Extract just the JSON object — ignore anything after the closing brace
                 import re as _re
-                json_match = _re.search(r'\{[^{}]*\}', raw, _re.DOTALL)
+
+                json_match = _re.search(r"\{[^{}]*\}", raw, _re.DOTALL)
                 if not json_match:
                     raise ValueError(f"No JSON object found in response: {raw[:200]}")
                 parsed = json.loads(json_match.group())
-                accuracy            = max(0, min(5, int(parsed["accuracy"])))
+                accuracy = max(0, min(5, int(parsed["accuracy"])))
                 staleness_avoidance = max(0, min(5, int(parsed["staleness_avoidance"])))
-                precision           = max(0, min(5, int(parsed["precision"])))
+                precision = max(0, min(5, int(parsed["precision"])))
                 return EvalScore(
                     system=system_name,
                     query_id=query_id,
@@ -189,10 +189,12 @@ class LLMJudge:
                 )
             except Exception as exc:
                 logger.warning("Judge attempt %d failed: %s", attempt + 1, exc)
-                time.sleep(2 ** attempt)
+                time.sleep(2**attempt)
 
         # Fallback: return zero scores if all attempts fail
-        logger.error("Judge failed for %s / %s — returning zeros", system_name, query_id)
+        logger.error(
+            "Judge failed for %s / %s — returning zeros", system_name, query_id
+        )
         return EvalScore(
             system=system_name,
             query_id=query_id,
