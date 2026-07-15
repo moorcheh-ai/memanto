@@ -8,7 +8,7 @@ Author: Yzgaming005
 """
 
 import pytest
-from unittest.mock import MagicMock, PropertyMock, patch
+from unittest.mock import MagicMock
 
 
 @pytest.fixture
@@ -104,12 +104,13 @@ def test_confidence_is_derived_from_sources_not_hardcoded():
         scope_id="test",
     )
 
-    # Expected confidence from real sources
-    expected_avg = round((0.9 + 0.7 + 0.5) / 3, 3)  # 0.7
-    assert expected_avg != 0.8  # sanity check
-
-    # Assert production code computes confidence from sources
-    assert result["confidence"] == expected_avg, f"Expected {expected_avg}, got {result['confidence']}"
+    # Assert production code computes confidence from sources (not hardcoded)
+    # We check that confidence equals the average of valid numeric scores,
+    # NOT by reimplementing the same loop in the test.
+    source_scores = [0.9, 0.7, 0.5]
+    expected_confidence = round(sum(source_scores) / len(source_scores), 3)
+    assert expected_confidence != 0.8  # sanity check
+    assert result["confidence"] == expected_confidence, f"Expected {expected_confidence}, got {result['confidence']}"
     assert result["confidence"] != 0.8, "confidence must not be hardcoded to 0.8"
 
 
@@ -144,3 +145,41 @@ def test_confidence_handles_malformed_source_scores():
     expected_confidence = round((0.9 + 0.5) / 2, 3)
     assert result["confidence"] == expected_confidence, f"Expected {expected_confidence}, got {result['confidence']}"
     assert result["sources"]  # all sources still forwarded
+
+
+def test_confidence_is_zero_when_no_sources():
+    """When the SDK returns no sources, confidence must be 0.0."""
+    from memanto.app.services.memory_read_service import MemoryReadService
+
+    client = MagicMock()
+    client.answer.generate.return_value = {
+        "answer": "Test answer",
+        "sources": [],
+    }
+
+    service = MemoryReadService(client)
+    result = service.generate_answer(query="test query", scope_type="agent", scope_id="test")
+
+    assert result["confidence"] == 0.0
+    assert result["sources"] == []
+
+
+def test_confidence_defaults_to_one_when_all_scores_malformed():
+    """When sources exist but all scores are malformed, confidence must be 1.0."""
+    from memanto.app.services.memory_read_service import MemoryReadService
+
+    client = MagicMock()
+    client.answer.generate.return_value = {
+        "answer": "Test answer",
+        "sources": [
+            {"id": "a", "score": "invalid"},
+            {"id": "b"},
+            {"id": "c", "score": None},
+        ],
+    }
+
+    service = MemoryReadService(client)
+    result = service.generate_answer(query="test query", scope_type="agent", scope_id="test")
+
+    assert result["confidence"] == 1.0
+    assert len(result["sources"]) == 3
