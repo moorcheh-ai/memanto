@@ -689,12 +689,12 @@ class MemoryReadService:
         # before exact tag filters run.
         tags_value = get_field("tags")
         if isinstance(tags_value, str):
-            tags = [tag.strip() for tag in tags_value.split(",") if tag.strip()]
+            tags = [tag_value for tag in tags_value.split(",") if (tag_value := tag.strip())]
         elif isinstance(tags_value, list):
             tags = [
-                str(tag).strip()
+                tag_value
                 for tag in tags_value
-                if str(tag).strip()
+                if tag is not None and (tag_value := str(tag).strip())
             ]
         else:
             tags = []

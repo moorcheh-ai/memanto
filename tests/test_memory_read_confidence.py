@@ -105,6 +105,20 @@ def test_format_memory_item_normalizes_comma_separated_tag_whitespace():
     assert formatted["tags"] == ["alpha", "beta", "gamma"]
 
 
+def test_format_memory_item_ignores_empty_and_none_list_tags():
+    service = MemoryReadService(None)
+
+    formatted = service._format_memory_item(
+        {
+            "id": "mem-1",
+            "text": "[FACT] List tag cleanup\n\ncontent",
+            "tags": ["alpha", None, " beta ", ""],
+        }
+    )
+
+    assert formatted["tags"] == ["alpha", "beta"]
+
+
 def test_fetch_all_memories_tag_filter_matches_trimmed_list_tags():
     class _FakeDocuments:
         def fetch_text_data(self, **kwargs):
