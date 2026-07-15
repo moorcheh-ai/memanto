@@ -684,12 +684,18 @@ class MemoryReadService:
                 return metadata[field_name]
             return item.get(flat_name)
 
-        # Parse tags - can be comma-separated string or array
+        # Parse tags - can be comma-separated string or array. External imports
+        # and older documents may include spaces after commas, so normalize
+        # before exact tag filters run.
         tags_value = get_field("tags")
         if isinstance(tags_value, str):
-            tags = tags_value.split(",") if tags_value else []
+            tags = [tag.strip() for tag in tags_value.split(",") if tag.strip()]
         elif isinstance(tags_value, list):
-            tags = tags_value
+            tags = [
+                str(tag).strip()
+                for tag in tags_value
+                if str(tag).strip()
+            ]
         else:
             tags = []
 
