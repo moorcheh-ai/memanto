@@ -43,31 +43,45 @@ class _PerAgentClientCache:
     def __init__(self, template_client: SdkClient) -> None:
         """Initialise cache, extracting the API key from *template_client*."""
         self._api_key = template_client.api_key
-        self._clients: dict[str, SdkClient] = {}
+        self._clients: dict[str, tuple[SdkClient, threading.Lock]] = {}
         self._lock = threading.Lock()
 
-    def get(self, agent_id: str) -> SdkClient:
-        """Return the SdkClient for *agent_id*, creating one on first access."""
+    def get(self, agent_id: str) -> tuple[SdkClient, threading.Lock]:
+        """Return the SdkClient and setup lock for *agent_id*, creating them on first access."""
         with self._lock:
             if agent_id not in self._clients:
-                self._clients[agent_id] = SdkClient(api_key=self._api_key)
+                self._clients[agent_id] = (
+                    SdkClient(api_key=self._api_key),
+                    threading.Lock(),
+                )
             return self._clients[agent_id]
 
 
-def _do_setup(agent_client: SdkClient, resolved_agent_id: str) -> None:
+def _do_setup(agent_client: SdkClient, resolved_agent_id: str, agent_lock: threading.Lock) -> None:
     """Ensure agent exists and activate a session on *agent_client*.
 
     Uses the caller-supplied per-agent client, not a shared one, so mutations
-    to session_token / agent_id stay scoped to a single tenant.
+    to session_token / agent_id stay scoped to a single tenant. Concurrent
+    calls for the same agent_id are serialized, and secondary callers will
+    skip setup if the first caller successfully established a session.
     """
-    try:
-        agent_client.create_agent(agent_id=resolved_agent_id, pattern="tool")
-    except Exception:
-        pass
-    try:
-        agent_client.activate_agent(resolved_agent_id, duration_hours=6)
-    except Exception:
-        pass
+    with agent_lock:
+        # Check if another thread already activated the session while we waited
+        if agent_client.agent_id == resolved_agent_id and agent_client.session_token:
+            try:
+                agent_client.get_session_info()
+                return
+            except Exception:
+                pass
+
+        try:
+            agent_client.create_agent(agent_id=resolved_agent_id, pattern="tool")
+        except Exception:
+            pass
+        try:
+            agent_client.activate_agent(resolved_agent_id, duration_hours=6)
+        except Exception:
+            pass
 
 
 def create_recall_node(
@@ -111,7 +125,7 @@ def create_recall_node(
                 return {output_key: None}
             return {"messages": []}
 
-        agent_client = _cache.get(resolved_agent_id)
+        agent_client, agent_lock = _cache.get(resolved_agent_id)
 
         try:
             # First try assuming the session is already active (saves an API call)
@@ -121,7 +135,7 @@ def create_recall_node(
             )
         except Exception:
             # If there's an error (e.g. no active session), try to setup and retry
-            _do_setup(agent_client, resolved_agent_id)
+            _do_setup(agent_client, resolved_agent_id, agent_lock)
             try:
                 result = agent_client.recall(
                     agent_id=resolved_agent_id,
@@ -220,7 +234,7 @@ def create_remember_node(
         content = "\n\n".join(messages_to_remember)
         title = content if len(content) <= 50 else content[:47] + "..."
 
-        agent_client = _cache.get(resolved_agent_id)
+        agent_client, agent_lock = _cache.get(resolved_agent_id)
 
         try:
             # First try assuming the session is already active
@@ -235,7 +249,7 @@ def create_remember_node(
         except SessionError:
             # SessionError is always raised before any write completes, so
             # retrying after _do_setup cannot produce duplicate memories.
-            _do_setup(agent_client, resolved_agent_id)
+            _do_setup(agent_client, resolved_agent_id, agent_lock)
             try:
                 agent_client.remember(
                     agent_id=resolved_agent_id,

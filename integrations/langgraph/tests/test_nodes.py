@@ -266,7 +266,7 @@ def test_concurrent_recall_nodes_do_not_share_session_state():
     # Locate _cache by name to stay stable if the closure layout changes.
     freevars = recall_node.__code__.co_freevars
     cache = recall_node.__closure__[freevars.index("_cache")].cell_contents
-    cache._clients = per_agent_mocks.copy()
+    cache._clients = {k: (v, threading.Lock()) for k, v in per_agent_mocks.items()}
 
     barrier = threading.Barrier(len(agent_ids))
     results: list[tuple[str, dict]] = []
