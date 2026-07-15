@@ -30,16 +30,18 @@ If Step 4 fails (network error, server timeout, validation failure, quota exceed
 created_at: datetime = Field(default_factory=datetime.utcnow)
 ```
 
-But `update_memory()` converts stored ISO strings to aware datetimes:
+But `update_memory()` converts stored ISO strings to datetimes via `datetime.fromisoformat()`:
 ```python
 updated_memory.created_at = datetime.fromisoformat(
     raw_created.replace("Z", "+00:00")
 )
 ```
 
-This creates an inconsistent mix of naive and aware datetimes in the same field. Comparison operations like `created_at < now` will raise `TypeError: can't compare offset-naive and offset-aware datetimes`.
+`datetime.fromisoformat()` preserves the input timezone information: Z-suffixed or offset-bearing strings produce aware datetimes, while offset-less ISO strings remain naive. This means the same code path can produce **both** naive and aware representations depending on input format, creating an inconsistent mix in the same field at runtime.
 
-**Impact:** Any code path that compares timestamps from different sources can crash at runtime. This affects search, filtering, TTL enforcement, and sorting operations.
+**Impact:** Any code path that compares timestamps from different sources may raise `TypeError: can't compare offset-naive and offset-aware datetimes`. This affects search filtering, TTL enforcement, and sorting operations.
+
+**Suggested fix:** Always normalize to a consistent representation — either use `datetime.utcnow()` everywhere with naive datetimes, or use `datetime.now(timezone.utc)` everywhere with aware datetimes. Convertincoming stored values to match during deserialization.
 
 ---
 
@@ -60,9 +62,11 @@ A memory could be imported with timestamps in the far future (year 3000), the fa
 
 **Impact:** Corrupted timeline data that can affect retrieval ordering and TTL calculations.
 
+**Suggested fix:** Add validation in `_apply_timestamps()` to reject or clamp imported timestamps that are unreasonably far from the current time or that violate the `created_at <= updated_at` invariant.
+
 ---
 
-## Finding 4: Batch Operation Partial Failure Ambiguity (Low-Medium)
+## Finding 4: Batch Operation Partial Failure — Missing Atomicity Indicator (Low)
 
 **File:** `memanto/app/services/memory_write_service.py`
 **Method:** `batch_store_memories()`
@@ -74,7 +78,11 @@ elif namespace != first_namespace:
     continue
 ```
 
-However, the method also uploads the remaining items to Moorcheh in a single API call. The caller has no way to distinguish between "all succeeded", "some succeeded", or "all failed" without manually checking each result entry. Critical error handling logic may incorrectly assume operation was atomic.
+The method does return per-item statuses and success/failure counts, so callers **can** distinguish outcomes after the fact. The missing piece is the lack of an explicit **atomicity indicator** — a single boolean that tells the caller whether the batch completed with full atomicity (all succeeded or the entire batch was rejected). Without this, callers must manually inspect every result entry, making error-handling logic fragile when batches are large.
+
+**Impact:** Code consuming `batch_store_memories()` may incorrectly assume 100% success when only a subset of items were stored.
+
+**Suggested fix:** Add a top-level `"atomic": true/false` key to the return dict so callers can immediately detect partial failures without iterating results.
 
 ---
 
@@ -83,7 +91,7 @@ However, the method also uploads the remaining items to Moorcheh in a single API
 | # | Finding | Severity | Type |
 |---|---------|----------|------|
 | 1 | Delete-then-recreate data loss | Critical | Architectural |
-| 2 | Tz-aware/naive datetime mismatch | Medium | Logic |
+| 2 | Tz-aware/naive datetime inconsistency | Medium | Logic |
 | 3 | Missing import timestamp validation | Medium | Validation |
-| 4 | Partial batch failure ambiguity | Low | Design |
+| 4 | Batch partial failure — missing atomicity indicator | Low | Design |
 
