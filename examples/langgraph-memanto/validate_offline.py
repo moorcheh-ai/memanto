@@ -12,8 +12,9 @@ Proves:
 Run:
     python validate_offline.py
 """
-import sys
 import os
+import sys
+
 
 def main():
     print("=" * 60)
@@ -39,6 +40,7 @@ def main():
         # Suppress output for clean validation
         import io
         from contextlib import redirect_stdout
+
         from run import run_mock
         buf = io.StringIO()
         with redirect_stdout(buf):
@@ -59,7 +61,7 @@ def main():
     # Test 3: verify contradiction creates NEW memory not mutation
     print("\n[3/3] Verifying contradiction handling...")
     try:
-        import uuid, json
+        import uuid
         db = {}
         old_fact = "~1000 physical qubits per logical qubit"
         new_fact  = "~100 physical qubits per logical qubit (Google 2025)"

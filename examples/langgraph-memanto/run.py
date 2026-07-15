@@ -20,7 +20,10 @@ Usage:
     # Mock mode (no server or LLM needed — for Asciinema recording)
     python run.py --mock
 """
-import argparse, os, sys, uuid
+import argparse
+import os
+import sys
+import uuid
 
 BANNER = """
 ╔══════════════════════════════════════════════════════════╗
@@ -33,7 +36,8 @@ BANNER = """
 
 def run_mock():
     """Fully offline demo — record this for Asciinema."""
-    import time, uuid as _uuid
+    import time
+    import uuid as _uuid
 
     db = {}
 

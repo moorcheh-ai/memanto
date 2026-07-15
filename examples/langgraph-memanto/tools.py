@@ -6,16 +6,16 @@ Memanto:    durable semantic memory
 """
 
 from __future__ import annotations
-from typing import Optional
+
 from langchain_core.tools import tool
 from memanto_client import MeMantoClient
 
-_client: Optional[MeMantoClient] = None
+_client: MeMantoClient | None = None
 
 
 def init_tools(
-    base_url: Optional[str] = None,
-    api_key: Optional[str] = None,
+    base_url: str | None = None,
+    api_key: str | None = None,
     agent_id: str = "langgraph-agent",
 ) -> MeMantoClient:
     global _client

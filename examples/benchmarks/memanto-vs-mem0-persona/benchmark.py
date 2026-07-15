@@ -39,9 +39,8 @@ import os
 import statistics
 import time
 import uuid
-from dataclasses import dataclass, field, asdict
+from dataclasses import asdict, dataclass, field
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
 
 # ── Config ─────────────────────────────────────────────────────────────────
 
@@ -86,12 +85,12 @@ class EvalResult:
 @dataclass
 class BenchmarkResults:
     experiment_id: str
-    config: Dict
-    turn_results: List[TurnResult] = field(default_factory=list)
-    eval_results: List[EvalResult] = field(default_factory=list)
+    config: dict
+    turn_results: list[TurnResult] = field(default_factory=list)
+    eval_results: list[EvalResult] = field(default_factory=list)
 
-    def summary(self) -> Dict:
-        systems = set(r.system for r in self.turn_results)
+    def summary(self) -> dict:
+        systems = {r.system for r in self.turn_results}
         summary = {}
         for sys in systems:
             sys_turns = [r for r in self.turn_results if r.system == sys]
@@ -129,7 +128,7 @@ class BenchmarkResults:
         return summary
 
 
-def _p95(values: List[float]) -> float:
+def _p95(values: list[float]) -> float:
     if not values:
         return 0.0
     sv = sorted(values)
@@ -154,7 +153,7 @@ class MemantoAdapter:
         self._client = MoorchehClient(api_key=api_key)
         self.namespace = namespace
         self.base_url = base_url.rstrip("/")
-        self._session_timestamps: Dict[int, str] = {}
+        self._session_timestamps: dict[int, str] = {}
         self._setup()
 
     def _setup(self):
@@ -164,7 +163,7 @@ class MemantoAdapter:
             if "already exists" not in str(e).lower():
                 raise
 
-    def store(self, text: str, session: int, turn: int) -> Tuple[float, int, int, bool, str]:
+    def store(self, text: str, session: int, turn: int) -> tuple[float, int, int, bool, str]:
         tokens_in = _count_tokens(text)
         start = time.perf_counter()
         try:
@@ -186,7 +185,7 @@ class MemantoAdapter:
             latency = time.perf_counter() - start
             return latency, tokens_in, 0, False, str(e)
 
-    def recall(self, query: str, limit: int = RECALL_LIMIT) -> Tuple[float, int, int, bool, str, str]:
+    def recall(self, query: str, limit: int = RECALL_LIMIT) -> tuple[float, int, int, bool, str, str]:
         tokens_in = _count_tokens(query)
         start = time.perf_counter()
         try:
@@ -208,7 +207,7 @@ class MemantoAdapter:
             latency = time.perf_counter() - start
             return latency, tokens_in, 0, False, str(e), ""
 
-    def temporal_recall_as_of(self, query: str, as_of_session: int) -> Tuple[float, int, int, bool, str, str]:
+    def temporal_recall_as_of(self, query: str, as_of_session: int) -> tuple[float, int, int, bool, str, str]:
         """Memanto-exclusive: retrieve memories as they existed at end of a session."""
         import requests
         tokens_in = _count_tokens(query)
@@ -251,7 +250,7 @@ class Mem0Adapter:
         self._client = MemoryClient(api_key=api_key)
         self.user_id = user_id
 
-    def store(self, text: str, session: int, turn: int) -> Tuple[float, int, int, bool, str]:
+    def store(self, text: str, session: int, turn: int) -> tuple[float, int, int, bool, str]:
         tokens_in = _count_tokens(text)
         messages = [{"role": "user", "content": text}]
         start = time.perf_counter()
@@ -263,7 +262,7 @@ class Mem0Adapter:
             latency = time.perf_counter() - start
             return latency, tokens_in, 0, False, str(e)
 
-    def recall(self, query: str, limit: int = RECALL_LIMIT) -> Tuple[float, int, int, bool, str, str]:
+    def recall(self, query: str, limit: int = RECALL_LIMIT) -> tuple[float, int, int, bool, str, str]:
         tokens_in = _count_tokens(query)
         start = time.perf_counter()
         try:
@@ -290,10 +289,10 @@ def judge_answer(
     question: str,
     system_answer: str,
     golden_answer: str,
-    must_contain: List[str],
-    must_not_contain: List[str],
+    must_contain: list[str],
+    must_not_contain: list[str],
     anthropic_key: str,
-) -> Tuple[float, str, int]:
+) -> tuple[float, str, int]:
     import anthropic
     client = anthropic.Anthropic(api_key=anthropic_key)
 
@@ -346,7 +345,7 @@ def _count_tokens(text: str) -> int:
 def run_benchmark(
     skip_mem0: bool = False,
     dry_run: bool = False,
-    sessions_filter: Optional[List[int]] = None,
+    sessions_filter: list[int] | None = None,
 ) -> BenchmarkResults:
     moorcheh_key = os.getenv("MOORCHEH_API_KEY", "")
     mem0_key = os.getenv("MEM0_API_KEY", "")
@@ -373,7 +372,7 @@ def run_benchmark(
         "benchmark_scenario": "Shifting Persona & Temporal Preference Retention (Scenario B+)",
         "dataset": "persona_conversations.json + golden_qa.json",
         "turns": len(conversations),
-        "sessions": sessions_filter or sorted(set(c["session"] for c in conversations)),
+        "sessions": sessions_filter or sorted({c["session"] for c in conversations}),
         "contradictions": sum(1 for c in conversations if c.get("contradiction")),
         "eval_questions": len(golden_qa),
         "systems": ["Memanto"] + ([] if skip_mem0 else ["Mem0"]),
@@ -398,7 +397,7 @@ def run_benchmark(
 
     # ── Ingest sessions ────────────────────────────────────────────────────
     current_session = 0
-    session_last_turn: Dict[int, int] = {}
+    session_last_turn: dict[int, int] = {}
     for c in conversations:
         s, t = c["session"], c["turn"]
         session_last_turn[s] = max(session_last_turn.get(s, 0), t)
@@ -572,8 +571,8 @@ def main():
     print("🏁 Memanto vs Mem0 — Shifting Persona & Temporal Preference Benchmark")
     print(f"   Experiment ID: {EXPERIMENT_ID}")
     conversations = json.loads((DATA_DIR / "persona_conversations.json").read_text())
-golden_qa = json.loads((DATA_DIR / "golden_qa.json").read_text())
-print(f"   Dataset: {len(conversations)} turns, {max(c['session'] for c in conversations)} sessions, {sum(1 for c in conversations if c.get('contradiction'))} contradictions, {len(golden_qa)} eval questions\n")
+    golden_qa = json.loads((DATA_DIR / "golden_qa.json").read_text())
+    print(f"   Dataset: {len(conversations)} turns, {max(c['session'] for c in conversations)} sessions, {sum(1 for c in conversations if c.get('contradiction'))} contradictions, {len(golden_qa)} eval questions\n")
 
     results = run_benchmark(
         skip_mem0=args.skip_mem0,

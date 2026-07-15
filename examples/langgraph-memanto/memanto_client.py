@@ -12,7 +12,6 @@ from __future__ import annotations
 import logging
 import os
 import time
-from typing import Dict, List, Optional
 
 import requests
 
@@ -29,14 +28,14 @@ class MeMantoClient:
 
     def __init__(
         self,
-        base_url: Optional[str] = None,
-        api_key: Optional[str] = None,
+        base_url: str | None = None,
+        api_key: str | None = None,
         agent_id: str = "langgraph-agent",
     ):
         self.base_url = (base_url or os.getenv("MEMANTO_BASE_URL","http://127.0.0.1:8000")).rstrip("/")
         self.api_key  = api_key or os.getenv("MOORCHEH_API_KEY","")
         self.agent_id = agent_id
-        self._token: Optional[str] = None
+        self._token: str | None = None
 
         self._http = requests.Session()
         if self.api_key:
@@ -52,7 +51,7 @@ class MeMantoClient:
     def _aurl(self, path: str = "") -> str:
         return self._url(f"/api/v2/agents/{self.agent_id}{path}")
 
-    def _headers(self) -> Dict:
+    def _headers(self) -> dict:
         return {"X-Session-Token": self._token} if self._token else {}
 
     def _ensure_agent(self):
@@ -90,7 +89,7 @@ class MeMantoClient:
         return response
 
     def remember(self, content: str, memory_type: str = "observation",
-                 tags: Optional[List[str]] = None, metadata: Optional[Dict] = None) -> Dict:
+                 tags: list[str] | None = None, metadata: dict | None = None) -> dict:
         if memory_type not in VALID_TYPES:
             memory_type = "observation"
         payload = {
@@ -108,14 +107,15 @@ class MeMantoClient:
             if not mem.get("id") and mem.get("memory_id"):
                 mem["id"] = mem["memory_id"]
             mid = mem.get("id") or mem.get("memory_id")
-            if mid and "id" not in mem: mem["id"] = mid
+            if mid and "id" not in mem:
+                mem["id"] = mid
             logger.info("Stored memory %s", mid)
             return mem
         except Exception as exc:
             logger.error("Remember failed: %s", exc)
             return {"id": None, "content": content, "error": str(exc)}
 
-    def recall(self, query: str, limit: int = 5, memory_type: Optional[str] = None) -> List[Dict]:
+    def recall(self, query: str, limit: int = 5, memory_type: str | None = None) -> list[dict]:
         payload: dict = {"query": query, "limit": limit}
         if memory_type:
             payload["type"] = memory_type
@@ -140,7 +140,7 @@ class MeMantoClient:
             logger.error("Answer failed: %s", exc)
             return ""
 
-    def correct(self, old_content: str, new_content: str) -> Dict:
+    def correct(self, old_content: str, new_content: str) -> dict:
         """
         Store a corrected fact as a new memory via POST /remember.
         The previous fact is preserved in metadata.previous_content for audit.

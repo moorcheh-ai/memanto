@@ -16,7 +16,8 @@ for long-term memory persistence.
 
 from __future__ import annotations
 
-from typing import Annotated, Optional, Sequence
+from collections.abc import Sequence
+from typing import Annotated
 
 from langchain_core.messages import (
     AIMessage,
@@ -28,9 +29,8 @@ from langchain_openai import ChatOpenAI
 from langgraph.graph import END, START, StateGraph
 from langgraph.graph.message import add_messages
 from langgraph.prebuilt import ToolNode
-from typing_extensions import TypedDict
-
 from tools import MEMANTO_TOOLS, init_tools
+from typing_extensions import TypedDict
 
 
 class AgentState(TypedDict):
@@ -121,8 +121,8 @@ def should_continue(state: AgentState) -> str:
 
 
 def build_graph(
-    base_url: Optional[str] = None,
-    api_key: Optional[str] = None,
+    base_url: str | None = None,
+    api_key: str | None = None,
     agent_id: str = "langgraph-agent",
     model: str = "gpt-4o",
 ):
