@@ -275,6 +275,42 @@ def test_identity_template_default_profile(monkeypatch, tmp_path):
     assert p._agent_id == "hermes-default"
 
 
+@pytest.mark.parametrize(
+    ("first_identity", "second_identity"),
+    [
+        ("李雷", "韩梅梅"),
+        ("Алиса", "Боб"),
+        ("团队-alpha", "项目-alpha"),
+    ],
+)
+def test_unicode_profiles_initialize_with_isolated_memory_agents(
+    monkeypatch, tmp_path, first_identity, second_identity
+):
+    """Distinct Hermes profiles must never share a Memanto namespace."""
+    monkeypatch.setenv("MOORCHEH_API_KEY", "test-key")
+    monkeypatch.delenv("MEMANTO_AGENT_ID", raising=False)
+    monkeypatch.setattr(PROVIDER_MOD, FakeClient)
+    _save_memanto_config({"agent_id": "hermes-{identity}"}, str(tmp_path))
+
+    providers = []
+    for session_id, identity in (("s1", first_identity), ("s2", second_identity)):
+        provider = MemantoMemoryProvider()
+        provider.initialize(
+            session_id,
+            hermes_home=str(tmp_path),
+            platform="cli",
+            agent_identity=identity,
+        )
+        if provider._warmup_thread:
+            provider._warmup_thread.join(timeout=1)
+        providers.append(provider)
+
+    first, second = providers
+    assert first._agent_id != second._agent_id
+    assert first._client.agent_id == first._agent_id
+    assert second._client.agent_id == second._agent_id
+
+
 def test_agent_id_env_override(monkeypatch, tmp_path):
     monkeypatch.setenv("MOORCHEH_API_KEY", "test-key")
     monkeypatch.setenv("MEMANTO_AGENT_ID", "env-agent")
