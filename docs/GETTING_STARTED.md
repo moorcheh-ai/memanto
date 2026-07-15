@@ -278,7 +278,14 @@ You'll see all 17 API endpoints with interactive testing!
       "content": "MEMANTO is working",
       "type": "fact",
       "confidence": 1.0,
-      "created_at": "2025-12-28T10:30:00Z"
+      "status": "active",
+      "tags": [],
+      "source": "agent",
+      "source_ref": null,
+      "provenance": "explicit_statement",
+      "score": 0.92,
+      "created_at": "2025-12-28T10:30:00Z",
+      "updated_at": "2025-12-28T10:30:00Z"
     }
   ]
 }

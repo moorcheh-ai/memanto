@@ -11,7 +11,7 @@ from typing import Any
 
 from pydantic import BaseModel, Field
 
-from memanto.app.utils.temporal_helpers import utc_now
+from memanto.app.utils.temporal_helpers import as_utc_naive, utc_now
 
 
 class SessionStatus(str, Enum):
@@ -65,7 +65,7 @@ class Session(BaseModel):
 
     def is_expired(self) -> bool:
         """Check if session is expired"""
-        return utc_now() > self.expires_at
+        return utc_now() > as_utc_naive(self.expires_at)
 
     def is_active(self) -> bool:
         """Check if session is active"""
@@ -73,7 +73,7 @@ class Session(BaseModel):
 
     def time_remaining(self) -> timedelta:
         """Get time remaining in session"""
-        return self.expires_at - utc_now()
+        return as_utc_naive(self.expires_at) - utc_now()
 
 
 class SessionInfo(BaseModel):

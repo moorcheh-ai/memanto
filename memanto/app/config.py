@@ -128,9 +128,14 @@ class Settings(BaseSettings):
 
     # CORS Configuration
     ALLOWED_ORIGINS: list[str] = ["*"]
+    # Setting allow_credentials=True with a wildcard origin causes Starlette to
+    # reflect any request Origin back, allowing any site to make credentialed
+    # cross-origin requests.  Default to False; set to True only when ALLOWED_ORIGINS
+    # lists explicit trusted domains (never with "*").
+    CORS_ALLOW_CREDENTIALS: bool = False
 
     # Session Configuration
-    MEMANTO_SECRET_KEY: str = "memanto-default-secret-change-in-production"
+    MEMANTO_SECRET_KEY: str = ""
     SESSION_DEFAULT_DURATION_HOURS: int = 6
     SESSION_AUTO_EXTEND: bool = True
     SESSION_EXTEND_THRESHOLD_MINUTES: int = 30

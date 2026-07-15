@@ -70,6 +70,13 @@ def mock_moorcheh_for_tests():
     mock_instance = MagicMock()
     mock_instance.namespaces.create.return_value = {"status": "created"}
     mock_instance.namespaces.list.return_value = {"namespaces": []}
+    mock_instance.documents.upload.return_value = {"status": "queued"}
+    mock_instance.documents.upload_file.return_value = {
+        "success": True,
+        "fileSize": 0,
+        "message": "",
+    }
+    mock_instance.answer.generate.return_value = {"answer": "", "sources": []}
 
     with (
         patch(

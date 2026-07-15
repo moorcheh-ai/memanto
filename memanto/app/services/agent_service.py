@@ -12,9 +12,10 @@ from moorcheh_sdk.exceptions import ConflictError
 
 from memanto.app.clients.moorcheh import get_moorcheh_client
 from memanto.app.config import get_data_dir
-from memanto.app.core import create_memory_scope
+from memanto.app.core import agent_namespace
 from memanto.app.models.session import AgentCreate, AgentInfo, AgentList
 from memanto.app.utils.errors import AgentAlreadyExistsError, AgentNotFoundError
+from memanto.app.utils.validation import validate_safe_id
 
 
 class AgentService:
@@ -32,15 +33,15 @@ class AgentService:
 
     def _generate_namespace(self, agent_id: str) -> str:
         """
-        Generate namespace for agent using core MemoryScope
+        Generate the Moorcheh namespace for an agent.
 
-        Format: memanto_{scope}_{scope_id}
+        Format: memanto_agent_{agent_id}
         """
-        scope = create_memory_scope(scope_type="agent", scope_id=agent_id)
-        return scope.to_namespace()
+        return agent_namespace(agent_id)
 
     def _get_agent_file(self, agent_id: str) -> Path:
         """Get file path for agent metadata"""
+        validate_safe_id(agent_id, "agent_id")
         return self.agents_dir / f"{agent_id}.json"
 
     def create_agent(
@@ -79,12 +80,13 @@ class AgentService:
             # Namespace already exists - this is OK, agent might have been created before
             print(f"[OK] Namespace already exists in Moorcheh: {namespace}")
         except Exception as e:
-            # The on-prem client uses MoorchehApiError rather than the cloud
-            # SDK's ConflictError for the same HTTP 409 response.
-            if getattr(e, "status_code", None) == 409:
+            # On-prem raises moorcheh.errors.MoorchehApiError (HTTP 409) rather
+            # than the cloud SDK's typed ConflictError when the namespace
+            # already exists. Match on message so both backends behave the same.
+            msg = str(e).lower()
+            if ("namespace" in msg and "already exists" in msg) or "conflict" in msg:
                 print(f"[OK] Namespace already exists in Moorcheh: {namespace}")
             else:
-                # Unexpected error - fail the agent creation
                 raise Exception(
                     f"Failed to create namespace '{namespace}' in Moorcheh: {str(e)}"
                 )

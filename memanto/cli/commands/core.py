@@ -222,12 +222,13 @@ def _onprem_setup() -> None:
     )
     _moorcheh_up_and_wait(embedding_provider, embedding_model, embedding_key)
 
-    # Pull any Ollama models needed (embedding and/or LLM) inside the
-    # container started by `moorcheh up`.
+    # Pull any Ollama models needed (embedding and/or LLM). `moorcheh up` uses
+    # native host Ollama when one is running and a bundled container otherwise;
+    # _pull_ollama_model handles both.
     if embedding_provider == "ollama":
-        _pull_ollama_model_in_container(embedding_model)
+        _pull_ollama_model(embedding_model)
     if llm_provider == "ollama" and llm_model != embedding_model:
-        _pull_ollama_model_in_container(llm_model)
+        _pull_ollama_model(llm_model)
 
     # Persist everything on-prem in ~/.memanto/on-prem/state.json — the
     # shared ~/.memanto/config.yaml belongs to the cloud backend; on-prem
@@ -318,12 +319,12 @@ def _prompt_embedding_provider() -> tuple[str, str, str]:
             _error(f"{provider.title()} API key cannot be empty.")
         return provider, model, key.strip()
 
-    # Ollama: no native install needed. `moorcheh up` starts Ollama in a
-    # container; we pull the embedding model inside that container after the
-    # server is healthy (see _pull_ollama_model_in_container).
+    # Ollama: no native install needed. `moorcheh up` reuses a native Ollama if
+    # one is already running, otherwise it starts a bundled container. We pull
+    # the embedding model once the server is healthy (see _pull_ollama_model).
     console.print(
-        "[dim]  Ollama will be started in a container by `moorcheh up`. "
-        "The embedding model will be pulled into that container.[/dim]"
+        "[dim]  `moorcheh up` will reuse a running Ollama or start one in a "
+        "container. The embedding model will be pulled automatically.[/dim]"
     )
     return "ollama", "nomic-embed-text", ""
 
@@ -465,9 +466,35 @@ def _persist_moorcheh_llm_config(
         _error(f"Failed to persist LLM config: {e}")
 
 
+def _pull_ollama_model(model: str) -> None:
+    """Pull an Ollama model after ``moorcheh up`` started the stack.
+
+    ``moorcheh up`` reuses a native Ollama already running on the host and only
+    starts a bundled container when none is reachable. In both cases the Ollama
+    HTTP API is exposed on the host at 127.0.0.1:11434 (the bundled container
+    publishes the port), so pull over HTTP when reachable and only fall back to
+    ``docker exec`` for a bundled container we can't reach over HTTP.
+    """
+    try:
+        from moorcheh.ollama_setup import ollama_is_reachable, pull_ollama_model_http
+    except ImportError:
+        ollama_is_reachable = None
+
+    if ollama_is_reachable is not None and ollama_is_reachable():
+        console.print(f"[dim]  Pulling {model} into Ollama (127.0.0.1:11434)...[/dim]")
+        try:
+            pull_ollama_model_http(model)
+        except Exception as e:
+            _error(f"Failed to pull Ollama model {model}: {e}")
+        console.print(f"[green]  ✓ Ollama model {model} ready[/green]")
+        return
+
+    _pull_ollama_model_in_container(model)
+
+
 def _pull_ollama_model_in_container(model: str) -> None:
-    """After ``moorcheh up`` started the stack, pull the embedding model
-    inside the Ollama container via ``docker exec``.
+    """Pull an Ollama model inside the bundled Ollama container via
+    ``docker exec`` (fallback when the host HTTP API is not reachable).
 
     Looks for a running container with image ``ollama/ollama``; falls back to
     name-match. Errors clearly with a manual command if we can't locate it.
@@ -500,8 +527,8 @@ def _pull_ollama_model_in_container(model: str) -> None:
     try:
         subprocess.check_call(["docker", "exec", container_id, "ollama", "pull", model])
     except subprocess.CalledProcessError as e:
-        _error(f"Failed to pull embedding model inside container: {e}")
-    console.print("[green]  ✓ Embedding model ready in container[/green]")
+        _error(f"Failed to pull model {model} inside container: {e}")
+    console.print(f"[green]  ✓ Ollama model {model} ready in container[/green]")
 
 
 def _moorcheh_up_and_wait(provider: str, model: str, key: str) -> None:

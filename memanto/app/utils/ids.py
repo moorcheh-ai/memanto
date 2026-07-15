@@ -29,19 +29,6 @@ def generate_session_id() -> str:
     return f"s_{uuid.uuid4().hex[:8]}"
 
 
-def generate_namespace_id(scope_type: str, scope_id: str) -> str:
-    """Generate deterministic namespace ID"""
-    return f"memanto:{scope_type}:{scope_id}"
-
-
-def extract_scope_type_from_namespace(namespace: str) -> str | None:
-    """Extract scope type from namespace"""
-    parts = namespace.split(":")
-    if len(parts) >= 2 and parts[0] == "memanto":
-        return parts[1]
-    return None
-
-
 def is_valid_memory_id(memory_id: str) -> bool:
     """Validate memory ID format"""
     return bool(memory_id and len(memory_id) > 4 and "_" in memory_id)

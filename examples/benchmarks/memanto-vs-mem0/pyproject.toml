@@ -1,0 +1,27 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "memanto-vs-mem0-benchmark"
+version = "1.0.0"
+description = "Rigorous benchmark: Memanto vs Mem0 on the Executive Shadow scenario"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+dependencies = [
+    "memanto>=0.1.0,<0.2.0",
+    mem0ai>=2.0.5,
+    "openai>=1.30.0",
+    "python-dotenv>=1.0.0",
+    "rich>=13.0.0",
+    "streamlit>=1.35.0",
+    "pandas>=2.0.0",
+]
+
+[project.scripts]
+run-benchmark = "run_benchmark:main"
+
+[tool.hatch.build.targets.wheel]
+# Auto-discover all packages and modules in this directory
+sources = ["."]

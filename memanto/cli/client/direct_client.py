@@ -15,6 +15,9 @@ from pathlib import Path
 from typing import Any, cast
 
 from memanto.app.constants import (
+    ALLOWED_UPDATE_FIELDS as _ALLOWED_UPDATE_FIELDS,
+)
+from memanto.app.constants import (
     VALID_MEMORY_TYPES as _VALID_MEMORY_TYPES,
 )
 from memanto.app.constants import (
@@ -264,10 +267,19 @@ class DirectClient:
     # Lazy initializers
 
     def _get_moorcheh(self):
-        """Return (or create) the ``MoorchehClient`` singleton."""
+        """Return (or create) the backend-aware Moorcheh client.
+
+        Dispatches to cloud ``MoorchehClient`` or on-prem ``OnPremClient`` based
+        on the active backend, mirroring ``SdkClient._get_moorcheh``. Without
+        this, on-prem callers (e.g. UI ``batch_remember`` for migrate) hit
+        cloud and get a "namespace not found" 404 for agents that only exist
+        locally.
+        """
         if self._moorcheh is None:
-            logger.debug("Initializing MoorchehClient")
-            self._moorcheh = MoorchehClient(api_key=self.api_key)
+            from memanto.app.clients.moorcheh import get_moorcheh_client
+
+            logger.debug("Initializing Moorcheh client via backend dispatcher")
+            self._moorcheh = get_moorcheh_client()
         return self._moorcheh
 
     def _get_write_service(self):
@@ -327,9 +339,24 @@ class DirectClient:
         Return the active session for *agent_id*, validating it like the FastAPI
         dependency ``get_current_session``.
         """
-        # Cache hit: avoid redundant disk I/O and JWT decodes in the same request
-        if self._cached_session and self.agent_id == agent_id:
-            return self._cached_session
+        # Cache hit: avoid redundant JWT decodes while the session remains
+        # active. Still runs the same near-expiry auto-renew check as the
+        # cold path below, so long-lived clients keep renewing instead of
+        # eventually hitting SessionExpiredError.
+        if self._cached_session:
+            if self.agent_id == agent_id and self._cached_session.agent_id == agent_id:
+                if not self._cached_session.is_active():
+                    self._cached_session = None
+                    raise SessionExpiredError(
+                        f"Cached session for agent {agent_id} is no longer active"
+                    )
+                session_service = self._get_session_service()
+                renewed = session_service.check_and_auto_renew(agent_id=agent_id)
+                if renewed:
+                    self._cached_session = renewed
+                    self.session_token = renewed.session_token
+                return self._cached_session
+            self._cached_session = None
 
         if not self.session_token or not self.agent_id:
             raise SessionError(
@@ -455,6 +482,10 @@ class DirectClient:
         """
         logger.debug("Deleting agent '%s'", agent_id)
         self._get_agent_service().delete_agent(agent_id)
+        if self.agent_id == agent_id:
+            self.session_token = None
+            self.agent_id = None
+            self._cached_session = None
         return {"status": "deleted", "agent_id": agent_id}
 
     # Session Management
@@ -498,6 +529,7 @@ class DirectClient:
 
         self.session_token = session.session_token
         self.agent_id = agent_id
+        self._cached_session = session
 
         return {
             "session_token": session.session_token,
@@ -521,6 +553,7 @@ class DirectClient:
         summary = self._get_session_service().end_session(agent_id)
         self.session_token = None
         self.agent_id = None
+        self._cached_session = None
         return cast(dict[str, Any], summary.model_dump(mode="json"))
 
     def get_session_info(self) -> dict[str, Any]:
@@ -612,8 +645,7 @@ class DirectClient:
             type=resolved_memory_type,
             title=title,
             content=content,
-            scope_type="agent",
-            scope_id=agent_id,
+            agent_id=agent_id,
             actor_id=agent_id,
             confidence=confidence,
             tags=tags or [],
@@ -677,7 +709,7 @@ class DirectClient:
         memory_records = []
         for i, item in enumerate(memories):
             raw_content = item.get("content", "")
-            if not raw_content:
+            if not isinstance(raw_content, str) or not raw_content.strip():
                 raise ValueError(f"Memory at index {i} has no content")
 
             raw_title = item.get("title")
@@ -686,18 +718,33 @@ class DirectClient:
             )
             raw_type = item.get("type")
 
-            memory = MemoryRecord(
-                type=raw_type,
-                title=title,
-                content=raw_content,
-                scope_type="agent",
-                scope_id=agent_id,
-                actor_id=agent_id,
-                confidence=item.get("confidence", 0.8),
-                tags=item.get("tags", []),
-                source="user",
-                provenance="explicit_statement",
-            )
+            # Optional per-item overrides for the migrate flow — keep source
+            # provenance, original ids, and source-side timestamps. Defaults
+            # preserve the original single-user-write behavior.
+            provenance = item.get("provenance") or "explicit_statement"
+            if provenance not in _VALID_PROVENANCE:
+                raise ValueError(
+                    f"Invalid provenance '{provenance}' at index {i}. "
+                    f"Must be one of: {', '.join(sorted(_VALID_PROVENANCE))}"
+                )
+
+            kwargs: dict[str, Any] = {
+                "type": raw_type,
+                "title": title,
+                "content": raw_content,
+                "agent_id": agent_id,
+                "actor_id": agent_id,
+                "confidence": item.get("confidence", 0.8),
+                "tags": item.get("tags", []),
+                "source": item.get("source") or "user",
+                "provenance": provenance,
+            }
+            for opt_key in ("source_ref", "created_at", "updated_at"):
+                val = item.get(opt_key)
+                if val is not None:
+                    kwargs[opt_key] = val
+
+            memory = MemoryRecord(**kwargs)
             memory_records.append(memory)
 
         logger.debug(
@@ -728,6 +775,180 @@ class DirectClient:
                 )
 
         return result
+
+    def update_memory(
+        self, agent_id: str, memory_id: str, updates: dict[str, Any]
+    ) -> dict[str, Any]:
+        """
+        Update a single memory in the active agent namespace.
+
+        Args:
+            agent_id: Target agent.
+            memory_id: Memory document ID to update.
+            updates: Fields to update.
+
+        Returns:
+            Dict with update result metadata.
+
+        Raises:
+            ValueError: If no update fields are provided.
+        """
+        session = self._get_validated_session_for_agent(agent_id)
+        if not updates:
+            raise ValueError("Provide at least one field to update")
+        unknown_fields = set(updates) - _ALLOWED_UPDATE_FIELDS
+        if unknown_fields:
+            raise ValueError(
+                f"Unknown update fields: {', '.join(sorted(unknown_fields))}. "
+                f"Allowed fields: {', '.join(sorted(_ALLOWED_UPDATE_FIELDS))}."
+            )
+        if "content" in updates:
+            content = updates["content"]
+            if content is None or not str(content).strip():
+                raise ValueError("Memory content must be a non-empty string")
+            if len(str(content)) > _MAX_CONTENT_LENGTH:
+                raise ValueError(
+                    f"Memory content exceeds {_MAX_CONTENT_LENGTH} characters"
+                )
+        if "title" in updates:
+            title = updates["title"]
+            if title is not None and len(str(title)) > _MAX_TITLE_LENGTH:
+                raise ValueError(f"Memory title exceeds {_MAX_TITLE_LENGTH} characters")
+        if "type" in updates:
+            memory_type = updates["type"]
+            if memory_type not in _VALID_MEMORY_TYPES:
+                raise ValueError(
+                    f"Invalid memory_type '{memory_type}'. "
+                    f"Must be one of: {', '.join(sorted(_VALID_MEMORY_TYPES))}"
+                )
+        if "confidence" in updates:
+            try:
+                confidence_value = float(updates["confidence"])  # type: ignore[arg-type]
+            except (TypeError, ValueError):
+                raise ValueError(
+                    f"Confidence must be a number between 0.0 and 1.0, got {updates['confidence']!r}"
+                )
+            if not 0.0 <= confidence_value <= 1.0:
+                raise ValueError(
+                    f"Confidence must be between 0.0 and 1.0, got {confidence_value}"
+                )
+            # Normalize to float so downstream write service persists a numeric
+            # confidence even when the caller passed "0.7" as a string. CodeRabbit
+            # review 2026-06-14T14:03:20Z flagged that string values were
+            # previously forwarded unchanged.
+            updates["confidence"] = confidence_value
+
+        result = self._get_write_service().update_memory(
+            memory_id, session.namespace, updates
+        )
+
+        return {
+            "agent_id": agent_id,
+            "namespace": session.namespace,
+            "memory_id": memory_id,
+            "status": result.get("status", "updated"),
+            "action": result.get("action", "updated"),
+            "updated_fields": result.get("updated_fields", list(updates.keys())),
+        }
+
+    def extract_memories_from_conversation(
+        self,
+        agent_id: str,
+        messages: list[dict[str, str]],
+        dry_run: bool = False,
+        max_memories: int = 20,
+        ai_model: str | None = None,
+    ) -> dict[str, Any]:
+        """
+        Extract typed memories from conversation turns.
+
+        Args:
+            agent_id: Target agent.
+            messages: Chat-style messages with ``role`` and ``content`` keys.
+            dry_run: When True, preview extracted candidates without storing them.
+            max_memories: Maximum number of candidate memories to extract.
+            ai_model: Optional model override for extraction.
+
+        Returns:
+            A dictionary containing extracted candidates and, unless ``dry_run``
+            is enabled, the batch storage result.
+
+        Raises:
+            SessionError: If no active session exists for the agent.
+        """
+
+        session = self._get_validated_session_for_agent(agent_id)
+
+        from memanto.app.services.conversation_memory_extraction_service import (
+            ConversationMemoryExtractionService,
+        )
+
+        service = ConversationMemoryExtractionService(self._get_moorcheh())
+        candidates = service.extract(
+            namespace=session.namespace,
+            messages=messages,
+            max_memories=max_memories,
+            ai_model=ai_model,
+        )
+
+        if dry_run:
+            return {
+                "dry_run": True,
+                "candidates": candidates,
+                "count": len(candidates),
+            }
+
+        result = self.batch_remember(agent_id=agent_id, memories=candidates)
+        return {
+            "dry_run": False,
+            "candidates": candidates,
+            **result,
+        }
+
+    def delete_memory(self, agent_id: str, memory_id: str) -> dict[str, Any]:
+        """
+        Delete one memory from the active agent namespace.
+
+        Args:
+            agent_id: Target agent.
+            memory_id: Memory document ID to delete.
+
+        Returns:
+            Confirmation dict with ``status``, ``agent_id``, ``memory_id``, and
+            ``namespace``.
+
+        Raises:
+            ValueError: If the memory does not exist in the active agent namespace.
+        """
+        session = self._get_validated_session_for_agent(agent_id)
+        namespace = session.namespace
+
+        logger.debug(
+            "Deleting memory '%s' from agent '%s' namespace '%s'",
+            memory_id,
+            agent_id,
+            namespace,
+        )
+        deleted = self._get_write_service().delete_memory(memory_id, namespace)
+        if not deleted:
+            raise ValueError(
+                f"Memory '{memory_id}' was not found for agent '{agent_id}'"
+            )
+
+        # Log deletion to local session Markdown summary
+        if self.session_token:
+            self._get_session_service().log_memory_deletion_to_session_summary(
+                agent_id=agent_id,
+                session_id=session.session_id,
+                memory_id=memory_id,
+            )
+
+        return {
+            "status": "deleted",
+            "agent_id": agent_id,
+            "memory_id": memory_id,
+            "namespace": namespace,
+        }
 
     def recall(
         self,
@@ -775,8 +996,7 @@ class DirectClient:
         )
         result = self._get_read_service().search_memories(
             query=query,
-            scope_type="agent",
-            scope_id=agent_id,
+            agent_id=agent_id,
             type=type,
             tags=tags,
             min_confidence=min_confidence,
@@ -1158,10 +1378,9 @@ class DirectClient:
         new_id = conflict.get("new_memory_id")
 
         # Get namespace for memory operations
-        from memanto.app.core import create_memory_scope
+        from memanto.app.core import agent_namespace
 
-        scope = create_memory_scope("agent", agent_id)
-        namespace = scope.to_namespace()
+        namespace = agent_namespace(agent_id)
 
         write_service = self._get_write_service()
         result_details = {"action": action}
@@ -1235,8 +1454,7 @@ class DirectClient:
                 type=resolved_type,
                 title=title,
                 content=manual_content,
-                scope_type="agent",
-                scope_id=agent_id,
+                agent_id=agent_id,
                 actor_id=agent_id,
                 confidence=0.9,
                 tags=["conflict-resolution"],
@@ -1284,6 +1502,7 @@ class DirectClient:
         from memanto.app.services.memory_export_service import MEMORY_TYPE_ORDER
 
         memories_by_type: dict[str, list] = {}
+        failed_types = 0
 
         for mem_type in MEMORY_TYPE_ORDER:
             try:
@@ -1296,6 +1515,18 @@ class DirectClient:
                 memories_by_type[mem_type] = result.get("memories", [])
             except Exception:
                 memories_by_type[mem_type] = []
+                failed_types += 1
+
+        if failed_types == len(MEMORY_TYPE_ORDER):
+            # Every recall failed (e.g. the backend is unreachable) rather
+            # than each type genuinely having zero memories. Raise instead
+            # of writing an empty export — callers may otherwise overwrite
+            # a good cache/MEMORY.md with nothing. See sync_memory_to_project.
+            raise ConnectionError(
+                f"Failed to recall any memories for agent '{agent_id}' — "
+                "the backend appears unreachable. Refusing to write an "
+                "empty export."
+            )
 
         export_svc = self._get_export_service()
         out = output_path if output_path else None
