@@ -7,12 +7,12 @@ Moorcheh answer-generation path used by the RAG answer endpoint.
 
 from __future__ import annotations
 
-import json
 import re
 from typing import Any
 
 from memanto.app.clients.backend import get_active_llm_model
 from memanto.app.constants import VALID_MEMORY_TYPES
+from memanto.app.utils.json_extraction import iter_json_arrays
 
 
 class ConversationMemoryExtractionService:
@@ -114,18 +114,9 @@ class ConversationMemoryExtractionService:
         if not text:
             raise ValueError("Memory extraction returned an empty response")
 
-        fenced = re.search(r"```(?:json)?\s*(.*?)```", text, flags=re.DOTALL)
-        if fenced:
-            text = fenced.group(1).strip()
-
-        try:
-            return json.loads(text)
-        except json.JSONDecodeError:
-            start = text.find("[")
-            end = text.rfind("]")
-            if start != -1 and end != -1 and end > start:
-                return json.loads(text[start : end + 1])
-            raise ValueError("Memory extraction did not return valid JSON")
+        for parsed in iter_json_arrays(text):
+            return parsed
+        raise ValueError("Memory extraction did not return valid JSON")
 
     def _normalize_candidates(
         self, parsed: Any, *, max_memories: int
