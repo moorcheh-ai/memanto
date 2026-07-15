@@ -398,7 +398,7 @@ class MemoryWriteService:
             )
 
             # Re-upload in case the delete removed the new version too.
-            if not self._deletion_succeeded(delete_result):
+            if self._deletion_succeeded(delete_result):
                 self.client.documents.upload(
                     namespace_name=namespace, documents=[document]
                 )
