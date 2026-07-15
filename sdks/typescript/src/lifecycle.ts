@@ -122,7 +122,9 @@ export class ServerLifecycle {
     if (this.starting === starting) {
       this.starting = null;
     }
-    if (!child || child.killed) return;
+    if (!child || child.killed || child.pid === undefined || child.exitCode !== null) {
+      return;
+    }
 
     let exited = false;
     await new Promise<void>((resolve, reject) => {
@@ -151,6 +153,8 @@ export class ServerLifecycle {
       }
       await sleep(250);
     }
+    // Avoid waiting on the startup promise that is executing this timeout path.
+    this.starting = null;
     await this.stop();
     throw new Error(
       `memanto server at ${baseUrl} did not become healthy within ${timeoutMs}ms${

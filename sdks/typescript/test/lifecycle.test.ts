@@ -78,6 +78,7 @@ describe("ServerLifecycle", () => {
     const child = Object.assign(new EventEmitter(), {
       exitCode: null,
       killed: false,
+      pid: 123,
       kill: vi.fn(),
     });
     child.kill.mockImplementation(() => {
@@ -124,6 +125,7 @@ describe("ServerLifecycle", () => {
     const child = Object.assign(new EventEmitter(), {
       exitCode: null,
       killed: false,
+      pid: 123,
       kill: vi.fn(),
     });
     child.kill.mockImplementation(() => {
@@ -138,11 +140,50 @@ describe("ServerLifecycle", () => {
 
     const life = new ServerLifecycle();
     const starting = life.start();
-    await life.stop();
-    await starting;
+    try {
+      await life.stop();
+      await starting;
+
+      expect(child.kill).toHaveBeenCalledTimes(1);
+      expect(() => life.baseUrl).toThrow(/Server not started/);
+    } finally {
+      fetchSpy.mockRestore();
+    }
+  });
+
+  it("stops the process when startup health checks time out", async () => {
+    const child = Object.assign(new EventEmitter(), {
+      exitCode: null,
+      killed: false,
+      pid: 123,
+      kill: vi.fn(),
+    });
+    child.kill.mockImplementation(() => {
+      child.killed = true;
+      queueMicrotask(() => child.emit("exit", 0));
+      return true;
+    });
+    spawnMock.mockReturnValue(child);
+
+    const life = new ServerLifecycle({ healthTimeoutMs: 0 });
+    await expect(life.start()).rejects.toThrow(/did not become healthy/);
 
     expect(child.kill).toHaveBeenCalledTimes(1);
-    expect(() => life.baseUrl).toThrow(/Server not started/);
-    fetchSpy.mockRestore();
+  });
+
+  it("does not wait for exit from a process that failed to spawn", async () => {
+    const child = Object.assign(new EventEmitter(), {
+      exitCode: null,
+      killed: false,
+      pid: undefined,
+      kill: vi.fn(),
+    });
+    const life = new ServerLifecycle();
+    const internals = life as unknown as { process: typeof child };
+    internals.process = child;
+
+    await life.stop();
+
+    expect(child.kill).not.toHaveBeenCalled();
   });
 });
