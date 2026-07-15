@@ -158,14 +158,11 @@ async def delete_agent(
             )
 
         if delete_backup_too:
-            # Delete remote namespace only when explicitly requested.
+            # Delete remote namespace only when explicitly requested. This must
+            # succeed before local metadata is removed; otherwise the caller
+            # loses the handle needed to retry a failed purge.
             moorcheh_client = moorcheh_clients.get_moorcheh_client()
-            try:
-                moorcheh_client.namespaces.delete(namespace_name=agent.namespace)
-            except Exception:
-                # If namespace is already gone/unreachable, keep best-effort behavior
-                # and continue removing local metadata.
-                pass
+            moorcheh_client.namespaces.delete(namespace_name=agent.namespace)
 
         agent_service.delete_agent(agent_id)
         get_session_service().delete_session(agent_id)
@@ -180,6 +177,8 @@ async def delete_agent(
             )
         }
     except AgentNotFoundError as e:
+        raise map_error_to_http_exception(e)
+    except Exception as e:
         raise map_error_to_http_exception(e)
 
 

@@ -759,6 +759,33 @@ class TestMEMANTOAPI:
         )
 
     @pytest.mark.asyncio
+    async def test_delete_agent_preserves_local_state_when_backup_delete_fails(
+        self, client, auth_headers, mock_moorcheh
+    ):
+        """A failed remote purge must remain retryable through the local agent."""
+        agent_id = "retry-delete"
+        await client.post(
+            "/api/v2/agents",
+            headers=auth_headers,
+            json={"agent_id": agent_id},
+        )
+        mock_moorcheh.namespaces.delete.side_effect = RuntimeError(
+            "remote namespace unavailable"
+        )
+
+        response = await client.delete(
+            f"/api/v2/agents/{agent_id}?delete-backup-too=true",
+            headers=auth_headers,
+        )
+
+        assert response.status_code == 500
+        agent_response = await client.get(
+            f"/api/v2/agents/{agent_id}", headers=auth_headers
+        )
+        assert agent_response.status_code == 200
+        assert agent_response.json()["agent_id"] == agent_id
+
+    @pytest.mark.asyncio
     async def test_deactivate_agent(self, client, auth_headers):
         """Test deactivating session"""
         await client.post(
