@@ -176,8 +176,6 @@ async def delete_agent(
                 )
             )
         }
-    except AgentNotFoundError as e:
-        raise map_error_to_http_exception(e)
     except Exception as e:
         raise map_error_to_http_exception(e)
 
