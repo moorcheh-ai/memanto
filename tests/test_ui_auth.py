@@ -24,6 +24,23 @@ def _make_app():
     return app
 
 
+class _LoopbackClient:
+    """ASGI wrapper that makes TestClient requests look like loopback traffic."""
+
+    def __init__(self, app):
+        self.app = app
+
+    async def __call__(self, scope, receive, send):
+        if scope["type"] == "http":
+            scope = dict(scope)
+            scope["client"] = ("127.0.0.1", 50000)
+        await self.app(scope, receive, send)
+
+
+def _make_loopback_client(app):
+    return TestClient(_LoopbackClient(app), raise_server_exceptions=False)
+
+
 class TestUnauthenticatedUIEndpoints:
     """Unauthenticated requests from non-localhost must be refused with HTTP 403.
 
@@ -64,6 +81,32 @@ class TestUnauthenticatedUIEndpoints:
         resp = client.put("/api/ui/api-key", json={"api_key": "stolen"})
         assert resp.status_code == 403, f"expected 403, got {resp.status_code}"
 
+    def test_loopback_cross_site_origin_rejected(self):
+        """Local browser requests from another website must not reach UI endpoints."""
+        app = _make_app()
+        client = _make_loopback_client(app)
+        resp = client.post(
+            "/api/ui/shutdown",
+            headers={"Origin": "https://evil.example"},
+        )
+        assert resp.status_code == 403, f"expected 403, got {resp.status_code}"
+        assert resp.json()["detail"] == (
+            "UI management endpoints reject cross-site browser requests."
+        )
+
+    def test_loopback_cross_site_fetch_metadata_rejected(self):
+        """Fetch Metadata blocks no-cors style cross-site POSTs without Origin."""
+        app = _make_app()
+        client = _make_loopback_client(app)
+        resp = client.post(
+            "/api/ui/shutdown",
+            headers={"Sec-Fetch-Site": "cross-site"},
+        )
+        assert resp.status_code == 403, f"expected 403, got {resp.status_code}"
+        assert resp.json()["detail"] == (
+            "UI management endpoints reject cross-site browser requests."
+        )
+
 
 class TestLoopbackDetection:
     """Unit tests for the _is_loopback helper used by _require_local.
@@ -103,6 +146,19 @@ class TestLoopbackDetection:
         from memanto.app.ui.routes.ui_router import _is_loopback
 
         assert _is_loopback("testclient") is False
+
+    def test_loopback_origin_accepted(self):
+        """Same-origin UI requests from localhost must be allowed."""
+        from memanto.app.ui.routes.ui_router import _is_loopback_origin
+
+        assert _is_loopback_origin("http://localhost:8000") is True
+        assert _is_loopback_origin("http://127.0.0.1:8000") is True
+        assert _is_loopback_origin("http://[::1]:8000") is True
+
+    def test_remote_origin_rejected(self):
+        from memanto.app.ui.routes.ui_router import _is_loopback_origin
+
+        assert _is_loopback_origin("https://evil.example") is False
 
     def test_require_local_allows_loopback(self):
         """_require_local must not raise for a 127.0.0.1 caller."""
