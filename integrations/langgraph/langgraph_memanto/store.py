@@ -96,6 +96,7 @@ class MemantoStore(BaseStore):
     # Cache TTL keeps short-interval polls (Streamlit reruns, multiple graph
     # nodes) from burning rate-limit budget on identical queries.
     _CACHE_TTL_S = 30.0
+    _CACHE_MAX_ENTRIES = 1000
 
     def __init__(self, api_key: str) -> None:
         """Initialize MemantoStore with an API key."""
@@ -365,6 +366,10 @@ class MemantoStore(BaseStore):
             if out and not rate_limited:
                 self._search_cache[cache_key] = (time.time(), out)
                 self._last_good[cache_key] = out
+                if len(self._search_cache) > self._CACHE_MAX_ENTRIES:
+                    self._search_cache.pop(next(iter(self._search_cache)))
+                if len(self._last_good) > self._CACHE_MAX_ENTRIES:
+                    self._last_good.pop(next(iter(self._last_good)))
 
         return out
 

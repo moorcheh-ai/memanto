@@ -301,6 +301,29 @@ def test_do_search_rate_limit_reuses_identical_last_good(mock_sdk_client):
     assert fallback_items == first_items
 
 
+def test_do_search_caches_evict_oldest_entries(mock_sdk_client):
+    store = MemantoStore(api_key="test_key")
+    store._CACHE_MAX_ENTRIES = 2
+    client_instance = MagicMock()
+    mock_sdk_client.return_value = client_instance
+    client_instance.recall.return_value = {
+        "memories": [
+            {
+                "id": "mem-456",
+                "tags": ["lg:key:key2"],
+                "type": "observation",
+                "content": "observed",
+            }
+        ]
+    }
+
+    for query in ("query-1", "query-2", "query-3"):
+        store._do_search(SearchOp(namespace_prefix=("my_ns",), query=query))
+
+    assert [key[1] for key in store._search_cache] == ["query-2", "query-3"]
+    assert [key[1] for key in store._last_good] == ["query-2", "query-3"]
+
+
 def test_batch_execution(mock_sdk_client):
     store = MemantoStore(api_key="test_key")
     client_instance = MagicMock()
