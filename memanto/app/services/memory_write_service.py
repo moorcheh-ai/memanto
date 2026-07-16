@@ -304,6 +304,35 @@ class MemoryWriteService:
                     f"in namespace {namespace}"
                 )
 
+            # Keep a restorable snapshot before deleting the existing document.
+            original_memory = MemoryRecord(
+                id=memory_id,
+                type=metadata.get("type", "fact"),
+                title=existing_memory_data.get("title", "Updated Memory"),
+                content=existing_memory_data.get("content", ""),
+                agent_id=agent_id,
+                actor_id=metadata.get("actor_id", "unknown"),
+                source=metadata.get("source", "system"),
+                source_ref=metadata.get("source_ref"),
+                confidence=metadata.get("confidence", 0.8),
+                status=metadata.get("status", "active"),
+                tags=metadata.get("tags", []),
+                provenance=metadata.get("provenance", "explicit_statement"),
+            )
+
+            for field_name in ("created_at", "updated_at", "expires_at"):
+                raw_value = metadata.get(field_name)
+                if isinstance(raw_value, str):
+                    try:
+                        raw_value = datetime.fromisoformat(
+                            raw_value.replace("Z", "+00:00")
+                        )
+                    except (ValueError, AttributeError):
+                        raw_value = None
+                if raw_value is not None:
+                    setattr(original_memory, field_name, raw_value)
+            original_memory.ttl_seconds = metadata.get("ttl_seconds")
+
             # Build updated memory record
             updated_memory = MemoryRecord(
                 id=memory_id,  # Keep same ID
@@ -362,6 +391,9 @@ class MemoryWriteService:
             from moorcheh_sdk.types.document import Document
 
             document = cast(Document, updated_memory.to_moorcheh_document())
+            original_document = cast(
+                Document, original_memory.to_moorcheh_document()
+            )
 
             # Preserve extra metadata fields from the existing record (e.g. original_id
             # in on-prem data_store.json) that aren't part of the MemoryRecord schema.
@@ -370,6 +402,7 @@ class MemoryWriteService:
                 # ``document`` is a TypedDict; cast to a plain dict to attach
                 # extra schema-external keys (e.g. original_id) dynamically.
                 extra_document = cast(dict[str, Any], document)
+                extra_original_document = cast(dict[str, Any], original_document)
                 for key in existing_meta:
                     if (
                         key not in document
@@ -377,12 +410,30 @@ class MemoryWriteService:
                         and key not in _REMOVED_TRUST_FIELDS
                     ):
                         extra_document[key] = existing_meta[key]
+                    if (
+                        key not in original_document
+                        and key != "text"
+                        and key not in _REMOVED_TRUST_FIELDS
+                    ):
+                        extra_original_document[key] = existing_meta[key]
 
             upload_result = self.client.documents.upload(
                 namespace_name=namespace, documents=[document]
             )
             upload_status = str(upload_result.get("status", "unknown")).lower()
             if upload_status not in SUCCESSFUL_UPLOAD_STATUSES:
+                restore_result = self.client.documents.upload(
+                    namespace_name=namespace, documents=[original_document]
+                )
+                restore_status = str(
+                    restore_result.get("status", "unknown")
+                ).lower()
+                if restore_status not in SUCCESSFUL_UPLOAD_STATUSES:
+                    raise MemoryError(
+                        f"Failed to upload updated memory {memory_id} and failed "
+                        "to restore the original: "
+                        f"backend returned status {restore_result.get('status', 'unknown')!r}"
+                    )
                 raise MemoryError(
                     f"Failed to upload updated memory {memory_id}: "
                     f"backend returned status {upload_result.get('status', 'unknown')!r}"

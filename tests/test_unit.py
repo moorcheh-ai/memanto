@@ -476,34 +476,65 @@ class TestMemoryWriteServiceDelete:
         assert "validation_count" not in uploaded
 
     def test_update_memory_rejects_failed_upload_status(self):
+        from memanto.app.services.memory_read_service import MemoryReadService
         from memanto.app.services.memory_write_service import MemoryWriteService
         from memanto.app.utils.errors import MemoryError
 
         client = MagicMock()
-        client.documents.delete.return_value = {"status": "success"}
-        client.documents.upload.return_value = {"status": "failed"}
-        existing_memory = {
+        namespace = "memanto_agent_test-agent"
+        original_document = {
             "id": "mem-1",
-            "type": "fact",
-            "title": "Original title",
-            "content": "Original content",
+            "text": "[FACT] Original title\n\nOriginal content",
+            "memory_type": "fact",
+            "agent_id": "test-agent",
             "actor_id": "tester",
             "source": "manual",
             "confidence": 0.8,
             "status": "active",
-            "tags": [],
+            "provenance": "explicit_statement",
+            "created_at": "2026-07-01T00:00:00",
+            "updated_at": "2026-07-01T00:00:00",
         }
+        stored_documents = {"mem-1": original_document}
+        upload_attempt = 0
 
-        with patch(
-            "memanto.app.services.memory_read_service.MemoryReadService.get_memory",
-            return_value=existing_memory,
-        ):
-            with pytest.raises(MemoryError, match="backend returned status 'failed'"):
-                MemoryWriteService(client).update_memory(
-                    "mem-1",
-                    "memanto_agent_test-agent",
-                    {"content": "Updated content"},
-                )
+        def get_documents(**kwargs):
+            return {
+                "items": [
+                    stored_documents[memory_id]
+                    for memory_id in kwargs["ids"]
+                    if memory_id in stored_documents
+                ]
+            }
+
+        def delete_documents(**kwargs):
+            for memory_id in kwargs["ids"]:
+                stored_documents.pop(memory_id, None)
+            return {"status": "success"}
+
+        def upload_documents(**kwargs):
+            nonlocal upload_attempt
+            upload_attempt += 1
+            if upload_attempt == 1:
+                return {"status": "failed"}
+            for document in kwargs["documents"]:
+                stored_documents[document["id"]] = document
+            return {"status": "success"}
+
+        client.documents.get.side_effect = get_documents
+        client.documents.delete.side_effect = delete_documents
+        client.documents.upload.side_effect = upload_documents
+
+        with pytest.raises(MemoryError, match="backend returned status 'failed'"):
+            MemoryWriteService(client).update_memory(
+                "mem-1", namespace, {"content": "Updated content"}
+            )
+
+        restored = MemoryReadService(client).get_memory("mem-1", namespace)
+        assert restored is not None
+        assert restored["title"] == "Original title"
+        assert restored["content"] == "Original content"
+        assert client.documents.upload.call_count == 2
 
 
 class TestMemoryReadServiceFormatting:
