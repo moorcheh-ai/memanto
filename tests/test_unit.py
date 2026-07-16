@@ -500,6 +500,24 @@ class TestMemoryReadServiceFormatting:
 
 
 class TestMemoryWriteServiceBatch:
+    def test_store_memory_rejects_failed_upload_status(self):
+        from memanto.app.core import MemoryRecord
+        from memanto.app.services.memory_write_service import MemoryWriteService
+        from memanto.app.utils.errors import MemoryError
+
+        client = MagicMock()
+        client.documents.upload.return_value = {"status": "failed"}
+        memory = MemoryRecord(
+            title="Failed write",
+            content="This memory should not be reported as stored.",
+            agent_id="test-agent",
+            actor_id="tester",
+            source="manual",
+        )
+
+        with pytest.raises(MemoryError, match="backend returned status 'failed'"):
+            MemoryWriteService(client).store_memory(memory)
+
     def test_batch_store_counts_ok_upload_status_as_success(self):
         from memanto.app.core import MemoryRecord
         from memanto.app.services.memory_write_service import MemoryWriteService
