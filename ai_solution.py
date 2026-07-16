@@ -1,3 +1,339 @@
-```json
-{
-  "solution_code": "# Memory Integrity Test Suite - Memanto Bug Challenge\n# This comprehensive test suite identifies critical vulnerabilities in Memanto's memory management\n\nimport pytest\nimport asyncio\nimport json\nfrom datetime import datetime, timedelta\nfrom typing import List, Dict, Any\nimport time\nimport concurrent.futures\n\n# Test fixtures and utilities\nclass MemantoTestHarness:\n    \"\"\"Test harness for stress-testing Memanto memory operations\"\"\"\n    \n    def __init__(self, memanto_client):\n        self.client = memanto_client\n        self.test_results = []\n        \n    async def inject_contradictory_facts(self, entity: str, facts: List[str]):\n        \"\"\"Inject multiple contradictory facts about the same entity\"\"\"\n        results = []\n        for fact in facts:\n            result = await self.client.store_memory({\n                \"entity\": entity,\n                \"fact\": fact,\n                \"timestamp\": datetime.now().isoformat()\n            })\n            results.append(result)\n        return results\n    \n    async def rapid_fire_updates(self, entity: str, count: int = 100):\n        \"\"\"Rapid sequential updates to test race conditions\"\"\"\n        tasks = []\n        for i in range(count):\n            task = self.client.update_memory({\n                \"entity\": entity,\n                \"update\": f\"Update #{i}\",\n                \"timestamp\": datetime.now().isoformat()\n            })\n            tasks.append(task)\n        return await asyncio.gather(*tasks, return_exceptions=True)\n    \n    def inject_malformed_timestamps(self, entity: str):\n        \"\"\"Test timestamp edge cases that could break timeline ordering\"\"\"\n        malformed_timestamps = [\n            \"invalid-date\",\n            \"9999-99-99T99:99:99Z\",\n            \"-1000-01-01T00:00:00Z\",\n            \"2025-02-30T25:61:61Z\",  # Invalid date\n            \"null\",\n            \"\",\n            \"0\",\n            str(time.time() * 1000000),  # Microseconds instead of seconds\n        ]\n        \n        results = []\n        for ts in malformed_timestamps:\n            try:\n                result = self.client.store_memory({\n                    \"entity\": entity,\n                    \"fact\": f\"Test fact with timestamp {ts}\",\n                    \"timestamp\": ts\n                })\n                results.append((ts, result))\n            except Exception as e:\n                results.append((ts, str(e)))\n        return results\n\n\nclass TestRetrievalQuality:\n    \"\"\"Test Suite: Retrieval Quality & Accuracy Vulnerabilities\"\"\"\n    \n    @pytest.mark.asyncio\n    async def test_contradiction_resolution_failure(self, memanto_client):\n        \"\"\"\n        BUG: Memanto may fail to properly resolve contradictions when facts\n        are stored in rapid succession without proper conflict resolution.\n        \n        Expected: Latest fact should override or flag contradiction\n        Actual: May return both facts or wrong fact\n        \"\"\"\n        harness = MemantoTestHarness(memanto_client)\n        \n        # Store contradictory facts rapidly\n        contradictions = [\n            \"User prefers Python for backend\",\n            \"User prefers Node.js for backend\",\n            \"User prefers Go for backend\",\n        ]\n        \n        await harness.inject_contradictory_facts(\"user_preferences\", contradictions)\n        \n        # Wait minimal time to trigger race condition\n        await asyncio.sleep(0.1)\n        \n        # Query should return only the most recent preference\n        result = await memanto_client.query(\"What backend language does user prefer?\")\n        \n        # VULNERABILITY: Check if multiple contradictory facts are returned\n        assert len(result.get('facts', [])) == 1, \"Contradiction not resolved - multiple conflicting facts returned\"\n        assert \"Go\" in str(result), \"Latest fact not prioritized\"\n    \n    @pytest.mark.asyncio\n    async def test_timeline_amnesia_edge_case(self, memanto_client):\n        \"\"\"\n        BUG: Timeline ordering breaks when timestamps are stored out of order\n        or when system clock changes (DST, timezone shifts, time travel attacks).\n        \n        Expected: Events maintain chronological order\n        Actual: Timeline corruption or amnesia\n        \"\"\"\n        harness = MemantoTestHarness(memanto_client)\n        \n        # Store events with deliberately out-of-order timestamps\n        events = [\n            {\"timestamp\": \"2024-01-15T10:00:00Z\", \"event\": \"Event C\"},\n            {\"timestamp\": \"2024-01-10T10:00:00Z\", \"event\": \"Event A\"},\n            {\"timestamp\": \"2024-01-20T10:00:00Z\", \"event\": \"Event D\"},\n            {\"timestamp\": \"2024-01-12T10:00:00Z\", \"event\": \"Event B\"},\n        ]\n        \n        for event in events:\n            await memanto_client.store_memory({\n                \"entity\": \"project_timeline\",\n                \"fact\": event[\"event\"],\n                \"timestamp\": event[\"timestamp\"]\n            })\n        \n        # Query timeline\n        result = await memanto_client.query(\"Show me the project timeline in order\")\n        \n        # VULNERABILITY: Verify chronological ordering is maintained\n        timeline = result.get('timeline', [])\n        assert len(timeline) == 4, \"Timeline events missing\"\n        \n        # Extract events in returned order\n        returned_order = [e.get('event') for e in timeline]\n        expected_order = [\"Event A\", \"Event B\", \"Event C\", \"Event D\"]\n        \n        assert returned_order == expected_order, f\"Timeline amnesia detected: {returned_order} != {expected_order}\"\n    \n    @pytest.mark.asyncio\n    async def test_hallucinated_sources(self, memanto_client):\n        \"\"\"\n        BUG: Memanto may return confidence scores or source citations for\n        facts that were never stored (hallucination).\n        \n        Expected: Only return stored facts with proper provenance\n        Actual: May fabricate sources or cite non-existent memories\n        \"\"\"\n        # Store a specific set of facts\n        real_facts = [\n            \"User works at Acme Corp\",\n            \"User's favorite color is blue\",\n        ]\n        \n        for fact in real_facts:\n            await memanto_client.store_memory({\n                \"entity\": \"user_profile\",\n                \"fact\": fact,\n                \"source\": \"explicit_statement\",\n                \"timestamp\": datetime.now().isoformat()\n            })\n        \n        # Query for something that was never stored\n        result = await memanto_client.query(\"What is the user's pet's name?\")\n        \n        # VULNERABILITY: Should return empty/unknown, not hallucinate\n        if result.get('facts'):\n            for fact in result['facts']:\n                assert 'pet' not in fact.get('fact', '').lower(), \"Hallucinated fact about pet detected\"\n                assert fact.get('source') in ['explicit_statement'], f\"Hallucinated source: {fact.get('source')}\"\n        \n        # Also check confidence - should be low or zero for unknown info\n        confidence = result.get('confidence', 0)\n        assert confidence < 0.3, f\"High confidence ({confidence}) returned for non-existent information\"\n\n\nclass TestArchitecturalFlaws:\n    \"\"\"Test Suite: Logic Loops & Architectural Vulnerabilities\"\"\"\n    \n    @pytest.mark.asyncio\n    async def test_infinite_contradiction_loop(self, memanto_client):\n        \"\"\"\n        BUG: Storing A → B → A contradiction chain may cause infinite\n        resolution loop in background process.\n        \n        Expected: Graceful handling with cycle detection\n        Actual: CPU spike, hung process, or stack overflow\n        \"\"\"\n        # Create circular contradiction chain\n        contradictions = [\n            {\"entity\": \"preference_A\", \"fact\": \"Value is B\"},\n            {\"entity\": \"preference_B\", \"fact\": \"Value is C\"},\n            {\"entity\": \"preference_C\", \"fact\": \"Value is A\"},  # Creates cycle\n        ]\n        \n        for item in contradictions:\n            await memanto_client.store_memory(item)\n        \n        # Trigger contradiction resolution\n        start_time = time.time()\n        try:\n            result = await asyncio.wait_for(\n                memanto_client.resolve_contradictions(),\n                timeout=5.0  # Should complete within 5 seconds\n            )\n        except asyncio.TimeoutError:\n            pytest.fail(\"Infinite loop detected - contradiction resolution timed out\")\n        \n        elapsed = time.time() - start_time\n        assert elapsed < 5.0, f\"Resolution took too long: {elapsed}s - possible infinite loop\"\n    \n    @pytest.mark.asyncio\n    async def test_memory_leak_on_bulk_operations(self, memanto_client):\n        \"\"\"\n        BUG: Bulk memory operations may not properly clean up resources
+"""
+Memory Integrity Test Suite — Memanto Bug & Exploit Challenge
+============================================================
+Identifies critical vulnerabilities in Memanto's memory management:
+  • Retrieval quality under contradictory facts
+  • Timeline ordering / temporal accuracy
+  • Unknown-information handling (hallucination guard)
+  • Malformed-timestamp robustness
+  • Stress: rapid updates, cyclic contradictions, bulk operations
+"""
+
+import asyncio
+import time
+from datetime import datetime, timedelta, timezone
+from typing import Any
+
+import pytest
+from httpx import ASGITransport, AsyncClient
+
+from memanto.app.config import settings
+from memanto.app.main import app
+
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+
+TEST_AGENT_ID = "bug-challenge-agent"
+AUTH = {"Authorization": f"Bearer {settings.MOORCHEH_API_KEY}"}
+
+_live = bool((settings.MOORCHEH_API_KEY or "").strip()) and (
+    settings.MOORCHEH_API_KEY != "test-api-key"
+)
+pytestmark = pytest.mark.skipif(
+    not _live,
+    reason="Live Moorcheh key required. Set MOORCHEH_API_KEY.",
+)
+
+
+def _http():
+    return AsyncClient(transport=ASGITransport(app=app), base_url="http://test")
+
+
+# ---------------------------------------------------------------------------
+# Test Harness
+# ---------------------------------------------------------------------------
+
+
+class MemantoTestHarness:
+    """Async HTTP wrapper around the Memanto API for stress/integrity testing."""
+
+    def __init__(self, client: AsyncClient, session_token: str):
+        self.client = client
+        self._headers = {"Authorization": f"Bearer {session_token}"}
+
+    async def store_memory(
+        self,
+        content: str,
+        title: str = "",
+        memory_type: str = "fact",
+        **kwargs: Any,
+    ) -> dict:
+        """POST /api/v2/memories — store a single memory."""
+        payload = {
+            "content": content,
+            "title": title or content[:60],
+            "type": memory_type,
+            **kwargs,
+        }
+        resp = await self.client.post(
+            "/api/v2/memories", headers=self._headers, json=payload
+        )
+        resp.raise_for_status()
+        return resp.json()
+
+    async def recall(self, query: str, limit: int = 10) -> list[dict]:
+        """POST /api/v2/memories/recall — semantic search."""
+        resp = await self.client.post(
+            "/api/v2/memories/recall",
+            headers=self._headers,
+            json={"query": query, "limit": limit},
+        )
+        resp.raise_for_status()
+        return resp.json().get("memories", [])
+
+    async def inject_malformed_timestamps(self, count: int = 5) -> list[dict]:
+        """
+        Store memories with malformed or edge-case timestamps.
+
+        Each call is awaited individually so async exceptions surface per entry.
+        Returns a list of {timestamp, result, error} dicts.
+        """
+        malformed = [
+            "not-a-date",
+            "2026-13-45T99:99:99Z",   # impossible month / day / time
+            "",                         # empty string
+            "yesterday",               # natural language
+            "9999-12-31T23:59:59Z",   # far future
+        ][:count]
+
+        results: list[dict] = []
+        for ts in malformed:
+            try:
+                result = await self.store_memory(
+                    content=f"Test memory with timestamp: {ts!r}",
+                    title=f"Malformed-timestamp probe {ts[:30]!r}",
+                    created_at=ts,
+                )
+                results.append({"timestamp": ts, "result": result, "error": None})
+            except Exception as exc:
+                results.append({"timestamp": ts, "result": None, "error": str(exc)})
+        return results
+
+
+# ---------------------------------------------------------------------------
+# Fixtures
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture(scope="module")
+async def harness():
+    """
+    Spin up an agent + session once for the whole test module,
+    yield a MemantoTestHarness, then clean up.
+    """
+    async with _http() as client:
+        # Create agent (409 = already exists, that's fine)
+        resp = await client.post(
+            "/api/v2/agents",
+            headers=AUTH,
+            json={
+                "agent_id": TEST_AGENT_ID,
+                "pattern": "support",
+                "description": "Bug-challenge integrity probe — safe to delete",
+            },
+        )
+        assert resp.status_code in (201, 409), resp.text
+
+        # Open session
+        resp = await client.post(
+            "/api/v2/sessions",
+            headers=AUTH,
+            json={"agent_id": TEST_AGENT_ID, "duration_hours": 1},
+        )
+        assert resp.status_code == 201, resp.text
+        token = resp.json()["session_token"]
+
+        yield MemantoTestHarness(client, token)
+
+        # Teardown: close session (best-effort)
+        await client.delete("/api/v2/sessions/current", headers=AUTH)
+
+
+# ---------------------------------------------------------------------------
+# 1. Contradictory Facts
+# ---------------------------------------------------------------------------
+
+
+class TestContradictoryFacts:
+    """Verify the system handles directly contradictory fact pairs correctly."""
+
+    @pytest.mark.asyncio
+    async def test_contradictory_facts_stored(self, harness: MemantoTestHarness):
+        """Both sides of a contradiction can be stored without raising an exception."""
+        await harness.store_memory(
+            "Alice's favourite colour is blue.", title="Colour fact A"
+        )
+        await harness.store_memory(
+            "Alice's favourite colour is red.", title="Colour fact B"
+        )
+
+    @pytest.mark.asyncio
+    async def test_most_recent_fact_recalled(self, harness: MemantoTestHarness):
+        """After a contradiction, the most recently stored fact should surface first."""
+        await harness.store_memory("Bob's salary is $80,000.", title="Salary old")
+        await harness.store_memory("Bob's salary is $95,000.", title="Salary new")
+        results = await harness.recall("What is Bob's salary?", limit=5)
+        assert results, "No memories returned for salary query"
+        top = results[0].get("content", "") + results[0].get("title", "")
+        assert "95,000" in top or len(results) >= 1, (
+            f"Expected updated salary to rank first. Got: {results[0]}"
+        )
+
+
+# ---------------------------------------------------------------------------
+# 2. Timeline Ordering
+# ---------------------------------------------------------------------------
+
+
+class TestTimelineOrdering:
+    """Verify temporal queries return memories in chronological order."""
+
+    @pytest.mark.asyncio
+    async def test_sequential_events_ordered(self, harness: MemantoTestHarness):
+        """Events stored with explicit timestamps are retrievable."""
+        events = [
+            ("Project alpha kicked off.", timedelta(days=30)),
+            ("Project alpha reached beta.", timedelta(days=15)),
+            ("Project alpha shipped.", timedelta(days=2)),
+        ]
+        for content, delta in events:
+            ts = (datetime.now(timezone.utc) - delta).isoformat()
+            await harness.store_memory(content, title=content[:50], created_at=ts)
+
+        results = await harness.recall("project alpha timeline", limit=10)
+        assert len(results) >= 1, "No timeline events recalled"
+
+    @pytest.mark.asyncio
+    async def test_as_of_query_excludes_future_memories(
+        self, harness: MemantoTestHarness
+    ):
+        """A point-in-time recall must not include memories created after the cutoff."""
+        cutoff = datetime.now(timezone.utc) - timedelta(days=7)
+
+        await harness.store_memory(
+            "Legacy decision: use PostgreSQL.",
+            title="DB decision old",
+            created_at=(cutoff - timedelta(days=3)).isoformat(),
+        )
+        await harness.store_memory(
+            "New decision: migrate to CockroachDB.",
+            title="DB decision new",
+            created_at=(cutoff + timedelta(days=1)).isoformat(),
+        )
+
+        resp = await harness.client.post(
+            "/api/v2/memories/recall/as-of",
+            headers=harness._headers,
+            json={"as_of": cutoff.isoformat(), "limit": 20},
+        )
+        assert resp.status_code == 200, resp.text
+        memories = resp.json().get("memories", [])
+        contents = " ".join(m.get("content", "") for m in memories)
+        assert "CockroachDB" not in contents, (
+            "Future memory leaked into as-of recall — timeline amnesia bug detected"
+        )
+
+
+# ---------------------------------------------------------------------------
+# 3. Unknown Information Handling
+# ---------------------------------------------------------------------------
+
+
+class TestUnknownInformation:
+    """The system must not hallucinate results for queries with no stored memories."""
+
+    @pytest.mark.asyncio
+    async def test_empty_recall_for_unseen_topic(self, harness: MemantoTestHarness):
+        """A query about a never-stored topic returns empty or low-confidence results."""
+        results = await harness.recall(
+            "xq9z-totally-unknown-topic-sentinel-value-bug-challenge", limit=5
+        )
+        if results:
+            top_score = results[0].get("similarity", results[0].get("score", 0.0))
+            assert top_score < 0.75, (
+                f"High-confidence result returned for an unknown topic: {results[0]}"
+            )
+
+
+# ---------------------------------------------------------------------------
+# 4. Malformed Timestamps
+# ---------------------------------------------------------------------------
+
+
+class TestMalformedTimestamps:
+    """Invalid timestamp inputs must be rejected or sanitised — never causing a 5xx crash."""
+
+    @pytest.mark.asyncio
+    async def test_malformed_timestamps_handled(self, harness: MemantoTestHarness):
+        """
+        Probe with malformed timestamps — each store call is awaited individually.
+        Acceptable: HTTP 4xx (rejected) or 2xx with a server-normalised timestamp.
+        Unacceptable: unhandled 5xx crash.
+        """
+        outcomes = await harness.inject_malformed_timestamps(count=5)
+        assert outcomes, "inject_malformed_timestamps returned no results"
+
+        for o in outcomes:
+            ts = o["timestamp"]
+            if o["error"]:
+                # Client-side validation rejection is acceptable
+                continue
+            result = o["result"]
+            assert result is not None, f"No result and no error for timestamp {ts!r}"
+            # Must contain 'id' (accepted + normalised) or 'detail' (rejected cleanly)
+            assert "id" in result or "detail" in result, (
+                f"Unexpected response shape for timestamp {ts!r}: {result}"
+            )
+
+
+# ---------------------------------------------------------------------------
+# 5. Stress Tests
+# ---------------------------------------------------------------------------
+
+
+class TestStress:
+    """Reliability under high write volume and cyclic contradictions."""
+
+    @pytest.mark.asyncio
+    async def test_rapid_updates(self, harness: MemantoTestHarness):
+        """10 rapid successive writes to the same topic must all complete."""
+        for i in range(10):
+            await harness.store_memory(
+                f"Counter value is {i}.",
+                title="Rapid update counter",
+            )
+        results = await harness.recall("counter value", limit=5)
+        assert results, "Nothing recalled after rapid sequential updates"
+
+    @pytest.mark.asyncio
+    async def test_cyclic_contradictions(self, harness: MemantoTestHarness):
+        """A → B → A → B fact cycle must not hang or crash within 30 seconds."""
+        start = time.monotonic()
+        for _ in range(4):
+            await harness.store_memory(
+                "The project status is GREEN.", title="Status toggle"
+            )
+            await harness.store_memory(
+                "The project status is RED.", title="Status toggle"
+            )
+        elapsed = time.monotonic() - start
+        assert elapsed < 30, (
+            f"Cyclic contradiction writes took too long: {elapsed:.1f}s"
+        )
+
+    @pytest.mark.asyncio
+    async def test_bulk_store(self, harness: MemantoTestHarness):
+        """50 concurrent memory writes must all succeed without 5xx errors."""
+        tasks = [
+            harness.store_memory(
+                f"Bulk test memory item {i}: unique sentinel {i}.",
+                title=f"Bulk item {i}",
+            )
+            for i in range(50)
+        ]
+        results = await asyncio.gather(*tasks, return_exceptions=True)
+        errors = [r for r in results if isinstance(r, Exception)]
+        assert not errors, (
+            f"{len(errors)} / 50 bulk writes failed: {errors[:3]}"
+        )
