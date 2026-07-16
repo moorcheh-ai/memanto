@@ -9,6 +9,7 @@ from memanto.cli.config.manager import ConfigManager
 
 
 def test_onprem_state_survives_interrupted_replace(tmp_path):
+    """An interrupted state replacement must preserve the previous file."""
     manager = ConfigManager(tmp_path)
     manager.set_onprem_state(
         embedding_provider="openai",
@@ -35,6 +36,7 @@ def test_onprem_state_survives_interrupted_replace(tmp_path):
 
 
 def test_yaml_config_survives_interrupted_replace(tmp_path):
+    """An interrupted YAML replacement must preserve the previous config."""
     manager = ConfigManager(tmp_path)
     manager.set("backend", "cloud")
     original = manager.config_file.read_text(encoding="utf-8")
@@ -54,6 +56,7 @@ def test_yaml_config_survives_interrupted_replace(tmp_path):
 
 
 def test_cleanup_error_does_not_mask_replace_failure(tmp_path):
+    """Cleanup failures must not replace the original persistence error."""
     manager = ConfigManager(tmp_path)
     state_path = manager._onprem_state_path()
 
@@ -77,6 +80,7 @@ def test_cleanup_error_does_not_mask_replace_failure(tmp_path):
 
 @pytest.mark.skipif(os.name == "nt", reason="POSIX permission bits are not portable")
 def test_atomic_config_files_are_owner_only(tmp_path):
+    """Atomically persisted configuration files must be owner-readable only."""
     manager = ConfigManager(tmp_path)
 
     manager.set("backend", "cloud")
