@@ -30,6 +30,36 @@ _REMOVED_TRUST_FIELDS = frozenset(
     }
 )
 
+# Fields owned by the current MemoryRecord/document schema. They must not be
+# copied from the old document after an update because an omitted optional field
+# (for example, tags=[] or source_ref=None) represents an intentional clear.
+_MEMORY_SCHEMA_FIELDS = frozenset(
+    {
+        "id",
+        "text",
+        "memory_type",
+        "type",
+        "title",
+        "content",
+        "agent_id",
+        "actor_id",
+        "source",
+        "source_ref",
+        "confidence",
+        "status",
+        "tags",
+        "provenance",
+        "created_at",
+        "updated_at",
+        "expires_at",
+        "ttl_seconds",
+        "score",
+        "metadata",
+        "scope_type",
+        "scope_id",
+    }
+)
+
 
 class MemoryWriteService:
     """Persist memory records to Moorcheh-backed namespaces."""
@@ -405,29 +435,47 @@ class MemoryWriteService:
                 extra_original_document = cast(dict[str, Any], original_document)
                 for key in existing_meta:
                     if (
-                        key not in document
-                        and key != "text"
+                        key not in _MEMORY_SCHEMA_FIELDS
                         and key not in _REMOVED_TRUST_FIELDS
                     ):
                         extra_document[key] = existing_meta[key]
                     if (
-                        key not in original_document
-                        and key != "text"
+                        key not in _MEMORY_SCHEMA_FIELDS
                         and key not in _REMOVED_TRUST_FIELDS
                     ):
                         extra_original_document[key] = existing_meta[key]
 
-            upload_result = self.client.documents.upload(
-                namespace_name=namespace, documents=[document]
-            )
-            upload_status = str(upload_result.get("status", "unknown")).lower()
-            if upload_status not in SUCCESSFUL_UPLOAD_STATUSES:
-                restore_result = self.client.documents.upload(
-                    namespace_name=namespace, documents=[original_document]
+            try:
+                upload_result = self.client.documents.upload(
+                    namespace_name=namespace, documents=[document]
                 )
-                restore_status = str(
-                    restore_result.get("status", "unknown")
-                ).lower()
+                upload_status = str(upload_result.get("status", "unknown")).lower()
+                if upload_status in SUCCESSFUL_UPLOAD_STATUSES:
+                    upload_error = None
+                else:
+                    upload_error = (
+                        "backend returned status "
+                        f"{upload_result.get('status', 'unknown')!r}"
+                    )
+            except Exception as exc:
+                upload_result = None
+                upload_error = f"upload raised {type(exc).__name__}: {exc}"
+
+            if upload_error is not None:
+                try:
+                    restore_result = self.client.documents.upload(
+                        namespace_name=namespace, documents=[original_document]
+                    )
+                    restore_status = str(
+                        restore_result.get("status", "unknown")
+                    ).lower()
+                except Exception as restore_exc:
+                    raise MemoryError(
+                        f"Failed to upload updated memory {memory_id} and failed "
+                        f"to restore the original: {type(restore_exc).__name__}: "
+                        f"{restore_exc}"
+                    )
+
                 if restore_status not in SUCCESSFUL_UPLOAD_STATUSES:
                     raise MemoryError(
                         f"Failed to upload updated memory {memory_id} and failed "
@@ -435,8 +483,7 @@ class MemoryWriteService:
                         f"backend returned status {restore_result.get('status', 'unknown')!r}"
                     )
                 raise MemoryError(
-                    f"Failed to upload updated memory {memory_id}: "
-                    f"backend returned status {upload_result.get('status', 'unknown')!r}"
+                    f"Failed to upload updated memory {memory_id}: {upload_error}"
                 )
 
             return {
