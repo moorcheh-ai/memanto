@@ -235,6 +235,72 @@ def test_do_search_semantic(mock_sdk_client):
     )
 
 
+def test_do_search_rate_limit_does_not_reuse_different_query(mock_sdk_client):
+    store = MemantoStore(api_key="test_key")
+    client_instance = MagicMock()
+    mock_sdk_client.return_value = client_instance
+
+    client_instance.recall.side_effect = [
+        {
+            "memories": [
+                {
+                    "id": "mem-private",
+                    "tags": ["lg:key:salary", "private"],
+                    "type": "fact",
+                    "content": "Salary is 100000",
+                }
+            ]
+        },
+        RuntimeError("429 Limit Exceeded"),
+    ]
+
+    private_items = store._do_search(
+        SearchOp(
+            namespace_prefix=("my_ns",),
+            query="salary",
+            filter={"tags": ["private"]},
+        )
+    )
+    store._search_cache.clear()
+    public_items = store._do_search(
+        SearchOp(
+            namespace_prefix=("my_ns",),
+            query="weather",
+            filter={"tags": ["public"]},
+        )
+    )
+
+    assert private_items[0].value["content"] == "Salary is 100000"
+    assert public_items == []
+
+
+def test_do_search_rate_limit_reuses_identical_last_good(mock_sdk_client):
+    store = MemantoStore(api_key="test_key")
+    client_instance = MagicMock()
+    mock_sdk_client.return_value = client_instance
+
+    client_instance.recall.side_effect = [
+        {
+            "memories": [
+                {
+                    "id": "mem-456",
+                    "tags": ["lg:key:key2"],
+                    "type": "observation",
+                    "content": "observed",
+                }
+            ]
+        },
+        RuntimeError("429 Limit Exceeded"),
+    ]
+    op = SearchOp(namespace_prefix=("my_ns",), query="test query")
+
+    first_items = store._do_search(op)
+    store._search_cache.clear()
+    fallback_items = store._do_search(op)
+
+    assert fallback_items == first_items
+
+
 def test_batch_execution(mock_sdk_client):
     store = MemantoStore(api_key="test_key")
     client_instance = MagicMock()

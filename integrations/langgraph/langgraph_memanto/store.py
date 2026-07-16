@@ -106,7 +106,7 @@ class MemantoStore(BaseStore):
         # (namespace, query, limit, type, min_sim) -> (timestamp, list[SearchItem])
         self._search_cache: dict[tuple, tuple[float, list[SearchItem]]] = {}
         # Survives 429s without flashing the UI panel to zero.
-        self._last_good: dict[tuple[str, ...], list[SearchItem]] = {}
+        self._last_good: dict[tuple, list[SearchItem]] = {}
 
     def _ensure_client(self, namespace: tuple[str, ...]) -> tuple[SdkClient, str]:
         ns_str = "_".join(namespace) or "default"
@@ -355,16 +355,16 @@ class MemantoStore(BaseStore):
         out = out[: op.limit]
 
         with self._lock:
-            if not out and rate_limited and op.namespace_prefix in self._last_good:
+            if not out and rate_limited and cache_key in self._last_good:
                 logger.info(
                     "MemantoStore: rate-limited, returning last-good for %r",
                     op.namespace_prefix,
                 )
-                return self._last_good[op.namespace_prefix]
+                return self._last_good[cache_key]
 
             if out and not rate_limited:
                 self._search_cache[cache_key] = (time.time(), out)
-                self._last_good[op.namespace_prefix] = out
+                self._last_good[cache_key] = out
 
         return out
 
