@@ -499,14 +499,23 @@ class MemoryReadService:
 
         filtered = results
 
+        def _parse_created_at(result: dict[str, Any]):
+            created_at = result.get("created_at")
+            if not created_at:
+                return None
+            try:
+                return parse_iso_timestamp(str(created_at))
+            except (ValueError, AttributeError, TypeError):
+                return None
+
         if created_after:
             try:
                 after_dt = parse_iso_timestamp(created_after)
                 filtered = [
                     r
                     for r in filtered
-                    if r.get("created_at")
-                    and parse_iso_timestamp(r["created_at"]) >= after_dt
+                    if (created_at := _parse_created_at(r)) is not None
+                    and created_at >= after_dt
                 ]
             except (ValueError, AttributeError):
                 pass  # Skip invalid timestamps
@@ -517,8 +526,8 @@ class MemoryReadService:
                 filtered = [
                     r
                     for r in filtered
-                    if r.get("created_at")
-                    and parse_iso_timestamp(r["created_at"]) <= before_dt
+                    if (created_at := _parse_created_at(r)) is not None
+                    and created_at <= before_dt
                 ]
             except (ValueError, AttributeError):
                 pass  # Skip invalid timestamps
