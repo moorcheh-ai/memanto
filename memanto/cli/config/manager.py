@@ -53,7 +53,7 @@ def _atomic_write_text(path: Path, content: str) -> None:
         if tmp_path is not None:
             try:
                 tmp_path.unlink()
-            except FileNotFoundError:
+            except OSError:
                 pass
 
 

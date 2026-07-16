@@ -53,6 +53,28 @@ def test_yaml_config_survives_interrupted_replace(tmp_path):
     assert list(tmp_path.glob(f".{manager.config_file.name}.*.tmp")) == []
 
 
+def test_cleanup_error_does_not_mask_replace_failure(tmp_path):
+    manager = ConfigManager(tmp_path)
+    state_path = manager._onprem_state_path()
+
+    with (
+        patch(
+            "memanto.cli.config.manager.os.replace",
+            side_effect=OSError("replace failed"),
+        ),
+        patch(
+            "memanto.cli.config.manager.Path.unlink",
+            side_effect=PermissionError("temporary file is locked"),
+        ),
+        pytest.raises(OSError, match="replace failed"),
+    ):
+        manager.set_onprem_state(llm_model="qwen3:8b")
+
+    leftovers = list(state_path.parent.glob(f".{state_path.name}.*.tmp"))
+    assert len(leftovers) == 1
+    leftovers[0].unlink()
+
+
 @pytest.mark.skipif(os.name == "nt", reason="POSIX permission bits are not portable")
 def test_atomic_config_files_are_owner_only(tmp_path):
     manager = ConfigManager(tmp_path)
