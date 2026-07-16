@@ -404,10 +404,94 @@ def map_supermemory(export: dict[str, Any]) -> list[dict[str, Any]]:
     return rows
 
 
+# --------------------------------------------------------------------------
+# OKF (Open Knowledge Format)
+# --------------------------------------------------------------------------
+
+
+def map_okf(export: dict[str, Any]) -> list[dict[str, Any]]:
+    """Map OKF bundle entries (from ``okf_loader.load_okf_bundle``) to Memanto
+    memory payloads.
+
+    OKF's ``type`` is free-form domain vocabulary, so it can't map onto
+    Memanto's fixed types. We use it only when it happens to equal a Memanto
+    type (or when a Memanto ``x_memanto.type`` round-trip value is present);
+    otherwise we leave ``type=None`` for auto-classification and record the
+    original OKF type in the footer. Everything with no schema slot (OKF type,
+    resource, links, unknown frontmatter keys) goes into ``[Supporting data]``.
+    """
+    rows: list[dict[str, Any]] = []
+    migrated_at = _now_utc()
+
+    for entry in export.get("memories", []) or []:
+        body = (entry.get("body") or "").strip()
+        description = (entry.get("description") or "").strip()
+        title = (entry.get("title") or "").strip()
+
+        if description and description not in body:
+            content = f"{description}\n\n{body}".strip()
+        else:
+            content = body
+        if not content:
+            content = title
+        if not content:
+            continue
+
+        x_memanto = entry.get("x_memanto") or {}
+        okf_type = entry.get("type")
+        memory_type = _coerce_type(x_memanto.get("type")) or _coerce_type(okf_type)
+
+        tags = [str(t) for t in (entry.get("tags") or []) if t]
+        resource = entry.get("resource")
+
+        raw_conf = x_memanto.get("confidence")
+        try:
+            confidence = float(raw_conf) if raw_conf is not None else 0.8
+        except (TypeError, ValueError):
+            confidence = 0.8
+        confidence = min(1.0, max(0.0, confidence))
+
+        source = x_memanto.get("source") or "okf"
+        created_at = _parse_dt(entry.get("timestamp"))
+
+        footer_items: list[tuple[str, Any]] = [
+            ("OKF source", entry.get("source_path")),
+            # Only surface the OKF type when we couldn't map it to a slot.
+            ("OKF type", okf_type if not memory_type else None),
+            ("OKF resource", resource),
+            ("Links", entry.get("links")),
+        ]
+        for key, value in (entry.get("extra") or {}).items():
+            footer_items.append((f"OKF {key}", value))
+        footer = _format_supporting_data(footer_items)
+
+        if footer:
+            content = _attach_footer(content, footer)
+        elif len(content) > _MAX_CONTENT_CHARS:
+            content = content[: _MAX_CONTENT_CHARS - 4] + "\n..."
+
+        rows.append(
+            {
+                "title": title or _title_from(content),
+                "content": content,
+                "type": memory_type,
+                "tags": tags,
+                "confidence": confidence,
+                "source": source,
+                "source_ref": str(resource) if resource else None,
+                "provenance": "imported",
+                "created_at": created_at,
+                "updated_at": migrated_at,
+            }
+        )
+    return rows
+
+
 MAPPERS: dict[str, Callable[[dict[str, Any]], list[dict[str, Any]]]] = {
     "mem0": map_mem0,
     "letta": map_letta,
     "supermemory": map_supermemory,
+    "okf": map_okf,
 }
 
 

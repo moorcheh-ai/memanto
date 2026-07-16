@@ -1,3 +1,3 @@
 """
-Memanto - Your agents focus. Memanto remembers.
+Memanto - Memory that AI Agents Love!
 """

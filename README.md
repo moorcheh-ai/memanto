@@ -5,11 +5,11 @@
 </p>
 
 <div align="center">
-  <h1>Your agents focus. Memanto remembers.</h1>
+  <h1>Memory that AI Agents Love!</h1>
 </div>
 
 <h2 align="center">
-  <em>A companion memory agent with its own intelligence that keeps your agents focused on their tasks.</em>
+  <em>A companion memory agent that lets your agents focus and improve while you keep ownership of everything they learn.</em>
 </h2>
 
 <p align="center">
@@ -17,7 +17,7 @@
 </p>
 
 <p align="center">
-  <a href="https://discord.gg/CyxRFQSQ3p">
+  <a href="https://memanto.ai/discord">
     <img src="https://img.shields.io/badge/Join-Discord-5865F2?style=for-the-badge&logo=discord&logoColor=white" alt="Join Discord">
   </a>
   <a href="https://www.youtube.com/watch?v=vEtOaoweIG4">
@@ -40,13 +40,13 @@
 <p align="center"><a href="https://trendshift.io/repositories/27378" target="_blank"><img src="https://trendshift.io/api/badge/repositories/27378" alt="moorcheh-ai%2Fmemanto | Trendshift" style="width: 250px; height: 55px;" width="250" height="55"/></a></p>
 
 <p align="center">
-  <a href="https://www.star-history.com/?repos=moorcheh-ai%2Fmemanto&type=date&legend=top-left">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=moorcheh-ai/memanto&type=date&theme=dark&legend=top-left" />
-    <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=moorcheh-ai/memanto&type=date&legend=top-left" />
-    <img alt="Star History Chart" src="https://api.star-history.com/chart?repos=moorcheh-ai/memanto&type=date&legend=top-left" />
-  </picture>
-  </a>
+    <a href="https://www.star-history.com/?repos=moorcheh-ai%2Fmemanto&type=date&legend=top-left">
+     <picture>
+       <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=moorcheh-ai/memanto&type=date&theme=dark&legend=top-left&sealed_token=F0cHJrwopUW4YPi2zfB_I0fyL6fMN9vthMIbna4RgBRF8_XghWY1qhlffjMsgfqvqxVNnGiVnHGC7PKwgrUjBZ_rV-rBfekLZGYgRPBJHkMFy2JVJzXa3A" />
+       <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=moorcheh-ai/memanto&type=date&legend=top-left&sealed_token=F0cHJrwopUW4YPi2zfB_I0fyL6fMN9vthMIbna4RgBRF8_XghWY1qhlffjMsgfqvqxVNnGiVnHGC7PKwgrUjBZ_rV-rBfekLZGYgRPBJHkMFy2JVJzXa3A" />
+       <img alt="Star History Chart" src="https://api.star-history.com/chart?repos=moorcheh-ai/memanto&type=date&legend=top-left&sealed_token=F0cHJrwopUW4YPi2zfB_I0fyL6fMN9vthMIbna4RgBRF8_XghWY1qhlffjMsgfqvqxVNnGiVnHGC7PKwgrUjBZ_rV-rBfekLZGYgRPBJHkMFy2JVJzXa3A" />
+     </picture>
+    </a>
 </p>
 
 
@@ -100,7 +100,7 @@ Switch between local and cloud at any time with `memanto config backend`.
 - **Fewer tokens burned on repeated context.** Memories are retrieved only when relevant, so context windows go further.
 - **Memories searchable the instant they're stored.** Zero indexing wait, no LLM extraction tax at write time.
 - **One `pip install`.** No vector DB to provision, no schema, no rerankers, no backend service to babysit.
-- **Zero idle cost.** Cloud scales to zero when not in use. On-prem runs only when you use it.
+- **Flexible deployment.** Choose between running the backend fully local, using it as a cloud SaaS, hosting in your own VPC, or switching between any of these options anytime you want.
 
 ---
 
@@ -170,7 +170,15 @@ This means Memanto doesn't need a separate vector DB, embedding pipeline, or rer
 
 <p align="center">
   <a href="https://www.youtube.com/watch?v=vEtOaoweIG4">
-    <img src="https://img.youtube.com/vi/vEtOaoweIG4/0.jpg" alt="Watch the video">
+    <img src="https://github.com/moorcheh-ai/memanto/raw/main/assets/video-demo.png" alt="Setup video">
+  </a>
+</p>
+
+## Local Dashboard For Best UX
+
+<p align="center">
+  <a href="https://www.youtube.com/watch?v=5n976CmzohE">
+    <img src="https://github.com/moorcheh-ai/memanto/raw/main/assets/video-uidashboard.png" alt="Local dashboard demo">
   </a>
 </p>
 
@@ -184,13 +192,14 @@ This means Memanto doesn't need a separate vector DB, embedding pipeline, or rer
 | Local REST API + Web UI | `memanto serve`, `memanto ui` | Run the MEMANTO REST API locally and open an interactive browser UI. (Optional for CLI usage). |
 | Agent lifecycle management | `memanto agent ...` | Create/list/delete agents, activate/deactivate sessions, and run `agent bootstrap` for an intelligence snapshot. |
 | Memory capture at scale | `memanto remember` | Store single memories, batch-ingest from JSON, or `--from-conversation` to automatically extract facts from chat logs. |
-| Single-memory deletion | `memanto forget` | Delete one bad or outdated memory from the active agent after confirmation, or without the prompt with `--force`. |
+| Single-memory editing & deletion | `memanto edit`, `memanto forget` | Update fields on an existing memory, or permanently delete a bad/outdated memory. |
 | File upload to memory | `memanto upload` | Upload documents (.pdf, .docx, .xlsx, .json, .txt, .csv, .md) directly into an agent's memory namespace — content becomes instantly searchable via `recall`. |
 | Advanced retrieval modes | `memanto recall` | Run standard search plus temporal queries (`--as-of`, `--changed-since`) with filters. |
 | Grounded QA over memory | `memanto answer` | Generate RAG answers using retrieved memory context. |
 | Daily intelligence workflows | `memanto daily-summary`, `memanto conflicts` | Generate summaries, detect contradictions, and resolve conflicts interactively. |
 | Session and automation controls | `memanto session ...`, `memanto schedule ...` | Inspect sessions and enable scheduled daily summary runs. |
-| Memory file pipelines | `memanto memory export`, `memanto memory sync` | Export structured memory markdown and sync `MEMORY.md` into projects. |
+| Memory file pipelines | `memanto memory export`, `memanto memory sync` | Export structured memory markdown and sync `MEMORY.md` into projects. Add `--okf` to export/sync a portable [Open Knowledge Format](https://docs.memanto.ai/integrations/okf) bundle instead. |
+| Import & migration | `memanto migrate` | Import memories from Mem0, Letta, or Supermemory - or an [OKF](https://docs.memanto.ai/integrations/okf) bundle into an agent. |
 | Configuration inspection | `memanto config show` | Inspect API key status, active agent/session, server settings, and schedule time. |
 | Multi-agent ecosystem integration | `memanto connect ...` | Connect/remove/list integrations for Claude Code, Codex, Cursor, Windsurf, Antigravity, Gemini CLI, Cline, Continue, OpenCode, Goose, Roo, GitHub Copilot, and Augment (local or global). |
 
@@ -246,7 +255,7 @@ Full endpoint reference is available at [docs.memanto.ai/api](https://docs.meman
 
 Have questions or feedback? We're here to help:
 - **Docs**: [https://docs.memanto.ai](https://docs.memanto.ai)
-- **Discord**: [Join our Discord server](https://discord.gg/CyxRFQSQ3p)
+- **Discord**: [Join our Discord server](https://memanto.ai/discord)
 - **Email**: support@moorcheh.ai
 - **X / Twitter**: [@moorcheh_ai](https://x.com/moorcheh_ai)
 

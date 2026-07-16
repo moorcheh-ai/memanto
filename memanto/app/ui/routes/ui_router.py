@@ -4,18 +4,30 @@ MEMANTO Web UI Router
 Serves the Web UI static files and provides UI-specific API endpoints.
 """
 
+import asyncio
+import ipaddress
 import os
+import re
 import signal
 import time
 from pathlib import Path
 from typing import Any
 
-from fastapi import APIRouter, BackgroundTasks, HTTPException
+from fastapi import (
+    APIRouter,
+    BackgroundTasks,
+    Depends,
+    HTTPException,
+    Request,
+    Response,
+)
 from fastapi.responses import FileResponse, HTMLResponse
 from fastapi.staticfiles import StaticFiles
 
 from memanto.app.clients.backend import Backend
 from memanto.app.config import settings
+from memanto.app.routes.auth_deps import clear_session_cookie, set_session_cookie
+from memanto.app.utils.validation import validate_safe_id
 from memanto.cli.client.direct_client import DirectClient
 from memanto.cli.config.manager import ConfigManager
 from memanto.cli.connect.agent_registry import AGENT_REGISTRY, list_agents
@@ -28,6 +40,56 @@ _config_manager = ConfigManager()
 
 # Path to the static directory
 STATIC_DIR = Path(__file__).parent.parent / "static"
+_SAFE_DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
+
+
+def _validate_agent_id(agent_id: str) -> None:
+    """Reject agent identifiers that cannot be safely embedded in file paths."""
+    try:
+        validate_safe_id(agent_id, "agent_id")
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid agent identifier")
+
+
+def _validate_summary_key(agent_id: str, date: str) -> None:
+    """Validate the agent/date pair before building summary or conflict paths."""
+    if not _SAFE_DATE_RE.fullmatch(date):
+        raise HTTPException(status_code=400, detail="Invalid summary identifier")
+    _validate_agent_id(agent_id)
+
+
+def _is_loopback(host: str | None) -> bool:
+    """Return True if *host* is any loopback address (IPv4, IPv6, or IPv4-mapped IPv6)."""
+    if host is None:
+        return False
+    try:
+        addr = ipaddress.ip_address(host)
+        if addr.is_loopback:
+            return True
+        # ::ffff:127.0.0.1 – IPv4-mapped IPv6 – is_loopback returns False
+        ipv4_mapped = getattr(addr, "ipv4_mapped", None)
+        return ipv4_mapped is not None and ipv4_mapped.is_loopback
+    except ValueError:
+        return False
+
+
+async def _require_local(request: Request) -> None:
+    """Reject requests that do not originate from the loopback interface.
+
+    UI management endpoints (shutdown, browse, config update, API key update)
+    are designed for local desktop use only.  Allowing them from arbitrary
+    network addresses would let any reachable host kill the server, enumerate
+    the filesystem, or replace API credentials without authentication.
+    """
+    client_host = request.client.host if request.client else None
+    if not _is_loopback(client_host):
+        raise HTTPException(
+            status_code=403,
+            detail=(
+                "UI management endpoints are only accessible from localhost. "
+                f"Request origin: {client_host}"
+            ),
+        )
 
 
 def _build_ui_direct_client() -> DirectClient | None:
@@ -56,7 +118,9 @@ def _build_ui_direct_client() -> DirectClient | None:
 
 
 @router.get("/api/ui/config")
-async def get_ui_config():
+async def get_ui_config(
+    request: Request, response: Response, _: None = Depends(_require_local)
+):
     """
     Get current MEMANTO configuration for the Web UI.
 
@@ -73,13 +137,16 @@ async def get_ui_config():
     active_agent_id, active_session_token = _config_manager.get_active_session()
     backend = _config_manager.get_backend().value
     onprem_cfg = _config_manager.get_onprem_config()
+    if active_session_token:
+        set_session_cookie(response, active_session_token, request)
+    else:
+        clear_session_cookie(response)
 
     return {
         "api_key_configured": bool(api_key),
         "api_key_preview": f"........{api_key[-6:]}"
         if api_key and len(api_key) > 6
         else ("***" if api_key else None),
-        "api_key": api_key,
         "backend": backend,
         "on_prem": {
             "url": onprem_cfg.get("url", "http://localhost:8080"),
@@ -100,14 +167,13 @@ async def get_ui_config():
         "recall": recall_cfg,
         "schedule_time": schedule_time,
         "active_agent_id": active_agent_id,
-        "session_token": active_session_token,
         "has_active_session": bool(active_session_token),
         "ui_mode": settings.MEMANTO_UI_MODE,
     }
 
 
 @router.patch("/api/ui/config")
-async def update_ui_config(updates: dict):
+async def update_ui_config(updates: dict, _: None = Depends(_require_local)):
     """
     Update non-sensitive MEMANTO configuration from the Web UI.
 
@@ -263,18 +329,60 @@ def _update_onprem_answer(ans: dict) -> None:
     _config_manager.set_onprem_state(llm_provider=provider, llm_model=model)
 
 
+_restart_lock: "asyncio.Lock | None" = None
+
+
+def _get_restart_lock() -> "asyncio.Lock":
+    """Return (creating lazily) the module-level restart serialisation lock."""
+    global _restart_lock
+
+    if _restart_lock is None:
+        _restart_lock = asyncio.Lock()
+    return _restart_lock
+
+
 @router.post("/api/ui/onprem/restart")
-async def restart_onprem_backend():
+async def restart_onprem_backend(_: None = Depends(_require_local)):
     """Bounce the on-prem moorcheh stack so it re-reads ``~/.moorcheh/config.json``.
 
     ``moorcheh down`` + ``moorcheh up`` (with embedding flags recovered from
-    state.json / config.json). Blocks for up to ~6 minutes total (5min for
+    state.json / config.json). Waits up to ~6 minutes total (5min for
     ``up``, 60s for ``/health``).
+
+    A module-level async lock prevents concurrent restart requests from
+    interleaving ``down``/``up`` calls against the same Moorcheh stack,
+    which can leave the backend in an inconsistent state.
     """
+    import asyncio as _asyncio
     import subprocess
 
     import httpx as _httpx
 
+    async with _get_restart_lock():
+        # Schedule the restart as an independent task so that if this handler
+        # is cancelled (e.g. request timeout), the lock is not released while
+        # moorcheh down/up is still running in the worker thread.
+        # asyncio.shield() lets the inner task survive the handler's cancellation;
+        # the except block then waits for the subprocess to finish before the
+        # lock context-manager releases, keeping the serialisation guarantee.
+        inner = _asyncio.ensure_future(
+            _do_restart_onprem_backend(_asyncio, subprocess, _httpx)
+        )
+        try:
+            return await _asyncio.shield(inner)
+        except _asyncio.CancelledError:
+            try:
+                await inner
+            except Exception:
+                # Intentionally suppress secondary errors: the request was
+                # cancelled and we must re-raise CancelledError after waiting
+                # for the restart task to settle so the lock is released.
+                pass
+            raise
+
+
+async def _do_restart_onprem_backend(_asyncio, subprocess, _httpx):
+    """Execute the actual restart sequence (called under the restart lock)."""
     if _config_manager.get_backend() != Backend.ON_PREM:
         raise HTTPException(status_code=400, detail="Active backend is not on-prem.")
 
@@ -292,8 +400,10 @@ async def restart_onprem_backend():
 
     # `moorcheh down` is best-effort: if the stack isn't running, that's fine —
     # we still want to try `up` after.
+    # Use asyncio.to_thread so subprocess.run doesn't block the event loop.
     try:
-        subprocess.run(
+        await _asyncio.to_thread(
+            subprocess.run,
             ["moorcheh", "down"],
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
@@ -318,7 +428,7 @@ async def restart_onprem_backend():
     if embedding_key:
         up_args.extend(["--embedding-api-key", embedding_key])
     try:
-        subprocess.run(up_args, check=True, timeout=300)
+        await _asyncio.to_thread(subprocess.run, up_args, check=True, timeout=300)
     except subprocess.CalledProcessError as e:
         raise HTTPException(status_code=500, detail=f"`moorcheh up` failed: {e}")
     except subprocess.TimeoutExpired:
@@ -328,14 +438,17 @@ async def restart_onprem_backend():
 
     health_url = (state.get("url") or "http://localhost:8080").rstrip("/") + "/health"
     deadline = time.time() + 60
-    while time.time() < deadline:
-        try:
-            resp = _httpx.get(health_url, timeout=2.0)
-            if resp.status_code == 200:
-                return {"status": "ok", "message": "Server restarted"}
-        except Exception:
-            pass
-        time.sleep(1.0)
+    async with _httpx.AsyncClient() as http:
+        while time.time() < deadline:
+            try:
+                resp = await http.get(health_url, timeout=2.0)
+                if resp.status_code == 200:
+                    return {"status": "ok", "message": "Server restarted"}
+            except Exception:
+                # During restart warm-up, transient network/connection
+                # failures are expected; keep retrying until the deadline.
+                pass
+            await _asyncio.sleep(1.0)
     raise HTTPException(
         status_code=500,
         detail=f"Server did not become healthy at {health_url} within 60s.",
@@ -343,7 +456,7 @@ async def restart_onprem_backend():
 
 
 @router.put("/api/ui/api-key")
-async def update_api_key(body: dict):
+async def update_api_key(body: dict, _: None = Depends(_require_local)):
     """
     Update the Moorcheh API key from the Web UI.
     Expects: {"api_key": "new-key-value"}
@@ -357,7 +470,11 @@ async def update_api_key(body: dict):
 
 
 @router.get("/api/ui/conflicts")
-async def list_conflicts(agent_id: str | None = None, date: str | None = None):
+async def list_conflicts(
+    agent_id: str | None = None,
+    date: str | None = None,
+    _: None = Depends(_require_local),
+):
     """
     List unresolved conflicts for an agent.
     Uses DirectClient.list_conflicts under the hood.
@@ -365,12 +482,13 @@ async def list_conflicts(agent_id: str | None = None, date: str | None = None):
     from datetime import datetime as dt
 
     if not agent_id:
-        aid, _ = _config_manager.get_active_session()
+        aid, _session_token = _config_manager.get_active_session()
         if not aid:
             return {"conflicts": [], "count": 0, "message": "No active agent"}
         agent_id = aid
     if not date:
         date = dt.now().strftime("%Y-%m-%d")
+    _validate_summary_key(str(agent_id), str(date))
 
     try:
         client = _build_ui_direct_client()
@@ -388,7 +506,9 @@ async def list_conflicts(agent_id: str | None = None, date: str | None = None):
 
 
 @router.get("/api/ui/conflict-scans")
-async def list_conflict_scans(agent_id: str | None = None):
+async def list_conflict_scans(
+    agent_id: str | None = None, _: None = Depends(_require_local)
+):
     """
     Return, per day, when the conflict scan last ran for an agent.
 
@@ -401,10 +521,11 @@ async def list_conflict_scans(agent_id: str | None = None):
     from datetime import datetime as dt
 
     if not agent_id:
-        aid, _ = _config_manager.get_active_session()
+        aid, _session_token = _config_manager.get_active_session()
         if not aid:
             return {"scans": {}, "agent_id": None}
         agent_id = aid
+    _validate_agent_id(str(agent_id))
 
     conflicts_dir = Path.home() / ".memanto" / "conflicts"
     scans: dict[str, dict] = {}
@@ -438,7 +559,11 @@ async def list_conflict_scans(agent_id: str | None = None):
 
 
 @router.get("/api/ui/daily-summary")
-async def read_daily_summary(agent_id: str | None = None, date: str | None = None):
+async def read_daily_summary(
+    agent_id: str | None = None,
+    date: str | None = None,
+    _: None = Depends(_require_local),
+):
     """
     Return the existing daily summary for an agent/date if one was already
     generated. Does NOT trigger generation — that's the POST endpoint.
@@ -450,13 +575,14 @@ async def read_daily_summary(agent_id: str | None = None, date: str | None = Non
     from memanto.app.config import get_data_dir
 
     if not agent_id:
-        aid, _ = _config_manager.get_active_session()
+        aid, _session_token = _config_manager.get_active_session()
         if not aid:
             return {"exists": False, "message": "No active agent"}
         agent_id = aid
     if not date:
         date = dt.now().strftime("%Y-%m-%d")
 
+    _validate_summary_key(str(agent_id), str(date))
     path = get_data_dir() / "summaries" / f"{agent_id}_{date}.md"
     if not path.exists():
         return {
@@ -479,23 +605,24 @@ async def read_daily_summary(agent_id: str | None = None, date: str | None = Non
 
 
 @router.post("/api/ui/daily-summary")
-async def generate_daily_summary(body: dict | None = None):
+async def generate_daily_summary(
+    body: dict | None = None, _: None = Depends(_require_local)
+):
     """
     Trigger an on-demand daily summary for the active agent.
-    Expects (optional): {"agent_id": "...", "date": "YYYY-MM-DD",
-                         "output_path": "..."}
+    Expects (optional): {"agent_id": "...", "date": "YYYY-MM-DD"}
     """
     from datetime import datetime as dt
 
     body = body or {}
     agent_id = body.get("agent_id")
     if not agent_id:
-        aid, _ = _config_manager.get_active_session()
+        aid, _session_token = _config_manager.get_active_session()
         if not aid:
             raise HTTPException(status_code=400, detail="No active agent")
         agent_id = aid
     date = body.get("date") or dt.now().strftime("%Y-%m-%d")
-    output_path = body.get("output_path")
+    _validate_summary_key(str(agent_id), str(date))
 
     client = _build_ui_direct_client()
     if client is None:
@@ -503,7 +630,7 @@ async def generate_daily_summary(body: dict | None = None):
 
     try:
         result = client.generate_daily_summary(
-            agent_id=str(agent_id), date=str(date), output_path=output_path
+            agent_id=str(agent_id), date=str(date), output_path=None
         )
         return {"agent_id": agent_id, "date": date, **result}
     except Exception as e:
@@ -511,7 +638,9 @@ async def generate_daily_summary(body: dict | None = None):
 
 
 @router.post("/api/ui/conflicts/generate")
-async def generate_conflict_report(body: dict | None = None):
+async def generate_conflict_report(
+    body: dict | None = None, _: None = Depends(_require_local)
+):
     """
     Trigger an on-demand conflict report for the active agent. This is the
     same work the scheduled task performs.
@@ -522,11 +651,12 @@ async def generate_conflict_report(body: dict | None = None):
     body = body or {}
     agent_id = body.get("agent_id")
     if not agent_id:
-        aid, _ = _config_manager.get_active_session()
+        aid, _session_token = _config_manager.get_active_session()
         if not aid:
             raise HTTPException(status_code=400, detail="No active agent")
         agent_id = aid
     date = body.get("date") or dt.now().strftime("%Y-%m-%d")
+    _validate_summary_key(str(agent_id), str(date))
 
     client = _build_ui_direct_client()
     if client is None:
@@ -540,7 +670,7 @@ async def generate_conflict_report(body: dict | None = None):
 
 
 @router.post("/api/ui/conflicts/resolve")
-async def resolve_conflict(body: dict):
+async def resolve_conflict(body: dict, _: None = Depends(_require_local)):
     """
     Resolve a single conflict.
     Expects: {"agent_id": "...", "date": "...", "conflict_index": 0, "action": "keep_old"|"keep_new"|"keep_both"|"remove_both"|"manual", "manual_content": "..."}
@@ -561,6 +691,7 @@ async def resolve_conflict(body: dict):
             status_code=400,
             detail="agent_id, date, conflict_index, and action are required",
         )
+    _validate_summary_key(agent_id, date)
 
     try:
         client = _build_ui_direct_client()
@@ -582,7 +713,7 @@ async def resolve_conflict(body: dict):
 
 
 @router.get("/api/ui/connections")
-async def get_connections():
+async def get_connections(_: None = Depends(_require_local)):
     """List all supported agents merged with the local connections registry.
 
     Returns the agent catalog from `agent_registry`, each enriched with what's
@@ -629,7 +760,10 @@ async def get_connections():
 
 
 @router.get("/api/ui/browse")
-async def browse_path(path: str | None = None):
+async def browse_path(
+    path: str | None = None,
+    _: None = Depends(_require_local),
+):
     """List subdirectories of a given path (server-side folder picker).
 
     Defaults to the user's home directory when ``path`` is missing or invalid.
@@ -687,7 +821,7 @@ async def browse_path(path: str | None = None):
 
 
 @router.post("/api/ui/connections/install")
-async def connections_install(body: dict):
+async def connections_install(body: dict, _: None = Depends(_require_local)):
     """Install MEMANTO integration for one or more agents at a given location.
 
     Body: {"agents": ["claude-code", ...], "project_dir": "/abs/path", "is_global": false}
@@ -722,7 +856,7 @@ async def connections_install(body: dict):
 
 
 @router.post("/api/ui/connections/uninstall")
-async def connections_uninstall(body: dict):
+async def connections_uninstall(body: dict, _: None = Depends(_require_local)):
     """Remove MEMANTO integration for a single agent at a given location.
 
     Body: {"agent": "claude-code", "project_dir": "/abs/path", "is_global": false}
@@ -760,7 +894,10 @@ async def connections_uninstall(body: dict):
 
 
 @router.post("/api/ui/shutdown")
-async def shutdown_server(background_tasks: BackgroundTasks):
+async def shutdown_server(
+    background_tasks: BackgroundTasks,
+    _: None = Depends(_require_local),
+):
     """
     Gracefully shutdown the MEMANTO server.
     Called by the UI when the browser tab is closed.
@@ -893,7 +1030,7 @@ def _migrate_get_metrics_fn(provider: str):
 
 
 @router.post("/api/ui/migrate/dry-run")
-async def migrate_dry_run(body: dict):
+async def migrate_dry_run(body: dict, _: None = Depends(_require_local)):
     """Preview a migration without writing.
 
     Body: ``{provider, file?, api_key?}``. Returns the mapped row count,
@@ -951,7 +1088,7 @@ async def migrate_dry_run(body: dict):
 
 
 @router.post("/api/ui/migrate/import")
-async def migrate_import(body: dict):
+async def migrate_import(body: dict, _: None = Depends(_require_local)):
     """Run an end-to-end migration.
 
     Body: ``{provider, file?, api_key?, agent_id?}``. Loads-or-exports,

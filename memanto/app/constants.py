@@ -17,9 +17,6 @@ MemoryType = Literal[
     "error",
 ]
 
-# Scope Types
-ScopeType = Literal["user", "workspace", "agent", "session", "project", "task"]
-
 # Source Types
 SourceType = str  # e.g., "user", "agent", "tool", "system", or specific "agent_name"
 
@@ -71,6 +68,13 @@ VALID_PROVENANCE_TYPES = {
     "imported",
 }
 
-VALID_SCOPE_TYPES = {"user", "workspace", "agent", "session", "project", "task"}
+ALLOWED_UPDATE_FIELDS = {
+    "title",
+    "content",
+    "type",
+    "confidence",
+    "tags",
+    "source",
+}
 
 VALID_PATTERNS = {"support", "project", "tool"}

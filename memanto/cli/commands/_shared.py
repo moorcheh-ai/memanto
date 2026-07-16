@@ -53,7 +53,7 @@ from memanto.cli.ui.theme import (  # noqa: F401
 # Initialize Typer app and console
 app = typer.Typer(
     name="memanto",
-    help="MEMANTO CLI - Your agents focus. Memanto remembers.",
+    help="MEMANTO CLI - Memory that AI Agents Love!",
     add_completion=False,
 )
 console = Console()

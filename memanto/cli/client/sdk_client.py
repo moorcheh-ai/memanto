@@ -12,6 +12,9 @@ from pathlib import Path
 from typing import Any, cast
 
 from memanto.app.constants import (
+    ALLOWED_UPDATE_FIELDS as _ALLOWED_UPDATE_FIELDS,
+)
+from memanto.app.constants import (
     VALID_MEMORY_TYPES as _VALID_MEMORY_TYPES,
 )
 from memanto.app.constants import (
@@ -168,9 +171,24 @@ class SdkClient:
         Return the active session for *agent_id*, validating it like the FastAPI
         dependency ``get_current_session``.
         """
-        # Cache hit: avoid redundant disk I/O and JWT decodes in the same request
-        if self._cached_session and self.agent_id == agent_id:
-            return self._cached_session
+        # Cache hit: avoid redundant JWT decodes while the session remains
+        # active. Still runs the same near-expiry auto-renew check as the
+        # cold path below, so long-lived clients keep renewing instead of
+        # eventually hitting SessionExpiredError.
+        if self._cached_session:
+            if self.agent_id == agent_id and self._cached_session.agent_id == agent_id:
+                if not self._cached_session.is_active():
+                    self._cached_session = None
+                    raise SessionExpiredError(
+                        f"Cached session for agent {agent_id} is no longer active"
+                    )
+                session_service = self._get_session_service()
+                renewed = session_service.check_and_auto_renew(agent_id=agent_id)
+                if renewed:
+                    self._cached_session = renewed
+                    self.session_token = renewed.session_token
+                return self._cached_session
+            self._cached_session = None
 
         if not self.session_token or not self.agent_id:
             raise SessionError(
@@ -296,6 +314,10 @@ class SdkClient:
         """
         logger.debug("Deleting agent '%s'", agent_id)
         self._get_agent_service().delete_agent(agent_id)
+        if self.agent_id == agent_id:
+            self.session_token = None
+            self.agent_id = None
+            self._cached_session = None
         return {"status": "deleted", "agent_id": agent_id}
 
     # Session Management
@@ -336,6 +358,7 @@ class SdkClient:
 
         self.session_token = session.session_token
         self.agent_id = agent_id
+        self._cached_session = session
 
         return {
             "session_token": session.session_token,
@@ -359,6 +382,7 @@ class SdkClient:
         summary = self._get_session_service().end_session(agent_id)
         self.session_token = None
         self.agent_id = None
+        self._cached_session = None
         return cast(dict[str, Any], summary.model_dump(mode="json"))
 
     def get_session_info(self) -> dict[str, Any]:
@@ -451,8 +475,7 @@ class SdkClient:
             type=resolved_memory_type,
             title=title,
             content=content,
-            scope_type="agent",
-            scope_id=agent_id,
+            agent_id=agent_id,
             actor_id=agent_id,
             confidence=confidence,
             tags=tags or [],
@@ -514,7 +537,7 @@ class SdkClient:
         memory_records = []
         for i, item in enumerate(memories):
             raw_content = item.get("content", "")
-            if not raw_content:
+            if not isinstance(raw_content, str) or not raw_content.strip():
                 raise ValueError(f"Memory at index {i} has no content")
 
             raw_title = item.get("title")
@@ -538,8 +561,7 @@ class SdkClient:
                 "type": raw_type,
                 "title": title,
                 "content": raw_content,
-                "scope_type": "agent",
-                "scope_id": agent_id,
+                "agent_id": agent_id,
                 "actor_id": agent_id,
                 "confidence": item.get("confidence", 0.8),
                 "tags": item.get("tags", []),
@@ -582,6 +604,82 @@ class SdkClient:
                 )
 
         return result
+
+    def update_memory(
+        self, agent_id: str, memory_id: str, updates: dict[str, Any]
+    ) -> dict[str, Any]:
+        """
+        Update a single memory in the active agent namespace.
+
+        Args:
+            agent_id: Target agent.
+            memory_id: Memory document ID to update.
+            updates: Fields to update.
+
+        Returns:
+            Dict with update result metadata.
+
+        Raises:
+            ValueError: If no update fields are provided, or if the payload
+                contains unknown fields, blank content, an out-of-range
+                confidence, or an unsupported memory type.
+        """
+        session = self._get_validated_session_for_agent(agent_id)
+        if not updates:
+            raise ValueError("Provide at least one field to update")
+
+        # Mirror the API-route and DirectClient validation so SDK callers
+        # cannot bypass field-level checks. CodeRabbit review
+        # 2026-06-14T14:03:20Z flagged that this path forwarded `updates`
+        # directly after only an empty-payload check.
+        unknown_fields = set(updates) - _ALLOWED_UPDATE_FIELDS
+        if unknown_fields:
+            raise ValueError(
+                f"Unknown update field(s): {sorted(unknown_fields)}. "
+                f"Allowed: {sorted(_ALLOWED_UPDATE_FIELDS)}"
+            )
+        if "content" in updates:
+            content = updates["content"]
+            if content is None or not str(content).strip():
+                raise ValueError("Memory content must be a non-empty string")
+            if len(str(content)) > _MAX_CONTENT_LENGTH:
+                raise ValueError(
+                    f"Memory content exceeds {_MAX_CONTENT_LENGTH} characters"
+                )
+        if "title" in updates and updates["title"] is not None:
+            if len(str(updates["title"])) > _MAX_TITLE_LENGTH:
+                raise ValueError(f"Memory title exceeds {_MAX_TITLE_LENGTH} characters")
+        if "type" in updates and updates["type"] not in _VALID_MEMORY_TYPES:
+            raise ValueError(
+                f"Invalid memory_type '{updates['type']}'. "
+                f"Must be one of: {', '.join(sorted(_VALID_MEMORY_TYPES))}"
+            )
+        if "confidence" in updates:
+            try:
+                confidence_value = float(updates["confidence"])  # type: ignore[arg-type]
+            except (TypeError, ValueError):
+                raise ValueError(
+                    f"Confidence must be a number between 0.0 and 1.0, got {updates['confidence']!r}"
+                )
+            if not 0.0 <= confidence_value <= 1.0:
+                raise ValueError(
+                    f"Confidence must be between 0.0 and 1.0, got {confidence_value}"
+                )
+            # Normalize to float for downstream write service consistency.
+            updates["confidence"] = confidence_value
+
+        result = self._get_write_service().update_memory(
+            memory_id, session.namespace, updates
+        )
+
+        return {
+            "agent_id": agent_id,
+            "namespace": session.namespace,
+            "memory_id": memory_id,
+            "status": result.get("status", "updated"),
+            "action": result.get("action", "updated"),
+            "updated_fields": result.get("updated_fields", list(updates.keys())),
+        }
 
     def extract_memories_from_conversation(
         self,
@@ -719,14 +817,17 @@ class SdkClient:
             namespace_name=namespace,
             file_path=path,
         )
+        file_size = result.get("fileSize")
+        if file_size is None:
+            file_size = result.get("file_size", 0)
 
         return {
             "agent_id": agent_id,
             "namespace": namespace,
             "success": result.get("success", False),
             "message": result.get("message", ""),
-            "file_name": result.get("fileName", path.name),
-            "file_size": result.get("fileSize", 0),
+            "file_name": result.get("fileName") or result.get("file_name", path.name),
+            "file_size": file_size,
         }
 
     def recall(
@@ -772,8 +873,7 @@ class SdkClient:
         )
         result = self._get_read_service().search_memories(
             query=query,
-            scope_type="agent",
-            scope_id=agent_id,
+            agent_id=agent_id,
             type=type,
             tags=tags,
             min_similarity_score=min_similarity,
@@ -1149,10 +1249,9 @@ class SdkClient:
         new_id = conflict.get("new_memory_id")
 
         # Get namespace for memory operations
-        from memanto.app.core import create_memory_scope
+        from memanto.app.core import agent_namespace
 
-        scope = create_memory_scope("agent", agent_id)
-        namespace = scope.to_namespace()
+        namespace = agent_namespace(agent_id)
 
         write_service = self._get_write_service()
         result_details: dict[str, Any] = {"action": action}
@@ -1221,8 +1320,7 @@ class SdkClient:
                 type=resolved_type,
                 title=title,
                 content=manual_content,
-                scope_type="agent",
-                scope_id=agent_id,
+                agent_id=agent_id,
                 actor_id=agent_id,
                 confidence=0.9,
                 tags=["conflict-resolution"],
@@ -1263,21 +1361,7 @@ class SdkClient:
         # Ensure there is a valid, non-expired session for this agent
         self._get_validated_session_for_agent(agent_id)
 
-        from memanto.app.services.memory_export_service import MEMORY_TYPE_ORDER
-
-        memories_by_type: dict[str, list] = {}
-
-        for mem_type in MEMORY_TYPE_ORDER:
-            try:
-                result = self.recall(
-                    agent_id=agent_id,
-                    query="*",
-                    limit=limit_per_type,
-                    type=[mem_type],
-                )
-                memories_by_type[mem_type] = result.get("memories", [])
-            except Exception:
-                memories_by_type[mem_type] = []
+        memories_by_type = self._gather_memories_by_type(agent_id, limit_per_type)
 
         export_svc = self._get_export_service()
         out = output_path if output_path else None
@@ -1311,15 +1395,30 @@ class SdkClient:
             limit_per_type: Max memories per type for fresh export (default 25).
 
         Returns:
-            Dict with ``output_path``, ``total_memories``, ``source``.
+            Dict with ``output_path``, ``total_memories``, ``source``
+            (``"cache"``, ``"fresh"``, or ``"stale-cache"`` if a refresh
+            failed and a previous export was reused instead).
         """
-        # Run export function first (ensures ~/.memanto/exports/... is fresh)
-        self.export_memory_md(agent_id=agent_id, limit_per_type=limit_per_type)
-
-        # Perform sync from cache to project
         cache_path = Path.home() / ".memanto" / "exports" / f"{agent_id}_memory.md"
         target_path = Path(project_dir) / "MEMORY.md"
         target_path.parent.mkdir(parents=True, exist_ok=True)
+
+        try:
+            # Run export function first (ensures ~/.memanto/exports/... is fresh)
+            self.export_memory_md(agent_id=agent_id, limit_per_type=limit_per_type)
+        except ConnectionError:
+            if cache_path.exists():
+                # Backend unreachable, but we have a previously good export —
+                # serve that instead of wiping the project's MEMORY.md.
+                shutil.copy2(str(cache_path), str(target_path))
+                content = cache_path.read_text(encoding="utf-8")
+                mem_count = content.count("### ")
+                return {
+                    "output_path": str(target_path.resolve()),
+                    "total_memories": mem_count,
+                    "source": "stale-cache",
+                }
+            raise
 
         if cache_path.exists():
             # Copy freshly updated cache to project
@@ -1336,6 +1435,125 @@ class SdkClient:
             "output_path": str(target_path.resolve()),
             "total_memories": 0,
             "source": "fresh",
+        }
+
+    def _gather_memories_by_type(
+        self, agent_id: str, limit_per_type: int
+    ) -> dict[str, list]:
+        """Recall memories for every type, grouped by type.
+
+        Raises ``ConnectionError`` when *every* type recall fails (backend
+        unreachable) so callers don't overwrite a good export with nothing.
+        """
+        from memanto.app.services.memory_export_service import MEMORY_TYPE_ORDER
+
+        memories_by_type: dict[str, list] = {}
+        failed_types = 0
+
+        for mem_type in MEMORY_TYPE_ORDER:
+            try:
+                result = self.recall(
+                    agent_id=agent_id,
+                    query="*",
+                    limit=limit_per_type,
+                    type=[mem_type],
+                )
+                memories_by_type[mem_type] = result.get("memories", [])
+            except Exception:
+                memories_by_type[mem_type] = []
+                failed_types += 1
+
+        if failed_types == len(MEMORY_TYPE_ORDER):
+            raise ConnectionError(
+                f"Failed to recall any memories for agent '{agent_id}' — "
+                "the backend appears unreachable. Refusing to write an "
+                "empty export."
+            )
+        return memories_by_type
+
+    def export_okf_bundle(
+        self,
+        agent_id: str,
+        output_dir: str | None = None,
+        split: str = "auto",
+        limit_per_type: int = 25,
+    ) -> dict[str, Any]:
+        """Export all memories for an agent as an OKF bundle directory.
+
+        Args:
+            agent_id: Target agent.
+            output_dir: Bundle directory. Defaults to
+                ``~/.memanto/exports/{agent_id}_okf``.
+            split: OKF layout — ``auto``, ``file``, or ``type``.
+            limit_per_type: Max memories per type (default 25).
+
+        Returns:
+            Dict with ``output_path``, ``total_memories``, ``per_type_counts``.
+        """
+        self._get_validated_session_for_agent(agent_id)
+
+        from memanto.app.config import get_data_dir
+        from memanto.app.services.okf_export_service import OkfExportService
+
+        memories_by_type = self._gather_memories_by_type(agent_id, limit_per_type)
+
+        data_dir = get_data_dir()
+        summaries = sorted((data_dir / "summaries").glob(f"{agent_id}_*.md"))
+        sessions = sorted((data_dir / "sessions").glob(f"{agent_id}_*_summary.md"))
+
+        return OkfExportService().write_okf_bundle(
+            agent_id=agent_id,
+            memories_by_type=memories_by_type,
+            output_dir=Path(output_dir) if output_dir else None,
+            split=split,
+            summaries=summaries,
+            sessions=sessions,
+        )
+
+    def sync_okf_to_project(
+        self,
+        agent_id: str,
+        project_dir: str,
+        split: str = "auto",
+        limit_per_type: int = 25,
+    ) -> dict[str, Any]:
+        """Sync agent memories to a project directory as an OKF bundle (``<project>/okf``).
+
+        Runs a fresh export into the cache, then copies the bundle into the
+        project. Falls back to the previous cached bundle when the backend is
+        unreachable (``source="stale-cache"``).
+        """
+        target = Path(project_dir) / "okf"
+        cache = Path.home() / ".memanto" / "exports" / f"{agent_id}_okf"
+
+        try:
+            result = self.export_okf_bundle(
+                agent_id=agent_id, split=split, limit_per_type=limit_per_type
+            )
+            src = Path(result["output_path"])
+            total = result["total_memories"]
+            source = "fresh"
+        except ConnectionError:
+            if not cache.exists():
+                raise
+            from memanto.cli.migrate.okf_loader import load_okf_bundle
+
+            src = cache
+            total = len(load_okf_bundle(cache)["memories"])
+            source = "stale-cache"
+
+        tmp = target.with_suffix(".okf.tmp")
+        if tmp.exists():
+            shutil.rmtree(tmp)
+        shutil.copytree(src, tmp)
+        if target.exists():
+            shutil.rmtree(target)
+        tmp.rename(target)
+
+        return {
+            "output_path": str(target.resolve()),
+            "total_memories": total,
+            "source": source,
         }
 
     # Health Check
