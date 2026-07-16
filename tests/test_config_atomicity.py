@@ -55,6 +55,31 @@ def test_yaml_config_survives_interrupted_replace(tmp_path):
     assert list(tmp_path.glob(f".{manager.config_file.name}.*.tmp")) == []
 
 
+def test_connections_survive_interrupted_replace(tmp_path):
+    """An interrupted registry replacement must preserve existing connections."""
+    manager = ConfigManager(tmp_path)
+    original_connections = {
+        "claude": {"projects": ["/existing/project"], "installed_global": True}
+    }
+    manager._save_connections(original_connections)
+    original = manager.connections_file.read_text(encoding="utf-8")
+
+    with (
+        patch(
+            "memanto.cli.config.manager.os.replace",
+            side_effect=OSError("simulated interruption"),
+        ),
+        pytest.raises(OSError, match="simulated interruption"),
+    ):
+        manager._save_connections(
+            {"claude": {"projects": ["/new/project"], "installed_global": False}}
+        )
+
+    assert manager.connections_file.read_text(encoding="utf-8") == original
+    assert manager.load_connections() == original_connections
+    assert list(tmp_path.glob(f".{manager.connections_file.name}.*.tmp")) == []
+
+
 def test_cleanup_error_does_not_mask_replace_failure(tmp_path):
     """Cleanup failures must not replace the original persistence error."""
     manager = ConfigManager(tmp_path)
