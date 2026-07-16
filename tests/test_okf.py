@@ -8,6 +8,8 @@ foreign OKF bundle whose free-form ``type`` and unknown keys must land in the
 ``[Supporting data]`` footer without loss.
 """
 
+import pytest
+
 from memanto.app.services.okf_export_service import OkfExportService
 from memanto.cli.migrate.mappers import map_okf
 from memanto.cli.migrate.okf_loader import load_okf_bundle
@@ -186,3 +188,47 @@ def test_loader_splits_stacked_file(tmp_path):
     assert {m["title"] for m in export["memories"]} == {
         f"Standup {i}" for i in range(5)
     }
+
+
+def test_reexport_replaces_stale_bundle_entries(tmp_path):
+    """A refreshed export must be an exact snapshot, not an overlay that can
+    resurrect deleted or renamed memories during a later import."""
+    svc = OkfExportService(exports_dir=tmp_path / "exports")
+    first = {
+        "fact": [_mem("f1", "Old fact", "This fact was later deleted.")],
+        "event": [_mem("e1", "Old event", "This event was later deleted.")],
+    }
+    svc.write_okf_bundle("agent1", first, split="file")
+
+    second = {"fact": [_mem("f2", "Current fact", "This is still current.")]}
+    result = svc.write_okf_bundle("agent1", second, split="file")
+
+    bundle = tmp_path / "exports" / "agent1_okf"
+    assert not (bundle / "memories" / "fact" / "old-fact.md").exists()
+    assert not (bundle / "memories" / "event").exists()
+
+    imported = load_okf_bundle(result["output_path"])["memories"]
+    assert [memory["title"] for memory in imported] == ["Current fact"]
+
+
+def test_failed_reexport_preserves_last_good_bundle(tmp_path, monkeypatch):
+    """A rendering error must not leave a partial bundle in place of the last
+    successfully exported snapshot."""
+    svc = OkfExportService(exports_dir=tmp_path / "exports")
+    first = {"fact": [_mem("f1", "Last good fact", "Keep this snapshot.")]}
+    result = svc.write_okf_bundle("agent1", first, split="file")
+
+    def fail_root_index(*_args, **_kwargs):
+        raise OSError("simulated index write failure")
+
+    monkeypatch.setattr(svc, "_write_root_index", fail_root_index)
+    with pytest.raises(OSError, match="simulated index write failure"):
+        svc.write_okf_bundle(
+            "agent1",
+            {"fact": [_mem("f2", "Partial fact", "Do not publish this.")]},
+            split="file",
+        )
+
+    imported = load_okf_bundle(result["output_path"])["memories"]
+    assert [memory["title"] for memory in imported] == ["Last good fact"]
+    assert not list((tmp_path / "exports").glob(".agent1_okf.tmp-*"))
