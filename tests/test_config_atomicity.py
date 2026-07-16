@@ -1,10 +1,14 @@
-"""Regression tests for crash-safe configuration persistence."""
+"""Regression tests for crash-safe local state persistence."""
 
 import os
+from datetime import datetime
 from unittest.mock import patch
 
 import pytest
 
+from memanto.app.models.session import AgentInfo, AgentPattern, SessionStatus
+from memanto.app.services.agent_service import AgentService
+from memanto.app.services.session_service import SessionService
 from memanto.cli.config.manager import ConfigManager
 
 
@@ -20,7 +24,7 @@ def test_onprem_state_survives_interrupted_replace(tmp_path):
 
     with (
         patch(
-            "memanto.cli.config.manager.os.replace",
+            "memanto.app.utils.atomic_write.os.replace",
             side_effect=OSError("simulated interruption"),
         ),
         pytest.raises(OSError, match="simulated interruption"),
@@ -43,7 +47,7 @@ def test_yaml_config_survives_interrupted_replace(tmp_path):
 
     with (
         patch(
-            "memanto.cli.config.manager.os.replace",
+            "memanto.app.utils.atomic_write.os.replace",
             side_effect=OSError("simulated interruption"),
         ),
         pytest.raises(OSError, match="simulated interruption"),
@@ -66,7 +70,7 @@ def test_connections_survive_interrupted_replace(tmp_path):
 
     with (
         patch(
-            "memanto.cli.config.manager.os.replace",
+            "memanto.app.utils.atomic_write.os.replace",
             side_effect=OSError("simulated interruption"),
         ),
         pytest.raises(OSError, match="simulated interruption"),
@@ -87,11 +91,11 @@ def test_cleanup_error_does_not_mask_replace_failure(tmp_path):
 
     with (
         patch(
-            "memanto.cli.config.manager.os.replace",
+            "memanto.app.utils.atomic_write.os.replace",
             side_effect=OSError("replace failed"),
         ),
         patch(
-            "memanto.cli.config.manager.Path.unlink",
+            "memanto.app.utils.atomic_write.Path.unlink",
             side_effect=PermissionError("temporary file is locked"),
         ),
         pytest.raises(OSError, match="replace failed"),
@@ -103,18 +107,95 @@ def test_cleanup_error_does_not_mask_replace_failure(tmp_path):
     leftovers[0].unlink()
 
 
+def test_agent_metadata_survives_interrupted_replace(tmp_path):
+    """An interrupted agent update must preserve the previous metadata."""
+    service = AgentService(agents_dir=tmp_path / "agents")
+    agent = AgentInfo(
+        agent_id="test-agent",
+        namespace="memanto_agent_test-agent",
+        pattern=AgentPattern.PROJECT,
+        description="Original description",
+        created_at=datetime(2026, 7, 16),
+        status="ready",
+    )
+    service._save_agent(agent)
+    agent_file = service._get_agent_file(agent.agent_id)
+    original = agent_file.read_text(encoding="utf-8")
+    agent.description = "Updated description"
+
+    with (
+        patch(
+            "memanto.app.utils.atomic_write.os.replace",
+            side_effect=OSError("simulated interruption"),
+        ),
+        pytest.raises(OSError, match="simulated interruption"),
+    ):
+        service._save_agent(agent)
+
+    assert agent_file.read_text(encoding="utf-8") == original
+    assert service.get_agent(agent.agent_id).description == "Original description"
+    assert list(agent_file.parent.glob(f".{agent_file.name}.*.tmp")) == []
+
+
+def test_session_metadata_survives_interrupted_replace(tmp_path):
+    """An interrupted session update must preserve the active session."""
+    service = SessionService(
+        secret_key="test-secret-key-min-32-bytes-1234",
+        sessions_dir=tmp_path / "sessions",
+    )
+    session = service.create_session(
+        agent_id="test-agent",
+        pattern=AgentPattern.PROJECT,
+        duration_hours=1,
+    )
+    session_file = service.sessions_dir / "test-agent.json"
+    original = session_file.read_text(encoding="utf-8")
+    session.status = SessionStatus.TERMINATED
+
+    with (
+        patch(
+            "memanto.app.utils.atomic_write.os.replace",
+            side_effect=OSError("simulated interruption"),
+        ),
+        pytest.raises(OSError, match="simulated interruption"),
+    ):
+        service._save_session(session)
+
+    assert session_file.read_text(encoding="utf-8") == original
+    assert service.get_session("test-agent").status == SessionStatus.ACTIVE
+    assert list(session_file.parent.glob(f".{session_file.name}.*.tmp")) == []
+
+
 @pytest.mark.skipif(os.name == "nt", reason="POSIX permission bits are not portable")
-def test_atomic_config_files_are_owner_only(tmp_path):
-    """Atomically persisted configuration files must be owner-readable only."""
+def test_atomic_state_files_are_owner_only(tmp_path):
+    """Atomically persisted local state files must be owner-readable only."""
     manager = ConfigManager(tmp_path)
 
     manager.set("backend", "cloud")
     manager.set_onprem_state(llm_model="qwen3:8b")
     manager._save_connections({"claude": {"projects": [], "installed_global": True}})
 
+    agent_service = AgentService(agents_dir=tmp_path / "agents")
+    agent_service._save_agent(
+        AgentInfo(
+            agent_id="test-agent",
+            namespace="memanto_agent_test-agent",
+            pattern=AgentPattern.PROJECT,
+            created_at=datetime(2026, 7, 16),
+            status="ready",
+        )
+    )
+    session_service = SessionService(
+        secret_key="test-secret-key-min-32-bytes-1234",
+        sessions_dir=tmp_path / "sessions",
+    )
+    session_service.create_session(agent_id="test-agent", duration_hours=1)
+
     for path in (
         manager.config_file,
         manager._onprem_state_path(),
         manager.connections_file,
+        agent_service._get_agent_file("test-agent"),
+        session_service.sessions_dir / "test-agent.json",
     ):
         assert path.stat().st_mode & 0o777 == 0o600

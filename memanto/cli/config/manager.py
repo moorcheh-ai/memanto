@@ -10,51 +10,14 @@ Handles configuration persistence:
 import importlib
 import json
 import os
-import tempfile
 from pathlib import Path
 
 from dotenv import load_dotenv, set_key
 
 from memanto.app.clients.backend import Backend, parse_backend
+from memanto.app.utils.atomic_write import atomic_write_text
 
 yaml = importlib.import_module("yaml")
-
-
-def _atomic_write_text(path: Path, content: str) -> None:
-    """Replace *path* only after a complete same-directory write.
-
-    Configuration files must survive process termination, a full disk, or an
-    interrupted write.  A temporary file in the destination directory keeps
-    the final ``os.replace`` atomic on the same filesystem.
-    """
-    path.parent.mkdir(parents=True, exist_ok=True)
-    tmp_path: Path | None = None
-    try:
-        with tempfile.NamedTemporaryFile(
-            mode="w",
-            encoding="utf-8",
-            dir=path.parent,
-            prefix=f".{path.name}.",
-            suffix=".tmp",
-            delete=False,
-        ) as tmp:
-            tmp_path = Path(tmp.name)
-            tmp.write(content)
-            tmp.flush()
-            os.fsync(tmp.fileno())
-
-        try:
-            tmp_path.chmod(0o600)
-        except OSError:
-            pass  # Windows may not support chmod
-        os.replace(tmp_path, path)
-        tmp_path = None
-    finally:
-        if tmp_path is not None:
-            try:
-                tmp_path.unlink()
-            except OSError:
-                pass
 
 
 def _normalize_duplicated_api_key(key: str) -> str:
@@ -216,7 +179,7 @@ class ConfigManager:
         p = self._onprem_state_path()
         data = self.get_onprem_state()
         data.update({k: v for k, v in updates.items() if v is not None})
-        _atomic_write_text(p, json.dumps(data, indent=2))
+        atomic_write_text(p, json.dumps(data, indent=2))
 
     def get_onprem_config(self) -> dict:
         """Get on-prem config dict (url, embedding_provider, llm_model, ...).
@@ -292,7 +255,7 @@ class ConfigManager:
         content = yaml.dump(
             {"memanto": data}, default_flow_style=False, sort_keys=False
         )
-        _atomic_write_text(self.config_file, content)
+        atomic_write_text(self.config_file, content)
 
     def get(self, key: str, default=None):
         """Get a top-level YAML config value."""
@@ -486,7 +449,7 @@ class ConfigManager:
 
     def _save_connections(self, data: dict) -> None:
         """Atomically write the connections registry."""
-        _atomic_write_text(
+        atomic_write_text(
             self.connections_file,
             json.dumps(data, indent=2, sort_keys=True),
         )

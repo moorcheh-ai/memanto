@@ -25,6 +25,7 @@ from memanto.app.models.session import (
     SessionSummary,
     SessionToken,
 )
+from memanto.app.utils.atomic_write import atomic_write_text
 from memanto.app.utils.errors import (
     InvalidSessionTokenError,
     SessionExpiredError,
@@ -385,8 +386,10 @@ class SessionService:
         """Save session to file"""
         validate_safe_id(session.agent_id, "agent_id")
         session_file = self.sessions_dir / f"{session.agent_id}.json"
-        with open(session_file, "w") as f:
-            json.dump(session.model_dump(mode="json"), f, indent=2)
+        atomic_write_text(
+            session_file,
+            json.dumps(session.model_dump(mode="json"), indent=2),
+        )
 
     def _load_session_file(self, session_file: Path) -> Session | None:
         """Load one session file, treating corrupt local state as absent."""
