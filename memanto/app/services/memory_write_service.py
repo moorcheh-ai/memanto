@@ -381,6 +381,12 @@ class MemoryWriteService:
             upload_result = self.client.documents.upload(
                 namespace_name=namespace, documents=[document]
             )
+            upload_status = str(upload_result.get("status", "unknown")).lower()
+            if upload_status not in SUCCESSFUL_UPLOAD_STATUSES:
+                raise MemoryError(
+                    f"Failed to upload updated memory {memory_id}: "
+                    f"backend returned status {upload_result.get('status', 'unknown')!r}"
+                )
 
             return {
                 "id": memory_id,

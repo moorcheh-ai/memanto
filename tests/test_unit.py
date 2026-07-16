@@ -475,6 +475,36 @@ class TestMemoryWriteServiceDelete:
         assert uploaded.get("original_id") == "orig-123"
         assert "validation_count" not in uploaded
 
+    def test_update_memory_rejects_failed_upload_status(self):
+        from memanto.app.services.memory_write_service import MemoryWriteService
+        from memanto.app.utils.errors import MemoryError
+
+        client = MagicMock()
+        client.documents.delete.return_value = {"status": "success"}
+        client.documents.upload.return_value = {"status": "failed"}
+        existing_memory = {
+            "id": "mem-1",
+            "type": "fact",
+            "title": "Original title",
+            "content": "Original content",
+            "actor_id": "tester",
+            "source": "manual",
+            "confidence": 0.8,
+            "status": "active",
+            "tags": [],
+        }
+
+        with patch(
+            "memanto.app.services.memory_read_service.MemoryReadService.get_memory",
+            return_value=existing_memory,
+        ):
+            with pytest.raises(MemoryError, match="backend returned status 'failed'"):
+                MemoryWriteService(client).update_memory(
+                    "mem-1",
+                    "memanto_agent_test-agent",
+                    {"content": "Updated content"},
+                )
+
 
 class TestMemoryReadServiceFormatting:
     def test_format_memory_item_preserves_falsey_metadata_values(self):
