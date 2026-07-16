@@ -4,7 +4,7 @@ MEMANTO Core Architecture - Namespace Strategy & Memory Records
 
 import re
 import uuid
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 from pydantic import BaseModel, Field
@@ -68,8 +68,8 @@ class MemoryRecord(BaseModel):
     contradiction_detected: bool = False  # Flag for contradictions
 
     # Timestamps (auto-populated by server)
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     expires_at: datetime | None = None
     ttl_seconds: int | None = None
 
@@ -133,7 +133,7 @@ class MemoryRecord(BaseModel):
     def set_ttl(self, seconds: int):
         """Set TTL and expiration"""
         self.ttl_seconds = seconds
-        self.expires_at = datetime.utcnow() + timedelta(seconds=seconds)
+        self.expires_at = datetime.now(timezone.utc) + timedelta(seconds=seconds)
 
     def compute_confidence(self) -> float:
         """
@@ -169,7 +169,7 @@ class MemoryRecord(BaseModel):
 
         # Age decay for preferences and observations (fresher = more trustworthy)
         if self.type in ["preference", "observation"]:
-            age_days = (datetime.utcnow() - self.created_at).days
+            age_days = (datetime.now(timezone.utc) - self.created_at).days
             if age_days > 90:  # 3 months
                 age_penalty = 0.2
             elif age_days > 30:  # 1 month
@@ -186,8 +186,8 @@ class MemoryRecord(BaseModel):
     def validate(self):
         """Mark memory as validated (increases trust)"""
         self.validation_count += 1
-        self.validated_at = datetime.utcnow()
-        self.updated_at = datetime.utcnow()
+        self.validated_at = datetime.now(timezone.utc)
+        self.updated_at = datetime.now(timezone.utc)
 
         # Upgrade provenance if inferred
         if self.provenance == "inferred":
@@ -197,12 +197,12 @@ class MemoryRecord(BaseModel):
         """Mark this memory as superseded by a newer one"""
         self.superseded_by = superseded_by_id
         self.status = "superseded"
-        self.updated_at = datetime.utcnow()
+        self.updated_at = datetime.now(timezone.utc)
 
     def detect_contradiction(self):
         """Flag memory as contradicted (lowers trust)"""
         self.contradiction_detected = True
-        self.updated_at = datetime.utcnow()
+        self.updated_at = datetime.now(timezone.utc)
 
     def trust_score(self) -> dict[str, Any]:
         """
@@ -219,7 +219,7 @@ class MemoryRecord(BaseModel):
         - recommendation: str
         """
         computed_conf = self.compute_confidence()
-        age_days = (datetime.utcnow() - self.created_at).days
+        age_days = (datetime.now(timezone.utc) - self.created_at).days
 
         # Determine trust level
         if computed_conf >= 0.8 and not self.contradiction_detected:
