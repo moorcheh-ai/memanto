@@ -93,5 +93,59 @@ The method does return per-item statuses and success/failure counts, so callers 
 | 1 | Delete-then-recreate data loss | Critical | Architectural |
 | 2 | Tz-aware/naive datetime inconsistency | Medium | Logic |
 | 3 | Missing import timestamp validation | Medium | Validation |
-| 4 | Batch partial failure — missing atomicity indicator | Low | Design |
 
+## Finding 5: Deletion Success False Positive on Zero Deletions (Medium)
+
+**File:** `memanto/app/services/memory_write_service.py`
+**Method:** `_deletion_succeeded()`
+
+When Moorcheh returns `{"status": "ok", "actual_deletions": 0}` — a valid response meaning "processed successfully but nothing matched" — the method returns `True` because the fallback checks `status == "ok"`. The caller interprets this as a successful deletion, but 0 documents were actually deleted.
+
+**Impact:** Calling code that relies on `delete_memory()`'s return value for data-integrity decisions may incorrectly assume deletion succeeded.
+
+**Suggested fix:** Check `actual_deletions` first as a required numeric field. Only fall through to `status`-based checking when `actual_deletions` is absent from the response.
+
+---
+
+## Finding 6: Search Offset Miscalculation When limit+offset Exceeds 100 (Medium)
+
+**File:** `memanto/app/services/memory_read_service.py`
+**Method:** `search_memories()`
+
+The method implements offset by requesting `limit + offset` documents from Moorcheh, then locally slicing. However, Moorcheh's API enforces max 100 results per query.
+
+When `limit + offset > 100`, e.g. `limit=90, offset=20`:
+1. `requested_limit = 110`, but `top_k = 100`
+2. Only 100 documents returned
+3. Local slicing `all_results[20:110]` returns only 80 documents
+4. `has_more` spuriously `False` (`100 > 110 = False`)
+
+**Impact:** Callers paginating through search results will receive fewer results than requested and premature pagination termination.
+
+**Suggested fix:** Implement true server-side offset or reject `offset + limit > 100` with a validation error.
+
+---
+
+## Finding 7: `utc_now()` Produces Naive vs `parse_iso_timestamp()` Produces Aware (Low)
+
+**File:** `memanto/app/utils/temporal_helpers.py`
+
+`utc_now()` returns naive datetime (no `tzinfo`), while `parse_iso_timestamp()` returns aware datetime. Functions like `search_changed_since()` compare the two, causing `TypeError: can't compare offset-naive and offset-aware datetimes`.
+
+**Impact:** Temporal searches and differential queries break at runtime with `TypeError`.
+
+**Suggested fix:** Make `utc_now()` return aware datetime (remove `.replace(tzinfo=None)`) or strip timezone from parsed timestamps. Pick one consistent convention.
+
+---
+
+## Updated Summary
+
+| # | Finding | Severity | Type |
+|---|---------|----------|------|
+| 1 | Delete-then-recreate data loss | Critical | Architectural |
+| 2 | Tz-aware/naive datetime inconsistency | Medium | Logic |
+| 3 | Missing import timestamp validation | Medium | Validation |
+| 4 | Batch partial failure — missing atomicity indicator | Low | Design |
+| 5 | Deletion success false positive on zero deletions | Medium | Logic |
+| 6 | Search offset miscalculation when limit+offset > 100 | Medium | Logic |
+| 7 | `utc_now()` naive vs `parse_iso_timestamp()` aware | Low | Consistency |
