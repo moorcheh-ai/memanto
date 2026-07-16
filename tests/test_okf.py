@@ -8,6 +8,11 @@ foreign OKF bundle whose free-form ``type`` and unknown keys must land in the
 ``[Supporting data]`` footer without loss.
 """
 
+from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import TimeoutError as FutureTimeout
+from pathlib import Path
+from threading import Event
+
 import pytest
 
 from memanto.app.services.okf_export_service import OkfExportService
@@ -212,17 +217,21 @@ def test_reexport_replaces_stale_bundle_entries(tmp_path):
 
 
 def test_failed_reexport_preserves_last_good_bundle(tmp_path, monkeypatch):
-    """A rendering error must not leave a partial bundle in place of the last
-    successfully exported snapshot."""
+    """A failed final rename restores the last good bundle and cleans up."""
     svc = OkfExportService(exports_dir=tmp_path / "exports")
     first = {"fact": [_mem("f1", "Last good fact", "Keep this snapshot.")]}
     result = svc.write_okf_bundle("agent1", first, split="file")
 
-    def fail_root_index(*_args, **_kwargs):
-        raise OSError("simulated index write failure")
+    original_rename = Path.rename
 
-    monkeypatch.setattr(svc, "_write_root_index", fail_root_index)
-    with pytest.raises(OSError, match="simulated index write failure"):
+    def fail_staging_publish(path, target):
+        target = Path(target)
+        if path.name.startswith(".agent1_okf.tmp-") and target.name == "agent1_okf":
+            raise OSError("simulated publish failure")
+        return original_rename(path, target)
+
+    monkeypatch.setattr(Path, "rename", fail_staging_publish)
+    with pytest.raises(OSError, match="simulated publish failure"):
         svc.write_okf_bundle(
             "agent1",
             {"fact": [_mem("f2", "Partial fact", "Do not publish this.")]},
@@ -232,3 +241,48 @@ def test_failed_reexport_preserves_last_good_bundle(tmp_path, monkeypatch):
     imported = load_okf_bundle(result["output_path"])["memories"]
     assert [memory["title"] for memory in imported] == ["Last good fact"]
     assert not list((tmp_path / "exports").glob(".agent1_okf.tmp-*"))
+    assert not list((tmp_path / "exports").glob(".agent1_okf.backup-*"))
+
+
+def test_loader_waits_for_bundle_replacement(tmp_path, monkeypatch):
+    """A reader cannot observe the target-to-backup replacement window."""
+    svc = OkfExportService(exports_dir=tmp_path / "exports")
+    svc.write_okf_bundle(
+        "agent1", {"fact": [_mem("f1", "Old fact", "Old snapshot.")]}, split="file"
+    )
+    bundle = tmp_path / "exports" / "agent1_okf"
+    replacement_window = Event()
+    allow_publish = Event()
+    original_rename = Path.rename
+
+    def pause_after_backup(path, target):
+        target = Path(target)
+        result = original_rename(path, target)
+        if path == bundle and target.name.startswith(".agent1_okf.backup-"):
+            replacement_window.set()
+            if not allow_publish.wait(timeout=5):
+                raise TimeoutError("test did not release the bundle publisher")
+        return result
+
+    monkeypatch.setattr(Path, "rename", pause_after_backup)
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        publish = executor.submit(
+            svc.write_okf_bundle,
+            "agent1",
+            {"fact": [_mem("f2", "New fact", "New snapshot.")]},
+            None,
+            "file",
+        )
+        try:
+            assert replacement_window.wait(timeout=5)
+            read = executor.submit(load_okf_bundle, bundle)
+            with pytest.raises(FutureTimeout):
+                read.result(timeout=0.1)
+        finally:
+            allow_publish.set()
+
+        publish.result(timeout=5)
+        imported = read.result(timeout=5)["memories"]
+
+    assert [memory["title"] for memory in imported] == ["New fact"]
+    assert not list((tmp_path / "exports").glob(".agent1_okf.backup-*"))

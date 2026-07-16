@@ -31,6 +31,7 @@ from typing import Any
 import yaml  # type: ignore[import-untyped]
 
 from memanto.app.services.memory_export_service import MEMORY_TYPE_ORDER
+from memanto.app.utils.file_lock import okf_bundle_lock
 from memanto.app.utils.validation import validate_output_path, validate_safe_id
 
 # Stacked files hold multiple OKF documents. This sentinel separates them so
@@ -165,25 +166,29 @@ class OkfExportService:
     def _replace_bundle(staging: Path, target: Path) -> None:
         """Swap a fully rendered bundle into place, restoring the previous
         snapshot if the final rename fails."""
-        backup: Path | None = None
-        if target.exists():
-            backup = Path(
-                tempfile.mkdtemp(
-                    prefix=f".{target.name}.backup-", dir=str(target.parent)
+        # Readers share this path-scoped lock with the loader, and competing
+        # exporters take the same exclusive lock. No caller can therefore
+        # observe or interfere with the brief target -> backup -> target swap.
+        with okf_bundle_lock(target, shared=False):
+            backup: Path | None = None
+            if target.exists():
+                backup = Path(
+                    tempfile.mkdtemp(
+                        prefix=f".{target.name}.backup-", dir=str(target.parent)
+                    )
                 )
-            )
-            backup.rmdir()
-            target.rename(backup)
+                backup.rmdir()
+                target.rename(backup)
 
-        try:
-            staging.rename(target)
-        except Exception:
-            if backup is not None and backup.exists() and not target.exists():
-                backup.rename(target)
-            raise
-        else:
-            if backup is not None:
-                shutil.rmtree(backup)
+            try:
+                staging.rename(target)
+            except Exception:
+                if backup is not None and backup.exists() and not target.exists():
+                    backup.rename(target)
+                raise
+            else:
+                if backup is not None:
+                    shutil.rmtree(backup)
 
     # Section writers
     def _write_memories_section(
