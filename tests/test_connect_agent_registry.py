@@ -20,6 +20,7 @@ def test_global_instruction_path_does_not_repeat_config_directory(
     agent_name: str,
     expected_path: str,
 ) -> None:
+    """Resolve nested global instructions without repeating their config root."""
     monkeypatch.setattr(Path, "home", classmethod(lambda cls: tmp_path))
 
     resolved = AGENT_REGISTRY[agent_name].resolve_instruction_file(
@@ -43,6 +44,7 @@ def test_global_instruction_path_keeps_unprefixed_files(
     agent_name: str,
     expected_path: str,
 ) -> None:
+    """Keep global instruction files that are not nested under local config."""
     monkeypatch.setattr(Path, "home", classmethod(lambda cls: tmp_path))
 
     resolved = AGENT_REGISTRY[agent_name].resolve_instruction_file(
@@ -53,6 +55,7 @@ def test_global_instruction_path_keeps_unprefixed_files(
 
 
 def test_local_instruction_path_is_unchanged(tmp_path: Path) -> None:
+    """Keep project-local instruction resolution unchanged."""
     resolved = AGENT_REGISTRY["cursor"].resolve_instruction_file(
         tmp_path, is_global=False
     )
