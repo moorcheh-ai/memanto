@@ -206,7 +206,12 @@ class MemoryReadService:
                     "temporal_mode": "as_of",
                 }
 
-            all_memories = self._fetch_all_memories(namespaces, type=type, tags=tags)
+            # Historical queries must evaluate TTL at the requested point in
+            # time. Applying the normal current-time TTL filter here would
+            # discard memories that were valid then but have expired since.
+            all_memories = self._fetch_all_memories(
+                namespaces, type=type, tags=tags, enforce_ttl=False
+            )
             all_memories = self._apply_temporal_filter(
                 all_memories, created_before=as_of_date
             )
@@ -370,6 +375,7 @@ class MemoryReadService:
         namespaces: list[str],
         type: list[str] | None = None,
         tags: list[str] | None = None,
+        enforce_ttl: bool = True,
     ) -> list[dict[str, Any]]:
         """
         List all stored memories across the given namespaces via Moorcheh's
@@ -418,7 +424,9 @@ class MemoryReadService:
 
             memories.append(formatted)
 
-        return self._filter_expired_memories(memories)
+        if enforce_ttl:
+            return self._filter_expired_memories(memories)
+        return memories
 
     def _build_filtered_query(
         self,
