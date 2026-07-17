@@ -710,30 +710,34 @@ class MemoryReadService:
         content = raw_text
 
         if raw_text:
-            lines = raw_text.split("\n\n", 2)  # Split into at most 3 parts
-            first_line = lines[0] if lines else ""
+            first_line, separator, body = raw_text.partition("\n\n")
 
             # Extract title: strip the "[TYPE] " prefix from first line
 
             title_match = re.match(r"^\[.*?\]\s*(.*)$", first_line)
             if title_match:
                 title = title_match.group(1).strip()
-                # Content is the rest after the first line (skip tags section)
-                if len(lines) > 1:
-                    # Check if last part is tags
-                    remaining = lines[1:]
-                    content_parts = []
-                    for part in remaining:
-                        if part.startswith("Tags: "):
-                            continue
-                        content_parts.append(part)
-                    content = "\n\n".join(content_parts) if content_parts else ""
-                else:
-                    content = ""
+                content = body if separator else ""
             else:
                 # No [TYPE] prefix — use first line as title, rest as content
                 title = first_line.strip()
-                content = "\n\n".join(lines[1:]) if len(lines) > 1 else ""
+                content = body if separator else ""
+
+            # ``MemoryRecord.to_moorcheh_document`` appends a display-only
+            # tags footer after the content.  Remove exactly that generated
+            # footer while preserving arbitrary paragraphs (including a
+            # user-authored ``Tags:`` paragraph) in the original content.
+            if tags:
+                footer_marker = "\n\nTags: "
+                content_without_footer, marker, footer_tags = content.rpartition(
+                    footer_marker
+                )
+                normalized_footer_tags = [
+                    value.strip() for value in footer_tags.split(",") if value.strip()
+                ]
+                normalized_metadata_tags = [str(value).strip() for value in tags]
+                if marker and normalized_footer_tags == normalized_metadata_tags:
+                    content = content_without_footer
 
         # Build basic formatted item
         formatted = {
