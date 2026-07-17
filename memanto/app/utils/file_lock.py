@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import errno
 import sys
+import time
 from collections.abc import Iterator
 from contextlib import contextmanager
 from pathlib import Path
@@ -27,8 +29,16 @@ def _acquire(handle: BinaryIO, *, shared: bool) -> None:
             handle.write(b"\0")
             handle.flush()
         handle.seek(0)
-        msvcrt.locking(handle.fileno(), msvcrt.LK_LOCK, 1)
-        return
+        while True:
+            try:
+                msvcrt.locking(handle.fileno(), msvcrt.LK_NBLCK, 1)
+                return
+            except OSError as exc:
+                if exc.errno not in {errno.EACCES, errno.EAGAIN, errno.EDEADLK}:
+                    raise
+                # ``LK_LOCK`` gives up after a finite number of retries. Use
+                # non-blocking attempts so contention waits without a deadline.
+                time.sleep(0.05)
 
     import fcntl
 

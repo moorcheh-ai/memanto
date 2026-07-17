@@ -47,8 +47,25 @@ def load_okf_bundle(path: str | Path) -> dict[str, Any]:
     root = Path(path)
     # Hold the corresponding reader lock through discovery and every file
     # read, so an exporter cannot move the bundle aside midway through a load.
-    with okf_bundle_lock(root, shared=True):
+    with okf_bundle_lock(_bundle_lock_root(root), shared=True):
         return _load_okf_bundle(root, path)
+
+
+def _bundle_lock_root(path: Path) -> Path:
+    """Return the bundle path whose lock protects a requested import path."""
+    if path.suffix.lower() != ".md":
+        return path
+
+    # A Memanto entry lives at ``<bundle>/memories/<type>/<entry>.md``.
+    # Resolve this lexically so the same bundle lock is selected even while
+    # the exporter has temporarily moved the bundle directory aside.
+    for parent in path.parents:
+        if parent.name == "memories":
+            return parent.parent
+
+    # Root-level documents belong to their containing bundle. For a standalone
+    # Markdown import this merely serializes imports from the same directory.
+    return path.parent
 
 
 def _load_okf_bundle(root: Path, display_path: str | Path) -> dict[str, Any]:

@@ -286,3 +286,47 @@ def test_loader_waits_for_bundle_replacement(tmp_path, monkeypatch):
 
     assert [memory["title"] for memory in imported] == ["New fact"]
     assert not list((tmp_path / "exports").glob(".agent1_okf.backup-*"))
+
+
+def test_single_file_loader_uses_bundle_lock(tmp_path, monkeypatch):
+    """An in-bundle file import waits on the bundle lock during replacement."""
+    svc = OkfExportService(exports_dir=tmp_path / "exports")
+    svc.write_okf_bundle(
+        "agent1", {"fact": [_mem("f1", "Stable slug", "Old snapshot.")]}, split="file"
+    )
+    bundle = tmp_path / "exports" / "agent1_okf"
+    entry = bundle / "memories" / "fact" / "stable-slug.md"
+    replacement_window = Event()
+    allow_publish = Event()
+    original_rename = Path.rename
+
+    def pause_after_backup(path, target):
+        target = Path(target)
+        result = original_rename(path, target)
+        if path == bundle and target.name.startswith(".agent1_okf.backup-"):
+            replacement_window.set()
+            if not allow_publish.wait(timeout=5):
+                raise TimeoutError("test did not release the bundle publisher")
+        return result
+
+    monkeypatch.setattr(Path, "rename", pause_after_backup)
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        publish = executor.submit(
+            svc.write_okf_bundle,
+            "agent1",
+            {"fact": [_mem("f1", "Stable slug", "New snapshot.")]},
+            None,
+            "file",
+        )
+        try:
+            assert replacement_window.wait(timeout=5)
+            read = executor.submit(load_okf_bundle, entry)
+            with pytest.raises(FutureTimeout):
+                read.result(timeout=0.1)
+        finally:
+            allow_publish.set()
+
+        publish.result(timeout=5)
+        imported = read.result(timeout=5)["memories"]
+
+    assert [memory["body"] for memory in imported] == ["New snapshot."]
