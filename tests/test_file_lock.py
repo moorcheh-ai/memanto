@@ -4,6 +4,8 @@ import errno
 import sys
 from types import SimpleNamespace
 
+import pytest
+
 from memanto.app.utils import file_lock
 
 
@@ -40,9 +42,6 @@ def test_windows_lock_does_not_retry_unexpected_errors(tmp_path, monkeypatch):
     monkeypatch.setitem(sys.modules, "msvcrt", fake_msvcrt)
 
     with (tmp_path / "lock").open("a+b") as handle:
-        try:
+        with pytest.raises(OSError) as exc_info:
             file_lock._acquire(handle, shared=False)
-        except OSError as exc:
-            assert exc.errno == errno.EBADF
-        else:  # pragma: no cover - assertion guard
-            raise AssertionError("unexpected lock errors must not be swallowed")
+        assert exc_info.value.errno == errno.EBADF
