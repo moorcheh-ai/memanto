@@ -541,7 +541,8 @@ class TestMemoryWriteServiceBatch:
 
         assert result["successful"] == 0
         assert result["failed"] == 1
-        assert result["results"][0]["status"] == "FAILED"
+        assert result["results"][0]["status"] == "failed"
+
 
 
 class TestForgetEndToEnd:
@@ -620,6 +621,7 @@ class TestForgetEndToEnd:
         result = client.delete_memory(agent_id="test-agent", memory_id="mem-xyz")
         assert result["status"] == "deleted"
         assert result["memory_id"] == "mem-xyz"
+
 
 
 class TestMemoryWriteServiceTimestamps:
@@ -910,7 +912,7 @@ def test_format_memory_item_tag_stripping():
     
     service = MemoryReadService(moorcheh_client=MagicMock())
     raw_text = '[FACT] Market Size\n\nParagraph 1\n\nParagraph 2\n\nTags: market, finance'
-    mock_item = {'text': raw_text, 'metadata': {}}
+    mock_item = {'text': raw_text, 'metadata': {'tags': 'market, finance'}}
     
     formatted = service._format_memory_item(mock_item)
     
@@ -934,4 +936,40 @@ def test_to_moorcheh_document_handles_string_expires_at():
 
     doc = memory.to_moorcheh_document()
     assert doc['expires_at'] == '2026-07-10T00:00:00'
+
+def test_batch_upload_error_counts_each_pending_memory_as_failed():
+    from memanto.app.core import MemoryRecord
+    from memanto.app.services.memory_write_service import MemoryWriteService
+
+    client = MagicMock()
+    client.documents.upload.return_value = {"status": "error"}
+
+    memories = [
+        MemoryRecord(
+            type="fact",
+            title="One",
+            content="First memory",
+            agent_id="agent-1",
+            actor_id="agent-1",
+            source="user",
+        ),
+        MemoryRecord(
+            type="fact",
+            title="Two",
+            content="Second memory",
+            agent_id="agent-1",
+            actor_id="agent-1",
+            source="user",
+        ),
+    ]
+
+    result = MemoryWriteService(client).batch_store_memories(memories)
+
+    assert result["successful"] == 0
+    assert result["failed"] == 2
+    assert [item["status"] for item in result["results"]] == ["failed", "failed"]
+    assert all(
+        "Batch upload returned status" in item["error"]
+        for item in result["results"]
+    )
 

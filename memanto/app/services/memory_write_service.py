@@ -30,6 +30,8 @@ _REMOVED_TRUST_FIELDS = frozenset(
     }
 )
 
+_SUCCESSFUL_UPLOAD_STATUSES = {"queued", "success", "ok"}
+
 
 class MemoryWriteService:
     """Persist memory records to Moorcheh-backed namespaces."""
@@ -224,10 +226,16 @@ class MemoryWriteService:
                 )
 
                 # Update results with upload status
-                moorcheh_status = upload_result.get("status", "unknown")
+                moorcheh_status = str(upload_result.get("status", "unknown")).lower()
                 for result in results:
                     if result["status"] == "pending":
-                        result["status"] = moorcheh_status
+                        if moorcheh_status in _SUCCESSFUL_UPLOAD_STATUSES:
+                            result["status"] = moorcheh_status
+                        else:
+                            result["status"] = "failed"
+                            result["error"] = (
+                                f"Batch upload returned status '{moorcheh_status}'"
+                            )
 
             # Count successes, failures, and namespace-rejected items separately
             # so that successful + failed + rejected == total_submitted always.

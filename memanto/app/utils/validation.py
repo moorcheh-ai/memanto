@@ -228,3 +228,14 @@ def validate_output_path(
             ),
         )
     return resolved
+
+_SUCCESSFUL_WRITE_STATUSES = {"queued", "success", "ok"}
+
+
+def is_successful_write_result(item: object) -> bool:
+    """Check if a Moorcheh API response represents a successful write."""
+    return (
+        isinstance(item, dict)
+        and str(item.get("status", "")).lower() in _SUCCESSFUL_WRITE_STATUSES
+    )
+
