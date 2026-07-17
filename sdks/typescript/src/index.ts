@@ -137,6 +137,7 @@ export class Memanto {
   private readonly agentId: string;
   private readonly encodedAgentId: string;
   private readonly autoCreate: boolean;
+  private readonly apiKey?: string;
   private sessionToken: string | null = null;
   private starting: Promise<void> | null = null;
 
@@ -145,6 +146,7 @@ export class Memanto {
     this.agentId = opts.agentId;
     this.encodedAgentId = encodeURIComponent(opts.agentId);
     this.autoCreate = opts.autoCreate ?? true;
+    this.apiKey = opts.apiKey;
     this.lifecycle = new ServerLifecycle(opts);
   }
 
@@ -325,7 +327,7 @@ export class Memanto {
     const baseUrl = this.lifecycle.baseUrl;
     const res = await fetch(`${baseUrl}/api/v2/agents`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: this.managementHeaders(),
       body: JSON.stringify({
         agent_id: this.agentId,
         pattern: input.pattern,
@@ -398,14 +400,16 @@ export class Memanto {
 
   private async createAgentIfMissing(): Promise<void> {
     const baseUrl = this.lifecycle.baseUrl;
-    const res = await fetch(`${baseUrl}/api/v2/agents/${this.encodedAgentId}`);
+    const res = await fetch(`${baseUrl}/api/v2/agents/${this.encodedAgentId}`, {
+      headers: this.managementHeaders(),
+    });
     if (res.ok) return;
     if (res.status !== 404) {
       throw await asError(res, "Failed to look up agent");
     }
     const create = await fetch(`${baseUrl}/api/v2/agents`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: this.managementHeaders(),
       body: JSON.stringify({ agent_id: this.agentId }),
     });
     if (!create.ok && create.status !== 409) {
@@ -417,6 +421,7 @@ export class Memanto {
     const baseUrl = this.lifecycle.baseUrl;
     const res = await fetch(`${baseUrl}/api/v2/agents/${this.encodedAgentId}/activate`, {
       method: "POST",
+      headers: this.managementHeaders(),
     });
     if (!res.ok) throw await asError(res, "Failed to activate agent");
     const session = (await res.json()) as SessionRecord;
@@ -441,6 +446,8 @@ export class Memanto {
     };
     if (requireSession) {
       headers["X-Session-Token"] = this.sessionToken ?? "";
+    } else if (this.apiKey) {
+      headers["X-Api-Key"] = this.apiKey;
     }
     const res = await fetch(`${baseUrl}${path}`, {
       method,
@@ -450,6 +457,14 @@ export class Memanto {
     if (!res.ok) throw await asError(res, `${method} ${path} failed`);
     if (res.status === 204) return undefined as T;
     return (await res.json()) as T;
+  }
+
+  private managementHeaders(): Record<string, string> {
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+    };
+    if (this.apiKey) headers["X-Api-Key"] = this.apiKey;
+    return headers;
   }
 
   private async requestMultipart<T = unknown>(

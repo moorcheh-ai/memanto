@@ -10,7 +10,7 @@ interface Recorded {
   body: string;
 }
 
-function startFakeApi(agentId = "test-agent"): Promise<{
+function startFakeApi(agentId = "test-agent", requiredApiKey?: string): Promise<{
   url: string;
   recorded: Recorded[];
   close: () => void;
@@ -34,6 +34,19 @@ function startFakeApi(agentId = "test-agent"): Promise<{
         };
 
         if (url === "/health") return reply(200, { status: "ok" });
+        const agentUrl = `/api/v2/agents/${encodedAgentId}`;
+        const isManagementRequest =
+          url === "/api/v2/status" ||
+          url === "/api/v2/agents" ||
+          (url === agentUrl && ["GET", "DELETE"].includes(req.method ?? "")) ||
+          url === `${agentUrl}/activate`;
+        if (
+          requiredApiKey &&
+          isManagementRequest &&
+          req.headers["x-api-key"] !== requiredApiKey
+        ) {
+          return reply(401, { detail: "invalid API key" });
+        }
         if (url === "/api/v2/status" && req.method === "GET")
           return reply(200, {
             session_id: "existing-session",
@@ -175,6 +188,36 @@ describe("Memanto", () => {
       "GET /api/v2/status",
     ]);
     expect(api.recorded[0]?.headers["x-session-token"]).toBeUndefined();
+  });
+
+  it("authenticates remote management endpoints with apiKey", async () => {
+    const apiKey = "mch_remote_test_key";
+    const api = await startFakeApi("test-agent", apiKey);
+    cleanupFns.push(api.close);
+
+    const m = new Memanto({ agentId: "test-agent", baseUrl: api.url, apiKey });
+    cleanupFns.push(() => m.close());
+
+    await m.remember({ content: "Remote servers require management auth" });
+    await m.status();
+
+    const managementUrls = new Set([
+      "/api/v2/agents/test-agent",
+      "/api/v2/agents",
+      "/api/v2/agents/test-agent/activate",
+      "/api/v2/status",
+    ]);
+    const managementRequests = api.recorded.filter((r) =>
+      managementUrls.has(r.url),
+    );
+    expect(managementRequests).toHaveLength(4);
+    expect(managementRequests.every((r) => r.headers["x-api-key"] === apiKey)).toBe(
+      true,
+    );
+
+    const remember = api.recorded.find((r) => r.url.endsWith("/remember"));
+    expect(remember?.headers["x-session-token"]).toBe("fake-token");
+    expect(remember?.headers["x-api-key"]).toBeUndefined();
   });
 
   it("rejects empty agentId", () => {
