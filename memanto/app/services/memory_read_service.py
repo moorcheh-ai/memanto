@@ -715,9 +715,9 @@ class MemoryReadService:
 
             # Extract title: strip the "[TYPE] " prefix from first line
 
-            title_match = re.match(r"^\[.*?\]\s*(.*)$", first_line)
+            title_match = re.match(r"^\[.*?\]\s*(.*)$", first_line, re.DOTALL)
             if title_match:
-                title = title_match.group(1).strip()
+                title = title_match.group(1).strip()[:100]
                 # Content is the rest after the first line (skip tags section)
                 if len(lines) > 1:
                     # Check if last part is tags
