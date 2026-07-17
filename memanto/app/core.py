@@ -48,11 +48,6 @@ class MemoryRecord(BaseModel):
     expires_at: datetime | None = None
     ttl_seconds: int | None = None
 
-    def model_post_init(self, _context: Any) -> None:
-        """Compute expires_at when ttl_seconds is provided via constructor."""
-        if self.ttl_seconds is not None and self.expires_at is None:
-            self.expires_at = datetime.utcnow() + timedelta(seconds=self.ttl_seconds)
-
     def to_moorcheh_document(self) -> dict[str, Any]:
         """
         Convert to Moorcheh document format with flat metadata fields.
