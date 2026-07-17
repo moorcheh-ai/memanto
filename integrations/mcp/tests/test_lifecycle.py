@@ -5,8 +5,8 @@ from __future__ import annotations
 from typing import Any
 
 import pytest
-
 from memanto.app.utils.errors import AgentNotFoundError
+
 from memanto_mcp.config import MCPServerSettings
 from memanto_mcp.lifecycle import MemantoLifecycle
 from memanto_mcp.tools import register_tools
@@ -20,7 +20,7 @@ class FakeSdkClient:
     network.
     """
 
-    instances: list["FakeSdkClient"] = []
+    instances: list[FakeSdkClient] = []
     missing_agents: set[str] = set()
     fail_activate_agents: set[str] = set()
 
