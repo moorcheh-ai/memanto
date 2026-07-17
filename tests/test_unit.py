@@ -904,3 +904,34 @@ class TestValidateSafeId:
             svc.generate_conflict_report("agent1", "../../etc/passwd")
 
         assert not (tmp_path / "etc").exists()
+def test_format_memory_item_tag_stripping():
+    from memanto.app.services.memory_read_service import MemoryReadService
+    from unittest.mock import MagicMock
+    
+    service = MemoryReadService(moorcheh_client=MagicMock())
+    raw_text = '[FACT] Market Size\n\nParagraph 1\n\nParagraph 2\n\nTags: market, finance'
+    mock_item = {'text': raw_text, 'metadata': {}}
+    
+    formatted = service._format_memory_item(mock_item)
+    
+    assert formatted.get('title') == 'Market Size'
+    assert 'Tags:' not in formatted.get('content', '')
+    assert 'Paragraph 1' in formatted.get('content', '')
+    assert 'Paragraph 2' in formatted.get('content', '')
+
+def test_to_moorcheh_document_handles_string_expires_at():
+    from memanto.app.core import MemoryRecord
+    
+    memory = MemoryRecord(
+        type='fact',
+        title='String Expiry',
+        content='Expires at is a string',
+        agent_id='test-agent',
+        actor_id='user',
+        source='test',
+    )
+    memory.expires_at = '2026-07-10T00:00:00'
+
+    doc = memory.to_moorcheh_document()
+    assert doc['expires_at'] == '2026-07-10T00:00:00'
+
