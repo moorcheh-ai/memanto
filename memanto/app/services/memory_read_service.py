@@ -497,31 +497,43 @@ class MemoryReadService:
         """
         from memanto.app.utils.temporal_helpers import parse_iso_timestamp
 
+        def _created_dt(record: dict[str, Any]) -> datetime | None:
+            """Parse a record's created_at, returning None if it is missing/invalid."""
+            raw = record.get("created_at")
+            if not raw:
+                return None
+            try:
+                return parse_iso_timestamp(str(raw))
+            except (ValueError, AttributeError, TypeError):
+                return None
+
         filtered = results
 
         if created_after:
             try:
                 after_dt = parse_iso_timestamp(created_after)
+            except (ValueError, AttributeError, TypeError):
+                after_dt = None
+            if after_dt is not None:
+                # A single record with a missing/unparseable timestamp is skipped
+                # individually; it must never disable the whole window filter.
                 filtered = [
                     r
                     for r in filtered
-                    if r.get("created_at")
-                    and parse_iso_timestamp(r["created_at"]) >= after_dt
+                    if (dt := _created_dt(r)) is not None and dt >= after_dt
                 ]
-            except (ValueError, AttributeError):
-                pass  # Skip invalid timestamps
 
         if created_before:
             try:
                 before_dt = parse_iso_timestamp(created_before)
+            except (ValueError, AttributeError, TypeError):
+                before_dt = None
+            if before_dt is not None:
                 filtered = [
                     r
                     for r in filtered
-                    if r.get("created_at")
-                    and parse_iso_timestamp(r["created_at"]) <= before_dt
+                    if (dt := _created_dt(r)) is not None and dt <= before_dt
                 ]
-            except (ValueError, AttributeError):
-                pass  # Skip invalid timestamps
 
         return filtered
 
@@ -710,25 +722,25 @@ class MemoryReadService:
         content = raw_text
 
         if raw_text:
-            blocks = raw_text.split("\n\n")
-            first_line = blocks[0] if blocks else ""
+            # Wire format (see MemoryRecord.to_moorcheh_document):
+            #   "[TYPE] {title}\n\n{content}"  with an optional trailing
+            #   "\n\nTags: {tags}" block appended only when the record has tags.
+            # Split off the title on the FIRST blank line; everything after it is
+            # the content, which may itself contain blank lines.
+            first_line, _, rest = raw_text.partition("\n\n")
 
             title_match = re.match(r"^\[.*?\]\s*(.*)$", first_line)
-            if title_match:
-                title = title_match.group(1).strip()
-                remaining = blocks[1:]
-                # Strip trailing Tags block so metadata doesn't leak into content.
-                # Only strip if Tags: is the *last* block (canonical format).
-                if remaining and remaining[-1].startswith("Tags: "):
-                    remaining = remaining[:-1]
-                content = "\n\n".join(remaining) if remaining else ""
+            title = title_match.group(1).strip() if title_match else first_line.strip()
+
+            # Strip ONLY a genuine trailing tags block, and only when this record
+            # actually has tags (the serializer appends the block iff tags exist).
+            # Prevents (a) wiping content that merely begins with "Tags: " and
+            # (b) leaking the tags line into multi-paragraph content.
+            body, sep, last = rest.rpartition("\n\n")
+            if tags and sep and last.startswith("Tags: "):
+                content = body
             else:
-                # No [TYPE] prefix — use first line as title, rest as content
-                title = first_line.strip()
-                remaining = blocks[1:]
-                if remaining and remaining[-1].startswith("Tags: "):
-                    remaining = remaining[:-1]
-                content = "\n\n".join(remaining) if remaining else ""
+                content = rest
 
         # Build basic formatted item
         formatted = {
