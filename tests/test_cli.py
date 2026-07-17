@@ -510,6 +510,47 @@ class TestMEMANTOCLI:
 
         mock_write_service.batch_store_memories.assert_not_called()
 
+    @pytest.mark.parametrize("client_path", ["direct_client", "sdk_client"])
+    def test_batch_import_preserves_memory_status(self, mock_all_clients, client_path):
+        """Migration clients must forward lifecycle state into MemoryRecord."""
+        from importlib import import_module
+        from unittest.mock import MagicMock, patch
+
+        module = import_module(f"memanto.cli.client.{client_path}")
+        client_cls = (
+            module.DirectClient if client_path == "direct_client" else module.SdkClient
+        )
+        mock_write_service = MagicMock()
+        mock_write_service.batch_store_memories.return_value = {"results": []}
+        mock_session = MagicMock()
+        mock_session.namespace = "memanto_agent_test-agent"
+
+        with (
+            patch.object(
+                client_cls, "_get_write_service", return_value=mock_write_service
+            ),
+            patch.object(
+                client_cls,
+                "_get_validated_session_for_agent",
+                return_value=mock_session,
+            ),
+        ):
+            client = client_cls.__new__(client_cls)
+            client.api_key = "test-api-key"
+            client.session_token = None
+            client.batch_remember(
+                agent_id="test-agent",
+                memories=[
+                    {
+                        "content": "An obsolete deployment instruction.",
+                        "status": "superseded",
+                    }
+                ],
+            )
+
+        records = mock_write_service.batch_store_memories.call_args.args[0]
+        assert records[0].status == "superseded"
+
     def test_edit_sdk_normalizes_confidence_and_accepts_valid_payload(
         self, mock_all_clients
     ):

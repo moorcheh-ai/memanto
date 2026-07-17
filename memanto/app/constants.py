@@ -68,6 +68,13 @@ VALID_PROVENANCE_TYPES = {
     "imported",
 }
 
+VALID_STATUS_TYPES = {
+    "active",
+    "superseded",
+    "deleted",
+    "provisional",
+}
+
 ALLOWED_UPDATE_FIELDS = {
     "title",
     "content",

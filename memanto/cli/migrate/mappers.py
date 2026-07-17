@@ -35,7 +35,7 @@ from collections.abc import Callable
 from datetime import datetime, timezone
 from typing import Any
 
-from memanto.app.constants import VALID_MEMORY_TYPES
+from memanto.app.constants import VALID_MEMORY_TYPES, VALID_STATUS_TYPES
 
 # Mem0 ships category labels per memory. Map the common ones to Memanto's
 # typed primitives; everything else falls through to None (auto-classify).
@@ -71,6 +71,14 @@ def _coerce_type(raw: str | None) -> str | None:
         return None
     t = raw.strip().lower()
     return t if t in VALID_MEMORY_TYPES else None
+
+
+def _coerce_status(raw: Any) -> str | None:
+    """Return a supported Memanto status or ignore malformed extensions."""
+    if not isinstance(raw, str):
+        return None
+    status = raw.strip().lower()
+    return status if status in VALID_STATUS_TYPES else None
 
 
 def _scope_tag(scope: dict[str, Any] | None) -> str | None:
@@ -452,6 +460,7 @@ def map_okf(export: dict[str, Any]) -> list[dict[str, Any]]:
         confidence = min(1.0, max(0.0, confidence))
 
         source = x_memanto.get("source") or "okf"
+        status = _coerce_status(x_memanto.get("status"))
         created_at = _parse_dt(entry.get("timestamp"))
 
         footer_items: list[tuple[str, Any]] = [
@@ -470,20 +479,25 @@ def map_okf(export: dict[str, Any]) -> list[dict[str, Any]]:
         elif len(content) > _MAX_CONTENT_CHARS:
             content = content[: _MAX_CONTENT_CHARS - 4] + "\n..."
 
-        rows.append(
-            {
-                "title": title or _title_from(content),
-                "content": content,
-                "type": memory_type,
-                "tags": tags,
-                "confidence": confidence,
-                "source": source,
-                "source_ref": str(resource) if resource else None,
-                "provenance": "imported",
-                "created_at": created_at,
-                "updated_at": migrated_at,
-            }
-        )
+        row = {
+            "title": title or _title_from(content),
+            "content": content,
+            "type": memory_type,
+            "tags": tags,
+            "confidence": confidence,
+            "source": source,
+            "source_ref": str(resource) if resource else None,
+            "provenance": "imported",
+            "created_at": created_at,
+            "updated_at": migrated_at,
+        }
+        # A Memanto export carries lifecycle state in its namespaced extension.
+        # Preserve it so superseded/deleted memories do not become active again
+        # after a supported export/import round trip. Foreign or malformed OKF
+        # data omits the field and keeps MemoryRecord's safe active default.
+        if status is not None:
+            row["status"] = status
+        rows.append(row)
     return rows
 
 

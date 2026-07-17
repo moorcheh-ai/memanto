@@ -743,7 +743,7 @@ class DirectClient:
                 "source": item.get("source") or "user",
                 "provenance": provenance,
             }
-            for opt_key in ("source_ref", "created_at", "updated_at"):
+            for opt_key in ("source_ref", "created_at", "updated_at", "status"):
                 val = item.get(opt_key)
                 if val is not None:
                     kwargs[opt_key] = val

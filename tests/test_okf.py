@@ -108,7 +108,7 @@ def test_memanto_round_trip_preserves_extras(tmp_path):
                 confidence=0.9,
                 provenance="explicit_statement",
                 source="user",
-                status="active",
+                status="superseded",
                 created_at="2026-05-28T14:30:00Z",
                 source_ref="https://example.com/db",
             )
@@ -125,6 +125,7 @@ def test_memanto_round_trip_preserves_extras(tmp_path):
     pg = by_title["Postgres is the DB"]
     assert pg["type"] == "fact"  # x_memanto.type round-trips
     assert pg["confidence"] == 0.9  # x_memanto.confidence round-trips
+    assert pg["status"] == "superseded"  # lifecycle state round-trips
     assert pg["source_ref"] == "https://example.com/db"  # resource -> source_ref
     assert pg["provenance"] == "imported"
     assert set(pg["tags"]) == {"infra", "db"}
@@ -186,3 +187,21 @@ def test_loader_splits_stacked_file(tmp_path):
     assert {m["title"] for m in export["memories"]} == {
         f"Standup {i}" for i in range(5)
     }
+
+
+def test_okf_mapper_ignores_invalid_memanto_status(tmp_path):
+    """Malformed extension data must not break foreign OKF imports."""
+    (tmp_path / "memory.md").write_text(
+        "---\n"
+        "type: fact\n"
+        "title: A fact\n"
+        "x_memanto:\n"
+        "  status: archived\n"
+        "---\n\n"
+        "A useful fact.\n",
+        encoding="utf-8",
+    )
+
+    row = map_okf(load_okf_bundle(tmp_path))[0]
+
+    assert "status" not in row
