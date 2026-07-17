@@ -569,41 +569,37 @@ class MemoryReadService:
         """
         from memanto.app.utils.temporal_helpers import parse_iso_timestamp
 
-        after_dt = None
-        before_dt = None
+        def _created(r: dict[str, Any]) -> datetime | None:
+            """Parse a record's created_at; drop the record (None) if unparseable.
 
-        if created_after:
+            A single malformed record must not silently disable the whole filter
+            — otherwise a temporal query could over-return every memory.
+            """
+            raw = r.get("created_at")
+            if not raw:
+                return None
             try:
-                after_dt = parse_iso_timestamp(created_after)
-            except (ValueError, AttributeError, TypeError):
-                pass  # Keep existing fail-open behavior for invalid caller input.
+                return parse_iso_timestamp(str(raw))
+            except (ValueError, AttributeError):
+                return None
+
+        filtered = results
+
+        # The boundary values are caller-supplied; a bad value is a hard error
+        # rather than a silently-ignored filter (which would over-return data).
+        if created_after:
+            after_dt = parse_iso_timestamp(created_after)
+            filtered = [
+                r for r in filtered
+                if (c := _created(r)) is not None and c >= after_dt
+            ]
 
         if created_before:
-            try:
-                before_dt = parse_iso_timestamp(created_before)
-            except (ValueError, AttributeError, TypeError):
-                pass  # Keep existing fail-open behavior for invalid caller input.
-
-        if after_dt is None and before_dt is None:
-            return results
-
-        filtered = []
-        for result in results:
-            raw_created = result.get("created_at")
-            if not raw_created:
-                continue
-
-            try:
-                created_dt = parse_iso_timestamp(raw_created)
-            except (ValueError, AttributeError, TypeError):
-                continue
-
-            if after_dt is not None and created_dt < after_dt:
-                continue
-            if before_dt is not None and created_dt > before_dt:
-                continue
-
-            filtered.append(result)
+            before_dt = parse_iso_timestamp(created_before)
+            filtered = [
+                r for r in filtered
+                if (c := _created(r)) is not None and c <= before_dt
+            ]
 
         return filtered
 
