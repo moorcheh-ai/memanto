@@ -4,6 +4,8 @@ Authentication Dependencies for V2 API
 Shared authentication utilities to avoid circular imports.
 """
 
+from urllib.parse import urlsplit
+
 from fastapi import Cookie, Header, HTTPException, Request, Response
 
 from memanto.app.models.session import Session
@@ -103,6 +105,29 @@ def _is_loopback_host(host: str | None) -> bool:
     return ipv4_mapped is not None and ipv4_mapped.is_loopback
 
 
+def _is_loopback_origin(origin: str | None) -> bool:
+    """Return True when a browser Origin points at the local Memanto host."""
+    if not origin:
+        return False
+    try:
+        parsed = urlsplit(origin)
+    except ValueError:
+        return False
+    if parsed.scheme not in {"http", "https"}:
+        return False
+    return parsed.hostname == "localhost" or _is_loopback_host(parsed.hostname)
+
+
+def _is_cross_site_browser_request(request: Request) -> bool:
+    """Detect browser requests that must not inherit loopback trust."""
+    fetch_site = request.headers.get("sec-fetch-site", "").strip().lower()
+    if fetch_site in {"cross-site", "same-site"}:
+        return True
+
+    origin = request.headers.get("origin")
+    return origin is not None and not _is_loopback_origin(origin)
+
+
 def require_management_access(
     request: Request,
     authorization: str | None = Header(None),
@@ -150,7 +175,7 @@ def require_management_access(
         return server_key
 
     client_host = request.client.host if request.client else None
-    if _is_loopback_host(client_host):
+    if _is_loopback_host(client_host) and not _is_cross_site_browser_request(request):
         return server_key
 
     raise HTTPException(

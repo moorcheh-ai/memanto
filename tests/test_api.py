@@ -179,6 +179,53 @@ class TestMEMANTOAPI:
             assert response.status_code == 401
 
     @pytest.mark.asyncio
+    async def test_cross_site_loopback_cannot_create_agent(self, client):
+        """A website cannot use the loopback exemption to manage agents."""
+        response = await client.post(
+            "/api/v2/agents",
+            headers={
+                "Origin": "https://evil.example",
+                "Sec-Fetch-Site": "cross-site",
+            },
+            json={"agent_id": "cross-site-agent", "pattern": "support"},
+        )
+
+        assert response.status_code == 401
+
+    @pytest.mark.asyncio
+    async def test_cross_site_loopback_cannot_activate_agent(
+        self, client, auth_headers
+    ):
+        """A website cannot mint a session token for an existing agent."""
+        await client.post(
+            "/api/v2/agents",
+            headers=auth_headers,
+            json={"agent_id": "cross-site-activate", "pattern": "support"},
+        )
+
+        response = await client.post(
+            "/api/v2/agents/cross-site-activate/activate",
+            headers={"Sec-Fetch-Site": "cross-site"},
+        )
+
+        assert response.status_code == 401
+        assert "session_token" not in response.text
+
+    @pytest.mark.asyncio
+    async def test_loopback_origin_keeps_local_management_access(self, client):
+        """The localhost browser UI keeps the intentional loopback exemption."""
+        response = await client.post(
+            "/api/v2/agents",
+            headers={
+                "Origin": "http://localhost:8000",
+                "Sec-Fetch-Site": "same-origin",
+            },
+            json={"agent_id": "localhost-origin-agent", "pattern": "support"},
+        )
+
+        assert response.status_code == 201
+
+    @pytest.mark.asyncio
     async def test_create_agent_fails_when_server_key_missing(self, client):
         """Test failure when server API key is not configured"""
         payload = {
