@@ -583,23 +583,25 @@ class MemoryReadService:
             except (ValueError, AttributeError):
                 return None
 
-        filtered = results
+        if not created_after and not created_before:
+            return results
 
         # The boundary values are caller-supplied; a bad value is a hard error
         # rather than a silently-ignored filter (which would over-return data).
-        if created_after:
-            after_dt = parse_iso_timestamp(created_after)
-            filtered = [
-                r for r in filtered
-                if (c := _created(r)) is not None and c >= after_dt
-            ]
+        after_dt = parse_iso_timestamp(created_after) if created_after else None
+        before_dt = parse_iso_timestamp(created_before) if created_before else None
 
-        if created_before:
-            before_dt = parse_iso_timestamp(created_before)
-            filtered = [
-                r for r in filtered
-                if (c := _created(r)) is not None and c <= before_dt
-            ]
+        def _in_range(r: dict[str, Any]) -> bool:
+            c = _created(r)
+            if c is None:
+                return False
+            if after_dt is not None and c < after_dt:
+                return False
+            if before_dt is not None and c > before_dt:
+                return False
+            return True
+
+        filtered = [r for r in results if _in_range(r)]
 
         return filtered
 
