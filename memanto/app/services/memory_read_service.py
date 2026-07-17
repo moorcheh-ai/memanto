@@ -714,14 +714,9 @@ class MemoryReadService:
 
             # Extract title: strip the "[TYPE] " prefix from first line
 
-            title_match = re.match(r"^\[.*?\]\s*(.*)$", first_line)
-            if title_match:
-                title = title_match.group(1).strip()
-                content = body if separator else ""
-            else:
-                # No [TYPE] prefix — use first line as title, rest as content
-                title = first_line.strip()
-                content = body if separator else ""
+            title_match = re.match(r"^\[.*?\]\s*(.*)$", first_line, flags=re.DOTALL)
+            title = title_match.group(1).strip() if title_match else first_line.strip()
+            content = body if separator else ""
 
             # ``MemoryRecord.to_moorcheh_document`` appends a display-only
             # tags footer after the content.  Remove exactly that generated
