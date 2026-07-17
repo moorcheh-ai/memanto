@@ -41,3 +41,20 @@ def test_tags_like_content_is_untouched_without_metadata_tags():
 
     assert formatted["content"] == original
     assert formatted["tags"] == []
+
+
+def test_multiline_title_keeps_type_prefix_out_of_formatted_title():
+    memory = MemoryRecord(
+        type="preference",
+        title="Travel\npreference",
+        content="Prefers aisle seats.",
+        agent_id="agent-1",
+        actor_id="user-1",
+        source="user",
+    )
+
+    formatted = MemoryReadService(object())._format_memory_item(
+        memory.to_moorcheh_document()
+    )
+
+    assert formatted["title"] == "Travel\npreference"
