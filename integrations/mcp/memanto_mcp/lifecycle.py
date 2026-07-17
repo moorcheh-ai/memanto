@@ -41,6 +41,7 @@ class MemantoLifecycle:
     """Owns the long-lived SdkClient and per-agent session bookkeeping."""
 
     def __init__(self, settings: MCPServerSettings) -> None:
+        """Initialize admin and per-agent client state."""
         self._settings = settings
         self._admin_client = SdkClient(api_key=settings.api_key_value())
         self._clients: dict[str, SdkClient] = {}
@@ -119,6 +120,7 @@ class MemantoLifecycle:
     # ------------------------------------------------------------------ #
 
     def _ensure_agent_exists_locked(self, client: SdkClient, agent_id: str) -> None:
+        """Verify an agent exists, auto-creating it when configured."""
         try:
             client.get_agent(agent_id)
             logger.debug("Agent '%s' exists.", agent_id)
@@ -149,6 +151,7 @@ class MemantoLifecycle:
             logger.debug("Agent '%s' was created concurrently.", agent_id)
 
     def _activate_locked(self, client: SdkClient, agent_id: str) -> None:
+        """Activate a Memanto session on the provided agent-scoped client."""
         try:
             client.activate_agent(
                 agent_id=agent_id,

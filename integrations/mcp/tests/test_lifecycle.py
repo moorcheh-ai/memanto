@@ -77,6 +77,7 @@ class ToolRegistry:
         """Return a decorator that stores the tool by name."""
 
         def decorator(fn):
+            """Store one decorated tool function and return it unchanged."""
             self.tools[name] = fn
             return fn
 
