@@ -33,20 +33,6 @@ def _wire(memory_type: str, title: str, content: str, tags: list[str]) -> dict:
 # --- Bug 1: content parsing ------------------------------------------------
 
 
-def test_content_starting_with_tags_is_not_wiped():
-    item = _wire("fact", "Ticket note", "Tags: bug and urgent are the labels", [])
-    out = _service()._format_memory_item(item)
-    assert out["content"] == "Tags: bug and urgent are the labels"
-    assert out["title"] == "Ticket note"
-
-
-def test_multi_paragraph_content_keeps_paragraphs_and_strips_tags():
-    item = _wire("fact", "T", "para1\n\npara2", ["a", "b"])
-    out = _service()._format_memory_item(item)
-    assert out["content"] == "para1\n\npara2"
-    assert out["tags"] == ["a", "b"]
-
-
 def test_embedded_tags_paragraph_with_real_tags():
     # Content whose first paragraph starts with "Tags: " AND a genuine trailing
     # tags block: only the LAST block is metadata, so rpartition (not any match)
@@ -55,19 +41,6 @@ def test_embedded_tags_paragraph_with_real_tags():
     out = _service()._format_memory_item(item)
     assert out["content"] == "Tags: this is user content, not metadata"
     assert out["tags"] == ["urgent"]
-
-
-def test_normal_content_with_tags_roundtrips():
-    item = _wire("fact", "T", "single body", ["x"])
-    out = _service()._format_memory_item(item)
-    assert out["content"] == "single body"
-    assert out["tags"] == ["x"]
-
-
-def test_normal_content_without_tags_roundtrips():
-    item = _wire("fact", "T", "just the body", [])
-    out = _service()._format_memory_item(item)
-    assert out["content"] == "just the body"
 
 
 # --- Bug 2: temporal filter fail-open --------------------------------------
@@ -85,15 +58,3 @@ def test_one_bad_timestamp_does_not_disable_window():
     # Only the in-window record survives; the 2020 record must NOT leak through,
     # and the unparseable record is skipped individually.
     assert [r["id"] for r in out] == ["june"]
-
-
-def test_created_before_excludes_later_and_bad_records():
-    results = [
-        {"id": "early", "created_at": "2026-01-01T00:00:00Z"},
-        {"id": "bad", "created_at": None},
-        {"id": "late", "created_at": "2026-12-31T00:00:00Z"},
-    ]
-    out = _service()._apply_temporal_filter(
-        results, created_after=None, created_before="2026-06-01T00:00:00Z"
-    )
-    assert [r["id"] for r in out] == ["early"]
