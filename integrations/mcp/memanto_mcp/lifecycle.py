@@ -122,6 +122,13 @@ class MemantoLifecycle:
                 f"{agent_id}` or via the create_agent tool."
             )
 
+        if agent_id != self._settings.default_agent_id:
+            raise AgentNotFoundError(
+                f"Agent '{agent_id}' does not exist. Only the configured default agent "
+                "may be auto-created; create other agents explicitly with "
+                f"`memanto agent create {agent_id}` or the gated create_agent tool."
+            )
+
         logger.info(
             "Auto-creating agent '%s' with pattern '%s'.",
             agent_id,
