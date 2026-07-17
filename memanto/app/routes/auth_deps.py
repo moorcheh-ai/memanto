@@ -118,14 +118,25 @@ def _is_loopback_origin(origin: str | None) -> bool:
     return parsed.hostname == "localhost" or _is_loopback_host(parsed.hostname)
 
 
+def _is_loopback_host_header(host: str | None) -> bool:
+    """Return True when an HTTP Host header names a loopback interface."""
+    if not host:
+        return False
+    try:
+        hostname = urlsplit(f"//{host}").hostname
+    except ValueError:
+        return False
+    return hostname == "localhost" or _is_loopback_host(hostname)
+
+
 def _is_cross_site_browser_request(request: Request) -> bool:
     """Detect browser requests that must not inherit loopback trust."""
-    fetch_site = request.headers.get("sec-fetch-site", "").strip().lower()
-    if fetch_site in {"cross-site", "same-site"}:
-        return True
-
     origin = request.headers.get("origin")
-    return origin is not None and not _is_loopback_origin(origin)
+    if origin is not None:
+        return not _is_loopback_origin(origin)
+
+    fetch_site = request.headers.get("sec-fetch-site", "").strip().lower()
+    return fetch_site in {"cross-site", "same-site"}
 
 
 def require_management_access(
@@ -175,7 +186,11 @@ def require_management_access(
         return server_key
 
     client_host = request.client.host if request.client else None
-    if _is_loopback_host(client_host) and not _is_cross_site_browser_request(request):
+    if (
+        _is_loopback_host(client_host)
+        and _is_loopback_host_header(request.headers.get("host"))
+        and not _is_cross_site_browser_request(request)
+    ):
         return server_key
 
     raise HTTPException(

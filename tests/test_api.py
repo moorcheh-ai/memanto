@@ -217,6 +217,7 @@ class TestMEMANTOAPI:
         response = await client.post(
             "/api/v2/agents",
             headers={
+                "Host": "localhost:8000",
                 "Origin": "http://localhost:8000",
                 "Sec-Fetch-Site": "same-origin",
             },
@@ -224,6 +225,35 @@ class TestMEMANTOAPI:
         )
 
         assert response.status_code == 201
+
+    @pytest.mark.asyncio
+    async def test_loopback_cross_port_origin_keeps_local_access(self, client):
+        """An explicit local Origin wins over the same-site fetch fallback."""
+        response = await client.post(
+            "/api/v2/agents",
+            headers={
+                "Host": "127.0.0.1:8000",
+                "Origin": "http://localhost:3000",
+                "Sec-Fetch-Site": "same-site",
+            },
+            json={"agent_id": "localhost-cross-port", "pattern": "support"},
+        )
+
+        assert response.status_code == 201
+
+    @pytest.mark.asyncio
+    async def test_dns_rebinding_host_cannot_inherit_loopback_access(self, client):
+        """A remote Host header cannot turn a loopback socket into trust."""
+        response = await client.post(
+            "/api/v2/agents",
+            headers={
+                "Host": "attacker.example",
+                "Sec-Fetch-Site": "same-origin",
+            },
+            json={"agent_id": "dns-rebinding-agent", "pattern": "support"},
+        )
+
+        assert response.status_code == 401
 
     @pytest.mark.asyncio
     async def test_create_agent_fails_when_server_key_missing(self, client):
