@@ -38,6 +38,11 @@ class RateLimiter:
             "health": RateLimit(300, 60),  # 300/min
         }
 
+        # Fail-closed default: any operation not explicitly configured is still
+        # rate-limited instead of silently allowed (prevents bypass via typos /
+        # unknown operation names). Chosen conservatively strict.
+        self.default_limit = RateLimit(30, 60)
+
     def _get_key(self, operation: str, agent_id: str) -> str:
         """Generate rate limit key"""
         return f"{operation}:{agent_id}"
@@ -49,10 +54,9 @@ class RateLimiter:
         Check if request is within rate limit
         Returns: (allowed, retry_after_seconds)
         """
-        if operation not in self.limits:
-            return True, None
-
-        limit = self.limits[operation]
+        # Fail-closed: unknown operations fall back to a safe default limit
+        # rather than being silently allowed (was a fail-open bypass).
+        limit = self.limits.get(operation, self.default_limit)
         key = self._get_key(operation, agent_id)
         now = time.time()
 
@@ -96,7 +100,7 @@ class RateLimiter:
                     "error": "rate_limit_exceeded",
                     "message": f"Rate limit exceeded for {operation}",
                     "retry_after": retry_after,
-                    "limit": f"{self.limits[operation].requests}/{self.limits[operation].window}s",
+                    "limit": f"{limit.requests}/{limit.window}s",
                 },
                 headers={"Retry-After": str(retry_after)},
             )
