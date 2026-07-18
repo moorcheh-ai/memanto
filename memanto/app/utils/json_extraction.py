@@ -31,14 +31,13 @@ def iter_json_arrays(text: str) -> Iterator[list[Any]]:
         if not candidate:
             continue
         for match in re.finditer(r"\[", candidate):
-            fragment = candidate[match.start() :]
             try:
-                parsed, end = decoder.raw_decode(fragment)
+                parsed, end = decoder.raw_decode(candidate, match.start())
             except json.JSONDecodeError:
                 continue
             if not isinstance(parsed, list):
                 continue
-            raw = fragment[:end]
+            raw = candidate[match.start() : end]
             if raw in seen:
                 continue
             seen.add(raw)
