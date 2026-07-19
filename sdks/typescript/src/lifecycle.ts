@@ -92,8 +92,13 @@ export class ServerLifecycle {
     });
 
     try {
+      const healthPromise = this.waitForHealth(
+        baseUrl,
+        this.opts.healthTimeoutMs ?? 60_000,
+      );
+      void healthPromise.catch(() => {});
       await Promise.race([
-        this.waitForHealth(baseUrl, this.opts.healthTimeoutMs ?? 60_000),
+        healthPromise,
         spawnError,
       ]);
     } catch (err) {
@@ -126,6 +131,7 @@ export class ServerLifecycle {
     const deadline = Date.now() + timeoutMs;
     let lastErr: unknown = null;
     while (Date.now() < deadline) {
+      if (!this.process) return;
       if (this.process && this.process.exitCode !== null) {
         throw new Error(
           `memanto server exited with code ${this.process.exitCode} before becoming healthy.`,
@@ -139,6 +145,7 @@ export class ServerLifecycle {
       }
       await sleep(250);
     }
+    if (!this.process) return;
     await this.stop();
     throw new Error(
       `memanto server at ${baseUrl} did not become healthy within ${timeoutMs}ms${

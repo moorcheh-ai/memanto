@@ -87,4 +87,21 @@ describe("ServerLifecycle", () => {
       expect(process.listenerCount(event)).toBe(before[event]);
     }
   });
+
+  it("stops health polling after the server process fails to spawn", async () => {
+    const fetchSpy = vi.spyOn(globalThis, "fetch");
+    const life = new ServerLifecycle({
+      uvxPath: `missing-uvx-${Date.now()}`,
+      healthTimeoutMs: 2_000,
+    });
+    cleanupFns.push(() => life.stop());
+
+    await expect(life.start()).rejects.toThrow(/Could not find `uvx`/);
+    const callsAfterFailure = fetchSpy.mock.calls.length;
+
+    await new Promise((resolve) => setTimeout(resolve, 350));
+
+    expect(fetchSpy).toHaveBeenCalledTimes(callsAfterFailure);
+    fetchSpy.mockRestore();
+  });
 });
