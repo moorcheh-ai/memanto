@@ -94,7 +94,7 @@ async def create_agent(
     try:
         agent = agent_service.create_agent(agent_create, moorcheh_api_key)
         return agent
-    except AgentAlreadyExistsError as e:
+    except Exception as e:
         raise map_error_to_http_exception(e)
 
 
@@ -107,12 +107,15 @@ async def list_agents(moorcheh_api_key: str = Depends(verify_moorcheh_api_key)):
     of each agent is populated with the live document count from its Moorcheh
     namespace rather than the stale value in local metadata.
     """
-    agent_list = agent_service.list_agents()
-    counts = await _namespace_item_counts(moorcheh_api_key)
-    for agent in agent_list.agents:
-        if agent.namespace in counts:
-            agent.memory_count = counts[agent.namespace]
-    return agent_list
+    try:
+        agent_list = agent_service.list_agents()
+        counts = await _namespace_item_counts(moorcheh_api_key)
+        for agent in agent_list.agents:
+            if agent.namespace in counts:
+                agent.memory_count = counts[agent.namespace]
+        return agent_list
+    except Exception as e:
+        raise map_error_to_http_exception(e)
 
 
 @router.get("/agents/{agent_id}", response_model=AgentInfo)
@@ -125,15 +128,16 @@ async def get_agent(
     ``memory_count`` reflects the live document count from the agent's Moorcheh
     namespace.
     """
-    agent = agent_service.get_agent(agent_id)
-    if not agent:
-        raise map_error_to_http_exception(
-            AgentNotFoundError(f"Agent '{agent_id}' not found")
-        )
-    counts = await _namespace_item_counts(moorcheh_api_key)
-    if agent.namespace in counts:
-        agent.memory_count = counts[agent.namespace]
-    return agent
+    try:
+        agent = agent_service.get_agent(agent_id)
+        if not agent:
+            raise AgentNotFoundError(f"Agent '{agent_id}' not found")
+        counts = await _namespace_item_counts(moorcheh_api_key)
+        if agent.namespace in counts:
+            agent.memory_count = counts[agent.namespace]
+        return agent
+    except Exception as e:
+        raise map_error_to_http_exception(e)
 
 
 @router.delete("/agents/{agent_id}", status_code=200)
@@ -153,9 +157,7 @@ async def delete_agent(
     try:
         agent = agent_service.get_agent(agent_id)
         if not agent:
-            raise map_error_to_http_exception(
-                AgentNotFoundError(f"Agent '{agent_id}' not found")
-            )
+            raise AgentNotFoundError(f"Agent '{agent_id}' not found")
 
         if delete_backup_too:
             # Delete remote namespace only when explicitly requested.
@@ -179,7 +181,7 @@ async def delete_agent(
                 )
             )
         }
-    except AgentNotFoundError as e:
+    except Exception as e:
         raise map_error_to_http_exception(e)
 
 

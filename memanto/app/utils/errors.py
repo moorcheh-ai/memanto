@@ -194,6 +194,16 @@ def map_error_to_http_exception(error: Exception) -> HTTPException:
             },
         )
 
+    elif isinstance(error, AgentError):
+        return HTTPException(
+            status_code=400,
+            detail={
+                "error": "AgentError",
+                "message": error.message,
+                "details": error.details,
+            },
+        )
+
     else:
         # Generic server error
         return HTTPException(

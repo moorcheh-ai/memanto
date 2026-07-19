@@ -326,6 +326,20 @@ class TestAgentService:
         print(f"   Agent ID: {agent.agent_id}")
         print(f"   Namespace: {agent.namespace}")
 
+    def test_create_agent_fails_on_namespace_limit_conflict(self, agent_service, mock_moorcheh_client):
+        """Test that create_agent raises AgentError when namespace creation fails with limit conflict"""
+        mock_moorcheh_client.namespaces.create.side_effect = Exception("NamespaceLimitConflict: limit reached")
+
+        agent_create = AgentCreate(
+            agent_id="limited-agent",
+            pattern=AgentPattern.SUPPORT,
+            description="Test agent limit",
+        )
+
+        from memanto.app.utils.errors import AgentError
+        with pytest.raises(AgentError, match="Failed to create namespace 'memanto_agent_limited-agent' in Moorcheh"):
+            agent_service.create_agent(agent_create, settings.MOORCHEH_API_KEY)
+
     def test_list_agents(self, agent_service):
         """Test listing agents"""
         # Create multiple agents
@@ -1127,3 +1141,16 @@ class TestValidateSafeId:
             svc.generate_conflict_report("agent1", "../../etc/passwd")
 
         assert not (tmp_path / "etc").exists()
+
+
+class TestErrorMapping:
+    def test_map_agent_error_to_http_exception(self):
+        from memanto.app.utils.errors import AgentError, map_error_to_http_exception
+
+        error = AgentError("Failed to create agent namespace")
+        exc = map_error_to_http_exception(error)
+
+        assert exc.status_code == 400
+        assert exc.detail["error"] == "AgentError"
+        assert exc.detail["message"] == "Failed to create agent namespace"
+

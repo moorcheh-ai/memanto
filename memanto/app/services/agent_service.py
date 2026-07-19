@@ -14,7 +14,7 @@ from memanto.app.clients.moorcheh import get_moorcheh_client
 from memanto.app.config import get_data_dir
 from memanto.app.core import agent_namespace
 from memanto.app.models.session import AgentCreate, AgentInfo, AgentList
-from memanto.app.utils.errors import AgentAlreadyExistsError, AgentNotFoundError
+from memanto.app.utils.errors import AgentAlreadyExistsError, AgentNotFoundError, AgentError
 from memanto.app.utils.validation import validate_safe_id
 
 
@@ -84,11 +84,11 @@ class AgentService:
             # than the cloud SDK's typed ConflictError when the namespace
             # already exists. Match on message so both backends behave the same.
             msg = str(e).lower()
-            if ("namespace" in msg and "already exists" in msg) or "conflict" in msg:
+            if ("namespace" in msg and "already exists" in msg) or ("namespace" in msg and "already registered" in msg):
                 print(f"[OK] Namespace already exists in Moorcheh: {namespace}")
             else:
-                raise Exception(
-                    f"Failed to create namespace '{namespace}' in Moorcheh: {str(e)}"
+                raise AgentError(
+                    f"Failed to create namespace '{namespace}' in Moorcheh."
                 )
 
         # Create agent metadata
