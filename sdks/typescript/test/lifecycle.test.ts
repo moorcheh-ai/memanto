@@ -179,6 +179,43 @@ describe("ServerLifecycle", () => {
     expect(vi.getTimerCount()).toBe(0);
   });
 
+  it("returns immediately when the child has already exited", async () => {
+    const child = Object.assign(new EventEmitter(), {
+      killed: false,
+      exitCode: 0,
+      signalCode: null,
+      kill: vi.fn(() => true),
+    }) as unknown as ChildProcess;
+    const life = new ServerLifecycle() as unknown as {
+      process: ChildProcess | null;
+      stop(): Promise<void>;
+    };
+    life.process = child;
+
+    await expect(life.stop()).resolves.toBeUndefined();
+    expect(child.kill).not.toHaveBeenCalled();
+  });
+
+  it("waits for exit when a kill signal was sent but the child is still alive", async () => {
+    const child = Object.assign(new EventEmitter(), {
+      killed: true,
+      exitCode: null,
+      signalCode: null,
+      kill: vi.fn(() => true),
+    }) as unknown as ChildProcess;
+    const life = new ServerLifecycle() as unknown as {
+      process: ChildProcess | null;
+      stop(): Promise<void>;
+    };
+    life.process = child;
+
+    const stopped = life.stop();
+    expect(child.kill).toHaveBeenCalledWith("SIGTERM");
+    child.emit("exit", 0, null);
+
+    await expect(stopped).resolves.toBeUndefined();
+  });
+
   it("rejects health polling after a concurrent stop", async () => {
     const life = new ServerLifecycle() as unknown as {
       waitForHealth(baseUrl: string, timeoutMs: number): Promise<void>;
@@ -205,6 +242,71 @@ describe("ServerLifecycle", () => {
     await expect(
       life.waitForHealth("http://127.0.0.1:9999", 100),
     ).rejects.toThrow(/signal: SIGKILL/);
+  });
+
+  it("does not let an old health poll observe a replacement child", async () => {
+    const originalChild = Object.assign(new EventEmitter(), {
+      killed: false,
+      exitCode: null,
+      signalCode: null,
+      kill: vi.fn(() => true),
+    }) as unknown as ChildProcess;
+    const replacementChild = Object.assign(new EventEmitter(), {
+      killed: false,
+      exitCode: null,
+      signalCode: null,
+      kill: vi.fn(() => true),
+    }) as unknown as ChildProcess;
+    const life = new ServerLifecycle() as unknown as {
+      process: ChildProcess | null;
+      waitForHealth(baseUrl: string, timeoutMs: number): Promise<void>;
+    };
+    life.process = originalChild;
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockImplementation(async () => {
+      life.process = replacementChild;
+      return new Response(null, { status: 503 });
+    });
+    cleanupFns.push(() => fetchSpy.mockRestore());
+
+    await expect(
+      life.waitForHealth("http://127.0.0.1:9999", 100),
+    ).rejects.toThrow(/stopped before becoming healthy/);
+    expect(replacementChild.kill).not.toHaveBeenCalled();
+  });
+
+  it("bounds each health request by the configured deadline", async () => {
+    const child = Object.assign(new EventEmitter(), {
+      killed: false,
+      exitCode: null,
+      signalCode: null,
+      kill: vi.fn(() => true),
+    }) as unknown as ChildProcess;
+    const life = new ServerLifecycle() as unknown as {
+      process: ChildProcess | null;
+      stop(): Promise<void>;
+      waitForHealth(baseUrl: string, timeoutMs: number): Promise<void>;
+    };
+    life.process = child;
+    const stopSpy = vi.spyOn(life, "stop").mockResolvedValue();
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockImplementation(
+      (_input, init) =>
+        new Promise((_resolve, reject) => {
+          const signal = init?.signal;
+          signal?.addEventListener("abort", () => reject(signal.reason), {
+            once: true,
+          });
+        }),
+    );
+    cleanupFns.push(() => {
+      fetchSpy.mockRestore();
+      stopSpy.mockRestore();
+    });
+
+    await expect(
+      life.waitForHealth("http://127.0.0.1:9999", 30),
+    ).rejects.toThrow(/did not become healthy within 30ms/);
+    expect(fetchSpy.mock.calls[0]?.[1]?.signal).toBeInstanceOf(AbortSignal);
+    expect(stopSpy).toHaveBeenCalledOnce();
   });
 
   it("stops health polling after the server process fails to spawn", async () => {

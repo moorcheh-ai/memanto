@@ -120,7 +120,11 @@ export class ServerLifecycle {
     this.process = null;
     this.url = null;
     this.unregisterCleanup();
-    if (!child || child.killed) return;
+    if (
+      !child ||
+      child.exitCode !== null ||
+      child.signalCode !== null
+    ) return;
 
     let exited = false;
     await new Promise<void>((resolve) => {
@@ -142,31 +146,45 @@ export class ServerLifecycle {
   }
 
   private async waitForHealth(baseUrl: string, timeoutMs: number): Promise<void> {
+    const child = this.process;
+    if (!child) {
+      throw new Error("Server lifecycle stopped before becoming healthy.");
+    }
+
+    const assertActive = () => {
+      if (this.process !== child) {
+        throw new Error("Server lifecycle stopped before becoming healthy.");
+      }
+      if (child.exitCode !== null || child.signalCode !== null) {
+        throw new Error(
+          `memanto server exited before becoming healthy (code: ${child.exitCode}, signal: ${child.signalCode}).`,
+        );
+      }
+    };
+
     const deadline = Date.now() + timeoutMs;
     let lastErr: unknown = null;
     while (Date.now() < deadline) {
-      if (!this.process) {
-        throw new Error("Server lifecycle stopped before becoming healthy.");
-      }
-      if (
-        this.process.exitCode !== null ||
-        this.process.signalCode !== null
-      ) {
-        throw new Error(
-          `memanto server exited before becoming healthy (code: ${this.process.exitCode}, signal: ${this.process.signalCode}).`,
-        );
-      }
+      assertActive();
+      let res: Response | null = null;
       try {
-        const res = await fetch(`${baseUrl}/health`);
-        if (res.ok) return;
+        const attemptTimeoutMs = Math.max(
+          1,
+          Math.min(2_000, deadline - Date.now()),
+        );
+        res = await fetch(`${baseUrl}/health`, {
+          signal: AbortSignal.timeout(attemptTimeoutMs),
+        });
       } catch (err) {
         lastErr = err;
       }
-      await sleep(250);
+      assertActive();
+      if (res?.ok) return;
+
+      const remainingMs = deadline - Date.now();
+      if (remainingMs > 0) await sleep(Math.min(250, remainingMs));
     }
-    if (!this.process) {
-      throw new Error("Server lifecycle stopped before becoming healthy.");
-    }
+    assertActive();
     await this.stop();
     throw new Error(
       `memanto server at ${baseUrl} did not become healthy within ${timeoutMs}ms${
