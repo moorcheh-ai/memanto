@@ -65,4 +65,26 @@ describe("ServerLifecycle", () => {
     expect(fetchSpy).not.toHaveBeenCalled();
     fetchSpy.mockRestore();
   });
+
+  it("removes process cleanup listeners when stopped", async () => {
+    const eventNames = ["exit", "SIGINT", "SIGTERM"] as const;
+    const before = Object.fromEntries(
+      eventNames.map((event) => [event, process.listenerCount(event)]),
+    );
+    const life = new ServerLifecycle() as unknown as {
+      registerCleanup(): void;
+      stop(): Promise<void>;
+    };
+    cleanupFns.push(() => life.stop());
+
+    life.registerCleanup();
+    for (const event of eventNames) {
+      expect(process.listenerCount(event)).toBe(before[event] + 1);
+    }
+
+    await life.stop();
+    for (const event of eventNames) {
+      expect(process.listenerCount(event)).toBe(before[event]);
+    }
+  });
 });

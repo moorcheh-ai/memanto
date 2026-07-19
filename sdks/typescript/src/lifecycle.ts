@@ -32,7 +32,11 @@ export interface ServerOptions {
 export class ServerLifecycle {
   private process: ChildProcess | null = null;
   private url: string | null = null;
-  private cleanupRegistered = false;
+  private cleanupHandlers: {
+    exit: () => void;
+    sigint: () => void;
+    sigterm: () => void;
+  } | null = null;
 
   constructor(private readonly opts: ServerOptions = {}) {}
 
@@ -67,6 +71,9 @@ export class ServerLifecycle {
 
     this.process = child;
     this.registerCleanup();
+    child.once("exit", () => {
+      if (this.process === child) this.unregisterCleanup();
+    });
 
     const baseUrl = `http://${host}:${port}`;
 
@@ -84,10 +91,16 @@ export class ServerLifecycle {
       });
     });
 
-    await Promise.race([
-      this.waitForHealth(baseUrl, this.opts.healthTimeoutMs ?? 60_000),
-      spawnError,
-    ]);
+    try {
+      await Promise.race([
+        this.waitForHealth(baseUrl, this.opts.healthTimeoutMs ?? 60_000),
+        spawnError,
+      ]);
+    } catch (err) {
+      this.unregisterCleanup();
+      if (this.process === child) this.process = null;
+      throw err;
+    }
     this.url = baseUrl;
     return baseUrl;
   }
@@ -96,6 +109,7 @@ export class ServerLifecycle {
     const child = this.process;
     this.process = null;
     this.url = null;
+    this.unregisterCleanup();
     if (!child || child.killed) return;
 
     let exited = false;
@@ -134,22 +148,33 @@ export class ServerLifecycle {
   }
 
   private registerCleanup(): void {
-    if (this.cleanupRegistered) return;
-    this.cleanupRegistered = true;
+    if (this.cleanupHandlers) return;
     const cleanup = () => {
       if (this.process && !this.process.killed) {
         this.process.kill("SIGTERM");
       }
     };
-    process.once("exit", cleanup);
-    process.once("SIGINT", () => {
+    const sigint = () => {
       cleanup();
       process.exit(130);
-    });
-    process.once("SIGTERM", () => {
+    };
+    const sigterm = () => {
       cleanup();
       process.exit(143);
-    });
+    };
+    this.cleanupHandlers = { exit: cleanup, sigint, sigterm };
+    process.once("exit", cleanup);
+    process.once("SIGINT", sigint);
+    process.once("SIGTERM", sigterm);
+  }
+
+  private unregisterCleanup(): void {
+    const handlers = this.cleanupHandlers;
+    if (!handlers) return;
+    process.removeListener("exit", handlers.exit);
+    process.removeListener("SIGINT", handlers.sigint);
+    process.removeListener("SIGTERM", handlers.sigterm);
+    this.cleanupHandlers = null;
   }
 }
 
