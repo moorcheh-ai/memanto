@@ -296,13 +296,58 @@ class _MemantoClient:
         self._auto_create = auto_create
         self._session_duration_hours = session_duration_hours
         self._client = SdkClient(api_key=api_key)
-        self._lock = threading.Lock()
+        self._lock = threading.RLock()
         self._ready = False
         self._retry_after = 0.0
+        self._profile_path: Path | None = None
+        self._token_file: Path | None = None
+        self._last_refresh = 0.0
 
     @property
     def agent_id(self) -> str:
         return self._agent_id
+
+    def set_profile_path(self, profile_path: str) -> None:
+        self._profile_path = Path(profile_path)
+        self._token_file = self._profile_path / ".memanto_session_token"
+
+        # Load any existing persisted token on startup
+        token = self.load_token()
+        if token:
+            self._client.session_token = token
+            self._client.agent_id = self._agent_id
+            self._ready = True
+
+    def save_token(self, token: str) -> None:
+        if self._token_file:
+            try:
+                self._token_file.parent.mkdir(parents=True, exist_ok=True)
+                self._token_file.write_text(token, encoding="utf-8")
+            except Exception:
+                logger.debug("Failed to save token to file", exc_info=True)
+
+    def load_token(self) -> str | None:
+        if self._token_file and self._token_file.exists():
+            try:
+                return self._token_file.read_text(encoding="utf-8").strip()
+            except Exception:
+                logger.debug("Failed to load token from file", exc_info=True)
+        return None
+
+    def auto_refresh(self) -> bool:
+        now = time.monotonic()
+        if now - self._last_refresh < 5.0:
+            return False
+        self._last_refresh = now
+        try:
+            with self._lock:
+                self._ready = False
+                self._retry_after = 0.0
+                self.ensure_session()
+            return True
+        except Exception:
+            logger.debug("Auto-refresh activation failed", exc_info=True)
+            return False
 
     def ensure_session(self) -> None:
         if self._ready:
@@ -333,10 +378,14 @@ class _MemantoClient:
                         )
                     except AgentAlreadyExistsError:
                         pass  # race: another caller created it
-                self._client.activate_agent(
+                res = self._client.activate_agent(
                     self._agent_id,
                     duration_hours=self._session_duration_hours,
                 )
+                if isinstance(res, dict):
+                    token = res.get("session_token")
+                    if token:
+                        self.save_token(token)
                 self._ready = True
                 self._retry_after = 0.0
             except Exception:
@@ -354,17 +403,34 @@ class _MemantoClient:
         source: str = "hermes",
         provenance: str = "explicit_statement",
     ) -> dict:
-        self.ensure_session()
-        return self._client.remember(
-            agent_id=self._agent_id,
-            memory_type=memory_type,
-            title=title,
-            content=content,
-            confidence=confidence,
-            tags=tags or [],
-            source=source,
-            provenance=provenance,
-        )
+        try:
+            self.ensure_session()
+            return self._client.remember(
+                agent_id=self._agent_id,
+                memory_type=memory_type,
+                title=title,
+                content=content,
+                confidence=confidence,
+                tags=tags or [],
+                source=source,
+                provenance=provenance,
+            )
+        except Exception as e:
+            msg = str(e).lower()
+            if "expired" in msg or "invalid" in msg or "401" in msg or "403" in msg:
+                logger.debug("Token expired or invalid during remember, attempting auto-refresh")
+                if self.auto_refresh():
+                    return self._client.remember(
+                        agent_id=self._agent_id,
+                        memory_type=memory_type,
+                        title=title,
+                        content=content,
+                        confidence=confidence,
+                        tags=tags or [],
+                        source=source,
+                        provenance=provenance,
+                    )
+            raise
 
     def recall(
         self,
@@ -374,23 +440,50 @@ class _MemantoClient:
         type: list[str] | None = None,
         min_confidence: float | None = None,
     ) -> list[dict]:
-        self.ensure_session()
-        result = self._client.recall(
-            agent_id=self._agent_id,
-            query=query,
-            limit=limit,
-            type=type,
-            min_confidence=min_confidence,
-        )
-        return result.get("memories", [])
+        try:
+            self.ensure_session()
+            result = self._client.recall(
+                agent_id=self._agent_id,
+                query=query,
+                limit=limit,
+                type=type,
+                min_confidence=min_confidence,
+            )
+            return result.get("memories", [])
+        except Exception as e:
+            msg = str(e).lower()
+            if "expired" in msg or "invalid" in msg or "401" in msg or "403" in msg:
+                logger.debug("Token expired or invalid during recall, attempting auto-refresh")
+                if self.auto_refresh():
+                    result = self._client.recall(
+                        agent_id=self._agent_id,
+                        query=query,
+                        limit=limit,
+                        type=type,
+                        min_confidence=min_confidence,
+                    )
+                    return result.get("memories", [])
+            raise
 
     def answer(self, question: str, *, limit: int | None = None) -> dict:
-        self.ensure_session()
-        return self._client.answer(
-            agent_id=self._agent_id,
-            question=question,
-            limit=limit,
-        )
+        try:
+            self.ensure_session()
+            return self._client.answer(
+                agent_id=self._agent_id,
+                question=question,
+                limit=limit,
+            )
+        except Exception as e:
+            msg = str(e).lower()
+            if "expired" in msg or "invalid" in msg or "401" in msg or "403" in msg:
+                logger.debug("Token expired or invalid during answer, attempting auto-refresh")
+                if self.auto_refresh():
+                    return self._client.answer(
+                        agent_id=self._agent_id,
+                        question=question,
+                        limit=limit,
+                    )
+            raise
 
 
 # -- Tool schemas -------------------------------------------------------------
@@ -565,6 +658,9 @@ class MemantoMemoryProvider(MemoryProvider):
                 auto_create=self._config["auto_create"],
                 session_duration_hours=self._config["session_duration_hours"],
             )
+            profile_dir = Path(self._hermes_home) / "profiles" / identity
+            if hasattr(self._client, "set_profile_path"):
+                self._client.set_profile_path(str(profile_dir))
             self._active = True
         except Exception:
             logger.warning("Memanto initialization failed", exc_info=True)

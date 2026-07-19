@@ -565,3 +565,99 @@ def test_installer_refuses_overwrite_without_force(tmp_path):
         install(tmp_path, force=False)
     # force=True overwrites cleanly
     assert install(tmp_path, force=True).exists()
+
+
+# -- _MemantoClient Tests -----------------------------------------------------
+
+
+class DummySdk:
+    def __init__(self, token=""):
+        self.session_token = token
+        self.agent_id = None
+        self.remember_calls = []
+        self.recall_calls = []
+        self.answer_calls = []
+        self.raise_err = None
+
+    def get_agent(self, agent_id):
+        return {"id": agent_id}
+
+    def activate_agent(self, agent_id, duration_hours=None):
+        self.agent_id = agent_id
+        return {"session_token": "new-session-token"}
+
+    def remember(self, **kwargs):
+        if self.raise_err:
+            err = self.raise_err
+            self.raise_err = None  # Clear so retry succeeds
+            raise err
+        self.remember_calls.append(kwargs)
+        return {"memory_id": "m1"}
+
+    def recall(self, **kwargs):
+        if self.raise_err:
+            err = self.raise_err
+            self.raise_err = None
+            raise err
+        self.recall_calls.append(kwargs)
+        return {"memories": []}
+
+    def answer(self, **kwargs):
+        if self.raise_err:
+            err = self.raise_err
+            self.raise_err = None
+            raise err
+        self.answer_calls.append(kwargs)
+        return {"answer": "grounded answer"}
+
+
+def test_memanto_client_token_persistence(tmp_path):
+    from hermes_memanto.provider import _MemantoClient
+
+    client = _MemantoClient("api-key", "agent-1")
+    # Stub the internal SDK client
+    sdk = DummySdk()
+    client._client = sdk
+
+    # Set profile path
+    client.set_profile_path(str(tmp_path))
+    assert client._token_file == tmp_path / ".memanto_session_token"
+
+    # Save token
+    client.save_token("token-abc")
+    assert (tmp_path / ".memanto_session_token").read_text() == "token-abc"
+
+    # Loading profile path again loads the token
+    client2 = _MemantoClient("api-key2", "agent-1")
+    client2._client = DummySdk()
+    client2.set_profile_path(str(tmp_path))
+    assert client2._ready is True
+    assert client2._client.session_token == "token-abc"
+
+
+def test_memanto_client_auto_refresh_on_expiration(tmp_path):
+    from hermes_memanto.provider import _MemantoClient
+
+    client = _MemantoClient("api-key", "agent-1")
+    sdk = DummySdk()
+    client._client = sdk
+    client.set_profile_path(str(tmp_path))
+
+    # Force ready with an expired token
+    client._client.session_token = "expired-token"
+    client._ready = True
+
+    # Configure remember to raise an expired error first
+    sdk.raise_err = RuntimeError("Token is expired or invalid")
+
+    res = client.remember(
+        memory_type="fact",
+        title="Title",
+        content="Some content",
+        confidence=0.9,
+    )
+    assert res == {"memory_id": "m1"}
+    # Verify that activate_agent was called to get a new token
+    assert sdk.agent_id == "agent-1"
+    assert (tmp_path / ".memanto_session_token").read_text() == "new-session-token"
+
