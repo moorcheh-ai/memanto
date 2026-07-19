@@ -510,6 +510,46 @@ class TestMemoryReadServiceFormatting:
         assert formatted["confidence"] == 0.0
         assert formatted["tags"] == []
 
+    def test_format_memory_item_preserves_extra_metadata_fields(self):
+        from memanto.app.services.memory_read_service import MemoryReadService
+
+        item = {
+            "id": "m-1",
+            "text": "[FACT] Title\n\nContent",
+            "metadata": {
+                "memory_type": "fact",
+                "confidence": 0.8,
+                "status": "active",
+                "tags": [],
+                "original_id": "orig-123",
+                "custom_field": "hello",
+            },
+        }
+
+        formatted = MemoryReadService(MagicMock())._format_memory_item(item)
+
+        assert formatted["original_id"] == "orig-123"
+        assert formatted["custom_field"] == "hello"
+
+    def test_format_memory_item_preserves_flat_extra_fields(self):
+        from memanto.app.services.memory_read_service import MemoryReadService
+
+        item = {
+            "id": "m-1",
+            "text": "[FACT] Title\n\nContent",
+            "memory_type": "fact",
+            "confidence": 0.8,
+            "status": "active",
+            "tags": [],
+            "original_id": "orig-123",
+            "custom_field": "hello",
+        }
+
+        formatted = MemoryReadService(MagicMock())._format_memory_item(item)
+
+        assert formatted["original_id"] == "orig-123"
+        assert formatted["custom_field"] == "hello"
+
 
 class TestMemoryWriteServiceBatch:
     def test_batch_store_counts_ok_upload_status_as_success(self):

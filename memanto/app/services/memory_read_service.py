@@ -842,4 +842,18 @@ class MemoryReadService:
             "provenance": provenance,
         }
 
+        # Preserve extra metadata fields (e.g. original_id) from the database record
+        standard_keys = {
+            "id", "title", "content", "text", "type", "confidence", "status", "tags",
+            "created_at", "updated_at", "expires_at", "ttl_seconds", "actor_id",
+            "source", "source_ref", "agent_id", "score", "provenance"
+        }
+        if isinstance(metadata, dict):
+            for k, v in metadata.items():
+                if k not in standard_keys and k not in formatted:
+                    formatted[k] = v
+        for k, v in item.items():
+            if k not in standard_keys and k not in {"metadata"} and k not in formatted:
+                formatted[k] = v
+
         return formatted
