@@ -72,7 +72,11 @@ export class ServerLifecycle {
     this.process = child;
     this.registerCleanup();
     child.once("exit", () => {
-      if (this.process === child) this.unregisterCleanup();
+      if (this.process === child) {
+        this.unregisterCleanup();
+        this.process = null;
+        this.url = null;
+      }
     });
 
     const baseUrl = `http://${host}:${port}`;
@@ -118,12 +122,16 @@ export class ServerLifecycle {
     if (!child || child.killed) return;
 
     let exited = false;
-    await new Promise<void>((resolve, reject) => {
-      child.once("exit", () => { exited = true; resolve(); });
-      child.kill("SIGTERM");
-      setTimeout(() => {
+    await new Promise<void>((resolve) => {
+      const forceKillTimer = setTimeout(() => {
         if (!exited) child.kill("SIGKILL");
       }, 5_000);
+      child.once("exit", () => {
+        exited = true;
+        clearTimeout(forceKillTimer);
+        resolve();
+      });
+      child.kill("SIGTERM");
     });
   }
 
@@ -131,10 +139,15 @@ export class ServerLifecycle {
     const deadline = Date.now() + timeoutMs;
     let lastErr: unknown = null;
     while (Date.now() < deadline) {
-      if (!this.process) return;
-      if (this.process && this.process.exitCode !== null) {
+      if (!this.process) {
+        throw new Error("Server lifecycle stopped before becoming healthy.");
+      }
+      if (
+        this.process.exitCode !== null ||
+        this.process.signalCode !== null
+      ) {
         throw new Error(
-          `memanto server exited with code ${this.process.exitCode} before becoming healthy.`,
+          `memanto server exited before becoming healthy (code: ${this.process.exitCode}, signal: ${this.process.signalCode}).`,
         );
       }
       try {
@@ -145,7 +158,9 @@ export class ServerLifecycle {
       }
       await sleep(250);
     }
-    if (!this.process) return;
+    if (!this.process) {
+      throw new Error("Server lifecycle stopped before becoming healthy.");
+    }
     await this.stop();
     throw new Error(
       `memanto server at ${baseUrl} did not become healthy within ${timeoutMs}ms${
@@ -164,10 +179,12 @@ export class ServerLifecycle {
     const sigint = () => {
       cleanup();
       process.exitCode ??= 130;
+      if (process.listenerCount("SIGINT") === 0) process.exit();
     };
     const sigterm = () => {
       cleanup();
       process.exitCode ??= 143;
+      if (process.listenerCount("SIGTERM") === 0) process.exit();
     };
     this.cleanupHandlers = { exit: cleanup, sigint, sigterm };
     process.once("exit", cleanup);

@@ -1,4 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
+import type { ChildProcess } from "node:child_process";
+import { EventEmitter } from "node:events";
 import { createServer, type Server } from "node:http";
 import { AddressInfo } from "node:net";
 import { ServerLifecycle } from "../src/lifecycle.js";
@@ -93,8 +95,12 @@ describe("ServerLifecycle", () => {
     const exitSpy = vi
       .spyOn(process, "exit")
       .mockImplementation((() => undefined) as never);
+    const listenerCountSpy = vi
+      .spyOn(process, "listenerCount")
+      .mockReturnValue(1);
     cleanupFns.push(() => {
       exitSpy.mockRestore();
+      listenerCountSpy.mockRestore();
       process.exitCode = originalExitCode;
     });
     const life = new ServerLifecycle() as unknown as {
@@ -108,16 +114,70 @@ describe("ServerLifecycle", () => {
     cleanupFns.push(() => life.stop());
 
     life.registerCleanup();
+    process.exitCode = undefined;
     life.cleanupHandlers?.sigint();
 
     expect(exitSpy).not.toHaveBeenCalled();
-    expect(process.exitCode).toBe(originalExitCode ?? 130);
+    expect(process.exitCode).toBe(130);
 
+    listenerCountSpy.mockReturnValue(0);
     process.exitCode = undefined;
     life.cleanupHandlers?.sigterm();
 
-    expect(exitSpy).not.toHaveBeenCalled();
+    expect(exitSpy).toHaveBeenCalledOnce();
     expect(process.exitCode).toBe(143);
+  });
+
+  it("clears the force-kill timer when the child exits", async () => {
+    vi.useFakeTimers();
+    cleanupFns.push(() => vi.useRealTimers());
+    const child = Object.assign(new EventEmitter(), {
+      killed: false,
+      exitCode: null,
+      signalCode: null,
+      kill: vi.fn(() => true),
+    }) as unknown as ChildProcess;
+    const life = new ServerLifecycle() as unknown as {
+      process: ChildProcess | null;
+      url: string | null;
+      stop(): Promise<void>;
+    };
+    life.process = child;
+    life.url = "http://127.0.0.1:9999";
+
+    const stopped = life.stop();
+    child.emit("exit", 0, null);
+    await stopped;
+
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it("rejects health polling after a concurrent stop", async () => {
+    const life = new ServerLifecycle() as unknown as {
+      waitForHealth(baseUrl: string, timeoutMs: number): Promise<void>;
+    };
+
+    await expect(
+      life.waitForHealth("http://127.0.0.1:9999", 100),
+    ).rejects.toThrow(/stopped before becoming healthy/);
+  });
+
+  it("fails health polling immediately after signal termination", async () => {
+    const child = Object.assign(new EventEmitter(), {
+      killed: true,
+      exitCode: null,
+      signalCode: "SIGKILL",
+      kill: vi.fn(() => true),
+    }) as unknown as ChildProcess;
+    const life = new ServerLifecycle() as unknown as {
+      process: ChildProcess | null;
+      waitForHealth(baseUrl: string, timeoutMs: number): Promise<void>;
+    };
+    life.process = child;
+
+    await expect(
+      life.waitForHealth("http://127.0.0.1:9999", 100),
+    ).rejects.toThrow(/signal: SIGKILL/);
   });
 
   it("stops health polling after the server process fails to spawn", async () => {
