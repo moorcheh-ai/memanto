@@ -94,6 +94,7 @@ export class ServerLifecycle {
         }
       });
     });
+    void spawnError.catch(() => {});
 
     try {
       const healthPromise = this.waitForHealth(
@@ -126,11 +127,16 @@ export class ServerLifecycle {
       const forceKillTimer = setTimeout(() => {
         if (!exited) child.kill("SIGKILL");
       }, 5_000);
-      child.once("exit", () => {
+      const onEnd = () => {
+        if (exited) return;
         exited = true;
         clearTimeout(forceKillTimer);
+        child.removeListener("exit", onEnd);
+        child.removeListener("error", onEnd);
         resolve();
-      });
+      };
+      child.once("exit", onEnd);
+      child.once("error", onEnd);
       child.kill("SIGTERM");
     });
   }

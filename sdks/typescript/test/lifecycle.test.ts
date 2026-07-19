@@ -95,9 +95,12 @@ describe("ServerLifecycle", () => {
     const exitSpy = vi
       .spyOn(process, "exit")
       .mockImplementation((() => undefined) as never);
+    const originalListenerCount = process.listenerCount.bind(process);
     const listenerCountSpy = vi
       .spyOn(process, "listenerCount")
-      .mockReturnValue(1);
+      .mockImplementation((event) =>
+        event === "SIGINT" ? 1 : originalListenerCount(event),
+      );
     cleanupFns.push(() => {
       exitSpy.mockRestore();
       listenerCountSpy.mockRestore();
@@ -120,7 +123,9 @@ describe("ServerLifecycle", () => {
     expect(exitSpy).not.toHaveBeenCalled();
     expect(process.exitCode).toBe(130);
 
-    listenerCountSpy.mockReturnValue(0);
+    listenerCountSpy.mockImplementation((event) =>
+      event === "SIGTERM" ? 0 : originalListenerCount(event),
+    );
     process.exitCode = undefined;
     life.cleanupHandlers?.sigterm();
 
@@ -149,6 +154,28 @@ describe("ServerLifecycle", () => {
     child.emit("exit", 0, null);
     await stopped;
 
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it("settles shutdown when the child emits an error", async () => {
+    vi.useFakeTimers();
+    cleanupFns.push(() => vi.useRealTimers());
+    const child = Object.assign(new EventEmitter(), {
+      killed: false,
+      exitCode: null,
+      signalCode: null,
+      kill: vi.fn(() => true),
+    }) as unknown as ChildProcess;
+    const life = new ServerLifecycle() as unknown as {
+      process: ChildProcess | null;
+      stop(): Promise<void>;
+    };
+    life.process = child;
+
+    const stopped = life.stop();
+    child.emit("error", new Error("signal delivery failed"));
+
+    await expect(stopped).resolves.toBeUndefined();
     expect(vi.getTimerCount()).toBe(0);
   });
 
