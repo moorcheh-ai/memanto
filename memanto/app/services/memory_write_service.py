@@ -1,4 +1,4 @@
-"""
+﻿"""
 Memory Write Service
 """
 
@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING, Any
 if TYPE_CHECKING:
     from moorcheh_sdk import MoorchehClient
 
+from memanto.app.constants import ALLOWED_UPDATE_FIELDS
 from memanto.app.core import MemoryRecord
 from memanto.app.services.memory_parsing_service import MemoryParsingService
 from memanto.app.utils.errors import MemoryError
@@ -312,11 +313,21 @@ class MemoryWriteService:
                     f"in namespace {namespace}"
                 )
 
+            # Enforce ALLOWED_UPDATE_FIELDS to prevent callers from modifying
+            # restricted fields like status, actor_id, or provenance.
+            sanitized = {k: v for k, v in updates.items() if k in ALLOWED_UPDATE_FIELDS}
+            dropped = set(updates) - ALLOWED_UPDATE_FIELDS
+            if dropped:
+                import logging
+                logging.getLogger(__name__).warning(
+                    "Blocked update of non-allowed fields: %s", dropped
+                )
+
             # Build updated memory record
             updated_memory = MemoryRecord(
                 id=memory_id,  # Keep same ID
-                type=updates.get("type", metadata.get("type", "fact")),
-                title=updates.get(
+                type=sanitized.get("type", metadata.get("type", "fact")),
+                title=sanitized.get(
                     "title", existing_memory_data.get("title", "Updated Memory")
                 ),
                 content=updates.get("content", existing_memory_data.get("content", "")),
@@ -398,7 +409,7 @@ class MemoryWriteService:
                 "action": "updated",
                 "reason": "Memory updated successfully via overwrite",
                 "validation": validation_result.get("action", "validated"),
-                "updated_fields": list(updates.keys()),
+                "updated_fields": list(sanitized.keys()),
             }
 
         except Exception as e:
