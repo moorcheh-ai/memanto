@@ -152,13 +152,13 @@ export class ServerLifecycle {
     }
 
     const assertActive = () => {
-      if (this.process !== child) {
-        throw new Error("Server lifecycle stopped before becoming healthy.");
-      }
       if (child.exitCode !== null || child.signalCode !== null) {
         throw new Error(
           `memanto server exited before becoming healthy (code: ${child.exitCode}, signal: ${child.signalCode}).`,
         );
+      }
+      if (this.process !== child) {
+        throw new Error("Server lifecycle stopped before becoming healthy.");
       }
     };
 
@@ -175,6 +175,7 @@ export class ServerLifecycle {
         res = await fetch(`${baseUrl}/health`, {
           signal: AbortSignal.timeout(attemptTimeoutMs),
         });
+        await res.arrayBuffer();
       } catch (err) {
         lastErr = err;
       }

@@ -244,6 +244,60 @@ describe("ServerLifecycle", () => {
     ).rejects.toThrow(/signal: SIGKILL/);
   });
 
+  it("preserves exit diagnostics after child-exit cleanup clears state", async () => {
+    const child = Object.assign(new EventEmitter(), {
+      killed: false,
+      exitCode: null as number | null,
+      signalCode: null,
+      kill: vi.fn(() => true),
+    }) as unknown as ChildProcess;
+    const life = new ServerLifecycle() as unknown as {
+      process: ChildProcess | null;
+      waitForHealth(baseUrl: string, timeoutMs: number): Promise<void>;
+    };
+    life.process = child;
+    let resolveFetch!: (response: Response) => void;
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockImplementation(
+      () => new Promise((resolve) => {
+        resolveFetch = resolve;
+      }),
+    );
+    cleanupFns.push(() => fetchSpy.mockRestore());
+
+    const polling = life.waitForHealth("http://127.0.0.1:9999", 100);
+    child.exitCode = 1;
+    life.process = null;
+    resolveFetch(new Response(null, { status: 503 }));
+
+    await expect(polling).rejects.toThrow(/code: 1, signal: null/);
+  });
+
+  it("consumes health-check response bodies", async () => {
+    const child = Object.assign(new EventEmitter(), {
+      killed: false,
+      exitCode: null,
+      signalCode: null,
+      kill: vi.fn(() => true),
+    }) as unknown as ChildProcess;
+    const life = new ServerLifecycle() as unknown as {
+      process: ChildProcess | null;
+      waitForHealth(baseUrl: string, timeoutMs: number): Promise<void>;
+    };
+    life.process = child;
+    const response = new Response("healthy");
+    const bodySpy = vi.spyOn(response, "arrayBuffer");
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue(response);
+    cleanupFns.push(() => {
+      bodySpy.mockRestore();
+      fetchSpy.mockRestore();
+    });
+
+    await expect(
+      life.waitForHealth("http://127.0.0.1:9999", 100),
+    ).resolves.toBeUndefined();
+    expect(bodySpy).toHaveBeenCalledOnce();
+  });
+
   it("does not let an old health poll observe a replacement child", async () => {
     const originalChild = Object.assign(new EventEmitter(), {
       killed: false,
