@@ -90,6 +90,7 @@ describe("ServerLifecycle", () => {
 
   it("stops health polling after the server process fails to spawn", async () => {
     const fetchSpy = vi.spyOn(globalThis, "fetch");
+    cleanupFns.push(() => fetchSpy.mockRestore());
     const life = new ServerLifecycle({
       uvxPath: `missing-uvx-${Date.now()}`,
       healthTimeoutMs: 2_000,
@@ -102,6 +103,5 @@ describe("ServerLifecycle", () => {
     await new Promise((resolve) => setTimeout(resolve, 350));
 
     expect(fetchSpy).toHaveBeenCalledTimes(callsAfterFailure);
-    fetchSpy.mockRestore();
   });
 });
