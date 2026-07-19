@@ -163,11 +163,11 @@ export class ServerLifecycle {
     };
     const sigint = () => {
       cleanup();
-      process.exit(130);
+      process.exitCode ??= 130;
     };
     const sigterm = () => {
       cleanup();
-      process.exit(143);
+      process.exitCode ??= 143;
     };
     this.cleanupHandlers = { exit: cleanup, sigint, sigterm };
     process.once("exit", cleanup);

@@ -88,6 +88,38 @@ describe("ServerLifecycle", () => {
     }
   });
 
+  it("does not force the host process to exit on signals", async () => {
+    const originalExitCode = process.exitCode;
+    const exitSpy = vi
+      .spyOn(process, "exit")
+      .mockImplementation((() => undefined) as never);
+    cleanupFns.push(() => {
+      exitSpy.mockRestore();
+      process.exitCode = originalExitCode;
+    });
+    const life = new ServerLifecycle() as unknown as {
+      cleanupHandlers: {
+        sigint: () => void;
+        sigterm: () => void;
+      } | null;
+      registerCleanup(): void;
+      stop(): Promise<void>;
+    };
+    cleanupFns.push(() => life.stop());
+
+    life.registerCleanup();
+    life.cleanupHandlers?.sigint();
+
+    expect(exitSpy).not.toHaveBeenCalled();
+    expect(process.exitCode).toBe(originalExitCode ?? 130);
+
+    process.exitCode = undefined;
+    life.cleanupHandlers?.sigterm();
+
+    expect(exitSpy).not.toHaveBeenCalled();
+    expect(process.exitCode).toBe(143);
+  });
+
   it("stops health polling after the server process fails to spawn", async () => {
     const fetchSpy = vi.spyOn(globalThis, "fetch");
     cleanupFns.push(() => fetchSpy.mockRestore());
