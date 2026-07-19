@@ -154,6 +154,15 @@ class RecallRecentRequest(BaseModel):
     limit: int | None = Field(default=None, ge=1, description="Max results")
     type: list[str] | None = Field(default=None, description="Memory type filters")
 
+class MultiAgentRecallRequest(BaseModel):
+    """Request body for cross-agent memory recall."""
+
+    query: str = Field(..., min_length=1, description="Search query")
+    agent_ids: list[str] = Field(..., min_length=1, max_length=20, description="List of agent IDs to search")
+    limit: int | None = Field(default=None, ge=1, description="Max results")
+    min_similarity: float | None = Field(default=None, ge=0.0, le=1.0)
+    type: list[str] | None = Field(default=None, description="Memory type filters")
+
 
 class MemoryEditRequest(BaseModel):
     """Request body for partial memory record updates."""
@@ -1158,4 +1167,64 @@ async def supersede_memory(
     except Exception as e:
         if "not found" in str(e).lower():
             raise HTTPException(status_code=404, detail=f"Memory '{memory_id}' not found.")
+        raise map_error_to_http_exception(e)
+    
+@router.post("/recall/multi")
+async def recall_multi_agent(
+    request: MultiAgentRecallRequest = Body(...),
+    session: Session = Depends(get_current_session),
+    client=Depends(get_moorcheh_client),
+):
+    """
+    Recall memories across multiple agents in a single query.
+
+    Auth: The session must belong to one of the requested agent_ids.
+    Requesting an agent the session isn't authorized for is rejected.
+
+    Results are merged and sorted by relevance score.
+
+    Requires:
+    - X-Session-Token: {session_token}
+    """
+    # Auth: session agent_id must be in the requested list
+    if session.agent_id not in request.agent_ids:
+        raise HTTPException(
+            status_code=403,
+            detail=f"Session agent '{session.agent_id}' is not in the requested agent_ids list."
+        )
+
+    CostGuard.validate_query_length(request.query)
+
+    recall_cfg = _config_manager.get_recall_config()
+    raw_limit = (
+        request.limit
+        if request.limit is not None
+        else recall_cfg.get("limit", settings.RECALL_LIMIT)
+    )
+    try:
+        limit = int(raw_limit)
+    except (TypeError, ValueError) as e:
+        raise HTTPException(status_code=400, detail=f"Invalid recall configuration: {e}")
+    CostGuard.validate_k_limit(limit)
+
+    try:
+        read_service = MemoryReadService(client)
+        result = await asyncio.to_thread(
+            read_service.search_multi_agent,
+            query=request.query,
+            agent_ids=request.agent_ids,
+            type=request.type,
+            limit=limit,
+            min_similarity_score=request.min_similarity,
+        )
+
+        return {
+            "session_id": session.session_id,
+            "query": request.query,
+            "agent_ids": request.agent_ids,
+            "memories": result.get("results", []),
+            "count": result.get("total_found", 0),
+        }
+
+    except Exception as e:
         raise map_error_to_http_exception(e)

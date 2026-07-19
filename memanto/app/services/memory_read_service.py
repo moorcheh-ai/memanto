@@ -324,6 +324,7 @@ class MemoryReadService:
         type: list[str] | None = None,
         limit: int | None = 10,
     ) -> dict[str, Any]:
+
         """
         Retrieve the most recently stored memories, sorted by created_at descending.
 
@@ -358,6 +359,50 @@ class MemoryReadService:
 
         except Exception as e:
             raise MemoryError(f"Failed to retrieve recent memories: {e}")
+        
+    def search_multi_agent(
+        self,
+        query: str,
+        agent_ids: list[str],
+        type: list[str] | None = None,
+        limit: int = 10,
+        min_similarity_score: float | None = None,
+    ) -> dict[str, Any]:
+        """
+        Search memories across multiple agent namespaces in one query.
+        """
+        try:
+            namespaces = [agent_namespace(aid) for aid in agent_ids]
+
+            use_kiosk = min_similarity_score is not None and min_similarity_score > 0
+            search_result = self.client.similarity_search.query(
+                query=query,
+                namespaces=namespaces,
+                top_k=min(limit, 100),
+                threshold=min_similarity_score if use_kiosk else None,
+                kiosk_mode=use_kiosk,
+            )
+
+            search_items = search_result.get("results", [])
+            all_results = [self._format_memory_item(item) for item in search_items]
+            all_results = self._filter_expired_memories(all_results)
+
+            if type:
+                all_results = [r for r in all_results if r.get("type") in type]
+
+            all_results.sort(key=lambda r: r.get("score") or 0, reverse=True)
+
+            return {
+                "results": all_results[:limit],
+                "total_found": len(all_results[:limit]),
+                "query": query,
+                "agent_ids": agent_ids,
+                "execution_time": search_result.get("execution_time", 0),
+            }
+
+        except Exception as e:
+            raise MemoryError(f"Failed to search across agents: {e}")
+        
 
     def _fetch_all_memories(
         self,
