@@ -13,12 +13,14 @@ class MemoryRecord:
         self.field3 = None
 
     def update(self, updates):
+        # 2. Validate all keys FIRST to ensure atomic updates
+        invalid_keys = [k for k in updates if k not in ALLOWED_UPDATE_FIELDS]
+        if invalid_keys:
+            raise ValueError(f"Unknown update field(s): {', '.join(invalid_keys)}")
+        
+        # 3. Apply updates only if all keys are valid
         for key, value in updates.items():
-            if key in ALLOWED_UPDATE_FIELDS:
-                setattr(self, key, value)
-            else:
-                # 2. Align error message with downstream expectations
-                raise ValueError("Unknown update field")
+            setattr(self, key, value)
 
 class MemoryRecordRepository:
     def __init__(self):
@@ -30,7 +32,7 @@ class MemoryRecordRepository:
             raise ValueError("Record does not exist")
         self.records[id].update(updates)
 
-# 3. Pass repository as an argument and propagate exceptions
+# 4. Pass repository as an argument and propagate exceptions
 def update_memory(id, updates, repository):
     repository.update_record(id, updates)
 
