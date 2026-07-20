@@ -23,12 +23,22 @@ yaml = importlib.import_module("yaml")
 
 
 def _normalize_duplicated_api_key(key: str) -> str:
-    """Fix pasted keys accidentally doubled (same half repeated twice)."""
+    """Fix pasted keys accidentally doubled (same half repeated twice).
+
+    Only applies the deduplication when the key is long enough that it is
+    almost certainly a doubled key (>= 64 chars).  Shorter keys (e.g. 32-51
+    char tokens from OpenAI, Anthropic, or Moorcheh) are returned unchanged
+    even if their first and second halves accidentally match.
+    """
     key = key.strip()
-    if len(key) % 2 == 0:
-        half = len(key) // 2
-        if key[:half] == key[half:]:
-            return key[:half]
+    # Guard: typical API tokens are 32-51 chars.  A doubled key would be
+    # 64+ chars.  Never halve a key shorter than 64 characters; the risk of
+    # a false-positive (corrupting a real key) is too high.
+    if len(key) < 64 or len(key) % 2 != 0:
+        return key
+    half = len(key) // 2
+    if key[:half] == key[half:]:
+        return key[:half]
     return key
 
 
