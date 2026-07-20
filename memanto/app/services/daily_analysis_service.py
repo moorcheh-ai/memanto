@@ -143,6 +143,13 @@ Format the output as a Markdown report:
             "date": date,
         }
 
+    # Maximum query length for conflict detection (chars).
+    # The ``query`` parameter is embedded for retrieval, so it must stay
+    # within the embedding model's context window.  6000 chars is a
+    # conservative limit that maps to roughly 1500 tokens (well under the
+    # default nomic-embed-text window of 2048 tokens).
+    _MAX_CONFLICT_QUERY_CHARS: int = 6000
+
     def generate_conflict_report(self, agent_id: str, date: str) -> dict[str, Any]:
         """
         Generate a structured conflict report (Contradictions, Conflicts, Updates, Duplicates).
@@ -168,8 +175,14 @@ Format the output as a Markdown report:
         client = get_moorcheh_client()
         namespace = agent_namespace(agent_id)
 
-        conflict_prompt = f"""
-Analyze the following session memories from {date} against historical knowledge for this agent.
+        # --- Decouple instructions from the embedded query (issue #1329) ---
+        # The ``query`` parameter is embedded for similarity retrieval and
+        # must stay within the embedding model's context window (e.g. 2048
+        # tokens for nomic-embed-text).  Instructions and full session content
+        # go into ``header_prompt`` / ``footer_prompt`` which are passed to
+        # the LLM but NOT embedded.
+
+        header_prompt = f"""Analyze the following session memories from {date} against historical knowledge for this agent.
 
 CRITICAL INSTRUCTIONS:
 1. ONLY report conflicts, contradictions, updates, or duplicates that involve AT LEAST ONE of the memories from the "Recent Sessions Content" provided below.
@@ -184,9 +197,9 @@ Identify:
 4. Conflicts: Semantic disagreements between new and historical memories.
 
 Recent Sessions Content:
-{full_text}
+{full_text}"""
 
-You MUST respond with ONLY a valid JSON array. No markdown, no explanation, no code fences.
+        footer_prompt = """You MUST respond with ONLY a valid JSON array. No markdown, no explanation, no code fences.
 Each element must be an object with these exact keys:
 - "type": one of "contradiction", "update", "duplicate", "conflict"
 - "title": short description of the issue
@@ -200,13 +213,20 @@ Each element must be an object with these exact keys:
 If there are NO conflicts, return an empty array: []
 
 Example response format:
-[{{"type": "contradiction", "title": "Database preference changed", "old_memory_id": "abc-123", "old_content": "We use PostgreSQL", "new_memory_id": "def-456", "new_content": "We migrated to MongoDB", "description": "New memory contradicts old database preference", "recommendation": "keep_new"}}]
-"""
+[{"type": "contradiction", "title": "Database preference changed", "old_memory_id": "abc-123", "old_content": "We use PostgreSQL", "new_memory_id": "def-456", "new_content": "We migrated to MongoDB", "description": "New memory contradicts old database preference", "recommendation": "keep_new"}]"""
+
+        # Use a truncated digest of the session content as the retrieval
+        # query so it stays within the embedding context window.  The full
+        # text is still available to the LLM via header_prompt.
+        query_digest = full_text[: self._MAX_CONFLICT_QUERY_CHARS]
+
         try:
             generate_kwargs = {
                 "namespace": namespace,
-                "query": conflict_prompt,
+                "query": query_digest,
                 "top_k": 50,
+                "header_prompt": header_prompt,
+                "footer_prompt": footer_prompt,
             }
             ai_model = get_active_llm_model(settings.SUMMARY_MODEL)
             if ai_model is not None:
