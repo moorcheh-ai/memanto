@@ -240,6 +240,20 @@ class TestSessionService:
 
         assert session_service.get_active_session() is None
 
+    def test_delete_session_rejects_unsafe_agent_id(self, session_service):
+        """delete_session must validate agent_id just like every other method."""
+        with pytest.raises(ValueError, match="agent_id"):
+            session_service.delete_session("../etc/passwd")
+        with pytest.raises(ValueError, match="agent_id"):
+            session_service.delete_session("")
+
+    def test_delete_session_accepts_safe_agent_id(self, session_service):
+        """Safe agent_id passes validation and delete_session runs normally."""
+        # Safe ID passes through validate_safe_id without raising
+        result = session_service.delete_session("agent-123_test")
+        # Returns False because no session file exists for this unknown agent
+        assert result is False
+
     def test_list_sessions_skips_invalid_session_files(self, session_service):
         """One corrupt session record must not hide all valid sessions."""
         valid_session = session_service.create_session(
