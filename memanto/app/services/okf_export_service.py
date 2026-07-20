@@ -21,6 +21,7 @@ Memanto -> OKF -> Memanto round-trips keep them. OKF consumers ignore unknown
 frontmatter keys.
 """
 
+import html
 import re
 import shutil
 from datetime import datetime
@@ -36,6 +37,7 @@ from memanto.app.utils.validation import validate_output_path, validate_safe_id
 # the loader can split them back apart without colliding with ``---`` that may
 # appear inside a document body (e.g. the migrate ``[Supporting data]`` footer).
 ENTRY_DELIMITER = "<!-- okf-entry -->"
+CONTENT_ENCODING_HTML_ESCAPED = "html-escaped-v1"
 
 # Default: collapse a type into a single stacked file once it exceeds this many
 # memories (see the ``auto`` split mode).
@@ -275,6 +277,7 @@ class OkfExportService:
     def _render_okf_doc(self, mem: dict[str, Any], mem_type: str) -> str:
         """Render a single memory dict as one OKF markdown document."""
         content = (mem.get("content") or "").strip()
+        rendered_content = content
         title = mem.get("title") or "Untitled"
 
         frontmatter: dict[str, Any] = {"type": mem_type, "title": title}
@@ -300,6 +303,12 @@ class OkfExportService:
             val = mem.get(key)
             if val not in (None, ""):
                 x_memanto[key] = val
+        if ENTRY_DELIMITER in content:
+            # Stacked exports use ENTRY_DELIMITER as record framing. Escape the
+            # complete body so a literal marker in user content cannot create a
+            # phantom record; the loader reverses this encoding after splitting.
+            rendered_content = html.escape(content, quote=False)
+            x_memanto["content_encoding"] = CONTENT_ENCODING_HTML_ESCAPED
         x_memanto["type"] = mem_type
         frontmatter["x_memanto"] = x_memanto
 
@@ -309,7 +318,7 @@ class OkfExportService:
             allow_unicode=True,
             default_flow_style=False,
         ).strip()
-        return f"---\n{front}\n---\n\n{content}\n"
+        return f"---\n{front}\n---\n\n{rendered_content}\n"
 
     def _first_line(self, content: str) -> str:
         """First non-empty line of content (heading marks stripped), for the

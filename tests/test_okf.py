@@ -186,3 +186,27 @@ def test_loader_splits_stacked_file(tmp_path):
     assert {m["title"] for m in export["memories"]} == {
         f"Standup {i}" for i in range(5)
     }
+
+
+def test_round_trip_preserves_literal_entry_delimiter_in_memory_content(tmp_path):
+    """User content must never be interpreted as the stacked-file framing."""
+    content = (
+        "Document the literal internal marker & keep &amp; and <tags> unchanged:\n"
+        "<!-- okf-entry -->\n"
+        "It is part of the memory, not a record boundary."
+    )
+    memories_by_type = {
+        "fact": [
+            _mem("f1", "Delimiter documentation", content),
+            _mem("f2", "Neighboring fact", "This memory must remain separate."),
+        ]
+    }
+
+    svc = OkfExportService(exports_dir=tmp_path / "exports")
+    result = svc.write_okf_bundle("agent1", memories_by_type, split="type")
+
+    export = load_okf_bundle(result["output_path"])
+    assert len(export["memories"]) == 2
+    by_title = {memory["title"]: memory for memory in export["memories"]}
+    assert by_title["Delimiter documentation"]["body"] == content
+    assert by_title["Neighboring fact"]["body"] == "This memory must remain separate."

@@ -13,13 +13,17 @@ are skipped.
 
 from __future__ import annotations
 
+import html
 import re
 from pathlib import Path
 from typing import Any
 
 import yaml  # type: ignore[import-untyped]
 
-from memanto.app.services.okf_export_service import ENTRY_DELIMITER
+from memanto.app.services.okf_export_service import (
+    CONTENT_ENCODING_HTML_ESCAPED,
+    ENTRY_DELIMITER,
+)
 
 # Frontmatter must open at the very start of a (stripped) document. ``.*?`` is
 # non-greedy so the first ``\n---`` closes the block even when the body below
@@ -107,6 +111,8 @@ def _parse_entry(chunk: str, file_path: Path, rel_base: Path) -> dict[str, Any] 
     x_memanto = frontmatter.get("x_memanto")
     if not isinstance(x_memanto, dict):
         x_memanto = {}
+    if x_memanto.get("content_encoding") == CONTENT_ENCODING_HTML_ESCAPED:
+        body = html.unescape(body)
 
     extra = {k: v for k, v in frontmatter.items() if k not in _KNOWN_FIELDS}
     links = [f"{text} -> {target}" for text, target in _LINK_RE.findall(body)]
