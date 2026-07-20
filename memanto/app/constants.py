@@ -78,3 +78,16 @@ ALLOWED_UPDATE_FIELDS = {
 }
 
 VALID_PATTERNS = {"support", "project", "tool"}
+
+# Trust fields removed from the schema on 2026-06-29 (see REMOVED.md).
+# These must not be resurrected when preserving extra metadata during
+# update_memory() or _format_memory_item().
+REMOVED_TRUST_FIELDS = frozenset(
+    {
+        "superseded_by",
+        "supersedes",
+        "validated_at",
+        "validation_count",
+        "contradiction_detected",
+    }
+)

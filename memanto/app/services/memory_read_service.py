@@ -11,7 +11,7 @@ if TYPE_CHECKING:
 
 from memanto.app.clients.backend import get_active_llm_model
 from memanto.app.config import settings
-from memanto.app.constants import VALID_MEMORY_TYPES
+from memanto.app.constants import REMOVED_TRUST_FIELDS, VALID_MEMORY_TYPES
 from memanto.app.core import agent_namespace
 from memanto.app.utils.errors import MemoryError
 
@@ -841,5 +841,18 @@ class MemoryReadService:
             # Provenance
             "provenance": provenance,
         }
+
+        # Preserve extra metadata keys (e.g. original_id in on-prem
+        # data_store.json) that are not part of the known MemoryRecord schema.
+        # These extra fields must survive the read-format-update cycle so that
+        # update_memory() can carry them through to the rewritten document.
+        # Without this, original_id and other on-prem fields are silently
+        # dropped on read, making the extra-metadata preservation in
+        # update_memory() ineffective.
+        known_keys = set(formatted.keys()) | {"text"}
+        if isinstance(metadata, dict):
+            for key, value in metadata.items():
+                if key not in known_keys and key not in REMOVED_TRUST_FIELDS:
+                    formatted[key] = value
 
         return formatted

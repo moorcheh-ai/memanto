@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING, Any
 if TYPE_CHECKING:
     from moorcheh_sdk import MoorchehClient
 
+from memanto.app.constants import REMOVED_TRUST_FIELDS as _REMOVED_TRUST_FIELDS
 from memanto.app.core import MemoryRecord
 from memanto.app.services.memory_parsing_service import MemoryParsingService
 from memanto.app.utils.errors import MemoryError
@@ -16,19 +17,6 @@ from memanto.app.utils.temporal_helpers import as_utc_naive
 
 SUCCESSFUL_UPLOAD_STATUSES = {"queued", "success", "ok"}
 
-# Trust fields removed from the active schema on 2026-06-29 (see
-# memanto/app/legacy/REMOVED.md). Old on-prem data_store.json records may still
-# carry them; they must never be copied forward on update or we resurrect dead
-# schema that no live read/write flow populates.
-_REMOVED_TRUST_FIELDS = frozenset(
-    {
-        "superseded_by",
-        "supersedes",
-        "validated_at",
-        "validation_count",
-        "contradiction_detected",
-    }
-)
 
 
 class MemoryWriteService:
@@ -327,6 +315,7 @@ class MemoryWriteService:
                 confidence=updates.get("confidence", metadata.get("confidence", 0.8)),
                 status=updates.get("status", metadata.get("status", "active")),
                 tags=updates.get("tags", metadata.get("tags", [])),
+                provenance=updates.get("provenance", metadata.get("provenance", "explicit_statement")),
             )
 
             # Update timestamps (preserve created_at, set updated_at to now)
