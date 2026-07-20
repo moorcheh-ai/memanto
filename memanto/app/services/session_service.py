@@ -54,6 +54,9 @@ def get_session_service() -> "SessionService":
 class SessionService:
     """Service for managing sessions"""
 
+    _PRIVATE_FILE_MODE = 0o600
+    _PRIVATE_DIR_MODE = 0o700
+
     def __init__(self, secret_key: str | None = None, sessions_dir: Path | None = None):
         """
         Initialize session service
@@ -63,13 +66,55 @@ class SessionService:
             sessions_dir: Directory for session storage (defaults to ~/.memanto/sessions/)
         """
         self.sessions_dir = sessions_dir or get_data_dir() / "sessions"
-        self.sessions_dir.mkdir(parents=True, exist_ok=True)
+        self.sessions_dir.mkdir(
+            parents=True, exist_ok=True, mode=self._PRIVATE_DIR_MODE
+        )
+        self._harden_session_storage()
         resolved_secret_key = (
             secret_key
             or settings.MEMANTO_SECRET_KEY
             or self._generate_secure_secret_key()
         )
         self.secret_key: str = resolved_secret_key
+
+    @staticmethod
+    def _set_private_permissions(path: Path, mode: int) -> None:
+        """Best-effort owner-only permissions for persisted session state."""
+        try:
+            path.chmod(mode)
+        except OSError:
+            # Windows ACLs are not represented by POSIX mode bits. Creation and
+            # access still follow the owning user's ACL in that environment.
+            pass
+
+    def _harden_session_storage(self) -> None:
+        """Protect both newly-created and pre-existing session artifacts.
+
+        Session JSON files contain live bearer tokens, while summary files can
+        contain private memory content. A normal ``mkdir``/``open`` sequence on
+        POSIX inherits the process umask and commonly creates these as 0755 and
+        0644, allowing other local accounts to traverse and read them.
+        """
+        self._set_private_permissions(self.sessions_dir, self._PRIVATE_DIR_MODE)
+        for path in self.sessions_dir.iterdir():
+            if path.is_symlink() or not path.is_file():
+                continue
+            self._set_private_permissions(path, self._PRIVATE_FILE_MODE)
+
+    def _open_private_text(self, path: Path, flags: int, mode: str, **kwargs):
+        """Open a text file with owner-only permissions from first creation."""
+        fd = os.open(str(path), flags, self._PRIVATE_FILE_MODE)
+        try:
+            try:
+                fchmod = getattr(os, "fchmod", None)
+                if fchmod is not None:
+                    fchmod(fd, self._PRIVATE_FILE_MODE)
+            except OSError:
+                pass
+            return os.fdopen(fd, mode, **kwargs)
+        except Exception:
+            os.close(fd)
+            raise
 
     def _generate_secure_secret_key(self) -> str:
         """Generate (or reuse) a persisted fallback secret for JWT signing.
@@ -385,7 +430,8 @@ class SessionService:
         """Save session to file"""
         validate_safe_id(session.agent_id, "agent_id")
         session_file = self.sessions_dir / f"{session.agent_id}.json"
-        with open(session_file, "w") as f:
+        flags = os.O_WRONLY | os.O_CREAT | os.O_TRUNC
+        with self._open_private_text(session_file, flags, "w") as f:
             json.dump(session.model_dump(mode="json"), f, indent=2)
 
     def _load_session_file(self, session_file: Path) -> Session | None:
@@ -443,7 +489,8 @@ class SessionService:
         status = getattr(memory_record, "status", None)
         tags = getattr(memory_record, "tags", None)
 
-        with open(summary_file, "a", encoding="utf-8") as f:
+        flags = os.O_WRONLY | os.O_CREAT | os.O_APPEND
+        with self._open_private_text(summary_file, flags, "a", encoding="utf-8") as f:
             if write_header:
                 f.write(f"# Session Summary for {agent_id}\n")
                 f.write(f"**Session ID:** `{session_id}`\n\n")
@@ -492,7 +539,8 @@ class SessionService:
 
         write_header = not summary_file.exists()
 
-        with open(summary_file, "a", encoding="utf-8") as f:
+        flags = os.O_WRONLY | os.O_CREAT | os.O_APPEND
+        with self._open_private_text(summary_file, flags, "a", encoding="utf-8") as f:
             if write_header:
                 f.write(f"# Session Summary for {agent_id}\n")
                 f.write(f"**Session ID:** `{session_id}`\n\n")
@@ -518,7 +566,8 @@ class SessionService:
             active_link.symlink_to(f"{agent_id}.json")
         except (OSError, NotImplementedError):
             # Fallback for Windows or systems without symlink support
-            with open(active_link, "w") as f:
+            flags = os.O_WRONLY | os.O_CREAT | os.O_TRUNC
+            with self._open_private_text(active_link, flags, "w") as f:
                 f.write(agent_id)
 
     def _clear_active_session(self) -> None:

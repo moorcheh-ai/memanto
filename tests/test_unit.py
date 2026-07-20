@@ -4,6 +4,8 @@ MEMANTO Core Unit Tests (No Server Required)
 Tests the session and agent services directly without HTTP layer.
 """
 
+import os
+import stat
 from datetime import datetime, timedelta, timezone
 from unittest.mock import MagicMock, patch
 
@@ -67,6 +69,56 @@ class TestSessionService:
         print(f"   Session ID: {session.session_id}")
         print(f"   Namespace: {session.namespace}")
         print(f"   Expires in: {time_diff / 3600:.2f} hours")
+
+    @pytest.mark.skipif(os.name == "nt", reason="POSIX permission bits required")
+    def test_session_token_storage_is_owner_only(self, temp_dir):
+        """Persisted bearer tokens must not be readable by other local users."""
+        sessions_dir = temp_dir / "sessions"
+        service = SessionService(
+            secret_key="test-secret-key-min-32-bytes-1234",
+            sessions_dir=sessions_dir,
+        )
+
+        session = service.create_session(agent_id="private-agent", duration_hours=1)
+        record = MemoryRecord(
+            type="fact",
+            title="Private fact",
+            content="Private memory content",
+            agent_id="private-agent",
+            actor_id="user",
+            source="user",
+        )
+        service.log_memory_to_session_summary(
+            "private-agent", session.session_id, record
+        )
+
+        session_file = sessions_dir / "private-agent.json"
+        summary_file = next(sessions_dir.glob("*_summary.md"))
+        assert stat.S_IMODE(sessions_dir.stat().st_mode) == 0o700
+        assert stat.S_IMODE(session_file.stat().st_mode) == 0o600
+        assert stat.S_IMODE(summary_file.stat().st_mode) == 0o600
+
+    @pytest.mark.skipif(os.name == "nt", reason="POSIX permission bits required")
+    def test_initialization_hardens_existing_session_artifacts(self, temp_dir):
+        """Upgrades must close exposure of files created by older versions."""
+        sessions_dir = temp_dir / "sessions"
+        sessions_dir.mkdir(mode=0o777)
+        session_file = sessions_dir / "existing.json"
+        summary_file = sessions_dir / "existing_summary.md"
+        session_file.write_text('{"session_token": "live-bearer-token"}')
+        summary_file.write_text("private memory content")
+        sessions_dir.chmod(0o777)
+        session_file.chmod(0o666)
+        summary_file.chmod(0o666)
+
+        SessionService(
+            secret_key="test-secret-key-min-32-bytes-1234",
+            sessions_dir=sessions_dir,
+        )
+
+        assert stat.S_IMODE(sessions_dir.stat().st_mode) == 0o700
+        assert stat.S_IMODE(session_file.stat().st_mode) == 0o600
+        assert stat.S_IMODE(summary_file.stat().st_mode) == 0o600
 
     def test_validate_session(self, session_service):
         """Test session validation"""
