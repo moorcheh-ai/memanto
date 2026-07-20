@@ -249,6 +249,7 @@ class TestSessionService:
         thread_role = threading.local()
         real_open = os.open
         real_fdopen = os.fdopen
+        real_write = os.write
 
         def observed_open(path, flags, mode=0o777):
             if (
@@ -258,6 +259,11 @@ class TestSessionService:
             ):
                 second_truncated_secret.set()
             return real_open(path, flags, mode)
+
+        def delayed_write(fd, data):
+            if getattr(thread_role, "value", None) == "first" and len(data) == 64:
+                assert release_first_writer.wait(timeout=5)
+            return real_write(fd, data)
 
         def delayed_fdopen(fd, *args, **kwargs):
             file_handle = real_fdopen(fd, *args, **kwargs)
@@ -286,6 +292,7 @@ class TestSessionService:
 
         monkeypatch.setattr(os, "open", observed_open)
         monkeypatch.setattr(os, "fdopen", delayed_fdopen)
+        monkeypatch.setattr(os, "write", delayed_write)
 
         with ThreadPoolExecutor(max_workers=2) as pool:
             first = pool.submit(create_service, "first")

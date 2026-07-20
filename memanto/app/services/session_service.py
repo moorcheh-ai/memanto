@@ -5,10 +5,13 @@ Handles session creation, validation, and management.
 Uses JWT tokens for stateless authentication.
 """
 
+import errno
 import json
 import logging
 import os
 import secrets
+import tempfile
+import time
 from collections.abc import Iterator
 from contextlib import contextmanager
 from datetime import timedelta
@@ -92,15 +95,22 @@ class SessionService:
                 return existing
 
             secret = secrets.token_hex(32)
-            fd = os.open(str(secret_file), os.O_CREAT | os.O_WRONLY | os.O_TRUNC, 0o600)
-            with os.fdopen(fd, "w", encoding="utf-8") as file_handle:
-                file_handle.write(secret)
-                file_handle.flush()
-                os.fsync(file_handle.fileno())
+            fd, temp_name = tempfile.mkstemp(
+                prefix=f".{secret_file.name}.", dir=secret_file.parent
+            )
+            temp_file = Path(temp_name)
             try:
-                secret_file.chmod(0o600)
-            except OSError:
-                pass  # Windows may not support chmod
+                with os.fdopen(fd, "w", encoding="utf-8") as file_handle:
+                    file_handle.write(secret)
+                    file_handle.flush()
+                    os.fsync(file_handle.fileno())
+                os.replace(temp_file, secret_file)
+                try:
+                    secret_file.chmod(0o600)
+                except OSError:
+                    pass  # Windows may not support chmod
+            finally:
+                temp_file.unlink(missing_ok=True)
             return secret
 
     @staticmethod
@@ -118,7 +128,19 @@ class SessionService:
             if os.name == "nt":
                 import msvcrt
 
-                msvcrt.locking(fd, msvcrt.LK_LOCK, 1)
+                while True:
+                    try:
+                        msvcrt.locking(fd, msvcrt.LK_NBLCK, 1)
+                        break
+                    except OSError as exc:
+                        if exc.errno not in {
+                            errno.EACCES,
+                            errno.EAGAIN,
+                            errno.EDEADLK,
+                        }:
+                            raise
+                        os.lseek(fd, 0, os.SEEK_SET)
+                        time.sleep(0.05)
             else:
                 import fcntl
 
