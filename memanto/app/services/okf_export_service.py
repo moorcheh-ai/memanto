@@ -51,6 +51,30 @@ def _as_float(value: Any, default: float) -> float:
         return default
 
 
+def _contains_entry_delimiter(value: Any) -> bool:
+    """Return whether a nested frontmatter value contains record framing."""
+    if isinstance(value, str):
+        return ENTRY_DELIMITER in value
+    if isinstance(value, dict):
+        return any(_contains_entry_delimiter(item) for item in value.values())
+    if isinstance(value, (list, tuple)):
+        return any(_contains_entry_delimiter(item) for item in value)
+    return False
+
+
+def _escape_strings(value: Any) -> Any:
+    """HTML-escape nested strings while preserving their container types."""
+    if isinstance(value, str):
+        return html.escape(value, quote=False)
+    if isinstance(value, dict):
+        return {key: _escape_strings(item) for key, item in value.items()}
+    if isinstance(value, list):
+        return [_escape_strings(item) for item in value]
+    if isinstance(value, tuple):
+        return tuple(_escape_strings(item) for item in value)
+    return value
+
+
 class OkfExportService:
     """Formats and writes an OKF bundle for an agent."""
 
@@ -303,14 +327,16 @@ class OkfExportService:
             val = mem.get(key)
             if val not in (None, ""):
                 x_memanto[key] = val
-        if ENTRY_DELIMITER in content:
-            # Stacked exports use ENTRY_DELIMITER as record framing. Escape the
-            # complete body so a literal marker in user content cannot create a
-            # phantom record; the loader reverses this encoding after splitting.
-            rendered_content = html.escape(content, quote=False)
-            x_memanto["content_encoding"] = CONTENT_ENCODING_HTML_ESCAPED
         x_memanto["type"] = mem_type
         frontmatter["x_memanto"] = x_memanto
+
+        if ENTRY_DELIMITER in content or _contains_entry_delimiter(frontmatter):
+            # Stacked exports use ENTRY_DELIMITER as record framing. Escape every
+            # string in the document so a literal marker in body or frontmatter
+            # cannot create a phantom record; the loader reverses this encoding.
+            rendered_content = html.escape(content, quote=False)
+            frontmatter = _escape_strings(frontmatter)
+            frontmatter["x_memanto"]["content_encoding"] = CONTENT_ENCODING_HTML_ESCAPED
 
         front = yaml.safe_dump(
             frontmatter,

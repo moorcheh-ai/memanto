@@ -197,7 +197,13 @@ def test_round_trip_preserves_literal_entry_delimiter_in_memory_content(tmp_path
     )
     memories_by_type = {
         "fact": [
-            _mem("f1", "Delimiter documentation", content),
+            _mem(
+                "f1",
+                "Delimiter <!-- okf-entry --> documentation &amp;",
+                content,
+                tags=["format <!-- okf-entry -->", "entity &amp;"],
+                source_ref="https://example.test/<!-- okf-entry -->?x=&amp;",
+            ),
             _mem("f2", "Neighboring fact", "This memory must remain separate."),
         ]
     }
@@ -208,5 +214,13 @@ def test_round_trip_preserves_literal_entry_delimiter_in_memory_content(tmp_path
     export = load_okf_bundle(result["output_path"])
     assert len(export["memories"]) == 2
     by_title = {memory["title"]: memory for memory in export["memories"]}
-    assert by_title["Delimiter documentation"]["body"] == content
+    title = "Delimiter <!-- okf-entry --> documentation &amp;"
+    assert by_title[title]["body"] == content
+    assert by_title[title]["tags"] == [
+        "format <!-- okf-entry -->",
+        "entity &amp;",
+    ]
+    assert (
+        by_title[title]["resource"] == "https://example.test/<!-- okf-entry -->?x=&amp;"
+    )
     assert by_title["Neighboring fact"]["body"] == "This memory must remain separate."

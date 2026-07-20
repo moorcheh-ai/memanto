@@ -45,6 +45,17 @@ _KNOWN_FIELDS = {
 }
 
 
+def _unescape_strings(value: Any) -> Any:
+    """Reverse the exporter's recursive HTML escaping of string values."""
+    if isinstance(value, str):
+        return html.unescape(value)
+    if isinstance(value, dict):
+        return {key: _unescape_strings(item) for key, item in value.items()}
+    if isinstance(value, list):
+        return [_unescape_strings(item) for item in value]
+    return value
+
+
 def load_okf_bundle(path: str | Path) -> dict[str, Any]:
     """Load an OKF bundle directory (or a single ``.md`` file) into an export dict."""
     root = Path(path)
@@ -102,17 +113,19 @@ def _parse_entry(chunk: str, file_path: Path, rel_base: Path) -> dict[str, Any] 
     if not body and not frontmatter.get("title"):
         return None
 
+    x_memanto = frontmatter.get("x_memanto")
+    if not isinstance(x_memanto, dict):
+        x_memanto = {}
+    if x_memanto.get("content_encoding") == CONTENT_ENCODING_HTML_ESCAPED:
+        frontmatter = _unescape_strings(frontmatter)
+        body = html.unescape(body)
+        x_memanto = frontmatter["x_memanto"]
+
     tags = frontmatter.get("tags")
     if isinstance(tags, str):
         tags = [tags]
     elif not isinstance(tags, list):
         tags = []
-
-    x_memanto = frontmatter.get("x_memanto")
-    if not isinstance(x_memanto, dict):
-        x_memanto = {}
-    if x_memanto.get("content_encoding") == CONTENT_ENCODING_HTML_ESCAPED:
-        body = html.unescape(body)
 
     extra = {k: v for k, v in frontmatter.items() if k not in _KNOWN_FIELDS}
     links = [f"{text} -> {target}" for text, target in _LINK_RE.findall(body)]
