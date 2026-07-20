@@ -17,6 +17,7 @@ from memanto.app.core import MemoryRecord
 from memanto.app.models.session import AgentCreate, AgentPattern, Session, SessionStatus
 from memanto.app.services.agent_service import AgentService
 from memanto.app.services.session_service import SessionService
+from memanto.app.utils.errors import InvalidSessionTokenError
 
 
 class TestSessionService:
@@ -220,6 +221,52 @@ class TestSessionService:
         renewed = [session for session in results if session is not None]
         assert len(renewed) == 1
         session_service.validate_session(renewed[0].session_token)
+
+    def test_end_session_revokes_concurrent_auto_renewal(
+        self, session_service, monkeypatch
+    ):
+        """Logout must terminate a renewal that was already in flight."""
+        original = session_service.create_session(
+            agent_id="test-agent", duration_hours=1
+        )
+        monkeypatch.setattr(settings, "SESSION_EXTEND_THRESHOLD_MINUTES", 120)
+
+        original_renew = session_service.renew_session
+        renewal_entered = threading.Event()
+        release_renewal = threading.Event()
+        termination_saved = threading.Event()
+        original_save = session_service._save_session
+
+        def controlled_renew(agent_id, pattern=None):
+            renewal_entered.set()
+            assert release_renewal.wait(timeout=2)
+            return original_renew(agent_id=agent_id, pattern=pattern)
+
+        def observed_save(session):
+            original_save(session)
+            if session.status == SessionStatus.TERMINATED:
+                termination_saved.set()
+
+        monkeypatch.setattr(session_service, "renew_session", controlled_renew)
+        monkeypatch.setattr(session_service, "_save_session", observed_save)
+
+        with ThreadPoolExecutor(max_workers=2) as pool:
+            renewing = pool.submit(session_service.check_and_auto_renew, "test-agent")
+            assert renewal_entered.wait(timeout=2)
+            ending = pool.submit(session_service.end_session, "test-agent")
+
+            # Logout cannot persist a stale termination while renewal owns the
+            # lifecycle. It proceeds immediately after the fresh token exists.
+            assert not termination_saved.wait(timeout=0.25)
+            release_renewal.set()
+            renewed = renewing.result(timeout=2)
+            summary = ending.result(timeout=2)
+
+        assert renewed is not None
+        assert renewed.session_id != original.session_id
+        assert summary.session_id == renewed.session_id
+        with pytest.raises(InvalidSessionTokenError):
+            session_service.validate_session(renewed.session_token)
 
     def test_end_session(self, session_service):
         """Test ending session"""

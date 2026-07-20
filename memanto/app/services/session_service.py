@@ -71,13 +71,10 @@ class SessionService:
             or self._generate_secure_secret_key()
         )
         self.secret_key: str = resolved_secret_key
-        self._auto_renew_locks: dict[str, threading.RLock] = {}
-        self._auto_renew_locks_guard = threading.Lock()
-
-    def _get_auto_renew_lock(self, agent_id: str) -> threading.RLock:
-        """Return the per-agent lock that serializes token rotation."""
-        with self._auto_renew_locks_guard:
-            return self._auto_renew_locks.setdefault(agent_id, threading.RLock())
+        # Session rotation, termination, and the global active-session marker
+        # form one lifecycle. Serialize them so a concurrent renewal cannot
+        # publish a fresh bearer token after logout has completed.
+        self._session_lifecycle_lock = threading.RLock()
 
     def _generate_secure_secret_key(self) -> str:
         """Generate (or reuse) a persisted fallback secret for JWT signing.
@@ -153,6 +150,16 @@ class SessionService:
         Returns:
             Session object with JWT token
         """
+        with self._session_lifecycle_lock:
+            return self._create_session(agent_id, pattern, duration_hours)
+
+    def _create_session(
+        self,
+        agent_id: str,
+        pattern: AgentPattern | None,
+        duration_hours: int | None,
+    ) -> Session:
+        """Create and publish a session while the lifecycle lock is held."""
         # Use config default if not explicitly provided
         if duration_hours is None:
             duration_hours = settings.SESSION_DEFAULT_DURATION_HOURS
@@ -300,6 +307,11 @@ class SessionService:
         Raises:
             SessionNotFoundError: If session doesn't exist
         """
+        with self._session_lifecycle_lock:
+            return self._end_session(agent_id)
+
+    def _end_session(self, agent_id: str) -> SessionSummary:
+        """Terminate a session while excluding concurrent token rotation."""
         session = self.get_session(agent_id)
         if not session:
             raise SessionNotFoundError(f"No session found for agent {agent_id}")
@@ -373,11 +385,12 @@ class SessionService:
         if not settings.SESSION_AUTO_RENEW_ENABLED:
             return None
 
-        # Validation and renewal must be one operation. Without a per-agent
-        # single-flight lock, parallel requests can all observe the same
+        # Validation and renewal must be one operation. Without the lifecycle
+        # lock, parallel requests can all observe the same
         # near-expiry session, mint competing tokens, and immediately
-        # invalidate every replacement except the last file write.
-        with self._get_auto_renew_lock(agent_id):
+        # invalidate every replacement except the last file write. The same
+        # lock also makes logout authoritative over an in-flight renewal.
+        with self._session_lifecycle_lock:
             session = self.get_session(agent_id)
             if not session or not session.is_active():
                 return None
