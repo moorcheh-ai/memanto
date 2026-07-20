@@ -849,7 +849,9 @@ class MemoryReadService:
         # Without this, original_id and other on-prem fields are silently
         # dropped on read, making the extra-metadata preservation in
         # update_memory() ineffective.
-        known_keys = set(formatted.keys()) | {"text"}
+        # "memory_type" is the raw storage field name for the formatted
+        # "type" key and must be excluded to avoid leaking a duplicate.
+        known_keys = set(formatted.keys()) | {"text", "memory_type"}
         if isinstance(metadata, dict):
             for key, value in metadata.items():
                 if key not in known_keys and key not in REMOVED_TRUST_FIELDS:

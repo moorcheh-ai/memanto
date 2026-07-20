@@ -116,20 +116,21 @@ class TestUpdateMemoryPreservesProvenance:
                 f"created_at was overwritten: expected 2026-07-01, got {doc['created_at']}"
             )
 
-    def test_update_does_not_overwrite_original_id_with_new_id(self, write_service, mock_client):
-        """When the caller passes a different memory_id on update,
-        original_id must still point to the FIRST id, not the new one.
+    def test_update_preserves_original_id_when_memory_id_differs(self, write_service, mock_client):
+        """original_id must survive even when the memory_id used for the
+        update differs from the record's original id.
 
-        This is the core bug reported in issue #1335:
-        'On subsequent updates, original_id becomes equal to the latest memory_id'
+        This tests the core scenario from issue #1335: a record originally
+        created with id=mem_abc123 is updated with a new id (mem_xyz789),
+        but original_id must still point to mem_abc123.
         """
         existing_data = {
-            "id": "mem_abc123",
+            "id": "mem_xyz789",
             "text": "[FACT] Original\n\nOriginal content",
             "title": "Original",
             "content": "Original content",
             "metadata": {
-                "id": "mem_abc123",
+                "id": "mem_xyz789",
                 "original_id": "mem_abc123",
                 "memory_type": "fact",
                 "agent_id": "test-agent",
@@ -152,8 +153,10 @@ class TestUpdateMemoryPreservesProvenance:
             "memanto.app.services.memory_read_service.MemoryReadService",
             return_value=mock_read_service,
         ):
+            # Update using the current id (mem_xyz789), which differs
+            # from the original id (mem_abc123)
             write_service.update_memory(
-                memory_id="mem_abc123",
+                memory_id="mem_xyz789",
                 namespace="memanto_agent_test-agent",
                 updates={"content": "Updated content"},
             )
@@ -162,8 +165,10 @@ class TestUpdateMemoryPreservesProvenance:
             uploaded_documents = upload_call.kwargs.get("documents") or upload_call[1].get("documents")
             doc = uploaded_documents[0]
 
+            # original_id must still be the ORIGINAL id, not the current one
             assert doc.get("original_id") == "mem_abc123", (
-                f"original_id should be 'mem_abc123' but got '{doc.get('original_id')}'"
+                f"original_id should be 'mem_abc123' (the original) "
+                f"but got '{doc.get('original_id')}' (the current memory_id)"
             )
 
     def test_update_only_touches_allowed_fields(self, write_service, mock_client, existing_memory_data):
@@ -324,3 +329,93 @@ class TestOriginalIdPreservedThroughReadPath:
                 f"original_id lost in read-format-update cycle. "
                 f"Got: {doc.get('original_id')}"
             )
+
+    def test_format_memory_item_excludes_removed_trust_fields(self, mock_client):
+        """_format_memory_item must drop removed trust fields (e.g.
+        superseded_by, validation_count) from the formatted output.
+
+        These fields were removed from the active schema on 2026-06-29
+        and must not be resurrected on read.
+        """
+        from memanto.app.services.memory_read_service import MemoryReadService
+
+        raw_moorcheh_document = {
+            "id": "mem_trust_001",
+            "text": "[FACT] Trust test\n\nContent",
+            "metadata": {
+                "id": "mem_trust_001",
+                "memory_type": "fact",
+                "agent_id": "test-agent",
+                "actor_id": "user",
+                "source": "user",
+                "confidence": 0.9,
+                "status": "active",
+                "provenance": "explicit_statement",
+                "created_at": "2026-07-01T10:00:00+00:00",
+                "updated_at": "2026-07-01T10:00:00+00:00",
+                # Extra metadata that should be preserved
+                "original_id": "mem_trust_001",
+                # Removed trust fields that must be dropped
+                "superseded_by": "mem_new_001",
+                "supersedes": "mem_old_001",
+                "validated_at": "2026-07-01T12:00:00+00:00",
+                "validation_count": 5,
+                "contradiction_detected": "true",
+            },
+        }
+
+        read_service = MemoryReadService(mock_client)
+        formatted = read_service._format_memory_item(raw_moorcheh_document)
+
+        # Removed trust fields must NOT appear
+        assert "superseded_by" not in formatted, (
+            "Removed trust field 'superseded_by' should not appear in formatted output"
+        )
+        assert "supersedes" not in formatted
+        assert "validated_at" not in formatted
+        assert "validation_count" not in formatted
+        assert "contradiction_detected" not in formatted
+
+        # But original_id (a valid extra field) should be preserved
+        assert "original_id" in formatted, (
+            "original_id should be preserved in formatted output"
+        )
+        assert formatted["original_id"] == "mem_trust_001"
+
+    def test_format_memory_item_does_not_duplicate_memory_type(self, mock_client):
+        """_format_memory_item must not leak 'memory_type' as a duplicate
+        of the formatted 'type' key.
+
+        The raw metadata stores the memory type as 'memory_type', while the
+        formatted output uses 'type'. The extra-metadata loop must not copy
+        'memory_type' into the formatted dict since 'type' already exists.
+        """
+        from memanto.app.services.memory_read_service import MemoryReadService
+
+        raw_moorcheh_document = {
+            "id": "mem_dup_001",
+            "text": "[FACT] Dup test\n\nContent",
+            "metadata": {
+                "id": "mem_dup_001",
+                "memory_type": "fact",
+                "agent_id": "test-agent",
+                "actor_id": "user",
+                "source": "user",
+                "confidence": 0.8,
+                "status": "active",
+                "provenance": "explicit_statement",
+                "created_at": "2026-07-01T10:00:00+00:00",
+                "updated_at": "2026-07-01T10:00:00+00:00",
+            },
+        }
+
+        read_service = MemoryReadService(mock_client)
+        formatted = read_service._format_memory_item(raw_moorcheh_document)
+
+        # 'type' should be present (the normalized field)
+        assert formatted["type"] == "fact"
+        # 'memory_type' should NOT appear as a duplicate
+        assert "memory_type" not in formatted, (
+            f"'memory_type' should not leak as a duplicate of 'type'. "
+            f"Keys: {sorted(formatted.keys())}"
+        )
