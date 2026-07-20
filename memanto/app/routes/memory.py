@@ -592,6 +592,10 @@ async def extract_memories_from_conversation(
 
         memory_records = []
         for item in candidates:
+            tags = []
+            for tag in [*(item.get("tags") or []), "conversation-extract"]:
+                if tag not in tags:
+                    tags.append(tag)
             memory = MemoryRecord(
                 type=cast(MemoryType, item.get("type")),
                 title=item["title"],
@@ -599,7 +603,7 @@ async def extract_memories_from_conversation(
                 agent_id=agent_id,
                 actor_id=agent_id,
                 confidence=item["confidence"],
-                tags=["conversation-extract"],
+                tags=tags,
                 source=item["source"],
                 provenance=cast(ProvenanceType, item["provenance"]),
             )

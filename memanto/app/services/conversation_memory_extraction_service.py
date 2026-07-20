@@ -14,6 +14,8 @@ from typing import Any
 from memanto.app.clients.backend import get_active_llm_model
 from memanto.app.constants import VALID_MEMORY_TYPES
 
+_TAG_TOKEN_RE = re.compile(r"^[A-Za-z0-9_.-]+$")
+
 
 class ConversationMemoryExtractionService:
     """Extract typed memory candidates from conversation turns."""
@@ -21,6 +23,8 @@ class ConversationMemoryExtractionService:
     MAX_MESSAGES = 200
     MAX_MEMORIES = 100
     MAX_CONTENT_CHARS = 12_000
+    MAX_TAGS_PER_MEMORY = 10
+    MAX_TAG_LENGTH = 64
 
     def __init__(self, client: Any) -> None:
         self.client = client
@@ -106,7 +110,9 @@ class ConversationMemoryExtractionService:
     def _footer_prompt(self) -> str:
         return (
             "Return only JSON. The JSON must be an array of objects with keys: "
-            "type, title, content, confidence. Confidence must be 0.0 to 1.0."
+            "type, title, content, confidence, tags. Confidence must be 0.0 to 1.0. "
+            "Tags are optional and must be an array of short labels using only "
+            "letters, numbers, '.', '_', or '-'."
         )
 
     def _parse_json_answer(self, answer: str) -> Any:
@@ -160,22 +166,24 @@ class ConversationMemoryExtractionService:
             except (TypeError, ValueError):
                 confidence = 0.8
             confidence = max(0.0, min(confidence, 1.0))
+            tags = self._normalize_tags(item.get("tags"))
 
             key = (memory_type, re.sub(r"\s+", " ", content).lower())
             if key in seen:
                 continue
             seen.add(key)
 
-            normalized.append(
-                {
-                    "type": memory_type,
-                    "title": title,
-                    "content": content,
-                    "confidence": confidence,
-                    "source": "conversation",
-                    "provenance": "inferred",
-                }
-            )
+            candidate = {
+                "type": memory_type,
+                "title": title,
+                "content": content,
+                "confidence": confidence,
+                "source": "conversation",
+                "provenance": "inferred",
+            }
+            if tags:
+                candidate["tags"] = tags
+            normalized.append(candidate)
             if len(normalized) >= max_memories:
                 break
 
@@ -183,3 +191,33 @@ class ConversationMemoryExtractionService:
             raise ValueError("Memory extraction produced no usable candidates")
 
         return normalized
+
+    def _normalize_tags(self, raw_tags: Any) -> list[str]:
+        """Return safe, filterable tags suggested by the extractor."""
+
+        if raw_tags is None:
+            return []
+        raw_values: list[Any]
+        if isinstance(raw_tags, str):
+            raw_values = raw_tags.split(",")
+        elif isinstance(raw_tags, list):
+            raw_values = raw_tags
+        else:
+            return []
+
+        tags: list[str] = []
+        seen: set[str] = set()
+        for value in raw_values:
+            tag = str(value).strip().lstrip("#")
+            tag = re.sub(r"\s+", "-", tag)
+            if not tag or len(tag) > self.MAX_TAG_LENGTH:
+                continue
+            if not _TAG_TOKEN_RE.fullmatch(tag):
+                continue
+            if tag in seen:
+                continue
+            seen.add(tag)
+            tags.append(tag)
+            if len(tags) >= self.MAX_TAGS_PER_MEMORY:
+                break
+        return tags
