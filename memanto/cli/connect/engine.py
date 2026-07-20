@@ -121,6 +121,23 @@ def remove_agent(
     except Exception as e:
         errors.append(f"Skill removal: {e}")
 
+    # Remove agent-specific configuration written during installation.
+    if agent.supports_hooks and agent.hook_config:
+        try:
+            result = _remove_hooks(agent, project_path, is_global)
+            if result:
+                steps.append(result)
+        except Exception as e:
+            errors.append(f"Hook removal: {e}")
+
+    if agent.permissions_file and agent.permissions_payload:
+        try:
+            result = _remove_permissions(agent, project_path, is_global)
+            if result:
+                steps.append(result)
+        except Exception as e:
+            errors.append(f"Permission removal: {e}")
+
     try:
         ConfigManager().remove_connection(
             agent_name, str(project_path) if not is_global else None, is_global
@@ -298,6 +315,17 @@ def _remove_skill(agent: AgentDef, project_path: Path, is_global: bool) -> str |
     return None
 
 
+def _config_dir(agent: AgentDef, project_path: Path, is_global: bool) -> Path | None:
+    """Resolve an agent configuration directory for the requested scope."""
+    if is_global:
+        if not agent.config_global_dir:
+            return None
+        return Path.home() / agent.config_global_dir.lstrip("~/")
+    if not agent.config_local_dir:
+        return None
+    return project_path / agent.config_local_dir
+
+
 # Internal: Hook configuration (Claude Code)
 
 
@@ -306,16 +334,9 @@ def _install_hooks(agent: AgentDef, project_path: Path, is_global: bool) -> str 
     if not agent.hook_config:
         return None
 
-    if is_global:
-        if agent.config_global_dir:
-            config_dir = Path.home() / agent.config_global_dir.lstrip("~/")
-        else:
-            return None
-    else:
-        if agent.config_local_dir:
-            config_dir = project_path / agent.config_local_dir
-        else:
-            return None
+    config_dir = _config_dir(agent, project_path, is_global)
+    if not config_dir:
+        return None
 
     config_dir.mkdir(parents=True, exist_ok=True)
     settings_path = config_dir / agent.hook_config.settings_file
@@ -349,6 +370,67 @@ def _install_hooks(agent: AgentDef, project_path: Path, is_global: bool) -> str 
     return None  # Already configured
 
 
+def _remove_hooks(agent: AgentDef, project_path: Path, is_global: bool) -> str | None:
+    """Remove only hooks installed by MEMANTO, preserving all other hooks."""
+    if not agent.hook_config:
+        return None
+
+    config_dir = _config_dir(agent, project_path, is_global)
+    if not config_dir:
+        return None
+    settings_path = config_dir / agent.hook_config.settings_file
+    if not settings_path.exists():
+        return None
+
+    settings = json.loads(settings_path.read_text(encoding="utf-8"))
+    hooks = settings.get("hooks")
+    if not isinstance(hooks, dict):
+        return None
+
+    event_name = agent.hook_config.hook_key.rsplit(".", 1)[-1]
+    entries = hooks.get(event_name)
+    if not isinstance(entries, list):
+        return None
+
+    managed_commands = {
+        hook.get("command")
+        for hook in agent.hook_config.hook_payload.get("hooks", [])
+        if isinstance(hook, dict) and isinstance(hook.get("command"), str)
+    }
+    if not managed_commands:
+        return None
+
+    kept_entries: list[Any] = []
+    removed = 0
+    for entry in entries:
+        entry_hooks = entry.get("hooks") if isinstance(entry, dict) else None
+        if not isinstance(entry_hooks, list):
+            kept_entries.append(entry)
+            continue
+
+        kept_hooks = [
+            hook
+            for hook in entry_hooks
+            if not (isinstance(hook, dict) and hook.get("command") in managed_commands)
+        ]
+        removed += len(entry_hooks) - len(kept_hooks)
+        if len(kept_hooks) == len(entry_hooks):
+            kept_entries.append(entry)
+        elif kept_hooks:
+            kept_entries.append({**entry, "hooks": kept_hooks})
+
+    if not removed:
+        return None
+    if kept_entries:
+        hooks[event_name] = kept_entries
+    else:
+        hooks.pop(event_name, None)
+    if not hooks:
+        settings.pop("hooks", None)
+    settings_path.write_text(json.dumps(settings, indent=2) + "\n", encoding="utf-8")
+    return f"Removed {removed} MEMANTO {event_name} hook(s)"
+
+
 # Internal: Permission configuration
 
 
@@ -359,18 +441,10 @@ def _install_permissions(
     if not agent.permissions_file or not agent.permissions_payload:
         return None
 
-    if is_global:
-        if agent.config_global_dir:
-            config_dir = Path.home() / agent.config_global_dir.lstrip("~/")
-        else:
-            return None
-        perm_path = config_dir / agent.permissions_file
-    else:
-        if agent.config_local_dir:
-            config_dir = project_path / agent.config_local_dir
-        else:
-            return None
-        perm_path = config_dir / agent.permissions_file
+    config_dir = _config_dir(agent, project_path, is_global)
+    if not config_dir:
+        return None
+    perm_path = config_dir / agent.permissions_file
 
     config_dir.mkdir(parents=True, exist_ok=True)
 
@@ -395,6 +469,48 @@ def _install_permissions(
         return "Added permissions"
 
     return None  # Already configured
+
+
+def _remove_permissions(
+    agent: AgentDef, project_path: Path, is_global: bool
+) -> str | None:
+    """Remove only permissions added by MEMANTO from an agent config file."""
+    if not agent.permissions_file or not agent.permissions_payload:
+        return None
+
+    config_dir = _config_dir(agent, project_path, is_global)
+    if not config_dir:
+        return None
+    perm_path = config_dir / agent.permissions_file
+    if not perm_path.exists():
+        return None
+
+    existing = json.loads(perm_path.read_text(encoding="utf-8"))
+    if not isinstance(existing, dict):
+        return None
+    permissions = existing.get("permissions")
+    if not isinstance(permissions, dict):
+        return None
+    allow_list = permissions.get("allow")
+    if not isinstance(allow_list, list):
+        return None
+
+    managed_permissions = set(
+        agent.permissions_payload.get("permissions", {}).get("allow", [])
+    )
+    kept_permissions = [perm for perm in allow_list if perm not in managed_permissions]
+    removed = len(allow_list) - len(kept_permissions)
+    if not removed:
+        return None
+
+    if kept_permissions:
+        permissions["allow"] = kept_permissions
+    else:
+        permissions.pop("allow", None)
+    if not permissions:
+        existing.pop("permissions", None)
+    perm_path.write_text(json.dumps(existing, indent=2) + "\n", encoding="utf-8")
+    return f"Removed {removed} MEMANTO permission(s)"
 
 
 # Utilities
