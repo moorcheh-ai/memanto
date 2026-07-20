@@ -107,6 +107,7 @@ class OkfExportService:
             assert validated is not None
             base = validated
         base.mkdir(parents=True, exist_ok=True)
+        self._clear_managed_output(base)
 
         # Section order mirrors how an agent would read the bundle.
         sections: dict[str, str] = {}
@@ -144,6 +145,28 @@ class OkfExportService:
             "per_type_counts": per_type_counts,
             "sections": list(sections),
         }
+
+    @staticmethod
+    def _clear_managed_output(base: Path) -> None:
+        """Remove files owned by a previous export before rebuilding the bundle.
+
+        Reusing an output directory must produce a snapshot of the current
+        agent state.  Without clearing managed sections first, deleted memories
+        and context documents remain on disk and are imported again later.
+        Unknown files at the bundle root are intentionally left untouched.
+        """
+        managed_paths = (
+            base / "index.md",
+            base / "memories",
+            base / "daily-summaries",
+            base / "sessions",
+            base / "metrics",
+        )
+        for path in managed_paths:
+            if path.is_symlink() or path.is_file():
+                path.unlink()
+            elif path.is_dir():
+                shutil.rmtree(path)
 
     # Section writers
     def _write_memories_section(

@@ -95,6 +95,52 @@ def test_context_sections_and_import_scope(tmp_path):
     assert export["memories"][0]["title"] == "A fact"
 
 
+def test_reexport_replaces_stale_managed_content(tmp_path):
+    """Reusing a bundle path reflects current state instead of resurrecting
+    deleted memories or retaining context files from an earlier export."""
+    summary = tmp_path / "summary.md"
+    summary.write_text("# Old summary\n", encoding="utf-8")
+    session = tmp_path / "session.md"
+    session.write_text("# Old session\n", encoding="utf-8")
+
+    svc = OkfExportService(exports_dir=tmp_path / "exports")
+    svc.write_okf_bundle(
+        "agent1",
+        {
+            "fact": [
+                _mem("f1", "Keep", "Still current."),
+                _mem("f2", "Deleted", "No longer current."),
+            ]
+        },
+        split="file",
+        summaries=[summary],
+        sessions=[session],
+    )
+    base = svc.exports_dir / "agent1_okf"
+    assert (base / "memories" / "fact" / "deleted.md").exists()
+    assert (base / "daily-summaries" / "summary.md").exists()
+    assert (base / "sessions" / "session.md").exists()
+
+    second = svc.write_okf_bundle(
+        "agent1",
+        {"fact": [_mem("f1", "Keep", "Still current.")]},
+        split="type",
+    )
+
+    reloaded = load_okf_bundle(second["output_path"])
+    assert [entry["title"] for entry in reloaded["memories"]] == ["Keep"]
+    assert (base / "memories" / "fact" / "fact.md").exists()
+    assert not (base / "memories" / "fact" / "deleted.md").exists()
+    assert not (base / "daily-summaries").exists()
+    assert not (base / "sessions").exists()
+
+    empty = svc.write_okf_bundle("agent1", {}, split="file")
+    assert empty["sections"] == []
+    assert load_okf_bundle(empty["output_path"])["memories"] == []
+    assert not (base / "memories").exists()
+    assert not (base / "metrics").exists()
+
+
 def test_memanto_round_trip_preserves_extras(tmp_path):
     """Memanto -> OKF -> Memanto keeps type/confidence/source_ref/tags/body via
     the ``x_memanto`` block, and always marks provenance as imported."""
