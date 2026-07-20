@@ -222,6 +222,55 @@ class TestSessionService:
         assert len(renewed) == 1
         session_service.validate_session(renewed[0].session_token)
 
+    def test_lifecycle_operations_for_different_agents_can_overlap(
+        self, session_service, monkeypatch
+    ):
+        """One agent's session file I/O must not block another agent."""
+        original_save = session_service._save_session
+        first_save_entered = threading.Event()
+        release_first_save = threading.Event()
+
+        def controlled_save(session):
+            if session.agent_id == "agent-a":
+                first_save_entered.set()
+                assert release_first_save.wait(timeout=2)
+            original_save(session)
+
+        monkeypatch.setattr(session_service, "_save_session", controlled_save)
+
+        with ThreadPoolExecutor(max_workers=2) as pool:
+            first = pool.submit(session_service.create_session, "agent-a")
+            assert first_save_entered.wait(timeout=2)
+            second = pool.submit(session_service.create_session, "agent-b")
+            second_session = second.result(timeout=1)
+            release_first_save.set()
+            first_session = first.result(timeout=2)
+
+        assert first_session.agent_id == "agent-a"
+        assert second_session.agent_id == "agent-b"
+
+    def test_active_session_read_waits_for_marker_update(self, session_service):
+        """Readers must not observe an active marker during its replacement."""
+        session = session_service.create_session("test-agent")
+        read_started = threading.Event()
+
+        def read_active_session():
+            read_started.set()
+            return session_service.get_active_session()
+
+        pool = ThreadPoolExecutor(max_workers=1)
+        try:
+            with session_service._active_marker_lock:
+                pending_read = pool.submit(read_active_session)
+                assert read_started.wait(timeout=2)
+                assert not pending_read.done()
+            active_session = pending_read.result(timeout=2)
+        finally:
+            pool.shutdown(wait=True)
+
+        assert active_session is not None
+        assert active_session.session_id == session.session_id
+
     def test_end_session_revokes_concurrent_auto_renewal(
         self, session_service, monkeypatch
     ):

@@ -71,10 +71,23 @@ class SessionService:
             or self._generate_secure_secret_key()
         )
         self.secret_key: str = resolved_secret_key
-        # Session rotation, termination, and the global active-session marker
-        # form one lifecycle. Serialize them so a concurrent renewal cannot
-        # publish a fresh bearer token after logout has completed.
-        self._session_lifecycle_lock = threading.RLock()
+        # Serialize lifecycle operations for the same agent so renewal cannot
+        # publish a fresh bearer token after logout has completed. Keep the
+        # process-wide active marker on its own narrower lock so unrelated
+        # agents can create, renew, and terminate sessions concurrently.
+        self._agent_locks: dict[str, threading.RLock] = {}
+        self._agent_locks_guard = threading.Lock()
+        self._active_marker_lock = threading.RLock()
+
+    def _lock_for_agent(self, agent_id: str) -> threading.RLock:
+        """Return the stable lifecycle lock for one agent."""
+        validate_safe_id(agent_id, "agent_id")
+        with self._agent_locks_guard:
+            lock = self._agent_locks.get(agent_id)
+            if lock is None:
+                lock = threading.RLock()
+                self._agent_locks[agent_id] = lock
+            return lock
 
     def _generate_secure_secret_key(self) -> str:
         """Generate (or reuse) a persisted fallback secret for JWT signing.
@@ -150,7 +163,7 @@ class SessionService:
         Returns:
             Session object with JWT token
         """
-        with self._session_lifecycle_lock:
+        with self._lock_for_agent(agent_id):
             return self._create_session(agent_id, pattern, duration_hours)
 
     def _create_session(
@@ -159,7 +172,7 @@ class SessionService:
         pattern: AgentPattern | None,
         duration_hours: int | None,
     ) -> Session:
-        """Create and publish a session while the lifecycle lock is held."""
+        """Create and publish a session while the agent lifecycle lock is held."""
         # Use config default if not explicitly provided
         if duration_hours is None:
             duration_hours = settings.SESSION_DEFAULT_DURATION_HOURS
@@ -271,28 +284,30 @@ class SessionService:
         Returns:
             Session object or None if no active session or session is expired
         """
-        active_link = self.sessions_dir / "active"
-        if not active_link.exists():
-            return None
+        with self._active_marker_lock:
+            active_link = self.sessions_dir / "active"
+            if not active_link.exists():
+                return None
 
-        # Read symlink (or file on Windows)
-        if active_link.is_symlink():
-            target = active_link.readlink()
-            agent_id = target.stem
-        else:
-            with open(active_link) as f:
-                agent_id = f.read().strip()
+            # Read symlink (or file on Windows)
+            if active_link.is_symlink():
+                target = active_link.readlink()
+                agent_id = target.stem
+            else:
+                with open(active_link) as f:
+                    agent_id = f.read().strip()
 
-        session = self.get_session(agent_id)
-        if not session:
-            return None
+            session = self.get_session(agent_id)
+            if not session:
+                return None
 
-        # If session is expired, clear the stale active marker and return None
-        if not session.is_active():
-            self._clear_active_session()
-            return None
+            # If session is expired, clear the stale marker and return None.
+            # The marker lock is re-entrant for this cleanup path.
+            if not session.is_active():
+                self._clear_active_session()
+                return None
 
-        return session
+            return session
 
     def end_session(self, agent_id: str) -> SessionSummary:
         """
@@ -307,7 +322,7 @@ class SessionService:
         Raises:
             SessionNotFoundError: If session doesn't exist
         """
-        with self._session_lifecycle_lock:
+        with self._lock_for_agent(agent_id):
             return self._end_session(agent_id)
 
     def _end_session(self, agent_id: str) -> SessionSummary:
@@ -385,12 +400,12 @@ class SessionService:
         if not settings.SESSION_AUTO_RENEW_ENABLED:
             return None
 
-        # Validation and renewal must be one operation. Without the lifecycle
-        # lock, parallel requests can all observe the same
+        # Validation and renewal must be one operation. Without the per-agent
+        # lifecycle lock, parallel requests can all observe the same
         # near-expiry session, mint competing tokens, and immediately
         # invalidate every replacement except the last file write. The same
         # lock also makes logout authoritative over an in-flight renewal.
-        with self._session_lifecycle_lock:
+        with self._lock_for_agent(agent_id):
             session = self.get_session(agent_id)
             if not session or not session.is_active():
                 return None
@@ -532,26 +547,28 @@ class SessionService:
     def _set_active_session(self, agent_id: str) -> None:
         """Mark session as active"""
         validate_safe_id(agent_id, "agent_id")
-        active_link = self.sessions_dir / "active"
+        with self._active_marker_lock:
+            active_link = self.sessions_dir / "active"
 
-        # Remove existing active link
-        if active_link.exists() or active_link.is_symlink():
-            active_link.unlink()
+            # Remove existing active link
+            if active_link.exists() or active_link.is_symlink():
+                active_link.unlink()
 
-        # Create new active marker
-        # On Windows, write agent_id to file instead of symlink
-        try:
-            active_link.symlink_to(f"{agent_id}.json")
-        except (OSError, NotImplementedError):
-            # Fallback for Windows or systems without symlink support
-            with open(active_link, "w") as f:
-                f.write(agent_id)
+            # Create new active marker
+            # On Windows, write agent_id to file instead of symlink
+            try:
+                active_link.symlink_to(f"{agent_id}.json")
+            except (OSError, NotImplementedError):
+                # Fallback for Windows or systems without symlink support
+                with open(active_link, "w") as f:
+                    f.write(agent_id)
 
     def _clear_active_session(self) -> None:
         """Clear active session marker"""
-        active_link = self.sessions_dir / "active"
-        if active_link.exists() or active_link.is_symlink():
-            active_link.unlink()
+        with self._active_marker_lock:
+            active_link = self.sessions_dir / "active"
+            if active_link.exists() or active_link.is_symlink():
+                active_link.unlink()
 
     def clear_active_session(self) -> None:
         """Public alias: clear the active-session marker without ending the session."""
@@ -564,24 +581,25 @@ class SessionService:
         Used when an agent is deleted: the agent metadata is gone, so a saved
         session for that agent must not remain usable through X-Session-Token.
         """
-        active_link = self.sessions_dir / "active"
-        active_agent_id: str | None = None
+        with self._lock_for_agent(agent_id), self._active_marker_lock:
+            active_link = self.sessions_dir / "active"
+            active_agent_id: str | None = None
 
-        if active_link.is_symlink():
-            active_agent_id = active_link.readlink().stem
-        elif active_link.exists():
-            with open(active_link) as f:
-                active_agent_id = f.read().strip()
+            if active_link.is_symlink():
+                active_agent_id = active_link.readlink().stem
+            elif active_link.exists():
+                with open(active_link) as f:
+                    active_agent_id = f.read().strip()
 
-        session_file = self.sessions_dir / f"{agent_id}.json"
-        deleted = session_file.exists()
-        if deleted:
-            session_file.unlink()
+            session_file = self.sessions_dir / f"{agent_id}.json"
+            deleted = session_file.exists()
+            if deleted:
+                session_file.unlink()
 
-        if active_agent_id == agent_id:
-            self._clear_active_session()
+            if active_agent_id == agent_id:
+                self._clear_active_session()
 
-        return deleted
+            return deleted
 
     def list_sessions(self) -> list[Session]:
         """
