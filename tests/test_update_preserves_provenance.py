@@ -9,6 +9,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+from memanto.app.services.memory_read_service import MemoryReadService
 from memanto.app.services.memory_write_service import MemoryWriteService
 
 
@@ -272,7 +273,6 @@ class TestOriginalIdPreservedThroughReadPath:
         with original_id in metadata, _format_memory_item() processes it, then
         update_memory() reads it back and must preserve original_id.
         """
-        from memanto.app.services.memory_read_service import MemoryReadService
 
         # Simulate the raw Moorcheh SDK response (what documents.get returns)
         raw_moorcheh_document = {
@@ -337,7 +337,6 @@ class TestOriginalIdPreservedThroughReadPath:
         These fields were removed from the active schema on 2026-06-29
         and must not be resurrected on read.
         """
-        from memanto.app.services.memory_read_service import MemoryReadService
 
         raw_moorcheh_document = {
             "id": "mem_trust_001",
@@ -390,7 +389,6 @@ class TestOriginalIdPreservedThroughReadPath:
         formatted output uses 'type'. The extra-metadata loop must not copy
         'memory_type' into the formatted dict since 'type' already exists.
         """
-        from memanto.app.services.memory_read_service import MemoryReadService
 
         raw_moorcheh_document = {
             "id": "mem_dup_001",
