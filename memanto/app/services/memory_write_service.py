@@ -314,6 +314,12 @@ class MemoryWriteService:
         try:
             from memanto.app.services.memory_read_service import MemoryReadService
 
+            # Validate inputs
+            if not memory_id or not memory_id.strip():
+                raise ValueError("memory_id must be a non-empty string")
+            if not namespace or not namespace.strip():
+                raise ValueError("namespace must be a non-empty string")
+
             # Step 1: Retrieve existing memory
             read_service = MemoryReadService(self.client)
             existing_memory_data = read_service.get_memory(memory_id, namespace)
@@ -441,6 +447,10 @@ class MemoryWriteService:
 
     def delete_memory(self, memory_id: str, namespace: str) -> bool:
         """Delete memory by ID"""
+        if not memory_id or not memory_id.strip():
+            raise ValueError("memory_id must be a non-empty string")
+        if not namespace or not namespace.strip():
+            raise ValueError("namespace must be a non-empty string")
         try:
             from typing import Any, cast
 

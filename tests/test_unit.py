@@ -1485,3 +1485,30 @@ def test_batch_upload_error_counts_each_pending_memory_as_failed():
     assert all(
         "Batch upload returned status" in item["error"] for item in result["results"]
     )
+
+
+    def test_delete_memory_rejects_empty_memory_id(self):
+        """delete_memory must reject empty memory_id."""
+        from memanto.app.services.memory_write_service import MemoryWriteService
+        from unittest.mock import MagicMock
+        svc = MemoryWriteService(MagicMock())
+        with pytest.raises(ValueError, match='memory_id'):
+            svc.delete_memory('', 'test-ns')
+        with pytest.raises(ValueError, match='memory_id'):
+            svc.delete_memory('   ', 'test-ns')
+
+    def test_delete_memory_rejects_empty_namespace(self):
+        """delete_memory must reject empty namespace."""
+        from memanto.app.services.memory_write_service import MemoryWriteService
+        from unittest.mock import MagicMock
+        svc = MemoryWriteService(MagicMock())
+        with pytest.raises(ValueError, match='namespace'):
+            svc.delete_memory('mem-123', '')
+
+    def test_update_memory_rejects_empty_memory_id(self):
+        """update_memory must reject empty memory_id before any network call."""
+        from memanto.app.services.memory_write_service import MemoryWriteService
+        from unittest.mock import MagicMock
+        svc = MemoryWriteService(MagicMock())
+        with pytest.raises(ValueError, match='memory_id'):
+            svc.update_memory('', 'test-ns', {'title': 'x'})
