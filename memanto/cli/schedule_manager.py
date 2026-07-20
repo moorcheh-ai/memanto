@@ -50,7 +50,7 @@ class ScheduleManager:
                 if len(lines) != len(current_cron.splitlines()):
                     new_cron = "\n".join(lines).rstrip() + "\n"
                     subprocess.run(
-                        ["crontab", "-"], input=new_cron, text=True, check=False
+                        ["crontab", "-"], input=new_cron, text=True, check=True
                     )
             except Exception:
                 logger.warning(
