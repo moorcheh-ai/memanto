@@ -4,7 +4,11 @@ MEMANTO Core Unit Tests (No Server Required)
 Tests the session and agent services directly without HTTP layer.
 """
 
+import os
+import threading
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import jwt
@@ -231,6 +235,67 @@ class TestSessionService:
             sessions_dir=temp_dir / "other-install" / "sessions"
         )
         assert other_root.secret_key != first.secret_key
+
+    def test_concurrent_first_start_uses_one_persisted_secret(
+        self, temp_dir, monkeypatch
+    ):
+        """Concurrent service starts must agree on the JWT signing secret."""
+        monkeypatch.delenv("MEMANTO_SECRET_KEY", raising=False)
+        monkeypatch.setattr(settings, "MEMANTO_SECRET_KEY", "")
+
+        sessions_dir = temp_dir / "sessions"
+        second_truncated_secret = threading.Event()
+        release_first_writer = threading.Event()
+        thread_role = threading.local()
+        real_open = os.open
+        real_fdopen = os.fdopen
+
+        def observed_open(path, flags, mode=0o777):
+            if (
+                getattr(thread_role, "value", None) == "second"
+                and Path(path).name == "secret_key"
+                and flags & os.O_TRUNC
+            ):
+                second_truncated_secret.set()
+            return real_open(path, flags, mode)
+
+        def delayed_fdopen(fd, *args, **kwargs):
+            file_handle = real_fdopen(fd, *args, **kwargs)
+            if getattr(thread_role, "value", None) != "first":
+                return file_handle
+
+            class DelayedWriter:
+                def __enter__(self):
+                    return self
+
+                def __exit__(self, exc_type, exc_value, traceback):
+                    return file_handle.__exit__(exc_type, exc_value, traceback)
+
+                def write(self, data):
+                    assert release_first_writer.wait(timeout=5)
+                    return file_handle.write(data)
+
+                def __getattr__(self, name):
+                    return getattr(file_handle, name)
+
+            return DelayedWriter()
+
+        def create_service(role):
+            thread_role.value = role
+            return SessionService(sessions_dir=sessions_dir).secret_key
+
+        monkeypatch.setattr(os, "open", observed_open)
+        monkeypatch.setattr(os, "fdopen", delayed_fdopen)
+
+        with ThreadPoolExecutor(max_workers=2) as pool:
+            first = pool.submit(create_service, "first")
+            second = pool.submit(create_service, "second")
+            second_truncated_secret.wait(timeout=0.1)
+            release_first_writer.set()
+            returned_secrets = [first.result(timeout=5), second.result(timeout=5)]
+
+        persisted_secret = (temp_dir / "secret_key").read_text()
+        assert returned_secrets == [persisted_secret, persisted_secret]
 
     def test_get_active_session_ignores_invalid_session_file(self, session_service):
         """A corrupt active session file should not crash status checks."""

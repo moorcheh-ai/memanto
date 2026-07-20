@@ -9,6 +9,8 @@ import json
 import logging
 import os
 import secrets
+from collections.abc import Iterator
+from contextlib import contextmanager
 from datetime import timedelta
 from pathlib import Path
 from typing import Any
@@ -76,36 +78,65 @@ class SessionService:
 
         Persisted alongside the sessions directory so sessions survive
         process restarts instead of every new process invalidating all
-        existing session tokens. Created atomically (O_CREAT | O_EXCL) with
-        restrictive permissions from the moment of creation, so concurrent
-        first-start processes can't race each other into using divergent
-        secrets and there's no window where the file is world-readable. An
+        existing session tokens. A cross-process lock serializes the initial
+        read/write so concurrent first-start workers cannot return divergent
+        secrets. The file has restrictive permissions from creation, and an
         existing-but-empty file (e.g. left behind by a crash mid-write) is
-        treated as absent and rewritten.
+        safely rewritten by the lock holder.
         """
         secret_file = self.sessions_dir.parent / "secret_key"
-        existing = self._read_persisted_secret(secret_file)
-        if existing is not None:
-            return existing
-
-        secret = secrets.token_hex(32)
-        try:
-            fd = os.open(str(secret_file), os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
-        except FileExistsError:
-            # Lost a race to another process, or the file is a stale empty stub.
+        lock_file = secret_file.with_name(f"{secret_file.name}.lock")
+        with self._exclusive_file_lock(lock_file):
             existing = self._read_persisted_secret(secret_file)
             if existing is not None:
                 return existing
-            fd = os.open(str(secret_file), os.O_WRONLY | os.O_TRUNC, 0o600)
+
+            secret = secrets.token_hex(32)
+            fd = os.open(str(secret_file), os.O_CREAT | os.O_WRONLY | os.O_TRUNC, 0o600)
+            with os.fdopen(fd, "w", encoding="utf-8") as file_handle:
+                file_handle.write(secret)
+                file_handle.flush()
+                os.fsync(file_handle.fileno())
+            try:
+                secret_file.chmod(0o600)
+            except OSError:
+                pass  # Windows may not support chmod
+            return secret
+
+    @staticmethod
+    @contextmanager
+    def _exclusive_file_lock(lock_file: Path) -> Iterator[None]:
+        """Hold an advisory cross-process lock on one byte of ``lock_file``."""
+        fd = os.open(str(lock_file), os.O_CREAT | os.O_RDWR, 0o600)
+        locked = False
         try:
-            os.write(fd, secret.encode())
+            if os.fstat(fd).st_size == 0:
+                os.write(fd, b"\0")
+                os.fsync(fd)
+            os.lseek(fd, 0, os.SEEK_SET)
+
+            if os.name == "nt":
+                import msvcrt
+
+                msvcrt.locking(fd, msvcrt.LK_LOCK, 1)
+            else:
+                import fcntl
+
+                fcntl.flock(fd, fcntl.LOCK_EX)  # type: ignore[attr-defined]
+            locked = True
+            yield
         finally:
+            if locked:
+                os.lseek(fd, 0, os.SEEK_SET)
+                if os.name == "nt":
+                    import msvcrt
+
+                    msvcrt.locking(fd, msvcrt.LK_UNLCK, 1)
+                else:
+                    import fcntl
+
+                    fcntl.flock(fd, fcntl.LOCK_UN)  # type: ignore[attr-defined]
             os.close(fd)
-        try:
-            secret_file.chmod(0o600)
-        except OSError:
-            pass  # Windows may not support chmod
-        return secret
 
     @staticmethod
     def _read_persisted_secret(secret_file: Path) -> str | None:
