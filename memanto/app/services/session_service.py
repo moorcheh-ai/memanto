@@ -286,16 +286,18 @@ class SessionService:
         """
         with self._active_marker_lock:
             active_link = self.sessions_dir / "active"
-            if not active_link.exists():
-                return None
 
-            # Read symlink (or file on Windows)
-            if active_link.is_symlink():
-                target = active_link.readlink()
-                agent_id = target.stem
-            else:
-                with open(active_link) as f:
-                    agent_id = f.read().strip()
+            try:
+                # Read symlink (or file on Windows). Another process can replace
+                # or remove the marker while this process holds its local lock.
+                if active_link.is_symlink():
+                    target = active_link.readlink()
+                    agent_id = target.stem
+                else:
+                    with open(active_link) as f:
+                        agent_id = f.read().strip()
+            except OSError:
+                return None
 
             session = self.get_session(agent_id)
             if not session:
@@ -551,8 +553,7 @@ class SessionService:
             active_link = self.sessions_dir / "active"
 
             # Remove existing active link
-            if active_link.exists() or active_link.is_symlink():
-                active_link.unlink()
+            active_link.unlink(missing_ok=True)
 
             # Create new active marker
             # On Windows, write agent_id to file instead of symlink
@@ -567,8 +568,7 @@ class SessionService:
         """Clear active session marker"""
         with self._active_marker_lock:
             active_link = self.sessions_dir / "active"
-            if active_link.exists() or active_link.is_symlink():
-                active_link.unlink()
+            active_link.unlink(missing_ok=True)
 
     def clear_active_session(self) -> None:
         """Public alias: clear the active-session marker without ending the session."""
@@ -585,16 +585,18 @@ class SessionService:
             active_link = self.sessions_dir / "active"
             active_agent_id: str | None = None
 
-            if active_link.is_symlink():
-                active_agent_id = active_link.readlink().stem
-            elif active_link.exists():
-                with open(active_link) as f:
-                    active_agent_id = f.read().strip()
+            try:
+                if active_link.is_symlink():
+                    active_agent_id = active_link.readlink().stem
+                else:
+                    with open(active_link) as f:
+                        active_agent_id = f.read().strip()
+            except OSError:
+                pass
 
             session_file = self.sessions_dir / f"{agent_id}.json"
             deleted = session_file.exists()
-            if deleted:
-                session_file.unlink()
+            session_file.unlink(missing_ok=True)
 
             if active_agent_id == agent_id:
                 self._clear_active_session()

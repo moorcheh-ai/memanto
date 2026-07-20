@@ -7,6 +7,7 @@ Tests the session and agent services directly without HTTP layer.
 import threading
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import jwt
@@ -375,6 +376,64 @@ class TestSessionService:
         (session_service.sessions_dir / "broken-agent.json").write_text("{")
 
         assert session_service.get_active_session() is None
+
+    def test_get_active_session_tolerates_external_marker_removal(
+        self, session_service, monkeypatch
+    ):
+        """A marker removed by another process during its read is treated as absent."""
+        active_marker = session_service.sessions_dir / "active"
+        active_marker.write_text("test-agent")
+        original_open = open
+
+        def disappearing_marker(file, *args, **kwargs):
+            if Path(file) == active_marker:
+                active_marker.unlink(missing_ok=True)
+                raise FileNotFoundError(active_marker)
+            return original_open(file, *args, **kwargs)
+
+        monkeypatch.setattr("builtins.open", disappearing_marker)
+
+        assert session_service.get_active_session() is None
+
+    def test_clear_active_session_tolerates_external_marker_removal(
+        self, session_service, monkeypatch
+    ):
+        """A marker removed after an existence check does not crash cleanup."""
+        active_marker = session_service.sessions_dir / "active"
+        active_marker.write_text("test-agent")
+        original_exists = Path.exists
+
+        def disappearing_marker(path):
+            exists = original_exists(path)
+            if path == active_marker and exists:
+                path.unlink()
+                return True
+            return exists
+
+        monkeypatch.setattr(Path, "exists", disappearing_marker)
+
+        session_service.clear_active_session()
+
+        assert not original_exists(active_marker)
+
+    def test_delete_session_tolerates_external_marker_removal(
+        self, session_service, monkeypatch
+    ):
+        """Deleting session state succeeds if another process removes the marker."""
+        session_service.create_session("test-agent")
+        active_marker = session_service.sessions_dir / "active"
+        original_open = open
+
+        def disappearing_marker(file, *args, **kwargs):
+            if Path(file) == active_marker:
+                active_marker.unlink(missing_ok=True)
+                raise FileNotFoundError(active_marker)
+            return original_open(file, *args, **kwargs)
+
+        monkeypatch.setattr("builtins.open", disappearing_marker)
+
+        assert session_service.delete_session("test-agent") is True
+        assert not (session_service.sessions_dir / "test-agent.json").exists()
 
     def test_list_sessions_skips_invalid_session_files(self, session_service):
         """One corrupt session record must not hide all valid sessions."""
