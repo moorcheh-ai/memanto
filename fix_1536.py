@@ -57,9 +57,12 @@ def update_session_file(agent, session_token):
         os.symlink(session_file, active_link)
         
     except Exception:
-        # Clean up temp file on failure
-        if os.path.exists(temp_file):
-            os.remove(temp_file)
+        # Clean up temp file on failure, suppressing OSError to prevent masking the original exception
+        try:
+            if os.path.exists(temp_file):
+                os.remove(temp_file)
+        except OSError:
+            pass
         raise
 
 if __name__ == "__main__":
