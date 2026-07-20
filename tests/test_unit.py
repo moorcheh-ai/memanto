@@ -4,6 +4,8 @@ MEMANTO Core Unit Tests (No Server Required)
 Tests the session and agent services directly without HTTP layer.
 """
 
+import threading
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta, timezone
 from unittest.mock import MagicMock, patch
 
@@ -180,6 +182,44 @@ class TestSessionService:
         # Note: We can't easily test this without manipulating time
         # Just verify the logic exists
         print("✅ Session expiration logic exists")
+
+    def test_auto_renew_is_single_flight_per_agent(self, session_service, monkeypatch):
+        """Parallel near-expiry requests must not mint competing tokens."""
+        session_service.create_session(agent_id="test-agent", duration_hours=1)
+        monkeypatch.setattr(settings, "SESSION_EXTEND_THRESHOLD_MINUTES", 120)
+
+        original_renew = session_service.renew_session
+        first_entered = threading.Event()
+        second_entered = threading.Event()
+        release_first = threading.Event()
+        counter_lock = threading.Lock()
+        call_count = 0
+
+        def controlled_renew(agent_id, pattern=None):
+            nonlocal call_count
+            with counter_lock:
+                call_count += 1
+                call_number = call_count
+            if call_number == 1:
+                first_entered.set()
+                assert release_first.wait(timeout=2)
+            elif call_number == 2:
+                second_entered.set()
+            return original_renew(agent_id=agent_id, pattern=pattern)
+
+        monkeypatch.setattr(session_service, "renew_session", controlled_renew)
+
+        with ThreadPoolExecutor(max_workers=2) as pool:
+            first = pool.submit(session_service.check_and_auto_renew, "test-agent")
+            assert first_entered.wait(timeout=2)
+            second = pool.submit(session_service.check_and_auto_renew, "test-agent")
+            second_entered.wait(timeout=0.25)
+            release_first.set()
+            results = [first.result(timeout=2), second.result(timeout=2)]
+
+        renewed = [session for session in results if session is not None]
+        assert len(renewed) == 1
+        session_service.validate_session(renewed[0].session_token)
 
     def test_end_session(self, session_service):
         """Test ending session"""
