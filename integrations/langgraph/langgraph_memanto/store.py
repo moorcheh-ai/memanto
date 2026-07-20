@@ -290,7 +290,13 @@ class MemantoStore(BaseStore):
             type_filter = [type_filter]
         # SearchOp uses "min_confidence"; SdkClient.recall() uses "min_similarity"
         min_similarity = filter_dict.get("min_confidence")
-        extra_tags = list(filter_dict.get("tags", []) or [])
+        raw_tags = filter_dict.get("tags", []) or []
+        if isinstance(raw_tags, str):
+            extra_tags = [t.strip() for t in raw_tags.split(",") if t.strip()]
+        elif isinstance(raw_tags, (list, tuple, set)):
+            extra_tags = [str(t) for t in raw_tags if str(t)]
+        else:
+            extra_tags = [str(raw_tags)]
 
         cache_key = (
             op.namespace_prefix,
