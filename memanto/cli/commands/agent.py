@@ -3,6 +3,7 @@ MEMANTO CLI - Agent commands (create, list, activate, deactivate, delete, bootst
 """
 
 import json
+import logging
 import time
 from collections import Counter
 from datetime import datetime
@@ -12,6 +13,8 @@ from typing import Any, cast
 import typer
 from rich.panel import Panel
 from rich.table import Table
+
+logger = logging.getLogger(__name__)
 
 from memanto.cli.commands._shared import (
     ACCENT,
@@ -282,7 +285,12 @@ def agent_bootstrap(
                 total_stored_memories = str(ns_info.get("itemCount", "unknown"))
                 break
     except Exception:
-        pass
+        logger.debug(
+            "Failed to fetch namespace item count for agent '%s'. "
+            "Memory count will be shown as 'unknown'.",
+            agent_id,
+            exc_info=True,
+        )
 
     console.print(
         Panel.fit(
