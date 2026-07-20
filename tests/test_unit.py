@@ -120,6 +120,31 @@ class TestSessionService:
         assert stat.S_IMODE(session_file.stat().st_mode) == 0o600
         assert stat.S_IMODE(summary_file.stat().st_mode) == 0o600
 
+    def test_interrupted_session_save_preserves_previous_record(self, session_service):
+        """A failed replacement must not truncate the live bearer-token record."""
+        session = session_service.create_session(
+            agent_id="test-agent", duration_hours=1
+        )
+        session_file = session_service.sessions_dir / "test-agent.json"
+        original_contents = session_file.read_text(encoding="utf-8")
+        replacement = session.model_copy(update={"session_id": "sess-replacement"})
+
+        def interrupted_dump(data, file_obj, **kwargs):
+            file_obj.write('{"session_id":')
+            file_obj.flush()
+            raise OSError("simulated interrupted write")
+
+        with patch(
+            "memanto.app.services.session_service.json.dump",
+            side_effect=interrupted_dump,
+        ):
+            with pytest.raises(OSError, match="simulated interrupted write"):
+                session_service._save_session(replacement)
+
+        assert session_file.read_text(encoding="utf-8") == original_contents
+        assert session_service.get_session("test-agent") == session
+        assert not list(session_service.sessions_dir.glob(".*.tmp"))
+
     def test_validate_session(self, session_service):
         """Test session validation"""
         # Create session

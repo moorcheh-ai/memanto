@@ -116,6 +116,31 @@ class SessionService:
             os.close(fd)
             raise
 
+    def _write_private_json_atomic(self, path: Path, data: Any) -> None:
+        """Atomically replace a private JSON file after a complete durable write.
+
+        Writing directly to the live path with ``O_TRUNC`` can destroy the only
+        valid session record if serialization or the process fails mid-write.
+        A sibling temporary file keeps readers on the previous complete record
+        until the replacement is ready.
+        """
+        tmp_path = path.with_name(f".{path.name}.{secrets.token_hex(8)}.tmp")
+        flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL
+        try:
+            with self._open_private_text(
+                tmp_path, flags, "w", encoding="utf-8"
+            ) as tmp_file:
+                json.dump(data, tmp_file, indent=2)
+                tmp_file.flush()
+                os.fsync(tmp_file.fileno())
+            os.replace(tmp_path, path)
+            self._set_private_permissions(path, self._PRIVATE_FILE_MODE)
+        finally:
+            try:
+                tmp_path.unlink()
+            except FileNotFoundError:
+                pass
+
     def _generate_secure_secret_key(self) -> str:
         """Generate (or reuse) a persisted fallback secret for JWT signing.
 
@@ -430,9 +455,7 @@ class SessionService:
         """Save session to file"""
         validate_safe_id(session.agent_id, "agent_id")
         session_file = self.sessions_dir / f"{session.agent_id}.json"
-        flags = os.O_WRONLY | os.O_CREAT | os.O_TRUNC
-        with self._open_private_text(session_file, flags, "w") as f:
-            json.dump(session.model_dump(mode="json"), f, indent=2)
+        self._write_private_json_atomic(session_file, session.model_dump(mode="json"))
 
     def _load_session_file(self, session_file: Path) -> Session | None:
         """Load one session file, treating corrupt local state as absent."""
