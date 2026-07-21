@@ -24,6 +24,16 @@ def _make_app():
     return app
 
 
+def _make_loopback_client(app):
+    """Create a client whose ASGI peer and Host are both loopback."""
+    return TestClient(
+        app,
+        base_url="http://127.0.0.1",
+        client=("127.0.0.1", 54321),
+        raise_server_exceptions=False,
+    )
+
+
 class TestUnauthenticatedUIEndpoints:
     """Unauthenticated requests from non-localhost must be refused with HTTP 403.
 
@@ -63,6 +73,67 @@ class TestUnauthenticatedUIEndpoints:
         client = TestClient(app, raise_server_exceptions=False)
         resp = client.put("/api/ui/api-key", json={"api_key": "stolen"})
         assert resp.status_code == 403, f"expected 403, got {resp.status_code}"
+
+    def test_cross_site_form_post_rejected_from_loopback_browser(self):
+        """A hostile site must not pass the guard through the victim browser."""
+        app = _make_app()
+        client = _make_loopback_client(app)
+
+        resp = client.post(
+            "/api/ui/shutdown",
+            headers={
+                "Origin": "https://attacker.example",
+                "Sec-Fetch-Site": "cross-site",
+                "Sec-Fetch-Mode": "navigate",
+                "Content-Type": "application/x-www-form-urlencoded",
+            },
+        )
+
+        assert resp.status_code == 403, f"expected 403, got {resp.status_code}"
+
+    def test_dns_rebinding_host_rejected_from_loopback_browser(self):
+        """A same-origin attacker hostname resolving to loopback must be refused."""
+        app = _make_app()
+        client = TestClient(
+            app,
+            base_url="http://attacker.example",
+            client=("127.0.0.1", 54321),
+            raise_server_exceptions=False,
+        )
+
+        resp = client.post(
+            "/api/ui/shutdown",
+            headers={
+                "Origin": "http://attacker.example",
+                "Sec-Fetch-Site": "same-origin",
+            },
+        )
+
+        assert resp.status_code == 403, f"expected 403, got {resp.status_code}"
+
+    def test_same_origin_loopback_browser_allowed(self):
+        """The real localhost UI must continue to reach management routes."""
+        app = _make_app()
+        client = _make_loopback_client(app)
+
+        resp = client.post(
+            "/api/ui/shutdown",
+            headers={
+                "Origin": "http://127.0.0.1",
+                "Sec-Fetch-Site": "same-origin",
+            },
+        )
+
+        assert resp.status_code == 200, f"expected 200, got {resp.status_code}"
+
+    def test_loopback_cli_without_browser_headers_allowed(self):
+        """Local CLI clients that omit browser security headers remain supported."""
+        app = _make_app()
+        client = _make_loopback_client(app)
+
+        resp = client.post("/api/ui/shutdown")
+
+        assert resp.status_code == 200, f"expected 200, got {resp.status_code}"
 
 
 class TestLoopbackDetection:
@@ -110,6 +181,9 @@ class TestLoopbackDetection:
 
         mock_request = MagicMock()
         mock_request.client.host = "127.0.0.1"
+        mock_request.url.hostname = "127.0.0.1"
+        mock_request.base_url = "http://127.0.0.1/"
+        mock_request.headers = {}
         asyncio.run(_require_local(mock_request))  # must not raise
 
     def test_require_local_allows_ipv4_mapped_loopback(self):
@@ -118,4 +192,7 @@ class TestLoopbackDetection:
 
         mock_request = MagicMock()
         mock_request.client.host = "::ffff:127.0.0.1"
+        mock_request.url.hostname = "::1"
+        mock_request.base_url = "http://[::1]/"
+        mock_request.headers = {}
         asyncio.run(_require_local(mock_request))  # must not raise

@@ -12,6 +12,7 @@ import signal
 import time
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlsplit
 
 from fastapi import (
     APIRouter,
@@ -73,13 +74,53 @@ def _is_loopback(host: str | None) -> bool:
         return False
 
 
+def _is_local_http_host(host: str | None) -> bool:
+    """Return True for IP loopback and names reserved for localhost."""
+    if not host:
+        return False
+    normalized = host.rstrip(".").lower()
+    return (
+        normalized == "localhost"
+        or normalized.endswith(".localhost")
+        or _is_loopback(normalized)
+    )
+
+
+def _canonical_origin(value: str) -> tuple[str, str, int] | None:
+    """Normalize an HTTP(S) origin for strict same-origin comparisons."""
+    try:
+        parsed = urlsplit(value)
+        scheme = parsed.scheme.lower()
+        if (
+            scheme not in {"http", "https"}
+            or not parsed.hostname
+            or parsed.username is not None
+            or parsed.password is not None
+            or parsed.path not in {"", "/"}
+            or parsed.query
+            or parsed.fragment
+        ):
+            return None
+        port = parsed.port or (443 if scheme == "https" else 80)
+    except ValueError:
+        return None
+    return scheme, parsed.hostname.rstrip(".").lower(), port
+
+
 async def _require_local(request: Request) -> None:
-    """Reject requests that do not originate from the loopback interface.
+    """Require a loopback client, local Host, and same-origin browser request.
 
     UI management endpoints (shutdown, browse, config update, API key update)
     are designed for local desktop use only.  Allowing them from arbitrary
     network addresses would let any reachable host kill the server, enumerate
     the filesystem, or replace API credentials without authentication.
+
+    A client-address check alone is insufficient: when a hostile website sends
+    a request to ``127.0.0.1``, the server sees the victim's browser as a
+    loopback client.  Fetch Metadata and Origin validation prevent that
+    localhost CSRF path, while requests from non-browser local tools (which
+    normally omit both headers) remain supported.  Restricting Host to a
+    localhost name/address also blocks DNS-rebinding origins.
     """
     client_host = request.client.host if request.client else None
     if not _is_loopback(client_host):
@@ -90,6 +131,29 @@ async def _require_local(request: Request) -> None:
                 f"Request origin: {client_host}"
             ),
         )
+
+    request_host = request.url.hostname
+    if not _is_local_http_host(request_host):
+        raise HTTPException(
+            status_code=403,
+            detail="UI management endpoints require a localhost Host header.",
+        )
+
+    fetch_site = request.headers.get("sec-fetch-site", "").strip().lower()
+    if fetch_site and fetch_site not in {"none", "same-origin"}:
+        raise HTTPException(
+            status_code=403,
+            detail="Cross-site requests to UI management endpoints are forbidden.",
+        )
+
+    origin = request.headers.get("origin")
+    if origin:
+        request_origin = _canonical_origin(str(request.base_url).rstrip("/"))
+        if _canonical_origin(origin) != request_origin:
+            raise HTTPException(
+                status_code=403,
+                detail="Cross-origin requests to UI management endpoints are forbidden.",
+            )
 
 
 def _build_ui_direct_client() -> DirectClient | None:
