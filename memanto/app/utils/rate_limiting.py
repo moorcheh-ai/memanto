@@ -50,7 +50,10 @@ class RateLimiter:
         Returns: (allowed, retry_after_seconds)
         """
         if operation not in self.limits:
-            return True, None
+            raise ValueError(
+                f"Unknown rate-limit operation '{operation}'. "
+                "Register it in RateLimiter.limits before use."
+            )
 
         limit = self.limits[operation]
         key = self._get_key(operation, agent_id)

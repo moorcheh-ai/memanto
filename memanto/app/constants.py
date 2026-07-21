@@ -18,7 +18,20 @@ MemoryType = Literal[
 ]
 
 # Source Types
-SourceType = str  # e.g., "user", "agent", "tool", "system", or specific "agent_name"
+# Source Types — the canonical built-in values.
+# The type annotation remains ``str`` for backwards-compatibility with
+# free-form agent names, but ``VALID_SOURCE_TYPES`` is the authoritative
+# list of well-known values and should be used for validation.
+SourceType = str  # e.g., "user", "agent", "tool", "system", or a specific agent name
+
+# The well-known source values that routes/services should validate against.
+# Custom agent names are still valid; this set covers the built-in ones.
+KNOWN_SOURCE_TYPES: frozenset[str] = frozenset({
+    "user",
+    "agent",
+    "tool",
+    "system",
+})
 
 # Status Types
 StatusType = Literal["active", "superseded", "deleted", "provisional"]
