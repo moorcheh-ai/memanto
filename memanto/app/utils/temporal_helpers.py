@@ -151,13 +151,23 @@ def parse_relative_time(relative: str) -> str | None:
     Supports:
     - "today", "yesterday"
     - "last 7 days", "last 24 hours"
+    - "last week", "last month", "last year" (natural-language singular units)
+    - "past N days/hours" (synonym for "last N ...")
+    - Word numbers: "last seven days", "last twelve hours"
     - "this week", "this month"
 
     Examples:
         parse_relative_time("today") -> "2025-12-27T00:00:00Z"
         parse_relative_time("last 7 days") -> "2025-12-20T00:00:00Z"
+        parse_relative_time("last week") -> "2025-12-20T00:00:00Z"
+        parse_relative_time("last month") -> "2025-11-27T00:00:00Z"
+        parse_relative_time("last year") -> "2024-12-27T00:00:00Z"
+        parse_relative_time("past 7 days") -> "2025-12-20T00:00:00Z"
+        parse_relative_time("last seven days") -> "2025-12-20T00:00:00Z"
     """
     relative = relative.lower().strip()
+    # Collapse multiple spaces so "last  7  days" parses like "last 7 days"
+    relative = " ".join(relative.split())
 
     if relative == "today":
         start, _ = get_today_range()
@@ -175,23 +185,47 @@ def parse_relative_time(relative: str) -> str | None:
         start, _ = get_this_month_range()
         return start
 
-    # Parse "last N days/hours"
-    if relative.startswith("last "):
-        parts = relative.split()
-        if len(parts) == 3:
-            try:
-                number = int(parts[1])
+    # Natural-language singular units: "last week", "last month", "last year"
+    # (and "past ..." synonym). These use fixed-day lookbacks (30 for month,
+    # 365 for year) rather than calendar-window arithmetic because months
+    # vary in length and the function returns a single ISO timestamp.
+    _NATURAL_UNIT_DAYS = {"week": 7, "month": 30, "year": 365}
+    for prefix in ("last ", "past "):
+        for unit, days in _NATURAL_UNIT_DAYS.items():
+            if relative == f"{prefix}{unit}":
+                return get_last_n_days(days)
+
+    # Parse "last/past N days/hours" with optional word-numbers.
+    # Word-number map covers zero through twenty plus common tens; falls back
+    # to int() parsing for numeric strings.
+    _WORD_NUMBERS = {
+        "zero": 0, "one": 1, "two": 2, "three": 3, "four": 4, "five": 5,
+        "six": 6, "seven": 7, "eight": 8, "nine": 9, "ten": 10,
+        "eleven": 11, "twelve": 12, "thirteen": 13, "fourteen": 14,
+        "fifteen": 15, "sixteen": 16, "seventeen": 17, "eighteen": 18,
+        "nineteen": 19, "twenty": 20, "thirty": 30, "forty": 40, "fifty": 50,
+    }
+    for prefix in ("last", "past"):
+        if relative.startswith(prefix + " "):
+            parts = relative.split()
+            if len(parts) == 3:
+                raw_number = parts[1]
+                if raw_number in _WORD_NUMBERS:
+                    number = _WORD_NUMBERS[raw_number]
+                else:
+                    try:
+                        number = int(raw_number)
+                    except ValueError:
+                        continue  # Not a number we recognize; fall through to return None
                 unit = parts[2]
 
                 if number <= 0:
                     return None
 
-                if unit in ["day", "days"]:
+                if unit in ("day", "days"):
                     return get_last_n_days(number)
-                elif unit in ["hour", "hours"]:
+                elif unit in ("hour", "hours"):
                     return get_last_n_hours(number)
-            except ValueError:
-                pass
 
     return None
 
