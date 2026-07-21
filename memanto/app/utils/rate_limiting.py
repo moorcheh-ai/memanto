@@ -101,7 +101,7 @@ class RateLimiter:
                     "error": "rate_limit_exceeded",
                     "message": f"Rate limit exceeded for {operation}",
                     "retry_after": retry_after,
-                    "limit": f"{self.limits[operation].requests}/{self.limits[operation].window}s",
+                    "limit": f"{self.limits.get(operation, RateLimit(10, 60)).requests}/{self.limits.get(operation, RateLimit(10, 60)).window}s",
                 },
                 headers={"Retry-After": str(retry_after)},
             )

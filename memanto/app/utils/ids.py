@@ -39,4 +39,4 @@ def is_valid_memory_id(memory_id: str) -> bool:
     if not memory_id or len(memory_id) < 4:
         return False
     import re
-    return bool(re.match(r'^[a-zA-Z0-9_-]+$', memory_id))
+    return bool(re.match(r'^[a-zA-Z0-9_-]+\Z', memory_id))

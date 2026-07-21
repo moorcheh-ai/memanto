@@ -74,6 +74,35 @@ def test_source_type_validated():
     assert SourceType != str, "SourceType should be Literal, not str"
 
 
+def test_rate_limiter_enforce_unknown_operation():
+    """enforce_rate_limit should not crash on unknown operations."""
+    from memanto.app.utils.rate_limiting import RateLimiter
+    from fastapi import HTTPException
+
+    limiter = RateLimiter()
+    # Fill up the default limit (10/60s)
+    for _ in range(15):
+        limiter.check_rate_limit("unknown_op", "test_agent")
+
+    # enforce_rate_limit should raise HTTPException, not KeyError
+    try:
+        limiter.enforce_rate_limit("unknown_op", "test_agent")
+        assert False, "Should have raised HTTPException"
+    except HTTPException as e:
+        assert e.status_code == 429, "Should be 429"
+        assert "rate_limit_exceeded" in str(e.detail), "Should contain error message"
+    except KeyError:
+        assert False, "Should not raise KeyError for unknown operations"
+
+
+def test_id_validation_rejects_trailing_newline():
+    """IDs with trailing newlines should be rejected."""
+    from memanto.app.utils.ids import is_valid_memory_id
+
+    assert not is_valid_memory_id("abc-123\n"), "ID with newline should be invalid"
+    assert not is_valid_memory_id("mem_abc123\n"), "ID with newline should be invalid"
+
+
 if __name__ == "__main__":
     tests = [v for k, v in globals().items() if k.startswith("test_")]
     passed = failed = 0
