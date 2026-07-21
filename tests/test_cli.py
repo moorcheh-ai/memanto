@@ -852,8 +852,10 @@ class TestMEMANTOCLI:
         self, client_class_path, method_name, args, bad_limit
     ):
         """Temporal recall paths must not forward invalid limits to storage."""
+        from importlib import import_module
+
         module_name, class_name = client_class_path.rsplit(".", 1)
-        module = __import__(module_name, fromlist=[class_name])
+        module = import_module(module_name)
         client_class = getattr(module, class_name)
         client = client_class.__new__(client_class)
         read_service = MagicMock()
