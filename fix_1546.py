@@ -1,5 +1,6 @@
 import re
 import os
+import copy
 import tempfile
 import html
 import yaml
@@ -9,16 +10,13 @@ def load_okf_file(file_path):
         content = file.read()
 
     entries = []
-    # Split by the entry delimiter
     parts = content.split('<!-- okf-entry -->')
     
     for part in parts:
-        # FIX: Reassign the stripped string back to part so startswith works
         part = part.strip()
         if not part:
             continue
             
-        # Extract YAML front matter and body using regex to be safe
         match = re.match(r'^---\n(.*?)\n---\n(.*)$', part, re.DOTALL)
         if not match:
             continue
@@ -30,13 +28,12 @@ def load_okf_file(file_path):
         if not front_matter:
             front_matter = {}
             
-        # FIX: Read x_memanto as a dict to check the flag
         x_meta = front_matter.get('x_memanto', {})
-        is_escaped = isinstance(x_meta, dict) and x_meta.get('escaped') is True
+        # FIX: unconditionally pop the escaped flag from memory after loading
+        is_escaped = isinstance(x_meta, dict) and x_meta.pop('escaped', False) is True
         
         if is_escaped:
             body = html.unescape(body)
-            # FIX: Update unescape loop to also process strings nested in lists
             for k, v in front_matter.items():
                 if k == 'x_memanto':
                     continue
@@ -45,6 +42,10 @@ def load_okf_file(file_path):
                 elif isinstance(v, list):
                     front_matter[k] = [html.unescape(item) if isinstance(item, str) else item for item in v]
         
+        # Clean up empty x_memanto dict
+        if isinstance(x_meta, dict) and not x_meta:
+            front_matter.pop('x_memanto', None)
+                
         entries.append({
             'front_matter': front_matter,
             'body': body
@@ -54,13 +55,10 @@ def load_okf_file(file_path):
 def save_okf_file(file_path, records):
     with open(file_path, 'w', encoding='utf-8') as file:
         for i, record in enumerate(records):
-            front_matter = record['front_matter'].copy()
+            # FIX: Deep copy front matter to prevent mutating the caller's data
+            front_matter = copy.deepcopy(record['front_matter'])
             body = record['body']
             
-            # FIX: Safely update the x_memanto dict without destroying existing keys
-            x_meta = front_matter.setdefault('x_memanto', {})
-            
-            # Check if we need to escape the body or front matter (including lists)
             needs_escape = '<!-- okf-entry -->' in body
             if not needs_escape:
                 for v in front_matter.values():
@@ -76,9 +74,9 @@ def save_okf_file(file_path, records):
                             break
             
             if needs_escape:
+                x_meta = front_matter.setdefault('x_memanto', {})
                 x_meta['escaped'] = True
                 body = html.escape(body)
-                # FIX: Apply html.escape to list elements as well
                 for k, v in front_matter.items():
                     if k == 'x_memanto':
                         continue
@@ -86,8 +84,14 @@ def save_okf_file(file_path, records):
                         front_matter[k] = html.escape(v)
                     elif isinstance(v, list):
                         front_matter[k] = [html.escape(item) if isinstance(item, str) else item for item in v]
+            else:
+                # FIX: pop the escaped flag if it exists but is no longer needed
+                x_meta = front_matter.get('x_memanto', {})
+                if isinstance(x_meta, dict) and 'escaped' in x_meta:
+                    del x_meta['escaped']
+                    if not x_meta:
+                        del front_matter['x_memanto']
             
-            # Write front matter using yaml.safe_dump to handle lists properly
             file.write('---\n')
             yaml.safe_dump(front_matter, file, default_flow_style=False, sort_keys=False, allow_unicode=True)
             file.write('---\n')
@@ -96,10 +100,15 @@ def save_okf_file(file_path, records):
                 file.write('<!-- okf-entry -->\n')
 
 if __name__ == "__main__":
-    # FIX: Test delimiter escaping in tags and title
+    # FIX: Added resources and pre-existing HTML entities to test coverage
     test_records = [{
-        'front_matter': {'title': 'Test <!-- okf-entry --> Entry', 'tags': ['python', 'yaml <!-- okf-entry -->']},
-        'body': 'This is a test body.\n<!-- okf-entry -->\nMore body.'
+        'front_matter': {
+            'title': 'Test <!-- okf-entry --> Entry',
+            'tags': ['python', 'yaml <!-- okf-entry -->'],
+            'resources': ['http://example.com/res <!-- okf-entry -->'],
+            'pre_existing': 'This &amp; that'
+        },
+        'body': 'This is a test body. &amp; \n<!-- okf-entry -->\nMore body.'
     }]
     
     with tempfile.TemporaryDirectory() as temp_dir:
@@ -110,4 +119,6 @@ if __name__ == "__main__":
         assert loaded[0]['body'] == test_records[0]['body']
         assert loaded[0]['front_matter']['title'] == test_records[0]['front_matter']['title']
         assert loaded[0]['front_matter']['tags'] == test_records[0]['front_matter']['tags']
-        print("OKF Round Trip Test Passed with Delimiters in Title and Tags!")
+        assert loaded[0]['front_matter']['resources'] == test_records[0]['front_matter']['resources']
+        assert loaded[0]['front_matter']['pre_existing'] == test_records[0]['front_matter']['pre_existing']
+        print("OKF Round Trip Test Passed with Resources, Entities, and Delimiters!")
