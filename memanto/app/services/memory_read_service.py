@@ -113,17 +113,31 @@ class MemoryReadService:
             if not namespaces:
                 return {"results": [], "total_found": 0, "execution_time": 0}
 
-            # Build enhanced query with Moorcheh metadata filters
-            enhanced_query = self._build_filtered_query(
-                query=query,
-                type=type,
-                tags=tags,
-                min_confidence=min_confidence,
-                status_filter=status_filter,
-                created_after=created_after,
-                created_before=created_before,
-                metadata_filters=metadata_filters,
+            # Moorcheh combines repeated exact-match filters. A document cannot
+            # satisfy both ``#memory_type:fact`` and
+            # ``#memory_type:preference``, so a list of requested types must be
+            # issued as one search per type and merged as a union. Build every
+            # query before dispatch so an invalid later type cannot trigger a
+            # partial set of backend calls.
+            distinct_types = list(dict.fromkeys(type or []))
+            type_variants: list[list[str] | None] = (
+                [[memory_type] for memory_type in distinct_types]
+                if len(distinct_types) > 1
+                else [distinct_types or None]
             )
+            enhanced_queries = [
+                self._build_filtered_query(
+                    query=query,
+                    type=type_variant,
+                    tags=tags,
+                    min_confidence=min_confidence,
+                    status_filter=status_filter,
+                    created_after=created_after,
+                    created_before=created_before,
+                    metadata_filters=metadata_filters,
+                )
+                for type_variant in type_variants
+            ]
 
             # Build query parameters
             # Request extra results to handle offset (Moorcheh doesn't have native offset support)
@@ -150,18 +164,50 @@ class MemoryReadService:
             # threshold; min_similarity=0.0 means "no filter", but on-prem
             # kiosk_mode + threshold=0.0 still filters everything out.
             use_kiosk = min_similarity_score is not None and min_similarity_score > 0
-            search_result = self.client.similarity_search.query(
-                query=enhanced_query,
-                namespaces=namespaces,
-                top_k=top_k,
-                threshold=min_similarity_score if use_kiosk else None,
-                kiosk_mode=use_kiosk,
-            )
-
-            search_items = search_result.get("results", [])
+            search_items: list[Any] = []
+            execution_time = 0.0
+            for enhanced_query in enhanced_queries:
+                search_result = self.client.similarity_search.query(
+                    query=enhanced_query,
+                    namespaces=namespaces,
+                    top_k=top_k,
+                    threshold=min_similarity_score if use_kiosk else None,
+                    kiosk_mode=use_kiosk,
+                )
+                search_items.extend(search_result.get("results", []))
+                try:
+                    execution_time += float(search_result.get("execution_time", 0))
+                except (TypeError, ValueError):
+                    pass
 
             # Format results
             all_results = [self._format_memory_item(item) for item in search_items]
+
+            if len(enhanced_queries) > 1:
+                # Scores from the per-type searches share the same backend
+                # scale. Re-rank the union before applying offset/limit and
+                # de-duplicate defensively in case malformed metadata causes a
+                # row to be returned by more than one variant.
+                def _score(memory: dict[str, Any]) -> float:
+                    raw_score = memory.get("score")
+                    if raw_score is None:
+                        return float("-inf")
+                    try:
+                        return float(raw_score)
+                    except (TypeError, ValueError):
+                        return float("-inf")
+
+                all_results.sort(key=_score, reverse=True)
+                unique_results: list[dict[str, Any]] = []
+                seen_ids: set[Any] = set()
+                for memory in all_results:
+                    memory_id = memory.get("id")
+                    if memory_id is not None and memory_id in seen_ids:
+                        continue
+                    if memory_id is not None:
+                        seen_ids.add(memory_id)
+                    unique_results.append(memory)
+                all_results = unique_results
 
             # Apply temporal filtering (post-processing since Moorcheh metadata filters are string-based)
             if created_after or created_before:
@@ -191,8 +237,8 @@ class MemoryReadService:
                 "limit": limit,
                 "has_more": has_more,
                 "query": query,
-                "enhanced_query": enhanced_query,
-                "execution_time": search_result.get("execution_time", 0),
+                "enhanced_query": " OR ".join(enhanced_queries),
+                "execution_time": execution_time,
             }
 
         except Exception as e:
