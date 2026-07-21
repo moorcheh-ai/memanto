@@ -58,8 +58,9 @@ def test_short_day_summary_preserves_session_text_as_retrieval_query(
     short_content = "Decision: ship the authentication change on Friday."
     service, client = _make_summary_service(tmp_path, monkeypatch, short_content)
 
-    service.generate_summary("agent-1", "2026-06-28")
+    result = service.generate_summary("agent-1", "2026-06-28")
 
+    assert result["status"] == "success"
     call_kwargs = client.answer.generate.call_args.kwargs
     assert call_kwargs["query"] == short_content
     assert call_kwargs["ai_model"] == "test-model"
