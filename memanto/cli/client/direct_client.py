@@ -1191,8 +1191,7 @@ class DirectClient:
         # Ensure there is a valid, non-expired session for this agent
         session = self._get_validated_session_for_agent(agent_id)
 
-        if not question or not question.strip():
-            raise ValueError("Question must be a non-empty string")
+        self._validate_query(question, limit)
 
         # get namespace from session
         namespace = session.namespace
@@ -1755,4 +1754,9 @@ class DirectClient:
         """Validate search parameters."""
         if not query or not query.strip():
             raise ValueError("Search query must be a non-empty string")
+        if len(query) > InputLimits.MAX_QUERY_LENGTH:
+            raise ValueError(
+                f"Query must be at most {InputLimits.MAX_QUERY_LENGTH} characters, "
+                f"got {len(query)}"
+            )
         validate_recall_limit(limit)

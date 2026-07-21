@@ -802,6 +802,116 @@ class TestMEMANTOCLI:
         read_service.search_as_of.assert_not_called()
         read_service.search_changed_since.assert_not_called()
 
+    @pytest.mark.parametrize(
+        "client_class_path",
+        [
+            "memanto.cli.client.direct_client.DirectClient",
+            "memanto.cli.client.sdk_client.SdkClient",
+        ],
+    )
+    @pytest.mark.parametrize(
+        ("method_name", "query_arg"),
+        [("recall", "query"), ("answer", "question")],
+    )
+    def test_python_query_paths_reject_oversized_input_before_backend(
+        self, client_class_path, method_name, query_arg
+    ):
+        """Python clients must enforce the same query-size guard as REST."""
+        from memanto.app.utils.validation import InputLimits
+
+        module_name, class_name = client_class_path.rsplit(".", 1)
+        module = __import__(module_name, fromlist=[class_name])
+        client_class = getattr(module, class_name)
+        client = client_class.__new__(client_class)
+        read_service = MagicMock()
+        moorcheh = MagicMock()
+        session = MagicMock(namespace="memanto_agent_test-agent")
+
+        answer_config = {
+            "answer_limit": 5,
+            "temperature": 0.7,
+            "model": "test-model",
+            "kiosk_mode": False,
+            "threshold": 0.15,
+        }
+        recall_config = {"limit": 10, "min_similarity": None}
+
+        with (
+            patch.object(
+                client_class,
+                "_get_validated_session_for_agent",
+                return_value=session,
+            ),
+            patch.object(client_class, "_get_read_service", return_value=read_service),
+            patch.object(client_class, "_get_moorcheh", return_value=moorcheh),
+            patch.object(
+                module.ConfigManager,
+                "get_answer_config",
+                return_value=answer_config,
+            ),
+            patch.object(
+                module.ConfigManager,
+                "get_recall_config",
+                return_value=recall_config,
+            ),
+        ):
+            with pytest.raises(ValueError, match="Query must be at most"):
+                getattr(client, method_name)(
+                    agent_id="test-agent",
+                    **{query_arg: "x" * (InputLimits.MAX_QUERY_LENGTH + 1)},
+                )
+
+        read_service.search_memories.assert_not_called()
+        moorcheh.answer.generate.assert_not_called()
+
+    @pytest.mark.parametrize(
+        "client_class_path",
+        [
+            "memanto.cli.client.direct_client.DirectClient",
+            "memanto.cli.client.sdk_client.SdkClient",
+        ],
+    )
+    @pytest.mark.parametrize("bad_limit", [0, 101, 1.5, "10", True])
+    def test_python_answer_rejects_invalid_limit_before_backend(
+        self, client_class_path, bad_limit
+    ):
+        """Answer must not forward malformed or unbounded ``top_k`` values."""
+        module_name, class_name = client_class_path.rsplit(".", 1)
+        module = __import__(module_name, fromlist=[class_name])
+        client_class = getattr(module, class_name)
+        client = client_class.__new__(client_class)
+        moorcheh = MagicMock()
+        session = MagicMock(namespace="memanto_agent_test-agent")
+        answer_config = {
+            "answer_limit": 5,
+            "temperature": 0.7,
+            "model": "test-model",
+            "kiosk_mode": False,
+            "threshold": 0.15,
+        }
+
+        with (
+            patch.object(
+                client_class,
+                "_get_validated_session_for_agent",
+                return_value=session,
+            ),
+            patch.object(client_class, "_get_moorcheh", return_value=moorcheh),
+            patch.object(
+                module.ConfigManager,
+                "get_answer_config",
+                return_value=answer_config,
+            ),
+        ):
+            with pytest.raises(ValueError, match="Limit must be an integer"):
+                client.answer(
+                    agent_id="test-agent",
+                    question="What should I remember?",
+                    limit=bad_limit,
+                )
+
+        moorcheh.answer.generate.assert_not_called()
+
     def test_forget_force(self, mock_all_clients):
         """Test 'memanto forget --force' deletes a memory without prompting."""
         mock_all_clients.delete_memory.return_value = {
