@@ -91,3 +91,42 @@ def test_same_agent_reuses_activated_session_client(
     assert first_client is second_client
     assert first_client.activation_calls == 1
     assert len(_FakeSdkClient.instances) == 2  # admin + one agent session
+
+
+def test_different_agents_initialize_in_parallel(
+    lifecycle: MemantoLifecycle, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Network setup for one agent must not block an unrelated agent."""
+    activation_barrier = threading.Barrier(2)
+    original_activate = _FakeSdkClient.activate_agent
+    clients: list[_FakeSdkClient] = []
+    errors: list[BaseException] = []
+
+    def synchronized_activate(
+        client: _FakeSdkClient,
+        agent_id: str,
+        duration_hours: int | None = None,
+    ) -> dict[str, Any]:
+        activation_barrier.wait(timeout=2)
+        return original_activate(client, agent_id, duration_hours)
+
+    monkeypatch.setattr(_FakeSdkClient, "activate_agent", synchronized_activate)
+
+    def initialize(agent_id: str) -> None:
+        try:
+            clients.append(lifecycle.client_for(agent_id))
+        except BaseException as exc:  # pragma: no cover - reported in main thread
+            errors.append(exc)
+
+    workers = [
+        threading.Thread(target=initialize, args=("agent-a",)),
+        threading.Thread(target=initialize, args=("agent-b",)),
+    ]
+    for worker in workers:
+        worker.start()
+    for worker in workers:
+        worker.join(timeout=3)
+
+    assert all(not worker.is_alive() for worker in workers)
+    assert not errors
+    assert {client.agent_id for client in clients} == {"agent-a", "agent-b"}

@@ -10,8 +10,9 @@ to call ``recall`` and expects it to "just work". This module owns:
   underlying ``SdkClient._get_validated_session_for_agent`` already auto-renews
   tokens nearing expiry, so each client only has to be activated once.
 
-All operations are guarded by a lock so concurrent tool invocations don't race
-to create the same agent twice.
+The client registry is guarded by a short-lived global lock, while per-agent
+locks serialize setup for the same agent without blocking unrelated agents on
+network calls.
 """
 
 from __future__ import annotations
@@ -44,6 +45,7 @@ class MemantoLifecycle:
         self._settings = settings
         self._client = SdkClient(api_key=settings.api_key_value())
         self._session_clients: dict[str, SdkClient] = {}
+        self._agent_locks: dict[str, threading.Lock] = {}
         self._ensured_agents: set[str] = set()
         self._lock = threading.Lock()
 
@@ -96,15 +98,20 @@ class MemantoLifecycle:
             client = self._session_clients.get(agent_id)
             if client is None:
                 client = SdkClient(api_key=self._settings.api_key_value())
+                self._session_clients[agent_id] = client
+            agent_lock = self._agent_locks.setdefault(agent_id, threading.Lock())
 
-            if agent_id not in self._ensured_agents:
+        with agent_lock:
+            with self._lock:
+                agent_is_ensured = agent_id in self._ensured_agents
+
+            if not agent_is_ensured:
                 self._ensure_agent_exists_locked(client, agent_id)
-                self._ensured_agents.add(agent_id)
+                with self._lock:
+                    self._ensured_agents.add(agent_id)
 
             if client.agent_id != agent_id:
                 self._activate_locked(client, agent_id)
-
-            self._session_clients[agent_id] = client
 
         return client
 
