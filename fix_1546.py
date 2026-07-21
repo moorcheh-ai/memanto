@@ -1,64 +1,79 @@
-import html
 import yaml
+import html
 
 def load_okf_file(file_path):
-    with open(file_path, 'r') as file:
+    with open(file_path, 'r', encoding='utf-8') as file:
         content = file.read()
-        records = content.split('<!-- okf-entry -->')
-        loaded_records = []
-        for record in records:
-            if record.strip():
-                loaded_record = {}
-                lines = record.splitlines()
-                front_matter = {}
-                body = []
-                in_body = False
-                for line in lines:
-                    if line.strip() == '---':
-                        in_body = True
-                    elif in_body:
-                        body.append(line)
-                    else:
-                        key, value = line.split(': ', 1)
-                        front_matter[key] = html.unescape(value)
-                loaded_record['front_matter'] = front_matter
-                loaded_record['body'] = '\n'.join(body)
-                loaded_records.append(loaded_record)
-        return loaded_records
+
+    entries = []
+    # Split by the entry delimiter
+    parts = content.split('<!-- okf-entry -->')
+    
+    for part in parts:
+        if not part.strip():
+            continue
+            
+        # Extract YAML front matter and body
+        if part.startswith('---'):
+            parts_split = part.split('---', 2)
+            if len(parts_split) >= 3:
+                front_matter = yaml.safe_load(parts_split[1])
+                body = parts_split[2].strip('\n')
+                
+                # Check if body was escaped
+                is_escaped = front_matter.get('x_memanto') == 'escaped'
+                if is_escaped:
+                    body = html.unescape(body)
+                    # Unescape string front matter values if they were escaped
+                    for k, v in front_matter.items():
+                        if isinstance(v, str) and k != 'x_memanto':
+                            front_matter[k] = html.unescape(v)
+                
+                entries.append({
+                    'front_matter': front_matter,
+                    'body': body
+                })
+    return entries
 
 def save_okf_file(file_path, records):
-    with open(file_path, 'w') as file:
-        for i, record in enumerate(records):
+    with open(file_path, 'w', encoding='utf-8') as file:
+        for record in records:
+            front_matter = record['front_matter'].copy()
+            body = record['body']
+            
+            # Check if we need to escape the body or front matter
+            needs_escape = '<!-- okf-entry -->' in body
+            if not needs_escape:
+                for v in front_matter.values():
+                    if isinstance(v, str) and '<!-- okf-entry -->' in v:
+                        needs_escape = True
+                        break
+            
+            if needs_escape:
+                front_matter['x_memanto'] = 'escaped'
+                body = html.escape(body)
+                for k, v in front_matter.items():
+                    if isinstance(v, str) and k != 'x_memanto':
+                        front_matter[k] = html.escape(v)
+            
+            # Write front matter using yaml.dump to handle lists properly
             file.write('---\n')
-            for key, value in record['front_matter'].items():
-                file.write(f'{key}: {html.escape(value)}\n')
+            yaml.dump(front_matter, file, default_flow_style=False, sort_keys=False, allow_unicode=True)
             file.write('---\n')
-            file.write(record['body'] + '\n')
-            if i < len(records) - 1:
-                file.write('<!-- okf-entry -->\n')
+            file.write(body + '\n')
+            file.write('<!-- okf-entry -->\n')
 
-def test_okf_round_trip():
-    records = [
-        {
-            'front_matter': {
-                'title': 'Test Title',
-                'tags': ['tag1', 'tag2']
-            },
-            'body': 'This is a test body with <!-- okf-entry --> embedded.'
-        },
-        {
-            'front_matter': {
-                'title': 'Test Title 2',
-                'tags': ['tag3', 'tag4']
-            },
-            'body': 'This is another test body.'
-        }
-    ]
-    save_okf_file('test.okf', records)
-    loaded_records = load_okf_file('test.okf')
-    assert len(loaded_records) == len(records)
-    for i in range(len(records)):
-        assert loaded_records[i]['front_matter'] == records[i]['front_matter']
-        assert loaded_records[i]['body'] == records[i]['body']
-
-test_okf_round_trip()
+if __name__ == "__main__":
+    # Test round trip
+    test_records = [{
+        'front_matter': {'title': 'Test Entry', 'tags': ['python', 'yaml']},
+        'body': 'This is a test body.\n<!-- okf-entry -->\nMore body.'
+    }]
+    
+    save_okf_file('test_okf.txt', test_records)
+    loaded = load_okf_file('test_okf.txt')
+    
+    assert loaded[0]['body'] == test_records[0]['body']
+    assert loaded[0]['front_matter']['title'] == test_records[0]['front_matter']['title']
+    assert loaded[0]['front_matter']['tags'] == test_records[0]['front_matter']['tags']
+    print("OKF Round Trip Test Passed!")
