@@ -74,7 +74,12 @@ def save_okf_file(file_path, records):
                             break
             
             if needs_escape:
+                # FIX: Ensure x_memanto is a dictionary before assigning keys to it
                 x_meta = front_matter.setdefault('x_memanto', {})
+                if not isinstance(x_meta, dict):
+                    x_meta = {}
+                    front_matter['x_memanto'] = x_meta
+                    
                 x_meta['escaped'] = True
                 body = html.escape(body)
                 for k, v in front_matter.items():
@@ -85,7 +90,6 @@ def save_okf_file(file_path, records):
                     elif isinstance(v, list):
                         front_matter[k] = [html.escape(item) if isinstance(item, str) else item for item in v]
             else:
-                # FIX: pop the escaped flag if it exists but is no longer needed
                 x_meta = front_matter.get('x_memanto', {})
                 if isinstance(x_meta, dict) and 'escaped' in x_meta:
                     del x_meta['escaped']
@@ -100,7 +104,6 @@ def save_okf_file(file_path, records):
                 file.write('<!-- okf-entry -->\n')
 
 if __name__ == "__main__":
-    # FIX: Added resources and pre-existing HTML entities to test coverage
     test_records = [{
         'front_matter': {
             'title': 'Test <!-- okf-entry --> Entry',
