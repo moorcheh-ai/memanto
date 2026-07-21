@@ -31,6 +31,39 @@ def test_detect_preference():
     assert memory.type == "preference"
 
 
+def test_detect_negated_preferences_instead_of_instructions():
+    parser = MemoryParsingService()
+
+    cases = [
+        "I don't like Python",
+        "I really don't like JavaScript",
+        "I do not like dark mode",
+        "We don’t enjoy weekly meetings",
+        "She doesn't prefer email",
+        "I no longer like Vim",
+        "I never liked Vim",
+        "They can't stand noisy notifications",
+        "The client prefers not to receive phone calls",
+    ]
+
+    for content in cases:
+        memory = make_memory(content)
+
+        parser.parse_memory(memory)
+
+        assert memory.type == "preference", content
+
+
+def test_negative_imperative_remains_an_instruction():
+    parser = MemoryParsingService()
+
+    memory = make_memory("Don't deploy unpinned dependencies in production")
+
+    parser.parse_memory(memory)
+
+    assert memory.type == "instruction"
+
+
 # 2 Do NOT override existing type
 def test_no_override_existing_type():
     parser = MemoryParsingService()
