@@ -25,7 +25,7 @@ from fastapi.responses import FileResponse, HTMLResponse
 from fastapi.staticfiles import StaticFiles
 
 from memanto.app.clients.backend import Backend
-from memanto.app.config import settings
+from memanto.app.config import get_conflicts_dir, settings
 from memanto.app.routes.auth_deps import clear_session_cookie, set_session_cookie
 from memanto.app.utils.validation import validate_safe_id
 from memanto.cli.client.direct_client import DirectClient
@@ -527,7 +527,7 @@ async def list_conflict_scans(
         agent_id = aid
     _validate_agent_id(str(agent_id))
 
-    conflicts_dir = Path.home() / ".memanto" / "conflicts"
+    conflicts_dir = get_conflicts_dir()
     scans: dict[str, dict] = {}
     if conflicts_dir.exists():
         suffix = "_conflicts.json"
