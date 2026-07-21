@@ -546,9 +546,12 @@ class MemoryReadService:
                 filter_parts.append(f"#{key}:{value}")
 
         # Combine query with filters
+        stripped = query.strip()
+        if not stripped:
+            return ' '.join(filter_parts)
         if filter_parts:
-            return f"{query} {' '.join(filter_parts)}"
-        return query
+            return f"{stripped} {' '.join(filter_parts)}"
+        return stripped
 
     def _apply_temporal_filter(
         self,
