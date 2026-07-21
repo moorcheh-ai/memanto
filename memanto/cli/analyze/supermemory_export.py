@@ -270,23 +270,48 @@ def collect_memories_deduped(
     api_key: str,
     container_tags: list[str],
 ) -> tuple[list[dict[str, Any]], dict[str, list[dict[str, Any]]]]:
-    seen_ids: set[str] = set()
     all_memories: list[dict[str, Any]] = []
-    by_tag: dict[str, list[dict[str, Any]]] = {}
+    memories_by_id: dict[str, dict[str, Any]] = {}
+    refs_by_tag: dict[str, list[dict[str, Any]]] = {}
 
     for tag in container_tags:
         tag_entries: list[dict[str, Any]] = []
+        seen_ids_for_tag: set[str] = set()
         for entry in paginate_memories_for_tag(api_key, tag):
             memory_id = entry.get("id")
-            if memory_id and memory_id in seen_ids:
+            if memory_id and memory_id in seen_ids_for_tag:
                 continue
             if memory_id:
-                seen_ids.add(memory_id)
-            row = dict(entry)
-            row["container_tag"] = tag
+                seen_ids_for_tag.add(memory_id)
+
+            row = memories_by_id.get(memory_id) if memory_id else None
+            if row is None:
+                row = dict(entry)
+                row["container_tag"] = tag
+                all_memories.append(row)
+                if memory_id:
+                    memories_by_id[memory_id] = row
+
+            merged_tags: list[str] = []
+            for candidate in [
+                *tags_from_obj(row),
+                row.get("container_tag"),
+                tag,
+            ]:
+                if candidate:
+                    candidate = str(candidate)
+                    if candidate not in merged_tags:
+                        merged_tags.append(candidate)
+            row["container_tags"] = merged_tags
             tag_entries.append(row)
-            all_memories.append(row)
-        by_tag[tag] = tag_entries
+        refs_by_tag[tag] = tag_entries
+
+    # Keep the legacy singular field meaningful inside each per-tag bucket.
+    # The canonical rows above retain the first tag for backwards compatibility.
+    by_tag = {
+        tag: [{**row, "container_tag": tag} for row in entries]
+        for tag, entries in refs_by_tag.items()
+    }
 
     return all_memories, by_tag
 

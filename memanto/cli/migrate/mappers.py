@@ -318,10 +318,18 @@ def map_supermemory(export: dict[str, Any]) -> list[dict[str, Any]]:
         if not content:
             continue
 
+        raw_tags = mem.get("container_tags") or mem.get("containerTags") or []
+        if isinstance(raw_tags, str):
+            raw_tags = [raw_tags]
+        elif not isinstance(raw_tags, (list, tuple, set)):
+            raw_tags = []
+
         tags: list[str] = []
-        tag = mem.get("container_tag")
-        if tag:
-            tags.append(str(tag))
+        for tag in [*raw_tags, mem.get("container_tag")]:
+            if tag:
+                tag = str(tag)
+                if tag not in tags:
+                    tags.append(tag)
 
         created_at = _pick_first_dt(mem, ("createdAt", "created_at"))
 
@@ -331,7 +339,7 @@ def map_supermemory(export: dict[str, Any]) -> list[dict[str, Any]]:
                     "Source",
                     f"supermemory:{mem.get('id')}" if mem.get("id") else None,
                 ),
-                ("Container tag", tag),
+                ("Container tags", tags),
                 ("Document id", mem.get("documentId") or mem.get("document_id")),
                 ("Supermemory metadata", mem.get("metadata")),
                 ("Score", mem.get("score")),
