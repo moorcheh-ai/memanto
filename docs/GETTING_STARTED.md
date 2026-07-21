@@ -525,7 +525,7 @@ Now that MEMANTO is running, you're ready to build memory-enabled AI agents!
 1. ✅ You are here: GETTING_STARTED.md
 2. → [AGENT_INTEGRATION_GUIDE.md](AGENT_INTEGRATION_GUIDE.md) — Agent integration patterns
 3. → [SESSION_ARCHITECTURE.md](SESSION_ARCHITECTURE.md) — Session & memory architecture
-4. → [ENHANCEMENTS_SUMMARY.md](ENHANCEMENTS_SUMMARY.md) - Advanced features
-5. → [ARCHITECTURE_ONE_PAGER.md](ARCHITECTURE_ONE_PAGER.md) - System design
+4. → [AGENT_MEMORY_BEST_PRACTICES.md](AGENT_MEMORY_BEST_PRACTICES.md) — Memory best practices
+5. → [DEPLOYMENT_GUIDE.md](DEPLOYMENT_GUIDE.md) — Deployment guide
 
 **Happy building!** 🚀
