@@ -209,7 +209,7 @@ def paginate_memories_for_tag(api_key: str, tag: str) -> list[dict[str, Any]]:
             "POST",
             "/v4/memories/list",
             {
-                "containerTags": [tag],
+                "containerTag": tag,
                 "limit": MEMORY_PAGE_SIZE,
                 "page": page,
                 "sort": "createdAt",
