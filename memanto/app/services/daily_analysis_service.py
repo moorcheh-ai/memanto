@@ -11,7 +11,7 @@ from typing import Any, cast
 
 from memanto.app.clients.backend import get_active_llm_model
 from memanto.app.clients.moorcheh import get_moorcheh_client
-from memanto.app.config import get_conflicts_dir, get_data_dir, settings
+from memanto.app.config import get_conflict_report_path, get_data_dir, settings
 from memanto.app.core import agent_namespace
 from memanto.app.services.session_service import get_session_service
 from memanto.app.utils.errors import MemoryError
@@ -150,8 +150,8 @@ Format the output as a Markdown report:
         validate_safe_id(agent_id, "agent_id")
         validate_safe_id(date, "date")
 
-        conflicts_dir = get_conflicts_dir()
-        conflicts_dir.mkdir(parents=True, exist_ok=True)
+        json_path = get_conflict_report_path(agent_id, date)
+        json_path.parent.mkdir(parents=True, exist_ok=True)
         pattern = f"{agent_id}_{date}_*_summary.md"
         session_files = list(self.sessions_dir.glob(pattern))
 
@@ -311,7 +311,6 @@ Example response format:
                 ]
 
         # Save structured JSON for interactive resolution
-        json_path = conflicts_dir / f"{agent_id}_{date}_conflicts.json"
         with open(json_path, "w", encoding="utf-8") as f:
             json.dump(conflicts_data, f, indent=2, default=str)
 

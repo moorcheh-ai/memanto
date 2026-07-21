@@ -11,7 +11,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, cast
 
-from memanto.app.config import get_conflicts_dir
+from memanto.app.config import get_conflict_report_path
 from memanto.app.constants import (
     ALLOWED_UPDATE_FIELDS as _ALLOWED_UPDATE_FIELDS,
 )
@@ -1200,7 +1200,7 @@ class SdkClient:
         if not date:
             date = datetime.now().strftime("%Y-%m-%d")
 
-        json_path = get_conflicts_dir() / f"{agent_id}_{date}_conflicts.json"
+        json_path = get_conflict_report_path(agent_id, date)
 
         if not json_path.exists():
             return []
@@ -1241,7 +1241,7 @@ class SdkClient:
                 f"Invalid action '{action}'. Must be one of: {', '.join(sorted(valid_actions))}"
             )
 
-        json_path = get_conflicts_dir() / f"{agent_id}_{date}_conflicts.json"
+        json_path = get_conflict_report_path(agent_id, date)
         if not json_path.exists():
             raise ValueError(f"No conflict report found for {agent_id} on {date}")
 

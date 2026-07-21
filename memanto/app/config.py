@@ -7,6 +7,7 @@ CLI config models have been moved to cli/config/manager.py.
 
 import logging
 import os
+import re
 from pathlib import Path
 
 import yaml  # type: ignore[import-untyped]
@@ -200,3 +201,14 @@ def get_data_dir() -> Path:
 def get_conflicts_dir() -> Path:
     """Return the conflict-report directory for the active backend."""
     return get_data_dir() / "conflicts"
+
+
+def get_conflict_report_path(agent_id: str, date: str) -> Path:
+    """Return a validated conflict-report path for the active backend."""
+    from memanto.app.utils.validation import validate_safe_id
+
+    validate_safe_id(agent_id, "agent_id")
+    validate_safe_id(date, "date")
+    if not re.fullmatch(r"\d{4}-\d{2}-\d{2}", date):
+        raise ValueError("date must use YYYY-MM-DD format")
+    return get_conflicts_dir() / f"{agent_id}_{date}_conflicts.json"

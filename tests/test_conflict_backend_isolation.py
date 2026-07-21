@@ -157,6 +157,40 @@ def test_clients_resolve_only_the_active_backend_report(
     assert json.loads(cloud_report.read_text(encoding="utf-8"))[0]["resolved"] is False
 
 
+@pytest.mark.parametrize(
+    "client_cls_path",
+    [
+        "memanto.cli.client.direct_client.DirectClient",
+        "memanto.cli.client.sdk_client.SdkClient",
+    ],
+)
+@pytest.mark.parametrize(
+    ("agent_id", "date"),
+    [
+        ("../outside", "2026-07-21"),
+        ("agent-1", "../../outside"),
+        ("agent-1", "not-a-date"),
+    ],
+)
+def test_clients_reject_unsafe_conflict_report_paths(
+    tmp_path, monkeypatch, client_cls_path, agent_id, date
+):
+    """Public client methods must reject traversal before touching the filesystem."""
+    from importlib import import_module
+
+    module_name, class_name = client_cls_path.rsplit(".", 1)
+    client_cls = getattr(import_module(module_name), class_name)
+
+    monkeypatch.setattr(Path, "home", classmethod(lambda cls: tmp_path))
+    monkeypatch.setattr(settings, "MEMANTO_BACKEND", "on-prem")
+    client = client_cls("test-key")
+
+    with pytest.raises(ValueError):
+        client.list_conflicts(agent_id, date)
+    with pytest.raises(ValueError):
+        client.resolve_conflict(agent_id, date, conflict_index=0, action="keep_both")
+
+
 @pytest.mark.asyncio
 async def test_ui_conflict_scans_use_active_backend(tmp_path, monkeypatch):
     """The UI scan timeline must not mix cloud and on-prem reports."""
