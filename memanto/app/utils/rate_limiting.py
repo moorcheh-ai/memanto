@@ -50,9 +50,14 @@ class RateLimiter:
         Returns: (allowed, retry_after_seconds)
         """
         if operation not in self.limits:
-            return True, None
+            # Fail-closed: unknown operations get a conservative default limit
+            # instead of silently passing. This prevents rate limit bypass via
+            # namespace_ prefix or other unregistered operations.
+            default_limit = RateLimit(requests=10, window=60)
+            limit = default_limit
+        else:
+            limit = self.limits[operation]
 
-        limit = self.limits[operation]
         key = self._get_key(operation, agent_id)
         now = time.time()
 

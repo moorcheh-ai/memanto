@@ -30,5 +30,13 @@ def generate_session_id() -> str:
 
 
 def is_valid_memory_id(memory_id: str) -> bool:
-    """Validate memory ID format"""
-    return bool(memory_id and len(memory_id) > 4 and "_" in memory_id)
+    """Validate memory ID format.
+    
+    Accepts alphanumeric characters, hyphens, and underscores.
+    Minimum length: 4 characters.
+    Consistent with SafeDeletion._is_valid_memory_id().
+    """
+    if not memory_id or len(memory_id) < 4:
+        return False
+    import re
+    return bool(re.match(r'^[a-zA-Z0-9_-]+$', memory_id))
