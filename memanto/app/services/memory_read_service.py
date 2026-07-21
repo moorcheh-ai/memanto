@@ -3,6 +3,7 @@ Memory Read Service
 """
 
 import re
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
 from typing import TYPE_CHECKING, Any, cast
 
@@ -164,16 +165,36 @@ class MemoryReadService:
             # threshold; min_similarity=0.0 means "no filter", but on-prem
             # kiosk_mode + threshold=0.0 still filters everything out.
             use_kiosk = min_similarity_score is not None and min_similarity_score > 0
+
+            def _dispatch(enhanced_query: str) -> dict[str, Any]:
+                """Run one exact-filter search with the shared request options."""
+                return cast(
+                    dict[str, Any],
+                    self.client.similarity_search.query(
+                        query=enhanced_query,
+                        namespaces=namespaces,
+                        top_k=top_k,
+                        threshold=min_similarity_score if use_kiosk else None,
+                        kiosk_mode=use_kiosk,
+                    ),
+                )
+
+            if len(enhanced_queries) == 1:
+                search_results = [_dispatch(enhanced_queries[0])]
+            else:
+                # The variants are independent network calls. Dispatch them in
+                # parallel so the latency of a multi-type union is bounded by
+                # the slowest search rather than the sum of every round trip.
+                # pool.map preserves enhanced-query order for deterministic
+                # result aggregation while capping concurrency for direct
+                # service callers that pass every supported type.
+                max_workers = min(len(enhanced_queries), 8)
+                with ThreadPoolExecutor(max_workers=max_workers) as pool:
+                    search_results = list(pool.map(_dispatch, enhanced_queries))
+
             search_items: list[Any] = []
             execution_time = 0.0
-            for enhanced_query in enhanced_queries:
-                search_result = self.client.similarity_search.query(
-                    query=enhanced_query,
-                    namespaces=namespaces,
-                    top_k=top_k,
-                    threshold=min_similarity_score if use_kiosk else None,
-                    kiosk_mode=use_kiosk,
-                )
+            for search_result in search_results:
                 search_items.extend(search_result.get("results", []))
                 try:
                     execution_time += float(search_result.get("execution_time", 0))
@@ -189,6 +210,7 @@ class MemoryReadService:
                 # de-duplicate defensively in case malformed metadata causes a
                 # row to be returned by more than one variant.
                 def _score(memory: dict[str, Any]) -> float:
+                    """Return a sortable backend score, placing missing values last."""
                     raw_score = memory.get("score")
                     if raw_score is None:
                         return float("-inf")
