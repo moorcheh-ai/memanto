@@ -172,3 +172,57 @@ class TestReadTranscriptForDistillation:
         skill, text = common.read_transcript_for_distillation(str(f))
         assert skill is None
         assert "just a chat" in text
+
+    def test_distills_only_the_latest_turn(self, tmp_path: Path) -> None:
+        """A later Stop event must not re-submit an earlier turn."""
+        f = tmp_path / "t.jsonl"
+        lines = [
+            {"message": {"role": "user", "content": "/tdd use unittest"}},
+            {
+                "message": {
+                    "role": "assistant",
+                    "content": "Old decision: use unittest.",
+                }
+            },
+            {"message": {"role": "user", "content": "/diagnose inspect auth"}},
+            {
+                "message": {
+                    "role": "assistant",
+                    "content": "Current finding: tokens expire early.",
+                }
+            },
+        ]
+        f.write_text("\n".join(json.dumps(x) for x in lines), encoding="utf-8")
+
+        skill, text = common.read_transcript_for_distillation(str(f))
+
+        assert skill == "diagnose"
+        assert "tokens expire early" in text
+        assert "Old decision" not in text
+        assert "use unittest" not in text
+
+    def test_assistant_anchor_excludes_a_later_appended_turn(
+        self, tmp_path: Path
+    ) -> None:
+        """An async Stop hook must ingest the turn that spawned it."""
+        f = tmp_path / "t.jsonl"
+        lines = [
+            {"message": {"role": "user", "content": "/tdd first task"}},
+            {"message": {"role": "assistant", "content": "First answer."}},
+            {"message": {"role": "user", "content": "second task"}},
+            {"message": {"role": "assistant", "content": "Second answer."}},
+            {"message": {"role": "user", "content": "/diagnose third task"}},
+            {"message": {"role": "assistant", "content": "Third answer."}},
+        ]
+        f.write_text("\n".join(json.dumps(x) for x in lines), encoding="utf-8")
+
+        skill, text = common.read_transcript_for_distillation(
+            str(f), last_assistant_message="Second answer."
+        )
+
+        assert skill == "tdd"
+        assert "second task" in text
+        assert "Second answer" in text
+        assert "first task" not in text
+        assert "third task" not in text
+        assert "Third answer" not in text

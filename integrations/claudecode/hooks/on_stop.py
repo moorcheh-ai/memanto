@@ -28,10 +28,10 @@ from _common import (  # noqa: E402
 
 
 def main() -> int:
-    """Read the finished transcript and distill it into typed memories.
+    """Read the finished turn and distill it into typed memories.
 
-    Skips when ``stop_hook_active`` is set so the same session is never
-    distilled twice on re-fires. Runs asynchronously and silently — failure
+    Skips when ``stop_hook_active`` is set to avoid hook-induced continuation
+    loops. Runs asynchronously and silently — failure
     paths exit 0 instead of surfacing errors to the developer.
     """
     if not memory_enabled():
@@ -44,11 +44,12 @@ def main() -> int:
     if data.get("stop_hook_active"):
         return 0
 
-    # Single pass: finds the original /skill across the FULL transcript,
-    # then returns only the tail for LLM distillation. This avoids tagging
-    # long sessions as skill:unknown when the opening prompt has fallen
-    # outside the truncation window.
-    skill, transcript = read_transcript_for_distillation(data.get("transcript_path"))
+    # Stop fires once per turn. Scope distillation to this event's user turn,
+    # while scanning the transcript up to that turn for the active /skill tag.
+    skill, transcript = read_transcript_for_distillation(
+        data.get("transcript_path"),
+        last_assistant_message=data.get("last_assistant_message"),
+    )
     if not transcript:
         return 0
 
