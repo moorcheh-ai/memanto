@@ -27,6 +27,12 @@ class DailyAnalysisService:
     daily AI summary and the conflict report.
     """
 
+    # ``answer.generate`` embeds the query before retrieval. Keep the daily
+    # session digest below the default on-prem embedding model's 2048-token
+    # context window while passing the complete source text to the LLM through
+    # ``header_prompt``.
+    _MAX_SUMMARY_QUERY_CHARS = 6_000
+
     def __init__(
         self,
         sessions_dir: Path | None = None,
@@ -80,13 +86,15 @@ class DailyAnalysisService:
         client = get_moorcheh_client()
         namespace = agent_namespace(agent_id)
 
-        summary_prompt = f"""
+        header_prompt = f"""
 Summarize the following session memories from {date} into a concise natural language daily summary.
 Focus on key themes, accomplishments, and high-level activities.
 
 Sessions Content:
 {full_text}
+"""
 
+        footer_prompt = f"""
 Format the output as a Markdown report:
 # Daily Summary for {agent_id} - {date}
 **Generated at:** {format_current_local_time()}
@@ -96,11 +104,14 @@ Format the output as a Markdown report:
 ## Key Themes & Activities
 ...
 """
+        retrieval_query = full_text[: self._MAX_SUMMARY_QUERY_CHARS]
         try:
             generate_kwargs: dict[str, Any] = {
                 "namespace": namespace,
-                "query": summary_prompt,
+                "query": retrieval_query,
                 "top_k": 50,
+                "header_prompt": header_prompt,
+                "footer_prompt": footer_prompt,
             }
             ai_model = get_active_llm_model(settings.SUMMARY_MODEL)
             if ai_model is not None:
