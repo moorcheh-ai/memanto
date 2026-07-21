@@ -615,6 +615,44 @@ class TestMEMANTOCLI:
         assert client._cached_session is new_session
         session_service.validate_session.assert_called_once_with("new-token")
 
+    @pytest.mark.parametrize("client_path", ["direct_client", "sdk_client"])
+    def test_delete_agent_invalidates_persisted_session(
+        self, tmp_path, mock_all_clients, client_path
+    ):
+        """Deleting agent metadata must revoke every persisted session token."""
+        from memanto.app.services.session_service import SessionService
+        from memanto.app.utils.errors import InvalidSessionTokenError
+
+        if client_path == "direct_client":
+            from memanto.cli.client.direct_client import DirectClient as Client
+        else:
+            from memanto.cli.client.sdk_client import SdkClient as Client
+
+        session_service = SessionService(
+            secret_key="test-secret-key-min-32-bytes-1234",
+            sessions_dir=tmp_path / "sessions",
+        )
+        session = session_service.create_session(agent_id="deleted-agent")
+
+        client = Client("test-api-key")
+        client._agent_service = MagicMock()
+        client._session_service = session_service
+
+        # Reproduce the CLI path: it clears its in-memory/config session before
+        # constructing the client, while the persisted session remains active.
+        client.agent_id = None
+        client.session_token = None
+        client._cached_session = None
+        session_service.validate_session(session.session_token)
+
+        client.delete_agent("deleted-agent")
+
+        client._agent_service.delete_agent.assert_called_once_with("deleted-agent")
+        assert session_service.get_session("deleted-agent") is None
+        assert session_service.get_active_session() is None
+        with pytest.raises(InvalidSessionTokenError, match="no longer active"):
+            session_service.validate_session(session.session_token)
+
     def test_upload_file_sdk_accepts_snake_case_file_size(
         self, tmp_path, mock_all_clients
     ):
