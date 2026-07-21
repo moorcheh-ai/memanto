@@ -23,10 +23,15 @@ class MemoryValidationService:
         try:
             context = context or {}
 
-            ## Add repetition check
-            # if not context.get("repetition_count"):
-            #     context["repetition_count"] = self._check_repetition(memory)
-            context["repetition_count"] = 0
+            # Run repetition check — queries Moorcheh for similar content
+            # to detect potential contradictions before storing.
+            if not context.get("repetition_count"):
+                try:
+                    context["repetition_count"] = self._check_repetition(memory)
+                except Exception:
+                    # Gracefully degrade: if similarity search is unavailable
+                    # (e.g. on-prem without embeddings), skip repetition check.
+                    context["repetition_count"] = 0
 
             # Validate using policy
             validation_result = self.policy.validate_memory(memory, context)

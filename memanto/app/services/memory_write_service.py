@@ -42,6 +42,15 @@ class MemoryWriteService:
         self.client = moorcheh_client
         self._parser = MemoryParsingService()
         self._namespace_service = None
+        self._validation_service = None
+
+    @property
+    def validation_service(self):
+        """Lazily create the validation service for conflict detection."""
+        if self._validation_service is None:
+            from memanto.app.legacy.memory_validation_service import MemoryValidationService
+            self._validation_service = MemoryValidationService(self.client)
+        return self._validation_service
 
     @property
     def namespace_service(self):
@@ -90,13 +99,16 @@ class MemoryWriteService:
             # Add namespace
             namespace = memory.namespace()
 
-            # skip validation for speed
-            ## Validate memory
-            # validation_result = self.validation_service.validate_memory(memory, context)
-            ## Use validated memory if modified
-            # if "memory" in validation_result:
-            #     memory = validation_result["memory"]
-            validation_result = {"action": "store", "reason": "MVP direct store"}
+            # Run conflict-detection validation before storing.
+            # ValidationPolicy.validate_memory() checks for high-similarity
+            # duplicates and marks conflicting memories as provisional.
+            validation_result = self.validation_service.validate_memory(
+                memory, context
+            )
+            # If validation modified the memory (e.g. status -> provisional),
+            # use the updated copy for storage.
+            if "memory" in validation_result:
+                memory = validation_result["memory"]
 
             from typing import cast
 
@@ -182,16 +194,14 @@ class MemoryWriteService:
                         )
                         continue
 
-                    # skip validation for speed
-                    ## Validate memory
-                    # validation_result = self.validation_service.validate_memory(memory, context)
-                    ## Use validated memory if modified
-                    # if "memory" in validation_result:
-                    #     memory = validation_result["memory"]
-                    validation_result = {
-                        "action": "store",
-                        "reason": "MVP direct store",
-                    }
+                    # Run conflict-detection validation for each memory in the batch.
+                    validation_result = self.validation_service.validate_memory(
+                        memory, context
+                    )
+                    # If validation modified the memory (e.g. status -> provisional),
+                    # use the updated copy for storage.
+                    if "memory" in validation_result:
+                        memory = validation_result["memory"]
 
                     from typing import cast
 
