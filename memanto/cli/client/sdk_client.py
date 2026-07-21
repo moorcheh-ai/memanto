@@ -1495,7 +1495,7 @@ class SdkClient:
         Args:
             agent_id: Target agent.
             output_dir: Bundle directory. Defaults to
-                ``~/.memanto/exports/{agent_id}_okf``.
+                the active backend's ``exports/{agent_id}_okf`` directory.
             split: OKF layout — ``auto``, ``file``, or ``type``.
             limit_per_type: Max memories per type (default 25).
 
@@ -1535,8 +1535,10 @@ class SdkClient:
         project. Falls back to the previous cached bundle when the backend is
         unreachable (``source="stale-cache"``).
         """
+        from memanto.app.config import get_data_dir
+
         target = Path(project_dir) / "okf"
-        cache = Path.home() / ".memanto" / "exports" / f"{agent_id}_okf"
+        cache = get_data_dir() / "exports" / f"{agent_id}_okf"
 
         try:
             result = self.export_okf_bundle(

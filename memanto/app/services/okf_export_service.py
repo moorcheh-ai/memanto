@@ -29,6 +29,7 @@ from typing import Any
 
 import yaml  # type: ignore[import-untyped]
 
+from memanto.app.config import get_data_dir
 from memanto.app.services.memory_export_service import MEMORY_TYPE_ORDER
 from memanto.app.utils.validation import validate_output_path, validate_safe_id
 
@@ -53,7 +54,7 @@ class OkfExportService:
     """Formats and writes an OKF bundle for an agent."""
 
     def __init__(self, exports_dir: Path | None = None):
-        self.exports_dir = exports_dir or (Path.home() / ".memanto" / "exports")
+        self.exports_dir = exports_dir or (get_data_dir() / "exports")
 
     # Public API
     def write_okf_bundle(
@@ -83,7 +84,7 @@ class OkfExportService:
             agent_id: Agent identifier.
             memories_by_type: Dict mapping memory type -> list of memory dicts.
             output_dir: Custom bundle directory. Defaults to
-                ``~/.memanto/exports/{agent_id}_okf``.
+                the active backend's ``exports/{agent_id}_okf`` directory.
             split: Layout mode — ``auto``, ``file``, or ``type``.
             threshold: Per-type memory count above which ``auto`` collapses to a
                 single stacked file.
