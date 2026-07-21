@@ -9,7 +9,7 @@ class TestNormalizeDuplicatedApiKey:
 
     def test_genuinely_doubled_long_key_is_halved(self):
         """A 64-char key that repeats its first 32 chars is correctly halved."""
-        half = "sk-abc123def456ghi789jkl012mno345pq"
+        half = "sk-abc123def456ghi789jkl012mno34"
         doubled = half + half  # 64 chars
         assert _normalize_duplicated_api_key(doubled) == half
 
