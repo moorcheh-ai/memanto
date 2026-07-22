@@ -304,7 +304,7 @@ class MemoryWriteService:
 
             # Step 1: Retrieve existing memory
             read_service = MemoryReadService(self.client)
-            existing_memory_data = read_service.get_memory(memory_id, namespace)
+            existing_memory_data = read_service.get_memory(memory_id, namespace, include_expired=True)
 
             if not existing_memory_data:
                 raise MemoryError(

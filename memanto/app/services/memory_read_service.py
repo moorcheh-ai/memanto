@@ -55,8 +55,13 @@ class MemoryReadService:
             self._namespace_service = NamespaceService(self.client)
         return self._namespace_service
 
-    def get_memory(self, memory_id: str, namespace: str) -> dict[str, Any] | None:
-        """Retrieve specific memory by ID with TTL enforcement"""
+    def get_memory(self, memory_id: str, namespace: str, include_expired: bool = False) -> dict[str, Any] | None:
+        """Retrieve specific memory by ID with TTL enforcement.
+
+        When include_expired is True, expired memories are returned without
+        TTL filtering. This is needed by update_memory to allow reviving or
+        modifying expired memories (e.g. extending TTL, editing content).
+        """
         try:
             result = self.client.documents.get(
                 namespace_name=namespace, ids=[memory_id]
@@ -71,7 +76,10 @@ class MemoryReadService:
             if items and isinstance(items, list) and len(items) > 0:
                 memory = self._format_memory_item(items[0])
 
-                # Apply TTL enforcement
+                # Apply TTL enforcement (unless caller requests expired memories)
+                if include_expired:
+                    return memory
+
                 filtered = self._filter_expired_memories([memory])
                 if filtered:
                     return filtered[0]
