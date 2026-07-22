@@ -445,7 +445,7 @@ See [AGENT_INTEGRATION_GUIDE.md](AGENT_INTEGRATION_GUIDE.md) for a complete comp
 3. **Review API Documentation**:
    - Interactive: http://localhost:8000/docs
    - Architecture: [SESSION_ARCHITECTURE.md](SESSION_ARCHITECTURE.md)
-   - All Integrations: [AGENT_INTEGRATION_GUIDE.md](AGENT_INTEGRATION_GUIDE.md)
+   - API Reference: http://localhost:8000/docs
 
 ### For AI Agents (Runtime)
 
