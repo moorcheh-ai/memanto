@@ -468,7 +468,14 @@ class MemoryReadService:
 
             memories.append(formatted)
 
-        return self._filter_expired_memories(memories)
+        # IMPORTANT: Do NOT filter expired memories here.
+        # Temporal queries (search_as_of, search_changed_since) need to
+        # evaluate TTL against their own reference time (as_of_date,
+        # since_date), not the current wall-clock time. Filtering by
+        # current time here would silently drop memories that were valid
+        # at the queried point-in-time but have since expired — a subtle
+        # timeline amnesia bug (issue #770).
+        return memories
 
     def _memory_version_key(
         self, memory: dict[str, Any], fetch_index: int
