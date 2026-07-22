@@ -167,8 +167,11 @@ async def delete_agent(
                 # and continue removing local metadata.
                 pass
 
-        agent_service.delete_agent(agent_id)
+        # Revoke the persisted token before removing agent metadata.  If local
+        # session cleanup fails, abort the deletion so an apparently deleted
+        # agent cannot keep authorizing requests with its old token.
         get_session_service().delete_session(agent_id)
+        agent_service.delete_agent(agent_id)
         return {
             "message": (
                 f"Agent '{agent_id}' successfully deleted"
