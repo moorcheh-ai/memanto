@@ -12,21 +12,21 @@
 - **Tags**: `langgraph-thread:product-launch`, `langgraph-channel:messages`
 - **Content**:
 > **human:** I prefer launch reports as PDF files.
-> 
+>
 > **ai:** Saved: I prefer launch reports as PDF files.
-> 
+>
 > **human:** Correction: use Markdown for launch reports, not PDF.
-> 
+>
 > **ai:** Saved: Correction: use Markdown for launch reports, not PDF.
-> 
+>
 > **human:** We decided to ship the Atlas release on September 14.
-> 
+>
 > **ai:** Saved: We decided to ship the Atlas release on September 14.
-> 
+>
 > **human:** Maya Chen owns the Atlas launch.
-> 
+>
 > **ai:** Saved: Maya Chen owns the Atlas launch.
-> 
+>
 > ---
 > [Supporting data]
 > - OKF source: memories\artifact\langgraph-transcript-product-launch.md
@@ -44,17 +44,17 @@
 - **Tags**: `langgraph-thread:travel-planning`, `langgraph-channel:messages`
 - **Content**:
 > **human:** For work trips, I prefer trains for journeys under four hours.
-> 
+>
 > **ai:** Saved: For work trips, I prefer trains for journeys under four hours.
-> 
+>
 > **human:** My next work trip is to Lyon for the October planning workshop.
-> 
+>
 > **ai:** Saved: My next work trip is to Lyon for the October planning workshop.
-> 
+>
 > **human:** The goal is to keep the Lyon trip below 450 euros.
-> 
+>
 > **ai:** Saved: The goal is to keep the Lyon trip below 450 euros.
-> 
+>
 > ---
 > [Supporting data]
 > - OKF source: memories\artifact\langgraph-transcript-travel-planning.md
@@ -72,7 +72,7 @@
 - **Tags**: `langgraph-thread:product-launch`, `langgraph-channel:decisions`
 - **Content**:
 > Ship the Atlas release on September 14.
-> 
+>
 > ---
 > [Supporting data]
 > - OKF source: memories\decision\decisions-ship-the-atlas-release-on-september-14.md
@@ -90,7 +90,7 @@
 - **Tags**: `langgraph-thread:product-launch`, `langgraph-channel:facts`
 - **Content**:
 > Maya Chen owns the Atlas launch.
-> 
+>
 > ---
 > [Supporting data]
 > - OKF source: memories\fact\facts-maya-chen-owns-the-atlas-launch.md
@@ -108,7 +108,7 @@
 - **Tags**: `langgraph-thread:travel-planning`, `langgraph-channel:facts`
 - **Content**:
 > The next work trip is to Lyon for the October planning workshop.
-> 
+>
 > ---
 > [Supporting data]
 > - OKF source: memories\fact\facts-the-next-work-trip-is-to-lyon-for-the-october-planning-workshop.md
@@ -126,7 +126,7 @@
 - **Tags**: `langgraph-thread:travel-planning`, `langgraph-channel:goals`
 - **Content**:
 > Keep the Lyon work trip below 450 euros.
-> 
+>
 > ---
 > [Supporting data]
 > - OKF source: memories\goal\goals-keep-the-lyon-work-trip-below-450-euros.md
@@ -144,7 +144,7 @@
 - **Tags**: `langgraph-thread:product-launch`, `langgraph-channel:profile`
 - **Content**:
 > Report Format Preference: Markdown
-> 
+>
 > ---
 > [Supporting data]
 > - OKF source: memories\preference\report-format-preference-markdown.md
@@ -162,7 +162,7 @@
 - **Tags**: `langgraph-thread:travel-planning`, `langgraph-channel:profile`
 - **Content**:
 > Short Trip Preference: Train when travel is under four hours
-> 
+>
 > ---
 > [Supporting data]
 > - OKF source: memories\preference\short-trip-preference-train-when-travel-is-under-four-hours.md
@@ -170,4 +170,3 @@
 > - OKF source_channel: profile
 
 ---
-
