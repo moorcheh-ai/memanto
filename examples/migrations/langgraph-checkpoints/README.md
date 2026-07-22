@@ -114,6 +114,20 @@ The tests prove that:
 - invalid SQLite files fail clearly;
 - the summary count matches the files in the OKF bundle.
 
+## Build the captioned demo video
+
+The video builder reads the real migration summary and recall report produced by
+`run_demo.py`. It renders those results into a short captioned terminal
+walkthrough without recording the desktop.
+
+```bash
+.venv\Scripts\python -m pip install -e ".[video]"
+.venv\Scripts\python build_demo_video.py
+```
+
+The result is written to `artifacts/langgraph-memory-escape.mp4`. FFmpeg must be
+available on `PATH`.
+
 ## Demo video shot list
 
 1. Open `generate_source.py` and show the seven real LangGraph turns.

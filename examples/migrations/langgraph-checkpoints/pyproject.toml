@@ -11,6 +11,7 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = ["pytest>=8,<9"]
+video = ["Pillow>=12,<13"]
 
 [project.scripts]
 langgraph-to-okf = "langgraph_to_okf.cli:main"

@@ -5,3 +5,4 @@ __pycache__/
 artifacts/*.sqlite
 artifacts/*.sqlite-*
 artifacts/preview.json
+artifacts/*.mp4
