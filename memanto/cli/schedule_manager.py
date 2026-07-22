@@ -5,11 +5,14 @@ Schedules a nightly job that runs daily-summary followed by detect-conflicts
 (via the internal ``memanto schedule _run`` entrypoint).
 """
 
+import logging
 import platform
 import subprocess
 import sys
 from pathlib import Path
 from typing import Any
+
+logger = logging.getLogger(__name__)
 
 
 class ScheduleManager:
@@ -47,10 +50,15 @@ class ScheduleManager:
                 if len(lines) != len(current_cron.splitlines()):
                     new_cron = "\n".join(lines).rstrip() + "\n"
                     subprocess.run(
-                        ["crontab", "-"], input=new_cron, text=True, check=False
+                        ["crontab", "-"], input=new_cron, text=True, check=True
                     )
-            except Exception:
-                pass
+            except subprocess.CalledProcessError:
+                logger.warning(
+                    "Failed to remove legacy scheduled tasks. "
+                    "Old task entries may persist in crontab.",
+                    exc_info=True,
+                )
+                raise
 
     def _command(self) -> str:
         return f'"{self.python_exe}" "{self.cli_main.absolute()}" schedule _run'
