@@ -505,7 +505,7 @@ curl -X POST ".../recall/changed-since" -H "Content-Type: application/json" \
 
 ## Resources
 
-- **API Reference**: [AGENT_RUNTIME_GUIDE.md](AGENT_RUNTIME_GUIDE.md)
+- **API Reference**: [AGENT_INTEGRATION_GUIDE.md](AGENT_INTEGRATION_GUIDE.md)
 - **Best Practices**: [AGENT_MEMORY_BEST_PRACTICES.md](AGENT_MEMORY_BEST_PRACTICES.md)
 - **Visualization**: [TIMELINE_VISUALIZATION_EXAMPLES.md](TIMELINE_VISUALIZATION_EXAMPLES.md)
 - **Temporal Helpers**: [app/utils/temporal_helpers.py](app/utils/temporal_helpers.py)
