@@ -922,7 +922,11 @@ def _to_batch_item_results(raw_results: Any) -> list[BatchRememberItemResult]:
     items: list[BatchRememberItemResult] = []
     for raw in raw_results:
         if not isinstance(raw, dict):
-            continue
+            from memanto.app.utils.errors import MemoryError
+            raise MemoryError(
+                message="Data corruption detected: Received malformed batch result from storage layer in MCP integration.",
+                details={"item_preview": str(raw)[:100]}
+            )
         try:
             items.append(
                 BatchRememberItemResult(
