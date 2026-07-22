@@ -1,0 +1,7 @@
+.venv/
+__pycache__/
+.pytest_cache/
+*.pyc
+artifacts/*.sqlite
+artifacts/*.sqlite-*
+artifacts/preview.json

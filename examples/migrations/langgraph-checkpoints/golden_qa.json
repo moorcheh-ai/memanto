@@ -1,0 +1,22 @@
+[
+  {
+    "question": "Which format should Atlas launch reports use now?",
+    "expected_terms": ["Markdown"]
+  },
+  {
+    "question": "When is the Atlas release scheduled?",
+    "expected_terms": ["September 14"]
+  },
+  {
+    "question": "Who owns the Atlas launch?",
+    "expected_terms": ["Maya Chen"]
+  },
+  {
+    "question": "How should short work trips be made?",
+    "expected_terms": ["Train", "under four hours"]
+  },
+  {
+    "question": "What is the budget goal for the Lyon trip?",
+    "expected_terms": ["below 450 euros"]
+  }
+]
