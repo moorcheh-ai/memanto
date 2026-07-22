@@ -653,6 +653,29 @@ class TestMEMANTOCLI:
         with pytest.raises(InvalidSessionTokenError, match="no longer active"):
             session_service.validate_session(session.session_token)
 
+    @pytest.mark.parametrize("client_path", ["direct_client", "sdk_client"])
+    def test_delete_agent_stops_when_session_revocation_fails(
+        self, mock_all_clients, client_path
+    ):
+        """Agent metadata must remain when persisted-session cleanup fails."""
+        if client_path == "direct_client":
+            from memanto.cli.client.direct_client import DirectClient as Client
+        else:
+            from memanto.cli.client.sdk_client import SdkClient as Client
+
+        client = Client("test-api-key")
+        client._agent_service = MagicMock()
+        client._session_service = MagicMock()
+        client._session_service.delete_session.side_effect = RuntimeError(
+            "session cleanup failed"
+        )
+
+        with pytest.raises(RuntimeError, match="session cleanup failed"):
+            client.delete_agent("retained-agent")
+
+        client._session_service.delete_session.assert_called_once_with("retained-agent")
+        client._agent_service.delete_agent.assert_not_called()
+
     def test_upload_file_sdk_accepts_snake_case_file_size(
         self, tmp_path, mock_all_clients
     ):
