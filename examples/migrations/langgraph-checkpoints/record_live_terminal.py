@@ -46,6 +46,7 @@ class Command:
     label: str
     argv: list[str]
     cwd: Path
+    output_path: Path | None = None
 
 
 @dataclass(frozen=True)
@@ -148,6 +149,12 @@ def _run(commands: list[Command]) -> tuple[list[Event], list[CommandResult]]:
             output.append(_clean(line))
             _append(events, started, line)
         status = process.wait()
+        if command.output_path is not None:
+            command.output_path.parent.mkdir(parents=True, exist_ok=True)
+            command.output_path.write_text(
+                "\n".join(output) + ("\n" if output else ""),
+                encoding="utf-8",
+            )
         results.append(CommandResult(command.key, command.label, status, output))
         if status:
             _append(events, started, f"command failed with exit code {status}", RED)
@@ -238,10 +245,13 @@ def _commands(agent: str, run_id: str, run_dir: Path) -> list[Command]:
     source_answers = run_dir / "source-answers.json"
     memanto_answers = run_dir / "memanto-answers.json"
     recall_report = run_dir / "recall-parity.json"
+    import_output = run_dir / "cloud-import-output.txt"
     staged_bundle_label = f"artifacts/runs/{run_id}/langgraph-okf"
     cli = [str(repository_python), "-m", "memanto.cli.main"]
     return [
-        Command("source", "python run_demo.py", [str(example_python), "run_demo.py"], ROOT),
+        Command(
+            "source", "python run_demo.py", [str(example_python), "run_demo.py"], ROOT
+        ),
         Command(
             "stage_source",
             "python stage_source.py  # freeze source artifacts for this run",
@@ -293,6 +303,7 @@ def _commands(agent: str, run_id: str, run_dir: Path) -> list[Command]:
             f"memanto migrate okf ./{staged_bundle_label} --agent {agent}",
             cli + ["migrate", "okf", str(bundle), "--agent", agent],
             REPOSITORY,
+            output_path=import_output,
         ),
         Command(
             "memanto_questions",
@@ -366,6 +377,8 @@ def _commands(agent: str, run_id: str, run_dir: Path) -> list[Command]:
                 str(source_answers),
                 "--run-id",
                 run_id,
+                "--import-output",
+                str(import_output),
                 "--output-dir",
                 str(run_dir),
             ],
@@ -375,23 +388,17 @@ def _commands(agent: str, run_id: str, run_dir: Path) -> list[Command]:
 
 
 def main() -> None:
-    from build_evidence_report import (
-        merge_import_counts,
-        parse_import_counts,
-        write_report,
-    )
-
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--agent-prefix", default="langgraph-migration")
     parser.add_argument("--run-id")
     args = parser.parse_args()
     run_id = args.run_id or (
-        datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
-        + "-"
-        + uuid4().hex[:8]
+        datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ") + "-" + uuid4().hex[:8]
     )
     if not re.fullmatch(r"[A-Za-z0-9._-]+", run_id):
-        raise ValueError("run id may contain only letters, digits, dot, underscore, or dash")
+        raise ValueError(
+            "run id may contain only letters, digits, dot, underscore, or dash"
+        )
     agent = f"{args.agent_prefix}-{run_id}".lower()
     run_dir = (ROOT / "artifacts" / "runs" / run_id).resolve()
     run_dir.mkdir(parents=True, exist_ok=False)
@@ -418,19 +425,7 @@ def main() -> None:
 
     evidence = run_dir / "migration-evidence.json"
     evidence_data = json.loads(evidence.read_text(encoding="utf-8"))
-    import_result = next(
-        (result for result in command_results if result.key == "cloud_import"),
-        None,
-    )
-    import_counts = (
-        parse_import_counts(import_result.output) if import_result is not None else None
-    )
-    if import_counts is not None:
-        evidence_data = merge_import_counts(evidence_data, import_counts)
-        write_report(evidence_data, run_dir)
-
-    # Rebuild cast/video hashes after evidence rewrite is already done; evidence
-    # itself is hashed after the optional import merge above.
+    import_output = run_dir / "cloud-import-output.txt"
     evidence_md = run_dir / "migration-evidence.md"
     manifest = {
         "run_id": run_id,
@@ -475,6 +470,10 @@ def main() -> None:
             "evidence_markdown": {
                 "path": evidence_md.name,
                 "sha256": file_hash(evidence_md),
+            },
+            "cloud_import_output": {
+                "path": import_output.name,
+                "sha256": file_hash(import_output),
             },
             "cast": {"path": cast.name, "sha256": file_hash(cast)},
             "video": {"path": output.name, "sha256": file_hash(output)},

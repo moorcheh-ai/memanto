@@ -1,0 +1,52 @@
+{
+  "source": {
+    "tool": "LangGraph SqliteSaver",
+    "threads": 2,
+    "checkpoints": 21,
+    "files": 1,
+    "bytes": 81920,
+    "sha256": "f78b07597f6ea11c9cb7db4a63963ecc2d0a456f02378ac4d3c9fa4746cca067"
+  },
+  "first_okf_bundle": {
+    "memories": 8,
+    "memories_by_type": {
+      "artifact": 2,
+      "preference": 2,
+      "decision": 1,
+      "fact": 2,
+      "goal": 1
+    },
+    "files": 11,
+    "bytes": 6497,
+    "sha256": "6790d828c2877646166756a9b7ac7b408634c340f7332960639d751e9db8d236"
+  },
+  "memanto_roundtrip_okf": {
+    "memories": 8,
+    "memories_by_type": {
+      "artifact": 2,
+      "decision": 1,
+      "fact": 2,
+      "goal": 1,
+      "preference": 2
+    },
+    "files": 19,
+    "bytes": 16721,
+    "sha256": "abd3f3a9d406831d8ac3ecbc7fa012a96a56d5f27e3bbdf73825059dbcb108db"
+  },
+  "recall": {
+    "before_okf": 1.0,
+    "after_memanto_roundtrip": 1.0,
+    "questions": 5,
+    "passed": 5
+  },
+  "measured_storage_change_percent": 92.1,
+  "storage_comparison_scope": "Raw SQLite file bytes compared with the first portable OKF bundle. This does not estimate provider token, latency, or billing savings.",
+  "run_id": "20260722T223523Z-27da3254",
+  "memanto_import": {
+    "imported": 8,
+    "failed": 0,
+    "mapped": 8,
+    "skipped": 0,
+    "okf_nodes": 8
+  }
+}

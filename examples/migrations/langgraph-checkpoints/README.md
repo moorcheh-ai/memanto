@@ -123,6 +123,15 @@ The verified reference run under
 It contains the same eight memories as the staged first bundle, and its parity
 report passes all five identical questions.
 
+Historical note for that run only: the live cast and `run-manifest`
+`evidence_report` step record the report as printed during the command (no
+`Memanto import:` line yet). The committed `migration-evidence.{json,md}` also
+includes `memanto_import` parsed from the same run's measured `cloud_import`
+CLI output (`Imported: 8 Failed: 0`, visible earlier in the cast/manifest).
+That attachment happened after the cast was written; it is measured, not
+invented. Newer recorder runs capture `cloud-import-output.txt` and pass it
+into `build_evidence_report.py` before cast/video so those artifacts match.
+
 Build the measured evidence report after a cloud round trip with:
 
 ```bash
@@ -134,6 +143,7 @@ Build the measured evidence report after a cloud round trip with:
   --source-recall artifacts/runs/<run-id>/source-answers.json \
   --roundtrip-recall artifacts/runs/<run-id>/recall-parity.json \
   --run-id <run-id> \
+  --import-output artifacts/runs/<run-id>/cloud-import-output.txt \
   --output-dir artifacts/runs/<run-id>
 ```
 
@@ -143,6 +153,11 @@ verified run (or is omitted). The report never invents Memanto import counts;
 those appear only when parsed from real `memanto migrate` CLI output
 (`Imported: N Failed: M`). It does not claim token, latency, or billing savings
 because the OKF importer does not emit those provider metrics.
+
+Pre-reference top-level cast and round-trip files are quarantined under
+`artifacts/legacy/`. They are retained only as development history and must not
+be cited as evidence. Submission evidence always comes from the verified
+run-scoped directory below.
 
 ## Validation evidence
 

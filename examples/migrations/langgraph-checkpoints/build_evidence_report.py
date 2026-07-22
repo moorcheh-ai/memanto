@@ -51,9 +51,13 @@ def _tree_hash(path: Path) -> str:
 
 def _source_counts(path: Path) -> dict[str, int]:
     with sqlite3.connect(f"file:{path.resolve().as_posix()}?mode=ro", uri=True) as conn:
-        checkpoints = int(conn.execute("SELECT COUNT(*) FROM checkpoints").fetchone()[0])
+        checkpoints = int(
+            conn.execute("SELECT COUNT(*) FROM checkpoints").fetchone()[0]
+        )
         threads = int(
-            conn.execute("SELECT COUNT(DISTINCT thread_id) FROM checkpoints").fetchone()[0]
+            conn.execute(
+                "SELECT COUNT(DISTINCT thread_id) FROM checkpoints"
+            ).fetchone()[0]
         )
     return {"threads": threads, "checkpoints": checkpoints}
 
@@ -226,7 +230,7 @@ def _markdown(report: dict[str, Any]) -> str:
             + ".",
             f"- Round-trip recovery: {roundtrip['memories']}/{first['memories']} "
             "portable memories exported from Memanto.",
-            f"- Recall after round trip: {recall['passed']}/{recall['questions']} "
+            f"- Recall after Memanto import: {recall['passed']}/{recall['questions']} "
             f"({recall['after_memanto_roundtrip']:.1f} parity).",
         ]
     )
@@ -234,8 +238,7 @@ def _markdown(report: dict[str, Any]) -> str:
     if isinstance(import_counts, dict) and "imported" in import_counts:
         failed = import_counts.get("failed", 0)
         lines.append(
-            f"- Memanto import: {import_counts['imported']} imported, "
-            f"{failed} failed."
+            f"- Memanto import: {import_counts['imported']} imported, {failed} failed."
         )
     lines.extend(
         [

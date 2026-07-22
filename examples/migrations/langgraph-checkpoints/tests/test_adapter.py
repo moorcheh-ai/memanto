@@ -6,12 +6,12 @@ from pathlib import Path
 
 import pytest
 from build_demo_video import import_type_lines, type_breakdown_lines
-from build_evidence_report import build_report, parse_import_counts
+from build_evidence_report import _markdown, build_report, parse_import_counts
 from generate_source import SESSIONS, generate_database
 from langgraph_to_okf import convert_checkpoint_database
 from langgraph_to_okf.adapter import _semantic_type, _state_to_memories, _ThreadRef
 from query_source import query_source
-from record_live_terminal import _clean, resolve_venv_python
+from record_live_terminal import _clean, _commands, resolve_venv_python
 from validate_bundle import load_documents, validate_content
 from validate_parity import validate_parity
 
@@ -171,7 +171,26 @@ def test_parse_import_counts_from_cli_output():
         "skipped": 0,
         "okf_nodes": 8,
     }
-    assert parse_import_counts(["Dry run complete", "Mapped memories: 8  (skipped 0)"]) is None
+    assert (
+        parse_import_counts(["Dry run complete", "Mapped memories: 8  (skipped 0)"])
+        is None
+    )
+
+
+def test_live_pipeline_feeds_measured_import_output_into_report(tmp_path):
+    run_id = "20260723T000000Z-deadbeef"
+    commands = _commands(f"langgraph-migration-{run_id.lower()}", run_id, tmp_path)
+    cloud_import = next(
+        command for command in commands if command.key == "cloud_import"
+    )
+    evidence_report = next(
+        command for command in commands if command.key == "evidence_report"
+    )
+
+    expected = tmp_path / "cloud-import-output.txt"
+    assert cloud_import.output_path == expected
+    import_arg = evidence_report.argv.index("--import-output")
+    assert evidence_report.argv[import_arg + 1] == str(expected)
 
 
 def test_evidence_report_attaches_parsed_import_counts(tmp_path):
@@ -199,6 +218,11 @@ def test_evidence_report_attaches_parsed_import_counts(tmp_path):
     assert report["run_id"] == "run-with-import"
     assert report["memanto_import"]["imported"] == 8
     assert report["memanto_import"]["failed"] == 0
+    rendered = _markdown(report)
+    assert "Recall after Memanto import:" in rendered
+    assert "Memanto import: 8 imported, 0 failed." in rendered
+    assert "re-importing" not in rendered.lower()
+    assert "Recall after round trip" not in rendered
 
 
 def test_demo_video_helpers_use_summary_type_counts():
@@ -279,15 +303,11 @@ def test_parity_requires_identical_questions_and_both_sides_to_pass(tmp_path):
     source_path = tmp_path / "source.json"
     memanto_path = tmp_path / "memanto.json"
     source_path.write_text(
-        json.dumps(
-            {"results": [{"question": "Q?", "answer": "yes", "passed": True}]}
-        ),
+        json.dumps({"results": [{"question": "Q?", "answer": "yes", "passed": True}]}),
         encoding="utf-8",
     )
     memanto_path.write_text(
-        json.dumps(
-            {"results": [{"question": "Q?", "answer": "no", "passed": False}]}
-        ),
+        json.dumps({"results": [{"question": "Q?", "answer": "no", "passed": False}]}),
         encoding="utf-8",
     )
 
