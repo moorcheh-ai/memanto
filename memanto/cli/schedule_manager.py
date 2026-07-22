@@ -52,12 +52,13 @@ class ScheduleManager:
                     subprocess.run(
                         ["crontab", "-"], input=new_cron, text=True, check=True
                     )
-            except Exception:
+            except subprocess.CalledProcessError:
                 logger.warning(
                     "Failed to remove legacy scheduled tasks. "
                     "Old task entries may persist in crontab.",
                     exc_info=True,
                 )
+                raise
 
     def _command(self) -> str:
         return f'"{self.python_exe}" "{self.cli_main.absolute()}" schedule _run'
