@@ -94,6 +94,20 @@ Then export the same agent again:
 memanto memory export --okf
 ```
 
+The committed `artifacts/memanto-roundtrip-okf/` directory is the result of a
+real cloud import and export. It contains the same eight memories as the first
+bundle. Its recall report passes all five golden questions.
+
+Build the measured evidence report after a cloud round trip with:
+
+```bash
+.venv\Scripts\python build_evidence_report.py
+```
+
+The report compares the raw SQLite file, the first OKF bundle, and the OKF
+bundle exported back from Memanto. It does not claim token, latency, or billing
+savings because the OKF importer does not emit those provider metrics.
+
 ## Validation evidence
 
 `golden_qa.json` checks five facts that span both threads, including the
@@ -114,7 +128,7 @@ The tests prove that:
 - invalid SQLite files fail clearly;
 - the summary count matches the files in the OKF bundle.
 
-## Build the captioned demo video
+## Build the captioned trailer
 
 The video builder reads the real migration summary and recall report produced by
 `run_demo.py`. It renders those results into a short captioned terminal
@@ -126,7 +140,22 @@ walkthrough without recording the desktop.
 ```
 
 The result is written to `artifacts/langgraph-memory-escape.mp4`. FFmpeg must be
-available on `PATH`.
+available on `PATH`. This trailer is not a substitute for the required live
+terminal walkthrough.
+
+## Record the live cloud round trip
+
+Create an empty Memanto agent namespace first, then run:
+
+```bash
+.venv\Scripts\python record_live_terminal.py --agent my-migration-demo
+```
+
+The recorder executes the real source run, cloud import, RAG answer, OKF export,
+round-trip validation, and evidence report. It captures the terminal output with
+its real timings and redacts local paths. It never reads or displays the API key.
+The resulting video is `artifacts/live-terminal-demo.mp4`. A matching JSON cast
+records each displayed line and its relative timestamp for auditability.
 
 ## Demo video shot list
 

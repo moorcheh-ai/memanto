@@ -5,6 +5,7 @@ import sqlite3
 from pathlib import Path
 
 import pytest
+from build_evidence_report import build_report
 from generate_source import SESSIONS, generate_database
 from langgraph_to_okf import convert_checkpoint_database
 from validate_bundle import load_documents, validate_recall
@@ -95,3 +96,32 @@ def test_output_cannot_contain_source_database(tmp_path):
         convert_checkpoint_database(database, source_dir, overwrite=True)
 
     assert database.is_file()
+
+
+def test_evidence_report_uses_measured_files_and_recall(tmp_path):
+    source = tmp_path / "source.sqlite"
+    source.write_bytes(b"x" * 100)
+    source_bundle = tmp_path / "source-okf"
+    roundtrip_bundle = tmp_path / "roundtrip-okf"
+    source_bundle.mkdir()
+    roundtrip_bundle.mkdir()
+    (source_bundle / "memory.md").write_bytes(b"x" * 25)
+    (roundtrip_bundle / "memory.md").write_bytes(b"x" * 30)
+    recall = {"questions": 5, "passed": 5, "recall_parity": 1.0}
+    source_recall = tmp_path / "source-recall.json"
+    roundtrip_recall = tmp_path / "roundtrip-recall.json"
+    source_recall.write_text(json.dumps(recall), encoding="utf-8")
+    roundtrip_recall.write_text(json.dumps(recall), encoding="utf-8")
+
+    report = build_report(
+        source,
+        source_bundle,
+        roundtrip_bundle,
+        source_recall,
+        roundtrip_recall,
+    )
+
+    assert report["first_okf_bundle"]["bytes"] == 25
+    assert report["memanto_roundtrip_okf"]["bytes"] == 30
+    assert report["measured_storage_change_percent"] == 75.0
+    assert report["recall"]["after_memanto_roundtrip"] == 1.0

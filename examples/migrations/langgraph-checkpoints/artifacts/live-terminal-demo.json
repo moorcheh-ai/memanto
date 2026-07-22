@@ -1,0 +1,1132 @@
+[
+  {
+    "at": 0.0,
+    "text": "LIVE TERMINAL  |  real commands, local paths redacted",
+    "color": "#22D3EE"
+  },
+  {
+    "at": 0.0,
+    "text": "",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 0.0,
+    "text": "$ python run_demo.py",
+    "color": "#22D3EE"
+  },
+  {
+    "at": 1.187,
+    "text": "1/3 Running LangGraph and writing real SQLite checkpoints",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 1.187,
+    "text": "2/3 Converting the latest state of every thread to OKF",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 1.187,
+    "text": "{",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 1.187,
+    "text": "\"source\": \"C:\\\\Users\\\\paul\\\\Documents\\\\Codex\\\\2026-07-16\\\\okay-so-you-cost-me-a\\\\memanto-",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 1.187,
+    "text": "migration-bounty\\\\examples\\\\migrations\\\\langgraph-checkpoints\\\\artifacts\\\\langgraph-",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 1.187,
+    "text": "checkpoints.sqlite\",",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 1.187,
+    "text": "\"output\": \"C:\\\\Users\\\\paul\\\\Documents\\\\Codex\\\\2026-07-16\\\\okay-so-you-cost-me-a\\\\memanto-",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 1.187,
+    "text": "migration-bounty\\\\examples\\\\migrations\\\\langgraph-checkpoints\\\\artifacts\\\\langgraph-okf\",",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 1.187,
+    "text": "\"threads\": 2,",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 1.187,
+    "text": "\"checkpoints\": 21,",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 1.187,
+    "text": "\"memories\": 8,",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 1.187,
+    "text": "\"memories_by_type\": {",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 1.187,
+    "text": "\"artifact\": 2,",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 1.187,
+    "text": "\"preference\": 2,",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 1.187,
+    "text": "\"decision\": 1,",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 1.187,
+    "text": "\"fact\": 2,",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 1.187,
+    "text": "\"goal\": 1",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 1.187,
+    "text": "},",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 1.187,
+    "text": "\"thread_ids\": [",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 1.187,
+    "text": "\"product-launch\",",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 1.187,
+    "text": "\"travel-planning\"",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 1.187,
+    "text": "]",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 1.187,
+    "text": "}",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 1.187,
+    "text": "3/3 Checking golden-question recall parity",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 1.187,
+    "text": "{",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 1.187,
+    "text": "\"questions\": 5,",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 1.187,
+    "text": "\"passed\": 5,",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 1.187,
+    "text": "\"recall_parity\": 1.0,",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 1.187,
+    "text": "\"results\": [",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 1.187,
+    "text": "{",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 1.187,
+    "text": "\"question\": \"Which format should Atlas launch reports use now?\",",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 1.187,
+    "text": "\"expected_terms\": [",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 1.187,
+    "text": "\"Markdown\"",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 1.187,
+    "text": "],",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 1.187,
+    "text": "\"passed\": true",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 1.187,
+    "text": "},",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 1.187,
+    "text": "{",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 1.187,
+    "text": "\"question\": \"When is the Atlas release scheduled?\",",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 1.187,
+    "text": "\"expected_terms\": [",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 1.187,
+    "text": "\"September 14\"",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 1.187,
+    "text": "],",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 1.187,
+    "text": "\"passed\": true",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 1.187,
+    "text": "},",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 1.187,
+    "text": "{",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 1.187,
+    "text": "\"question\": \"Who owns the Atlas launch?\",",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 1.187,
+    "text": "\"expected_terms\": [",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 1.187,
+    "text": "\"Maya Chen\"",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 1.187,
+    "text": "],",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 1.187,
+    "text": "\"passed\": true",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 1.187,
+    "text": "},",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 1.187,
+    "text": "{",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 1.187,
+    "text": "\"question\": \"How should short work trips be made?\",",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 1.187,
+    "text": "\"expected_terms\": [",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 1.187,
+    "text": "\"Train\",",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 1.187,
+    "text": "\"under four hours\"",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 1.187,
+    "text": "],",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 1.187,
+    "text": "\"passed\": true",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 1.187,
+    "text": "},",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 1.187,
+    "text": "{",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 1.187,
+    "text": "\"question\": \"What is the budget goal for the Lyon trip?\",",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 1.187,
+    "text": "\"expected_terms\": [",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 1.187,
+    "text": "\"below 450 euros\"",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 1.187,
+    "text": "],",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 1.187,
+    "text": "\"passed\": true",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 1.187,
+    "text": "}",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 1.187,
+    "text": "]",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 1.187,
+    "text": "}",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 1.187,
+    "text": "OKF bundle: <repo>\\examples\\migrations\\langgraph-checkpoints\\artifacts\\langgraph-okf",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 1.312,
+    "text": "OK",
+    "color": "#4ADE80"
+  },
+  {
+    "at": 2.015,
+    "text": "",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 2.015,
+    "text": "$ memanto agent create langgraph-migration-final",
+    "color": "#22D3EE"
+  },
+  {
+    "at": 4.343,
+    "text": "[OK] Namespace already exists in Moorcheh: memanto_agent_langgraph-migration-final",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 4.343,
+    "text": "Agent 'langgraph-migration-final' created successfully!",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 4.343,
+    "text": "Pattern: project",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 4.343,
+    "text": "Description: LangGraph checkpoint migration live demo",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 4.343,
+    "text": "Agent activated automatically.",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 4.343,
+    "text": "Activation expires: 2026-07-23T01:38:22.833310+00:00",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 4.343,
+    "text": "You can now run: memanto remember \"...\" and memanto recall \"...\"",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 4.468,
+    "text": "OK",
+    "color": "#4ADE80"
+  },
+  {
+    "at": 5.171,
+    "text": "",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 5.171,
+    "text": "$ memanto migrate okf ./artifacts/langgraph-okf --agent langgraph-migration-final",
+    "color": "#22D3EE"
+  },
+  {
+    "at": 5.875,
+    "text": "",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 5.875,
+    "text": "OKF -> Memanto  Migrate",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 5.875,
+    "text": "",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 5.89,
+    "text": "… Loading OKF bundle from",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 5.89,
+    "text": "<repo>\\examples\\mi",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 5.89,
+    "text": "grations\\langgraph-checkpoints\\artifacts\\langgraph-okf",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 5.89,
+    "text": "… Mapping OKF nodes onto Memanto schema...",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 5.906,
+    "text": "… Importing batch 1/1 (8 memories)...",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 6.921,
+    "text": "",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 6.921,
+    "text": "Import complete",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 6.921,
+    "text": "OKF nodes: 8",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 6.921,
+    "text": "Mapped memories: 8  (skipped 0)",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 6.921,
+    "text": "Type breakdown: artifact: 2, decision: 1, fact: 2, goal: 1, preference: 2",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 6.921,
+    "text": "Imported: 8  Failed: 0  Batches: 1",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 6.921,
+    "text": "Target agent: langgraph-migration-final",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 6.921,
+    "text": "",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 6.921,
+    "text": "Run dir: ~\\.memanto\\migrate\\okf\\20260722_193824",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 6.921,
+    "text": "Mapped preview: ~\\.memanto\\migrate\\okf\\20260722_193824\\mapped_preview.json",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 6.921,
+    "text": "",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 7.015,
+    "text": "OK",
+    "color": "#4ADE80"
+  },
+  {
+    "at": 7.718,
+    "text": "",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 7.718,
+    "text": "$ python show_preference.py  # readable OKF",
+    "color": "#22D3EE"
+  },
+  {
+    "at": 7.781,
+    "text": "---",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 7.781,
+    "text": "type: preference",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 7.781,
+    "text": "title: 'Report Format Preference: Markdown'",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 7.781,
+    "text": "tags:",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 7.781,
+    "text": "- langgraph-thread:product-launch",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 7.781,
+    "text": "- langgraph-channel:profile",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 7.781,
+    "text": "timestamp: '2026-07-22T19:38:19.577505+00:00'",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 7.781,
+    "text": "resource: langgraph://product-launch/root/1f18604e-470a-664d-800a-2a1fb40fba52#profile-report-",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 7.781,
+    "text": "format-preference",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 7.781,
+    "text": "source_channel: profile",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 7.781,
+    "text": "x_memanto:",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 7.781,
+    "text": "type: preference",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 7.781,
+    "text": "source: langgraph",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 7.781,
+    "text": "confidence: 1.0",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 7.781,
+    "text": "provenance: imported",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 7.781,
+    "text": "---",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 7.781,
+    "text": "",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 7.781,
+    "text": "Report Format Preference: Markdown",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 7.781,
+    "text": "",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 7.781,
+    "text": "OK",
+    "color": "#4ADE80"
+  },
+  {
+    "at": 8.484,
+    "text": "",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 8.484,
+    "text": "$ memanto answer 'Which report format is current?'",
+    "color": "#22D3EE"
+  },
+  {
+    "at": 11.281,
+    "text": "RAG Response",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 11.281,
+    "text": "Question: Which format should Atlas launch reports use now? Answer in one short sentence",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 11.281,
+    "text": "without em dashes.",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 11.281,
+    "text": "",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 11.281,
+    "text": "Answer:",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 11.281,
+    "text": "Based on your saved preference, Atlas launch reports should use **Markdown** format.",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 11.281,
+    "text": "",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 11.281,
+    "text": "Completed in 1.99s",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 11.375,
+    "text": "OK",
+    "color": "#4ADE80"
+  },
+  {
+    "at": 12.078,
+    "text": "",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 12.078,
+    "text": "$ memanto memory export --agent langgraph-migration-final --okf",
+    "color": "#22D3EE"
+  },
+  {
+    "at": 12.984,
+    "text": "",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 12.984,
+    "text": "OKF Export",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 12.984,
+    "text": "Agent: langgraph-migration-final  •  Split: auto  •  Limit: 25/type",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 12.984,
+    "text": "",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 19.312,
+    "text": "",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 19.312,
+    "text": "OKF Bundle Counts",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 19.312,
+    "text": "",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 19.312,
+    "text": "Type          Count",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 19.312,
+    "text": "",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 19.312,
+    "text": "Facts             2",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 19.312,
+    "text": "Decisions         1",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 19.312,
+    "text": "Goals             1",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 19.312,
+    "text": "Preferences       2",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 19.312,
+    "text": "Artifacts         2",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 19.312,
+    "text": "",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 19.312,
+    "text": "",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 19.312,
+    "text": "OK Exported 8 memories to OKF bundle!",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 19.312,
+    "text": "Bundle: ~\\.memanto\\langgraph-migration-final-roundtrip-okf",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 19.312,
+    "text": "Completed in 6.33s",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 19.406,
+    "text": "OK",
+    "color": "#4ADE80"
+  },
+  {
+    "at": 20.109,
+    "text": "",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 20.109,
+    "text": "$ python validate_bundle.py <roundtrip-okf>",
+    "color": "#22D3EE"
+  },
+  {
+    "at": 20.343,
+    "text": "{",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 20.343,
+    "text": "\"questions\": 5,",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 20.343,
+    "text": "\"passed\": 5,",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 20.343,
+    "text": "\"recall_parity\": 1.0,",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 20.343,
+    "text": "\"results\": [",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 20.343,
+    "text": "{",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 20.343,
+    "text": "\"question\": \"Which format should Atlas launch reports use now?\",",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 20.343,
+    "text": "\"expected_terms\": [",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 20.343,
+    "text": "\"Markdown\"",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 20.343,
+    "text": "],",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 20.343,
+    "text": "\"passed\": true",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 20.343,
+    "text": "},",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 20.343,
+    "text": "{",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 20.343,
+    "text": "\"question\": \"When is the Atlas release scheduled?\",",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 20.343,
+    "text": "\"expected_terms\": [",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 20.343,
+    "text": "\"September 14\"",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 20.343,
+    "text": "],",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 20.343,
+    "text": "\"passed\": true",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 20.343,
+    "text": "},",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 20.343,
+    "text": "{",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 20.343,
+    "text": "\"question\": \"Who owns the Atlas launch?\",",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 20.343,
+    "text": "\"expected_terms\": [",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 20.343,
+    "text": "\"Maya Chen\"",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 20.343,
+    "text": "],",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 20.343,
+    "text": "\"passed\": true",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 20.343,
+    "text": "},",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 20.343,
+    "text": "{",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 20.343,
+    "text": "\"question\": \"How should short work trips be made?\",",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 20.343,
+    "text": "\"expected_terms\": [",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 20.343,
+    "text": "\"Train\",",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 20.343,
+    "text": "\"under four hours\"",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 20.343,
+    "text": "],",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 20.343,
+    "text": "\"passed\": true",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 20.343,
+    "text": "},",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 20.343,
+    "text": "{",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 20.343,
+    "text": "\"question\": \"What is the budget goal for the Lyon trip?\",",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 20.343,
+    "text": "\"expected_terms\": [",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 20.343,
+    "text": "\"below 450 euros\"",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 20.343,
+    "text": "],",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 20.343,
+    "text": "\"passed\": true",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 20.343,
+    "text": "}",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 20.343,
+    "text": "]",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 20.343,
+    "text": "}",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 20.359,
+    "text": "OK",
+    "color": "#4ADE80"
+  },
+  {
+    "at": 21.062,
+    "text": "",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 21.062,
+    "text": "$ python build_evidence_report.py <roundtrip-okf>",
+    "color": "#22D3EE"
+  },
+  {
+    "at": 21.156,
+    "text": "# Migration and round-trip evidence",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 21.156,
+    "text": "",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 21.156,
+    "text": "| Stage | Records | Files | Bytes |",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 21.156,
+    "text": "| --- | ---: | ---: | ---: |",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 21.156,
+    "text": "| LangGraph SQLite | 21 checkpoints | 1 | 81920 |",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 21.156,
+    "text": "| First OKF bundle | 8 memories | 11 | 6497 |",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 21.156,
+    "text": "| Memanto round-trip OKF | 8 memories | 19 | 16621 |",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 21.156,
+    "text": "",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 21.156,
+    "text": "- Memanto import: 8 imported, 0 failed.",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 21.156,
+    "text": "- Recall after round trip: 5/5 (1.0 parity).",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 21.156,
+    "text": "- First portable bundle size change against the raw SQLite file: 92.1% smaller.",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 21.156,
+    "text": "",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 21.156,
+    "text": "## Scope note",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 21.156,
+    "text": "",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 21.156,
+    "text": "Raw SQLite file bytes compared with the first portable OKF bundle. This does not estimate",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 21.156,
+    "text": "provider token, latency, or billing savings.",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 21.156,
+    "text": "",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 21.156,
+    "text": "OK",
+    "color": "#4ADE80"
+  },
+  {
+    "at": 23.859,
+    "text": "Round trip complete.",
+    "color": "#4ADE80"
+  }
+]

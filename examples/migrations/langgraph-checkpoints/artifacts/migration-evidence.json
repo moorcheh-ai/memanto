@@ -1,0 +1,32 @@
+{
+  "source": {
+    "tool": "LangGraph SqliteSaver",
+    "threads": 2,
+    "checkpoints": 21,
+    "files": 1,
+    "bytes": 81920
+  },
+  "first_okf_bundle": {
+    "memories": 8,
+    "files": 11,
+    "bytes": 6481
+  },
+  "memanto_import": {
+    "mapped": 8,
+    "imported": 8,
+    "failed": 0
+  },
+  "memanto_roundtrip_okf": {
+    "memories": 8,
+    "files": 19,
+    "bytes": 16616
+  },
+  "recall": {
+    "before_okf": 1.0,
+    "after_memanto_roundtrip": 1.0,
+    "questions": 5,
+    "passed": 5
+  },
+  "measured_storage_change_percent": 92.1,
+  "storage_comparison_scope": "Raw SQLite file bytes compared with the first portable OKF bundle. This does not estimate provider token, latency, or billing savings."
+}
