@@ -42,7 +42,7 @@ class MemoryStoreRequest(BaseModel):
     source_ref: BoundedSourceRef | None = None
     confidence: float = Field(ge=0.0, le=1.0, default=0.8)
     tags: BoundedTags = Field(default_factory=list)
-    ttl_seconds: int | None = None
+    ttl_seconds: int | None = Field(default=None, gt=0)
     user_confirmed: bool = False
 
     @field_validator("content")
@@ -62,7 +62,7 @@ class MemoryBatchItem(BaseModel):
     source_ref: BoundedSourceRef | None = None
     confidence: float = Field(ge=0.0, le=1.0, default=0.8)
     tags: BoundedTags = Field(default_factory=list)
-    ttl_seconds: int | None = None
+    ttl_seconds: int | None = Field(default=None, gt=0)
     id: str | None = None  # Optional custom ID
 
     @field_validator("content")

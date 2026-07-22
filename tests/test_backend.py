@@ -108,6 +108,56 @@ class TestOnPremClient:
             result = client.answer.generate(namespace="x", query="y")
             assert result == {"answer": "ok", "namespace": "x"}
 
+    def test_upload_file_uses_distinct_staging_paths_for_same_basename(self, tmp_path):
+        """On-prem file uploads are async, so same-basename sources must not
+        share one staging path under ~/.moorcheh/uploads."""
+        from memanto.app.clients import onprem
+
+        class _FakeFiles:
+            def __init__(self):
+                self.uploaded_paths = []
+
+            def upload(self, namespace_name, files):
+                self.uploaded_paths.append(files[0]["path"])
+                return {"message": f"accepted {namespace_name}"}
+
+        class _FakeRaw:
+            def __init__(self):
+                self.documents = object()
+                self.files = _FakeFiles()
+
+        upload_root = tmp_path / "uploads"
+        first_dir = tmp_path / "first"
+        second_dir = tmp_path / "second"
+        first_dir.mkdir()
+        second_dir.mkdir()
+        first = first_dir / "notes.txt"
+        second = second_dir / "notes.txt"
+        first.write_text("first payload", encoding="utf-8")
+        second.write_text("second payload", encoding="utf-8")
+
+        raw = _FakeRaw()
+
+        def ensure_upload_root():
+            upload_root.mkdir(parents=True, exist_ok=True)
+            return upload_root
+
+        with patch.object(
+            onprem,
+            "_import_docker_runtime_helpers",
+            return_value=(
+                ensure_upload_root,
+                lambda host_file, _root: str(host_file),
+            ),
+        ):
+            adapter = onprem._DocumentsAdapter(raw)
+            adapter.upload_file("memanto_agent_test", first)
+            adapter.upload_file("memanto_agent_test", second)
+
+        assert len(raw.files.uploaded_paths) == 2
+        assert raw.files.uploaded_paths[0] != raw.files.uploaded_paths[1]
+        assert {p.name for p in upload_root.iterdir()} != {"notes.txt"}
+
 
 class TestSingletonDispatch:
     def test_cloud_returns_cloud_client(self):

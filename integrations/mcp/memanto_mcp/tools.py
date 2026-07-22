@@ -194,6 +194,18 @@ def _format_exception(exc: Exception) -> str:
     return f"{type(exc).__name__}: {exc}"
 
 
+def _normalize_tags(raw: Any) -> list[str]:
+    """Accept MCP client tag shapes while preserving SDK list semantics."""
+    if raw is None:
+        return []
+    if isinstance(raw, str):
+        return [tag.strip() for tag in raw.split(",") if tag.strip()]
+    if isinstance(raw, list):
+        return [str(tag).strip() for tag in raw if str(tag).strip()]
+    tag = str(raw).strip()
+    return [tag] if tag else []
+
+
 # ---------------------------------------------------------------------------
 # Tool registration
 # ---------------------------------------------------------------------------
@@ -326,7 +338,7 @@ def register_tools(mcp: Any, lifecycle: MemantoLifecycle) -> None:
                 title=resolved_title,
                 content=content,
                 confidence=confidence,
-                tags=tags or [],
+                tags=_normalize_tags(tags),
                 source=source,
                 provenance=provenance,
             )
@@ -377,6 +389,7 @@ def register_tools(mcp: Any, lifecycle: MemantoLifecycle) -> None:
         try:
             resolved = lifecycle.ensure_ready(lifecycle.resolve_agent_id(agent_id))
             # Validate before round-trip so we fail fast with a clear error.
+            normalized_memories: list[dict[str, Any]] = []
             for i, item in enumerate(memories):
                 if not isinstance(item, dict):
                     raise ValueError(
@@ -398,19 +411,15 @@ def register_tools(mcp: Any, lifecycle: MemantoLifecycle) -> None:
                         f"memories[{i}].provenance={prov!r} is not valid. "
                         f"Choose one of: {sorted(VALID_PROVENANCE_TYPES)}"
                     )
+                normalized_item = dict(item)
+                normalized_item["tags"] = _normalize_tags(item.get("tags"))
+                normalized_memories.append(normalized_item)
 
             result = lifecycle.client.batch_remember(
                 agent_id=resolved,
-                memories=memories,
+                memories=normalized_memories,
             )
-            sub_results = [
-                BatchRememberItemResult(
-                    id=r.get("id"),
-                    status=r.get("status", "queued"),
-                    error=r.get("error"),
-                )
-                for r in result.get("results", [])
-            ]
+            sub_results = _to_batch_item_results(result.get("results"))
             return BatchRememberResult(
                 status="ok",
                 agent_id=resolved,
@@ -915,3 +924,33 @@ def _to_memory_hit(raw: dict[str, Any]) -> MemoryHit:
             else raw.get("similarity_score")
         ),
     )
+
+
+def _string_or_none(value: Any) -> str | None:
+    return str(value) if value is not None else None
+
+
+def _to_batch_item_results(raw_results: Any) -> list[BatchRememberItemResult]:
+    """Normalize per-item batch results without failing on malformed rows."""
+    if not isinstance(raw_results, list):
+        return []
+
+    items: list[BatchRememberItemResult] = []
+    for raw in raw_results:
+        if not isinstance(raw, dict):
+            from memanto.app.utils.errors import MemoryError
+            raise MemoryError(
+                message="Data corruption detected: Received malformed batch result from storage layer in MCP integration.",
+                details={"item_preview": str(raw)[:100]}
+            )
+        try:
+            items.append(
+                BatchRememberItemResult(
+                    id=_string_or_none(raw.get("id")),
+                    status=str(raw.get("status") or "queued"),
+                    error=_string_or_none(raw.get("error")),
+                )
+            )
+        except (TypeError, ValueError):
+            continue
+    return items

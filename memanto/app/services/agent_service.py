@@ -5,7 +5,7 @@ Handles agent creation, listing, and lifecycle management.
 """
 
 import json
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 
 from moorcheh_sdk.exceptions import ConflictError
@@ -97,7 +97,7 @@ class AgentService:
             namespace=namespace,
             pattern=agent_create.pattern,
             description=agent_create.description,
-            created_at=datetime.utcnow(),
+            created_at=datetime.now(timezone.utc),
             memory_count=0,
             session_count=0,
             status="ready",

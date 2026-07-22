@@ -1,0 +1,75 @@
+name: Auto-label bounty PRs
+
+# Copies "bounty" / "Bounty#N" labels from a referenced issue onto any pull
+# request that mentions it, so PRs submitted against an active bounty are
+# labeled automatically instead of relying on a maintainer to do it by hand.
+
+on:
+  pull_request_target:
+    types: [opened, edited, synchronize, reopened]
+
+permissions:
+  pull-requests: write
+  issues: read
+
+jobs:
+  label:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Copy bounty labels from referenced issues
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const pr = context.payload.pull_request;
+            const text = `${pr.title}\n${pr.body ?? ""}`;
+
+            // Matches "#123", "issue #123", "closes #123", "fixes #123",
+            // "resolves #123", "refs #123" (case-insensitive), anywhere in
+            // the PR title or body.
+            const issueNumbers = new Set(
+              [...text.matchAll(/#(\d+)/g)].map((m) => parseInt(m[1], 10))
+            );
+
+            if (issueNumbers.size === 0) {
+              core.info("No issue references found in PR title/body.");
+              return;
+            }
+
+            const bountyLabels = new Set();
+
+            for (const number of issueNumbers) {
+              try {
+                const { data: issue } = await github.rest.issues.get({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: number,
+                });
+
+                // Skip if the referenced number is actually a PR, not an issue.
+                if (issue.pull_request) continue;
+                // Skip closed issues so only "active" bounties apply.
+                if (issue.state !== "open") continue;
+
+                for (const label of issue.labels) {
+                  const name = typeof label === "string" ? label : label.name;
+                  if (name === "bounty" || /^Bounty#\d+$/.test(name)) {
+                    bountyLabels.add(name);
+                  }
+                }
+              } catch (error) {
+                core.info(`Could not read issue #${number}: ${error?.message ?? String(error)}`);
+              }
+            }
+
+            if (bountyLabels.size === 0) {
+              core.info("Referenced issue(s) carry no bounty labels.");
+              return;
+            }
+
+            core.info(`Applying labels: ${[...bountyLabels].join(", ")}`);
+            await github.rest.issues.addLabels({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: pr.number,
+              labels: [...bountyLabels],
+            });

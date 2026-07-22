@@ -147,6 +147,12 @@ def run_migration(
 
         # batch_remember reports per-item errors in results[]; surface a few.
         for item in (result.get("results") or [])[:5]:
+            if not isinstance(item, dict):
+                from memanto.app.utils.errors import MemoryError
+                raise MemoryError(
+                    message="Data corruption detected: Received malformed batch result from storage layer during migration.",
+                    details={"item_preview": str(item)[:100]}
+                )
             err = item.get("error")
             if err:
                 summary.errors.append(f"batch {idx}: {err}")

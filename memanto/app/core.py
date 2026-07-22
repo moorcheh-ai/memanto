@@ -3,7 +3,7 @@ MEMANTO Core Architecture - Namespace Strategy & Memory Records
 """
 
 import uuid
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 from pydantic import BaseModel, Field
@@ -43,10 +43,10 @@ class MemoryRecord(BaseModel):
     provenance: ProvenanceType = "explicit_statement"
 
     # Timestamps (auto-populated by server)
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     expires_at: datetime | None = None
-    ttl_seconds: int | None = None
+    ttl_seconds: int | None = Field(default=None, gt=0)
 
     def to_moorcheh_document(self) -> dict[str, Any]:
         """
@@ -86,7 +86,10 @@ class MemoryRecord(BaseModel):
         if self.tags:
             document["tags"] = ",".join(self.tags)  # Comma-separated for filtering
         if self.expires_at:
-            document["expires_at"] = self.expires_at.isoformat()
+            if isinstance(self.expires_at, datetime):
+                document["expires_at"] = self.expires_at.isoformat()
+            else:
+                document["expires_at"] = str(self.expires_at)
         if self.ttl_seconds:
             document["ttl_seconds"] = self.ttl_seconds
 
@@ -98,5 +101,7 @@ class MemoryRecord(BaseModel):
 
     def set_ttl(self, seconds: int):
         """Set TTL and expiration"""
+        if seconds <= 0:
+            raise ValueError("ttl_seconds must be greater than 0")
         self.ttl_seconds = seconds
-        self.expires_at = datetime.utcnow() + timedelta(seconds=seconds)
+        self.expires_at = datetime.now(timezone.utc) + timedelta(seconds=seconds)

@@ -26,8 +26,10 @@ VALID_MEMORY_TYPES = (
 
 
 def create_memanto_tools(client: SdkClient, agent_id: str):
+    import copy
     import threading
 
+    client = copy.copy(client)
     _setup_lock = threading.Lock()
     _setup_done = False
 
