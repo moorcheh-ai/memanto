@@ -4,15 +4,12 @@ MEMANTO CLI - Shared utilities, app instances, and helpers.
 All command modules import from here to avoid circular dependencies.
 """
 
-import logging
 import os
 from typing import NoReturn
 
 import typer
 from rich.console import Console
 from rich.panel import Panel
-
-logger = logging.getLogger(__name__)
 
 from memanto.app.services.session_service import get_session_service
 from memanto.app.utils.errors import InvalidSessionTokenError, SessionExpiredError
@@ -141,11 +138,6 @@ def get_client() -> SdkClient:
                 try:
                     client.activate_agent(active_agent_id)
                 except Exception:
-                    logger.warning(
-                        "Failed to reactivate agent '%s' after session expiry. "
-                        "Memory operations may fail until a new session is created.",
-                        active_agent_id,
-                        exc_info=True,
-                    )
+                    pass
 
     return client
