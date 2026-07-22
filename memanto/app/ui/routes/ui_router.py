@@ -916,7 +916,7 @@ async def shutdown_server(
     return {"status": "shutting down"}
 
 
-_MIGRATE_PROVIDERS = ("mem0", "letta", "supermemory")
+_MIGRATE_PROVIDERS = ("mem0", "letta", "supermemory", "okf")
 
 
 def _migrate_compact_metrics(provider: str, metrics: dict) -> dict:
@@ -979,11 +979,29 @@ def _migrate_load_or_export(
 
     Returns ``(source_label, export_dict)``. ``source_label`` is what the UI
     shows under "Source" — either the file path or "live export".
+
+    OKF is filesystem-only (a directory of markdown files, not a hosted
+    provider), so it has no ``api_key`` branch — ``file`` is required and
+    points at a bundle directory or a single ``.md`` file.
     """
     from memanto.cli.analyze.letta_export import run_letta_export
     from memanto.cli.analyze.mem0_export import run_mem0_export
     from memanto.cli.analyze.supermemory_export import run_supermemory_export
+    from memanto.cli.migrate.okf_loader import load_okf_bundle
     from memanto.cli.migrate.runner import load_export
+
+    if provider == "okf":
+        if not file_path:
+            raise HTTPException(
+                status_code=400,
+                detail="`file` (server-side path to an OKF bundle directory or .md file) is required for OKF.",
+            )
+        path = Path(file_path).expanduser()
+        if not path.exists():
+            raise HTTPException(
+                status_code=400, detail=f"OKF bundle not found: {file_path}"
+            )
+        return str(path), load_okf_bundle(path)
 
     if file_path:
         path = Path(file_path).expanduser()
@@ -1058,8 +1076,16 @@ async def migrate_dry_run(body: dict, _: None = Depends(_require_local)):
         key = row.get("type") or "auto"
         type_counts[key] = type_counts.get(key, 0) + 1
 
-    metrics_fn = _migrate_get_metrics_fn(provider)
-    savings = _migrate_compact_metrics(provider, metrics_fn(export))
+    # OKF has no cost/latency "compare" module (it's a portable local format,
+    # not a hosted provider to benchmark against) — the UI hides the savings
+    # tiles when this comes back empty.
+    savings = (
+        {}
+        if provider == "okf"
+        else _migrate_compact_metrics(
+            provider, _migrate_get_metrics_fn(provider)(export)
+        )
+    )
 
     sample = []
     for row in rows[:5]:
@@ -1133,8 +1159,13 @@ async def migrate_import(body: dict, _: None = Depends(_require_local)):
         raise HTTPException(status_code=500, detail=f"Import failed: {e}")
     elapsed_ms = round((time.perf_counter() - started) * 1000)
 
-    metrics_fn = _migrate_get_metrics_fn(provider)
-    savings = _migrate_compact_metrics(provider, metrics_fn(export))
+    savings = (
+        {}
+        if provider == "okf"
+        else _migrate_compact_metrics(
+            provider, _migrate_get_metrics_fn(provider)(export)
+        )
+    )
 
     return {
         "provider": provider,

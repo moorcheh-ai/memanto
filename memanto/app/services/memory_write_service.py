@@ -12,7 +12,7 @@ from memanto.app.core import MemoryRecord
 from memanto.app.services.memory_parsing_service import MemoryParsingService
 from memanto.app.utils.errors import MemoryError
 from memanto.app.utils.ids import generate_memory_id
-from memanto.app.utils.temporal_helpers import as_utc_naive
+from memanto.app.utils.temporal_helpers import as_utc_aware
 
 SUCCESSFUL_UPLOAD_STATUSES = {"queued", "success", "ok"}
 
@@ -29,6 +29,8 @@ _REMOVED_TRUST_FIELDS = frozenset(
         "contradiction_detected",
     }
 )
+
+_SUCCESSFUL_UPLOAD_STATUSES = {"queued", "success", "ok"}
 
 
 class MemoryWriteService:
@@ -54,8 +56,18 @@ class MemoryWriteService:
     def _apply_timestamps(self, memory: MemoryRecord, now: datetime) -> None:
         """Apply server timestamps while preserving imported source chronology."""
         if memory.provenance == "imported":
-            memory.created_at = as_utc_naive(memory.created_at)
-            memory.updated_at = as_utc_naive(memory.updated_at)
+            memory.created_at = as_utc_aware(memory.created_at)
+            memory.updated_at = as_utc_aware(memory.updated_at)
+
+            # Clamp to current time if in the future
+            if memory.created_at > now:
+                memory.created_at = now
+            if memory.updated_at > now:
+                memory.updated_at = now
+
+            # Enforce created_at <= updated_at invariant
+            if memory.created_at > memory.updated_at:
+                memory.created_at = memory.updated_at
             return
         memory.created_at = now
         memory.updated_at = now
@@ -224,10 +236,16 @@ class MemoryWriteService:
                 )
 
                 # Update results with upload status
-                moorcheh_status = upload_result.get("status", "unknown")
+                moorcheh_status = str(upload_result.get("status", "unknown")).lower()
                 for result in results:
                     if result["status"] == "pending":
-                        result["status"] = moorcheh_status
+                        if moorcheh_status in _SUCCESSFUL_UPLOAD_STATUSES:
+                            result["status"] = moorcheh_status
+                        else:
+                            result["status"] = "failed"
+                            result["error"] = (
+                                f"Batch upload returned status '{moorcheh_status}'"
+                            )
 
             # Count successes, failures, and namespace-rejected items separately
             # so that successful + failed + rejected == total_submitted always.

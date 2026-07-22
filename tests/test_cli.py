@@ -226,6 +226,40 @@ class TestMEMANTOCLI:
         mock_all_clients.remember.assert_called_once()
         assert mock_all_clients.remember.call_args.kwargs["title"] == "Custom Title"
 
+    def test_recall_displays_string_numeric_fields(self, mock_all_clients):
+        """Recall output should not crash when API metadata numbers are strings."""
+        mock_all_clients.recall.return_value = {
+            "memories": [
+                {
+                    "id": "mem-123",
+                    "title": "Stored preference",
+                    "content": "Prefers concise reports",
+                    "type": "preference",
+                    "confidence": "0.75",
+                    "computed_confidence": "0.66",
+                    "score": "0.812",
+                    "tags": ["ux"],
+                },
+                {
+                    "id": "mem-456",
+                    "title": "Stored fact",
+                    "content": "Uses UTC timestamps",
+                    "type": "fact",
+                    "confidence": "0.41",
+                    "score": "0.500",
+                },
+            ],
+            "count": 2,
+        }
+
+        result = runner.invoke(app, ["recall", "preference"])
+
+        assert result.exit_code == 0
+        assert "Stored preference" in result.stdout
+        assert "Stored fact" in result.stdout
+        assert "Confidence: 0.66 (computed) | Score: 0.812" in result.stdout
+        assert "Confidence: 0.41 | Score: 0.500" in result.stdout
+
     def test_edit(self, mock_all_clients):
         """Test 'memanto edit' updates selected memory fields."""
         mock_all_clients.update_memory.return_value = {

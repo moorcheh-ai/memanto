@@ -9,15 +9,15 @@ from typing import Any
 
 
 def utc_now() -> datetime:
-    """Current UTC time as a naive datetime (matches legacy session storage)."""
-    return datetime.now(timezone.utc).replace(tzinfo=None)
+    """Current UTC time as an aware datetime."""
+    return datetime.now(timezone.utc)
 
 
-def as_utc_naive(dt: datetime) -> datetime:
-    """Normalize aware datetimes to the naive UTC format used in session storage."""
+def as_utc_aware(dt: datetime) -> datetime:
+    """Normalize datetimes to an aware UTC format."""
     if dt.tzinfo is None:
-        return dt
-    return dt.astimezone(timezone.utc).replace(tzinfo=None)
+        return dt.replace(tzinfo=timezone.utc)
+    return dt.astimezone(timezone.utc)
 
 
 def parse_iso_timestamp(ts_str: str) -> datetime:

@@ -3734,6 +3734,40 @@
             ],
             "title": "Tags",
             "description": "Tag filters"
+          },
+          "created_after": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created After",
+            "description": "Include only memories created at or after this timestamp. Date-only values (YYYY-MM-DD) use the start of that day."
+          },
+          "created_before": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created Before",
+            "description": "Include only memories created at or before this timestamp. Date-only values (YYYY-MM-DD) use the end of that day."
           }
         },
         "type": "object",

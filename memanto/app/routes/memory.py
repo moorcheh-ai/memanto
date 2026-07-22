@@ -41,7 +41,11 @@ from memanto.app.services.conversation_memory_extraction_service import (
 from memanto.app.services.memory_read_service import MemoryReadService
 from memanto.app.services.memory_write_service import MemoryWriteService
 from memanto.app.utils.errors import AuthorizationError, map_error_to_http_exception
-from memanto.app.utils.validation import CostGuard, validate_safe_id
+from memanto.app.utils.validation import (
+    CostGuard,
+    is_successful_write_result,
+    validate_safe_id,
+)
 from memanto.cli.client.direct_client import DirectClient
 from memanto.cli.config.manager import ConfigManager
 
@@ -251,12 +255,40 @@ class RecallRecentRequest(BaseModel):
     limit: int | None = Field(default=None, ge=1, description="Max results")
     type: list[str] | None = Field(default=None, description="Memory type filters")
     tags: list[str] | None = Field(default=None, description="Tag filters")
+    created_after: datetime | date | None = Field(
+        default=None,
+        description=(
+            "Include only memories created at or after this timestamp. "
+            "Date-only values (YYYY-MM-DD) use the start of that day."
+        ),
+    )
+    created_before: datetime | date | None = Field(
+        default=None,
+        description=(
+            "Include only memories created at or before this timestamp. "
+            "Date-only values (YYYY-MM-DD) use the end of that day."
+        ),
+    )
 
     @field_validator("type")
     @classmethod
     def type_filters_must_be_valid(cls, value: list[str] | None) -> list[str] | None:
         """Reject recent-recall filters that are not supported memory types."""
         return _validate_memory_type_filters(value)
+
+    @field_validator("created_after", mode="before")
+    @classmethod
+    def parse_created_after(cls, v: object) -> datetime | None:
+        if v is None:
+            return None
+        return _parse_recall_temporal_bound(v, end_of_day=False)
+
+    @field_validator("created_before", mode="before")
+    @classmethod
+    def parse_created_before(cls, v: object) -> datetime | None:
+        if v is None:
+            return None
+        return _parse_recall_temporal_bound(v, end_of_day=True)
 
 
 class MemoryEditRequest(BaseModel):
@@ -362,22 +394,25 @@ async def remember(
 
         # Store memory in agent's namespace.
         result = await asyncio.to_thread(write_service.store_memory, memory)
+        status = str(result.get("status", "unknown"))
+        response_status = "queued" if is_successful_write_result(result) else status
 
-        # Log to local session Markdown summary
-        session_service = get_session_service()
-        await asyncio.to_thread(
-            session_service.log_memory_to_session_summary,
-            agent_id=agent_id,
-            session_id=session.session_id,
-            memory_record=memory,
-        )
+        # Log to local session Markdown summary only after a durable write.
+        if is_successful_write_result(result):
+            session_service = get_session_service()
+            await asyncio.to_thread(
+                session_service.log_memory_to_session_summary,
+                agent_id=agent_id,
+                session_id=session.session_id,
+                memory_record=memory,
+            )
 
         return {
             "memory_id": result["id"],
             "agent_id": agent_id,
             "session_id": session.session_id,
             "namespace": session.namespace,
-            "status": "queued",
+            "status": response_status,
             "provenance": request.provenance,
             "confidence": request.confidence,
             # Resolved memory type (auto-parsed when not explicitly provided)
@@ -445,7 +480,11 @@ async def batch_remember(
         # Log each memory to local MD summary
         session_service = get_session_service()
 
-        for record in memory_records:
+        batch_results = result.get("results", [])
+        for index, record in enumerate(memory_records):
+            item_result = batch_results[index] if index < len(batch_results) else None
+            if not is_successful_write_result(item_result):
+                continue
             await asyncio.to_thread(
                 session_service.log_memory_to_session_summary,
                 agent_id=agent_id,
@@ -610,11 +649,14 @@ async def extract_memories_from_conversation(
         )
 
         session_service = get_session_service()
+        batch_results = result.get("results", [])
         for index, record in enumerate(memory_records):
-            batch_results = result.get("results", [])
             memory_id = (
                 batch_results[index].get("id") if index < len(batch_results) else None
             )
+            item_result = batch_results[index] if index < len(batch_results) else None
+            if not is_successful_write_result(item_result):
+                continue
             await asyncio.to_thread(
                 session_service.log_memory_to_session_summary,
                 agent_id=agent_id,
@@ -1233,6 +1275,12 @@ async def recall_recent(
             type=request.type,
             tags=request.tags,
             limit=limit,
+            created_after=request.created_after.isoformat()
+            if request.created_after
+            else None,
+            created_before=request.created_before.isoformat()
+            if request.created_before
+            else None,
         )
 
         return {

@@ -86,7 +86,10 @@ class MemoryRecord(BaseModel):
         if self.tags:
             document["tags"] = ",".join(self.tags)  # Comma-separated for filtering
         if self.expires_at:
-            document["expires_at"] = self.expires_at.isoformat()
+            if isinstance(self.expires_at, datetime):
+                document["expires_at"] = self.expires_at.isoformat()
+            else:
+                document["expires_at"] = str(self.expires_at)
         if self.ttl_seconds:
             document["ttl_seconds"] = self.ttl_seconds
 

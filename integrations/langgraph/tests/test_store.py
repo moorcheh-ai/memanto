@@ -93,6 +93,34 @@ def test_do_get_recent_success(mock_sdk_client):
     )
 
 
+def test_do_get_recovers_key_from_comma_separated_tags(mock_sdk_client):
+    store = MemantoStore(api_key="test_key")
+    client_instance = MagicMock()
+    mock_sdk_client.return_value = client_instance
+
+    client_instance.recall_recent.return_value = {
+        "memories": [
+            {
+                "id": "mem-123",
+                "tags": "lg:key:my_key,urgent",
+                "type": "fact",
+                "title": "my_key",
+                "content": "some content",
+                "confidence": 0.8,
+                "created_at": "2023-01-01T00:00:00Z",
+                "updated_at": "2023-01-01T00:00:00Z",
+            }
+        ]
+    }
+
+    op = GetOp(namespace=("my_ns",), key="my_key")
+    item = store._do_get(op)
+
+    assert item is not None
+    assert item.key == "my_key"
+    assert item.value["tags"] == ["urgent"]
+
+
 def test_do_get_fallback_success(mock_sdk_client):
     store = MemantoStore(api_key="test_key")
     client_instance = MagicMock()
@@ -165,6 +193,27 @@ def test_do_put_success(mock_sdk_client):
     )
 
 
+def test_do_put_escapes_commas_in_key_tags(mock_sdk_client):
+    """LangGraph keys may contain commas; tags are comma-serialized downstream."""
+    store = MemantoStore(api_key="test_key")
+    client_instance = MagicMock()
+    mock_sdk_client.return_value = client_instance
+
+    op = PutOp(namespace=("my_ns",), key="thread,checkpoint", value={"content": "c"})
+    store._do_put(op)
+
+    client_instance.remember.assert_called_once()
+    assert client_instance.remember.call_args.kwargs["tags"] == [
+        "lg:key:v1:thread%2Ccheckpoint"
+    ]
+
+
+def test_tags_to_key_unescapes_encoded_key_tags():
+    assert MemantoStore._tags_to_key(["lg:key:v1:thread%2Ccheckpoint"]) == (
+        "thread,checkpoint"
+    )
+
+
 def test_do_put_delete_not_supported(mock_sdk_client):
     store = MemantoStore(api_key="test_key")
     op = PutOp(namespace=("my_ns",), key="my_key", value=None)
@@ -202,6 +251,43 @@ def test_do_search_recent(mock_sdk_client):
     )
 
 
+def test_do_search_wildcard_with_tags_uses_backend_tag_filter(mock_sdk_client):
+    store = MemantoStore(api_key="test_key")
+    client_instance = MagicMock()
+    mock_sdk_client.return_value = client_instance
+
+    client_instance.recall.return_value = {
+        "memories": [
+            {
+                "id": "mem-789",
+                "tags": ["lg:key:key3", "project:apollo"],
+                "type": "fact",
+                "title": "key3",
+                "content": "older tagged memory",
+            }
+        ]
+    }
+
+    op = SearchOp(
+        namespace_prefix=("my_ns",),
+        query="*",
+        filter={"tags": ["project:apollo"]},
+    )
+    items = store._do_search(op)
+
+    assert len(items) == 1
+    assert items[0].key == "key3"
+    client_instance.recall_recent.assert_not_called()
+    client_instance.recall.assert_called_once_with(
+        agent_id="langgraph_my_ns",
+        query="*",
+        limit=10,
+        type=None,
+        tags=["project:apollo"],
+        min_similarity=None,
+    )
+
+
 def test_do_search_semantic(mock_sdk_client):
     store = MemantoStore(api_key="test_key")
     client_instance = MagicMock()
@@ -233,6 +319,65 @@ def test_do_search_semantic(mock_sdk_client):
         tags=None,
         min_similarity=None,
     )
+
+
+def test_do_search_accepts_string_tag_filter(mock_sdk_client):
+    store = MemantoStore(api_key="test_key")
+    client_instance = MagicMock()
+    mock_sdk_client.return_value = client_instance
+
+    client_instance.recall.return_value = {
+        "memories": [
+            {
+                "id": "mem-456",
+                "tags": ["lg:key:key2", "urgent"],
+                "type": "observation",
+                "content": "observed",
+            }
+        ]
+    }
+
+    op = SearchOp(
+        namespace_prefix=("my_ns",), query="test query", filter={"tags": "urgent"}
+    )
+    items = store._do_search(op)
+
+    assert len(items) == 1
+    assert items[0].key == "key2"
+    client_instance.recall.assert_called_once_with(
+        agent_id="langgraph_my_ns",
+        query="test query",
+        limit=10,
+        type=None,
+        tags=["urgent"],
+        min_similarity=None,
+    )
+
+
+def test_do_search_recovers_key_from_comma_separated_tags(mock_sdk_client):
+    store = MemantoStore(api_key="test_key")
+    client_instance = MagicMock()
+    mock_sdk_client.return_value = client_instance
+
+    client_instance.recall.return_value = {
+        "memories": [
+            {
+                "id": "mem-456",
+                "tags": "lg:key:key2,urgent",
+                "type": "observation",
+                "content": "observed",
+            }
+        ]
+    }
+
+    op = SearchOp(
+        namespace_prefix=("my_ns",), query="test query", filter={"tags": ["urgent"]}
+    )
+    items = store._do_search(op)
+
+    assert len(items) == 1
+    assert items[0].key == "key2"
+    assert items[0].value["tags"] == ["urgent"]
 
 
 def test_batch_execution(mock_sdk_client):
