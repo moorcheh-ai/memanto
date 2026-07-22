@@ -223,11 +223,30 @@ class MemoryWriteService:
                     documents=validated_documents,
                 )
 
-                # Update results with upload status
-                moorcheh_status = upload_result.get("status", "unknown")
-                for result in results:
-                    if result["status"] == "pending":
+                # Per-document status verification
+                moorcheh_status = str(upload_result.get("status", "unknown")).lower()
+                per_doc = upload_result.get("results") or upload_result.get("documents") or []
+
+                for idx, result in enumerate(results):
+                    if result["status"] != "pending":
+                        continue
+                    # Check per-document status when available
+                    doc_ok = False
+                    if idx < len(per_doc):
+                        doc = per_doc[idx]
+                        doc_status = str(doc.get("status", "") if isinstance(doc, dict) else doc).lower()
+                        doc_ok = doc_status in _SUCCESSFUL_UPLOAD_STATUSES
+
+                    if doc_ok:
+                        result["status"] = "success"
+                    elif moorcheh_status in _SUCCESSFUL_UPLOAD_STATUSES and not per_doc:
                         result["status"] = moorcheh_status
+                    elif moorcheh_status in _SUCCESSFUL_UPLOAD_STATUSES:
+                        result["status"] = "unconfirmed"
+                        result["error"] = "Batch uploaded but per-document status unavailable"
+                    else:
+                        result["status"] = "failed"
+                        result["error"] = f"Upload returned status '{moorcheh_status}'" 
 
             # Count successes, failures, and namespace-rejected items separately
             # so that successful + failed + rejected == total_submitted always.
