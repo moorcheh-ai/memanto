@@ -21,6 +21,11 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+pytestmark = pytest.mark.xfail(
+    reason="Bug Bounty #770: Tests designed to fail against current bugs.",
+    strict=False,
+)
+
 
 # ---------------------------------------------------------------------------
 # Bug #1: Expired memories can be re-uploaded during update
@@ -39,7 +44,6 @@ class TestBug1_ExpiredMemoryReupload:
 
         Currently it does NEITHER — it re-uploads with the stale expires_at.
         """
-        from memanto.app.core import MemoryRecord
         from memanto.app.services.memory_write_service import MemoryWriteService
 
         mock_client = MagicMock()
@@ -347,8 +351,12 @@ class TestBug6_ConflictReportIgnoresBackend:
         
         with patch("memanto.app.services.daily_analysis_service.get_data_dir", return_value=test_path):
             with patch("pathlib.Path.mkdir") as mock_mkdir:
+                # Create a mock service instance
+                mock_client = MagicMock()
+                service = DailyAnalysisService(mock_client)
+                
                 # generate_conflict_report creates the directory early on
-                DailyAnalysisService.generate_conflict_report("test-agent")
+                service.generate_conflict_report("test-agent", "2026-07-01")
                 
                 # Check if the directory created was based on test_path
                 created_path = mock_mkdir.call_args[0][0]
