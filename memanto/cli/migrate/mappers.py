@@ -309,6 +309,8 @@ def map_supermemory(export: dict[str, Any]) -> list[dict[str, Any]]:
     """
     rows: list[dict[str, Any]] = []
     seen: set[str] = set()
+    mapped_memory_ids: set[str] = set()
+    represented_document_ids: set[str] = set()
     migrated_at = _now_utc()
 
     for mem in export.get("memories", []) or []:
@@ -363,13 +365,27 @@ def map_supermemory(export: dict[str, Any]) -> list[dict[str, Any]]:
         )
         seen.add(content)
 
-    if rows:
-        return rows
+        memory_id = mem.get("id")
+        if memory_id:
+            mapped_memory_ids.add(str(memory_id))
+        document_id = mem.get("documentId") or mem.get("document_id")
+        if document_id:
+            represented_document_ids.add(str(document_id))
 
-    # Fallback: harvest chunk text when extracted memories are empty.
+    # Harvest chunks from documents that have no mapped extracted memory. This
+    # is a full fallback when memories[] is empty, and preserves fresh or
+    # still-unprocessed documents in mixed accounts that already have some
+    # extracted memories elsewhere.
     for doc in export.get("documents", []) or []:
         doc_tags = [str(t) for t in (doc.get("container_tags") or []) if t]
         doc_id = doc.get("id")
+        doc_memory_ids = {
+            str(memory_id) for memory_id in (doc.get("memory_ids") or []) if memory_id
+        }
+        if (doc_id and str(doc_id) in represented_document_ids) or (
+            doc_memory_ids & mapped_memory_ids
+        ):
+            continue
         doc_created = _pick_first_dt(
             doc.get("detail") or doc, ("createdAt", "created_at")
         )

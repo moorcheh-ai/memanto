@@ -7,6 +7,7 @@ from memanto.cli.analyze.supermemory_export import (
     paginate_memories_for_tag,
 )
 from memanto.cli.migrate.mappers import map_supermemory
+from memanto.cli.migrate.runner import source_count
 
 
 def test_memory_pagination_uses_v4_singular_container_tag():
@@ -60,3 +61,42 @@ def test_shared_memory_preserves_all_container_tags():
     migrated = map_supermemory({"memories": memories})
     assert len(migrated) == 1
     assert migrated[0]["tags"] == ["project-a", "project-b"]
+
+
+def test_mixed_account_preserves_unrepresented_document_chunks():
+    """Extracted memories must not suppress unrelated fresh documents."""
+    export = {
+        "memories": [
+            {
+                "id": "memory-1",
+                "documentId": "processed-doc",
+                "content": "The processed fact",
+            }
+        ],
+        "documents": [
+            {
+                "id": "processed-doc",
+                "memory_ids": ["memory-1"],
+                "container_tags": ["project-a"],
+                "chunks": [
+                    {"id": "processed-chunk", "content": "Processed source text"}
+                ],
+            },
+            {
+                "id": "fresh-doc",
+                "memory_ids": [],
+                "container_tags": ["project-b"],
+                "chunks": [{"id": "fresh-chunk", "content": "Fresh document context"}],
+            },
+        ],
+    }
+
+    migrated = map_supermemory(export)
+
+    assert [row["source_ref"] for row in migrated] == [
+        "memory-1",
+        "fresh-doc:fresh-chunk",
+    ]
+    assert migrated[1]["content"].startswith("Fresh document context")
+    assert migrated[1]["tags"] == ["project-b"]
+    assert source_count("supermemory", export) == 2

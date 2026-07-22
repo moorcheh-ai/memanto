@@ -90,13 +90,38 @@ def source_count(provider: str, export: dict[str, Any]) -> int:
     if provider == "letta":
         return len(export.get("passages", []) or [])
     memories = export.get("memories", []) or []
-    if provider == "supermemory" and not memories:
-        # Mirror map_supermemory's fallback: when no extracted memories exist
-        # we harvest document chunks, so the summary should reflect that.
-        return sum(
-            len(doc.get("chunks", []) or [])
-            for doc in (export.get("documents", []) or [])
-        )
+    if provider == "supermemory":
+        mapped_memory_ids: set[str] = set()
+        represented_document_ids: set[str] = set()
+        for memory in memories:
+            content = (
+                memory.get("content")
+                or memory.get("memory")
+                or memory.get("text")
+                or ""
+            ).strip()
+            if not content:
+                continue
+            if memory.get("id"):
+                mapped_memory_ids.add(str(memory["id"]))
+            document_id = memory.get("documentId") or memory.get("document_id")
+            if document_id:
+                represented_document_ids.add(str(document_id))
+
+        uncovered_chunks = 0
+        for doc in export.get("documents", []) or []:
+            doc_id = doc.get("id")
+            doc_memory_ids = {
+                str(memory_id)
+                for memory_id in (doc.get("memory_ids") or [])
+                if memory_id
+            }
+            if (doc_id and str(doc_id) in represented_document_ids) or (
+                doc_memory_ids & mapped_memory_ids
+            ):
+                continue
+            uncovered_chunks += len(doc.get("chunks", []) or [])
+        return len(memories) + uncovered_chunks
     return len(memories)
 
 
