@@ -7,7 +7,7 @@ from pathlib import Path
 
 from generate_source import generate_database
 from langgraph_to_okf import convert_checkpoint_database
-from validate_bundle import validate_recall
+from validate_bundle import validate_content
 
 ROOT = Path(__file__).resolve().parent
 ARTIFACTS = ROOT / "artifacts"
@@ -24,14 +24,14 @@ def main() -> None:
     summary = convert_checkpoint_database(SOURCE, BUNDLE, overwrite=True)
     print(json.dumps(summary.to_dict(), indent=2, ensure_ascii=False))
 
-    print("3/3 Checking golden-question recall parity")
-    report = validate_recall(BUNDLE, GOLDEN)
-    report_path = ARTIFACTS / "recall-report.json"
+    print("3/3 Checking expected facts in the generated OKF bundle")
+    report = validate_content(BUNDLE, GOLDEN)
+    report_path = ARTIFACTS / "content-coverage-report.json"
     report_path.write_text(
         json.dumps(report, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
     )
     print(json.dumps(report, indent=2, ensure_ascii=False))
-    if report["recall_parity"] != 1.0:
+    if report["content_coverage"] != 1.0:
         raise SystemExit(1)
     print(f"OKF bundle: {BUNDLE}")
 

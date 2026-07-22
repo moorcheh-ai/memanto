@@ -13,12 +13,14 @@ checkpoints through its official `SqliteSaver`.
 
 ## What this adds
 
-- A reusable adapter for any LangGraph SQLite checkpoint database.
+- A reusable adapter for LangGraph SQLite checkpoints whose latest state uses
+  LangChain messages and JSON-friendly built-in values.
 - Read-only source handling through SQLite's online backup API.
 - Deserialization through LangGraph's public `SqliteSaver.list` API.
 - Strict MessagePack mode, as recommended by LangGraph for safer imports.
-- Loss-aware mapping for messages, profiles, decisions, goals, lists, and
-  unknown application channels.
+- Explicit mapping for messages, profiles, decisions, goals, lists, and
+  JSON-friendly application channels. Unsupported Python objects are rendered
+  with `repr()` and should be reviewed before import.
 - A valid OKF bundle with source URIs, timestamps, tags, and `x_memanto`
   round-trip metadata.
 - Golden-question validation that proves the corrected and accumulated state is
@@ -51,7 +53,7 @@ artifacts/
     memories/
     metrics/migration-summary.md
     migration-summary.json
-  recall-report.json
+  content-coverage-report.json
 ```
 
 No API key is needed for this reproducible source run, conversion, or recall
@@ -94,9 +96,9 @@ Then export the same agent again:
 memanto memory export --okf
 ```
 
-The committed `artifacts/memanto-roundtrip-okf/` directory is the result of a
-real cloud import and export. It contains the same eight memories as the first
-bundle. Its recall report passes all five golden questions.
+The verified run under `artifacts/runs/20260722T210746Z-ab8e8c6f/` contains the
+real cloud export. It contains the same eight memories as the staged first
+bundle, and its parity report passes all five identical questions.
 
 Build the measured evidence report after a cloud round trip with:
 
@@ -110,8 +112,11 @@ savings because the OKF importer does not emit those provider metrics.
 
 ## Validation evidence
 
-`golden_qa.json` checks five facts that span both threads, including the
-corrected report format. A successful run reports `recall_parity: 1.0`.
+`golden_qa.json` defines five identical questions spanning both threads,
+including the corrected report format. `query_source.py` answers them from the
+latest LangGraph checkpoint state. During the cloud run, `query_memanto.py`
+asks Memanto those exact questions and saves its unmodified RAG answers.
+`validate_parity.py` passes only when both sides contain every expected term.
 
 Run the focused tests with:
 
@@ -130,8 +135,8 @@ The tests prove that:
 
 ## Build the captioned trailer
 
-The video builder reads the real migration summary and recall report produced by
-`run_demo.py`. It renders those results into a short captioned terminal
+The video builder reads the real migration summary and content-coverage report
+produced by `run_demo.py`. It renders those results into a short captioned terminal
 walkthrough without recording the desktop.
 
 ```bash
@@ -145,17 +150,33 @@ terminal walkthrough.
 
 ## Record the live cloud round trip
 
-Create an empty Memanto agent namespace first, then run:
+Run:
 
 ```bash
-.venv\Scripts\python record_live_terminal.py --agent my-migration-demo
+.venv\Scripts\python record_live_terminal.py
 ```
 
-The recorder executes the real source run, cloud import, RAG answer, OKF export,
-round-trip validation, and evidence report. It captures the terminal output with
-its real timings and redacts local paths. It never reads or displays the API key.
-The resulting video is `artifacts/live-terminal-demo.mp4`. A matching JSON cast
-records each displayed line and its relative timestamp for auditability.
+The recorder creates a unique run id and agent namespace, then executes the real
+source run, required OKF dry run, cloud import, all five source and Memanto
+questions, OKF export, parity validation, and evidence report. One directory at
+`artifacts/runs/<run-id>/` holds the raw answers, round-trip bundle, report,
+terminal cast, video, hashes, command output, and timestamps. It captures real
+timings, redacts local paths, and never reads or displays the API key.
+
+## Verified reference run
+
+The committed run
+[`20260722T210746Z-ab8e8c6f`](artifacts/runs/20260722T210746Z-ab8e8c6f/)
+is one continuous execution. It freezes the exact source database and first OKF
+bundle before the dry run, then records 21 checkpoints, 8 mapped memories, 8
+successful imports, 8 memories exported back to OKF, and 5/5 identical
+questions passing before and after migration.
+
+- [Run manifest with command output and hashes](artifacts/runs/20260722T210746Z-ab8e8c6f/run-manifest.json)
+- [Measured migration report](artifacts/runs/20260722T210746Z-ab8e8c6f/migration-evidence.md)
+- [Before and after answers](artifacts/runs/20260722T210746Z-ab8e8c6f/recall-parity.json)
+- [Auditable terminal cast](artifacts/runs/20260722T210746Z-ab8e8c6f/live-terminal-demo.json)
+- [Rendered live terminal video](artifacts/runs/20260722T210746Z-ab8e8c6f/live-terminal-demo.mp4)
 
 ## Demo video shot list
 
@@ -164,7 +185,7 @@ records each displayed line and its relative timestamp for auditability.
 3. Show the checkpoint count and the two discovered thread IDs.
 4. Open the Markdown preference file and show that Markdown replaced PDF.
 5. Open the transcript artifact and one source `langgraph://` URI.
-6. Show the recall report at `1.0`.
+6. Show local content coverage at `1.0`, then the cloud parity report at `1.0`.
 7. Run `memanto migrate okf ... --dry-run` from the repository root.
 8. Open Memanto's mapped preview and show the retained types and tags.
 

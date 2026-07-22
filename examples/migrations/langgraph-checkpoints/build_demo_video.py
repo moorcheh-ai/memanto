@@ -94,7 +94,7 @@ def _title_scene(progress: float, summary: dict, recall: dict) -> Image.Image:
         ("CHECKPOINTS", str(summary["checkpoints"])),
         ("THREADS", str(summary["threads"])),
         ("PORTABLE MEMORIES", str(summary["memories"])),
-        ("RECALL PARITY", f"{recall['recall_parity'] * 100:.0f}%"),
+        ("CONTENT COVERAGE", f"{recall['content_coverage'] * 100:.0f}%"),
     ]
     for index, (label, value) in enumerate(cards):
         x = 64 + index * 294
@@ -121,9 +121,9 @@ def _run_scene(progress: float, summary: dict, recall: dict) -> Image.Image:
         ("2/3 Converting latest thread state to OKF", WHITE),
         (f"    portable memories: {summary['memories']}", GREEN),
         ("    skipped source records: 0", GREEN),
-        ("3/3 Checking golden-question recall parity", WHITE),
+        ("3/3 Checking expected facts in the OKF bundle", WHITE),
         (f"    questions passed: {recall['passed']}/{recall['questions']}", GREEN),
-        (f"    recall_parity: {recall['recall_parity']:.1f}", GREEN),
+        (f"    content_coverage: {recall['content_coverage']:.1f}", GREEN),
     ]
     visible = max(1, min(len(all_lines), int(progress * (len(all_lines) + 2))))
     _terminal(draw, all_lines[:visible])
@@ -213,7 +213,7 @@ def _outro_scene(progress: float, summary: dict, recall: dict) -> Image.Image:
 
 def _artifacts() -> tuple[dict, dict]:
     summary_path = ARTIFACTS / "langgraph-okf" / "migration-summary.json"
-    recall_path = ARTIFACTS / "recall-report.json"
+    recall_path = ARTIFACTS / "content-coverage-report.json"
     if not summary_path.is_file() or not recall_path.is_file():
         raise FileNotFoundError("Run python run_demo.py before building the video")
     return (

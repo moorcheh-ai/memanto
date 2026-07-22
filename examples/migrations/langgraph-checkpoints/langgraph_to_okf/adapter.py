@@ -19,6 +19,7 @@ from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
+from urllib.parse import quote
 
 import yaml
 
@@ -74,6 +75,16 @@ def _jsonable(value: Any) -> Any:
     if isinstance(value, datetime):
         return value.isoformat()
     return repr(value)
+
+
+def _is_empty(value: Any) -> bool:
+    if value is None:
+        return True
+    if isinstance(value, str):
+        return value == ""
+    if isinstance(value, (list, tuple, dict, set)):
+        return len(value) == 0
+    return False
 
 
 def _message_text(message: BaseMessage) -> str:
@@ -176,8 +187,10 @@ def _state_to_memories(
     tags = [f"langgraph-thread:{ref.thread_id}"]
     if ref.checkpoint_ns:
         tags.append(f"langgraph-namespace:{ref.checkpoint_ns}")
-    base_resource = (
-        f"langgraph://{ref.thread_id}/{ref.checkpoint_ns or 'root'}/{checkpoint_id}"
+    base_resource = "langgraph://{}/{}/{}".format(
+        quote(ref.thread_id, safe=""),
+        quote(ref.checkpoint_ns or "root", safe=""),
+        quote(checkpoint_id, safe=""),
     )
     memories: list[dict[str, Any]] = []
 
@@ -210,13 +223,13 @@ def _state_to_memories(
         if (
             channel == "messages"
             or channel.startswith("__")
-            or value in (None, "", [], {})
+            or _is_empty(value)
         ):
             continue
 
         if isinstance(value, dict):
             for key, item in value.items():
-                if item in (None, "", [], {}):
+                if _is_empty(item):
                     continue
                 rendered = (
                     item
@@ -238,7 +251,7 @@ def _state_to_memories(
 
         if isinstance(value, list):
             for index, item in enumerate(value):
-                if item in (None, "", [], {}):
+                if _is_empty(item):
                     continue
                 rendered = (
                     item

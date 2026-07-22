@@ -1,4 +1,4 @@
-"""Validate recall parity between the source scenario and an OKF bundle."""
+"""Validate that expected source facts are present in an OKF bundle."""
 
 from __future__ import annotations
 
@@ -29,7 +29,7 @@ def load_documents(bundle: Path) -> list[dict[str, Any]]:
     return documents
 
 
-def validate_recall(bundle: Path, golden_file: Path) -> dict[str, Any]:
+def validate_content(bundle: Path, golden_file: Path) -> dict[str, Any]:
     documents = load_documents(bundle)
     corpus = "\n".join(document["body"] for document in documents).casefold()
     cases = json.loads(golden_file.read_text(encoding="utf-8"))
@@ -48,7 +48,7 @@ def validate_recall(bundle: Path, golden_file: Path) -> dict[str, Any]:
     return {
         "questions": len(results),
         "passed": passed,
-        "recall_parity": passed / len(results) if results else 1.0,
+        "content_coverage": passed / len(results) if results else 1.0,
         "results": results,
     }
 
@@ -59,13 +59,13 @@ def main() -> None:
     parser.add_argument("golden", type=Path, nargs="?", default=Path("golden_qa.json"))
     parser.add_argument("--report", type=Path)
     args = parser.parse_args()
-    report = validate_recall(args.bundle, args.golden)
+    report = validate_content(args.bundle, args.golden)
     rendered = json.dumps(report, indent=2, ensure_ascii=False)
     if args.report:
         args.report.parent.mkdir(parents=True, exist_ok=True)
         args.report.write_text(rendered + "\n", encoding="utf-8")
     print(rendered)
-    if report["recall_parity"] != 1.0:
+    if report["content_coverage"] != 1.0:
         raise SystemExit(1)
 
 
