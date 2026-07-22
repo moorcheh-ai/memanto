@@ -5,12 +5,23 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import re
 import sqlite3
 from pathlib import Path
 from typing import Any
 
 ROOT = Path(__file__).resolve().parent
 ARTIFACTS = ROOT / "artifacts"
+
+_IMPORT_LINE = re.compile(
+    r"Imported:\s*(?P<imported>\d+)\s+Failed:\s*(?P<failed>\d+)",
+    re.IGNORECASE,
+)
+_MAPPED_LINE = re.compile(
+    r"Mapped memories:\s*(?P<mapped>\d+)\s+\(skipped\s+(?P<skipped>\d+)\)",
+    re.IGNORECASE,
+)
+_OKF_NODES_LINE = re.compile(r"OKF nodes:\s*(?P<nodes>\d+)", re.IGNORECASE)
 
 
 def _directory_stats(path: Path) -> dict[str, int]:
@@ -63,6 +74,40 @@ def _bundle_summary(path: Path) -> dict[str, Any]:
     return {"memories": len(memory_files), "memories_by_type": by_type}
 
 
+def parse_import_counts(lines: list[str] | str) -> dict[str, int] | None:
+    """Parse measured Memanto import counts from CLI output.
+
+    Expects a line like ``Imported: 8  Failed: 0``. Optionally also captures
+    ``Mapped memories`` / ``OKF nodes``. Returns ``None`` when the import line
+    is absent so callers never invent ``memanto_import``.
+    """
+    text = "\n".join(lines) if isinstance(lines, list) else lines
+    imported_match = _IMPORT_LINE.search(text)
+    if imported_match is None:
+        return None
+    counts = {
+        "imported": int(imported_match.group("imported")),
+        "failed": int(imported_match.group("failed")),
+    }
+    mapped_match = _MAPPED_LINE.search(text)
+    if mapped_match is not None:
+        counts["mapped"] = int(mapped_match.group("mapped"))
+        counts["skipped"] = int(mapped_match.group("skipped"))
+    nodes_match = _OKF_NODES_LINE.search(text)
+    if nodes_match is not None:
+        counts["okf_nodes"] = int(nodes_match.group("nodes"))
+    return counts
+
+
+def merge_import_counts(
+    report: dict[str, Any], import_counts: dict[str, int]
+) -> dict[str, Any]:
+    """Attach measured import counts without inventing missing fields."""
+    merged = dict(report)
+    merged["memanto_import"] = dict(import_counts)
+    return merged
+
+
 def build_report(
     source: Path,
     source_bundle: Path,
@@ -71,6 +116,7 @@ def build_report(
     roundtrip_recall: Path,
     *,
     run_id: str | None = None,
+    import_output: list[str] | str | None = None,
 ) -> dict[str, Any]:
     required = [
         source,
@@ -104,7 +150,7 @@ def build_report(
     if source_stats["bytes"]:
         reduction = 100 * (1 - portable_stats["bytes"] / source_stats["bytes"])
 
-    report = {
+    report: dict[str, Any] = {
         "source": {
             "tool": "LangGraph SqliteSaver",
             **source_counts,
@@ -137,6 +183,10 @@ def build_report(
     }
     if run_id:
         report["run_id"] = run_id
+    if import_output is not None:
+        import_counts = parse_import_counts(import_output)
+        if import_counts is not None:
+            report = merge_import_counts(report, import_counts)
     return report
 
 
@@ -145,10 +195,14 @@ def _markdown(report: dict[str, Any]) -> str:
     first = report["first_okf_bundle"]
     roundtrip = report["memanto_roundtrip_okf"]
     recall = report["recall"]
-    return "\n".join(
+    lines = [
+        "# Migration and round-trip evidence",
+        "",
+    ]
+    if report.get("run_id"):
+        lines.extend([f"Run ID: `{report['run_id']}`", ""])
+    lines.extend(
         [
-            "# Migration and round-trip evidence",
-            "",
             "| Stage | Records | Files | Bytes |",
             "| --- | ---: | ---: | ---: |",
             (
@@ -174,6 +228,17 @@ def _markdown(report: dict[str, Any]) -> str:
             "portable memories exported from Memanto.",
             f"- Recall after round trip: {recall['passed']}/{recall['questions']} "
             f"({recall['after_memanto_roundtrip']:.1f} parity).",
+        ]
+    )
+    import_counts = report.get("memanto_import")
+    if isinstance(import_counts, dict) and "imported" in import_counts:
+        failed = import_counts.get("failed", 0)
+        lines.append(
+            f"- Memanto import: {import_counts['imported']} imported, "
+            f"{failed} failed."
+        )
+    lines.extend(
+        [
             "- First portable bundle size change against the raw SQLite file: "
             f"{report['measured_storage_change_percent']:.1f}% smaller.",
             "",
@@ -183,6 +248,18 @@ def _markdown(report: dict[str, Any]) -> str:
             "",
         ]
     )
+    return "\n".join(lines)
+
+
+def write_report(report: dict[str, Any], output_dir: Path) -> tuple[Path, Path]:
+    output_dir.mkdir(parents=True, exist_ok=True)
+    json_path = output_dir / "migration-evidence.json"
+    markdown_path = output_dir / "migration-evidence.md"
+    json_path.write_text(
+        json.dumps(report, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
+    )
+    markdown_path.write_text(_markdown(report), encoding="utf-8")
+    return json_path, markdown_path
 
 
 def main() -> None:
@@ -210,7 +287,15 @@ def main() -> None:
         type=Path,
         default=ARTIFACTS / "memanto-roundtrip-recall-report.json",
     )
+    parser.add_argument(
+        "--import-output",
+        type=Path,
+        help="Optional text file of memanto migrate CLI output used to measure imports",
+    )
     args = parser.parse_args()
+    import_output = None
+    if args.import_output is not None:
+        import_output = args.import_output.read_text(encoding="utf-8")
     report = build_report(
         args.source,
         args.source_bundle,
@@ -218,14 +303,9 @@ def main() -> None:
         args.source_recall,
         args.roundtrip_recall,
         run_id=args.run_id,
+        import_output=import_output,
     )
-    args.output_dir.mkdir(parents=True, exist_ok=True)
-    json_path = args.output_dir / "migration-evidence.json"
-    markdown_path = args.output_dir / "migration-evidence.md"
-    json_path.write_text(
-        json.dumps(report, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
-    )
-    markdown_path.write_text(_markdown(report), encoding="utf-8")
+    write_report(report, args.output_dir)
     print(_markdown(report))
 
 

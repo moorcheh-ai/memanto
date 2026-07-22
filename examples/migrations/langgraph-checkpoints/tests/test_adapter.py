@@ -5,10 +5,13 @@ import sqlite3
 from pathlib import Path
 
 import pytest
-from build_evidence_report import build_report
+from build_demo_video import import_type_lines, type_breakdown_lines
+from build_evidence_report import build_report, parse_import_counts
 from generate_source import SESSIONS, generate_database
 from langgraph_to_okf import convert_checkpoint_database
+from langgraph_to_okf.adapter import _semantic_type, _state_to_memories, _ThreadRef
 from query_source import query_source
+from record_live_terminal import _clean, resolve_venv_python
 from validate_bundle import load_documents, validate_content
 from validate_parity import validate_parity
 
@@ -126,6 +129,136 @@ def test_evidence_report_uses_measured_files_and_recall(tmp_path):
     assert len(report["source"]["sha256"]) == 64
     assert len(report["first_okf_bundle"]["sha256"]) == 64
     assert report["recall"]["after_memanto_roundtrip"] == 1.0
+    assert "memanto_import" not in report
+
+
+def test_evidence_report_embeds_run_id_without_inventing_import(tmp_path):
+    source = generate_database(tmp_path / "source.sqlite")
+    source_bundle = tmp_path / "source-okf"
+    roundtrip_bundle = tmp_path / "roundtrip-okf"
+    convert_checkpoint_database(source, source_bundle)
+    convert_checkpoint_database(source, roundtrip_bundle)
+    recall = {"questions": 5, "passed": 5, "recall_parity": 1.0}
+    source_recall = tmp_path / "source-recall.json"
+    roundtrip_recall = tmp_path / "roundtrip-recall.json"
+    source_recall.write_text(json.dumps(recall), encoding="utf-8")
+    roundtrip_recall.write_text(json.dumps(recall), encoding="utf-8")
+
+    report = build_report(
+        source,
+        source_bundle,
+        roundtrip_bundle,
+        source_recall,
+        roundtrip_recall,
+        run_id="20260723T000000Z-deadbeef",
+    )
+
+    assert report["run_id"] == "20260723T000000Z-deadbeef"
+    assert "memanto_import" not in report
+
+
+def test_parse_import_counts_from_cli_output():
+    lines = [
+        "Import complete",
+        "OKF nodes: 8",
+        "Mapped memories: 8  (skipped 0)",
+        "Imported: 8  Failed: 0  Batches: 1",
+    ]
+    assert parse_import_counts(lines) == {
+        "imported": 8,
+        "failed": 0,
+        "mapped": 8,
+        "skipped": 0,
+        "okf_nodes": 8,
+    }
+    assert parse_import_counts(["Dry run complete", "Mapped memories: 8  (skipped 0)"]) is None
+
+
+def test_evidence_report_attaches_parsed_import_counts(tmp_path):
+    source = generate_database(tmp_path / "source.sqlite")
+    source_bundle = tmp_path / "source-okf"
+    roundtrip_bundle = tmp_path / "roundtrip-okf"
+    convert_checkpoint_database(source, source_bundle)
+    convert_checkpoint_database(source, roundtrip_bundle)
+    recall = {"questions": 5, "passed": 5, "recall_parity": 1.0}
+    source_recall = tmp_path / "source-recall.json"
+    roundtrip_recall = tmp_path / "roundtrip-recall.json"
+    source_recall.write_text(json.dumps(recall), encoding="utf-8")
+    roundtrip_recall.write_text(json.dumps(recall), encoding="utf-8")
+
+    report = build_report(
+        source,
+        source_bundle,
+        roundtrip_bundle,
+        source_recall,
+        roundtrip_recall,
+        run_id="run-with-import",
+        import_output="Imported: 8  Failed: 0\nMapped memories: 8  (skipped 0)\n",
+    )
+
+    assert report["run_id"] == "run-with-import"
+    assert report["memanto_import"]["imported"] == 8
+    assert report["memanto_import"]["failed"] == 0
+
+
+def test_demo_video_helpers_use_summary_type_counts():
+    summary = {
+        "memories_by_type": {
+            "artifact": 2,
+            "decision": 1,
+            "fact": 2,
+            "goal": 1,
+            "preference": 2,
+        }
+    }
+    breakdown = type_breakdown_lines(summary)
+    assert any("artifact/" in line and "2 transcripts" in line for line in breakdown)
+    assert any("preference/" in line and "2 preferences" in line for line in breakdown)
+    joined = " ".join(import_type_lines(summary))
+    assert "artifact: 2" in joined
+    assert "preference: 2" in joined
+
+
+def test_resolve_venv_python_finds_scripts_or_bin(tmp_path):
+    scripts = tmp_path / ".venv" / "Scripts"
+    scripts.mkdir(parents=True)
+    windows_python = scripts / "python.exe"
+    windows_python.write_text("", encoding="utf-8")
+    assert resolve_venv_python(tmp_path) == windows_python
+
+    posix_root = tmp_path / "posix"
+    bin_dir = posix_root / ".venv" / "bin"
+    bin_dir.mkdir(parents=True)
+    posix_python = bin_dir / "python"
+    posix_python.write_text("", encoding="utf-8")
+    assert resolve_venv_python(posix_root) == posix_python
+
+
+def test_path_redaction_removes_absolute_windows_home_paths():
+    home = Path.home()
+    sample = (
+        f"export wrote to {home / '.memanto' / 'agent-roundtrip-okf'} "
+        f'json="{(home / ".memanto").as_posix()}" '
+        f"escaped={str(home).replace(chr(92), chr(92) * 2)}"
+    )
+    cleaned = _clean(sample)
+    assert str(home) not in cleaned
+    assert home.as_posix() not in cleaned
+    assert "~" in cleaned
+
+
+def test_commitment_channel_maps_heuristically():
+    assert _semantic_type("commitments") == "commitment"
+    assert _semantic_type("tasks") == "commitment"
+    memories = _state_to_memories(
+        _ThreadRef("demo", ""),
+        {"commitments": ["Ship the release notes"]},
+        "2026-07-23T00:00:00+00:00",
+        "ckpt-1",
+    )
+    assert len(memories) == 1
+    assert memories[0]["type"] == "commitment"
+    assert "Ship the release notes" in memories[0]["body"]
 
 
 def test_source_questions_read_latest_checkpoint_state(tmp_path):

@@ -1,4 +1,17 @@
-"""Convert the latest state of each LangGraph thread to an OKF bundle.
+"""Convert the latest state of each LangGraph sync SQLite thread to an OKF bundle.
+
+Scope (honest / measured):
+- Official sync SQLite ``SqliteSaver`` only, not Postgres, Redis, or Async savers.
+- Migrates the **latest** checkpoint state per ``(thread_id, checkpoint_ns)``.
+  This is not a full checkpoint-history migration.
+- Proven demo channels: ``messages`` → artifact transcripts; profile fields that
+  look like preferences → preference; ``decisions`` → decision; ``facts``-style
+  dict/list channels → fact; ``goals`` → goal.
+- ``commitments`` / ``tasks`` channel names map heuristically to ``commitment``.
+  A focused fixture covers this mapping, but the live cloud demo does not.
+- Non-JSON / non-``BaseMessage`` values are rendered with ``repr()`` and should
+  be reviewed before import.
+- The adapter and OKF importer do not emit token, latency, or billing savings.
 
 The adapter uses LangGraph's public ``SqliteSaver.list`` API for checkpoint
 deserialization. A SQLite backup is opened instead of the source database so

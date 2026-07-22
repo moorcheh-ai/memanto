@@ -71,18 +71,48 @@ MONO = _font(20)
 SMALL = _font(17)
 
 
+def _path_variants(path: Path | str) -> list[str]:
+    text = str(path)
+    variants = [
+        text,
+        text.replace("\\", "/"),
+        text.replace("/", "\\"),
+        text.replace("\\", "\\\\"),
+        text.replace("\\\\", "\\"),
+    ]
+    # Prefer longer/more-specific forms first so escaped JSON paths redact fully.
+    return sorted(dict.fromkeys(variants), key=len, reverse=True)
+
+
 def _clean(line: str) -> str:
     line = ANSI.sub("", line).replace("\r", "").translate(BOX_DRAWING).strip()
-    home = str(Path.home())
-    replacements = [
-        (str(REPOSITORY), "<repo>"),
-        (home, "~"),
-        (str(REPOSITORY).replace("\\", "/"), "<repo>"),
-        (home.replace("\\", "/"), "~"),
-    ]
-    for source, replacement in replacements:
-        line = line.replace(source, replacement)
+    for source in _path_variants(REPOSITORY):
+        line = line.replace(source, "<repo>")
+    for source in _path_variants(Path.home()):
+        line = line.replace(source, "~")
+    # Catch residual absolute Windows home paths that survived escaping quirks.
+    line = re.sub(
+        r"(?i)(?:[A-Z]:)?(?:\\\\|/)+Users(?:\\\\|/)+[^\\\\/\s\"']+",
+        "~",
+        line,
+    )
     return line
+
+
+def resolve_venv_python(root: Path) -> Path:
+    """Return Scripts/python.exe (Windows) or bin/python (POSIX) under ``root/.venv``."""
+    candidates = [
+        root / ".venv" / "Scripts" / "python.exe",
+        root / ".venv" / "bin" / "python",
+        root / ".venv" / "bin" / "python3",
+    ]
+    for candidate in candidates:
+        if candidate.is_file():
+            return candidate
+    raise FileNotFoundError(
+        f"No virtualenv Python found under {root / '.venv'} "
+        "(expected Scripts/python.exe or bin/python)"
+    )
 
 
 def _append(events: list[Event], started: float, text: str, color: str = WHITE) -> None:
@@ -196,12 +226,8 @@ def _render(events: list[Event], output: Path) -> None:
 
 
 def _commands(agent: str, run_id: str, run_dir: Path) -> list[Command]:
-    example_python = ROOT / ".venv" / "Scripts" / "python.exe"
-    repository_python = REPOSITORY / ".venv" / "Scripts" / "python.exe"
-    if not example_python.is_file() or not repository_python.is_file():
-        raise FileNotFoundError(
-            "Install both example and repository virtual environments"
-        )
+    example_python = resolve_venv_python(ROOT)
+    repository_python = resolve_venv_python(REPOSITORY)
     generated_bundle = ROOT / "artifacts" / "langgraph-okf"
     generated_source = ROOT / "artifacts" / "langgraph-checkpoints.sqlite"
     bundle = run_dir / "langgraph-okf"
@@ -212,6 +238,7 @@ def _commands(agent: str, run_id: str, run_dir: Path) -> list[Command]:
     source_answers = run_dir / "source-answers.json"
     memanto_answers = run_dir / "memanto-answers.json"
     recall_report = run_dir / "recall-parity.json"
+    staged_bundle_label = f"artifacts/runs/{run_id}/langgraph-okf"
     cli = [str(repository_python), "-m", "memanto.cli.main"]
     return [
         Command("source", "python run_demo.py", [str(example_python), "run_demo.py"], ROOT),
@@ -242,7 +269,7 @@ def _commands(agent: str, run_id: str, run_dir: Path) -> list[Command]:
         ),
         Command(
             "dry_run",
-            "memanto migrate okf ./artifacts/langgraph-okf --dry-run",
+            f"memanto migrate okf ./{staged_bundle_label} --dry-run",
             cli + ["migrate", "okf", str(bundle), "--dry-run"],
             REPOSITORY,
         ),
@@ -263,7 +290,7 @@ def _commands(agent: str, run_id: str, run_dir: Path) -> list[Command]:
         ),
         Command(
             "cloud_import",
-            f"memanto migrate okf ./artifacts/langgraph-okf --agent {agent}",
+            f"memanto migrate okf ./{staged_bundle_label} --agent {agent}",
             cli + ["migrate", "okf", str(bundle), "--agent", agent],
             REPOSITORY,
         ),
@@ -323,7 +350,7 @@ def _commands(agent: str, run_id: str, run_dir: Path) -> list[Command]:
         ),
         Command(
             "evidence_report",
-            "python build_evidence_report.py <roundtrip-okf>",
+            "python build_evidence_report.py  # measured run-scoped report",
             [
                 str(example_python),
                 "build_evidence_report.py",
@@ -348,6 +375,12 @@ def _commands(agent: str, run_id: str, run_dir: Path) -> list[Command]:
 
 
 def main() -> None:
+    from build_evidence_report import (
+        merge_import_counts,
+        parse_import_counts,
+        write_report,
+    )
+
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--agent-prefix", default="langgraph-migration")
     parser.add_argument("--run-id")
@@ -385,6 +418,20 @@ def main() -> None:
 
     evidence = run_dir / "migration-evidence.json"
     evidence_data = json.loads(evidence.read_text(encoding="utf-8"))
+    import_result = next(
+        (result for result in command_results if result.key == "cloud_import"),
+        None,
+    )
+    import_counts = (
+        parse_import_counts(import_result.output) if import_result is not None else None
+    )
+    if import_counts is not None:
+        evidence_data = merge_import_counts(evidence_data, import_counts)
+        write_report(evidence_data, run_dir)
+
+    # Rebuild cast/video hashes after evidence rewrite is already done; evidence
+    # itself is hashed after the optional import merge above.
+    evidence_md = run_dir / "migration-evidence.md"
     manifest = {
         "run_id": run_id,
         "agent": agent,
@@ -425,6 +472,10 @@ def main() -> None:
                 "sha256": evidence_data["memanto_roundtrip_okf"]["sha256"],
             },
             "evidence": {"path": evidence.name, "sha256": file_hash(evidence)},
+            "evidence_markdown": {
+                "path": evidence_md.name,
+                "sha256": file_hash(evidence_md),
+            },
             "cast": {"path": cast.name, "sha256": file_hash(cast)},
             "video": {"path": output.name, "sha256": file_hash(output)},
         },

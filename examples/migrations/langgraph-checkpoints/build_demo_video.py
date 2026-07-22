@@ -120,7 +120,7 @@ def _run_scene(progress: float, summary: dict, recall: dict) -> Image.Image:
         (f"    checkpoints written: {summary['checkpoints']}", GREEN),
         ("2/3 Converting latest thread state to OKF", WHITE),
         (f"    portable memories: {summary['memories']}", GREEN),
-        ("    skipped source records: 0", GREEN),
+        (f"    skipped source records: {_skipped_count(summary)}", GREEN),
         ("3/3 Checking expected facts in the OKF bundle", WHITE),
         (f"    questions passed: {recall['passed']}/{recall['questions']}", GREEN),
         (f"    content_coverage: {recall['content_coverage']:.1f}", GREEN),
@@ -156,21 +156,62 @@ def _correction_scene(progress: float, summary: dict, recall: dict) -> Image.Ima
     return image
 
 
+def _type_counts(summary: dict) -> dict[str, int]:
+    raw = summary.get("memories_by_type") or {}
+    return {str(key): int(value) for key, value in raw.items()}
+
+
+def _skipped_count(summary: dict) -> int:
+    if "skipped" in summary:
+        return int(summary["skipped"])
+    return 0
+
+
+def type_breakdown_lines(summary: dict) -> list[str]:
+    """Render measured type counts for the captioned trailer terminal scenes."""
+    counts = _type_counts(summary)
+    labels = {
+        "artifact": "transcripts",
+        "decision": "decisions",
+        "fact": "facts",
+        "goal": "goals",
+        "preference": "preferences",
+        "commitment": "commitments",
+    }
+    lines: list[str] = []
+    for memory_type, count in sorted(counts.items()):
+        noun = labels.get(memory_type, memory_type)
+        pad = max(1, 12 - len(memory_type))
+        lines.append(f"    {memory_type}/{' ' * pad}{count} {noun}")
+    return lines
+
+
+def import_type_lines(summary: dict, *, width: int = 3) -> list[str]:
+    """Chunk measured type counts into short dry-run style lines."""
+    counts = _type_counts(summary)
+    items = [f"{key}: {value}" for key, value in sorted(counts.items())]
+    lines: list[str] = []
+    for index in range(0, len(items), width):
+        lines.append("  ".join(items[index : index + width]))
+    return lines
+
+
 def _okf_scene(progress: float, summary: dict, recall: dict) -> Image.Image:
     image, draw = _canvas()
     _header(draw, "3 / 4  OPEN THE BUNDLE")
-    lines = [
+    lines: list[tuple[str, str]] = [
         ("langgraph-okf/", CYAN),
         ("  index.md", WHITE),
         ("  memories/", WHITE),
-        ("    artifact/  2 transcripts", MUTED),
-        ("    decision/  1 decision", MUTED),
-        ("    fact/      2 facts", MUTED),
-        ("    goal/      1 goal", MUTED),
-        ("    preference/2 preferences", MUTED),
-        ("  metrics/migration-summary.md", WHITE),
-        ("  migration-summary.json", WHITE),
     ]
+    for line in type_breakdown_lines(summary):
+        lines.append((line, MUTED))
+    lines.extend(
+        [
+            ("  metrics/migration-summary.md", WHITE),
+            ("  migration-summary.json", WHITE),
+        ]
+    )
     _terminal(draw, lines)
     return image
 
@@ -178,22 +219,24 @@ def _okf_scene(progress: float, summary: dict, recall: dict) -> Image.Image:
 def _import_scene(progress: float, summary: dict, recall: dict) -> Image.Image:
     image, draw = _canvas()
     _header(draw, "4 / 4  VERIFY MEMANTO")
-    lines = [
+    skipped = _skipped_count(summary)
+    lines: list[tuple[str, str]] = [
         ("$ memanto migrate okf ./artifacts/langgraph-okf --dry-run", CYAN),
         ("Loading OKF bundle...", WHITE),
         ("Mapping OKF nodes onto Memanto schema...", WHITE),
         (f"OKF nodes: {summary['memories']}", GREEN),
-        (f"Mapped memories: {summary['memories']}  (skipped 0)", GREEN),
-        ("artifact: 2  decision: 1  fact: 2", MUTED),
-        ("goal: 1  preference: 2", MUTED),
-        ("Dry run complete. No writes performed.", GREEN),
+        (f"Mapped memories: {summary['memories']}  (skipped {skipped})", GREEN),
     ]
+    for line in import_type_lines(summary):
+        lines.append((line, MUTED))
+    lines.append(("Dry run complete. No writes performed.", GREEN))
     _terminal(draw, lines)
     return image
 
 
 def _outro_scene(progress: float, summary: dict, recall: dict) -> Image.Image:
     image, draw = _canvas()
+    skipped = _skipped_count(summary)
     draw.text((64, 105), "IN", font=LABEL, fill=MUTED)
     draw.text((64, 145), "LangGraph SQLite", font=TITLE, fill=WHITE)
     draw.text((64, 254), "OWNED", font=LABEL, fill=MUTED)
@@ -203,7 +246,7 @@ def _outro_scene(progress: float, summary: dict, recall: dict) -> Image.Image:
     draw.text(
         (64, 575),
         f"{summary['checkpoints']} checkpoints. {summary['threads']} threads. "
-        f"{summary['memories']} memories. 0 skipped.",
+        f"{summary['memories']} memories. {skipped} skipped.",
         font=SUBTITLE,
         fill=WHITE,
     )
