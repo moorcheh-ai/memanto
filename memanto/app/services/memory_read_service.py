@@ -237,7 +237,7 @@ class MemoryReadService:
                     "temporal_mode": "as_of",
                 }
 
-            all_memories = self._fetch_all_memories(namespaces, type=type, tags=tags)
+            all_memories = self._fetch_all_memories(namespaces, type=type, tags=tags, skip_ttl_filter=True)
             all_memories = self._apply_temporal_filter(
                 all_memories, created_before=as_of_dt.isoformat()
             )
@@ -300,7 +300,7 @@ class MemoryReadService:
             if not namespaces:
                 return {"results": [], "total_found": 0, "since_date": since_date}
 
-            all_memories = self._fetch_all_memories(namespaces, type=type, tags=tags)
+            all_memories = self._fetch_all_memories(namespaces, type=type, tags=tags, skip_ttl_filter=True)
 
             # Filter to only changed memories
             changed_memories = []
@@ -393,7 +393,7 @@ class MemoryReadService:
             if not namespaces:
                 return {"results": [], "total_found": 0}
 
-            unique_memories = self._fetch_all_memories(namespaces, type=type, tags=tags)
+            unique_memories = self._fetch_all_memories(namespaces, type=type, tags=tags, skip_ttl_filter=True)
 
             if created_after or created_before:
                 unique_memories = self._apply_temporal_filter(
@@ -426,6 +426,7 @@ class MemoryReadService:
         namespaces: list[str],
         type: list[str] | None = None,
         tags: list[str] | None = None,
+        skip_ttl_filter: bool = False,
     ) -> list[dict[str, Any]]:
         """
         List all stored memories across the given namespaces via Moorcheh's
@@ -434,6 +435,12 @@ class MemoryReadService:
 
         Iterates through all pages using cursor-based pagination (next_token)
         so results are not truncated at the 100-item per-page cap.
+
+        When skip_ttl_filter is True, expired memories are returned without
+        pre-filtering. This is needed by temporal query methods (search_as_of,
+        search_changed_since, search_recent) that apply their own time-relative
+        expiry logic and must not have currently-expired memories removed before
+        they can evaluate them.
         """
         items: list[Any] = []
         for ns in namespaces:
@@ -479,6 +486,8 @@ class MemoryReadService:
 
             memories.append(formatted)
 
+        if skip_ttl_filter:
+            return memories
         return self._filter_expired_memories(memories)
 
     def _memory_version_key(
