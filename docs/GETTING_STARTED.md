@@ -424,7 +424,7 @@ MEMANTO supports 6 different agent patterns. Choose the one that fits your use c
 | **Long-Running Session** | Extended conversations (weeks/months) | [Pattern 4](AGENT_INTEGRATION_GUIDE.md#pattern-4-long-running-session-with-context-compression) |
 | **Multi-Scope Analytics** | Cross-user insights, recommendations | [Pattern 5](AGENT_INTEGRATION_GUIDE.md#pattern-5-multi-scope-agent---cross-user-intelligence) |
 
-See [AGENT_INTEGRATION_GUIDE.md](AGENT_INTEGRATION_GUIDE.md) for a complete comparison.
+See [AGENT_PATTERNS_OVERVIEW.md](AGENT_PATTERNS_OVERVIEW.md) for a complete comparison.
 
 ---
 
@@ -438,19 +438,19 @@ See [AGENT_INTEGRATION_GUIDE.md](AGENT_INTEGRATION_GUIDE.md) for a complete comp
    - Performance optimization tips
 
 2. **Explore Advanced Features**:
-   - [Batch Operations](CLI_USER_GUIDE.md#batch-operations) — Store 100 memories in 1 API call
-   - [Context Summarization](SESSION_ARCHITECTURE.md#session-management) — Auto-compress old conversations
-   - [Multi-Scope Search](AGENT_INTEGRATION_GUIDE.md#memory-search) — Query across users simultaneously
+   - [Batch Operations](ENHANCEMENTS_SUMMARY.md#1-batch-write-operations) - Store 100 memories in 1 API call
+   - [Context Summarization](ENHANCEMENTS_SUMMARY.md#10-context-summarization-service) - Auto-compress old conversations
+   - [Multi-Scope Search](ENHANCEMENTS_SUMMARY.md#3-multi-scope-search) - Query across users simultaneously
 
 3. **Review API Documentation**:
    - Interactive: http://localhost:8000/docs
-   - Architecture: [SESSION_ARCHITECTURE.md](SESSION_ARCHITECTURE.md)
-   - API Reference: http://localhost:8000/docs
+   - Architecture: [ARCHITECTURE_ONE_PAGER.md](ARCHITECTURE_ONE_PAGER.md)
+   - All Enhancements: [ENHANCEMENTS_SUMMARY.md](ENHANCEMENTS_SUMMARY.md)
 
 ### For AI Agents (Runtime)
 
 If you're an AI agent reading this:
- - See [AGENT_INTEGRATION_GUIDE.md](AGENT_INTEGRATION_GUIDE.md) for runtime API usage
+ - See [AGENT_RUNTIME_GUIDE.md](AGENT_RUNTIME_GUIDE.md) for runtime API usage
  - API Reference: http://your-memanto-url/docs
  - Quick start: Use `/api/v2/agents/{id}/remember` and `/api/v2/agents/{id}/recall` endpoints
 
@@ -523,9 +523,9 @@ Now that MEMANTO is running, you're ready to build memory-enabled AI agents!
 
 **Recommended reading order:**
 1. ✅ You are here: GETTING_STARTED.md
-2. → [AGENT_INTEGRATION_GUIDE.md](AGENT_INTEGRATION_GUIDE.md) — Agent integration patterns
-3. → [SESSION_ARCHITECTURE.md](SESSION_ARCHITECTURE.md) — Session & memory architecture
-4. → [AGENT_MEMORY_BEST_PRACTICES.md](AGENT_MEMORY_BEST_PRACTICES.md) — Memory best practices
-5. → [DEPLOYMENT_GUIDE.md](DEPLOYMENT_GUIDE.md) — Deployment guide
+2. → [AGENT_INTEGRATION_GUIDE.md](AGENT_INTEGRATION_GUIDE.md) - Complete code examples
+3. → [AGENT_PATTERNS_OVERVIEW.md](AGENT_PATTERNS_OVERVIEW.md) - Choose your pattern
+4. → [ENHANCEMENTS_SUMMARY.md](ENHANCEMENTS_SUMMARY.md) - Advanced features
+5. → [ARCHITECTURE_ONE_PAGER.md](ARCHITECTURE_ONE_PAGER.md) - System design
 
 **Happy building!** 🚀
