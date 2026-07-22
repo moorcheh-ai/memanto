@@ -21,6 +21,18 @@ def agent_namespace(agent_id: str) -> str:
     return f"memanto_agent_{agent_id}"
 
 
+def _normalize_tag_values(tags: list[str]) -> list[str]:
+    """Normalize tags and reject values unsafe for comma-separated storage."""
+    normalized_tags = [tag.strip() for tag in tags]
+    if any(not tag for tag in normalized_tags):
+        raise ValueError("tag values must not be empty or whitespace")
+    if any("," in tag for tag in normalized_tags):
+        raise ValueError(
+            "tag values must not contain commas; use separate list items instead"
+        )
+    return normalized_tags
+
+
 class MemoryRecord(BaseModel):
     """Structured memory record with standardized format"""
 
@@ -55,11 +67,7 @@ class MemoryRecord(BaseModel):
         tags: list[str],
     ) -> list[str]:
         """Reject tags that cannot survive comma-separated storage."""
-        if any("," in tag for tag in tags):
-            raise ValueError(
-                "tag values must not contain commas; use separate list items instead"
-            )
-        return tags
+        return _normalize_tag_values(tags)
 
     def to_moorcheh_document(self) -> dict[str, Any]:
         """
@@ -69,11 +77,12 @@ class MemoryRecord(BaseModel):
         powerful filtering using the # syntax (e.g., #memory_type:fact #confidence>0.8)
         """
         memory_type = self.type or "fact"
+        tags = _normalize_tag_values(self.tags)
 
         # Format text as standardized card for semantic search
         text = f"[{memory_type.upper()}] {self.title}\n\n{self.content}"
-        if self.tags:
-            text += f"\n\nTags: {', '.join(self.tags)}"
+        if tags:
+            text += f"\n\nTags: {', '.join(tags)}"
 
         # Build document with flat metadata fields (not nested!)
         document = {
@@ -96,8 +105,8 @@ class MemoryRecord(BaseModel):
         # Add optional fields only if present
         if self.source_ref:
             document["source_ref"] = self.source_ref
-        if self.tags:
-            document["tags"] = ",".join(self.tags)  # Comma-separated for filtering
+        if tags:
+            document["tags"] = ",".join(tags)  # Comma-separated for filtering
         if self.expires_at:
             if isinstance(self.expires_at, datetime):
                 document["expires_at"] = self.expires_at.isoformat()
