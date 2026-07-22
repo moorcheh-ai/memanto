@@ -528,7 +528,10 @@ class MemoryReadService:
 
             memories.append(formatted)
 
-        return self._filter_expired_memories(memories)
+        # Do NOT filter expired memories here — temporal queries evaluate
+        # TTL against their own reference time (as_of_date / since_date),
+        # not the current wall-clock time. Fixes #770.
+        return memories
 
     def _memory_version_key(
         self, memory: dict[str, Any], fetch_index: int
