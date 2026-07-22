@@ -6,7 +6,7 @@ import uuid
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from memanto.app.constants import (
     MemoryType,
@@ -47,6 +47,19 @@ class MemoryRecord(BaseModel):
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     expires_at: datetime | None = None
     ttl_seconds: int | None = Field(default=None, gt=0)
+
+    @field_validator("tags")
+    @classmethod
+    def reject_commas_in_tag_values(
+        cls,
+        tags: list[str],
+    ) -> list[str]:
+        """Reject tags that cannot survive comma-separated storage."""
+        if any("," in tag for tag in tags):
+            raise ValueError(
+                "tag values must not contain commas; use separate list items instead"
+            )
+        return tags
 
     def to_moorcheh_document(self) -> dict[str, Any]:
         """
