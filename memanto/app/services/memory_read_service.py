@@ -350,6 +350,7 @@ class MemoryReadService:
                 return {"results": [], "total_found": 0, "since_date": since_date}
 
             all_memories = self._fetch_all_memories(namespaces, type=type, tags=tags)
+            all_memories = self._filter_expired_memories(all_memories)
 
             # Filter to only changed memories
             changed_memories = []
@@ -443,6 +444,7 @@ class MemoryReadService:
                 return {"results": [], "total_found": 0}
 
             unique_memories = self._fetch_all_memories(namespaces, type=type, tags=tags)
+            unique_memories = self._filter_expired_memories(unique_memories)
 
             if created_after or created_before:
                 unique_memories = self._apply_temporal_filter(
