@@ -55,8 +55,13 @@ class MemoryReadService:
             self._namespace_service = NamespaceService(self.client)
         return self._namespace_service
 
-    def get_memory(self, memory_id: str, namespace: str) -> dict[str, Any] | None:
-        """Retrieve specific memory by ID with TTL enforcement"""
+    def get_memory(self, memory_id: str, namespace: str, include_expired: bool = False) -> dict[str, Any] | None:
+        """Retrieve specific memory by ID with TTL enforcement.
+
+        When include_expired is True, expired memories are returned without
+        TTL filtering. This is needed by update_memory to allow reviving or
+        modifying expired memories (e.g. extending TTL, editing content).
+        """
         try:
             result = self.client.documents.get(
                 namespace_name=namespace, ids=[memory_id]
@@ -71,7 +76,10 @@ class MemoryReadService:
             if items and isinstance(items, list) and len(items) > 0:
                 memory = self._format_memory_item(items[0])
 
-                # Apply TTL enforcement
+                # Apply TTL enforcement (unless caller requests expired memories)
+                if include_expired:
+                    return memory
+
                 filtered = self._filter_expired_memories([memory])
                 if filtered:
                     return filtered[0]
@@ -237,7 +245,7 @@ class MemoryReadService:
                     "temporal_mode": "as_of",
                 }
 
-            all_memories = self._fetch_all_memories(namespaces, type=type, tags=tags)
+            all_memories = self._fetch_all_memories(namespaces, type=type, tags=tags, skip_ttl_filter=True)
             all_memories = self._apply_temporal_filter(
                 all_memories, created_before=as_of_dt.isoformat()
             )
@@ -300,7 +308,7 @@ class MemoryReadService:
             if not namespaces:
                 return {"results": [], "total_found": 0, "since_date": since_date}
 
-            all_memories = self._fetch_all_memories(namespaces, type=type, tags=tags)
+            all_memories = self._fetch_all_memories(namespaces, type=type, tags=tags, skip_ttl_filter=True)
 
             # Filter to only changed memories
             changed_memories = []
@@ -393,7 +401,7 @@ class MemoryReadService:
             if not namespaces:
                 return {"results": [], "total_found": 0}
 
-            unique_memories = self._fetch_all_memories(namespaces, type=type, tags=tags)
+            unique_memories = self._fetch_all_memories(namespaces, type=type, tags=tags, skip_ttl_filter=True)
 
             if created_after or created_before:
                 unique_memories = self._apply_temporal_filter(
@@ -426,6 +434,7 @@ class MemoryReadService:
         namespaces: list[str],
         type: list[str] | None = None,
         tags: list[str] | None = None,
+        skip_ttl_filter: bool = False,
     ) -> list[dict[str, Any]]:
         """
         List all stored memories across the given namespaces via Moorcheh's
@@ -434,6 +443,12 @@ class MemoryReadService:
 
         Iterates through all pages using cursor-based pagination (next_token)
         so results are not truncated at the 100-item per-page cap.
+
+        When skip_ttl_filter is True, expired memories are returned without
+        pre-filtering. This is needed by temporal query methods (search_as_of,
+        search_changed_since, search_recent) that apply their own time-relative
+        expiry logic and must not have currently-expired memories removed before
+        they can evaluate them.
         """
         items: list[Any] = []
         for ns in namespaces:
@@ -479,6 +494,8 @@ class MemoryReadService:
 
             memories.append(formatted)
 
+        if skip_ttl_filter:
+            return memories
         return self._filter_expired_memories(memories)
 
     def _memory_version_key(
@@ -556,10 +573,15 @@ class MemoryReadService:
                 value = _validate_filter_token(value, f"metadata '{key}'")
                 filter_parts.append(f"#{key}:{value}")
 
+        # Sanitize user query — strip # to prevent filter injection.
+        # Without this, a user can inject #memory_type:fact into the query
+        # string to bypass caller-specified type/status/tag filters.
+        sanitized_query = query.replace("#", "")
+
         # Combine query with filters
         if filter_parts:
-            return f"{query} {' '.join(filter_parts)}"
-        return query
+            return f"{sanitized_query} {' '.join(filter_parts)}"
+        return sanitized_query
 
     def _apply_temporal_filter(
         self,
