@@ -32,8 +32,8 @@ from memanto.app.models import (
     RememberResponse,
     TemporalRecallResponse,
     UploadFileResponse,
-    validate_memory_source,
-    validate_memory_tags,
+    BoundedSource,
+    BoundedTags,
 )
 from memanto.app.models.session import Session
 from memanto.app.routes.auth_deps import get_current_session, get_session_service
@@ -211,24 +211,12 @@ class MemoryEditRequest(BaseModel):
     content: str | None = Field(default=None, max_length=10000)
     type: str | None = None
     confidence: float | None = Field(default=None, ge=0.0, le=1.0)
-    tags: list[str] | None = None
-    source: str | None = None
+    tags: BoundedTags | None = None
+    source: BoundedSource | None = None
 
     def to_updates(self) -> dict[str, object]:
         """Return only fields the caller explicitly wants to update."""
         return self.model_dump(exclude_none=True)
-
-    @field_validator("source")
-    @classmethod
-    def source_must_be_bounded(cls, value: str | None) -> str | None:
-        if value is None:
-            return value
-        return validate_memory_source(value)
-
-    @field_validator("tags")
-    @classmethod
-    def tags_must_be_bounded(cls, value: list[str] | None) -> list[str] | None:
-        return validate_memory_tags(value)
 
 
 def enforce_session_scope(session: Session, agent_id: str) -> None:

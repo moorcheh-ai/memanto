@@ -3,9 +3,9 @@ MEMANTO API Models
 """
 
 from datetime import datetime
-from typing import Any, Literal
+from typing import Annotated, Any, Literal
 
-from pydantic import BaseModel, Field, field_validator, model_validator
+from pydantic import BaseModel, Field, StringConstraints, field_validator, model_validator
 
 from memanto.app.constants import (
     VALID_PROVENANCE_TYPES,
@@ -22,77 +22,15 @@ def _validate_non_blank_content(value: str) -> str:
     return value
 
 
-MAX_TAG_COUNT = 20
-MAX_TAG_LENGTH = 64
-MAX_SOURCE_LENGTH = 128
-MAX_SOURCE_REF_LENGTH = 512
+MemoryTag = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=64)]
+BoundedTags = Annotated[list[MemoryTag], Field(max_length=20)]
 
-
-def validate_memory_tags(value: list[str] | None) -> list[str] | None:
-    """Bound tags before they are copied into search text and metadata."""
-    if value is None:
-        return value
-    if len(value) > MAX_TAG_COUNT:
-        raise ValueError(f"tags cannot contain more than {MAX_TAG_COUNT} entries")
-
-    cleaned = []
-    for tag in value:
-        cleaned_tag = tag.strip()
-        if not cleaned_tag:
-            raise ValueError("tags cannot contain blank values")
-        if len(cleaned_tag) > MAX_TAG_LENGTH:
-            raise ValueError(
-                f"tags cannot exceed {MAX_TAG_LENGTH} characters per entry"
-            )
-        cleaned.append(cleaned_tag)
-    return cleaned
-
-
-def validate_memory_source(value: str) -> str:
-    """Bound source labels before they are stored in document metadata."""
-    cleaned_source = value.strip()
-    if not cleaned_source:
-        raise ValueError("source must be a non-empty string")
-    if len(cleaned_source) > MAX_SOURCE_LENGTH:
-        raise ValueError(f"source cannot exceed {MAX_SOURCE_LENGTH} characters")
-    return cleaned_source
-
-
-def validate_memory_source_ref(value: str | None) -> str | None:
-    """Bound optional source references before storage."""
-    if value is None:
-        return value
-    cleaned_source_ref = value.strip()
-    if not cleaned_source_ref:
-        return None
-    if len(cleaned_source_ref) > MAX_SOURCE_REF_LENGTH:
-        raise ValueError(
-            f"source_ref cannot exceed {MAX_SOURCE_REF_LENGTH} characters"
-        )
-    return cleaned_source_ref
+BoundedSource = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=128)]
+BoundedSourceRef = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=512)]
 
 
 # Request Models
-class _BoundedMetadataMixin(BaseModel):
-    """Shared validators for memory metadata fields."""
-
-    @field_validator("source", check_fields=False)
-    @classmethod
-    def source_must_be_bounded(cls, value: str) -> str:
-        return validate_memory_source(value)
-
-    @field_validator("source_ref", check_fields=False)
-    @classmethod
-    def source_ref_must_be_bounded(cls, value: str | None) -> str | None:
-        return validate_memory_source_ref(value)
-
-    @field_validator("tags", check_fields=False)
-    @classmethod
-    def tags_must_be_bounded(cls, value: list[str]) -> list[str]:
-        return validate_memory_tags(value) or []
-
-
-class MemoryStoreRequest(_BoundedMetadataMixin):
+class MemoryStoreRequest(BaseModel):
     """Request body for storing a single memory."""
 
     type: MemoryType
@@ -100,10 +38,10 @@ class MemoryStoreRequest(_BoundedMetadataMixin):
     content: str = Field(max_length=10000)
     agent_id: str
     actor_id: str
-    source: SourceType
-    source_ref: str | None = None
+    source: BoundedSource
+    source_ref: BoundedSourceRef | None = None
     confidence: float = Field(ge=0.0, le=1.0, default=0.8)
-    tags: list[str] = Field(default_factory=list)
+    tags: BoundedTags = Field(default_factory=list)
     ttl_seconds: int | None = None
     user_confirmed: bool = False
 
@@ -114,16 +52,16 @@ class MemoryStoreRequest(_BoundedMetadataMixin):
         return _validate_non_blank_content(value)
 
 
-class MemoryBatchItem(_BoundedMetadataMixin):
+class MemoryBatchItem(BaseModel):
     """Single memory item for batch write"""
 
     type: MemoryType
     title: str = Field(max_length=100)
     content: str = Field(max_length=10000)
-    source: SourceType
-    source_ref: str | None = None
+    source: BoundedSource
+    source_ref: BoundedSourceRef | None = None
     confidence: float = Field(ge=0.0, le=1.0, default=0.8)
-    tags: list[str] = Field(default_factory=list)
+    tags: BoundedTags = Field(default_factory=list)
     ttl_seconds: int | None = None
     id: str | None = None  # Optional custom ID
 
@@ -157,8 +95,8 @@ class BatchRememberItem(BaseModel):
         None, max_length=100, description="Memory title (defaults to truncated content)"
     )
     confidence: float = Field(0.8, ge=0.0, le=1.0, description="Confidence score (0-1)")
-    tags: list[str] | None = Field(None, description="Tags for this memory")
-    source: str = Field("agent", description="Source of memory")
+    tags: BoundedTags | None = Field(None, description="Tags for this memory")
+    source: BoundedSource = Field("agent", description="Source of memory")
     provenance: str = Field(
         "explicit_statement",
         description="How memory was obtained (explicit_statement, inferred, observed, etc.)",
@@ -169,16 +107,6 @@ class BatchRememberItem(BaseModel):
     def validate_content(cls, value: str) -> str:
         """Ensure session memory writes contain useful non-blank content."""
         return _validate_non_blank_content(value)
-
-    @field_validator("source")
-    @classmethod
-    def source_must_be_bounded(cls, value: str) -> str:
-        return validate_memory_source(value)
-
-    @field_validator("tags")
-    @classmethod
-    def tags_must_be_bounded(cls, value: list[str] | None) -> list[str] | None:
-        return validate_memory_tags(value)
 
     @field_validator("provenance")
     @classmethod
