@@ -253,18 +253,33 @@ class MemoryWriteService:
                     if result["status"] != "pending":
                         continue
                     result_id = str(result.get("id") or "")
-                    doc_ok = doc_status_by_id.get(result_id) in _SUCCESSFUL_UPLOAD_STATUSES
+                    explicit = doc_status_by_id.get(result_id)
 
-                    if doc_ok:
-                        result["status"] = "success"
+                    if explicit is not None:
+                        # Per-document status available — use it directly.
+                        if explicit in _SUCCESSFUL_UPLOAD_STATUSES:
+                            result["status"] = "success"
+                        elif explicit == "failed":
+                            result["status"] = "failed"
+                            result["error"] = (
+                                f"Document upload failed with status '{explicit}'"
+                            )
+                        else:
+                            result["status"] = "unconfirmed"
+                            if not result.get("error"):
+                                result["error"] = (
+                                    f"Per-document status '{explicit}' could not be confirmed"
+                                )
                     elif moorcheh_status not in _SUCCESSFUL_UPLOAD_STATUSES:
                         result["status"] = "failed"
                         result["error"] = f"Upload returned status '{moorcheh_status}'"
                     elif not per_doc:
+                        # No per-doc data at all, but aggregate succeeded —
+                        # fall back to the aggregate status.
                         result["status"] = moorcheh_status
                     else:
-                        # Batch succeeded but per-document confirmation unavailable
-                        # for this specific doc id — keep as unconfirmed.
+                        # Batch succeeded but this specific document was not
+                        # found in per-doc results — genuinely unconfirmed.
                         result["status"] = "unconfirmed"
                         if not result.get("error"):
                             result["error"] = (
@@ -273,7 +288,7 @@ class MemoryWriteService:
 
             # Count successes, failures, and namespace-rejected items separately
             # so that successful + failed + rejected == total_submitted always.
-            _known = set(SUCCESSFUL_UPLOAD_STATUSES) | {"failed", "rejected"}
+            _known = set(SUCCESSFUL_UPLOAD_STATUSES) | {"failed", "rejected", "unconfirmed"}
             successful = sum(
                 1
                 for r in results
