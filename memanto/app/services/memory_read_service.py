@@ -372,6 +372,8 @@ class MemoryReadService:
         type: list[str] | None = None,
         tags: list[str] | None = None,
         limit: int | None = 10,
+        created_after: str | None = None,
+        created_before: str | None = None,
     ) -> dict[str, Any]:
         """
         Retrieve the most recently stored memories, sorted by created_at descending.
@@ -381,6 +383,8 @@ class MemoryReadService:
             type: Optional memory type filters
             tags: Optional tag filters
             limit: Max results to return
+            created_after: ISO timestamp - include only memories created at/after this time
+            created_before: ISO timestamp - include only memories created at/before this time
         """
         try:
             from memanto.app.utils.temporal_helpers import parse_iso_timestamp
@@ -390,6 +394,13 @@ class MemoryReadService:
                 return {"results": [], "total_found": 0}
 
             unique_memories = self._fetch_all_memories(namespaces, type=type, tags=tags)
+
+            if created_after or created_before:
+                unique_memories = self._apply_temporal_filter(
+                    unique_memories,
+                    created_after=created_after,
+                    created_before=created_before,
+                )
 
             # Sort by created_at descending (most recent first)
             def _created_sort_key(m: dict[str, Any]) -> str:
@@ -468,13 +479,9 @@ class MemoryReadService:
 
             memories.append(formatted)
 
-        # IMPORTANT: Do NOT filter expired memories here.
-        # Temporal queries (search_as_of, search_changed_since) need to
-        # evaluate TTL against their own reference time (as_of_date,
-        # since_date), not the current wall-clock time. Filtering by
-        # current time here would silently drop memories that were valid
-        # at the queried point-in-time but have since expired — a subtle
-        # timeline amnesia bug (issue #770).
+        # Do NOT filter expired memories here. Temporal queries
+        # (search_as_of, search_changed_since) evaluate TTL against
+        # their own reference time, not current wall-clock time.
         return memories
 
     def _memory_version_key(
@@ -781,12 +788,20 @@ class MemoryReadService:
                 return metadata[field_name]
             return item.get(flat_name)
 
-        # Parse tags - can be comma-separated string or array
+        # Parse tags - can be comma-separated string or array. External imports
+        # and older documents may include spaces after commas, so normalize
+        # before exact tag filters run.
         tags_value = get_field("tags")
         if isinstance(tags_value, str):
-            tags = tags_value.split(",") if tags_value else []
+            tags = [
+                tag_value for tag in tags_value.split(",") if (tag_value := tag.strip())
+            ]
         elif isinstance(tags_value, list):
-            tags = tags_value
+            tags = [
+                tag_value
+                for tag in tags_value
+                if tag is not None and (tag_value := str(tag).strip())
+            ]
         else:
             tags = []
 
@@ -799,30 +814,25 @@ class MemoryReadService:
         content = raw_text
 
         if raw_text:
-            lines = raw_text.split("\n\n", 2)  # Split into at most 3 parts
-            first_line = lines[0] if lines else ""
-
-            # Extract title: strip the "[TYPE] " prefix from first line
+            # Wire format (see MemoryRecord.to_moorcheh_document):
+            #   "[TYPE] {title}\n\n{content}"  with an optional trailing
+            #   "\n\nTags: {tags}" block appended only when the record has tags.
+            # Split off the title on the FIRST blank line; everything after it is
+            # the content, which may itself contain blank lines.
+            first_line, _, rest = raw_text.partition("\n\n")
 
             title_match = re.match(r"^\[.*?\]\s*(.*)$", first_line)
-            if title_match:
-                title = title_match.group(1).strip()
-                # Content is the rest after the first line (skip tags section)
-                if len(lines) > 1:
-                    # Check if last part is tags
-                    remaining = lines[1:]
-                    content_parts = []
-                    for part in remaining:
-                        if part.startswith("Tags: "):
-                            continue
-                        content_parts.append(part)
-                    content = "\n\n".join(content_parts) if content_parts else ""
-                else:
-                    content = ""
+            title = title_match.group(1).strip() if title_match else first_line.strip()
+
+            # Strip ONLY a genuine trailing tags block, and only when this record
+            # actually has tags (the serializer appends the block iff tags exist).
+            # Prevents (a) wiping content that merely begins with "Tags: " and
+            # (b) leaking the tags line into multi-paragraph content.
+            body, sep, last = rest.rpartition("\n\n")
+            if tags and sep and last.startswith("Tags: "):
+                content = body
             else:
-                # No [TYPE] prefix — use first line as title, rest as content
-                title = first_line.strip()
-                content = "\n\n".join(lines[1:]) if len(lines) > 1 else ""
+                content = rest
 
         # Build basic formatted item
         formatted = {
