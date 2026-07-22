@@ -142,8 +142,9 @@ def get_client() -> SdkClient:
                     client.activate_agent(active_agent_id)
                 except Exception:
                     logger.warning(
-                        "Failed to reactivate agent '%s' after session expiry. "
-                        "Memory operations may fail until a new session is created.",
+                        "Failed to reactivate agent '%s' after stored session "
+                        "became invalid (expired or revoked). Memory operations "
+                        "may fail until a new session is created.",
                         active_agent_id,
                         exc_info=True,
                     )
