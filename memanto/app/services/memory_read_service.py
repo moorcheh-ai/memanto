@@ -556,10 +556,15 @@ class MemoryReadService:
                 value = _validate_filter_token(value, f"metadata '{key}'")
                 filter_parts.append(f"#{key}:{value}")
 
+        # Sanitize user query — strip # to prevent filter injection.
+        # Without this, a user can inject #memory_type:fact into the query
+        # string to bypass caller-specified type/status/tag filters.
+        sanitized_query = query.replace("#", "")
+
         # Combine query with filters
         if filter_parts:
-            return f"{query} {' '.join(filter_parts)}"
-        return query
+            return f"{sanitized_query} {' '.join(filter_parts)}"
+        return sanitized_query
 
     def _apply_temporal_filter(
         self,
