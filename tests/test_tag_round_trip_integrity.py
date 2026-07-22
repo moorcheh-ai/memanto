@@ -51,6 +51,15 @@ def test_invalid_tag_added_after_validation_is_rejected_before_storage(
         memory.to_moorcheh_document()
 
 
+@pytest.mark.parametrize("tags", ["customer", [None]])
+def test_invalid_tags_assigned_after_validation_are_rejected_before_storage(tags):
+    memory = build_memory(["customer"])
+    memory.tags = tags
+
+    with pytest.raises(ValueError, match="tags must be a list of strings"):
+        memory.to_moorcheh_document()
+
+
 def test_tags_are_normalized_before_round_trip():
     memory = build_memory([" customer ", " priority "])
 

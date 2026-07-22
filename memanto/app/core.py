@@ -23,6 +23,8 @@ def agent_namespace(agent_id: str) -> str:
 
 def _normalize_tag_values(tags: list[str]) -> list[str]:
     """Normalize tags and reject values unsafe for comma-separated storage."""
+    if not isinstance(tags, list) or any(not isinstance(tag, str) for tag in tags):
+        raise ValueError("tags must be a list of strings")
     normalized_tags = [tag.strip() for tag in tags]
     if any(not tag for tag in normalized_tags):
         raise ValueError("tag values must not be empty or whitespace")
