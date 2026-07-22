@@ -79,8 +79,14 @@ class TestBug1_ExpiredMemoryReupload:
             updates={"title": "Updated Title"},
         )
 
-        # The bug: upload was called with a document whose expires_at
-        # is in the past. This re-uploads an expired document.
+        # Check if the upload was attempted
+        upload_called = mock_client.documents.upload.called
+        
+        # If the backend correctly rejected the upload, this is a valid fix!
+        if not upload_called:
+            return
+
+        # If it WAS called, we must ensure it wasn't uploaded with a stale timestamp
         upload_call = mock_client.documents.upload.call_args
         uploaded_doc = upload_call.kwargs.get("documents", upload_call[1].get("documents", [None]))[0]
 
@@ -91,7 +97,7 @@ class TestBug1_ExpiredMemoryReupload:
             )
             now = datetime.now(timezone.utc)
             # This SHOULD pass (expires_at should be in the future)
-            # but FAILS because the stale expires_at is preserved
+            # but FAILS currently because the stale expires_at is preserved
             assert expires_at > now, (
                 f"BUG: update_memory re-uploaded a document with expires_at={expires_at} "
                 f"which is in the past (now={now}). Expired documents should not be "
@@ -119,13 +125,9 @@ class TestBug2_MemoryErrorShadowing:
             "Custom MemoryError should not shadow Python's built-in MemoryError"
         )
 
-        # The real problem: after importing, the name 'MemoryError' is
-        # ambiguous. This test shows the shadowing exists.
-        # The class SHOULD be renamed to e.g. MemoryOperationError
-        assert MementoMemoryError.__name__ == "MemoryError", (
-            "BUG: The custom error class is named 'MemoryError' which shadows "
-            "Python's built-in MemoryError. It should be renamed to avoid "
-            "confusion (e.g. MemoryOperationError)."
+        assert MementoMemoryError.__name__ != "MemoryError", (
+            "Custom MemoryError should be renamed to avoid shadowing Python's built-in "
+            "MemoryError (e.g. MemoryOperationError)."
         )
 
     def test_map_error_handles_builtin_memory_error_correctly(self):
@@ -280,12 +282,7 @@ class TestBug4_SearchTotalFoundIncorrect:
         # We should get 2 results on this page
         assert len(result["results"]) == 2
 
-        # BUG: total_found is 2 (page size) instead of 5 (total matches)
-        # total_available correctly shows 5, but total_found shows 2
-        assert result["total_found"] != result["total_available"], (
-            "BUG: total_found equals total_available, which means either "
-            "the bug is already fixed, or this test setup didn't trigger it."
-        )
+        # total_available correctly shows 5, but total_found shows 2 currently.
 
         # This is what total_found SHOULD be:
         assert result["total_found"] == result["total_available"], (
@@ -314,17 +311,13 @@ class TestBug5_DuplicateUploadConstants:
         from memanto.app.services import memory_write_service
 
         public = memory_write_service.SUCCESSFUL_UPLOAD_STATUSES
-        private = memory_write_service._SUCCESSFUL_UPLOAD_STATUSES
-
-        # They ARE the same today — but having two copies is a bug waiting
-        # to happen. This test documents the duplication.
-        assert public == private, (
-            f"BUG: SUCCESSFUL_UPLOAD_STATUSES ({public}) != "
-            f"_SUCCESSFUL_UPLOAD_STATUSES ({private}). "
-            f"These constants have diverged!"
-        )
-
-        # The real bug: they should be the SAME object, not two copies
+        private = getattr(memory_write_service, "_SUCCESSFUL_UPLOAD_STATUSES", None)
+        
+        # If the private constant was removed as a fix, this is a success!
+        if private is None:
+            return
+            
+        # If it still exists, they must be the same exact set object
         assert public is private, (
             "BUG: SUCCESSFUL_UPLOAD_STATUSES and _SUCCESSFUL_UPLOAD_STATUSES "
             "are two separate set objects with the same values. If a "
@@ -345,20 +338,22 @@ class TestBug6_ConflictReportIgnoresBackend:
         """The conflicts directory should be derived from get_data_dir()
         to respect the backend setting (cloud vs on-prem).
         """
-        import inspect
-
+        from unittest.mock import patch
+        from pathlib import Path
         from memanto.app.services.daily_analysis_service import DailyAnalysisService
-
-        # Get the source code of generate_conflict_report
-        source = inspect.getsource(DailyAnalysisService.generate_conflict_report)
-
-        # BUG: It uses a hardcoded path instead of get_data_dir()
-        uses_hardcoded = 'Path.home() / ".memanto" / "conflicts"' in source
-        uses_data_dir = "get_data_dir()" in source
-
-        assert not uses_hardcoded or uses_data_dir, (
-            "BUG: generate_conflict_report() uses hardcoded "
-            'Path.home() / ".memanto" / "conflicts" instead of '
-            "get_data_dir() / 'conflicts'. This breaks data isolation "
-            "for on-prem users whose data lives under ~/.memanto/on-prem/."
-        )
+        
+        # Mock get_data_dir to return a unique temp path
+        test_path = Path("/tmp/mock_memanto_data")
+        
+        with patch("memanto.app.services.daily_analysis_service.get_data_dir", return_value=test_path):
+            with patch("pathlib.Path.mkdir") as mock_mkdir:
+                # generate_conflict_report creates the directory early on
+                DailyAnalysisService.generate_conflict_report("test-agent")
+                
+                # Check if the directory created was based on test_path
+                created_path = mock_mkdir.call_args[0][0]
+                
+                assert test_path in created_path.parents or created_path == test_path / "conflicts", (
+                    "BUG: generate_conflict_report() uses a hardcoded path instead of "
+                    "get_data_dir(). This breaks data isolation for on-prem users."
+                )
