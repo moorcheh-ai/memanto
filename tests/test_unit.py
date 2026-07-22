@@ -1129,24 +1129,21 @@ class TestValidateSafeId:
 
         assert not (tmp_path / "etc").exists()
 
+def test_memory_edit_rejects_oversized_source():
+    from pydantic import ValidationError
 
-class TestMemoryMetadataBounds:
-    """Unit coverage for bounded metadata labels used in memory documents."""
+    from memanto.app.routes.memory import MemoryEditRequest
 
-    def test_memory_edit_rejects_oversized_source(self):
-        from pydantic import ValidationError
+    with pytest.raises(ValidationError):
+        MemoryEditRequest(source="x" * 129)
 
-        from memanto.app.routes.memory import MemoryEditRequest
 
-        with pytest.raises(ValidationError):
-            MemoryEditRequest(source="x" * 129)
+def test_memory_edit_strips_valid_tags():
+    from memanto.app.routes.memory import MemoryEditRequest
 
-    def test_memory_edit_strips_valid_tags(self):
-        from memanto.app.routes.memory import MemoryEditRequest
+    request = MemoryEditRequest(tags=[" project ", "important"])
 
-        request = MemoryEditRequest(tags=[" project ", "important"])
-
-        assert request.tags == ["project", "important"]
+    assert request.tags == ["project", "important"]
 
 
 def test_format_memory_item_tag_stripping():
