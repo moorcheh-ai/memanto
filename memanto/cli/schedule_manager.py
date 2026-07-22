@@ -51,7 +51,7 @@ class ScheduleManager:
                     subprocess.run(
                         ["crontab", "-"], input=new_cron, text=True, check=False
                     )
-            except Exception:
+            except subprocess.CalledProcessError:
                 pass
 
     def _command(self) -> str:
