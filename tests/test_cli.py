@@ -666,6 +666,9 @@ class TestMEMANTOCLI:
         client = Client("test-api-key")
         client._agent_service = MagicMock()
         client._session_service = MagicMock()
+        client.agent_id = "retained-agent"
+        client.session_token = "retained-token"
+        client._cached_session = object()
         client._session_service.delete_session.side_effect = RuntimeError(
             "session cleanup failed"
         )
@@ -675,6 +678,49 @@ class TestMEMANTOCLI:
 
         client._session_service.delete_session.assert_called_once_with("retained-agent")
         client._agent_service.delete_agent.assert_not_called()
+        assert client.agent_id == "retained-agent"
+        assert client.session_token == "retained-token"
+        assert client._cached_session is not None
+
+    @pytest.mark.parametrize("client_path", ["direct_client", "sdk_client"])
+    def test_delete_agent_clears_local_session_before_agent_deletion(
+        self, tmp_path, mock_all_clients, client_path
+    ):
+        """A failed metadata deletion must not retain revoked local session state."""
+        from memanto.app.services.session_service import SessionService
+        from memanto.app.utils.errors import InvalidSessionTokenError
+
+        if client_path == "direct_client":
+            from memanto.cli.client.direct_client import DirectClient as Client
+        else:
+            from memanto.cli.client.sdk_client import SdkClient as Client
+
+        session_service = SessionService(
+            secret_key="test-secret-key-min-32-bytes-1234",
+            sessions_dir=tmp_path / "sessions",
+        )
+        session = session_service.create_session(agent_id="retained-agent")
+
+        client = Client("test-api-key")
+        client._agent_service = MagicMock()
+        client._agent_service.delete_agent.side_effect = RuntimeError(
+            "agent deletion failed"
+        )
+        client._session_service = session_service
+        client.agent_id = "retained-agent"
+        client.session_token = session.session_token
+        client._cached_session = session
+
+        with pytest.raises(RuntimeError, match="agent deletion failed"):
+            client.delete_agent("retained-agent")
+
+        client._agent_service.delete_agent.assert_called_once_with("retained-agent")
+        assert client.agent_id is None
+        assert client.session_token is None
+        assert client._cached_session is None
+        assert session_service.get_session("retained-agent") is None
+        with pytest.raises(InvalidSessionTokenError, match="no longer active"):
+            session_service.validate_session(session.session_token)
 
     def test_upload_file_sdk_accepts_snake_case_file_size(
         self, tmp_path, mock_all_clients
