@@ -1112,6 +1112,27 @@ class TestValidateSafeId:
 
         assert not (tmp_path / "etc").exists()
 
+    def test_path_traversal_blocked_in_delete_session(self, tmp_path):
+        """delete_session must reject traversal IDs before touching the filesystem."""
+        from memanto.app.services.session_service import SessionService
+
+        sessions_dir = tmp_path / "sessions"
+        sessions_dir.mkdir()
+        # Decoy file that a naive path join could reach/delete.
+        outside = tmp_path / "shadow.json"
+        outside.write_text("{}", encoding="utf-8")
+
+        svc = SessionService(
+            secret_key="test-secret-key-min-32-bytes-1234",
+            sessions_dir=sessions_dir,
+        )
+
+        with pytest.raises(ValueError, match="invalid characters"):
+            svc.delete_session("../shadow")
+
+        assert outside.exists()
+        assert list(sessions_dir.glob("*.json")) == []
+
     def test_path_traversal_blocked_via_date_in_daily_analysis(self, tmp_path):
         """Ensure DailyAnalysisService raises on traversal attempt via date param."""
         from memanto.app.services.daily_analysis_service import DailyAnalysisService

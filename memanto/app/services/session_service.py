@@ -538,6 +538,8 @@ class SessionService:
         Used when an agent is deleted: the agent metadata is gone, so a saved
         session for that agent must not remain usable through X-Session-Token.
         """
+        validate_safe_id(agent_id, "agent_id")
+
         active_link = self.sessions_dir / "active"
         active_agent_id: str | None = None
 
