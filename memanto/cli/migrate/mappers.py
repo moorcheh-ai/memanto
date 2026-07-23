@@ -91,6 +91,10 @@ def _parse_dt(value: Any) -> datetime | None:
     and already-parsed ``datetime`` objects. Returns ``None`` when nothing
     sensible can be extracted — the caller falls back to the server default.
     """
+    # ``bool`` subclasses ``int``; without this guard, YAML ``true`` becomes
+    # 1970-01-01T00:00:01Z and can accidentally expire a durable memory.
+    if isinstance(value, bool):
+        return None
     if value in (None, "", 0):
         return None
     if isinstance(value, datetime):

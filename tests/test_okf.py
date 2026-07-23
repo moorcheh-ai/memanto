@@ -145,9 +145,9 @@ def test_okf_import_ignores_invalid_temporal_extensions(tmp_path):
         "type: fact\n"
         "title: Durable fact\n"
         "x_memanto:\n"
-        "  updated_at: not-a-date\n"
-        "  expires_at: impossible\n"
-        "  ttl_seconds: -30\n"
+        "  updated_at: true\n"
+        "  expires_at: true\n"
+        "  ttl_seconds: true\n"
         "---\n\n"
         "This memory remains importable.\n",
         encoding="utf-8",
