@@ -56,6 +56,23 @@ def test_ensure_client_empty_namespace(mock_sdk_client):
     assert agent_id == "langgraph_default"
 
 
+def test_ensure_client_keeps_structurally_distinct_namespaces_isolated(
+    mock_sdk_client,
+):
+    """Tuple boundaries must not collapse distinct LangGraph namespaces."""
+    store = MemantoStore(api_key="test_key")
+    first_client = MagicMock()
+    second_client = MagicMock()
+    mock_sdk_client.side_effect = [first_client, second_client]
+
+    first, first_agent_id = store._ensure_client(("team_alpha", "project"))
+    second, second_agent_id = store._ensure_client(("team", "alpha_project"))
+
+    assert first_agent_id != second_agent_id
+    assert first is first_client
+    assert second is second_client
+
+
 def test_do_get_recent_success(mock_sdk_client):
     store = MemantoStore(api_key="test_key")
     client_instance = MagicMock()
@@ -89,7 +106,7 @@ def test_do_get_recent_success(mock_sdk_client):
     assert item.value["kind"] == "fact"
 
     client_instance.recall_recent.assert_called_once_with(
-        agent_id="langgraph_my_ns", limit=100
+        agent_id=store._namespace_to_agent_id(("my_ns",)), limit=100
     )
 
 
@@ -151,7 +168,10 @@ def test_do_get_fallback_success(mock_sdk_client):
     assert item is not None
     assert item.value["content"] == "fallback content"
     client_instance.recall.assert_called_once_with(
-        agent_id="langgraph_my_ns", query="my_key", limit=100, tags=["lg:key:my_key"]
+        agent_id=store._namespace_to_agent_id(("my_ns",)),
+        query="my_key",
+        limit=100,
+        tags=["lg:key:my_key"],
     )
 
 
@@ -182,7 +202,7 @@ def test_do_put_success(mock_sdk_client):
     store._do_put(op)
 
     client_instance.remember.assert_called_once_with(
-        agent_id="langgraph_my_ns",
+        agent_id=store._namespace_to_agent_id(("my_ns",)),
         memory_type="fact",
         title="fact title",
         content="my new fact",
@@ -247,7 +267,7 @@ def test_do_search_recent(mock_sdk_client):
     assert len(items) == 1
     assert items[0].key == "key1"
     client_instance.recall_recent.assert_called_once_with(
-        agent_id="langgraph_my_ns", limit=100, type=None
+        agent_id=store._namespace_to_agent_id(("my_ns",)), limit=100, type=None
     )
 
 
@@ -279,7 +299,7 @@ def test_do_search_wildcard_with_tags_uses_backend_tag_filter(mock_sdk_client):
     assert items[0].key == "key3"
     client_instance.recall_recent.assert_not_called()
     client_instance.recall.assert_called_once_with(
-        agent_id="langgraph_my_ns",
+        agent_id=store._namespace_to_agent_id(("my_ns",)),
         query="*",
         limit=10,
         type=None,
@@ -312,7 +332,7 @@ def test_do_search_semantic(mock_sdk_client):
     assert len(items) == 1
     assert items[0].key == "key2"
     client_instance.recall.assert_called_once_with(
-        agent_id="langgraph_my_ns",
+        agent_id=store._namespace_to_agent_id(("my_ns",)),
         query="test query",
         limit=10,
         type=["observation"],
@@ -345,7 +365,7 @@ def test_do_search_accepts_string_tag_filter(mock_sdk_client):
     assert len(items) == 1
     assert items[0].key == "key2"
     client_instance.recall.assert_called_once_with(
-        agent_id="langgraph_my_ns",
+        agent_id=store._namespace_to_agent_id(("my_ns",)),
         query="test query",
         limit=10,
         type=None,
@@ -421,6 +441,74 @@ def test_do_list_namespaces(mock_sdk_client):
     assert ("my", "ns") in namespaces
     assert ("other", "ns", "sub") in namespaces
     assert len(namespaces) == 3
+
+
+def test_do_list_namespaces_round_trips_encoded_tuple_boundaries(mock_sdk_client):
+    store = MemantoStore(api_key="test_key")
+    client_instance = MagicMock()
+    mock_sdk_client.return_value = client_instance
+    original = ("team_alpha", "project")
+    client_instance.list_agents.return_value = [
+        {"agent_id": store._namespace_to_agent_id(original)}
+    ]
+
+    namespaces = store._do_list_namespaces(ListNamespacesOp())
+
+    assert namespaces == [original]
+
+
+def test_do_list_namespaces_distinguishes_empty_from_default_namespace(
+    mock_sdk_client,
+):
+    store = MemantoStore(api_key="test_key")
+    client_instance = MagicMock()
+    mock_sdk_client.return_value = client_instance
+    client_instance.list_agents.return_value = [
+        {"agent_id": store._namespace_to_agent_id(())},
+        {"agent_id": store._namespace_to_agent_id(("default",))},
+    ]
+
+    namespaces = store._do_list_namespaces(ListNamespacesOp())
+
+    assert namespaces == [(), ("default",)]
+
+
+@pytest.mark.parametrize(
+    "original",
+    [
+        ("equipo", "日本語"),
+        ("team", "", "project"),
+    ],
+)
+def test_do_list_namespaces_round_trips_unicode_and_empty_segments(
+    mock_sdk_client, original
+):
+    store = MemantoStore(api_key="test_key")
+    client_instance = MagicMock()
+    mock_sdk_client.return_value = client_instance
+    encoded_agent_id = store._namespace_to_agent_id(original)
+    client_instance.list_agents.return_value = [{"agent_id": encoded_agent_id}]
+
+    namespaces = store._do_list_namespaces(ListNamespacesOp())
+
+    assert namespaces == [original]
+    assert encoded_agent_id.isascii()
+    assert encoded_agent_id.replace("_", "").replace("-", "").isalnum()
+
+
+def test_do_list_namespaces_keeps_legacy_id_that_resembles_encoding(
+    mock_sdk_client,
+):
+    store = MemantoStore(api_key="test_key")
+    client_instance = MagicMock()
+    mock_sdk_client.return_value = client_instance
+    client_instance.list_agents.return_value = [
+        {"agent_id": "langgraph_v1_WyJsZWdhY3kiXQ"}
+    ]
+
+    namespaces = store._do_list_namespaces(ListNamespacesOp())
+
+    assert namespaces == [("v1", "WyJsZWdhY3kiXQ")]
 
 
 def test_do_list_namespaces_match_conditions(mock_sdk_client):

@@ -8,7 +8,7 @@ Mapping between abstractions
 ----------------------------
 
     BaseStore                         ->  Memanto
-    namespace (tuple[str, ...])       ->  agent_id       (``langgraph_<p0>_<p1>...``)
+    namespace (tuple[str, ...])       ->  agent_id       (legacy or reversible ID)
     key (str)                         ->  reserved tag   ``lg:key:<key>``
     value["kind"] / value["type"]     ->  memory_type    (auto-parsed if absent)
     value["title"]                    ->  title          (auto-derived if absent)
@@ -34,7 +34,11 @@ Documented limitations
 from __future__ import annotations
 
 import asyncio
+import base64
+import binascii
+import json
 import logging
+import re
 import threading
 import time
 from collections.abc import Iterable
@@ -59,6 +63,8 @@ logger = logging.getLogger(__name__)
 _KEY_TAG_PREFIX = "lg:key:"
 _ENCODED_KEY_TAG_PREFIX = "lg:key:v1:"
 _RESERVED_PREFIX = "lg:"
+_NAMESPACE_ENCODING_MARKER = "v1_"
+_LEGACY_NAMESPACE_PART = re.compile(r"[A-Za-z0-9-]+")
 
 _VALID_MEMORY_TYPES = {
     "fact",
@@ -111,8 +117,7 @@ class MemantoStore(BaseStore):
         self._last_good: dict[tuple[str, ...], list[SearchItem]] = {}
 
     def _ensure_client(self, namespace: tuple[str, ...]) -> tuple[SdkClient, str]:
-        ns_str = "_".join(namespace) or "default"
-        agent_id = f"{self._agent_prefix}{ns_str}"
+        agent_id = self._namespace_to_agent_id(namespace)
         with self._lock:
             if agent_id in self._client_pool:
                 return self._client_pool[agent_id], agent_id
@@ -127,6 +132,26 @@ class MemantoStore(BaseStore):
             client.activate_agent(agent_id=agent_id)
             self._client_pool[agent_id] = client
             return client, agent_id
+
+    def _namespace_to_agent_id(self, namespace: tuple[str, ...]) -> str:
+        """Map tuple namespaces without losing their structural boundaries."""
+        if not namespace:
+            return f"{self._agent_prefix}default"
+
+        legacy = "_".join(namespace)
+        can_use_legacy = (
+            namespace != ("default",)
+            and not legacy.startswith(_NAMESPACE_ENCODING_MARKER)
+            and all(_LEGACY_NAMESPACE_PART.fullmatch(part) for part in namespace)
+        )
+        if can_use_legacy:
+            return f"{self._agent_prefix}{legacy}"
+
+        payload = json.dumps(
+            list(namespace), ensure_ascii=False, separators=(",", ":")
+        ).encode("utf-8")
+        encoded = base64.urlsafe_b64encode(payload).decode("ascii").rstrip("=")
+        return f"{self._agent_prefix}{_NAMESPACE_ENCODING_MARKER}{encoded}"
 
     # ------------------------------------------------------------------ #
     # Required abstract methods                                          #
@@ -382,11 +407,7 @@ class MemantoStore(BaseStore):
         for agent in agents:
             agent_id = agent.get("agent_id") or agent.get("id") or ""
             if agent_id.startswith(self._agent_prefix):
-                ns_str = agent_id[len(self._agent_prefix) :]
-                if ns_str == "default":
-                    namespaces.append(())
-                else:
-                    namespaces.append(tuple(ns_str.split("_")))
+                namespaces.append(self._agent_id_to_namespace(agent_id))
 
         if op.match_conditions:
             for cond in op.match_conditions:
@@ -403,6 +424,29 @@ class MemantoStore(BaseStore):
         if op.max_depth is not None:
             result = sorted({ns[: op.max_depth] for ns in result})
         return result[: op.limit] if op.limit else result
+
+    def _agent_id_to_namespace(self, agent_id: str) -> tuple[str, ...]:
+        """Recover an encoded namespace, falling back to the legacy mapping."""
+        ns_str = agent_id[len(self._agent_prefix) :]
+        if ns_str == "default":
+            return ()
+
+        if ns_str.startswith(_NAMESPACE_ENCODING_MARKER):
+            encoded = ns_str[len(_NAMESPACE_ENCODING_MARKER) :]
+            padded = encoded + "=" * (-len(encoded) % 4)
+            try:
+                decoded = json.loads(base64.urlsafe_b64decode(padded).decode("utf-8"))
+            except (binascii.Error, UnicodeDecodeError, json.JSONDecodeError):
+                pass
+            else:
+                if isinstance(decoded, list) and all(
+                    isinstance(part, str) for part in decoded
+                ):
+                    namespace = tuple(decoded)
+                    if self._namespace_to_agent_id(namespace) == agent_id:
+                        return namespace
+
+        return tuple(ns_str.split("_"))
 
     # ------------------------------------------------------------------ #
     # Encoding helpers                                                   #
