@@ -382,11 +382,23 @@ def test_staged_bundle_normalizes_generated_markdown(tmp_path):
     memory.write_text("- OKF source: memories\\fact\\one.md\n", encoding="utf-8")
 
     normalize_exported_markdown(bundle)
+    normalize_exported_markdown(bundle)
 
     assert overview.read_text(encoding="utf-8") == "```text\nchart\n```\n"
     assert "## Entry" in session.read_text(encoding="utf-8")
     assert "memories/fact/one.md" in session.read_text(encoding="utf-8")
     assert "memories/fact/one.md" in memory.read_text(encoding="utf-8")
+
+
+def test_staged_bundle_preserves_existing_fence_language(tmp_path):
+    metrics = tmp_path / "metrics"
+    metrics.mkdir()
+    overview = metrics / "overview.md"
+    overview.write_text("```mermaid\ngraph TD\n```\n", encoding="utf-8")
+
+    normalize_exported_markdown(tmp_path)
+
+    assert overview.read_text(encoding="utf-8") == "```mermaid\ngraph TD\n```\n"
 
 
 def test_source_questions_read_latest_checkpoint_state(tmp_path):

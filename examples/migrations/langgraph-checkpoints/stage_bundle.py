@@ -21,12 +21,16 @@ def normalize_exported_markdown(bundle: Path) -> None:
             lines = text.splitlines(keepends=True)
             in_fence = False
             for index, line in enumerate(lines):
-                if line.rstrip("\r\n") != "```":
-                    continue
                 if not in_fence:
-                    ending = line[len(line.rstrip("\r\n")) :]
-                    lines[index] = f"```text{ending}"
-                in_fence = not in_fence
+                    fence = line.rstrip("\r\n")
+                    if not fence.startswith("```"):
+                        continue
+                    if fence == "```":
+                        ending = line[len(fence) :]
+                        lines[index] = f"```text{ending}"
+                    in_fence = True
+                elif line.rstrip("\r\n") == "```":
+                    in_fence = False
             text = "".join(lines)
         if path.parent.name == "sessions":
             text = re.sub(r"(?m)^### ", "## ", text)
