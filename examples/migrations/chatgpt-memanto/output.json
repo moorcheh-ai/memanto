@@ -1,0 +1,86 @@
+[
+  {
+    "title": "Python debugging help",
+    "content": "Why is my for loop skipping the last element?",
+    "type": null,
+    "tags": [
+      "role:user"
+    ],
+    "confidence": 0.9,
+    "source": "chatgpt",
+    "source_ref": "conv-abc123:msg-1",
+    "provenance": "imported",
+    "created_at": "2024-03-09 16:00:00",
+    "updated_at": "2026-07-23 17:07:34.235417+00:00"
+  },
+  {
+    "title": "Python debugging help",
+    "content": "The issue is likely an off-by-one error. When you use range(len(arr)-1), the last index is excluded. Use range(len(arr)) instead to include all elements.",
+    "type": null,
+    "tags": [
+      "role:assistant"
+    ],
+    "confidence": 0.9,
+    "source": "chatgpt",
+    "source_ref": "conv-abc123:msg-2",
+    "provenance": "imported",
+    "created_at": "2024-03-09 16:00:50",
+    "updated_at": "2026-07-23 17:07:34.235417+00:00"
+  },
+  {
+    "title": "Learning Italian phrases",
+    "content": "How do I say 'thank you very much' in Italian?",
+    "type": null,
+    "tags": [
+      "role:user"
+    ],
+    "confidence": 0.9,
+    "source": "chatgpt",
+    "source_ref": "conv-def456:msg-a",
+    "provenance": "imported",
+    "created_at": "2024-03-08 12:13:20",
+    "updated_at": "2026-07-23 17:07:34.235417+00:00"
+  },
+  {
+    "title": "Learning Italian phrases",
+    "content": "You say 'grazie mille' — literally 'a thousand thanks'. It's the most common way to express deep gratitude in Italian.",
+    "type": null,
+    "tags": [
+      "role:assistant"
+    ],
+    "confidence": 0.9,
+    "source": "chatgpt",
+    "source_ref": "conv-def456:msg-b",
+    "provenance": "imported",
+    "created_at": "2024-03-08 12:14:10",
+    "updated_at": "2026-07-23 17:07:34.235417+00:00"
+  },
+  {
+    "title": "Learning Italian phrases",
+    "content": "And how do I respond when someone says grazie to me?",
+    "type": null,
+    "tags": [
+      "role:user"
+    ],
+    "confidence": 0.9,
+    "source": "chatgpt",
+    "source_ref": "conv-def456:msg-c",
+    "provenance": "imported",
+    "created_at": "2024-03-08 12:15:00",
+    "updated_at": "2026-07-23 17:07:34.235417+00:00"
+  },
+  {
+    "title": "Learning Italian phrases",
+    "content": "You can say 'prego' (you're welcome), 'di niente' (it's nothing), or 'figurati' (don't mention it, informal).",
+    "type": null,
+    "tags": [
+      "role:assistant"
+    ],
+    "confidence": 0.9,
+    "source": "chatgpt",
+    "source_ref": "conv-def456:msg-d",
+    "provenance": "imported",
+    "created_at": "2024-03-08 12:15:50",
+    "updated_at": "2026-07-23 17:07:34.235417+00:00"
+  }
+]
