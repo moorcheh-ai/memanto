@@ -1,3 +1,5 @@
+import json
+
 import pytest
 
 from memanto.app.services.conversation_memory_extraction_service import (
@@ -113,3 +115,29 @@ def test_extract_requires_messages():
 
     with pytest.raises(ValueError, match="at least one message"):
         service.extract(namespace="memanto_agent_test", messages=[])
+
+
+def test_extract_caps_candidate_content_to_memory_record_limit():
+    oversized = "x" * 10_001
+    service = ConversationMemoryExtractionService(
+        FakeClient(
+            json.dumps(
+                [
+                    {
+                        "type": "fact",
+                        "title": "Large memory",
+                        "content": oversized,
+                        "confidence": 0.9,
+                    }
+                ]
+            )
+        )
+    )
+
+    candidates = service.extract(
+        namespace="memanto_agent_test",
+        messages=[{"role": "user", "content": "Remember the supplied document."}],
+    )
+
+    assert len(candidates[0]["content"]) == 10_000
+    assert candidates[0]["content"].endswith("...")
