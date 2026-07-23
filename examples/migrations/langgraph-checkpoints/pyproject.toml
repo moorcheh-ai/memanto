@@ -10,7 +10,8 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-dev = ["pytest>=8,<9"]
+# Pillow is required for tests that import build_demo_video / record_live_terminal.
+dev = ["pytest>=8,<9", "Pillow>=12,<13"]
 video = ["Pillow>=12,<13"]
 
 [project.scripts]

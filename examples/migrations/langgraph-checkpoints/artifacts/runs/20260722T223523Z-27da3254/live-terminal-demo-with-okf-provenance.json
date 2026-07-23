@@ -1,0 +1,14 @@
+{
+  "generated_at": "2026-07-23T01:36:13.143443+00:00",
+  "source_cast": "live-terminal-demo.json",
+  "source_cast_sha256": "dda4d1c975523acc17c5e4d9fa7e03e3a7d71fd4f31b1f8bf307221cc9d482fe",
+  "source_run_manifest_sha256": "96303fd432fead3fd4b5987eb83389f66020eea6313deb4cf1d221fe9920ba12",
+  "command": "python show_okf_sample.py ./memanto-roundtrip-okf",
+  "command_exit_code": 0,
+  "opened_okf_markdown": "memanto-roundtrip-okf/memories/preference/report-format-preference-markdown.md",
+  "opened_okf_markdown_sha256": "0c05a7a561d09bbcaf2cfdcff576f18df10fe35f481f7b97140320dfeb6da3fd",
+  "output_cast": "live-terminal-demo-with-okf.json",
+  "output_cast_sha256": "63c626f4b9e9f439b5b82b9f08a1c562b78779fbd45fe616a363258b0dd911f9",
+  "output_video": "live-terminal-demo-with-okf.mp4",
+  "output_video_sha256": "bef8a7b9d02de48634012f55230b9833a7e01310c75cd50dc98a087b1f47a089"
+}

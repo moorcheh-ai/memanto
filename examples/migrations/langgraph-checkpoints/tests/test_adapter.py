@@ -11,7 +11,9 @@ from generate_source import SESSIONS, generate_database
 from langgraph_to_okf import convert_checkpoint_database
 from langgraph_to_okf.adapter import _semantic_type, _state_to_memories, _ThreadRef
 from query_source import query_source
-from record_live_terminal import _clean, _commands, resolve_venv_python
+from record_live_terminal import Event, _clean, _commands, resolve_venv_python
+from show_okf_sample import select_memory_markdown
+from supplement_live_video import append_inspection_events
 from validate_bundle import load_documents, validate_content
 from validate_parity import validate_parity
 
@@ -256,6 +258,34 @@ def test_resolve_venv_python_finds_scripts_or_bin(tmp_path):
     posix_python = bin_dir / "python"
     posix_python.write_text("", encoding="utf-8")
     assert resolve_venv_python(posix_root) == posix_python
+
+
+def test_show_okf_sample_prefers_a_real_preference_memory(tmp_path):
+    memories = tmp_path / "memories"
+    (memories / "fact").mkdir(parents=True)
+    (memories / "preference").mkdir(parents=True)
+    (memories / "fact" / "fact.md").write_text("# Fact\n", encoding="utf-8")
+    (memories / "preference" / "index.md").write_text(
+        "# Index\n", encoding="utf-8"
+    )
+    preference = memories / "preference" / "markdown.md"
+    preference.write_text("# Report format\n\nMarkdown\n", encoding="utf-8")
+
+    assert select_memory_markdown(tmp_path) == preference
+
+
+def test_supplemented_video_labels_post_run_markdown_inspection():
+    original = [Event(1.0, "Round trip complete.")]
+    supplemented = append_inspection_events(
+        original,
+        "Opening portable OKF Markdown: memories/preference/example.md\n# Example\n",
+        command_label="python show_okf_sample.py ./memanto-roundtrip-okf",
+    )
+
+    assert supplemented[:1] == original
+    assert any("POST-RUN ARTIFACT INSPECTION" in event.text for event in supplemented)
+    assert any("# Example" in event.text for event in supplemented)
+    assert supplemented[-1].text == "OKF Markdown is readable and portable."
 
 
 def test_path_redaction_removes_absolute_windows_home_paths():

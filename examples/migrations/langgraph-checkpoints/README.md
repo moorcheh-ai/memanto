@@ -24,6 +24,9 @@ checkpoints through its official sync `SqliteSaver`.
 - Non-JSON / non-`BaseMessage` values are rendered with `repr()` and should be
   reviewed before import.
 - No token, latency, or billing savings are claimed from the OKF importer.
+  The OKF importer does not emit provider savings metrics; evidence reports
+  only use measured byte compare and import counts from real CLI output when
+  present.
 
 See [MAPPING.md](MAPPING.md) for the complete field mapping.
 
@@ -41,7 +44,67 @@ See [MAPPING.md](MAPPING.md) for the complete field mapping.
 - Golden-question validation that proves the corrected and accumulated state is
   still present after conversion.
 
-## Quick start
+## Environments and cloud prerequisites
+
+Two Python environments are required for the **live cloud round trip**. The
+offline Quick start below needs only the example-local `.venv`.
+
+### 1. Example-local `.venv` (LangGraph adapter and demo scripts)
+
+From this directory:
+
+```bash
+python -m venv .venv
+# Windows
+.venv\Scripts\python -m pip install -e ".[dev]"
+# macOS or Linux
+.venv/bin/python -m pip install -e ".[dev]"
+```
+
+`.[dev]` includes `pytest` and `Pillow` so adapter tests and the live recorder
+imports succeed after Quick start.
+
+### 2. Repository-root `.venv` (Memanto CLI)
+
+`record_live_terminal.py` invokes Memanto as
+`python -m memanto.cli.main` through the **repository-root** virtualenv, not
+the example `.venv`. From the memanto repository root:
+
+```bash
+# Recommended (matches CONTRIBUTING.md)
+uv sync --group dev
+
+# Or with pip
+python -m venv .venv
+# Windows: .venv\Scripts\activate
+# POSIX: source .venv/bin/activate
+pip install -e ".[all]"
+```
+
+### 3. Moorcheh API key (live cloud only)
+
+1. Get a free API key at [https://moorcheh.ai/](https://moorcheh.ai/).
+2. Set `MOORCHEH_API_KEY` (Memanto CLI `get_client()` reads this from the
+   process environment, or from `~/.memanto/.env` after you run `memanto`
+   once).
+3. For a local file in this directory, copy the placeholder pattern and fill
+   it in (never commit the real key):
+
+```bash
+cp .env.example .env
+# edit .env and replace your_api_key_here
+```
+
+`record_live_terminal.py` loads `.env` from this directory when present. It
+never prints the API key and redacts local paths in the cast and video.
+`.env` is gitignored.
+
+### 4. FFmpeg on PATH
+
+The live recorder renders `live-terminal-demo.mp4` with FFmpeg. Install FFmpeg
+so `ffmpeg` is available on your `PATH`.
+
+## Quick start (offline, no API key)
 
 From this directory:
 
@@ -55,10 +118,6 @@ python -m venv .venv
 .venv/bin/python -m pip install -e ".[dev]"
 .venv/bin/python run_demo.py
 ```
-
-`record_live_terminal.py` resolves the example and repository virtualenv
-interpreters the same way: it prefers `.venv/Scripts/python.exe` on Windows and
-`.venv/bin/python` (or `python3`) on macOS/Linux.
 
 The run creates:
 
@@ -75,6 +134,38 @@ artifacts/
 
 No API key is needed for this reproducible source run, conversion, or recall
 test.
+
+## Live cloud round trip (one command)
+
+After the Environments and cloud prerequisites above, run this single command
+from this directory:
+
+```bash
+# Windows
+.venv\Scripts\python record_live_terminal.py
+
+# macOS or Linux
+.venv/bin/python record_live_terminal.py
+```
+
+Optional wrappers that check both virtualenvs and that a key is configured
+(without printing it), then run the same recorder:
+
+```bash
+# Windows PowerShell
+.\run_live_roundtrip.ps1
+
+# macOS or Linux
+./run_live_roundtrip.sh
+```
+
+The recorder creates a unique run id and agent namespace, then executes the real
+source run, required OKF dry run against the staged run bundle, cloud import,
+all five source and Memanto questions, OKF export, parity validation, and
+evidence report. One directory at `artifacts/runs/<run-id>/` holds the raw
+answers, round-trip bundle, report, terminal cast, video, hashes, command
+output, and timestamps. It captures real timings, redacts local paths, and
+never reads or displays the API key value in output.
 
 ## Convert your own checkpoint database
 
@@ -96,10 +187,16 @@ the latest state, which is what the live agent would recall.
 ## Preview the Memanto import
 
 From the repository root, after running the demo (local preview of the
-top-level generated bundle):
+top-level generated bundle), using the repository-root interpreter:
 
 ```bash
-memanto migrate okf \
+# Windows
+.venv\Scripts\python -m memanto.cli.main migrate okf \
+  ./examples/migrations/langgraph-checkpoints/artifacts/langgraph-okf \
+  --dry-run
+
+# macOS or Linux
+.venv/bin/python -m memanto.cli.main migrate okf \
   ./examples/migrations/langgraph-checkpoints/artifacts/langgraph-okf \
   --dry-run
 ```
@@ -115,7 +212,9 @@ an agent and repeat the command without `--dry-run`.
 Then export the same agent again:
 
 ```bash
-memanto memory export --okf
+# from repo root, via the repository-root .venv
+.venv\Scripts\python -m memanto.cli.main memory export --okf   # Windows
+.venv/bin/python -m memanto.cli.main memory export --okf       # POSIX
 ```
 
 The verified reference run under
@@ -170,7 +269,9 @@ asks Memanto those exact questions and saves its unmodified RAG answers.
 Run the focused tests with:
 
 ```bash
-pytest
+# after Quick start install (.[dev] includes Pillow for video helpers)
+.venv\Scripts\python -m pytest   # Windows
+.venv/bin/python -m pytest       # POSIX
 ```
 
 The tests prove that:
@@ -189,37 +290,26 @@ The tests prove that:
 
 Two different video artifacts exist:
 
-1. **Captioned trailer** — `build_demo_video.py` reads the local migration
+1. **Captioned trailer**: `build_demo_video.py` reads the local migration
    summary / content-coverage report and renders
    `artifacts/langgraph-memory-escape.mp4`. This is a short walkthrough, not
    acceptance evidence.
-2. **Live terminal cast** — `record_live_terminal.py` executes the real cloud
+2. **Live terminal cast**: `record_live_terminal.py` executes the real cloud
    round trip and writes `live-terminal-demo.{json,mp4}` inside
-   `artifacts/runs/<run-id>/`. That cast is the required evidence artifact.
+   `artifacts/runs/<run-id>/`. After the Memanto export, it opens one actual
+   memory page from the run-scoped OKF bundle as plain Markdown. That cast is
+   the required evidence artifact.
 
 ### Build the captioned trailer
 
 ```bash
+# Pillow is already in .[dev]; .[video] is enough if you only need rendering
 .venv\Scripts\python -m pip install -e ".[video]"
 .venv\Scripts\python build_demo_video.py
 ```
 
 FFmpeg must be available on `PATH`. This trailer is not a substitute for the
 required live terminal walkthrough.
-
-### Record the live cloud round trip
-
-```bash
-.venv\Scripts\python record_live_terminal.py
-```
-
-The recorder creates a unique run id and agent namespace, then executes the real
-source run, required OKF dry run against the staged run bundle, cloud import,
-all five source and Memanto questions, OKF export, parity validation, and
-evidence report. One directory at `artifacts/runs/<run-id>/` holds the raw
-answers, round-trip bundle, report, terminal cast, video, hashes, command
-output, and timestamps. It captures real timings, redacts local paths, and
-never reads or displays the API key.
 
 ## Verified reference run
 
@@ -235,6 +325,16 @@ successful imports parsed from CLI output, memories exported back to OKF, and
 - [Before and after answers](artifacts/runs/20260722T223523Z-27da3254/recall-parity.json)
 - [Auditable terminal cast](artifacts/runs/20260722T223523Z-27da3254/live-terminal-demo.json)
 - [Rendered live terminal video](artifacts/runs/20260722T223523Z-27da3254/live-terminal-demo.mp4)
+- [Live terminal video with hash-audited OKF Markdown inspection](artifacts/runs/20260722T223523Z-27da3254/live-terminal-demo-with-okf.mp4)
+- [Supplement provenance](artifacts/runs/20260722T223523Z-27da3254/live-terminal-demo-with-okf-provenance.json)
+
+The supplemental video preserves the original verified cloud cast unchanged,
+then appends a clearly labeled post-run command that opens one real memory from
+the frozen exported bundle. Rebuild it with:
+
+```bash
+.venv\Scripts\python supplement_live_video.py artifacts/runs/20260722T223523Z-27da3254
+```
 
 Older runs under `artifacts/runs/` remain for audit history but are
 **not** the verified reference.

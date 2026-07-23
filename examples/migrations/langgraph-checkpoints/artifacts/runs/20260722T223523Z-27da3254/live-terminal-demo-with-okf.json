@@ -1,0 +1,2012 @@
+[
+  {
+    "at": 0.0,
+    "text": "LIVE TERMINAL  |  real commands, local paths redacted",
+    "color": "#22D3EE"
+  },
+  {
+    "at": 0.0,
+    "text": "",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 0.0,
+    "text": "$ python run_demo.py",
+    "color": "#22D3EE"
+  },
+  {
+    "at": 1.235,
+    "text": "1/3 Running LangGraph and writing real SQLite checkpoints",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 1.235,
+    "text": "2/3 Converting the latest state of every thread to OKF",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 1.235,
+    "text": "{",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 1.235,
+    "text": "\"source\": \"<repo>\\\\examples\\\\migrations\\\\langgraph-checkpoints\\\\artifacts\\\\langgraph-",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 1.235,
+    "text": "checkpoints.sqlite\",",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 1.235,
+    "text": "\"output\": \"<repo>\\\\examples\\\\migrations\\\\langgraph-checkpoints\\\\artifacts\\\\langgraph-okf\",",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 1.235,
+    "text": "\"threads\": 2,",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 1.235,
+    "text": "\"checkpoints\": 21,",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 1.235,
+    "text": "\"memories\": 8,",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 1.235,
+    "text": "\"memories_by_type\": {",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 1.235,
+    "text": "\"artifact\": 2,",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 1.235,
+    "text": "\"preference\": 2,",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 1.235,
+    "text": "\"decision\": 1,",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 1.235,
+    "text": "\"fact\": 2,",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 1.235,
+    "text": "\"goal\": 1",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 1.235,
+    "text": "},",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 1.235,
+    "text": "\"thread_ids\": [",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 1.235,
+    "text": "\"product-launch\",",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 1.235,
+    "text": "\"travel-planning\"",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 1.235,
+    "text": "]",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 1.235,
+    "text": "}",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 1.235,
+    "text": "3/3 Checking expected facts in the generated OKF bundle",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 1.235,
+    "text": "{",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 1.235,
+    "text": "\"questions\": 5,",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 1.235,
+    "text": "\"passed\": 5,",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 1.235,
+    "text": "\"content_coverage\": 1.0,",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 1.235,
+    "text": "\"results\": [",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 1.235,
+    "text": "{",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 1.235,
+    "text": "\"question\": \"Which format should Atlas launch reports use now?\",",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 1.235,
+    "text": "\"expected_terms\": [",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 1.235,
+    "text": "\"Markdown\"",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 1.235,
+    "text": "],",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 1.235,
+    "text": "\"passed\": true",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 1.235,
+    "text": "},",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 1.235,
+    "text": "{",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 1.235,
+    "text": "\"question\": \"When is the Atlas release scheduled?\",",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 1.235,
+    "text": "\"expected_terms\": [",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 1.235,
+    "text": "\"September 14\"",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 1.235,
+    "text": "],",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 1.235,
+    "text": "\"passed\": true",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 1.235,
+    "text": "},",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 1.235,
+    "text": "{",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 1.235,
+    "text": "\"question\": \"Who owns the Atlas launch?\",",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 1.235,
+    "text": "\"expected_terms\": [",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 1.235,
+    "text": "\"Maya Chen\"",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 1.235,
+    "text": "],",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 1.235,
+    "text": "\"passed\": true",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 1.235,
+    "text": "},",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 1.235,
+    "text": "{",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 1.235,
+    "text": "\"question\": \"How should short work trips be made?\",",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 1.235,
+    "text": "\"expected_terms\": [",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 1.235,
+    "text": "\"Train\",",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 1.235,
+    "text": "\"under four hours\"",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 1.235,
+    "text": "],",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 1.235,
+    "text": "\"passed\": true",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 1.235,
+    "text": "},",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 1.235,
+    "text": "{",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 1.235,
+    "text": "\"question\": \"What is the budget goal for the Lyon trip?\",",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 1.235,
+    "text": "\"expected_terms\": [",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 1.235,
+    "text": "\"below 450 euros\"",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 1.235,
+    "text": "],",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 1.235,
+    "text": "\"passed\": true",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 1.235,
+    "text": "}",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 1.235,
+    "text": "]",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 1.235,
+    "text": "}",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 1.235,
+    "text": "OKF bundle: <repo>\\examples\\migrations\\langgraph-checkpoints\\artifacts\\langgraph-okf",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 1.375,
+    "text": "OK",
+    "color": "#4ADE80"
+  },
+  {
+    "at": 2.079,
+    "text": "",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 2.079,
+    "text": "$ python stage_source.py  # freeze source artifacts for this run",
+    "color": "#22D3EE"
+  },
+  {
+    "at": 2.157,
+    "text": "<repo>\\examples\\migrations\\langgraph-",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 2.157,
+    "text": "checkpoints\\artifacts\\runs\\20260722T223523Z-27da3254\\langgraph-checkpoints.sqlite",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 2.157,
+    "text": "<repo>\\examples\\migrations\\langgraph-",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 2.157,
+    "text": "checkpoints\\artifacts\\runs\\20260722T223523Z-27da3254\\langgraph-okf",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 2.157,
+    "text": "OK",
+    "color": "#4ADE80"
+  },
+  {
+    "at": 2.86,
+    "text": "",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 2.86,
+    "text": "$ python query_source.py  # five source questions",
+    "color": "#22D3EE"
+  },
+  {
+    "at": 3.375,
+    "text": "{",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 3.375,
+    "text": "\"system\": \"LangGraph SqliteSaver latest state\",",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 3.375,
+    "text": "\"questions\": 5,",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 3.375,
+    "text": "\"passed\": 5,",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 3.375,
+    "text": "\"score\": 1.0,",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 3.375,
+    "text": "\"results\": [",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 3.375,
+    "text": "{",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 3.375,
+    "text": "\"question\": \"Which format should Atlas launch reports use now?\",",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 3.375,
+    "text": "\"answer\": \"Markdown\",",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 3.375,
+    "text": "\"expected_terms\": [",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 3.375,
+    "text": "\"Markdown\"",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 3.375,
+    "text": "],",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 3.375,
+    "text": "\"passed\": true",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 3.375,
+    "text": "},",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 3.375,
+    "text": "{",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 3.375,
+    "text": "\"question\": \"When is the Atlas release scheduled?\",",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 3.375,
+    "text": "\"answer\": \"Ship the Atlas release on September 14.\",",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 3.375,
+    "text": "\"expected_terms\": [",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 3.375,
+    "text": "\"September 14\"",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 3.375,
+    "text": "],",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 3.375,
+    "text": "\"passed\": true",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 3.375,
+    "text": "},",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 3.375,
+    "text": "{",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 3.375,
+    "text": "\"question\": \"Who owns the Atlas launch?\",",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 3.375,
+    "text": "\"answer\": \"Maya Chen owns the Atlas launch.\",",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 3.375,
+    "text": "\"expected_terms\": [",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 3.375,
+    "text": "\"Maya Chen\"",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 3.375,
+    "text": "],",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 3.375,
+    "text": "\"passed\": true",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 3.375,
+    "text": "},",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 3.375,
+    "text": "{",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 3.375,
+    "text": "\"question\": \"How should short work trips be made?\",",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 3.375,
+    "text": "\"answer\": \"Train when travel is under four hours\",",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 3.375,
+    "text": "\"expected_terms\": [",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 3.375,
+    "text": "\"Train\",",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 3.375,
+    "text": "\"under four hours\"",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 3.375,
+    "text": "],",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 3.375,
+    "text": "\"passed\": true",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 3.375,
+    "text": "},",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 3.375,
+    "text": "{",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 3.375,
+    "text": "\"question\": \"What is the budget goal for the Lyon trip?\",",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 3.375,
+    "text": "\"answer\": \"Keep the Lyon work trip below 450 euros.\",",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 3.375,
+    "text": "\"expected_terms\": [",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 3.375,
+    "text": "\"below 450 euros\"",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 3.375,
+    "text": "],",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 3.375,
+    "text": "\"passed\": true",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 3.375,
+    "text": "}",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 3.375,
+    "text": "]",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 3.375,
+    "text": "}",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 3.438,
+    "text": "OK",
+    "color": "#4ADE80"
+  },
+  {
+    "at": 4.141,
+    "text": "",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 4.141,
+    "text": "$ memanto migrate okf ./artifacts/runs/20260722T223523Z-27da3254/langgraph-okf --dry-run",
+    "color": "#22D3EE"
+  },
+  {
+    "at": 4.969,
+    "text": "",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 4.969,
+    "text": "OKF -> Memanto  Dry run",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 4.969,
+    "text": "",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 4.969,
+    "text": "… Loading OKF bundle from",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 4.969,
+    "text": "<repo>\\examples\\mi",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 4.969,
+    "text": "grations\\langgraph-checkpoints\\artifacts\\runs\\20260722T223523Z-27da3254\\langgraph-okf",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 5.0,
+    "text": "… Mapping OKF nodes onto Memanto schema...",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 5.0,
+    "text": "",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 5.0,
+    "text": "Dry run complete",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 5.0,
+    "text": "OKF nodes: 8",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 5.0,
+    "text": "Mapped memories: 8  (skipped 0)",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 5.0,
+    "text": "Type breakdown: artifact: 2, decision: 1, fact: 2, goal: 1, preference: 2",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 5.0,
+    "text": "",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 5.0,
+    "text": "Dry run — no writes performed.",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 5.0,
+    "text": "",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 5.0,
+    "text": "Run dir: ~\\.memanto\\migrate\\okf\\20260722_223528",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 5.0,
+    "text": "Mapped preview: ~\\.memanto\\migrate\\okf\\20260722_223528\\mapped_preview.json",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 5.0,
+    "text": "",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 5.094,
+    "text": "OK",
+    "color": "#4ADE80"
+  },
+  {
+    "at": 5.797,
+    "text": "",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 5.797,
+    "text": "$ memanto agent create langgraph-migration-20260722t223523z-27da3254",
+    "color": "#22D3EE"
+  },
+  {
+    "at": 9.641,
+    "text": "[OK] Namespace created in Moorcheh: memanto_agent_langgraph-",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 9.641,
+    "text": "migration-20260722t223523z-27da3254",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 9.641,
+    "text": "Agent 'langgraph-migration-20260722t223523z-27da3254' created successfully!",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 9.641,
+    "text": "Pattern: project",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 9.641,
+    "text": "Description: LangGraph checkpoint migration live demo",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 9.641,
+    "text": "Agent activated automatically.",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 9.641,
+    "text": "Activation expires: 2026-07-23T04:35:32.742967+00:00",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 9.641,
+    "text": "You can now run: memanto remember \"...\" and memanto recall \"...\"",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 9.766,
+    "text": "OK",
+    "color": "#4ADE80"
+  },
+  {
+    "at": 10.469,
+    "text": "",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 10.469,
+    "text": "$ memanto migrate okf ./artifacts/runs/20260722T223523Z-27da3254/langgraph-okf --agent",
+    "color": "#22D3EE"
+  },
+  {
+    "at": 10.469,
+    "text": "langgraph-migration-20260722t223523z-27da3254",
+    "color": "#22D3EE"
+  },
+  {
+    "at": 11.297,
+    "text": "",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 11.297,
+    "text": "OKF -> Memanto  Migrate",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 11.297,
+    "text": "",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 11.297,
+    "text": "… Loading OKF bundle from",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 11.297,
+    "text": "<repo>\\examples\\mi",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 11.297,
+    "text": "grations\\langgraph-checkpoints\\artifacts\\runs\\20260722T223523Z-27da3254\\langgraph-okf",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 11.313,
+    "text": "… Mapping OKF nodes onto Memanto schema...",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 11.313,
+    "text": "… Importing batch 1/1 (8 memories)...",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 14.891,
+    "text": "",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 14.891,
+    "text": "Import complete",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 14.891,
+    "text": "OKF nodes: 8",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 14.891,
+    "text": "Mapped memories: 8  (skipped 0)",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 14.891,
+    "text": "Type breakdown: artifact: 2, decision: 1, fact: 2, goal: 1, preference: 2",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 14.891,
+    "text": "Imported: 8  Failed: 0  Batches: 1",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 14.891,
+    "text": "Target agent: langgraph-migration-20260722t223523z-27da3254",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 14.891,
+    "text": "",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 14.891,
+    "text": "Run dir: ~\\.memanto\\migrate\\okf\\20260722_223534",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 14.891,
+    "text": "Mapped preview: ~\\.memanto\\migrate\\okf\\20260722_223534\\mapped_preview.json",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 14.891,
+    "text": "",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 15.0,
+    "text": "OK",
+    "color": "#4ADE80"
+  },
+  {
+    "at": 15.688,
+    "text": "",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 15.688,
+    "text": "$ python query_memanto.py  # same five questions",
+    "color": "#22D3EE"
+  },
+  {
+    "at": 33.125,
+    "text": "{",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 33.125,
+    "text": "\"system\": \"Memanto RAG\",",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 33.125,
+    "text": "\"agent\": \"langgraph-migration-20260722t223523z-27da3254\",",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 33.125,
+    "text": "\"questions\": 5,",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 33.125,
+    "text": "\"passed\": 5,",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 33.125,
+    "text": "\"score\": 1.0,",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 33.125,
+    "text": "\"results\": [",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 33.125,
+    "text": "{",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 33.125,
+    "text": "\"question\": \"Which format should Atlas launch reports use now?\",",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 33.125,
+    "text": "\"answer\": \"Based on your stored preferences, Atlas launch reports should use **Markdown**",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 33.125,
+    "text": "format.\\n\\nThis reflects your correction saved in the product-launch thread, where you updated",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 33.125,
+    "text": " your initial preference from PDF to Markdown. This is also explicitly confirmed in your",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 33.125,
+    "text": "profile preference memory: *\\\"Report Format Preference: Markdown\\\"* (chunk 4).\",",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 33.125,
+    "text": "\"expected_terms\": [",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 33.125,
+    "text": "\"Markdown\"",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 33.125,
+    "text": "],",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 33.125,
+    "text": "\"passed\": true,",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 33.125,
+    "text": "\"context\": []",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 33.125,
+    "text": "},",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 33.125,
+    "text": "{",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 33.125,
+    "text": "\"question\": \"When is the Atlas release scheduled?\",",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 33.125,
+    "text": "\"answer\": \"Based on the stored memories, the **Atlas release is scheduled for September",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 33.125,
+    "text": "14**.\\n\\nThis comes from a recorded decision in the product-launch thread: *\\\"Ship the Atlas",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 33.125,
+    "text": "release on September 14\\\"* (Decision memory, `decisions-ship-the-atlas-release-on-",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 33.125,
+    "text": "september-14.md`).\",",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 33.125,
+    "text": "\"expected_terms\": [",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 33.125,
+    "text": "\"September 14\"",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 33.125,
+    "text": "],",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 33.125,
+    "text": "\"passed\": true,",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 33.125,
+    "text": "\"context\": []",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 33.125,
+    "text": "},",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 33.125,
+    "text": "{",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 33.125,
+    "text": "\"question\": \"Who owns the Atlas launch?\",",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 33.125,
+    "text": "\"answer\": \"Based on the stored memories, **Maya Chen** owns the Atlas launch.\\n\\nThis is",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 33.125,
+    "text": "recorded as a confirmed fact in memory (source: `facts-maya-chen-owns-the-atlas-launch.md`),",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 33.125,
+    "text": "and is also corroborated in the product-launch conversation transcript.\",",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 33.125,
+    "text": "\"expected_terms\": [",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 33.125,
+    "text": "\"Maya Chen\"",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 33.125,
+    "text": "],",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 33.125,
+    "text": "\"passed\": true,",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 33.125,
+    "text": "\"context\": []",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 33.125,
+    "text": "},",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 33.125,
+    "text": "{",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 33.125,
+    "text": "\"question\": \"How should short work trips be made?\",",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 33.125,
+    "text": "\"answer\": \"Based on your saved preferences, **short work trips (under four hours) should be",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 33.125,
+    "text": "made by train** [Chunk 1 – Short Trip Preference].\\n\\nThis aligns with what you explicitly",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 33.125,
+    "text": "stated: *\\\"For work trips, I prefer trains for journeys under four hours\\\"* [Chunk 3 – travel-",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 33.125,
+    "text": "planning transcript].\",",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 33.125,
+    "text": "\"expected_terms\": [",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 33.125,
+    "text": "\"Train\",",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 33.125,
+    "text": "\"under four hours\"",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 33.125,
+    "text": "],",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 33.125,
+    "text": "\"passed\": true,",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 33.125,
+    "text": "\"context\": []",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 33.125,
+    "text": "},",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 33.125,
+    "text": "{",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 33.125,
+    "text": "\"question\": \"What is the budget goal for the Lyon trip?\",",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 33.125,
+    "text": "\"answer\": \"Based on your memories, the budget goal for the Lyon trip is to **keep costs below",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 33.125,
+    "text": "450 euros**. This was saved as an explicit goal in your travel-planning memory (Goal: *\\\"Keep",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 33.125,
+    "text": "the Lyon work trip below 450 euros\\\"*).\",",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 33.125,
+    "text": "\"expected_terms\": [",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 33.125,
+    "text": "\"below 450 euros\"",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 33.125,
+    "text": "],",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 33.125,
+    "text": "\"passed\": true,",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 33.125,
+    "text": "\"context\": []",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 33.125,
+    "text": "}",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 33.125,
+    "text": "]",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 33.125,
+    "text": "}",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 33.235,
+    "text": "OK",
+    "color": "#4ADE80"
+  },
+  {
+    "at": 33.938,
+    "text": "",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 33.938,
+    "text": "$ python validate_parity.py  # exact question parity",
+    "color": "#22D3EE"
+  },
+  {
+    "at": 34.047,
+    "text": "{",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 34.047,
+    "text": "\"questions\": 5,",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 34.047,
+    "text": "\"passed\": 5,",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 34.047,
+    "text": "\"recall_parity\": 1.0,",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 34.047,
+    "text": "\"results\": [",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 34.047,
+    "text": "{",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 34.047,
+    "text": "\"question\": \"Which format should Atlas launch reports use now?\",",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 34.047,
+    "text": "\"source_answer\": \"Markdown\",",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 34.047,
+    "text": "\"memanto_answer\": \"Based on your stored preferences, Atlas launch reports should use",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 34.047,
+    "text": "**Markdown** format.\\n\\nThis reflects your correction saved in the product-launch thread,",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 34.047,
+    "text": "where you updated your initial preference from PDF to Markdown. This is also explicitly",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 34.047,
+    "text": "confirmed in your profile preference memory: *\\\"Report Format Preference: Markdown\\\"* (chunk",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 34.047,
+    "text": "4).\",",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 34.047,
+    "text": "\"source_passed\": true,",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 34.047,
+    "text": "\"memanto_passed\": true,",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 34.047,
+    "text": "\"parity_passed\": true",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 34.047,
+    "text": "},",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 34.047,
+    "text": "{",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 34.047,
+    "text": "\"question\": \"When is the Atlas release scheduled?\",",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 34.047,
+    "text": "\"source_answer\": \"Ship the Atlas release on September 14.\",",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 34.047,
+    "text": "\"memanto_answer\": \"Based on the stored memories, the **Atlas release is scheduled for",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 34.047,
+    "text": "September 14**.\\n\\nThis comes from a recorded decision in the product-launch thread: *\\\"Ship",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 34.047,
+    "text": "the Atlas release on September 14\\\"* (Decision memory, `decisions-ship-the-atlas-release-on-",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 34.047,
+    "text": "september-14.md`).\",",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 34.047,
+    "text": "\"source_passed\": true,",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 34.047,
+    "text": "\"memanto_passed\": true,",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 34.047,
+    "text": "\"parity_passed\": true",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 34.047,
+    "text": "},",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 34.047,
+    "text": "{",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 34.047,
+    "text": "\"question\": \"Who owns the Atlas launch?\",",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 34.047,
+    "text": "\"source_answer\": \"Maya Chen owns the Atlas launch.\",",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 34.047,
+    "text": "\"memanto_answer\": \"Based on the stored memories, **Maya Chen** owns the Atlas launch.\\n\\nThis",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 34.047,
+    "text": "is recorded as a confirmed fact in memory (source: `facts-maya-chen-owns-the-atlas-",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 34.047,
+    "text": "launch.md`), and is also corroborated in the product-launch conversation transcript.\",",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 34.047,
+    "text": "\"source_passed\": true,",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 34.047,
+    "text": "\"memanto_passed\": true,",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 34.047,
+    "text": "\"parity_passed\": true",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 34.047,
+    "text": "},",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 34.047,
+    "text": "{",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 34.047,
+    "text": "\"question\": \"How should short work trips be made?\",",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 34.047,
+    "text": "\"source_answer\": \"Train when travel is under four hours\",",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 34.047,
+    "text": "\"memanto_answer\": \"Based on your saved preferences, **short work trips (under four hours)",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 34.047,
+    "text": "should be made by train** [Chunk 1 – Short Trip Preference].\\n\\nThis aligns with what you",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 34.047,
+    "text": "explicitly stated: *\\\"For work trips, I prefer trains for journeys under four hours\\\"* [Chunk",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 34.047,
+    "text": "3 – travel-planning transcript].\",",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 34.047,
+    "text": "\"source_passed\": true,",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 34.047,
+    "text": "\"memanto_passed\": true,",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 34.047,
+    "text": "\"parity_passed\": true",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 34.047,
+    "text": "},",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 34.047,
+    "text": "{",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 34.047,
+    "text": "\"question\": \"What is the budget goal for the Lyon trip?\",",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 34.047,
+    "text": "\"source_answer\": \"Keep the Lyon work trip below 450 euros.\",",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 34.047,
+    "text": "\"memanto_answer\": \"Based on your memories, the budget goal for the Lyon trip is to **keep",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 34.047,
+    "text": "costs below 450 euros**. This was saved as an explicit goal in your travel-planning memory",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 34.047,
+    "text": "(Goal: *\\\"Keep the Lyon work trip below 450 euros\\\"*).\",",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 34.047,
+    "text": "\"source_passed\": true,",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 34.047,
+    "text": "\"memanto_passed\": true,",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 34.047,
+    "text": "\"parity_passed\": true",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 34.047,
+    "text": "}",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 34.047,
+    "text": "]",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 34.047,
+    "text": "}",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 34.063,
+    "text": "OK",
+    "color": "#4ADE80"
+  },
+  {
+    "at": 34.75,
+    "text": "",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 34.75,
+    "text": "$ memanto memory export --agent langgraph-migration-20260722t223523z-27da3254 --okf",
+    "color": "#22D3EE"
+  },
+  {
+    "at": 35.563,
+    "text": "",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 35.563,
+    "text": "OKF Export",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 35.563,
+    "text": "Agent: langgraph-migration-20260722t223523z-27da3254  •  Split: auto  •  Limit: 25/type",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 35.563,
+    "text": "",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 43.094,
+    "text": "",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 43.094,
+    "text": "OKF Bundle Counts",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 43.094,
+    "text": "",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 43.094,
+    "text": "Type          Count",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 43.094,
+    "text": "",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 43.094,
+    "text": "Facts             2",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 43.094,
+    "text": "Decisions         1",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 43.094,
+    "text": "Goals             1",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 43.094,
+    "text": "Preferences       2",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 43.094,
+    "text": "Artifacts         2",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 43.094,
+    "text": "",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 43.094,
+    "text": "",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 43.094,
+    "text": "OK Exported 8 memories to OKF bundle!",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 43.094,
+    "text": "Bundle: ~\\.memanto\\langgraph-migration-20260722t223523z-27da3254-roundtrip-okf",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 43.094,
+    "text": "Completed in 7.53s",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 43.235,
+    "text": "OK",
+    "color": "#4ADE80"
+  },
+  {
+    "at": 43.938,
+    "text": "",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 43.938,
+    "text": "$ python stage_bundle.py  # copy export into this evidence run",
+    "color": "#22D3EE"
+  },
+  {
+    "at": 44.016,
+    "text": "<repo>\\examples\\migrations\\langgraph-",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 44.016,
+    "text": "checkpoints\\artifacts\\runs\\20260722T223523Z-27da3254\\memanto-roundtrip-okf",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 44.032,
+    "text": "OK",
+    "color": "#4ADE80"
+  },
+  {
+    "at": 44.735,
+    "text": "",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 44.735,
+    "text": "$ python build_evidence_report.py  # measured run-scoped report",
+    "color": "#22D3EE"
+  },
+  {
+    "at": 45.016,
+    "text": "# Migration and round-trip evidence",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 45.016,
+    "text": "",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 45.016,
+    "text": "Run ID: `20260722T223523Z-27da3254`",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 45.016,
+    "text": "",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 45.016,
+    "text": "| Stage | Records | Files | Bytes |",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 45.016,
+    "text": "| --- | ---: | ---: | ---: |",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 45.016,
+    "text": "| LangGraph SQLite | 21 checkpoints | 1 | 81920 |",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 45.016,
+    "text": "| First OKF bundle | 8 memories | 11 | 6497 |",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 45.016,
+    "text": "| Memanto round-trip OKF | 8 memories | 19 | 16721 |",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 45.016,
+    "text": "",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 45.016,
+    "text": "- First OKF type breakdown: artifact=2, decision=1, fact=2, goal=1, preference=2.",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 45.016,
+    "text": "- Round-trip recovery: 8/8 portable memories exported from Memanto.",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 45.016,
+    "text": "- Recall after round trip: 5/5 (1.0 parity).",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 45.016,
+    "text": "- First portable bundle size change against the raw SQLite file: 92.1% smaller.",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 45.016,
+    "text": "",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 45.016,
+    "text": "## Scope note",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 45.016,
+    "text": "",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 45.016,
+    "text": "Raw SQLite file bytes compared with the first portable OKF bundle. This does not estimate",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 45.016,
+    "text": "provider token, latency, or billing savings.",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 45.016,
+    "text": "",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 45.032,
+    "text": "OK",
+    "color": "#4ADE80"
+  },
+  {
+    "at": 47.735,
+    "text": "Round trip complete.",
+    "color": "#4ADE80"
+  },
+  {
+    "at": 48.535,
+    "text": "POST-RUN ARTIFACT INSPECTION  |  frozen verified export",
+    "color": "#22D3EE"
+  },
+  {
+    "at": 49.235,
+    "text": "$ python show_okf_sample.py ./memanto-roundtrip-okf",
+    "color": "#22D3EE"
+  },
+  {
+    "at": 49.315,
+    "text": "Opening portable OKF Markdown: memories\\preference\\report-format-preference-markdown.md",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 49.395,
+    "text": "",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 49.475,
+    "text": "---",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 49.555,
+    "text": "type: preference",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 49.635,
+    "text": "title: 'Report Format Preference: Markdown'",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 49.715,
+    "text": "description: 'Report Format Preference: Markdown'",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 49.795,
+    "text": "tags:",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 49.875,
+    "text": "- langgraph-thread:product-launch",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 49.955,
+    "text": "- langgraph-channel:profile",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 50.035,
+    "text": "timestamp: '2026-07-22T22:35:24.211360+00:00'",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 50.115,
+    "text": "resource: langgraph://product-launch/root/1f1861da-1371-6e42-800a-bd58b61aea0a#profile-report-",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 50.195,
+    "text": "format-preference",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 50.275,
+    "text": "x_memanto:",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 50.355,
+    "text": "id: df111c30-8f13-42ef-8232-97b4ca056989",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 50.435,
+    "text": "confidence: 1",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 50.515,
+    "text": "provenance: imported",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 50.595,
+    "text": "source: langgraph",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 50.675,
+    "text": "status: active",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 50.755,
+    "text": "type: preference",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 50.835,
+    "text": "---",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 50.915,
+    "text": "",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 50.995,
+    "text": "Report Format Preference: Markdown",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 51.075,
+    "text": "",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 51.155,
+    "text": "---",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 51.235,
+    "text": "[Supporting data]",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 51.315,
+    "text": "- OKF source: memories\\preference\\report-format-preference-markdown.md",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 51.395,
+    "text": "- OKF resource: langgraph://product-launch/root/1f1861da-1371-6e42-800a-bd58b61aea0a#profile-",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 51.475,
+    "text": "report-format-preference",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 51.555,
+    "text": "- OKF source_channel: profile",
+    "color": "#E5E7EB"
+  },
+  {
+    "at": 52.255,
+    "text": "OKF Markdown is readable and portable.",
+    "color": "#4ADE80"
+  }
+]

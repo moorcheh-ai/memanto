@@ -116,6 +116,153 @@ def resolve_venv_python(root: Path) -> Path:
     )
 
 
+# Copied .env.example values and other obvious stubs must not count as configured.
+_PLACEHOLDER_API_KEY_VALUES = frozenset(
+    {
+        "your_api_key_here",
+        "your_key_here",
+        "your_key",
+        "your-api-key-here",
+        "changeme",
+        "replace_me",
+        "replace-me",
+        "xxx",
+        "todo",
+        "api_key_here",
+        "insert_api_key_here",
+        "<your_api_key>",
+        "<api_key>",
+        "none",
+        "null",
+        "undefined",
+    }
+)
+
+
+def _strip_env_value(value: str) -> str:
+    value = value.strip()
+    if len(value) >= 2 and value[0] == value[-1] and value[0] in {'"', "'"}:
+        value = value[1:-1].strip()
+    return value
+
+
+def _is_placeholder_api_key(value: str) -> bool:
+    """True for empty/whitespace or obvious placeholder API key stubs."""
+    cleaned = _strip_env_value(value)
+    if not cleaned:
+        return True
+    return cleaned.casefold() in _PLACEHOLDER_API_KEY_VALUES
+
+
+def _is_configured_api_key(value: str | None) -> bool:
+    """True when value looks like a real API key (not empty/placeholder)."""
+    if value is None:
+        return False
+    return not _is_placeholder_api_key(value)
+
+
+def _read_env_file_value(path: Path, key: str) -> str | None:
+    """Return the raw value for ``key`` from a dotenv file, or None if absent."""
+    if not path.is_file():
+        return None
+    prefix = f"{key}="
+    for raw in path.read_text(encoding="utf-8").splitlines():
+        line = raw.strip()
+        if not line or line.startswith("#"):
+            continue
+        if line.startswith(prefix) or line.startswith(f"{key} ="):
+            # Support optional spaces around '='.
+            if "=" not in line:
+                continue
+            found_key, found_value = line.split("=", 1)
+            if found_key.strip() != key:
+                continue
+            return found_value
+    return None
+
+
+def _load_env_file(path: Path) -> None:
+    """Load KEY=VALUE pairs into os.environ without overriding existing values."""
+    if not path.is_file():
+        return
+    for raw in path.read_text(encoding="utf-8").splitlines():
+        line = raw.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, value = line.split("=", 1)
+        key = key.strip()
+        if not key or key in os.environ:
+            continue
+        value = _strip_env_value(value)
+        if key == "MOORCHEH_API_KEY" and not _is_configured_api_key(value):
+            continue
+        os.environ[key] = value
+
+
+def _has_moorcheh_api_key() -> bool:
+    """True when MOORCHEH_API_KEY is configured in the environment or ~/.memanto/.env."""
+    env_value = os.environ.get("MOORCHEH_API_KEY")
+    if env_value is not None and env_value.strip():
+        # Explicit process env wins: placeholder here means not configured.
+        return _is_configured_api_key(env_value)
+    file_value = _read_env_file_value(Path.home() / ".memanto" / ".env", "MOORCHEH_API_KEY")
+    return _is_configured_api_key(file_value)
+
+
+def _moorcheh_api_key_problem() -> str | None:
+    """Return a fail-fast message when the API key is missing or a placeholder."""
+    if _has_moorcheh_api_key():
+        return None
+    return (
+        "MOORCHEH_API_KEY is not set. Get a free key at https://moorcheh.ai/ "
+        "then either export MOORCHEH_API_KEY, copy .env.example to .env and "
+        "fill it in, or run `memanto` once to store the key in ~/.memanto/.env. "
+        "Do not commit .env. Placeholder values such as your_api_key_here do not "
+        "count. This message never prints the key value."
+    )
+
+
+def _require_live_prerequisites(
+    *,
+    check_example_venv: bool = True,
+    check_repo_venv: bool = True,
+    check_ffmpeg: bool = True,
+) -> None:
+    """Fail fast with install/setup guidance. Never prints the API key."""
+    problems: list[str] = []
+    if check_example_venv:
+        try:
+            resolve_venv_python(ROOT)
+        except FileNotFoundError:
+            problems.append(
+                "Example .venv is missing. From this directory run:\n"
+                "  python -m venv .venv\n"
+                '  .venv\\Scripts\\python -m pip install -e ".[dev]"   # Windows\n'
+                '  .venv/bin/python -m pip install -e ".[dev]"       # POSIX'
+            )
+    if check_repo_venv:
+        try:
+            resolve_venv_python(REPOSITORY)
+        except FileNotFoundError:
+            problems.append(
+                "Repository-root .venv is missing. From the memanto repo root run:\n"
+                "  uv sync --group dev\n"
+                "  # or: python -m venv .venv && pip install -e \".[all]\""
+            )
+    api_key_problem = _moorcheh_api_key_problem()
+    if api_key_problem is not None:
+        problems.append(api_key_problem)
+    if check_ffmpeg and shutil.which("ffmpeg") is None:
+        problems.append(
+            "FFmpeg is not on PATH. Install FFmpeg so live-terminal-demo.mp4 can render."
+        )
+    if problems:
+        raise RuntimeError(
+            "Live cloud round trip prerequisites are incomplete:\n\n"
+            + "\n\n".join(problems)
+        )
+
+
 def _append(events: list[Event], started: float, text: str, color: str = WHITE) -> None:
     for line in textwrap.wrap(
         _clean(text), width=94, replace_whitespace=False, drop_whitespace=False
@@ -360,6 +507,16 @@ def _commands(agent: str, run_id: str, run_dir: Path) -> list[Command]:
             ROOT,
         ),
         Command(
+            "show_okf_markdown",
+            "python show_okf_sample.py  # open one portable memory as Markdown",
+            [
+                str(example_python),
+                "show_okf_sample.py",
+                str(roundtrip),
+            ],
+            ROOT,
+        ),
+        Command(
             "evidence_report",
             "python build_evidence_report.py  # measured run-scoped report",
             [
@@ -392,6 +549,8 @@ def main() -> None:
     parser.add_argument("--agent-prefix", default="langgraph-migration")
     parser.add_argument("--run-id")
     args = parser.parse_args()
+    _load_env_file(ROOT / ".env")
+    _require_live_prerequisites()
     run_id = args.run_id or (
         datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ") + "-" + uuid4().hex[:8]
     )
