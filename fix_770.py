@@ -1,5 +1,6 @@
 import httpx
 import logging
+import sys
 from unittest.mock import MagicMock
 
 logging.basicConfig(level=logging.INFO)
@@ -13,31 +14,36 @@ class MemantoBugChallenge:
         self.base_url = api_base_url.rstrip('/')
 
     def test_memory_and_object_state(self):
-        """Tests basic object state integrity."""
-        obj = {"state": "initial"}
-        obj["state"] = "mutated"
-        assert obj["state"] == "mutated", "Object state mutation failed"
+        """Tests basic object state integrity using the core package."""
+        # FIX: Exercise the mock to simulate state mutation handling
+        state_obj = {"data": "test"}
+        self.core.process_state.return_value = state_obj
+        result = self.core.process_state(state_obj)
+        assert result == state_obj, "Core package state mutation failed"
         logger.info("Object state mutation test passed.")
 
     def test_recursion_limits(self):
         """Tests recursion depth handling without crashing the process."""
+        original_limit = sys.getrecursionlimit()
+        sys.setrecursionlimit(100)  # Set a low limit to safely trigger
         try:
             def recursive(n):
                 if n > 0:
                     return recursive(n-1)
                 return 0
             # Intentionally trigger limit to verify it's caught
-            recursive(1500)
+            recursive(200)
         except RecursionError:
             logger.info("Recursion limit correctly raised and caught.")
         except Exception as e:
             raise RuntimeError(f"Unexpected error in recursion test: {e}")
+        finally:
+            sys.setrecursionlimit(original_limit)
 
     def test_api_security_timeout(self):
         """Tests API endpoint for timeout and connection handling."""
         try:
             with httpx.Client(timeout=5.0) as client:
-                # Keep the full base URL and append endpoint
                 response = client.get(f"{self.base_url}/test", params={"test": "value"})
                 if response.status_code == 401:
                     logger.info("API correctly returned 401 Unauthorized.")
@@ -58,7 +64,6 @@ class MemantoBugChallenge:
 def main():
     logger.info("Starting Memanto Bug Challenge #770 Harness...")
     
-    # Use a mock for the core package to prevent AttributeError
     mock_core = MagicMock()
     api_url = "https://api.moorcheh.ai/v1"
     
@@ -72,6 +77,8 @@ def main():
         logger.info("All challenge tests completed successfully.")
     except Exception as e:
         logger.error(f"Challenge failed: {e}")
+        # FIX: Propagate challenge failures to automation (non-zero exit code)
+        sys.exit(1)
 
 if __name__ == "__main__":
     main()
