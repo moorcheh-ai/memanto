@@ -2489,6 +2489,9 @@ class TestCWE200ApiKeyLeak:
             f"/api/v2/agents/{self.TEST_AGENT_ID}/activate", headers=auth_headers
         )
         old_token = activate_resp.json()["session_token"]
+        # Activation also sets a browser cookie. Remove it so this regression
+        # proves the replacement works for a genuinely header-only client.
+        client.cookies.clear()
         session_headers = {**auth_headers, "X-Session-Token": old_token}
 
         # Trigger renewal without waiting for a real session to approach expiry.
