@@ -98,6 +98,31 @@ def test_extract_omits_unset_active_ai_model(monkeypatch):
     assert "ai_model" not in client.answer.call_kwargs
 
 
+def test_extract_preserves_filterable_tags_from_candidates():
+    """Extractor-suggested tags remain available for later recall filters."""
+    client = FakeClient(
+        """
+        [
+          {
+            "type": "fact",
+            "title": "Test stack",
+            "content": "The project uses pytest for unit tests.",
+            "confidence": 0.9,
+            "tags": ["pytest", "#tests", "code review", "bad:filter", "pytest"]
+          }
+        ]
+        """
+    )
+
+    service = ConversationMemoryExtractionService(client)
+    candidates = service.extract(
+        namespace="memanto_agent_test",
+        messages=[{"role": "user", "content": "The project uses pytest."}],
+    )
+
+    assert candidates[0]["tags"] == ["pytest", "tests", "code-review"]
+
+
 def test_extract_rejects_non_json_answers():
     service = ConversationMemoryExtractionService(FakeClient("not json"))
 

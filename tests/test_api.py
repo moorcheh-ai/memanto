@@ -1369,6 +1369,7 @@ class TestMEMANTOAPI:
                         "title": "Test stack",
                         "content": "The project uses pytest for tests.",
                         "confidence": 0.88,
+                        "tags": ["pytest", "tests"],
                     }
                 ]
             ),
@@ -1393,6 +1394,7 @@ class TestMEMANTOAPI:
         uploaded_doc = mock_moorcheh.documents.upload.call_args.kwargs["documents"][0]
         assert uploaded_doc["memory_type"] == "fact"
         assert uploaded_doc["provenance"] == "inferred"
+        assert uploaded_doc["tags"] == "pytest,tests,conversation-extract"
 
     @pytest.mark.asyncio
     async def test_recall_temporal_api(self, client, auth_headers, mock_moorcheh):
