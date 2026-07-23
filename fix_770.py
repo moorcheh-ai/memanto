@@ -33,6 +33,8 @@ class MemantoBugChallenge:
                 return 0
             # Intentionally trigger limit to verify it's caught
             recursive(200)
+            # FIX: If no error is raised, the test fails
+            raise AssertionError("Recursion limit was not triggered as expected.")
         except RecursionError:
             logger.info("Recursion limit correctly raised and caught.")
         except Exception as e:
