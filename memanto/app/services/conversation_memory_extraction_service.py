@@ -21,6 +21,7 @@ class ConversationMemoryExtractionService:
     MAX_MESSAGES = 200
     MAX_MEMORIES = 100
     MAX_CONTENT_CHARS = 12_000
+    MAX_MEMORY_CONTENT_CHARS = 10_000
 
     def __init__(self, client: Any) -> None:
         self.client = client
@@ -100,6 +101,7 @@ class ConversationMemoryExtractionService:
             "commitments, errors, observations, relationships, context, events, "
             "artifacts, or learnings that would be useful in future sessions. "
             "Do not include secrets, API keys, passwords, tokens, or transient chatter. "
+            f"Keep each memory content at or below {self.MAX_MEMORY_CONTENT_CHARS} characters. "
             f"Return at most {max_memories} memories. Valid types: {memory_types}."
         )
 
@@ -143,6 +145,8 @@ class ConversationMemoryExtractionService:
             content = str(item.get("content", "")).strip()
             if not content:
                 continue
+            if len(content) > self.MAX_MEMORY_CONTENT_CHARS:
+                content = content[: self.MAX_MEMORY_CONTENT_CHARS - 3].rstrip() + "..."
 
             memory_type = item.get("type")
             if memory_type:
