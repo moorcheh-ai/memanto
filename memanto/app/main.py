@@ -97,6 +97,9 @@ app.add_middleware(
     allow_credentials=settings.CORS_ALLOW_CREDENTIALS,
     allow_methods=["*"],
     allow_headers=["*"],
+    # Header-authenticated API clients must be able to read an auto-renewed
+    # token from the response. Custom response headers are not CORS-safelisted.
+    expose_headers=["X-Session-Token"],
 )
 
 # Include routers
