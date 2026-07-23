@@ -1,0 +1,55 @@
+{
+  "source": {
+    "generated_at": "2026-07-23T08:20:08.810543+00:00",
+    "source": "actual LangGraph StateGraph run with MemorySaver checkpoints",
+    "thread_id": "founder-ops-agent-demo",
+    "turn_count": 5,
+    "checkpoint_count": 15,
+    "latest_memory_count": 6,
+    "checkpoint_export": "data/source/langgraph_checkpoints.jsonl",
+    "transcript": "data/source/source_transcript.json"
+  },
+  "conversion": {
+    "converted_at": "2026-07-23T08:20:08.956025+00:00",
+    "source_path": "data/source/langgraph_checkpoints.jsonl",
+    "checkpoint_records": 15,
+    "deduped_memories": 6,
+    "okf_output": "okf_bundle",
+    "per_type_counts": {
+      "instruction": 1,
+      "fact": 1,
+      "decision": 1,
+      "commitment": 1,
+      "preference": 2
+    }
+  },
+  "validation": {
+    "source_memories": 6,
+    "okf_entries": 6,
+    "mapped_rows": 6,
+    "missing_source_memory_ids": [],
+    "golden_qa": [
+      {
+        "question": "How should status updates be written for Robin?",
+        "passed": true,
+        "missing": []
+      },
+      {
+        "question": "What is the safest deploy window?",
+        "passed": true,
+        "missing": []
+      },
+      {
+        "question": "What did Robin promise Nina?",
+        "passed": true,
+        "missing": []
+      },
+      {
+        "question": "What is the OKF demo story decision?",
+        "passed": true,
+        "missing": []
+      }
+    ],
+    "passed": true
+  }
+}

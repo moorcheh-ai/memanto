@@ -1,0 +1,29 @@
+{
+  "source_memories": 6,
+  "okf_entries": 6,
+  "mapped_rows": 6,
+  "missing_source_memory_ids": [],
+  "golden_qa": [
+    {
+      "question": "How should status updates be written for Robin?",
+      "passed": true,
+      "missing": []
+    },
+    {
+      "question": "What is the safest deploy window?",
+      "passed": true,
+      "missing": []
+    },
+    {
+      "question": "What did Robin promise Nina?",
+      "passed": true,
+      "missing": []
+    },
+    {
+      "question": "What is the OKF demo story decision?",
+      "passed": true,
+      "missing": []
+    }
+  ],
+  "passed": true
+}

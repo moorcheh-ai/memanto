@@ -1,0 +1,14 @@
+{
+  "converted_at": "2026-07-23T08:20:08.956025+00:00",
+  "source_path": "data/source/langgraph_checkpoints.jsonl",
+  "checkpoint_records": 15,
+  "deduped_memories": 6,
+  "okf_output": "okf_bundle",
+  "per_type_counts": {
+    "instruction": 1,
+    "fact": 1,
+    "decision": 1,
+    "commitment": 1,
+    "preference": 2
+  }
+}
