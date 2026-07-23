@@ -31,12 +31,12 @@
   },
   {
     "at": 1.234,
-    "text": "\"source\": \"C:\\\\Users\\\\paul\\\\Documents\\\\Codex\\\\2026-07-16\\\\okay-so-you-cost-me-a\\\\memanto-",
+    "text": "\"source\": \"<repo>/",
     "color": "#E5E7EB"
   },
   {
     "at": 1.234,
-    "text": "migration-bounty\\\\examples\\\\migrations\\\\langgraph-checkpoints\\\\artifacts\\\\langgraph-",
+    "text": "examples\\\\migrations\\\\langgraph-checkpoints\\\\artifacts\\\\langgraph-",
     "color": "#E5E7EB"
   },
   {
@@ -46,12 +46,12 @@
   },
   {
     "at": 1.234,
-    "text": "\"output\": \"C:\\\\Users\\\\paul\\\\Documents\\\\Codex\\\\2026-07-16\\\\okay-so-you-cost-me-a\\\\memanto-",
+    "text": "\"output\": \"<repo>/",
     "color": "#E5E7EB"
   },
   {
     "at": 1.234,
-    "text": "migration-bounty\\\\examples\\\\migrations\\\\langgraph-checkpoints\\\\artifacts\\\\langgraph-okf\",",
+    "text": "examples\\\\migrations\\\\langgraph-checkpoints\\\\artifacts\\\\langgraph-okf\",",
     "color": "#E5E7EB"
   },
   {
@@ -1236,12 +1236,12 @@
   },
   {
     "at": 30.218,
-    "text": " euros**. This was saved as an explicit goal in your travel planning memory (Goal: *\\\"Keep the",
+    "text": "euros**. This was saved as an explicit goal in your travel planning memory (Goal: *\\\"Keep the",
     "color": "#E5E7EB"
   },
   {
     "at": 30.218,
-    "text": " Lyon work trip below 450 euros\\\"*).\",",
+    "text": "Lyon work trip below 450 euros\\\"*).\",",
     "color": "#E5E7EB"
   },
   {
@@ -1516,7 +1516,7 @@
   },
   {
     "at": 31.109,
-    "text": " trips, I prefer trains for journeys under four hours.\\\"* (Chunk 1 & 4)\\n\\nThis preference",
+    "text": "trips, I prefer trains for journeys under four hours.\\\"* (Chunk 1 & 4)\\n\\nThis preference",
     "color": "#E5E7EB"
   },
   {

@@ -8,11 +8,18 @@ import pytest
 from build_demo_video import import_type_lines, type_breakdown_lines
 from build_evidence_report import _markdown, build_report, parse_import_counts
 from generate_source import SESSIONS, generate_database
+from langchain_core.messages import HumanMessage
 from langgraph_to_okf import convert_checkpoint_database
-from langgraph_to_okf.adapter import _semantic_type, _state_to_memories, _ThreadRef
-from query_source import query_source
+from langgraph_to_okf.adapter import (
+    _jsonable,
+    _semantic_type,
+    _state_to_memories,
+    _ThreadRef,
+)
+from query_source import _answer, query_source
 from record_live_terminal import Event, _clean, _commands, resolve_venv_python
 from show_okf_sample import select_memory_markdown
+from stage_bundle import normalize_exported_markdown
 from supplement_live_video import append_inspection_events
 from validate_bundle import load_documents, validate_content
 from validate_parity import validate_parity
@@ -313,6 +320,73 @@ def test_commitment_channel_maps_heuristically():
     assert len(memories) == 1
     assert memories[0]["type"] == "commitment"
     assert "Ship the release notes" in memories[0]["body"]
+
+
+def test_default_namespace_is_preserved_as_root_tag():
+    memories = _state_to_memories(
+        _ThreadRef("demo", ""),
+        {"facts": ["Portable namespace provenance"]},
+        "2026-07-23T00:00:00+00:00",
+        "ckpt-1",
+    )
+
+    assert "langgraph-namespace:root" in memories[0]["tags"]
+
+
+def test_message_additional_kwargs_are_recursively_jsonable():
+    message = HumanMessage(
+        content="hello",
+        additional_kwargs={"nested": {"path": Path("portable")}},
+    )
+
+    serialized = _jsonable(message)["additional_kwargs"]["nested"]["path"]
+    assert serialized.endswith("Path('portable')")
+
+
+def test_source_answer_selects_checkpoint_namespace():
+    states = {
+        ("thread", ""): {"facts": {"owner": "root"}},
+        ("thread", "branch"): {"facts": {"owner": "branch"}},
+    }
+
+    assert (
+        _answer(
+            states,
+            {
+                "thread": "thread",
+                "namespace": "branch",
+                "channel": "facts",
+                "key": "owner",
+            },
+        )
+        == "branch"
+    )
+
+
+def test_staged_bundle_normalizes_generated_markdown(tmp_path):
+    bundle = tmp_path / "bundle"
+    metrics = bundle / "metrics"
+    sessions = bundle / "sessions"
+    memories = bundle / "memories" / "fact"
+    metrics.mkdir(parents=True)
+    sessions.mkdir()
+    memories.mkdir(parents=True)
+    overview = metrics / "overview.md"
+    overview.write_text("```\nchart\n```\n", encoding="utf-8")
+    session = sessions / "summary.md"
+    session.write_text(
+        "# Session Summary\n\n### Entry\n\n> - OKF source: memories\\fact\\one.md\n",
+        encoding="utf-8",
+    )
+    memory = memories / "one.md"
+    memory.write_text("- OKF source: memories\\fact\\one.md\n", encoding="utf-8")
+
+    normalize_exported_markdown(bundle)
+
+    assert overview.read_text(encoding="utf-8") == "```text\nchart\n```\n"
+    assert "## Entry" in session.read_text(encoding="utf-8")
+    assert "memories/fact/one.md" in session.read_text(encoding="utf-8")
+    assert "memories/fact/one.md" in memory.read_text(encoding="utf-8")
 
 
 def test_source_questions_read_latest_checkpoint_state(tmp_path):

@@ -30,6 +30,6 @@ x_memanto:
 
 ---
 [Supporting data]
-- OKF source: memories\artifact\langgraph-transcript-travel-planning.md
+- OKF source: memories/artifact/langgraph-transcript-travel-planning.md
 - OKF resource: langgraph://travel-planning/root/1f18600e-a57d-6b9b-8007-022afbd9107d#messages
 - OKF source_channel: messages

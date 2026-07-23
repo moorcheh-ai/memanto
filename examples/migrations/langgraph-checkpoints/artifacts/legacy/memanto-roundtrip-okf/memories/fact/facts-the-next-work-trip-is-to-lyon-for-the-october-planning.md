@@ -20,6 +20,6 @@ The next work trip is to Lyon for the October planning workshop.
 
 ---
 [Supporting data]
-- OKF source: memories\fact\facts-the-next-work-trip-is-to-lyon-for-the-october-planning-workshop.md
+- OKF source: memories/fact/facts-the-next-work-trip-is-to-lyon-for-the-october-planning-workshop.md
 - OKF resource: langgraph://travel-planning/root/1f18600e-a57d-6b9b-8007-022afbd9107d#facts-1
 - OKF source_channel: facts

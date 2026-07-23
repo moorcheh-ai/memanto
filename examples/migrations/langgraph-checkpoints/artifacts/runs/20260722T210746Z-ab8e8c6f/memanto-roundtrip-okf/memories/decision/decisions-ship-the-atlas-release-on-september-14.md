@@ -20,6 +20,6 @@ Ship the Atlas release on September 14.
 
 ---
 [Supporting data]
-- OKF source: memories\decision\decisions-ship-the-atlas-release-on-september-14.md
+- OKF source: memories/decision/decisions-ship-the-atlas-release-on-september-14.md
 - OKF resource: langgraph://product-launch/root/1f186116-3e36-60c7-800a-7698c744c089#decisions-1
 - OKF source_channel: decisions

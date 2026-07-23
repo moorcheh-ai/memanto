@@ -406,15 +406,15 @@
     },
     "roundtrip_okf_bundle": {
       "path": "memanto-roundtrip-okf",
-      "sha256": "abd3f3a9d406831d8ac3ecbc7fa012a96a56d5f27e3bbdf73825059dbcb108db"
+      "sha256": "0f4558d05405413b89c5b097c1f23a9f9c0f803c916f7f6947e493c3c9aa57dd"
     },
     "evidence": {
       "path": "migration-evidence.json",
-      "sha256": "d52e3f238cbc1f1977cfdfecb813891ddb98f578cd904e50a6e8bdd0112fde59"
+      "sha256": "fcc53fed3f849125c10714d78c56a91db4d3f7b4b0b77f167bdf968c53cc8201"
     },
     "evidence_markdown": {
       "path": "migration-evidence.md",
-      "sha256": "4dcaf0b3b4774ed60ea19d9db736a80d0a6270612d5f1b91ccc1aa8738277a24"
+      "sha256": "14aba3189d7fb73450a48dc15fcd8c2fb0b6275e223f340a052fc4a19d5829ae"
     },
     "cast": {
       "path": "live-terminal-demo.json",

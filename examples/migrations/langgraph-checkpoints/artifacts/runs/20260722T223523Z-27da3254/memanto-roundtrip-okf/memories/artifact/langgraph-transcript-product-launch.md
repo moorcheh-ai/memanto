@@ -34,6 +34,6 @@ x_memanto:
 
 ---
 [Supporting data]
-- OKF source: memories\artifact\langgraph-transcript-product-launch.md
+- OKF source: memories/artifact/langgraph-transcript-product-launch.md
 - OKF resource: langgraph://product-launch/root/1f1861da-1371-6e42-800a-bd58b61aea0a#messages
 - OKF source_channel: messages

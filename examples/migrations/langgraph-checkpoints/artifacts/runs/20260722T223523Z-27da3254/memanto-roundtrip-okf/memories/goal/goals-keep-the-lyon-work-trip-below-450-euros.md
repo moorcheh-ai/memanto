@@ -20,6 +20,6 @@ Keep the Lyon work trip below 450 euros.
 
 ---
 [Supporting data]
-- OKF source: memories\goal\goals-keep-the-lyon-work-trip-below-450-euros.md
+- OKF source: memories/goal/goals-keep-the-lyon-work-trip-below-450-euros.md
 - OKF resource: langgraph://travel-planning/root/1f1861da-13a2-668f-8007-ac1b087a2c82#goals-1
 - OKF source_channel: goals

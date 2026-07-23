@@ -77,7 +77,7 @@ def _jsonable(value: Any) -> Any:
             "content": _message_text(value),
             "id": value.id,
             "name": getattr(value, "name", None),
-            "additional_kwargs": value.additional_kwargs,
+            "additional_kwargs": _jsonable(value.additional_kwargs),
         }
     if isinstance(value, dict):
         return {str(key): _jsonable(item) for key, item in value.items()}
@@ -118,7 +118,7 @@ def _message_text(message: BaseMessage) -> str:
 
 
 def _snapshot_database(source: Path, destination: Path) -> None:
-    uri = f"file:{source.resolve().as_posix()}?mode=ro"
+    uri = f"{source.resolve().as_uri()}?mode=ro"
     with closing(sqlite3.connect(uri, uri=True)) as source_conn:
         with closing(sqlite3.connect(destination)) as destination_conn:
             source_conn.backup(destination_conn)
@@ -197,9 +197,11 @@ def _state_to_memories(
     timestamp: str,
     checkpoint_id: str,
 ) -> list[dict[str, Any]]:
-    tags = [f"langgraph-thread:{ref.thread_id}"]
-    if ref.checkpoint_ns:
-        tags.append(f"langgraph-namespace:{ref.checkpoint_ns}")
+    namespace = ref.checkpoint_ns or "root"
+    tags = [
+        f"langgraph-thread:{ref.thread_id}",
+        f"langgraph-namespace:{namespace}",
+    ]
     base_resource = "langgraph://{}/{}/{}".format(
         quote(ref.thread_id, safe=""),
         quote(ref.checkpoint_ns or "root", safe=""),

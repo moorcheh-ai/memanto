@@ -1,43 +1,55 @@
 {
+  "system": "Memanto RAG",
+  "agent": "langgraph-migration-20260722t223523z-27da3254",
   "questions": 5,
   "passed": 5,
-  "recall_parity": 1.0,
+  "score": 1.0,
   "results": [
     {
       "question": "Which format should Atlas launch reports use now?",
+      "answer": "Based on your stored preferences, Atlas launch reports should use **Markdown** format.\n\nThis reflects your correction saved in the product-launch thread, where you updated your initial preference from PDF to Markdown. This is also explicitly confirmed in your profile preference memory: *\"Report Format Preference: Markdown\"* (chunk 4).",
       "expected_terms": [
         "Markdown"
       ],
-      "passed": true
+      "passed": true,
+      "context": []
     },
     {
       "question": "When is the Atlas release scheduled?",
+      "answer": "Based on the stored memories, the **Atlas release is scheduled for September 14**.\n\nThis comes from a recorded decision in the product-launch thread: *\"Ship the Atlas release on September 14\"* (Decision memory, `decisions-ship-the-atlas-release-on-september-14.md`).",
       "expected_terms": [
         "September 14"
       ],
-      "passed": true
+      "passed": true,
+      "context": []
     },
     {
       "question": "Who owns the Atlas launch?",
+      "answer": "Based on the stored memories, **Maya Chen** owns the Atlas launch.\n\nThis is recorded as a confirmed fact in memory (source: `facts-maya-chen-owns-the-atlas-launch.md`), and is also corroborated in the product-launch conversation transcript.",
       "expected_terms": [
         "Maya Chen"
       ],
-      "passed": true
+      "passed": true,
+      "context": []
     },
     {
       "question": "How should short work trips be made?",
+      "answer": "Based on your saved preferences, **short work trips (under four hours) should be made by train** [Chunk 1 – Short Trip Preference].\n\nThis aligns with what you explicitly stated: *\"For work trips, I prefer trains for journeys under four hours\"* [Chunk 3 – travel-planning transcript].",
       "expected_terms": [
         "Train",
         "under four hours"
       ],
-      "passed": true
+      "passed": true,
+      "context": []
     },
     {
       "question": "What is the budget goal for the Lyon trip?",
+      "answer": "Based on your memories, the budget goal for the Lyon trip is to **keep costs below 450 euros**. This was saved as an explicit goal in your travel-planning memory (Goal: *\"Keep the Lyon work trip below 450 euros\"*).",
       "expected_terms": [
         "below 450 euros"
       ],
-      "passed": true
+      "passed": true,
+      "context": []
     }
   ]
 }

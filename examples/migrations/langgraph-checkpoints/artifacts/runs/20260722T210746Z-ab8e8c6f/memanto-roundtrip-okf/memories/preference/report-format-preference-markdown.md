@@ -20,6 +20,6 @@ Report Format Preference: Markdown
 
 ---
 [Supporting data]
-- OKF source: memories\preference\report-format-preference-markdown.md
+- OKF source: memories/preference/report-format-preference-markdown.md
 - OKF resource: langgraph://product-launch/root/1f186116-3e36-60c7-800a-7698c744c089#profile-report-format-preference
 - OKF source_channel: profile

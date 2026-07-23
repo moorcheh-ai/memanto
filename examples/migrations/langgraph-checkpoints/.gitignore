@@ -5,6 +5,7 @@ __pycache__/
 *.pyc
 artifacts/*.sqlite
 artifacts/*.sqlite-*
+artifacts/runs/**/*.sqlite
 artifacts/runs/**/*.sqlite-*
 artifacts/preview.json
 artifacts/*.mp4

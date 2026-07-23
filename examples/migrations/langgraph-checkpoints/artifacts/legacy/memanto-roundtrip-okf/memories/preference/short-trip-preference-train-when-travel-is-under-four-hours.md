@@ -20,6 +20,6 @@ Short Trip Preference: Train when travel is under four hours
 
 ---
 [Supporting data]
-- OKF source: memories\preference\short-trip-preference-train-when-travel-is-under-four-hours.md
+- OKF source: memories/preference/short-trip-preference-train-when-travel-is-under-four-hours.md
 - OKF resource: langgraph://travel-planning/root/1f18600e-a57d-6b9b-8007-022afbd9107d#profile-short-trip-preference
 - OKF source_channel: profile

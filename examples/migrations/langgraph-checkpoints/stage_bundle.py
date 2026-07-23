@@ -3,8 +3,34 @@
 from __future__ import annotations
 
 import argparse
+import re
 import shutil
 from pathlib import Path
+
+
+def normalize_exported_markdown(bundle: Path) -> None:
+    """Normalize Memanto's generated Markdown for portable committed evidence."""
+    for path in bundle.rglob("*.md"):
+        text = path.read_text(encoding="utf-8")
+        text = re.sub(
+            r"(?m)^((?:> )?- OKF source: )(.*)$",
+            lambda match: match.group(1) + match.group(2).replace("\\", "/"),
+            text,
+        )
+        if path.name == "overview.md" and path.parent.name == "metrics":
+            lines = text.splitlines(keepends=True)
+            in_fence = False
+            for index, line in enumerate(lines):
+                if line.rstrip("\r\n") != "```":
+                    continue
+                if not in_fence:
+                    ending = line[len(line.rstrip("\r\n")) :]
+                    lines[index] = f"```text{ending}"
+                in_fence = not in_fence
+            text = "".join(lines)
+        if path.parent.name == "sessions":
+            text = re.sub(r"(?m)^### ", "## ", text)
+        path.write_text(text, encoding="utf-8")
 
 
 def main() -> None:
@@ -17,6 +43,7 @@ def main() -> None:
     if args.destination.exists():
         raise FileExistsError(f"Evidence destination already exists: {args.destination}")
     shutil.copytree(args.source, args.destination)
+    normalize_exported_markdown(args.destination)
     print(args.destination.resolve())
 
 

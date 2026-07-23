@@ -15,8 +15,8 @@ os.environ["LANGGRAPH_STRICT_MSGPACK"] = "true"
 from langgraph.checkpoint.sqlite import SqliteSaver  # noqa: E402
 
 
-def _latest_states(database: Path) -> dict[str, dict[str, Any]]:
-    states: dict[str, dict[str, Any]] = {}
+def _latest_states(database: Path) -> dict[tuple[str, str], dict[str, Any]]:
+    states: dict[tuple[str, str], dict[str, Any]] = {}
     with closing(sqlite3.connect(database, check_same_thread=False)) as connection:
         saver = SqliteSaver(connection)
         rows = connection.execute(
@@ -38,12 +38,14 @@ def _latest_states(database: Path) -> dict[str, dict[str, Any]]:
             if latest is not None:
                 state = latest.checkpoint.get("channel_values") or {}
                 if isinstance(state, dict):
-                    states[str(thread_id)] = state
+                    states[(str(thread_id), str(namespace or ""))] = state
     return states
 
 
-def _answer(states: dict[str, dict[str, Any]], selector: dict[str, Any]) -> str:
-    thread = states[selector["thread"]]
+def _answer(
+    states: dict[tuple[str, str], dict[str, Any]], selector: dict[str, Any]
+) -> str:
+    thread = states[(selector["thread"], selector.get("namespace", ""))]
     value: Any = thread[selector["channel"]]
     if "key" in selector:
         value = value[selector["key"]]

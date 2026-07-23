@@ -20,6 +20,6 @@ Maya Chen owns the Atlas launch.
 
 ---
 [Supporting data]
-- OKF source: memories\fact\facts-maya-chen-owns-the-atlas-launch.md
+- OKF source: memories/fact/facts-maya-chen-owns-the-atlas-launch.md
 - OKF resource: langgraph://product-launch/root/1f186116-3e36-60c7-800a-7698c744c089#facts-1
 - OKF source_channel: facts

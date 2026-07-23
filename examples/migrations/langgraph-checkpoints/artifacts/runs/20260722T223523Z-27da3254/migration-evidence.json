@@ -31,7 +31,7 @@
     },
     "files": 19,
     "bytes": 16721,
-    "sha256": "abd3f3a9d406831d8ac3ecbc7fa012a96a56d5f27e3bbdf73825059dbcb108db"
+    "sha256": "0f4558d05405413b89c5b097c1f23a9f9c0f803c916f7f6947e493c3c9aa57dd"
   },
   "recall": {
     "before_okf": 1.0,
@@ -41,12 +41,5 @@
   },
   "measured_storage_change_percent": 92.1,
   "storage_comparison_scope": "Raw SQLite file bytes compared with the first portable OKF bundle. This does not estimate provider token, latency, or billing savings.",
-  "run_id": "20260722T223523Z-27da3254",
-  "memanto_import": {
-    "imported": 8,
-    "failed": 0,
-    "mapped": 8,
-    "skipped": 0,
-    "okf_nodes": 8
-  }
+  "run_id": "20260722T223523Z-27da3254"
 }

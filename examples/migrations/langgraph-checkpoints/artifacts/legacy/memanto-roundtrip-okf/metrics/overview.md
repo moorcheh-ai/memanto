@@ -9,7 +9,7 @@
 
 ### Memory Activity Timeline
 
-```
+```text
 Hour  00  03  06  09  12  15  18  21  24
       ╠═══╬═══╬═══╬═══╬═══╬═══╬═══╬═══╣
                               ●●●●
@@ -19,7 +19,7 @@ Hour  00  03  06  09  12  15  18  21  24
 
 ### Memory Type Distribution
 
-```
+```text
 FACT        ████████████████████ 2
 PREFERENCE  ████████████████████ 2
 ARTIFACT    ████████████████████ 2

@@ -1,10 +1,12 @@
 {
+  "system": "LangGraph SqliteSaver latest state",
   "questions": 5,
   "passed": 5,
-  "recall_parity": 1.0,
+  "score": 1.0,
   "results": [
     {
       "question": "Which format should Atlas launch reports use now?",
+      "answer": "Markdown",
       "expected_terms": [
         "Markdown"
       ],
@@ -12,6 +14,7 @@
     },
     {
       "question": "When is the Atlas release scheduled?",
+      "answer": "Ship the Atlas release on September 14.",
       "expected_terms": [
         "September 14"
       ],
@@ -19,6 +22,7 @@
     },
     {
       "question": "Who owns the Atlas launch?",
+      "answer": "Maya Chen owns the Atlas launch.",
       "expected_terms": [
         "Maya Chen"
       ],
@@ -26,6 +30,7 @@
     },
     {
       "question": "How should short work trips be made?",
+      "answer": "Train when travel is under four hours",
       "expected_terms": [
         "Train",
         "under four hours"
@@ -34,6 +39,7 @@
     },
     {
       "question": "What is the budget goal for the Lyon trip?",
+      "answer": "Keep the Lyon work trip below 450 euros.",
       "expected_terms": [
         "below 450 euros"
       ],
