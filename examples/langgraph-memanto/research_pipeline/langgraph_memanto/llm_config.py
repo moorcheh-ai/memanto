@@ -7,7 +7,9 @@ from typing import Any
 
 ATLASCLOUD_API_BASE = "https://api.atlascloud.ai/v1"
 ATLASCLOUD_DEFAULT_MODEL = "qwen/qwen3.5-flash"
+OPENAI_DEFAULT_MODEL = "gpt-4o-mini"
 OPENROUTER_API_BASE = "https://openrouter.ai/api/v1"
+OPENROUTER_DEFAULT_MODEL = "openai/gpt-4o-mini"
 
 
 def _first_env(*names: str) -> str:
@@ -18,7 +20,12 @@ def _first_env(*names: str) -> str:
     return ""
 
 
-def chat_openai_kwargs(*, temperature: float, default_model: str) -> dict[str, Any]:
+def chat_openai_kwargs(
+    *,
+    temperature: float,
+    openai_default_model: str = OPENAI_DEFAULT_MODEL,
+    openrouter_default_model: str = OPENROUTER_DEFAULT_MODEL,
+) -> dict[str, Any]:
     """Return ChatOpenAI kwargs for OpenAI, OpenRouter, or Atlas Cloud."""
     model = _first_env("LLM_MODEL", "LANGGRAPH_LLM")
     openai_key = _first_env("OPENAI_API_KEY")
@@ -28,11 +35,11 @@ def chat_openai_kwargs(*, temperature: float, default_model: str) -> dict[str, A
     if openai_key:
         api_key = openai_key
         base_url = _first_env("OPENAI_API_BASE")
-        resolved_model = model or default_model
+        resolved_model = model or openai_default_model
     elif openrouter_key:
         api_key = openrouter_key
         base_url = _first_env("OPENAI_API_BASE") or OPENROUTER_API_BASE
-        resolved_model = model or default_model
+        resolved_model = model or openrouter_default_model
     elif atlascloud_key:
         api_key = atlascloud_key
         base_url = (

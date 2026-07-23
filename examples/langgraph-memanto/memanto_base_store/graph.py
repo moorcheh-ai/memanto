@@ -274,7 +274,8 @@ def _make_llm(temperature: float = 0.2, max_tokens: int | None = None) -> ChatOp
     # See .env.example for paid alternatives (tencent/hy3-preview etc).
     kwargs = chat_openai_kwargs(
         temperature=temperature,
-        default_model="gpt-4o-mini",
+        openai_default_model="gpt-4o-mini",
+        openrouter_default_model="openai/gpt-4o-mini",
         max_tokens=max_tokens,
     )
     return ChatOpenAI(**kwargs)

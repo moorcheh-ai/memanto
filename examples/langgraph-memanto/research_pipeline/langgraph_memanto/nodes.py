@@ -46,7 +46,11 @@ def _get_moorcheh_api_key() -> str:
 def _get_llm():
     """Build a flexible ChatOpenAI model."""
     return ChatOpenAI(
-        **chat_openai_kwargs(temperature=0.7, default_model="openai/gpt-4o-mini")
+        **chat_openai_kwargs(
+            temperature=0.7,
+            openai_default_model="gpt-4o-mini",
+            openrouter_default_model="openai/gpt-4o-mini",
+        )
     )
 
 
