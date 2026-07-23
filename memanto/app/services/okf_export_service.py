@@ -15,8 +15,8 @@ Layout is controlled by ``split``:
     - ``file``: always one file per memory.
     - ``type``: always one stacked file per type.
 
-Memanto-only fields (id, confidence, provenance, source, status) are preserved
-under a namespaced ``x_memanto`` frontmatter block so that
+Memanto-only fields (id, confidence, provenance, source, status, and temporal
+metadata) are preserved under a namespaced ``x_memanto`` frontmatter block so that
 Memanto -> OKF -> Memanto round-trips keep them. OKF consumers ignore unknown
 frontmatter keys.
 """
@@ -296,7 +296,16 @@ class OkfExportService:
             frontmatter["resource"] = source_ref
 
         x_memanto: dict[str, Any] = {}
-        for key in ("id", "confidence", "provenance", "source", "status"):
+        for key in (
+            "id",
+            "confidence",
+            "provenance",
+            "source",
+            "status",
+            "updated_at",
+            "expires_at",
+            "ttl_seconds",
+        ):
             val = mem.get(key)
             if val not in (None, ""):
                 x_memanto[key] = val

@@ -510,6 +510,51 @@ class TestMEMANTOCLI:
 
         mock_write_service.batch_store_memories.assert_not_called()
 
+    @pytest.mark.parametrize("client_path", ["direct_client", "sdk_client"])
+    def test_batch_clients_preserve_temporal_metadata(
+        self, mock_all_clients, client_path
+    ):
+        """Migration writes must not turn expiring memories into permanent ones."""
+        if client_path == "direct_client":
+            from memanto.cli.client.direct_client import DirectClient as Client
+        else:
+            from memanto.cli.client.sdk_client import SdkClient as Client
+
+        mock_write_service = MagicMock()
+        mock_write_service.batch_store_memories.return_value = {"results": []}
+        mock_session = MagicMock()
+        mock_session.namespace = "memanto_agent_test-agent"
+        updated_at = datetime(2026, 6, 1, 9, 15, tzinfo=timezone.utc)
+        expires_at = datetime(2026, 8, 1, 9, 15, tzinfo=timezone.utc)
+
+        with (
+            patch.object(Client, "_get_write_service", return_value=mock_write_service),
+            patch.object(
+                Client,
+                "_get_validated_session_for_agent",
+                return_value=mock_session,
+            ),
+        ):
+            client = Client.__new__(Client)
+            client.api_key = "test-api-key"
+            client.session_token = None
+            client.batch_remember(
+                agent_id="test-agent",
+                memories=[
+                    {
+                        "content": "Temporary operational context",
+                        "updated_at": updated_at,
+                        "expires_at": expires_at,
+                        "ttl_seconds": 5_529_600,
+                    }
+                ],
+            )
+
+        record = mock_write_service.batch_store_memories.call_args.args[0][0]
+        assert record.updated_at == updated_at
+        assert record.expires_at == expires_at
+        assert record.ttl_seconds == 5_529_600
+
     def test_edit_sdk_normalizes_confidence_and_accepts_valid_payload(
         self, mock_all_clients
     ):

@@ -96,8 +96,7 @@ def test_context_sections_and_import_scope(tmp_path):
 
 
 def test_memanto_round_trip_preserves_extras(tmp_path):
-    """Memanto -> OKF -> Memanto keeps type/confidence/source_ref/tags/body via
-    the ``x_memanto`` block, and always marks provenance as imported."""
+    """Memanto -> OKF -> Memanto keeps metadata via ``x_memanto``."""
     memories_by_type = {
         "fact": [
             _mem(
@@ -110,6 +109,9 @@ def test_memanto_round_trip_preserves_extras(tmp_path):
                 source="user",
                 status="active",
                 created_at="2026-05-28T14:30:00Z",
+                updated_at="2026-06-01T09:15:00Z",
+                expires_at="2026-08-01T09:15:00Z",
+                ttl_seconds=5_529_600,
                 source_ref="https://example.com/db",
             )
         ],
@@ -129,8 +131,33 @@ def test_memanto_round_trip_preserves_extras(tmp_path):
     assert pg["provenance"] == "imported"
     assert set(pg["tags"]) == {"infra", "db"}
     assert pg["created_at"] is not None
+    assert pg["updated_at"].isoformat() == "2026-06-01T09:15:00+00:00"
+    assert pg["expires_at"].isoformat() == "2026-08-01T09:15:00+00:00"
+    assert pg["ttl_seconds"] == 5_529_600
     assert "PostgreSQL 16" in pg["content"]
     assert by_title["Chose Redis"]["type"] == "decision"
+
+
+def test_okf_import_ignores_invalid_temporal_extensions(tmp_path):
+    """Malformed foreign extensions must not break an otherwise valid import."""
+    (tmp_path / "memory.md").write_text(
+        "---\n"
+        "type: fact\n"
+        "title: Durable fact\n"
+        "x_memanto:\n"
+        "  updated_at: not-a-date\n"
+        "  expires_at: impossible\n"
+        "  ttl_seconds: -30\n"
+        "---\n\n"
+        "This memory remains importable.\n",
+        encoding="utf-8",
+    )
+
+    row = map_okf(load_okf_bundle(tmp_path))[0]
+
+    assert row["updated_at"] is not None
+    assert row["expires_at"] is None
+    assert row["ttl_seconds"] is None
 
 
 def test_foreign_okf_bundle_is_lossless(tmp_path):

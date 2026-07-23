@@ -16,6 +16,8 @@ accepted by ``SdkClient.batch_remember``:
         "provenance": "imported",
         "created_at": datetime, # original source timestamp (when present)
         "updated_at": datetime, # migration time = now
+        "expires_at": datetime, # source expiration timestamp (when present)
+        "ttl_seconds": int,     # source retention window (when present)
     }
 
 Mappers extract every useful field from the source. Anything that maps
@@ -119,6 +121,19 @@ def _pick_first_dt(record: dict[str, Any], keys: tuple[str, ...]) -> datetime | 
         if dt is not None:
             return dt
     return None
+
+
+def _parse_positive_int(value: Any) -> int | None:
+    """Parse a positive integer without silently truncating fractional values."""
+    if isinstance(value, bool) or value in (None, ""):
+        return None
+    try:
+        parsed = int(value)
+    except (TypeError, ValueError, OverflowError):
+        return None
+    if isinstance(value, float) and not value.is_integer():
+        return None
+    return parsed if parsed > 0 else None
 
 
 def _format_supporting_data(items: list[tuple[str, Any]]) -> str:
@@ -453,6 +468,9 @@ def map_okf(export: dict[str, Any]) -> list[dict[str, Any]]:
 
         source = x_memanto.get("source") or "okf"
         created_at = _parse_dt(entry.get("timestamp"))
+        updated_at = _parse_dt(x_memanto.get("updated_at")) or migrated_at
+        expires_at = _parse_dt(x_memanto.get("expires_at"))
+        ttl_seconds = _parse_positive_int(x_memanto.get("ttl_seconds"))
 
         footer_items: list[tuple[str, Any]] = [
             ("OKF source", entry.get("source_path")),
@@ -481,7 +499,9 @@ def map_okf(export: dict[str, Any]) -> list[dict[str, Any]]:
                 "source_ref": str(resource) if resource else None,
                 "provenance": "imported",
                 "created_at": created_at,
-                "updated_at": migrated_at,
+                "updated_at": updated_at,
+                "expires_at": expires_at,
+                "ttl_seconds": ttl_seconds,
             }
         )
     return rows
