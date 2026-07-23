@@ -115,10 +115,15 @@ def bundle_retriever(export: dict[str, Any]) -> Callable[[str], str]:
 
 
 def memanto_retriever(agent_id: str, k: int = 5) -> Callable[[str], str]:
-    """Retrieve from a live Memanto agent (needs MOORCHEH_API_KEY)."""
-    from memanto.cli.client.sdk_client import SdkClient  # imported lazily
+    """Retrieve from a live Memanto agent.
 
-    client = SdkClient(api_key=os.environ["MOORCHEH_API_KEY"])
+    Reuses Memanto's own ``get_client`` so the key is resolved the same way as
+    every other ``memanto`` command (from ``~/.memanto`` config or the
+    ``MOORCHEH_API_KEY`` env var), rather than requiring the env var directly.
+    """
+    from memanto.cli.commands._shared import get_client  # imported lazily
+
+    client = get_client()
 
     def retrieve(question: str) -> str:
         result = client.recall(agent_id=agent_id, query=question, limit=k)
