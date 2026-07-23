@@ -619,6 +619,156 @@ def migrate_okf(
     )
 
 
+@migrate_app.command("conversations")
+def migrate_conversations(
+    source: str = typer.Option(
+        ...,
+        "--source",
+        "-s",
+        help="Source platform: chatgpt, claude, or gemini.",
+    ),
+    path: Path = typer.Argument(
+        ...,
+        help="Path to the exported JSON file (or ZIP archive for ChatGPT/Claude/Gemini).",
+    ),
+    agent: str | None = typer.Option(
+        None,
+        "--agent",
+        "-a",
+        help="Target Memanto agent id (defaults to the active agent).",
+    ),
+    dry_run: bool = typer.Option(
+        False,
+        "--dry-run",
+        help="Preview the mapping without writing.",
+    ),
+):
+    """Migrate AI conversation exports (ChatGPT, Claude, Gemini) into Memanto.
+
+    Reads a JSON export file or ZIP archive from the source platform, extracts
+    user messages, and imports them as Memanto memories. Each conversation
+    becomes one memory with all user messages as content.
+
+    Examples:
+        memanto migrate conversations --source chatgpt ./chatgpt_export.json --dry-run
+        memanto migrate conversations --source claude ./claude_export.zip
+        memanto migrate conversations -s chatgpt ./conversations.json --agent my-agent
+    """
+    import json
+    import tempfile
+    import zipfile
+
+    from memanto.cli.migrate.mappers import MAPPERS
+    from memanto.cli.migrate.runner import (
+        load_export,
+        run_migration,
+        write_preview,
+    )
+
+    source = source.lower().strip()
+    supported = ("chatgpt", "claude")
+    if source not in supported:
+        _error(
+            f"Unsupported source '{source}'. Supported: {', '.join(supported)}",
+            hint="Use --source chatgpt or --source claude.",
+        )
+
+    stamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
+    run_dir = config_manager.get_migrate_dir("conversations") / stamp
+    run_dir.mkdir(parents=True, exist_ok=True)
+
+    mode = "Dry run" if dry_run else "Migrate"
+    console.print(
+        Panel.fit(
+            f"[{BOLD_PRIMARY}]Conversations ({source}) -> Memanto  {mode}[/{BOLD_PRIMARY}]",
+            border_style=PRIMARY,
+        )
+    )
+
+    def progress(msg: str) -> None:
+        console.print(f"  [{BRIGHT}]…[/{BRIGHT}] {msg}")
+
+    target_agent = None if dry_run else _resolve_target_agent(agent)
+
+    # Handle ZIP or plain JSON
+    progress(f"Loading {source} export from {path}")
+
+    if path.suffix.lower() == ".zip":
+        progress("Extracting ZIP archive...")
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmpdir_path = Path(tmpdir)
+            with zipfile.ZipFile(path, "r") as zf:
+                zf.extractall(tmpdir_path)
+            # Find the first .json file
+            json_files = list(tmpdir_path.rglob("*.json"))
+            if not json_files:
+                _error("No JSON files found in ZIP archive.")
+            export_data = load_export(json_files[0])
+            progress(f"Extracted {json_files[0].name} ({len(json_files)} JSON files in archive)")
+    else:
+        export_data = load_export(path)
+
+    # Normalize: wrap flat arrays as {"memories": [...]}
+    if isinstance(export_data, list):
+        export_data = {"memories": export_data, "conversations": export_data}
+
+    progress("Mapping conversation data onto Memanto schema...")
+    client = None if dry_run else get_client()
+    summary, rows = run_migration(
+        provider=source,
+        export=export_data,
+        client=client,
+        agent_id=target_agent or "",
+        dry_run=dry_run,
+        on_progress=progress,
+    )
+
+    preview_path = write_preview(rows, run_dir / "mapped_preview.json")
+
+    type_lines = (
+        ", ".join(f"{k}: {v}" for k, v in sorted(summary.type_counts.items())) or "—"
+    )
+    body_lines = [
+        f"[dim]Source conversations:[/dim] {summary.source_count}",
+        f"[dim]Mapped memories:[/dim] {summary.mapped_count}  "
+        f"[dim](skipped {summary.skipped} empty)[/dim]",
+        f"[dim]Type breakdown:[/dim] {type_lines}",
+    ]
+    if dry_run:
+        body_lines.append("")
+        body_lines.append("[yellow]Dry run — no writes performed.[/yellow]")
+    else:
+        body_lines.append(
+            f"[dim]Imported:[/dim] {summary.imported}  "
+            f"[dim]Failed:[/dim] {summary.failed}  "
+            f"[dim]Batches:[/dim] {summary.batches}"
+        )
+        body_lines.append(f"[dim]Target agent:[/dim] {target_agent}")
+
+    body_lines.append("")
+    body_lines.append(f"[dim]Run dir:[/dim] {run_dir}")
+    body_lines.append(f"[dim]Mapped preview:[/dim] {preview_path}")
+    if summary.errors:
+        body_lines.append(
+            f"[red]First error:[/red] {summary.errors[0]}  "
+            "[dim](see run dir for more)[/dim]"
+        )
+
+    border = WARNING if summary.failed else SUCCESS
+    console.print()
+    console.print(
+        Panel(
+            "\n".join(body_lines),
+            title=(
+                "[bold yellow]Dry run complete[/bold yellow]"
+                if dry_run
+                else "[bold green]Migration complete[/bold green]"
+            ),
+            border_style=border,
+        )
+    )
+
+
 @migrate_app.command("supermemory")
 def migrate_supermemory(
     api_key: str | None = typer.Option(
