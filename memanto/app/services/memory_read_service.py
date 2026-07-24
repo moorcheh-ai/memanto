@@ -628,8 +628,10 @@ class MemoryReadService:
             try:
                 confidence = float(raw_confidence)
             except (TypeError, ValueError):
-                if min_confidence <= 0:
-                    filtered.append(result)
+                # Fail open: include memories with unknown confidence rather
+                # than silently dropping them. This preserves imported memories
+                # that may not carry a confidence score.
+                filtered.append(result)
                 continue
             if confidence >= min_confidence:
                 filtered.append(result)
