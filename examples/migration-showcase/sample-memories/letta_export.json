@@ -1,0 +1,115 @@
+{
+  "exported_at": "2026-07-24T00:00:00Z",
+  "provider": "letta",
+  "source": "Sample data for migration showcase",
+  "archival_memories": [
+    {
+      "id": "letta-001",
+      "content": "The user is building an AI-powered SaaS platform for automated document processing",
+      "created_at": "2026-06-01T08:00:00Z",
+      "metadata": {
+        "type": "context",
+        "source": "project_intake"
+      }
+    },
+    {
+      "id": "letta-002",
+      "content": "Key stakeholders include the CTO (Sarah Chen) and Product Lead (Marcus Johnson)",
+      "created_at": "2026-06-01T09:30:00Z",
+      "metadata": {
+        "type": "fact",
+        "source": "meeting_notes"
+      }
+    },
+    {
+      "id": "letta-003",
+      "content": "Budget for the AI infrastructure is $50K/month for Q3 2026",
+      "created_at": "2026-06-05T14:00:00Z",
+      "metadata": {
+        "type": "fact",
+        "source": "budget_planning"
+      }
+    },
+    {
+      "id": "letta-004",
+      "content": "Document processing pipeline: Upload → OCR → Classification → Data Extraction → Validation → Export",
+      "created_at": "2026-06-10T10:00:00Z",
+      "metadata": {
+        "type": "process",
+        "source": "architecture_doc"
+      }
+    },
+    {
+      "id": "letta-005",
+      "content": "Currently evaluating OpenAI GPT-4o, Anthropic Claude 3.5, and local Llama 3.1 for the extraction LLM",
+      "created_at": "2026-06-12T11:00:00Z",
+      "metadata": {
+        "type": "decision_pending",
+        "source": "tech_evaluation"
+      }
+    },
+    {
+      "id": "letta-006",
+      "content": "Target accuracy for document extraction is 98.5% before human review",
+      "created_at": "2026-06-15T09:00:00Z",
+      "metadata": {
+        "type": "goal",
+        "source": "product_requirements"
+      }
+    },
+    {
+      "id": "letta-007",
+      "content": "Integration with Salesforce and HubSpot required for the CRM sync feature",
+      "created_at": "2026-06-20T13:00:00Z",
+      "metadata": {
+        "type": "requirement",
+        "source": "product_backlog"
+      }
+    },
+    {
+      "id": "letta-008",
+      "content": "The team uses daily standups at 9:30 AM and bi-weekly sprint planning on Mondays",
+      "created_at": "2026-06-22T08:00:00Z",
+      "metadata": {
+        "type": "process",
+        "source": "team_routine"
+      }
+    },
+    {
+      "id": "letta-009",
+      "content": "PostgreSQL with pgvector extension chosen for storing document embeddings",
+      "created_at": "2026-06-25T15:00:00Z",
+      "metadata": {
+        "type": "decision",
+        "source": "architecture_review"
+      }
+    },
+    {
+      "id": "letta-010",
+      "content": "User prefers async communication via Slack and Linear over meetings",
+      "created_at": "2026-07-01T10:00:00Z",
+      "metadata": {
+        "type": "preference",
+        "source": "user_feedback"
+      }
+    },
+    {
+      "id": "letta-011",
+      "content": "Compliance requirements: SOC 2 Type II certification needed before Q1 2027",
+      "created_at": "2026-07-05T11:00:00Z",
+      "metadata": {
+        "type": "requirement",
+        "source": "compliance_team"
+      }
+    },
+    {
+      "id": "letta-012",
+      "content": "Production deployment target is Kubernetes on EKS with spot instances for cost optimization",
+      "created_at": "2026-07-10T16:00:00Z",
+      "metadata": {
+        "type": "decision",
+        "source": "devops_review"
+      }
+    }
+  ]
+}

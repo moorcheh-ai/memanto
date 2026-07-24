@@ -1,0 +1,172 @@
+{
+  "exported_at": "2026-07-24T00:00:00Z",
+  "provider": "mem0",
+  "source": "Sample data for migration showcase",
+  "memories": [
+    {
+      "id": "mem0-001",
+      "text": "User prefers dark mode for all interfaces and applications",
+      "category": "preference",
+      "metadata": {
+        "created_at": "2026-06-15T10:30:00Z",
+        "updated_at": "2026-07-01T14:22:00Z",
+        "confidence": 0.95,
+        "source": "user_feedback"
+      }
+    },
+    {
+      "id": "mem0-002",
+      "text": "User works primarily with Python and TypeScript for backend development",
+      "category": "skill",
+      "metadata": {
+        "created_at": "2026-05-20T08:15:00Z",
+        "updated_at": "2026-06-28T16:45:00Z",
+        "confidence": 0.98,
+        "source": "code_analysis"
+      }
+    },
+    {
+      "id": "mem0-003",
+      "text": "The team decided to adopt microservices architecture for the new platform",
+      "category": "decision",
+      "metadata": {
+        "created_at": "2026-06-01T11:00:00Z",
+        "updated_at": "2026-06-01T11:00:00Z",
+        "confidence": 1.0,
+        "source": "meeting_notes"
+      }
+    },
+    {
+      "id": "mem0-004",
+      "text": "Project deadline for Q3 release is September 15, 2026",
+      "category": "fact",
+      "metadata": {
+        "created_at": "2026-06-10T09:00:00Z",
+        "updated_at": "2026-07-05T10:30:00Z",
+        "confidence": 0.9,
+        "source": "project_management"
+      }
+    },
+    {
+      "id": "mem0-005",
+      "text": "User prefers React with Next.js for frontend projects",
+      "category": "preference",
+      "metadata": {
+        "created_at": "2026-04-12T13:45:00Z",
+        "updated_at": "2026-06-20T09:30:00Z",
+        "confidence": 0.92,
+        "source": "user_feedback"
+      }
+    },
+    {
+      "id": "mem0-006",
+      "text": "AWS is the preferred cloud provider for production deployments",
+      "category": "decision",
+      "metadata": {
+        "created_at": "2026-03-05T15:00:00Z",
+        "updated_at": "2026-03-05T15:00:00Z",
+        "confidence": 0.85,
+        "source": "architecture_review"
+      }
+    },
+    {
+      "id": "mem0-007",
+      "text": "Authentication should use OAuth 2.0 with OpenID Connect",
+      "category": "decision",
+      "metadata": {
+        "created_at": "2026-05-28T10:00:00Z",
+        "updated_at": "2026-05-28T10:00:00Z",
+        "confidence": 0.88,
+        "source": "security_review"
+      }
+    },
+    {
+      "id": "mem0-008",
+      "text": "User has experience with PostgreSQL, MongoDB, and Redis",
+      "category": "skill",
+      "metadata": {
+        "created_at": "2026-02-18T11:30:00Z",
+        "updated_at": "2026-07-10T08:00:00Z",
+        "confidence": 0.97,
+        "source": "resume_data"
+      }
+    },
+    {
+      "id": "mem0-009",
+      "text": "The CI/CD pipeline uses GitHub Actions with Docker caching for faster builds",
+      "category": "fact",
+      "metadata": {
+        "created_at": "2026-06-15T14:00:00Z",
+        "updated_at": "2026-07-12T11:15:00Z",
+        "confidence": 0.93,
+        "source": "devops_config"
+      }
+    },
+    {
+      "id": "mem0-010",
+      "text": "User is interested in learning Rust for systems programming",
+      "category": "preference",
+      "metadata": {
+        "created_at": "2026-07-08T16:20:00Z",
+        "updated_at": "2026-07-08T16:20:00Z",
+        "confidence": 0.75,
+        "source": "user_feedback"
+      }
+    },
+    {
+      "id": "mem0-011",
+      "text": "Database migration strategy uses Flyway with version-controlled SQL scripts",
+      "category": "decision",
+      "metadata": {
+        "created_at": "2026-04-22T09:30:00Z",
+        "updated_at": "2026-04-22T09:30:00Z",
+        "confidence": 0.91,
+        "source": "architecture_review"
+      }
+    },
+    {
+      "id": "mem0-012",
+      "text": "Monitoring stack consists of Prometheus, Grafana, and Loki",
+      "category": "fact",
+      "metadata": {
+        "created_at": "2026-05-10T13:00:00Z",
+        "updated_at": "2026-06-30T15:45:00Z",
+        "confidence": 0.94,
+        "source": "devops_config"
+      }
+    },
+    {
+      "id": "mem0-013",
+      "text": "User has contributed to 5 open-source projects related to data engineering",
+      "category": "skill",
+      "metadata": {
+        "created_at": "2026-01-15T10:00:00Z",
+        "updated_at": "2026-07-15T12:30:00Z",
+        "confidence": 0.96,
+        "source": "github_profile"
+      }
+    },
+    {
+      "id": "mem0-014",
+      "text": "API design follows RESTful principles with OpenAPI 3.1 specification",
+      "category": "decision",
+      "metadata": {
+        "created_at": "2026-05-05T11:00:00Z",
+        "updated_at": "2026-05-05T11:00:00Z",
+        "confidence": 0.89,
+        "source": "architecture_review"
+      }
+    },
+    {
+      "id": "mem0-015",
+      "text": "User observed that test coverage dropped from 85% to 72% after the last sprint",
+      "category": "observation",
+      "metadata": {
+        "created_at": "2026-07-14T15:30:00Z",
+        "updated_at": "2026-07-14T15:30:00Z",
+        "confidence": 0.8,
+        "source": "ci_report"
+      }
+    }
+  ]
+}
