@@ -301,6 +301,7 @@ class MemoryReadService:
                 return {"results": [], "total_found": 0, "since_date": since_date}
 
             all_memories = self._fetch_all_memories(namespaces, type=type, tags=tags)
+            all_memories = self._filter_expired_memories(all_memories)
 
             # Filter to only changed memories
             changed_memories = []
@@ -394,6 +395,7 @@ class MemoryReadService:
                 return {"results": [], "total_found": 0}
 
             unique_memories = self._fetch_all_memories(namespaces, type=type, tags=tags)
+            unique_memories = self._filter_expired_memories(unique_memories)
 
             if created_after or created_before:
                 unique_memories = self._apply_temporal_filter(
@@ -479,7 +481,10 @@ class MemoryReadService:
 
             memories.append(formatted)
 
-        return self._filter_expired_memories(memories)
+        # Do NOT filter expired memories here — temporal queries evaluate
+        # TTL against their own reference time (as_of_date / since_date),
+        # not the current wall-clock time. Fixes #770.
+        return memories
 
     def _memory_version_key(
         self, memory: dict[str, Any], fetch_index: int

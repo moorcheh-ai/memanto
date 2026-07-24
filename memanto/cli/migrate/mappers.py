@@ -405,6 +405,136 @@ def map_supermemory(export: dict[str, Any]) -> list[dict[str, Any]]:
 
 
 # --------------------------------------------------------------------------
+# ChatGPT
+# --------------------------------------------------------------------------
+
+
+def map_chatgpt(export: dict[str, Any]) -> list[dict[str, Any]]:
+    """Map a ChatGPT data export (conversations.json) to Memanto memory payloads.
+
+    ChatGPT exports each conversation as a tree of message nodes. We walk the
+    tree in creation order, pairing each user message with the assistant
+    response that follows it, and map each pair to a single memory. The
+    conversation title is preserved as a tag so all turns from the same chat
+    stay grouped.
+
+    This unlocks a new migration path: ChatGPT -> Memanto -> OKF.
+    """
+    rows: list[dict[str, Any]] = []
+    migrated_at = _now_utc()
+
+    conversations: list[dict[str, Any]] = []
+    if isinstance(export, list):
+        # Direct conversations.json array
+        conversations = export
+    elif isinstance(export, dict):
+        conversations = export.get("conversations", []) or []
+        # Single conversation shortcut
+        if not conversations and export.get("mapping"):
+            conversations = [export]
+
+    for conv in conversations:
+        if not isinstance(conv, dict):
+            continue
+
+        mapping = conv.get("mapping")
+        if not isinstance(mapping, dict) or not mapping:
+            continue
+
+        conv_title = conv.get("title", "Untitled Chat")
+        conv_create = _parse_dt(conv.get("create_time"))
+
+        # Collect (timestamp, role, content) triples from the message tree
+        messages: list[tuple[float, str, str]] = []
+        for node_id, node in mapping.items():
+            if not isinstance(node, dict):
+                continue
+            msg = node.get("message")
+            if not isinstance(msg, dict):
+                continue
+
+            author = msg.get("author")
+            role = (author or {}).get("role", "")
+            if role not in ("user", "assistant"):
+                continue
+
+            content_obj = msg.get("content") or {}
+            parts = content_obj.get("parts", []) or []
+            text = " ".join(str(p) for p in parts if p).strip()
+            if not text:
+                continue
+
+            ts = msg.get("create_time")
+            if ts is None:
+                continue
+            try:
+                ts_float = float(ts)
+            except (TypeError, ValueError):
+                continue
+
+            messages.append((ts_float, role, text))
+
+        messages.sort(key=lambda m: m[0])
+
+        # Pair user messages with the next assistant response
+        paired: list[dict[str, Any]] = []
+        i = 0
+        while i < len(messages):
+            ts, role, text = messages[i]
+            if role != "user":
+                i += 1
+                continue
+            # Look ahead for an assistant response
+            if i + 1 < len(messages) and messages[i + 1][1] == "assistant":
+                _, _, reply = messages[i + 1]
+                paired.append({
+                    "timestamp": ts,
+                    "user": text,
+                    "assistant": reply,
+                })
+                i += 2
+            else:
+                # User message without assistant reply — still keep it
+                paired.append({
+                    "timestamp": ts,
+                    "user": text,
+                    "assistant": None,
+                })
+                i += 1
+
+        for pair in paired:
+            user_text = pair["user"]
+            assistant_text = pair.get("assistant")
+
+            if assistant_text:
+                content = f"**User:** {user_text}\n\n**Assistant:** {assistant_text}"
+            else:
+                content = f"**User:** {user_text}"
+
+            created_at = _parse_dt(pair["timestamp"]) or conv_create
+
+            footer = _format_supporting_data([
+                ("ChatGPT conversation", conv_title),
+                ("Timestamp", created_at.isoformat() if created_at else None),
+            ])
+
+            rows.append({
+                "title": _title_from(user_text),
+                "content": _attach_footer(content, footer),
+                "type": "observation",
+                "tags": [f"chatgpt", f"conv={conv_title[:40]}"],
+                "confidence": 0.8,
+                "source": "chatgpt",
+                "source_ref": f"{conv_title[:60]}:{_title_from(user_text)[:40]}",
+                "provenance": "imported",
+                "created_at": created_at,
+                "updated_at": migrated_at,
+            })
+
+    return rows
+
+
+# --------------------------------------------------------------------------
 # OKF (Open Knowledge Format)
 # --------------------------------------------------------------------------
 
@@ -492,6 +622,7 @@ MAPPERS: dict[str, Callable[[dict[str, Any]], list[dict[str, Any]]]] = {
     "letta": map_letta,
     "supermemory": map_supermemory,
     "okf": map_okf,
+    "chatgpt": map_chatgpt,
 }
 
 

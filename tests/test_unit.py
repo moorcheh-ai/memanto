@@ -240,6 +240,20 @@ class TestSessionService:
 
         assert session_service.get_active_session() is None
 
+    def test_delete_session_rejects_unsafe_agent_id(self, session_service):
+        """delete_session must validate agent_id just like every other method."""
+        with pytest.raises(ValueError, match="agent_id"):
+            session_service.delete_session("../etc/passwd")
+        with pytest.raises(ValueError, match="agent_id"):
+            session_service.delete_session("")
+
+    def test_delete_session_accepts_safe_agent_id(self, session_service):
+        """Safe agent_id passes validation and delete_session runs normally."""
+        # Safe ID passes through validate_safe_id without raising
+        result = session_service.delete_session("agent-123_test")
+        # Returns False because no session file exists for this unknown agent
+        assert result is False
+
     def test_list_sessions_skips_invalid_session_files(self, session_service):
         """One corrupt session record must not hide all valid sessions."""
         valid_session = session_service.create_session(
@@ -1200,3 +1214,33 @@ def test_batch_upload_error_counts_each_pending_memory_as_failed():
     assert all(
         "Batch upload returned status" in item["error"] for item in result["results"]
     )
+
+
+
+def test_delete_memory_rejects_empty_memory_id():
+    """delete_memory must reject empty memory_id."""
+    from memanto.app.services.memory_write_service import MemoryWriteService
+    from unittest.mock import MagicMock
+    svc = MemoryWriteService(MagicMock())
+    with pytest.raises(ValueError, match='memory_id'):
+        svc.delete_memory('', 'test-ns')
+    with pytest.raises(ValueError, match='memory_id'):
+        svc.delete_memory('   ', 'test-ns')
+
+
+def test_delete_memory_rejects_empty_namespace():
+    """delete_memory must reject empty namespace."""
+    from memanto.app.services.memory_write_service import MemoryWriteService
+    from unittest.mock import MagicMock
+    svc = MemoryWriteService(MagicMock())
+    with pytest.raises(ValueError, match='namespace'):
+        svc.delete_memory('mem-123', '')
+
+
+def test_update_memory_rejects_empty_memory_id():
+    """update_memory must reject empty memory_id before any network call."""
+    from memanto.app.services.memory_write_service import MemoryWriteService
+    from unittest.mock import MagicMock
+    svc = MemoryWriteService(MagicMock())
+    with pytest.raises(ValueError, match='memory_id'):
+        svc.update_memory('', 'test-ns', {'title': 'x'})
