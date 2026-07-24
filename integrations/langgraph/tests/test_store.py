@@ -272,7 +272,7 @@ def test_do_put_stringifies_non_string_content(mock_sdk_client):
     store._do_put(op)
 
     client_instance.remember.assert_called_once_with(
-        agent_id="langgraph_my_ns",
+        agent_id="langgraph_ns_5x6d795f6e73",
         memory_type=None,
         title="42",
         content="42",
@@ -348,7 +348,7 @@ def test_do_search_wildcard_with_tags_uses_backend_tag_filter(mock_sdk_client):
     assert items[0].key == "key3"
     client_instance.recall_recent.assert_not_called()
     client_instance.recall.assert_called_once_with(
-        agent_id="langgraph_my_ns",
+        agent_id="langgraph_ns_5x6d795f6e73",
         query="*",
         limit=10,
         type=None,
@@ -414,7 +414,7 @@ def test_do_search_accepts_string_tag_filter(mock_sdk_client):
     assert len(items) == 1
     assert items[0].key == "key2"
     client_instance.recall.assert_called_once_with(
-        agent_id="langgraph_my_ns",
+        agent_id="langgraph_ns_5x6d795f6e73",
         query="test query",
         limit=10,
         type=None,
