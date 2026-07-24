@@ -9,7 +9,6 @@ to simulate memories trapped in proprietary systems.
 from __future__ import annotations
 
 import json
-import shutil
 from pathlib import Path
 
 SAMPLE_DIR = Path(__file__).parent / "sample-memories"
@@ -23,22 +22,24 @@ def main() -> None:
     # --- Mem0 export ---
     mem0_path = SAMPLE_DIR / "mem0_export.json"
     mem0_data = json.loads(mem0_path.read_text())
+    categories = sorted({m["category"] for m in mem0_data["memories"]})
     print(f"\n  ✓ Loaded Mem0 export: {mem0_path}")
     print(f"    • {len(mem0_data['memories'])} memories")
-    print(f"    • Categories: {set(m['category'] for m in mem0_data['memories'])}")
+    print(f"    • Categories: {categories}")
     print(f"    • Exported at: {mem0_data['exported_at']}")
 
     # --- Letta export ---
     letta_path = SAMPLE_DIR / "letta_export.json"
     letta_data = json.loads(letta_path.read_text())
+    types = sorted({m["metadata"]["type"] for m in letta_data["archival_memories"]})
     print(f"\n  ✓ Loaded Letta export: {letta_path}")
     print(f"    • {len(letta_data['archival_memories'])} archival passages")
-    print(f"    • Types: {set(m['metadata']['type'] for m in letta_data['archival_memories'])}")
+    print(f"    • Types: {types}")
     print(f"    • Exported at: {letta_data['exported_at']}")
 
     # --- OKF bundle ---
     okf_dir = SAMPLE_DIR / "okf_bundle"
-    md_files = list(okf_dir.rglob("*.md"))
+    md_files = sorted(okf_dir.rglob("*.md"))
     print(f"\n  ✓ Loaded OKF bundle: {okf_dir}")
     print(f"    • {len(md_files)} markdown files")
     for md in md_files:

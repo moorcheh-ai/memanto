@@ -26,8 +26,16 @@ This showcase demonstrates how to break free from proprietary agentic memory usi
 ## Prerequisites
 
 - Python 3.10+
-- A [Moorcheh API key](https://console.moorcheh.ai/api-keys) (free tier: 100K ops/month)
-- Memanto installed (`pip install memanto`)
+- **Optional:** A [Moorcheh API key](https://console.moorcheh.ai/api-keys) (free tier: 100K ops/month) — only needed for live migration mode
+- **Optional:** Memanto installed (`pip install memanto`) — only needed for live migration mode
+
+**The showcase runs in simulation mode by default** — no API key or Memanto CLI needed.
+Set the following environment variables to enable live migration:
+
+```bash
+export MOORCHEH_API_KEY=your_key_here
+export MEMANTO_AGENT_ID=your_agent_id_here
+```
 
 ## Quick Start
 
