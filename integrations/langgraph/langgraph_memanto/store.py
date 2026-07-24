@@ -232,11 +232,12 @@ class MemantoStore(BaseStore):
         raw_content = value.pop("content", None)
         if raw_content is None:
             raw_content = self._stringify(value)
+        content = str(raw_content)
 
         title = value.pop("title", None)
         if not title:
-            title = raw_content if len(raw_content) <= 80 else raw_content[:77] + "..."
-        title = title[:100]
+            title = content if len(content) <= 80 else content[:77] + "..."
+        title = str(title)[:100]
 
         confidence = float(value.pop("confidence", 0.8))
         confidence = max(0.0, min(1.0, confidence))
@@ -252,7 +253,7 @@ class MemantoStore(BaseStore):
             agent_id=agent_id,
             memory_type=memory_type,
             title=title,
-            content=str(raw_content),
+            content=content,
             confidence=confidence,
             tags=all_tags,
             source="langgraph-store",
