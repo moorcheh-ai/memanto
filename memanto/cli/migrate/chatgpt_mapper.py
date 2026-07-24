@@ -107,10 +107,15 @@ def _linearize_conversation(mapping: dict[str, Any]) -> list[dict[str, Any]]:
             break
 
     if root_id is None:
-        # Fallback: pick any node and walk up
+        # Fallback: pick any node and walk up (with cycle guard)
         root_id = next(iter(mapping))
+        seen_up = {root_id}
         while mapping.get(root_id, {}).get("parent") in mapping:
-            root_id = mapping[root_id]["parent"]
+            parent = mapping[root_id]["parent"]
+            if parent in seen_up:
+                break  # Cycle detected — stop walking
+            seen_up.add(parent)
+            root_id = parent
 
     # Walk down following first child
     messages = []
@@ -134,6 +139,8 @@ def _extract_text(content: dict[str, Any] | None) -> str:
     """Extract text content from a ChatGPT message content object."""
     if not content:
         return ""
+    if not isinstance(content, dict):
+        return str(content) if content else ""
     content_type = content.get("content_type", "text")
     if content_type == "text":
         parts = content.get("parts", [])

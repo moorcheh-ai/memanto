@@ -145,9 +145,11 @@ class TestTemporalPreservation:
             ("m1", "user", "Q", 1700000100.0),
             ("m2", "assistant", "A", 1700000105.0),
         ])
+        before = datetime.now(timezone.utc)
         rows = map_chatgpt({"conversations": [conv]})
-        # updated_at should be very recent (within last minute)
-        assert (datetime.now(timezone.utc) - rows[0]["updated_at"]).total_seconds() < 60
+        after = datetime.now(timezone.utc)
+        # updated_at must fall within the test execution window
+        assert before <= rows[0]["updated_at"] <= after
 
     def test_turn_index_in_supporting_data(self):
         """Supporting data includes turn number for ordering."""
