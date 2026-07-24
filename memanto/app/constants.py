@@ -30,7 +30,7 @@ def is_known_source_type(source: str) -> bool:
     Custom agent names (e.g. 'agent_hermes') are valid but not in the known set.
     Returns True for known types, False for unrecognized strings.
     """
-    return source in KNOWN_SOURCE_TYPES or source.startswith("agent_")
+    return source in KNOWN_SOURCE_TYPES or (source.startswith("agent_") and len(source) > 6)
 
 # Status Types
 StatusType = Literal["active", "superseded", "deleted", "provisional"]

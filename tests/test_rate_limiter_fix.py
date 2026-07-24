@@ -202,3 +202,9 @@ class TestSourceTypeValidation:
         assert isinstance(KNOWN_SOURCE_TYPES, frozenset)
         assert len(KNOWN_SOURCE_TYPES) >= 4
         assert "user" in KNOWN_SOURCE_TYPES
+
+    def test_empty_agent_prefix_rejected(self):
+        """'agent_' with no name is not a valid source."""
+        from memanto.app.constants import is_known_source_type
+
+        assert not is_known_source_type("agent_")
