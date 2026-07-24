@@ -14,7 +14,7 @@ from memanto.app.clients.moorcheh import get_moorcheh_client
 from memanto.app.config import get_data_dir
 from memanto.app.core import agent_namespace
 from memanto.app.models.session import AgentCreate, AgentInfo, AgentList
-from memanto.app.utils.errors import AgentAlreadyExistsError, AgentNotFoundError
+from memanto.app.utils.errors import AgentAlreadyExistsError, AgentLimitExceededError, AgentNotFoundError
 from memanto.app.utils.temporal_helpers import as_utc_aware
 from memanto.app.utils.validation import validate_safe_id
 
@@ -60,11 +60,30 @@ class AgentService:
 
         Raises:
             AgentAlreadyExistsError: If agent already exists
+            AgentLimitExceededError: If account agent limit is reached
         """
         agent_file = self._get_agent_file(agent_create.agent_id)
-        if agent_file.exists():
+
+        # Atomic creation: use exclusive file creation to prevent TOCTOU race.
+        # If two concurrent requests pass exists() at the same time, only one
+        # will succeed at open(..., 'x') — the other raises FileExistsError.
+        try:
+            fd = open(agent_file, "x")
+            fd.close()
+        except FileExistsError:
             raise AgentAlreadyExistsError(
                 f"Agent '{agent_create.agent_id}' already exists"
+            )
+
+        # Check agent count limit AFTER claiming the slot.
+        # Community plan: max 2 agents. Remove the file if over limit.
+        current_count = len(list(self.agents_dir.glob("*.json")))
+        max_agents = self._get_max_agents()
+        if current_count > max_agents:
+            agent_file.unlink(missing_ok=True)
+            raise AgentLimitExceededError(
+                f"Agent limit reached ({max_agents}). "
+                f"Upgrade your plan to create more agents."
             )
 
         namespace = self._generate_namespace(agent_create.agent_id)
@@ -205,6 +224,17 @@ class AgentService:
             True if agent exists
         """
         return self._get_agent_file(agent_id).exists()
+
+    def _get_max_agents(self) -> int:
+        """Get maximum allowed agents for current plan.
+
+        Checks MEMANTO_MAX_AGENTS env var, defaults to community plan (2).
+        """
+        import os
+        try:
+            return int(os.environ.get("MEMANTO_MAX_AGENTS", "2"))
+        except (TypeError, ValueError):
+            return 2
 
     def _save_agent(self, agent: AgentInfo) -> None:
         """Save agent metadata to file"""
