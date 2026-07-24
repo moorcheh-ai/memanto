@@ -1,5 +1,8 @@
-import { readFile } from "node:fs/promises";
+import { randomUUID } from "node:crypto";
+import { createReadStream } from "node:fs";
+import { stat } from "node:fs/promises";
 import { basename } from "node:path";
+import { Readable } from "node:stream";
 
 import { ServerLifecycle, type ServerOptions } from "./lifecycle.js";
 
@@ -204,13 +207,10 @@ export class Memanto {
 
   async uploadFile(input: UploadFileInput) {
     await this.ensureReady();
-    const bytes = await readFile(input.path);
-    const form = new FormData();
-    const blob = new Blob([new Uint8Array(bytes)]);
-    form.append("file", blob, input.filename ?? basename(input.path));
-    return this.requestMultipart(
+    return this.requestFileUpload(
       `/api/v2/agents/${this.encodedAgentId}/upload-file`,
-      form,
+      input.path,
+      input.filename ?? basename(input.path),
     );
   }
 
@@ -452,20 +452,50 @@ export class Memanto {
     return (await res.json()) as T;
   }
 
-  private async requestMultipart<T = unknown>(
+  private async requestFileUpload<T = unknown>(
     path: string,
-    form: FormData,
+    filePath: string,
+    filename: string,
   ): Promise<T> {
     await this.ensureReady();
     const baseUrl = this.lifecycle.baseUrl;
+    const fileStats = await stat(filePath);
+    if (!fileStats.isFile()) {
+      throw new Error(`Upload path is not a file: ${filePath}`);
+    }
+    const boundary = `----memanto-${randomUUID()}`;
+    const header = Buffer.from(
+      `--${boundary}\r\n` +
+        `Content-Disposition: form-data; name="file"; filename="${escapeMultipartValue(filename)}"\r\n` +
+        "Content-Type: application/octet-stream\r\n\r\n",
+    );
+    const footer = Buffer.from(`\r\n--${boundary}--\r\n`);
+    const body = Readable.from(
+      (async function* streamMultipart() {
+        yield header;
+        for await (const chunk of createReadStream(filePath)) {
+          yield chunk;
+        }
+        yield footer;
+      })(),
+    );
     const res = await fetch(`${baseUrl}${path}`, {
       method: "POST",
-      headers: { "X-Session-Token": this.sessionToken ?? "" },
-      body: form,
-    });
+      headers: {
+        "X-Session-Token": this.sessionToken ?? "",
+        "Content-Type": `multipart/form-data; boundary=${boundary}`,
+        "Content-Length": String(header.length + fileStats.size + footer.length),
+      },
+      body: body as unknown as BodyInit,
+      duplex: "half",
+    } as RequestInit & { duplex: "half" });
     if (!res.ok) throw await asError(res, `POST ${path} failed`);
     return (await res.json()) as T;
   }
+}
+
+function escapeMultipartValue(value: string): string {
+  return value.replace(/[\r\n]/g, "_").replace(/[\\"]/g, "\\$&");
 }
 
 async function asError(res: Response, prefix: string): Promise<Error> {

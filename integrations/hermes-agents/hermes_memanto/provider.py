@@ -89,10 +89,16 @@ _TRIVIAL_RE = re.compile(
     r"^(ok|okay|thanks|thank you|got it|sure|yes|no|yep|nope|k|ty|thx|np)\.?$",
     re.IGNORECASE,
 )
+_MEMORY_OPEN_TAG = r"<\s*memanto-memory(?:\s+[^>]*)?\s*>"
+_MEMORY_CLOSE_TAG = r"<\s*/\s*memanto-memory\s*>"
 _CONTEXT_STRIP_RE = re.compile(
-    r"<memanto-memory>[\s\S]*?</memanto-memory>\s*", re.DOTALL
+    rf"{_MEMORY_OPEN_TAG}[\s\S]*?{_MEMORY_CLOSE_TAG}\s*",
+    re.IGNORECASE,
 )
-_RECALL_TAG_RE = re.compile(r"</?memanto-memory>", re.IGNORECASE)
+_RECALL_TAG_RE = re.compile(
+    rf"{_MEMORY_OPEN_TAG}|{_MEMORY_CLOSE_TAG}",
+    re.IGNORECASE,
+)
 
 
 def _resolve_hermes_home() -> str:

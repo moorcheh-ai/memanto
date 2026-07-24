@@ -11,6 +11,7 @@ import jwt
 import pytest
 
 from memanto.app.config import settings
+from memanto.app.core import MemoryRecord
 from memanto.app.models.session import AgentCreate, AgentPattern, Session, SessionStatus
 from memanto.app.services.agent_service import AgentService
 from memanto.app.services.session_service import SessionService
@@ -252,6 +253,25 @@ class TestSessionService:
         assert [session.agent_id for session in sessions] == [valid_session.agent_id]
 
 
+class TestMemoryRecord:
+    """Unit tests for core memory record invariants."""
+
+    def test_set_ttl_rejects_non_positive_values(self):
+        """Zero/negative TTLs should not create immediately expired memories."""
+        memory = MemoryRecord(
+            type="fact",
+            title="TTL guard",
+            content="This memory should require a positive TTL.",
+            agent_id="agent-ttl",
+            actor_id="agent-ttl",
+            source="agent",
+        )
+
+        for ttl in (0, -60):
+            with pytest.raises(ValueError, match="ttl_seconds must be greater than 0"):
+                memory.set_ttl(ttl)
+
+
 class TestAgentService:
     """Unit tests for AgentService"""
 
@@ -490,6 +510,25 @@ class TestMemoryReadServiceFormatting:
         assert formatted["confidence"] == 0.0
         assert formatted["tags"] == []
 
+    def test_embedded_tags_paragraph_with_real_tags(self):
+        from unittest.mock import MagicMock
+
+        from memanto.app.services.memory_read_service import MemoryReadService
+
+        # Content whose first paragraph starts with "Tags: " AND a genuine trailing
+        # tags block: only the LAST block is metadata, so rpartition (not any match)
+        # must be used. This is the case the fix hinges on.
+        item = {
+            "text": "[FACT] T\n\nTags: this is user content, not metadata\n\nTags: urgent",
+            "memory_type": "fact",
+            "tags": "urgent",
+        }
+
+        formatted = MemoryReadService(MagicMock())._format_memory_item(item)
+
+        assert formatted["content"] == "Tags: this is user content, not metadata"
+        assert formatted["tags"] == ["urgent"]
+
 
 class TestMemoryWriteServiceBatch:
     def test_batch_store_counts_ok_upload_status_as_success(self):
@@ -541,7 +580,165 @@ class TestMemoryWriteServiceBatch:
 
         assert result["successful"] == 0
         assert result["failed"] == 1
-        assert result["results"][0]["status"] == "FAILED"
+        assert result["results"][0]["status"] == "failed"
+
+
+class TestMemoryWriteServiceUpdate:
+    def test_update_memory_preserves_string_expires_at(self):
+        """Updating a TTL-backed memory should not fail when the stored
+        ``expires_at`` field comes back as an ISO string from the backend."""
+        from memanto.app.services.memory_write_service import MemoryWriteService
+
+        client = MagicMock()
+        client.documents.get.return_value = {
+            "items": [
+                {
+                    "id": "mem-ttl",
+                    "text": "[FACT] Old title\n\nOld content",
+                    "memory_type": "fact",
+                    "scope_type": "agent",
+                    "scope_id": "alpha",
+                    "actor_id": "user",
+                    "source": "user",
+                    "confidence": 0.8,
+                    "status": "active",
+                    "created_at": "2026-01-01T00:00:00Z",
+                    "updated_at": "2026-01-01T00:00:00Z",
+                    "expires_at": "2099-01-02T00:00:00Z",
+                    "ttl_seconds": 3600,
+                }
+            ]
+        }
+        client.documents.delete.return_value = {"actual_deletions": 1}
+        client.documents.upload.return_value = {"status": "success"}
+
+        result = MemoryWriteService(client).update_memory(
+            "mem-ttl", "memanto_agent_alpha", {"content": "New content"}
+        )
+
+        assert result["status"] == "success"
+        uploaded_doc = client.documents.upload.call_args.kwargs["documents"][0]
+        assert uploaded_doc["expires_at"] == "2099-01-02T00:00:00+00:00"
+        assert uploaded_doc["ttl_seconds"] == 3600
+
+
+class TestMemoryReadServiceTemporalFilters:
+    def test_one_bad_timestamp_does_not_disable_window(self):
+        from unittest.mock import MagicMock
+
+        from memanto.app.services.memory_read_service import MemoryReadService
+
+        results = [
+            {"id": "old", "created_at": "2020-01-01T00:00:00Z"},
+            {"id": "bad", "created_at": "not-a-timestamp"},
+            {"id": "june", "created_at": "2026-06-15T00:00:00Z"},
+        ]
+
+        service = MemoryReadService(moorcheh_client=MagicMock())
+        out = service._apply_temporal_filter(
+            results, created_after="2026-06-01T00:00:00Z", created_before=None
+        )
+
+        # Only the in-window record survives; the 2020 record must NOT leak through,
+        # and the unparseable record is skipped individually.
+        assert [r["id"] for r in out] == ["june"]
+
+
+class TestMemoryReadServiceChangedSince:
+    """Regression coverage for temporal changed-since result ordering."""
+
+    def test_changed_since_sorts_created_memories_without_updated_at(self):
+        """New memories with ``updated_at=None`` should not crash sorting."""
+        from memanto.app.services.memory_read_service import MemoryReadService
+
+        client = MagicMock()
+        client.documents.fetch_text_data.return_value = {
+            "items": [
+                {
+                    "id": "created-only",
+                    "text": "[fact] Created only",
+                    "metadata": {
+                        "created_at": "2026-01-03T00:00:00Z",
+                        "updated_at": None,
+                        "memory_type": "fact",
+                    },
+                },
+                {
+                    "id": "updated",
+                    "text": "[fact] Updated",
+                    "metadata": {
+                        "created_at": "2025-12-30T00:00:00Z",
+                        "updated_at": "2026-01-04T00:00:00Z",
+                        "memory_type": "fact",
+                    },
+                },
+            ],
+            "pagination": {"has_more": False},
+        }
+
+        result = MemoryReadService(client).search_changed_since(
+            since_date="2026-01-01T00:00:00Z",
+            agent_id="agent-1",
+            limit=None,
+        )
+
+        assert [memory["id"] for memory in result["results"]] == [
+            "updated",
+            "created-only",
+        ]
+        assert result["results"][1]["change_type"] == "created"
+
+
+class TestMemoryReadServiceVersionSelection:
+    """Duplicate document ids can appear while a delete-and-recreate update is
+    settling. The read path must keep the newest version so temporal queries do
+    not miss recently updated memories."""
+
+    def test_changed_since_uses_newest_duplicate_memory_version(self):
+        from memanto.app.services.memory_read_service import MemoryReadService
+
+        client = MagicMock()
+        client.documents.fetch_text_data.return_value = {
+            "items": [
+                {
+                    "id": "memory-1",
+                    "text": "[FACT] Old title\n\nstale content",
+                    "memory_type": "fact",
+                    "scope_type": "agent",
+                    "scope_id": "agent-1",
+                    "actor_id": "agent-1",
+                    "source": "agent",
+                    "status": "active",
+                    "confidence": 0.8,
+                    "created_at": "2026-06-01T00:00:00+00:00",
+                    "updated_at": "2026-06-01T00:00:00+00:00",
+                },
+                {
+                    "id": "memory-1",
+                    "text": "[FACT] New title\n\nfresh content",
+                    "memory_type": "fact",
+                    "scope_type": "agent",
+                    "scope_id": "agent-1",
+                    "actor_id": "agent-1",
+                    "source": "agent",
+                    "status": "active",
+                    "confidence": 0.9,
+                    "created_at": "2026-06-01T00:00:00+00:00",
+                    "updated_at": "2026-06-15T12:00:00+00:00",
+                },
+            ],
+            "pagination": {"has_more": False},
+        }
+
+        result = MemoryReadService(client).search_changed_since(
+            since_date="2026-06-10T00:00:00+00:00",
+            agent_id="agent-1",
+        )
+
+        assert result["total_found"] == 1
+        assert result["results"][0]["title"] == "New title"
+        assert result["results"][0]["content"] == "fresh content"
+        assert result["results"][0]["change_type"] == "updated"
 
 
 class TestForgetEndToEnd:
@@ -648,8 +845,8 @@ class TestMemoryWriteServiceTimestamps:
         service.batch_store_memories([memory])
 
         uploaded = client.documents.upload.call_args.kwargs["documents"][0]
-        assert uploaded["created_at"] == "2020-01-02T03:04:05"
-        assert memory.created_at.tzinfo is None
+        assert uploaded["created_at"] == "2020-01-02T03:04:05+00:00"
+        assert memory.created_at.tzinfo is not None
 
     def test_batch_store_overrides_non_imported_created_at(self):
         from memanto.app.core import MemoryRecord
@@ -675,9 +872,36 @@ class TestMemoryWriteServiceTimestamps:
         after_store = datetime.now(timezone.utc)
 
         uploaded = client.documents.upload.call_args.kwargs["documents"][0]
-        assert not uploaded["created_at"].startswith("2020-01-02T03:04:05")
+        assert not uploaded["created_at"].startswith("2020-01-02T03:04:05+00:00")
         parsed_created_at = datetime.fromisoformat(uploaded["created_at"])
         assert before_store <= parsed_created_at <= after_store
+
+
+class TestRecallConfigValidation:
+    def test_set_recall_config_rejects_invalid_limit(self, tmp_path):
+        from memanto.cli.config.manager import ConfigManager
+
+        manager = ConfigManager(config_dir=tmp_path)
+
+        with pytest.raises(ValueError, match="Limit must be an integer"):
+            manager.set_recall_config(limit=0)
+
+        with pytest.raises(ValueError, match="Limit must be an integer"):
+            manager.set_recall_config(limit=101)
+
+        with pytest.raises(ValueError, match="Limit must be an integer"):
+            manager.set_recall_config(limit=1.5)
+
+        with pytest.raises(ValueError, match="Limit must be an integer"):
+            manager.set_recall_config(limit=True)
+
+    def test_set_recall_config_accepts_valid_limit(self, tmp_path):
+        from memanto.cli.config.manager import ConfigManager
+
+        manager = ConfigManager(config_dir=tmp_path)
+        manager.set_recall_config(limit=25)
+
+        assert manager.get_recall_config()["limit"] == 25
 
 
 class TestMEMANTOArchitecture:
@@ -904,3 +1128,75 @@ class TestValidateSafeId:
             svc.generate_conflict_report("agent1", "../../etc/passwd")
 
         assert not (tmp_path / "etc").exists()
+
+
+def test_format_memory_item_tag_stripping():
+    from unittest.mock import MagicMock
+
+    from memanto.app.services.memory_read_service import MemoryReadService
+
+    service = MemoryReadService(moorcheh_client=MagicMock())
+    raw_text = (
+        "[FACT] Market Size\n\nParagraph 1\n\nParagraph 2\n\nTags: market, finance"
+    )
+    mock_item = {"text": raw_text, "metadata": {"tags": "market, finance"}}
+
+    formatted = service._format_memory_item(mock_item)
+
+    assert formatted.get("title") == "Market Size"
+    assert "Tags:" not in formatted.get("content", "")
+    assert "Paragraph 1" in formatted.get("content", "")
+    assert "Paragraph 2" in formatted.get("content", "")
+
+
+def test_to_moorcheh_document_handles_string_expires_at():
+    from memanto.app.core import MemoryRecord
+
+    memory = MemoryRecord(
+        type="fact",
+        title="String Expiry",
+        content="Expires at is a string",
+        agent_id="test-agent",
+        actor_id="user",
+        source="test",
+    )
+    memory.expires_at = "2026-07-10T00:00:00"
+
+    doc = memory.to_moorcheh_document()
+    assert doc["expires_at"] == "2026-07-10T00:00:00"
+
+
+def test_batch_upload_error_counts_each_pending_memory_as_failed():
+    from memanto.app.core import MemoryRecord
+    from memanto.app.services.memory_write_service import MemoryWriteService
+
+    client = MagicMock()
+    client.documents.upload.return_value = {"status": "error"}
+
+    memories = [
+        MemoryRecord(
+            type="fact",
+            title="One",
+            content="First memory",
+            agent_id="agent-1",
+            actor_id="agent-1",
+            source="user",
+        ),
+        MemoryRecord(
+            type="fact",
+            title="Two",
+            content="Second memory",
+            agent_id="agent-1",
+            actor_id="agent-1",
+            source="user",
+        ),
+    ]
+
+    result = MemoryWriteService(client).batch_store_memories(memories)
+
+    assert result["successful"] == 0
+    assert result["failed"] == 2
+    assert [item["status"] for item in result["results"]] == ["failed", "failed"]
+    assert all(
+        "Batch upload returned status" in item["error"] for item in result["results"]
+    )

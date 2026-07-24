@@ -27,6 +27,11 @@
       "types": "./dist/integrations/mastra.d.ts",
       "import": "./dist/integrations/mastra.js",
       "require": "./dist/integrations/mastra.cjs"
+    },
+    "./voltagent": {
+      "types": "./dist/integrations/voltagent.d.ts",
+      "import": "./dist/integrations/voltagent.js",
+      "require": "./dist/integrations/voltagent.cjs"
     }
   },
   "files": [
@@ -40,14 +45,18 @@
     "build": "tsup",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "smoke:integrations": "npm run build && node scripts/smoke-integrations.mjs"
   },
   "devDependencies": {
     "@ai-sdk/openai": "^4.0.11",
+    "@ai-sdk/provider-utils": "^4.0.0",
     "@hey-api/openapi-ts": "^0.99.0",
     "@mastra/core": "^1.50.1",
     "@types/node": "^20.0.0",
+    "@voltagent/core": "^2.9.0",
     "ai": "^7.0.22",
+    "esbuild": "^0.28.1",
     "openai": "^6.46.0",
     "tsup": "^8.0.0",
     "typescript": "^5.4.0",
@@ -56,12 +65,16 @@
   },
   "peerDependencies": {
     "@mastra/core": ">=1.0.0",
+    "@voltagent/core": ">=2.0.0",
     "ai": ">=5.0.0",
     "openai": ">=4.55.0",
     "zod": ">=3.23.0"
   },
   "peerDependenciesMeta": {
     "@mastra/core": {
+      "optional": true
+    },
+    "@voltagent/core": {
       "optional": true
     },
     "ai": {

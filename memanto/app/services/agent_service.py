@@ -15,6 +15,7 @@ from memanto.app.config import get_data_dir
 from memanto.app.core import agent_namespace
 from memanto.app.models.session import AgentCreate, AgentInfo, AgentList
 from memanto.app.utils.errors import AgentAlreadyExistsError, AgentNotFoundError
+from memanto.app.utils.temporal_helpers import as_utc_aware
 from memanto.app.utils.validation import validate_safe_id
 
 
@@ -139,8 +140,8 @@ class AgentService:
                 data = json.load(f)
                 agents.append(AgentInfo(**data))
 
-        # Sort by created_at (newest first)
-        agents.sort(key=lambda a: a.created_at, reverse=True)
+        # Sort by created_at (newest first); normalize for legacy naive timestamps.
+        agents.sort(key=lambda a: as_utc_aware(a.created_at), reverse=True)
 
         return AgentList(agents=agents, count=len(agents))
 

@@ -1,4 +1,4 @@
-import { tool, type Tool } from "ai";
+import { createTool } from "@voltagent/core";
 import { z } from "zod";
 
 import type { Memanto } from "../index.js";
@@ -7,7 +7,7 @@ import { MEMORY_TYPES, type MemantoToolName, type MemoryType } from "./memory-ty
 export { MEMORY_TYPES };
 export type { MemantoToolName, MemoryType };
 
-export interface CreateMemantoToolsOptions {
+export interface CreateMemantoVoltAgentToolsOptions {
   /**
    * Which tools to create. Defaults to all of them. Pass a subset to expose
    * only, say, read access: `{ include: ["recallMemory"] }`.
@@ -21,41 +21,45 @@ export interface CreateMemantoToolsOptions {
 }
 
 /**
- * Build Vercel AI SDK tools backed by a {@link Memanto} client.
+ * Build VoltAgent tools backed by a {@link Memanto} client.
  *
- * Pass the result straight into `generateText` / `streamText`:
+ * Pass the result straight into an agent's `tools` array:
  *
  * ```ts
- * import { generateText, stepCountIs } from "ai";
+ * import { Agent } from "@voltagent/core";
  * import { openai } from "@ai-sdk/openai";
  * import { Memanto } from "@moorcheh-ai/memanto";
- * import { createMemantoTools } from "@moorcheh-ai/memanto/ai-sdk";
+ * import { createMemantoVoltAgentTools } from "@moorcheh-ai/memanto/voltagent";
  *
  * const memanto = new Memanto({ agentId: "my-agent" });
  *
- * const { text } = await generateText({
+ * const agent = new Agent({
+ *   name: "Assistant",
+ *   instructions:
+ *     "You have long-term memory. Persist durable facts with rememberMemory " +
+ *     "and look them up with recallMemory / answerMemory before answering.",
  *   model: openai("gpt-4o"),
- *   tools: createMemantoTools(memanto),
- *   stopWhen: stepCountIs(5),
- *   prompt: "What milk does Alex like? Also note he switched to soy today.",
+ *   tools: createMemantoVoltAgentTools(memanto),
  * });
  * ```
  *
- * `ai` and `zod` are optional peer dependencies — install them in the host app.
+ * `@voltagent/core` and `zod` are optional peer dependencies — install them in
+ * the host app.
  */
-export function createMemantoTools(
+export function createMemantoVoltAgentTools(
   memanto: Memanto,
-  options: CreateMemantoToolsOptions = {},
-): Partial<Record<MemantoToolName, Tool>> {
+  options: CreateMemantoVoltAgentToolsOptions = {},
+) {
   const { include, defaultLimit } = options;
 
   const all = {
-    recallMemory: tool({
+    recallMemory: createTool({
+      name: "recallMemory",
       description:
         "Search the user's long-term memory for relevant facts, preferences, " +
         "decisions, or past context. Call this before answering whenever the " +
         "user refers to information from earlier or from a previous session.",
-      inputSchema: z.object({
+      parameters: z.object({
         query: z
           .string()
           .min(1)
@@ -82,12 +86,13 @@ export function createMemantoTools(
       },
     }),
 
-    rememberMemory: tool({
+    rememberMemory: createTool({
+      name: "rememberMemory",
       description:
         "Persist a durable fact, preference, decision, or instruction that " +
         "will be useful in future sessions. Do not store secrets, credentials, " +
         "or transient chatter.",
-      inputSchema: z.object({
+      parameters: z.object({
         content: z.string().min(1).describe("The information to remember"),
         type: z
           .enum(MEMORY_TYPES)
@@ -103,12 +108,13 @@ export function createMemantoTools(
         memanto.remember({ content, type, title, tags }),
     }),
 
-    answerMemory: tool({
+    answerMemory: createTool({
+      name: "answerMemory",
       description:
         "Answer a question using retrieval-augmented generation over the " +
         "user's stored memories. Prefer this over recallMemory when a direct, " +
         "synthesized answer from memory is more useful than raw results.",
-      inputSchema: z.object({
+      parameters: z.object({
         question: z
           .string()
           .min(1)
@@ -126,14 +132,6 @@ export function createMemantoTools(
     }),
   };
 
-  if (!include) return all;
-
-  const selected = {} as Partial<typeof all>;
-  for (const name of Object.keys(all) as MemantoToolName[]) {
-    if (include.includes(name)) {
-      (selected as Record<MemantoToolName, (typeof all)[MemantoToolName]>)[name] =
-        all[name];
-    }
-  }
-  return selected;
+  const names = include ?? (Object.keys(all) as MemantoToolName[]);
+  return names.map((name) => all[name]);
 }
