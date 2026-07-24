@@ -17,8 +17,20 @@ MemoryType = Literal[
     "error",
 ]
 
-# Source Types
-SourceType = str  # e.g., "user", "agent", "tool", "system", or specific "agent_name"
+# Source Types — validated set of known sources.
+# Arbitrary strings are still accepted for forward compatibility with custom
+# agent names, but a validation helper is provided to warn on unknowns.
+KNOWN_SOURCE_TYPES = frozenset({"user", "agent", "tool", "system"})
+SourceType = str  # Runtime type remains str for backward compat
+
+
+def is_known_source_type(source: str) -> bool:
+    """Check whether source is a recognized source type.
+
+    Custom agent names (e.g. 'agent_hermes') are valid but not in the known set.
+    Returns True for known types, False for unrecognized strings.
+    """
+    return source in KNOWN_SOURCE_TYPES or source.startswith("agent_")
 
 # Status Types
 StatusType = Literal["active", "superseded", "deleted", "provisional"]

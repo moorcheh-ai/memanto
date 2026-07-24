@@ -50,7 +50,10 @@ class RateLimiter:
         Returns: (allowed, retry_after_seconds)
         """
         if operation not in self.limits:
-            return True, None
+            # Fail-closed: unknown operations are denied by default.
+            # This prevents bypass via unrecognized operation strings
+            # (e.g. namespace_list when only namespace_create is configured).
+            return False, 1
 
         limit = self.limits[operation]
         key = self._get_key(operation, agent_id)
@@ -96,7 +99,11 @@ class RateLimiter:
                     "error": "rate_limit_exceeded",
                     "message": f"Rate limit exceeded for {operation}",
                     "retry_after": retry_after,
-                    "limit": f"{self.limits[operation].requests}/{self.limits[operation].window}s",
+                    "limit": (
+                        f"{self.limits[operation].requests}/{self.limits[operation].window}s"
+                        if operation in self.limits
+                        else "unknown operation denied"
+                    ),
                 },
                 headers={"Retry-After": str(retry_after)},
             )

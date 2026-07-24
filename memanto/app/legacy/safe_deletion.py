@@ -158,11 +158,17 @@ class SafeDeletion:
 
     @staticmethod
     def _is_valid_memory_id(memory_id: str) -> bool:
-        """Validate memory ID format"""
-        if not memory_id or len(memory_id) < 4:
+        """Validate memory ID format.
+
+        Aligned with utils.ids.is_valid_memory_id: requires underscore separator
+        and length > 4 to match the generate_memory_id output pattern (prefix_hex).
+        """
+        if not memory_id or len(memory_id) <= 4:
             return False
 
-        # Should match our ID generation pattern
+        # Must contain underscore to match prefix_hash format from generate_memory_id
+        if "_" not in memory_id:
+            return False
 
         return bool(re.match(r"^[a-zA-Z0-9_-]+$", memory_id))
 
