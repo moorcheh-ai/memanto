@@ -32,14 +32,14 @@ def test_ensure_client_creates_and_activates(mock_sdk_client):
     namespace = ("test", "ns")
     client, agent_id = store._ensure_client(namespace)
 
-    assert agent_id == "langgraph_test_ns"
+    assert agent_id == "langgraph_ns_4x74657374_2x6e73"
     assert client == client_instance
 
     mock_sdk_client.assert_called_once_with(api_key="test_key")
     client_instance.create_agent.assert_called_once_with(
-        agent_id="langgraph_test_ns", pattern="tool"
+        agent_id="langgraph_ns_4x74657374_2x6e73", pattern="tool"
     )
-    client_instance.activate_agent.assert_called_once_with(agent_id="langgraph_test_ns")
+    client_instance.activate_agent.assert_called_once_with(agent_id="langgraph_ns_4x74657374_2x6e73")
 
     # Second call should return cached client
     client2, agent_id2 = store._ensure_client(namespace)
@@ -65,14 +65,14 @@ def test_ensure_client_encodes_underscore_namespace_without_collision(mock_sdk_c
     _, split_agent_id = store._ensure_client(("team", "a"))
 
     assert underscored_agent_id == "langgraph_ns_6x7465616d5f61"
-    assert split_agent_id == "langgraph_team_a"
+    assert split_agent_id == "langgraph_ns_4x7465616d_1x61"
     assert underscored_agent_id != split_agent_id
 
     client_instance.create_agent.assert_any_call(
         agent_id="langgraph_ns_6x7465616d5f61", pattern="tool"
     )
     client_instance.create_agent.assert_any_call(
-        agent_id="langgraph_team_a", pattern="tool"
+        agent_id="langgraph_ns_4x7465616d_1x61", pattern="tool"
     )
 
 
@@ -477,8 +477,8 @@ def test_do_list_namespaces(mock_sdk_client):
     # Mock list_agents returning various agents
     client_instance.list_agents.return_value = [
         {"agent_id": "langgraph_default"},
-        {"agent_id": "langgraph_my_ns"},
-        {"agent_id": "langgraph_other_ns_sub"},
+        {"agent_id": "langgraph_ns_2x6d79_2x6e73"},
+        {"agent_id": "langgraph_ns_5x6f74686572_2x6e73_3x737562"},
         {"agent_id": "unrelated_agent"},
     ]
 
@@ -499,7 +499,7 @@ def test_do_list_namespaces_decodes_encoded_underscore_namespaces(mock_sdk_clien
 
     client_instance.list_agents.return_value = [
         {"agent_id": "langgraph_default"},
-        {"agent_id": "langgraph_team_a"},
+        {"agent_id": "langgraph_ns_4x7465616d_1x61"},
         {"agent_id": "langgraph_ns_6x7465616d5f61"},
         {"agent_id": "langgraph_ns_foo"},
         {"agent_id": "langgraph_ns_1x61"},
@@ -511,8 +511,7 @@ def test_do_list_namespaces_decodes_encoded_underscore_namespaces(mock_sdk_clien
 
     assert namespaces == [
         (),
-        ("ns", "1x61"),
-        ("ns", "foo"),
+        ("a",),
         ("team", "a"),
         ("team_a",),
     ]
@@ -524,9 +523,9 @@ def test_do_list_namespaces_match_conditions(mock_sdk_client):
     mock_sdk_client.return_value = client_instance
 
     client_instance.list_agents.return_value = [
-        {"agent_id": "langgraph_my_ns"},
-        {"agent_id": "langgraph_my_other"},
-        {"agent_id": "langgraph_not_my"},
+        {"agent_id": "langgraph_ns_2x6d79_2x6e73"},
+        {"agent_id": "langgraph_ns_2x6d79_5x6f74686572"},
+        {"agent_id": "langgraph_ns_3x6e6f74_2x6d79"},
     ]
 
     from langgraph.store.base import MatchCondition

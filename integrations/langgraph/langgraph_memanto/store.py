@@ -418,58 +418,26 @@ class MemantoStore(BaseStore):
             return f"{self._agent_prefix}default"
 
         parts = tuple(str(part) for part in namespace)
-        legacy_suffix = "_".join(parts)
-        if self._can_use_legacy_namespace_suffix(legacy_suffix, parts):
-            return f"{self._agent_prefix}{legacy_suffix}"
-
         encoded = "_".join(self._encode_namespace_part(part) for part in parts)
         return f"{self._encoded_namespace_prefix}{encoded}"
-
-    def _can_use_legacy_namespace_suffix(
-        self, legacy_suffix: str, parts: tuple[str, ...]
-    ) -> bool:
-        if any(not part or "_" in part for part in parts):
-            return False
-        if legacy_suffix == "default":
-            return False
-
-        encoded_suffix_prefix = self._encoded_namespace_prefix[
-            len(self._agent_prefix) :
-        ]
-        if legacy_suffix.startswith(encoded_suffix_prefix):
-            encoded = legacy_suffix[len(encoded_suffix_prefix) :]
-            try:
-                decoded = tuple(
-                    self._decode_namespace_part(part) for part in encoded.split("_")
-                )
-            except (UnicodeDecodeError, ValueError):
-                return True
-            return decoded == parts
-
-        return True
 
     def _agent_id_to_namespace(self, agent_id: str) -> tuple[str, ...] | None:
         if not agent_id.startswith(self._agent_prefix):
             return None
 
-        ns_str = agent_id[len(self._agent_prefix) :]
-        if ns_str == "default":
+        if agent_id == f"{self._agent_prefix}default":
             return ()
 
         if agent_id.startswith(self._encoded_namespace_prefix):
             encoded = agent_id[len(self._encoded_namespace_prefix) :]
             try:
-                decoded = tuple(
+                return tuple(
                     self._decode_namespace_part(part) for part in encoded.split("_")
                 )
             except (UnicodeDecodeError, ValueError):
-                pass
-            else:
-                if self._namespace_to_agent_id(decoded) == agent_id:
-                    return decoded
+                return None
 
-        # Backward compatibility for agents created before namespace encoding.
-        return tuple(ns_str.split("_"))
+        return None
 
     @staticmethod
     def _encode_namespace_part(part: str) -> str:
