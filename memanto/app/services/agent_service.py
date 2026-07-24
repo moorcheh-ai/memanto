@@ -88,28 +88,35 @@ class AgentService:
 
         namespace = self._generate_namespace(agent_create.agent_id)
 
-        # Create namespace in Moorcheh - CRITICAL: Must succeed.
-        # ``moorcheh_api_key`` is honored on cloud; ignored on on-prem.
-        client = get_moorcheh_client()
-
+        # Wrap all post-claim work in try/except to release the placeholder
+        # if namespace creation or metadata save fails.
         try:
-            # Use Moorcheh SDK to create namespace with type="text"
-            client.namespaces.create(namespace, type="text")
-            print(f"[OK] Namespace created in Moorcheh: {namespace}")
-        except ConflictError:
-            # Namespace already exists - this is OK, agent might have been created before
-            print(f"[OK] Namespace already exists in Moorcheh: {namespace}")
-        except Exception as e:
-            # On-prem raises moorcheh.errors.MoorchehApiError (HTTP 409) rather
-            # than the cloud SDK's typed ConflictError when the namespace
-            # already exists. Match on message so both backends behave the same.
-            msg = str(e).lower()
-            if ("namespace" in msg and "already exists" in msg) or "conflict" in msg:
+            # Create namespace in Moorcheh - CRITICAL: Must succeed.
+            # ``moorcheh_api_key`` is honored on cloud; ignored on on-prem.
+            client = get_moorcheh_client()
+
+            try:
+                # Use Moorcheh SDK to create namespace with type="text"
+                client.namespaces.create(namespace, type="text")
+                print(f"[OK] Namespace created in Moorcheh: {namespace}")
+            except ConflictError:
+                # Namespace already exists - this is OK, agent might have been created before
                 print(f"[OK] Namespace already exists in Moorcheh: {namespace}")
-            else:
-                raise Exception(
-                    f"Failed to create namespace '{namespace}' in Moorcheh: {str(e)}"
-                )
+            except Exception as e:
+                # On-prem raises moorcheh.errors.MoorchehApiError (HTTP 409) rather
+                # than the cloud SDK's typed ConflictError when the namespace
+                # already exists. Match on message so both backends behave the same.
+                msg = str(e).lower()
+                if ("namespace" in msg and "already exists" in msg) or "conflict" in msg:
+                    print(f"[OK] Namespace already exists in Moorcheh: {namespace}")
+                else:
+                    raise Exception(
+                        f"Failed to create namespace '{namespace}' in Moorcheh: {str(e)}"
+                    )
+        except Exception:
+            # Release the claimed file slot on any failure
+            agent_file.unlink(missing_ok=True)
+            raise
 
         # Create agent metadata
         agent = AgentInfo(

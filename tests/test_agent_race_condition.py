@@ -184,3 +184,44 @@ class TestErrorResponses:
         err = AgentLimitExceededError("Agent limit reached (2)")
         http_err = map_error_to_http_exception(err)
         assert http_err.status_code == 403
+
+
+class TestCleanupOnFailure:
+    """Verify placeholder file is removed when creation fails after claim."""
+
+    @patch("memanto.app.services.agent_service.get_moorcheh_client")
+    def test_cleanup_on_namespace_failure(self, mock_client, service):
+        """Placeholder file removed if namespace creation raises."""
+        mock_client.return_value.namespaces.create.side_effect = RuntimeError("connection refused")
+
+        with patch.dict(os.environ, {"MEMANTO_MAX_AGENTS": "10"}):
+            with pytest.raises(Exception, match="Failed to create namespace"):
+                service.create_agent(
+                    AgentCreate(agent_id="fail-agent", pattern="tool"),
+                    moorcheh_api_key="key"
+                )
+
+        # Placeholder must be cleaned up
+        assert not (service.agents_dir / "fail-agent.json").exists()
+
+    @patch("memanto.app.services.agent_service.get_moorcheh_client")
+    def test_retry_after_failure_succeeds(self, mock_client, service):
+        """After a failed creation + cleanup, retrying should work."""
+        # First call fails
+        mock_client.return_value.namespaces.create.side_effect = RuntimeError("timeout")
+        with patch.dict(os.environ, {"MEMANTO_MAX_AGENTS": "10"}):
+            with pytest.raises(Exception):
+                service.create_agent(
+                    AgentCreate(agent_id="retry-agent", pattern="tool"),
+                    moorcheh_api_key="key"
+                )
+
+        # Second call succeeds
+        mock_client.return_value.namespaces.create.side_effect = None
+        mock_client.return_value.namespaces.create.return_value = None
+        with patch.dict(os.environ, {"MEMANTO_MAX_AGENTS": "10"}):
+            agent = service.create_agent(
+                AgentCreate(agent_id="retry-agent", pattern="tool"),
+                moorcheh_api_key="key"
+            )
+        assert agent.agent_id == "retry-agent"
