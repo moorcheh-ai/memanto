@@ -499,7 +499,7 @@ class MemoryReadService:
                 continue
             try:
                 return parse_iso_timestamp(str(raw)), fetch_index
-            except (TypeError, ValueError):
+            except (TypeError, ValueError, OverflowError):
                 continue
         return fallback, fetch_index
 
@@ -627,7 +627,7 @@ class MemoryReadService:
             raw_confidence: Any = result.get("confidence")
             try:
                 confidence = float(raw_confidence)
-            except (TypeError, ValueError):
+            except (TypeError, ValueError, OverflowError):
                 # Fail open: include memories with unknown confidence rather
                 # than silently dropping them. This preserves imported memories
                 # that may not carry a confidence score.
