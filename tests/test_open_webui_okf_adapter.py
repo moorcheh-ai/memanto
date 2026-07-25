@@ -94,6 +94,21 @@ def test_missing_current_id_chooses_newest_leaf():
     assert [message["id"] for message in current_branch(history)] == ["root", "b"]
 
 
+def test_history_key_is_authoritative_message_id():
+    history = {
+        "currentId": "actual-id",
+        "messages": {
+            "actual-id": {
+                "id": "embedded-stale-id",
+                "role": "user",
+                "content": "x",
+                "parentId": None,
+            }
+        },
+    }
+    assert current_branch(history)[0]["id"] == "actual-id"
+
+
 def test_cycle_and_missing_parent_fail_closed():
     with pytest.raises(ExportError, match="cycle"):
         current_branch({"currentId": "a", "messages": {"a": {"parentId": "a"}}})
@@ -124,6 +139,22 @@ def test_legacy_envelope_and_empty_chat_count(tmp_path):
         ]
         == 0
     )
+
+
+def test_null_tags_are_empty_and_malformed_tags_fail_cleanly(tmp_path):
+    history = {
+        "currentId": "u",
+        "messages": {"u": {"role": "user", "content": "kept", "parentId": None}},
+    }
+    data = _export(history)
+    data[0]["meta"]["tags"] = None
+    convert_export(data, tmp_path / "null-tags")
+    rows = map_okf(load_okf_bundle(tmp_path / "null-tags"))
+    assert set(rows[0]["tags"]) == {"open-webui", "conversation"}
+
+    data[0]["meta"]["tags"] = "not-a-list"
+    with pytest.raises(ExportError, match=r"chat 0 meta\.tags must be an array"):
+        convert_export(data, tmp_path / "bad-tags")
 
 
 def test_repeated_conversion_replaces_stale_files(tmp_path):

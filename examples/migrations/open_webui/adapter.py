@@ -8,7 +8,7 @@ import json
 import re
 import shutil
 import tempfile
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -26,7 +26,11 @@ def _timestamp(value: Any) -> str | None:
         stamp = float(value)
     except (TypeError, ValueError):
         return None
-    return datetime.fromtimestamp(stamp, tz=UTC).isoformat().replace("+00:00", "Z")
+    return (
+        datetime.fromtimestamp(stamp, tz=timezone.utc)
+        .isoformat()
+        .replace("+00:00", "Z")
+    )
 
 
 def _slug(value: str, fallback: str) -> str:
@@ -87,7 +91,7 @@ def current_branch(history: dict[str, Any]) -> list[dict[str, Any]]:
         message = messages.get(message_id)
         if message is None:
             raise ExportError(f"missing parent message {message_id}")
-        branch.append({"id": message_id, **message})
+        branch.append({**message, "id": message_id})
         parent_id = message.get("parentId")
         message_id = str(parent_id) if parent_id else None
     branch.reverse()
@@ -170,8 +174,11 @@ def convert_export(
             meta = (
                 envelope.get("meta") if isinstance(envelope.get("meta"), dict) else {}
             )
+            raw_tags = meta.get("tags") or []
+            if not isinstance(raw_tags, list):
+                raise ExportError(f"chat {index} meta.tags must be an array")
             tags = ["open-webui", "conversation"]
-            tags.extend(str(tag) for tag in meta.get("tags", []) if tag)
+            tags.extend(str(tag) for tag in raw_tags if tag)
             timestamp = _timestamp(envelope.get("created_at") or chat.get("created_at"))
             frontmatter: dict[str, Any] = {
                 "type": "artifact",
@@ -226,9 +233,24 @@ def convert_export(
             encoding="utf-8",
             newline="\n",
         )
+        backup_root: Path | None = None
+        backup: Path | None = None
         if output_dir.exists():
-            shutil.rmtree(output_dir)
-        staging.replace(output_dir)
+            backup_root = Path(
+                tempfile.mkdtemp(
+                    prefix=f".{output_dir.name}-backup-", dir=output_dir.parent
+                )
+            )
+            backup = backup_root / output_dir.name
+            output_dir.replace(backup)
+        try:
+            staging.replace(output_dir)
+        except Exception:
+            if backup is not None:
+                backup.replace(output_dir)
+            raise
+        if backup_root is not None:
+            shutil.rmtree(backup_root, ignore_errors=True)
         return manifest
     except Exception:
         shutil.rmtree(staging, ignore_errors=True)
