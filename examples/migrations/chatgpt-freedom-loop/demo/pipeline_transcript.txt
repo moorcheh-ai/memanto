@@ -1,0 +1,15 @@
+==> Generating ChatGPT-shaped sample export
+Wrote /Users/trinity-hub/DOME-HUB/development/active/sovereign-income/worktrees/memanto-1634/examples/migrations/chatgpt-freedom-loop/data/conversations.json (4 conversations)
+==> Mapping + writing migration report + OKF sample
+Mapped 5 memories
+Wrote /Users/trinity-hub/DOME-HUB/development/active/sovereign-income/worktrees/memanto-1634/examples/migrations/chatgpt-freedom-loop/reports/migration_summary.md
+Wrote OKF sample under /Users/trinity-hub/DOME-HUB/development/active/sovereign-income/worktrees/memanto-1634/examples/migrations/chatgpt-freedom-loop/okf_sample
+
+Done. Inspect:
+  reports/migration_summary.md
+  okf_sample/index.md
+  MAPPING.md
+
+Live path (requires Memanto + MOORCHEH_API_KEY):
+  memanto migrate chatgpt --file ./data/conversations.json --dry-run --report
+  memanto memory export --okf ./okf_live
