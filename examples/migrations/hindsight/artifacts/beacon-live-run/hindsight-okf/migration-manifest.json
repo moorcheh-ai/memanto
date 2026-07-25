@@ -1,0 +1,40 @@
+{
+  "adapter_version": "1.0.0",
+  "commands": {
+    "dry_run": "memanto migrate okf <bundle-dir> --dry-run",
+    "export": "memanto memory export --okf --agent <agent-id>",
+    "import": "memanto migrate okf <bundle-dir> --agent <agent-id>"
+  },
+  "migration": {
+    "archived_records": 3,
+    "archived_type_counts": {
+      "fact": 3
+    },
+    "importable_records": 32,
+    "mapping": {
+      "experience": "event",
+      "observation": "learning",
+      "unknown": "observation",
+      "world": "fact"
+    },
+    "source_fact_type_counts": {
+      "experience": 12,
+      "observation": 3,
+      "world": 20
+    },
+    "source_records": 35,
+    "type_counts": {
+      "event": 12,
+      "fact": 17,
+      "learning": 3
+    }
+  },
+  "schema": "hindsight-okf-manifest/v1",
+  "source": {
+    "bank_id": "beacon-release-copilot",
+    "base_url": "http://127.0.0.1:8888",
+    "captured_at": "2026-07-25T05:03:53.398283Z",
+    "provider": "hindsight",
+    "snapshot_sha256": "620d50a301d9107c3c69bf1e9b4baa6805a36b2bbf6636d1316b16dfde54557b"
+  }
+}
