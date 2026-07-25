@@ -1,0 +1,15 @@
+{
+  "conversations": 1,
+  "format": "okf",
+  "messages": 2,
+  "records": [
+    {
+      "chat_id": "planning-chat",
+      "file": "memories/artifact/atlas-release-plan-6787392ce9.md",
+      "messages": 2
+    }
+  ],
+  "skipped_empty": 0,
+  "source": "open-webui",
+  "source_file": "sample-export.json"
+}

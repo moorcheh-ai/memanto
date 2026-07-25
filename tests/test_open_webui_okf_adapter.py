@@ -1,4 +1,5 @@
 import json
+from pathlib import Path
 
 import pytest
 
@@ -137,3 +138,19 @@ def test_repeated_conversion_replaces_stale_files(tmp_path):
     convert_export(_export(history), output)
     assert not stale.exists()
     assert len(load_okf_bundle(output)["memories"]) == 1
+
+
+def test_committed_sample_bundle_matches_adapter(tmp_path):
+    root = Path(__file__).parents[1] / "examples" / "migrations" / "open_webui"
+    data = json.loads((root / "sample-export.json").read_text(encoding="utf-8"))
+    generated = tmp_path / "sample-okf"
+    convert_export(data, generated, "sample-export.json")
+
+    def files(directory):
+        return {
+            path.relative_to(directory): path.read_bytes()
+            for path in directory.rglob("*")
+            if path.is_file()
+        }
+
+    assert files(generated) == files(root / "sample-okf")

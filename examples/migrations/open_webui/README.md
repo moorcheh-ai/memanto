@@ -35,6 +35,12 @@ retains the source chat ID, source message IDs, model names, timestamps, and
 Open WebUI tags in frontmatter. Message bodies remain plain Markdown and can be
 inspected or versioned before import.
 
+`sample-okf/` is the committed, human-inspectable output generated from
+`sample-export.json`. It demonstrates the exact bundle contract and can be
+loaded with `memanto migrate okf sample-okf --dry-run`. The small sample is a
+format fixture, not a claim of real-world migration evidence; bounty showcases
+should run the same command against their own genuine Open WebUI export.
+
 ## Mapping
 
 | Open WebUI | OKF / Memanto |
