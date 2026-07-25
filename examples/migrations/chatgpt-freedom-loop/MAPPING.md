@@ -18,7 +18,7 @@
 | Provenance | constant | `provenance=imported` | `x_memanto.provenance` |
 | Source platform | constant | `source=chatgpt` | `x_memanto.source` |
 | Confidence | constant `0.75` | `confidence` | `x_memanto.confidence` |
-| Branching edits | `children[]` siblings | first-child linearization | N/A (path choice) |
+| Branching edits | `children[]` siblings + `current_node` | active-leaf parent walk | N/A (path choice) |
 | Supporting metadata | title / turn / ids | `[Supporting data]` footer | retained in body |
 
 ## Round-trip semantics

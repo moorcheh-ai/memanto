@@ -1,7 +1,7 @@
 # Migration Summary — ChatGPT Freedom Loop
 
-- Generated: `2026-07-25T09:32:45.152662+00:00`
-- Source file: `/Users/trinity-hub/DOME-HUB/development/active/sovereign-income/worktrees/memanto-1634/examples/migrations/chatgpt-freedom-loop/data/conversations.json`
+- Generated: `2026-07-25T22:47:04.099256+00:00`
+- Source file: `data/conversations.json`
 - Source conversations: **4**
 - Mapped memories: **5**
 
@@ -18,7 +18,7 @@
 
 - Temporal timestamps preserved from ChatGPT message `create_time`
 - `source_ref` format: `{conversation_id}:{message_id}`
-- Branching edits linearized via first-child path
+- Branching edits linearized from `current_node` (parent walk); latest leaf fallback
 - Multimodal parts emit text + `[image]` markers
 
 ## Next (live Memanto)

@@ -1,12 +1,12 @@
 ---
 title: "[Branching Edit Example] Explain OKF in one sentence."
 type: fact
-created: 2024-04-01T19:35:00+00:00
-updated: 2026-07-25T09:32:45.152351+00:00
+timestamp: 2024-04-01T19:35:00+00:00
+resource: "chatgpt-export-branch-003:u1"
 tags: ["session:Branching Edit Example", "topic:branching-edit-example"]
 x_memanto:
   source: chatgpt
-  source_ref: "chatgpt-export-branch-003:u1"
+  type: fact
   provenance: imported
   confidence: 0.75
 ---

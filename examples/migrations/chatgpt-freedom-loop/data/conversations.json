@@ -158,6 +158,7 @@
     "conversation_id": "chatgpt-export-branch-003",
     "create_time": 1712000000.0,
     "update_time": 1712000900.0,
+    "current_node": "a_keep",
     "mapping": {
       "root": {
         "id": "root",

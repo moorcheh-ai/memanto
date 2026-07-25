@@ -1,12 +1,12 @@
 ---
 title: "[Multimodal Diagram Review] I realized our migration pipeline needs a freedom..."
 type: observation
-created: 2024-04-13T09:21:40+00:00
-updated: 2026-07-25T09:32:45.152351+00:00
+timestamp: 2024-04-13T09:21:40+00:00
+resource: "chatgpt-export-mm-004:u1"
 tags: ["session:Multimodal Diagram Review", "topic:multimodal-diagram-review"]
 x_memanto:
   source: chatgpt
-  source_ref: "chatgpt-export-mm-004:u1"
+  type: observation
   provenance: imported
   confidence: 0.75
 ---

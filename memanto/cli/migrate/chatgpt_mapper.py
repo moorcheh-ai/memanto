@@ -89,48 +89,68 @@ def _title_from(text: str, max_len: int = 80) -> str:
     return clean[: max_len - 3].rstrip() + "..."
 
 
-def _linearize_conversation(mapping: dict[str, Any]) -> list[dict[str, Any]]:
-    """Walk the conversation tree to produce an ordered list of messages.
+def _message_create_time(node: dict[str, Any]) -> float:
+    """Best-effort ChatGPT message create_time for leaf ranking."""
+    msg = node.get("message")
+    if not isinstance(msg, dict):
+        return 0.0
+    try:
+        return float(msg.get("create_time") or 0.0)
+    except (TypeError, ValueError):
+        return 0.0
 
-    ChatGPT stores conversations as a tree (branching on edits). We follow
-    the first child at each node to produce the canonical linear thread.
+
+def _fallback_leaf_id(mapping: dict[str, Any]) -> str | None:
+    """Pick a leaf when current_node is missing/invalid (latest create_time)."""
+    leaves: list[str] = []
+    for node_id, node in mapping.items():
+        children = node.get("children") or []
+        if not children:
+            leaves.append(node_id)
+    if not leaves:
+        return next(iter(mapping), None)
+    return max(leaves, key=lambda nid: _message_create_time(mapping.get(nid) or {}))
+
+
+def _linearize_conversation(
+    mapping: dict[str, Any],
+    current_node: str | None = None,
+) -> list[dict[str, Any]]:
+    """Walk the conversation DAG to produce the active linear thread.
+
+    ChatGPT stores conversations as a DAG (branching on edits/regenerations).
+    Prefer ``current_node`` (active leaf), walk ``parent`` pointers to the root,
+    then reverse. Fall back to the latest leaf when ``current_node`` is absent
+    or invalid — never follow ``children[0]`` (that can migrate a discarded branch).
     """
     if not mapping:
         return []
 
-    # Find root node (the one with no parent or parent not in mapping)
-    root_id = None
-    for node_id, node in mapping.items():
-        parent = node.get("parent")
-        if parent is None or parent not in mapping:
-            root_id = node_id
-            break
+    leaf_id: str | None = None
+    if isinstance(current_node, str) and current_node in mapping:
+        leaf_id = current_node
+    else:
+        leaf_id = _fallback_leaf_id(mapping)
 
-    if root_id is None:
-        # Fallback: pick any node and walk up (cycle-guarded)
-        root_id = next(iter(mapping))
-        seen_up: set[str] = set()
-        while mapping.get(root_id, {}).get("parent") in mapping:
-            if root_id in seen_up:
-                break
-            seen_up.add(root_id)
-            root_id = mapping[root_id]["parent"]
+    if leaf_id is None:
+        return []
 
-    # Walk down following first child
-    messages = []
-    current = root_id
-    visited: set[str] = set()
-    while current and current not in visited:
-        visited.add(current)
-        node = mapping.get(current)
-        if not node:
-            break
-        msg = node.get("message")
+    chain: list[str] = []
+    seen: set[str] = set()
+    cur: str | None = leaf_id
+    while cur and cur in mapping and cur not in seen:
+        seen.add(cur)
+        chain.append(cur)
+        parent = mapping[cur].get("parent")
+        cur = parent if isinstance(parent, str) and parent in mapping else None
+
+    chain.reverse()
+
+    messages: list[dict[str, Any]] = []
+    for node_id in chain:
+        msg = mapping[node_id].get("message")
         if isinstance(msg, dict) and msg.get("content") is not None:
             messages.append(msg)
-        children = node.get("children") or []
-        current = children[0] if children else None
-
     return messages
 
 
@@ -255,7 +275,7 @@ def map_chatgpt(export: dict[str, Any]) -> list[dict[str, Any]]:
         if not mapping:
             continue
 
-        messages = _linearize_conversation(mapping)
+        messages = _linearize_conversation(mapping, current_node=conv.get("current_node"))
 
         # Pair user + assistant turns
         turn_index = 0

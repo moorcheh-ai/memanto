@@ -61,23 +61,24 @@ def write_okf(rows: list[dict]) -> None:
             mtype = "fact"
         title = row.get("title") or f"memory-{i}"
         slug = _slug(title)
-        path = memories / mtype / f"{slug}.md"
+        # Unique path so duplicate titles cannot overwrite each other
+        path = memories / mtype / f"{i:04d}-{slug}.md"
         created = row.get("created_at")
-        updated = row.get("updated_at")
         created_s = created.isoformat() if hasattr(created, "isoformat") else str(created or "")
-        updated_s = updated.isoformat() if hasattr(updated, "isoformat") else str(updated or "")
         tags = row.get("tags") or []
         body = row.get("content") or ""
+        source_ref = row.get("source_ref")
+        # Match memanto OKF export/import fields (timestamp + resource + x_memanto.type)
         fm = [
             "---",
             f"title: {json.dumps(title)}",
             f"type: {mtype}",
-            f"created: {created_s}",
-            f"updated: {updated_s}",
+            f"timestamp: {created_s}",
+            f"resource: {json.dumps(source_ref)}",
             f"tags: {json.dumps(tags)}",
             "x_memanto:",
             f"  source: {row.get('source')}",
-            f"  source_ref: {json.dumps(row.get('source_ref'))}",
+            f"  type: {mtype}",
             f"  provenance: {row.get('provenance')}",
             f"  confidence: {row.get('confidence')}",
             "---",
@@ -106,7 +107,7 @@ def main() -> None:
         "# Migration Summary — ChatGPT Freedom Loop",
         "",
         f"- Generated: `{datetime.now(timezone.utc).isoformat()}`",
-        f"- Source file: `{DATA}`",
+        f"- Source file: `{DATA.relative_to(ROOT).as_posix()}`",
         f"- Source conversations: **{len(export.get('conversations', []))}**",
         f"- Mapped memories: **{len(rows)}**",
         "",
@@ -123,7 +124,7 @@ def main() -> None:
         "",
         "- Temporal timestamps preserved from ChatGPT message `create_time`",
         "- `source_ref` format: `{conversation_id}:{message_id}`",
-        "- Branching edits linearized via first-child path",
+        "- Branching edits linearized from `current_node` (parent walk); latest leaf fallback",
         "- Multimodal parts emit text + `[image]` markers",
         "",
         "## Next (live Memanto)",
@@ -138,8 +139,8 @@ def main() -> None:
     REPORT.write_text("\n".join(lines), encoding="utf-8")
     write_okf(rows)
     print(f"Mapped {len(rows)} memories")
-    print(f"Wrote {REPORT}")
-    print(f"Wrote OKF sample under {OKF}")
+    print(f"Wrote {REPORT.relative_to(ROOT).as_posix()}")
+    print(f"Wrote OKF sample under {OKF.relative_to(ROOT).as_posix()}")
 
 
 if __name__ == "__main__":

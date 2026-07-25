@@ -352,7 +352,7 @@ class TestLoader:
 
 class TestBranchingAndRobustness:
     def test_first_child_path_on_branching_tree(self):
-        """Edits create sibling branches — mapper follows the first-child path."""
+        """Without current_node, latest leaf wins (not discarded first-child)."""
         mapping = {
             "root": {"id": "root", "message": None, "parent": None, "children": ["m1"]},
             "m1": {
@@ -382,8 +382,51 @@ class TestBranchingAndRobustness:
         }
         rows = map_chatgpt({"conversations": [conv]})
         assert len(rows) == 1
-        assert "First-child answer" in rows[0]["content"]
-        assert "Sibling branch answer" not in rows[0]["content"]
+        # Latest leaf (m2b) is the fallback when current_node is absent
+        assert "Sibling branch answer" in rows[0]["content"]
+        assert "First-child answer" not in rows[0]["content"]
+
+    def test_current_node_selects_active_branch(self):
+        """current_node must win over sibling / first-child branches."""
+        mapping = {
+            "root": {"id": "root", "message": None, "parent": None, "children": ["m1"]},
+            "m1": {
+                "id": "m1",
+                "message": _make_message("m1", "user", "Original Q", 1700000100.0),
+                "parent": "root",
+                "children": ["m2a", "m2b"],
+            },
+            "m2a": {
+                "id": "m2a",
+                "message": _make_message("m2a", "assistant", "Discarded regenerate", 1700000105.0),
+                "parent": "m1",
+                "children": [],
+            },
+            "m2b": {
+                "id": "m2b",
+                "message": _make_message("m2b", "assistant", "Active seen answer", 1700000110.0),
+                "parent": "m1",
+                "children": [],
+            },
+        }
+        conv = {
+            "title": "Active branch",
+            "conversation_id": "conv-active",
+            "create_time": 1700000000.0,
+            "current_node": "m2b",
+            "mapping": mapping,
+        }
+        rows = map_chatgpt({"conversations": [conv]})
+        assert len(rows) == 1
+        assert "Active seen answer" in rows[0]["content"]
+        assert "Discarded regenerate" not in rows[0]["content"]
+
+        # Explicit older leaf still wins when marked current
+        conv["current_node"] = "m2a"
+        rows = map_chatgpt({"conversations": [conv]})
+        assert len(rows) == 1
+        assert "Discarded regenerate" in rows[0]["content"]
+        assert "Active seen answer" not in rows[0]["content"]
 
     def test_cyclic_parent_chain_does_not_hang(self):
         """Malformed cyclic parents must not infinite-loop in root finding."""

@@ -102,12 +102,13 @@ def main() -> None:
         },
     }
 
-    # Branching: user edited a prompt; first-child path is the kept answer
+    # Branching: user edited a prompt; current_node marks the kept answer
     conv_branch = {
         "title": "Branching Edit Example",
         "conversation_id": "chatgpt-export-branch-003",
         "create_time": 1712000000.0,
         "update_time": 1712000900.0,
+        "current_node": "a_keep",
         "mapping": {
             "root": node("root", None, ["u1"]),
             "u1": node(
@@ -180,7 +181,7 @@ def main() -> None:
     conversations = [conv_prefs, conv_decision, conv_branch, conv_mm]
     OUT.parent.mkdir(parents=True, exist_ok=True)
     OUT.write_text(json.dumps(conversations, indent=2), encoding="utf-8")
-    print(f"Wrote {OUT} ({len(conversations)} conversations)")
+    print(f"Wrote {OUT.relative_to(ROOT).as_posix()} ({len(conversations)} conversations)")
 
 
 if __name__ == "__main__":

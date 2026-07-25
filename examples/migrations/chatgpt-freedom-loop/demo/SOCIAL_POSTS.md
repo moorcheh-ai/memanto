@@ -36,13 +36,12 @@ Title: Liberate Your ChatGPT Memory — Memanto Freedom Loop (ChatGPT → OKF)
 ```
 Path B showcase for moorcheh-ai/memanto#1609
 
-Walkthrough:
+Walkthrough (41s demo):
 0:00 Lock-in problem
-0:10 Run the showcase (./run.sh)
-0:25 Migration report
-0:40 OKF portable markdown
-0:55 31 tests + hardened adapter
-1:10 Freedom loop complete
+0:08 Run the showcase (./run.sh)
+0:18 Migration report
+0:28 OKF portable markdown
+0:36 Tests + hardened adapter / freedom loop complete
 
 PR: https://github.com/moorcheh-ai/memanto/pull/1634
 Docs: https://docs.memanto.ai/cli/migrate/migrate
