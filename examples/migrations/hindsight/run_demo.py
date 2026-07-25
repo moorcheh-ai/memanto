@@ -126,9 +126,13 @@ def populate_bank(client: Any, bank_id: str, *, reset: bool) -> list[dict[str, A
     if reset:
         try:
             client.banks.delete(bank_id=bank_id)
-        except Exception:
-            # A missing demo bank is the expected first-run state.
-            pass
+        except Exception as exc:
+            # A missing demo bank is the expected first-run state. Surface
+            # authentication, network, and server failures before recreation.
+            if getattr(exc, "status", None) != 404:
+                raise adapter.AdapterError(
+                    f"Could not reset Hindsight bank {bank_id!r}: {exc}"
+                ) from exc
     try:
         client.banks.create(
             bank_id=bank_id,
@@ -221,6 +225,10 @@ def curate_superseded_facts(
             {"state": "invalidated", "reason": reason},
             method="PATCH",
         )
+        if not isinstance(result, dict) or not result.get("success"):
+            raise adapter.AdapterError(
+                f"Hindsight invalidate failed for {memory_id}: {result}"
+            )
         used_ids.add(memory_id)
         curated.append(
             {

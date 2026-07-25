@@ -103,9 +103,15 @@ def verify(
     with tempfile.TemporaryDirectory(prefix="hindsight-okf-verify-") as temp:
         replay = Path(temp) / "hindsight-okf"
         replay_manifest = adapter.build_bundle(snapshot, replay)
-        if file_tree(bundle) != file_tree(replay):
+        bundle_tree = file_tree(bundle)
+        replay_tree = file_tree(replay)
+        if bundle_tree != replay_tree:
             differing = sorted(
-                set(file_tree(bundle)) ^ set(file_tree(replay)),
+                (
+                    path
+                    for path in bundle_tree.keys() | replay_tree.keys()
+                    if bundle_tree.get(path) != replay_tree.get(path)
+                ),
                 key=str,
             )
             detail = f"; differing paths: {differing[:3]}" if differing else ""

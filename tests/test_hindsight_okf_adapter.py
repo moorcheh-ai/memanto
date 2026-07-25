@@ -11,7 +11,7 @@ from urllib.parse import parse_qs, urlparse
 
 import pytest
 
-from examples.migrations.hindsight import adapter
+from examples.migrations.hindsight import adapter, run_demo
 from examples.migrations.hindsight.scenario import retain_items
 from examples.migrations.hindsight.validation import (
     build_parity_report,
@@ -112,6 +112,22 @@ def test_bundle_maps_types_and_preserves_source_fields(tmp_path):
     assert frontmatter["generated"]["by"] == "memanto-hindsight-okf/1.0.0"
 
 
+def test_missing_fact_type_uses_conservative_unknown_mapping(tmp_path):
+    """Missing source classes remain visible and never become world facts."""
+    record = _record("unknown-1")
+    record["fact_type"] = None
+    output = tmp_path / "hindsight-okf"
+    manifest = adapter.build_bundle(_snapshot([record]), output)
+
+    assert manifest["migration"]["type_counts"] == {"observation": 1}
+    concept = next((output / "memories" / "observation").glob("*.md"))
+    frontmatter = _frontmatter(concept)
+    assert frontmatter["type"] == "observation"
+    assert frontmatter["x_memanto"]["confidence"] == 0.75
+    assert frontmatter["x_hindsight"]["fact_type"] == "unknown"
+    assert "hindsight:unknown" in frontmatter["tags"]
+
+
 def test_invalidated_memories_are_archived_not_reactivated(tmp_path):
     """Invalidated source records remain inspectable but outside import scope."""
     invalidated = _record(
@@ -205,7 +221,14 @@ def test_live_capture_follows_pagination_and_authenticates():
             offset = int(query["offset"][0])
             limit = int(query["limit"][0])
             source = valid if state == "valid" else invalidated
-            requests.append((state, offset, self.headers.get("Authorization")))
+            requests.append(
+                (
+                    parsed.path,
+                    state,
+                    offset,
+                    self.headers.get("Authorization"),
+                )
+            )
             payload = {
                 "items": source[offset : offset + limit],
                 "total": len(source),
@@ -229,20 +252,97 @@ def test_live_capture_follows_pagination_and_authenticates():
         base_url = f"http://127.0.0.1:{server.server_port}"
         snapshot = adapter.capture_snapshot(
             base_url=base_url,
-            bank_id="bank with spaces",
+            bank_id="bank with spaces/slash",
             api_token="secret-token",
             timeout=2,
+        )
+        anonymous_snapshot = adapter.capture_snapshot(
+            base_url=base_url,
+            bank_id="bank with spaces/slash",
+            api_token=None,
+            timeout=2,
+            include_invalidated=False,
         )
     finally:
         server.shutdown()
         thread.join(timeout=2)
 
     assert len(snapshot["items"]) == 106
+    assert len(anonymous_snapshot["items"]) == 105
+    expected_path = "/v1/default/banks/bank%20with%20spaces%2Fslash/memories/list"
     assert requests == [
-        ("valid", 0, "Bearer secret-token"),
-        ("valid", 100, "Bearer secret-token"),
-        ("invalidated", 0, "Bearer secret-token"),
+        (expected_path, "valid", 0, "Bearer secret-token"),
+        (expected_path, "valid", 100, "Bearer secret-token"),
+        (expected_path, "invalidated", 0, "Bearer secret-token"),
+        (expected_path, "valid", 0, None),
+        (expected_path, "valid", 100, None),
     ]
+
+
+def test_reset_bank_suppresses_only_missing_bank_errors():
+    """Reset tolerates a 404 but keeps every other delete failure visible."""
+
+    class DeleteError(Exception):
+        def __init__(self, status):
+            self.status = status
+
+    class Banks:
+        def __init__(self, status):
+            self.status = status
+            self.created = False
+
+        def delete(self, **kwargs):
+            raise DeleteError(self.status)
+
+        def create(self, **kwargs):
+            self.created = True
+
+    class Client:
+        def __init__(self, status):
+            self.banks = Banks(status)
+
+        def retain(self, **kwargs):
+            return {"success": True}
+
+    missing_client = Client(404)
+    responses = run_demo.populate_bank(missing_client, "demo-bank", reset=True)
+    assert missing_client.banks.created is True
+    assert len(responses) == len(retain_items())
+
+    failed_client = Client(503)
+    with pytest.raises(adapter.AdapterError, match="Could not reset"):
+        run_demo.populate_bank(failed_client, "demo-bank", reset=True)
+    assert failed_client.banks.created is False
+
+
+def test_invalidation_requires_truthy_success(monkeypatch):
+    """A 200-shaped failure cannot be counted as a curated source fact."""
+
+    class Memories:
+        def list(self, **kwargs):
+            return {
+                "items": [
+                    {
+                        "id": "old-window",
+                        "text": ("Tentative production window is Friday, July 31."),
+                    }
+                ]
+            }
+
+    class Client:
+        memories = Memories()
+
+    monkeypatch.setattr(
+        run_demo,
+        "request_json",
+        lambda *args, **kwargs: {"success": False},
+    )
+    with pytest.raises(adapter.AdapterError, match="invalidate failed"):
+        run_demo.curate_superseded_facts(
+            Client(),
+            base_url="http://localhost:8888",
+            bank_id="demo-bank",
+        )
 
 
 def test_cli_reports_bad_input_without_traceback(tmp_path, capsys):

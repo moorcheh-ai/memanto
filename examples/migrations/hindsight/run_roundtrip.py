@@ -226,7 +226,14 @@ def run(argv: list[str] | None = None) -> int:
             json.dumps(roundtrip_summary, indent=2, sort_keys=True) + "\n",
             encoding="utf-8",
         )
-    except (adapter.AdapterError, KeyError, OSError, TypeError, ValueError) as exc:
+    except (
+        adapter.AdapterError,
+        KeyError,
+        OSError,
+        RuntimeError,
+        TypeError,
+        ValueError,
+    ) as exc:
         print(f"error: {exc}", file=sys.stderr)
         return 2
 

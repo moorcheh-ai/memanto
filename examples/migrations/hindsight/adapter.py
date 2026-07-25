@@ -232,7 +232,7 @@ def validate_record(raw_record: Any, *, state: str | None = None) -> dict[str, A
         raise AdapterError(
             f"Hindsight memory {record_id} has unsupported state {raw_state!r}"
         )
-    fact_type = str(record.get("fact_type") or "world").strip().lower()
+    fact_type = str(record.get("fact_type") or "").strip().lower() or "unknown"
 
     record["id"] = record_id
     record["text"] = text
@@ -268,7 +268,7 @@ def record_sort_key(record: dict[str, Any]) -> tuple[str, str, str]:
     """Return a stable ordering key for snapshot and bundle generation."""
     return (
         str(record.get("state") or "valid"),
-        str(record.get("fact_type") or "world"),
+        str(record.get("fact_type") or "unknown"),
         str(record.get("id") or ""),
     )
 
