@@ -1,11 +1,10 @@
 # Social Amplification Pack — #1609 Memanto Freedom Loop
 
 **PR:** https://github.com/moorcheh-ai/memanto/pull/1634
-**BountyHub claim:** https://www.bountyhub.dev/bounty/view/b21928e9-70dd-4d95-adc6-3009df47e9f5
+**BountyHub claim:** https://www.bountyhub.dev/bounty/view/b21928e9-70dd-4d95-adc6-3009df47e9f5 (created ✅)
+**Demo video (YouTube):** https://youtu.be/7Fj52OC3LZo
 **Demo video (local):** `examples/migrations/chatgpt-freedom-loop/demo/memanto-freedom-loop-demo.mp4`
 **Deadline:** 2026-08-31 23:59 UTC
-
-Upload the MP4 to YouTube (unlisted or public), then paste that URL below and into the PR.
 
 ---
 
@@ -22,7 +21,7 @@ IN → OWNED → PORTABLE
 
 PR: https://github.com/moorcheh-ai/memanto/pull/1634
 Issue: #1609
-Demo: <YOUTUBE_URL>
+Demo: https://youtu.be/7Fj52OC3LZo
 
 #Memanto #OKF #AgentMemory
 ```
@@ -60,13 +59,13 @@ Agent memory shouldn't vanish when you switch tools.
 
 For @Moorcheh / Memanto bounty #1609 I shipped a Path B ChatGPT → Memanto → OKF freedom loop:
 
-• ChatGPT export adapter (tree linearization, temporal metadata)
+• ChatGPT export adapter (current_node DAG walk, temporal metadata)
 • examples/migrations/chatgpt-freedom-loop
 • Human-readable OKF sample + migration report
-• 31 tests
+• 32 tests
 
 PR: https://github.com/moorcheh-ai/memanto/pull/1634
-Demo: <YOUTUBE_URL>
+Demo: https://youtu.be/7Fj52OC3LZo
 
 Tag: https://www.linkedin.com/company/moorcheh-ai/
 ```
@@ -79,7 +78,7 @@ Tag: https://www.linkedin.com/company/moorcheh-ai/
 Title: Path B: ChatGPT conversations.json → Memanto → portable OKF (PR #1634)
 
 Body: Built the ChatGPT migration adapter + freedom-loop showcase for #1609.
-Demo video: <YOUTUBE_URL>
+Demo video: https://youtu.be/7Fj52OC3LZo
 PR: https://github.com/moorcheh-ai/memanto/pull/1634
 Happy to take feedback from the nest.
 ```
@@ -88,9 +87,10 @@ Happy to take feedback from the nest.
 
 ## Checklist
 
-- [ ] Upload MP4 to YouTube → copy URL
+- [x] Upload MP4 to YouTube → https://youtu.be/7Fj52OC3LZo
+- [ ] Finish YouTube publish: audience = not for kids, visibility = Unlisted or Public, paste description above (tags @moorchehai)
 - [ ] Post on X tagging @moorcheh_ai
 - [ ] Post on LinkedIn tagging Moorcheh company page
 - [ ] Optional: Reddit r/Memanto
-- [ ] Open BountyHub link + claim with PR #1634
-- [ ] Update PR description with video + social links
+- [x] BountyHub claim created with PR #1634
+- [x] Update PR description with YouTube + BountyHub
