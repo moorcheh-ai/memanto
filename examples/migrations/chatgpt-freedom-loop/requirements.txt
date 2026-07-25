@@ -1,0 +1,3 @@
+# Offline showcase only needs Python 3.10+
+# For live migrate/export, install Memanto:
+#   pip install memanto

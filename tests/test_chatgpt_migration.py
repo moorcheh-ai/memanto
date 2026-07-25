@@ -148,7 +148,6 @@ class TestTemporalPreservation:
         before = datetime.now(timezone.utc)
         rows = map_chatgpt({"conversations": [conv]})
         after = datetime.now(timezone.utc)
-        # updated_at must fall within the test execution window
         assert before <= rows[0]["updated_at"] <= after
 
     def test_turn_index_in_supporting_data(self):
@@ -346,3 +345,163 @@ class TestLoader:
         f.write_text('{"not": "an array"}')
         with pytest.raises(ValueError, match="Expected a JSON array"):
             load_chatgpt_export(f)
+
+
+# -- Branching / multimodal / robustness (CodeRabbit follow-ups) ------------
+
+
+class TestBranchingAndRobustness:
+    def test_first_child_path_on_branching_tree(self):
+        """Edits create sibling branches — mapper follows the first-child path."""
+        mapping = {
+            "root": {"id": "root", "message": None, "parent": None, "children": ["m1"]},
+            "m1": {
+                "id": "m1",
+                "message": _make_message("m1", "user", "Original Q", 1700000100.0),
+                "parent": "root",
+                "children": ["m2a", "m2b"],  # branch: edit created sibling
+            },
+            "m2a": {
+                "id": "m2a",
+                "message": _make_message("m2a", "assistant", "First-child answer", 1700000105.0),
+                "parent": "m1",
+                "children": [],
+            },
+            "m2b": {
+                "id": "m2b",
+                "message": _make_message("m2b", "assistant", "Sibling branch answer", 1700000110.0),
+                "parent": "m1",
+                "children": [],
+            },
+        }
+        conv = {
+            "title": "Branched",
+            "conversation_id": "conv-branch",
+            "create_time": 1700000000.0,
+            "mapping": mapping,
+        }
+        rows = map_chatgpt({"conversations": [conv]})
+        assert len(rows) == 1
+        assert "First-child answer" in rows[0]["content"]
+        assert "Sibling branch answer" not in rows[0]["content"]
+
+    def test_cyclic_parent_chain_does_not_hang(self):
+        """Malformed cyclic parents must not infinite-loop in root finding."""
+        mapping = {
+            "a": {
+                "id": "a",
+                "message": _make_message("a", "user", "Ping", 1700000100.0),
+                "parent": "b",
+                "children": ["b"],
+            },
+            "b": {
+                "id": "b",
+                "message": _make_message("b", "assistant", "Pong", 1700000105.0),
+                "parent": "a",
+                "children": [],
+            },
+        }
+        conv = {
+            "title": "Cycle",
+            "conversation_id": "conv-cycle",
+            "create_time": 1700000000.0,
+            "mapping": mapping,
+        }
+        rows = map_chatgpt({"conversations": [conv]})
+        assert isinstance(rows, list)
+        assert len(rows) >= 1
+
+    def test_multimodal_parts_extracted(self):
+        """Multimodal content parts contribute text / image markers."""
+        mapping = {
+            "root": {"id": "root", "message": None, "parent": None, "children": ["m1"]},
+            "m1": {
+                "id": "m1",
+                "message": {
+                    "id": "m1",
+                    "author": {"role": "user"},
+                    "create_time": 1700000100.0,
+                    "content": {
+                        "content_type": "multimodal_text",
+                        "parts": [
+                            "Describe this diagram",
+                            {"content_type": "image_asset_pointer", "asset_pointer": "file://x"},
+                        ],
+                    },
+                },
+                "parent": "root",
+                "children": ["m2"],
+            },
+            "m2": {
+                "id": "m2",
+                "message": _make_message("m2", "assistant", "It shows a pipeline.", 1700000105.0),
+                "parent": "m1",
+                "children": [],
+            },
+        }
+        conv = {
+            "title": "Multimodal",
+            "conversation_id": "conv-mm",
+            "create_time": 1700000000.0,
+            "mapping": mapping,
+        }
+        rows = map_chatgpt({"conversations": [conv]})
+        assert len(rows) == 1
+        assert "Describe this diagram" in rows[0]["content"]
+        assert "[image]" in rows[0]["content"]
+
+    def test_malformed_content_does_not_abort_run(self):
+        """A string/list content shape on one message must not kill the migration."""
+        mapping = {
+            "root": {"id": "root", "message": None, "parent": None, "children": ["bad"]},
+            "bad": {
+                "id": "bad",
+                "message": {
+                    "id": "bad",
+                    "author": {"role": "user"},
+                    "create_time": 1700000100.0,
+                    "content": "plain string content, not a dict",
+                },
+                "parent": "root",
+                "children": ["good_u"],
+            },
+            "good_u": {
+                "id": "good_u",
+                "message": _make_message("good_u", "user", "Recovered question", 1700000200.0),
+                "parent": "bad",
+                "children": ["good_a"],
+            },
+            "good_a": {
+                "id": "good_a",
+                "message": _make_message("good_a", "assistant", "Recovered answer", 1700000205.0),
+                "parent": "good_u",
+                "children": [],
+            },
+        }
+        conv = {
+            "title": "Malformed",
+            "conversation_id": "conv-mal",
+            "create_time": 1700000000.0,
+            "mapping": mapping,
+        }
+        rows = map_chatgpt({"conversations": [conv]})
+        assert any("Recovered question" in r["content"] for r in rows)
+
+    def test_large_export_many_conversations(self):
+        """Many conversations map without dropping later ones."""
+        convs = []
+        for i in range(25):
+            convs.append(
+                _make_conversation(
+                    f"Conv {i}",
+                    f"c-{i}",
+                    [
+                        ("m1", "user", f"Question {i}", 1700000100.0 + i),
+                        ("m2", "assistant", f"Answer {i}", 1700000105.0 + i),
+                    ],
+                )
+            )
+        rows = map_chatgpt({"conversations": convs})
+        assert len(rows) == 25
+        assert "Question 0" in rows[0]["content"]
+        assert "Question 24" in rows[-1]["content"]

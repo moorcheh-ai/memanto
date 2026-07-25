@@ -107,43 +107,59 @@ def _linearize_conversation(mapping: dict[str, Any]) -> list[dict[str, Any]]:
             break
 
     if root_id is None:
-        # Fallback: pick any node and walk up (with cycle guard)
+        # Fallback: pick any node and walk up (cycle-guarded)
         root_id = next(iter(mapping))
-        seen_up = {root_id}
+        seen_up: set[str] = set()
         while mapping.get(root_id, {}).get("parent") in mapping:
-            parent = mapping[root_id]["parent"]
-            if parent in seen_up:
-                break  # Cycle detected — stop walking
-            seen_up.add(parent)
-            root_id = parent
+            if root_id in seen_up:
+                break
+            seen_up.add(root_id)
+            root_id = mapping[root_id]["parent"]
 
     # Walk down following first child
     messages = []
     current = root_id
-    visited = set()
+    visited: set[str] = set()
     while current and current not in visited:
         visited.add(current)
         node = mapping.get(current)
         if not node:
             break
         msg = node.get("message")
-        if msg and msg.get("content"):
+        if isinstance(msg, dict) and msg.get("content") is not None:
             messages.append(msg)
-        children = node.get("children", [])
+        children = node.get("children") or []
         current = children[0] if children else None
 
     return messages
 
 
-def _extract_text(content: dict[str, Any] | None) -> str:
-    """Extract text content from a ChatGPT message content object."""
+def _extract_text(content: Any) -> str:
+    """Extract text from a ChatGPT message content object.
+
+    Tolerates malformed shapes (string/list/None) so one bad message never
+    aborts an entire migration run.
+    """
     if not content:
         return ""
+    if isinstance(content, str):
+        return content.strip()
+    if isinstance(content, list):
+        parts = []
+        for item in content:
+            if isinstance(item, str) and item.strip():
+                parts.append(item.strip())
+            elif isinstance(item, dict):
+                nested = _extract_text(item)
+                if nested:
+                    parts.append(nested)
+        return "\n".join(parts).strip()
     if not isinstance(content, dict):
-        return str(content) if content else ""
+        return ""
+
     content_type = content.get("content_type", "text")
     if content_type == "text":
-        parts = content.get("parts", [])
+        parts = content.get("parts") or []
         text_parts = []
         for part in parts:
             if isinstance(part, str):
@@ -154,8 +170,8 @@ def _extract_text(content: dict[str, Any] | None) -> str:
                 if desc:
                     text_parts.append(f"[{content_type}: {desc}]")
         return "\n".join(text_parts).strip()
-    elif content_type in ("multimodal_text", "model_editable_context"):
-        parts = content.get("parts", [])
+    if content_type in ("multimodal_text", "model_editable_context"):
+        parts = content.get("parts") or []
         text_parts = []
         for part in parts:
             if isinstance(part, str):
@@ -163,8 +179,9 @@ def _extract_text(content: dict[str, Any] | None) -> str:
             elif isinstance(part, dict) and part.get("content_type") == "image_asset_pointer":
                 text_parts.append("[image]")
         return "\n".join(text_parts).strip()
-    elif content_type == "code":
-        return content.get("text", "")
+    if content_type == "code":
+        text = content.get("text", "")
+        return text if isinstance(text, str) else ""
     return ""
 
 
@@ -245,8 +262,19 @@ def map_chatgpt(export: dict[str, Any]) -> list[dict[str, Any]]:
         i = 0
         while i < len(messages):
             msg = messages[i]
-            author = (msg.get("author") or {}).get("role", "")
-            content_text = _extract_text(msg.get("content"))
+            if not isinstance(msg, dict):
+                i += 1
+                continue
+            author_obj = msg.get("author")
+            author = ""
+            if isinstance(author_obj, dict):
+                author = str(author_obj.get("role") or "")
+            try:
+                content_text = _extract_text(msg.get("content"))
+            except Exception:
+                # Never abort a full migration on one malformed message
+                i += 1
+                continue
 
             if not content_text or author in ("system", "tool"):
                 i += 1
@@ -260,16 +288,19 @@ def map_chatgpt(export: dict[str, Any]) -> list[dict[str, Any]]:
             if author == "user":
                 # Look ahead for assistant response
                 response_text = ""
-                response_id = ""
-                response_time = None
                 if i + 1 < len(messages):
                     next_msg = messages[i + 1]
-                    next_author = (next_msg.get("author") or {}).get("role", "")
-                    if next_author == "assistant":
-                        response_text = _extract_text(next_msg.get("content"))
-                        response_id = next_msg.get("id", "")
-                        response_time = _parse_dt(next_msg.get("create_time"))
-                        i += 1  # consume the assistant message too
+                    if isinstance(next_msg, dict):
+                        next_author_obj = next_msg.get("author")
+                        next_author = ""
+                        if isinstance(next_author_obj, dict):
+                            next_author = str(next_author_obj.get("role") or "")
+                        if next_author == "assistant":
+                            try:
+                                response_text = _extract_text(next_msg.get("content"))
+                            except Exception:
+                                response_text = ""
+                            i += 1  # consume the assistant message too
 
                 if response_text:
                     # Full exchange: user question + assistant answer

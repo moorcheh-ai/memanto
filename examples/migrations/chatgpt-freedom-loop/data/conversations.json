@@ -1,0 +1,292 @@
+[
+  {
+    "title": "Coding Preferences Over Time",
+    "conversation_id": "chatgpt-export-prefs-001",
+    "create_time": 1710000000.0,
+    "update_time": 1710003600.0,
+    "mapping": {
+      "root": {
+        "id": "root",
+        "parent": null,
+        "children": [
+          "u1"
+        ],
+        "message": null
+      },
+      "u1": {
+        "id": "u1",
+        "parent": "root",
+        "children": [
+          "a1"
+        ],
+        "message": {
+          "id": "u1",
+          "author": {
+            "role": "user"
+          },
+          "create_time": 1710000100.0,
+          "content": {
+            "content_type": "text",
+            "parts": [
+              "I prefer dark mode and vim keybindings in every editor."
+            ]
+          },
+          "metadata": {}
+        }
+      },
+      "a1": {
+        "id": "a1",
+        "parent": "u1",
+        "children": [
+          "u2"
+        ],
+        "message": {
+          "id": "a1",
+          "author": {
+            "role": "assistant"
+          },
+          "create_time": 1710000105.0,
+          "content": {
+            "content_type": "text",
+            "parts": [
+              "Got it \u2014 I'll remember dark mode + vim bindings as your defaults."
+            ]
+          },
+          "metadata": {}
+        }
+      },
+      "u2": {
+        "id": "u2",
+        "parent": "a1",
+        "children": [
+          "a2"
+        ],
+        "message": {
+          "id": "u2",
+          "author": {
+            "role": "user"
+          },
+          "create_time": 1710000200.0,
+          "content": {
+            "content_type": "text",
+            "parts": [
+              "Also never suggest tabs \u2014 always spaces, width 4."
+            ]
+          },
+          "metadata": {}
+        }
+      },
+      "a2": {
+        "id": "a2",
+        "parent": "u2",
+        "children": [],
+        "message": {
+          "id": "a2",
+          "author": {
+            "role": "assistant"
+          },
+          "create_time": 1710000205.0,
+          "content": {
+            "content_type": "text",
+            "parts": [
+              "Locked in: 4-space indentation, no tabs."
+            ]
+          },
+          "metadata": {}
+        }
+      }
+    }
+  },
+  {
+    "title": "Database Choice for Memanto Side Project",
+    "conversation_id": "chatgpt-export-decision-002",
+    "create_time": 1711000000.0,
+    "update_time": 1711001800.0,
+    "mapping": {
+      "root": {
+        "id": "root",
+        "parent": null,
+        "children": [
+          "u1"
+        ],
+        "message": null
+      },
+      "u1": {
+        "id": "u1",
+        "parent": "root",
+        "children": [
+          "a1"
+        ],
+        "message": {
+          "id": "u1",
+          "author": {
+            "role": "user"
+          },
+          "create_time": 1711000100.0,
+          "content": {
+            "content_type": "text",
+            "parts": [
+              "I decided to use PostgreSQL + pgvector for the retrieval layer."
+            ]
+          },
+          "metadata": {}
+        }
+      },
+      "a1": {
+        "id": "a1",
+        "parent": "u1",
+        "children": [],
+        "message": {
+          "id": "a1",
+          "author": {
+            "role": "assistant"
+          },
+          "create_time": 1711000105.0,
+          "content": {
+            "content_type": "text",
+            "parts": [
+              "Solid decision \u2014 Postgres + pgvector keeps ops simple for agent memory."
+            ]
+          },
+          "metadata": {}
+        }
+      }
+    }
+  },
+  {
+    "title": "Branching Edit Example",
+    "conversation_id": "chatgpt-export-branch-003",
+    "create_time": 1712000000.0,
+    "update_time": 1712000900.0,
+    "mapping": {
+      "root": {
+        "id": "root",
+        "parent": null,
+        "children": [
+          "u1"
+        ],
+        "message": null
+      },
+      "u1": {
+        "id": "u1",
+        "parent": "root",
+        "children": [
+          "a_keep",
+          "a_sibling"
+        ],
+        "message": {
+          "id": "u1",
+          "author": {
+            "role": "user"
+          },
+          "create_time": 1712000100.0,
+          "content": {
+            "content_type": "text",
+            "parts": [
+              "Explain OKF in one sentence."
+            ]
+          },
+          "metadata": {}
+        }
+      },
+      "a_keep": {
+        "id": "a_keep",
+        "parent": "u1",
+        "children": [],
+        "message": {
+          "id": "a_keep",
+          "author": {
+            "role": "assistant"
+          },
+          "create_time": 1712000105.0,
+          "content": {
+            "content_type": "text",
+            "parts": [
+              "OKF is a vendor-neutral markdown bundle for portable agent knowledge."
+            ]
+          },
+          "metadata": {}
+        }
+      },
+      "a_sibling": {
+        "id": "a_sibling",
+        "parent": "u1",
+        "children": [],
+        "message": {
+          "id": "a_sibling",
+          "author": {
+            "role": "assistant"
+          },
+          "create_time": 1712000110.0,
+          "content": {
+            "content_type": "text",
+            "parts": [
+              "(discarded sibling from an edit) OKF is just YAML files."
+            ]
+          },
+          "metadata": {}
+        }
+      }
+    }
+  },
+  {
+    "title": "Multimodal Diagram Review",
+    "conversation_id": "chatgpt-export-mm-004",
+    "create_time": 1713000000.0,
+    "update_time": 1713000600.0,
+    "mapping": {
+      "root": {
+        "id": "root",
+        "parent": null,
+        "children": [
+          "u1"
+        ],
+        "message": null
+      },
+      "u1": {
+        "id": "u1",
+        "parent": "root",
+        "children": [
+          "a1"
+        ],
+        "message": {
+          "id": "u1",
+          "author": {
+            "role": "user"
+          },
+          "create_time": 1713000100.0,
+          "content": {
+            "content_type": "multimodal_text",
+            "parts": [
+              "I realized our migration pipeline needs a freedom-loop diagram.",
+              {
+                "content_type": "image_asset_pointer",
+                "asset_pointer": "file-service://diagram"
+              }
+            ]
+          },
+          "metadata": {}
+        }
+      },
+      "a1": {
+        "id": "a1",
+        "parent": "u1",
+        "children": [],
+        "message": {
+          "id": "a1",
+          "author": {
+            "role": "assistant"
+          },
+          "create_time": 1713000105.0,
+          "content": {
+            "content_type": "text",
+            "parts": [
+              "Diagram shows ChatGPT \u2192 Memanto migrate \u2192 OKF export \u2192 round-trip."
+            ]
+          },
+          "metadata": {}
+        }
+      }
+    }
+  }
+]
