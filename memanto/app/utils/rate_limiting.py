@@ -38,6 +38,17 @@ class RateLimiter:
             "health": RateLimit(300, 60),  # 300/min
         }
 
+    def _prune_requests(self, agent_id: str) -> None:
+        """Clean up expired requests and remove empty deques to prevent memory leaks."""
+        if agent_id not in self.requests:
+            return
+        dq = self.requests[agent_id]
+        now = time.time()
+        while dq and now - dq[0][0] > self.window:
+            dq.popleft()
+        if not dq:
+            del self.requests[agent_id]
+
     def _get_key(self, operation: str, agent_id: str) -> str:
         """Generate rate limit key"""
         return f"{operation}:{agent_id}"
