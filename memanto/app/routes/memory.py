@@ -191,7 +191,7 @@ class RecallAsOfRequest(BaseModel):
             if "T" not in v and " " not in v:
                 try:
                     return datetime.combine(
-                        date.fromisoformat(v), time(23, 59, 59), tzinfo=timezone.utc
+                        date.fromisoformat(v), time.max, tzinfo=timezone.utc
                     )
                 except ValueError:
                     pass

@@ -84,3 +84,19 @@ def test_parse_as_of_timestamp_preserves_explicit_time():
     parsed = parse_as_of_timestamp("2026-01-15T13:30:00Z")
 
     assert parsed.isoformat() == "2026-01-15T13:30:00+00:00"
+
+
+def test_parse_as_of_timestamp_handles_basic_iso_format():
+    """ISO 8601 basic format (no hyphens) should be treated as end of day."""
+    parsed = parse_as_of_timestamp("20260726")
+
+    assert parsed.tzinfo == timezone.utc
+    assert parsed.isoformat() == "2026-07-26T23:59:59.999999+00:00"
+
+
+def test_parse_as_of_timestamp_handles_iso_week_date():
+    """ISO 8601 week date format should also be treated as end of day."""
+    parsed = parse_as_of_timestamp("2026-W30-7")
+
+    assert parsed.tzinfo == timezone.utc
+    assert parsed.isoformat() == "2026-07-26T23:59:59.999999+00:00"

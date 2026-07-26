@@ -45,7 +45,7 @@ def parse_as_of_timestamp(ts_str: str) -> datetime:
     Normalizing at the service boundary keeps every caller consistent without
     changing the meaning of full ISO timestamps.
     """
-    if len(ts_str) == 10 and ts_str[4] == "-" and ts_str[7] == "-":
+    if "T" not in ts_str and " " not in ts_str:
         try:
             return datetime.combine(
                 date.fromisoformat(ts_str), time.max, tzinfo=timezone.utc
