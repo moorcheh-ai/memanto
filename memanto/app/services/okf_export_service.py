@@ -269,7 +269,7 @@ class OkfExportService:
                 return datetime.fromisoformat(text)
             except ValueError:
                 pass
-        return datetime.now()
+        return datetime.now(timezone.utc)
 
     # Rendering helpers
     def _render_okf_doc(self, mem: dict[str, Any], mem_type: str) -> str:

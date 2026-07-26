@@ -46,6 +46,8 @@ def _coerce_timestamp_str(value: Any) -> Any:
         except (OverflowError, OSError, ValueError):
             return None
     if isinstance(value, datetime):
+        if value.tzinfo is None:
+            value = value.replace(tzinfo=timezone.utc)
         return value.isoformat()
     return value
 
