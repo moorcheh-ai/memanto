@@ -36,6 +36,16 @@ def parse_iso_timestamp(ts_str: str) -> datetime:
     return dt.astimezone(timezone.utc)
 
 
+def _is_date_only(ts_str: str) -> bool:
+    """Return True when ``ts_str`` looks like an unambiguous YYYY-MM-DD date."""
+    return (
+        len(ts_str) == 10
+        and ts_str[4] == "-"
+        and ts_str[7] == "-"
+        and all(ch.isdigit() for ch in ts_str[:4] + ts_str[5:7] + ts_str[8:10])
+    )
+
+
 def parse_as_of_timestamp(ts_str: str) -> datetime:
     """Parse a point-in-time cutoff, treating a date as the end of that day.
 
@@ -45,13 +55,16 @@ def parse_as_of_timestamp(ts_str: str) -> datetime:
     Normalizing at the service boundary keeps every caller consistent without
     changing the meaning of full ISO timestamps.
     """
-    if len(ts_str) == 10 and ts_str[4] == "-" and ts_str[7] == "-":
+    if _is_date_only(ts_str):
         try:
             return datetime.combine(
                 date.fromisoformat(ts_str), time.max, tzinfo=timezone.utc
             )
         except ValueError:
-            pass
+            raise ValueError(
+                f"Invalid date-only value '{ts_str}'. "
+                "Use a valid YYYY-MM-DD date (e.g. 2026-12-25)."
+            )
 
     return parse_iso_timestamp(ts_str)
 
