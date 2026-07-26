@@ -44,8 +44,14 @@ def parse_as_of_timestamp(ts_str: str) -> datetime:
     while the lower-level clients pass strings directly to the read service.
     Normalizing at the service boundary keeps every caller consistent without
     changing the meaning of full ISO timestamps.
+
+    Date-only inputs (anything without a ``T`` or space) are normalized to the
+    end of that day in UTC. We detect date-only by *parsing* instead of by
+    string shape so that ISO-8601 basic format (``20260726``), extended
+    format (``2026-07-26``), and ISO week dates (``2026-W30-7``) all behave
+    identically. See issue #1655.
     """
-    if len(ts_str) == 10 and ts_str[4] == "-" and ts_str[7] == "-":
+    if "T" not in ts_str and " " not in ts_str:
         try:
             return datetime.combine(
                 date.fromisoformat(ts_str), time.max, tzinfo=timezone.utc

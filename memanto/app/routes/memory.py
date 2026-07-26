@@ -18,6 +18,7 @@ from pydantic import BaseModel, Field, field_validator
 from memanto.app.clients.backend import get_active_llm_model
 from memanto.app.clients.moorcheh import get_moorcheh_client
 from memanto.app.config import settings
+from memanto.app.utils.temporal_helpers import parse_as_of_timestamp
 from memanto.app.constants import VALID_MEMORY_TYPES
 from memanto.app.core import MemoryRecord
 from memanto.app.models import (
@@ -181,27 +182,19 @@ class RecallAsOfRequest(BaseModel):
     @field_validator("as_of", mode="before")
     @classmethod
     def parse_as_of(cls, v: object) -> datetime:
-        """Parse date-only or ISO datetime inputs into an aware timestamp."""
+        """Parse date-only or ISO datetime inputs into an aware timestamp.
+
+        String inputs go through ``parse_as_of_timestamp`` so REST and the
+        CLI / MCP / Python clients share one rule. Datetime / date objects
+        keep their native handling — they cannot reach ``parse_iso_timestamp``
+        anyway and we want to avoid re-parsing them. See issue #1655.
+        """
+        if isinstance(v, str):
+            return parse_as_of_timestamp(v)
         if isinstance(v, datetime):
             return v if v.tzinfo else v.replace(tzinfo=timezone.utc)
         if isinstance(v, date):
-            return datetime.combine(v, time(23, 59, 59), tzinfo=timezone.utc)
-        if isinstance(v, str):
-            # Date-only (no time component) → end of day
-            if "T" not in v and " " not in v:
-                try:
-                    return datetime.combine(
-                        date.fromisoformat(v), time(23, 59, 59), tzinfo=timezone.utc
-                    )
-                except ValueError:
-                    pass
-            try:
-                dt = datetime.fromisoformat(v.replace("Z", "+00:00"))
-                return dt if dt.tzinfo else dt.replace(tzinfo=timezone.utc)
-            except ValueError:
-                raise ValueError(
-                    f"Invalid value '{v}'. Use YYYY-MM-DD or ISO 8601 datetime."
-                )
+            return datetime.combine(v, time.max, tzinfo=timezone.utc)
         raise ValueError(f"Cannot parse as_of from {type(v)}")
 
 
