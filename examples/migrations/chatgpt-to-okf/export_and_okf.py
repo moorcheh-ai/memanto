@@ -58,6 +58,13 @@ _FALLBACK = "observation"
 
 
 def _infer_type(text: str) -> str:
+    """Classify a piece of assistant prose into a Memanto memory type.
+
+    Uses keyword/regex patterns (``_KEYWORD_PATTERNS``) to detect
+    ``preference``, ``decision``, ``goal``, ``commitment``, ``fact``,
+    ``artifact``, or ``context``. Falls back to ``observation`` when no
+    pattern matches.
+    """
     low = text.lower()
     for mem_type, pats in _KEYWORD_PATTERNS:
         for pat in pats:
@@ -73,6 +80,12 @@ _SLUG_RE = re.compile(r"[^0-9a-zA-Z]+")
 
 
 def _slug(text: str, idx: int) -> str:
+    """Generate a URL-safe filename slug from a text title.
+
+    Strips non-ASCII characters, replaces runs of non-alphanumeric
+    characters with hyphens, and appends a zero-padded index to ensure
+    uniqueness within a bundle.
+    """
     s = text.strip().lower()
     s = re.sub(r"[^\x00-\x7f]+", " ", s)
     s = _SLUG_RE.sub("-", s).strip("-")
@@ -105,6 +118,12 @@ def _make_markdown(
     timestamp: str,
     source_id: str,
 ) -> str:
+    """Build a single OKF markdown entry with YAML frontmatter.
+
+    Produces the standard OKF header block (title, description, type,
+    tags, timestamp, resource, source, links, x_memanto) followed by
+    the full body text.
+    """
     lines: list[str] = []
     lines.append("---")
     lines.append(f"title: {_yaml_value(title)}")
@@ -236,6 +255,11 @@ def write_okf_bundle(
 
 
 def _okf_type_counts(entries: list[dict[str, Any]]) -> dict[str, int]:
+    """Count how many entries of each OKF type are present.
+
+    Aggregates the ``type`` field across all entries in the bundle for
+    a human-readable summary (e.g. ``{'observation': 3, 'fact': 1}``).
+    """
     counts: dict[str, int] = {}
     for e in entries:
         counts[e["type"]] = counts.get(e["type"], 0) + 1
@@ -246,6 +270,7 @@ def _okf_type_counts(entries: list[dict[str, Any]]) -> dict[str, int]:
 # CLI
 # ---------------------------------------------------------------------------
 def main() -> None:
+    """Entry point: parse args, run export, print summary."""
     p = argparse.ArgumentParser(description="ChatGPT conversation export → OKF bundle")
     p.add_argument("--input", "-i", required=True, help="ChatGPT export JSON file")
     p.add_argument("--output", "-o", required=True, help="Output OKF bundle directory")
