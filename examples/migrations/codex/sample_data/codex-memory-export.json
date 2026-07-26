@@ -1,0 +1,25 @@
+{
+  "schema": "codex-stage1-memory-export/v1",
+  "exported_at": "2026-07-26T11:16:15.458914+00:00",
+  "source_fingerprint": "sha256:d6208a3c19f3f7ab820a6626c556096eb11c75d8fc7723d4a28a62d2f748f436",
+  "codex_version": "0.145.0-alpha.30",
+  "records": [
+    {
+      "thread_id": "019f9e0e-322f-7f92-8025-d4c1e261ab1d",
+      "raw_memory": "---\ndescription: Read-only reconciliation of PROJECT.md baseline choices with adopted storage, timestamp, runtime, and logging rules; also captures concise-update and failure-explanation preferences\ntask: review-project-md-against-adopted-decisions\ntask_group: atlas-relay-project-review\ntask_outcome: success\ncwd: ~/Desktop/Github/memanto/examples/migrations/codex/sample_project\nkeywords: PROJECT.md, PostgreSQL 16, SQLite, UTC timestamps, structured JSON logs, Python 3.10, read-only review\n---\n\n### Task 1: Reconcile PROJECT.md decisions\n\ntask: compare documented baseline with newly adopted durable project rules\ntask_group: atlas-relay-project-review\ntask_outcome: success\n\nPreference signals:\n- The user requested \"concise status updates\" -> keep progress updates brief on similar tasks.\n- The user requested that test failures be explained before any fix is attempted -> diagnose and explain failures before proposing or making edits.\n\nReusable knowledge:\n- In `PROJECT.md`, Python 3.10+ is unchanged as the minimum runtime.\n- SQLite is superseded by PostgreSQL 16 because workers share state.\n- Mixed local/UTC timestamp handling is superseded by storing every timestamp in UTC.\n- Human-readable production logs are superseded by structured JSON logs.\n- The prior open design question is resolved; the current rules are PostgreSQL 16, Python 3.10 minimum, UTC-only stored timestamps, and structured JSON production logs.\n\nFailures and how to do differently:\n- No failure; the review was completed read-only and no files were edited.\n\nReferences:\n- `PROJECT.md` in `~/Desktop/Github/memanto/examples/migrations/codex/sample_project`.\n- Baseline strings: `Prototype storage: SQLite`; `Timestamps: mixed local time and UTC`; `Logs: human-readable text`; `Runtime: Python 3.10 or newer`.\n- Command used: `sed -n '1,240p' PROJECT.md`.",
+      "rollout_summary": "# Compared PROJECT.md baseline with newly adopted project rules\n\nRollout context: Read-only review in `~/Desktop/Github/memanto/examples/migrations/codex/sample_project`; no files were edited.\n\n## Task 1: Review and reconcile project decisions\n\nOutcome: success\n\nPreference signals:\n- The user explicitly requested \"concise status updates\" -> keep progress messages brief in similar work.\n- The user wants \"test failures explained before any fix is attempted\" -> diagnose and explain failures before proposing or applying fixes.\n\nKey steps:\n- Read `PROJECT.md` with `sed -n '1,240p' PROJECT.md`.\n- Compared the documented baseline to the team's adopted durable decisions.\n\nReusable knowledge:\n- Python 3.10+ remains the minimum runtime.\n- SQLite is superseded by PostgreSQL 16 because multiple workers share state.\n- Mixed local/UTC timestamps are superseded by UTC-only storage; every stored timestamp must be UTC.\n- Human-readable text logs are superseded by structured JSON logs in production.\n- The prior open design question is resolved by these decisions.\n\nReferences:\n- File: `PROJECT.md`\n- Baseline entries: `Runtime: Python 3.10 or newer`; `Prototype storage: SQLite`; `Timestamps: mixed local time and UTC`; `Logs: human-readable text`.\n- No files were edited.",
+      "rollout_slug": "review-project-baseline-decisions",
+      "source_updated_at": 1785055971,
+      "generated_at": 1785063252,
+      "usage_count": null,
+      "last_usage": null,
+      "selected_for_phase2": false,
+      "cwd": "~/Desktop/Github/memanto/examples/migrations/codex/sample_project",
+      "rollout_path": "$TMPDIR/sessions/2026/07/26/rollout-2026-07-26T05-52-38-019f9e0e-322f-7f92-8025-d4c1e261ab1d.jsonl",
+      "git_branch": "feat/codex-memory-okf",
+      "cli_version": "0.145.0-alpha.30",
+      "thread_title": "Review PROJECT.md without editing files. The team has now adopted these durable decisions: PostgreSQL 16 replaces SQLite because workers share state; Python 3.10 remains the minimum; every stored timestamp must be UTC; production logs must be structured JSON. The user also prefers concise status updates and wants test failures explained before any fix is attempted. Compare these decisions with the baseline, identify the superseded choices, and finish with a compact list of the current rules.",
+      "source_kind": "stage1_memory"
+    }
+  ]
+}

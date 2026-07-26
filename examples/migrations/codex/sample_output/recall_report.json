@@ -1,0 +1,136 @@
+{
+  "schema": "codex-okf-recall-parity/v1",
+  "generated_at": "2026-07-26T11:16:20.430331+00:00",
+  "questions": 6,
+  "source_score": 100.0,
+  "okf_score": 100.0,
+  "parity_delta": 0.0,
+  "source_results": [
+    {
+      "question_id": "shared-worker-storage",
+      "question": "Which database should Atlas Relay use for shared workers, and why?",
+      "passed": true,
+      "expected_all": [
+        "PostgreSQL 16",
+        "workers share state"
+      ],
+      "missing": [],
+      "evidence": ": ~/Desktop/Github/memanto/examples/migrations/codex/sample_project keywords: PROJECT.md, PostgreSQL 16, SQLite, UTC timestamps, structured JSON logs, Python 3.10, read-only review --- ### Task 1: Reconcile PROJECT.md decisions task: compare documented baseline with newly adopted durable project rules task_group: atlas-relay-project-review task_outcome: success Preference signals: - The user requested \"concise status updates\" -> keep progress updates brief on similar tasks. - The user requested that test failures be explained before any fix is attempted -> diagnose and explain failures before proposing or making edits. Reusable knowledge: - In `PROJECT.md`, Python 3.10+ is unchanged as the minimum runtime. - SQLite is superseded by PostgreSQL 16 because workers share state. - Mixed local/UTC timestamp handling is superseded by storing every timestamp in UTC. -"
+    },
+    {
+      "question_id": "runtime-minimum",
+      "question": "What is the minimum supported Python runtime?",
+      "passed": true,
+      "expected_all": [
+        "Python 3.10"
+      ],
+      "missing": [],
+      "evidence": "roject keywords: PROJECT.md, PostgreSQL 16, SQLite, UTC timestamps, structured JSON logs, Python 3.10, read-only review --- ### Task 1: Reconcile PROJECT.md decisions task: compare document"
+    },
+    {
+      "question_id": "timestamp-policy",
+      "question": "How must Atlas Relay store timestamps?",
+      "passed": true,
+      "expected_all": [
+        "every timestamp in UTC"
+      ],
+      "missing": [],
+      "evidence": "ecause workers share state. - Mixed local/UTC timestamp handling is superseded by storing every timestamp in UTC. - Human-readable production logs are superseded by structured JSON logs. - The prior ope"
+    },
+    {
+      "question_id": "production-logging",
+      "question": "Which production log format is required?",
+      "passed": true,
+      "expected_all": [
+        "structured JSON"
+      ],
+      "missing": [],
+      "evidence": "rations/codex/sample_project keywords: PROJECT.md, PostgreSQL 16, SQLite, UTC timestamps, structured JSON logs, Python 3.10, read-only review --- ### Task 1: Reconcile PROJECT.md decisions task"
+    },
+    {
+      "question_id": "status-preference",
+      "question": "How should progress status be communicated?",
+      "passed": true,
+      "expected_all": [
+        "concise status updates"
+      ],
+      "missing": [],
+      "evidence": "las-relay-project-review task_outcome: success Preference signals: - The user requested \"concise status updates\" -> keep progress updates brief on similar tasks. - The user requested that test failures"
+    },
+    {
+      "question_id": "failure-workflow",
+      "question": "What should happen before a test failure is fixed?",
+      "passed": true,
+      "expected_all": [
+        "test failures",
+        "before"
+      ],
+      "missing": [],
+      "evidence": "tatus updates\" -> keep progress updates brief on similar tasks. - The user requested that test failures be explained before any fix is attempted -> diagnose and explain failures before proposing or making edits. Reusabl"
+    }
+  ],
+  "okf_results": [
+    {
+      "question_id": "shared-worker-storage",
+      "question": "Which database should Atlas Relay use for shared workers, and why?",
+      "passed": true,
+      "expected_all": [
+        "PostgreSQL 16",
+        "workers share state"
+      ],
+      "missing": [],
+      "evidence": "`PROJECT.md`, Python 3.10+ is unchanged as the minimum runtime. - SQLite is superseded by PostgreSQL 16 because workers share state. - Mixed local/UTC timestamp handling is superseded by storing every timestamp in UTC. -"
+    },
+    {
+      "question_id": "runtime-minimum",
+      "question": "What is the minimum supported Python runtime?",
+      "passed": true,
+      "expected_all": [
+        "Python 3.10"
+      ],
+      "missing": [],
+      "evidence": "xplain failures before proposing or making edits. Reusable knowledge: - In `PROJECT.md`, Python 3.10+ is unchanged as the minimum runtime. - SQLite is superseded by PostgreSQL 16 because wor"
+    },
+    {
+      "question_id": "timestamp-policy",
+      "question": "How must Atlas Relay store timestamps?",
+      "passed": true,
+      "expected_all": [
+        "every timestamp in UTC"
+      ],
+      "missing": [],
+      "evidence": "ecause workers share state. - Mixed local/UTC timestamp handling is superseded by storing every timestamp in UTC. - Human-readable production logs are superseded by structured JSON logs. - The prior ope"
+    },
+    {
+      "question_id": "production-logging",
+      "question": "Which production log format is required?",
+      "passed": true,
+      "expected_all": [
+        "structured JSON"
+      ],
+      "missing": [],
+      "evidence": "ded by storing every timestamp in UTC. - Human-readable production logs are superseded by structured JSON logs. - The prior open design question is resolved; the current rules are PostgreSQL 16,"
+    },
+    {
+      "question_id": "status-preference",
+      "question": "How should progress status be communicated?",
+      "passed": true,
+      "expected_all": [
+        "concise status updates"
+      ],
+      "missing": [],
+      "evidence": "las-relay-project-review task_outcome: success Preference signals: - The user requested \"concise status updates\" -> keep progress updates brief on similar tasks. - The user requested that test failures"
+    },
+    {
+      "question_id": "failure-workflow",
+      "question": "What should happen before a test failure is fixed?",
+      "passed": true,
+      "expected_all": [
+        "test failures",
+        "before"
+      ],
+      "missing": [],
+      "evidence": "tatus updates\" -> keep progress updates brief on similar tasks. - The user requested that test failures be explained before any fix is attempted -> diagnose and explain failures before proposing or making edits. Reusabl"
+    }
+  ]
+}

@@ -1,0 +1,28 @@
+{
+  "adapter": "codex-to-okf",
+  "adapter_schema": 1,
+  "generated_at": "2026-07-26T11:16:15.456998+00:00",
+  "source_fingerprint": "sha256:d6208a3c19f3f7ab820a6626c556096eb11c75d8fc7723d4a28a62d2f748f436",
+  "source_format": "memory-db",
+  "source_records": 1,
+  "source_tasks": 1,
+  "mapped_memories": 1,
+  "skipped_empty": 0,
+  "malformed_lines": 0,
+  "memories_by_type": {
+    "decision": 1
+  },
+  "redactions": {
+    "aws_key": 0,
+    "bearer_token": 0,
+    "email": 0,
+    "github_token": 0,
+    "home_path": 4,
+    "jwt": 0,
+    "openai_key": 0,
+    "private_key": 0,
+    "secret_assignment": 0,
+    "slack_token": 0,
+    "temporary_path": 1
+  }
+}
