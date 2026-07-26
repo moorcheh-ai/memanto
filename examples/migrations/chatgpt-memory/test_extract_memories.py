@@ -13,18 +13,23 @@ from extract_memories import (
 
 
 def _threads(messages) -> list[dict]:
+    """Build a single-thread wrapper around a message list."""
     return [{"thread_id": "t1", "title": "T1", "messages": messages}]
 
 
 def _user(text: str, ts: str = "2026-01-01T00:00:00Z") -> dict:
+    """Build a user message dict with role, content, and timestamp."""
     return {"role": "user", "content": text, "timestamp": ts}
 
 
 def _assistant(text: str) -> dict:
+    """Build an assistant message dict with role, content, and timestamp."""
     return {"role": "assistant", "content": text, "timestamp": "2026-01-01T00:00:01Z"}
 
 
 class TestCategoryInference:
+    """Test _infer_category classification logic."""
+
     def test_preference_signal(self):
         assert _infer_category("I prefer Kotlin over Java.") == "preference"
 
@@ -42,6 +47,8 @@ class TestCategoryInference:
 
 
 class TestExtractMemories:
+    """Test extract_memories extraction logic, filters, and dedup."""
+
     def test_skips_assistant_messages(self):
         # User message must be >=30 chars to be considered durable.
         mems = extract_memories(
@@ -108,6 +115,8 @@ class TestExtractMemories:
 
 
 class TestOkfBundle:
+    """Test write_okf_bundle output format, frontmatter, and index."""
+
     def _write_and_load(self, messages) -> tuple[Path, dict]:
         mems = extract_memories(_threads(messages))
         out = Path(f"/tmp/test_okf_bundle_chatgpt_{id(self)}_{id(messages)}")

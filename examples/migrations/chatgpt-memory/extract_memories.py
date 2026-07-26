@@ -123,6 +123,17 @@ DEFAULT_OKF_TYPE = "preference"
 
 @dataclass
 class Memory:
+    """A single extracted memory fragment with its metadata.
+
+    Attributes:
+        category: Memory category (preference, fact, decision, goal, context).
+        title: Short human-readable title.
+        body: Full text of the memory.
+        thread_id: Source conversation thread identifier.
+        thread_title: Human-readable thread name.
+        sources: Timestamped citation strings for provenance tracking.
+    """
+
     category: str
     title: str
     body: str
