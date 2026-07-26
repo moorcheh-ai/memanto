@@ -3,7 +3,8 @@
 **PR:** https://github.com/moorcheh-ai/memanto/pull/1634
 **BountyHub claim:** https://www.bountyhub.dev/bounty/view/b21928e9-70dd-4d95-adc6-3009df47e9f5 (created ✅)
 **Demo video (YouTube):** https://youtu.be/7Fj52OC3LZo
-**X post:** https://x.com/trinity_hub33/status/2081151139328708780
+**X post (#1609):** https://x.com/trinity_hub33/status/2081151139328708780
+**X post (#770 suite):** https://x.com/trinity_hub33/status/2081219415891186145
 **Demo video (local):** `examples/migrations/chatgpt-freedom-loop/demo/memanto-freedom-loop-demo.mp4`
 **Deadline:** 2026-08-31 23:59 UTC
 
