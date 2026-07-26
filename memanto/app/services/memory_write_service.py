@@ -427,7 +427,20 @@ class MemoryWriteService:
 
             from moorcheh_sdk.types.document import Document
 
-            validation_result = {"action": "store", "reason": "MVP direct store"}
+            # Validate memory (write-time contradiction resolution).
+            # Mirrors the store_memory path at line 96: an update can change
+            # a memory's content/title/type to directly contradict another
+            # active same-type/same-title memory. Without this call the old
+            # contradiction is left active alongside the new one — exactly
+            # the "fails to resolve contradictions" failure mode. The prior
+            # MVP-stub (`{"action": "store", "reason": "MVP direct store"}`)
+            # silently bypassed validation here while store/batch enforced it.
+            validation_result = self.validation_service.validate_memory(
+                updated_memory, context
+            )
+            # Use validated memory if the service modified it (e.g. status flip)
+            if "memory" in validation_result:
+                updated_memory = validation_result["memory"]
 
             document = cast(Document, updated_memory.to_moorcheh_document())
 
@@ -461,6 +474,8 @@ class MemoryWriteService:
                 "reason": "Memory updated successfully via overwrite",
                 "validation": validation_result.get("action", "validated"),
                 "updated_fields": list(updates.keys()),
+                **({"superseded_ids": validation_result["superseded_ids"]}
+                   if validation_result.get("superseded_ids") else {}),
             }
 
         except Exception as e:
