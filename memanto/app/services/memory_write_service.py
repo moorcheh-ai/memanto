@@ -67,9 +67,12 @@ class MemoryWriteService:
             if memory.updated_at > now:
                 memory.updated_at = now
 
-            # Enforce created_at <= updated_at invariant
+            # Enforce created_at <= updated_at invariant.
+            # When the future clamp above moved created_at forward but the
+            # stored updated_at stayed in the past, bump updated_at so the
+            # invariant holds without losing the new created_at value.
             if memory.created_at > memory.updated_at:
-                memory.created_at = memory.updated_at
+                memory.updated_at = memory.created_at
             return
         memory.created_at = now
         memory.updated_at = now
