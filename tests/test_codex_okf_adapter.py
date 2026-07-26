@@ -14,19 +14,21 @@ from memanto.cli.migrate.okf_loader import load_okf_bundle
 
 _EXAMPLE_DIR = Path(__file__).parent.parent / "examples" / "migrations" / "codex"
 _MODULE_PATH = _EXAMPLE_DIR / "codex_to_okf.py"
+_RECALL_VALIDATOR_PATH = _EXAMPLE_DIR / "validation" / "validate_recall.py"
 
 
-def _load_adapter():
-    spec = importlib.util.spec_from_file_location("codex_to_okf", _MODULE_PATH)
+def _load_example_module(name, path):
+    spec = importlib.util.spec_from_file_location(name, path)
     if spec is None or spec.loader is None:
-        raise ImportError(f"Unable to load Codex migration adapter at {_MODULE_PATH}")
+        raise ImportError(f"Unable to load example module at {path}")
     module = importlib.util.module_from_spec(spec)
     sys.modules[spec.name] = module
     spec.loader.exec_module(module)
     return module
 
 
-adapter = _load_adapter()
+adapter = _load_example_module("codex_to_okf", _MODULE_PATH)
+recall_validator = _load_example_module("validate_codex_recall", _RECALL_VALIDATOR_PATH)
 
 
 RAW_MEMORY = """\
@@ -392,6 +394,23 @@ class TestOkfRoundTrip:
         )
 
         assert len(map_okf(load_okf_bundle(bundle))) == 2
+
+    def test_recall_validation_ignores_export_only_context(self, tmp_path):
+        bundle = tmp_path / "bundle"
+        memory_dir = bundle / "memories" / "decision"
+        context_dir = bundle / "daily-summaries"
+        memory_dir.mkdir(parents=True)
+        context_dir.mkdir()
+        (memory_dir / "project-rules.md").write_text(
+            "The project stores every timestamp in UTC.", encoding="utf-8"
+        )
+        (context_dir / "2026-07-26.md").write_text(
+            "This export-only summary must not affect recall.", encoding="utf-8"
+        )
+
+        documents = recall_validator.load_okf_documents(bundle)
+
+        assert documents == ["The project stores every timestamp in UTC."]
 
     def test_existing_output_requires_explicit_overwrite(self, tmp_path):
         output = tmp_path / "bundle"

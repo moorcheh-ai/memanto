@@ -82,7 +82,12 @@ def load_source_documents(path: Path) -> list[str]:
 def load_okf_documents(path: Path) -> list[str]:
     if not path.exists():
         raise FileNotFoundError(f"OKF bundle not found: {path}")
-    files = [path] if path.is_file() else sorted(path.rglob("*.md"))
+    if path.is_file():
+        files = [path]
+    else:
+        memories_dir = path / "memories"
+        scan_root = memories_dir if memories_dir.is_dir() else path
+        files = sorted(scan_root.rglob("*.md"))
     return [
         file_path.read_text(encoding="utf-8")
         for file_path in files

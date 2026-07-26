@@ -18,7 +18,8 @@ if ! command -v codex >/dev/null 2>&1; then
 fi
 
 if [[ -f "${REAL_CODEX_HOME}/auth.json" ]]; then
-  ln -s "${REAL_CODEX_HOME}/auth.json" "${DEMO_HOME}/auth.json"
+  cp "${REAL_CODEX_HOME}/auth.json" "${DEMO_HOME}/auth.json"
+  chmod 600 "${DEMO_HOME}/auth.json"
 fi
 
 PROMPT='Review PROJECT.md without editing files. The team adopted PostgreSQL 16 because workers share state, Python 3.10 as the minimum, UTC for every stored timestamp, and structured JSON production logs. The user prefers concise status updates and wants test failures explained before fixes. Compare the baseline with those decisions and finish with the current rules.'
