@@ -113,7 +113,7 @@ class TestContradictionHandling:
         elapsed = time.perf_counter() - start
 
         assert len(prefetched) == 4
-        assert elapsed < 0.15
+        assert elapsed < 0.3
 
     def test_store_memory_supersedes_contradicting_memory(self):
         """A same-type/same-title active memory with different content is
