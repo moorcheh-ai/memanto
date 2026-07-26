@@ -73,21 +73,14 @@ def test_build_temporal_query_rejects_invalid_relative_time():
         )
 
 
-def test_parse_as_of_timestamp_treats_date_only_as_end_of_day():
-    parsed = parse_as_of_timestamp("2026-01-15")
-
-    assert parsed.tzinfo == timezone.utc
-    assert parsed.isoformat() == "2026-01-15T23:59:59.999999+00:00"
+def test_parse_as_of_timestamp_rejects_date_only():
+    """Date-only values (even valid YYYY-MM-DD) are rejected with a clear error."""
+    for bad in ("2026-01-15", "2026-12-25", "2026-13-01", "2026-02-30", "2026-00-00", "2026-12-99"):
+        with pytest.raises(ValueError, match="Invalid date-only value"):
+            parse_as_of_timestamp(bad)
 
 
 def test_parse_as_of_timestamp_preserves_explicit_time():
     parsed = parse_as_of_timestamp("2026-01-15T13:30:00Z")
 
     assert parsed.isoformat() == "2026-01-15T13:30:00+00:00"
-
-
-def test_parse_as_of_timestamp_rejects_invalid_date_only():
-    """Invalid YYYY-MM-DD strings now raise with a clear message instead of falling through."""
-    for bad in ("2026-13-01", "2026-02-30", "2026-00-00", "2026-12-99"):
-        with pytest.raises(ValueError, match="Invalid date-only value"):
-            parse_as_of_timestamp(bad)

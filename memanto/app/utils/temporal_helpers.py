@@ -47,24 +47,21 @@ def _is_date_only(ts_str: str) -> bool:
 
 
 def parse_as_of_timestamp(ts_str: str) -> datetime:
-    """Parse a point-in-time cutoff, treating a date as the end of that day.
+    """Parse a point-in-time cutoff, rejecting bare date-only values.
 
     ``recall_as_of`` is exposed through REST, the Python clients, CLI, and MCP.
-    The REST request model already documents date-only values as end-of-day,
-    while the lower-level clients pass strings directly to the read service.
-    Normalizing at the service boundary keeps every caller consistent without
-    changing the meaning of full ISO timestamps.
+    A date-only value (e.g. ``2026-12-25``) is ambiguous — it does not specify
+    a time component — so we reject it with a clear error message. Callers must
+    provide a full ISO-8601 datetime string (e.g. ``2026-12-25T23:59:59Z``).
+
+    Returns a timezone-aware UTC datetime.
     """
     if _is_date_only(ts_str):
-        try:
-            return datetime.combine(
-                date.fromisoformat(ts_str), time.max, tzinfo=timezone.utc
-            )
-        except ValueError:
-            raise ValueError(
-                f"Invalid date-only value '{ts_str}'. "
-                "Use a valid YYYY-MM-DD date (e.g. 2026-12-25)."
-            )
+        raise ValueError(
+            f"Invalid date-only value '{ts_str}'. "
+            "A full ISO-8601 datetime with time component is required "
+            "(e.g. 2026-12-25T23:59:59Z)."
+        )
 
     return parse_iso_timestamp(ts_str)
 
