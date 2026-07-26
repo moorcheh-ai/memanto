@@ -96,8 +96,8 @@ def test_context_sections_and_import_scope(tmp_path):
 
 
 def test_memanto_round_trip_preserves_extras(tmp_path):
-    """Memanto -> OKF -> Memanto keeps type/confidence/source_ref/tags/body via
-    the ``x_memanto`` block, and always marks provenance as imported."""
+    """Memanto -> OKF -> Memanto keeps id/type/confidence/source_ref/tags/body
+    via the ``x_memanto`` block, and always marks provenance as imported."""
     memories_by_type = {
         "fact": [
             _mem(
@@ -123,6 +123,7 @@ def test_memanto_round_trip_preserves_extras(tmp_path):
     by_title = {r["title"]: r for r in rows}
 
     pg = by_title["Postgres is the DB"]
+    assert pg["id"] == "m1"  # stable id keeps repeated imports idempotent
     assert pg["type"] == "fact"  # x_memanto.type round-trips
     assert pg["confidence"] == 0.9  # x_memanto.confidence round-trips
     assert pg["source_ref"] == "https://example.com/db"  # resource -> source_ref
@@ -131,6 +132,24 @@ def test_memanto_round_trip_preserves_extras(tmp_path):
     assert pg["created_at"] is not None
     assert "PostgreSQL 16" in pg["content"]
     assert by_title["Chose Redis"]["type"] == "decision"
+
+
+def test_foreign_okf_cannot_supply_an_unnamespaced_memory_id(tmp_path):
+    """Only Memanto's namespaced extension may opt into identity restoration."""
+    (tmp_path / "foreign.md").write_text(
+        "---\n"
+        "type: fact\n"
+        "title: Foreign fact\n"
+        "id: attacker-selected-id\n"
+        "---\n\n"
+        "A foreign OKF memory.\n",
+        encoding="utf-8",
+    )
+
+    row = map_okf(load_okf_bundle(tmp_path))[0]
+
+    assert "id" not in row
+    assert "OKF id: attacker-selected-id" in row["content"]
 
 
 def test_foreign_okf_bundle_is_lossless(tmp_path):

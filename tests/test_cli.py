@@ -511,6 +511,53 @@ class TestMEMANTOCLI:
 
         mock_write_service.batch_store_memories.assert_not_called()
 
+    def test_batch_clients_preserve_explicit_memory_ids(self, mock_all_clients):
+        """Migration payload ids must reach MemoryRecord for idempotent imports."""
+        from memanto.cli.client.direct_client import DirectClient
+        from memanto.cli.client.sdk_client import SdkClient
+
+        for client_class in (DirectClient, SdkClient):
+            mock_write_service = MagicMock()
+            mock_write_service.batch_store_memories.return_value = {
+                "total_submitted": 1,
+                "successful": 1,
+                "failed": 0,
+                "results": [{"id": "stable-memory-id", "status": "queued"}],
+            }
+            mock_session = MagicMock()
+            mock_session.namespace = "memanto_agent_test-agent"
+
+            with (
+                patch.object(
+                    client_class,
+                    "_get_write_service",
+                    return_value=mock_write_service,
+                ),
+                patch.object(
+                    client_class,
+                    "_get_validated_session_for_agent",
+                    return_value=mock_session,
+                ),
+            ):
+                client = client_class.__new__(client_class)
+                client.api_key = "test-api-key"
+                client.base_url = "https://api.moorcheh.ai/v1"
+                client.session_token = None
+                client.batch_remember(
+                    agent_id="test-agent",
+                    memories=[
+                        {
+                            "id": "stable-memory-id",
+                            "title": "Imported memory",
+                            "content": "This memory came from an OKF snapshot.",
+                            "provenance": "imported",
+                        }
+                    ],
+                )
+
+            records = mock_write_service.batch_store_memories.call_args.args[0]
+            assert records[0].id == "stable-memory-id"
+
     def test_edit_sdk_normalizes_confidence_and_accepts_valid_payload(
         self, mock_all_clients
     ):

@@ -470,20 +470,28 @@ def map_okf(export: dict[str, Any]) -> list[dict[str, Any]]:
         elif len(content) > _MAX_CONTENT_CHARS:
             content = content[: _MAX_CONTENT_CHARS - 4] + "\n..."
 
-        rows.append(
-            {
-                "title": title or _title_from(content),
-                "content": content,
-                "type": memory_type,
-                "tags": tags,
-                "confidence": confidence,
-                "source": source,
-                "source_ref": str(resource) if resource else None,
-                "provenance": "imported",
-                "created_at": created_at,
-                "updated_at": migrated_at,
-            }
-        )
+        row = {
+            "title": title or _title_from(content),
+            "content": content,
+            "type": memory_type,
+            "tags": tags,
+            "confidence": confidence,
+            "source": source,
+            "source_ref": str(resource) if resource else None,
+            "provenance": "imported",
+            "created_at": created_at,
+            "updated_at": migrated_at,
+        }
+
+        # Memanto exports its document id under the namespaced extension so a
+        # round-trip can remain an upsert instead of creating a duplicate on
+        # every import. Foreign OKF documents have no such field and continue
+        # to receive a generated id at write time.
+        original_id = x_memanto.get("id")
+        if isinstance(original_id, str) and original_id.strip():
+            row["id"] = original_id.strip()
+
+        rows.append(row)
     return rows
 
 
