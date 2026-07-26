@@ -1,0 +1,79 @@
+{
+  "exported_at": "2026-07-26T12:00:00+00:00",
+  "provider": "ollama",
+  "model": "nomic-embed-text",
+  "embedding_model": "nomic-embed-text",
+  "chat_model": "llama3.2",
+  "api_base": "http://localhost:11434",
+  "summary": {
+    "model_count": 1,
+    "memory_count": 6,
+    "context_count": 4
+  },
+  "memories": [
+    {
+      "title": "User prefers dark mode interface",
+      "content": "The user has indicated a strong preference for dark mode across all applications, especially for late-night coding sessions. They find light mode causes eye strain after 2+ hours of work.",
+      "type": "preference",
+      "tags": ["ui", "dark-mode", "accessibility", "ergonomics"],
+      "confidence": 0.95,
+      "source": "ollama",
+      "source_ref": "ollama-0-0",
+      "export_scope": {"agent_id": "ollama-agent"}
+    },
+    {
+      "title": "PostgreSQL is the primary production database",
+      "content": "The team decided on July 15, 2026 to use PostgreSQL 16 as the sole production database for all new services. Legacy MySQL instances are being phased out with a target completion of Q4 2026. Connection pooling is handled via PgBouncer.",
+      "type": "fact",
+      "tags": ["infrastructure", "database", "postgresql", "architecture"],
+      "confidence": 0.92,
+      "source": "ollama",
+      "source_ref": "ollama-1-0",
+      "export_scope": {"agent_id": "ollama-agent"}
+    },
+    {
+      "title": "Redis v7 migration completed successfully",
+      "content": "The Redis cache layer was migrated from v6.2 to v7.0 on July 20, 2026. Performance benchmarks show a 35% improvement in cache hit latency and 22% reduction in memory usage. Zero downtime was achieved via rolling upgrade with sentinel failover.",
+      "type": "event",
+      "tags": ["infrastructure", "redis", "migration", "performance"],
+      "confidence": 0.88,
+      "source": "ollama",
+      "source_ref": "ollama-1-1",
+      "export_scope": {"agent_id": "ollama-agent"}
+    },
+    {
+      "title": "Project Alpha deadline August 15, 2026",
+      "content": "Project Alpha (client: Acme Corp) has a hard delivery deadline of August 15, 2026. The client requires weekly progress reports every Friday by 5 PM EST. The current completion rate is 78%, with authentication module being the primary blocker.",
+      "type": "commitment",
+      "tags": ["project-alpha", "deadline", "acme-corp", "reporting"],
+      "confidence": 0.85,
+      "source": "ollama",
+      "source_ref": "ollama-2-0",
+      "export_scope": {"agent_id": "ollama-agent"}
+    },
+    {
+      "title": "Security audit findings require immediate action",
+      "content": "The Q3 security audit (conducted July 22, 2026) identified 3 critical vulnerabilities in the authentication service. The team decided to prioritize fixing CVE-2026-12345 (SQL injection in login endpoint) before the August 15 deadline. All fixes must go through the new security review board.",
+      "type": "decision",
+      "tags": ["security", "audit", "cve", "authentication"],
+      "confidence": 0.90,
+      "source": "ollama",
+      "source_ref": "ollama-2-1",
+      "export_scope": {"agent_id": "ollama-agent"}
+    },
+    {
+      "title": "Client satisfaction scores trending upward",
+      "content": "Monthly NPS survey results for Q2 2026 show an upward trend: April 72, May 76, June 81. The engineering team's faster response times and the new documentation portal were cited as the top two drivers. Target for Q3 is 85.",
+      "type": "observation",
+      "tags": ["metrics", "nps", "client-satisfaction", "q2-2026"],
+      "confidence": 0.87,
+      "source": "ollama",
+      "source_ref": "ollama-3-0",
+      "export_scope": {"agent_id": "ollama-agent"}
+    }
+  ],
+  "notes": {
+    "extraction": "Memories extracted from Ollama conversations via the chat API. Embedding compatibility verified via /api/embeddings.",
+    "compatibility": "This export is consumable by `memanto migrate --file <this.json>` using the 'ollama' provider mapper."
+  }
+}

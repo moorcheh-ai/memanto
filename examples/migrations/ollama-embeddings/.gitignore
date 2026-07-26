@@ -1,0 +1,7 @@
+# Ollama migration outputs
+ollama_migration_output/
+okf_bundle/
+*.pyc
+__pycache__/
+.venv/
+.env
