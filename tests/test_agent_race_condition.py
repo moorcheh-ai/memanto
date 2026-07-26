@@ -325,7 +325,9 @@ class TestCleanupOnFailure:
     def test_retry_after_failure_succeeds(self, mock_client, service):
         """After a failed creation + cleanup, retrying should work."""
         # First call fails
-        mock_client.return_value.namespaces.create.side_effect = RuntimeError("timeout")
+        mock_client.return_value.namespaces.create.side_effect = RuntimeError(
+            "connection refused"
+        )
         with patch.dict(os.environ, {"MEMANTO_MAX_AGENTS": "10"}):
             with pytest.raises(NamespaceError, match="Failed to create namespace"):
                 service.create_agent(
@@ -357,20 +359,27 @@ class TestPlaceholderTolerance:
         (tmp_agents_dir / "ghost.json").write_text("")
         assert service.get_agent("ghost") is None
 
+    def test_delete_refuses_in_progress_placeholder(self, service, tmp_agents_dir):
+        """Capacity placeholders must not be unlinked outside create cleanup."""
+        from memanto.app.utils.errors import AgentNotFoundError
+
+        (tmp_agents_dir / "claiming.json").write_text("")
+        with pytest.raises(AgentNotFoundError, match="not ready"):
+            service.delete_agent("claiming")
+        assert (tmp_agents_dir / "claiming.json").exists()
+
     @patch("memanto.app.services.agent_service.get_moorcheh_client")
     def test_namespace_timeout_cleans_placeholder(self, mock_client, service):
-        """Hung namespace create times out and releases the claim."""
+        """Transport timeout on namespace create releases the claim."""
+        from moorcheh_sdk.exceptions import MoorchehError
 
-        def hang(*args, **kwargs):
-            time.sleep(5)
-            return None
-
-        mock_client.return_value.namespaces.create.side_effect = hang
+        mock_client.return_value.namespaces.create.side_effect = MoorchehError(
+            "Request timed out after 0.2 seconds."
+        )
         with patch.dict(
             os.environ,
             {"MEMANTO_MAX_AGENTS": "10", "MEMANTO_NAMESPACE_CREATE_TIMEOUT_SEC": "0.2"},
         ):
-            # Re-import timeout constant is baked at module load — patch the module attr
             import memanto.app.services.agent_service as mod
 
             with patch.object(mod, "_NAMESPACE_CREATE_TIMEOUT_SEC", 0.2):
@@ -380,3 +389,64 @@ class TestPlaceholderTolerance:
                         moorcheh_api_key="key",
                     )
         assert not (service.agents_dir / "hang-agent.json").exists()
+
+    @patch("memanto.app.services.agent_service.get_moorcheh_client")
+    def test_create_delete_create_limit_one(self, mock_client, service, tmp_agents_dir):
+        """create/delete/create must not exceed limit=1 via placeholder races."""
+        mock_client.return_value.namespaces.create.return_value = None
+        barrier = threading.Barrier(3)
+        outcomes: list[str] = []
+        lock = threading.Lock()
+
+        def create_one(agent_id: str) -> None:
+            barrier.wait(timeout=5)
+            try:
+                service.create_agent(
+                    AgentCreate(agent_id=agent_id, pattern="tool"),
+                    moorcheh_api_key="key",
+                )
+                with lock:
+                    outcomes.append(f"ok:{agent_id}")
+            except AgentLimitExceededError:
+                with lock:
+                    outcomes.append(f"limit:{agent_id}")
+            except Exception as exc:  # pragma: no cover
+                with lock:
+                    outcomes.append(f"err:{type(exc).__name__}")
+
+        def delete_a() -> None:
+            barrier.wait(timeout=5)
+            # Attempt delete while creates may still hold placeholders.
+            try:
+                service.delete_agent("a")
+                with lock:
+                    outcomes.append("deleted")
+            except Exception as exc:
+                with lock:
+                    outcomes.append(f"del:{type(exc).__name__}")
+
+        with patch.dict(os.environ, {"MEMANTO_MAX_AGENTS": "1"}):
+            # Seed one ready agent occupying the sole slot.
+            service.create_agent(
+                AgentCreate(agent_id="seed", pattern="tool"),
+                moorcheh_api_key="key",
+            )
+            # Free the slot under lock via normal delete, then race two creates
+            # with an interleaved delete of a non-ready claim if one appears.
+            service.delete_agent("seed")
+
+            t1 = threading.Thread(target=create_one, args=("a",))
+            t2 = threading.Thread(target=create_one, args=("b",))
+            t3 = threading.Thread(target=delete_a)
+            for t in (t1, t2, t3):
+                t.start()
+            for t in (t1, t2, t3):
+                t.join(timeout=10)
+
+        ready = [
+            p
+            for p in tmp_agents_dir.glob("*.json")
+            if service._load_agent_file(p) is not None
+        ]
+        assert len(ready) <= 1, f"plan limit violated: {ready} outcomes={outcomes}"
+        assert any(o.startswith("ok:") for o in outcomes)

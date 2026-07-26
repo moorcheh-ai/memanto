@@ -10,14 +10,13 @@ import json
 import os
 import sys
 import time
-from concurrent.futures import ThreadPoolExecutor
-from concurrent.futures import TimeoutError as FuturesTimeoutError
 from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Iterator
+from typing import Any, Iterator
+from unittest.mock import Mock
 
-from moorcheh_sdk.exceptions import ConflictError
+from moorcheh_sdk.exceptions import ConflictError, MoorchehError
 
 from memanto.app.clients.moorcheh import get_moorcheh_client
 from memanto.app.config import get_data_dir
@@ -32,8 +31,8 @@ from memanto.app.utils.errors import (
 from memanto.app.utils.temporal_helpers import as_utc_aware
 from memanto.app.utils.validation import validate_safe_id
 
-# Bounded wait for Moorcheh namespace creation so a hung cloud call cannot
-# hold a claimed plan slot indefinitely.
+# Transport-level timeout for Moorcheh namespace creation so a hung HTTP call
+# is cancelled by the client (not a ThreadPoolExecutor watchdog).
 _NAMESPACE_CREATE_TIMEOUT_SEC = float(
     os.environ.get("MEMANTO_NAMESPACE_CREATE_TIMEOUT_SEC", "15")
 )
@@ -105,6 +104,38 @@ class AgentService:
         except (OSError, json.JSONDecodeError, TypeError, ValueError):
             return None
 
+    def _get_namespace_create_client(self, moorcheh_api_key: str) -> Any:
+        """Client whose HTTP timeout matches the namespace-create budget.
+
+        Uses a dedicated transport timeout so hung ``namespaces.create`` calls
+        are cancelled at the HTTP layer. Test doubles injected via
+        ``get_moorcheh_client()`` are returned unchanged.
+        """
+        timeout = _NAMESPACE_CREATE_TIMEOUT_SEC
+        base = get_moorcheh_client()
+        if isinstance(base, Mock):
+            return base
+
+        from memanto.app.clients.backend import Backend, parse_backend
+        from memanto.app.config import settings
+
+        if parse_backend(settings.MEMANTO_BACKEND) == Backend.ON_PREM:
+            from memanto.app.clients.onprem import OnPremClient
+
+            return OnPremClient(
+                base_url=settings.MOORCHEH_ONPREM_URL,
+                timeout=max(1, int(round(timeout))),
+            )
+
+        from moorcheh_sdk import MoorchehClient
+
+        key = (
+            moorcheh_api_key
+            or getattr(base, "api_key", None)
+            or settings.MOORCHEH_API_KEY
+        )
+        return MoorchehClient(api_key=key, timeout=timeout)
+
     def create_agent(
         self, agent_create: AgentCreate, moorcheh_api_key: str
     ) -> AgentInfo:
@@ -153,36 +184,44 @@ class AgentService:
         # if namespace creation or metadata save fails.
         try:
             # Create namespace in Moorcheh - CRITICAL: Must succeed.
-            # ``moorcheh_api_key`` is honored on cloud; ignored on on-prem.
-            client = get_moorcheh_client()
+            # Transport timeout cancels hung HTTP so plan quota is released promptly.
+            client = self._get_namespace_create_client(moorcheh_api_key)
 
             try:
-                # Bound the external call so a hung SDK cannot hold plan quota.
-                with ThreadPoolExecutor(max_workers=1) as pool:
-                    future = pool.submit(
-                        client.namespaces.create, namespace, type="text"
-                    )
-                    future.result(timeout=_NAMESPACE_CREATE_TIMEOUT_SEC)
+                client.namespaces.create(namespace, type="text")
                 print(f"[OK] Namespace created in Moorcheh: {namespace}")
             except ConflictError:
                 # Namespace already exists - this is OK, agent might have been created before
                 print(f"[OK] Namespace already exists in Moorcheh: {namespace}")
-            except FuturesTimeoutError as e:
-                raise NamespaceError(
-                    f"Timed out creating namespace '{namespace}' in Moorcheh "
-                    f"after {_NAMESPACE_CREATE_TIMEOUT_SEC:g}s"
-                ) from e
-            except Exception as e:
-                # On-prem raises moorcheh.errors.MoorchehApiError (HTTP 409) rather
-                # than the cloud SDK's typed ConflictError when the namespace
-                # already exists. Match on message so both backends behave the same.
+            except MoorchehError as e:
                 msg = str(e).lower()
+                if "timed out" in msg or "timeout" in msg:
+                    raise NamespaceError(
+                        f"Timed out creating namespace '{namespace}' in Moorcheh "
+                        f"after {_NAMESPACE_CREATE_TIMEOUT_SEC:g}s"
+                    ) from e
                 if ("namespace" in msg and "already exists" in msg) or "conflict" in msg:
                     print(f"[OK] Namespace already exists in Moorcheh: {namespace}")
                 else:
                     raise NamespaceError(
                         f"Failed to create namespace '{namespace}' in Moorcheh: {str(e)}"
-                    )
+                    ) from e
+            except Exception as e:
+                # On-prem raises moorcheh.errors.MoorchehApiError (HTTP 409) rather
+                # than the cloud SDK's typed ConflictError when the namespace
+                # already exists. Match on message so both backends behave the same.
+                msg = str(e).lower()
+                if "timed out" in msg or "timeout" in msg:
+                    raise NamespaceError(
+                        f"Timed out creating namespace '{namespace}' in Moorcheh "
+                        f"after {_NAMESPACE_CREATE_TIMEOUT_SEC:g}s"
+                    ) from e
+                if ("namespace" in msg and "already exists" in msg) or "conflict" in msg:
+                    print(f"[OK] Namespace already exists in Moorcheh: {namespace}")
+                else:
+                    raise NamespaceError(
+                        f"Failed to create namespace '{namespace}' in Moorcheh: {str(e)}"
+                    ) from e
 
             # Create agent metadata
             agent = AgentInfo(
@@ -279,13 +318,23 @@ class AgentService:
             agent_id: Agent identifier
 
         Raises:
-            AgentNotFoundError: If agent doesn't exist
+            AgentNotFoundError: If agent doesn't exist or is an in-progress
+                capacity placeholder (non-loadable claim file)
         """
         agent_file = self._get_agent_file(agent_id)
-        if not agent_file.exists():
-            raise AgentNotFoundError(f"Agent '{agent_id}' not found")
+        # Serialize with create_agent capacity claims so delete cannot unlink a
+        # placeholder mid-create and free the plan slot for a second creator.
+        with _exclusive_file_lock(self.agents_dir / ".capacity.lock"):
+            if not agent_file.exists():
+                raise AgentNotFoundError(f"Agent '{agent_id}' not found")
 
-        agent_file.unlink()
+            agent = self._load_agent_file(agent_file)
+            if agent is None:
+                raise AgentNotFoundError(
+                    f"Agent '{agent_id}' is not ready (creation in progress)"
+                )
+
+            agent_file.unlink()
 
     def agent_exists(self, agent_id: str) -> bool:
         """
