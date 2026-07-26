@@ -4,7 +4,7 @@ Memory Validation Service
 Write-time contradiction detection and resolution for memory records.
 """
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import TYPE_CHECKING, Any, cast
 
 if TYPE_CHECKING:
@@ -218,14 +218,20 @@ class MemoryValidationService:
             old_id = str(old_item.get("id"))
             namespace = new_memory.namespace()
 
-            now_iso = datetime.utcnow().isoformat()
+            now_iso = datetime.now(timezone.utc).isoformat()
+
+            # Build the superseded document from the old item's wire-format
+            # fields, preserving all existing metadata (including custom fields
+            # like source_ref, ttl_seconds, expires_at) that the original
+            # hand-picked reconstruction would silently drop.
             document: dict[str, Any] = {
                 "id": old_id,
                 "text": old_item.get("text") or "",
-                "memory_type": old_item.get("type") or "fact",
+                "memory_type": old_item.get("type") or old_item.get("memory_type") or "fact",
                 "agent_id": new_memory.agent_id,
                 "actor_id": old_item.get("actor_id") or "unknown",
                 "source": old_item.get("source") or "system",
+                "source_ref": old_item.get("source_ref"),
                 "confidence": old_item.get("confidence", 0.8),
                 "status": "superseded",
                 "provenance": old_item.get("provenance") or "explicit_statement",
@@ -234,6 +240,24 @@ class MemoryValidationService:
                 "superseded_by": new_memory.id,
                 "superseded_at": now_iso,
             }
+
+            # Copy expires_at and ttl_seconds from the old item when present
+            for optional_key in ("expires_at", "ttl_seconds"):
+                val = old_item.get(optional_key)
+                if val is not None:
+                    document[optional_key] = val
+
+            # Preserve any extra fields from the old item that are not part of
+            # the core schema (e.g. original_id in on-prem records).
+            wire_keys = {
+                "id", "text", "memory_type", "agent_id", "actor_id",
+                "source", "source_ref", "confidence", "status", "provenance",
+                "created_at", "updated_at", "tags", "expires_at", "ttl_seconds",
+                "superseded_by", "superseded_at",
+            }
+            for key in old_item:
+                if key not in wire_keys and key not in ("title", "content", "score"):
+                    document[key] = old_item[key]
             tags = old_item.get("tags")
             if tags:
                 document["tags"] = ",".join(tags) if isinstance(tags, list) else tags
