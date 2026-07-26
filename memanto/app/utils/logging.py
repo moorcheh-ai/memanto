@@ -8,7 +8,7 @@ import logging
 import time
 import uuid
 from contextvars import ContextVar
-from datetime import datetime
+from datetime import datetime, timezone
 from functools import wraps
 from typing import Any
 
@@ -54,7 +54,7 @@ class MemantoLogger:
     ):
         """Log core request information"""
         log_entry = {
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
             "level": "INFO",
             "logger": "memanto.request",
             "request_id": request_id,
@@ -96,7 +96,7 @@ class MemantoLogger:
     ):
         """Log memory write operation"""
         log_entry = {
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
             "level": "INFO",
             "logger": "memanto.memory.write",
             "request_id": request_id,
@@ -129,7 +129,7 @@ class MemantoLogger:
     ):
         """Log memory read operation"""
         log_entry = {
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
             "level": "INFO",
             "logger": "memanto.memory.read",
             "request_id": request_id,
@@ -153,7 +153,7 @@ class MemantoLogger:
     ):
         """Log memory delete operation"""
         log_entry = {
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
             "level": "INFO",
             "logger": "memanto.memory.delete",
             "request_id": request_id,
@@ -174,7 +174,7 @@ class MemantoLogger:
     ):
         """Log Moorcheh SDK calls"""
         log_entry = {
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
             "level": "INFO" if success else "ERROR",
             "logger": "memanto.moorcheh",
             "request_id": request_id,

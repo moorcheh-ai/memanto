@@ -4,7 +4,7 @@ Memory Validation Service
 Write-time contradiction detection and resolution for memory records.
 """
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import TYPE_CHECKING, Any, cast
 
 if TYPE_CHECKING:
@@ -218,7 +218,7 @@ class MemoryValidationService:
             old_id = str(old_item.get("id"))
             namespace = new_memory.namespace()
 
-            now_iso = datetime.utcnow().isoformat()
+            now_iso = datetime.now(timezone.utc).isoformat()
             document: dict[str, Any] = {
                 "id": old_id,
                 "text": old_item.get("text") or "",

@@ -23,7 +23,7 @@ frontmatter keys.
 
 import re
 import shutil
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -339,7 +339,7 @@ class OkfExportService:
         self, directory: Path, title: str, heading: str, links: list[tuple[str, str]]
     ) -> None:
         """Write a navigational ``index.md`` (skipped on import)."""
-        now = datetime.now().isoformat(timespec="seconds")
+        now = datetime.now(timezone.utc).isoformat(timespec="seconds")
         lines = [
             "---",
             "type: index",
@@ -357,7 +357,7 @@ class OkfExportService:
     def _write_root_index(
         self, base: Path, agent_id: str, sections: dict[str, str]
     ) -> None:
-        now = datetime.now().isoformat(timespec="seconds")
+        now = datetime.now(timezone.utc).isoformat(timespec="seconds")
         lines = [
             "---",
             "type: index",
