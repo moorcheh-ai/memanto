@@ -86,7 +86,8 @@ _SECRET_PATTERNS: tuple[tuple[str, re.Pattern[str]], ...] = (
         re.compile(
             r"(?i)\b((?:[A-Z][A-Z0-9_]*_)?"
             r"(?:TOKEN|SECRET|PASSWORD|API_KEY)(?:_[A-Z0-9]+)*)"
-            r"\s*=\s*([^\s'\"`]{8,}|['\"][^'\"\n]{8,}['\"])"
+            r"\s*=\s*(?!\[REDACTED_SECRET\])"
+            r"([^\s'\"`]{8,}|['\"][^'\"\n]{8,}['\"])"
         ),
     ),
 )

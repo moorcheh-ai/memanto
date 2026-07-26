@@ -245,6 +245,15 @@ class TestTaskMapping:
         assert stats.redactions["home_path"] >= 1
         assert stats.redactions["temporary_path"] >= 1
 
+    def test_redaction_is_idempotent(self):
+        redactor = adapter.Redactor()
+        once = redactor.redact("API_KEY=super-secret-value-123456789")
+        twice = redactor.redact(once)
+
+        assert once == "API_KEY=[REDACTED_SECRET]"
+        assert twice == once
+        assert redactor.counts["secret_assignment"] == 1
+
     def test_provenance_is_deterministic(self, mapped):
         memories, _ = mapped
 
