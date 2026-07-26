@@ -144,6 +144,21 @@ def get_this_month_range() -> tuple[str, str]:
     )
 
 
+# Module-level lookup tables for parse_relative_time. Defined once at import
+# rather than rebuilt on every call (perf; flagged by static analysis).
+_NATURAL_UNIT_DAYS = {"week": 7, "month": 30, "year": 365}
+
+# Word-number map covers zero through twenty plus common tens; falls back to
+# int() parsing for numeric strings (e.g. "last 7 days").
+_WORD_NUMBERS = {
+    "zero": 0, "one": 1, "two": 2, "three": 3, "four": 4, "five": 5,
+    "six": 6, "seven": 7, "eight": 8, "nine": 9, "ten": 10,
+    "eleven": 11, "twelve": 12, "thirteen": 13, "fourteen": 14,
+    "fifteen": 15, "sixteen": 16, "seventeen": 17, "eighteen": 18,
+    "nineteen": 19, "twenty": 20, "thirty": 30, "forty": 40, "fifty": 50,
+}
+
+
 def parse_relative_time(relative: str) -> str | None:
     """
     Parse relative time strings to ISO timestamps
@@ -189,22 +204,12 @@ def parse_relative_time(relative: str) -> str | None:
     # (and "past ..." synonym). These use fixed-day lookbacks (30 for month,
     # 365 for year) rather than calendar-window arithmetic because months
     # vary in length and the function returns a single ISO timestamp.
-    _NATURAL_UNIT_DAYS = {"week": 7, "month": 30, "year": 365}
     for prefix in ("last ", "past "):
         for unit, days in _NATURAL_UNIT_DAYS.items():
             if relative == f"{prefix}{unit}":
                 return get_last_n_days(days)
 
     # Parse "last/past N days/hours" with optional word-numbers.
-    # Word-number map covers zero through twenty plus common tens; falls back
-    # to int() parsing for numeric strings.
-    _WORD_NUMBERS = {
-        "zero": 0, "one": 1, "two": 2, "three": 3, "four": 4, "five": 5,
-        "six": 6, "seven": 7, "eight": 8, "nine": 9, "ten": 10,
-        "eleven": 11, "twelve": 12, "thirteen": 13, "fourteen": 14,
-        "fifteen": 15, "sixteen": 16, "seventeen": 17, "eighteen": 18,
-        "nineteen": 19, "twenty": 20, "thirty": 30, "forty": 40, "fifty": 50,
-    }
     for prefix in ("last", "past"):
         if relative.startswith(prefix + " "):
             parts = relative.split()
@@ -222,10 +227,16 @@ def parse_relative_time(relative: str) -> str | None:
                 if number <= 0:
                     return None
 
-                if unit in ("day", "days"):
-                    return get_last_n_days(number)
-                elif unit in ("hour", "hours"):
-                    return get_last_n_hours(number)
+                # Guard against pathological inputs (e.g. "last 9999999999 days")
+                # whose timedelta construction raises OverflowError. Treat as
+                # unparseable rather than crashing the caller.
+                try:
+                    if unit in ("day", "days"):
+                        return get_last_n_days(number)
+                    elif unit in ("hour", "hours"):
+                        return get_last_n_hours(number)
+                except OverflowError:
+                    return None
 
     return None
 
