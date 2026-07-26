@@ -113,9 +113,11 @@ shell history. The key is never copied into a transcript or generated bundle.
 
 That command creates the isolated agent, imports the committed bundle, waits
 for every row to be indexed, runs the shared eight-question validation, and
-exports the resulting Memanto agent and evidence to the git-ignored
-`artifacts/local-roundtrip-run/`. To regenerate the committed live evidence,
-add `--output examples/migrations/hindsight/artifacts/beacon-live-run`.
+exports the resulting Memanto agent to the protected local
+`~/.memanto/exports/` directory before copying the key-free OKF bundle and
+evidence to the git-ignored `artifacts/local-roundtrip-run/`. To regenerate the
+committed live evidence, add
+`--output examples/migrations/hindsight/artifacts/beacon-live-run`.
 
 The same flow can also be run one step at a time:
 

@@ -11,7 +11,7 @@ from urllib.parse import parse_qs, urlparse
 
 import pytest
 
-from examples.migrations.hindsight import adapter, run_demo
+from examples.migrations.hindsight import adapter, run_demo, run_roundtrip
 from examples.migrations.hindsight.scenario import retain_items
 from examples.migrations.hindsight.validation import (
     build_parity_report,
@@ -444,3 +444,31 @@ def test_committed_showcase_artifacts_are_self_consistent():
     assert result["archived_records"] == 3
     assert result["source_passed"] == 8
     assert result["byte_identical_replay"] is True
+
+
+def test_roundtrip_copies_staged_export_into_evidence(tmp_path):
+    """Cloud exports are staged inside Memanto's safe data dir before copying."""
+    staged = tmp_path / "staged"
+    artifact = tmp_path / "artifact"
+    concept = staged / "memories" / "fact" / "release.md"
+    concept.parent.mkdir(parents=True)
+    concept.write_text("release window", encoding="utf-8")
+
+    run_roundtrip.copy_staged_export(staged, artifact)
+
+    assert (artifact / "memories" / "fact" / "release.md").read_text(
+        encoding="utf-8"
+    ) == "release window"
+    with pytest.raises(adapter.AdapterError, match="missing or empty"):
+        run_roundtrip.copy_staged_export(tmp_path / "missing", artifact)
+
+
+def test_roundtrip_transcripts_remove_paths_and_terminal_padding():
+    """Captured CLI evidence is portable and clean without changing its text."""
+    raw = f"$ memanto --data {Path.home() / '.memanto'}   \nresult   \n"
+
+    transcript = run_roundtrip.normalize_transcript(raw)
+
+    assert str(Path.home()) not in transcript
+    assert transcript.endswith("result\n")
+    assert all(line == line.rstrip() for line in transcript.splitlines())

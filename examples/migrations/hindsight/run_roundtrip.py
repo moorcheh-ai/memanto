@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -32,6 +33,7 @@ def normalize_transcript(value: str) -> str:
     """Remove developer-specific absolute paths from captured CLI evidence."""
     normalized = value.replace(str(REPO_ROOT), "<repo>")
     normalized = normalized.replace(str(Path.home() / ".memanto"), "~/.memanto")
+    normalized = "\n".join(line.rstrip() for line in normalized.splitlines())
     return (
         "# Captured from a real command; local absolute paths are normalized.\n"
         f"{normalized.rstrip()}\n"
@@ -59,6 +61,15 @@ def run_command(command: list[str], artifact_path: Path) -> None:
         raise adapter.AdapterError(
             f"Command failed with exit code {result.returncode}; see {artifact_path}"
         )
+
+
+def copy_staged_export(staged_export: Path, artifact_export: Path) -> None:
+    """Copy a CLI export from Memanto's safe data directory into evidence."""
+    if not staged_export.is_dir() or not any(staged_export.iterdir()):
+        raise adapter.AdapterError(
+            f"Memanto staged export is missing or empty: {staged_export}"
+        )
+    shutil.copytree(staged_export, artifact_export, dirs_exist_ok=True)
 
 
 def ensure_fresh_agent(client: Any, agent_id: str) -> None:
@@ -121,6 +132,7 @@ def run(argv: list[str] | None = None) -> int:
     output = args.output.expanduser().resolve()
     export_output = output / "memanto-export"
     evidence_dir = output / "evidence"
+    staged_export = Path.home() / ".memanto" / "exports" / f"{args.agent}_roundtrip_okf"
     executable = REPO_ROOT / ".venv" / "bin" / "memanto"
 
     try:
@@ -136,6 +148,10 @@ def run(argv: list[str] | None = None) -> int:
             )
         if export_output.exists() and any(export_output.iterdir()):
             raise adapter.AdapterError(f"Export output is not empty: {export_output}")
+        if staged_export.exists() and any(staged_export.iterdir()):
+            raise adapter.AdapterError(
+                f"Staged export output is not empty: {staged_export}"
+            )
 
         preflight = verify_artifacts.verify(source_artifacts)
         expected_count = int(preflight["importable_records"])
@@ -198,10 +214,11 @@ def run(argv: list[str] | None = None) -> int:
                 "--agent",
                 args.agent,
                 "--output",
-                str(export_output),
+                str(staged_export),
             ],
             evidence_dir / "memanto-export.txt",
         )
+        copy_staged_export(staged_export, export_output)
 
         from memanto.cli.migrate.okf_loader import load_okf_bundle
 

@@ -1,0 +1,10 @@
+{
+  "agent_id": "hindsight-okf-beacon-20260726b",
+  "export_bundle": "memanto-export",
+  "exported_concepts": 32,
+  "indexed_memories": 32,
+  "input_concepts": 32,
+  "parity_report": "evidence/recall-parity.json",
+  "recall_report": "evidence/memanto-recall.json",
+  "schema": "hindsight-memanto-okf-roundtrip/v1"
+}

@@ -1,0 +1,76 @@
+{
+  "agent_id": "hindsight-okf-beacon-20260726b",
+  "cases": [
+    {
+      "delta": 0.0,
+      "destination_score": 1.0,
+      "id": "release-window",
+      "retained_or_improved": true,
+      "source_score": 1.0
+    },
+    {
+      "delta": 0.0,
+      "destination_score": 1.0,
+      "id": "release-owner",
+      "retained_or_improved": true,
+      "source_score": 1.0
+    },
+    {
+      "delta": 0.0,
+      "destination_score": 1.0,
+      "id": "database-preflight",
+      "retained_or_improved": true,
+      "source_score": 1.0
+    },
+    {
+      "delta": 0.0,
+      "destination_score": 1.0,
+      "id": "canary-policy",
+      "retained_or_improved": true,
+      "source_score": 1.0
+    },
+    {
+      "delta": 0.0,
+      "destination_score": 1.0,
+      "id": "cache-ttl",
+      "retained_or_improved": true,
+      "source_score": 1.0
+    },
+    {
+      "delta": 0.0,
+      "destination_score": 1.0,
+      "id": "update-format",
+      "retained_or_improved": true,
+      "source_score": 1.0
+    },
+    {
+      "delta": 0.0,
+      "destination_score": 1.0,
+      "id": "staging-experience",
+      "retained_or_improved": true,
+      "source_score": 1.0
+    },
+    {
+      "delta": 0.0,
+      "destination_score": 1.0,
+      "id": "friday-policy",
+      "retained_or_improved": true,
+      "source_score": 1.0
+    }
+  ],
+  "destination": {
+    "average_score": 1.0,
+    "passed": 8,
+    "retriever": "memanto"
+  },
+  "indexed_memories": 32,
+  "mean_score_retention": 1.0,
+  "questions": 8,
+  "retained_or_improved": 8,
+  "schema": "hindsight-memanto-recall-parity/v1",
+  "source": {
+    "average_score": 1.0,
+    "passed": 8,
+    "retriever": "hindsight"
+  }
+}
