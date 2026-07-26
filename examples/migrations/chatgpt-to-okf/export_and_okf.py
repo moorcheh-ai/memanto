@@ -31,14 +31,14 @@ from typing import Any
 # Type inference from assistant prose
 # ---------------------------------------------------------------------------
 _KEYWORD_PATTERNS: list[tuple[str, list[str]]] = [
+    ("goal", [
+        r"(?:you want to build|you want to|you're working toward|you aim to)",
+    ]),
     ("preference", [
-        r"(?:you\s+prefer|you said you like|you want|you would rather|you like)",
+        r"(?:you\s+prefer|you said you like|you want (?!to )|you would rather|you like)",
     ]),
     ("decision", [
         r"(?:you decided|you chose|you decided to|you're going with)",
-    ]),
-    ("goal", [
-        r"(?:you want to build|you want to|you're working toward|you aim to)",
     ]),
     ("commitment", [
         r"(?:you're going to|you committed to|you plan to|you're shipping)",
@@ -89,7 +89,10 @@ def _slug(text: str, idx: int) -> str:
     s = text.strip().lower()
     s = re.sub(r"[^\x00-\x7f]+", " ", s)
     s = _SLUG_RE.sub("-", s).strip("-")
-    return (s[:50] or "entry") + f"-{idx:03d}"
+    # Truncate at word boundary (not mid-word)
+    if len(s) > 50:
+        s = s[:50].rsplit("-", 1)[0] if "-" in s[:50] else s[:50]
+    return (s or "entry") + f"-{idx:03d}"
 
 
 def _yaml_value(value: Any) -> str:
@@ -215,6 +218,11 @@ def write_okf_bundle(
     dest.mkdir(parents=True, exist_ok=True)
     memories_dir = dest / "memories"
     entries_dir = memories_dir
+    # Clear stale entries from previous runs
+    if entries_dir.exists():
+        for f in entries_dir.iterdir():
+            if f.is_file() and f.suffix in (".md", ".json"):
+                f.unlink()
     entries_dir.mkdir(parents=True, exist_ok=True)
 
     entry_files: list[Path] = []
@@ -229,7 +237,7 @@ def write_okf_bundle(
                 mem_type=mem["type"],
                 tags=mem["tags"],
                 timestamp=mem["timestamp"],
-                source_id=mem.get("resource", "").split(":", 1)[1],
+                source_id=mem.get("x_memanto", {}).get("source_ref", ""),
             ),
             encoding="utf-8",
         )

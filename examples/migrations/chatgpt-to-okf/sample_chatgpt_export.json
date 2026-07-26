@@ -55,7 +55,7 @@
   },
   {
     "id": "msg-010",
-    "content": "You're currently working out of /Users/water/idea-workplace/test/github. The dashboard project lives under that tree.",
+    "content": "You're currently working out of <HOME>/workspace. The dashboard project lives under that tree.",
     "role": "assistant",
     "created_at": "2026-07-08T10:10:00Z"
   }
