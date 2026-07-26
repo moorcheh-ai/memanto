@@ -156,7 +156,7 @@ def test_update_memory_reports_validation_action():
             context={"actor_id": "agent-1"},
         )
 
-    assert result.get("validation") != "store" or "superseded_ids" in result, (
+    assert result["validation"] == "supersede", (
         "When validate_memory returns action='supersede', the response's "
         "`validation` field must reflect that (not the hardcoded 'store'). "
         "Audit logs and conflict dashboards read this field."
