@@ -1,8 +1,11 @@
 from unittest.mock import MagicMock
 
+import pytest
+
 from memanto.app.core import MemoryRecord
 from memanto.app.services.memory_validation_service import MemoryValidationService
 from memanto.app.services.memory_write_service import MemoryWriteService
+from memanto.app.utils.errors import MemoryError
 
 
 def make_memory(**overrides):
@@ -131,14 +134,14 @@ class TestContradictionHandling:
         client.documents.delete.assert_not_called()
         uploads = client.documents.upload.call_args_list
         assert len(uploads) == 2
-        superseded_doc = uploads[0].kwargs["documents"][0]
+        new_doc = uploads[0].kwargs["documents"][0]
+        assert new_doc["id"] == memory.id
+        assert new_doc["status"] == "active"
+        superseded_doc = uploads[1].kwargs["documents"][0]
         assert superseded_doc["id"] == "old-1"
         assert superseded_doc["status"] == "superseded"
         assert superseded_doc["superseded_by"] == memory.id
         assert "superseded_at" in superseded_doc
-        new_doc = uploads[1].kwargs["documents"][0]
-        assert new_doc["id"] == memory.id
-        assert new_doc["status"] == "active"
 
     def test_duplicate_content_is_not_a_contradiction(self):
         """Identical content under the same title is a duplicate, not a conflict."""
@@ -155,8 +158,8 @@ class TestContradictionHandling:
         """Failed supersede upload must not delete the original document."""
         client = make_client(search_results=[existing_doc()])
         client.documents.upload.side_effect = [
-            {"status": "failed"},
             {"status": "success"},
+            {"status": "failed"},
         ]
         write_service = MemoryWriteService(client)
 
@@ -165,6 +168,25 @@ class TestContradictionHandling:
         assert result.get("superseded_ids", []) == []
         assert "failed to supersede old-1" in result["reason"]
         client.documents.delete.assert_not_called()
+
+    def test_failed_replacement_upload_leaves_existing_memory_active(self):
+        """A failed replacement must not supersede the last active truth."""
+        client = make_client(search_results=[existing_doc()])
+        client.documents.upload.return_value = {"status": "failed"}
+        write_service = MemoryWriteService(client)
+
+        memory = make_memory()
+        with pytest.raises(
+            MemoryError, match="Memory upload returned unsuccessful status 'failed'"
+        ):
+            write_service.store_memory(memory)
+
+        uploads = client.documents.upload.call_args_list
+        assert len(uploads) == 1
+        attempted_doc = uploads[0].kwargs["documents"][0]
+        assert attempted_doc["id"] == memory.id
+        assert attempted_doc["status"] == "active"
+        assert all(call.kwargs["documents"][0]["id"] != "old-1" for call in uploads)
 
     def test_exempt_type_skips_conflict_check(self):
         """Types outside REQUIRE_VALIDATION_FOR store directly, without search."""
@@ -203,6 +225,22 @@ class TestContradictionHandling:
             assert res.get("reason") != "MVP direct store", (
                 "Contradiction validation is skipped for batch storage (MVP direct store)."
             )
+
+    def test_failed_batch_replacement_leaves_existing_memory_active(self):
+        """A failed batch upload must not supersede pre-existing active truth."""
+        client = make_client(search_results=[existing_doc()])
+        client.documents.upload.return_value = {"status": "failed"}
+        write_service = MemoryWriteService(client)
+
+        result = write_service.batch_store_memories([make_memory()])
+
+        assert result["failed"] == 1
+        uploads = client.documents.upload.call_args_list
+        assert len(uploads) == 1
+        attempted_docs = uploads[0].kwargs["documents"]
+        assert len(attempted_docs) == 1
+        assert attempted_docs[0]["status"] == "active"
+        assert all(document["id"] != "old-1" for document in attempted_docs)
 
     def test_batch_resolves_contradictions_within_batch(self):
         """Contradicting memories submitted together resolve to last-wins,

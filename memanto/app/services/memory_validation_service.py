@@ -45,6 +45,7 @@ class MemoryValidationService:
         context: dict[str, Any] | None = None,
         *,
         prefetched_conflicts: list[dict[str, Any]] | None | object = _MISSING,
+        resolve_conflicts: bool = True,
     ) -> dict[str, Any]:
         """Validate a memory against existing records, resolving contradictions.
 
@@ -85,6 +86,19 @@ class MemoryValidationService:
                 "reason": "validated: no contradicting memories found",
             }
 
+        if not resolve_conflicts:
+            return {
+                "action": "store",
+                "reason": f"validated: {len(conflicts)} contradiction(s) found",
+                "conflicts": conflicts,
+            }
+
+        return self.resolve_contradictions(memory, conflicts)
+
+    def resolve_contradictions(
+        self, memory: MemoryRecord, conflicts: list[dict[str, Any]]
+    ) -> dict[str, Any]:
+        """Supersede conflicts after the replacement memory is safely stored."""
         superseded: list[str] = []
         failed: list[str] = []
         for old_item in conflicts:

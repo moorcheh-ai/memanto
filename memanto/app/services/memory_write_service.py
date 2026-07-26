@@ -93,7 +93,12 @@ class MemoryWriteService:
             namespace = memory.namespace()
 
             # Validate memory (write-time contradiction resolution)
-            validation_result = self.validation_service.validate_memory(memory, context)
+            # Detect contradictions before writing, but do not deactivate the
+            # existing active memories until the replacement is confirmed.
+            # Otherwise a failed replacement upload leaves no active truth.
+            validation_result = self.validation_service.validate_memory(
+                memory, context, resolve_conflicts=False
+            )
             # Use validated memory if modified
             if "memory" in validation_result:
                 memory = validation_result["memory"]
@@ -107,6 +112,17 @@ class MemoryWriteService:
             result = self.client.documents.upload(
                 namespace_name=namespace, documents=[document]
             )
+            upload_status = str(result.get("status", "unknown")).lower()
+            if upload_status not in SUCCESSFUL_UPLOAD_STATUSES:
+                raise MemoryError(
+                    f"Memory upload returned unsuccessful status '{upload_status}'"
+                )
+
+            conflicts = validation_result.pop("conflicts", [])
+            if conflicts:
+                validation_result = self.validation_service.resolve_contradictions(
+                    memory, conflicts
+                )
 
             response = {
                 "id": memory.id,
@@ -152,6 +168,8 @@ class MemoryWriteService:
             results = []
             validated_documents = []
             prepared: list[MemoryRecord] = []
+            deferred_conflicts: dict[str, list[dict[str, Any]]] = {}
+            memories_by_id: dict[str, MemoryRecord] = {}
 
             # Enforce server-side timestamps for batch (single timestamp for all)
             now = datetime.now(timezone.utc)
@@ -225,14 +243,25 @@ class MemoryWriteService:
                             memory,
                             context,
                             prefetched_conflicts=prefetched_conflicts[memory.id],
+                            resolve_conflicts=False,
                         )
                     else:
                         validation_result = self.validation_service.validate_memory(
-                            memory, context
+                            memory, context, resolve_conflicts=False
                         )
                         # Use validated memory if modified
                         if "memory" in validation_result:
                             memory = cast(MemoryRecord, validation_result["memory"])
+
+                    raw_conflicts: Any = validation_result.pop("conflicts", [])
+                    pending_conflicts = (
+                        cast(list[dict[str, Any]], raw_conflicts)
+                        if isinstance(raw_conflicts, list)
+                        else []
+                    )
+                    if pending_conflicts:
+                        deferred_conflicts[str(memory.id)] = pending_conflicts
+                    memories_by_id[str(memory.id)] = memory
 
                     from moorcheh_sdk.types.document import Document
 
@@ -290,6 +319,24 @@ class MemoryWriteService:
                             result["error"] = (
                                 f"Batch upload returned status '{moorcheh_status}'"
                             )
+
+                # Only supersede pre-existing contradictions for documents
+                # whose replacements were confirmed by the batch upload.
+                for result in results:
+                    result_id = str(result.get("id", ""))
+                    if (
+                        str(result.get("status", "")).lower()
+                        not in SUCCESSFUL_UPLOAD_STATUSES
+                        or result_id not in deferred_conflicts
+                    ):
+                        continue
+                    resolution = self.validation_service.resolve_contradictions(
+                        memories_by_id[result_id], deferred_conflicts[result_id]
+                    )
+                    result["action"] = resolution.get("action", result["action"])
+                    result["reason"] = resolution.get("reason", result["reason"])
+                    if resolution.get("superseded_ids"):
+                        result["superseded_ids"] = resolution["superseded_ids"]
 
             # Count successes, failures, and namespace-rejected items separately
             # so that successful + failed + rejected == total_submitted always.
