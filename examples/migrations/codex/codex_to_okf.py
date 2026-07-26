@@ -27,6 +27,7 @@ from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
+from urllib.parse import quote
 
 ENTRY_DELIMITER = "<!-- okf-entry -->"
 EXPORT_SCHEMA = "codex-stage1-memory-export/v1"
@@ -152,6 +153,7 @@ class SourceMemory:
     thread_id: str
     raw_memory: str
     rollout_summary: str
+    turn_id: str | None = None
     rollout_slug: str | None = None
     source_updated_at: int | str | None = None
     generated_at: int | str | None = None
@@ -329,7 +331,10 @@ def load_memory_database(
         )
         selected = sorted(required)
         selected.extend(column for column in optional if column in columns)
-        query = f"SELECT {', '.join(selected)} FROM stage1_outputs"
+        query = (
+            f"SELECT {', '.join(selected)} FROM stage1_outputs "
+            "ORDER BY source_updated_at ASC, thread_id ASC"
+        )
         rows = [dict(row) for row in connection.execute(query).fetchall()]
 
     thread_metadata = _load_thread_metadata(state_db) if state_db else {}
@@ -483,6 +488,7 @@ def _parse_rollout(
                 thread_id=session_id,
                 raw_memory=raw_memory,
                 rollout_summary=final_answer,
+                turn_id=current_turn_id or f"turn-{len(memories) + 1}",
                 rollout_slug=_slugify(title),
                 source_updated_at=turn_timestamp or session_timestamp,
                 cwd=cwd,
@@ -631,11 +637,17 @@ def map_source_memories(
                     *((str(task_group),) if task_group else ()),
                 )
             )
+            thread_ref = quote(source.thread_id, safe="")
             fragment = f"task-{task_number}"
-            resource = f"codex://thread/{source.thread_id}#{fragment}"
+            if source.turn_id:
+                turn_ref = quote(source.turn_id, safe="")
+                resource = f"codex://thread/{thread_ref}/turn/{turn_ref}#{fragment}"
+            else:
+                resource = f"codex://thread/{thread_ref}#{fragment}"
             metadata = {
                 "codex_source_kind": source.source_kind,
                 "codex_thread_id": source.thread_id,
+                "codex_turn_id": source.turn_id,
                 "codex_task_number": task_number,
                 "codex_task_outcome": outcome,
                 "codex_task_group": task_group,
@@ -985,8 +997,17 @@ def _optional_int(value: Any) -> int | None:
 
 
 def _source_fingerprint(memories: Iterable[SourceMemory]) -> str:
+    records = [asdict(memory) for memory in memories]
+    records.sort(
+        key=lambda record: json.dumps(
+            record,
+            sort_keys=True,
+            ensure_ascii=False,
+            separators=(",", ":"),
+        )
+    )
     canonical = json.dumps(
-        [asdict(memory) for memory in memories],
+        records,
         sort_keys=True,
         ensure_ascii=False,
         separators=(",", ":"),

@@ -9,6 +9,7 @@ Codex's own extraction boundary while avoiding one giant memory per rollout.
 | Codex source | OKF or Memanto target | Behavior |
 | --- | --- | --- |
 | `thread_id` + task number | `resource` | Stable `codex://thread/<id>#task-N` provenance |
+| Rollout `turn_id` | `resource`, `codex_turn_id` | Adds `/turn/<id>` so multi-turn provenance stays unique |
 | Task heading | `title` | Truncated to 100 characters |
 | Stage-one `description` | `description` | Falls back to rollout summary or task title |
 | Task block | Markdown body | Preserved verbatim after defensive redaction |

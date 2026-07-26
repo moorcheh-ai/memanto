@@ -17,7 +17,7 @@ storage savings would be misleading.
 | Codex task blocks | 1 |
 | Mapped OKF memories | 1 |
 | Skipped records | 0 |
-| Source JSON bytes | 4,627 |
+| Source JSON bytes | 4,650 |
 | Complete OKF bundle bytes | 3,607 |
 | Source golden recall | 100% |
 | OKF golden recall | 100% |

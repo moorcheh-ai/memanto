@@ -186,6 +186,40 @@ class TestDatabaseSource:
         assert len(adapter.load_memory_database(memory_db)) == 1
         assert not Path(f"{memory_db}-wal").exists()
 
+    def test_database_rows_have_a_stable_source_order(self, tmp_path):
+        memory_db = tmp_path / "memories_1.sqlite"
+        _create_memory_db(memory_db)
+        connection = sqlite3.connect(memory_db)
+        connection.execute(
+            """
+            INSERT INTO stage1_outputs (
+                thread_id, source_updated_at, raw_memory, rollout_summary,
+                rollout_slug, generated_at, usage_count, last_usage,
+                selected_for_phase2
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                "thread-early",
+                1784000000,
+                RAW_MEMORY,
+                "Earlier memory.",
+                "earlier-memory",
+                1784000060,
+                0,
+                None,
+                0,
+            ),
+        )
+        connection.commit()
+        connection.close()
+
+        records = adapter.load_memory_database(memory_db)
+
+        assert [record.thread_id for record in records] == [
+            "thread-early",
+            "thread-demo-001",
+        ]
+
 
 class TestTaskMapping:
     @pytest.fixture()
@@ -394,6 +428,24 @@ class TestPortableSourceExport:
         with pytest.raises(ValueError, match="missing required fields"):
             adapter.load_source_export(source)
 
+    def test_source_fingerprint_is_independent_of_record_order(self):
+        records = [
+            adapter.SourceMemory(
+                thread_id="thread-b",
+                raw_memory=RAW_MEMORY,
+                rollout_summary="Memory B.",
+            ),
+            adapter.SourceMemory(
+                thread_id="thread-a",
+                raw_memory=RAW_MEMORY,
+                rollout_summary="Memory A.",
+            ),
+        ]
+
+        assert adapter._source_fingerprint(records) == adapter._source_fingerprint(
+            reversed(records)
+        )
+
 
 class TestSessionFallback:
     def _write_rollout(self, path: Path, *, malformed: bool = False) -> None:
@@ -480,6 +532,41 @@ class TestSessionFallback:
         assert "private policy" not in raw
         assert "private tool output" not in raw
         assert records[0].source_kind == "session_rollout"
+        assert records[0].turn_id == "turn-001"
+
+    def test_turn_ids_keep_multi_turn_resources_unique(self):
+        raw_memory = adapter._session_turn_memory(
+            title="Keep UTC timestamps",
+            user_message="Keep UTC timestamps.",
+            final_answer="All timestamps are UTC.",
+            cwd="/workspace/atlas",
+        )
+        sources = [
+            adapter.SourceMemory(
+                thread_id="session-001",
+                turn_id=turn_id,
+                raw_memory=raw_memory,
+                rollout_summary="All timestamps are UTC.",
+                source_kind="session_rollout",
+            )
+            for turn_id in ("turn-001", "turn-002")
+        ]
+        stats = adapter.MigrationStats(source_format="sessions")
+
+        memories = adapter.map_source_memories(
+            sources,
+            redactor=adapter.Redactor(),
+            stats=stats,
+        )
+
+        assert [memory.resource for memory in memories] == [
+            "codex://thread/session-001/turn/turn-001#task-1",
+            "codex://thread/session-001/turn/turn-002#task-1",
+        ]
+        assert [memory.metadata["codex_turn_id"] for memory in memories] == [
+            "turn-001",
+            "turn-002",
+        ]
 
     def test_skips_malformed_lines_by_default(self, tmp_path):
         rollout = tmp_path / "rollout-demo.jsonl"
