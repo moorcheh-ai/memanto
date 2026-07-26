@@ -4,10 +4,18 @@ Agent Service for MEMANTO
 Handles agent creation, listing, and lifecycle management.
 """
 
-import fcntl
+from __future__ import annotations
+
 import json
+import os
+import sys
+import time
+from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import TimeoutError as FuturesTimeoutError
+from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import Iterator
 
 from moorcheh_sdk.exceptions import ConflictError
 
@@ -23,6 +31,41 @@ from memanto.app.utils.errors import (
 )
 from memanto.app.utils.temporal_helpers import as_utc_aware
 from memanto.app.utils.validation import validate_safe_id
+
+# Bounded wait for Moorcheh namespace creation so a hung cloud call cannot
+# hold a claimed plan slot indefinitely.
+_NAMESPACE_CREATE_TIMEOUT_SEC = float(
+    os.environ.get("MEMANTO_NAMESPACE_CREATE_TIMEOUT_SEC", "15")
+)
+
+
+@contextmanager
+def _exclusive_file_lock(lock_path: Path) -> Iterator[None]:
+    """Cross-platform exclusive lock (fcntl on Unix, msvcrt on Windows)."""
+    lock_path.touch(exist_ok=True)
+    with open(lock_path, "a+b") as lock_file:
+        if sys.platform == "win32":
+            import msvcrt
+
+            while True:
+                try:
+                    msvcrt.locking(lock_file.fileno(), msvcrt.LK_NBLCK, 1)
+                    break
+                except OSError:
+                    time.sleep(0.01)
+            try:
+                yield
+            finally:
+                lock_file.seek(0)
+                msvcrt.locking(lock_file.fileno(), msvcrt.LK_UNLCK, 1)
+        else:
+            import fcntl
+
+            fcntl.flock(lock_file.fileno(), fcntl.LOCK_EX)
+            try:
+                yield
+            finally:
+                fcntl.flock(lock_file.fileno(), fcntl.LOCK_UN)
 
 
 class AgentService:
@@ -51,6 +94,17 @@ class AgentService:
         validate_safe_id(agent_id, "agent_id")
         return self.agents_dir / f"{agent_id}.json"
 
+    def _load_agent_file(self, agent_file: Path) -> AgentInfo | None:
+        """Load agent metadata; skip empty/incomplete placeholders."""
+        try:
+            if agent_file.stat().st_size == 0:
+                return None
+            with open(agent_file) as f:
+                data = json.load(f)
+            return AgentInfo(**data)
+        except (OSError, json.JSONDecodeError, TypeError, ValueError):
+            return None
+
     def create_agent(
         self, agent_create: AgentCreate, moorcheh_api_key: str
     ) -> AgentInfo:
@@ -72,32 +126,26 @@ class AgentService:
 
         # Cross-process capacity lock: serialize claim + plan-limit check so
         # concurrent creators with distinct IDs cannot all pass the limit.
-        lock_path = self.agents_dir / ".capacity.lock"
-        lock_path.touch(exist_ok=True)
-        with open(lock_path, "a+") as lock_file:
-            fcntl.flock(lock_file.fileno(), fcntl.LOCK_EX)
+        with _exclusive_file_lock(self.agents_dir / ".capacity.lock"):
+            # Atomic creation: exclusive open prevents TOCTOU duplicate-ID races.
             try:
-                # Atomic creation: exclusive open prevents TOCTOU duplicate-ID races.
-                try:
-                    fd = open(agent_file, "x")
-                    fd.close()
-                except FileExistsError:
-                    raise AgentAlreadyExistsError(
-                        f"Agent '{agent_create.agent_id}' already exists"
-                    )
+                fd = open(agent_file, "x")
+                fd.close()
+            except FileExistsError:
+                raise AgentAlreadyExistsError(
+                    f"Agent '{agent_create.agent_id}' already exists"
+                )
 
-                # Check agent count limit AFTER claiming the slot.
-                # Community plan: max 2 agents. Remove the file if over limit.
-                current_count = len(list(self.agents_dir.glob("*.json")))
-                max_agents = self._get_max_agents()
-                if current_count > max_agents:
-                    agent_file.unlink(missing_ok=True)
-                    raise AgentLimitExceededError(
-                        f"Agent limit reached ({max_agents}). "
-                        f"Upgrade your plan to create more agents."
-                    )
-            finally:
-                fcntl.flock(lock_file.fileno(), fcntl.LOCK_UN)
+            # Check agent count limit AFTER claiming the slot.
+            # Community plan: max 2 agents. Remove the file if over limit.
+            current_count = len(list(self.agents_dir.glob("*.json")))
+            max_agents = self._get_max_agents()
+            if current_count > max_agents:
+                agent_file.unlink(missing_ok=True)
+                raise AgentLimitExceededError(
+                    f"Agent limit reached ({max_agents}). "
+                    f"Upgrade your plan to create more agents."
+                )
 
         namespace = self._generate_namespace(agent_create.agent_id)
 
@@ -109,12 +157,21 @@ class AgentService:
             client = get_moorcheh_client()
 
             try:
-                # Use Moorcheh SDK to create namespace with type="text"
-                client.namespaces.create(namespace, type="text")
+                # Bound the external call so a hung SDK cannot hold plan quota.
+                with ThreadPoolExecutor(max_workers=1) as pool:
+                    future = pool.submit(
+                        client.namespaces.create, namespace, type="text"
+                    )
+                    future.result(timeout=_NAMESPACE_CREATE_TIMEOUT_SEC)
                 print(f"[OK] Namespace created in Moorcheh: {namespace}")
             except ConflictError:
                 # Namespace already exists - this is OK, agent might have been created before
                 print(f"[OK] Namespace already exists in Moorcheh: {namespace}")
+            except FuturesTimeoutError as e:
+                raise NamespaceError(
+                    f"Timed out creating namespace '{namespace}' in Moorcheh "
+                    f"after {_NAMESPACE_CREATE_TIMEOUT_SEC:g}s"
+                ) from e
             except Exception as e:
                 # On-prem raises moorcheh.errors.MoorchehApiError (HTTP 409) rather
                 # than the cloud SDK's typed ConflictError when the namespace
@@ -156,15 +213,12 @@ class AgentService:
             agent_id: Agent identifier
 
         Returns:
-            AgentInfo or None if not found
+            AgentInfo or None if not found / incomplete placeholder
         """
         agent_file = self._get_agent_file(agent_id)
         if not agent_file.exists():
             return None
-
-        with open(agent_file) as f:
-            data = json.load(f)
-            return AgentInfo(**data)
+        return self._load_agent_file(agent_file)
 
     def list_agents(self) -> AgentList:
         """
@@ -175,9 +229,9 @@ class AgentService:
         """
         agents = []
         for agent_file in self.agents_dir.glob("*.json"):
-            with open(agent_file) as f:
-                data = json.load(f)
-                agents.append(AgentInfo(**data))
+            agent = self._load_agent_file(agent_file)
+            if agent is not None:
+                agents.append(agent)
 
         # Sort by created_at (newest first); normalize for legacy naive timestamps.
         agents.sort(key=lambda a: as_utc_aware(a.created_at), reverse=True)
@@ -250,7 +304,6 @@ class AgentService:
 
         Checks MEMANTO_MAX_AGENTS env var, defaults to community plan (2).
         """
-        import os
         try:
             return int(os.environ.get("MEMANTO_MAX_AGENTS", "2"))
         except (TypeError, ValueError):

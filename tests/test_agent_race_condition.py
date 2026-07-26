@@ -13,6 +13,7 @@ import os
 import shutil
 import tempfile
 import threading
+import time
 from pathlib import Path
 from unittest.mock import patch
 
@@ -25,6 +26,34 @@ from memanto.app.utils.errors import (
     AgentLimitExceededError,
     NamespaceError,
 )
+
+
+def _mp_create_worker(agents_dir: str, agent_id: str, queue) -> None:
+    """Module-level worker for process-isolated capacity-lock test."""
+    os.environ["MEMANTO_MAX_AGENTS"] = "2"
+    from unittest.mock import MagicMock, patch
+
+    from memanto.app.models.session import AgentCreate as _AgentCreate
+    from memanto.app.services.agent_service import AgentService as _AgentService
+    from memanto.app.utils.errors import AgentLimitExceededError as _Limit
+
+    service = _AgentService(agents_dir=Path(agents_dir))
+    mock_client = MagicMock()
+    mock_client.namespaces.create.return_value = None
+    try:
+        with patch(
+            "memanto.app.services.agent_service.get_moorcheh_client",
+            return_value=mock_client,
+        ):
+            service.create_agent(
+                _AgentCreate(agent_id=agent_id, pattern="tool"),
+                moorcheh_api_key="key",
+            )
+        queue.put(("ok", agent_id))
+    except _Limit:
+        queue.put(("limit", agent_id))
+    except Exception as exc:  # pragma: no cover
+        queue.put(("err", f"{type(exc).__name__}:{exc}"))
 
 
 @pytest.fixture
@@ -134,6 +163,32 @@ class TestAtomicCreation:
         assert len(successes) == 2, f"expected 2 agents, got {successes}"
         assert limits == 6, f"expected 6 limit errors, got {limits}"
         assert len(list(service.agents_dir.glob("*.json"))) == 2
+
+    def test_multiprocess_distinct_ids_respect_limit(self, tmp_agents_dir):
+        """Process-isolated creators share capacity lock across AgentService instances."""
+        import multiprocessing as mp
+
+        ctx = mp.get_context("spawn")
+        queue = ctx.Queue()
+        procs = [
+            ctx.Process(
+                target=_mp_create_worker,
+                args=(str(tmp_agents_dir), f"proc-{i}", queue),
+            )
+            for i in range(8)
+        ]
+        for p in procs:
+            p.start()
+        for p in procs:
+            p.join(timeout=60)
+            assert p.exitcode == 0, f"worker exit {p.exitcode}"
+
+        results = [queue.get(timeout=1) for _ in range(8)]
+        oks = [r for r in results if r[0] == "ok"]
+        limits = [r for r in results if r[0] == "limit"]
+        assert len(oks) == 2, f"expected 2 ok, got {results}"
+        assert len(limits) == 6, f"expected 6 limit, got {results}"
+        assert len(list(tmp_agents_dir.glob("*.json"))) == 2
 
 
 class TestAgentLimit:
@@ -287,3 +342,41 @@ class TestCleanupOnFailure:
                 moorcheh_api_key="key"
             )
         assert agent.agent_id == "retry-agent"
+
+
+class TestPlaceholderTolerance:
+    """Empty / corrupt claim files must not crash readers."""
+
+    def test_list_skips_empty_and_corrupt(self, service, tmp_agents_dir):
+        (tmp_agents_dir / "empty.json").write_text("")
+        (tmp_agents_dir / "bad.json").write_text("{not-json")
+        listed = service.list_agents()
+        assert listed.count == 0
+
+    def test_get_returns_none_for_placeholder(self, service, tmp_agents_dir):
+        (tmp_agents_dir / "ghost.json").write_text("")
+        assert service.get_agent("ghost") is None
+
+    @patch("memanto.app.services.agent_service.get_moorcheh_client")
+    def test_namespace_timeout_cleans_placeholder(self, mock_client, service):
+        """Hung namespace create times out and releases the claim."""
+
+        def hang(*args, **kwargs):
+            time.sleep(5)
+            return None
+
+        mock_client.return_value.namespaces.create.side_effect = hang
+        with patch.dict(
+            os.environ,
+            {"MEMANTO_MAX_AGENTS": "10", "MEMANTO_NAMESPACE_CREATE_TIMEOUT_SEC": "0.2"},
+        ):
+            # Re-import timeout constant is baked at module load — patch the module attr
+            import memanto.app.services.agent_service as mod
+
+            with patch.object(mod, "_NAMESPACE_CREATE_TIMEOUT_SEC", 0.2):
+                with pytest.raises(NamespaceError, match="Timed out"):
+                    service.create_agent(
+                        AgentCreate(agent_id="hang-agent", pattern="tool"),
+                        moorcheh_api_key="key",
+                    )
+        assert not (service.agents_dir / "hang-agent.json").exists()
