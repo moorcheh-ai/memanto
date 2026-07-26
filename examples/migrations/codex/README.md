@@ -110,9 +110,10 @@ persisted rollout:
 ./generate_rollout_sample.sh
 ```
 
-The temporary home links only to the existing Codex authentication file. It
-does not copy credentials into this repository, and it is deleted on exit. The
-Codex call can consume model usage.
+The temporary home receives a mode-`0600` copy of the existing Codex
+authentication file. It never copies credentials into this repository, does
+not mutate the original file, and deletes the temporary copy on exit. The Codex
+call can consume model usage.
 
 The committed fixture goes one step further: it was produced by Codex's own
 stage-one memory extraction pipeline. See [PROVENANCE.md](PROVENANCE.md) for
