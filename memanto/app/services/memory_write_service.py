@@ -422,12 +422,17 @@ class MemoryWriteService:
                     else:
                         updated_memory.expires_at = raw_expires_at
 
-            # Step 3: Upload new version (overwrites existing document with same ID)
+            # Step 3: Validate before document construction (mirror store_memory)
             from typing import Any, cast
 
             from moorcheh_sdk.types.document import Document
 
-            validation_result = {"action": "store", "reason": "MVP direct store"}
+            validation_result = self.validation_service.validate_memory(
+                updated_memory, context
+            )
+            # Use validated memory if modified
+            if "memory" in validation_result:
+                updated_memory = cast(MemoryRecord, validation_result["memory"])
 
             document = cast(Document, updated_memory.to_moorcheh_document())
 
@@ -453,15 +458,19 @@ class MemoryWriteService:
             except Exception as e:
                 raise MemoryError(f"Upload failed. Error: {e}")
 
-            return {
+            response = {
                 "id": memory_id,
                 "namespace": namespace,
                 "status": upload_result.get("status", "unknown"),
-                "action": "updated",
-                "reason": "Memory updated successfully via overwrite",
-                "validation": validation_result.get("action", "validated"),
+                "action": validation_result.get("action", "store"),
+                "reason": validation_result.get(
+                    "reason", "Memory updated successfully"
+                ),
                 "updated_fields": list(updates.keys()),
             }
+            if validation_result.get("superseded_ids"):
+                response["superseded_ids"] = validation_result["superseded_ids"]
+            return response
 
         except Exception as e:
             raise MemoryError(f"Failed to update memory: {e}")
