@@ -48,5 +48,4 @@ class TestSafeDeletionUsesCanonicalValidator:
 
     def test_safe_deletion_no_longer_defines_private_validator(self):
         import memanto.app.legacy.safe_deletion as sd
-        assert not hasattr(sd.SafeDeletion, "_is_valid_memory_id") or \
-            sd.SafeDeletion._is_valid_memory_id.__module__ == "memanto.app.utils.ids"
+        assert not hasattr(sd.SafeDeletion, "_is_valid_memory_id")

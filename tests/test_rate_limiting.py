@@ -8,7 +8,7 @@ makes the limiter fail-closed.
 
 import pytest
 
-from memanto.app.utils.rate_limiting import RateLimiter
+from memanto.app.utils.rate_limiting import RateLimiter, enforce_namespace_rate_limit
 
 
 class TestRateLimiterFailClosed:
@@ -30,7 +30,7 @@ class TestRateLimiterFailClosed:
         limiter (e.g. `list`) bypassed rate limiting entirely. After the
         fix it raises."""
         with pytest.raises(ValueError):
-            self.limiter.check_rate_limit("namespace_list", "agent-1")
+            enforce_namespace_rate_limit("list", "agent-1")
 
     def test_known_operation_still_passes_under_limit(self):
         # Sanity check: registered operations are not broken by the fix.
