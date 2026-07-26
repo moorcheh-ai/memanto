@@ -318,6 +318,21 @@ class TestExportOllamaMemories:
         assert mem["confidence"] == 0.7
         assert "Just some plain text" in mem["content"]
 
+    def test_empty_json_fallback(self, mock_ollama_client):
+        """Valid-but-empty JSON (empty array/object/null) should fall back to raw context."""
+        for empty_json in ("[]", "{}", "null"):
+            mock_ollama_client.post.return_value.status_code = 200
+            mock_ollama_client.post.return_value.json.return_value = {
+                "message": {"content": empty_json}
+            }
+            mock_ollama_client.post.return_value.content = b"{}"
+
+            result = export_ollama_memories(
+                "nomic-embed-text", [f"Context for {empty_json}"]
+            )
+
+            assert len(result["memories"]) >= 1, f"Empty JSON {empty_json!r} should produce a fallback memory"
+
     def test_http_error_preserves_raw_context(self, mock_ollama_client):
         mock_ollama_client.post.return_value.status_code = 500
         mock_ollama_client.post.return_value.text = "Server error"
@@ -510,12 +525,12 @@ class TestBuildOkfBundle:
         assert (pref_dir / "preference.md").exists()
 
     def test_auto_split_switches_to_stacked(self, sample_export, tmp_output_dir):
-        # threshold = 1 → all types with >1 memory go stacked
+        # threshold = 2 → no type exceeds it (each has 1 memory), stays file-per-memory
         result = build_okf_bundle(
-            sample_export, tmp_output_dir / "okf_auto", split="auto", threshold=1
+            sample_export, tmp_output_dir / "okf_auto", split="auto", threshold=2
         )
-        # All types have <=1 memories at threshold=1, so actually everything
-        # is "small". Let's test with threshold=0.
+        assert result["total_memories"] == 4
+        # With threshold=0 all types are larger than threshold → stacked
         result2 = build_okf_bundle(
             sample_export, tmp_output_dir / "okf_auto2", split="auto", threshold=0
         )

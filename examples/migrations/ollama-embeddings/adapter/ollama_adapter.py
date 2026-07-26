@@ -276,6 +276,7 @@ def export_ollama_memories(
                 raw_output = message.get("content", "")
 
                 # Try parsing structured JSON; fall back to raw context
+                before = len(memories)
                 try:
                     extracted = json.loads(raw_output)
                     if isinstance(extracted, list):
@@ -292,7 +293,10 @@ def export_ollama_memories(
                         if extracted.get("content"):
                             memories.append(extracted)
                 except (json.JSONDecodeError, TypeError):
-                    # Fall back: treat the raw output as artifact content
+                    pass
+
+                if len(memories) == before:
+                    # Nothing structured survived: preserve the raw output/context
                     if raw_output.strip():
                         memories.append(
                             {
@@ -385,7 +389,7 @@ def map_ollama(export: dict[str, Any]) -> list[dict[str, Any]]:
         if not content:
             continue
 
-        memory_type = mem.get("type", "").strip().lower() or None
+        memory_type = (mem.get("type") or "").strip().lower() or None
         if memory_type and memory_type not in MEMANTO_MEMORY_TYPES:
             memory_type = None  # Let Memanto auto-classify
 
@@ -508,9 +512,13 @@ def build_okf_bundle(
         if use_stacked:
             type_index_lines.append(f"- [{mtype.capitalize()} memories]({mtype}.md)")
         else:
+            seen_slugs: dict[str, int] = {}
             for mem in mems:
                 title = (mem.get("title") or "untitled").strip()
                 slug = _slugify(title)
+                seen_slugs[slug] = seen_slugs.get(slug, 0) + 1
+                if seen_slugs[slug] > 1:
+                    slug = f"{slug}-{seen_slugs[slug]}"
                 type_index_lines.append(f"- [{title}]({slug}.md)")
         type_index_lines.append("")
         type_index.write_text("\n".join(type_index_lines), encoding="utf-8")
@@ -536,20 +544,28 @@ def _slugify(text: str) -> str:
 
     slug = text.lower().strip()
     slug = re.sub(r"[^a-z0-9]+", "-", slug)
-    return slug.strip("-")[:100]
+    return slug.strip("-")[:100] or "memory"
 
 
 def _write_okf_index(
     path: Path, export: dict[str, Any], by_type: dict[str, list[dict[str, Any]]]
 ) -> None:
     """Write the top-level OKF bundle index."""
+    import yaml
+
+    frontmatter = {
+        "type": "index",
+        "title": f"Ollama Memory Export - {export.get('exported_at', 'unknown')}",
+        "description": (
+            f"OKF bundle exported from Ollama using model "
+            f"'{export.get('model', 'unknown')}'"
+        ),
+        "tags": ["ollama", "migration", "memanto"],
+        "timestamp": export.get("exported_at", _now_utc().isoformat()),
+    }
     lines = [
         "---",
-        "type: index",
-        f'title: "Ollama Memory Export - {export.get("exported_at", "unknown")}"',
-        f"description: \"OKF bundle exported from Ollama using model '{export.get('model', 'unknown')}'\"",
-        f"tags: [ollama, migration, memanto]",
-        f"timestamp: {export.get('exported_at', _now_utc().isoformat())}",
+        yaml.dump(frontmatter, default_flow_style=False, allow_unicode=True).strip(),
         "---",
         "",
         "# Ollama Memory Export",
@@ -587,9 +603,13 @@ def _write_file_per_okf(
     type_dir: Path, mtype: str, mems: list[dict[str, Any]]
 ) -> None:
     """Write one .md file per memory."""
+    seen: dict[str, int] = {}
     for mem in mems:
         title = (mem.get("title") or "untitled").strip()
         slug = _slugify(title)
+        seen[slug] = seen.get(slug, 0) + 1
+        if seen[slug] > 1:
+            slug = f"{slug}-{seen[slug]}"
         content = _mem_to_okf_markdown(mem, mtype)
         (type_dir / f"{slug}.md").write_text(content, encoding="utf-8")
 
@@ -639,15 +659,20 @@ def _write_okf_metrics(
     per_type_counts: dict[str, int],
 ) -> None:
     """Write an OKF metrics overview file."""
+    import yaml
+
     summary = export.get("summary", {})
     total = sum(per_type_counts.values())
 
+    frontmatter = {
+        "type": "metrics",
+        "title": "Migration Metrics",
+        "description": "Aggregate metrics for the Ollama → Memanto migration",
+        "timestamp": export.get("exported_at", _now_utc().isoformat()),
+    }
     lines = [
         "---",
-        "type: metrics",
-        'title: "Migration Metrics"',
-        f"description: \"Aggregate metrics for the Ollama → Memanto migration\"",
-        f"timestamp: {export.get('exported_at', _now_utc().isoformat())}",
+        yaml.dump(frontmatter, default_flow_style=False, allow_unicode=True).strip(),
         "---",
         "",
         "# Migration Metrics",
@@ -684,6 +709,7 @@ def run_full_migration(
     chat_model: str | None = None,
     agent_id: str = "ollama-agent",
     verify_embedding: bool = True,
+    split: str = "auto",
 ) -> dict[str, Any]:
     """Run the complete migration pipeline: discover → verify → export → build OKF.
 
@@ -732,7 +758,7 @@ def run_full_migration(
 
     # 4. Build OKF bundle
     okf_dir = output_dir / "okf_bundle"
-    okf_result = build_okf_bundle(export, okf_dir)
+    okf_result = build_okf_bundle(export, okf_dir, split=split)
     result["okf_bundle"] = okf_result
 
     return result
@@ -862,6 +888,7 @@ Examples:
         chat_model=args.chat_model,
         agent_id=args.agent_id,
         verify_embedding=not args.skip_verify,
+        split=args.split,
     )
 
     print(f"\n=== Migration Complete ===")
