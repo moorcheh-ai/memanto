@@ -18,6 +18,8 @@ _MODULE_PATH = _EXAMPLE_DIR / "codex_to_okf.py"
 
 def _load_adapter():
     spec = importlib.util.spec_from_file_location("codex_to_okf", _MODULE_PATH)
+    if spec is None or spec.loader is None:
+        raise ImportError(f"Unable to load Codex migration adapter at {_MODULE_PATH}")
     module = importlib.util.module_from_spec(spec)
     sys.modules[spec.name] = module
     spec.loader.exec_module(module)
@@ -317,6 +319,23 @@ Failures and how to do differently:
 
         assert memory_type == "decision"
 
+    def test_uses_rollout_summary_when_raw_memory_has_no_body(self):
+        source = adapter.SourceMemory(
+            thread_id="thread-summary-only",
+            raw_memory="",
+            rollout_summary="The project decided to keep UTC timestamps.",
+            thread_title="Keep timestamps stable",
+        )
+        stats = adapter.MigrationStats(source_format="memory-db")
+
+        memories = adapter.map_source_memories(
+            [source], redactor=adapter.Redactor(), stats=stats
+        )
+
+        assert len(memories) == 1
+        assert memories[0].title == "Keep timestamps stable"
+        assert "keep UTC timestamps" in memories[0].body
+
 
 class TestOkfRoundTrip:
     def test_shipped_loader_and_mapper_consume_the_bundle(self, tmp_path):
@@ -386,6 +405,50 @@ class TestOkfRoundTrip:
                 overwrite=False,
                 summary={},
             )
+
+    def test_overwrite_refuses_unrecognized_directory(self, tmp_path):
+        output = tmp_path / "user-data"
+        output.mkdir()
+        sentinel = output / "keep.txt"
+        sentinel.write_text("important", encoding="utf-8")
+
+        with pytest.raises(FileExistsError, match="refusing to overwrite"):
+            adapter.write_okf_bundle(
+                [],
+                output,
+                split="file",
+                overwrite=True,
+                summary={"adapter": "codex-to-okf"},
+            )
+
+        assert sentinel.read_text(encoding="utf-8") == "important"
+
+    def test_overwrite_replaces_adapter_generated_bundle(self, tmp_path):
+        output = tmp_path / "bundle"
+        summary = {"adapter": "codex-to-okf"}
+        adapter.write_okf_bundle(
+            [],
+            output,
+            split="file",
+            overwrite=False,
+            summary=summary,
+        )
+        stale = output / "stale.txt"
+        stale.write_text("stale", encoding="utf-8")
+
+        adapter.write_okf_bundle(
+            [],
+            output,
+            split="file",
+            overwrite=True,
+            summary=summary,
+        )
+
+        assert not stale.exists()
+        assert (
+            json.loads((output / "migration_summary.json").read_text(encoding="utf-8"))
+            == summary
+        )
 
 
 class TestPortableSourceExport:
@@ -585,6 +648,57 @@ class TestSessionFallback:
 
         with pytest.raises(ValueError, match=r"rollout-demo\.jsonl:4"):
             adapter.load_session_rollouts(rollout, strict=True, stats=stats)
+
+    def test_strict_mode_ignores_blank_lines(self, tmp_path):
+        rollout = tmp_path / "rollout-demo.jsonl"
+        self._write_rollout(rollout)
+        lines = rollout.read_text(encoding="utf-8").splitlines()
+        rollout.write_text("\n\n".join(lines) + "\n\n", encoding="utf-8")
+        stats = adapter.MigrationStats(source_format="sessions")
+
+        records = adapter.load_session_rollouts(rollout, strict=True, stats=stats)
+
+        assert len(records) == 1
+        assert stats.malformed_lines == 0
+
+    def test_main_counts_each_source_redaction_once(self, tmp_path):
+        export = tmp_path / "source.json"
+        export.write_text(
+            json.dumps(
+                {
+                    "schema": adapter.EXPORT_SCHEMA,
+                    "records": [
+                        {
+                            "thread_id": "thread-secret",
+                            "raw_memory": (
+                                "### Task 1: Keep the credential private\n\n"
+                                "Reusable knowledge:\n"
+                                "- API_KEY=super-secret-value-123456789"
+                            ),
+                            "rollout_summary": "Credential handling was documented.",
+                        }
+                    ],
+                }
+            ),
+            encoding="utf-8",
+        )
+        output = tmp_path / "bundle"
+
+        exit_code = adapter.main(
+            [
+                str(export),
+                "--source-format",
+                "export-json",
+                "--output",
+                str(output),
+            ]
+        )
+
+        summary = json.loads(
+            (output / "migration_summary.json").read_text(encoding="utf-8")
+        )
+        assert exit_code == 0
+        assert summary["redactions"]["secret_assignment"] == 1
 
     def test_auto_source_falls_back_when_memory_database_is_empty(self, tmp_path):
         memory_db = tmp_path / "memories_1.sqlite"

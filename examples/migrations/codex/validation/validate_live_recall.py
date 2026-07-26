@@ -63,18 +63,32 @@ def main(argv: list[str] | None = None) -> int:
     golden = load_golden(args.golden)
     results = []
     for item in golden:
-        response = client.recall(
-            agent_id=args.agent,
-            query=str(item["question"]),
-            limit=args.limit,
-            min_similarity=0.0,
-        )
+        expected = [str(term) for term in item["expected_all"]]
+        try:
+            response = client.recall(
+                agent_id=args.agent,
+                query=str(item["question"]),
+                limit=args.limit,
+                min_similarity=0.0,
+            )
+        except Exception as exc:  # noqa: BLE001 - preserve the rest of the report
+            results.append(
+                {
+                    "question_id": str(item["id"]),
+                    "question": str(item["question"]),
+                    "passed": False,
+                    "expected_all": expected,
+                    "missing": expected,
+                    "returned_memories": 0,
+                    "error": f"{type(exc).__name__}: {exc}",
+                }
+            )
+            continue
         memories = response.get("memories") or []
         recalled = "\n".join(
             _memory_text(memory) for memory in memories if isinstance(memory, dict)
         )
         normalized = _normalized(recalled)
-        expected = [str(term) for term in item["expected_all"]]
         missing = [term for term in expected if _normalized(term) not in normalized]
         results.append(
             {
