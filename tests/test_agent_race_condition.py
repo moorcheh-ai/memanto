@@ -20,7 +20,11 @@ import pytest
 
 from memanto.app.models.session import AgentCreate
 from memanto.app.services.agent_service import AgentService
-from memanto.app.utils.errors import AgentAlreadyExistsError, AgentLimitExceededError
+from memanto.app.utils.errors import (
+    AgentAlreadyExistsError,
+    AgentLimitExceededError,
+    NamespaceError,
+)
 
 
 @pytest.fixture
@@ -95,6 +99,41 @@ class TestAtomicCreation:
 
         assert results["success"] == 1, "Only one thread should succeed"
         assert results["conflict"] == 9, "All others should get conflict"
+
+    @patch("memanto.app.services.agent_service.get_moorcheh_client")
+    def test_concurrent_distinct_ids_respect_limit(self, mock_client, service):
+        """Distinct IDs under a limit of 2 → exactly 2 succeed, rest hit limit."""
+        mock_client.return_value.namespaces.create.return_value = None
+        successes: list[str] = []
+        limits = 0
+        lock = threading.Lock()
+
+        def create_one(agent_id: str):
+            nonlocal limits
+            try:
+                service.create_agent(
+                    AgentCreate(agent_id=agent_id, pattern="tool"),
+                    moorcheh_api_key="key",
+                )
+                with lock:
+                    successes.append(agent_id)
+            except AgentLimitExceededError:
+                with lock:
+                    limits += 1
+
+        with patch.dict(os.environ, {"MEMANTO_MAX_AGENTS": "2"}):
+            threads = [
+                threading.Thread(target=create_one, args=(f"agent-{i}",))
+                for i in range(8)
+            ]
+            for t in threads:
+                t.start()
+            for t in threads:
+                t.join()
+
+        assert len(successes) == 2, f"expected 2 agents, got {successes}"
+        assert limits == 6, f"expected 6 limit errors, got {limits}"
+        assert len(list(service.agents_dir.glob("*.json"))) == 2
 
 
 class TestAgentLimit:
@@ -201,7 +240,7 @@ class TestCleanupOnFailure:
         mock_client.return_value.namespaces.create.side_effect = fail_namespace
 
         with patch.dict(os.environ, {"MEMANTO_MAX_AGENTS": "10"}):
-            with pytest.raises(Exception, match="Failed to create namespace"):
+            with pytest.raises(NamespaceError, match="Failed to create namespace"):
                 service.create_agent(
                     AgentCreate(agent_id="fail-agent", pattern="tool"),
                     moorcheh_api_key="key"
@@ -211,12 +250,29 @@ class TestCleanupOnFailure:
         assert not (service.agents_dir / "fail-agent.json").exists()
 
     @patch("memanto.app.services.agent_service.get_moorcheh_client")
+    def test_cleanup_on_save_failure(self, mock_client, service):
+        """Placeholder removed if metadata save fails after namespace creation."""
+        mock_client.return_value.namespaces.create.return_value = None
+
+        with patch.dict(os.environ, {"MEMANTO_MAX_AGENTS": "10"}):
+            with patch.object(
+                service, "_save_agent", side_effect=OSError("disk full")
+            ):
+                with pytest.raises(OSError, match="disk full"):
+                    service.create_agent(
+                        AgentCreate(agent_id="save-fail-agent", pattern="tool"),
+                        moorcheh_api_key="key",
+                    )
+
+        assert not (service.agents_dir / "save-fail-agent.json").exists()
+
+    @patch("memanto.app.services.agent_service.get_moorcheh_client")
     def test_retry_after_failure_succeeds(self, mock_client, service):
         """After a failed creation + cleanup, retrying should work."""
         # First call fails
         mock_client.return_value.namespaces.create.side_effect = RuntimeError("timeout")
         with patch.dict(os.environ, {"MEMANTO_MAX_AGENTS": "10"}):
-            with pytest.raises(Exception):
+            with pytest.raises(NamespaceError, match="Failed to create namespace"):
                 service.create_agent(
                     AgentCreate(agent_id="retry-agent", pattern="tool"),
                     moorcheh_api_key="key"

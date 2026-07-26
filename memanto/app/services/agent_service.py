@@ -4,6 +4,7 @@ Agent Service for MEMANTO
 Handles agent creation, listing, and lifecycle management.
 """
 
+import fcntl
 import json
 from datetime import datetime, timezone
 from pathlib import Path
@@ -14,7 +15,12 @@ from memanto.app.clients.moorcheh import get_moorcheh_client
 from memanto.app.config import get_data_dir
 from memanto.app.core import agent_namespace
 from memanto.app.models.session import AgentCreate, AgentInfo, AgentList
-from memanto.app.utils.errors import AgentAlreadyExistsError, AgentLimitExceededError, AgentNotFoundError
+from memanto.app.utils.errors import (
+    AgentAlreadyExistsError,
+    AgentLimitExceededError,
+    AgentNotFoundError,
+    NamespaceError,
+)
 from memanto.app.utils.temporal_helpers import as_utc_aware
 from memanto.app.utils.validation import validate_safe_id
 
@@ -64,27 +70,34 @@ class AgentService:
         """
         agent_file = self._get_agent_file(agent_create.agent_id)
 
-        # Atomic creation: use exclusive file creation to prevent TOCTOU race.
-        # If two concurrent requests pass exists() at the same time, only one
-        # will succeed at open(..., 'x') — the other raises FileExistsError.
-        try:
-            fd = open(agent_file, "x")
-            fd.close()
-        except FileExistsError:
-            raise AgentAlreadyExistsError(
-                f"Agent '{agent_create.agent_id}' already exists"
-            )
+        # Cross-process capacity lock: serialize claim + plan-limit check so
+        # concurrent creators with distinct IDs cannot all pass the limit.
+        lock_path = self.agents_dir / ".capacity.lock"
+        lock_path.touch(exist_ok=True)
+        with open(lock_path, "a+") as lock_file:
+            fcntl.flock(lock_file.fileno(), fcntl.LOCK_EX)
+            try:
+                # Atomic creation: exclusive open prevents TOCTOU duplicate-ID races.
+                try:
+                    fd = open(agent_file, "x")
+                    fd.close()
+                except FileExistsError:
+                    raise AgentAlreadyExistsError(
+                        f"Agent '{agent_create.agent_id}' already exists"
+                    )
 
-        # Check agent count limit AFTER claiming the slot.
-        # Community plan: max 2 agents. Remove the file if over limit.
-        current_count = len(list(self.agents_dir.glob("*.json")))
-        max_agents = self._get_max_agents()
-        if current_count > max_agents:
-            agent_file.unlink(missing_ok=True)
-            raise AgentLimitExceededError(
-                f"Agent limit reached ({max_agents}). "
-                f"Upgrade your plan to create more agents."
-            )
+                # Check agent count limit AFTER claiming the slot.
+                # Community plan: max 2 agents. Remove the file if over limit.
+                current_count = len(list(self.agents_dir.glob("*.json")))
+                max_agents = self._get_max_agents()
+                if current_count > max_agents:
+                    agent_file.unlink(missing_ok=True)
+                    raise AgentLimitExceededError(
+                        f"Agent limit reached ({max_agents}). "
+                        f"Upgrade your plan to create more agents."
+                    )
+            finally:
+                fcntl.flock(lock_file.fileno(), fcntl.LOCK_UN)
 
         namespace = self._generate_namespace(agent_create.agent_id)
 
@@ -110,28 +123,28 @@ class AgentService:
                 if ("namespace" in msg and "already exists" in msg) or "conflict" in msg:
                     print(f"[OK] Namespace already exists in Moorcheh: {namespace}")
                 else:
-                    raise Exception(
+                    raise NamespaceError(
                         f"Failed to create namespace '{namespace}' in Moorcheh: {str(e)}"
                     )
+
+            # Create agent metadata
+            agent = AgentInfo(
+                agent_id=agent_create.agent_id,
+                namespace=namespace,
+                pattern=agent_create.pattern,
+                description=agent_create.description,
+                created_at=datetime.now(timezone.utc),
+                memory_count=0,
+                session_count=0,
+                status="ready",
+            )
+
+            # Save agent metadata — also covered by cleanup on failure
+            self._save_agent(agent)
         except Exception:
             # Release the claimed file slot on any failure
             agent_file.unlink(missing_ok=True)
             raise
-
-        # Create agent metadata
-        agent = AgentInfo(
-            agent_id=agent_create.agent_id,
-            namespace=namespace,
-            pattern=agent_create.pattern,
-            description=agent_create.description,
-            created_at=datetime.now(timezone.utc),
-            memory_count=0,
-            session_count=0,
-            status="ready",
-        )
-
-        # Save agent metadata
-        self._save_agent(agent)
 
         return agent
 
