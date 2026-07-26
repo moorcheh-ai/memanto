@@ -289,7 +289,10 @@ class OkfExportService:
 
         created_at = mem.get("created_at")
         if created_at:
-            frontmatter["timestamp"] = str(created_at)
+            if isinstance(created_at, datetime):
+                frontmatter["timestamp"] = created_at.isoformat()
+            else:
+                frontmatter["timestamp"] = str(created_at)
 
         source_ref = mem.get("source_ref")
         if source_ref:
