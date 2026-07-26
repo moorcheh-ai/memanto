@@ -192,7 +192,13 @@ class TestCleanupOnFailure:
     @patch("memanto.app.services.agent_service.get_moorcheh_client")
     def test_cleanup_on_namespace_failure(self, mock_client, service):
         """Placeholder file removed if namespace creation raises."""
-        mock_client.return_value.namespaces.create.side_effect = RuntimeError("connection refused")
+
+        def fail_namespace(*args, **kwargs):
+            # Prove the claim/placeholder exists before the failure path cleans it up
+            assert (service.agents_dir / "fail-agent.json").exists()
+            raise RuntimeError("connection refused")
+
+        mock_client.return_value.namespaces.create.side_effect = fail_namespace
 
         with patch.dict(os.environ, {"MEMANTO_MAX_AGENTS": "10"}):
             with pytest.raises(Exception, match="Failed to create namespace"):
