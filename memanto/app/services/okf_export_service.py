@@ -24,6 +24,17 @@ frontmatter keys.
 import re
 import shutil
 from datetime import datetime
+
+
+def format_okf_timestamp(created_at):
+    """Return a valid ISO 8601 timestamp string."""
+    if isinstance(created_at, datetime):
+        return created_at.isoformat()
+    if isinstance(created_at, str):
+        return created_at
+    return None
+
+
 from pathlib import Path
 from typing import Any
 
@@ -289,10 +300,7 @@ class OkfExportService:
 
         created_at = mem.get("created_at")
         if created_at:
-            if isinstance(created_at, datetime):
-                frontmatter["timestamp"] = created_at.isoformat()
-            else:
-                frontmatter["timestamp"] = str(created_at)
+            frontmatter["timestamp"] = format_okf_timestamp(created_at)
 
         source_ref = mem.get("source_ref")
         if source_ref:
