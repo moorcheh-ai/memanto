@@ -88,7 +88,7 @@ def format_current_local_time() -> str:
     """
     Get the current time in a highly-readable local time string.
     """
-    return datetime.now().astimezone().strftime("%b %d, %Y %I:%M %p")
+    return datetime.now(timezone.utc).astimezone().strftime("%b %d, %Y %I:%M %p")
 
 
 def get_today_range() -> tuple[str, str]:

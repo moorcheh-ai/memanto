@@ -61,6 +61,10 @@ class RateLimiter:
         while request_times and request_times[0] <= now - limit.window:
             request_times.popleft()
 
+        # Purge empty key to prevent memory leak from stale agent_ids
+        if not request_times:
+            del self.requests[key]
+
         # Check if under limit
         if len(request_times) < limit.requests:
             request_times.append(now)

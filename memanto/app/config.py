@@ -26,8 +26,6 @@ if _memanto_env.exists():
 _config_file = Path.home() / ".memanto" / "config.yaml"
 if _config_file.exists():
     try:
-        import yaml
-
         with open(_config_file) as f:
             _data = yaml.safe_load(f)
             _memanto = _data.get("memanto", {})

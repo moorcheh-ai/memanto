@@ -81,8 +81,6 @@ class MemoryReadService:
                 namespace_name=namespace, ids=[memory_id]
             )
 
-            from typing import Any, cast
-
             if not isinstance(result, dict):
                 return None
 
