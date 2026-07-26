@@ -132,12 +132,22 @@ class Memory:
 
 
 def _iso(s: str | None) -> str | None:
+    """Normalize a timestamp to ISO 8601 format with trailing Z.
+
+    Appends a ``Z`` suffix to timestamps that lack one (unless they already
+    contain a timezone offset), ensuring consistency in the OKF output.
+    """
     if not s:
         return None
     return s if s.endswith("Z") or "+" in s else s + "Z"
 
 
 def _first_match(text: str, patterns: list[re.Pattern]) -> list[re.Match]:
+    """Return all pattern matches found in *text*.
+
+    Iterates the given pattern list and collects every match. An empty
+    list means no signal was detected.
+    """
     return [m for p in patterns for m in [p.search(text)] if m]
 
 
@@ -156,6 +166,12 @@ def _infer_category(text: str) -> str:
 
 
 def _safe_filename(s: str) -> str:
+    """Convert a string into a safe, lowercase filename fragment.
+
+    Replaces non-alphanumeric characters (except hyphens) with hyphens,
+    truncates to 90 characters, and falls back to ``\"untitled\"`` if the
+    result is empty.
+    """
     s = re.sub(r"[^\w\-]+", "-", s.strip()).strip("-").lower()
     return s[:90] or "untitled"
 
@@ -269,6 +285,7 @@ def write_okf_bundle(memories: list[Memory], out: Path) -> Path:
 # ---------------------------------------------------------------------------
 
 def main(argv: list[str] | None = None) -> int:
+    """CLI entry point: parse args, extract memories, write OKF bundle."""
     args = argv or sys.argv[1:]
     if len(args) < 2:
         print("Usage: extract_memories.py <chatgpt_export.json> <output_dir>", file=sys.stderr)
