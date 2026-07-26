@@ -33,6 +33,15 @@ _REMOVED_TRUST_FIELDS = frozenset(
 
 
 
+
+def _apply_timestamps(memory):
+    created_at = memory.get('created_at')
+    updated_at = memory.get('updated_at')
+    if created_at and updated_at and created_at > updated_at:
+        updated_at = created_at
+    return memory
+
+
 class MemoryWriteService:
     """Persist memory records to Moorcheh-backed namespaces."""
 
@@ -66,9 +75,7 @@ class MemoryWriteService:
             if memory.updated_at > now:
                 memory.updated_at = now
 
-            # Enforce created_at <= updated_at invariant
-            if memory.created_at > memory.updated_at:
-                memory.updated_at = memory.created_at
+            _apply_timestamps(memory.__dict__)
             return
         memory.created_at = now
         memory.updated_at = now
