@@ -37,6 +37,7 @@ class MemoryValidationService:
     CANDIDATE_LIMIT = 100
 
     def __init__(self, moorcheh_client: "MoorchehClient"):
+        """Initialize the service with a Moorcheh client for contradiction lookups."""
         self.client = moorcheh_client
 
     def validate_memory(
@@ -160,6 +161,7 @@ class MemoryValidationService:
         def lookup(
             memory: MemoryRecord,
         ) -> tuple[str, list[dict[str, Any]] | None]:
+            """Run a single contradiction lookup, returning None on failure."""
             try:
                 return memory.id, self._find_contradictions(memory)
             except Exception:
