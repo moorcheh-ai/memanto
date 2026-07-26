@@ -6,6 +6,22 @@ organized into sections, ready for agent consumption.
 """
 
 from datetime import datetime
+
+
+def format_timestamp(created_at):
+    """
+    Format a timestamp for memory export metadata using ISO 8601.
+    - If created_at is a datetime object, use .isoformat() for full timezone-aware output.
+    - If created_at is a string, return it as-is.
+    - Otherwise return None.
+    """
+    if isinstance(created_at, datetime):
+        return created_at.isoformat()
+    if isinstance(created_at, str):
+        return created_at
+    return None
+
+
 from pathlib import Path
 from typing import Any
 
@@ -167,11 +183,9 @@ class MemoryExportService:
                 if status:
                     meta_parts.append(f"Status: {status}")
                 if created_at:
-                    if isinstance(created_at, datetime):
-                        ts = created_at.isoformat()
-                    else:
-                        ts = str(created_at)
-                    meta_parts.append(f"Created: {ts}")
+                    ts = format_timestamp(created_at)
+                    if ts:
+                        meta_parts.append(f"Created: {ts}")
                 if tags:
                     tag_str = (
                         ", ".join(f"`{t}`" for t in tags)
