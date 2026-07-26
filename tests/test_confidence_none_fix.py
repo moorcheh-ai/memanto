@@ -83,3 +83,12 @@ class TestConfidenceFilterNoneHandling:
         filtered = svc._filter_by_min_confidence(results, min_confidence=0.5)
         ids = [r["id"] for r in filtered]
         assert ids == ["1", "2"]
+
+    def test_overflow_confidence_treated_as_unknown(self):
+        """float() OverflowError (e.g. huge int) fail-opens like other unknowns."""
+        svc = _make_read_service()
+        results = [
+            {"id": "1", "content": "Overflow conf", "confidence": 10**10000},
+        ]
+        filtered = svc._filter_by_min_confidence(results, min_confidence=0.5)
+        assert len(filtered) == 1
