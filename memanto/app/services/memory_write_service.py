@@ -226,6 +226,9 @@ class MemoryWriteService:
                             context,
                             prefetched_conflicts=prefetched_conflicts[memory.id],
                         )
+                        # Use validated memory if modified (same as else branch)
+                        if "memory" in validation_result:
+                            memory = cast(MemoryRecord, validation_result["memory"])
                     else:
                         validation_result = self.validation_service.validate_memory(
                             memory, context
