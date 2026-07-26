@@ -1,0 +1,85 @@
+[
+  {
+    "thread_id": "thread-abc123def456",
+    "title": "Project planning session",
+    "messages": [
+      {
+        "role": "user",
+        "content": "I'm building a Spring Boot backend for a SaaS product. I prefer Kotlin over Java because the null-safety model keeps me sane, and I always use Ktor for the internal service-to-service mesh.",
+        "timestamp": "2026-05-01T10:00:00Z"
+      },
+      {
+        "role": "assistant",
+        "content": "Kotlin and Spring Boot are a great pairing. Kotlin's null-safety and coroutines work especially well alongside Ktor for the internal mesh. Here's a starter layout...",
+        "timestamp": "2026-05-01T10:00:14Z"
+      },
+      {
+        "role": "user",
+        "content": "I live in Berlin, I work remotely, and I'm trying to ship the MVP by August. The team uses PostgreSQL 16 and I want to make sure migration is handled with Flyway from day one.",
+        "timestamp": "2026-05-01T10:02:20Z"
+      },
+      {
+        "role": "assistant",
+        "content": "Got it — Berlin, remote, PostgreSQL 16, Flyway-driven migrations, August MVP. That gives us a clear picture to size the architecture around...",
+        "timestamp": "2026-05-01T10:02:41Z"
+      },
+      {
+        "role": "user",
+        "content": "I chose Kotlin, Spring Boot 3.3, PostgreSQL 16, Ktor for the mesh, Flyway for migrations, and I plan to deploy via Docker Compose into Kubernetes on k3s when the MVP is stable.",
+        "timestamp": "2026-05-01T10:05:00Z"
+      },
+      {
+        "role": "assistant",
+        "content": "Great decisions. To summarize your stack: Kotlin + Spring Boot 3.3, PostgreSQL 16 with Flyway, Ktor service mesh, Docker Compose -> k3s. That's a solid, modern path...",
+        "timestamp": "2026-05-01T10:05:18Z"
+      }
+    ]
+  },
+  {
+    "thread_id": "thread-zzz-remote-life",
+    "title": "Remote work and travel",
+    "messages": [
+      {
+        "role": "user",
+        "content": "Hi there!",
+        "timestamp": "2026-05-10T09:00:00Z"
+      },
+      {
+        "role": "user",
+        "content": "I work from a home office with a standing desk and I hate noisy coworking spaces. I always need a second monitor and I prefer mechanical keyboards, Cherry MX Browns specifically.",
+        "timestamp": "2026-05-10T09:05:00Z"
+      },
+      {
+        "role": "assistant",
+        "content": "Standing desk, second monitor, mechanical keyboard with MX Browns — a very thoughtful setup. I'll remember those preferences when suggesting hardware or workspace configurations...",
+        "timestamp": "2026-05-10T09:05:22Z"
+      },
+      {
+        "role": "user",
+        "content": "My goal is to spend 3 months a year working from abroad. I want a setup that works from a laptop on 4G, and I'm using Tailscale for the mesh and Obsidian for notes.",
+        "timestamp": "2026-05-10T09:12:00Z"
+      },
+      {
+        "role": "user",
+        "content": "I use Arch Linux on the desktop, Ubuntu on the server, and I'm an Arch enthusiast who runs wayland with Hyprland.",
+        "timestamp": "2026-05-10T09:20:00Z"
+      }
+    ]
+  },
+  {
+    "thread_id": "thread-decisions-2026",
+    "title": "Year decisions",
+    "messages": [
+      {
+        "role": "user",
+        "content": "We decided to stick with PostgreSQL instead of moving to a document store. The relational model plus JSONB gives us everything we need without adding a second datastore.",
+        "timestamp": "2026-06-01T14:00:00Z"
+      },
+      {
+        "role": "assistant",
+        "content": "Solid reasoning. JSONB on PostgreSQL is often the pragmatic sweet spot — you keep referential integrity and still get document flexibility...",
+        "timestamp": "2026-06-01T14:00:25Z"
+      }
+    ]
+  }
+]
