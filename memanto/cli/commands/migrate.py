@@ -20,6 +20,8 @@ migrate and old analyze artifacts cleanly separated.
 
 from __future__ import annotations
 
+import json
+
 from collections.abc import Callable
 from datetime import datetime, timezone
 from pathlib import Path
@@ -582,6 +584,142 @@ def migrate_okf(
         f"[dim]OKF nodes:[/dim] {summary.source_count}",
         f"[dim]Mapped memories:[/dim] {summary.mapped_count}  "
         f"[dim](skipped {summary.skipped})[/dim]",
+        f"[dim]Type breakdown:[/dim] {type_lines}",
+    ]
+    if dry_run:
+        body_lines.append("")
+        body_lines.append("[yellow]Dry run — no writes performed.[/yellow]")
+    else:
+        body_lines.append(
+            f"[dim]Imported:[/dim] {summary.imported}  "
+            f"[dim]Failed:[/dim] {summary.failed}  "
+            f"[dim]Batches:[/dim] {summary.batches}"
+        )
+        body_lines.append(f"[dim]Target agent:[/dim] {target_agent}")
+
+    body_lines.append("")
+    body_lines.append(f"[dim]Run dir:[/dim] {run_dir}")
+    body_lines.append(f"[dim]Mapped preview:[/dim] {preview_path}")
+    if summary.errors:
+        body_lines.append(
+            f"[red]First error:[/red] {summary.errors[0]}  "
+            "[dim](see run dir for more)[/dim]"
+        )
+
+    border = WARNING if summary.failed else SUCCESS
+    console.print()
+    console.print(
+        Panel(
+            "\n".join(body_lines),
+            title=(
+                "[bold yellow]Dry run complete[/bold yellow]"
+                if dry_run
+                else "[bold green]Import complete[/bold green]"
+            ),
+            border_style=border,
+        )
+    )
+
+
+@migrate_app.command("agent-oplog")
+def migrate_agent_oplog(
+    path: Path = typer.Argument(
+        ...,
+        help="Path to an agent operational-log export JSON.",
+    ),
+    agent: str | None = typer.Option(
+        None,
+        "--agent",
+        "-a",
+        help="Target Memanto agent id (defaults to the active agent).",
+    ),
+    dry_run: bool = typer.Option(
+        False,
+        "--dry-run",
+        help="Preview the mapping without writing.",
+    ),
+):
+    """Import an autonomous agent's operational log into the active (or selected) agent.
+
+    An oplog record is what an agent tried on some channel and what actually
+    happened. Its defining property, unlike a chat export, is that later records
+    routinely overturn earlier ones on the same channel.
+
+    That correction structure is migrated, not just the text: records are grouped
+    by channel and ordered by time, every record but the newest in a channel is
+    typed ``error``, tagged ``oplog-superseded`` and footnoted with the finding
+    that replaced it, and the newest is tagged ``oplog-current``. Original
+    timestamps are preserved, so ``--as-of`` queries stay meaningful after import.
+
+    Expected shape::
+
+        {"records": [
+            {"id": "...", "at": "2026-07-26T03:27:10Z", "channel": "...",
+             "action": "what I tried", "result": "what happened",
+             "evidence": "optional"}
+        ]}
+
+    Examples:
+        memanto migrate agent-oplog ./oplog.json --dry-run
+        memanto migrate agent-oplog ./oplog.json --agent my-agent
+    """
+    if not path.exists():
+        _error(
+            f"Oplog export not found: {path}",
+            hint="Provide a path to an agent oplog export JSON file.",
+        )
+
+    stamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
+    run_dir = config_manager.get_migrate_dir("agent_oplog") / stamp
+    run_dir.mkdir(parents=True, exist_ok=True)
+
+    mode = "Dry run" if dry_run else "Migrate"
+    console.print(
+        Panel.fit(
+            f"[{BOLD_PRIMARY}]Agent oplog -> Memanto  {mode}[/{BOLD_PRIMARY}]",
+            border_style=PRIMARY,
+        )
+    )
+
+    def progress(msg: str) -> None:
+        console.print(f"  [{BRIGHT}]…[/{BRIGHT}] {msg}")
+
+    target_agent = None if dry_run else _resolve_target_agent(agent)
+
+    progress(f"Loading oplog export from {path}")
+    try:
+        export = json.loads(path.read_text())
+    except Exception as exc:
+        _error(f"Failed to load oplog export: {exc}")
+
+    if not isinstance(export, dict) or not export.get("records"):
+        _error(
+            "Oplog export has no 'records' array.",
+            hint='Expected {"records": [{"at": ..., "channel": ..., "result": ...}]}',
+        )
+
+    progress("Mapping oplog records onto Memanto schema...")
+    client = None if dry_run else get_client()
+    summary, rows = run_migration(
+        provider="agent_oplog",
+        export=export,
+        client=client,
+        agent_id=target_agent or "",
+        dry_run=dry_run,
+        on_progress=progress,
+    )
+
+    preview_path = write_preview(rows, run_dir / "mapped_preview.json")
+
+    superseded = sum(1 for r in rows if "oplog-superseded" in (r.get("tags") or []))
+    type_lines = (
+        ", ".join(f"{k}: {v}" for k, v in sorted(summary.type_counts.items())) or "—"
+    )
+    body_lines = [
+        f"[dim]Oplog records:[/dim] {summary.source_count}",
+        f"[dim]Mapped memories:[/dim] {summary.mapped_count}  "
+        f"[dim](skipped {summary.skipped})[/dim]",
+        f"[dim]Superseded by a later finding:[/dim] {superseded}",
         f"[dim]Type breakdown:[/dim] {type_lines}",
     ]
     if dry_run:
