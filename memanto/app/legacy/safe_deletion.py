@@ -2,6 +2,8 @@
 Safer Deletion with Audit Logging for MEMANTO
 """
 
+from memanto.app.utils.ids import is_valid_memory_id
+
 import json
 import re
 from dataclasses import asdict, dataclass
@@ -145,7 +147,7 @@ class SafeDeletion:
             )
 
         # 4. Validate ID format
-        invalid_ids = [id for id in ids if not SafeDeletion._is_valid_memory_id(id)]
+        invalid_ids = [id for id in ids if not is_valid_memory_id(id)]
         if invalid_ids:
             raise HTTPException(
                 status_code=400,
@@ -155,16 +157,6 @@ class SafeDeletion:
                     "invalid_ids": invalid_ids[:10],  # Limit error response size
                 },
             )
-
-    @staticmethod
-    def _is_valid_memory_id(memory_id: str) -> bool:
-        """Validate memory ID format"""
-        if not memory_id or len(memory_id) < 4:
-            return False
-
-        # Should match our ID generation pattern
-
-        return bool(re.match(r"^[a-zA-Z0-9_-]+$", memory_id))
 
     @staticmethod
     def perform_safe_deletion(

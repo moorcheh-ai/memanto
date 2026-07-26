@@ -50,7 +50,15 @@ class RateLimiter:
         Returns: (allowed, retry_after_seconds)
         """
         if operation not in self.limits:
-            return True, None
+            # Fail-closed: unknown operations must not silently bypass rate
+            # limiting. Previously this returned (True, None), which let
+            # `enforce_namespace_rate_limit(op, agent_id)` (which builds
+            # keys like `namespace_<op>`) pass through unrestricted.
+            # See issue #1438.
+            raise ValueError(
+                f"Unknown rate-limit operation '{operation}'. "
+                f"Allowed: {sorted(self.limits)}"
+            )
 
         limit = self.limits[operation]
         key = self._get_key(operation, agent_id)
