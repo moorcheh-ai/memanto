@@ -167,7 +167,11 @@ class MemoryExportService:
                 if status:
                     meta_parts.append(f"Status: {status}")
                 if created_at:
-                    meta_parts.append(f"Created: {str(created_at)[:19]}")
+                    if isinstance(created_at, datetime):
+                        ts = created_at.isoformat()
+                    else:
+                        ts = str(created_at)
+                    meta_parts.append(f"Created: {ts}")
                 if tags:
                     tag_str = (
                         ", ".join(f"`{t}`" for t in tags)
