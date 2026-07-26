@@ -31,7 +31,6 @@ _REMOVED_TRUST_FIELDS = frozenset(
     }
 )
 
-_SUCCESSFUL_UPLOAD_STATUSES = {"queued", "success", "ok"}
 
 
 class MemoryWriteService:
@@ -69,7 +68,7 @@ class MemoryWriteService:
 
             # Enforce created_at <= updated_at invariant
             if memory.created_at > memory.updated_at:
-                memory.created_at = memory.updated_at
+                memory.updated_at = memory.created_at
             return
         memory.created_at = now
         memory.updated_at = now
@@ -283,7 +282,7 @@ class MemoryWriteService:
                 moorcheh_status = str(upload_result.get("status", "unknown")).lower()
                 for result in results:
                     if result["status"] == "pending":
-                        if moorcheh_status in _SUCCESSFUL_UPLOAD_STATUSES:
+                        if moorcheh_status in SUCCESSFUL_UPLOAD_STATUSES:
                             result["status"] = moorcheh_status
                         else:
                             result["status"] = "failed"
