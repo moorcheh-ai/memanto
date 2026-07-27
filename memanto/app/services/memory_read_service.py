@@ -304,6 +304,21 @@ class MemoryReadService:
                     except (ValueError, AttributeError):
                         pass
 
+                # Skip if superseded before as_of_date. A superseded memory's
+                # updated_at is set to the supersede timestamp by _supersede().
+                # If it was superseded after as_of_date it was still active then.
+                if (memory.get("status") or "active") == "superseded":
+                    updated_at = memory.get("updated_at")
+                    if updated_at:
+                        try:
+                            updated_dt = parse_iso_timestamp(updated_at)
+                            if updated_dt <= as_of_dt:
+                                continue
+                        except (ValueError, AttributeError):
+                            pass
+                    else:
+                        continue
+
                 valid_memories.append(memory)
 
             # Apply limit
