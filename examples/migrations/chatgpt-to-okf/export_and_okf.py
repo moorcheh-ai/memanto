@@ -58,6 +58,11 @@ _FALLBACK = "observation"
 
 
 def _infer_type(text: str) -> str:
+    """Infer a memory type label from assistant text by matching keyword patterns.
+
+    Returns one of the ``_KEYWORD_PATTERNS`` labels (preference, decision,
+    goal, etc.) or the fallback ``observation`` when no pattern matches.
+    """
     low = text.lower()
     for mem_type, pats in _KEYWORD_PATTERNS:
         for pat in pats:
@@ -73,6 +78,12 @@ _SLUG_RE = re.compile(r"[^0-9a-zA-Z]+")
 
 
 def _slug(text: str, idx: int) -> str:
+    """Produce a URL-safe filename slug from the given text.
+
+    Strips non-ASCII characters, collapses runs of non-alphanumeric
+    characters into a single hyphen, and appends a zero-padded index
+    to guarantee uniqueness.
+    """
     s = text.strip().lower()
     s = re.sub(r"[^\x00-\x7f]+", " ", s)
     s = _SLUG_RE.sub("-", s).strip("-")
@@ -105,6 +116,20 @@ def _make_markdown(
     timestamp: str,
     source_id: str,
 ) -> str:
+    """Build a single OKF entry markdown file with YAML frontmatter.
+
+    Args:
+        title: Entry title.
+        description: Short summary.
+        body: Full markdown body.
+        mem_type: Memory type label (e.g. ``fact``, ``preference``).
+        tags: List of tag strings.
+        timestamp: ISO-formatted timestamp string.
+        source_id: Original ChatGPT conversation message identifier.
+
+    Returns:
+        A complete OKF markdown document with ``---`` delimited frontmatter.
+    """
     lines: list[str] = []
     lines.append("---")
     lines.append(f"title: {_yaml_value(title)}")
@@ -236,6 +261,14 @@ def write_okf_bundle(
 
 
 def _okf_type_counts(entries: list[dict[str, Any]]) -> dict[str, int]:
+    """Count how many entries belong to each memory type.
+
+    Args:
+        entries: List of extracted memory dictionaries.
+
+    Returns:
+        A mapping of memory type label to count.
+    """
     counts: dict[str, int] = {}
     for e in entries:
         counts[e["type"]] = counts.get(e["type"], 0) + 1
@@ -246,6 +279,7 @@ def _okf_type_counts(entries: list[dict[str, Any]]) -> dict[str, int]:
 # CLI
 # ---------------------------------------------------------------------------
 def main() -> None:
+    """CLI entry point: read a ChatGPT export JSON and write an OKF bundle."""
     p = argparse.ArgumentParser(description="ChatGPT conversation export → OKF bundle")
     p.add_argument("--input", "-i", required=True, help="ChatGPT export JSON file")
     p.add_argument("--output", "-o", required=True, help="Output OKF bundle directory")

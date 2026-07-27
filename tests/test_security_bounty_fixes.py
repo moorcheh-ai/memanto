@@ -53,16 +53,19 @@ class TestGenerateAnswerRejection:
     another agent's namespace."""
 
     def test_missing_agent_id_raises(self):
+        """A missing agent_id argument must raise MemoryError."""
         service, _ = _make_service()
         with pytest.raises(MemoryError, match="required"):
             service.generate_answer(query="hello")
 
     def test_none_agent_id_raises(self):
+        """An explicit None agent_id must raise MemoryError."""
         service, _ = _make_service()
         with pytest.raises(MemoryError, match="required"):
             service.generate_answer(query="hello", agent_id=None)
 
     def test_empty_agent_id_raises(self):
+        """An empty-string agent_id must raise MemoryError."""
         service, _ = _make_service()
         with pytest.raises(MemoryError, match="required"):
             service.generate_answer(query="hello", agent_id="")
@@ -97,10 +100,12 @@ class TestTemporalFilterFailClose:
     """Invalid time boundaries must NOT silently disable the filter."""
 
     def _service(self):
+        """Return a MemoryReadService with a fully mocked client."""
         service, _ = _make_service()
         return service
 
     def test_invalid_created_after_raises(self):
+        """A malformed created_after timestamp must raise, not silently pass."""
         svc = self._service()
         with pytest.raises((ValueError, AttributeError, TypeError)):
             svc._apply_temporal_filter(
@@ -109,6 +114,7 @@ class TestTemporalFilterFailClose:
             )
 
     def test_invalid_created_before_raises(self):
+        """A malformed created_before timestamp must raise, not silently pass."""
         svc = self._service()
         with pytest.raises((ValueError, AttributeError, TypeError)):
             svc._apply_temporal_filter(
@@ -128,6 +134,7 @@ class TestTemporalFilterFailClose:
             )
 
     def test_valid_boundaries_filter_results(self):
+        """Valid after/before boundaries must correctly filter results."""
         svc = self._service()
         out = svc._apply_temporal_filter(
             results=[
@@ -142,6 +149,7 @@ class TestTemporalFilterFailClose:
         assert out[0]["created_at"] == "2025-01-01T00:00:00Z"
 
     def test_no_filters_returns_full_set(self):
+        """Calling with no temporal boundaries must return the full result set unchanged."""
         svc = self._service()
         results = [{"created_at": "2024-01-01T00:00:00Z"}]
         assert svc._apply_temporal_filter(results) is results
