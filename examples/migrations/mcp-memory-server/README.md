@@ -96,6 +96,37 @@ original source live outside that directory and are therefore not re-ingested.
 The dry-run path does not require an API key. The second command performs a live
 import and therefore requires a configured Moorcheh/Memanto account.
 
+## Run the live freedom loop
+
+`run_live_demo.py` automates the remaining cloud-backed evidence:
+
+1. create a dedicated Memanto agent;
+2. import the generated OKF bundle;
+3. run every golden question through both `recall` and `answer`;
+4. export the Memanto agent back to OKF;
+5. reconstruct the MCP JSONL from that exported bundle and verify its hash.
+
+The default invocation is a side-effect-free command preview:
+
+```bash
+.venv/bin/python \
+  examples/migrations/mcp-memory-server/run_live_demo.py
+```
+
+After setting `MOORCHEH_API_KEY` locally, execute it:
+
+```bash
+.venv/bin/python \
+  examples/migrations/mcp-memory-server/run_live_demo.py \
+  --agent mcp-memory-escape-demo \
+  --execute
+```
+
+Do not paste, print, or commit the API key. Execution creates cloud-backed agent
+data, so the script requires the explicit `--execute` flag. It refuses to
+overwrite an existing evidence directory. Use `--reuse-agent` for a previously
+created demo agent and `--skip-answers` if only retrieval is configured.
+
 ## Output layout
 
 ```text
@@ -156,8 +187,8 @@ From the repository root:
 ```
 
 The tests cover Memanto consumability, lossless reconstruction, embedded
-Markdown fences, invalid UTF-8, slug collisions, dangling references, and
-deterministic output.
+Markdown fences, invalid UTF-8, slug collisions, dangling references,
+deterministic output, and the live freedom-loop command plan.
 
 ## Privacy and security
 

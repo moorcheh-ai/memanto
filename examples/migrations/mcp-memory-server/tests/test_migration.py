@@ -14,6 +14,7 @@ for path in (ROOT, REPO_ROOT):
 
 from migrate_mcp_memory import MigrationError, load_mcp_graph, migrate  # noqa: E402
 from reconstruct_mcp_memory import reconstructed_jsonl  # noqa: E402
+from run_live_demo import build_commands  # noqa: E402
 
 from memanto.cli.migrate.mappers import map_okf  # noqa: E402
 from memanto.cli.migrate.okf_loader import load_okf_bundle  # noqa: E402
@@ -169,6 +170,46 @@ class McpMemoryMigrationTests(unittest.TestCase):
                 if file.is_file()
             }
             self.assertEqual(first_files, second_files)
+
+    def test_live_demo_command_plan_covers_full_freedom_loop(self) -> None:
+        questions = ["Where is the graph?", "How is it portable?"]
+        commands = build_commands(
+            Path("/venv/bin/memanto"),
+            agent="mcp-demo",
+            okf_path=Path("/input/okf"),
+            export_path=Path("/evidence/exported-okf"),
+            questions=questions,
+            reuse_agent=False,
+            include_answers=True,
+        )
+        labels = [command.label for command in commands]
+        self.assertEqual(
+            labels,
+            [
+                "create-agent",
+                "import-okf",
+                "activate-agent",
+                "recall-1",
+                "answer-1",
+                "recall-2",
+                "answer-2",
+                "export-okf",
+            ],
+        )
+        self.assertIn("--agent", commands[1].argv)
+        self.assertIn("--okf", commands[-1].argv)
+
+        reused = build_commands(
+            Path("/venv/bin/memanto"),
+            agent="mcp-demo",
+            okf_path=Path("/input/okf"),
+            export_path=Path("/evidence/exported-okf"),
+            questions=questions,
+            reuse_agent=True,
+            include_answers=False,
+        )
+        self.assertNotIn("create-agent", [command.label for command in reused])
+        self.assertNotIn("answer-1", [command.label for command in reused])
 
 
 if __name__ == "__main__":

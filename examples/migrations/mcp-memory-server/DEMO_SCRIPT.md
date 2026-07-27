@@ -64,7 +64,15 @@ Show the zero exit code: the graph can leave Memanto again without loss.
 
 ## 1:45–2:00 — Close
 
-Show the OKF folder in a git diff. End on:
+For the final live take, run the guarded cloud-backed script after configuring
+the API key locally:
+
+```bash
+python run_live_demo.py --agent mcp-memory-escape-demo --execute
+```
+
+Show the `recall`/`answer` output, the exported OKF folder, and
+`live-round-trip.json` with matching hashes. End on:
 
 > Your agent's graph is no longer an opaque local file. It is readable,
 > versionable Markdown — and it still belongs to you.
