@@ -45,6 +45,7 @@ class MemoryValidationService:
         context: dict[str, Any] | None = None,
         *,
         prefetched_conflicts: list[dict[str, Any]] | None | object = _MISSING,
+        defer_supersede: bool = False,
     ) -> dict[str, Any]:
         """Validate a memory against existing records, resolving contradictions.
 
@@ -53,6 +54,11 @@ class MemoryValidationService:
 
         When ``prefetched_conflicts`` is supplied by batch prefetch, the
         lookup is skipped. ``None`` means the prefetch lookup failed.
+
+        When ``defer_supersede`` is True, contradictions are detected but
+        ``_supersede`` is NOT called. The conflict items are returned under
+        ``pending_supersedes`` so the caller can execute them after confirming
+        the replacement documents were stored (batch atomicity).
         """
         memory_type = memory.type or "fact"
         if memory_type not in settings.REQUIRE_VALIDATION_FOR:
@@ -83,6 +89,13 @@ class MemoryValidationService:
             return {
                 "action": "store",
                 "reason": "validated: no contradicting memories found",
+            }
+
+        if defer_supersede:
+            return {
+                "action": "store",
+                "reason": f"contradiction detected: {len(conflicts)} conflict(s) pending supersede",
+                "pending_supersedes": conflicts,
             }
 
         superseded: list[str] = []

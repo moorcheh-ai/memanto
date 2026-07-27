@@ -212,6 +212,8 @@ class MemoryWriteService:
                 to_validate
             )
 
+            deferred_supersedes: list[tuple[dict[str, Any], MemoryRecord]] = []
+
             for memory in prepared:
                 try:
                     batch_note = superseded_in_batch.get(memory.id)
@@ -225,14 +227,18 @@ class MemoryWriteService:
                             memory,
                             context,
                             prefetched_conflicts=prefetched_conflicts[memory.id],
+                            defer_supersede=True,
                         )
                     else:
                         validation_result = self.validation_service.validate_memory(
-                            memory, context
+                            memory, context, defer_supersede=True
                         )
                         # Use validated memory if modified
                         if "memory" in validation_result:
                             memory = cast(MemoryRecord, validation_result["memory"])
+
+                    for old_item in validation_result.get("pending_supersedes", []):
+                        deferred_supersedes.append((old_item, memory))
 
                     from moorcheh_sdk.types.document import Document
 
@@ -290,6 +296,11 @@ class MemoryWriteService:
                             result["error"] = (
                                 f"Batch upload returned status '{moorcheh_status}'"
                             )
+
+                # Execute deferred supersedes only after replacements are stored
+                if moorcheh_status in _SUCCESSFUL_UPLOAD_STATUSES:
+                    for old_item, new_memory in deferred_supersedes:
+                        self.validation_service._supersede(old_item, new_memory)
 
             # Count successes, failures, and namespace-rejected items separately
             # so that successful + failed + rejected == total_submitted always.
