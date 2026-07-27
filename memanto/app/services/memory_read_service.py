@@ -361,6 +361,11 @@ class MemoryReadService:
                     continue
                 seen_ids.add(mem_id)
 
+                # Superseded memories have updated_at bumped by _supersede();
+                # skip them so they don't masquerade as recent changes.
+                if (memory.get("status") or "active") == "superseded":
+                    continue
+
                 # Check if created after since_date (new memory)
                 created_at = memory.get("created_at")
                 if created_at:
