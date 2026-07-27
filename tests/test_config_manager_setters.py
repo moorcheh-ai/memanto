@@ -48,11 +48,13 @@ def test_config_setters_recover_malformed_sections(tmp_path):
 @pytest.mark.parametrize("value", [float("nan"), "nan", float("inf"), "-inf"])
 def test_config_setters_reject_non_finite_floats(tmp_path, value):
     manager = ConfigManager(config_dir=tmp_path)
+    manager.config_file.write_text("memanto:\n  recall:\n    limit: 7\n")
+    original_config = manager.config_file.read_text()
 
     with pytest.raises(ValueError, match="temperature must be between"):
         manager.set_answer_config(temperature=value)
+    assert manager.config_file.read_text() == original_config
 
     with pytest.raises(ValueError, match="min_similarity must be between"):
         manager.set_recall_config(min_similarity=value)
-
-    assert not manager.config_file.exists()
+    assert manager.config_file.read_text() == original_config
