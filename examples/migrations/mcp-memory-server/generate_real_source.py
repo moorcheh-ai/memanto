@@ -10,7 +10,11 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import queue
 import subprocess
+import threading
+import time
+from collections import deque
 from pathlib import Path
 from typing import Any
 
@@ -19,7 +23,9 @@ PROTOCOL_VERSION = "2025-06-18"
 
 
 class McpStdioClient:
-    def __init__(self, memory_file: Path) -> None:
+    """Minimal timeout-bounded JSON-RPC client for the MCP stdio transport."""
+
+    def __init__(self, memory_file: Path, *, request_timeout: float = 30.0) -> None:
         env = os.environ.copy()
         env["MEMORY_FILE_PATH"] = str(memory_file.resolve())
         self.process = subprocess.Popen(
@@ -32,8 +38,56 @@ class McpStdioClient:
             env=env,
         )
         self.next_id = 1
+        self.request_timeout = request_timeout
+        self._stdout_queue: queue.Queue[str | None] = queue.Queue()
+        self._stderr_lines: deque[str] = deque(maxlen=200)
+        self._stderr_lock = threading.Lock()
+        self._stdout_thread = threading.Thread(
+            target=self._drain_stdout,
+            name="mcp-memory-stdout",
+            daemon=True,
+        )
+        self._stderr_thread = threading.Thread(
+            target=self._drain_stderr,
+            name="mcp-memory-stderr",
+            daemon=True,
+        )
+        self._stdout_thread.start()
+        self._stderr_thread.start()
+
+    def _drain_stdout(self) -> None:
+        """Queue stdout lines so request timeouts cannot block on readline()."""
+        stream = self.process.stdout
+        if stream is None:
+            self._stdout_queue.put(None)
+            return
+        try:
+            for line in stream:
+                self._stdout_queue.put(line)
+        finally:
+            self._stdout_queue.put(None)
+
+    def _drain_stderr(self) -> None:
+        """Drain bounded stderr diagnostics to prevent a full pipe deadlock."""
+        stream = self.process.stderr
+        if stream is None:
+            return
+        for line in stream:
+            with self._stderr_lock:
+                self._stderr_lines.append(line)
+
+    def _stderr_text(self) -> str:
+        """Return the bounded stderr tail collected by the reader thread."""
+        with self._stderr_lock:
+            return "".join(self._stderr_lines).strip()
+
+    def _failure_detail(self) -> str:
+        """Format collected stderr without adding an empty diagnostic suffix."""
+        stderr = self._stderr_text()
+        return f"; stderr: {stderr}" if stderr else ""
 
     def _send(self, message: dict[str, Any]) -> None:
+        """Write one newline-delimited JSON-RPC message."""
         if self.process.stdin is None:
             raise RuntimeError("MCP server stdin is unavailable")
         self.process.stdin.write(
@@ -42,6 +96,7 @@ class McpStdioClient:
         self.process.stdin.flush()
 
     def notify(self, method: str, params: dict[str, Any] | None = None) -> None:
+        """Send a JSON-RPC notification without waiting for a response."""
         self._send(
             {
                 "jsonrpc": "2.0",
@@ -51,6 +106,7 @@ class McpStdioClient:
         )
 
     def request(self, method: str, params: dict[str, Any]) -> dict[str, Any]:
+        """Send a request and return its matching result before the deadline."""
         request_id = self.next_id
         self.next_id += 1
         self._send(
@@ -61,20 +117,32 @@ class McpStdioClient:
                 "params": params,
             }
         )
-        if self.process.stdout is None:
-            raise RuntimeError("MCP server stdout is unavailable")
+        deadline = time.monotonic() + self.request_timeout
         while True:
-            line = self.process.stdout.readline()
-            if not line:
-                stderr = (
-                    self.process.stderr.read()
-                    if self.process.stderr is not None
-                    else ""
-                )
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
                 raise RuntimeError(
-                    f"MCP server exited before response {request_id}: {stderr}"
+                    f"MCP request {method} timed out after "
+                    f"{self.request_timeout:g}s{self._failure_detail()}"
                 )
-            message = json.loads(line)
+            try:
+                line = self._stdout_queue.get(timeout=remaining)
+            except queue.Empty as exc:
+                raise RuntimeError(
+                    f"MCP request {method} timed out after "
+                    f"{self.request_timeout:g}s{self._failure_detail()}"
+                ) from exc
+            if line is None:
+                raise RuntimeError(
+                    f"MCP server exited before response "
+                    f"{request_id}{self._failure_detail()}"
+                )
+            try:
+                message = json.loads(line)
+            except json.JSONDecodeError as exc:
+                raise RuntimeError(
+                    f"MCP server returned invalid JSON{self._failure_detail()}"
+                ) from exc
             if message.get("id") != request_id:
                 continue
             if "error" in message:
@@ -85,6 +153,7 @@ class McpStdioClient:
             return result
 
     def initialize(self) -> None:
+        """Negotiate the configured MCP protocol version."""
         self.request(
             "initialize",
             {
@@ -99,21 +168,33 @@ class McpStdioClient:
         self.notify("notifications/initialized")
 
     def call_tool(self, name: str, arguments: dict[str, Any]) -> None:
+        """Invoke one MCP tool and fail when the server reports an error."""
         result = self.request("tools/call", {"name": name, "arguments": arguments})
         if result.get("isError"):
             raise RuntimeError(f"MCP tool {name} returned an error: {result}")
 
     def close(self) -> None:
+        """Close stdin, stop the child, and let reader threads drain."""
         if self.process.stdin is not None:
-            self.process.stdin.close()
+            try:
+                self.process.stdin.close()
+            except OSError:
+                pass
         try:
             self.process.wait(timeout=5)
         except subprocess.TimeoutExpired:
             self.process.terminate()
-            self.process.wait(timeout=5)
+            try:
+                self.process.wait(timeout=5)
+            except subprocess.TimeoutExpired:
+                self.process.kill()
+                self.process.wait(timeout=5)
+        self._stdout_thread.join(timeout=1)
+        self._stderr_thread.join(timeout=1)
 
 
 def populate(memory_file: Path, *, force: bool = False) -> None:
+    """Populate ``memory_file`` through real calls to the official MCP server."""
     if memory_file.exists():
         if not force:
             raise FileExistsError(
@@ -260,7 +341,7 @@ def main() -> int:
     args = parser.parse_args()
     try:
         populate(Path(args.output), force=args.force)
-    except (FileExistsError, RuntimeError) as exc:
+    except (FileExistsError, FileNotFoundError, RuntimeError) as exc:
         print(f"error: {exc}")
         return 2
     print(f"generated by {PACKAGE}: {args.output}")

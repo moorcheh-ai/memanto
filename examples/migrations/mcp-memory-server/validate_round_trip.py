@@ -47,15 +47,8 @@ def validate(
     rows = _load_memanto_rows(okf_root)
 
     reconstructed = reconstructed_jsonl(okf_root)
-    normalized_source = (
-        "\n".join(
-            json.dumps(record, ensure_ascii=False, separators=(",", ":"))
-            for record in [entity.raw for entity in graph.entities]
-            + [relation.raw for relation in graph.relations]
-        )
-    ).encode("utf-8")
-    if reconstructed != normalized_source:
-        raise MigrationError("lossless reconstruction does not match source records")
+    if reconstructed != graph.source_bytes:
+        raise MigrationError("lossless reconstruction does not match source bytes")
     if len(rows) != len(graph.entities):
         raise MigrationError(
             f"Memanto mapped {len(rows)} rows for {len(graph.entities)} entities"
@@ -83,28 +76,29 @@ def validate(
         results.append(
             {
                 "question": question,
-                "source_recall": before,
-                "memanto_okf_recall": after,
+                "source_phrase_retained": before,
+                "memanto_okf_phrase_retained": after,
             }
         )
 
     passed = sum(
-        bool(item["source_recall"] and item["memanto_okf_recall"]) for item in results
+        bool(item["source_phrase_retained"] and item["memanto_okf_phrase_retained"])
+        for item in results
     )
     summary = {
         "source_sha256": graph.source_sha256,
         "reconstructed_sha256": hashlib.sha256(reconstructed).hexdigest(),
         "source_records_reconstructed": len(graph.entities) + len(graph.relations),
         "memanto_rows_mapped": len(rows),
-        "golden_questions": len(results),
-        "recall_parity_passed": passed,
-        "recall_parity_percent": round(
+        "golden_phrase_checks": len(results),
+        "phrase_retention_passed": passed,
+        "phrase_retention_percent": round(
             (passed / len(results) * 100) if results else 100.0, 2
         ),
         "results": results,
     }
     if passed != len(results):
-        raise MigrationError(f"recall parity failed: {passed}/{len(results)} questions")
+        raise MigrationError(f"phrase retention failed: {passed}/{len(results)} checks")
     return summary
 
 

@@ -46,7 +46,9 @@ python validate_round_trip.py \
 ```
 
 Highlight the official CLI's five mapped memories, zero skipped records, the
-typed breakdown, and five out of five golden questions.
+typed breakdown, and five out of five golden phrase-retention checks. This
+offline check verifies content preservation; the final live step performs the
+actual retrieval and answer commands.
 
 ## 1:25–1:45 — Prove there is no lock-in
 

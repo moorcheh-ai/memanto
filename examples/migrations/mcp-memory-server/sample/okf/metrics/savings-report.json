@@ -9,9 +9,9 @@
   },
   "measured_storage": {
     "source_jsonl_bytes": 1875,
-    "importable_okf_bytes": 9297,
-    "delta_bytes": 7422,
-    "delta_percent": 395.84,
+    "importable_okf_bytes": 11945,
+    "delta_bytes": 10070,
+    "delta_percent": 537.07,
     "interpretation": "The OKF representation is larger because it adds readable Markdown structure, typed links, backlinks, metadata, and lossless reconstruction blocks. This is portability overhead, not a storage-savings claim."
   }
 }

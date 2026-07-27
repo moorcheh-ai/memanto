@@ -1,10 +1,14 @@
 from __future__ import annotations
 
 import json
+import queue
 import sys
 import tempfile
+import threading
 import unittest
+from collections import deque
 from pathlib import Path
+from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[1]
 REPO_ROOT = ROOT.parents[2]
@@ -12,6 +16,7 @@ for path in (ROOT, REPO_ROOT):
     if str(path) not in sys.path:
         sys.path.insert(0, str(path))
 
+from generate_real_source import McpStdioClient  # noqa: E402
 from migrate_mcp_memory import MigrationError, load_mcp_graph, migrate  # noqa: E402
 from reconstruct_mcp_memory import reconstructed_jsonl  # noqa: E402
 from run_live_demo import (  # noqa: E402
@@ -133,6 +138,24 @@ class McpMemoryMigrationTests(unittest.TestCase):
                 source.read_text(encoding="utf-8"),
             )
 
+    def test_reconstruction_preserves_exact_source_bytes(self) -> None:
+        source_bytes = (
+            b'\xef\xbb\xbf  { "type": "entity", "name": "Exact A", '
+            b'"entityType": "artifact", "observations": ["Preserve me."] }  \r\n'
+            b'{"type":"relation","from":"Exact A","to":"Exact B",'
+            b'"relationType":"precedes"}\r\n'
+            b' { "type": "entity", "name": "Exact B", "entityType": "artifact", '
+            b'"observations": [] }\r\n'
+            b"\r\n"
+        )
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            source = root / "memory.jsonl"
+            source.write_bytes(source_bytes)
+            output = root / "okf"
+            migrate(source, output)
+            self.assertEqual(reconstructed_jsonl(output), source_bytes)
+
     def test_dangling_relation_fails_closed(self) -> None:
         records = [
             {
@@ -249,6 +272,26 @@ class McpMemoryMigrationTests(unittest.TestCase):
             "memanto --output '~/.memanto/exports/mcp-demo_okf'",
         )
         self.assertNotIn(str(Path.home()), display)
+
+    def test_live_command_display_redacts_other_absolute_paths(self) -> None:
+        display = display_argv(
+            ("memanto", "--input", "/opt/private-source/memory.jsonl")
+        )
+        self.assertIn("<absolute-path-redacted>", display)
+        self.assertNotIn("/opt/private-source", display)
+
+    def test_mcp_request_has_an_overall_timeout_with_stderr(self) -> None:
+        client = McpStdioClient.__new__(McpStdioClient)
+        client.next_id = 1
+        client.request_timeout = 0.01
+        client._stdout_queue = queue.Queue()
+        client._stderr_lines = deque(["server diagnostic\n"], maxlen=200)
+        client._stderr_lock = threading.Lock()
+        with (
+            patch.object(client, "_send", return_value=None),
+            self.assertRaisesRegex(RuntimeError, "timed out.*server diagnostic"),
+        ):
+            client.request("tools/list", {})
 
 
 if __name__ == "__main__":

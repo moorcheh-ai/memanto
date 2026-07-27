@@ -44,8 +44,8 @@ That command:
 2. writes one OKF document per entity;
 3. feeds it through the shipped `memanto migrate okf --dry-run` CLI;
 4. loads the bundle through Memanto's real `load_okf_bundle` and `map_okf`;
-5. reconstructs the source JSONL from the Markdown documents;
-6. runs five golden recall questions before and after migration.
+5. reconstructs the exact source JSONL bytes from the Markdown documents;
+6. runs five golden phrase-retention checks across source and mapped content.
 
 No API key or network access is needed for the checked-in sample. The converter
 and reconstructor are Python-standard-library only; the complete validation
@@ -67,7 +67,7 @@ source records reconstructed: 9/9
 Memanto rows mapped: 5/5
 Memanto CLI dry-run: 5 mapped, 0 skipped
 Memanto type breakdown: artifact: 4, goal: 1
-golden recall parity: 5/5 (100%)
+golden phrase retention: 5/5 (100%)
 ```
 
 ## Regenerate the source with the official server
@@ -135,7 +135,8 @@ overwrite an existing evidence directory. Use `--reuse-agent` for a previously
 created demo agent and `--skip-answers` if only retrieval is configured. The
 live exporter first writes to a unique staging directory under Memanto's data
 directory, as required by its path-safety guard, then copies that clean export
-into the evidence directory and removes the staging copy after validation.
+into the evidence directory and attempts to remove the staging copy on both
+success and failure.
 See [`LIVE_VALIDATION.md`](LIVE_VALIDATION.md) for the measured cloud-backed
 result and the live-only path constraint it uncovered.
 
@@ -167,6 +168,10 @@ Every entity document contains:
 - a fenced `mcp-memory-source` JSON block with original line numbers and exact
   source records.
 
+The first entity also carries a hash-verified base64 manifest of the complete
+source file. That manifest preserves JSON whitespace, record order, line
+endings, UTF-8 BOM state, blank lines, and whether the file ends with a newline.
+
 `reconstruct_mcp_memory.py` rebuilds the JSONL from those embedded blocks:
 
 ```bash
@@ -183,7 +188,8 @@ python reconstruct_mcp_memory.py \
 | Entity type | Free-form `type` + exact source metadata + `x_memanto.type` | Known types map deterministically; unknown types become `observation` |
 | Observation | Numbered Markdown item | Searchable content |
 | Relation | Typed Markdown link/backlink | Human-browsable graph neighborhood |
-| Exact record | Embedded JSON source block | Lossless reconstruction |
+| Exact record | Embedded JSON source block | Parsed-record reconstruction |
+| Exact source bytes | One base64 + SHA-256 manifest | Byte-for-byte reconstruction |
 | Source URI | `memory://` resource URI | Memanto `source_ref` |
 
 The converter fails closed on malformed JSON, duplicate entities or relations,
@@ -201,8 +207,9 @@ From the repository root:
 ```
 
 The tests cover Memanto consumability, lossless reconstruction, embedded
-Markdown fences, invalid UTF-8, slug collisions, dangling references,
-deterministic output, and the live freedom-loop command plan.
+Markdown fences, exact source bytes and record order, invalid UTF-8, slug
+collisions, dangling references, deterministic output, command redaction,
+MCP timeouts, and the live freedom-loop command plan.
 
 ## Privacy and security
 
@@ -215,4 +222,4 @@ personal data.
 
 See [`DEMO_SCRIPT.md`](DEMO_SCRIPT.md) for a tight two-minute recording plan
 covering source creation, migration, readable Markdown, reconstruction, and
-100% recall parity.
+offline phrase retention plus live recall/answer validation.

@@ -8,6 +8,7 @@
 | Outgoing relation | Typed Markdown link in `## Relationships` | Link and relation label remain searchable |
 | Incoming relation | Backlink in `## Relationships` | Graph neighborhood remains human-browsable |
 | Exact source record | `json mcp-memory-source` fenced block | Survives import/export as memory content |
+| Exact source file bytes | One base64 + SHA-256 manifest in the first entity block | Preserves whitespace, line endings, UTF-8 BOM, blank lines, and final-newline state |
 | Source URI | `memory://knowledge-graph/entities/<name>` | Becomes `source_ref` |
 | Provenance | `mcp-memory` tags and namespaced frontmatter | Preserved in tags/supporting data |
 

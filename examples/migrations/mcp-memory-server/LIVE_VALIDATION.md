@@ -26,8 +26,9 @@ path outside Memanto's data directory.
 
 The runner now creates a unique staging path under Memanto's data directory,
 exports there, copies the result into the requested evidence directory, and
-removes the staging copy only after lossless validation passes. A regression
-test verifies that staging paths stay under the guarded directory.
+attempts to remove the staging copy on both success and failure. Regression
+tests verify that staging paths stay under the guarded directory and that
+shareable command output redacts unrelated absolute paths.
 
 This constraint cannot be discovered by the offline fixture alone; the live
 run directly improved the reproducibility of the submitted workflow.

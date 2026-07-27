@@ -3,34 +3,34 @@
   "reconstructed_sha256": "bf97e55e76a5e835df64b7374a5d413877cbab2616852ef59a77df78a8e9ee5f",
   "source_records_reconstructed": 9,
   "memanto_rows_mapped": 5,
-  "golden_questions": 5,
-  "recall_parity_passed": 5,
-  "recall_parity_percent": 100.0,
+  "golden_phrase_checks": 5,
+  "phrase_retention_passed": 5,
+  "phrase_retention_percent": 100.0,
   "results": [
     {
       "question": "What storage format does the official MCP Memory Server use?",
-      "source_recall": true,
-      "memanto_okf_recall": true
+      "source_phrase_retained": true,
+      "memanto_okf_phrase_retained": true
     },
     {
       "question": "How is the generated bundle consumed by Memanto?",
-      "source_recall": true,
-      "memanto_okf_recall": true
+      "source_phrase_retained": true,
+      "memanto_okf_phrase_retained": true
     },
     {
       "question": "How are unknown OKF frontmatter fields handled?",
-      "source_recall": true,
-      "memanto_okf_recall": true
+      "source_phrase_retained": true,
+      "memanto_okf_phrase_retained": true
     },
     {
       "question": "How does the adapter keep the graph reconstructable?",
-      "source_recall": true,
-      "memanto_okf_recall": true
+      "source_phrase_retained": true,
+      "memanto_okf_phrase_retained": true
     },
     {
       "question": "Why was the original LangGraph plan dropped?",
-      "source_recall": true,
-      "memanto_okf_recall": true
+      "source_phrase_retained": true,
+      "memanto_okf_phrase_retained": true
     }
   ]
 }

@@ -12,8 +12,9 @@
   "source_records_sha256": "bf97e55e76a5e835df64b7374a5d413877cbab2616852ef59a77df78a8e9ee5f",
   "exported_records_sha256": "bf97e55e76a5e835df64b7374a5d413877cbab2616852ef59a77df78a8e9ee5f",
   "lossless_live_round_trip": true,
-  "golden_questions_recalled": 5,
-  "golden_questions_answered": 5,
-  "recall_parity_percent": 100.0,
+  "recall_commands_run": 5,
+  "recall_commands_succeeded": 5,
+  "answer_commands_run": 5,
+  "answer_commands_succeeded": 5,
   "credential_value_scan": "clean"
 }

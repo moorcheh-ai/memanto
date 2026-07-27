@@ -175,19 +175,15 @@ def display_argv(argv: tuple[str, ...]) -> str:
                 continue
             except ValueError:
                 pass
+            rendered.append("<absolute-path-redacted>")
+            continue
         rendered.append(value)
     return shlex.join(rendered)
 
 
-def _normalized_source(path: Path) -> bytes:
-    graph = load_mcp_graph(path)
-    records = [entity.raw for entity in graph.entities] + [
-        relation.raw for relation in graph.relations
-    ]
-    return "\n".join(
-        json.dumps(record, ensure_ascii=False, separators=(",", ":"))
-        for record in records
-    ).encode("utf-8")
+def _source_bytes(path: Path) -> bytes:
+    """Return the validated source without normalizing record order or bytes."""
+    return load_mcp_graph(path).source_bytes
 
 
 def _run_commands(
@@ -311,36 +307,44 @@ def main() -> int:
                 "--output so stale data cannot enter the evidence"
             )
         output.mkdir(parents=True)
-        command_results = _run_commands(commands, output / "live-cli-transcript.txt")
-        shutil.copytree(staged_export, export_path)
-
-        graph = load_mcp_graph(source)
-        source_records = _normalized_source(source)
-        exported_records = reconstructed_jsonl(export_path)
-        if exported_records != source_records:
-            raise MigrationError(
-                "live Memanto export did not reconstruct to the source graph"
+        try:
+            command_results = _run_commands(
+                commands, output / "live-cli-transcript.txt"
             )
-        report = {
-            "agent": args.agent,
-            "source_entities": len(graph.entities),
-            "source_relations": len(graph.relations),
-            "exported_memories_validated": len(graph.entities),
-            "source_records_reconstructed": len(graph.entities) + len(graph.relations),
-            "source_records_sha256": hashlib.sha256(source_records).hexdigest(),
-            "exported_records_sha256": hashlib.sha256(exported_records).hexdigest(),
-            "lossless_live_round_trip": True,
-            "recall_commands_run": len(questions),
-            "golden_questions_recalled": len(questions),
-            "answer_commands_run": 0 if args.skip_answers else len(questions),
-            "commands": command_results,
-            "exported_okf": str(export_path),
-        }
-        (output / "live-round-trip.json").write_text(
-            json.dumps(report, ensure_ascii=False, indent=2) + "\n",
-            encoding="utf-8",
-        )
-        shutil.rmtree(staged_export)
+            shutil.copytree(staged_export, export_path)
+
+            graph = load_mcp_graph(source)
+            source_records = _source_bytes(source)
+            exported_records = reconstructed_jsonl(export_path)
+            if exported_records != source_records:
+                raise MigrationError(
+                    "live Memanto export did not reconstruct to the source graph"
+                )
+            report = {
+                "agent": args.agent,
+                "source_entities": len(graph.entities),
+                "source_relations": len(graph.relations),
+                "exported_memories_validated": len(graph.entities),
+                "source_records_reconstructed": len(graph.entities)
+                + len(graph.relations),
+                "source_records_sha256": hashlib.sha256(source_records).hexdigest(),
+                "exported_records_sha256": hashlib.sha256(exported_records).hexdigest(),
+                "lossless_live_round_trip": True,
+                "recall_commands_run": len(questions),
+                "recall_commands_succeeded": len(questions),
+                "answer_commands_run": 0 if args.skip_answers else len(questions),
+                "answer_commands_succeeded": (
+                    0 if args.skip_answers else len(questions)
+                ),
+                "commands": command_results,
+                "exported_okf": str(export_path),
+            }
+            (output / "live-round-trip.json").write_text(
+                json.dumps(report, ensure_ascii=False, indent=2) + "\n",
+                encoding="utf-8",
+            )
+        finally:
+            shutil.rmtree(staged_export, ignore_errors=True)
         print(json.dumps(report, ensure_ascii=False, indent=2))
         return 0
     except (MigrationError, OSError, RuntimeError, ValueError) as exc:

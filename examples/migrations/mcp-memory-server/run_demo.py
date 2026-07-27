@@ -93,6 +93,8 @@ def main() -> int:
             json.dumps(cli_preview, ensure_ascii=False, indent=2) + "\n",
             encoding="utf-8",
         )
+    else:
+        (output / "metrics" / "memanto-cli-dry-run.json").unlink(missing_ok=True)
     print(rendered, end="")
     return 0
 

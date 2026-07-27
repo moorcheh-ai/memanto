@@ -10,6 +10,7 @@ graph can be reconstructed without loss.
 from __future__ import annotations
 
 import argparse
+import base64
 import hashlib
 import json
 import re
@@ -245,14 +246,24 @@ def _source_fence(payload: str) -> str:
 
 
 def _source_payload(
-    entity: EntityRecord, outgoing: list[RelationRecord]
+    entity: EntityRecord,
+    outgoing: list[RelationRecord],
+    *,
+    source_bytes: bytes | None,
 ) -> dict[str, Any]:
-    return {
+    payload: dict[str, Any] = {
         "entity": {"line": entity.line, "record": entity.raw},
         "outgoing_relations": [
             {"line": relation.line, "record": relation.raw} for relation in outgoing
         ],
     }
+    if source_bytes is not None:
+        payload["source_file"] = {
+            "encoding": "base64",
+            "sha256": hashlib.sha256(source_bytes).hexdigest(),
+            "bytes": base64.b64encode(source_bytes).decode("ascii"),
+        }
+    return payload
 
 
 def _entity_document(
@@ -260,6 +271,8 @@ def _entity_document(
     outgoing: list[RelationRecord],
     incoming: list[RelationRecord],
     slugs: dict[str, str],
+    *,
+    source_bytes: bytes | None = None,
 ) -> str:
     description = (
         entity.observations[0]
@@ -334,7 +347,7 @@ def _entity_document(
         body.append("_None._")
 
     payload = json.dumps(
-        _source_payload(entity, outgoing),
+        _source_payload(entity, outgoing, source_bytes=source_bytes),
         ensure_ascii=False,
         indent=2,
     )
@@ -410,6 +423,7 @@ def _mapping_table() -> str:
 | Outgoing relation | Typed Markdown link in `## Relationships` | Link and relation label remain searchable |
 | Incoming relation | Backlink in `## Relationships` | Graph neighborhood remains human-browsable |
 | Exact source record | `json mcp-memory-source` fenced block | Survives import/export as memory content |
+| Exact source file bytes | One base64 + SHA-256 manifest in the first entity block | Preserves whitespace, line endings, UTF-8 BOM, blank lines, and final-newline state |
 | Source URI | `memory://knowledge-graph/entities/<name>` | Becomes `source_ref` |
 | Provenance | `mcp-memory` tags and namespaced frontmatter | Preserved in tags/supporting data |
 
@@ -486,14 +500,20 @@ def write_okf_bundle(
     source_dir.mkdir()
 
     slugs = build_entity_slugs(graph.entities)
-    for entity in graph.entities:
+    for index, entity in enumerate(graph.entities):
         outgoing = [
             relation for relation in graph.relations if relation.source == entity.name
         ]
         incoming = [
             relation for relation in graph.relations if relation.target == entity.name
         ]
-        document = _entity_document(entity, outgoing, incoming, slugs)
+        document = _entity_document(
+            entity,
+            outgoing,
+            incoming,
+            slugs,
+            source_bytes=graph.source_bytes if index == 0 else None,
+        )
         (entities_dir / f"{slugs[entity.name]}.md").write_text(
             document, encoding="utf-8"
         )
