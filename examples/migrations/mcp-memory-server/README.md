@@ -125,7 +125,12 @@ After setting `MOORCHEH_API_KEY` locally, execute it:
 Do not paste, print, or commit the API key. Execution creates cloud-backed agent
 data, so the script requires the explicit `--execute` flag. It refuses to
 overwrite an existing evidence directory. Use `--reuse-agent` for a previously
-created demo agent and `--skip-answers` if only retrieval is configured.
+created demo agent and `--skip-answers` if only retrieval is configured. The
+live exporter first writes to a unique staging directory under Memanto's data
+directory, as required by its path-safety guard, then copies that clean export
+into the evidence directory and removes the staging copy after validation.
+See [`LIVE_VALIDATION.md`](LIVE_VALIDATION.md) for the measured cloud-backed
+result and the live-only path constraint it uncovered.
 
 ## Output layout
 
@@ -138,6 +143,7 @@ sample/okf/
 │       └── <one readable document per MCP entity>.md
 ├── metrics/
 │   ├── mapping-table.md
+│   ├── live-cloud-validation.json
 │   ├── memanto-cli-dry-run.json
 │   ├── migration-report.json
 │   └── round-trip-validation.json

@@ -141,6 +141,17 @@ def build_commands(
     return commands
 
 
+def staging_export_path(agent: str, evidence_path: Path, data_dir: Path) -> Path:
+    """Return a unique export path that satisfies Memanto's write guard.
+
+    Memanto intentionally restricts ``memory export --output`` to its own data
+    directory. The digest ties this temporary path to the requested evidence
+    directory without exposing that external path to the export command.
+    """
+    digest = hashlib.sha256(str(evidence_path).encode("utf-8")).hexdigest()[:12]
+    return data_dir / "exports" / f"{agent}_live_{digest}_okf"
+
+
 def _normalized_source(path: Path) -> bytes:
     graph = load_mcp_graph(path)
     records = [entity.raw for entity in graph.entities] + [
@@ -231,12 +242,15 @@ def main() -> int:
             else Path(tempfile.gettempdir()) / f"memanto-{args.agent}-evidence"
         )
         export_path = output / "exported-okf"
+        staged_export = staging_export_path(
+            args.agent, output, ConfigManager().get_data_dir()
+        )
         questions = _golden_questions(ROOT / "sample" / "golden_qa.json")
         commands = build_commands(
             executable,
             agent=args.agent,
             okf_path=okf_path,
-            export_path=export_path,
+            export_path=staged_export,
             questions=questions,
             reuse_agent=args.reuse_agent,
             include_answers=not args.skip_answers,
@@ -245,7 +259,8 @@ def main() -> int:
         print("Live showcase command plan:")
         for command in commands:
             print(f"- {command.label}: {shlex.join(command.argv)}")
-        print(f"- reconstruct exported graph from: {export_path}")
+        print(f"- copy staged export into evidence: {export_path}")
+        print(f"- reconstruct exported graph from evidence copy: {export_path}")
         print(f"- evidence directory: {output}")
         if not args.execute:
             print(
@@ -263,8 +278,14 @@ def main() -> int:
             raise RuntimeError(
                 f"evidence directory already exists: {output}; choose a new --output"
             )
+        if staged_export.exists():
+            raise RuntimeError(
+                f"staged export already exists: {staged_export}; choose a new "
+                "--output so stale data cannot enter the evidence"
+            )
         output.mkdir(parents=True)
         command_results = _run_commands(commands, output / "live-cli-transcript.txt")
+        shutil.copytree(staged_export, export_path)
 
         source_records = _normalized_source(source)
         exported_records = reconstructed_jsonl(export_path)
@@ -286,6 +307,7 @@ def main() -> int:
             json.dumps(report, ensure_ascii=False, indent=2) + "\n",
             encoding="utf-8",
         )
+        shutil.rmtree(staged_export)
         print(json.dumps(report, ensure_ascii=False, indent=2))
         return 0
     except (MigrationError, OSError, RuntimeError, ValueError) as exc:

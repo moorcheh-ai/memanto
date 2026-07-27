@@ -14,7 +14,7 @@ for path in (ROOT, REPO_ROOT):
 
 from migrate_mcp_memory import MigrationError, load_mcp_graph, migrate  # noqa: E402
 from reconstruct_mcp_memory import reconstructed_jsonl  # noqa: E402
-from run_live_demo import build_commands  # noqa: E402
+from run_live_demo import build_commands, staging_export_path  # noqa: E402
 
 from memanto.cli.migrate.mappers import map_okf  # noqa: E402
 from memanto.cli.migrate.okf_loader import load_okf_bundle  # noqa: E402
@@ -210,6 +210,18 @@ class McpMemoryMigrationTests(unittest.TestCase):
         )
         self.assertNotIn("create-agent", [command.label for command in reused])
         self.assertNotIn("answer-1", [command.label for command in reused])
+
+    def test_live_export_is_staged_inside_memanto_data_dir(self) -> None:
+        data_dir = Path("/home/demo/.memanto")
+        first = staging_export_path(
+            "mcp-demo", Path("/external/evidence-one"), data_dir
+        )
+        second = staging_export_path(
+            "mcp-demo", Path("/external/evidence-two"), data_dir
+        )
+        self.assertEqual(first.parent, data_dir / "exports")
+        self.assertNotEqual(first, second)
+        self.assertTrue(first.name.startswith("mcp-demo_live_"))
 
 
 if __name__ == "__main__":
