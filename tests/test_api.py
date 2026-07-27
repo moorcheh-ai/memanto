@@ -1100,8 +1100,18 @@ class TestMEMANTOAPI:
         )
         token = activate_resp.json()["session_token"]
 
-        # Backend uses self.client.documents.upload for batch too
-        mock_moorcheh.documents.upload.return_value = {"status": "success"}
+        # Backend uses self.client.documents.upload for batch too.
+        # Use side_effect to return per-doc results with matching IDs so the
+        # success path is tested with realistic data.
+        def _upload_side_effect(**kwargs):
+            documents = kwargs.get("documents", [])
+            results = [
+                {"id": doc.get("id", ""), "status": "success"}
+                for doc in documents
+            ]
+            return {"status": "success", "results": results}
+
+        mock_moorcheh.documents.upload.side_effect = _upload_side_effect
 
         headers = {**auth_headers, "X-Session-Token": token}
         payload = {
@@ -1462,7 +1472,15 @@ class TestMEMANTOAPI:
             ),
             "sources": [],
         }
-        mock_moorcheh.documents.upload.return_value = {"status": "success"}
+        def _upload_side_effect(**kwargs):
+            documents = kwargs.get("documents", [])
+            results = [
+                {"id": doc.get("id", ""), "status": "success"}
+                for doc in documents
+            ]
+            return {"status": "success", "results": results}
+
+        mock_moorcheh.documents.upload.side_effect = _upload_side_effect
 
         response = await client.post(
             f"/api/v2/agents/{self.TEST_AGENT_ID}/remember/extract",

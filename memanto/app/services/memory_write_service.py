@@ -275,8 +275,13 @@ class MemoryWriteService:
                         result["error"] = f"Upload returned status '{moorcheh_status}'"
                     elif not per_doc:
                         # No per-doc data at all, but aggregate succeeded —
-                        # fall back to the aggregate status.
-                        result["status"] = moorcheh_status
+                        # genuinely unconfirmed for all documents.
+                        result["status"] = "unconfirmed"
+                        if not result.get("error"):
+                            result["error"] = (
+                                "Upstream provider returned aggregate success"
+                                " without per-document confirmation payload"
+                            )
                     else:
                         # Batch succeeded but this specific document was not
                         # found in per-doc results — genuinely unconfirmed.
@@ -284,10 +289,12 @@ class MemoryWriteService:
                         if not result.get("error"):
                             result["error"] = (
                                 "Batch uploaded but per-document status unavailable"
-                            ) 
+                            )
 
-            # Count successes, failures, and namespace-rejected items separately
-            # so that successful + failed + rejected == total_submitted always.
+            # Count successes, failures, unconfirmed, and namespace-rejected
+            # items separately so that
+            # successful + failed + unconfirmed + rejected == total_submitted
+            # always.
             _known = set(SUCCESSFUL_UPLOAD_STATUSES) | {"failed", "rejected", "unconfirmed"}
             successful = sum(
                 1
@@ -295,17 +302,23 @@ class MemoryWriteService:
                 if str(r["status"]).lower() in SUCCESSFUL_UPLOAD_STATUSES
             )
             failed = sum(1 for r in results if str(r["status"]).lower() == "failed")
+            unconfirmed = sum(
+                1 for r in results if str(r["status"]).lower() == "unconfirmed"
+            )
             rejected = sum(1 for r in results if str(r["status"]).lower() == "rejected")
-            # Absorb any non-standard upload statuses into failed so the invariant holds
-            failed += len(results) - successful - failed - rejected
+            # Absorb any non-standard upload statuses into failed so the
+            # invariant holds (does not touch the known four categories).
             for r in results:
                 if str(r["status"]).lower() not in _known:
                     r["status"] = "failed"
+            # Recompute failed so it catches the re-mapped unknowns.
+            failed = sum(1 for r in results if str(r["status"]).lower() == "failed")
 
             return {
                 "total_submitted": len(memories),
                 "successful": successful,
                 "failed": failed,
+                "unconfirmed": unconfirmed,
                 "rejected": rejected,
                 "namespace": first_namespace,
                 "results": results,

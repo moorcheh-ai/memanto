@@ -626,9 +626,13 @@ class TestMemoryWriteServiceBatch:
 
         result = MemoryWriteService(client).batch_store_memories(memories)
 
-        assert result["successful"] == 2
+        assert result["successful"] == 0
         assert result["failed"] == 0
-        assert [item["status"] for item in result["results"]] == ["ok", "ok"]
+        assert result["unconfirmed"] == 2
+        assert [item["status"] for item in result["results"]] == [
+            "unconfirmed",
+            "unconfirmed",
+        ]
 
     def test_batch_store_counts_failed_upload_status_case_insensitively(self):
         from memanto.app.core import MemoryRecord
@@ -1483,7 +1487,7 @@ def test_batch_upload_error_counts_each_pending_memory_as_failed():
     assert result["failed"] == 2
     assert [item["status"] for item in result["results"]] == ["failed", "failed"]
     assert all(
-        "Batch upload returned status" in item["error"] for item in result["results"]
+        "Upload returned status" in item["error"] for item in result["results"]
     )
 
 
