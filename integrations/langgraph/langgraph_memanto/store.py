@@ -51,7 +51,7 @@ from langgraph.store.base import (
     SearchOp,
 )
 
-from memanto.cli.client.sdk_client import SdkClient
+from memanto.cli.client.sdk_client import SdkClient, sanitize_agent_id
 
 logger = logging.getLogger(__name__)
 
@@ -110,7 +110,7 @@ class MemantoStore(BaseStore):
 
     def _ensure_client(self, namespace: tuple[str, ...]) -> tuple[SdkClient, str]:
         ns_str = "_".join(namespace) or "default"
-        agent_id = f"{self._agent_prefix}{ns_str}"
+        agent_id = sanitize_agent_id(f"{self._agent_prefix}{ns_str}")
         with self._lock:
             if agent_id in self._client_pool:
                 return self._client_pool[agent_id], agent_id

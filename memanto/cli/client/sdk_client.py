@@ -6,7 +6,9 @@ Uses the official moorcheh_sdk to interact with Moorcheh API.
 
 import json
 import logging
+import re
 import shutil
+import unicodedata
 from datetime import datetime
 from pathlib import Path
 from typing import Any, cast
@@ -41,12 +43,20 @@ from memanto.cli.config.manager import ConfigManager
 
 logger = logging.getLogger(__name__)
 
-__all__ = ["SdkClient"]
+__all__ = ["SdkClient", "sanitize_agent_id"]
 
 # Constants
 _MAX_BATCH_SIZE = 100
 _MAX_TITLE_LENGTH = 100
 _MAX_CONTENT_LENGTH = InputLimits.MAX_TEXT_LENGTH
+
+
+def sanitize_agent_id(raw: str) -> str:
+    """Coerce to Memanto's agent_id charset (letters, digits, -, _)."""
+    normalized = unicodedata.normalize("NFKC", raw or "")
+    cleaned = re.sub(r"[^a-zA-Z0-9_-]", "-", normalized)
+    cleaned = re.sub(r"-+", "-", cleaned).strip("-")
+    return cleaned[:100].strip("-") or "default"
 
 
 class SdkClient:

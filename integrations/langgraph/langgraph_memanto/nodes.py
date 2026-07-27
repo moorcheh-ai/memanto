@@ -4,7 +4,7 @@ from typing import Any
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 from langchain_core.runnables import RunnableConfig
 
-from memanto.cli.client.sdk_client import SdkClient
+from memanto.cli.client.sdk_client import SdkClient, sanitize_agent_id
 
 logger = logging.getLogger(__name__)
 
@@ -53,6 +53,9 @@ def create_recall_node(
         if resolved_agent_id is None and config:
             configurable = config.get("configurable", {})
             resolved_agent_id = configurable.get(agent_id_from_config)
+            
+        if resolved_agent_id:
+            resolved_agent_id = sanitize_agent_id(resolved_agent_id)
 
         if not resolved_agent_id:
             logger.warning(
@@ -160,6 +163,9 @@ def create_remember_node(
         if resolved_agent_id is None and config:
             configurable = config.get("configurable", {})
             resolved_agent_id = configurable.get(agent_id_from_config)
+
+        if resolved_agent_id:
+            resolved_agent_id = sanitize_agent_id(resolved_agent_id)
 
         if not resolved_agent_id:
             logger.warning(

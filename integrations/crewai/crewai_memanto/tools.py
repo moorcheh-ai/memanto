@@ -15,7 +15,7 @@ from crewai.tools import BaseTool
 from pydantic import BaseModel, Field
 
 from memanto.app.utils.errors import AgentAlreadyExistsError
-from memanto.cli.client.sdk_client import SdkClient
+from memanto.cli.client.sdk_client import SdkClient, sanitize_agent_id
 
 logger = logging.getLogger(__name__)
 
@@ -56,6 +56,7 @@ class MemantoSetup:
         duration_hours: int = 6,
     ) -> SdkClient:
         """Create agent (if needed) and activate a session."""
+        agent_id = sanitize_agent_id(agent_id)
         try:
             self.client.create_agent(
                 agent_id=agent_id,
@@ -327,6 +328,7 @@ def create_memanto_tools(
     Returns:
         Dict with keys 'remember', 'recall', 'answer' mapping to tool instances.
     """
+    agent_id = sanitize_agent_id(agent_id)
     return {
         "remember": MemantoRememberTool(client=client, agent_id=agent_id),
         "recall": MemantoRecallTool(client=client, agent_id=agent_id),

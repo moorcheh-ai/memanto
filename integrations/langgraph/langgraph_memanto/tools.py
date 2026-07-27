@@ -5,7 +5,7 @@ from typing import Annotated
 from langchain_core.tools import tool
 from pydantic import Field
 
-from memanto.cli.client.sdk_client import SdkClient
+from memanto.cli.client.sdk_client import SdkClient, sanitize_agent_id
 
 # Valid Memanto memory types with definitions for the LLM
 VALID_MEMORY_TYPES = (
@@ -28,6 +28,7 @@ VALID_MEMORY_TYPES = (
 def create_memanto_tools(client: SdkClient, agent_id: str):
     import threading
 
+    agent_id = sanitize_agent_id(agent_id)
     _setup_lock = threading.Lock()
     _setup_done = False
 
