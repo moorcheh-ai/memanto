@@ -9,6 +9,7 @@ Handles configuration persistence:
 
 import importlib
 import json
+import math
 import os
 from pathlib import Path
 from urllib.parse import urlsplit, urlunsplit
@@ -83,7 +84,7 @@ def _validate_float_range(name: str, value, minimum: float, maximum: float) -> f
         validated = float(value)
     except (TypeError, ValueError) as exc:
         raise ValueError(f"{name} must be between {minimum} and {maximum}") from exc
-    if validated < minimum or validated > maximum:
+    if not math.isfinite(validated) or validated < minimum or validated > maximum:
         raise ValueError(f"{name} must be between {minimum} and {maximum}")
     return validated
 
