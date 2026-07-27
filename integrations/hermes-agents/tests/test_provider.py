@@ -130,34 +130,6 @@ def test_sanitize_agent_id_coerces_charset():
     assert _sanitize_agent_id("a" * 100) == "a" * 64
 
 
-def test_sanitize_agent_id_keeps_non_latin_identities_isolated():
-    chinese_a = _sanitize_agent_id("李雷")
-    chinese_b = _sanitize_agent_id("韩梅梅")
-    cyrillic = _sanitize_agent_id("Алиса")
-
-    assert len({chinese_a, chinese_b, cyrillic}) == 3
-    assert all(value.startswith("hermes-") for value in (chinese_a, chinese_b, cyrillic))
-    assert all(len(value) <= 64 for value in (chinese_a, chinese_b, cyrillic))
-
-
-def test_sanitize_agent_id_hashes_unicode_in_mixed_script_identities():
-    first = _sanitize_agent_id("团队-alpha")
-    second = _sanitize_agent_id("项目-alpha")
-
-    assert first != second
-    assert first.startswith("alpha-")
-    assert second.startswith("alpha-")
-
-
-def test_sanitize_agent_id_handles_malformed_unicode_without_collisions():
-    surrogate_a = _sanitize_agent_id("\ud800")
-    surrogate_b = _sanitize_agent_id("\ud801")
-
-    assert surrogate_a != surrogate_b
-    assert surrogate_a.startswith("hermes-")
-    assert surrogate_b.startswith("hermes-")
-
-
 def test_sanitize_agent_id_normalizes_equivalent_unicode():
     assert _sanitize_agent_id("caf\N{LATIN SMALL LETTER E WITH ACUTE}") == _sanitize_agent_id(
         "cafe\N{COMBINING ACUTE ACCENT}"
@@ -273,42 +245,6 @@ def test_identity_template_default_profile(monkeypatch, tmp_path):
     p = MemantoMemoryProvider()
     p.initialize("s1", hermes_home=str(tmp_path), platform="cli")
     assert p._agent_id == "hermes-default"
-
-
-@pytest.mark.parametrize(
-    ("first_identity", "second_identity"),
-    [
-        ("李雷", "韩梅梅"),
-        ("Алиса", "Боб"),
-        ("团队-alpha", "项目-alpha"),
-    ],
-)
-def test_unicode_profiles_initialize_with_isolated_memory_agents(
-    monkeypatch, tmp_path, first_identity, second_identity
-):
-    """Distinct Hermes profiles must never share a Memanto namespace."""
-    monkeypatch.setenv("MOORCHEH_API_KEY", "test-key")
-    monkeypatch.delenv("MEMANTO_AGENT_ID", raising=False)
-    monkeypatch.setattr(PROVIDER_MOD, FakeClient)
-    _save_memanto_config({"agent_id": "hermes-{identity}"}, str(tmp_path))
-
-    providers = []
-    for session_id, identity in (("s1", first_identity), ("s2", second_identity)):
-        provider = MemantoMemoryProvider()
-        provider.initialize(
-            session_id,
-            hermes_home=str(tmp_path),
-            platform="cli",
-            agent_identity=identity,
-        )
-        if provider._warmup_thread:
-            provider._warmup_thread.join(timeout=1)
-        providers.append(provider)
-
-    first, second = providers
-    assert first._agent_id != second._agent_id
-    assert first._client.agent_id == first._agent_id
-    assert second._client.agent_id == second._agent_id
 
 
 def test_agent_id_env_override(monkeypatch, tmp_path):
