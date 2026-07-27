@@ -8,6 +8,7 @@ import threading
 import unittest
 from collections import deque
 from pathlib import Path
+from types import SimpleNamespace
 from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -36,8 +37,8 @@ def _line(record: dict) -> str:
 class McpMemoryMigrationTests(unittest.TestCase):
     def _source(self, directory: Path, records: list[dict]) -> Path:
         source = directory / "memory.jsonl"
-        source.write_text(
-            "\n".join(_line(record) for record in records), encoding="utf-8"
+        source.write_bytes(
+            "\n".join(_line(record) for record in records).encode("utf-8")
         )
         return source
 
@@ -89,10 +90,7 @@ class McpMemoryMigrationTests(unittest.TestCase):
             self.assertIn("uses", atlas["content"])
             self.assertEqual(atlas["type"], "artifact")
             self.assertEqual(atlas["source"], "mcp-memory-server")
-            self.assertEqual(
-                reconstructed_jsonl(output).decode("utf-8"),
-                source.read_text(encoding="utf-8"),
-            )
+            self.assertEqual(reconstructed_jsonl(output), source.read_bytes())
 
     def test_slug_collisions_remain_unique(self) -> None:
         records = [
@@ -124,7 +122,10 @@ class McpMemoryMigrationTests(unittest.TestCase):
                 "name": "Fence-safe",
                 "entityType": "learning",
                 "observations": [
-                    "The source includes ```python and ```` longer fences."
+                    "Embedded:\n"
+                    "```python\nprint('x')\n```\n"
+                    "and:\n"
+                    "````text\nlonger fence\n````"
                 ],
             }
         ]
@@ -133,10 +134,7 @@ class McpMemoryMigrationTests(unittest.TestCase):
             source = self._source(root, records)
             output = root / "okf"
             migrate(source, output)
-            self.assertEqual(
-                reconstructed_jsonl(output).decode("utf-8"),
-                source.read_text(encoding="utf-8"),
-            )
+            self.assertEqual(reconstructed_jsonl(output), source.read_bytes())
 
     def test_reconstruction_preserves_exact_source_bytes(self) -> None:
         source_bytes = (
@@ -269,10 +267,12 @@ class McpMemoryMigrationTests(unittest.TestCase):
             export_path=Path("/evidence/exported-okf"),
             questions=questions,
             reuse_agent=True,
-            include_answers=False,
+            include_answers=True,
         )
-        self.assertNotIn("create-agent", [command.label for command in reused])
-        self.assertNotIn("answer-1", [command.label for command in reused])
+        reused_labels = [command.label for command in reused]
+        self.assertNotIn("create-agent", reused_labels)
+        self.assertIn("answer-1", reused_labels)
+        self.assertIn("answer-2", reused_labels)
 
     def test_live_export_is_staged_inside_memanto_data_dir(self) -> None:
         data_dir = Path("/home/demo/.memanto")
@@ -308,10 +308,26 @@ class McpMemoryMigrationTests(unittest.TestCase):
         client.next_id = 1
         client.request_timeout = 0.01
         client._stdout_queue = queue.Queue()
-        client._stderr_lines = deque(["server diagnostic\n"], maxlen=200)
+        client._stderr_lines = deque(maxlen=200)
         client._stderr_lock = threading.Lock()
+        request_started = threading.Event()
+
+        class ControlledStderr:
+            def __iter__(self):
+                request_started.wait(timeout=1)
+                yield "server diagnostic\n"
+
+        client.process = SimpleNamespace(stderr=ControlledStderr())
+        stderr_thread = threading.Thread(target=client._drain_stderr)
+        stderr_thread.start()
+
+        def send_request(_message: dict) -> None:
+            request_started.set()
+            stderr_thread.join(timeout=1)
+            self.assertFalse(stderr_thread.is_alive())
+
         with (
-            patch.object(client, "_send", return_value=None),
+            patch.object(client, "_send", side_effect=send_request),
             self.assertRaisesRegex(RuntimeError, "timed out.*server diagnostic"),
         ):
             client.request("tools/list", {})

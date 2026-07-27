@@ -36,6 +36,7 @@ class LiveCommand:
 
 
 def _memanto_executable() -> Path:
+    """Locate the Memanto CLI in the active environment or PATH."""
     sibling = Path(sys.executable).with_name("memanto")
     if sibling.is_file():
         return sibling
@@ -49,6 +50,7 @@ def _memanto_executable() -> Path:
 
 
 def _golden_questions(path: Path) -> list[str]:
+    """Load and validate the golden questions used by the live demo."""
     data = json.loads(path.read_text(encoding="utf-8"))
     if not isinstance(data, list):
         raise MigrationError("golden Q&A file must contain an array")
@@ -70,6 +72,7 @@ def build_commands(
     reuse_agent: bool,
     include_answers: bool,
 ) -> list[LiveCommand]:
+    """Build the guarded import, retrieval, answer, and export command plan."""
     commands: list[LiveCommand] = []
     exe = str(executable)
     if not reuse_agent:
@@ -184,6 +187,7 @@ def display_argv(argv: tuple[str, ...]) -> str:
 def _run_commands(
     commands: list[LiveCommand], transcript_path: Path
 ) -> list[dict[str, Any]]:
+    """Execute commands sequentially while persisting a redacted transcript."""
     transcript: list[str] = []
     results: list[dict[str, Any]] = []
     for command in commands:
@@ -215,6 +219,7 @@ def _run_commands(
 
 
 def main() -> int:
+    """Preview or execute the live cloud-backed freedom loop."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--agent",

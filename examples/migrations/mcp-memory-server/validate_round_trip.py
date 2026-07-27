@@ -15,10 +15,12 @@ from reconstruct_mcp_memory import reconstructed_jsonl
 
 
 def _repo_root() -> Path:
+    """Return the Memanto repository root for local imports."""
     return Path(__file__).resolve().parents[3]
 
 
 def _load_memanto_rows(okf_path: Path) -> list[dict[str, Any]]:
+    """Load and map an OKF bundle through Memanto's production importer."""
     root = _repo_root()
     if str(root) not in sys.path:
         sys.path.insert(0, str(root))
@@ -29,6 +31,7 @@ def _load_memanto_rows(okf_path: Path) -> list[dict[str, Any]]:
 
 
 def _source_text(graph: Any) -> str:
+    """Flatten graph content for offline phrase-retention checks."""
     parts: list[str] = []
     for entity in graph.entities:
         parts.extend([entity.name, entity.entity_type, *entity.observations])
@@ -42,6 +45,7 @@ def validate(
     okf_path: str | Path,
     golden_path: str | Path,
 ) -> dict[str, Any]:
+    """Validate byte fidelity, Memanto mapping, and phrase retention."""
     graph = load_mcp_graph(source_path)
     okf_root = Path(okf_path)
     rows = _load_memanto_rows(okf_root)
@@ -103,6 +107,7 @@ def validate(
 
 
 def main() -> int:
+    """Run round-trip validation and optionally persist its JSON report."""
     parser = argparse.ArgumentParser(
         description="Validate MCP Memory → OKF round-trip fidelity."
     )

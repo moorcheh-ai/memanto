@@ -157,6 +157,7 @@ def reconstructed_jsonl(okf_path: str | Path) -> bytes:
 
 
 def main() -> int:
+    """Run byte-exact reconstruction and return a shell-friendly exit code."""
     parser = argparse.ArgumentParser(
         description="Reconstruct MCP Memory JSONL from an OKF bundle."
     )

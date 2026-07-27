@@ -26,6 +26,7 @@ class McpStdioClient:
     """Minimal timeout-bounded JSON-RPC client for the MCP stdio transport."""
 
     def __init__(self, memory_file: Path, *, request_timeout: float = 30.0) -> None:
+        """Start the pinned MCP server with isolated storage."""
         env = os.environ.copy()
         env["MEMORY_FILE_PATH"] = str(memory_file.resolve())
         self.process = subprocess.Popen(
@@ -333,6 +334,7 @@ def populate(memory_file: Path, *, force: bool = False) -> None:
 
 
 def main() -> int:
+    """Generate the showcase graph and return a shell-friendly exit code."""
     parser = argparse.ArgumentParser(
         description="Generate a real MCP Memory Server source graph."
     )

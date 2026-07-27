@@ -90,6 +90,7 @@ class KnowledgeGraph:
 
 
 def _required_string(record: dict[str, Any], key: str, line: int) -> str:
+    """Return a required non-empty string field or reject the record."""
     value = record.get(key)
     if not isinstance(value, str) or not value.strip():
         raise MigrationError(f"line {line}: {key!r} must be a non-empty string")
@@ -196,6 +197,7 @@ def load_mcp_graph(path: str | Path) -> KnowledgeGraph:
 
 
 def _slug_base(value: str) -> str:
+    """Build a portable ASCII filename stem."""
     ascii_value = (
         unicodedata.normalize("NFKD", value).encode("ascii", "ignore").decode("ascii")
     )
@@ -224,15 +226,18 @@ def build_entity_slugs(entities: tuple[EntityRecord, ...]) -> dict[str, str]:
 
 
 def _yaml_scalar(value: Any) -> str:
+    """Render a dependency-free JSON scalar that is also valid YAML."""
     # JSON scalars and arrays are valid YAML and avoid adding a YAML dependency.
     return json.dumps(value, ensure_ascii=False)
 
 
 def _markdown_line(value: str) -> str:
+    """Collapse source text into a single safe Markdown list line."""
     return value.replace("\r", " ").replace("\n", " ").strip()
 
 
 def _memanto_type(entity_type: str) -> str:
+    """Map an MCP entity type to a supported Memanto memory type."""
     normalized = entity_type.strip().casefold()
     if normalized in _MEMANTO_TYPES:
         return normalized
@@ -251,6 +256,7 @@ def _source_payload(
     *,
     source_bytes: bytes | None,
 ) -> dict[str, Any]:
+    """Build the embedded lossless payload for one entity document."""
     payload: dict[str, Any] = {
         "entity": {"line": entity.line, "record": entity.raw},
         "outgoing_relations": [
@@ -274,6 +280,7 @@ def _entity_document(
     *,
     source_bytes: bytes | None = None,
 ) -> str:
+    """Render one MCP entity and its graph neighborhood as OKF Markdown."""
     description = (
         entity.observations[0]
         if entity.observations
@@ -370,6 +377,7 @@ def _entity_document(
 
 
 def _root_index(graph: KnowledgeGraph) -> str:
+    """Render the bundle-level OKF index."""
     return "\n".join(
         [
             "---",
@@ -395,6 +403,7 @@ def _root_index(graph: KnowledgeGraph) -> str:
 
 
 def _memory_index(entities: tuple[EntityRecord, ...], slugs: dict[str, str]) -> str:
+    """Render links to every importable entity document."""
     lines = [
         "---",
         "type: index",
@@ -413,6 +422,7 @@ def _memory_index(entities: tuple[EntityRecord, ...], slugs: dict[str, str]) -> 
 
 
 def _mapping_table() -> str:
+    """Describe the MCP-to-OKF field mapping and import behavior."""
     return """# MCP Memory Server → Memanto OKF mapping
 
 | MCP Memory concept | OKF representation | Memanto import behavior |
@@ -433,6 +443,7 @@ to `memories/`, so the source and metrics directories are not re-ingested.
 
 
 def _prepare_output(path: Path, force: bool) -> None:
+    """Create a clean output directory without permitting root deletion."""
     resolved = path.resolve()
     if resolved == Path(resolved.anchor):
         raise MigrationError("refusing to use a filesystem root as output")
@@ -449,6 +460,7 @@ def _prepare_output(path: Path, force: bool) -> None:
 
 
 def _savings_report(graph: KnowledgeGraph, memories_dir: Path) -> dict[str, Any]:
+    """Report honest storage overhead when provider savings are unavailable."""
     source_bytes = len(graph.source_bytes)
     importable_okf_bytes = sum(
         path.stat().st_size
@@ -489,6 +501,7 @@ def _savings_report(graph: KnowledgeGraph, memories_dir: Path) -> dict[str, Any]
 def write_okf_bundle(
     graph: KnowledgeGraph, output: str | Path, *, force: bool = False
 ) -> dict[str, Any]:
+    """Write a complete deterministic OKF bundle for a validated graph."""
     output_path = Path(output)
     _prepare_output(output_path, force)
 
@@ -559,10 +572,12 @@ def write_okf_bundle(
 def migrate(
     source: str | Path, output: str | Path, *, force: bool = False
 ) -> dict[str, Any]:
+    """Validate MCP JSONL and convert it into an OKF bundle."""
     return write_okf_bundle(load_mcp_graph(source), output, force=force)
 
 
 def _build_parser() -> argparse.ArgumentParser:
+    """Build the migration command-line parser."""
     parser = argparse.ArgumentParser(
         description="Convert MCP Memory Server JSONL to an OKF bundle."
     )
@@ -577,6 +592,7 @@ def _build_parser() -> argparse.ArgumentParser:
 
 
 def main() -> int:
+    """Run the migration CLI and return a shell-friendly exit code."""
     args = _build_parser().parse_args()
     try:
         report = migrate(args.input, args.output, force=args.force)

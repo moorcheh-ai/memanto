@@ -43,6 +43,7 @@ def run_memanto_dry_run(okf_path: Path) -> dict[str, object]:
 
 
 def main() -> int:
+    """Run source generation, migration, validation, and CLI preview."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--regenerate",
