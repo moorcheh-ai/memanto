@@ -452,6 +452,7 @@ def map_okf(export: dict[str, Any]) -> list[dict[str, Any]]:
         confidence = min(1.0, max(0.0, confidence))
 
         source = x_memanto.get("source") or "okf"
+        status = x_memanto.get("status") or "active"
         created_at = _parse_dt(entry.get("timestamp"))
 
         footer_items: list[tuple[str, Any]] = [
@@ -480,6 +481,7 @@ def map_okf(export: dict[str, Any]) -> list[dict[str, Any]]:
                 "source": source,
                 "source_ref": str(resource) if resource else None,
                 "provenance": "imported",
+                "status": status,
                 "created_at": created_at,
                 "updated_at": migrated_at,
             }

@@ -586,6 +586,10 @@ class SdkClient:
                 if val is not None:
                     kwargs[opt_key] = val
 
+            raw_status = item.get("status")
+            if raw_status in ("active", "superseded", "deleted", "provisional"):
+                kwargs["status"] = raw_status
+
             memory = MemoryRecord(**kwargs)
             memory_records.append(memory)
 
