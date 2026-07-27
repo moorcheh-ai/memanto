@@ -150,11 +150,10 @@ def reconstructed_jsonl(okf_path: str | Path) -> bytes:
             )
         return source_bytes
 
-    lines = [
-        json.dumps(record, ensure_ascii=False, separators=(",", ":"))
-        for record in records
-    ]
-    return ("\n".join(lines)).encode("utf-8")
+    raise MigrationError(
+        "bundle is missing the exact MCP source manifest required for "
+        "byte-lossless reconstruction"
+    )
 
 
 def main() -> int:

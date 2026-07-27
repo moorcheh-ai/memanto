@@ -156,6 +156,29 @@ class McpMemoryMigrationTests(unittest.TestCase):
             migrate(source, output)
             self.assertEqual(reconstructed_jsonl(output), source_bytes)
 
+    def test_reconstruction_requires_exact_source_manifest(self) -> None:
+        record = {
+            "type": "entity",
+            "name": "Legacy",
+            "entityType": "artifact",
+            "observations": [],
+        }
+        payload = {
+            "entity": {"line": 1, "record": record},
+            "outgoing_relations": [],
+        }
+        document = (
+            "```json mcp-memory-source\n"
+            f"{json.dumps(payload, ensure_ascii=False)}\n"
+            "```\n"
+        )
+        with tempfile.TemporaryDirectory() as tmp:
+            memories = Path(tmp) / "memories"
+            memories.mkdir()
+            (memories / "legacy.md").write_text(document, encoding="utf-8")
+            with self.assertRaisesRegex(MigrationError, "exact MCP source manifest"):
+                reconstructed_jsonl(Path(tmp))
+
     def test_dangling_relation_fails_closed(self) -> None:
         records = [
             {

@@ -181,11 +181,6 @@ def display_argv(argv: tuple[str, ...]) -> str:
     return shlex.join(rendered)
 
 
-def _source_bytes(path: Path) -> bytes:
-    """Return the validated source without normalizing record order or bytes."""
-    return load_mcp_graph(path).source_bytes
-
-
 def _run_commands(
     commands: list[LiveCommand], transcript_path: Path
 ) -> list[dict[str, Any]]:
@@ -314,7 +309,7 @@ def main() -> int:
             shutil.copytree(staged_export, export_path)
 
             graph = load_mcp_graph(source)
-            source_records = _source_bytes(source)
+            source_records = graph.source_bytes
             exported_records = reconstructed_jsonl(export_path)
             if exported_records != source_records:
                 raise MigrationError(
