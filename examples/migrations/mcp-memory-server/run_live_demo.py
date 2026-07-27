@@ -152,6 +152,33 @@ def staging_export_path(agent: str, evidence_path: Path, data_dir: Path) -> Path
     return data_dir / "exports" / f"{agent}_live_{digest}_okf"
 
 
+def display_argv(argv: tuple[str, ...]) -> str:
+    """Render a shareable command without exposing the local home path."""
+    cwd = Path.cwd().resolve()
+    memanto_data = (Path.home() / ".memanto").resolve()
+    rendered: list[str] = []
+    for index, value in enumerate(argv):
+        path = Path(value)
+        if index == 0 and path.name == "memanto":
+            rendered.append("memanto")
+            continue
+        if path.is_absolute():
+            resolved = path.resolve()
+            try:
+                rendered.append(str(resolved.relative_to(cwd)))
+                continue
+            except ValueError:
+                pass
+            try:
+                relative = resolved.relative_to(memanto_data)
+                rendered.append(str(Path("~/.memanto") / relative))
+                continue
+            except ValueError:
+                pass
+        rendered.append(value)
+    return shlex.join(rendered)
+
+
 def _normalized_source(path: Path) -> bytes:
     graph = load_mcp_graph(path)
     records = [entity.raw for entity in graph.entities] + [
@@ -169,7 +196,7 @@ def _run_commands(
     transcript: list[str] = []
     results: list[dict[str, Any]] = []
     for command in commands:
-        heading = f"$ {shlex.join(command.argv)}"
+        heading = f"$ {display_argv(command.argv)}"
         print(f"\n[{command.label}]\n{heading}")
         completed = subprocess.run(
             command.argv,
@@ -258,7 +285,7 @@ def main() -> int:
 
         print("Live showcase command plan:")
         for command in commands:
-            print(f"- {command.label}: {shlex.join(command.argv)}")
+            print(f"- {command.label}: {display_argv(command.argv)}")
         print(f"- copy staged export into evidence: {export_path}")
         print(f"- reconstruct exported graph from evidence copy: {export_path}")
         print(f"- evidence directory: {output}")
@@ -287,6 +314,7 @@ def main() -> int:
         command_results = _run_commands(commands, output / "live-cli-transcript.txt")
         shutil.copytree(staged_export, export_path)
 
+        graph = load_mcp_graph(source)
         source_records = _normalized_source(source)
         exported_records = reconstructed_jsonl(export_path)
         if exported_records != source_records:
@@ -295,9 +323,14 @@ def main() -> int:
             )
         report = {
             "agent": args.agent,
+            "source_entities": len(graph.entities),
+            "source_relations": len(graph.relations),
+            "exported_memories_validated": len(graph.entities),
+            "source_records_reconstructed": len(graph.entities) + len(graph.relations),
             "source_records_sha256": hashlib.sha256(source_records).hexdigest(),
             "exported_records_sha256": hashlib.sha256(exported_records).hexdigest(),
             "lossless_live_round_trip": True,
+            "recall_commands_run": len(questions),
             "golden_questions_recalled": len(questions),
             "answer_commands_run": 0 if args.skip_answers else len(questions),
             "commands": command_results,
