@@ -110,6 +110,7 @@ class RecallRequest(BaseModel):
     @field_validator("created_after", mode="before")
     @classmethod
     def parse_created_after(cls, v: object) -> datetime | None:
+        """Coerce the ``created_after`` bound to an aware ``datetime``."""
         if v is None:
             return None
         return _parse_recall_temporal_bound(v, end_of_day=False)
@@ -117,6 +118,7 @@ class RecallRequest(BaseModel):
     @field_validator("created_before", mode="before")
     @classmethod
     def parse_created_before(cls, v: object) -> datetime | None:
+        """Coerce the ``created_before`` bound to an aware ``datetime``."""
         if v is None:
             return None
         return _parse_recall_temporal_bound(v, end_of_day=True)
@@ -137,6 +139,15 @@ class RecallRequest(BaseModel):
 
 
 def _parse_recall_temporal_bound(v: object, *, end_of_day: bool) -> datetime:
+    """Parse a date, ISO datetime, or string into an aware ``datetime``.
+
+    - A ``datetime`` is returned as-is (naive inputs are made UTC-aware).
+    - A ``date`` is combined with midnight, or end-of-day (23:59:59) when
+      ``end_of_day`` is True.
+    - A bare ``YYYY-MM-DD`` string is treated as start-of-day, or end-of-day,
+      depending on ``end_of_day``.
+    - Full ISO 8601 strings (optionally ending in ``Z``) are parsed directly.
+    """
     if isinstance(v, datetime):
         return v if v.tzinfo else v.replace(tzinfo=timezone.utc)
     if isinstance(v, date):
@@ -317,6 +328,13 @@ def enforce_session_scope(session: Session, agent_id: str) -> None:
 
 
 def resolve_recall_limit(request_limit: int | None) -> int:
+    """Resolve the effective recall ``limit``, clamping it to a safe upper bound.
+
+    When ``request_limit`` is omitted the configured value (from
+    ``ConfigManager.get_recall_config()`` or ``settings.RECALL_LIMIT``) is
+    used. The result is coerced to an integer, must be at least 1, and is
+    validated against the configured cost-guard ceiling.
+    """
     recall_cfg = _config_manager.get_recall_config()
     raw_limit = (
         request_limit
