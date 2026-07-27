@@ -1,0 +1,17 @@
+{
+  "schema_version": 1,
+  "applicability": "not_applicable",
+  "reason": "The MCP Memory Server is a local JSONL store with no provider billing, token, or latency baseline, and Memanto's direct OKF import path does not emit a provider savings report. No synthetic savings are claimed.",
+  "claims": {
+    "cost_savings": null,
+    "token_savings": null,
+    "latency_savings": null
+  },
+  "measured_storage": {
+    "source_jsonl_bytes": 1875,
+    "importable_okf_bytes": 9297,
+    "delta_bytes": 7422,
+    "delta_percent": 395.84,
+    "interpretation": "The OKF representation is larger because it adds readable Markdown structure, typed links, backlinks, metadata, and lossless reconstruction blocks. This is portability overhead, not a storage-savings claim."
+  }
+}

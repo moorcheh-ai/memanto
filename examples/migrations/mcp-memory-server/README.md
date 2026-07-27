@@ -53,6 +53,13 @@ uses the Memanto project environment installed above. The official CLI dry-run
 writes its normal local preview artifact under `~/.memanto/migrate/okf/`, but
 does not write any memories.
 
+The direct OKF path has no provider billing, token, or latency baseline and
+does not emit the provider-style `--report` savings output. The committed
+`metrics/savings-report.json` therefore records those claims as unavailable
+instead of inventing numbers. It publishes the one honest comparable measure:
+the byte delta between compact source JSONL and the human-readable importable
+OKF bundle.
+
 Expected headline result:
 
 ```text
@@ -146,6 +153,7 @@ sample/okf/
 │   ├── live-cloud-validation.json
 │   ├── memanto-cli-dry-run.json
 │   ├── migration-report.json
+│   ├── savings-report.json
 │   └── round-trip-validation.json
 └── source/
     └── memory.jsonl

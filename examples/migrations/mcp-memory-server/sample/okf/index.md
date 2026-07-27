@@ -9,6 +9,7 @@ This bundle was generated from the official MCP Memory Server JSONL knowledge gr
 
 - [Importable memories](memories/index.md)
 - [Migration report](metrics/migration-report.json)
+- [Savings report](metrics/savings-report.json)
 - [Mapping table](metrics/mapping-table.md)
 - [Original source](source/memory.jsonl)
 

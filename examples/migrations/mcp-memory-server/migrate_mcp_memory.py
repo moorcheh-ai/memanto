@@ -371,6 +371,7 @@ def _root_index(graph: KnowledgeGraph) -> str:
             "",
             "- [Importable memories](memories/index.md)",
             "- [Migration report](metrics/migration-report.json)",
+            "- [Savings report](metrics/savings-report.json)",
             "- [Mapping table](metrics/mapping-table.md)",
             "- [Original source](source/memory.jsonl)",
             "",
@@ -433,6 +434,44 @@ def _prepare_output(path: Path, force: bool) -> None:
     path.mkdir(parents=True)
 
 
+def _savings_report(graph: KnowledgeGraph, memories_dir: Path) -> dict[str, Any]:
+    source_bytes = len(graph.source_bytes)
+    importable_okf_bytes = sum(
+        path.stat().st_size
+        for path in sorted(memories_dir.rglob("*"))
+        if path.is_file()
+    )
+    delta_bytes = importable_okf_bytes - source_bytes
+    delta_percent = round((delta_bytes / source_bytes) * 100, 2)
+    return {
+        "schema_version": 1,
+        "applicability": "not_applicable",
+        "reason": (
+            "The MCP Memory Server is a local JSONL store with no provider "
+            "billing, token, or latency baseline, and Memanto's direct OKF "
+            "import path does not emit a provider savings report. No synthetic "
+            "savings are claimed."
+        ),
+        "claims": {
+            "cost_savings": None,
+            "token_savings": None,
+            "latency_savings": None,
+        },
+        "measured_storage": {
+            "source_jsonl_bytes": source_bytes,
+            "importable_okf_bytes": importable_okf_bytes,
+            "delta_bytes": delta_bytes,
+            "delta_percent": delta_percent,
+            "interpretation": (
+                "The OKF representation is larger because it adds readable "
+                "Markdown structure, typed links, backlinks, metadata, and "
+                "lossless reconstruction blocks. This is portability overhead, "
+                "not a storage-savings claim."
+            ),
+        },
+    }
+
+
 def write_okf_bundle(
     graph: KnowledgeGraph, output: str | Path, *, force: bool = False
 ) -> dict[str, Any]:
@@ -487,6 +526,11 @@ def write_okf_bundle(
     }
     (metrics_dir / "migration-report.json").write_text(
         json.dumps(report, ensure_ascii=False, indent=2) + "\n",
+        encoding="utf-8",
+    )
+    savings_report = _savings_report(graph, output_path / "memories")
+    (metrics_dir / "savings-report.json").write_text(
+        json.dumps(savings_report, ensure_ascii=False, indent=2) + "\n",
         encoding="utf-8",
     )
     return report

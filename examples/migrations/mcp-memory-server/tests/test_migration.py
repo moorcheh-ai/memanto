@@ -64,6 +64,19 @@ class McpMemoryMigrationTests(unittest.TestCase):
             report = migrate(source, output)
 
             self.assertEqual(report["mapped_okf_memories"], 2)
+            savings = json.loads(
+                (output / "metrics" / "savings-report.json").read_text(encoding="utf-8")
+            )
+            self.assertEqual(savings["applicability"], "not_applicable")
+            self.assertIsNone(savings["claims"]["cost_savings"])
+            self.assertEqual(
+                savings["measured_storage"]["source_jsonl_bytes"],
+                len(source.read_bytes()),
+            )
+            self.assertGreater(
+                savings["measured_storage"]["importable_okf_bytes"],
+                savings["measured_storage"]["source_jsonl_bytes"],
+            )
             rows = map_okf(load_okf_bundle(output))
             self.assertEqual(len(rows), 2)
             atlas = next(row for row in rows if row["title"] == "Project Atlas")
