@@ -1,3 +1,5 @@
+import pytest
+
 from memanto.cli.config.manager import ConfigManager
 
 
@@ -41,3 +43,16 @@ def test_config_setters_recover_malformed_sections(tmp_path):
     assert data["answer"]["model"] == "local-model"
     assert data["answer"]["temperature"] == 0.2
     assert data["recall"] == {"limit": 7, "min_similarity": 0.4}
+
+
+@pytest.mark.parametrize("value", [float("nan"), "nan", float("inf"), "-inf"])
+def test_config_setters_reject_non_finite_floats(tmp_path, value):
+    manager = ConfigManager(config_dir=tmp_path)
+
+    with pytest.raises(ValueError, match="temperature must be between"):
+        manager.set_answer_config(temperature=value)
+
+    with pytest.raises(ValueError, match="min_similarity must be between"):
+        manager.set_recall_config(min_similarity=value)
+
+    assert not manager.config_file.exists()
