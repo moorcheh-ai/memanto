@@ -4,7 +4,7 @@ Memory Validation Service
 Write-time contradiction detection and resolution for memory records.
 """
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import TYPE_CHECKING, Any, cast
 
 if TYPE_CHECKING:
@@ -218,7 +218,7 @@ class MemoryValidationService:
             old_id = str(old_item.get("id"))
             namespace = new_memory.namespace()
 
-            now_iso = datetime.utcnow().isoformat()
+            now_iso = datetime.now(timezone.utc).isoformat()
             document: dict[str, Any] = {
                 "id": old_id,
                 "text": old_item.get("text") or "",
@@ -237,6 +237,12 @@ class MemoryValidationService:
             tags = old_item.get("tags")
             if tags:
                 document["tags"] = ",".join(tags) if isinstance(tags, list) else tags
+            if old_item.get("source_ref"):
+                document["source_ref"] = old_item["source_ref"]
+            if old_item.get("expires_at"):
+                document["expires_at"] = old_item["expires_at"]
+            if old_item.get("ttl_seconds"):
+                document["ttl_seconds"] = old_item["ttl_seconds"]
 
             from moorcheh_sdk.types.document import Document
 
