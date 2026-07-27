@@ -2,7 +2,7 @@
 Memory Write Service
 """
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
@@ -12,6 +12,25 @@ from memanto.app.core import MemoryRecord
 from memanto.app.services.memory_parsing_service import MemoryParsingService
 from memanto.app.utils.errors import MemoryError
 from memanto.app.utils.ids import generate_memory_id
+from memanto.app.utils.temporal_helpers import as_utc_aware
+
+SUCCESSFUL_UPLOAD_STATUSES = {"queued", "success", "ok"}
+
+# Trust fields removed from the active schema on 2026-06-29 (see
+# memanto/app/legacy/REMOVED.md). Old on-prem data_store.json records may still
+# carry them; they must never be copied forward on update or we resurrect dead
+# schema that no live read/write flow populates.
+_REMOVED_TRUST_FIELDS = frozenset(
+    {
+        "superseded_by",
+        "supersedes",
+        "validated_at",
+        "validation_count",
+        "contradiction_detected",
+    }
+)
+
+_SUCCESSFUL_UPLOAD_STATUSES = {"queued", "success", "ok"}
 
 
 class MemoryWriteService:
@@ -22,6 +41,36 @@ class MemoryWriteService:
 
         self.client = moorcheh_client
         self._parser = MemoryParsingService()
+        self._namespace_service = None
+
+    @property
+    def namespace_service(self):
+        """Lazily create the namespace service used for memory scopes."""
+
+        if self._namespace_service is None:
+            from memanto.app.services.namespace_service import NamespaceService
+
+            self._namespace_service = NamespaceService(self.client)
+        return self._namespace_service
+
+    def _apply_timestamps(self, memory: MemoryRecord, now: datetime) -> None:
+        """Apply server timestamps while preserving imported source chronology."""
+        if memory.provenance == "imported":
+            memory.created_at = as_utc_aware(memory.created_at)
+            memory.updated_at = as_utc_aware(memory.updated_at)
+
+            # Clamp to current time if in the future
+            if memory.created_at > now:
+                memory.created_at = now
+            if memory.updated_at > now:
+                memory.updated_at = now
+
+            # Enforce created_at <= updated_at invariant
+            if memory.created_at > memory.updated_at:
+                memory.created_at = memory.updated_at
+            return
+        memory.created_at = now
+        memory.updated_at = now
 
     def store_memory(
         self, memory: MemoryRecord, context: dict[str, Any] | None = None
@@ -32,10 +81,8 @@ class MemoryWriteService:
             if not memory.id:
                 memory.id = generate_memory_id()
 
-            # Enforce server-side timestamps (never trust client)
-            now = datetime.utcnow()
-            memory.created_at = now
-            memory.updated_at = now
+            now = datetime.now(timezone.utc)
+            self._apply_timestamps(memory, now)
 
             # Auto parse memory type
             memory = self._parser.parse_memory(memory)
@@ -105,7 +152,7 @@ class MemoryWriteService:
             validated_documents = []
 
             # Enforce server-side timestamps for batch (single timestamp for all)
-            now = datetime.utcnow()
+            now = datetime.now(timezone.utc)
 
             for memory in memories:
                 try:
@@ -113,9 +160,7 @@ class MemoryWriteService:
                     if not memory.id:
                         memory.id = generate_memory_id()
 
-                    # Enforce server-side timestamps (never trust client)
-                    memory.created_at = now
-                    memory.updated_at = now
+                    self._apply_timestamps(memory, now)
 
                     memory = self._parser.parse_memory(memory)
 
@@ -191,19 +236,38 @@ class MemoryWriteService:
                 )
 
                 # Update results with upload status
-                moorcheh_status = upload_result.get("status", "unknown")
+                moorcheh_status = str(upload_result.get("status", "unknown")).lower()
                 for result in results:
                     if result["status"] == "pending":
-                        result["status"] = moorcheh_status
+                        if moorcheh_status in _SUCCESSFUL_UPLOAD_STATUSES:
+                            result["status"] = moorcheh_status
+                        else:
+                            result["status"] = "failed"
+                            result["error"] = (
+                                f"Batch upload returned status '{moorcheh_status}'"
+                            )
 
-            # Count successes and failures
-            successful = sum(1 for r in results if r["status"] in ["queued", "success"])
-            failed = sum(1 for r in results if r["status"] == "failed")
+            # Count successes, failures, and namespace-rejected items separately
+            # so that successful + failed + rejected == total_submitted always.
+            _known = set(SUCCESSFUL_UPLOAD_STATUSES) | {"failed", "rejected"}
+            successful = sum(
+                1
+                for r in results
+                if str(r["status"]).lower() in SUCCESSFUL_UPLOAD_STATUSES
+            )
+            failed = sum(1 for r in results if str(r["status"]).lower() == "failed")
+            rejected = sum(1 for r in results if str(r["status"]).lower() == "rejected")
+            # Absorb any non-standard upload statuses into failed so the invariant holds
+            failed += len(results) - successful - failed - rejected
+            for r in results:
+                if str(r["status"]).lower() not in _known:
+                    r["status"] = "failed"
 
             return {
                 "total_submitted": len(memories),
                 "successful": successful,
                 "failed": failed,
+                "rejected": rejected,
                 "namespace": first_namespace,
                 "results": results,
             }
@@ -219,13 +283,12 @@ class MemoryWriteService:
         context: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         """
-        Update existing memory using delete-and-recreate pattern
+        Update existing memory.
 
-        Since Moorcheh doesn't support in-place updates, we:
+        Moorcheh supports overwriting documents by ID, so we:
         1. Retrieve the existing memory
         2. Apply updates to create new version
-        3. Delete old version
-        4. Upload new version with same ID
+        3. Upload new version with same ID (overwrites)
 
         Args:
             memory_id: ID of memory to update
@@ -296,45 +359,62 @@ class MemoryWriteService:
                         pass  # Keep default
                 else:
                     updated_memory.created_at = raw_created
-            updated_memory.updated_at = datetime.utcnow()
+            updated_memory.updated_at = datetime.now(timezone.utc)
 
             # Handle TTL
             if "ttl_seconds" in updates:
                 updated_memory.set_ttl(updates["ttl_seconds"])
             elif metadata.get("ttl_seconds"):
                 updated_memory.ttl_seconds = metadata["ttl_seconds"]
-                if metadata.get("expires_at"):
-                    updated_memory.expires_at = metadata["expires_at"]
+                raw_expires_at = metadata.get("expires_at")
+                if raw_expires_at:
+                    if isinstance(raw_expires_at, str):
+                        try:
+                            updated_memory.expires_at = datetime.fromisoformat(
+                                raw_expires_at.replace("Z", "+00:00")
+                            )
+                        except (ValueError, AttributeError):
+                            pass  # Keep the default if the stored timestamp is invalid
+                    else:
+                        updated_memory.expires_at = raw_expires_at
 
-            # Step 3: Delete old version
+            # Step 3: Upload new version (overwrites existing document with same ID)
             from typing import Any, cast
-
-            delete_result = cast(
-                dict[str, Any],
-                self.client.documents.delete(namespace_name=namespace, ids=[memory_id]),
-            )
-
-            if not self._deletion_succeeded(delete_result):
-                raise MemoryError(f"Failed to delete old version of memory {memory_id}")
-
-            validation_result = {"action": "store", "reason": "MVP direct store"}
-
-            # Step 4: Upload new version
-            from typing import cast
 
             from moorcheh_sdk.types.document import Document
 
+            validation_result = {"action": "store", "reason": "MVP direct store"}
+
             document = cast(Document, updated_memory.to_moorcheh_document())
-            upload_result = self.client.documents.upload(
-                namespace_name=namespace, documents=[document]
-            )
+
+            # Preserve extra metadata fields from the existing record (e.g. original_id
+            # in on-prem data_store.json) that aren't part of the MemoryRecord schema.
+            existing_meta = existing_memory_data.get("metadata", existing_memory_data)
+            if isinstance(existing_meta, dict):
+                # ``document`` is a TypedDict; cast to a plain dict to attach
+                # extra schema-external keys (e.g. original_id) dynamically.
+                extra_document = cast(dict[str, Any], document)
+                for key in existing_meta:
+                    if (
+                        key not in document
+                        and key != "text"
+                        and key not in _REMOVED_TRUST_FIELDS
+                    ):
+                        extra_document[key] = existing_meta[key]
+
+            try:
+                upload_result = self.client.documents.upload(
+                    namespace_name=namespace, documents=[document]
+                )
+            except Exception as e:
+                raise MemoryError(f"Upload failed. Error: {e}")
 
             return {
                 "id": memory_id,
                 "namespace": namespace,
                 "status": upload_result.get("status", "unknown"),
                 "action": "updated",
-                "reason": "Memory updated successfully via delete-and-recreate",
+                "reason": "Memory updated successfully via overwrite",
                 "validation": validation_result.get("action", "validated"),
                 "updated_fields": list(updates.keys()),
             }

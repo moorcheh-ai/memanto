@@ -1,0 +1,17 @@
+{
+  "backends": [
+    "memanto",
+    "mem0"
+  ],
+  "seeds": [
+    7,
+    19,
+    43
+  ],
+  "tenants": 3,
+  "incidents": 4,
+  "revisions": 4,
+  "top_k": 5,
+  "output_dir": "examples\\benchmarks\\adversarial-memory-resilience\\results\\live",
+  "cleanup": true
+}

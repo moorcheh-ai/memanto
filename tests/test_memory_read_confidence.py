@@ -89,3 +89,55 @@ def test_zero_min_confidence_preserves_results_without_confidence_field():
     )
 
     assert [memory["id"] for memory in result["results"]] == ["legacy"]
+
+
+def test_format_memory_item_normalizes_comma_separated_tag_whitespace():
+    service = MemoryReadService(None)
+
+    formatted = service._format_memory_item(
+        {
+            "id": "mem-1",
+            "text": "[FACT] Tag spacing\n\ncontent",
+            "tags": "alpha, beta,  gamma,",
+        }
+    )
+
+    assert formatted["tags"] == ["alpha", "beta", "gamma"]
+
+
+def test_format_memory_item_ignores_empty_and_none_list_tags():
+    service = MemoryReadService(None)
+
+    formatted = service._format_memory_item(
+        {
+            "id": "mem-1",
+            "text": "[FACT] List tag cleanup\n\ncontent",
+            "tags": ["alpha", None, " beta ", ""],
+        }
+    )
+
+    assert formatted["tags"] == ["alpha", "beta"]
+
+
+def test_fetch_all_memories_tag_filter_matches_trimmed_list_tags():
+    class _FakeDocuments:
+        def fetch_text_data(self, **kwargs):
+            return {
+                "items": [
+                    {
+                        "id": "mem-1",
+                        "text": "[FACT] Spaced list tags\n\ncontent",
+                        "tags": ["alpha", " beta", ""],
+                    }
+                ],
+                "pagination": {"has_more": False},
+            }
+
+    class _Client:
+        documents = _FakeDocuments()
+
+    service = MemoryReadService(_Client())
+
+    memories = service._fetch_all_memories(["memanto_agent_demo"], tags=["beta"])
+
+    assert [memory["id"] for memory in memories] == ["mem-1"]

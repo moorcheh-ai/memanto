@@ -1,0 +1,14 @@
+# Memory systems
+memanto>=0.1.0,<0.2.0
+mem0ai>=2.0.5
+
+# LLM judge
+openai>=1.30.0
+
+# Benchmark harness
+python-dotenv>=1.0.0
+rich>=13.0.0
+
+# Dashboard
+streamlit>=1.35.0
+pandas>=2.0.0

@@ -198,7 +198,8 @@ This means Memanto doesn't need a separate vector DB, embedding pipeline, or rer
 | Grounded QA over memory | `memanto answer` | Generate RAG answers using retrieved memory context. |
 | Daily intelligence workflows | `memanto daily-summary`, `memanto conflicts` | Generate summaries, detect contradictions, and resolve conflicts interactively. |
 | Session and automation controls | `memanto session ...`, `memanto schedule ...` | Inspect sessions and enable scheduled daily summary runs. |
-| Memory file pipelines | `memanto memory export`, `memanto memory sync` | Export structured memory markdown and sync `MEMORY.md` into projects. |
+| Memory file pipelines | `memanto memory export`, `memanto memory sync` | Export structured memory markdown and sync `MEMORY.md` into projects. Add `--okf` to export/sync a portable [Open Knowledge Format](https://docs.memanto.ai/integrations/okf) bundle instead. |
+| Import & migration | `memanto migrate` | Import memories from Mem0, Letta, or Supermemory - or an [OKF](https://docs.memanto.ai/integrations/okf) bundle into an agent. |
 | Configuration inspection | `memanto config show` | Inspect API key status, active agent/session, server settings, and schedule time. |
 | Multi-agent ecosystem integration | `memanto connect ...` | Connect/remove/list integrations for Claude Code, Codex, Cursor, Windsurf, Antigravity, Gemini CLI, Cline, Continue, OpenCode, Goose, Roo, GitHub Copilot, and Augment (local or global). |
 

@@ -10,8 +10,10 @@ import subprocess
 import sys
 import threading
 import time
+import webbrowser
 from datetime import datetime
 from pathlib import Path
+from urllib.parse import urlparse
 
 import httpx
 import typer
@@ -983,13 +985,43 @@ def serve(
 # ============================================================================
 
 
+def _open_dashboard_window(url: str) -> None:
+    """Open ``url`` safely in the user's default browser.
+
+    Validates that the URL uses an HTTP/HTTPS scheme and avoids shell interpolation
+    to prevent command injection.
+    """
+    parsed = urlparse(url)
+    if parsed.scheme not in ("http", "https") or not parsed.netloc:
+        console.print(f"[{WARNING}]Refusing to open non-HTTP(S) URL:[/{WARNING}] {url}")
+        return
+
+    # On Windows, try to open Edge or Chrome in standalone app mode for a native feel.
+    success = False
+    if sys.platform == "win32":
+        for browser in ("msedge", "chrome"):
+            try:
+                subprocess.Popen(
+                    ["cmd", "/c", "start", "", browser, f"--app={url}"],
+                    shell=False,
+                )
+                success = True
+                break
+            except (FileNotFoundError, OSError):
+                continue
+
+    # Fallback to default browser (POSIX / macOS, or Windows when both
+    # Edge and Chrome are missing).
+    if not success:
+        webbrowser.open_new(url)
+
+
 @app.command()
 def ui(
     host: str = typer.Option(None, "--host", help="Server host (defaults to config)"),
     port: int = typer.Option(None, "--port", help="Server port (defaults to config)"),
 ):
     """Start MEMANTO server and open the Web UI Dashboard."""
-    import webbrowser
 
     server_cfg = config_manager.get_server_config()
     host = host or server_cfg.get("url", "0.0.0.0")
@@ -1022,28 +1054,6 @@ def ui(
     sock.close()
 
     ui_url = f"http://localhost:{port}/ui"
-
-    def _open_dashboard_window(url: str):
-        import subprocess
-        import sys
-
-        # On Windows, try to open Edge or Chrome in standalone app mode for a native feel
-        success = False
-        if sys.platform == "win32":
-            try:
-                # Need shell=True for `start` command to resolve registry paths
-                subprocess.Popen(f'start msedge --app="{url}"', shell=True)
-                success = True
-            except Exception:
-                try:
-                    subprocess.Popen(f'start chrome --app="{url}"', shell=True)
-                    success = True
-                except Exception:
-                    pass
-
-        # Fallback to default browser
-        if not success:
-            webbrowser.open_new(url)
 
     if port_in_use:
         console.print(f"\n[green]Server already running on port {port}.[/green]")

@@ -233,6 +233,12 @@ def _remove_instructions(
 
     # For dedicated files (cline, roo, continue, augment, cursor)
     if agent.instruction_is_dir or agent.instruction_format == "mdc":
+        try:
+            existing = instr_path.read_text(encoding="utf-8")
+        except UnicodeDecodeError:
+            return None
+        if MEMANTO_SENTINEL not in existing:
+            return None
         instr_path.unlink()
         # Clean up empty parent dirs
         parent = instr_path.parent

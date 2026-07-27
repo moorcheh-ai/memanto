@@ -1,0 +1,83 @@
+[
+  {
+    "id": "Q001",
+    "after_session": 1,
+    "question": "What kind of movies does the user enjoy?",
+    "golden_answer": "The user enjoys action movies with car chases and explosions, directed by Michael Bay or Christopher Nolan. They dislike slow-paced dramas and prefer watching at home on Friday nights with their roommate.",
+    "must_contain": ["action", "Michael Bay", "Nolan"],
+    "must_not_contain": ["French", "Godard", "Tarkovsky"],
+    "query_type": "recency"
+  },
+  {
+    "id": "Q002",
+    "after_session": 2,
+    "question": "What kind of movies does the user enjoy?",
+    "golden_answer": "The user's taste has evolved. They originally liked action movies but now appreciate French New Wave cinema (Godard, Bergman, Antonioni) and have reconsidered their dislike of slow dramas.",
+    "must_contain": ["French", "Godard"],
+    "must_not_contain": [],
+    "query_type": "contradiction_resolution"
+  },
+  {
+    "id": "Q003",
+    "after_session": 3,
+    "question": "Describe the user's current film preferences.",
+    "golden_answer": "The user has settled on a balanced taste: Christopher Nolan for spectacle and Andrei Tarkovsky for soul. They no longer rate Michael Bay highly.",
+    "must_contain": ["Nolan", "Tarkovsky"],
+    "must_not_contain": [],
+    "query_type": "staleness_detection"
+  },
+  {
+    "id": "Q004",
+    "after_session": 2,
+    "question": "Has the user changed their opinion on slow-paced dramas?",
+    "golden_answer": "Yes. The user originally hated slow-paced dramas but now appreciates the depth in them after exploring French New Wave cinema.",
+    "must_contain": ["yes", "changed", "depth"],
+    "must_not_contain": ["still hates", "still dislikes"],
+    "query_type": "contradiction_resolution"
+  },
+  {
+    "id": "Q005",
+    "after_session": 3,
+    "question": "Which directors has the user mentioned across all sessions?",
+    "golden_answer": "Michael Bay, Christopher Nolan, Jean-Luc Godard, Andrei Tarkovsky, Ingmar Bergman, and Michelangelo Antonioni.",
+    "must_contain": ["Nolan", "Godard", "Tarkovsky", "Michael Bay"],
+    "must_not_contain": [],
+    "query_type": "recency"
+  },
+  {
+    "id": "Q006",
+    "after_session": 3,
+    "question": "How does the user feel about Michael Bay now compared to earlier?",
+    "golden_answer": "The user previously listed Michael Bay as a favorite director but now finds his films hollow and can't believe they once rated him highly.",
+    "must_contain": ["hollow", "no longer"],
+    "must_not_contain": ["favorite", "still likes"],
+    "query_type": "contradiction_resolution"
+  },
+  {
+    "id": "Q007",
+    "after_session": 4,
+    "question": "What does the user watch alone vs with company?",
+    "golden_answer": "Alone, the user watches serious cinema like Kubrick and Korean films (Park Chan-wook). With their partner, they watch lighter comedies. This reflects a dual-mode viewing pattern.",
+    "must_contain": ["Kubrick", "comedies", "partner"],
+    "must_not_contain": [],
+    "query_type": "recency"
+  },
+  {
+    "id": "Q008",
+    "after_session": 5,
+    "question": "What is the user's current opinion on Tarkovsky?",
+    "golden_answer": "The user initially loved Tarkovsky, then called him overrated after being bored by Andrei Rublev, but has since reconsidered — Stalker changed their mind back.",
+    "must_contain": ["Stalker", "reconsidered"],
+    "must_not_contain": ["overrated"],
+    "query_type": "contradiction_resolution"
+  },
+  {
+    "id": "Q009",
+    "after_session": 5,
+    "question": "Describe how the user's social viewing context has changed across sessions.",
+    "golden_answer": "Session 1: Friday nights with roommate. Session 2: Roommate moved out, watching alone; also started going to cinema. Session 3: New partner, Friday movie nights resumed, bought projector. Session 5: Breakup, back to watching alone.",
+    "must_contain": ["roommate", "partner", "alone"],
+    "must_not_contain": [],
+    "query_type": "staleness_detection"
+  }
+]

@@ -4,13 +4,20 @@ Temporal Query Helpers
 Utility functions to make temporal queries easier for agents.
 """
 
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, time, timedelta, timezone
 from typing import Any
 
 
 def utc_now() -> datetime:
-    """Current UTC time as a naive datetime (matches legacy session storage)."""
-    return datetime.now(timezone.utc).replace(tzinfo=None)
+    """Current UTC time as an aware datetime."""
+    return datetime.now(timezone.utc)
+
+
+def as_utc_aware(dt: datetime) -> datetime:
+    """Normalize datetimes to an aware UTC format."""
+    if dt.tzinfo is None:
+        return dt.replace(tzinfo=timezone.utc)
+    return dt.astimezone(timezone.utc)
 
 
 def parse_iso_timestamp(ts_str: str) -> datetime:
@@ -27,6 +34,26 @@ def parse_iso_timestamp(ts_str: str) -> datetime:
     if dt.tzinfo is None:
         dt = dt.replace(tzinfo=timezone.utc)
     return dt.astimezone(timezone.utc)
+
+
+def parse_as_of_timestamp(ts_str: str) -> datetime:
+    """Parse a point-in-time cutoff, treating a date as the end of that day.
+
+    ``recall_as_of`` is exposed through REST, the Python clients, CLI, and MCP.
+    The REST request model already documents date-only values as end-of-day,
+    while the lower-level clients pass strings directly to the read service.
+    Normalizing at the service boundary keeps every caller consistent without
+    changing the meaning of full ISO timestamps.
+    """
+    if len(ts_str) == 10 and ts_str[4] == "-" and ts_str[7] == "-":
+        try:
+            return datetime.combine(
+                date.fromisoformat(ts_str), time.max, tzinfo=timezone.utc
+            )
+        except ValueError:
+            pass
+
+    return parse_iso_timestamp(ts_str)
 
 
 def format_local_time(ts) -> str:
@@ -156,6 +183,9 @@ def parse_relative_time(relative: str) -> str | None:
                 number = int(parts[1])
                 unit = parts[2]
 
+                if number <= 0:
+                    return None
+
                 if unit in ["day", "days"]:
                     return get_last_n_days(number)
                 elif unit in ["hour", "hours"]:
@@ -212,7 +242,10 @@ def build_temporal_query(
     """
     # Parse relative time if provided and no absolute time given
     if relative_time and not created_after:
-        created_after = parse_relative_time(relative_time)
+        parsed_relative_time = parse_relative_time(relative_time)
+        if parsed_relative_time is None:
+            raise ValueError(f"Invalid relative_time: {relative_time!r}")
+        created_after = parsed_relative_time
 
     body: dict[str, Any] = {"query": query, "limit": limit}
     if created_after:

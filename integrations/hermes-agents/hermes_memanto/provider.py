@@ -26,6 +26,7 @@ provider stays inert.
 
 from __future__ import annotations
 
+import hashlib
 import json
 import logging
 import os
@@ -89,10 +90,16 @@ _TRIVIAL_RE = re.compile(
     r"^(ok|okay|thanks|thank you|got it|sure|yes|no|yep|nope|k|ty|thx|np)\.?$",
     re.IGNORECASE,
 )
+_MEMORY_OPEN_TAG = r"<\s*memanto-memory(?:\s+[^>]*)?\s*>"
+_MEMORY_CLOSE_TAG = r"<\s*/\s*memanto-memory\s*>"
 _CONTEXT_STRIP_RE = re.compile(
-    r"<memanto-memory>[\s\S]*?</memanto-memory>\s*", re.DOTALL
+    rf"{_MEMORY_OPEN_TAG}[\s\S]*?{_MEMORY_CLOSE_TAG}\s*",
+    re.IGNORECASE,
 )
-_RECALL_TAG_RE = re.compile(r"</?memanto-memory>", re.IGNORECASE)
+_RECALL_TAG_RE = re.compile(
+    rf"{_MEMORY_OPEN_TAG}|{_MEMORY_CLOSE_TAG}",
+    re.IGNORECASE,
+)
 
 
 def _resolve_hermes_home() -> str:
@@ -135,8 +142,15 @@ def _sanitize_agent_id(raw: str) -> str:
     """Coerce to Memanto's id charset (letters, digits, ``-``, ``_``)."""
     cleaned = re.sub(r"[^a-zA-Z0-9_-]", "-", raw or "")
     cleaned = re.sub(r"-+", "-", cleaned).strip("-")
-    cleaned = cleaned[:_MAX_AGENT_ID_LENGTH].strip("-")
-    return cleaned or "hermes"
+    if not cleaned:
+        return "hermes"
+    if len(cleaned) <= _MAX_AGENT_ID_LENGTH:
+        return cleaned
+
+    digest = hashlib.sha256(cleaned.encode("utf-8")).hexdigest()[:10]
+    prefix_len = _MAX_AGENT_ID_LENGTH - len(digest) - 1
+    prefix = cleaned[:prefix_len].rstrip("-_") or "hermes"
+    return f"{prefix}-{digest}"
 
 
 def _detect_memory_type(text: str) -> str:
@@ -698,7 +712,7 @@ class MemantoMemoryProvider(MemoryProvider):
         if self._write_thread and self._write_thread.is_alive():
             self._write_thread.join(timeout=2.0)
         self._write_thread = threading.Thread(
-            target=_run, daemon=False, name="memanto-memory-write"
+            target=_run, daemon=True, name="memanto-memory-write"
         )
         self._write_thread.start()
 

@@ -91,6 +91,9 @@ class AgentAlreadyExistsError(AgentError):
 def map_error_to_http_exception(error: Exception) -> HTTPException:
     """Map internal errors to HTTP exceptions"""
 
+    if isinstance(error, HTTPException):
+        return error
+
     if isinstance(error, ValidationError):
         return HTTPException(
             status_code=400,

@@ -26,8 +26,10 @@ VALID_MEMORY_TYPES = (
 
 
 def create_memanto_tools(client: SdkClient, agent_id: str):
+    import copy
     import threading
 
+    client = copy.copy(client)
     _setup_lock = threading.Lock()
     _setup_done = False
 
@@ -64,13 +66,17 @@ def create_memanto_tools(client: SdkClient, agent_id: str):
         title: Annotated[
             str,
             Field(
-                description="Short title for the memory (max 100 characters).",
+                min_length=1,
+                max_length=100,
+                description="Short title for the memory (1-100 characters).",
             ),
         ],
         content: Annotated[
             str,
             Field(
-                description="The memory content to store (max 10000 characters). Be concise and atomic.",
+                min_length=1,
+                max_length=10000,
+                description="The memory content to store (1-10000 characters). Be concise and atomic.",
             ),
         ],
         confidence: Annotated[
