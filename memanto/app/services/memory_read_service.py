@@ -587,33 +587,21 @@ class MemoryReadService:
         created_before: str | None = None,
     ) -> list[dict[str, Any]]:
         """
-        Apply temporal filtering to search results
+        Apply temporal filtering to search results.
 
-        Args:
-            results: List of formatted memory items
-            created_after: ISO timestamp - include only memories created after this time
-            created_before: ISO timestamp - include only memories created before this time
-
-        Returns:
-            Filtered list of results
+        Invalid caller-supplied time boundaries are treated as an explicit error
+        so that a time-window constraint cannot be silently bypassed by passing a
+        malformed timestamp (fail-close). This keeps the behaviour consistent
+        with how other filters (e.g. memory_type) reject bad input.
         """
         from memanto.app.utils.temporal_helpers import parse_iso_timestamp
 
         after_dt = None
         before_dt = None
-
-        if created_after:
-            try:
-                after_dt = parse_iso_timestamp(created_after)
-            except (ValueError, AttributeError, TypeError):
-                pass  # Keep existing fail-open behavior for invalid caller input.
-
-        if created_before:
-            try:
-                before_dt = parse_iso_timestamp(created_before)
-            except (ValueError, AttributeError, TypeError):
-                pass  # Keep existing fail-open behavior for invalid caller input.
-
+        if created_after is not None:
+            after_dt = parse_iso_timestamp(created_after)
+        if created_before is not None:
+            before_dt = parse_iso_timestamp(created_before)
         if after_dt is None and before_dt is None:
             return results
 
@@ -708,20 +696,31 @@ class MemoryReadService:
         return filtered
 
     def generate_answer(
-        self, query: str, agent_id: str | None = None
+        self,
+        query: str,
+        agent_id: str | None = None,
+        scope_type: str | None = None,
+        scope_id: str | None = None,
     ) -> dict[str, Any]:
-        """Generate AI answer from memories"""
-        try:
-            # Determine namespace for answer generation
-            if agent_id:
-                namespace = agent_namespace(agent_id)
-            else:
-                # Use first available namespace
-                namespaces = self.namespace_service.list_namespaces()
-                if not namespaces:
-                    raise MemoryError("No namespaces found")
-                namespace = namespaces[0]
+        """Generate AI answer from memories for the given agent.
 
+        An explicit agent identifier is required so answer generation can only
+        read from the caller's own agent namespace. A missing identifier is
+        treated as an error rather than falling back to an arbitrary namespace,
+        which would otherwise leak memories from other agents/tenants.
+
+        Accepts either ``agent_id`` (primary) or ``scope_id`` (legacy REST
+        endpoint compatibility).
+        """
+        identifier = agent_id or scope_id
+        if not identifier:
+            raise MemoryError(
+                "agent_id (or legacy scope_id) is required to generate "
+                "an answer from memory"
+            )
+        namespace = agent_namespace(identifier)
+
+        try:
             # Generate answer. Omit ai_model when on-prem state has no LLM
             # configured so the on-prem server uses its own default; the
             # cloud SDK requires a string so don't pass None there.

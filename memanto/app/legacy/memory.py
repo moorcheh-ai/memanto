@@ -277,8 +277,7 @@ async def answer_memories(
         service = MemoryReadService(client)
         result = service.generate_answer(
             query=request.query,
-            scope_type=request.scope_type,
-            scope_id=request.scope_id,
+            agent_id=request.agent_id,
         )
 
         return MemoryAnswerResponse(
