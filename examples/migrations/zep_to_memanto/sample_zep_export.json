@@ -1,0 +1,157 @@
+{
+  "facts": [
+    {
+      "uuid": "f47ac10b-58cc-4372-a567-0e02b2c3d479",
+      "fact": "User prefers Python over JavaScript for backend services",
+      "type": "preference",
+      "category": "technical_preferences",
+      "score": 0.95,
+      "created_at": "2026-05-15T10:30:00Z",
+      "valid_at": "2026-05-15T10:30:00Z",
+      "invalid_at": null,
+      "group": "dev-preferences",
+      "episode_refs": ["ep-001", "ep-014", "ep-023"]
+    },
+    {
+      "uuid": "6ba7b810-9dad-11d1-80b4-00c04fd430c8",
+      "fact": "User's team uses PostgreSQL 16 with pgvector for embeddings",
+      "type": "fact",
+      "category": "infrastructure",
+      "score": 0.92,
+      "created_at": "2026-06-01T14:00:00Z",
+      "valid_at": "2026-06-01T14:00:00Z",
+      "invalid_at": null,
+      "group": "infra",
+      "episode_refs": ["ep-005"]
+    },
+    {
+      "uuid": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
+      "fact": "User switched from VS Code to Neovim in March 2026",
+      "type": "event",
+      "category": "tooling",
+      "score": 0.88,
+      "created_at": "2026-03-20T09:15:00Z",
+      "valid_at": "2026-03-20T09:15:00Z",
+      "invalid_at": null,
+      "group": "dev-preferences",
+      "episode_refs": ["ep-002", "ep-003"]
+    },
+    {
+      "uuid": "a87ff679-a2f3-e71d-9181-a67b7542122c",
+      "fact": "User deploys to AWS ECS Fargate with Terraform",
+      "type": "fact",
+      "category": "infrastructure",
+      "score": 0.91,
+      "created_at": "2026-04-10T16:45:00Z",
+      "valid_at": "2026-04-10T16:45:00Z",
+      "invalid_at": null,
+      "group": "infra",
+      "episode_refs": ["ep-008", "ep-012"]
+    },
+    {
+      "uuid": "e4d909c2-90d0-fb07-a536-6d4a7c3e1b2a",
+      "fact": "User previously used MongoDB but migrated away due to consistency issues",
+      "type": "decision",
+      "category": "infrastructure",
+      "score": 0.85,
+      "created_at": "2026-02-28T11:00:00Z",
+      "valid_at": "2026-02-28T11:00:00Z",
+      "invalid_at": "2026-06-01T14:00:00Z",
+      "group": "infra",
+      "episode_refs": ["ep-004"]
+    }
+  ],
+  "entities": [
+    {
+      "uuid": "node-001",
+      "name": "Python",
+      "type": "technology",
+      "summary": "Primary backend language. User prefers it for all new services and has 8+ years experience.",
+      "created_at": "2026-01-15T08:00:00Z",
+      "group": "dev-preferences",
+      "attributes": {
+        "experience_years": 8,
+        "primary_use": "backend",
+        "frameworks": "FastAPI, Django"
+      }
+    },
+    {
+      "uuid": "node-002",
+      "name": "PostgreSQL",
+      "type": "technology",
+      "summary": "Primary database. Running v16 with pgvector extension for embedding similarity search.",
+      "created_at": "2026-01-20T08:00:00Z",
+      "group": "infra",
+      "attributes": {
+        "version": "16",
+        "extensions": "pgvector, postgis",
+        "hosting": "AWS RDS"
+      }
+    },
+    {
+      "uuid": "node-003",
+      "name": "Alice Chen",
+      "type": "person",
+      "summary": "User's tech lead. Reviews all PRs, prefers small focused commits, available async via Slack.",
+      "created_at": "2026-02-01T08:00:00Z",
+      "group": "team",
+      "attributes": {
+        "role": "tech_lead",
+        "timezone": "PST",
+        "communication": "async-first"
+      }
+    }
+  ],
+  "relations": [
+    {
+      "uuid": "edge-001",
+      "source": "User",
+      "target": "Python",
+      "type": "prefers",
+      "fact": "User prefers Python for backend development",
+      "created_at": "2026-01-15T08:00:00Z",
+      "valid_at": "2026-01-15T08:00:00Z",
+      "invalid_at": null,
+      "group": "dev-preferences",
+      "episodes": ["ep-001", "ep-014"]
+    },
+    {
+      "uuid": "edge-002",
+      "source": "User",
+      "target": "PostgreSQL",
+      "type": "uses",
+      "fact": "User's team runs PostgreSQL 16 in production",
+      "created_at": "2026-01-20T08:00:00Z",
+      "valid_at": "2026-01-20T08:00:00Z",
+      "invalid_at": null,
+      "group": "infra",
+      "episodes": ["ep-005"]
+    },
+    {
+      "uuid": "edge-003",
+      "source": "Alice Chen",
+      "target": "User",
+      "type": "manages",
+      "fact": "Alice Chen is User's tech lead and reviews their PRs",
+      "created_at": "2026-02-01T08:00:00Z",
+      "valid_at": "2026-02-01T08:00:00Z",
+      "invalid_at": null,
+      "group": "team",
+      "episodes": ["ep-006", "ep-009", "ep-011"]
+    }
+  ],
+  "messages": [
+    {
+      "uuid": "msg-001",
+      "role": "user",
+      "content": "I'm setting up a new microservice for payment processing. What's the best approach with FastAPI?",
+      "created_at": "2026-07-01T10:00:00Z"
+    },
+    {
+      "uuid": "msg-002",
+      "role": "assistant",
+      "content": "For payment processing with FastAPI, I'd recommend using a clean architecture pattern with separate layers for routing, business logic, and data access. Since you're on PostgreSQL 16, you can leverage its transactional guarantees for payment atomicity.",
+      "created_at": "2026-07-01T10:00:05Z"
+    }
+  ]
+}
