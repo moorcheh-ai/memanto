@@ -712,38 +712,10 @@ class MemoryReadService:
                 gen_kwargs["ai_model"] = _model
             answer_result = self.client.answer.generate(**gen_kwargs)
 
-            # Extract sources from the SDK response so downstream endpoints
-            # can surface them (matches the pattern used by the other
-            # /{agent_id}/answer route at memanto/app/routes/memory.py:696).
-            # Previously this was dropped, which forced callers to hardcode
-            # sources=[] and confidence=0.8 - a bounty #770 finding.
-            sources = answer_result.get("sources", []) or []
-
-            # Confidence is derived from source relevance scores when
-            # available; falls back to 1.0 when sources are present but
-            # scores are absent (LLM-answered but no explicit score), and
-            # 0.0 when no sources were retrieved at all.
-            if not sources:
-                confidence = 0.0
-            else:
-                scored = []
-                for s in sources:
-                    if not isinstance(s, dict) or s.get("score") is None:
-                        continue
-                    try:
-                        score_val = float(s.get("score", 1.0))
-                        scored.append(score_val)
-                    except (ValueError, TypeError):
-                        # Malformed score - skip this source instead of crashing
-                        continue
-                confidence = round(sum(scored) / len(scored), 3) if scored else 1.0
-
             return {
                 "answer": answer_result["answer"],
                 "namespace": namespace,
                 "query": query,
-                "sources": sources,
-                "confidence": confidence,
             }
 
         except Exception as e:
