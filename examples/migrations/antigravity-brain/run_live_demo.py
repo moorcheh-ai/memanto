@@ -12,6 +12,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import os
 import shlex
 import shutil
 import subprocess
@@ -105,7 +106,8 @@ def build_commands(
     )
     for index, case in enumerate(cases, start=1):
         question = str(case["question"])
-        expected = tuple(str(phrase) for phrase in case["expected_phrases"])
+        recall_phrases = case.get("recall_expected_phrases", case["expected_phrases"])
+        expected = tuple(str(phrase) for phrase in recall_phrases)
         commands.append(
             LiveCommand(
                 f"recall-{index}",
@@ -177,6 +179,9 @@ def display_argv(argv: tuple[str, ...]) -> str:
 def _run_commands(
     commands: list[LiveCommand], transcript_path: Path
 ) -> list[dict[str, Any]]:
+    child_env = os.environ.copy()
+    child_env.setdefault("PYTHONUTF8", "1")
+    child_env.setdefault("PYTHONIOENCODING", "utf-8")
     transcript: list[str] = []
     results: list[dict[str, Any]] = []
     for command in commands:
@@ -188,6 +193,8 @@ def _run_commands(
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
             text=True,
+            encoding="utf-8",
+            env=child_env,
         )
         output = completed.stdout or ""
         print(output, end="" if output.endswith("\n") else "\n")

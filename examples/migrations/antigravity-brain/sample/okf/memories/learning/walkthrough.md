@@ -8,7 +8,7 @@ timestamp: "2025-11-19T15:23:06.796545100Z"
 x_memanto:
   confidence: 1.0
   provenance: imported
-  source: antigravity
+  source: tool
   status: active
   type: learning
 ---

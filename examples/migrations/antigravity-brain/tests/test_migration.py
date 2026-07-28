@@ -101,7 +101,12 @@ def test_okf_maps_and_reconstructs_exact_bytes(tmp_path: Path) -> None:
     rows = map_okf(load_okf_bundle(bundle))
     assert len(rows) == 1
     assert rows[0]["type"] == "commitment"
+    assert rows[0]["source"] == "tool"
     assert "Remember mint green" in rows[0]["content"]
+
+    from memanto.app.core import MemoryRecord
+
+    MemoryRecord(**rows[0], agent_id="test-agent", actor_id="test-actor")
 
     restored = tmp_path / "restored"
     reconstruction = reconstruct(bundle, restored)
@@ -128,6 +133,28 @@ def test_large_artifact_is_chunked_and_reassembled(tmp_path: Path) -> None:
     assert (restored / "brain" / session / "task.md").read_text(
         encoding="utf-8"
     ) == content
+
+
+def test_reconstruction_ignores_okf_derived_session_views(tmp_path: Path) -> None:
+    source = make_source(tmp_path / "source")
+    bundle = tmp_path / "bundle"
+    migrate(source, bundle)
+    memory = next(
+        path
+        for path in bundle.rglob("*.md")
+        if path.name != "index.md" and SOURCE_MARKER_RE.search(path.read_text())
+    )
+    sessions = bundle / "sessions"
+    sessions.mkdir()
+    sessions.joinpath("summary.md").write_text(
+        "> " + memory.read_text(encoding="utf-8").replace("\n", "\n> "),
+        encoding="utf-8",
+    )
+
+    records = collect_records(bundle)
+    assert len(records) == 1
+    reconstruction = reconstruct(bundle, tmp_path / "restored")
+    assert reconstruction["byte_exact"] is True
 
 
 def test_tampered_payload_fails_closed(tmp_path: Path) -> None:
@@ -204,7 +231,13 @@ def test_force_only_replaces_owned_output(tmp_path: Path) -> None:
 
 def test_live_plan_is_guarded_and_uses_staged_export(tmp_path: Path) -> None:
     executable = tmp_path / "memanto"
-    cases = [{"question": "What was chosen?", "expected_phrases": ["mint green"]}]
+    cases = [
+        {
+            "question": "What was chosen?",
+            "expected_phrases": ["mint green"],
+            "recall_expected_phrases": ["Walkthrough revision 3"],
+        }
+    ]
     staged = staging_export_path("demo-agent", tmp_path / "evidence", tmp_path / "data")
     commands = build_commands(
         executable,
@@ -223,6 +256,6 @@ def test_live_plan_is_guarded_and_uses_staged_export(tmp_path: Path) -> None:
         "answer-1",
         "export-okf",
     ]
-    assert commands[3].expected_phrases == ("mint green",)
+    assert commands[3].expected_phrases == ("Walkthrough revision 3",)
     assert staged.is_relative_to(tmp_path / "data" / "exports")
     assert all("API_KEY" not in " ".join(command.argv) for command in commands)

@@ -54,7 +54,12 @@ def collect_records(bundle: Path) -> list[dict[str, Any]]:
     root = bundle.expanduser().resolve()
     if not root.exists():
         raise FileNotFoundError(f"Bundle not found: {bundle}")
-    files = [root] if root.is_file() else sorted(root.rglob("*.md"))
+    if root.is_file():
+        files = [root]
+    else:
+        memories_root = root / "memories"
+        search_root = memories_root if memories_root.is_dir() else root
+        files = sorted(search_root.rglob("*.md"))
     records: list[dict[str, Any]] = []
     for path in files:
         text = path.read_text(encoding="utf-8")

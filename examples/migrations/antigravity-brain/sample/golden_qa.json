@@ -5,6 +5,9 @@
       "Tensor-Green ASCII",
       "Deep Charcoal",
       "Mint Green"
+    ],
+    "recall_expected_phrases": [
+      "Walkthrough revision 3"
     ]
   },
   {
@@ -13,6 +16,9 @@
       "Bento Grid",
       "12-column grid",
       "Command Center"
+    ],
+    "recall_expected_phrases": [
+      "Implementation plan revision 3"
     ]
   },
   {
@@ -21,6 +27,9 @@
       "ASCII corner markers",
       "Technical Buttons",
       "tick mark"
+    ],
+    "recall_expected_phrases": [
+      "Implementation plan revision 4"
     ]
   }
 ]

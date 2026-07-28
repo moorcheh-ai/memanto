@@ -335,7 +335,7 @@ def render_artifact(artifact: Artifact) -> list[RenderedMemory]:
                 "x_memanto:",
                 "  confidence: 1.0",
                 "  provenance: imported",
-                "  source: antigravity",
+                "  source: tool",
                 "  status: active",
                 f"  type: {memory_type}",
                 "---",

@@ -166,6 +166,12 @@ The script never prints the API key. It stages the export under Memanto's own
 data directory to satisfy the CLI's output-path guard, copies it into a fresh
 evidence directory, and removes the staging copy in a `finally` block.
 
+A live Moorcheh run on July 28, 2026 completed the full route with 11/11
+memories imported, 3/3 expected memories retrieved, three grounded answers,
+and 11/11 memories exported. Reconstruction recovered all 13 source files
+byte-for-byte; both trees had SHA-256
+`9190cfdaac0ea288c4c44d2bd0e3f299b25debaf60fe7ee7c66efb00999e1673`.
+
 ## Output layout
 
 ```text
