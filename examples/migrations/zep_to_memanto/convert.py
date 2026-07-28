@@ -43,12 +43,13 @@ def load_zep_export(path: str | Path) -> dict[str, Any]:
         return json.load(f)
 
 
-def fetch_from_api(zep_url: str, user_id: str) -> dict[str, Any]:
+def fetch_from_api(zep_url: str, user_id: str, allow_partial: bool = False) -> dict[str, Any]:
     """Fetch memory from a live Zep instance via REST API."""
     import urllib.request
 
     base = zep_url.rstrip("/")
     result: dict[str, Any] = {"facts": [], "entities": [], "relations": []}
+    failures: list[str] = []
 
     endpoints = {
         "facts": f"{base}/api/v2/users/{user_id}/memory",
@@ -67,9 +68,29 @@ def fetch_from_api(zep_url: str, user_id: str) -> dict[str, Any]:
                     result["entities"] = data.get("nodes", data.get("entities", []))
                     result["relations"] = data.get("edges", data.get("relations", []))
         except Exception as e:
-            print(f"Warning: could not fetch {key} from {url}: {e}", file=sys.stderr)
+            failures.append(f"{key} ({url}): {e}")
+
+    if failures and not allow_partial:
+        print("Error: failed to fetch from Zep endpoints:", file=sys.stderr)
+        for f in failures:
+            print(f"  - {f}", file=sys.stderr)
+        print("Use --allow-partial to proceed with incomplete data.", file=sys.stderr)
+        sys.exit(1)
+    elif failures:
+        for f in failures:
+            print(f"Warning: {f}", file=sys.stderr)
 
     return result
+
+
+def _yaml_scalar(value: Any) -> str:
+    """Serialize a value as a YAML-safe scalar using JSON encoding (JSON is valid YAML)."""
+    return json.dumps(str(value), ensure_ascii=False)
+
+
+def _yaml_list(items: list[str]) -> str:
+    """Serialize a list of strings as a YAML-safe flow sequence."""
+    return json.dumps(items, ensure_ascii=False)
 
 
 def _sanitize_filename(text: str, max_len: int = 60) -> str:
@@ -140,15 +161,15 @@ def convert_facts(facts: list[dict[str, Any]]) -> list[str]:
             footer = "\n\n## Supporting data\n\n" + "\n".join(footer_parts)
 
         entry = f"""---
-type: {fact_type}
-title: "{text[:80].replace(chr(34), chr(39))}"
+type: {_yaml_scalar(fact_type)}
+title: {_yaml_scalar(text[:80])}
 description: "Migrated from Zep memory"
-tags: [{', '.join(tags)}]
-timestamp: "{created}"
+tags: {_yaml_list(tags)}
+timestamp: {_yaml_scalar(created)}
 x_memanto:
   confidence: {confidence}
   source: zep
-  source_ref: "{fact.get('uuid', f'fact-{i}')}"
+  source_ref: {_yaml_scalar(fact.get('uuid', f'fact-{i}'))}
   provenance: imported
 ---
 
@@ -191,14 +212,14 @@ def convert_entities(entities: list[dict[str, Any]]) -> list[str]:
 
         entry = f"""---
 type: fact
-title: "Entity: {name[:70].replace(chr(34), chr(39))}"
+title: {_yaml_scalar(f'Entity: {name[:70]}')}
 description: "Knowledge graph entity from Zep"
-tags: [{', '.join(tags)}]
-timestamp: "{created}"
+tags: {_yaml_list(tags)}
+timestamp: {_yaml_scalar(created)}
 x_memanto:
   confidence: 0.9
   source: zep
-  source_ref: "{entity.get('uuid', f'entity-{i}')}"
+  source_ref: {_yaml_scalar(entity.get('uuid', f'entity-{i}'))}
   provenance: imported
 ---
 
@@ -247,14 +268,14 @@ def convert_relations(relations: list[dict[str, Any]]) -> list[str]:
 
         entry = f"""---
 type: relationship
-title: "{text[:80].replace(chr(34), chr(39))}"
+title: {_yaml_scalar(text[:80])}
 description: "Knowledge graph relation from Zep"
-tags: [{', '.join(tags)}]
-timestamp: "{created}"
+tags: {_yaml_list(tags)}
+timestamp: {_yaml_scalar(created)}
 x_memanto:
   confidence: 0.85
   source: zep
-  source_ref: "{rel.get('uuid', f'relation-{i}')}"
+  source_ref: {_yaml_scalar(rel.get('uuid', f'relation-{i}'))}
   provenance: imported
 ---
 
@@ -271,6 +292,12 @@ def build_okf_bundle(
     out = Path(output_dir)
     memories_dir = out / "memories"
     memories_dir.mkdir(parents=True, exist_ok=True)
+
+    # Remove stale generated files from a previous conversion to prevent
+    # leftover chunks from a larger run being imported alongside current data.
+    for pattern in ("facts_*.md", "relations_*.md", "memories_*.md"):
+        for stale in memories_dir.glob(pattern):
+            stale.unlink()
 
     all_entries: list[str] = []
 
@@ -355,14 +382,14 @@ def convert_messages(messages: list[dict[str, Any]]) -> list[str]:
 
         entry = f"""---
 type: event
-title: "Conversation turn ({role})"
+title: {_yaml_scalar(f'Conversation turn ({role})')}
 description: "Migrated conversation message from Zep"
-tags: [zep-import, conversation, role={role}]
-timestamp: "{created}"
+tags: {_yaml_list(["zep-import", "conversation", f"role={role}"])}
+timestamp: {_yaml_scalar(created)}
 x_memanto:
   confidence: 0.7
   source: zep
-  source_ref: "{msg.get('uuid', f'msg-{i}')}"
+  source_ref: {_yaml_scalar(msg.get('uuid', f'msg-{i}'))}
   provenance: imported
 ---
 
@@ -394,6 +421,11 @@ def main():
     )
     parser.add_argument("--zep-url", default="http://localhost:8000", help="Zep server URL")
     parser.add_argument("--user-id", help="Zep user ID (required with --from-api)")
+    parser.add_argument(
+        "--allow-partial",
+        action="store_true",
+        help="Proceed with partial data if some API endpoints fail",
+    )
 
     args = parser.parse_args()
 
@@ -402,7 +434,7 @@ def main():
             print("Error: --user-id required with --from-api", file=sys.stderr)
             sys.exit(1)
         print(f"Fetching memory from Zep at {args.zep_url} for user {args.user_id}...")
-        data = fetch_from_api(args.zep_url, args.user_id)
+        data = fetch_from_api(args.zep_url, args.user_id, allow_partial=args.allow_partial)
     else:
         print(f"Loading Zep export from {args.input}...")
         data = load_zep_export(args.input)

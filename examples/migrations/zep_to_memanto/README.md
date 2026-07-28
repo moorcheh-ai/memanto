@@ -59,7 +59,7 @@ cat demo_bundle/memories/facts_001.md
 
 ## How it works
 
-1. **Facts** → individual OKF entries with type mapped from Zep's category (preference, fact, decision, event). Confidence derived from Zep's relevance score.
+1. **Facts** → individual OKF entries with type derived from Zep's `type` field; Zep's `category` is preserved as a tag. Confidence derived from Zep's relevance score.
 2. **Entities** → OKF entries preserving the knowledge graph node's summary, type, and structured attributes.
 3. **Relations** → `relationship`-typed entries encoding the source→type→target triple with episode provenance.
 4. **Grouping** → entries are organized into `facts_*.md`, `relations_*.md` files (20 entries each) for browsability.
