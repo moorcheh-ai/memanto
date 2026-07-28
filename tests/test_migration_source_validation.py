@@ -29,8 +29,31 @@ def _as_memory_record(row):
             {"memories": [{"id": "s1", "content": "Prefers tea"}]},
         ),
         (
+            map_supermemory,
+            {
+                "documents": [
+                    {
+                        "id": "d1",
+                        "chunks": [{"id": "c1", "content": "Prefers tea"}],
+                    }
+                ]
+            },
+        ),
+        (
             map_okf,
             {"memories": [{"title": "Preference", "body": "Prefers tea"}]},
+        ),
+        (
+            map_okf,
+            {
+                "memories": [
+                    {
+                        "title": "Preference",
+                        "body": "Prefers tea",
+                        "x_memanto": {"source": "okf"},
+                    }
+                ]
+            },
         ),
     ],
 )
