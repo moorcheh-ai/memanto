@@ -15,6 +15,15 @@ from validate_round_trip import validate
 ROOT = Path(__file__).resolve().parent
 
 
+def display_bundle_path(bundle: Path) -> str:
+    """Return a truthful command path without leaking the repository prefix."""
+    resolved = bundle.resolve()
+    try:
+        return resolved.relative_to(ROOT).as_posix()
+    except ValueError:
+        return bundle.as_posix()
+
+
 def run_memanto_dry_run(bundle: Path) -> dict[str, object]:
     """Exercise the repository's shipped OKF CLI without cloud writes."""
     command = [
@@ -33,7 +42,7 @@ def run_memanto_dry_run(bundle: Path) -> dict[str, object]:
             f"Memanto CLI dry-run failed with exit code {completed.returncode}:\n{tail}"
         )
     return {
-        "command": "memanto migrate okf sample/okf --dry-run",
+        "command": f"memanto migrate okf {display_bundle_path(bundle)} --dry-run",
         "exit_code": completed.returncode,
         "writes_performed": False,
     }

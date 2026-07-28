@@ -4,7 +4,7 @@ import base64
 import json
 import sys
 import zlib
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 
 import pytest
 
@@ -15,20 +15,33 @@ if str(EXAMPLE) not in sys.path:
 from migrate_antigravity import (  # noqa: E402
     BUNDLE_SENTINEL,
     SOURCE_MARKER_RE,
+    Artifact,
     discover_artifacts,
     migrate,
     redact_text,
+    render_artifact,
     stable_session_alias,
 )
-from reconstruct_antigravity import collect_records, reconstruct  # noqa: E402
+from prepare_public_sample import (  # noqa: E402
+    SAMPLE_SENTINEL,
+    prepare_sample,
+)
+from reconstruct_antigravity import (  # noqa: E402
+    MAX_DECODED_MARKER_BYTES,
+    _decode_record,
+    collect_records,
+    reconstruct,
+)
+from run_demo import display_bundle_path  # noqa: E402
 from run_live_demo import build_commands, staging_export_path  # noqa: E402
+
+SESSION_ID = "11111111-1111-4111-8111-111111111111"
 
 
 def make_source(
     root: Path, content: str = "# Real task\n\nRemember mint green.\n"
 ) -> Path:
-    session = "11111111-1111-4111-8111-111111111111"
-    brain = root / "brain" / session
+    brain = root / "brain" / SESSION_ID
     brain.mkdir(parents=True)
     (brain / "task.md").write_text(content, encoding="utf-8")
     (brain / "task.md.metadata.json").write_text(
@@ -45,7 +58,7 @@ def make_source(
     (brain / "task.md.resolved").write_text("old draft", encoding="utf-8")
     conversations = root / "conversations"
     conversations.mkdir()
-    (conversations / f"{session}.pb").write_bytes(bytes(range(256)) * 4)
+    (conversations / f"{SESSION_ID}.pb").write_bytes(bytes(range(256)) * 4)
     return root
 
 
@@ -76,16 +89,50 @@ def test_public_redaction_is_deterministic_and_preserves_markdown() -> None:
         "Email person@example.com at https://example.com/x.\n"
         "![shot](/C:/Users/alice/private/shot.png)\n"
         "API_KEY=super-secret\n"
+        "Acme Corp Inc\n"
     )
-    cleaned, counts = redact_text(text)
+    cleaned, counts = redact_text(
+        text, {"Acme": "[company]", "Acme Corp Inc": "[full-company]"}
+    )
     assert "person@example.com" not in cleaned
     assert "super-secret" not in cleaned
     assert "![shot]([redacted-path])" in cleaned
+    assert "[full-company]" in cleaned
+    assert "Corp Inc" not in cleaned
     assert counts["email"] == 1
     assert counts["url"] == 1
     assert counts["windows_path"] == 1
     assert counts["secret_assignment"] == 1
     assert stable_session_alias("abc") == stable_session_alias("abc")
+
+
+def test_rendered_memory_replaces_nonportable_image_links() -> None:
+    artifact = Artifact(
+        session_id=SESSION_ID,
+        relative_path=PurePosixPath("brain") / SESSION_ID / "walkthrough.md",
+        content=b"# Walkthrough\n\n![Private screenshot](/local-image.png)\n",
+        metadata_name=None,
+        metadata=None,
+        artifact_type="ARTIFACT_TYPE_WALKTHROUGH",
+        updated_at=None,
+    )
+    rendered = render_artifact(artifact)
+    assert "![Private screenshot]" not in rendered[0].text
+    assert "[Image omitted from portable view: Private screenshot]" in rendered[0].text
+
+
+def test_rendered_memory_budget_includes_frontmatter() -> None:
+    artifact = Artifact(
+        session_id=SESSION_ID,
+        relative_path=PurePosixPath("brain") / SESSION_ID / ("a" * 5_000 + ".md"),
+        content=b"small body",
+        metadata_name=None,
+        metadata=None,
+        artifact_type="ARTIFACT_TYPE_UNKNOWN",
+        updated_at=None,
+    )
+    with pytest.raises(ValueError, match="content budget"):
+        render_artifact(artifact)
 
 
 def test_okf_maps_and_reconstructs_exact_bytes(tmp_path: Path) -> None:
@@ -184,6 +231,14 @@ def test_tampered_payload_fails_closed(tmp_path: Path) -> None:
         reconstruct(bundle, tmp_path / "restored")
 
 
+def test_oversized_marker_is_rejected_before_json_decode() -> None:
+    encoded = base64.b64encode(
+        zlib.compress(b"x" * (MAX_DECODED_MARKER_BYTES + 1), 9)
+    ).decode()
+    with pytest.raises(ValueError, match="Invalid Antigravity source marker"):
+        _decode_record(encoded, Path("memory.md"))
+
+
 def test_path_traversal_payload_is_rejected(tmp_path: Path) -> None:
     source = make_source(tmp_path / "source")
     bundle = tmp_path / "bundle"
@@ -209,6 +264,7 @@ def test_path_traversal_payload_is_rejected(tmp_path: Path) -> None:
     )
     with pytest.raises(ValueError, match="Unsafe reconstructed path"):
         collect_records(bundle)
+    with pytest.raises(ValueError, match="Unsafe reconstructed path"):
         reconstruct(bundle, tmp_path / "restored")
 
 
@@ -227,6 +283,45 @@ def test_force_only_replaces_owned_output(tmp_path: Path) -> None:
     (owned / "stale.txt").write_text("stale", encoding="utf-8")
     migrate(source, owned, force=True)
     assert not (owned / "stale.txt").exists()
+
+
+def test_public_sample_force_preserves_previous_output_on_failure(
+    tmp_path: Path,
+) -> None:
+    source = make_source(tmp_path / "source")
+    output = tmp_path / "public-sample"
+    output.mkdir()
+    (output / SAMPLE_SENTINEL).write_text("1\n", encoding="utf-8")
+    (output / "known-good.txt").write_text("keep", encoding="utf-8")
+
+    with pytest.raises(ValueError, match="must not be empty"):
+        prepare_sample(
+            source,
+            output,
+            conversation=SESSION_ID,
+            custom_redactions={"": "invalid"},
+            force=True,
+        )
+
+    assert (output / "known-good.txt").read_text(encoding="utf-8") == "keep"
+
+
+def test_public_sample_pseudonymizes_attachment_filenames(tmp_path: Path) -> None:
+    source = make_source(tmp_path / "source")
+    attachment = source / "brain" / SESSION_ID / "private-project-1234567890.png"
+    attachment.write_bytes(b"private image bytes")
+    report = prepare_sample(source, tmp_path / "public-sample", conversation=SESSION_ID)
+
+    row = report["attachment_provenance"][0]
+    assert row["filename"].startswith("attachment-")
+    assert row["filename"].endswith(".png")
+    assert "private-project" not in row["filename"]
+
+
+def test_display_bundle_path_tracks_custom_output(tmp_path: Path) -> None:
+    assert display_bundle_path(EXAMPLE / "custom" / "okf") == "custom/okf"
+    external = tmp_path / "okf"
+    assert display_bundle_path(external) == external.as_posix()
 
 
 def test_live_plan_is_guarded_and_uses_staged_export(tmp_path: Path) -> None:

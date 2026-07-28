@@ -41,7 +41,7 @@ I verified the application flow using the browser tool:
 ### Dashboard Interface
 Here is the new Dashboard showing the terminal aesthetic:
 
-![Dashboard ASCII](/dashboard_ascii_1763562430672.png)
+[Image omitted from portable view: Dashboard ASCII]
 
 ## How to Run
 

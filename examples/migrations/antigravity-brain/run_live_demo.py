@@ -244,9 +244,8 @@ def main() -> int:
             else Path(tempfile.gettempdir()) / f"memanto-{args.agent}-evidence"
         )
         exported_evidence = output / "exported-okf"
-        staged_export = staging_export_path(
-            args.agent, output, ConfigManager().get_data_dir()
-        )
+        config = ConfigManager()
+        staged_export = staging_export_path(args.agent, output, config.get_data_dir())
         golden_path = ROOT / "sample" / "golden_qa.json"
         cases = _golden_cases(golden_path)
         commands = build_commands(
@@ -272,7 +271,7 @@ def main() -> int:
             )
             return 0
 
-        if not ConfigManager().is_configured():
+        if not config.is_configured():
             raise RuntimeError(
                 "Memanto is not configured. Set MOORCHEH_API_KEY locally; never "
                 "paste it into source or commit it."
@@ -308,7 +307,11 @@ def main() -> int:
                 "exported_tree_sha256": validation["reconstructed_tree_sha256"],
                 "recall_commands_run": len(recall_results),
                 "recall_commands_with_full_phrase_parity": parity_count,
-                "answer_commands_run": 0 if args.skip_answers else len(cases),
+                "answer_commands_run": sum(
+                    1
+                    for result in command_results
+                    if result["label"].startswith("answer-")
+                ),
                 "commands": command_results,
                 "exported_okf": "exported-okf",
             }

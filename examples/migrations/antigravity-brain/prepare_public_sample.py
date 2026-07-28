@@ -6,8 +6,10 @@ from __future__ import annotations
 import argparse
 import json
 import shutil
+import tempfile
 from collections import Counter
 from pathlib import Path
+from uuid import uuid4
 
 from migrate_antigravity import (
     attachment_manifest,
@@ -20,7 +22,7 @@ from migrate_antigravity import (
 SAMPLE_SENTINEL = ".antigravity-public-sample-v1"
 
 
-def _prepare_output(output: Path, force: bool) -> None:
+def _validate_output(output: Path, force: bool) -> None:
     if output.exists():
         sentinel = output / SAMPLE_SENTINEL
         if not force:
@@ -29,9 +31,30 @@ def _prepare_output(output: Path, force: bool) -> None:
             raise ValueError(
                 f"Refusing to replace a directory not created by this tool: {output}"
             )
-        shutil.rmtree(output)
-    output.mkdir(parents=True)
-    (output / SAMPLE_SENTINEL).write_text("1\n", encoding="utf-8")
+
+
+def _create_staged_output(output: Path) -> Path:
+    output.parent.mkdir(parents=True, exist_ok=True)
+    staged = Path(
+        tempfile.mkdtemp(prefix=f".{output.name}.staging-", dir=output.parent)
+    )
+    (staged / SAMPLE_SENTINEL).write_text("1\n", encoding="utf-8")
+    return staged
+
+
+def _commit_staged_output(staged: Path, output: Path) -> None:
+    backup: Path | None = None
+    if output.exists():
+        backup = output.with_name(f".{output.name}.backup-{uuid4().hex}")
+        output.replace(backup)
+    try:
+        staged.replace(output)
+    except OSError:
+        if backup is not None and not output.exists():
+            backup.replace(output)
+        raise
+    if backup is not None:
+        shutil.rmtree(backup)
 
 
 def prepare_sample(
@@ -45,45 +68,52 @@ def prepare_sample(
     """Write sanitized canonical artifacts and privacy-safe provenance only."""
     source_root = source.expanduser().resolve()
     artifacts = discover_artifacts(source_root, conversation)
-    _prepare_output(output, force)
+    _validate_output(output, force)
+    staged = _create_staged_output(output)
 
-    counts: Counter[str] = Counter()
-    aliases: set[str] = set()
-    written = 0
-    for artifact in artifacts:
-        clean, redactions = sanitize_artifact(artifact, custom_redactions)
-        counts.update(redactions)
-        aliases.add(clean.session_id)
-        destination = output.joinpath(*clean.relative_path.parts)
-        destination.parent.mkdir(parents=True, exist_ok=True)
-        destination.write_bytes(clean.content)
-        written += 1
-        if clean.metadata is not None and clean.metadata_name is not None:
-            (destination.parent / clean.metadata_name).write_bytes(clean.metadata)
+    try:
+        counts: Counter[str] = Counter()
+        aliases: set[str] = set()
+        written = 0
+        for artifact in artifacts:
+            clean, redactions = sanitize_artifact(artifact, custom_redactions)
+            counts.update(redactions)
+            aliases.add(clean.session_id)
+            destination = staged.joinpath(*clean.relative_path.parts)
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            destination.write_bytes(clean.content)
             written += 1
+            if clean.metadata is not None and clean.metadata_name is not None:
+                (destination.parent / clean.metadata_name).write_bytes(clean.metadata)
+                written += 1
 
-    provenance = source_provenance(source_root, [conversation])
-    for row in provenance:
-        row["session_id"] = stable_session_alias(str(row["session_id"]))
-        row["filename"] = f"{row['session_id']}.pb"
-    attachments = attachment_manifest(source_root, [conversation])
-    for row in attachments:
-        row["session_id"] = stable_session_alias(str(row["session_id"]))
+        provenance = source_provenance(source_root, [conversation])
+        for row in provenance:
+            row["session_id"] = stable_session_alias(str(row["session_id"]))
+            row["filename"] = f"{row['session_id']}.pb"
+        attachments = attachment_manifest(source_root, [conversation])
+        for row in attachments:
+            row["session_id"] = stable_session_alias(str(row["session_id"]))
+            suffix = Path(str(row["filename"])).suffix.lower()
+            row["filename"] = f"attachment-{str(row['sha256'])[:12]}{suffix}"
 
-    report: dict[str, object] = {
-        "source": "real Google Antigravity desktop brain archive",
-        "sessions": len(aliases),
-        "canonical_artifacts": len(artifacts),
-        "files_written": written,
-        "redactions": dict(sorted(counts.items())),
-        "raw_conversation_contents_published": False,
-        "opaque_conversation_provenance": provenance,
-        "attachment_provenance": attachments,
-    }
-    (output / "source-provenance.json").write_text(
-        json.dumps(report, indent=2, sort_keys=True) + "\n", encoding="utf-8"
-    )
-    return report
+        report: dict[str, object] = {
+            "source": "real Google Antigravity desktop brain archive",
+            "sessions": len(aliases),
+            "canonical_artifacts": len(artifacts),
+            "files_written": written,
+            "redactions": dict(sorted(counts.items())),
+            "raw_conversation_contents_published": False,
+            "opaque_conversation_provenance": provenance,
+            "attachment_provenance": attachments,
+        }
+        (staged / "source-provenance.json").write_text(
+            json.dumps(report, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+        )
+        _commit_staged_output(staged, output)
+        return report
+    finally:
+        shutil.rmtree(staged, ignore_errors=True)
 
 
 def _load_redactions(path: Path | None) -> dict[str, str]:

@@ -43,6 +43,7 @@ _SECRET_ASSIGNMENT_RE = re.compile(
     r"(?im)(\b(?:api[_-]?key|access[_-]?token|secret|password|bearer)\b"
     r"\s*[:=]\s*)([^\s,;]+)"
 )
+_LOCAL_IMAGE_RE = re.compile(r"!\[([^\]\r\n]*)\]\((?:\[redacted-path\]|/[^)\r\n]*)\)")
 
 
 @dataclass(frozen=True)
@@ -209,7 +210,9 @@ def redact_text(
     replace(_IP_RE, "[redacted-ip]", "ip_address")
     replace(_UUID_RE, "[session-id]", "uuid")
 
-    for needle, replacement in sorted((custom_redactions or {}).items()):
+    for needle, replacement in sorted(
+        (custom_redactions or {}).items(), key=lambda item: (-len(item[0]), item[0])
+    ):
         if not needle:
             raise ValueError("Custom redaction keys must not be empty")
         count = text.count(needle)
@@ -265,6 +268,14 @@ def _split_text(text: str) -> list[str]:
     ] or [""]
 
 
+def _portable_markdown(text: str) -> str:
+    def replace_local_image(match: re.Match[str]) -> str:
+        label = match.group(1).strip() or "image"
+        return f"[Image omitted from portable view: {label}]"
+
+    return _LOCAL_IMAGE_RE.sub(replace_local_image, text)
+
+
 def _encode_source_record(record: dict[str, Any]) -> str:
     raw = json.dumps(record, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
     compressed = zlib.compress(raw.encode("utf-8"), level=9)
@@ -317,7 +328,7 @@ def render_artifact(artifact: Artifact) -> list[RenderedMemory]:
             "version": 1,
         }
         marker = f"{SOURCE_MARKER_PREFIX}{_encode_source_record(record)} -->"
-        body = chunk.rstrip("\r\n") + "\n\n" + marker
+        body = _portable_markdown(chunk).rstrip("\r\n") + "\n\n" + marker
         timestamp = artifact.updated_at or "1970-01-01T00:00:00Z"
         resource = (
             f"antigravity://{artifact.session_id}/brain/"
@@ -343,7 +354,7 @@ def render_artifact(artifact: Artifact) -> list[RenderedMemory]:
             ]
         )
         full_text = frontmatter + body + "\n"
-        if len(body) > 9_000:
+        if len(full_text) > 9_000:
             raise ValueError(
                 f"Rendered memory exceeds the Memanto content budget: {artifact.relative_path}"
             )
@@ -359,15 +370,18 @@ def render_artifact(artifact: Artifact) -> list[RenderedMemory]:
     return rendered
 
 
-def file_entropy(path: Path) -> float:
-    """Calculate Shannon entropy without retaining source contents."""
-    data = path.read_bytes()
+def _entropy_of(data: bytes) -> float:
     if not data:
         return 0.0
     counts = Counter(data)
     return -sum(
         (count / len(data)) * math.log2(count / len(data)) for count in counts.values()
     )
+
+
+def file_entropy(path: Path) -> float:
+    """Calculate Shannon entropy without retaining source contents."""
+    return _entropy_of(_read_limited(path))
 
 
 def source_provenance(
@@ -380,13 +394,14 @@ def source_provenance(
         if not path.is_file():
             continue
         _safe_child(antigravity_root, path)
-        entropy = file_entropy(path)
+        data = _read_limited(path)
+        entropy = _entropy_of(data)
         result.append(
             {
                 "session_id": session_id,
                 "filename": path.name,
-                "bytes": path.stat().st_size,
-                "sha256": sha256_bytes(path.read_bytes()),
+                "bytes": len(data),
+                "sha256": sha256_bytes(data),
                 "shannon_entropy_bits_per_byte": round(entropy, 5),
                 "opaque_or_encrypted": entropy >= 7.9,
                 "contents_published": False,
@@ -410,12 +425,13 @@ def attachment_manifest(
             if path.suffix.lower() in {".md", ".resolved"} or ".resolved." in path.name:
                 continue
             _safe_child(session_dir, path)
+            data = _read_limited(path)
             rows.append(
                 {
                     "session_id": session_id,
                     "filename": path.name,
-                    "bytes": path.stat().st_size,
-                    "sha256": sha256_bytes(path.read_bytes()),
+                    "bytes": len(data),
+                    "sha256": sha256_bytes(data),
                     "included_in_okf": False,
                 }
             )

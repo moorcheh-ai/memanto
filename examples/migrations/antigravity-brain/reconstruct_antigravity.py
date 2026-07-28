@@ -16,12 +16,19 @@ from typing import Any
 from migrate_antigravity import SOURCE_MARKER_RE
 
 RECONSTRUCTION_SENTINEL = ".antigravity-reconstruction-v1"
+MAX_DECODED_MARKER_BYTES = 16 * 1024 * 1024
 
 
 def _decode_record(encoded: str, source: Path) -> dict[str, Any]:
     try:
         compressed = base64.b64decode(encoded, validate=True)
-        value = json.loads(zlib.decompress(compressed).decode("utf-8"))
+        decompressor = zlib.decompressobj()
+        raw = decompressor.decompress(compressed, MAX_DECODED_MARKER_BYTES + 1)
+        if len(raw) > MAX_DECODED_MARKER_BYTES or not decompressor.eof:
+            raise ValueError("Source marker exceeds maximum decoded size")
+        if decompressor.unused_data:
+            raise ValueError("Source marker contains trailing compressed data")
+        value = json.loads(raw.decode("utf-8"))
     except (ValueError, UnicodeDecodeError, json.JSONDecodeError, zlib.error) as exc:
         raise ValueError(f"Invalid Antigravity source marker in {source}") from exc
     if not isinstance(value, dict) or value.get("version") != 1:
@@ -65,6 +72,7 @@ def collect_records(bundle: Path) -> list[dict[str, Any]]:
         text = path.read_text(encoding="utf-8")
         for match in SOURCE_MARKER_RE.finditer(text):
             record = _decode_record(match.group(1), path)
+            _safe_relative_path(record.get("relative_path"))
             record["_marker_file"] = str(path)
             records.append(record)
     if not records:
@@ -145,7 +153,7 @@ def reconstruct(bundle: Path, output: Path, *, force: bool = False) -> dict[str,
                 candidate = item.get("metadata_name")
                 if not isinstance(candidate, str) or not candidate:
                     raise ValueError(f"Artifact {artifact_id} metadata has no filename")
-                if Path(candidate).name != candidate:
+                if PurePosixPath(candidate).name != candidate:
                     raise ValueError(f"Unsafe metadata filename: {candidate!r}")
                 metadata_name = candidate
         planned.append((relative_path, b"".join(chunks), metadata_name, metadata))

@@ -27,7 +27,7 @@ before converging on a Tensor-Green ASCII design. It contains:
 
 - 2 canonical artifacts: an implementation plan and final walkthrough;
 - 9 numbered historical revisions, preserving how the plan and result evolved;
-- 15 image artifacts recorded by filename, byte size, and SHA-256 only;
+- 15 image artifacts recorded by deterministic digest alias, byte size, and SHA-256 only;
 - one 3,560,058-byte opaque conversation `.pb`, recorded by SHA-256 and entropy
   only—its private bytes are never copied or decoded.
 
@@ -115,7 +115,7 @@ gone.
 | Unknown brain artifact | `artifact` | Readable Markdown memory |
 | Artifact metadata sidecar | Source marker | Compressed exact bytes |
 | Opaque conversation `.pb` | Provenance report | Hash, size, entropy; no contents |
-| Image/video artifact | Attachment report | Hash, size, filename; no binary copy |
+| Image/video artifact | Attachment report | Hash, size, digest alias; no binary copy |
 
 Each OKF document contains the source text as normal Markdown. A compact hidden
 `antigravity-source-v1` marker carries a zlib-compressed copy of the exact
@@ -135,7 +135,7 @@ token, or latency baseline. The adapter reports those savings as unavailable
 instead of inventing them.
 
 For the real checked-in sample, 23,515 bytes of source Markdown and metadata
-become 55,488 bytes of importable OKF. The 31,973-byte increase is deliberate
+become 55,429 bytes of importable OKF. The 31,914-byte increase is deliberate
 portability overhead: human-readable frontmatter plus compressed source
 markers that make exact reconstruction possible.
 

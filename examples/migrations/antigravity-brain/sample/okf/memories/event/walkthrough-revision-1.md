@@ -43,7 +43,7 @@ I verified the application flow using the browser tool:
 ### Dashboard Interface
 Here is the refined Dashboard showing the High-Fidelity aesthetic:
 
-![Dashboard High-Fidelity](/dashboard_high_fidelity_1763563785757.png)
+[Image omitted from portable view: Dashboard High-Fidelity]
 
 ## How to Run
 

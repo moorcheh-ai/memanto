@@ -34,7 +34,7 @@ I have successfully pivoted the UI to a "Tensor-Green ASCII" hybrid aesthetic. T
 
 ## Verification
 
-![Tensor-Green Dashboard]([redacted-path])
+[Image omitted from portable view: Tensor-Green Dashboard]
 
 ## How to Run
 
