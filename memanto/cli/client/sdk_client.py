@@ -587,7 +587,12 @@ class SdkClient:
                     kwargs[opt_key] = val
 
             raw_status = item.get("status")
-            if raw_status in ("active", "superseded", "deleted", "provisional"):
+            if raw_status is not None:
+                if raw_status not in ("active", "superseded", "deleted", "provisional"):
+                    raise ValueError(
+                        f"Unsupported memory status {raw_status!r}; "
+                        f"expected one of: active, superseded, deleted, provisional"
+                    )
                 kwargs["status"] = raw_status
 
             memory = MemoryRecord(**kwargs)

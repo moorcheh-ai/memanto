@@ -31,11 +31,16 @@ count helper in ``runner.py``.
 
 from __future__ import annotations
 
+import logging
 from collections.abc import Callable
 from datetime import datetime, timezone
 from typing import Any
 
 from memanto.app.constants import VALID_MEMORY_TYPES
+
+logger = logging.getLogger(__name__)
+
+_SUPPORTED_STATUSES = frozenset({"active", "superseded", "deleted", "provisional"})
 
 # Mem0 ships category labels per memory. Map the common ones to Memanto's
 # typed primitives; everything else falls through to None (auto-classify).
@@ -452,7 +457,18 @@ def map_okf(export: dict[str, Any]) -> list[dict[str, Any]]:
         confidence = min(1.0, max(0.0, confidence))
 
         source = x_memanto.get("source") or "okf"
-        status = x_memanto.get("status") or "active"
+        raw_status = x_memanto.get("status")
+        if raw_status is None:
+            status = "active"
+        elif raw_status in _SUPPORTED_STATUSES:
+            status = raw_status
+        else:
+            logger.warning(
+                "Skipping entry with unsupported status %r: %s",
+                raw_status,
+                content[:80],
+            )
+            continue
         created_at = _parse_dt(entry.get("timestamp"))
 
         footer_items: list[tuple[str, Any]] = [
