@@ -54,6 +54,9 @@ def convert_session(
     limit: int | None = None,
 ) -> ConversionResult:
     """Convert allowed Codex messages into a one-file-per-memory OKF bundle."""
+    if limit is not None and limit < 1:
+        raise ValueError("limit must be at least 1")
+
     messages, input_records = _read_messages(source)
     matcher = re.compile(include_pattern, re.IGNORECASE) if include_pattern else None
 
@@ -183,6 +186,10 @@ def _decode_user_input(value: str) -> str:
 def _write_bundle(source: Path, output_dir: Path, messages: list[_Message]) -> None:
     memories_dir = output_dir / "memories" / "conversation"
     memories_dir.mkdir(parents=True, exist_ok=True)
+    # This directory is owned by the adapter. Remove only its generated Markdown
+    # files so rerunning with a smaller selection cannot leak stale memories.
+    for previous in memories_dir.glob("*.md"):
+        previous.unlink()
 
     source_fingerprint = hashlib.sha256(source.read_bytes()).hexdigest()[:16]
     links: list[tuple[str, str]] = []

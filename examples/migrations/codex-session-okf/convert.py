@@ -11,6 +11,13 @@ from pathlib import Path
 from codex_session_okf import convert_session
 
 
+def _positive_int(value: str) -> int:
+    parsed = int(value)
+    if parsed < 1:
+        raise argparse.ArgumentTypeError("must be at least 1")
+    return parsed
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(
         description="Convert privacy-filtered Codex JSONL messages to OKF."
@@ -21,7 +28,11 @@ def main() -> None:
         "--include",
         help="Only export messages matching this case-insensitive regex",
     )
-    parser.add_argument("--limit", type=int, help="Maximum messages to export")
+    parser.add_argument(
+        "--limit",
+        type=_positive_int,
+        help="Maximum messages to export (must be at least 1)",
+    )
     args = parser.parse_args()
 
     result = convert_session(

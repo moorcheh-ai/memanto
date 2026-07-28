@@ -48,7 +48,7 @@ python3 convert.py /path/to/rollout.jsonl ./my-codex-okf
 python3 -m pytest -q tests
 python3 validate.py sample/source-session.jsonl ./my-codex-okf \
   sample/golden_qa.json
-memanto migrate okf ./my-codex-okf --dry-run --report
+memanto migrate okf ./my-codex-okf --dry-run
 ```
 
 To export only messages relevant to a showcase:
@@ -99,3 +99,8 @@ portable OKF again
 
 Live Memanto import/export requires a Moorcheh API key. The conversion and all
 privacy tests run fully offline.
+
+The OKF migration command does not generate the provider-migration savings
+report because OKF is already a local portable bundle. Do not claim token,
+latency, or storage savings from its dry run; report measured source/output
+sizes and live timings separately when recording a showcase.

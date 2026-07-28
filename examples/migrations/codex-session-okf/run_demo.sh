@@ -12,7 +12,7 @@ python_bin="${PYTHON:-python3}"
   "$source_file" "$output_dir" "$demo_dir/sample/golden_qa.json"
 
 if command -v memanto >/dev/null 2>&1; then
-  memanto migrate okf "$output_dir" --dry-run --report
+  memanto migrate okf "$output_dir" --dry-run
 else
   echo "memanto CLI not found; install the repository to run the dry-run import."
 fi

@@ -93,3 +93,31 @@ def test_include_filter_and_limit(tmp_path: Path) -> None:
     ).read_text(encoding="utf-8")
     assert "beta match" in exported
     assert "another match" not in exported
+
+
+def test_rerun_removes_stale_generated_memories(tmp_path: Path) -> None:
+    source = tmp_path / "session.jsonl"
+    source.write_text(
+        "\n".join([_record("user", "first"), _record("assistant", "second")]),
+        encoding="utf-8",
+    )
+    output = tmp_path / "okf"
+    convert_session(source, output)
+    assert (output / "memories" / "conversation" / "002-assistant.md").exists()
+
+    convert_session(source, output, limit=1)
+
+    assert not (output / "memories" / "conversation" / "002-assistant.md").exists()
+    assert (output / "memories" / "conversation" / "001-user.md").exists()
+
+
+def test_rejects_non_positive_limit(tmp_path: Path) -> None:
+    source = tmp_path / "session.jsonl"
+    source.write_text(_record("user", "first"), encoding="utf-8")
+
+    try:
+        convert_session(source, tmp_path / "okf", limit=0)
+    except ValueError as exc:
+        assert str(exc) == "limit must be at least 1"
+    else:
+        raise AssertionError("limit=0 should be rejected")
