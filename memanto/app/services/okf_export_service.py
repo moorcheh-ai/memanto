@@ -283,9 +283,21 @@ class OkfExportService:
         if description:
             frontmatter["description"] = description
 
-        tags = mem.get("tags") or []
-        if tags:
-            frontmatter["tags"] = list(tags)
+        # Tags arrive in two shapes depending on where the record came from:
+        # Moorcheh serializes the flat ``tags`` field as a comma-separated string,
+        # while the in-memory recall path already hands back a list.  Normalize so
+        # the OKF frontmatter always carries one list entry per tag instead of
+        # splitting a comma-joined string character-by-character (e.g.
+        # ``["project", "db"]`` was previously written as
+        # ``["p", "r", "o", "j", "e", "c", "t", ",", "d", "b"]``).
+        raw_tags = mem.get("tags") or []
+        if raw_tags:
+            if isinstance(raw_tags, str):
+                frontmatter["tags"] = [
+                    t.strip() for t in raw_tags.split(",") if t.strip()
+                ]
+            else:
+                frontmatter["tags"] = list(raw_tags)
 
         created_at = mem.get("created_at")
         if created_at:
