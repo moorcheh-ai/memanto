@@ -11,7 +11,7 @@ accepted by ``SdkClient.batch_remember``:
         "type": str | None,     # None lets the parsing service auto-classify
         "tags": list[str],
         "confidence": float,
-        "source": str,          # provider name ("mem0", "letta", ...)
+        "source": "tool",       # valid MemoryRecord source for external imports
         "source_ref": str,      # original record id
         "provenance": "imported",
         "created_at": datetime, # original source timestamp (when present)
@@ -20,9 +20,11 @@ accepted by ``SdkClient.batch_remember``:
 
 Mappers extract every useful field from the source. Anything that maps
 naturally onto Memanto's schema (id, created_at, tags) goes into the right
-slot. Everything else (provider metadata, scope ids, hashes, scores) gets
-packed into a bounded ``[Supporting data]`` markdown block appended to the
-content, so it stays searchable and visible without bloating the schema.
+slot. Imported provider data uses the valid ``tool`` source; provider identity
+stays in ``source_ref`` and the supporting-data footer. Everything else
+(provider metadata, scope ids, hashes, scores) gets packed into a bounded
+``[Supporting data]`` markdown block appended to the content, so it stays
+searchable and visible without bloating the schema.
 
 Adding a new provider: write a ``map_<provider>`` function returning
 ``list[dict]``, register it in ``MAPPERS``, and add a per-provider source
@@ -57,6 +59,7 @@ _MEM0_CATEGORY_TO_TYPE: dict[str, str] = {
 _DEFAULT_TITLE_CHARS = 80
 _MAX_CONTENT_CHARS = 10000  # MemoryRecord.content max_length
 _MAX_FOOTER_CHARS = 800  # cap supporting-data footer so it never dominates
+_VALID_SOURCE_TYPES = {"user", "agent", "tool", "system"}
 
 
 def _title_from(content: str) -> str:
@@ -71,6 +74,21 @@ def _coerce_type(raw: str | None) -> str | None:
         return None
     t = raw.strip().lower()
     return t if t in VALID_MEMORY_TYPES else None
+
+
+def _coerce_source(raw: Any) -> str:
+    """Map imported provenance onto ``MemoryRecord.source``.
+
+    Provider names such as ``mem0`` and ``letta`` are not valid
+    ``MemoryRecord`` source values. Imported records come from an external
+    tool, while provider-specific identity remains available in
+    ``source_ref`` and the supporting-data footer.
+    """
+    if isinstance(raw, str):
+        source = raw.strip().lower()
+        if source in _VALID_SOURCE_TYPES:
+            return source
+    return "tool"
 
 
 def _scope_tag(scope: dict[str, Any] | None) -> str | None:
@@ -225,7 +243,7 @@ def map_mem0(export: dict[str, Any]) -> list[dict[str, Any]]:
                 "type": memory_type,
                 "tags": tags,
                 "confidence": 0.8,
-                "source": "mem0",
+                "source": "tool",
                 "source_ref": str(mem.get("id")) if mem.get("id") else None,
                 "provenance": "imported",
                 "created_at": created_at,
@@ -284,7 +302,7 @@ def map_letta(export: dict[str, Any]) -> list[dict[str, Any]]:
                 "type": "observation",
                 "tags": tags,
                 "confidence": 0.8,
-                "source": "letta",
+                "source": "tool",
                 "source_ref": str(passage.get("id")) if passage.get("id") else None,
                 "provenance": "imported",
                 "created_at": created_at,
@@ -346,7 +364,7 @@ def map_supermemory(export: dict[str, Any]) -> list[dict[str, Any]]:
                 "type": None,
                 "tags": tags,
                 "confidence": 0.8,
-                "source": "supermemory",
+                "source": "tool",
                 "source_ref": str(mem.get("id")) if mem.get("id") else None,
                 "provenance": "imported",
                 "created_at": created_at,
@@ -394,7 +412,7 @@ def map_supermemory(export: dict[str, Any]) -> list[dict[str, Any]]:
                     "type": "artifact",
                     "tags": doc_tags,
                     "confidence": 0.7,
-                    "source": "supermemory",
+                    "source": "tool",
                     "source_ref": (f"{doc_id}:{chunk.get('id')}" if doc_id else None),
                     "provenance": "imported",
                     "created_at": doc_created,
@@ -451,7 +469,7 @@ def map_okf(export: dict[str, Any]) -> list[dict[str, Any]]:
             confidence = 0.8
         confidence = min(1.0, max(0.0, confidence))
 
-        source = x_memanto.get("source") or "okf"
+        source = _coerce_source(x_memanto.get("source"))
         created_at = _parse_dt(entry.get("timestamp"))
 
         footer_items: list[tuple[str, Any]] = [

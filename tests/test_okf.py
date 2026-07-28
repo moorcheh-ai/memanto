@@ -162,7 +162,7 @@ def test_foreign_okf_bundle_is_lossless(tmp_path):
 
     row = map_okf(export)[0]
     assert row["type"] is None  # free-form type -> auto-classify
-    assert row["source"] == "okf"
+    assert row["source"] == "tool"
     assert row["source_ref"] == "https://console.cloud.google.com/bigquery?t=orders"
     assert row["provenance"] == "imported"
     assert "One row per completed customer order." in row["content"]  # description
