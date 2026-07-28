@@ -277,14 +277,13 @@ async def answer_memories(
         service = MemoryReadService(client)
         result = service.generate_answer(
             query=request.query,
-            scope_type=request.scope_type,
-            scope_id=request.scope_id,
+            agent_id=request.agent_id,
         )
 
         return MemoryAnswerResponse(
             answer=result["answer"],
-            sources=result.get("sources", []),  # was: hardcoded []
-            confidence=result.get("confidence", 0.0),  # was: hardcoded 0.8
+            sources=result.get("sources", []),
+            confidence=result.get("confidence", 0.0),
             namespace=result["namespace"],
         )
 
