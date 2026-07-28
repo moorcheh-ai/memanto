@@ -50,7 +50,7 @@
           "message": {
             "id": "msg_a2",
             "author": {"role": "assistant", "name": "ChatGPT"},
-            "content": {"content_type": "text", "parts": ["For async SQLAlchemy, use `AsyncSession` with `create_async_engine`:\n\n```python\nfrom sqlalchemy.ext.asyncio import create_async_engine, AsyncSession\nfrom sqlalchemy.orm import sessionmaker\n\nengine = create_async_engine('postgresql+asyncpg://user:pass@localhost/db')\nAsyncSessionLocal = sessionmaker(engine, class_=AsyncSession)\n```"]},
+            "content": {"content_type": "text",             "parts": ["For async SQLAlchemy, use `AsyncSession` with `create_async_engine`:\n\n```python\nfrom sqlalchemy.ext.asyncio import create_async_engine, AsyncSession\nfrom sqlalchemy.orm import sessionmaker\n\nengine = create_async_engine('postgresql+asyncpg://${DB_USER}:${DB_PASS}@${DB_HOST}/${DB_NAME}')\nAsyncSessionLocal = sessionmaker(engine, class_=AsyncSession)\n```"]},
             "create_time": 1700000300.0
           },
           "parent": "node_u2",
@@ -166,7 +166,7 @@
           "message": {
             "id": "msg_a1",
             "author": {"role": "assistant", "name": "ChatGPT"},
-            "content": {"content_type": "text", "parts": ["Here's a docker-compose.yml:\n\n```yaml\nversion: '3.8'\nservices:\n  frontend:\n    build: ./frontend\n    ports: ['3000:3000']\n    volumes: ['./frontend/src:/app/src']\n    depends_on: [backend]\n\n  backend:\n    build: ./backend\n    ports: ['8000:8000']\n    environment:\n      - DATABASE_URL=postgresql://postgres:password@db:5432/mydb\n    volumes: ['./backend/app:/app/app']\n    depends_on: [db]\n\n  db:\n    image: postgres:16\n    environment:\n      POSTGRES_DB: mydb\n      POSTGRES_PASSWORD: password\n    volumes: ['pgdata:/var/lib/postgresql/data']\n    ports: ['5432:5432']\n\nvolumes:\n  pgdata:\n```"]},
+            "content": {"content_type": "text",             "parts": ["Here's a docker-compose.yml:\n\n```yaml\nversion: '3.8'\nservices:\n  frontend:\n    build: ./frontend\n    ports: ['3000:3000']\n    volumes: ['./frontend/src:/app/src']\n    depends_on: [backend]\n\n  backend:\n    build: ./backend\n    ports: ['8000:8000']\n    environment:\n      - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/mydb\n    volumes: ['./backend/app:/app/app']\n    depends_on: [db]\n\n  db:\n    image: postgres:16\n    environment:\n      POSTGRES_DB: mydb\n      POSTGRES_USER: ${POSTGRES_USER}\n      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}\n    volumes: ['pgdata:/var/lib/postgresql/data']\n    ports: ['5432:5432']\n\nvolumes:\n  pgdata:\n```"]},
             "create_time": 1700200100.0
           },
           "parent": "node_u1",

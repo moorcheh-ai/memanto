@@ -126,6 +126,8 @@ def _walk_chatgpt_mapping(mapping, current_id, max_depth=200):
             text = " ".join(p for p in parts if isinstance(p, str) and p.strip()).strip()
             if text and role in ("user", "human"):
                 messages.append({"text": text, "role": "user", "create_time": msg.get("create_time")})
+            elif text and role == "assistant":
+                messages.append({"text": text, "role": "assistant", "create_time": msg.get("create_time")})
             elif text and role == "system":
                 messages.append({"text": text, "role": "system", "create_time": msg.get("create_time")})
         node_id = node.get("parent")
@@ -148,8 +150,8 @@ def map_chatgpt(export):
         if not mapping or not current_node:
             messages = []
             for msg in convo.get("messages") or convo.get("chat_messages") or []:
-                role = (msg.get("author", {}).get("role") or msg.get("role") or "").strip()
-                parts = (msg.get("content", {}).get("parts") or [])
+                role = ((msg.get("author") or {}).get("role") or msg.get("role") or "").strip()
+                parts = ((msg.get("content") or {}).get("parts") or [])
                 text = " ".join(p for p in parts if isinstance(p, str)).strip()
                 if text and role in ("user", "human"):
                     messages.append({"text": text, "role": "user"})
@@ -161,7 +163,8 @@ def map_chatgpt(export):
 
         content_parts = []
         for i, msg in enumerate(messages, 1):
-            content_parts.append(f"[User message {i}]: {msg['text']}")
+            role_label = msg['role'].capitalize()
+            content_parts.append(f"[{role_label} message {i}]: {msg['text']}")
         content = "\n\n".join(content_parts)
         if not content.strip():
             continue
@@ -211,13 +214,20 @@ def map_claude(export):
                     "role": "user",
                     "created_at": msg.get("created_at"),
                 })
+            elif text and sender == "assistant":
+                human_messages.append({
+                    "text": text,
+                    "role": "assistant",
+                    "created_at": msg.get("created_at"),
+                })
 
         if not human_messages:
             continue
 
         content_parts = []
         for i, msg in enumerate(human_messages, 1):
-            content_parts.append(f"[User message {i}]: {msg['text']}")
+            role_label = msg['role'].capitalize()
+            content_parts.append(f"[{role_label} message {i}]: {msg['text']}")
         content = "\n\n".join(content_parts)
         if not content.strip():
             continue

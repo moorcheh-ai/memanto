@@ -32,9 +32,6 @@ python migrate.py --demo
 # Run with your own export
 python migrate.py --source chatgpt --export ./path/to/chatgpt_export.json
 python migrate.py --source claude  --export ./path/to/claude_export.json
-
-# Actually import into Memanto
-python migrate.py --source chatgpt --export ./export.json --import
 ```
 
 ## Getting Your Export
@@ -112,9 +109,12 @@ The `okf_bundle/` directory demonstrates the output format:
 okf_bundle/
 ├── manifest.json          # Metadata, memory index, version
 └── memories/
-    ├── mem_0001_Building_a_REST_API.md
-    ├── mem_0002_React_TypeScript_State.md
-    └── mem_0003_Docker_Compose_for_Development.md
+    ├── mem_0000_Building_a_REST_API.md
+    ├── mem_0001_React_TypeScript_State.md
+    ├── mem_0002_Docker_Compose.md
+    ├── mem_0003_Python_Design_Patterns.md
+    ├── mem_0004_Database_Query_Optimization.md
+    └── mem_0005_System_Design_Interview.md
 ```
 
 Each memory file is human-readable markdown with metadata headers.

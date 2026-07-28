@@ -499,12 +499,12 @@ def _walk_chatgpt_mapping(
     max_depth: int = 200,
 ) -> list[dict[str, Any]]:
     """Walk ChatGPT's tree-structured ``mapping`` dict from ``current_node``
-    backwards through ``parent`` links to collect all user messages.
+    backwards through ``parent`` links to collect all messages.
 
     ChatGPT exports conversations as a tree. Each node has a ``message``
     field, a ``parent`` pointer, and ``children``. We walk from the leaf
-    (``current_node``) to the root, collecting ``role == "user"`` messages
-    in chronological order.
+    (``current_node``) to the root, collecting all messages in chronological
+    order for rich context preservation.
     """
     messages: list[dict[str, Any]] = []
     visited: set[str] = set()
@@ -533,6 +533,13 @@ def _walk_chatgpt_mapping(
                 messages.append({
                     "text": text,
                     "role": "user",
+                    "create_time": msg.get("create_time"),
+                    "message_id": msg.get("id"),
+                })
+            elif text and role == "assistant":
+                messages.append({
+                    "text": text,
+                    "role": "assistant",
                     "create_time": msg.get("create_time"),
                     "message_id": msg.get("id"),
                 })
@@ -578,8 +585,8 @@ def map_chatgpt(export: dict[str, Any]) -> list[dict[str, Any]]:
             # Fallback: try flat messages array
             messages = []
             for msg in convo.get("messages") or convo.get("chat_messages") or []:
-                role = (msg.get("author", {}).get("role") or msg.get("role") or "").strip()
-                parts = (msg.get("content", {}).get("parts") or [])
+                role = ((msg.get("author") or {}).get("role") or msg.get("role") or "").strip()
+                parts = ((msg.get("content") or {}).get("parts") or [])
                 text = " ".join(p for p in parts if isinstance(p, str)).strip()
                 if text and role in ("user", "human"):
                     messages.append({"text": text, "role": "user", "create_time": msg.get("create_time")})
@@ -589,10 +596,11 @@ def map_chatgpt(export: dict[str, Any]) -> list[dict[str, Any]]:
         if not messages:
             continue
 
-        # Build content: numbered user messages for readability
+        # Build content: include both user and assistant messages for rich context
         content_parts: list[str] = []
         for i, msg in enumerate(messages, 1):
-            content_parts.append(f"[User message {i}]: {msg['text']}")
+            role_label = msg['role'].capitalize()
+            content_parts.append(f"[{role_label} message {i}]: {msg['text']}")
         content = "\n\n".join(content_parts)
 
         if not content.strip():
@@ -662,13 +670,21 @@ def map_claude(export: dict[str, Any]) -> list[dict[str, Any]]:
                     "created_at": msg.get("created_at"),
                     "message_id": msg.get("uuid") or msg.get("id"),
                 })
+            elif text and sender == "assistant":
+                human_messages.append({
+                    "text": text,
+                    "role": "assistant",
+                    "created_at": msg.get("created_at"),
+                    "message_id": msg.get("uuid") or msg.get("id"),
+                })
 
         if not human_messages:
             continue
 
         content_parts: list[str] = []
         for i, msg in enumerate(human_messages, 1):
-            content_parts.append(f"[User message {i}]: {msg['text']}")
+            role_label = msg['role'].capitalize()
+            content_parts.append(f"[{role_label} message {i}]: {msg['text']}")
         content = "\n\n".join(content_parts)
 
         if not content.strip():
