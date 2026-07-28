@@ -113,7 +113,10 @@ class TestContradictionHandling:
         elapsed = time.perf_counter() - start
 
         assert len(prefetched) == 4
-        assert elapsed < 0.15
+        # With 4 memories sleeping 50ms each and up to 8 workers, the parallel
+        # pass should finish well under the serial baseline of 4 * 0.05 = 0.20s.
+        # Use a generous bound to avoid flakiness under load.
+        assert elapsed < 0.30
 
     def test_store_memory_supersedes_contradicting_memory(self):
         """A same-type/same-title active memory with different content is

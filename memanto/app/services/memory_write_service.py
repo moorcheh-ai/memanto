@@ -15,6 +15,10 @@ from memanto.app.utils.errors import MemoryError
 from memanto.app.utils.ids import generate_memory_id
 from memanto.app.utils.temporal_helpers import as_utc_aware
 
+# Statuses the Moorcheh server returns for a successfully-queued/uploaded document.
+# NOTE: there was a duplicate definition of this constant in this module; use the
+# single authoritative name here so the batch-write success counters and the
+# per-document result updater share one truth.
 SUCCESSFUL_UPLOAD_STATUSES = {"queued", "success", "ok"}
 
 # Trust fields removed from the active schema on 2026-06-29 (see
@@ -30,8 +34,6 @@ _REMOVED_TRUST_FIELDS = frozenset(
         "contradiction_detected",
     }
 )
-
-_SUCCESSFUL_UPLOAD_STATUSES = {"queued", "success", "ok"}
 
 
 class MemoryWriteService:
@@ -283,7 +285,7 @@ class MemoryWriteService:
                 moorcheh_status = str(upload_result.get("status", "unknown")).lower()
                 for result in results:
                     if result["status"] == "pending":
-                        if moorcheh_status in _SUCCESSFUL_UPLOAD_STATUSES:
+                        if moorcheh_status in SUCCESSFUL_UPLOAD_STATUSES:
                             result["status"] = moorcheh_status
                         else:
                             result["status"] = "failed"
