@@ -1,0 +1,10 @@
+{
+  "generated_at": "2026-07-23T08:20:08.810543+00:00",
+  "source": "actual LangGraph StateGraph run with MemorySaver checkpoints",
+  "thread_id": "founder-ops-agent-demo",
+  "turn_count": 5,
+  "checkpoint_count": 15,
+  "latest_memory_count": 6,
+  "checkpoint_export": "data/source/langgraph_checkpoints.jsonl",
+  "transcript": "data/source/source_transcript.json"
+}

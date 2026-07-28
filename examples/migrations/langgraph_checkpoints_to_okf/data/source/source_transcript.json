@@ -1,0 +1,27 @@
+[
+  {
+    "at": "2026-07-01T09:00:00Z",
+    "speaker": "Robin",
+    "text": "I prefer concise status updates with no more than three bullets. Please avoid shipping deploys after 18:00 UTC."
+  },
+  {
+    "at": "2026-07-02T11:30:00Z",
+    "speaker": "Robin",
+    "text": "The Alpha customer hates CSV uploads. Prioritize the Linear API importer before the spreadsheet fallback."
+  },
+  {
+    "at": "2026-07-03T15:45:00Z",
+    "speaker": "Robin",
+    "text": "Correction: deploys are safest on Tuesday mornings around 11:00 UTC when the support lead is online."
+  },
+  {
+    "at": "2026-07-04T10:15:00Z",
+    "speaker": "Robin",
+    "text": "Decision: keep the vendor lock-in escape demo focused on open markdown memory bundles, not a dashboard."
+  },
+  {
+    "at": "2026-07-05T13:00:00Z",
+    "speaker": "Robin",
+    "text": "I promised Nina the onboarding bugfix by Friday noon. If it slips, tell her before standup."
+  }
+]
