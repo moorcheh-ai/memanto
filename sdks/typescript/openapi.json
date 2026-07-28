@@ -3,7 +3,7 @@
   "info": {
     "title": "Memanto - Memory that AI Agents Love!",
     "description": "A memory layer service for agentic AI systems using Moorcheh SDK",
-    "version": "0.1.4.dev132+g29f7ca7"
+    "version": "0.0.0.dev0"
   },
   "paths": {
     "/health": {
@@ -102,6 +102,22 @@
               ],
               "title": "X-Session-Token"
             }
+          },
+          {
+            "name": "memanto_session_token",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Memanto Session Token"
+            }
           }
         ],
         "requestBody": {
@@ -172,6 +188,22 @@
               ],
               "title": "X-Session-Token"
             }
+          },
+          {
+            "name": "memanto_session_token",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Memanto Session Token"
+            }
           }
         ],
         "requestBody": {
@@ -192,6 +224,264 @@
                 "schema": {
                   "$ref": "#/components/schemas/BatchRememberResponse"
                 }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v2/agents/{agent_id}/memories/{memory_id}": {
+      "patch": {
+        "tags": [
+          "Sessions & Agents",
+          "Memory Operations"
+        ],
+        "summary": "Edit Memory",
+        "description": "Update one memory in the active agent's namespace (Session-based).\n\nRequires:\n- X-Session-Token: {session_token}\n\nThe session must be for the specified agent_id.",
+        "operationId": "edit_memory_api_v2_agents__agent_id__memories__memory_id__patch",
+        "parameters": [
+          {
+            "name": "agent_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Agent Id"
+            }
+          },
+          {
+            "name": "memory_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Memory Id"
+            }
+          },
+          {
+            "name": "x-session-token",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Session-Token"
+            }
+          },
+          {
+            "name": "memanto_session_token",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Memanto Session Token"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MemoryEditRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Sessions & Agents",
+          "Memory Operations"
+        ],
+        "summary": "Delete Memory",
+        "description": "Delete one memory from the active agent namespace.\n\nRequires:\n- X-Session-Token: {session_token}\n\nThe session must be for the specified agent_id.",
+        "operationId": "delete_memory_api_v2_agents__agent_id__memories__memory_id__delete",
+        "parameters": [
+          {
+            "name": "agent_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Agent Id"
+            }
+          },
+          {
+            "name": "memory_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Memory Id"
+            }
+          },
+          {
+            "name": "x-session-token",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Session-Token"
+            }
+          },
+          {
+            "name": "memanto_session_token",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Memanto Session Token"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v2/agents/{agent_id}/remember/extract": {
+      "post": {
+        "tags": [
+          "Sessions & Agents",
+          "Memory Operations"
+        ],
+        "summary": "Extract Memories From Conversation",
+        "description": "Extract typed memory candidates from chat-style conversation turns.\n\nRequires:\n- X-Session-Token: {session_token}\n\nWhen dry_run is true, candidates are returned without writing. Otherwise the\ncandidates are persisted through the same batch memory path used by\n/batch-remember.",
+        "operationId": "extract_memories_from_conversation_api_v2_agents__agent_id__remember_extract_post",
+        "parameters": [
+          {
+            "name": "agent_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Agent Id"
+            }
+          },
+          {
+            "name": "x-session-token",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Session-Token"
+            }
+          },
+          {
+            "name": "memanto_session_token",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Memanto Session Token"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ExtractMemoriesRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
               }
             }
           },
@@ -241,6 +531,22 @@
                 }
               ],
               "title": "X-Session-Token"
+            }
+          },
+          {
+            "name": "memanto_session_token",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Memanto Session Token"
             }
           }
         ],
@@ -312,6 +618,22 @@
               ],
               "title": "X-Session-Token"
             }
+          },
+          {
+            "name": "memanto_session_token",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Memanto Session Token"
+            }
           }
         ],
         "requestBody": {
@@ -382,6 +704,22 @@
               ],
               "title": "X-Session-Token"
             }
+          },
+          {
+            "name": "memanto_session_token",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Memanto Session Token"
+            }
           }
         ],
         "requestBody": {
@@ -425,7 +763,7 @@
           "Memory Operations"
         ],
         "summary": "Generate Daily Summary",
-        "description": "Generate the on-demand daily AI summary for an agent/date.\n\nConflict detection is a separate concern — see\nPOST ``/{agent_id}/conflicts/generate`` or the scheduled job.",
+        "description": "Generate the on-demand daily AI summary for an agent/date.\n\nConflict detection is a separate concern \u2014 see\nPOST ``/{agent_id}/conflicts/generate`` or the scheduled job.",
         "operationId": "generate_daily_summary_api_v2_agents__agent_id__daily_summary_post",
         "parameters": [
           {
@@ -451,6 +789,22 @@
                 }
               ],
               "title": "X-Session-Token"
+            }
+          },
+          {
+            "name": "memanto_session_token",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Memanto Session Token"
             }
           }
         ],
@@ -518,6 +872,22 @@
                 }
               ],
               "title": "X-Session-Token"
+            }
+          },
+          {
+            "name": "memanto_session_token",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Memanto Session Token"
             }
           }
         ],
@@ -604,6 +974,22 @@
               ],
               "title": "X-Session-Token"
             }
+          },
+          {
+            "name": "memanto_session_token",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Memanto Session Token"
+            }
           }
         ],
         "responses": {
@@ -661,6 +1047,22 @@
                 }
               ],
               "title": "X-Session-Token"
+            }
+          },
+          {
+            "name": "memanto_session_token",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Memanto Session Token"
             }
           }
         ],
@@ -729,6 +1131,22 @@
                 }
               ],
               "title": "X-Session-Token"
+            }
+          },
+          {
+            "name": "memanto_session_token",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Memanto Session Token"
             }
           }
         ],
@@ -800,6 +1218,22 @@
               ],
               "title": "X-Session-Token"
             }
+          },
+          {
+            "name": "memanto_session_token",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Memanto Session Token"
+            }
           }
         ],
         "requestBody": {
@@ -870,6 +1304,22 @@
               ],
               "title": "X-Session-Token"
             }
+          },
+          {
+            "name": "memanto_session_token",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Memanto Session Token"
+            }
           }
         ],
         "requestBody": {
@@ -907,26 +1357,6 @@
       }
     },
     "/api/v2/agents": {
-      "get": {
-        "tags": [
-          "Sessions & Agents"
-        ],
-        "summary": "List Agents",
-        "description": "List all agents for this Moorcheh account\n\nReturns agents sorted by creation date (newest first). The ``memory_count``\nof each agent is populated with the live document count from its Moorcheh\nnamespace rather than the stale value in local metadata.",
-        "operationId": "list_agents_api_v2_agents_get",
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/AgentList"
-                }
-              }
-            }
-          }
-        }
-      },
       "post": {
         "tags": [
           "Sessions & Agents"
@@ -934,15 +1364,49 @@
         "summary": "Create Agent",
         "description": "Create a new MEMANTO agent\n\nCreates:\n- Agent metadata in ~/.memanto/agents/\n- Moorcheh namespace: memanto_agent_{agent_id}\n\nThe agent is ready to activate once created.",
         "operationId": "create_agent_api_v2_agents_post",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "name": "X-Api-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
         "requestBody": {
+          "required": true,
           "content": {
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/AgentCreate"
               }
             }
-          },
-          "required": true
+          }
         },
         "responses": {
           "201": {
@@ -951,6 +1415,70 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/AgentInfo"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "Sessions & Agents"
+        ],
+        "summary": "List Agents",
+        "description": "List all agents for this Moorcheh account\n\nReturns agents sorted by creation date (newest first). The ``memory_count``\nof each agent is populated with the live document count from its Moorcheh\nnamespace rather than the stale value in local metadata.",
+        "operationId": "list_agents_api_v2_agents_get",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "name": "X-Api-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgentList"
                 }
               }
             }
@@ -984,6 +1512,38 @@
             "schema": {
               "type": "string",
               "title": "Agent Id"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "name": "X-Api-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
             }
           }
         ],
@@ -1038,6 +1598,38 @@
               "title": "Delete-Backup-Too"
             },
             "description": "Delete Moorcheh namespace backup"
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "name": "X-Api-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
           }
         ],
         "responses": {
@@ -1078,6 +1670,38 @@
             "schema": {
               "type": "string",
               "title": "Agent Id"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "name": "X-Api-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
             }
           }
         ],
@@ -1138,6 +1762,54 @@
               ],
               "title": "X-Session-Token"
             }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "name": "X-Api-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          },
+          {
+            "name": "memanto_session_token",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Memanto Session Token"
+            }
           }
         ],
         "responses": {
@@ -1170,8 +1842,42 @@
           "Sessions & Agents"
         ],
         "summary": "Get Status",
-        "description": "Get current active session status.\n\nNo parameters required — reads the active session from local state.",
+        "description": "Get current active session status.\n\nRequires management credential or loopback origin (same as other\nagent-lifecycle endpoints). Reads the active session from local state.",
         "operationId": "get_status_api_v2_status_get",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "name": "X-Api-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "Successful Response",
@@ -1179,6 +1885,16 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/SessionInfo"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
                 }
               }
             }
@@ -1252,7 +1968,7 @@
           "Web UI"
         ],
         "summary": "Restart Onprem Backend",
-        "description": "Bounce the on-prem moorcheh stack so it re-reads ``~/.moorcheh/config.json``.\n\n``moorcheh down`` + ``moorcheh up`` (with embedding flags recovered from\nstate.json / config.json). Blocks for up to ~6 minutes total (5min for\n``up``, 60s for ``/health``).",
+        "description": "Bounce the on-prem moorcheh stack so it re-reads ``~/.moorcheh/config.json``.\n\n``moorcheh down`` + ``moorcheh up`` (with embedding flags recovered from\nstate.json / config.json). Waits up to ~6 minutes total (5min for\n``up``, 60s for ``/health``).\n\nA module-level async lock prevents concurrent restart requests from\ninterleaving ``down``/``up`` calls against the same Moorcheh stack,\nwhich can leave the backend in an inconsistent state.",
         "operationId": "restart_onprem_backend_api_ui_onprem_restart_post",
         "responses": {
           "200": {
@@ -1426,7 +2142,7 @@
           "Web UI"
         ],
         "summary": "Read Daily Summary",
-        "description": "Return the existing daily summary for an agent/date if one was already\ngenerated. Does NOT trigger generation — that's the POST endpoint.\n\nResponse: {exists, agent_id, date, path, content}",
+        "description": "Return the existing daily summary for an agent/date if one was already\ngenerated. Does NOT trigger generation \u2014 that's the POST endpoint.\n\nResponse: {exists, agent_id, date, path, content}",
         "operationId": "read_daily_summary_api_ui_daily_summary_get",
         "parameters": [
           {
@@ -1488,7 +2204,7 @@
           "Web UI"
         ],
         "summary": "Generate Daily Summary",
-        "description": "Trigger an on-demand daily summary for the active agent.\nExpects (optional): {\"agent_id\": \"...\", \"date\": \"YYYY-MM-DD\",\n                     \"output_path\": \"...\"}",
+        "description": "Trigger an on-demand daily summary for the active agent.\nExpects (optional): {\"agent_id\": \"...\", \"date\": \"YYYY-MM-DD\"}",
         "operationId": "generate_daily_summary_api_ui_daily_summary_post",
         "requestBody": {
           "content": {
@@ -1792,6 +2508,90 @@
         }
       }
     },
+    "/api/ui/migrate/dry-run": {
+      "post": {
+        "tags": [
+          "Web UI"
+        ],
+        "summary": "Migrate Dry Run",
+        "description": "Preview a migration without writing.\n\nBody: ``{provider, file?, api_key?}``. Returns the mapped row count,\ntype breakdown, compact savings metrics, and a small sample of the\nmapped payloads so the UI can preview what would be imported.",
+        "operationId": "migrate_dry_run_api_ui_migrate_dry_run_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": true,
+                "type": "object",
+                "title": "Body"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/ui/migrate/import": {
+      "post": {
+        "tags": [
+          "Web UI"
+        ],
+        "summary": "Migrate Import",
+        "description": "Run an end-to-end migration.\n\nBody: ``{provider, file?, api_key?, agent_id?}``. Loads-or-exports,\nmaps, chunks at 100/req, and writes via ``DirectClient.batch_remember``.\nReturns numeric summary only \u2014 no LLM narrative.",
+        "operationId": "migrate_import_api_ui_migrate_import_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": true,
+                "type": "object",
+                "title": "Body"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/": {
       "get": {
         "summary": "Root",
@@ -1954,8 +2754,8 @@
             "anyOf": [
               {
                 "type": "integer",
-                "maximum": 100,
-                "minimum": 1
+                "maximum": 100.0,
+                "minimum": 1.0
               },
               {
                 "type": "null"
@@ -1968,8 +2768,8 @@
             "anyOf": [
               {
                 "type": "number",
-                "maximum": 1,
-                "minimum": 0
+                "maximum": 1.0,
+                "minimum": 0.0
               },
               {
                 "type": "null"
@@ -1982,8 +2782,8 @@
             "anyOf": [
               {
                 "type": "number",
-                "maximum": 2,
-                "minimum": 0
+                "maximum": 2.0,
+                "minimum": 0.0
               },
               {
                 "type": "null"
@@ -2106,8 +2906,8 @@
           },
           "confidence": {
             "type": "number",
-            "maximum": 1,
-            "minimum": 0,
+            "maximum": 1.0,
+            "minimum": 0.0,
             "title": "Confidence",
             "description": "Confidence score (0-1)",
             "default": 0.8
@@ -2306,18 +3106,26 @@
           }
         },
         "type": "object",
-        "title": "ConflictDetectRequest"
+        "title": "ConflictDetectRequest",
+        "description": "Request body for on-demand conflict report generation."
       },
       "ConflictResolveRequest": {
         "properties": {
           "conflict_index": {
             "type": "integer",
-            "minimum": 0,
+            "minimum": 0.0,
             "title": "Conflict Index",
             "description": "Conflict index to resolve"
           },
           "action": {
             "type": "string",
+            "enum": [
+              "keep_old",
+              "keep_new",
+              "keep_both",
+              "remove_both",
+              "manual"
+            ],
             "title": "Action",
             "description": "Resolution action: keep_old, keep_new, keep_both, remove_both, manual"
           },
@@ -2366,6 +3174,29 @@
         "title": "ConflictResolveRequest",
         "description": "Request body for resolving a conflict"
       },
+      "ConversationMessage": {
+        "properties": {
+          "role": {
+            "type": "string",
+            "maxLength": 50,
+            "minLength": 1,
+            "title": "Role"
+          },
+          "content": {
+            "type": "string",
+            "maxLength": 10000,
+            "minLength": 1,
+            "title": "Content"
+          }
+        },
+        "type": "object",
+        "required": [
+          "role",
+          "content"
+        ],
+        "title": "ConversationMessage",
+        "description": "Chat-style message used for conversation memory extraction."
+      },
       "DailySummaryRequest": {
         "properties": {
           "date": {
@@ -2390,11 +3221,58 @@
               }
             ],
             "title": "Output Path",
-            "description": "Optional custom output path for the summary MD file."
+            "description": "Accepted for backwards compatibility but ignored; summaries use the server-controlled output location."
           }
         },
         "type": "object",
-        "title": "DailySummaryRequest"
+        "title": "DailySummaryRequest",
+        "description": "Request body for on-demand daily summary generation."
+      },
+      "ExtractMemoriesRequest": {
+        "properties": {
+          "messages": {
+            "items": {
+              "$ref": "#/components/schemas/ConversationMessage"
+            },
+            "type": "array",
+            "maxItems": 200,
+            "minItems": 1,
+            "title": "Messages",
+            "description": "Conversation turns to extract durable memories from"
+          },
+          "dry_run": {
+            "type": "boolean",
+            "title": "Dry Run",
+            "description": "When true, return candidates without storing them",
+            "default": false
+          },
+          "max_memories": {
+            "type": "integer",
+            "maximum": 100.0,
+            "minimum": 1.0,
+            "title": "Max Memories",
+            "description": "Maximum candidate memories to extract",
+            "default": 20
+          },
+          "ai_model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ai Model",
+            "description": "Optional model override for extraction"
+          }
+        },
+        "type": "object",
+        "required": [
+          "messages"
+        ],
+        "title": "ExtractMemoriesRequest",
+        "description": "Request body for extracting typed memories from conversation turns."
       },
       "HTTPValidationError": {
         "properties": {
@@ -2436,6 +3314,86 @@
           "moorcheh_connected"
         ],
         "title": "HealthResponse"
+      },
+      "MemoryEditRequest": {
+        "properties": {
+          "title": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 100
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          },
+          "content": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 10000
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Content"
+          },
+          "type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Type"
+          },
+          "confidence": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 1.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Confidence"
+          },
+          "tags": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tags"
+          },
+          "source": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source"
+          }
+        },
+        "type": "object",
+        "title": "MemoryEditRequest",
+        "description": "Request body for partial memory record updates."
       },
       "MemoryItem": {
         "properties": {
@@ -2571,7 +3529,7 @@
             ],
             "title": "Source"
           },
-          "scope_type": {
+          "agent_id": {
             "anyOf": [
               {
                 "type": "string"
@@ -2580,18 +3538,7 @@
                 "type": "null"
               }
             ],
-            "title": "Scope Type"
-          },
-          "scope_id": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Scope Id"
+            "title": "Agent Id"
           },
           "score": {
             "anyOf": [
@@ -2608,49 +3555,6 @@
             "type": "string",
             "title": "Provenance",
             "default": "explicit_statement"
-          },
-          "validation_count": {
-            "type": "integer",
-            "title": "Validation Count",
-            "default": 0
-          },
-          "contradiction_detected": {
-            "type": "boolean",
-            "title": "Contradiction Detected",
-            "default": false
-          },
-          "superseded_by": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Superseded By"
-          },
-          "supersedes": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Supersedes"
-          },
-          "validated_at": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Validated At"
           },
           "change_type": {
             "anyOf": [
@@ -2674,13 +3578,13 @@
             "type": "string",
             "format": "date-time",
             "title": "As Of",
-            "description": "Point-in-time — YYYY-MM-DD (defaults to end of day) or full ISO datetime e.g. 2025-11-01T14:30:00Z"
+            "description": "Point-in-time \u2014 YYYY-MM-DD (defaults to end of day) or full ISO datetime e.g. 2025-11-01T14:30:00Z"
           },
           "limit": {
             "anyOf": [
               {
                 "type": "integer",
-                "minimum": 1
+                "minimum": 1.0
               },
               {
                 "type": "null"
@@ -2703,13 +3607,29 @@
             ],
             "title": "Type",
             "description": "Memory type filters"
+          },
+          "tags": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tags",
+            "description": "Tag filters"
           }
         },
         "type": "object",
         "required": [
           "as_of"
         ],
-        "title": "RecallAsOfRequest"
+        "title": "RecallAsOfRequest",
+        "description": "Request body for point-in-time memory recall."
       },
       "RecallChangedSinceRequest": {
         "properties": {
@@ -2717,13 +3637,13 @@
             "type": "string",
             "format": "date-time",
             "title": "Since",
-            "description": "Start of change window — YYYY-MM-DD (defaults to start of day) or full ISO datetime e.g. 2025-11-01T00:00:00Z"
+            "description": "Start of change window \u2014 YYYY-MM-DD (defaults to start of day) or full ISO datetime e.g. 2025-11-01T00:00:00Z"
           },
           "limit": {
             "anyOf": [
               {
                 "type": "integer",
-                "minimum": 1
+                "minimum": 1.0
               },
               {
                 "type": "null"
@@ -2746,13 +3666,29 @@
             ],
             "title": "Type",
             "description": "Memory type filters"
+          },
+          "tags": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tags",
+            "description": "Tag filters"
           }
         },
         "type": "object",
         "required": [
           "since"
         ],
-        "title": "RecallChangedSinceRequest"
+        "title": "RecallChangedSinceRequest",
+        "description": "Request body for querying memories changed since a timestamp."
       },
       "RecallRecentRequest": {
         "properties": {
@@ -2760,7 +3696,7 @@
             "anyOf": [
               {
                 "type": "integer",
-                "minimum": 1
+                "minimum": 1.0
               },
               {
                 "type": "null"
@@ -2783,10 +3719,60 @@
             ],
             "title": "Type",
             "description": "Memory type filters"
+          },
+          "tags": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tags",
+            "description": "Tag filters"
+          },
+          "created_after": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created After",
+            "description": "Include only memories created at or after this timestamp. Date-only values (YYYY-MM-DD) use the start of that day."
+          },
+          "created_before": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created Before",
+            "description": "Include only memories created at or before this timestamp. Date-only values (YYYY-MM-DD) use the end of that day."
           }
         },
         "type": "object",
-        "title": "RecallRecentRequest"
+        "title": "RecallRecentRequest",
+        "description": "Request body for retrieving recent memories."
       },
       "RecallRequest": {
         "properties": {
@@ -2800,7 +3786,7 @@
             "anyOf": [
               {
                 "type": "integer",
-                "minimum": 1
+                "minimum": 1.0
               },
               {
                 "type": "null"
@@ -2813,8 +3799,8 @@
             "anyOf": [
               {
                 "type": "number",
-                "maximum": 1,
-                "minimum": 0
+                "maximum": 1.0,
+                "minimum": 0.0
               },
               {
                 "type": "null"
@@ -2837,13 +3823,63 @@
             ],
             "title": "Type",
             "description": "Memory type filters"
+          },
+          "tags": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tags",
+            "description": "Tag filters"
+          },
+          "created_after": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created After",
+            "description": "Include only memories created at or after this timestamp. Date-only values (YYYY-MM-DD) use the start of that day."
+          },
+          "created_before": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created Before",
+            "description": "Include only memories created at or before this timestamp. Date-only values (YYYY-MM-DD) use the end of that day."
           }
         },
         "type": "object",
         "required": [
           "query"
         ],
-        "title": "RecallRequest"
+        "title": "RecallRequest",
+        "description": "Request body for semantic memory recall."
       },
       "RecallResponse": {
         "properties": {
@@ -2931,8 +3967,8 @@
           },
           "confidence": {
             "type": "number",
-            "maximum": 1,
-            "minimum": 0,
+            "maximum": 1.0,
+            "minimum": 0.0,
             "title": "Confidence",
             "description": "Confidence score (0-1)",
             "default": 0.8

@@ -76,6 +76,7 @@ from memanto.cli.commands._shared import (
     get_client,
     migrate_app,
 )
+from memanto.cli.migrate.okf_loader import load_okf_bundle
 from memanto.cli.migrate.runner import (
     load_export,
     run_migration,
@@ -500,6 +501,121 @@ def migrate_letta(
         agent=agent,
         dry_run=dry_run,
         report=report,
+    )
+
+
+@migrate_app.command("okf")
+def migrate_okf(
+    path: Path = typer.Argument(
+        ...,
+        help="Path to an OKF bundle directory (or a single .md file).",
+    ),
+    agent: str | None = typer.Option(
+        None,
+        "--agent",
+        "-a",
+        help="Target Memanto agent id (defaults to the active agent).",
+    ),
+    dry_run: bool = typer.Option(
+        False,
+        "--dry-run",
+        help="Preview the mapping without writing.",
+    ),
+):
+    """Import an OKF (Open Knowledge Format) bundle into the active (or selected) agent.
+
+    Unlike the provider migrations, OKF is a local file bundle — no API key and
+    no savings report. Fields that don't map onto Memanto's schema are preserved
+    in a ``[Supporting data]`` footer, and OKF's free-form ``type`` is
+    auto-classified.
+
+    Examples:
+        memanto migrate okf ./okf-bundle --dry-run
+        memanto migrate okf ./okf-bundle --agent my-agent
+    """
+    if not path.exists():
+        _error(
+            f"OKF bundle not found: {path}",
+            hint="Provide a path to an OKF directory or .md file.",
+        )
+
+    stamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
+    run_dir = config_manager.get_migrate_dir("okf") / stamp
+    run_dir.mkdir(parents=True, exist_ok=True)
+
+    mode = "Dry run" if dry_run else "Migrate"
+    console.print(
+        Panel.fit(
+            f"[{BOLD_PRIMARY}]OKF -> Memanto  {mode}[/{BOLD_PRIMARY}]",
+            border_style=PRIMARY,
+        )
+    )
+
+    def progress(msg: str) -> None:
+        console.print(f"  [{BRIGHT}]…[/{BRIGHT}] {msg}")
+
+    target_agent = None if dry_run else _resolve_target_agent(agent)
+
+    progress(f"Loading OKF bundle from {path}")
+    try:
+        export = load_okf_bundle(path)
+    except Exception as exc:
+        _error(f"Failed to load OKF bundle: {exc}")
+
+    progress("Mapping OKF nodes onto Memanto schema...")
+    client = None if dry_run else get_client()
+    summary, rows = run_migration(
+        provider="okf",
+        export=export,
+        client=client,
+        agent_id=target_agent or "",
+        dry_run=dry_run,
+        on_progress=progress,
+    )
+
+    preview_path = write_preview(rows, run_dir / "mapped_preview.json")
+
+    type_lines = (
+        ", ".join(f"{k}: {v}" for k, v in sorted(summary.type_counts.items())) or "—"
+    )
+    body_lines = [
+        f"[dim]OKF nodes:[/dim] {summary.source_count}",
+        f"[dim]Mapped memories:[/dim] {summary.mapped_count}  "
+        f"[dim](skipped {summary.skipped})[/dim]",
+        f"[dim]Type breakdown:[/dim] {type_lines}",
+    ]
+    if dry_run:
+        body_lines.append("")
+        body_lines.append("[yellow]Dry run — no writes performed.[/yellow]")
+    else:
+        body_lines.append(
+            f"[dim]Imported:[/dim] {summary.imported}  "
+            f"[dim]Failed:[/dim] {summary.failed}  "
+            f"[dim]Batches:[/dim] {summary.batches}"
+        )
+        body_lines.append(f"[dim]Target agent:[/dim] {target_agent}")
+
+    body_lines.append("")
+    body_lines.append(f"[dim]Run dir:[/dim] {run_dir}")
+    body_lines.append(f"[dim]Mapped preview:[/dim] {preview_path}")
+    if summary.errors:
+        body_lines.append(
+            f"[red]First error:[/red] {summary.errors[0]}  "
+            "[dim](see run dir for more)[/dim]"
+        )
+
+    border = WARNING if summary.failed else SUCCESS
+    console.print()
+    console.print(
+        Panel(
+            "\n".join(body_lines),
+            title=(
+                "[bold yellow]Dry run complete[/bold yellow]"
+                if dry_run
+                else "[bold green]Import complete[/bold green]"
+            ),
+            border_style=border,
+        )
     )
 
 

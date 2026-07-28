@@ -5,16 +5,18 @@ Handles agent creation, listing, and lifecycle management.
 """
 
 import json
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 
 from moorcheh_sdk.exceptions import ConflictError
 
 from memanto.app.clients.moorcheh import get_moorcheh_client
 from memanto.app.config import get_data_dir
-from memanto.app.core import create_memory_scope
+from memanto.app.core import agent_namespace
 from memanto.app.models.session import AgentCreate, AgentInfo, AgentList
 from memanto.app.utils.errors import AgentAlreadyExistsError, AgentNotFoundError
+from memanto.app.utils.temporal_helpers import as_utc_aware
+from memanto.app.utils.validation import validate_safe_id
 
 
 class AgentService:
@@ -32,15 +34,15 @@ class AgentService:
 
     def _generate_namespace(self, agent_id: str) -> str:
         """
-        Generate namespace for agent using core MemoryScope
+        Generate the Moorcheh namespace for an agent.
 
-        Format: memanto_{scope}_{scope_id}
+        Format: memanto_agent_{agent_id}
         """
-        scope = create_memory_scope(scope_type="agent", scope_id=agent_id)
-        return scope.to_namespace()
+        return agent_namespace(agent_id)
 
     def _get_agent_file(self, agent_id: str) -> Path:
         """Get file path for agent metadata"""
+        validate_safe_id(agent_id, "agent_id")
         return self.agents_dir / f"{agent_id}.json"
 
     def create_agent(
@@ -96,7 +98,7 @@ class AgentService:
             namespace=namespace,
             pattern=agent_create.pattern,
             description=agent_create.description,
-            created_at=datetime.utcnow(),
+            created_at=datetime.now(timezone.utc),
             memory_count=0,
             session_count=0,
             status="ready",
@@ -138,8 +140,8 @@ class AgentService:
                 data = json.load(f)
                 agents.append(AgentInfo(**data))
 
-        # Sort by created_at (newest first)
-        agents.sort(key=lambda a: a.created_at, reverse=True)
+        # Sort by created_at (newest first); normalize for legacy naive timestamps.
+        agents.sort(key=lambda a: as_utc_aware(a.created_at), reverse=True)
 
         return AgentList(agents=agents, count=len(agents))
 

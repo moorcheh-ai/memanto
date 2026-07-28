@@ -28,6 +28,20 @@ from memanto.cli.commands._shared import (
 )
 
 
+def _as_float(value: object, default: float = 0.0) -> float:
+    """Coerce API display fields to float without crashing CLI rendering."""
+    if value is None:
+        return default
+    if isinstance(value, (int, float)):
+        return float(value)
+    if isinstance(value, str):
+        try:
+            return float(value)
+        except ValueError:
+            return default
+    return default
+
+
 @app.command()
 def remember(
     content: str | None = typer.Argument(None, help="Memory content to store"),
@@ -157,7 +171,7 @@ def remember(
                         f"[bold]{item.get('title', 'Untitled')}[/bold]\n\n"
                         f"{item.get('content', '')}\n\n"
                         f"[dim]Type: {item.get('type', 'fact')} | "
-                        f"Confidence: {item.get('confidence', 0.8):.2f}[/dim]",
+                        f"Confidence: {_as_float(item.get('confidence'), 0.8):.2f}[/dim]",
                         title=f"Candidate {i}",
                         border_style="yellow" if dry_run else SUCCESS,
                     )
@@ -252,7 +266,7 @@ def remember(
             result = client.remember(
                 agent_id=agent_id,
                 memory_type=memory_type,
-                title=title or content[:50] + "..." if len(content) > 50 else content,
+                title=title or (content[:50] + "..." if len(content) > 50 else content),
                 content=content,
                 confidence=confidence,
                 tags=tag_list,
@@ -546,6 +560,7 @@ def recall(
                     as_of=as_of,
                     limit=limit,
                     type=type,
+                    tags=tag_list,
                 )
                 temporal_mode = "as_of"
             elif changed_since:
@@ -554,6 +569,7 @@ def recall(
                     since=changed_since,
                     limit=limit,
                     type=type,
+                    tags=tag_list,
                 )
                 temporal_mode = "changed_since"
             elif recent:
@@ -561,6 +577,7 @@ def recall(
                     agent_id=agent_id,
                     limit=limit,
                     type=type,
+                    tags=tag_list,
                 )
                 temporal_mode = "recent"
             elif query:
@@ -601,10 +618,11 @@ def recall(
         )
 
         for i, memory in enumerate(memories, 1):
-            score = memory.get("score") or 0.0
+            score = _as_float(memory.get("score"))
             mem_type = memory.get("type") or "unknown"
-            conf = memory.get("confidence") or 0.0
-            comp_conf = memory.get("computed_confidence")
+            conf = _as_float(memory.get("confidence"))
+            comp_conf_raw = memory.get("computed_confidence")
+            comp_conf = _as_float(comp_conf_raw) if comp_conf_raw is not None else None
             title = memory.get("title") or "Untitled"
             content = memory.get("content") or ""
             created = memory.get("created_at") or ""
@@ -727,7 +745,7 @@ def answer(
             console.print(f"\n[dim]Used {len(context)} memories as context:[/dim]")
             for i, mem in enumerate(context, 1):
                 console.print(
-                    f"  {i}. {mem.get('title', 'Untitled')} (score: {mem.get('score', 0):.3f})"
+                    f"  {i}. {mem.get('title', 'Untitled')} (score: {_as_float(mem.get('score')):.3f})"
                 )
 
         console.print(f"[dim]Completed in {elapsed:.2f}s[/dim]")
