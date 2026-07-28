@@ -316,8 +316,6 @@ class MemoryReadService:
                                 continue
                         except (ValueError, AttributeError):
                             pass
-                    else:
-                        continue
 
                 valid_memories.append(memory)
 

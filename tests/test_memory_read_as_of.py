@@ -122,4 +122,47 @@ def test_search_as_of_includes_superseded_after_cutoff():
 
     ids = [m["id"] for m in result["results"]]
     assert "old-fact" in ids
-    assert "replacement" in ids
+    assert "replacement" not in ids
+
+
+def _superseded_no_timestamp(memory_id: str, created_at: str) -> dict:
+    return {
+        "id": memory_id,
+        "text": f"[FACT] {memory_id}\n\nOld fact",
+        "memory_type": "fact",
+        "agent_id": "agent-1",
+        "actor_id": "agent-1",
+        "source": "user",
+        "confidence": 0.9,
+        "status": "superseded",
+        "created_at": created_at,
+        "updated_at": None,
+    }
+
+
+class _FakeDocumentsNoTimestamp:
+    def fetch_text_data(self, **kwargs):
+        return {
+            "items": [
+                _superseded_no_timestamp("no-ts", "2026-01-01T10:00:00Z"),
+            ],
+            "pagination": {"has_more": False},
+        }
+
+
+class _FakeClientNoTimestamp:
+    documents = _FakeDocumentsNoTimestamp()
+
+
+def test_search_as_of_fail_open_missing_updated_at():
+    """Superseded memory with no updated_at is included (fail-open)."""
+    service = MemoryReadService(_FakeClientNoTimestamp())
+
+    result = service.search_as_of(
+        as_of_date="2026-01-15T00:00:00Z",
+        agent_id="agent-1",
+        limit=None,
+    )
+
+    ids = [m["id"] for m in result["results"]]
+    assert "no-ts" in ids
