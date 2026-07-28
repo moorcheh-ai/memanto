@@ -8,10 +8,12 @@ import sys
 import time
 from datetime import datetime
 from pathlib import Path
+from typing import cast
 
 import typer
 from rich.panel import Panel
 
+from memanto.app.constants import SourceType
 from memanto.cli.commands._shared import (
     BOLD_PRIMARY,
     BRIGHT,
@@ -261,6 +263,11 @@ def remember(
     # Parse tags
     tag_list = [t.strip() for t in tags.split(",")] if tags else None
 
+    if source not in {"user", "agent", "tool", "system"}:
+        _error(
+            f"Invalid source: '{source}'. Must be one of user, agent, tool, or system."
+        )
+
     try:
         with console.status("[cyan]Storing memory...", spinner="dots"):
             result = client.remember(
@@ -270,7 +277,7 @@ def remember(
                 content=content,
                 confidence=confidence,
                 tags=tag_list,
-                source=source,
+                source=cast(SourceType, source),
                 provenance=provenance,
             )
         elapsed = time.perf_counter() - start

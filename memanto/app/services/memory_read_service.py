@@ -29,6 +29,25 @@ def _validate_filter_token(value: Any, field_name: str) -> str:
     return token
 
 
+def _coerce_timestamp_str(value: Any) -> Any:
+    """Return a timestamp field as an ISO string, tolerating raw epoch numbers.
+
+    MemoryRecord always writes ISO strings, but a namespace can contain
+    documents written outside Memanto's own store path (manual test data,
+    other tools sharing the namespace) with a raw Unix-epoch number instead.
+    The response model requires a string, so coerce here rather than let
+    FastAPI's response serialization 500 on the whole recall.
+    """
+    if value is None or isinstance(value, str):
+        return value
+    if isinstance(value, (int, float)):
+        try:
+            return datetime.fromtimestamp(value, tz=timezone.utc).isoformat()
+        except (OverflowError, OSError, ValueError):
+            return None
+    return value
+
+
 # Moorcheh caps a single similarity search at 100 rows.
 MOORCHEH_MAX_TOP_K = 100
 # When post-retrieval filters (temporal / confidence) are active we widen
@@ -62,13 +81,20 @@ class MemoryReadService:
                 namespace_name=namespace, ids=[memory_id]
             )
 
-            from typing import Any, cast
-
             if not isinstance(result, dict):
-                return None
+                raise MemoryError(
+                    message="Data corruption detected: Received malformed get result from storage layer.",
+                    details={"result_preview": str(result)[:100]},
+                )
 
-            items: list[Any] = cast(list[Any], result.get("items", []))
-            if items and isinstance(items, list) and len(items) > 0:
+            items: Any = result.get("items", [])
+            if not isinstance(items, list):
+                raise MemoryError(
+                    message="Data corruption detected: Received malformed get items array from storage layer.",
+                    details={"items_preview": str(items)[:100]},
+                )
+
+            if items and len(items) > 0:
                 memory = self._format_memory_item(items[0])
 
                 # Apply TTL enforcement
@@ -80,6 +106,8 @@ class MemoryReadService:
 
             return None
 
+        except MemoryError:
+            raise
         except Exception as e:
             raise MemoryError(f"Failed to retrieve memory: {e}")
 
@@ -158,7 +186,26 @@ class MemoryReadService:
                 kiosk_mode=use_kiosk,
             )
 
-            search_items = search_result.get("results", [])
+            if not isinstance(search_result, dict):
+                try:
+                    search_result_dict = dict(search_result)
+                    search_result = search_result_dict
+                except (TypeError, ValueError):
+                    raise MemoryError(
+                        message="Data corruption detected: Received malformed search result from storage layer.",
+                        details={"result_preview": str(search_result)[:100]},
+                    )
+
+            search_items = (
+                search_result.get("results", [])
+                if isinstance(search_result, dict)
+                else []
+            )
+            if not isinstance(search_items, list):
+                raise MemoryError(
+                    message="Data corruption detected: Received malformed search result array from storage layer.",
+                    details={"items_preview": str(search_items)[:100]},
+                )
 
             # Format results
             all_results = [self._format_memory_item(item) for item in search_items]
@@ -195,6 +242,8 @@ class MemoryReadService:
                 "execution_time": search_result.get("execution_time", 0),
             }
 
+        except MemoryError:
+            raise
         except Exception as e:
             raise MemoryError(f"Failed to search memories: {e}")
 
@@ -766,6 +815,12 @@ class MemoryReadService:
         """
         Format memory item for response.
         """
+        if not isinstance(item, dict):
+            raise MemoryError(
+                message="Data corruption detected: Received malformed memory item from storage layer.",
+                details={"item_preview": str(item)[:100]},
+            )
+
         if not hasattr(self, "_memory_record_cls"):
             from memanto.app.core import MemoryRecord
 
@@ -774,7 +829,10 @@ class MemoryReadService:
         # Check if metadata is in nested format (Moorcheh API spec)
         metadata = item.get("metadata", {})
         if not isinstance(metadata, dict):
-            metadata = {}
+            raise MemoryError(
+                message="Data corruption detected: Received malformed metadata from storage layer.",
+                details={"item_preview": str(item)[:100]},
+            )
 
         # Helper to get field from either nested metadata or flat structure
         def get_field(field_name, flat_field_name=None):
@@ -843,9 +901,9 @@ class MemoryReadService:
             "confidence": get_field("confidence"),
             "status": get_field("status"),
             "tags": tags,
-            "created_at": get_field("created_at"),
-            "updated_at": get_field("updated_at"),
-            "expires_at": get_field("expires_at"),
+            "created_at": _coerce_timestamp_str(get_field("created_at")),
+            "updated_at": _coerce_timestamp_str(get_field("updated_at")),
+            "expires_at": _coerce_timestamp_str(get_field("expires_at")),
             "ttl_seconds": get_field("ttl_seconds"),
             "actor_id": get_field("actor_id"),
             "source": get_field("source"),

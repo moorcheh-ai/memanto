@@ -11,11 +11,13 @@ import importlib
 import json
 import os
 from pathlib import Path
+from urllib.parse import urlsplit, urlunsplit
 
 from dotenv import load_dotenv, set_key
 
 from memanto.app.clients.backend import Backend, parse_backend
 from memanto.app.utils.validation import validate_recall_limit
+from memanto.cli.schedule_time import normalize_schedule_time
 
 yaml = importlib.import_module("yaml")
 
@@ -28,6 +30,84 @@ def _normalize_duplicated_api_key(key: str) -> str:
         if key[:half] == key[half:]:
             return key[:half]
     return key
+
+
+def _validate_server_port(port) -> int:
+    """Return a valid TCP port or raise ValueError."""
+    if isinstance(port, bool):
+        raise ValueError("server port must be an integer between 1 and 65535")
+    try:
+        validated = int(port)
+    except (TypeError, ValueError) as exc:
+        raise ValueError("server port must be an integer between 1 and 65535") from exc
+    if isinstance(port, float) and not port.is_integer():
+        raise ValueError("server port must be an integer between 1 and 65535")
+    if validated < 1 or validated > 65535:
+        raise ValueError("server port must be an integer between 1 and 65535")
+    return validated
+
+
+_SESSION_CONFIG_LIMITS = {
+    "default_duration_hours": (1, 168),
+    "extend_threshold_minutes": (1, 1440),
+    "warn_before_expiry_minutes": (1, 1440),
+    "auto_renew_interval_hours": (1, 168),
+}
+_SESSION_CONFIG_BOOLEANS = {"auto_extend", "auto_renew_enabled"}
+
+
+def _validate_positive_int_config(name: str, value, minimum: int, maximum: int) -> int:
+    if isinstance(value, bool):
+        raise ValueError(f"{name} must be an integer between {minimum} and {maximum}")
+    try:
+        validated = int(value)
+    except (TypeError, ValueError) as exc:
+        raise ValueError(
+            f"{name} must be an integer between {minimum} and {maximum}"
+        ) from exc
+    if isinstance(value, float) and not value.is_integer():
+        raise ValueError(f"{name} must be an integer between {minimum} and {maximum}")
+    if validated < minimum or validated > maximum:
+        raise ValueError(f"{name} must be an integer between {minimum} and {maximum}")
+    return validated
+
+
+def _validate_int_range(name: str, value, minimum: int, maximum: int) -> int:
+    return _validate_positive_int_config(name, value, minimum, maximum)
+
+
+def _validate_float_range(name: str, value, minimum: float, maximum: float) -> float:
+    if isinstance(value, bool):
+        raise ValueError(f"{name} must be between {minimum} and {maximum}")
+    try:
+        validated = float(value)
+    except (TypeError, ValueError) as exc:
+        raise ValueError(f"{name} must be between {minimum} and {maximum}") from exc
+    if validated < minimum or validated > maximum:
+        raise ValueError(f"{name} must be between {minimum} and {maximum}")
+    return validated
+
+
+def _validate_session_config(updates: dict) -> dict:
+    """Validate user-editable session config updates."""
+    if not isinstance(updates, dict):
+        raise ValueError("session config must be an object")
+
+    allowed = set(_SESSION_CONFIG_LIMITS) | _SESSION_CONFIG_BOOLEANS
+    rejected = set(updates) - allowed
+    if rejected:
+        raise ValueError(f"unknown session config keys: {', '.join(sorted(rejected))}")
+
+    validated = {}
+    for key, value in updates.items():
+        if key in _SESSION_CONFIG_LIMITS:
+            minimum, maximum = _SESSION_CONFIG_LIMITS[key]
+            validated[key] = _validate_positive_int_config(key, value, minimum, maximum)
+        elif key in _SESSION_CONFIG_BOOLEANS:
+            if not isinstance(value, bool):
+                raise ValueError(f"{key} must be a boolean")
+            validated[key] = value
+    return validated
 
 
 class ConfigManager:
@@ -43,9 +123,6 @@ class ConfigManager:
         self.config_file = self.config_dir / "config.yaml"
         self.env_file = self.config_dir / ".env"
         self.connections_file = self.config_dir / "connections.json"
-
-        # Ensure config directory exists
-        self.config_dir.mkdir(parents=True, exist_ok=True)
 
         # Load env vars from the memanto .env file
         if self.env_file.exists():
@@ -114,6 +191,7 @@ class ConfigManager:
 
     def _set_env_var(self, name: str, value: str) -> None:
         """Write a single variable to ~/.memanto/.env and update os.environ."""
+        self.config_dir.mkdir(parents=True, exist_ok=True)
         if not self.env_file.exists():
             self.env_file.write_text("# MEMANTO Environment\n")
         set_key(str(self.env_file), name, value)
@@ -253,12 +331,29 @@ class ConfigManager:
 
     def save_yaml(self, data: dict) -> None:
         """Save dict to config.yaml under the 'memanto' key."""
+        self.config_dir.mkdir(parents=True, exist_ok=True)
         with open(self.config_file, "w") as f:
             yaml.dump({"memanto": data}, f, default_flow_style=False, sort_keys=False)
         try:
             self.config_file.chmod(0o600)
         except OSError:
             pass
+
+    @staticmethod
+    def _dict_section(data: dict, key: str, *, repair: bool = False) -> dict:
+        """Return a dict section.
+
+        When repair is true, malformed or missing sections are replaced in
+        ``data`` so callers can populate them before saving.
+        """
+        section = data.get(key)
+        if isinstance(section, dict):
+            return section
+        if repair:
+            new_section: dict = {}
+            data[key] = new_section
+            return new_section
+        return {}
 
     def get(self, key: str, default=None):
         """Get a top-level YAML config value."""
@@ -273,16 +368,30 @@ class ConfigManager:
     # Convenience accessors
 
     def get_server_url(self) -> str:
-        """Get MEMANTO server URL."""
-        server = self.load_yaml().get("server", {})
+        """Return the normalized local REST API URL from the server config."""
+        server = self._dict_section(self.load_yaml(), "server")
         host = server.get("url", "localhost")
         port = server.get("port", 8000)
+
+        host = str(host).strip() or "localhost"
+        if host.startswith(("http://", "https://")):
+            parsed = urlsplit(host)
+            netloc = parsed.netloc
+            try:
+                explicit_port = parsed.port
+            except ValueError:
+                explicit_port = None
+                netloc = parsed.hostname or "localhost"
+            if explicit_port is None:
+                netloc = f"{netloc}:{port}"
+            return urlunsplit((parsed.scheme, netloc, parsed.path.rstrip("/"), "", ""))
+
         return f"http://{host}:{port}"
 
     def get_server_config(self) -> dict:
         """Get server config dict with defaults."""
         defaults = {"url": "localhost", "port": 8000, "auto_start": False}
-        defaults.update(self.load_yaml().get("server", {}))
+        defaults.update(self._dict_section(self.load_yaml(), "server"))
         return defaults
 
     def get_session_config(self) -> dict:
@@ -295,7 +404,7 @@ class ConfigManager:
             "auto_renew_enabled": True,
             "auto_renew_interval_hours": 6,
         }
-        defaults.update(self.load_yaml().get("session", {}))
+        defaults.update(self._dict_section(self.load_yaml(), "session"))
         return defaults
 
     def get_cli_config(self) -> dict:
@@ -306,7 +415,7 @@ class ConfigManager:
             "auto_title": True,
             "color_output": True,
         }
-        defaults.update(self.load_yaml().get("cli", {}))
+        defaults.update(self._dict_section(self.load_yaml(), "cli"))
         return defaults
 
     def get_answer_config(self) -> dict:
@@ -319,7 +428,7 @@ class ConfigManager:
         because they describe how to query, not which provider to hit.
         """
         data = self.load_yaml()
-        answer = data.get("answer", {})
+        answer = self._dict_section(data, "answer")
 
         defaults = {
             "model": "anthropic.claude-sonnet-4-6",
@@ -347,24 +456,41 @@ class ConfigManager:
     ) -> None:
         """Set Answer config values."""
         data = self.load_yaml()
-        answer = data.setdefault("answer", {})
+        answer = self._dict_section(data, "answer", repair=True)
         if model is not None:
             answer["model"] = model
         if temperature is not None:
-            answer["temperature"] = temperature
+            answer["temperature"] = _validate_float_range(
+                "temperature", temperature, 0.0, 2.0
+            )
         if answer_limit is not None:
-            answer["answer_limit"] = answer_limit
+            answer["answer_limit"] = _validate_int_range(
+                "answer_limit", answer_limit, 1, 50
+            )
         if threshold is not None:
-            answer["threshold"] = threshold
+            answer["threshold"] = _validate_float_range(
+                "threshold", threshold, 0.0, 1.0
+            )
         if kiosk_mode is not None:
+            if not isinstance(kiosk_mode, bool):
+                raise ValueError("kiosk_mode must be a boolean")
             answer["kiosk_mode"] = bool(kiosk_mode)
 
+        self.save_yaml(data)
+
+    def set_session_config(self, updates: dict) -> None:
+        """Set validated session config values."""
+        data = self.load_yaml()
+        session = data.setdefault("session", {})
+        if not isinstance(session, dict):
+            raise ValueError("stored session config must be an object")
+        session.update(_validate_session_config(updates))
         self.save_yaml(data)
 
     def get_recall_config(self) -> dict:
         """Get Recall/Top-N config dict with defaults."""
         data = self.load_yaml()
-        recall = data.get("recall", {})
+        recall = self._dict_section(data, "recall")
 
         defaults = {"limit": 10, "min_similarity": 0.0}
         defaults.update(recall)
@@ -375,7 +501,7 @@ class ConfigManager:
     ) -> None:
         """Set Recall config values."""
         data = self.load_yaml()
-        recall = data.setdefault("recall", {})
+        recall = self._dict_section(data, "recall", repair=True)
         if limit is not None:
             validate_recall_limit(limit)
             recall["limit"] = limit
@@ -399,7 +525,7 @@ class ConfigManager:
 
     def set_schedule_time(self, time_str: str) -> None:
         """Set daily summary + conflict time."""
-        self.set("schedule_time", time_str)
+        self.set("schedule_time", normalize_schedule_time(time_str))
 
     # Active session tracking — sourced from SessionService (~/.memanto/sessions/).
     # CLI and API server both go through here so they always agree.
@@ -421,20 +547,19 @@ class ConfigManager:
 
     def set_server_config(self, url: str, port: int) -> None:
         """Set fallback server configuration."""
+        validated_port = _validate_server_port(port)
         data = self.load_yaml()
-        if "server" not in data:
-            data["server"] = {}
-        data["server"]["url"] = url
-        data["server"]["port"] = port
+        server = self._dict_section(data, "server", repair=True)
+        server["url"] = url
+        server["port"] = validated_port
         self.save_yaml(data)
 
     def set_cli_config(self, interactive_mode: bool, smart_parse: bool) -> None:
         """Set fallback CLI configuration."""
         data = self.load_yaml()
-        if "cli" not in data:
-            data["cli"] = {}
-        data["cli"]["interactive_mode"] = interactive_mode
-        data["cli"]["smart_parse"] = smart_parse
+        cli = self._dict_section(data, "cli", repair=True)
+        cli["interactive_mode"] = interactive_mode
+        cli["smart_parse"] = smart_parse
         self.save_yaml(data)
 
     # Connections registry — tracks which agents have memanto installed where.
@@ -453,6 +578,7 @@ class ConfigManager:
 
     def _save_connections(self, data: dict) -> None:
         """Atomically write the connections registry."""
+        self.config_dir.mkdir(parents=True, exist_ok=True)
         tmp = self.connections_file.with_suffix(".json.tmp")
         with open(tmp, "w", encoding="utf-8") as f:
             json.dump(data, f, indent=2, sort_keys=True)

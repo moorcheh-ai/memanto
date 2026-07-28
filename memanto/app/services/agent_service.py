@@ -30,7 +30,6 @@ class AgentService:
             agents_dir: Directory for agent metadata storage (defaults to ~/.memanto/agents/)
         """
         self.agents_dir = agents_dir or get_data_dir() / "agents"
-        self.agents_dir.mkdir(parents=True, exist_ok=True)
 
     def _generate_namespace(self, agent_id: str) -> str:
         """
@@ -134,7 +133,10 @@ class AgentService:
         Returns:
             AgentList with all agents
         """
-        agents = []
+        agents: list[AgentInfo] = []
+        if not self.agents_dir.exists():
+            return AgentList(agents=agents, count=0)
+
         for agent_file in self.agents_dir.glob("*.json"):
             with open(agent_file) as f:
                 data = json.load(f)
@@ -208,6 +210,7 @@ class AgentService:
 
     def _save_agent(self, agent: AgentInfo) -> None:
         """Save agent metadata to file"""
+        self.agents_dir.mkdir(parents=True, exist_ok=True)
         agent_file = self._get_agent_file(agent.agent_id)
         with open(agent_file, "w") as f:
             json.dump(agent.model_dump(mode="json"), f, indent=2)

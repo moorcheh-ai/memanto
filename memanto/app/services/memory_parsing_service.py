@@ -41,7 +41,6 @@ class MemoryParsingService:
         for pattern in [
             r"https?://[^\s<>()\[\]{},;:\"']*[^\s<>()\[\]{},;:\"'.,!?]",
             r"\b(?:endpoint|url|api key|path|email|phone|address)\b",
-            r"\b(?:is|are|was|were)\b",
         ]
     ]
 

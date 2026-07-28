@@ -63,7 +63,7 @@ def test_extract_conversation_memories_normalizes_candidates():
             "title": "Editor preference",
             "content": "The user prefers concise pull request summaries.",
             "confidence": 0.91,
-            "source": "conversation",
+            "source": "system",
             "provenance": "inferred",
         },
         {
@@ -71,7 +71,7 @@ def test_extract_conversation_memories_normalizes_candidates():
             "title": "Fallback type",
             "content": "The project uses pytest for unit tests.",
             "confidence": 1.0,
-            "source": "conversation",
+            "source": "system",
             "provenance": "inferred",
         },
     ]

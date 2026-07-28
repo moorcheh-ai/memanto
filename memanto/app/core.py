@@ -4,9 +4,9 @@ MEMANTO Core Architecture - Namespace Strategy & Memory Records
 
 import uuid
 from datetime import datetime, timedelta, timezone
-from typing import Any
+from typing import Annotated, Any
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, StringConstraints
 
 from memanto.app.constants import (
     MemoryType,
@@ -14,6 +14,15 @@ from memanto.app.constants import (
     SourceType,
     StatusType,
 )
+
+MemoryTag = Annotated[
+    str, StringConstraints(strip_whitespace=True, min_length=1, max_length=64)
+]
+BoundedTags = Annotated[list[MemoryTag], Field(max_length=20)]
+
+BoundedSourceRef = Annotated[
+    str, StringConstraints(strip_whitespace=True, min_length=1, max_length=512)
+]
 
 
 def agent_namespace(agent_id: str) -> str:
@@ -34,10 +43,10 @@ class MemoryRecord(BaseModel):
     agent_id: str
     actor_id: str
     source: SourceType
-    source_ref: str | None = None
+    source_ref: BoundedSourceRef | None = None
     confidence: float = Field(ge=0.0, le=1.0, default=0.8)
     status: StatusType = "active"
-    tags: list[str] = Field(default_factory=list)
+    tags: BoundedTags = Field(default_factory=list)
 
     # Provenance
     provenance: ProvenanceType = "explicit_statement"

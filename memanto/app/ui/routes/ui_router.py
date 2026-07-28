@@ -29,7 +29,7 @@ from memanto.app.config import settings
 from memanto.app.routes.auth_deps import clear_session_cookie, set_session_cookie
 from memanto.app.utils.validation import validate_safe_id
 from memanto.cli.client.direct_client import DirectClient
-from memanto.cli.config.manager import ConfigManager
+from memanto.cli.config.manager import ConfigManager, _validate_server_port
 from memanto.cli.connect.agent_registry import AGENT_REGISTRY, list_agents
 from memanto.cli.connect.engine import install_agent, remove_agent
 
@@ -188,15 +188,27 @@ async def update_ui_config(updates: dict, _: None = Depends(_require_local)):
             detail=f"Cannot update keys: {', '.join(rejected)}. Allowed: {', '.join(allowed_keys)}",
         )
 
-    if "schedule_time" in updates:
-        _config_manager.set_schedule_time(updates["schedule_time"])
+    if "server" in updates and isinstance(updates["server"], dict):
+        server_updates = updates["server"]
+        if "port" in server_updates:
+            try:
+                server_updates["port"] = _validate_server_port(server_updates["port"])
+            except ValueError as exc:
+                raise HTTPException(status_code=400, detail=str(exc)) from exc
 
-    if "session" in updates and isinstance(updates["session"], dict):
-        data = _config_manager.load_yaml()
-        if "session" not in data:
-            data["session"] = {}
-        data["session"].update(updates["session"])
-        _config_manager.save_yaml(data)
+    if "schedule_time" in updates:
+        try:
+            _config_manager.set_schedule_time(updates["schedule_time"])
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail=str(e)) from e
+
+    if "session" in updates:
+        if not isinstance(updates["session"], dict):
+            raise HTTPException(status_code=400, detail="session must be an object")
+        try:
+            _config_manager.set_session_config(updates["session"])
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
 
     if "cli" in updates and isinstance(updates["cli"], dict):
         data = _config_manager.load_yaml()
@@ -221,15 +233,16 @@ async def update_ui_config(updates: dict, _: None = Depends(_require_local)):
         if _config_manager.get_backend() == Backend.ON_PREM:
             _update_onprem_answer(ans)
         else:
-            _config_manager.set_answer_config(
-                model=ans.get("model"),
-                temperature=float(ans["temperature"]) if "temperature" in ans else None,
-                answer_limit=int(ans["answer_limit"])
-                if "answer_limit" in ans
-                else None,
-                threshold=float(ans["threshold"]) if "threshold" in ans else None,
-                kiosk_mode=bool(ans["kiosk_mode"]) if "kiosk_mode" in ans else None,
-            )
+            try:
+                _config_manager.set_answer_config(
+                    model=ans.get("model"),
+                    temperature=ans.get("temperature"),
+                    answer_limit=ans.get("answer_limit"),
+                    threshold=ans.get("threshold"),
+                    kiosk_mode=ans.get("kiosk_mode") if "kiosk_mode" in ans else None,
+                )
+            except ValueError as exc:
+                raise HTTPException(status_code=400, detail=str(exc)) from exc
 
     if "recall" in updates and isinstance(updates["recall"], dict):
         rec = updates["recall"]
