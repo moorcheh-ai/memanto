@@ -213,6 +213,43 @@ class TestContradictionHandling:
                 "Contradiction validation is skipped for batch storage (MVP direct store)."
             )
 
+    def test_batch_store_reports_mixed_per_document_results(self):
+        """Batch with mixed success/failed/unconfirmed returns accurate counts."""
+        client = make_client()
+        
+        def _mixed_upload(**kwargs):
+            documents = kwargs.get("documents", [])
+            results = []
+            for doc in documents:
+                doc_id = doc.get("id", "")
+                if "fail" in doc_id.lower():
+                    results.append({"id": doc_id, "status": "failed"})
+                elif "unconf" in doc_id.lower():
+                    results.append({"id": doc_id})  # missing status = unconfirmed
+                else:
+                    results.append({"id": doc_id, "status": "success"})
+            return {"status": "success", "results": results}
+        
+        client.documents.upload.side_effect = _mixed_upload
+        write_service = MemoryWriteService(client)
+
+        mems = [
+            make_memory(content="Good", title="A"),
+            make_memory(content="Bad", title="B"),
+            make_memory(content="Maybe", title="C"),
+        ]
+        result = write_service.batch_store_memories(mems)
+
+        assert "successful" in result
+        assert "failed" in result
+        assert "unconfirmed" in result
+        total = result["successful"] + result["failed"] + result["unconfirmed"]
+        assert total == len(mems), (
+            f"successful({result['successful']}) + failed({result['failed']}) "
+            f"+ unconfirmed({result['unconfirmed']}) = {total} "
+            f"must equal {len(mems)}"
+        )
+
     def test_batch_resolves_contradictions_within_batch(self):
         """Contradicting memories submitted together resolve to last-wins,
         with the earlier one preserved as superseded history."""

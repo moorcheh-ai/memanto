@@ -1129,6 +1129,67 @@ class TestMEMANTOAPI:
         assert response.json()["successful"] == 2
 
     @pytest.mark.asyncio
+    async def test_batch_remember_per_document_upload_status_counts(
+        self, client, auth_headers, mock_moorcheh
+    ):
+        """Batch-remember must report per-document status in results array."""
+        await client.post(
+            "/api/v2/agents",
+            headers=auth_headers,
+            json={"agent_id": self.TEST_AGENT_ID},
+        )
+        activate_resp = await client.post(
+            f"/api/v2/agents/{self.TEST_AGENT_ID}/activate", headers=auth_headers
+        )
+        token = activate_resp.json()["session_token"]
+
+        # Return mixed per-document status by index
+        call_count = {"n": 0}
+
+        def _upload_side_effect(**kwargs):
+            documents = kwargs.get("documents", [])
+            results = []
+            for doc in documents:
+                doc_id = doc.get("id", "")
+                idx = call_count["n"]
+                call_count["n"] += 1
+                if idx == 1:
+                    results.append({"id": doc_id, "status": "failed"})
+                else:
+                    results.append({"id": doc_id, "status": "success"})
+            return {"status": "success", "results": results}
+
+        mock_moorcheh.documents.upload.side_effect = _upload_side_effect
+
+        headers = {**auth_headers, "X-Session-Token": token}
+        payload = {
+            "memories": [
+                {"content": "Good one", "type": "fact", "confidence": 0.9},
+                {"content": "This one fails", "type": "fact", "confidence": 0.8},
+            ]
+        }
+        response = await client.post(
+            f"/api/v2/agents/{self.TEST_AGENT_ID}/batch-remember",
+            headers=headers,
+            json=payload,
+        )
+        assert response.status_code == 200
+        body = response.json()
+        # Successful and failed counts present
+        assert "successful" in body
+        assert "failed" in body
+        # Results array must have per-document entries
+        assert "results" in body
+        assert len(body["results"]) == 2, (
+            f"Expected 2 per-document results, got {len(body['results'])}"
+        )
+        # At least one failed and at least one successful
+        statuses = [r.get("status", "") for r in body["results"]]
+        assert "failed" in statuses or any(
+            "fail" in str(r).lower() for r in body["results"]
+        ), f"Expected failed status in results, got {statuses}"
+
+    @pytest.mark.asyncio
     async def test_batch_remember_rejects_blank_content(
         self, client, auth_headers, mock_moorcheh
     ):
