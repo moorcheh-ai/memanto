@@ -95,10 +95,7 @@ class MemoryRecord(BaseModel):
         if self.tags:
             document["tags"] = ",".join(self.tags)  # Comma-separated for filtering
         if self.expires_at:
-            if isinstance(self.expires_at, datetime):
-                document["expires_at"] = self.expires_at.isoformat()
-            else:
-                document["expires_at"] = str(self.expires_at)
+            document["expires_at"] = self.expires_at.isoformat()
         if self.ttl_seconds:
             document["ttl_seconds"] = self.ttl_seconds
 
@@ -108,9 +105,21 @@ class MemoryRecord(BaseModel):
         """The Moorcheh namespace this memory belongs to."""
         return agent_namespace(self.agent_id)
 
-    def set_ttl(self, seconds: int):
-        """Set TTL and expiration"""
+    def refresh(self) -> None:
+        """
+        Refresh the record's updated_at timestamp.
+        If a TTL is set, recalculate expires_at from now to maintain consistency.
+        """
+        now = datetime.now(timezone.utc)
+        self.updated_at = now
+        if self.ttl_seconds is not None:
+            self.expires_at = now + timedelta(seconds=self.ttl_seconds)
+
+    def set_ttl(self, seconds: int) -> None:
+        """Set TTL and expiration atomically, keeping timestamps consistent."""
         if seconds <= 0:
             raise ValueError("ttl_seconds must be greater than 0")
         self.ttl_seconds = seconds
-        self.expires_at = datetime.now(timezone.utc) + timedelta(seconds=seconds)
+        now = datetime.now(timezone.utc)
+        self.updated_at = now
+        self.expires_at = now + timedelta(seconds=seconds)
