@@ -1,0 +1,52 @@
+{
+  "byte_exact": true,
+  "files_reconstructed_exactly": 13,
+  "golden_cases": [
+    {
+      "expected_phrases": [
+        "Tensor-Green ASCII",
+        "Deep Charcoal",
+        "Mint Green"
+      ],
+      "mapped_hits": 3,
+      "passed": true,
+      "question": "Which visual direction did the Antigravity session converge on?",
+      "source_hits": 3
+    },
+    {
+      "expected_phrases": [
+        "Bento Grid",
+        "12-column grid",
+        "Command Center"
+      ],
+      "mapped_hits": 3,
+      "passed": true,
+      "question": "How was the dashboard layout structured?",
+      "source_hits": 3
+    },
+    {
+      "expected_phrases": [
+        "ASCII corner markers",
+        "Technical Buttons",
+        "tick mark"
+      ],
+      "mapped_hits": 3,
+      "passed": true,
+      "question": "What interface details preserved the terminal character?",
+      "source_hits": 3
+    }
+  ],
+  "golden_cases_passed": 3,
+  "golden_phrase_retention_percent": 100.0,
+  "memanto_okf_entries": 11,
+  "memanto_rows_mapped": 11,
+  "memanto_type_breakdown": {
+    "event": 9,
+    "goal": 1,
+    "learning": 1
+  },
+  "reconstructed_tree_sha256": "9190cfdaac0ea288c4c44d2bd0e3f299b25debaf60fe7ee7c66efb00999e1673",
+  "source_files": 13,
+  "source_markers": 11,
+  "source_tree_sha256": "9190cfdaac0ea288c4c44d2bd0e3f299b25debaf60fe7ee7c66efb00999e1673"
+}

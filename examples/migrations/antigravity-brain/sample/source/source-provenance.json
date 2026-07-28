@@ -1,0 +1,134 @@
+{
+  "attachment_provenance": [
+    {
+      "bytes": 146475,
+      "filename": "combat_result_1763561645502.png",
+      "included_in_okf": false,
+      "session_id": "session-0fe08c92635a",
+      "sha256": "f4690db23d2ce1e8954d439e76e97318f8b746b1d05f7ccbddcfad7431201813"
+    },
+    {
+      "bytes": 125276,
+      "filename": "dashboard_ascii_1763562430672.png",
+      "included_in_okf": false,
+      "session_id": "session-0fe08c92635a",
+      "sha256": "30fb057da6ecd3e6234ee1bd6d117424836bfaa241d1fb374726a17166436485"
+    },
+    {
+      "bytes": 127473,
+      "filename": "dashboard_high_fidelity_1763563785757.png",
+      "included_in_okf": false,
+      "session_id": "session-0fe08c92635a",
+      "sha256": "b7eb0350f729d6b64556c6ed841f69921f0d373d85316f16b96ae732425820c4"
+    },
+    {
+      "bytes": 202485,
+      "filename": "dashboard_tensor_green_1763565767184.png",
+      "included_in_okf": false,
+      "session_id": "session-0fe08c92635a",
+      "sha256": "03156e4c4791a7296c074793cef3cca361a8772bc634ed83922cece4a1e9d162"
+    },
+    {
+      "bytes": 56270,
+      "filename": "uploaded_image_0_1763564120067.jpg",
+      "included_in_okf": false,
+      "session_id": "session-0fe08c92635a",
+      "sha256": "861ef037a5bae77f00afc4669cb23d034532235dc861545fc2a3e7b3b17508ba"
+    },
+    {
+      "bytes": 53421,
+      "filename": "uploaded_image_1_1763564120067.png",
+      "included_in_okf": false,
+      "session_id": "session-0fe08c92635a",
+      "sha256": "60ad19dd448dd540f7b461fc978489d203f9f4949a639d60007239f04f3ccdc3"
+    },
+    {
+      "bytes": 38926,
+      "filename": "uploaded_image_2_1763564120067.jpg",
+      "included_in_okf": false,
+      "session_id": "session-0fe08c92635a",
+      "sha256": "d1f370874394fde0690f5805cab5d9e0da413ce403340db21824754cec076c41"
+    },
+    {
+      "bytes": 116313,
+      "filename": "uploaded_image_3_1763564120067.png",
+      "included_in_okf": false,
+      "session_id": "session-0fe08c92635a",
+      "sha256": "8fe4352c8f222f495a5e467211e92b43945343e6c7a57221c61e5e8aea07670d"
+    },
+    {
+      "bytes": 3047984,
+      "filename": "verify_ascii_tech_ui_1763562333134.webp",
+      "included_in_okf": false,
+      "session_id": "session-0fe08c92635a",
+      "sha256": "bd4964e9248f0c705431ede41a6292b56c9ac808303c6960c5e399aefa57a1fa"
+    },
+    {
+      "bytes": 577820,
+      "filename": "verify_dawn_chorus_ui_1763561602467.webp",
+      "included_in_okf": false,
+      "session_id": "session-0fe08c92635a",
+      "sha256": "a4ab847d31d8c7deb23be6a695bd27664a2451a851fd131c51e570753317f646"
+    },
+    {
+      "bytes": 2437062,
+      "filename": "verify_hifi_ui_1763563739314.webp",
+      "included_in_okf": false,
+      "session_id": "session-0fe08c92635a",
+      "sha256": "4b8134d8a75bb2b65758d6fb418aa7099eed347845bc1a14bcb859b67f22b466"
+    },
+    {
+      "bytes": 730328,
+      "filename": "verify_tensor_ui_1763565356468.webp",
+      "included_in_okf": false,
+      "session_id": "session-0fe08c92635a",
+      "sha256": "45baa5c1fcfed42508e85cf4207baa3e4faba8414609f18edacb62a63de9c0e3"
+    },
+    {
+      "bytes": 429676,
+      "filename": "verify_tensor_ui_final_1763565464443.webp",
+      "included_in_okf": false,
+      "session_id": "session-0fe08c92635a",
+      "sha256": "f62776b8b90857cb8b28caa9570fd10ad0caba217832c9de1b4c8506b56c4f79"
+    },
+    {
+      "bytes": 2753388,
+      "filename": "verify_tensor_ui_fixed_1763565703965.webp",
+      "included_in_okf": false,
+      "session_id": "session-0fe08c92635a",
+      "sha256": "9f052fb992d6619fae0ed15a275bb77300bec50d4cecfe308e89b28bcc1b585a"
+    },
+    {
+      "bytes": 638966,
+      "filename": "verify_tensor_ui_retry_1763565412587.webp",
+      "included_in_okf": false,
+      "session_id": "session-0fe08c92635a",
+      "sha256": "f9493cd7796839fa12e52ba863c3f7ece9ee8d88a4a7572ab40d3386cab7a408"
+    }
+  ],
+  "canonical_artifacts": 11,
+  "files_written": 13,
+  "opaque_conversation_provenance": [
+    {
+      "bytes": 3560058,
+      "contents_published": false,
+      "filename": "session-0fe08c92635a.pb",
+      "opaque_or_encrypted": true,
+      "session_id": "session-0fe08c92635a",
+      "sha256": "29af50afa4cb90dcb9515be80a75e43904598b1c04b0fa47052861a96a6b3051",
+      "shannon_entropy_bits_per_byte": 7.99995
+    }
+  ],
+  "raw_conversation_contents_published": false,
+  "redactions": {
+    "email": 0,
+    "ip_address": 0,
+    "line_endings_normalized": 97,
+    "unix_home": 0,
+    "url": 5,
+    "uuid": 0,
+    "windows_path": 40
+  },
+  "sessions": 1,
+  "source": "real Google Antigravity desktop brain archive"
+}

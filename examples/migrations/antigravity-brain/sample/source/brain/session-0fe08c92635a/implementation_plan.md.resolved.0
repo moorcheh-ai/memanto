@@ -1,0 +1,61 @@
+# Dawn Chorus - Visual Concept Implementation Plan
+
+## Goal Description
+Create a visual concept for "Dawn Chorus", a minimalist text MMO. The focus is on the "Ink-Forward" aesthetic: dark, sharp corners, text-first, and data-heavy. This is a UI/UX prototype with no backend logic.
+
+## User Review Required
+> [!IMPORTANT]
+> I will be using **Vanilla CSS** as per system instructions and the "maximum flexibility" requirement.
+> The design will strictly follow the [dawn_chorus_visual_spec.md](file://[redacted-path]) (Option A: Ink-Forward).
+
+## Proposed Changes
+
+### Project Initialization
+#### [NEW] [package.json](file://[redacted-path])
+- Initialize Vite + React project.
+
+### Styling & Design System
+#### [NEW] [index.css](file://[redacted-path])
+- Define CSS variables for colors (Ink-Forward palette).
+- Set up typography (System UI + Monospace).
+- Global resets and utility classes for layout (Grid, Flex).
+
+### Components
+#### [NEW] [src/components/ui/Layout.jsx](file://[redacted-path])
+- Main application wrapper with responsive container and navigation.
+
+#### [NEW] [src/components/ui/Card.jsx](file://[redacted-path])
+- Sharp-cornered surface component.
+
+#### [NEW] [src/components/ui/Button.jsx](file://[redacted-path])
+- Primary, Secondary, and Danger variants. Sharp corners.
+
+#### [NEW] [src/components/game/StatBlock.jsx](file://[redacted-path])
+- Display for resources (Gold, Turns) with monospace numbers.
+
+#### [NEW] [src/components/game/ProgressBar.jsx](file://[redacted-path])
+- ASCII-style or simple block progress bar.
+
+### Pages (Visual Mockups)
+#### [NEW] [src/App.jsx](file://[redacted-path])
+- Routing/State to switch between views (Landing, Dashboard, Raid).
+
+#### [NEW] [src/pages/LandingPage.jsx](file://[redacted-path])
+- Hero section, Faction preview.
+
+#### [NEW] [src/pages/Dashboard.jsx](file://[redacted-path])
+- Grid of stats, News feed, Quick actions.
+
+#### [NEW] [src/pages/RaidPage.jsx](file://[redacted-path])
+- Target list table, Combat result mockup.
+
+## Verification Plan
+
+### Automated Tests
+- `npm run dev` to launch the development server.
+- I will use the browser tool to verify the visual appearance against the spec.
+
+### Manual Verification
+- Check color contrast and typography.
+- Verify responsive behavior (mobile vs desktop).
+- Ensure "sharp corners" rule is respected everywhere.

@@ -1,0 +1,26 @@
+[
+  {
+    "question": "Which visual direction did the Antigravity session converge on?",
+    "expected_phrases": [
+      "Tensor-Green ASCII",
+      "Deep Charcoal",
+      "Mint Green"
+    ]
+  },
+  {
+    "question": "How was the dashboard layout structured?",
+    "expected_phrases": [
+      "Bento Grid",
+      "12-column grid",
+      "Command Center"
+    ]
+  },
+  {
+    "question": "What interface details preserved the terminal character?",
+    "expected_phrases": [
+      "ASCII corner markers",
+      "Technical Buttons",
+      "tick mark"
+    ]
+  }
+]

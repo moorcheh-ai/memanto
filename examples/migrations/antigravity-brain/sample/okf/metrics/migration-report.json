@@ -1,0 +1,16 @@
+{
+  "adapter": "antigravity-brain-v1",
+  "importable_okf_bytes": 55488,
+  "lossless_payloads": 11,
+  "mapped_memories": 11,
+  "publishable_mode": true,
+  "sessions": 1,
+  "skipped": 0,
+  "source_artifacts": 11,
+  "source_text_and_metadata_bytes": 23515,
+  "type_breakdown": {
+    "event": 9,
+    "goal": 1,
+    "learning": 1
+  }
+}
