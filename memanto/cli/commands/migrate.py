@@ -654,11 +654,11 @@ def migrate_conversations(
         ...,
         "--source",
         "-s",
-        help="Source platform: chatgpt, claude, or gemini.",
+        help="Source platform: chatgpt or claude.",
     ),
     path: Path = typer.Argument(
         ...,
-        help="Path to the exported JSON file (or ZIP archive for ChatGPT/Claude/Gemini).",
+        help="Path to the exported JSON file (or ZIP archive for ChatGPT/Claude).",
     ),
     agent: str | None = typer.Option(
         None,
@@ -672,7 +672,7 @@ def migrate_conversations(
         help="Preview the mapping without writing.",
     ),
 ):
-    """Migrate AI conversation exports (ChatGPT, Claude, Gemini) into Memanto.
+    """Migrate AI conversation exports (ChatGPT, Claude) into Memanto.
 
     Reads a JSON export file or ZIP archive from the source platform, extracts
     user messages, and imports them as Memanto memories. Each conversation
@@ -728,12 +728,15 @@ def migrate_conversations(
             tmpdir_path = Path(tmpdir)
             with zipfile.ZipFile(path, "r") as zf:
                 zf.extractall(tmpdir_path)
-            # Find the first .json file
+            # Find conversations.json first, fallback to any .json file
             json_files = list(tmpdir_path.rglob("*.json"))
             if not json_files:
                 _error("No JSON files found in ZIP archive.")
-            export_data = load_export(json_files[0])
-            progress(f"Extracted {json_files[0].name} ({len(json_files)} JSON files in archive)")
+            # Prefer conversations.json if present
+            convo_file = next((f for f in json_files if f.name == "conversations.json"), None)
+            export_file = convo_file or json_files[0]
+            export_data = load_export(export_file)
+            progress(f"Extracted {export_file.name} ({len(json_files)} JSON files in archive)")
     else:
         export_data = load_export(path)
 
