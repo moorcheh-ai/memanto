@@ -1,0 +1,21 @@
+[
+  {
+    "title": "System Architecture & Preferences",
+    "mapping": {
+      "node_1": {
+        "message": {
+          "author": { "role": "user" },
+          "content": { "parts": ["Always prefer concise TypeScript and Python snippets with clean error handling."] },
+          "create_time": 1785290000
+        }
+      },
+      "node_2": {
+        "message": {
+          "author": { "role": "user" },
+          "content": { "parts": ["Fact: My primary cloud provider is Google Cloud Platform (GCP)."] },
+          "create_time": 1785290100
+        }
+      }
+    }
+  }
+]
