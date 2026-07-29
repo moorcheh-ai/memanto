@@ -2916,9 +2916,12 @@
             "anyOf": [
               {
                 "items": {
-                  "type": "string"
+                  "type": "string",
+                  "maxLength": 64,
+                  "minLength": 1
                 },
-                "type": "array"
+                "type": "array",
+                "maxItems": 20
               },
               {
                 "type": "null"
@@ -2929,6 +2932,12 @@
           },
           "source": {
             "type": "string",
+            "enum": [
+              "user",
+              "agent",
+              "tool",
+              "system"
+            ],
             "title": "Source",
             "description": "Source of memory",
             "default": "agent"
@@ -3344,7 +3353,22 @@
           "type": {
             "anyOf": [
               {
-                "type": "string"
+                "type": "string",
+                "enum": [
+                  "fact",
+                  "preference",
+                  "goal",
+                  "decision",
+                  "artifact",
+                  "learning",
+                  "event",
+                  "instruction",
+                  "relationship",
+                  "context",
+                  "observation",
+                  "commitment",
+                  "error"
+                ]
               },
               {
                 "type": "null"
@@ -3369,9 +3393,12 @@
             "anyOf": [
               {
                 "items": {
-                  "type": "string"
+                  "type": "string",
+                  "maxLength": 64,
+                  "minLength": 1
                 },
-                "type": "array"
+                "type": "array",
+                "maxItems": 20
               },
               {
                 "type": "null"
@@ -3382,7 +3409,13 @@
           "source": {
             "anyOf": [
               {
-                "type": "string"
+                "type": "string",
+                "enum": [
+                  "user",
+                  "agent",
+                  "tool",
+                  "system"
+                ]
               },
               {
                 "type": "null"
@@ -3977,9 +4010,12 @@
             "anyOf": [
               {
                 "items": {
-                  "type": "string"
+                  "type": "string",
+                  "maxLength": 64,
+                  "minLength": 1
                 },
-                "type": "array"
+                "type": "array",
+                "maxItems": 20
               },
               {
                 "type": "null"
@@ -3990,6 +4026,12 @@
           },
           "source": {
             "type": "string",
+            "enum": [
+              "user",
+              "agent",
+              "tool",
+              "system"
+            ],
             "title": "Source",
             "description": "Source of memory",
             "default": "agent"

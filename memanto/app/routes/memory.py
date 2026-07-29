@@ -18,13 +18,14 @@ from pydantic import BaseModel, Field, field_validator
 from memanto.app.clients.backend import get_active_llm_model
 from memanto.app.clients.moorcheh import get_moorcheh_client
 from memanto.app.config import settings
-from memanto.app.constants import VALID_MEMORY_TYPES
+from memanto.app.constants import VALID_MEMORY_TYPES, MemoryType, SourceType
 from memanto.app.core import MemoryRecord
 from memanto.app.models import (
     AnswerRequest,
     AnswerResponse,
     BatchRememberRequest,
     BatchRememberResponse,
+    BoundedTags,
     ConflictResolveRequest,
     ExtractMemoriesRequest,
     RecallResponse,
@@ -40,7 +41,11 @@ from memanto.app.services.conversation_memory_extraction_service import (
 )
 from memanto.app.services.memory_read_service import MemoryReadService
 from memanto.app.services.memory_write_service import MemoryWriteService
-from memanto.app.utils.errors import AuthorizationError, map_error_to_http_exception
+from memanto.app.utils.errors import (
+    AuthorizationError,
+    MemoryError,
+    map_error_to_http_exception,
+)
 from memanto.app.utils.validation import (
     CostGuard,
     is_successful_write_result,
@@ -296,10 +301,10 @@ class MemoryEditRequest(BaseModel):
 
     title: str | None = Field(default=None, max_length=100)
     content: str | None = Field(default=None, max_length=10000)
-    type: str | None = None
+    type: MemoryType | None = None
     confidence: float | None = Field(default=None, ge=0.0, le=1.0)
-    tags: list[str] | None = None
-    source: str | None = None
+    tags: BoundedTags | None = None
+    source: SourceType | None = None
 
     def to_updates(self) -> dict[str, object]:
         """Return only fields the caller explicitly wants to update."""
@@ -649,12 +654,31 @@ async def extract_memories_from_conversation(
         )
 
         session_service = get_session_service()
-        batch_results = result.get("results", [])
-        for index, record in enumerate(memory_records):
-            memory_id = (
-                batch_results[index].get("id") if index < len(batch_results) else None
+
+        if not isinstance(result, dict):
+            raise MemoryError(
+                message="Data corruption detected: Received malformed batch result from storage layer.",
+                details={"item_preview": str(result)[:100]},
             )
+
+        batch_results = result.get("results", [])
+        if not isinstance(batch_results, list):
+            raise MemoryError(
+                message="Data corruption detected: Received malformed batch result array from storage layer.",
+                details={"item_preview": str(batch_results)[:100]},
+            )
+
+        for index, record in enumerate(memory_records):
             item_result = batch_results[index] if index < len(batch_results) else None
+            if item_result is not None and (
+                not isinstance(item_result, dict) or not item_result
+            ):
+                raise MemoryError(
+                    message="Data corruption detected: Received malformed batch result from storage layer.",
+                    details={"item_preview": str(item_result)[:100]},
+                )
+
+            memory_id = item_result.get("id") if item_result else None
             if not is_successful_write_result(item_result):
                 continue
             await asyncio.to_thread(

@@ -15,7 +15,6 @@ from hermes_memanto.provider import (
     _detect_memory_type,
     _format_recall_block,
     _load_memanto_config,
-    _sanitize_agent_id,
     _save_memanto_config,
 )
 
@@ -125,12 +124,6 @@ def test_is_available_false_when_import_missing(monkeypatch):
 # -- Helpers ------------------------------------------------------------------
 
 
-def test_sanitize_agent_id_coerces_charset():
-    assert _sanitize_agent_id("Hermes Coder!@#") == "Hermes-Coder"
-    assert _sanitize_agent_id("") == "hermes"
-    assert _sanitize_agent_id("a" * 100) == "a" * 64
-
-
 def test_detect_memory_type():
     assert _detect_memory_type("User prefers dark mode") == "preference"
     assert _detect_memory_type("We decided to use Postgres") == "decision"
@@ -147,13 +140,6 @@ def test_load_and_save_config_round_trip(tmp_path):
     assert cfg["auto_capture"] is False
     assert cfg["auto_recall"] is True
     assert cfg["pattern"] == "tool"
-
-
-def test_save_config_sanitizes_concrete_agent_id(tmp_path):
-    p = MemantoMemoryProvider()
-    p.save_config({"agent_id": "My Agent!"}, str(tmp_path))
-    cfg = _load_memanto_config(str(tmp_path))
-    assert cfg["agent_id"] == "My-Agent"
 
 
 def test_save_config_preserves_identity_template(tmp_path):
@@ -446,6 +432,13 @@ def test_on_memory_write_mirrors_to_memanto(provider):
     provider._write_thread.join(timeout=1)
     assert len(provider._client.remember_calls) == 1
     assert provider._client.remember_calls[0]["source"] == "hermes-memory"
+
+
+def test_on_memory_write_uses_daemon_thread(provider):
+    provider.on_memory_write("add", "memory", "The deploy pipeline lives in gh actions")
+    assert provider._write_thread is not None
+    assert provider._write_thread.daemon is True
+    provider._write_thread.join(timeout=1)
 
 
 def test_on_memory_write_user_target_is_preference(provider):

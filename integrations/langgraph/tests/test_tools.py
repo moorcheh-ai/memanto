@@ -1,6 +1,8 @@
 from unittest.mock import MagicMock
 
+import pytest
 from langgraph_memanto.tools import create_memanto_tools
+from pydantic import ValidationError
 
 
 def test_create_memanto_tools_returns_all_tools():
@@ -68,6 +70,80 @@ def test_memanto_remember_tool_setup_fallback():
     assert client.remember.call_count == 2
     client.create_agent.assert_called_once_with(agent_id="test-agent", pattern="tool")
     client.activate_agent.assert_called_once_with("test-agent", duration_hours=6)
+
+
+def test_memanto_remember_retries_setup_after_activation_failure():
+    client = MagicMock()
+    activated = False
+    activation_attempts = 0
+
+    def activate_agent(*_args, **_kwargs):
+        nonlocal activated, activation_attempts
+        activation_attempts += 1
+        if activation_attempts == 1:
+            raise Exception("Activation failed")
+        activated = True
+
+    def remember(**_kwargs):
+        if not activated:
+            raise Exception("Not initialized")
+        return {"memory_id": "mem-789"}
+
+    client.activate_agent.side_effect = activate_agent
+    client.remember.side_effect = remember
+
+    tools = create_memanto_tools(client, "test-agent")
+    remember_tool = next(t for t in tools if t.name == "memanto_remember")
+    payload = {
+        "memory_type": "goal",
+        "title": "Test Goal",
+        "content": "This is a test goal.",
+        "confidence": 1.0,
+        "tags": "",
+    }
+
+    with pytest.raises(Exception, match="Not initialized"):
+        remember_tool.invoke(payload)
+
+    result = remember_tool.invoke(payload)
+
+    assert result == "Memory stored: mem-789"
+    assert client.create_agent.call_count == 2
+    assert client.activate_agent.call_count == 2
+
+    fast_path_result = remember_tool.invoke(payload)
+
+    assert fast_path_result == "Memory stored: mem-789"
+    assert client.create_agent.call_count == 2
+    assert client.activate_agent.call_count == 2
+
+
+@pytest.mark.parametrize(
+    "field,value",
+    [
+        ("title", ""),
+        ("title", "t" * 101),
+        ("content", ""),
+        ("content", "c" * 10001),
+    ],
+)
+def test_memanto_remember_tool_enforces_documented_limits(field, value):
+    client = MagicMock()
+    tools = create_memanto_tools(client, "test-agent")
+    remember_tool = next(t for t in tools if t.name == "memanto_remember")
+    payload = {
+        "memory_type": "fact",
+        "title": "Valid title",
+        "content": "Valid content",
+        "confidence": 0.9,
+        "tags": "",
+    }
+    payload[field] = value
+
+    with pytest.raises(ValidationError):
+        remember_tool.invoke(payload)
+
+    client.remember.assert_not_called()
 
 
 def test_memanto_recall_tool_success():

@@ -66,6 +66,7 @@ def mock_all_clients():
                 "port": 8000,
                 "auto_start": False,
             }
+            mock_cfg.get_server_url.return_value = "http://localhost:8000"
             mock_cfg.get_session_config.return_value = {
                 "default_duration_hours": 6,
                 "auto_renew_enabled": True,

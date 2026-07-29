@@ -6,6 +6,7 @@ Uses the official moorcheh_sdk to interact with Moorcheh API.
 
 import json
 import logging
+import re
 import shutil
 from datetime import datetime
 from pathlib import Path
@@ -25,6 +26,7 @@ from memanto.app.constants import (
 )
 from memanto.app.constants import (
     MemoryType,
+    SourceType,
 )
 from memanto.app.constants import (
     ProvenanceType as MemoryProvenance,
@@ -32,6 +34,7 @@ from memanto.app.constants import (
 from memanto.app.utils.errors import (
     AgentNotFoundError,
     InvalidSessionTokenError,
+    MemoryError,
     SessionError,
     SessionExpiredError,
     SessionNotFoundError,
@@ -112,10 +115,10 @@ class SdkClient:
         either way.
         """
         if self._moorcheh is None:
-            from memanto.app.clients.moorcheh import get_moorcheh_client
+            from memanto.app.clients.moorcheh import moorcheh_client
 
             logger.debug("Initializing Moorcheh client via backend dispatcher")
-            self._moorcheh = get_moorcheh_client()
+            self._moorcheh = moorcheh_client.get_client(api_key=self.api_key)
         return self._moorcheh
 
     def _get_write_service(self):
@@ -261,6 +264,12 @@ class SdkClient:
             ValueError: If *pattern* is invalid.
             AgentAlreadyExistsError: If agent already exists.
         """
+        if not agent_id:
+            raise ValueError("agent_id must not be empty")
+        if not re.fullmatch(r"^[a-zA-Z0-9_-]+$", agent_id):
+            raise ValueError(
+                f"Invalid agent_id: '{agent_id}'. Only alphanumeric characters, hyphens, and underscores are allowed."
+            )
         if pattern not in _VALID_PATTERNS:
             raise ValueError(
                 f"Invalid pattern '{pattern}'. Must be one of: {', '.join(sorted(_VALID_PATTERNS))}"
@@ -429,7 +438,7 @@ class SdkClient:
         content: str,
         confidence: float = 0.8,
         tags: list[str] | None = None,
-        source: str = "user",
+        source: SourceType = "user",
         provenance: str | None = None,
     ) -> dict[str, Any]:
         """
@@ -596,15 +605,31 @@ class SdkClient:
             session_svc = self._get_session_service()
 
             # Extract per-memory IDs from the batch result
+            if not isinstance(result, dict):
+                raise MemoryError(
+                    message="Data corruption detected: Received malformed batch result from storage layer.",
+                    details={"item_preview": str(result)[:100]},
+                )
+
             batch_results = result.get("results", [])
+            if not isinstance(batch_results, list):
+                raise MemoryError(
+                    message="Data corruption detected: Received malformed batch result array from storage layer.",
+                    details={"item_preview": str(batch_results)[:100]},
+                )
 
             for i, mem in enumerate(memory_records):
                 item_result = batch_results[i] if i < len(batch_results) else None
+                if item_result is not None and (
+                    not isinstance(item_result, dict) or not item_result
+                ):
+                    raise MemoryError(
+                        message="Data corruption detected: Received malformed batch result from storage layer.",
+                        details={"item_preview": str(item_result)[:100]},
+                    )
                 if not is_successful_write_result(item_result):
                     continue
-                mem_id = (
-                    item_result.get("id") if isinstance(item_result, dict) else None
-                )
+                mem_id = item_result.get("id") if item_result else None
                 session_svc.log_memory_to_session_summary(
                     agent_id=agent_id,
                     session_id=session_id,
@@ -1276,53 +1301,44 @@ class SdkClient:
 
         write_service = self._get_write_service()
         result_details: dict[str, Any] = {"action": action}
+        delete_failures: list[str] = []
+
+        def delete_required_memory(
+            mem_id: str | None, label: str, result_key: str
+        ) -> None:
+            if not mem_id:
+                return
+            try:
+                deleted = write_service.delete_memory(mem_id, namespace)
+            except Exception as e:
+                delete_failures.append(f"{label} memory {mem_id}: {e}")
+                return
+
+            if not deleted:
+                delete_failures.append(f"{label} memory {mem_id}: not deleted")
+                return
+
+            result_details[result_key] = mem_id
 
         if action == "keep_old":
-            if new_id:
-                try:
-                    write_service.delete_memory(new_id, namespace)
-                    result_details["deleted"] = new_id
-                except Exception as e:
-                    result_details["warning"] = f"Could not delete new memory: {e}"
+            delete_required_memory(new_id, "new", "deleted")
 
         elif action == "keep_new":
-            if old_id:
-                try:
-                    write_service.delete_memory(old_id, namespace)
-                    result_details["deleted"] = old_id
-                except Exception as e:
-                    result_details["warning"] = f"Could not delete old memory: {e}"
+            delete_required_memory(old_id, "old", "deleted")
 
         elif action == "keep_both":
             result_details["note"] = "Both memories kept as-is"
 
         elif action == "remove_both":
             for mem_id, label in [(old_id, "old"), (new_id, "new")]:
-                if mem_id:
-                    try:
-                        write_service.delete_memory(mem_id, namespace)
-                        result_details[f"deleted_{label}"] = mem_id
-                    except Exception as e:
-                        result_details[f"warning_{label}"] = (
-                            f"Could not delete {label} memory: {e}"
-                        )
+                delete_required_memory(mem_id, label, f"deleted_{label}")
 
         elif action == "manual":
             if not manual_content:
                 raise ValueError("manual_content is required when action is 'manual'")
 
-            # Delete both, store manual replacement
-            for mem_id, label in [(old_id, "old"), (new_id, "new")]:
-                if mem_id:
-                    try:
-                        write_service.delete_memory(mem_id, namespace)
-                        result_details[f"deleted_{label}"] = mem_id
-                    except Exception as e:
-                        result_details[f"warning_{label}"] = (
-                            f"Could not delete {label} memory: {e}"
-                        )
-
-            # Store the manual replacement
+            # Store the replacement before deleting originals so a failed write
+            # cannot erase both sides of the conflict.
             mem_type = manual_type or conflict.get("type", "fact")
             if not isinstance(mem_type, str):
                 mem_type = "fact"
@@ -1350,6 +1366,16 @@ class SdkClient:
             )
             store_result = write_service.store_memory(memory)
             result_details["new_memory_id"] = store_result.get("id")
+
+            for mem_id, label in [(old_id, "old"), (new_id, "new")]:
+                delete_required_memory(mem_id, label, f"deleted_{label}")
+
+        if delete_failures:
+            failures = "; ".join(delete_failures)
+            raise ValueError(
+                "Could not resolve conflict because required memory deletion "
+                f"failed: {failures}"
+            )
 
         # Mark conflict as resolved in the JSON file
         all_conflicts[conflict_index]["resolved"] = True
