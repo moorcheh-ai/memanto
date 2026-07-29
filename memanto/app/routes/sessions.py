@@ -64,11 +64,23 @@ async def _namespace_item_counts(moorcheh_api_key: str) -> dict[str, int]:
     try:
         client = moorcheh_clients.get_moorcheh_client()
         ns_resp = await asyncio.to_thread(client.namespaces.list)
-        return {
-            ns["namespace_name"]: ns.get("item_count", 0)
-            for ns in ns_resp.get("namespaces", [])
-            if ns.get("namespace_name")
-        }
+        namespaces = ns_resp.get("namespaces", []) if isinstance(ns_resp, dict) else []
+        if not isinstance(namespaces, list):
+            return {}
+
+        counts: dict[str, int] = {}
+        for ns in namespaces:
+            if not isinstance(ns, dict):
+                continue
+            namespace_name = ns.get("namespace_name")
+            if not isinstance(namespace_name, str) or not namespace_name:
+                continue
+            raw_count = ns.get("item_count", 0)
+            try:
+                counts[namespace_name] = int(raw_count)
+            except (TypeError, ValueError):
+                counts[namespace_name] = 0
+        return counts
     except Exception:
         return {}
 
