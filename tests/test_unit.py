@@ -5,6 +5,7 @@ Tests the session and agent services directly without HTTP layer.
 """
 
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import jwt
@@ -912,3 +913,30 @@ class TestValidateSafeId:
             svc.generate_conflict_report("agent1", "../../etc/passwd")
 
         assert not (tmp_path / "etc").exists()
+
+
+@pytest.mark.parametrize(
+    ("agent_name", "is_global", "expected_suffix"),
+    [
+        ("cursor", True, ".cursor/rules/memanto.mdc"),
+        ("claude-code", True, ".claude/CLAUDE.md"),
+        ("windsurf", True, ".codeium/windsurf/.windsurfrules"),
+        ("cursor", False, "project/.cursor/rules/memanto.mdc"),
+    ],
+)
+def test_resolve_instruction_file_paths(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    agent_name: str,
+    is_global: bool,
+    expected_suffix: str,
+) -> None:
+    """Test resolution of instruction file paths."""
+    monkeypatch.setattr(Path, "home", classmethod(lambda cls: tmp_path))
+    from memanto.cli.connect.agent_registry import AGENT_REGISTRY
+    
+    project_dir = tmp_path / "project"
+    resolved = AGENT_REGISTRY[agent_name].resolve_instruction_file(project_dir, is_global=is_global)
+    
+    assert resolved == tmp_path / expected_suffix
+
