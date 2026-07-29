@@ -487,11 +487,109 @@ def map_okf(export: dict[str, Any]) -> list[dict[str, Any]]:
     return rows
 
 
+# --------------------------------------------------------------------------
+# ChatGPT
+# --------------------------------------------------------------------------
+
+def map_chatgpt(export: Any) -> list[dict[str, Any]]:
+    """Map a ChatGPT conversations.json export to Memanto payloads."""
+    rows: list[dict[str, Any]] = []
+    migrated_at = _now_utc()
+    conversations = export if isinstance(export, list) else export.get("conversations", [])
+    
+    for conv in conversations:
+        title = conv.get("title") or "ChatGPT Conversation"
+        created_val = conv.get("create_time")
+        created_at = _parse_dt(created_val) if created_val else None
+        
+        mapping = conv.get("mapping") or {}
+        for node_id, node in mapping.items():
+            msg = node.get("message")
+            if not msg: 
+                continue
+            
+            author = msg.get("author", {}).get("role", "unknown")
+            if author == "system": 
+                continue
+            
+            parts = msg.get("content", {}).get("parts", [])
+            content = " ".join(p for p in parts if isinstance(p, str)).strip()
+            if not content: 
+                continue
+            
+            msg_created = _parse_dt(msg.get("create_time")) or created_at
+            
+            footer = _format_supporting_data([
+                ("Source", f"chatgpt:{conv.get('id', '')}:{msg.get('id', '')}"),
+                ("Role", author),
+                ("Conversation title", title)
+            ])
+            
+            rows.append({
+                "title": _title_from(content) if author == "user" else _title_from(title),
+                "content": _attach_footer(content, footer),
+                "type": "observation" if author == "user" else "artifact",
+                "tags": [f"role={author}", "chatgpt"],
+                "confidence": 0.8,
+                "source": "chatgpt",
+                "source_ref": str(msg.get("id")) if msg.get("id") else None,
+                "provenance": "imported",
+                "created_at": msg_created,
+                "updated_at": migrated_at,
+            })
+    return rows
+
+
+# --------------------------------------------------------------------------
+# Claude
+# --------------------------------------------------------------------------
+
+def map_claude(export: Any) -> list[dict[str, Any]]:
+    """Map a Claude conversations.json export to Memanto payloads."""
+    rows: list[dict[str, Any]] = []
+    migrated_at = _now_utc()
+    conversations = export if isinstance(export, list) else export.get("conversations", [])
+    
+    for conv in conversations:
+        title = conv.get("name") or "Claude Conversation"
+        created_at = _parse_dt(conv.get("created_at"))
+        
+        for msg in conv.get("chat_messages", []):
+            content = (msg.get("text") or "").strip()
+            if not content: 
+                continue
+            
+            sender = msg.get("sender", "unknown")
+            msg_created = _parse_dt(msg.get("created_at")) or created_at
+            
+            footer = _format_supporting_data([
+                ("Source", f"claude:{conv.get('uuid', '')}:{msg.get('uuid', '')}"),
+                ("Sender", sender),
+                ("Conversation name", title)
+            ])
+            
+            rows.append({
+                "title": _title_from(content) if sender == "human" else _title_from(title),
+                "content": _attach_footer(content, footer),
+                "type": "observation" if sender == "human" else "artifact",
+                "tags": [f"sender={sender}", "claude"],
+                "confidence": 0.8,
+                "source": "claude",
+                "source_ref": str(msg.get("uuid")) if msg.get("uuid") else None,
+                "provenance": "imported",
+                "created_at": msg_created,
+                "updated_at": migrated_at,
+            })
+    return rows
+
+
 MAPPERS: dict[str, Callable[[dict[str, Any]], list[dict[str, Any]]]] = {
     "mem0": map_mem0,
     "letta": map_letta,
     "supermemory": map_supermemory,
     "okf": map_okf,
+    "chatgpt": map_chatgpt,
+    "claude": map_claude,
 }
 
 

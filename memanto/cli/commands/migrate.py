@@ -109,6 +109,22 @@ _PROVIDER_BUNDLES: dict[str, dict[str, Any]] = {
         "report": build_supermemory_report_markdown,
         "export_filename": "supermemory_export.json",
     },
+    "chatgpt": {
+        "label": "ChatGPT",
+        "exporter": lambda *args, **kwargs: None, # Live export not supported, requires ZIP/JSON upload
+        "metrics": lambda export: {"total_memories": len(export.get("conversations", []))}, # Stub metric
+        "prompt": lambda metrics: "",
+        "report": lambda **kwargs: "ChatGPT migration complete.",
+        "export_filename": "conversations.json",
+    },
+    "claude": {
+        "label": "Claude",
+        "exporter": lambda *args, **kwargs: None, # Live export not supported, requires JSON upload
+        "metrics": lambda export: {"total_memories": len(export.get("conversations", []))}, # Stub metric
+        "prompt": lambda metrics: "",
+        "report": lambda **kwargs: "Claude migration complete.",
+        "export_filename": "conversations.json",
+    },
 }
 
 
@@ -658,4 +674,66 @@ def migrate_supermemory(
         agent=agent,
         dry_run=dry_run,
         report=report,
+    )
+
+
+@migrate_app.command("chatgpt")
+def migrate_chatgpt(
+    file: Path = typer.Option(
+        ...,
+        "--file",
+        "-f",
+        help="Path to ChatGPT conversations.json export file.",
+    ),
+    agent: str | None = typer.Option(
+        None,
+        "--agent",
+        "-a",
+        help="Target Memanto agent id (defaults to the active agent).",
+    ),
+    dry_run: bool = typer.Option(
+        False,
+        "--dry-run",
+        help="Preview the mapping and savings report without writing.",
+    ),
+):
+    """Migrate a ChatGPT conversations export into Memanto."""
+    _run_migrate_flow(
+        provider="chatgpt",
+        api_key=None,
+        file=file,
+        agent=agent,
+        dry_run=dry_run,
+        report=False,
+    )
+
+
+@migrate_app.command("claude")
+def migrate_claude(
+    file: Path = typer.Option(
+        ...,
+        "--file",
+        "-f",
+        help="Path to Claude conversations.json export file.",
+    ),
+    agent: str | None = typer.Option(
+        None,
+        "--agent",
+        "-a",
+        help="Target Memanto agent id (defaults to the active agent).",
+    ),
+    dry_run: bool = typer.Option(
+        False,
+        "--dry-run",
+        help="Preview the mapping and savings report without writing.",
+    ),
+):
+    """Migrate a Claude conversations export into Memanto."""
+    _run_migrate_flow(
+        provider="claude",
+        api_key=None,
+        file=file,
+        agent=agent,
+        dry_run=dry_run,
+        report=False,
     )
