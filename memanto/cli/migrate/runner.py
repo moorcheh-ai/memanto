@@ -63,11 +63,11 @@ def load_export(file_path: Path) -> dict[str, Any]:
     return cast(dict[str, Any], json.loads(file_path.read_text(encoding="utf-8")))
 
 
-def map_export(provider: str, export: dict[str, Any]) -> list[dict[str, Any]]:
+def map_export(provider: str, export: dict[str, Any] | list[Any]) -> list[dict[str, Any]]:
     mapper = MAPPERS.get(provider)
     if mapper is None:
         raise ValueError(f"Unknown provider '{provider}'. Supported: {sorted(MAPPERS)}")
-    return mapper(export)
+    return mapper(cast(Any, export))
 
 
 def chunked(items: list[dict[str, Any]], size: int = BATCH_LIMIT):
@@ -95,21 +95,27 @@ def source_count(provider: str, export: dict[str, Any] | list[Any]) -> int:
             return sum(len(c.get("mapping", {})) for c in convs)
         return sum(len(c.get("chat_messages", [])) for c in convs)
     
-    memories = export.get("memories", []) if isinstance(export, dict) else []
+    if not isinstance(export, dict):
+        memories = []
+    else:
+        memories = export.get("memories", [])
     if provider == "supermemory" and not memories:
-        # Mirror map_supermemory's fallback: when no extracted memories exist
-        # we harvest document chunks, so the summary should reflect that.
-        return sum(
-            len(doc.get("chunks", []) if isinstance(doc, dict) else [])
-            for doc in (export.get("documents", []) if isinstance(doc, dict) else [])
-        )
+        if isinstance(export, dict):
+            # Mirror map_supermemory's fallback: when no extracted memories exist
+            # we harvest document chunks, so the summary should reflect that.
+            docs = export.get("documents", [])
+            return sum(
+                len(doc.get("chunks", []) if isinstance(doc, dict) else [])
+                for doc in docs
+            )
+        return 0
     return len(memories)
 
 
 def run_migration(
     *,
     provider: str,
-    export: dict[str, Any],
+    export: dict[str, Any] | list[Any],
     client: Any,
     agent_id: str,
     dry_run: bool,

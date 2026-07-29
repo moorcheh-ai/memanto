@@ -583,7 +583,7 @@ def map_claude(export: Any) -> list[dict[str, Any]]:
     return rows
 
 
-MAPPERS: dict[str, Callable[[dict[str, Any]], list[dict[str, Any]]]] = {
+MAPPERS: dict[str, Callable[[Any], list[dict[str, Any]]]] = {
     "mem0": map_mem0,
     "letta": map_letta,
     "supermemory": map_supermemory,
