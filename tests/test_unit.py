@@ -345,6 +345,29 @@ class TestAgentService:
 
         print(f"✅ Listed {agent_list.count} agents")
 
+    def test_invalid_agent_metadata_handling(self, agent_service):
+        """Corrupt or invalid agent files must not hide valid agents, should report warnings, and behave like absent local state for lookups."""
+        agent_service.create_agent(
+            AgentCreate(agent_id="valid-agent", pattern=AgentPattern.SUPPORT),
+            settings.MOORCHEH_API_KEY,
+        )
+        
+        # JSONDecodeError (corrupt JSON)
+        (agent_service.agents_dir / "broken-agent.json").write_text("{")
+        assert agent_service.get_agent("broken-agent") is None
+
+        # ValidationError (missing required fields)
+        (agent_service.agents_dir / "broken-schema-agent.json").write_text('{"description": "missing agent_id and pattern"}')
+        assert agent_service.get_agent("broken-schema-agent") is None
+
+        agent_list = agent_service.list_agents()
+
+        assert agent_list.count == 1
+        assert [agent.agent_id for agent in agent_list.agents] == ["valid-agent"]
+        assert len(agent_list.warnings) == 2
+        assert any("broken-agent.json" in w for w in agent_list.warnings)
+        assert any("broken-schema-agent.json" in w for w in agent_list.warnings)
+
     def test_get_agent(self, agent_service):
         """Test getting agent info"""
         # Create agent
