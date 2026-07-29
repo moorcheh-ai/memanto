@@ -113,10 +113,59 @@ _PROVIDER_BUNDLES: dict[str, dict[str, Any]] = {
 }
 
 
+def _compute_chat_metrics(export: Any, provider_name: str) -> dict[str, Any]:
+    conversations = export if isinstance(export, list) else export.get("conversations", [])
+    conv_count = len(conversations)
+    msg_count = 0
+    if provider_name == "ChatGPT":
+        for c in conversations:
+            msg_count += len(c.get("mapping", {}))
+    elif provider_name == "Claude":
+        for c in conversations:
+            msg_count += len(c.get("chat_messages", []))
+    else:
+        msg_count = conv_count * 10  # fallback
+    
+    # Assumptions for estimates
+    tokens_per_msg = 150
+    input_tokens = msg_count * tokens_per_msg
+    output_tokens = msg_count * tokens_per_msg
+    
+    api_read_ms = 850
+    local_read_ms = 8
+    
+    json_bytes = msg_count * 1200
+    sqlite_bytes = msg_count * 300
+    
+    return {
+        "volume": {
+            "conversations": conv_count,
+            "messages": msg_count,
+        },
+        "ingestion_tax": {
+            "tokens_saved": input_tokens + output_tokens,
+            "input_tokens": input_tokens,
+            "output_tokens": output_tokens,
+        },
+        "latency": {
+            "provider_read_ms": api_read_ms,
+            "memanto_read_ms": local_read_ms,
+            "ms_saved_per_query": api_read_ms - local_read_ms,
+        },
+        "storage": {
+            "provider_bytes": json_bytes,
+            "memanto_bytes": sqlite_bytes,
+            "bytes_saved": json_bytes - sqlite_bytes,
+        }
+    }
+
+
 def _build_chat_llm_prompt(metrics: dict[str, Any], provider_name: str) -> str:
-    total = metrics.get("total_memories", 0)
+    v = metrics["volume"]
+    t = metrics["ingestion_tax"]
     return (
-        f"We are migrating {total} conversations from {provider_name} to Memanto. "
+        f"We are migrating {v['conversations']} conversations ({v['messages']} messages) from {provider_name} to Memanto. "
+        f"This saves approximately {t['tokens_saved']} tokens. "
         "Write a brief architectural narrative explaining the benefits of local data ownership, "
         "avoiding cloud vendor lock-in, and the value of having offline, structured memory graphs."
     )
@@ -132,7 +181,10 @@ def _build_chat_export_report_markdown(
     exported_at: str | None,
     provider_name: str = "Chat Provider",
 ) -> str:
-    total_convs = metrics.get("total_memories", 0)
+    v = metrics["volume"]
+    t = metrics["ingestion_tax"]
+    lat = metrics["latency"]
+    stor = metrics["storage"]
     generated = datetime.now(timezone.utc).isoformat()
     lines = [
         f"# Memanto vs. {provider_name} — Migration Savings Report",
@@ -148,15 +200,40 @@ def _build_chat_export_report_markdown(
         "",
         "| Metric | Value |",
         "| --- | --- |",
-        f"| Total Conversations | {total_convs:,} |",
+        f"| Total Conversations | {v['conversations']:,} |",
+        f"| Mapped Messages | {v['messages']:,} |",
         "",
         "## Projected impact of migrating to Memanto",
         "",
-        "### 1. Data Ownership & Privacy",
-        f"By migrating {total_convs:,} conversations to Memanto, you ensure 100% local ownership of your memory graph. You are no longer dependent on {provider_name}'s cloud infrastructure for long-term retention.",
+        "### 1. Token Savings (Ingestion Tax avoided)",
+        f"By mapping raw exports locally, we bypass LLM embedding or feature extraction pipelines.",
         "",
-        "### 2. Fidelity Evidence & Mapping",
-        f"The {provider_name} mapping translates raw chat logs into discrete Memanto memory observations. This bypasses the need for costly token-heavy embedding generation on the provider's end, storing them securely in your local agent memory.",
+        "| Metric | Value |",
+        "| --- | --- |",
+        f"| Est. input tokens avoided | {t['input_tokens']:,} |",
+        f"| Est. output tokens avoided | {t['output_tokens']:,} |",
+        f"| **Total tokens saved** | **{t['tokens_saved']:,}** |",
+        "",
+        "### 2. Query Latency Improvement",
+        "Local SQLite lookups vs. traversing large JSON structures or hitting cloud APIs.",
+        "",
+        "| Metric | Time (ms) |",
+        "| --- | --- |",
+        f"| {provider_name} typical API read | ~{lat['provider_read_ms']} |",
+        f"| Memanto local SQLite read | ~{lat['memanto_read_ms']} |",
+        f"| **Latency saved per query** | **~{lat['ms_saved_per_query']} ms** |",
+        "",
+        "### 3. Storage Efficiency",
+        "Optimized relational storage versus unstructured JSON.",
+        "",
+        "| Metric | Bytes |",
+        "| --- | --- |",
+        f"| Estimated JSON bloat | ~{stor['provider_bytes']:,} |",
+        f"| Estimated SQLite footprint | ~{stor['memanto_bytes']:,} |",
+        f"| **Storage bytes saved** | **~{stor['bytes_saved']:,}** |",
+        "",
+        "### 4. Data Ownership & Fidelity",
+        f"By migrating to Memanto, you ensure 100% local ownership of your memory graph without cloud vendor lock-in.",
     ])
     
     if narrative:
@@ -176,7 +253,7 @@ _PROVIDER_BUNDLES.update({
     "chatgpt": {
         "label": "ChatGPT",
         "exporter": lambda *args, **kwargs: None, # Live export not supported, requires ZIP/JSON upload
-        "metrics": lambda export: {"total_memories": len(export if isinstance(export, list) else export.get("conversations", []))},
+        "metrics": lambda export: _compute_chat_metrics(export, "ChatGPT"),
         "prompt": lambda metrics: _build_chat_llm_prompt(metrics, "ChatGPT"),
         "report": lambda **kwargs: _build_chat_export_report_markdown(provider_name="ChatGPT", **kwargs),
         "export_filename": "conversations.json",
@@ -184,7 +261,7 @@ _PROVIDER_BUNDLES.update({
     "claude": {
         "label": "Claude",
         "exporter": lambda *args, **kwargs: None, # Live export not supported, requires JSON upload
-        "metrics": lambda export: {"total_memories": len(export if isinstance(export, list) else export.get("conversations", []))},
+        "metrics": lambda export: _compute_chat_metrics(export, "Claude"),
         "prompt": lambda metrics: _build_chat_llm_prompt(metrics, "Claude"),
         "report": lambda **kwargs: _build_chat_export_report_markdown(provider_name="Claude", **kwargs),
         "export_filename": "conversations.json",
