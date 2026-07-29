@@ -1454,7 +1454,7 @@ class SdkClient:
 
         try:
             # Run export function first (ensures ~/.memanto/exports/... is fresh)
-            self.export_memory_md(agent_id=agent_id, limit_per_type=limit_per_type)
+            export_result = self.export_memory_md(agent_id=agent_id, limit_per_type=limit_per_type)
         except ConnectionError:
             if cache_path.exists():
                 # Backend unreachable, but we have a previously good export —
@@ -1472,17 +1472,10 @@ class SdkClient:
         if cache_path.exists():
             # Copy freshly updated cache to project
             shutil.copy2(str(cache_path), str(target_path))
-            content = cache_path.read_text(encoding="utf-8")
-            mem_count = content.count("### ")
-            return {
-                "output_path": str(target_path.resolve()),
-                "total_memories": mem_count,
-                "source": "cache",
-            }
 
         return {
             "output_path": str(target_path.resolve()),
-            "total_memories": 0,
+            "total_memories": export_result.get("total_memories", 0),
             "source": "fresh",
         }
 

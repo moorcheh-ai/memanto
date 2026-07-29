@@ -9,6 +9,7 @@ from unittest.mock import MagicMock, patch
 
 import jwt
 import pytest
+from pathlib import Path
 
 from memanto.app.config import settings
 from memanto.app.core import MemoryRecord
@@ -1471,3 +1472,47 @@ def test_batch_upload_error_counts_each_pending_memory_as_failed():
     assert all(
         "Batch upload returned status" in item["error"] for item in result["results"]
     )
+def test_direct_sync_refreshes_cached_export_before_copy(tmp_path, monkeypatch):
+    from memanto.cli.client.direct_client import DirectClient
+
+    monkeypatch.setattr(Path, "home", lambda: tmp_path)
+
+    cache_dir = tmp_path / ".memanto" / "exports"
+    cache_dir.mkdir(parents=True)
+    cache_path = cache_dir / "agent-1_memory.md"
+    cache_path.write_text("# MEMORY\n\n### stale memory\n", encoding="utf-8")
+
+    client = DirectClient.__new__(DirectClient)
+    export_calls = []
+
+    def fresh_export(*, agent_id, limit_per_type):
+        export_calls.append((agent_id, limit_per_type))
+        cache_path.write_text(
+            "# MEMORY\n\n### current memory\n\n### newer memory\n",
+            encoding="utf-8",
+        )
+        return {
+            "output_path": str(cache_path),
+            "total_memories": 2,
+            "per_type_counts": {"learning": 2},
+        }
+
+    monkeypatch.setattr(client, "export_memory_md", fresh_export)
+
+    project_dir = tmp_path / "project"
+    result = client.sync_memory_to_project(
+        agent_id="agent-1",
+        project_dir=str(project_dir),
+        limit_per_type=7,
+    )
+
+    target = project_dir / "MEMORY.md"
+    assert export_calls == [("agent-1", 7)]
+    assert target.read_text(encoding="utf-8") == cache_path.read_text(encoding="utf-8")
+    assert "current memory" in target.read_text(encoding="utf-8")
+    assert "stale memory" not in target.read_text(encoding="utf-8")
+    assert result == {
+        "output_path": str(target.resolve()),
+        "total_memories": 2,
+        "source": "fresh",
+    }
