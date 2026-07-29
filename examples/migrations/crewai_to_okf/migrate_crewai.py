@@ -8,47 +8,35 @@ Features:
   - Parses CrewAI SQLite storage, JSON dumps, and memory dictionaries
   - Categorizes into OKF memory types: `fact`, `preference`, `context`, `entity`
   - Automated PII & secret redaction (API keys, emails, local filesystem paths)
-  - Exports standard OKF frontmatter + markdown files with ISO-8601 metadata
-  - Generates token/storage savings report (SAVINGS_REPORT.md)
-
-Usage:
-  python migrate_crewai.py --source ./crewai_memory.db --output ./okf_bundle
-  python migrate_crewai.py --source ./crewai_export.json --output ./okf_bundle
+  - Exports OKF manifest and Memanto migration report
 """
 
 import os
-import re
+import sys
 import json
+import re
 import sqlite3
-import datetime
 import argparse
-from typing import Dict, Any, List, Tuple
+import datetime
+from typing import List, Dict, Any, Tuple
 
-OKF_VERSION = "1.0"
+OKF_VERSION = "1.0.0"
 
-# ─────────────────────────────────────────────────────────────────────────────
-# Redaction Rules (PII & Security)
-# ─────────────────────────────────────────────────────────────────────────────
-
-SECRET_PATTERNS = [
-    (re.compile(r'sk-[a-zA-Z0-9]{20,}', re.IGNORECASE), '[REDACTED_API_KEY]'),
-    (re.compile(r'ghp_[a-zA-Z0-9]{36}', re.IGNORECASE), '[REDACTED_GITHUB_TOKEN]'),
-    (re.compile(r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}'), '[REDACTED_EMAIL]'),
-    (re.compile(r'(?:[a-zA-Z]:\\|/)[^\s:\n"\'<>]+\.(?:py|json|db|key|pem)'), '[REDACTED_PATH]'),
+# Secret & PII Sanitization Patterns
+PII_PATTERNS = [
+    (r'(?i)(api[_-]?key|secret|token|password|auth|bearer)\s*[:=]\s*["']?([a-zA-Z0-9_\-\.]{16,})["']?', r'\1: [REDACTED_SECRET]'),
+    (r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+.[a-zA-Z]{2,}', '[REDACTED_EMAIL]'),
+    (r'(?i)/(Users|home|root)/[a-zA-Z0-9._-]+', '[REDACTED_PATH]'),
 ]
 
 def sanitize_text(text: str) -> str:
-    """Redacts API keys, credentials, emails, and internal file paths."""
-    if not text:
+    """Removes API keys, secrets, emails, and sensitive paths from text."""
+    if not text or not isinstance(text, str):
         return ""
     sanitized = text
-    for pattern, replacement in SECRET_PATTERNS:
-        sanitized = pattern.sub(replacement, sanitized)
+    for pattern, replacement in PII_PATTERNS:
+        sanitized = re.sub(pattern, replacement, sanitized)
     return sanitized
-
-# ─────────────────────────────────────────────────────────────────────────────
-# CrewAI Memory Parsers
-# ─────────────────────────────────────────────────────────────────────────────
 
 def parse_crewai_json(json_path: str) -> List[Dict[str, Any]]:
     """Parses a CrewAI memory JSON export."""
@@ -74,7 +62,6 @@ def parse_crewai_sqlite(db_path: str) -> List[Dict[str, Any]]:
     cursor = conn.cursor()
 
     memories = []
-    # Check table names
     cursor.execute("SELECT name FROM sqlite_master WHERE type='table';")
     tables = [r[0] for r in cursor.fetchall()]
 
@@ -94,11 +81,21 @@ def parse_crewai_sqlite(db_path: str) -> List[Dict[str, Any]]:
 
 def _normalize_item(item: Dict[str, Any], idx: int) -> Dict[str, Any]:
     """Standardizes raw CrewAI items into OKF canonical records."""
-    text = item.get("text") or item.get("content") or item.get("memory") or item.get("observation") or ""
-    metadata = item.get("metadata") or item.get("attributes") or {}
+    raw_metadata = item.get("metadata") or item.get("attributes") or {}
+    if isinstance(raw_metadata, str):
+        try:
+            metadata = json.loads(raw_metadata)
+        except Exception:
+            metadata = {}
+    elif isinstance(raw_metadata, dict):
+        metadata = raw_metadata
+    else:
+        metadata = {}
+
+    text = item.get("text") or item.get("content") or item.get("memory") or item.get("observation") or item.get("task_description") or ""
 
     agent_id = item.get("agent_id") or metadata.get("agent_role") or metadata.get("agent") or "crewai_agent"
-    task = item.get("task") or metadata.get("task_description") or ""
+    task = item.get("task") or metadata.get("task_description") or item.get("task_description") or ""
 
     # Map CrewAI types to OKF types
     raw_type = (item.get("_source_table") or item.get("type") or metadata.get("memory_type") or "").lower()
@@ -122,10 +119,6 @@ def _normalize_item(item: Dict[str, Any], idx: int) -> Dict[str, Any]:
         "created_at": str(created_at),
         "tags": ["crewai", memory_type, "okf_migrated"],
     }
-
-# ─────────────────────────────────────────────────────────────────────────────
-# OKF Bundle Generator
-# ─────────────────────────────────────────────────────────────────────────────
 
 def export_to_okf(memories: List[Dict[str, Any]], output_dir: str) -> Tuple[int, str]:
     """Writes memories out as standard OKF markdown files."""
@@ -157,7 +150,6 @@ def export_to_okf(memories: List[Dict[str, Any]], output_dir: str) -> Tuple[int,
             "source": "crewai_adapter",
         }
 
-        # Build OKF markdown content
         md_content = f"""---
 {json.dumps(frontmatter, indent=2)}
 ---
@@ -183,12 +175,10 @@ def export_to_okf(memories: List[Dict[str, Any]], output_dir: str) -> Tuple[int,
         manifest["memory_types"][m_type] = manifest["memory_types"].get(m_type, 0) + 1
         exported_count += 1
 
-    # Write OKF manifest
     manifest_path = os.path.join(output_dir, "okf_manifest.json")
     with open(manifest_path, 'w', encoding='utf-8') as f:
         json.dump(manifest, f, indent=2)
 
-    # Write Savings Report
     report_content = f"""# Memanto OKF Migration & Savings Report
 
 **Source Framework**: CrewAI Agent Memory  
@@ -224,10 +214,6 @@ memanto migrate okf {output_dir} --dry-run
         f.write(report_content)
 
     return exported_count, manifest_path
-
-# ─────────────────────────────────────────────────────────────────────────────
-# CLI Entry Point
-# ─────────────────────────────────────────────────────────────────────────────
 
 def main():
     parser = argparse.ArgumentParser(description="Migrate CrewAI memories to Open Knowledge Format (OKF)")
