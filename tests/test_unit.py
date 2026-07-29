@@ -586,6 +586,47 @@ class TestSessionService:
         assert session_service.delete_session("test-agent") is True
         assert not (session_service.sessions_dir / "test-agent.json").exists()
 
+    def test_get_active_session_clears_invalid_active_marker(self, session_service):
+        """A malformed active marker should not crash session recovery."""
+        active_marker = session_service.sessions_dir / "active"
+        active_marker.parent.mkdir(parents=True, exist_ok=True)
+        active_marker.write_text("../outside")
+
+        assert session_service.get_active_session() is None
+        assert not active_marker.exists()
+
+    def test_get_active_session_clears_traversal_symlink(self, session_service):
+        """A traversal symlink target should not be treated as an agent id."""
+        active_marker = session_service.sessions_dir / "active"
+        active_marker.parent.mkdir(parents=True, exist_ok=True)
+        try:
+            active_marker.symlink_to("../outside.json")
+        except OSError as exc:
+            pytest.skip(f"symlink creation unavailable: {exc}")
+
+        assert session_service.get_active_session() is None
+        assert not active_marker.exists()
+
+    def test_get_active_session_clears_missing_session_marker(self, session_service):
+        """A stale active marker should be removed when its session is gone."""
+        active_marker = session_service.sessions_dir / "active"
+        active_marker.parent.mkdir(parents=True, exist_ok=True)
+        active_marker.write_text("missing-agent")
+
+        assert session_service.get_active_session() is None
+        assert not active_marker.exists()
+
+    def test_delete_session_rejects_path_traversal_agent_id(self, session_service):
+        """delete_session must not delete files outside the sessions directory."""
+        session_service.sessions_dir.mkdir(parents=True, exist_ok=True)
+        outside = session_service.sessions_dir.parent / "outside.json"
+        outside.write_text("keep me", encoding="utf-8")
+
+        with pytest.raises(ValueError, match="agent_id"):
+            session_service.delete_session("../outside")
+
+        assert outside.read_text(encoding="utf-8") == "keep me"
+
     def test_list_sessions_skips_invalid_session_files(self, session_service):
         """One corrupt session record must not hide all valid sessions."""
         valid_session = session_service.create_session(

@@ -426,6 +426,18 @@ class SessionService:
                 # or remove the marker while this process holds its local lock.
                 if active_link.is_symlink():
                     target = active_link.readlink()
+                    if target.is_absolute() or target.parent != Path("."):
+                        logger.warning(
+                            "Clearing invalid active session symlink: %s", target
+                        )
+                        self._clear_active_session()
+                        return None
+                    if target.suffix != ".json" or target.name != f"{target.stem}.json":
+                        logger.warning(
+                            "Clearing invalid active session symlink: %s", target
+                        )
+                        self._clear_active_session()
+                        return None
                     agent_id = target.stem
                 else:
                     with open(active_link) as f:
@@ -435,13 +447,16 @@ class SessionService:
 
             try:
                 session = self.get_session(agent_id)
-            except ValueError:
+            except ValueError as exc:
                 # An empty or malformed marker (e.g. a crash between unlink and
                 # the fallback write in _set_active_session) fails validate_safe_id.
                 # An unreadable marker means "no active session", exactly as the
                 # OSError path above already treats it.
+                logger.warning("Clearing invalid active session marker: %s", exc)
+                self._clear_active_session()
                 return None
             if not session:
+                self._clear_active_session()
                 return None
 
             # If session is expired, clear the stale marker and return None.
