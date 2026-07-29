@@ -62,7 +62,13 @@ class AgentService:
             AgentAlreadyExistsError: If agent already exists
         """
         agent_file = self._get_agent_file(agent_create.agent_id)
-        if agent_file.exists():
+        
+        # Atomic lock: Create the file exclusively to prevent TOCTOU race conditions.
+        # This guarantees only one thread can claim this agent ID.
+        try:
+            with open(agent_file, "x") as f:
+                pass
+        except FileExistsError:
             raise AgentAlreadyExistsError(
                 f"Agent '{agent_create.agent_id}' already exists"
             )
