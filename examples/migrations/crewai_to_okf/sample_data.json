@@ -1,0 +1,27 @@
+[
+  {
+    "agent_id": "senior_researcher",
+    "content": "User prefers concise bullet points with metrics and direct citations in all reports.",
+    "type": "long_term",
+    "timestamp": "2026-07-25T10:15:00Z"
+  },
+  {
+    "agent_id": "senior_researcher",
+    "content": "Akash Network vGPU pricing is ~70% lower than AWS p4d instances.",
+    "type": "long_term",
+    "timestamp": "2026-07-26T14:30:00Z"
+  },
+  {
+    "agent_id": "lead_writer",
+    "text": "Completed draft for ACN autonomous revenue orchestration showcase.",
+    "type": "short_term",
+    "task": "Write ACN whitepaper overview",
+    "timestamp": "2026-07-27T09:45:00Z"
+  },
+  {
+    "agent_id": "data_analyst",
+    "content": "POKT RPC gateways handle 12,000 requests/sec with average latency of 45ms.",
+    "type": "entity",
+    "timestamp": "2026-07-28T16:20:00Z"
+  }
+]
