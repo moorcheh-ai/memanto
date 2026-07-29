@@ -3,13 +3,14 @@ Memory Write Service
 """
 
 from datetime import datetime, timezone
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 if TYPE_CHECKING:
     from moorcheh_sdk import MoorchehClient
 
 from memanto.app.core import MemoryRecord
 from memanto.app.services.memory_parsing_service import MemoryParsingService
+from memanto.app.services.memory_validation_service import MemoryValidationService
 from memanto.app.utils.errors import MemoryError
 from memanto.app.utils.ids import generate_memory_id
 from memanto.app.utils.temporal_helpers import as_utc_aware
@@ -41,6 +42,7 @@ class MemoryWriteService:
 
         self.client = moorcheh_client
         self._parser = MemoryParsingService()
+        self.validation_service = MemoryValidationService(moorcheh_client)
         self._namespace_service = None
 
     @property
@@ -90,15 +92,11 @@ class MemoryWriteService:
             # Add namespace
             namespace = memory.namespace()
 
-            # skip validation for speed
-            ## Validate memory
-            # validation_result = self.validation_service.validate_memory(memory, context)
-            ## Use validated memory if modified
-            # if "memory" in validation_result:
-            #     memory = validation_result["memory"]
-            validation_result = {"action": "store", "reason": "MVP direct store"}
-
-            from typing import cast
+            # Validate memory (write-time contradiction resolution)
+            validation_result = self.validation_service.validate_memory(memory, context)
+            # Use validated memory if modified
+            if "memory" in validation_result:
+                memory = validation_result["memory"]
 
             from moorcheh_sdk.types.document import Document
 
@@ -110,7 +108,7 @@ class MemoryWriteService:
                 namespace_name=namespace, documents=[document]
             )
 
-            return {
+            response = {
                 "id": memory.id,
                 "namespace": namespace,
                 "status": result.get("status", "unknown"),
@@ -120,6 +118,9 @@ class MemoryWriteService:
                 "memory_status": memory.status,
                 "type": memory.type,
             }
+            if validation_result.get("superseded_ids"):
+                response["superseded_ids"] = validation_result["superseded_ids"]
+            return response
 
         except Exception as e:
             raise MemoryError(f"Failed to store memory: {e}")
@@ -150,6 +151,7 @@ class MemoryWriteService:
             first_namespace = None
             results = []
             validated_documents = []
+            prepared: list[MemoryRecord] = []
 
             # Enforce server-side timestamps for batch (single timestamp for all)
             now = datetime.now(timezone.utc)
@@ -182,37 +184,81 @@ class MemoryWriteService:
                         )
                         continue
 
-                    # skip validation for speed
-                    ## Validate memory
-                    # validation_result = self.validation_service.validate_memory(memory, context)
-                    ## Use validated memory if modified
-                    # if "memory" in validation_result:
-                    #     memory = validation_result["memory"]
-                    validation_result = {
-                        "action": "store",
-                        "reason": "MVP direct store",
-                    }
+                    prepared.append(memory)
 
-                    from typing import cast
+                except Exception as e:
+                    results.append(
+                        {
+                            "id": memory.id
+                            if hasattr(memory, "id") and memory.id
+                            else "unknown",
+                            "status": "failed",
+                            "action": "rejected",
+                            "error": str(e),
+                        }
+                    )
+
+            # Resolve contradictions within the batch itself: for memories of
+            # the same type and title with different content, the last one
+            # wins and earlier ones are stored as superseded history.
+            superseded_in_batch = self.validation_service.resolve_batch_contradictions(
+                prepared
+            )
+
+            to_validate = [
+                memory for memory in prepared if memory.id not in superseded_in_batch
+            ]
+            prefetched_conflicts = self.validation_service.prefetch_contradictions(
+                to_validate
+            )
+
+            for memory in prepared:
+                try:
+                    batch_note = superseded_in_batch.get(memory.id)
+                    if batch_note:
+                        validation_result = {
+                            "action": "store_superseded",
+                            "reason": f"contradiction resolved: superseded within batch by {batch_note}",
+                        }
+                    elif memory.id in prefetched_conflicts:
+                        validation_result = self.validation_service.validate_memory(
+                            memory,
+                            context,
+                            prefetched_conflicts=prefetched_conflicts[memory.id],
+                        )
+                    else:
+                        validation_result = self.validation_service.validate_memory(
+                            memory, context
+                        )
+                        # Use validated memory if modified
+                        if "memory" in validation_result:
+                            memory = cast(MemoryRecord, validation_result["memory"])
 
                     from moorcheh_sdk.types.document import Document
 
                     # Convert to Moorcheh document
-                    document = cast(Document, memory.to_moorcheh_document())
+                    document_payload = memory.to_moorcheh_document()
+                    if batch_note:
+                        document_payload["superseded_by"] = batch_note
+                        document_payload["superseded_at"] = now.isoformat()
+                    document = cast(Document, document_payload)
                     validated_documents.append(document)
 
                     # Store validation result for later
-                    results.append(
-                        {
-                            "id": memory.id,
-                            "status": "pending",
-                            "action": validation_result.get("action", "store"),
-                            "reason": validation_result.get(
-                                "reason", "Validated successfully"
-                            ),
-                            "type": memory.type,
-                        }
-                    )
+                    result_entry = {
+                        "id": memory.id,
+                        "status": "pending",
+                        "action": validation_result.get("action", "store"),
+                        "reason": validation_result.get(
+                            "reason", "Validated successfully"
+                        ),
+                        "type": memory.type or "fact",
+                    }
+                    if validation_result.get("superseded_ids"):
+                        result_entry["superseded_ids"] = validation_result[
+                            "superseded_ids"
+                        ]
+                    results.append(result_entry)
 
                 except Exception as e:
                     results.append(
@@ -228,8 +274,6 @@ class MemoryWriteService:
 
             # Upload all validated documents in single batch to Moorcheh
             if validated_documents and first_namespace:
-                from typing import cast
-
                 upload_result = self.client.documents.upload(
                     namespace_name=cast(str, first_namespace),
                     documents=validated_documents,
@@ -330,6 +374,11 @@ class MemoryWriteService:
                     f"in namespace {namespace}"
                 )
 
+            # Normalize legacy source values
+            source_val = updates.get("source", metadata.get("source", "system"))
+            if source_val not in {"user", "agent", "tool", "system"}:
+                source_val = "system"
+
             # Build updated memory record
             updated_memory = MemoryRecord(
                 id=memory_id,  # Keep same ID
@@ -340,7 +389,7 @@ class MemoryWriteService:
                 content=updates.get("content", existing_memory_data.get("content", "")),
                 agent_id=agent_id,
                 actor_id=updates.get("actor_id", metadata.get("actor_id", "unknown")),
-                source=updates.get("source", metadata.get("source", "system")),
+                source=source_val,
                 source_ref=updates.get("source_ref", metadata.get("source_ref")),
                 confidence=updates.get("confidence", metadata.get("confidence", 0.8)),
                 status=updates.get("status", metadata.get("status", "active")),

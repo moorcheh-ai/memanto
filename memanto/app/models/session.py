@@ -9,7 +9,7 @@ from datetime import datetime, timedelta
 from enum import Enum
 from typing import Any
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from memanto.app.utils.temporal_helpers import as_utc_aware, utc_now
 
@@ -130,6 +130,13 @@ class AgentInfo(BaseModel):
     memory_count: int = 0
     session_count: int = 0
     status: str = "inactive"
+
+    @field_validator("created_at", "last_session", mode="after")
+    @classmethod
+    def normalize_datetime(cls, v: datetime | None) -> datetime | None:
+        if v is None:
+            return None
+        return as_utc_aware(v)
 
 
 class AgentList(BaseModel):

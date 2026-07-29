@@ -66,6 +66,7 @@ def mock_all_clients():
                 "port": 8000,
                 "auto_start": False,
             }
+            mock_cfg.get_server_url.return_value = "http://localhost:8000"
             mock_cfg.get_session_config.return_value = {
                 "default_duration_hours": 6,
                 "auto_renew_enabled": True,
@@ -1246,6 +1247,32 @@ class TestMEMANTOCLI:
         result = runner.invoke(app, ["memory", "export"])
         assert result.exit_code == 0
         assert "Exported 5 memories" in result.stdout
+
+    @pytest.mark.parametrize("client_name", ["DirectClient", "SdkClient"])
+    @pytest.mark.parametrize("bad_limit", [0, 101, "10", True])
+    def test_memory_export_rejects_invalid_limit_before_session_lookup(
+        self, mock_all_clients, client_name, bad_limit
+    ):
+        """Invalid export limits must fail fast instead of producing empty exports.
+
+        The export path queries every memory type with ``query='*'`` and
+        swallowed per-type recall errors. Without upfront validation, bad
+        limits like 0 or 101 could be masked as a successful zero-memory
+        export, destabilizing downstream MEMORY.md syncs.
+        """
+        from unittest.mock import patch
+
+        if client_name == "DirectClient":
+            from memanto.cli.client.direct_client import DirectClient as Client
+        else:
+            from memanto.cli.client.sdk_client import SdkClient as Client
+
+        client = Client.__new__(Client)
+        with patch.object(Client, "_get_validated_session_for_agent") as session_mock:
+            with pytest.raises(ValueError, match="limit_per_type"):
+                client.export_memory_md("test-agent", limit_per_type=bad_limit)
+
+        session_mock.assert_not_called()
 
     def test_memory_sync(self, mock_all_clients):
         """Test 'memanto memory sync'"""

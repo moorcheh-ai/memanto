@@ -249,6 +249,34 @@ class TestMEMANTOAPI:
             assert "metadata" not in data["agents"][0]
 
     @pytest.mark.asyncio
+    async def test_list_agents_skips_malformed_namespace_count_rows(
+        self, client, auth_headers, mock_moorcheh
+    ):
+        """Malformed namespace rows must not hide valid live memory counts."""
+        await client.post(
+            "/api/v2/agents",
+            headers=auth_headers,
+            json={"agent_id": self.TEST_AGENT_ID, "pattern": "support"},
+        )
+        mock_moorcheh.namespaces.list.return_value = {
+            "namespaces": [
+                "truncated-row",
+                {"namespace_name": None, "item_count": 99},
+                {
+                    "namespace_name": f"memanto_agent_{self.TEST_AGENT_ID}",
+                    "item_count": "7",
+                },
+            ]
+        }
+
+        response = await client.get("/api/v2/agents", headers=auth_headers)
+
+        assert response.status_code == 200
+        agents = response.json()["agents"]
+        agent = next(a for a in agents if a["agent_id"] == self.TEST_AGENT_ID)
+        assert agent["memory_count"] == 7
+
+    @pytest.mark.asyncio
     async def test_activate_session(self, client, auth_headers):
         """Test activating an agent session"""
         # Ensure agent exists (will be created in memory by AgentService for this test session)
@@ -1059,6 +1087,34 @@ class TestMEMANTOAPI:
         mock_moorcheh.documents.upload.assert_not_called()
 
     @pytest.mark.asyncio
+    async def test_remember_rejects_oversized_metadata_labels(
+        self, client, auth_headers, mock_moorcheh
+    ):
+        """Tags/source metadata should be bounded before expanding upload text."""
+        await client.post(
+            "/api/v2/agents",
+            headers=auth_headers,
+            json={"agent_id": self.TEST_AGENT_ID},
+        )
+        activate_resp = await client.post(
+            f"/api/v2/agents/{self.TEST_AGENT_ID}/activate", headers=auth_headers
+        )
+        token = activate_resp.json()["session_token"]
+
+        headers = {**auth_headers, "X-Session-Token": token}
+        response = await client.post(
+            f"/api/v2/agents/{self.TEST_AGENT_ID}/remember",
+            headers=headers,
+            json={
+                "content": "Small content should not hide oversized tags",
+                "tags": ["x" * 65],
+            },
+        )
+
+        assert response.status_code == 422
+        mock_moorcheh.documents.upload.assert_not_called()
+
+    @pytest.mark.asyncio
     async def test_global_status_no_active_session(self, client, auth_headers):
         """Test GET /api/v2/status returns 404 when no session is active"""
         response = await client.get("/api/v2/status", headers=auth_headers)
@@ -1145,6 +1201,38 @@ class TestMEMANTOAPI:
                         "content": "Invalid provenance should not be batched",
                         "type": "fact",
                         "provenance": "guessed",
+                    }
+                ]
+            },
+        )
+
+        assert response.status_code == 422
+        mock_moorcheh.documents.upload.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_batch_remember_rejects_too_many_tags(
+        self, client, auth_headers, mock_moorcheh
+    ):
+        """Batch writes should reject unbounded tag metadata before upload."""
+        await client.post(
+            "/api/v2/agents",
+            headers=auth_headers,
+            json={"agent_id": self.TEST_AGENT_ID},
+        )
+        activate_resp = await client.post(
+            f"/api/v2/agents/{self.TEST_AGENT_ID}/activate", headers=auth_headers
+        )
+        token = activate_resp.json()["session_token"]
+
+        headers = {**auth_headers, "X-Session-Token": token}
+        response = await client.post(
+            f"/api/v2/agents/{self.TEST_AGENT_ID}/batch-remember",
+            headers=headers,
+            json={
+                "memories": [
+                    {
+                        "content": "Batch item with too many tags",
+                        "tags": [f"tag-{index}" for index in range(21)],
                     }
                 ]
             },
@@ -2231,6 +2319,20 @@ class TestCWE200ApiKeyLeak:
         assert data["has_active_session"] is True
 
     @pytest.mark.asyncio
+    async def test_config_update_rejects_invalid_schedule_time(
+        self, client, _mock_ui_config_manager
+    ):
+        """Invalid UI schedule updates should be reported as client errors."""
+        _mock_ui_config_manager.set_schedule_time.side_effect = ValueError(
+            "schedule_time must be in HH:MM 24-hour format (00:00-23:59)"
+        )
+
+        resp = await client.patch("/api/ui/config", json={"schedule_time": "25:61"})
+
+        assert resp.status_code == 400
+        assert "HH:MM" in resp.json()["detail"]
+
+    @pytest.mark.asyncio
     async def test_daily_summary_rejects_traversal_agent_id(
         self, client, tmp_path, _mock_ui_config_manager
     ):
@@ -2507,6 +2609,149 @@ class TestCWE200ApiKeyLeak:
             json={},
         )
         assert fresh_response.status_code == 200
+
+    @pytest.mark.asyncio
+    async def test_config_update_rejects_invalid_server_port(
+        self, client, _mock_ui_config_manager
+    ):
+        _mock_ui_config_manager.load_yaml.return_value = {"server": {}}
+
+        response = await client.patch(
+            "/api/ui/config", json={"server": {"url": "localhost", "port": 70000}}
+        )
+
+        assert response.status_code == 400
+        assert "server port" in response.json()["detail"]
+        _mock_ui_config_manager.save_yaml.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_config_update_rejects_invalid_server_port_before_other_saves(
+        self, client, _mock_ui_config_manager
+    ):
+        response = await client.patch(
+            "/api/ui/config",
+            json={"schedule_time": "09:00", "server": {"port": 70000}},
+        )
+
+        assert response.status_code == 400
+        assert "server port" in response.json()["detail"]
+        _mock_ui_config_manager.set_schedule_time.assert_not_called()
+        _mock_ui_config_manager.save_yaml.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_config_update_normalizes_server_port(
+        self, client, _mock_ui_config_manager
+    ):
+        _mock_ui_config_manager.load_yaml.return_value = {"server": {}}
+
+        response = await client.patch(
+            "/api/ui/config", json={"server": {"url": "localhost", "port": "8000"}}
+        )
+
+        assert response.status_code == 200
+        _mock_ui_config_manager.save_yaml.assert_called_once_with(
+            {"server": {"url": "localhost", "port": 8000}}
+        )
+
+    @pytest.mark.asyncio
+    async def test_config_update_validates_session_config(
+        self, client, _mock_ui_config_manager
+    ):
+        _mock_ui_config_manager.set_session_config.side_effect = ValueError(
+            "default_duration_hours must be an integer between 1 and 168"
+        )
+
+        response = await client.patch(
+            "/api/ui/config",
+            json={"session": {"default_duration_hours": 0}},
+        )
+
+        assert response.status_code == 400
+        assert "default_duration_hours" in response.json()["detail"]
+        _mock_ui_config_manager.set_session_config.assert_called_once_with(
+            {"default_duration_hours": 0}
+        )
+        _mock_ui_config_manager.save_yaml.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_config_update_rejects_non_object_session_config(
+        self, client, _mock_ui_config_manager
+    ):
+        response = await client.patch(
+            "/api/ui/config",
+            json={"session": "bad"},
+        )
+
+        assert response.status_code == 400
+        assert "session must be an object" in response.json()["detail"]
+        _mock_ui_config_manager.set_session_config.assert_not_called()
+        _mock_ui_config_manager.save_yaml.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_config_update_accepts_valid_session_config(
+        self, client, _mock_ui_config_manager
+    ):
+        response = await client.patch(
+            "/api/ui/config",
+            json={
+                "session": {
+                    "default_duration_hours": 12,
+                    "auto_renew_enabled": False,
+                }
+            },
+        )
+
+        assert response.status_code == 200
+        _mock_ui_config_manager.set_session_config.assert_called_once_with(
+            {"default_duration_hours": 12, "auto_renew_enabled": False}
+        )
+
+    @pytest.mark.asyncio
+    async def test_config_update_rejects_invalid_answer_config(
+        self, client, _mock_ui_config_manager
+    ):
+        _mock_ui_config_manager.set_answer_config.side_effect = ValueError(
+            "temperature must be between 0.0 and 2.0"
+        )
+
+        response = await client.patch(
+            "/api/ui/config", json={"answer": {"temperature": 3}}
+        )
+
+        assert response.status_code == 400
+        assert "temperature" in response.json()["detail"]
+        _mock_ui_config_manager.set_answer_config.assert_called_once_with(
+            model=None,
+            temperature=3,
+            answer_limit=None,
+            threshold=None,
+            kiosk_mode=None,
+        )
+
+    @pytest.mark.asyncio
+    async def test_config_update_passes_answer_values_to_validated_setter(
+        self, client, _mock_ui_config_manager
+    ):
+        response = await client.patch(
+            "/api/ui/config",
+            json={
+                "answer": {
+                    "temperature": "0.2",
+                    "answer_limit": "20",
+                    "threshold": "0.4",
+                    "kiosk_mode": False,
+                }
+            },
+        )
+
+        assert response.status_code == 200
+        _mock_ui_config_manager.set_answer_config.assert_called_once_with(
+            model=None,
+            temperature="0.2",
+            answer_limit="20",
+            threshold="0.4",
+            kiosk_mode=False,
+        )
 
     @pytest.mark.asyncio
     async def test_traversal_filename_is_sanitized(
