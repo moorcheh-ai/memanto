@@ -345,7 +345,7 @@ class TestAgentService:
         print(f"✅ Listed {agent_list.count} agents")
 
     def test_list_agents_skips_invalid_agent_files(self, agent_service):
-        """One corrupt agent metadata file must not hide valid agents."""
+        """One corrupt agent metadata file must not hide valid agents and should report a warning."""
         agent_service.create_agent(
             AgentCreate(agent_id="valid-agent", pattern=AgentPattern.SUPPORT),
             settings.MOORCHEH_API_KEY,
@@ -356,6 +356,8 @@ class TestAgentService:
 
         assert agent_list.count == 1
         assert [agent.agent_id for agent in agent_list.agents] == ["valid-agent"]
+        assert len(agent_list.warnings) == 1
+        assert "broken-agent.json" in agent_list.warnings[0]
 
     def test_get_agent(self, agent_service):
         """Test getting agent info"""
@@ -373,17 +375,15 @@ class TestAgentService:
         print("✅ Agent retrieved successfully")
 
     def test_get_agent_treats_invalid_agent_file_as_missing(self, agent_service):
-        """A corrupt agent metadata file should behave like absent local state."""
+        """A corrupt or invalid agent metadata file should behave like absent local state."""
         agent_service.agents_dir.mkdir(parents=True, exist_ok=True)
+        
+        # JSONDecodeError (corrupt JSON)
         (agent_service.agents_dir / "broken-agent.json").write_text("{")
-
         assert agent_service.get_agent("broken-agent") is None
 
-    def test_get_agent_treats_invalid_schema_as_missing(self, agent_service):
-        """An agent metadata file with missing required fields (ValidationError) should behave like absent local state."""
-        agent_service.agents_dir.mkdir(parents=True, exist_ok=True)
+        # ValidationError (missing required fields)
         (agent_service.agents_dir / "broken-schema-agent.json").write_text('{"description": "missing agent_id and pattern"}')
-
         assert agent_service.get_agent("broken-schema-agent") is None
 
     def test_update_agent_stats(self, agent_service):

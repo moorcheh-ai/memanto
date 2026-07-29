@@ -126,7 +126,11 @@ class AgentService:
         if not agent_file.exists():
             return None
 
-        return self._load_agent_file(agent_file)
+        try:
+            return self._load_agent_file(agent_file)
+        except (OSError, json.JSONDecodeError, TypeError, ValidationError) as exc:
+            logger.warning("Skipping invalid agent file %s: %s", agent_file, exc)
+            return None
 
     def list_agents(self) -> AgentList:
         """
@@ -136,18 +140,23 @@ class AgentService:
             AgentList with all agents
         """
         agents: list[AgentInfo] = []
+        warnings: list[str] = []
         if not self.agents_dir.exists():
-            return AgentList(agents=agents, count=0)
+            return AgentList(agents=agents, count=0, warnings=warnings)
 
         for agent_file in self.agents_dir.glob("*.json"):
-            agent = self._load_agent_file(agent_file)
-            if agent is not None:
-                agents.append(agent)
+            try:
+                agent = self._load_agent_file(agent_file)
+                if agent is not None:
+                    agents.append(agent)
+            except (OSError, json.JSONDecodeError, TypeError, ValidationError) as exc:
+                logger.warning("Skipping invalid agent file %s: %s", agent_file, exc)
+                warnings.append(f"Could not load agent file '{agent_file.name}': {exc}")
 
         # Sort by created_at (newest first); normalize for legacy naive timestamps.
         agents.sort(key=lambda a: as_utc_aware(a.created_at), reverse=True)
 
-        return AgentList(agents=agents, count=len(agents))
+        return AgentList(agents=agents, count=len(agents), warnings=warnings)
 
     def update_agent_stats(
         self,
@@ -218,14 +227,10 @@ class AgentService:
             json.dump(agent.model_dump(mode="json"), f, indent=2)
 
     def _load_agent_file(self, agent_file: Path) -> AgentInfo | None:
-        """Load one agent metadata file, treating corrupt local state as absent."""
+        """Load one agent metadata file. Raises exception if file is corrupted."""
         if not agent_file.exists():
             return None
 
-        try:
-            with open(agent_file) as f:
-                data = json.load(f)
-            return AgentInfo(**data)
-        except (OSError, json.JSONDecodeError, TypeError, ValidationError) as exc:
-            logger.warning("Skipping invalid agent file %s: %s", agent_file, exc)
-            return None
+        with open(agent_file) as f:
+            data = json.load(f)
+        return AgentInfo(**data)
