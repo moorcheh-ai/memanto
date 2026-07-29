@@ -1232,7 +1232,13 @@ class SdkClient:
             date: Date string (YYYY-MM-DD). Defaults to today.
 
         Returns:
-            List of unresolved conflict dicts.
+            List of unresolved conflict dicts. Each carries an ``index`` field
+            holding its STABLE position in the full report. ``resolve_conflict``
+            addresses conflicts by that full-report index, so callers must
+            resolve using this ``index`` value — NOT the position of the item
+            within this filtered list. The two diverge as soon as any earlier
+            conflict is resolved, and because resolution deletes memories,
+            resolving by filtered position would delete the wrong memory.
         """
         if not date:
             date = datetime.now().strftime("%Y-%m-%d")
@@ -1247,8 +1253,13 @@ class SdkClient:
         with open(json_path, encoding="utf-8") as f:
             all_conflicts = json.load(f)
 
-        # Return only unresolved conflicts
-        return [c for c in all_conflicts if not c.get("resolved", False)]
+        # Return only unresolved conflicts, each tagged with its stable index
+        # into the full report so callers can resolve them unambiguously.
+        return [
+            {**c, "index": idx}
+            for idx, c in enumerate(all_conflicts)
+            if not c.get("resolved", False)
+        ]
 
     def resolve_conflict(
         self,
@@ -1265,7 +1276,11 @@ class SdkClient:
         Args:
             agent_id: Target agent.
             date: Date string (YYYY-MM-DD).
-            conflict_index: 0-based index into the full conflicts list.
+            conflict_index: Stable 0-based index into the FULL conflict report,
+                as returned in the ``index`` field of each item from
+                ``list_conflicts``. Do not pass the position of the item within
+                the filtered ``list_conflicts`` result — those diverge once any
+                earlier conflict is resolved.
             action: Resolution action — ``keep_old``, ``keep_new``,
                 ``keep_both``, ``remove_both``, or ``manual``.
             manual_content: Required when action is ``manual``.
@@ -1295,6 +1310,19 @@ class SdkClient:
             )
 
         conflict = all_conflicts[conflict_index]
+
+        # Defense in depth against a stale / desynced index: refuse to act on a
+        # conflict that is already resolved. Without this, a caller that resolved
+        # by filtered-list position (instead of the stable ``index`` from
+        # list_conflicts) could silently re-run a resolution and delete a memory
+        # that was never the one they selected.
+        if conflict.get("resolved", False):
+            raise ValueError(
+                f"Conflict at index {conflict_index} is already resolved. "
+                "Re-list conflicts and resolve using the 'index' field returned "
+                "by list_conflicts."
+            )
+
         old_id = conflict.get("old_memory_id")
         new_id = conflict.get("new_memory_id")
 
