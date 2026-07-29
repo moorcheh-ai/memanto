@@ -28,6 +28,34 @@ class ScheduleManager:
         self.cli_main = Path(__file__).parent / "main.py"
         self.python_exe = sys.executable
 
+    @staticmethod
+    def _read_crontab() -> str | None:
+        """Read the current user crontab.
+
+        Returns
+        -------
+        str | None
+            The crontab contents, or ``None`` when no crontab exists
+            (the expected empty-crontab condition).
+
+        Raises
+        ------
+        OSError
+            On permissions or command failures that prevent reading.
+        """
+        result = subprocess.run(
+            ["crontab", "-l"], capture_output=True, text=True
+        )
+        # crontab returns exit code 1 when no crontab exists for the user
+        # (crontab: no crontab for <user>), which is not an error.
+        if result.returncode == 0:
+            return result.stdout
+        if result.returncode == 1 and "no crontab" in result.stderr.lower():
+            return None
+        raise OSError(
+            f"crontab -l failed (exit {result.returncode}): {result.stderr.strip()}"
+        )
+
     def _remove_legacy_tasks(self) -> None:
         """Best-effort removal of older task identities so upgrades don't
         leave duplicate nightly jobs running alongside the current one."""
@@ -40,26 +68,35 @@ class ScheduleManager:
                 )
         else:
             try:
-                current_cron = subprocess.run(
-                    ["crontab", "-l"], capture_output=True, text=True
-                ).stdout
-                legacy_markers = [f"# {name}" for name in self.LEGACY_TASK_NAMES]
-                lines = [
-                    line
-                    for line in current_cron.splitlines()
-                    if not any(m in line for m in legacy_markers)
-                ]
-                if len(lines) != len(current_cron.splitlines()):
-                    new_cron = "\n".join(lines).rstrip() + "\n"
+                current_cron = self._read_crontab()
+            except OSError:
+                logger.warning(
+                    "Failed to read crontab for legacy task cleanup.",
+                    exc_info=True,
+                )
+                return
+
+            if current_cron is None:
+                # No crontab exists — nothing to clean.
+                return
+
+            legacy_markers = [f"# {name}" for name in self.LEGACY_TASK_NAMES]
+            lines = [
+                line
+                for line in current_cron.splitlines()
+                if not any(m in line for m in legacy_markers)
+            ]
+            if len(lines) != len(current_cron.splitlines()):
+                new_cron = "\n".join(lines).rstrip() + "\n"
+                try:
                     subprocess.run(
                         ["crontab", "-"], input=new_cron, text=True, check=True
                     )
-            except Exception:
-                logger.warning(
-                    "Failed to remove legacy scheduled tasks. "
-                    "Old task entries may persist in crontab.",
-                    exc_info=True,
-                )
+                except subprocess.CalledProcessError:
+                    logger.warning(
+                        "Failed to install updated crontab after legacy removal.",
+                        exc_info=True,
+                    )
 
     def _command(self) -> str:
         return f'"{self.python_exe}" "{self.cli_main.absolute()}" schedule _run'
