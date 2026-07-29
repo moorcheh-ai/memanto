@@ -50,6 +50,7 @@ from memanto.app.utils.temporal_helpers import (
     END_OF_DAY,
     is_date_only,
     parse_date_only,
+    utc_date_str,
 )
 from memanto.app.utils.validation import (
     CostGuard,
@@ -1079,7 +1080,7 @@ async def generate_daily_summary(
     """
     enforce_session_scope(session, agent_id)
 
-    resolved_date = request.date or datetime.now().strftime("%Y-%m-%d")
+    resolved_date = request.date or utc_date_str()
     _validate_summary_key(agent_id, resolved_date)
     try:
         result = await asyncio.to_thread(
@@ -1111,7 +1112,7 @@ async def generate_conflict_report(
     """
     enforce_session_scope(session, agent_id)
 
-    resolved_date = request.date or datetime.now().strftime("%Y-%m-%d")
+    resolved_date = request.date or utc_date_str()
     _validate_summary_key(agent_id, resolved_date)
     try:
         result = await asyncio.to_thread(
@@ -1146,7 +1147,7 @@ async def list_conflicts(
     # Enforce session scope
     enforce_session_scope(session, agent_id)
 
-    resolved_date = date or datetime.now().strftime("%Y-%m-%d")
+    resolved_date = date or utc_date_str()
     _validate_summary_key(agent_id, resolved_date)
     try:
         conflicts = await asyncio.to_thread(
@@ -1178,7 +1179,7 @@ async def resolve_conflict(
     """
     enforce_session_scope(session, agent_id)
 
-    resolved_date = request.date or datetime.now().strftime("%Y-%m-%d")
+    resolved_date = request.date or utc_date_str()
     _validate_summary_key(agent_id, resolved_date)
     try:
         result = await asyncio.to_thread(

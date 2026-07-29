@@ -1124,9 +1124,19 @@ class TestMEMANTOCLI:
         mock_all_clients.generate_daily_summary.return_value = {
             "summary": {"status": "success", "summary_path": "summary.md"},
         }
-        result = runner.invoke(app, ["daily-summary"])
+        with patch(
+            "memanto.cli.commands.memory.utc_date_str",
+            return_value="2026-07-30",
+        ):
+            result = runner.invoke(app, ["daily-summary"])
+
         assert result.exit_code == 0
         assert "generated" in result.stdout.lower()
+        mock_all_clients.generate_daily_summary.assert_called_once_with(
+            agent_id="test-agent",
+            date="2026-07-30",
+            output_path=None,
+        )
 
     def test_detect_conflicts(self, mock_all_clients):
         """Test 'memanto detect-conflicts'"""

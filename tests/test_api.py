@@ -2,7 +2,7 @@ import json
 import os
 import shutil
 import tempfile
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -2129,6 +2129,53 @@ class TestMEMANTOAPI:
         assert response.status_code == 200
         mock_client.generate_daily_summary.assert_called_once_with(
             self.TEST_AGENT_ID, "2026-06-27", None
+        )
+
+    @pytest.mark.asyncio
+    async def test_daily_summary_api_defaults_to_utc_storage_date(
+        self, client, auth_headers
+    ):
+        """The implicit date must match the UTC-dated session summary filename."""
+        await client.post(
+            "/api/v2/agents",
+            headers=auth_headers,
+            json={"agent_id": self.TEST_AGENT_ID},
+        )
+        activate_resp = await client.post(
+            f"/api/v2/agents/{self.TEST_AGENT_ID}/activate", headers=auth_headers
+        )
+        token = activate_resp.json()["session_token"]
+        headers = {**auth_headers, "X-Session-Token": token}
+
+        class LocalDatetime(datetime):
+            @classmethod
+            def now(cls, tz=None):
+                assert tz is None
+                return cls(2026, 7, 29, 19, 0)
+
+        utc_instant = datetime(2026, 7, 30, 1, 0, tzinfo=timezone.utc)
+        with (
+            patch("memanto.app.routes.memory.datetime", LocalDatetime),
+            patch(
+                "memanto.app.utils.temporal_helpers.utc_now",
+                return_value=utc_instant,
+            ),
+            patch("memanto.app.routes.memory.DirectClient") as mock_client_cls,
+        ):
+            mock_client = mock_client_cls.return_value
+            mock_client.generate_daily_summary.return_value = {
+                "summary": {"status": "success"},
+                "export": {"status": "ok"},
+            }
+            response = await client.post(
+                f"/api/v2/agents/{self.TEST_AGENT_ID}/daily-summary",
+                headers=headers,
+                json={},
+            )
+
+        assert response.status_code == 200
+        mock_client.generate_daily_summary.assert_called_once_with(
+            self.TEST_AGENT_ID, "2026-07-30", None
         )
 
     @pytest.mark.asyncio

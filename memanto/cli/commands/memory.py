@@ -15,7 +15,7 @@ from rich.panel import Panel
 
 from memanto.app.constants import SourceType
 from memanto.app.core import is_valid_source
-from memanto.app.utils.temporal_helpers import get_yesterday_range
+from memanto.app.utils.temporal_helpers import get_yesterday_range, utc_date_str
 from memanto.cli.commands._shared import (
     BOLD_PRIMARY,
     BRIGHT,
@@ -803,7 +803,7 @@ def daily_summary(
 
     # Resolve date
     if not date:
-        date = datetime.now().strftime("%Y-%m-%d")
+        date = utc_date_str()
 
     client = get_client()
 
@@ -880,7 +880,7 @@ def detect_conflicts(
         agent_id = active_agent_id
 
     if not date:
-        date = datetime.now().strftime("%Y-%m-%d")
+        date = utc_date_str()
 
     client = get_client()
 
@@ -953,7 +953,7 @@ def conflicts(
 
     # Resolve date
     if not date:
-        date = datetime.now().strftime("%Y-%m-%d")
+        date = utc_date_str()
 
     client = get_client()
 

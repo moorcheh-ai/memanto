@@ -43,6 +43,7 @@ from memanto.app.utils.errors import (
     SessionExpiredError,
     SessionNotFoundError,
 )
+from memanto.app.utils.temporal_helpers import utc_date_str
 from memanto.app.utils.validation import (
     InputLimits,
     is_successful_write_result,
@@ -1363,7 +1364,7 @@ class DirectClient:
         """
 
         if not date:
-            date = datetime.now().strftime("%Y-%m-%d")
+            date = utc_date_str()
 
         json_path = (
             Path.home() / ".memanto" / "conflicts" / f"{agent_id}_{date}_conflicts.json"
