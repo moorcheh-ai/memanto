@@ -5,6 +5,7 @@ Server-side settings (loaded from .env via pydantic-settings).
 CLI config models have been moved to cli/config/manager.py.
 """
 
+import logging
 import os
 from pathlib import Path
 
@@ -12,6 +13,8 @@ import yaml  # type: ignore[import-untyped]
 from dotenv import load_dotenv
 from pydantic import BaseModel
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+logger = logging.getLogger(__name__)
 
 # Load project .env first, then ~/.memanto/.env for the API key
 load_dotenv()
@@ -57,8 +60,8 @@ if _config_file.exists():
             _backend = _memanto.get("backend")
             if _backend:
                 os.environ["MEMANTO_BACKEND"] = str(_backend)
-    except Exception:
-        pass
+    except Exception as _exc:
+        logger.warning("Failed to load ~/.memanto/config.yaml: %s", _exc)
 
     # On-prem URL lives in ~/.memanto/on-prem/state.json so on-prem onboarding
     # never has to touch the shared cloud yaml.
@@ -74,8 +77,8 @@ if _config_file.exists():
             _op_embed = _state.get("embedding_provider")
             if _op_embed:
                 os.environ["MOORCHEH_ONPREM_EMBEDDING_PROVIDER"] = str(_op_embed)
-    except Exception:
-        pass
+    except Exception as _exc:
+        logger.warning("Failed to load ~/.memanto/on-prem/state.json: %s", _exc)
 
 
 # CLI & YAML Format Models (kept for backward compat with config.yaml structure)

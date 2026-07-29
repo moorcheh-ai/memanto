@@ -17,7 +17,8 @@ Mapping between abstractions
     value["tags"]                     ->  user tags (non-reserved)
     SearchOp.query                    ->  recall query   (``recall_recent`` if ``"*"``)
     SearchOp.filter["type"]           ->  type filter
-    SearchOp.filter["min_confidence"] ->  min_similarity
+    SearchOp.filter["min_similarity"] ->  semantic similarity threshold
+    SearchOp.filter["min_confidence"] ->  memory confidence threshold
 
 Documented limitations
 ----------------------
@@ -40,6 +41,7 @@ import time
 from collections.abc import Iterable
 from datetime import datetime, timezone
 from typing import Any
+from urllib.parse import quote, unquote
 
 from langgraph.store.base import (
     BaseStore,
@@ -56,6 +58,7 @@ from memanto.cli.client.sdk_client import SdkClient
 logger = logging.getLogger(__name__)
 
 _KEY_TAG_PREFIX = "lg:key:"
+_ENCODED_KEY_TAG_PREFIX = "lg:key:v1:"
 _RESERVED_PREFIX = "lg:"
 
 _VALID_MEMORY_TYPES = {
@@ -103,7 +106,7 @@ class MemantoStore(BaseStore):
         self._lock = threading.RLock()
         self._client_pool: dict[str, SdkClient] = {}
         self._agent_prefix = "langgraph_"
-        # (namespace, query, limit, type, min_sim) -> (timestamp, list[SearchItem])
+        # (namespace, query, limit, tags, type, min_sim, min_conf) -> (timestamp, items)
         self._search_cache: dict[tuple, tuple[float, list[SearchItem]]] = {}
         # Survives 429s without flashing the UI panel to zero.
         self._last_good: dict[tuple[str, ...], list[SearchItem]] = {}
@@ -177,7 +180,7 @@ class MemantoStore(BaseStore):
             limit=self._MEMANTO_RECALL_CAP,
         )
         for mem in result.get("memories", []):
-            tags = mem.get("tags") or []
+            tags = self._normalize_tags(mem.get("tags"))
             if all(t in tags for t in required_tags):
                 return self._memory_to_item(mem, op.namespace, op.key)
 
@@ -194,7 +197,7 @@ class MemantoStore(BaseStore):
             return None
 
         for mem in result.get("memories", []):
-            tags = mem.get("tags") or []
+            tags = self._normalize_tags(mem.get("tags"))
             if all(t in tags for t in required_tags):
                 return self._memory_to_item(mem, op.namespace, op.key)
         return None
@@ -230,21 +233,17 @@ class MemantoStore(BaseStore):
         raw_content = value.pop("content", None)
         if raw_content is None:
             raw_content = self._stringify(value)
+        content = str(raw_content)
 
         title = value.pop("title", None)
         if not title:
-            title = raw_content if len(raw_content) <= 80 else raw_content[:77] + "..."
-        title = title[:100]
+            title = content if len(content) <= 80 else content[:77] + "..."
+        title = str(title)[:100]
 
         confidence = float(value.pop("confidence", 0.8))
         confidence = max(0.0, min(1.0, confidence))
 
-        raw_tags = value.pop("tags", []) or []
-        if isinstance(raw_tags, str):
-            raw_tags = [t.strip() for t in raw_tags.split(",") if t.strip()]
-        elif not isinstance(raw_tags, (list, tuple, set)):
-            raw_tags = [str(raw_tags)]
-
+        raw_tags = self._normalize_tags(value.pop("tags", None))
         user_tags = [
             str(t) for t in raw_tags if not str(t).startswith(_RESERVED_PREFIX)
         ]
@@ -255,7 +254,7 @@ class MemantoStore(BaseStore):
             agent_id=agent_id,
             memory_type=memory_type,
             title=title,
-            content=str(raw_content),
+            content=content,
             confidence=confidence,
             tags=all_tags,
             source="langgraph-store",
@@ -276,11 +275,11 @@ class MemantoStore(BaseStore):
     def _do_search(self, op: SearchOp) -> list[SearchItem]:
         """Retrieve memories matching the namespace.
 
-        Uses ``recall_recent`` for wildcard queries (avoids semantic bias
-        when the caller just wants all recent memories in a namespace) and
-        ``recall()`` for actual semantic queries. A single call is made in
-        both cases; namespace isolation is enforced client-side via tag
-        AND-matching after retrieval.
+        Uses ``recall_recent`` for unfiltered wildcard queries (avoids
+        semantic bias when the caller just wants all recent memories in a
+        namespace) and ``recall()`` for semantic or tag-filtered queries. A
+        single call is made in both cases; namespace isolation is enforced
+        by the selected Memanto agent.
         """
         query = op.query or "*"
         filter_dict = op.filter or {}
@@ -288,9 +287,9 @@ class MemantoStore(BaseStore):
         type_filter = filter_dict.get("type") or filter_dict.get("kind")
         if isinstance(type_filter, str):
             type_filter = [type_filter]
-        # SearchOp uses "min_confidence"; SdkClient.recall() uses "min_similarity"
-        min_similarity = filter_dict.get("min_confidence")
-        extra_tags = list(filter_dict.get("tags", []) or [])
+        min_similarity = filter_dict.get("min_similarity")
+        min_confidence = filter_dict.get("min_confidence")
+        extra_tags = self._normalize_tags(filter_dict.get("tags"))
 
         cache_key = (
             op.namespace_prefix,
@@ -299,6 +298,7 @@ class MemantoStore(BaseStore):
             tuple(extra_tags),
             tuple(type_filter) if type_filter else None,
             min_similarity,
+            min_confidence,
         )
         with self._lock:
             cached = self._search_cache.get(cache_key)
@@ -307,13 +307,16 @@ class MemantoStore(BaseStore):
                 if time.time() - ts < self._CACHE_TTL_S:
                     return items
 
-        fetch_limit = max(1, min(op.limit, self._MEMANTO_RECALL_CAP))
+        if min_confidence is not None:
+            fetch_limit = self._MEMANTO_RECALL_CAP
+        else:
+            fetch_limit = max(1, min(op.limit, self._MEMANTO_RECALL_CAP))
         rate_limited = False
 
         client, agent_id = self._ensure_client(op.namespace_prefix)
 
         try:
-            if query == "*" and not min_similarity:
+            if query == "*" and not min_similarity and not extra_tags:
                 # recall_recent: no semantic bias, returns newest memories first
                 result = client.recall_recent(
                     agent_id=agent_id,
@@ -346,8 +349,12 @@ class MemantoStore(BaseStore):
 
         out: list[SearchItem] = []
         for mem in result.get("memories", []):
-            tags = mem.get("tags") or []
+            tags = self._normalize_tags(mem.get("tags"))
             if extra_tags and not all(t in tags for t in extra_tags):
+                continue
+            if min_confidence is not None and not self._passes_min_confidence(
+                mem, min_confidence
+            ):
                 continue
             key = self._tags_to_key(tags) or mem.get("id", "")
             out.append(self._memory_to_search_item(mem, op.namespace_prefix, key))
@@ -413,14 +420,41 @@ class MemantoStore(BaseStore):
 
     @staticmethod
     def _key_to_tag(key: str) -> str:
+        if "," in key:
+            return f"{_ENCODED_KEY_TAG_PREFIX}{quote(key, safe='')}"
         return f"{_KEY_TAG_PREFIX}{key}"
 
     @staticmethod
     def _tags_to_key(tags: list[str]) -> str | None:
         for t in tags:
+            if t.startswith(_ENCODED_KEY_TAG_PREFIX):
+                return unquote(t[len(_ENCODED_KEY_TAG_PREFIX) :])
+        for t in tags:
             if t.startswith(_KEY_TAG_PREFIX):
                 return t[len(_KEY_TAG_PREFIX) :]
         return None
+
+    @staticmethod
+    def _passes_min_confidence(mem: dict[str, Any], min_confidence: Any) -> bool:
+        try:
+            threshold = float(min_confidence)
+        except (TypeError, ValueError):
+            return False
+        try:
+            confidence = float(mem.get("confidence"))
+        except (TypeError, ValueError):
+            return threshold <= 0
+        return confidence >= threshold
+
+    @staticmethod
+    def _normalize_tags(raw: Any) -> list[str]:
+        if raw is None:
+            return []
+        if isinstance(raw, str):
+            return [tag.strip() for tag in raw.split(",") if tag.strip()]
+        if isinstance(raw, (list, tuple, set)):
+            return [str(tag).strip() for tag in raw if str(tag).strip()]
+        return [str(raw).strip()] if str(raw).strip() else []
 
     @staticmethod
     def _stringify(value: dict[str, Any]) -> str:
@@ -464,7 +498,7 @@ class MemantoStore(BaseStore):
 
     @staticmethod
     def _memory_to_value(mem: dict[str, Any]) -> dict[str, Any]:
-        tags = mem.get("tags", []) or []
+        tags = MemantoStore._normalize_tags(mem.get("tags"))
         user_tags = [t for t in tags if not t.startswith(_RESERVED_PREFIX)]
         return {
             "kind": mem.get("type", "fact"),

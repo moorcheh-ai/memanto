@@ -46,6 +46,16 @@ class SummaryVisualizationService:
             Markdown string with visual insights (may be empty if no data).
         """
         memories = self._parse_session_files(agent_id, date, sessions_dir)
+        return self.build_visualization_markdown(memories)
+
+    def build_visualization_markdown(self, memories: list[dict]) -> str:
+        """
+        Build the full "Visual Insights" Markdown block from a list of memory
+        records (``{timestamp, type, title, confidence}``).
+
+        Shared by the per-day daily-summary path and aggregate metrics export.
+        Returns an empty string when there are no memories.
+        """
         if not memories:
             return ""
 

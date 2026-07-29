@@ -97,12 +97,15 @@ Format the output as a Markdown report:
 ...
 """
         try:
-            result = client.answer.generate(
-                namespace=namespace,
-                query=summary_prompt,
-                ai_model=get_active_llm_model(settings.SUMMARY_MODEL),
-                top_k=50,
-            )
+            generate_kwargs: dict[str, Any] = {
+                "namespace": namespace,
+                "query": summary_prompt,
+                "top_k": 50,
+            }
+            ai_model = get_active_llm_model(settings.SUMMARY_MODEL)
+            if ai_model is not None:
+                generate_kwargs["ai_model"] = ai_model
+            result = client.answer.generate(**generate_kwargs)
             summary_text = result.get("answer", "Failed to generate summary.")
         except Exception as e:
             raise MemoryError(f"AI summarization failed: {str(e)}")
@@ -200,12 +203,15 @@ Example response format:
 [{{"type": "contradiction", "title": "Database preference changed", "old_memory_id": "abc-123", "old_content": "We use PostgreSQL", "new_memory_id": "def-456", "new_content": "We migrated to MongoDB", "description": "New memory contradicts old database preference", "recommendation": "keep_new"}}]
 """
         try:
-            result = client.answer.generate(
-                namespace=namespace,
-                query=conflict_prompt,
-                ai_model=get_active_llm_model(settings.SUMMARY_MODEL),
-                top_k=50,
-            )
+            generate_kwargs = {
+                "namespace": namespace,
+                "query": conflict_prompt,
+                "top_k": 50,
+            }
+            ai_model = get_active_llm_model(settings.SUMMARY_MODEL)
+            if ai_model is not None:
+                generate_kwargs["ai_model"] = ai_model
+            result = client.answer.generate(**generate_kwargs)
             conflict_text = result.get("answer", "[]")
         except Exception as e:
             raise MemoryError(f"Conflict detection failed: {str(e)}")

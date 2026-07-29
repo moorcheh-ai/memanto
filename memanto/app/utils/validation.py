@@ -228,3 +228,31 @@ def validate_output_path(
             ),
         )
     return resolved
+
+
+_SUCCESSFUL_WRITE_STATUSES = {"queued", "success", "ok"}
+
+
+def is_successful_write_result(item: object) -> bool:
+    """Check if a Moorcheh API response represents a successful write."""
+    return (
+        isinstance(item, dict)
+        and str(item.get("status", "")).lower() in _SUCCESSFUL_WRITE_STATUSES
+    )
+
+
+def validate_recall_limit(limit: int) -> None:
+    """Reject recall/temporal-recall limits outside [1, InputLimits.MAX_K].
+
+    Shared by DirectClient, SdkClient, and ConfigManager.set_recall_config so
+    the same bound is enforced everywhere a caller-supplied recall limit is
+    accepted, rather than each keeping its own copy of the check.
+    """
+    if (
+        isinstance(limit, bool)
+        or not isinstance(limit, int)
+        or not 1 <= limit <= InputLimits.MAX_K
+    ):
+        raise ValueError(
+            f"Limit must be an integer between 1 and {InputLimits.MAX_K}, got {limit}"
+        )

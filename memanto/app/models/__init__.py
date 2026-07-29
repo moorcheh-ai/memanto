@@ -5,9 +5,30 @@ MEMANTO API Models
 from datetime import datetime
 from typing import Any, Literal
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import (
+    BaseModel,
+    Field,
+    field_validator,
+    model_validator,
+)
 
-from memanto.app.constants import MemoryType, SourceType, StatusType
+from memanto.app.constants import (
+    VALID_PROVENANCE_TYPES,
+    MemoryType,
+    SourceType,
+    StatusType,
+)
+from memanto.app.core import (
+    BoundedSourceRef,
+    BoundedTags,
+)
+
+
+def _validate_non_blank_content(value: str) -> str:
+    """Reject whitespace-only memory content before it reaches storage."""
+    if not value.strip():
+        raise ValueError("Memory content must be a non-empty string")
+    return value
 
 
 # Request Models
@@ -20,11 +41,17 @@ class MemoryStoreRequest(BaseModel):
     agent_id: str
     actor_id: str
     source: SourceType
-    source_ref: str | None = None
+    source_ref: BoundedSourceRef | None = None
     confidence: float = Field(ge=0.0, le=1.0, default=0.8)
-    tags: list[str] = Field(default_factory=list)
-    ttl_seconds: int | None = None
+    tags: BoundedTags = Field(default_factory=list)
+    ttl_seconds: int | None = Field(default=None, gt=0)
     user_confirmed: bool = False
+
+    @field_validator("content")
+    @classmethod
+    def validate_content(cls, value: str) -> str:
+        """Ensure stored memories contain useful non-blank content."""
+        return _validate_non_blank_content(value)
 
 
 class MemoryBatchItem(BaseModel):
@@ -34,11 +61,17 @@ class MemoryBatchItem(BaseModel):
     title: str = Field(max_length=100)
     content: str = Field(max_length=10000)
     source: SourceType
-    source_ref: str | None = None
+    source_ref: BoundedSourceRef | None = None
     confidence: float = Field(ge=0.0, le=1.0, default=0.8)
-    tags: list[str] = Field(default_factory=list)
-    ttl_seconds: int | None = None
+    tags: BoundedTags = Field(default_factory=list)
+    ttl_seconds: int | None = Field(default=None, gt=0)
     id: str | None = None  # Optional custom ID
+
+    @field_validator("content")
+    @classmethod
+    def validate_content(cls, value: str) -> str:
+        """Ensure batch memory items contain useful non-blank content."""
+        return _validate_non_blank_content(value)
 
 
 class MemoryBatchWriteRequest(BaseModel):
@@ -64,12 +97,28 @@ class BatchRememberItem(BaseModel):
         None, max_length=100, description="Memory title (defaults to truncated content)"
     )
     confidence: float = Field(0.8, ge=0.0, le=1.0, description="Confidence score (0-1)")
-    tags: list[str] | None = Field(None, description="Tags for this memory")
-    source: str = Field("agent", description="Source of memory")
+    tags: BoundedTags | None = Field(None, description="Tags for this memory")
+    source: SourceType = Field("agent", description="Source of memory")
     provenance: str = Field(
         "explicit_statement",
         description="How memory was obtained (explicit_statement, inferred, observed, etc.)",
     )
+
+    @field_validator("content")
+    @classmethod
+    def validate_content(cls, value: str) -> str:
+        """Ensure session memory writes contain useful non-blank content."""
+        return _validate_non_blank_content(value)
+
+    @field_validator("provenance")
+    @classmethod
+    def provenance_must_be_valid(cls, value: str) -> str:
+        if value not in VALID_PROVENANCE_TYPES:
+            valid_provenance = ", ".join(sorted(VALID_PROVENANCE_TYPES))
+            raise ValueError(
+                f"Invalid provenance '{value}'. Must be one of: {valid_provenance}."
+            )
+        return value
 
 
 class RememberRequest(BatchRememberItem):
@@ -92,6 +141,22 @@ class ConversationMessage(BaseModel):
 
     role: str = Field(..., min_length=1, max_length=50)
     content: str = Field(..., min_length=1, max_length=10000)
+
+    @field_validator("role")
+    @classmethod
+    def role_must_not_be_blank(cls, value: str) -> str:
+        """Reject message roles that contain only whitespace."""
+        if not value.strip():
+            raise ValueError("role must be a non-empty string")
+        return value
+
+    @field_validator("content")
+    @classmethod
+    def content_must_not_be_blank(cls, value: str) -> str:
+        """Reject message content that contains only whitespace."""
+        if not value.strip():
+            raise ValueError("content must be a non-empty string")
+        return value
 
 
 class ExtractMemoriesRequest(BaseModel):
@@ -170,6 +235,14 @@ class AnswerRequest(BaseModel):
         None, description="AI model to use for generating the answer"
     )
     kiosk_mode: bool = Field(False, description="Kiosk mode setting")
+
+    @field_validator("question")
+    @classmethod
+    def question_must_not_be_blank(cls, value: str) -> str:
+        """Reject questions that contain only whitespace."""
+        if not value.strip():
+            raise ValueError("question must be a non-empty string")
+        return value
 
 
 class MemoryUpdateRequest(BaseModel):

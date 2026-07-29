@@ -1,33 +1,35 @@
 #!/usr/bin/env node
-// Fetch the latest OpenAPI spec from a running memanto server and write it
-// to ./openapi.json so codegen runs against the committed baseline.
+// Regenerate ./openapi.json the same way CI's drift check does: run
+// scripts/generate_openapi.py at the repo root via uv. This must match
+// CI exactly (down to the pinned version fallback) or the openapi-drift
+// check will fail on every PR regardless of what actually changed.
 //
 // Usage:
-//   node scripts/fetch-openapi.mjs [--url http://localhost:8000]
-//   MEMANTO_OPENAPI_URL=... node scripts/fetch-openapi.mjs
+//   node scripts/fetch-openapi.mjs
 
+import { spawnSync } from "node:child_process";
 import { writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 
-const argUrl = process.argv.find((a) => a.startsWith("--url="));
-const url =
-  (argUrl && argUrl.slice("--url=".length)) ||
-  process.env.MEMANTO_OPENAPI_URL ||
-  "http://localhost:8000/openapi.json";
-
+const repoRoot = resolve(process.cwd(), "..", "..");
 const out = resolve(process.cwd(), "openapi.json");
 
-try {
-  const res = await fetch(url);
-  if (!res.ok) {
-    console.error(`Failed to fetch ${url}: HTTP ${res.status}`);
-    process.exit(1);
-  }
-  const spec = await res.json();
-  writeFileSync(out, JSON.stringify(spec, null, 2) + "\n");
-  console.log(`Wrote ${out}`);
-} catch (err) {
-  console.error(`Failed to fetch OpenAPI from ${url}: ${err.message}`);
-  console.error("Hint: start the server with `uvx memanto serve` first.");
+const result = spawnSync(
+  "uv",
+  ["run", "python", "scripts/generate_openapi.py"],
+  { cwd: repoRoot, encoding: "utf-8" },
+);
+
+if (result.error) {
+  console.error(`Failed to run uv: ${result.error.message}`);
+  console.error("Hint: install uv (https://docs.astral.sh/uv/) and run `uv sync --all-extras --dev` first.");
   process.exit(1);
 }
+
+if (result.status !== 0) {
+  console.error(result.stderr);
+  process.exit(result.status ?? 1);
+}
+
+writeFileSync(out, result.stdout);
+console.log(`Wrote ${out}`);
