@@ -1147,9 +1147,18 @@ class TestMEMANTOCLI:
                 "json_path": "conflicts.json",
             },
         }
-        result = runner.invoke(app, ["detect-conflicts"])
+        with patch(
+            "memanto.cli.commands.memory.utc_date_str",
+            return_value="2026-07-30",
+        ):
+            result = runner.invoke(app, ["detect-conflicts"])
+
         assert result.exit_code == 0
         assert "conflict report generated" in result.stdout.lower()
+        mock_all_clients.generate_conflict_report.assert_called_once_with(
+            agent_id="test-agent",
+            date="2026-07-30",
+        )
 
     def test_conflicts_list(self, mock_all_clients):
         """Test 'memanto conflicts --list'"""
@@ -1162,9 +1171,47 @@ class TestMEMANTOCLI:
                 "recommendation": "merge",
             }
         ]
-        result = runner.invoke(app, ["conflicts", "--list"])
+        with patch(
+            "memanto.cli.commands.memory.utc_date_str",
+            return_value="2026-07-30",
+        ):
+            result = runner.invoke(app, ["conflicts", "--list"])
+
         assert result.exit_code == 0
         assert "Found 1 unresolved conflict" in result.stdout
+        mock_all_clients.list_conflicts.assert_called_once_with(
+            agent_id="test-agent",
+            date="2026-07-30",
+        )
+
+    def test_schedule_run_defaults_to_utc_storage_date(self, mock_all_clients):
+        """The local-time scheduler must target the UTC session-file bucket."""
+        mock_all_clients.generate_daily_summary.return_value = {
+            "summary": {"status": "success", "summary_path": "summary.md"}
+        }
+        mock_all_clients.generate_conflict_report.return_value = {
+            "conflicts": {
+                "status": "success",
+                "conflict_count": 0,
+                "json_path": "conflicts.json",
+            }
+        }
+
+        with patch(
+            "memanto.cli.commands.schedule.utc_date_str",
+            return_value="2026-07-30",
+        ):
+            result = runner.invoke(app, ["schedule", "_run"])
+
+        assert result.exit_code == 0
+        mock_all_clients.generate_daily_summary.assert_called_once_with(
+            agent_id="test-agent",
+            date="2026-07-30",
+        )
+        mock_all_clients.generate_conflict_report.assert_called_once_with(
+            agent_id="test-agent",
+            date="2026-07-30",
+        )
 
     def test_memory_export(self, mock_all_clients):
         """Test 'memanto memory export'"""

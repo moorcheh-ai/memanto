@@ -2179,6 +2179,92 @@ class TestMEMANTOAPI:
         )
 
     @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        (
+            "method",
+            "path",
+            "payload",
+            "client_method",
+            "client_result",
+            "expected_args",
+        ),
+        [
+            (
+                "POST",
+                "conflicts/generate",
+                {},
+                "generate_conflict_report",
+                {"conflicts": {"status": "success"}},
+                ("2026-07-30",),
+            ),
+            (
+                "GET",
+                "conflicts",
+                None,
+                "list_conflicts",
+                [],
+                ("2026-07-30",),
+            ),
+            (
+                "POST",
+                "conflicts/resolve",
+                {"conflict_index": 0, "action": "keep_new"},
+                "resolve_conflict",
+                {"status": "resolved"},
+                ("2026-07-30", 0, "keep_new", None, None),
+            ),
+        ],
+    )
+    async def test_conflict_apis_default_to_utc_storage_date(
+        self,
+        client,
+        auth_headers,
+        method,
+        path,
+        payload,
+        client_method,
+        client_result,
+        expected_args,
+    ):
+        """Every implicit conflict date must use the UTC session-file bucket."""
+        await client.post(
+            "/api/v2/agents",
+            headers=auth_headers,
+            json={"agent_id": self.TEST_AGENT_ID},
+        )
+        activate_resp = await client.post(
+            f"/api/v2/agents/{self.TEST_AGENT_ID}/activate", headers=auth_headers
+        )
+        token = activate_resp.json()["session_token"]
+        headers = {**auth_headers, "X-Session-Token": token}
+
+        class LocalDatetime(datetime):
+            @classmethod
+            def now(cls, tz=None):
+                assert tz is None
+                return cls(2026, 7, 29, 19, 0)
+
+        utc_instant = datetime(2026, 7, 30, 1, 0, tzinfo=timezone.utc)
+        with (
+            patch("memanto.app.routes.memory.datetime", LocalDatetime),
+            patch(
+                "memanto.app.utils.temporal_helpers.utc_now",
+                return_value=utc_instant,
+            ),
+            patch("memanto.app.routes.memory.DirectClient") as mock_client_cls,
+        ):
+            mocked_method = getattr(mock_client_cls.return_value, client_method)
+            mocked_method.return_value = client_result
+            url = f"/api/v2/agents/{self.TEST_AGENT_ID}/{path}"
+            if method == "GET":
+                response = await client.get(url, headers=headers)
+            else:
+                response = await client.post(url, headers=headers, json=payload)
+
+        assert response.status_code == 200
+        mocked_method.assert_called_once_with(self.TEST_AGENT_ID, *expected_args)
+
+    @pytest.mark.asyncio
     async def test_daily_summary_api_rejects_traversal_date(self, client, auth_headers):
         """The session API must reject dates that would escape summary filenames."""
         await client.post(
