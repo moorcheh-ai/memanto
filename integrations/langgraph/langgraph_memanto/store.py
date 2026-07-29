@@ -30,6 +30,9 @@ Documented limitations
 * **_do_get** is best-effort: uses ``recall_recent`` (unbiased by query)
   up to the 100-result cap, then a semantic fallback. A key stored long
   ago beyond the cap window may not be found.
+* **Cross-process puts** rely on backend coordination. This adapter serializes
+  puts for the same key within one ``MemantoStore`` instance, including
+  concurrent ``abatch`` calls, but cannot make separate processes atomic.
 """
 
 from __future__ import annotations
@@ -161,7 +164,7 @@ class MemantoStore(BaseStore):
     # GET                                                                #
     # ------------------------------------------------------------------ #
 
-    def _do_get(self, op: GetOp) -> Item | None:
+    def _do_get(self, op: GetOp, *, strict: bool = False) -> Item | None:
         """Lookup a single memory by key.
 
         Uses ``recall_recent`` first (no semantic bias) so the target memory
@@ -191,6 +194,10 @@ class MemantoStore(BaseStore):
                 tags=[key_tag],
             )
         except Exception as exc:
+            if strict:
+                raise RuntimeError(
+                    f"Cannot safely determine whether key {op.key!r} exists"
+                ) from exc
             logger.warning("MemantoStore._do_get fallback recall failed: %s", exc)
             return None
 
@@ -248,23 +255,44 @@ class MemantoStore(BaseStore):
         all_tags = user_tags + [self._key_to_tag(op.key)]
 
         client, agent_id = self._ensure_client(op.namespace)
-        client.remember(
-            agent_id=agent_id,
-            memory_type=memory_type,
-            title=title,
-            content=content,
-            confidence=confidence,
-            tags=all_tags,
-            source="langgraph-store",
-            provenance="explicit_statement",
+        existing = self._do_get(
+            GetOp(namespace=op.namespace, key=op.key), strict=True
         )
+        existing_id = existing.value.get("memory_id") if existing else None
+
+        if existing_id:
+            updates: dict[str, Any] = {
+                "title": title,
+                "content": str(raw_content),
+                "confidence": confidence,
+                "tags": all_tags,
+                "source": "langgraph-store",
+            }
+            if memory_type is not None:
+                updates["type"] = memory_type
+            client.update_memory(
+                agent_id=agent_id,
+                memory_id=str(existing_id),
+                updates=updates,
+            )
+        else:
+            client.remember(
+                agent_id=agent_id,
+                memory_type=memory_type,
+                title=title,
+                content=str(raw_content),
+                confidence=confidence,
+                tags=all_tags,
+                source="langgraph-store",
+                provenance="explicit_statement",
+            )
 
         # Invalidate cached searches for this namespace
         prefix = op.namespace
         with self._lock:
             self._search_cache = {
-                k: v for k, v in self._search_cache.items() if k[0] != prefix
-            }
+                    k: v for k, v in self._search_cache.items() if k[0] != prefix
+                }
 
     # ------------------------------------------------------------------ #
     # SEARCH                                                             #
