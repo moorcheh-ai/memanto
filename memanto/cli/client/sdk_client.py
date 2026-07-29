@@ -12,6 +12,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, cast
 
+from memanto.app.config import get_data_dir
 from memanto.app.constants import (
     ALLOWED_UPDATE_FIELDS as _ALLOWED_UPDATE_FIELDS,
 )
@@ -1448,9 +1449,20 @@ class SdkClient:
             (``"cache"``, ``"fresh"``, or ``"stale-cache"`` if a refresh
             failed and a previous export was reused instead).
         """
-        cache_path = Path.home() / ".memanto" / "exports" / f"{agent_id}_memory.md"
+        cache_path = get_data_dir() / "exports" / f"{agent_id}_memory.md"
         target_path = Path(project_dir) / "MEMORY.md"
         target_path.parent.mkdir(parents=True, exist_ok=True)
+
+        if cache_path.exists():
+            # Fast path: copy cached export without an API-backed refresh.
+            shutil.copy2(str(cache_path), str(target_path))
+            content = cache_path.read_text(encoding="utf-8")
+            mem_count = content.count("### ")
+            return {
+                "output_path": str(target_path.resolve()),
+                "total_memories": mem_count,
+                "source": "cache",
+            }
 
         try:
             # Run export function first (ensures ~/.memanto/exports/... is fresh)
@@ -1469,9 +1481,9 @@ class SdkClient:
                 }
             raise
 
-        if cache_path.exists():
-            # Copy freshly updated cache to project
-            shutil.copy2(str(cache_path), str(target_path))
+        exported_path = Path(export_result["output_path"])
+        if exported_path.exists():
+            shutil.copy2(str(exported_path), str(target_path))
 
         return {
             "output_path": str(target_path.resolve()),

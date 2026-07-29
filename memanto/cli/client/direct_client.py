@@ -15,6 +15,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, cast
 
+from memanto.app.config import get_data_dir
 from memanto.app.constants import (
     ALLOWED_UPDATE_FIELDS as _ALLOWED_UPDATE_FIELDS,
 )
@@ -1537,7 +1538,7 @@ class DirectClient:
         Args:
             agent_id: Target agent.
             output_path: Custom output path. Defaults to
-                ``~/.memanto/exports/{agent_id}_memory.md``.
+                the active backend's export directory.
             limit_per_type: Max memories per type (default 25).
 
         Returns:
@@ -1576,8 +1577,9 @@ class DirectClient:
         """
         Sync agent memories to a project directory's MEMORY.md.
 
-        Always refreshes the export first so project-local ``MEMORY.md`` files
-        cannot silently lag behind newly written memories.
+        Uses the cached export in the active backend's data directory
+        when available. Falls back to a fresh export if
+        the cache file does not exist.
 
         Args:
             agent_id: Target agent.
@@ -1589,8 +1591,20 @@ class DirectClient:
             (``"cache"`` or ``"fresh"``).
         """
 
+        cache_path = get_data_dir() / "exports" / f"{agent_id}_memory.md"
         target_path = Path(project_dir) / "MEMORY.md"
         target_path.parent.mkdir(parents=True, exist_ok=True)
+
+        if cache_path.exists():
+            # Fast path: copy cached export without an API-backed refresh.
+            shutil.copy2(str(cache_path), str(target_path))
+            content = cache_path.read_text(encoding="utf-8")
+            mem_count = content.count("### ")
+            return {
+                "output_path": str(target_path.resolve()),
+                "total_memories": mem_count,
+                "source": "cache",
+            }
 
         logger.debug("Refreshing memory export before syncing '%s'", agent_id)
         export_result = self.export_memory_md(
