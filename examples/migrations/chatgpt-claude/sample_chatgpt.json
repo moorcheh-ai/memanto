@@ -1,0 +1,41 @@
+{
+  "conversations": [
+    {
+      "title": "Project Brainstorming",
+      "create_time": 1722280000,
+      "id": "conv-1234",
+      "mapping": {
+        "node-1": {
+          "id": "node-1",
+          "message": {
+            "id": "msg-1",
+            "author": {
+              "role": "user"
+            },
+            "create_time": 1722280005,
+            "content": {
+              "parts": [
+                "I'm planning a new Python project for autonomous agents."
+              ]
+            }
+          }
+        },
+        "node-2": {
+          "id": "node-2",
+          "message": {
+            "id": "msg-2",
+            "author": {
+              "role": "assistant"
+            },
+            "create_time": 1722280010,
+            "content": {
+              "parts": [
+                "That sounds exciting! Let's start by mapping out the architecture. What frameworks are you considering?"
+              ]
+            }
+          }
+        }
+      }
+    }
+  ]
+}

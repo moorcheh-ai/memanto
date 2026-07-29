@@ -120,7 +120,7 @@ _PROVIDER_BUNDLES: dict[str, dict[str, Any]] = {
     "claude": {
         "label": "Claude",
         "exporter": lambda *args, **kwargs: None, # Live export not supported, requires JSON upload
-        "metrics": lambda export: {"total_memories": len(export.get("conversations", []))}, # Stub metric
+        "metrics": lambda export: {"total_memories": len(export if isinstance(export, list) else export.get("conversations", []))}, # Stub metric
         "prompt": lambda metrics: "",
         "report": lambda **kwargs: "Claude migration complete.",
         "export_filename": "conversations.json",
@@ -264,7 +264,7 @@ def _render_savings_report(
         export_path=str(export_path),
         llm_model=llm_model,
         llm_method=llm_method,
-        exported_at=export.get("exported_at"),
+        exported_at=export.get("exported_at") if isinstance(export, dict) else None,
     )
     report_path = run_dir / "migrate-report.md"
     report_path.write_text(report_md, encoding="utf-8")

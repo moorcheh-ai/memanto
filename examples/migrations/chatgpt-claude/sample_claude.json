@@ -1,0 +1,22 @@
+[
+  {
+    "uuid": "conv-5678",
+    "name": "Data Analysis Script",
+    "created_at": "2024-05-15T12:00:00Z",
+    "updated_at": "2024-05-15T12:10:00Z",
+    "chat_messages": [
+      {
+        "uuid": "msg-3",
+        "text": "I need a Python script to analyze CSV files.",
+        "sender": "human",
+        "created_at": "2024-05-15T12:01:00Z"
+      },
+      {
+        "uuid": "msg-4",
+        "text": "Certainly! Pandas is a great library for this. Here's a quick example...",
+        "sender": "assistant",
+        "created_at": "2024-05-15T12:02:00Z"
+      }
+    ]
+  }
+]
