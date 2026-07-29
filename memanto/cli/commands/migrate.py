@@ -696,6 +696,11 @@ def migrate_chatgpt(
         "--dry-run",
         help="Preview the mapping and savings report without writing.",
     ),
+    report: bool = typer.Option(
+        False,
+        "--report",
+        help="Also write the token/latency/storage savings report on a real run.",
+    ),
 ):
     """Migrate a ChatGPT conversations export into Memanto."""
     _run_migrate_flow(
@@ -704,7 +709,7 @@ def migrate_chatgpt(
         file=file,
         agent=agent,
         dry_run=dry_run,
-        report=False,
+        report=report,
     )
 
 
@@ -727,6 +732,11 @@ def migrate_claude(
         "--dry-run",
         help="Preview the mapping and savings report without writing.",
     ),
+    report: bool = typer.Option(
+        False,
+        "--report",
+        help="Also write the token/latency/storage savings report on a real run.",
+    ),
 ):
     """Migrate a Claude conversations export into Memanto."""
     _run_migrate_flow(
@@ -735,5 +745,5 @@ def migrate_claude(
         file=file,
         agent=agent,
         dry_run=dry_run,
-        report=False,
+        report=report,
     )
