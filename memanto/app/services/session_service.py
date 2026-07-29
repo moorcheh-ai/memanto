@@ -25,6 +25,7 @@ from memanto.app.models.session import (
     SessionSummary,
     SessionToken,
 )
+from memanto.app.utils.atomic_write import atomic_write_text
 from memanto.app.utils.errors import (
     InvalidSessionTokenError,
     SessionExpiredError,
@@ -63,13 +64,14 @@ class SessionService:
             sessions_dir: Directory for session storage (defaults to ~/.memanto/sessions/)
         """
         self.sessions_dir = sessions_dir or get_data_dir() / "sessions"
-        self.sessions_dir.mkdir(parents=True, exist_ok=True)
-        resolved_secret_key = (
-            secret_key
-            or settings.MEMANTO_SECRET_KEY
-            or self._generate_secure_secret_key()
-        )
-        self.secret_key: str = resolved_secret_key
+        self._secret_key: str | None = secret_key or settings.MEMANTO_SECRET_KEY or None
+
+    @property
+    def secret_key(self) -> str:
+        """JWT signing key, generated only when token operations need it."""
+        if self._secret_key is None:
+            self._secret_key = self._generate_secure_secret_key()
+        return self._secret_key
 
     def _generate_secure_secret_key(self) -> str:
         """Generate (or reuse) a persisted fallback secret for JWT signing.
@@ -84,6 +86,7 @@ class SessionService:
         treated as absent and rewritten.
         """
         secret_file = self.sessions_dir.parent / "secret_key"
+        secret_file.parent.mkdir(parents=True, exist_ok=True)
         existing = self._read_persisted_secret(secret_file)
         if existing is not None:
             return existing
@@ -385,8 +388,10 @@ class SessionService:
         """Save session to file"""
         validate_safe_id(session.agent_id, "agent_id")
         session_file = self.sessions_dir / f"{session.agent_id}.json"
-        with open(session_file, "w") as f:
-            json.dump(session.model_dump(mode="json"), f, indent=2)
+        atomic_write_text(
+            session_file,
+            json.dumps(session.model_dump(mode="json"), indent=2),
+        )
 
     def _load_session_file(self, session_file: Path) -> Session | None:
         """Load one session file, treating corrupt local state as absent."""
@@ -427,6 +432,7 @@ class SessionService:
         summary_file = (
             self.sessions_dir / f"{agent_id}_{date_str}_{session_id}_summary.md"
         )
+        self.sessions_dir.mkdir(parents=True, exist_ok=True)
 
         # Determine if we need to write the header
         write_header = not summary_file.exists()
@@ -489,6 +495,7 @@ class SessionService:
         summary_file = (
             self.sessions_dir / f"{agent_id}_{date_str}_{session_id}_summary.md"
         )
+        self.sessions_dir.mkdir(parents=True, exist_ok=True)
 
         write_header = not summary_file.exists()
 
@@ -506,6 +513,7 @@ class SessionService:
     def _set_active_session(self, agent_id: str) -> None:
         """Mark session as active"""
         validate_safe_id(agent_id, "agent_id")
+        self.sessions_dir.mkdir(parents=True, exist_ok=True)
         active_link = self.sessions_dir / "active"
 
         # Remove existing active link

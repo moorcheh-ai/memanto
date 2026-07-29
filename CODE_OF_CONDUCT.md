@@ -40,7 +40,7 @@ Community leaders have the right and responsibility to remove, edit, or reject c
 
 ## Scope
 
-This Code of Conduct applies in all community spaces — including the GitHub repository, Discord server, documentation, social media, and any official communication channels — and also applies when an individual is officially representing the project or community in public spaces.
+This Code of Conduct applies in all community spaces — including the GitHub repository, Discord server, Reddit community, documentation, social media, and any official communication channels — and also applies when an individual is officially representing the project or community in public spaces.
 
 ---
 

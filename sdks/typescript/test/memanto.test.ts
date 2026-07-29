@@ -1,6 +1,9 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { createServer, type Server, type IncomingMessage } from "node:http";
 import { AddressInfo } from "node:net";
+import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { join } from "node:path";
+import { tmpdir } from "node:os";
 import { Memanto } from "../src/index.js";
 
 interface Recorded {
@@ -80,6 +83,16 @@ function startFakeApi(agentId = "test-agent"): Promise<{
             query: "anything",
             memories: [],
             count: 0,
+          });
+        if (
+          url === `/api/v2/agents/${encodedAgentId}/upload-file` &&
+          req.method === "POST"
+        )
+          return reply(200, {
+            agent_id: agentId,
+            session_id: "sess-1",
+            status: "queued",
+            file_name: "notes.txt",
           });
         return reply(404, { detail: "unknown route" });
       });
@@ -175,6 +188,35 @@ describe("Memanto", () => {
       "GET /api/v2/status",
     ]);
     expect(api.recorded[0]?.headers["x-session-token"]).toBeUndefined();
+  });
+
+  it("streams file uploads with session authentication", async () => {
+    const api = await startFakeApi();
+    cleanupFns.push(api.close);
+
+    const dir = await mkdtemp(join(tmpdir(), "memanto-sdk-"));
+    cleanupFns.push(() => rm(dir, { recursive: true, force: true }));
+    const path = join(dir, "notes.txt");
+    await writeFile(path, "hello upload");
+
+    const m = new Memanto({ agentId: "test-agent", baseUrl: api.url });
+    cleanupFns.push(() => m.close());
+
+    const res = await m.uploadFile({ path });
+    expect(res).toMatchObject({ status: "queued", file_name: "notes.txt" });
+
+    const upload = api.recorded.find((r) =>
+      r.url.endsWith("/upload-file"),
+    );
+    expect(upload?.headers["x-session-token"]).toBe("fake-token");
+    expect(upload?.headers["content-type"]).toContain(
+      "multipart/form-data; boundary=",
+    );
+    expect(upload?.headers["content-length"]).toBe(
+      String(Buffer.byteLength(upload?.body ?? "")),
+    );
+    expect(upload?.body).toContain('name="file"; filename="notes.txt"');
+    expect(upload?.body).toContain("hello upload");
   });
 
   it("rejects empty agentId", () => {

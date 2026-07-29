@@ -12,7 +12,7 @@ def make_memory(content: str, memory_type: MemoryType | None = None) -> MemoryRe
         type=memory_type or "fact",
         title="test",
         actor_id="user",
-        source="test",
+        source="system",
         agent_id="test",
     )
     if memory_type is None:
@@ -190,3 +190,23 @@ def test_fuzzy_fallback_does_not_fire_on_unrelated_text():
     parser.parse_memory(memory)
 
     assert memory.type == "fact"
+
+
+def test_ambiguity_guard_and_fuzzy_fallback_interactions():
+    parser = MemoryParsingService()
+
+    cases = {
+        # "is" should no longer bypass the fuzzy fallback for typos
+        "The project uses Django and it is maintained, and we decded on Postgres": "decision",
+        # Strong fact patterns should still classify as fact
+        "The API endpoint is called /v1/search and it was enabled last week": "fact",
+        # Bare auxiliary alone falls back correctly to decision due to fuzzy matching
+        "It is nice and we decded on the new plan": "decision",
+        # High confidence fact patterns are unaffected
+        "The database port is 5432": "fact",
+    }
+
+    for content, expected_type in cases.items():
+        memory = make_memory(content)
+        parser.parse_memory(memory)
+        assert memory.type == expected_type
