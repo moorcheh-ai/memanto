@@ -16,6 +16,7 @@ from urllib.parse import urlsplit, urlunsplit
 from dotenv import load_dotenv, set_key
 
 from memanto.app.clients.backend import Backend, parse_backend
+from memanto.app.utils.atomic_write import atomic_write_text
 from memanto.app.utils.validation import validate_recall_limit
 from memanto.cli.schedule_time import normalize_schedule_time
 
@@ -255,10 +256,9 @@ class ConfigManager:
     def set_onprem_state(self, **updates) -> None:
         """Merge ``updates`` into the on-prem state.json (creates dir if needed)."""
         p = self._onprem_state_path()
-        p.parent.mkdir(parents=True, exist_ok=True)
         data = self.get_onprem_state()
         data.update({k: v for k, v in updates.items() if v is not None})
-        p.write_text(json.dumps(data, indent=2))
+        atomic_write_text(p, json.dumps(data, indent=2))
 
     def get_onprem_config(self) -> dict:
         """Get on-prem config dict (url, embedding_provider, llm_model, ...).
@@ -578,15 +578,10 @@ class ConfigManager:
 
     def _save_connections(self, data: dict) -> None:
         """Atomically write the connections registry."""
-        self.config_dir.mkdir(parents=True, exist_ok=True)
-        tmp = self.connections_file.with_suffix(".json.tmp")
-        with open(tmp, "w", encoding="utf-8") as f:
-            json.dump(data, f, indent=2, sort_keys=True)
-        os.replace(tmp, self.connections_file)
-        try:
-            self.connections_file.chmod(0o600)
-        except OSError:
-            pass
+        atomic_write_text(
+            self.connections_file,
+            json.dumps(data, indent=2, sort_keys=True),
+        )
 
     def add_connection(
         self, agent_name: str, project_dir: str | None, is_global: bool

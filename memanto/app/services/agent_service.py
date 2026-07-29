@@ -16,6 +16,7 @@ from memanto.app.clients.moorcheh import get_moorcheh_client
 from memanto.app.config import get_data_dir
 from memanto.app.core import agent_namespace
 from memanto.app.models.session import AgentCreate, AgentInfo, AgentList
+from memanto.app.utils.atomic_write import atomic_write_text
 from memanto.app.utils.errors import AgentAlreadyExistsError, AgentNotFoundError
 from memanto.app.utils.temporal_helpers import as_utc_aware
 from memanto.app.utils.validation import validate_safe_id
@@ -221,10 +222,11 @@ class AgentService:
 
     def _save_agent(self, agent: AgentInfo) -> None:
         """Save agent metadata to file"""
-        self.agents_dir.mkdir(parents=True, exist_ok=True)
         agent_file = self._get_agent_file(agent.agent_id)
-        with open(agent_file, "w") as f:
-            json.dump(agent.model_dump(mode="json"), f, indent=2)
+        atomic_write_text(
+            agent_file,
+            json.dumps(agent.model_dump(mode="json"), indent=2),
+        )
 
     def _load_agent_file(self, agent_file: Path) -> AgentInfo | None:
         """Load one agent metadata file. Raises exception if file is corrupted."""

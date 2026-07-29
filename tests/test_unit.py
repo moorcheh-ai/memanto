@@ -1539,3 +1539,31 @@ def test_direct_sync_refreshes_cached_export_before_copy(tmp_path, monkeypatch):
         "total_memories": 2,
         "source": "fresh",
     }
+
+def test_onprem_state_survives_interrupted_replace(tmp_path):
+    """An interrupted state replacement must preserve the previous file."""
+    from memanto.cli.config.manager import ConfigManager
+    from unittest.mock import patch
+    
+    manager = ConfigManager(tmp_path)
+    manager.set_onprem_state(
+        embedding_provider="openai",
+        embedding_model="text-embedding-3-small",
+    )
+    state_path = manager._onprem_state_path()
+    original = state_path.read_text(encoding="utf-8")
+
+    with (
+        patch(
+            "memanto.app.utils.atomic_write.os.replace",
+            side_effect=OSError("simulated interruption"),
+        ),
+        pytest.raises(OSError, match="simulated interruption"),
+    ):
+        manager.set_onprem_state(llm_model="qwen3:8b")
+
+    assert state_path.read_text(encoding="utf-8") == original
+    assert manager.get_onprem_state() == {
+        "embedding_provider": "openai",
+        "embedding_model": "text-embedding-3-small",
+    }
