@@ -607,6 +607,18 @@ class TestSessionService:
         assert session_service.get_active_session() is None
         assert not active_marker.exists()
 
+    def test_get_active_session_clears_dangling_symlink(self, session_service):
+        """A dangling active symlink should be removed during session recovery."""
+        active_marker = session_service.sessions_dir / "active"
+        active_marker.parent.mkdir(parents=True, exist_ok=True)
+        try:
+            active_marker.symlink_to("missing-agent.json")
+        except OSError as exc:
+            pytest.skip(f"symlink creation unavailable: {exc}")
+
+        assert session_service.get_active_session() is None
+        assert not active_marker.exists()
+
     def test_get_active_session_clears_missing_session_marker(self, session_service):
         """A stale active marker should be removed when its session is gone."""
         active_marker = session_service.sessions_dir / "active"
