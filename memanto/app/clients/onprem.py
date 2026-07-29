@@ -77,6 +77,7 @@ class _DocumentsAdapter:
         job was accepted, not that indexing has completed.
         """
         import shutil
+        import uuid
 
         ensure_upload_dir, host_path_to_container_upload_path = (
             _import_docker_runtime_helpers()
@@ -87,9 +88,9 @@ class _DocumentsAdapter:
             raise FileNotFoundError(f"upload_file: not a file: {src}")
 
         upload_root = ensure_upload_dir()
-        host_file = (upload_root / src.name).resolve()
-        if host_file != src:
-            shutil.copy2(src, host_file)
+        staged_name = f"{src.stem}-{uuid.uuid4().hex}{src.suffix}"
+        host_file = (upload_root / staged_name).resolve()
+        shutil.copy2(src, host_file)
         container_path = host_path_to_container_upload_path(host_file, upload_root)
 
         resp = self._raw.files.upload(

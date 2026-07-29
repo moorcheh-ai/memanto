@@ -17,11 +17,10 @@ MemoryType = Literal[
     "error",
 ]
 
-# Scope Types
-ScopeType = Literal["user", "workspace", "agent", "session", "project", "task"]
-
 # Source Types
-SourceType = str  # e.g., "user", "agent", "tool", "system", or specific "agent_name"
+SourceType = Literal[
+    "user", "agent", "tool", "system"
+]  # Valid sources for memory creation
 
 # Status Types
 StatusType = Literal["active", "superseded", "deleted", "provisional"]
@@ -70,8 +69,6 @@ VALID_PROVENANCE_TYPES = {
     "observed",
     "imported",
 }
-
-VALID_SCOPE_TYPES = {"user", "workspace", "agent", "session", "project", "task"}
 
 ALLOWED_UPDATE_FIELDS = {
     "title",

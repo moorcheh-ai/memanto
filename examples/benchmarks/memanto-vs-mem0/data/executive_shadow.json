@@ -1,0 +1,232 @@
+{
+  "title": "The Executive Shadow — 6-Month Startup Founder Memory Benchmark",
+  "description": "A personal AI assistant tracks a startup founder across 6 months. Sessions combine dense technical/financial context with evolving priorities, contradicting decisions, and multi-domain preferences. Designed to stress-test three failure modes simultaneously: (1) token bloat under dense input, (2) staleness pollution from contradicted decisions, (3) retrieval precision across mixed domains.",
+  "user_id": "founder_alex",
+  "scenario_version": "1.0",
+
+  "sessions": [
+    {
+      "id": "session_1",
+      "label": "Month 1 — Pre-seed hustle",
+      "date_simulated": "2026-01-10",
+      "context_density": "high",
+      "messages": [
+        {"role": "user", "content": "Quick update: we have 3 engineers including me, 1 designer, no sales yet. Monthly burn is $18,000. Runway is 7 months at current pace. We're building a B2B SaaS tool for HR teams to automate onboarding workflows."},
+        {"role": "assistant", "content": "Got it — 3 engineers, 1 designer, $18k/month burn, 7 months runway. B2B SaaS for HR onboarding automation."},
+        {"role": "user", "content": "Our strategy is to raise a $2M pre-seed round by March. I've been talking to Sequoia, a16z, and YC. YC application deadline is February 14th and I'm prioritising that above all else."},
+        {"role": "assistant", "content": "Raising $2M pre-seed by March. YC application is top priority — deadline February 14th. Also in conversations with Sequoia and a16z."},
+        {"role": "user", "content": "My communication style preference: I hate long emails. Keep all summaries under 5 bullet points. Never start a message with 'Great news' or any sycophantic opener."},
+        {"role": "assistant", "content": "Noted — max 5 bullet points, no sycophantic openers."},
+        {"role": "user", "content": "My technical stack is: Next.js frontend, FastAPI backend, Postgres with Supabase, deployed on Railway. We use Linear for issue tracking and Notion for internal docs."},
+        {"role": "assistant", "content": "Stack: Next.js, FastAPI, Postgres/Supabase, Railway. Linear for issues, Notion for docs."},
+        {"role": "user", "content": "Our biggest technical risk right now is the webhook integration with Workday and BambooHR. If we can't crack that by end of Q1, the product doesn't work for enterprise customers."},
+        {"role": "assistant", "content": "Critical risk flagged: Workday and BambooHR webhook integration must be resolved by end of Q1."},
+        {"role": "user", "content": "Personally: I work best 6am–12pm, I take Fridays off for deep work on strategy. I don't do async standups — I do a 20-minute sync with the team every Monday."},
+        {"role": "assistant", "content": "Personal rhythm: 6am–12pm peak hours, Fridays off for strategy, 20-min Monday team sync — no async standups."},
+        {"role": "user", "content": "One more thing — I'm not paying for any SaaS tools above $50/month until we're post-seed. That's a hard rule."},
+        {"role": "assistant", "content": "Hard rule: no SaaS tools above $50/month until post-seed."}
+      ]
+    },
+    {
+      "id": "session_2",
+      "label": "Month 2 — YC rejection, pivot signal",
+      "date_simulated": "2026-02-20",
+      "context_density": "high",
+      "messages": [
+        {"role": "user", "content": "YC rejected us. I spent 3 weeks on that application. Moving on. We've decided to drop the Workday integration entirely — too slow to get enterprise deals. Pivoting to SMBs instead of enterprise. Average deal size drops from $15k ARR to $2k ARR but sales cycle is 2 weeks not 6 months."},
+        {"role": "assistant", "content": "YC rejection noted. Major pivot: dropping enterprise/Workday in favour of SMB market. Deal size $2k ARR, 2-week sales cycle."},
+        {"role": "user", "content": "New go-to-market: direct sales to HR managers at companies 10–200 employees. No more chasing enterprise. Our ICP is now HR managers at Series A–B startups."},
+        {"role": "assistant", "content": "New ICP: HR managers at Series A–B startups, 10–200 employees. Direct sales motion."},
+        {"role": "user", "content": "We hired a part-time sales person, Jordan. Jordan's job is to do 20 outbound calls per day. Our target is 10 paid pilots by end of March."},
+        {"role": "assistant", "content": "Part-time sales hire: Jordan. 20 outbound calls/day. Target: 10 paid pilots by end of March."},
+        {"role": "user", "content": "Burn went up to $22,000/month with Jordan's salary. Runway is now 5 months. Raising is not a priority anymore — I'm going to try to get to $10k MRR before touching any VC money."},
+        {"role": "assistant", "content": "Burn now $22k/month, 5 months runway. Fundraising deprioritised — revenue-first to $10k MRR before VC conversations."},
+        {"role": "user", "content": "Technically, we've moved the auth system from Supabase Auth to Clerk because Supabase Auth was missing org-level roles that enterprise customers — wait, I mean SMB customers — needed."},
+        {"role": "assistant", "content": "Auth migrated from Supabase Auth to Clerk for org-level role support."},
+        {"role": "user", "content": "Updated preference: I now want daily async updates from Jordan in Linear comments, not verbal. The Monday sync is now 30 minutes and includes Jordan."},
+        {"role": "assistant", "content": "Process update: Jordan sends daily async updates in Linear. Monday sync extended to 30 min, includes Jordan."}
+      ]
+    },
+    {
+      "id": "session_3",
+      "label": "Month 3 — Traction, new pressure",
+      "date_simulated": "2026-03-28",
+      "context_density": "medium",
+      "messages": [
+        {"role": "user", "content": "We hit 8 paid pilots at $200/month each = $1,600 MRR. Not $10k but real signal. Two pilots want to expand to their entire company. Churn is zero so far."},
+        {"role": "assistant", "content": "8 paid pilots, $1,600 MRR, zero churn. Two expansion opportunities in pipeline."},
+        {"role": "user", "content": "A seed fund — not Sequoia, a smaller one called Garage Capital — reached out proactively. They want to lead a $1.5M seed round. I'm now open to having the conversation even though I said I wouldn't raise until $10k MRR."},
+        {"role": "assistant", "content": "Inbound interest from Garage Capital for $1.5M seed lead. Founder now open to fundraising conversation despite earlier revenue-first stance."},
+        {"role": "user", "content": "Jordan is exceeding targets. I'm thinking about making Jordan full-time. Monthly cost would go from $3k to $7k."},
+        {"role": "assistant", "content": "Jordan potential full-time conversion. Cost increase: $3k → $7k/month."},
+        {"role": "user", "content": "New personal constraint: I've started therapy on Tuesdays at 5pm. Block that time. I don't take calls after 3pm anymore — the afternoons are for deep work or personal time."},
+        {"role": "assistant", "content": "Calendar block: Tuesday 5pm therapy. No calls after 3pm. Afternoons reserved for deep work or personal time."},
+        {"role": "user", "content": "I've changed my mind on the $50/month SaaS rule. We're using Intercom now at $74/month for customer support. It was worth the exception because we were losing customers from slow support response."},
+        {"role": "assistant", "content": "SaaS spending rule updated: Intercom at $74/month approved as exception — customer support ROI justified it."}
+      ]
+    },
+    {
+      "id": "session_4",
+      "label": "Month 4 — Fundraising fully back on",
+      "date_simulated": "2026-04-15",
+      "context_density": "high",
+      "messages": [
+        {"role": "user", "content": "We're officially raising. $1.5M seed from Garage Capital, with room for $500k more from angels. We're targeting close by end of May. I'm now spending 60% of my time on fundraising, 40% on product."},
+        {"role": "assistant", "content": "Fundraising fully active: $1.5M seed from Garage Capital + $500k angels. Target close: end of May. Founder time split: 60% fundraising, 40% product."},
+        {"role": "user", "content": "We hit $4,200 MRR this month. Still short of my $10k target but Garage Capital doesn't care about that threshold — they invest on trajectory."},
+        {"role": "assistant", "content": "MRR: $4,200. Garage Capital investing on trajectory, not MRR threshold."},
+        {"role": "user", "content": "Key investor update: Garage Capital's lead partner is Priya Mehta. She's very metrics-driven. Every update to her needs a top-line number, a growth rate, and a single ask. Never send her long narrative updates."},
+        {"role": "assistant", "content": "Priya Mehta (Garage Capital lead): metrics-driven. Updates must include top-line number, growth rate, single ask. No long narratives."},
+        {"role": "user", "content": "We made Jordan full-time. Monthly burn is now $27,000. Runway is 3.5 months. We need to close the round before we hit 2 months runway or we're in trouble."},
+        {"role": "assistant", "content": "Jordan full-time. Burn: $27k/month. Runway: 3.5 months. Hard deadline: close round before 2-month runway threshold."},
+        {"role": "user", "content": "Technical update: we've migrated from Railway to AWS because a key enterprise prospect — wait, I mean a large SMB — required SOC 2 compliance and Railway isn't SOC 2 certified."},
+        {"role": "assistant", "content": "Infrastructure migrated: Railway → AWS. Driver: SOC 2 compliance requirement from a large SMB prospect."},
+        {"role": "user", "content": "I've changed my fundraising strategy. I no longer want to talk to Sequoia or a16z at this stage — they only do Series A minimum. I should have known that earlier. Focus is on seed-stage funds and angels only."},
+        {"role": "assistant", "content": "Fundraising focus revised: Sequoia and a16z dropped (wrong stage). Target: seed funds and angels only."},
+        {"role": "user", "content": "Personal: I've moved to the office full-time. No more remote work. I need to be physically present with the team during the fundraising crunch. My 6am–12pm preference still holds but I'm now in-office by 7am."},
+        {"role": "assistant", "content": "Founder now full-time in-office by 7am. 6am–12pm peak hours maintained. Remote work paused during fundraising crunch."}
+      ]
+    },
+    {
+      "id": "session_5",
+      "label": "Month 5 — Round closes, team expands",
+      "date_simulated": "2026-05-22",
+      "context_density": "medium",
+      "messages": [
+        {"role": "user", "content": "We closed the round. $1.5M from Garage Capital, $350k from 3 angels. Total: $1.85M raised. Post-money valuation is $7.4M. Runway extended to 18 months at current burn."},
+        {"role": "assistant", "content": "Round closed: $1.85M total ($1.5M Garage Capital + $350k angels). Post-money: $7.4M. Runway: 18 months."},
+        {"role": "user", "content": "Hiring plan: we're adding 2 more engineers and 1 customer success manager in the next 60 days. Burn will go to approximately $45,000/month once fully hired."},
+        {"role": "assistant", "content": "Hiring: 2 engineers + 1 CSM in 60 days. Projected burn: $45k/month."},
+        {"role": "user", "content": "We're back to targeting enterprise after all. The SMB market is great but we keep getting pulled upmarket by inbound demand. We're going to run both motions — SMB self-serve and enterprise direct."},
+        {"role": "assistant", "content": "Market strategy updated: dual motion — SMB self-serve AND enterprise direct. Enterprise is back on the roadmap."},
+        {"role": "user", "content": "That means we need to revisit the Workday integration. I know I said we were dropping it, but we have to build it now. Two enterprise prospects are blocked on it."},
+        {"role": "assistant", "content": "Workday integration back on roadmap. Previously dropped; now required for two enterprise prospects."},
+        {"role": "user", "content": "Updated MRR: $8,900 across 44 customers. We should hit $10k MRR in the next 2 weeks."},
+        {"role": "assistant", "content": "MRR: $8,900 across 44 customers. On track for $10k MRR within 2 weeks."},
+        {"role": "user", "content": "Priya Mehta joined our board. Monthly board updates are now required. Format: 1-page max, 3 key metrics, one risk, one ask."},
+        {"role": "assistant", "content": "Priya Mehta on board. Monthly board update format: 1-page max, 3 key metrics, one risk, one ask."}
+      ]
+    },
+    {
+      "id": "session_6",
+      "label": "Month 6 — Scaling pressures, strategy lock-in",
+      "date_simulated": "2026-06-18",
+      "context_density": "high",
+      "messages": [
+        {"role": "user", "content": "Current state: $11,400 MRR, 61 customers, burn $44,500/month, runway 15 months. Two engineers onboarded last week. CSM starts Monday."},
+        {"role": "assistant", "content": "Snapshot: $11.4k MRR, 61 customers, $44.5k burn, 15 months runway. Two engineers onboarded, CSM starting Monday."},
+        {"role": "user", "content": "I've completely changed my position on remote work. With 7 people in-office it's getting crowded. We're moving to a hybrid model: in-office Tuesday/Thursday, remote the rest. My personal in-office days are Tuesday and Thursday, period."},
+        {"role": "assistant", "content": "Work model updated: hybrid — in-office Tuesday/Thursday. Founder personally in-office only Tuesday and Thursday."},
+        {"role": "user", "content": "Fundraising strategy update: we're already thinking about Series A. Target: $8M–$10M Series A, likely Q1 2027. I've opened conversations back up with Sequoia — they have a seed extension programme that I wasn't aware of before."},
+        {"role": "assistant", "content": "Series A planning: $8M–$10M, targeting Q1 2027. Sequoia re-engaged via their seed extension programme."},
+        {"role": "user", "content": "On the Workday integration: our lead engineer Miguel finished the Workday webhook connector last week. BambooHR integration is 80% done, due next Friday. This unblocks both enterprise deals."},
+        {"role": "assistant", "content": "Workday webhook connector complete (Miguel). BambooHR 80% done, ETA next Friday. Both enterprise deals unblocked."},
+        {"role": "user", "content": "Biggest current risk: we have key-person dependency on Miguel for all infrastructure. If Miguel leaves we lose 6 months of institutional knowledge. Need to start documenting."},
+        {"role": "assistant", "content": "Key risk: Miguel single point of failure for infrastructure. Mitigation needed: documentation programme."},
+        {"role": "user", "content": "Communication preference update: I've reversed my position on long emails. With the board and investors I now want detailed narrative updates — Priya explicitly asked for more context, not just numbers. For internal team: still max 5 bullets."},
+        {"role": "assistant", "content": "Communication style split: external (board/investors) → detailed narrative updates. Internal → max 5 bullets."},
+        {"role": "user", "content": "Final note: the $50/month SaaS rule is completely retired. Post-seed we can spend on tools that drive productivity. Current approved tools above $50/month: Intercom ($74), Linear Plus ($120), AWS (~$600/month and growing), Figma ($75). Total SaaS overhead approximately $870/month."},
+        {"role": "assistant", "content": "SaaS rule retired. Current approved tools: Intercom $74, Linear Plus $120, AWS ~$600, Figma $75. Total ~$870/month."}
+      ]
+    }
+  ],
+
+  "evaluation_queries": [
+    {
+      "id": "q1_fundraising_strategy",
+      "query": "What is the founder's current fundraising strategy?",
+      "domain": "fundraising",
+      "tests": "contradiction_resolution",
+      "golden_answer": "The founder has closed a $1.85M seed round (Garage Capital + angels, $7.4M post-money valuation) and is now planning a Series A of $8M–$10M targeting Q1 2027. Sequoia has been re-engaged via their seed extension programme. The earlier decisions to not raise until $10k MRR and to avoid Sequoia are no longer current.",
+      "stale_signals": ["not raising until 10k MRR", "avoid Sequoia", "avoid a16z", "$2M pre-seed", "YC", "revenue-first"],
+      "current_signals": ["Garage Capital", "seed closed", "$1.85M", "Series A", "Q1 2027", "Sequoia seed extension"]
+    },
+    {
+      "id": "q2_workday_status",
+      "query": "Is Workday integration being built? What is its current status?",
+      "domain": "product",
+      "tests": "contradiction_resolution",
+      "golden_answer": "Yes. The Workday webhook connector was completed by engineer Miguel. BambooHR integration is 80% done. Although Workday was dropped in Month 2 to pivot to SMB, it was reinstated in Month 5 when enterprise demand returned. Both integrations are now priorities.",
+      "stale_signals": ["dropped", "not building Workday", "pivoting away from enterprise", "SMB only"],
+      "current_signals": ["complete", "Miguel", "finished", "BambooHR 80%", "unblocked"]
+    },
+    {
+      "id": "q3_market_strategy",
+      "query": "Is this company targeting SMB or enterprise customers?",
+      "domain": "go_to_market",
+      "tests": "contradiction_resolution",
+      "golden_answer": "Both. The company runs a dual motion: SMB self-serve and enterprise direct. It originally targeted enterprise, pivoted to SMB only in Month 2, then reinstated enterprise in Month 5 due to inbound demand. Current ICP covers both segments.",
+      "stale_signals": ["SMB only", "no enterprise", "dropped enterprise", "ICP is HR managers at Series A startups"],
+      "current_signals": ["dual motion", "both SMB and enterprise", "enterprise back", "self-serve and direct"]
+    },
+    {
+      "id": "q4_work_style",
+      "query": "What are the founder's work preferences and office schedule?",
+      "domain": "personal",
+      "tests": "staleness_detection",
+      "golden_answer": "The founder is in-office on Tuesday and Thursday only (hybrid model). Peak work hours are 6am–12pm. No calls after 3pm. Therapy on Tuesdays at 5pm. The earlier full-time in-office policy during fundraising is no longer active.",
+      "stale_signals": ["full-time in-office", "remote work paused", "in-office 7am every day", "Fridays off for strategy"],
+      "current_signals": ["Tuesday Thursday in-office", "hybrid", "6am-12pm", "no calls after 3pm", "Tuesday 5pm therapy"]
+    },
+    {
+      "id": "q5_communication_style",
+      "query": "How should I format messages and updates to this founder?",
+      "domain": "personal",
+      "tests": "staleness_detection",
+      "golden_answer": "It depends on the audience. For the founder internally: max 5 bullet points, no sycophantic openers. For board/investor updates (e.g. Priya Mehta): detailed narrative updates with context, not just numbers. The blanket '5 bullets only' rule from Month 1 was superseded in Month 6.",
+      "stale_signals": ["always 5 bullets", "keep all summaries under 5 bullet points"],
+      "current_signals": ["board detailed narrative", "internal 5 bullets", "Priya wants more context", "split style"]
+    },
+    {
+      "id": "q6_team_and_burn",
+      "query": "What is the current team size and monthly burn?",
+      "domain": "operations",
+      "tests": "recency",
+      "golden_answer": "7 people: 3 original engineers (including founder), Jordan (full-time sales), 2 new engineers, 1 CSM starting Monday. Monthly burn is approximately $44,500. Post-seed runway is 15 months.",
+      "stale_signals": ["3 engineers", "$18,000 burn", "$22,000 burn", "$27,000 burn", "part-time Jordan", "5 months runway"],
+      "current_signals": ["7 people", "$44,500", "15 months runway", "CSM starting", "two new engineers"]
+    },
+    {
+      "id": "q7_saas_rule",
+      "query": "What is the rule around SaaS tool spending?",
+      "domain": "operations",
+      "tests": "contradiction_resolution",
+      "golden_answer": "The $50/month SaaS rule is fully retired post-seed. Current approved tools above $50: Intercom ($74), Linear Plus ($120), AWS (~$600), Figma ($75). Total SaaS overhead ~$870/month. The original rule was set in Month 1 and progressively relaxed.",
+      "stale_signals": ["hard rule no tools above $50", "wait until post-seed", "no exceptions"],
+      "current_signals": ["rule retired", "Intercom", "Linear Plus", "AWS", "Figma", "$870/month"]
+    },
+    {
+      "id": "q8_key_risk",
+      "query": "What is the biggest technical and business risk right now?",
+      "domain": "risk",
+      "tests": "recency",
+      "golden_answer": "Current biggest risks: (1) Key-person dependency on engineer Miguel for all infrastructure — if Miguel leaves, 6 months of institutional knowledge is at risk. (2) The BambooHR integration needs to be completed by next Friday to unblock enterprise deals. The earlier Workday webhook risk is resolved.",
+      "stale_signals": ["Workday integration risk", "enterprise deals blocked on Workday", "Q1 deadline for Workday"],
+      "current_signals": ["Miguel key person risk", "BambooHR 80%", "Workday complete", "documentation needed"]
+    }
+  ],
+
+  "metadata": {
+    "scenario": "Custom — Executive Shadow (Combined Scenario A+B)",
+    "total_sessions": 6,
+    "date_range_simulated": "January 2026 — June 2026",
+    "total_turns": 38,
+    "evaluation_queries": 8,
+    "domains_covered": ["fundraising", "product", "go_to_market", "personal", "operations", "risk"],
+    "test_types": {
+      "contradiction_resolution": "System must surface current decision overriding an earlier explicit decision (4 queries)",
+      "staleness_detection": "System must detect and deprioritise older preferences now superseded (2 queries)",
+      "recency": "System must return latest state from most recent session (2 queries)"
+    },
+    "key_contradictions": [
+      "Fundraising: 'no VC until $10k MRR' (Month 2) → seed closed (Month 5)",
+      "Workday: 'dropping Workday' (Month 2) → 'Workday complete' (Month 6)",
+      "Market: 'SMB only' (Month 2) → 'dual SMB + enterprise' (Month 5)",
+      "Office: 'full-time in-office' (Month 4) → 'hybrid Tue/Thu' (Month 6)",
+      "Communication: '5 bullets always' (Month 1) → 'detailed for board, 5 bullets internal' (Month 6)",
+      "SaaS rule: 'hard $50 limit' (Month 1) → 'rule retired' (Month 6)",
+      "Fundraising: 'avoid Sequoia' (Month 4) → 'Sequoia re-engaged' (Month 6)"
+    ],
+    "why_this_scenario_is_hard": "A flat vector store will retrieve high-similarity matches regardless of recency. Early sessions have strong semantic overlap with query terms (e.g. 'fundraising', 'Workday', 'office') but contradicted facts. A memory system without conflict resolution or recency weighting will blend old and new answers, failing on accuracy while wasting tokens on stale context."
+  }
+}

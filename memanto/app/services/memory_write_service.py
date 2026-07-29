@@ -2,16 +2,36 @@
 Memory Write Service
 """
 
-from datetime import datetime
-from typing import TYPE_CHECKING, Any
+from datetime import datetime, timezone
+from typing import TYPE_CHECKING, Any, cast
 
 if TYPE_CHECKING:
     from moorcheh_sdk import MoorchehClient
 
 from memanto.app.core import MemoryRecord
 from memanto.app.services.memory_parsing_service import MemoryParsingService
+from memanto.app.services.memory_validation_service import MemoryValidationService
 from memanto.app.utils.errors import MemoryError
 from memanto.app.utils.ids import generate_memory_id
+from memanto.app.utils.temporal_helpers import as_utc_aware
+
+SUCCESSFUL_UPLOAD_STATUSES = {"queued", "success", "ok"}
+
+# Trust fields removed from the active schema on 2026-06-29 (see
+# memanto/app/legacy/REMOVED.md). Old on-prem data_store.json records may still
+# carry them; they must never be copied forward on update or we resurrect dead
+# schema that no live read/write flow populates.
+_REMOVED_TRUST_FIELDS = frozenset(
+    {
+        "superseded_by",
+        "supersedes",
+        "validated_at",
+        "validation_count",
+        "contradiction_detected",
+    }
+)
+
+_SUCCESSFUL_UPLOAD_STATUSES = {"queued", "success", "ok"}
 
 
 class MemoryWriteService:
@@ -21,8 +41,9 @@ class MemoryWriteService:
         """Initialize the service with a Moorcheh client."""
 
         self.client = moorcheh_client
-        self._namespace_service = None
         self._parser = MemoryParsingService()
+        self.validation_service = MemoryValidationService(moorcheh_client)
+        self._namespace_service = None
 
     @property
     def namespace_service(self):
@@ -34,6 +55,25 @@ class MemoryWriteService:
             self._namespace_service = NamespaceService(self.client)
         return self._namespace_service
 
+    def _apply_timestamps(self, memory: MemoryRecord, now: datetime) -> None:
+        """Apply server timestamps while preserving imported source chronology."""
+        if memory.provenance == "imported":
+            memory.created_at = as_utc_aware(memory.created_at)
+            memory.updated_at = as_utc_aware(memory.updated_at)
+
+            # Clamp to current time if in the future
+            if memory.created_at > now:
+                memory.created_at = now
+            if memory.updated_at > now:
+                memory.updated_at = now
+
+            # Enforce created_at <= updated_at invariant
+            if memory.created_at > memory.updated_at:
+                memory.created_at = memory.updated_at
+            return
+        memory.created_at = now
+        memory.updated_at = now
+
     def store_memory(
         self, memory: MemoryRecord, context: dict[str, Any] | None = None
     ) -> dict[str, Any]:
@@ -43,26 +83,20 @@ class MemoryWriteService:
             if not memory.id:
                 memory.id = generate_memory_id()
 
-            # Enforce server-side timestamps (never trust client)
-            now = datetime.utcnow()
-            memory.created_at = now
-            memory.updated_at = now
+            now = datetime.now(timezone.utc)
+            self._apply_timestamps(memory, now)
 
             # Auto parse memory type
             memory = self._parser.parse_memory(memory)
 
             # Add namespace
-            namespace = memory.get_scope().to_namespace()
+            namespace = memory.namespace()
 
-            # skip validation for speed
-            ## Validate memory
-            # validation_result = self.validation_service.validate_memory(memory, context)
-            ## Use validated memory if modified
-            # if "memory" in validation_result:
-            #     memory = validation_result["memory"]
-            validation_result = {"action": "store", "reason": "MVP direct store"}
-
-            from typing import cast
+            # Validate memory (write-time contradiction resolution)
+            validation_result = self.validation_service.validate_memory(memory, context)
+            # Use validated memory if modified
+            if "memory" in validation_result:
+                memory = validation_result["memory"]
 
             from moorcheh_sdk.types.document import Document
 
@@ -74,7 +108,7 @@ class MemoryWriteService:
                 namespace_name=namespace, documents=[document]
             )
 
-            return {
+            response = {
                 "id": memory.id,
                 "namespace": namespace,
                 "status": result.get("status", "unknown"),
@@ -84,6 +118,9 @@ class MemoryWriteService:
                 "memory_status": memory.status,
                 "type": memory.type,
             }
+            if validation_result.get("superseded_ids"):
+                response["superseded_ids"] = validation_result["superseded_ids"]
+            return response
 
         except Exception as e:
             raise MemoryError(f"Failed to store memory: {e}")
@@ -114,9 +151,10 @@ class MemoryWriteService:
             first_namespace = None
             results = []
             validated_documents = []
+            prepared: list[MemoryRecord] = []
 
             # Enforce server-side timestamps for batch (single timestamp for all)
-            now = datetime.utcnow()
+            now = datetime.now(timezone.utc)
 
             for memory in memories:
                 try:
@@ -124,14 +162,12 @@ class MemoryWriteService:
                     if not memory.id:
                         memory.id = generate_memory_id()
 
-                    # Enforce server-side timestamps (never trust client)
-                    memory.created_at = now
-                    memory.updated_at = now
+                    self._apply_timestamps(memory, now)
 
                     memory = self._parser.parse_memory(memory)
 
                     # Add namespace
-                    namespace = memory.get_scope().to_namespace()
+                    namespace = memory.namespace()
 
                     if first_namespace is None:
                         first_namespace = namespace
@@ -148,37 +184,81 @@ class MemoryWriteService:
                         )
                         continue
 
-                    # skip validation for speed
-                    ## Validate memory
-                    # validation_result = self.validation_service.validate_memory(memory, context)
-                    ## Use validated memory if modified
-                    # if "memory" in validation_result:
-                    #     memory = validation_result["memory"]
-                    validation_result = {
-                        "action": "store",
-                        "reason": "MVP direct store",
-                    }
+                    prepared.append(memory)
 
-                    from typing import cast
+                except Exception as e:
+                    results.append(
+                        {
+                            "id": memory.id
+                            if hasattr(memory, "id") and memory.id
+                            else "unknown",
+                            "status": "failed",
+                            "action": "rejected",
+                            "error": str(e),
+                        }
+                    )
+
+            # Resolve contradictions within the batch itself: for memories of
+            # the same type and title with different content, the last one
+            # wins and earlier ones are stored as superseded history.
+            superseded_in_batch = self.validation_service.resolve_batch_contradictions(
+                prepared
+            )
+
+            to_validate = [
+                memory for memory in prepared if memory.id not in superseded_in_batch
+            ]
+            prefetched_conflicts = self.validation_service.prefetch_contradictions(
+                to_validate
+            )
+
+            for memory in prepared:
+                try:
+                    batch_note = superseded_in_batch.get(memory.id)
+                    if batch_note:
+                        validation_result = {
+                            "action": "store_superseded",
+                            "reason": f"contradiction resolved: superseded within batch by {batch_note}",
+                        }
+                    elif memory.id in prefetched_conflicts:
+                        validation_result = self.validation_service.validate_memory(
+                            memory,
+                            context,
+                            prefetched_conflicts=prefetched_conflicts[memory.id],
+                        )
+                    else:
+                        validation_result = self.validation_service.validate_memory(
+                            memory, context
+                        )
+                        # Use validated memory if modified
+                        if "memory" in validation_result:
+                            memory = cast(MemoryRecord, validation_result["memory"])
 
                     from moorcheh_sdk.types.document import Document
 
                     # Convert to Moorcheh document
-                    document = cast(Document, memory.to_moorcheh_document())
+                    document_payload = memory.to_moorcheh_document()
+                    if batch_note:
+                        document_payload["superseded_by"] = batch_note
+                        document_payload["superseded_at"] = now.isoformat()
+                    document = cast(Document, document_payload)
                     validated_documents.append(document)
 
                     # Store validation result for later
-                    results.append(
-                        {
-                            "id": memory.id,
-                            "status": "pending",
-                            "action": validation_result.get("action", "store"),
-                            "reason": validation_result.get(
-                                "reason", "Validated successfully"
-                            ),
-                            "type": memory.type,
-                        }
-                    )
+                    result_entry = {
+                        "id": memory.id,
+                        "status": "pending",
+                        "action": validation_result.get("action", "store"),
+                        "reason": validation_result.get(
+                            "reason", "Validated successfully"
+                        ),
+                        "type": memory.type or "fact",
+                    }
+                    if validation_result.get("superseded_ids"):
+                        result_entry["superseded_ids"] = validation_result[
+                            "superseded_ids"
+                        ]
+                    results.append(result_entry)
 
                 except Exception as e:
                     results.append(
@@ -194,27 +274,44 @@ class MemoryWriteService:
 
             # Upload all validated documents in single batch to Moorcheh
             if validated_documents and first_namespace:
-                from typing import cast
-
                 upload_result = self.client.documents.upload(
                     namespace_name=cast(str, first_namespace),
                     documents=validated_documents,
                 )
 
                 # Update results with upload status
-                moorcheh_status = upload_result.get("status", "unknown")
+                moorcheh_status = str(upload_result.get("status", "unknown")).lower()
                 for result in results:
                     if result["status"] == "pending":
-                        result["status"] = moorcheh_status
+                        if moorcheh_status in _SUCCESSFUL_UPLOAD_STATUSES:
+                            result["status"] = moorcheh_status
+                        else:
+                            result["status"] = "failed"
+                            result["error"] = (
+                                f"Batch upload returned status '{moorcheh_status}'"
+                            )
 
-            # Count successes and failures
-            successful = sum(1 for r in results if r["status"] in ["queued", "success"])
-            failed = sum(1 for r in results if r["status"] == "failed")
+            # Count successes, failures, and namespace-rejected items separately
+            # so that successful + failed + rejected == total_submitted always.
+            _known = set(SUCCESSFUL_UPLOAD_STATUSES) | {"failed", "rejected"}
+            successful = sum(
+                1
+                for r in results
+                if str(r["status"]).lower() in SUCCESSFUL_UPLOAD_STATUSES
+            )
+            failed = sum(1 for r in results if str(r["status"]).lower() == "failed")
+            rejected = sum(1 for r in results if str(r["status"]).lower() == "rejected")
+            # Absorb any non-standard upload statuses into failed so the invariant holds
+            failed += len(results) - successful - failed - rejected
+            for r in results:
+                if str(r["status"]).lower() not in _known:
+                    r["status"] = "failed"
 
             return {
                 "total_submitted": len(memories),
                 "successful": successful,
                 "failed": failed,
+                "rejected": rejected,
                 "namespace": first_namespace,
                 "results": results,
             }
@@ -230,13 +327,12 @@ class MemoryWriteService:
         context: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         """
-        Update existing memory using delete-and-recreate pattern
+        Update existing memory.
 
-        Since Moorcheh doesn't support in-place updates, we:
+        Moorcheh supports overwriting documents by ID, so we:
         1. Retrieve the existing memory
         2. Apply updates to create new version
-        3. Delete old version
-        4. Upload new version with same ID
+        3. Upload new version with same ID (overwrites)
 
         Args:
             memory_id: ID of memory to update
@@ -266,6 +362,23 @@ class MemoryWriteService:
                 else existing_memory_data
             )
 
+            # The namespace (memanto_agent_{agent_id}) is authoritative for the
+            # agent_id; fall back to it when stored metadata predates the flat
+            # agent_id field so the rewritten record keeps correct metadata.
+            agent_id = metadata.get("agent_id")
+            if not agent_id and namespace.startswith("memanto_agent_"):
+                agent_id = namespace.removeprefix("memanto_agent_")
+            if not agent_id:
+                raise MemoryError(
+                    f"Cannot determine agent_id for memory {memory_id} "
+                    f"in namespace {namespace}"
+                )
+
+            # Normalize legacy source values
+            source_val = updates.get("source", metadata.get("source", "system"))
+            if source_val not in {"user", "agent", "tool", "system"}:
+                source_val = "system"
+
             # Build updated memory record
             updated_memory = MemoryRecord(
                 id=memory_id,  # Keep same ID
@@ -274,10 +387,9 @@ class MemoryWriteService:
                     "title", existing_memory_data.get("title", "Updated Memory")
                 ),
                 content=updates.get("content", existing_memory_data.get("content", "")),
-                scope_type=metadata.get("scope_type", "agent"),
-                scope_id=metadata.get("scope_id", "unknown"),
+                agent_id=agent_id,
                 actor_id=updates.get("actor_id", metadata.get("actor_id", "unknown")),
-                source=updates.get("source", metadata.get("source", "system")),
+                source=source_val,
                 source_ref=updates.get("source_ref", metadata.get("source_ref")),
                 confidence=updates.get("confidence", metadata.get("confidence", 0.8)),
                 status=updates.get("status", metadata.get("status", "active")),
@@ -296,42 +408,62 @@ class MemoryWriteService:
                         pass  # Keep default
                 else:
                     updated_memory.created_at = raw_created
-            updated_memory.updated_at = datetime.utcnow()
+            updated_memory.updated_at = datetime.now(timezone.utc)
 
             # Handle TTL
             if "ttl_seconds" in updates:
                 updated_memory.set_ttl(updates["ttl_seconds"])
             elif metadata.get("ttl_seconds"):
                 updated_memory.ttl_seconds = metadata["ttl_seconds"]
-                if metadata.get("expires_at"):
-                    updated_memory.expires_at = metadata["expires_at"]
+                raw_expires_at = metadata.get("expires_at")
+                if raw_expires_at:
+                    if isinstance(raw_expires_at, str):
+                        try:
+                            updated_memory.expires_at = datetime.fromisoformat(
+                                raw_expires_at.replace("Z", "+00:00")
+                            )
+                        except (ValueError, AttributeError):
+                            pass  # Keep the default if the stored timestamp is invalid
+                    else:
+                        updated_memory.expires_at = raw_expires_at
 
-            # Step 3: Delete old version
-            delete_result = self.client.documents.delete(
-                namespace_name=namespace, ids=[memory_id]
-            )
-
-            if delete_result.get("actual_deletions", 0) == 0:
-                raise MemoryError(f"Failed to delete old version of memory {memory_id}")
-
-            validation_result = {"action": "store", "reason": "MVP direct store"}
-
-            # Step 4: Upload new version
-            from typing import cast
+            # Step 3: Upload new version (overwrites existing document with same ID)
+            from typing import Any, cast
 
             from moorcheh_sdk.types.document import Document
 
+            validation_result = {"action": "store", "reason": "MVP direct store"}
+
             document = cast(Document, updated_memory.to_moorcheh_document())
-            upload_result = self.client.documents.upload(
-                namespace_name=namespace, documents=[document]
-            )
+
+            # Preserve extra metadata fields from the existing record (e.g. original_id
+            # in on-prem data_store.json) that aren't part of the MemoryRecord schema.
+            existing_meta = existing_memory_data.get("metadata", existing_memory_data)
+            if isinstance(existing_meta, dict):
+                # ``document`` is a TypedDict; cast to a plain dict to attach
+                # extra schema-external keys (e.g. original_id) dynamically.
+                extra_document = cast(dict[str, Any], document)
+                for key in existing_meta:
+                    if (
+                        key not in document
+                        and key != "text"
+                        and key not in _REMOVED_TRUST_FIELDS
+                    ):
+                        extra_document[key] = existing_meta[key]
+
+            try:
+                upload_result = self.client.documents.upload(
+                    namespace_name=namespace, documents=[document]
+                )
+            except Exception as e:
+                raise MemoryError(f"Upload failed. Error: {e}")
 
             return {
                 "id": memory_id,
                 "namespace": namespace,
                 "status": upload_result.get("status", "unknown"),
                 "action": "updated",
-                "reason": "Memory updated successfully via delete-and-recreate",
+                "reason": "Memory updated successfully via overwrite",
                 "validation": validation_result.get("action", "validated"),
                 "updated_fields": list(updates.keys()),
             }
@@ -349,27 +481,18 @@ class MemoryWriteService:
                 self.client.documents.delete(namespace_name=namespace, ids=[memory_id]),
             )
 
-            # Cloud returns ``actual_deletions``; on-prem's /items/delete only
-            # returns ``deleted_ids`` (and ``status``). Mirror the cloud SDK's
-            # ``_deletion_processed_count`` so both backends report success.
-            raw = result.get("actual_deletions")
-            if isinstance(raw, int):
-                return raw > 0
-            for key in ("deleted_ids", "requested_ids"):
-                ids = result.get(key)
-                if isinstance(ids, list):
-                    return len(ids) > 0
-            # Some on-prem builds only return ``{"status": "success"}``.
-            return str(result.get("status", "")).lower() in {"success", "ok"}
+            return self._deletion_succeeded(result)
 
         except Exception as e:
             raise MemoryError(f"Failed to delete memory: {e}")
 
-    def _ensure_namespace(self, memory: MemoryRecord) -> str:
-        """Ensure namespace exists for memory"""
-        from typing import cast
-
-        namespace = self.namespace_service.create_namespace(
-            cast(Any, memory.scope_type), memory.scope_id
-        )
-        return cast(str, namespace)
+    @staticmethod
+    def _deletion_succeeded(result: dict[str, Any]) -> bool:
+        """Return True for cloud and on-prem successful deletion shapes."""
+        raw = result.get("actual_deletions")
+        if isinstance(raw, int):
+            return raw > 0
+        ids = result.get("deleted_ids")
+        if isinstance(ids, list):
+            return len(ids) > 0
+        return str(result.get("status", "")).lower() in {"success", "ok"}

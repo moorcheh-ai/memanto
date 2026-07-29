@@ -109,10 +109,10 @@ class MemoryProfile:
         ordered_types += [t for t in grouped if t not in _TYPE_ORDER]
 
         for mtype in ordered_types:
-            label = _TYPE_LABEL.get(mtype, mtype.capitalize())
+            label = _TYPE_LABEL.get(mtype, html.escape(mtype.capitalize(), quote=False))
             lines.append(f"\n{label}:")
             for mem in grouped[mtype]:
-                lines.append(f"  - {_render_memory(mem)}")
+                lines.append(f"  - {_render_context_memory(mem)}")
 
         lines.append("</engineering-profile>")
         return "\n".join(lines)
@@ -128,6 +128,11 @@ def _render_memory(mem: dict[str, Any]) -> str:
     if isinstance(confidence, (int, float)) and confidence < 0.6:
         return f"{content} (tentative)"
     return content
+
+
+def _render_context_memory(mem: dict[str, Any]) -> str:
+    """Render memory text safely inside the injected engineering-profile block."""
+    return html.escape(_render_memory(mem), quote=False)
 
 
 def _score(mem: dict[str, Any]) -> float:

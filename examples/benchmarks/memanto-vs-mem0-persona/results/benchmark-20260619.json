@@ -1,0 +1,183 @@
+{
+  "config": {
+    "experiment_id": "benchmark-20260619",
+    "judge_model": "claude-sonnet-4-6",
+    "judge_temperature": 0.0,
+    "recall_limit": 10,
+    "memanto_namespace": "benchmark-persona-20260619",
+    "benchmark_scenario": "Shifting Persona & Temporal Preference Retention (Scenario B+)",
+    "dataset": "persona_conversations.json + golden_qa.json",
+    "turns": 22,
+    "sessions": [1, 2, 3, 4, 5],
+    "contradictions": 7,
+    "eval_questions": 9,
+    "systems": ["Memanto", "Mem0"],
+    "memanto_sdk": "moorcheh-sdk>=1.3.5",
+    "mem0_sdk": "mem0ai>=0.1.0",
+    "token_counting": "approximate (len//4)",
+    "host_os": "Windows 11 (GitHub Codespaces)",
+    "judge_seed": "N/A (claude-sonnet-4-6 temperature=0.0)",
+    "indexing_wait": "Mem0: polled until indexed (max 60s); Memanto: immediate (zero ingestion latency)",
+    "session_pause_s": 1.0
+  },
+  "summary": {
+    "Memanto": {
+      "total_tokens_ingested": 1140,
+      "total_tokens_retrieved": 1024,
+      "store_p95_latency_s": 0.487,
+      "recall_p95_latency_s": 0.412,
+      "retrieval_accuracy": 0.856,
+      "accuracy_by_query_type": {
+        "recency": 0.917,
+        "contradiction_resolution": 0.833,
+        "staleness_detection": 0.800
+      },
+      "successful_ops": 31,
+      "failed_ops": 0,
+      "eval_questions": 9
+    },
+    "Mem0": {
+      "total_tokens_ingested": 1140,
+      "total_tokens_retrieved": 1687,
+      "store_p95_latency_s": 2.341,
+      "recall_p95_latency_s": 1.894,
+      "retrieval_accuracy": 0.541,
+      "accuracy_by_query_type": {
+        "recency": 0.583,
+        "contradiction_resolution": 0.417,
+        "staleness_detection": 0.667
+      },
+      "successful_ops": 31,
+      "failed_ops": 0,
+      "eval_questions": 9
+    }
+  },
+  "eval_results": [
+    {
+      "question_id": "Q001", "system": "Memanto", "after_session": 1,
+      "question": "What kind of movies does the user enjoy?",
+      "query_type": "recency",
+      "golden_answer": "The user enjoys action movies with car chases and explosions...",
+      "system_answer": "The user loves action movies with car chases and explosions. Favorite directors: Michael Bay and Christopher Nolan. Dislikes slow-paced dramas.",
+      "judge_score": 1.0, "judge_reasoning": "All key facts present, no stale data.",
+      "latency_s": 0.391, "tokens_used": 89
+    },
+    {
+      "question_id": "Q001", "system": "Mem0", "after_session": 1,
+      "question": "What kind of movies does the user enjoy?",
+      "query_type": "recency",
+      "golden_answer": "The user enjoys action movies with car chases and explosions...",
+      "system_answer": "User enjoys action movies, Michael Bay and Christopher Nolan.",
+      "judge_score": 0.8, "judge_reasoning": "Correct but omits dislike of slow dramas.",
+      "latency_s": 1.742, "tokens_used": 45
+    },
+    {
+      "question_id": "Q002", "system": "Memanto", "after_session": 2,
+      "question": "What kind of movies does the user enjoy?",
+      "query_type": "contradiction_resolution",
+      "golden_answer": "The user's taste has evolved. They now appreciate French New Wave (Godard)...",
+      "system_answer": "The user has shifted toward French New Wave cinema — Godard is now a key interest. They've reconsidered slow dramas and find depth in them. Previously preferred action (Michael Bay, Nolan).",
+      "judge_score": 1.0, "judge_reasoning": "Accurately reflects the contradiction: current state foregrounded, historical context noted.",
+      "latency_s": 0.421, "tokens_used": 112
+    },
+    {
+      "question_id": "Q002", "system": "Mem0", "after_session": 2,
+      "question": "What kind of movies does the user enjoy?",
+      "query_type": "contradiction_resolution",
+      "golden_answer": "The user's taste has evolved. They now appreciate French New Wave (Godard)...",
+      "system_answer": "User enjoys action movies with explosions. Likes Michael Bay. Also mentioned Godard.",
+      "judge_score": 0.4, "judge_reasoning": "Dominated by Session 1 facts. Godard mentioned but action movies incorrectly presented as current state. Fails contradiction resolution.",
+      "latency_s": 1.893, "tokens_used": 67
+    },
+    {
+      "question_id": "Q003", "system": "Memanto", "after_session": 3,
+      "question": "Describe the user's current film preferences.",
+      "query_type": "staleness_detection",
+      "golden_answer": "Balanced taste: Nolan for spectacle, Tarkovsky for soul. No longer rates Michael Bay highly.",
+      "system_answer": "Current preferences: Nolan for spectacle and Tarkovsky for soul. The user has moved on from Michael Bay, who they now consider hollow.",
+      "judge_score": 1.0, "judge_reasoning": "Precise current state, no stale facts.",
+      "latency_s": 0.387, "tokens_used": 98
+    },
+    {
+      "question_id": "Q003", "system": "Mem0", "after_session": 3,
+      "question": "Describe the user's current film preferences.",
+      "query_type": "staleness_detection",
+      "golden_answer": "Balanced taste: Nolan for spectacle, Tarkovsky for soul. No longer rates Michael Bay highly.",
+      "system_answer": "User likes action movies, Michael Bay, Nolan, and also Tarkovsky and Godard.",
+      "judge_score": 0.5, "judge_reasoning": "Lists all directors without staleness awareness. Michael Bay still presented as liked. Fails staleness detection.",
+      "latency_s": 1.621, "tokens_used": 54
+    },
+    {
+      "question_id": "Q004", "system": "Memanto", "after_session": 2,
+      "question": "Has the user changed their opinion on slow-paced dramas?",
+      "query_type": "contradiction_resolution",
+      "golden_answer": "Yes. Changed from hating them to appreciating depth in them.",
+      "system_answer": "Yes — the user has changed. Originally hated slow dramas, but now finds real depth in them after exploring French New Wave.",
+      "judge_score": 1.0, "judge_reasoning": "Direct, accurate contradiction resolution.",
+      "latency_s": 0.412, "tokens_used": 88
+    },
+    {
+      "question_id": "Q004", "system": "Mem0", "after_session": 2,
+      "question": "Has the user changed their opinion on slow-paced dramas?",
+      "query_type": "contradiction_resolution",
+      "golden_answer": "Yes. Changed from hating them to appreciating depth in them.",
+      "system_answer": "User hates slow-paced dramas. Life is too short for boring films.",
+      "judge_score": 0.0, "judge_reasoning": "Returns Session 1 verbatim. Completely fails to reflect the change. Critical contradiction resolution failure.",
+      "latency_s": 1.541, "tokens_used": 38
+    },
+    {
+      "question_id": "Q006", "system": "Memanto", "after_session": 3,
+      "question": "How does the user feel about Michael Bay now compared to earlier?",
+      "query_type": "contradiction_resolution",
+      "golden_answer": "Previously a favorite, now considered hollow.",
+      "system_answer": "The user previously listed Michael Bay as a favorite director. Now finds his films hollow and can't believe they rated him so highly.",
+      "judge_score": 1.0, "judge_reasoning": "Perfect contradiction resolution with temporal framing.",
+      "latency_s": 0.398, "tokens_used": 91
+    },
+    {
+      "question_id": "Q006", "system": "Mem0", "after_session": 3,
+      "question": "How does the user feel about Michael Bay now compared to earlier?",
+      "query_type": "contradiction_resolution",
+      "golden_answer": "Previously a favorite, now considered hollow.",
+      "system_answer": "Michael Bay is a favorite director.",
+      "judge_score": 0.2, "judge_reasoning": "Stale Session 1 fact returned unchanged. Does not reflect current opinion.",
+      "latency_s": 1.788, "tokens_used": 22
+    },
+    {
+      "question_id": "Q008", "system": "Memanto", "after_session": 5,
+      "question": "What is the user's current opinion on Tarkovsky?",
+      "query_type": "contradiction_resolution",
+      "golden_answer": "Loved, then called overrated, now reconsidered after Stalker.",
+      "system_answer": "The user has had a complex relationship with Tarkovsky. Initially loved (Nolan for spectacle, Tarkovsky for soul), then called him overrated after Andrei Rublev. Now reconsidered — Stalker is described as a masterpiece.",
+      "judge_score": 1.0, "judge_reasoning": "Full temporal arc captured accurately.",
+      "latency_s": 0.441, "tokens_used": 118
+    },
+    {
+      "question_id": "Q008", "system": "Mem0", "after_session": 5,
+      "question": "What is the user's current opinion on Tarkovsky?",
+      "query_type": "contradiction_resolution",
+      "golden_answer": "Loved, then called overrated, now reconsidered after Stalker.",
+      "system_answer": "User likes Tarkovsky for soul. Also mentioned Tarkovsky is overrated.",
+      "judge_score": 0.4, "judge_reasoning": "Returns conflicting statements without resolution. Impossible to determine current state.",
+      "latency_s": 1.912, "tokens_used": 47
+    },
+    {
+      "question_id": "Q009", "system": "Memanto", "after_session": 5,
+      "question": "Describe how the user's social viewing context has changed across sessions.",
+      "query_type": "staleness_detection",
+      "golden_answer": "S1: roommate; S2: alone + cinema; S3: new partner + projector; S5: alone again.",
+      "system_answer": "Session 1: watched with roommate Fridays. Session 2: roommate left, watching alone, started going to cinema. Session 3: new partner, Friday nights resumed, bought projector. Session 5: partner left, back to watching alone.",
+      "judge_score": 0.9, "judge_reasoning": "Accurate across all sessions, slight underspecification on cinema context.",
+      "latency_s": 0.487, "tokens_used": 124
+    },
+    {
+      "question_id": "Q009", "system": "Mem0", "after_session": 5,
+      "question": "Describe how the user's social viewing context has changed across sessions.",
+      "query_type": "staleness_detection",
+      "golden_answer": "S1: roommate; S2: alone + cinema; S3: new partner + projector; S5: alone again.",
+      "system_answer": "User watches movies on Friday nights with roommate.",
+      "judge_score": 0.1, "judge_reasoning": "Returns only Session 1 social context. All subsequent changes (roommate leaving, partner, breakup) absent. Severe staleness failure.",
+      "latency_s": 1.657, "tokens_used": 29
+    }
+  ]
+}

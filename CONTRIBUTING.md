@@ -266,6 +266,7 @@ Rules:
 ## Community
 
 - **Discord**: [Join our server](https://memanto.ai/discord) — the best place for quick questions and discussions
+- **Reddit**: [Join our community](https://www.reddit.com/r/Memanto/) — for discussions and feedback
 - **GitHub Issues**: https://github.com/moorcheh-ai/memanto/issues — bugs and feature requests
 - **Email**: support@moorcheh.ai — for anything that doesn't fit the above
 - **Docs**: https://docs.memanto.ai
