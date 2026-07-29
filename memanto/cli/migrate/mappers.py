@@ -37,6 +37,15 @@ from typing import Any
 
 from memanto.app.constants import VALID_MEMORY_TYPES
 
+_VALID_SOURCES = {"user", "agent", "tool", "system"}
+_OKF_ROLE_TO_SOURCE = {
+    "user": "user",
+    "assistant": "agent",
+    "agent": "agent",
+    "tool": "tool",
+    "system": "system",
+}
+
 # Mem0 ships category labels per memory. Map the common ones to Memanto's
 # typed primitives; everything else falls through to None (auto-classify).
 _MEM0_CATEGORY_TO_TYPE: dict[str, str] = {
@@ -71,6 +80,13 @@ def _coerce_type(raw: str | None) -> str | None:
         return None
     t = raw.strip().lower()
     return t if t in VALID_MEMORY_TYPES else None
+
+
+def _coerce_source(raw: Any) -> str | None:
+    if not isinstance(raw, str):
+        return None
+    source = raw.strip().lower()
+    return source if source in _VALID_SOURCES else None
 
 
 def _scope_tag(scope: dict[str, Any] | None) -> str | None:
@@ -451,11 +467,22 @@ def map_okf(export: dict[str, Any]) -> list[dict[str, Any]]:
             confidence = 0.8
         confidence = min(1.0, max(0.0, confidence))
 
-        source = x_memanto.get("source") or "okf"
+        raw_source = x_memanto.get("source")
+        raw_role = x_memanto.get("role")
+        source = (
+            _coerce_source(raw_source)
+            or _OKF_ROLE_TO_SOURCE.get(str(raw_role).strip().lower())
+            or "tool"
+        )
         created_at = _parse_dt(entry.get("timestamp"))
 
         footer_items: list[tuple[str, Any]] = [
             ("OKF source", entry.get("source_path")),
+            (
+                "Original source",
+                raw_source if raw_source and not _coerce_source(raw_source) else None,
+            ),
+            ("OKF role", raw_role),
             # Only surface the OKF type when we couldn't map it to a slot.
             ("OKF type", okf_type if not memory_type else None),
             ("OKF resource", resource),

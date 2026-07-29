@@ -40,6 +40,14 @@ Always review the generated Markdown before importing or publishing it.
 
 Reasoning and tool records intentionally have no mapping.
 
+## Human-reviewed product boundary
+
+The contributor reviewed whether sanitized tool-call summaries should be
+included and chose to keep the export strict: only user and assistant text is
+portable memory. Tool execution details are not treated as long-term memory,
+and including them would increase privacy risk. The decision is recorded in
+`HUMAN_REVIEW.md`.
+
 ## Run
 
 From this directory:
@@ -100,6 +108,10 @@ portable OKF again
 
 Live Memanto import/export requires a Moorcheh API key. The conversion and all
 privacy tests run fully offline.
+
+The committed [`LIVE_VALIDATION.md`](LIVE_VALIDATION.md) records a cloud-backed
+import, retrieval, and OKF re-export run without including credentials or cloud
+record identifiers.
 
 The OKF migration command does not generate the provider-migration savings
 report because OKF is already a local portable bundle. Do not claim token,
