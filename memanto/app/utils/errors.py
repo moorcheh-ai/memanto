@@ -88,12 +88,6 @@ class AgentAlreadyExistsError(AgentError):
     pass
 
 
-class AgentLimitExceededError(AgentError):
-    """Agent creation limit reached for current plan"""
-
-    pass
-
-
 def map_error_to_http_exception(error: Exception) -> HTTPException:
     """Map internal errors to HTTP exceptions"""
 
@@ -195,16 +189,6 @@ def map_error_to_http_exception(error: Exception) -> HTTPException:
             status_code=409,
             detail={
                 "error": "AgentAlreadyExists",
-                "message": error.message,
-                "details": error.details,
-            },
-        )
-
-    elif isinstance(error, AgentLimitExceededError):
-        return HTTPException(
-            status_code=403,
-            detail={
-                "error": "AgentLimitExceeded",
                 "message": error.message,
                 "details": error.details,
             },
