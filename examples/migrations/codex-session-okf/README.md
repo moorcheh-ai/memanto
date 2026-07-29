@@ -113,6 +113,11 @@ The committed [`LIVE_VALIDATION.md`](LIVE_VALIDATION.md) records a cloud-backed
 import, retrieval, and OKF re-export run without including credentials or cloud
 record identifiers.
 
+For a screen-only demo, [`recording/README.zh-CN.md`](recording/README.zh-CN.md)
+provides a preflight check, scene-controlled terminal script, shot list,
+narration, subtitles, and publication drafts. Rehearsal mode performs no cloud
+writes; live mode creates an isolated timestamped agent.
+
 The OKF migration command does not generate the provider-migration savings
 report because OKF is already a local portable bundle. Do not claim token,
 latency, or storage savings from its dry run; report measured source/output
