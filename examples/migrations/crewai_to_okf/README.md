@@ -8,52 +8,79 @@ This showcase provides a production-ready migration path for **CrewAI** agents t
 
 ## 🌟 Highlights
 
-- **Multi-Store Support**: Automatically parses CrewAI SQLite database files (`.db`/`.sqlite`) and JSON export dumps.
-- **OKF Type Mapping**: Categorizes CrewAI entries into standard OKF schema types (`fact`, `preference`, `context`, `entity`).
-- **PII & Credential Redaction**: Automated redaction of API keys (`sk-*`, `ghp_*`), email addresses, and local system paths.
-- **Zero Loss / Portable Markdown**: Converts unstructured agent state into human-readable, git-versionable OKF markdown records with ISO-8601 timestamps.
-- **Dry-Run & Verification Ready**: Fully compatible with `memanto migrate okf ./okf_bundle --dry-run`.
+- **Multi-Store Support**: Automatically parses CrewAI SQLite databases (`long_term_memories`, `short_term_memories`, `entity_memories`) and JSON memory dumps.
+- **Categorization Engine**: Maps CrewAI memories into standard OKF memory types (`fact`, `preference`, `context`, `entity`).
+- **PII & Secret Redaction**: Built-in automated scrubbing of API keys, emails, passwords, and local filesystem paths prior to export.
+- **Memanto Import Ready**: Produces OKF markdown bundles with complete `okf_manifest.json` and `SAVINGS_REPORT.md` for immediate dry-run ingestion with `memanto migrate okf`.
 
 ---
 
-## 🚀 Quick Start
+## 🚀 Quick Start & Usage
 
-### 1. Run Sample Migration
+Run commands from the repository root:
 
 ```bash
-python3 migrate_crewai.py --source sample_data.json --output ./sample_output/okf
+# Run the end-to-end migration showcase script
+bash ./examples/migrations/crewai_to_okf/run_sample.sh
 ```
 
-### 2. Verify Output
-
-The output folder `./sample_output/okf` will contain:
-- `crewai-mem-0001.md`, `crewai-mem-0002.md`, ... (individual OKF markdown files)
-- `okf_manifest.json` (migration metadata & memory count)
-- `SAVINGS_REPORT.md` (summary report of exported types & savings)
-
-### 3. Test Memanto Import
+Or invoke the migration adapter directly on your own CrewAI memory export:
 
 ```bash
-memanto migrate okf ./sample_output/okf --dry-run
+# From repository root
+python3 ./examples/migrations/crewai_to_okf/migrate_crewai.py \
+  --source ./examples/migrations/crewai_to_okf/sample_data.json \
+  --output ./examples/migrations/crewai_to_okf/sample_output/okf
 ```
 
 ---
 
-## 📊 Recall Parity & Verification Matrix
+## 📂 Output Bundle Structure
 
-| Metric | Result |
-|---|---|
-| Source Memory Records | 4 |
-| Extracted OKF Records | 4 |
-| Redaction Status | Clean |
-| Memanto Dry-Run | 4 / 4 Success |
-| Recall Parity Delta | **0.0% loss** |
+After migration, the output directory contains:
+
+```
+sample_output/okf/
+├── crewai-mem-0001.md
+├── crewai-mem-0002.md
+├── crewai-mem-0003.md
+├── crewai-mem-0004.md
+├── okf_manifest.json
+└── SAVINGS_REPORT.md
+```
+
+### Example OKF Markdown Record
+
+```markdown
+---
+{
+  "okf_version": "1.0.0",
+  "id": "crewai-mem-0001",
+  "agent_id": "lead_researcher",
+  "type": "fact",
+  "tags": ["crewai", "fact", "okf_migrated"],
+  "created_at": "2026-07-29T00:00:00Z",
+  "source": "crewai_adapter"
+}
+---
+
+# Knowledge Record (crewai-mem-0001)
+
+**Agent Role**: `lead_researcher`  
+**Type**: `fact`  
+**Created**: `2026-07-29T00:00:00Z`  
+
+## Memory Content
+
+User prefers concise summary bullet points and markdown code snippets over raw JSON.
+```
 
 ---
 
-## 🧪 Unit Tests
+## 🧪 Testing Ingestion into Memanto
 
-Run unit test suite:
+Verify the exported OKF bundle with Memanto CLI:
+
 ```bash
-pytest test_migrate_crewai.py
+memanto migrate okf ./examples/migrations/crewai_to_okf/sample_output/okf --dry-run
 ```
