@@ -252,6 +252,8 @@ def source_count(provider: str, export: dict[str, Any]) -> int:
     if provider == "langfuse":
         # Observations, not memories — many collapse into one signature.
         return len(export.get("observations", []) or [])
+    if provider == "chatgpt":
+        return len(export.get("conversations", []) or [])
     memories = export.get("memories", []) or []
     if provider == "supermemory" and not memories:
         # Mirror map_supermemory's fallback: when no extracted memories exist

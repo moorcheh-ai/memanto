@@ -1552,6 +1552,65 @@ class TestMEMANTOCLI:
         assert "Executive summary" in report_text
         assert "Method & assumptions" in report_text
 
+    def test_migrate_chatgpt_dry_run(self, mock_all_clients, tmp_path):
+        """'memanto migrate chatgpt --file ... --dry-run' maps and renders a report."""
+        export = {
+            "conversations": [
+                {
+                    "title": "Test Conversation 1",
+                    "id": "conv-123",
+                    "create_time": 1700000000.0,
+                    "mapping": {
+                        "node-1": {
+                            "id": "node-1",
+                            "parent": None,
+                            "message": {
+                                "author": {"role": "user"},
+                                "content": {"parts": ["Hello assistant"]},
+                                "create_time": 1700000000.0,
+                            }
+                        },
+                        "node-2": {
+                            "id": "node-2",
+                            "parent": "node-1",
+                            "message": {
+                                "author": {"role": "assistant"},
+                                "content": {"parts": ["Hello user, how can I help?"]},
+                                "create_time": 1700000005.0,
+                            }
+                        }
+                    }
+                }
+            ]
+        }
+        export_file = self._write_export_file(tmp_path, "conversations.json", export)
+
+        mock_all_clients.answer.return_value = {
+            "answer": "## Executive summary\nMigrating from ChatGPT saves tokens.",
+        }
+
+        with patch("memanto.cli.commands.migrate.config_manager") as mock_cfg:
+            mock_cfg.get_migrate_dir.return_value = tmp_path
+            mock_cfg.get_active_session.return_value = ("test-agent", "test-token")
+            mock_cfg.get_answer_config.return_value = {
+                "model": "anthropic.claude-sonnet-4-6"
+            }
+
+            result = runner.invoke(
+                app,
+                ["migrate", "chatgpt", "--file", str(export_file), "--dry-run"],
+            )
+
+        assert result.exit_code == 0, result.stdout
+        assert "Dry run complete" in result.stdout
+
+        reports = list(tmp_path.glob("*/migrate-report.md"))
+        assert len(reports) == 1
+        report_text = reports[0].read_text(encoding="utf-8")
+        assert "Memanto vs. ChatGPT" in report_text
+        assert "Executive summary" in report_text
+        assert "Method & assumptions" in report_text
+
     def test_migrate_narrative_retries_on_invalid_session(
         self, mock_all_clients, tmp_path
     ):
