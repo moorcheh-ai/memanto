@@ -101,9 +101,6 @@ class MemantoStore(BaseStore):
     # Cache TTL keeps short-interval polls (Streamlit reruns, multiple graph
     # nodes) from burning rate-limit budget on identical queries.
     _CACHE_TTL_S = 30.0
-    # Fixed-size lock striping prevents unbounded per-key lock growth while
-    # allowing unrelated puts to proceed concurrently.
-    _PUT_LOCK_STRIPES = 64
 
     def __init__(self, api_key: str) -> None:
         """Initialize MemantoStore with an API key."""
@@ -113,9 +110,6 @@ class MemantoStore(BaseStore):
         self._agent_prefix = "langgraph_"
         # (namespace, query, limit, type, min_sim) -> (timestamp, list[SearchItem])
         self._search_cache: dict[tuple, tuple[float, list[SearchItem]]] = {}
-        # Survives 429s without flashing the UI panel to zero.
-        self._last_good: dict[tuple[str, ...], list[SearchItem]] = {}
-        self._put_locks = tuple(threading.Lock() for _ in range(self._PUT_LOCK_STRIPES))
 
     def _ensure_client(self, namespace: tuple[str, ...]) -> tuple[SdkClient, str]:
         ns_str = "_".join(namespace) or "default"
@@ -258,47 +252,43 @@ class MemantoStore(BaseStore):
         ]
         all_tags = user_tags + [self._key_to_tag(op.key)]
 
-        put_lock = self._put_locks[
-            hash((op.namespace, op.key)) % self._PUT_LOCK_STRIPES
-        ]
-        with put_lock:
-            client, agent_id = self._ensure_client(op.namespace)
-            existing = self._do_get(
-                GetOp(namespace=op.namespace, key=op.key), strict=True
+        client, agent_id = self._ensure_client(op.namespace)
+        existing = self._do_get(
+            GetOp(namespace=op.namespace, key=op.key), strict=True
+        )
+        existing_id = existing.value.get("memory_id") if existing else None
+
+        if existing_id:
+            updates: dict[str, Any] = {
+                "title": title,
+                "content": str(raw_content),
+                "confidence": confidence,
+                "tags": all_tags,
+                "source": "langgraph-store",
+            }
+            if memory_type is not None:
+                updates["type"] = memory_type
+            client.update_memory(
+                agent_id=agent_id,
+                memory_id=str(existing_id),
+                updates=updates,
             )
-            existing_id = existing.value.get("memory_id") if existing else None
+        else:
+            client.remember(
+                agent_id=agent_id,
+                memory_type=memory_type,
+                title=title,
+                content=str(raw_content),
+                confidence=confidence,
+                tags=all_tags,
+                source="langgraph-store",
+                provenance="explicit_statement",
+            )
 
-            if existing_id:
-                updates: dict[str, Any] = {
-                    "title": title,
-                    "content": str(raw_content),
-                    "confidence": confidence,
-                    "tags": all_tags,
-                    "source": "langgraph-store",
-                }
-                if memory_type is not None:
-                    updates["type"] = memory_type
-                client.update_memory(
-                    agent_id=agent_id,
-                    memory_id=str(existing_id),
-                    updates=updates,
-                )
-            else:
-                client.remember(
-                    agent_id=agent_id,
-                    memory_type=memory_type,
-                    title=title,
-                    content=str(raw_content),
-                    confidence=confidence,
-                    tags=all_tags,
-                    source="langgraph-store",
-                    provenance="explicit_statement",
-                )
-
-            # Invalidate cached searches for this namespace
-            prefix = op.namespace
-            with self._lock:
-                self._search_cache = {
+        # Invalidate cached searches for this namespace
+        prefix = op.namespace
+        with self._lock:
+            self._search_cache = {
                     k: v for k, v in self._search_cache.items() if k[0] != prefix
                 }
 
@@ -341,7 +331,6 @@ class MemantoStore(BaseStore):
                     return items
 
         fetch_limit = max(1, min(op.limit, self._MEMANTO_RECALL_CAP))
-        rate_limited = False
 
         client, agent_id = self._ensure_client(op.namespace_prefix)
 
@@ -364,18 +353,7 @@ class MemantoStore(BaseStore):
                 )
         except Exception as exc:
             logger.warning("MemantoStore._do_search recall failed: %s", exc)
-            err = str(exc)
-            if any(
-                m in err
-                for m in (
-                    "429",
-                    "Limit Exceeded",
-                )
-            ):
-                rate_limited = True
-                result = {"memories": []}
-            else:
-                return []
+            raise
 
         out: list[SearchItem] = []
         for mem in result.get("memories", []):
@@ -388,16 +366,8 @@ class MemantoStore(BaseStore):
         out = out[: op.limit]
 
         with self._lock:
-            if not out and rate_limited and op.namespace_prefix in self._last_good:
-                logger.info(
-                    "MemantoStore: rate-limited, returning last-good for %r",
-                    op.namespace_prefix,
-                )
-                return self._last_good[op.namespace_prefix]
-
-            if out and not rate_limited:
+            if out:
                 self._search_cache[cache_key] = (time.time(), out)
-                self._last_good[op.namespace_prefix] = out
 
         return out
 
