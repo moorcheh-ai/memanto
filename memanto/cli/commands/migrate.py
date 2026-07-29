@@ -201,7 +201,7 @@ def _build_chat_export_report_markdown(
         "| Metric | Value |",
         "| --- | --- |",
         f"| Total Conversations | {v['conversations']:,} |",
-        f"| Mapped Messages | {v['messages']:,} |",
+        f"| Source Messages (est.) | {v['messages']:,} |",
         "",
         "## Projected impact of migrating to Memanto",
         "",
