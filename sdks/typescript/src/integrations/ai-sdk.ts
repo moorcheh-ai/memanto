@@ -1,4 +1,4 @@
-import { tool } from "ai";
+import { tool, type Tool } from "ai";
 import { z } from "zod";
 
 import type { Memanto } from "../index.js";
@@ -46,7 +46,7 @@ export interface CreateMemantoToolsOptions {
 export function createMemantoTools(
   memanto: Memanto,
   options: CreateMemantoToolsOptions = {},
-) {
+): Partial<Record<MemantoToolName, Tool>> {
   const { include, defaultLimit } = options;
 
   const all = {
