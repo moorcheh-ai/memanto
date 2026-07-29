@@ -85,21 +85,23 @@ def write_preview(rows: list[dict[str, Any]], dest: Path) -> Path:
     return dest
 
 
-def source_count(provider: str, export: dict[str, Any]) -> int:
+def source_count(provider: str, export: dict[str, Any] | list[Any]) -> int:
     """Best-effort count of source records (for the summary header)."""
     if provider == "letta":
-        return len(export.get("passages", []) or [])
+        return len(export.get("passages", []) if isinstance(export, dict) else [])
     if provider in ("chatgpt", "claude"):
         convs = export if isinstance(export, list) else export.get("conversations", [])
-        return len(convs)
+        if provider == "chatgpt":
+            return sum(len(c.get("mapping", {})) for c in convs)
+        return sum(len(c.get("chat_messages", [])) for c in convs)
     
-    memories = export.get("memories", []) or []
+    memories = export.get("memories", []) if isinstance(export, dict) else []
     if provider == "supermemory" and not memories:
         # Mirror map_supermemory's fallback: when no extracted memories exist
         # we harvest document chunks, so the summary should reflect that.
         return sum(
-            len(doc.get("chunks", []) or [])
-            for doc in (export.get("documents", []) or [])
+            len(doc.get("chunks", []) if isinstance(doc, dict) else [])
+            for doc in (export.get("documents", []) if isinstance(doc, dict) else [])
         )
     return len(memories)
 

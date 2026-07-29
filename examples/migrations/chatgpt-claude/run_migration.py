@@ -36,6 +36,7 @@ def run_cli(provider: str, filename: str):
         print(result.stdout)
     except subprocess.CalledProcessError as e:
         print(f"Error running migration for {provider}:\n{e.stderr}")
+        raise
 
 if __name__ == "__main__":
     run_cli("chatgpt", "sample_chatgpt.json")
