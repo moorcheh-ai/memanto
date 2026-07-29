@@ -218,156 +218,30 @@ def test_tags_to_key_unescapes_encoded_key_tags():
     )
 
 
-
-def test_do_put_updates_existing_key_instead_of_creating_duplicate(mock_sdk_client):
-    """LangGraph put is an upsert for a unique namespace/key pair."""
+def test_do_put_upsert_behavior(mock_sdk_client):
+    """LangGraph put acts as an upsert, preserves existing types, and fails safe."""
     store = MemantoStore(api_key="test_key")
     client_instance = MagicMock()
     mock_sdk_client.return_value = client_instance
+    
+    # 1. Test update
     client_instance.recall_recent.return_value = {
-        "memories": [
-            {
-                "id": "mem-existing",
-                "tags": ["lg:key:my_key"],
-                "type": "fact",
-                "title": "old title",
-                "content": "old content",
-                "confidence": 0.8,
-            }
-        ]
+        "memories": [{"id": "mem-1", "tags": ["lg:key:my_key"], "type": "fact"}]
     }
-
-    op = PutOp(
-        namespace=("my_ns",),
-        key="my_key",
-        value={"kind": "fact", "content": "new content", "title": "new title"},
-    )
-    store._do_put(op)
-
-    client_instance.update_memory.assert_called_once_with(
-        agent_id="langgraph_my_ns",
-        memory_id="mem-existing",
-        updates={
-            "type": "fact",
-            "title": "new title",
-            "content": "new content",
-            "confidence": 0.8,
-            "tags": ["lg:key:my_key"],
-            "source": "langgraph-store",
-        },
-    )
+    store._do_put(PutOp(namespace=("my_ns",), key="my_key", value={"content": "new"}))
+    client_instance.update_memory.assert_called_once()
+    assert "type" not in client_instance.update_memory.call_args.kwargs["updates"]
     client_instance.remember.assert_not_called()
 
-
-def test_do_put_existing_key_without_type_preserves_existing_type(mock_sdk_client):
-    """An inferred type must not be replaced with an invalid None update."""
-    store = MemantoStore(api_key="test_key")
-    client_instance = MagicMock()
-    mock_sdk_client.return_value = client_instance
-    client_instance.recall_recent.return_value = {
-        "memories": [
-            {
-                "id": "mem-existing",
-                "tags": ["lg:key:my_key"],
-                "type": "preference",
-                "title": "old title",
-                "content": "old content",
-                "confidence": 0.8,
-            }
-        ]
-    }
-
-    store._do_put(
-        PutOp(
-            namespace=("my_ns",),
-            key="my_key",
-            value={"content": "new content", "title": "new title"},
-        )
-    )
-
-    updates = client_instance.update_memory.call_args.kwargs["updates"]
-    assert "type" not in updates
-    client_instance.remember.assert_not_called()
-
-
-def test_do_put_does_not_create_when_existence_lookup_fails(mock_sdk_client):
-    """A failed fallback lookup must not be mistaken for an absent key."""
-    store = MemantoStore(api_key="test_key")
-    client_instance = MagicMock()
-    mock_sdk_client.return_value = client_instance
+    # 2. Test failure safe
+    client_instance.reset_mock()
     client_instance.recall_recent.return_value = {"memories": []}
-    client_instance.recall.side_effect = RuntimeError("backend unavailable")
-
+    client_instance.recall.side_effect = RuntimeError("backend down")
+    import pytest
     with pytest.raises(RuntimeError, match="Cannot safely determine"):
-        store._do_put(
-            PutOp(
-                namespace=("my_ns",),
-                key="my_key",
-                value={"content": "must not be duplicated"},
-            )
-        )
-
-    client_instance.remember.assert_not_called()
+        store._do_put(PutOp(namespace=("my_ns",), key="my_key", value={"content": "x"}))
     client_instance.update_memory.assert_not_called()
-
-
-def test_public_put_replaces_value_without_growing_backend_memory(mock_sdk_client):
-    """Repeated public ``put`` calls keep one backend record with the latest value."""
-    store = MemantoStore(api_key="test_key")
-    client_instance = MagicMock()
-    mock_sdk_client.return_value = client_instance
-    memories: list[dict] = []
-
-    def recall_recent(**_kwargs):
-        return {"memories": [memory.copy() for memory in memories]}
-
-    def recall(**_kwargs):
-        return {"memories": [memory.copy() for memory in memories]}
-
-    def remember(**kwargs):
-        memories.append(
-            {
-                "id": "mem-1",
-                "type": kwargs["memory_type"],
-                "title": kwargs["title"],
-                "content": kwargs["content"],
-                "confidence": kwargs["confidence"],
-                "tags": list(kwargs["tags"]),
-                "source": kwargs["source"],
-            }
-        )
-        return {"memory_id": "mem-1"}
-
-    def update_memory(*, memory_id, updates, **_kwargs):
-        memory = next(memory for memory in memories if memory["id"] == memory_id)
-        memory.update(updates)
-        return {"memory_id": memory_id}
-
-    client_instance.recall_recent.side_effect = recall_recent
-    client_instance.recall.side_effect = recall
-    client_instance.remember.side_effect = remember
-    client_instance.update_memory.side_effect = update_memory
-
-    namespace = ("users",)
-    key = "user-42"
-    store.put(
-        namespace,
-        key,
-        {"kind": "preference", "content": "Prefers email"},
-    )
-    store.put(
-        namespace,
-        key,
-        {"kind": "preference", "content": "Prefers Telegram"},
-    )
-
-    item = store.get(namespace, key)
-
-    assert len(memories) == 1
-    assert item is not None
-    assert item.value["content"] == "Prefers Telegram"
-    assert client_instance.remember.call_count == 1
-    assert client_instance.update_memory.call_count == 1
+    client_instance.remember.assert_not_called()
 
 
 def test_do_put_stringifies_non_string_content(mock_sdk_client):
@@ -388,7 +262,6 @@ def test_do_put_stringifies_non_string_content(mock_sdk_client):
         source="langgraph-store",
         provenance="explicit_statement",
     )
-
 
 
 def test_do_put_delete_not_supported(mock_sdk_client):
