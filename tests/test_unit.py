@@ -836,8 +836,11 @@ class TestMemoryReadServiceRecallStatus:
     """Recall should not surface inactive memory records."""
 
     @staticmethod
-    def _memory_item(memory_id: str, status: str) -> dict[str, object]:
-        return {
+    def _memory_item(
+        memory_id: str,
+        status: str | None = None,
+    ) -> dict[str, object]:
+        item: dict[str, object] = {
             "id": memory_id,
             "text": f"[FACT] {memory_id}\n\nStored fact",
             "memory_type": "fact",
@@ -845,10 +848,14 @@ class TestMemoryReadServiceRecallStatus:
             "actor_id": "agent-1",
             "source": "user",
             "confidence": 0.9,
-            "status": status,
             "created_at": "2026-01-01T00:00:00+00:00",
             "updated_at": "2026-01-01T00:00:00+00:00",
         }
+
+        if status is not None:
+            item["status"] = status
+
+        return item
 
     def test_search_memories_filters_superseded_and_deleted_results(self):
         """Standard recall must not return stale inactive memories."""
@@ -858,6 +865,7 @@ class TestMemoryReadServiceRecallStatus:
         client.similarity_search.query.return_value = {
             "results": [
                 self._memory_item("active", "active"),
+                self._memory_item("legacy"),
                 self._memory_item("superseded", "superseded"),
                 self._memory_item("deleted", "deleted"),
             ],
@@ -866,7 +874,10 @@ class TestMemoryReadServiceRecallStatus:
 
         result = MemoryReadService(client).search_memories("stored", agent_id="agent-1")
 
-        assert [item["id"] for item in result["results"]] == ["active"]
+        assert [item["id"] for item in result["results"]] == [
+            "active",
+            "legacy",
+        ]
 
     def test_search_memories_preserves_explicit_deleted_filter(self):
         """Explicit deleted recall must preserve deleted memories only."""
