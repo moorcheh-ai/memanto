@@ -2150,6 +2150,7 @@ class TestMEMANTOAPI:
         class LocalDatetime(datetime):
             @classmethod
             def now(cls, tz=None):
+                """Return the simulated UTC-06:00 wall-clock time."""
                 assert tz is None
                 return cls(2026, 7, 29, 19, 0)
 
@@ -2241,6 +2242,7 @@ class TestMEMANTOAPI:
         class LocalDatetime(datetime):
             @classmethod
             def now(cls, tz=None):
+                """Return the simulated UTC-06:00 wall-clock time."""
                 assert tz is None
                 return cls(2026, 7, 29, 19, 0)
 
