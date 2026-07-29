@@ -512,7 +512,8 @@ def map_chatgpt(export: Any) -> list[dict[str, Any]]:
             if author == "system": 
                 continue
             
-            parts = msg.get("content", {}).get("parts", [])
+            msg_content = msg.get("content") or {}
+            parts = msg_content.get("parts") or []
             content = " ".join(p for p in parts if isinstance(p, str)).strip()
             if not content: 
                 continue

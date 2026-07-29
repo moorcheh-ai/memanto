@@ -112,7 +112,7 @@ _PROVIDER_BUNDLES: dict[str, dict[str, Any]] = {
     "chatgpt": {
         "label": "ChatGPT",
         "exporter": lambda *args, **kwargs: None, # Live export not supported, requires ZIP/JSON upload
-        "metrics": lambda export: {"total_memories": len(export.get("conversations", []))}, # Stub metric
+        "metrics": lambda export: {"total_memories": len(export if isinstance(export, list) else export.get("conversations", []))}, # Stub metric
         "prompt": lambda metrics: "",
         "report": lambda **kwargs: "ChatGPT migration complete.",
         "export_filename": "conversations.json",
