@@ -108,8 +108,6 @@ class MemantoStore(BaseStore):
         self._agent_prefix = "langgraph_"
         # (namespace, query, limit, tags, type, min_sim, min_conf) -> (timestamp, items)
         self._search_cache: dict[tuple, tuple[float, list[SearchItem]]] = {}
-        # Survives 429s without flashing the UI panel to zero.
-        self._last_good: dict[tuple[str, ...], list[SearchItem]] = {}
 
     def _ensure_client(self, namespace: tuple[str, ...]) -> tuple[SdkClient, str]:
         ns_str = "_".join(namespace) or "default"
@@ -311,7 +309,6 @@ class MemantoStore(BaseStore):
             fetch_limit = self._MEMANTO_RECALL_CAP
         else:
             fetch_limit = max(1, min(op.limit, self._MEMANTO_RECALL_CAP))
-        rate_limited = False
 
         client, agent_id = self._ensure_client(op.namespace_prefix)
 
@@ -334,18 +331,7 @@ class MemantoStore(BaseStore):
                 )
         except Exception as exc:
             logger.warning("MemantoStore._do_search recall failed: %s", exc)
-            err = str(exc)
-            if any(
-                m in err
-                for m in (
-                    "429",
-                    "Limit Exceeded",
-                )
-            ):
-                rate_limited = True
-                result = {"memories": []}
-            else:
-                return []
+            raise
 
         out: list[SearchItem] = []
         for mem in result.get("memories", []):
@@ -362,16 +348,8 @@ class MemantoStore(BaseStore):
         out = out[: op.limit]
 
         with self._lock:
-            if not out and rate_limited and op.namespace_prefix in self._last_good:
-                logger.info(
-                    "MemantoStore: rate-limited, returning last-good for %r",
-                    op.namespace_prefix,
-                )
-                return self._last_good[op.namespace_prefix]
-
-            if out and not rate_limited:
+            if out:
                 self._search_cache[cache_key] = (time.time(), out)
-                self._last_good[op.namespace_prefix] = out
 
         return out
 
