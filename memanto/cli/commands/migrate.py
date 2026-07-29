@@ -81,6 +81,7 @@ from memanto.cli.migrate.runner import (
     load_export,
     run_migration,
     write_preview,
+    source_count,
 )
 
 # Per-provider plumbing in one place so each subcommand stays tiny.
@@ -112,30 +113,33 @@ _PROVIDER_BUNDLES: dict[str, dict[str, Any]] = {
     },
 }
 
+# Assumptions for ChatGPT/Claude migration savings estimates
+_EST_TOKENS_PER_MSG = 150          # Average token count per chat message based on typical conversational turns
+_EST_API_READ_MS = 850             # Typical round-trip latency (ms) fetching from a cloud chat API
+_EST_LOCAL_READ_MS = 8             # Typical local SQLite lookup latency (ms) in Memanto
+_EST_PROVIDER_BYTES_PER_MSG = 1200 # Estimated JSON overhead per raw chat message
+_EST_MEMANTO_BYTES_PER_MSG = 300   # Estimated SQLite row footprint per parsed message
+
 
 def _compute_chat_metrics(export: Any, provider_name: str) -> dict[str, Any]:
     conversations = export if isinstance(export, list) else export.get("conversations", [])
     conv_count = len(conversations)
-    msg_count = 0
-    if provider_name == "ChatGPT":
-        for c in conversations:
-            msg_count += len(c.get("mapping", {}))
-    elif provider_name == "Claude":
-        for c in conversations:
-            msg_count += len(c.get("chat_messages", []))
+    provider_key = provider_name.lower()
+    
+    if provider_key in ("chatgpt", "claude"):
+        msg_count = source_count(provider_key, export)
     else:
         msg_count = conv_count * 10  # fallback
     
-    # Assumptions for estimates
-    tokens_per_msg = 150
-    input_tokens = msg_count * tokens_per_msg
-    output_tokens = msg_count * tokens_per_msg
+    # Estimates based on assumptions
+    input_tokens = msg_count * _EST_TOKENS_PER_MSG
+    output_tokens = msg_count * _EST_TOKENS_PER_MSG
     
-    api_read_ms = 850
-    local_read_ms = 8
+    api_read_ms = _EST_API_READ_MS
+    local_read_ms = _EST_LOCAL_READ_MS
     
-    json_bytes = msg_count * 1200
-    sqlite_bytes = msg_count * 300
+    json_bytes = msg_count * _EST_PROVIDER_BYTES_PER_MSG
+    sqlite_bytes = msg_count * _EST_MEMANTO_BYTES_PER_MSG
     
     return {
         "volume": {
