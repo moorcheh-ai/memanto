@@ -33,16 +33,8 @@ jobs:
       - name: Install dependencies
         run: uv sync --all-extras --dev
 
-      - name: Create version fallback
-        run: echo '__version__ = "0.0.0.dev0"' > memanto/app/_version.py
-
       - name: Generate fresh OpenAPI spec
-        run: |
-          uv run python -c "
-          import json
-          from memanto.app.main import app
-          print(json.dumps(app.openapi(), indent=2))
-          " > /tmp/openapi.fresh.json
+        run: uv run python scripts/generate_openapi.py > /tmp/openapi.fresh.json
 
       - name: Diff against committed spec
         run: |

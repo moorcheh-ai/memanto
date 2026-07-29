@@ -1,0 +1,156 @@
+[
+  {
+    "session": 1,
+    "turn": 1,
+    "user": "I love action movies, especially ones with car chases and explosions.",
+    "expected_preference": "action movies with car chases and explosions",
+    "contradiction": null
+  },
+  {
+    "session": 1,
+    "turn": 2,
+    "user": "My favorite directors are Michael Bay and Christopher Nolan.",
+    "expected_preference": "favorite directors: Michael Bay and Christopher Nolan",
+    "contradiction": null
+  },
+  {
+    "session": 1,
+    "turn": 3,
+    "user": "I hate slow-paced dramas. Life is too short for boring films.",
+    "expected_preference": "dislikes slow-paced dramas",
+    "contradiction": null
+  },
+  {
+    "session": 1,
+    "turn": 4,
+    "user": "I always watch movies on Friday nights with my roommate. It's our tradition.",
+    "expected_preference": "watches movies Friday nights with roommate",
+    "contradiction": null
+  },
+  {
+    "session": 1,
+    "turn": 5,
+    "user": "I prefer watching at home — cinemas are too expensive and crowded.",
+    "expected_preference": "prefers home viewing over cinemas",
+    "contradiction": null
+  },
+  {
+    "session": 2,
+    "turn": 1,
+    "user": "Actually, I've been getting into French New Wave cinema lately. Godard is fascinating.",
+    "expected_preference": "now interested in French New Wave, Godard",
+    "contradiction": "dislikes slow-paced dramas"
+  },
+  {
+    "session": 2,
+    "turn": 2,
+    "user": "I think I was wrong about slow dramas — there's real depth in them.",
+    "expected_preference": "changed opinion: now appreciates depth in slow dramas",
+    "contradiction": "hates slow-paced dramas"
+  },
+  {
+    "session": 2,
+    "turn": 3,
+    "user": "My roommate moved out, so I've been watching alone more often now.",
+    "expected_preference": "now watches alone since roommate moved out",
+    "contradiction": "watches movies Friday nights with roommate"
+  },
+  {
+    "session": 2,
+    "turn": 4,
+    "user": "I actually went to the cinema last week and loved the experience — huge screen, great sound.",
+    "expected_preference": "now open to cinema after positive experience",
+    "contradiction": "prefers home viewing over cinemas"
+  },
+  {
+    "session": 2,
+    "turn": 5,
+    "user": "Been watching a lot of Bergman and Antonioni too. Slow cinema is its own reward.",
+    "expected_preference": "appreciates Bergman and Antonioni, slow cinema",
+    "contradiction": null
+  },
+  {
+    "session": 3,
+    "turn": 1,
+    "user": "I've settled on a balanced taste — I love Nolan for spectacle but Tarkovsky for soul.",
+    "expected_preference": "balanced: Nolan for spectacle, Tarkovsky for soul",
+    "contradiction": null
+  },
+  {
+    "session": 3,
+    "turn": 2,
+    "user": "Michael Bay films feel hollow to me now. I can't believe I used to rate him so highly.",
+    "expected_preference": "no longer rates Michael Bay highly",
+    "contradiction": "favorite director: Michael Bay"
+  },
+  {
+    "session": 3,
+    "turn": 3,
+    "user": "I bought a projector — the cinema feeling at home is the best of both worlds.",
+    "expected_preference": "bought projector, home cinema setup",
+    "contradiction": "prefers home viewing (no equipment context)"
+  },
+  {
+    "session": 3,
+    "turn": 4,
+    "user": "Friday movie nights are back — my new partner loves film as much as I do.",
+    "expected_preference": "resuming Friday movie nights with new partner",
+    "contradiction": "watches alone since roommate moved out"
+  },
+  {
+    "session": 4,
+    "turn": 1,
+    "user": "I've been exploring Korean cinema — Park Chan-wook's Oldboy was a revelation.",
+    "expected_preference": "into Korean cinema, Park Chan-wook",
+    "contradiction": null
+  },
+  {
+    "session": 4,
+    "turn": 2,
+    "user": "My partner prefers lighter films so we mostly watch comedies together now.",
+    "expected_preference": "watches comedies with partner, personal preference subordinated",
+    "contradiction": null
+  },
+  {
+    "session": 4,
+    "turn": 3,
+    "user": "Alone I still go deep — just finished all of Kubrick's filmography.",
+    "expected_preference": "solo viewing: serious cinema (Kubrick)",
+    "contradiction": null
+  },
+  {
+    "session": 4,
+    "turn": 4,
+    "user": "I think Tarkovsky is overrated actually. Andrei Rublev bored me to tears.",
+    "expected_preference": "now finds Tarkovsky overrated",
+    "contradiction": "Tarkovsky for soul (Session 3)"
+  },
+  {
+    "session": 5,
+    "turn": 1,
+    "user": "I've gone back to Nolan. Oppenheimer reminded me why I fell in love with cinema.",
+    "expected_preference": "reaffirms Nolan as favorite after Oppenheimer",
+    "contradiction": null
+  },
+  {
+    "session": 5,
+    "turn": 2,
+    "user": "My partner and I broke up. Back to watching alone again.",
+    "expected_preference": "watches alone again after breakup",
+    "contradiction": "Friday movie nights with new partner"
+  },
+  {
+    "session": 5,
+    "turn": 3,
+    "user": "Actually I've given Tarkovsky another chance — Stalker is a masterpiece.",
+    "expected_preference": "reconsidered Tarkovsky, Stalker specifically praised",
+    "contradiction": "Tarkovsky overrated"
+  },
+  {
+    "session": 5,
+    "turn": 4,
+    "user": "I want to get into documentary filmmaking myself. Considering a course.",
+    "expected_preference": "interested in making documentaries",
+    "contradiction": null
+  }
+]

@@ -1,0 +1,28 @@
+[
+  {
+    "backend": "mem0",
+    "probes": 144,
+    "retrieval_accuracy": 0.7291666666666666,
+    "mean_reciprocal_rank": 0.471875,
+    "stale_exposure_rate": 0.6666666666666666,
+    "poison_exposure_rate": 0.16666666666666666,
+    "foreign_exposure_rate": 0,
+    "tokens_ingested": 4050,
+    "mean_tokens_retrieved": 90.16666666666667,
+    "p95_write_latency_seconds": 0.02832618500688113,
+    "p95_retrieval_latency_seconds": 0.04653548498317832
+  },
+  {
+    "backend": "memanto",
+    "probes": 144,
+    "retrieval_accuracy": 0.9444444444444444,
+    "mean_reciprocal_rank": 0.5506944444444445,
+    "stale_exposure_rate": 0.75,
+    "poison_exposure_rate": 0.22916666666666666,
+    "foreign_exposure_rate": 0,
+    "tokens_ingested": 4050,
+    "mean_tokens_retrieved": 90.95833333333333,
+    "p95_write_latency_seconds": 0.9486111450183669,
+    "p95_retrieval_latency_seconds": 0.44859914001572176
+  }
+]

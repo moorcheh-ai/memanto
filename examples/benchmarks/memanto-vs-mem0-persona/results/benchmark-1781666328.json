@@ -1,0 +1,218 @@
+{
+  "config": {
+    "experiment_id": "benchmark-1781666328",
+    "judge_model": "claude-sonnet-4-6",
+    "memanto_namespace": "benchmark-persona-benchmark-1781666328",
+    "benchmark_scenario": "Shifting Persona & Temporal Tracking (Scenario B)",
+    "dataset": "persona_conversations.json + golden_qa.json",
+    "systems": [
+      "Memanto"
+    ],
+    "memanto_sdk": "moorcheh-sdk>=1.3.5",
+    "mem0_sdk": "skipped",
+    "token_counting": "approximate (len//4)",
+    "sessions": [
+      1,
+      2,
+      3
+    ]
+  },
+  "summary": {
+    "Memanto": {
+      "total_tokens_ingested": 165,
+      "total_tokens_retrieved": 5,
+      "store_p95_latency_s": 4.9467,
+      "recall_p95_latency_s": 8.7835,
+      "overall_p95_latency_s": 8.7835,
+      "retrieval_accuracy": 0.0,
+      "successful_ops": 11,
+      "failed_ops": 0,
+      "eval_questions": 5
+    }
+  },
+  "turn_results": [
+    {
+      "system": "Memanto",
+      "session": 1,
+      "turn": 1,
+      "operation": "store",
+      "latency_s": 4.9467,
+      "tokens_in": 17,
+      "tokens_out": 0,
+      "success": true,
+      "error": ""
+    },
+    {
+      "system": "Memanto",
+      "session": 1,
+      "turn": 2,
+      "operation": "store",
+      "latency_s": 1.7398,
+      "tokens_in": 15,
+      "tokens_out": 0,
+      "success": true,
+      "error": ""
+    },
+    {
+      "system": "Memanto",
+      "session": 1,
+      "turn": 3,
+      "operation": "store",
+      "latency_s": 0.9205,
+      "tokens_in": 15,
+      "tokens_out": 0,
+      "success": true,
+      "error": ""
+    },
+    {
+      "system": "Memanto",
+      "session": 1,
+      "turn": 3,
+      "operation": "recall",
+      "latency_s": 7.9851,
+      "tokens_in": 10,
+      "tokens_out": 1,
+      "success": true,
+      "error": ""
+    },
+    {
+      "system": "Memanto",
+      "session": 2,
+      "turn": 1,
+      "operation": "store",
+      "latency_s": 1.9291,
+      "tokens_in": 21,
+      "tokens_out": 0,
+      "success": true,
+      "error": ""
+    },
+    {
+      "system": "Memanto",
+      "session": 2,
+      "turn": 2,
+      "operation": "store",
+      "latency_s": 1.2953,
+      "tokens_in": 17,
+      "tokens_out": 0,
+      "success": true,
+      "error": ""
+    },
+    {
+      "system": "Memanto",
+      "session": 2,
+      "turn": 2,
+      "operation": "recall",
+      "latency_s": 6.6288,
+      "tokens_in": 10,
+      "tokens_out": 1,
+      "success": true,
+      "error": ""
+    },
+    {
+      "system": "Memanto",
+      "session": 2,
+      "turn": 2,
+      "operation": "recall",
+      "latency_s": 6.2596,
+      "tokens_in": 14,
+      "tokens_out": 1,
+      "success": true,
+      "error": ""
+    },
+    {
+      "system": "Memanto",
+      "session": 3,
+      "turn": 1,
+      "operation": "store",
+      "latency_s": 1.2676,
+      "tokens_in": 21,
+      "tokens_out": 0,
+      "success": true,
+      "error": ""
+    },
+    {
+      "system": "Memanto",
+      "session": 3,
+      "turn": 1,
+      "operation": "recall",
+      "latency_s": 8.7835,
+      "tokens_in": 11,
+      "tokens_out": 1,
+      "success": true,
+      "error": ""
+    },
+    {
+      "system": "Memanto",
+      "session": 3,
+      "turn": 1,
+      "operation": "recall",
+      "latency_s": 6.7251,
+      "tokens_in": 14,
+      "tokens_out": 1,
+      "success": true,
+      "error": ""
+    }
+  ],
+  "eval_results": [
+    {
+      "question_id": "Q001",
+      "system": "Memanto",
+      "after_session": 1,
+      "question": "What kind of movies does the user enjoy?",
+      "system_answer": "",
+      "golden_answer": "The user enjoys action movies with car chases and explosions, directed by Michael Bay or Christopher Nolan. They dislike slow-paced dramas.",
+      "judge_score": 0.0,
+      "judge_reasoning": "no judge",
+      "latency_s": 7.9851,
+      "tokens_used": 1
+    },
+    {
+      "question_id": "Q002",
+      "system": "Memanto",
+      "after_session": 2,
+      "question": "What kind of movies does the user enjoy?",
+      "system_answer": "",
+      "golden_answer": "The user's taste has evolved. They originally liked action movies but now appreciate French New Wave cinema (Godard) and have reconsidered their dislike of slow dramas.",
+      "judge_score": 0.0,
+      "judge_reasoning": "no judge",
+      "latency_s": 6.6288,
+      "tokens_used": 1
+    },
+    {
+      "question_id": "Q004",
+      "system": "Memanto",
+      "after_session": 2,
+      "question": "Has the user changed their opinion on slow-paced dramas?",
+      "system_answer": "",
+      "golden_answer": "Yes. The user originally hated slow-paced dramas but now appreciates the depth in them after exploring French New Wave cinema.",
+      "judge_score": 0.0,
+      "judge_reasoning": "no judge",
+      "latency_s": 6.2596,
+      "tokens_used": 1
+    },
+    {
+      "question_id": "Q003",
+      "system": "Memanto",
+      "after_session": 3,
+      "question": "Describe the user's current film preferences.",
+      "system_answer": "",
+      "golden_answer": "The user has settled on a balanced taste: Christopher Nolan for spectacle and Andrei Tarkovsky for soul.",
+      "judge_score": 0.0,
+      "judge_reasoning": "no judge",
+      "latency_s": 8.7835,
+      "tokens_used": 1
+    },
+    {
+      "question_id": "Q005",
+      "system": "Memanto",
+      "after_session": 3,
+      "question": "Which directors has the user mentioned across all sessions?",
+      "system_answer": "",
+      "golden_answer": "Michael Bay, Christopher Nolan, Jean-Luc Godard, and Andrei Tarkovsky.",
+      "judge_score": 0.0,
+      "judge_reasoning": "no judge",
+      "latency_s": 6.7251,
+      "tokens_used": 1
+    }
+  ]
+}

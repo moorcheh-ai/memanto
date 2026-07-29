@@ -4,6 +4,7 @@ MEMANTO Web UI Router
 Serves the Web UI static files and provides UI-specific API endpoints.
 """
 
+import asyncio
 import ipaddress
 import os
 import re
@@ -28,7 +29,7 @@ from memanto.app.config import settings
 from memanto.app.routes.auth_deps import clear_session_cookie, set_session_cookie
 from memanto.app.utils.validation import validate_safe_id
 from memanto.cli.client.direct_client import DirectClient
-from memanto.cli.config.manager import ConfigManager
+from memanto.cli.config.manager import ConfigManager, _validate_server_port
 from memanto.cli.connect.agent_registry import AGENT_REGISTRY, list_agents
 from memanto.cli.connect.engine import install_agent, remove_agent
 
@@ -187,15 +188,27 @@ async def update_ui_config(updates: dict, _: None = Depends(_require_local)):
             detail=f"Cannot update keys: {', '.join(rejected)}. Allowed: {', '.join(allowed_keys)}",
         )
 
-    if "schedule_time" in updates:
-        _config_manager.set_schedule_time(updates["schedule_time"])
+    if "server" in updates and isinstance(updates["server"], dict):
+        server_updates = updates["server"]
+        if "port" in server_updates:
+            try:
+                server_updates["port"] = _validate_server_port(server_updates["port"])
+            except ValueError as exc:
+                raise HTTPException(status_code=400, detail=str(exc)) from exc
 
-    if "session" in updates and isinstance(updates["session"], dict):
-        data = _config_manager.load_yaml()
-        if "session" not in data:
-            data["session"] = {}
-        data["session"].update(updates["session"])
-        _config_manager.save_yaml(data)
+    if "schedule_time" in updates:
+        try:
+            _config_manager.set_schedule_time(updates["schedule_time"])
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail=str(e)) from e
+
+    if "session" in updates:
+        if not isinstance(updates["session"], dict):
+            raise HTTPException(status_code=400, detail="session must be an object")
+        try:
+            _config_manager.set_session_config(updates["session"])
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
 
     if "cli" in updates and isinstance(updates["cli"], dict):
         data = _config_manager.load_yaml()
@@ -220,15 +233,16 @@ async def update_ui_config(updates: dict, _: None = Depends(_require_local)):
         if _config_manager.get_backend() == Backend.ON_PREM:
             _update_onprem_answer(ans)
         else:
-            _config_manager.set_answer_config(
-                model=ans.get("model"),
-                temperature=float(ans["temperature"]) if "temperature" in ans else None,
-                answer_limit=int(ans["answer_limit"])
-                if "answer_limit" in ans
-                else None,
-                threshold=float(ans["threshold"]) if "threshold" in ans else None,
-                kiosk_mode=bool(ans["kiosk_mode"]) if "kiosk_mode" in ans else None,
-            )
+            try:
+                _config_manager.set_answer_config(
+                    model=ans.get("model"),
+                    temperature=ans.get("temperature"),
+                    answer_limit=ans.get("answer_limit"),
+                    threshold=ans.get("threshold"),
+                    kiosk_mode=ans.get("kiosk_mode") if "kiosk_mode" in ans else None,
+                )
+            except ValueError as exc:
+                raise HTTPException(status_code=400, detail=str(exc)) from exc
 
     if "recall" in updates and isinstance(updates["recall"], dict):
         rec = updates["recall"]
@@ -328,18 +342,60 @@ def _update_onprem_answer(ans: dict) -> None:
     _config_manager.set_onprem_state(llm_provider=provider, llm_model=model)
 
 
+_restart_lock: "asyncio.Lock | None" = None
+
+
+def _get_restart_lock() -> "asyncio.Lock":
+    """Return (creating lazily) the module-level restart serialisation lock."""
+    global _restart_lock
+
+    if _restart_lock is None:
+        _restart_lock = asyncio.Lock()
+    return _restart_lock
+
+
 @router.post("/api/ui/onprem/restart")
 async def restart_onprem_backend(_: None = Depends(_require_local)):
     """Bounce the on-prem moorcheh stack so it re-reads ``~/.moorcheh/config.json``.
 
     ``moorcheh down`` + ``moorcheh up`` (with embedding flags recovered from
-    state.json / config.json). Blocks for up to ~6 minutes total (5min for
+    state.json / config.json). Waits up to ~6 minutes total (5min for
     ``up``, 60s for ``/health``).
+
+    A module-level async lock prevents concurrent restart requests from
+    interleaving ``down``/``up`` calls against the same Moorcheh stack,
+    which can leave the backend in an inconsistent state.
     """
+    import asyncio as _asyncio
     import subprocess
 
     import httpx as _httpx
 
+    async with _get_restart_lock():
+        # Schedule the restart as an independent task so that if this handler
+        # is cancelled (e.g. request timeout), the lock is not released while
+        # moorcheh down/up is still running in the worker thread.
+        # asyncio.shield() lets the inner task survive the handler's cancellation;
+        # the except block then waits for the subprocess to finish before the
+        # lock context-manager releases, keeping the serialisation guarantee.
+        inner = _asyncio.ensure_future(
+            _do_restart_onprem_backend(_asyncio, subprocess, _httpx)
+        )
+        try:
+            return await _asyncio.shield(inner)
+        except _asyncio.CancelledError:
+            try:
+                await inner
+            except Exception:
+                # Intentionally suppress secondary errors: the request was
+                # cancelled and we must re-raise CancelledError after waiting
+                # for the restart task to settle so the lock is released.
+                pass
+            raise
+
+
+async def _do_restart_onprem_backend(_asyncio, subprocess, _httpx):
+    """Execute the actual restart sequence (called under the restart lock)."""
     if _config_manager.get_backend() != Backend.ON_PREM:
         raise HTTPException(status_code=400, detail="Active backend is not on-prem.")
 
@@ -357,8 +413,10 @@ async def restart_onprem_backend(_: None = Depends(_require_local)):
 
     # `moorcheh down` is best-effort: if the stack isn't running, that's fine —
     # we still want to try `up` after.
+    # Use asyncio.to_thread so subprocess.run doesn't block the event loop.
     try:
-        subprocess.run(
+        await _asyncio.to_thread(
+            subprocess.run,
             ["moorcheh", "down"],
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
@@ -383,7 +441,7 @@ async def restart_onprem_backend(_: None = Depends(_require_local)):
     if embedding_key:
         up_args.extend(["--embedding-api-key", embedding_key])
     try:
-        subprocess.run(up_args, check=True, timeout=300)
+        await _asyncio.to_thread(subprocess.run, up_args, check=True, timeout=300)
     except subprocess.CalledProcessError as e:
         raise HTTPException(status_code=500, detail=f"`moorcheh up` failed: {e}")
     except subprocess.TimeoutExpired:
@@ -393,14 +451,17 @@ async def restart_onprem_backend(_: None = Depends(_require_local)):
 
     health_url = (state.get("url") or "http://localhost:8080").rstrip("/") + "/health"
     deadline = time.time() + 60
-    while time.time() < deadline:
-        try:
-            resp = _httpx.get(health_url, timeout=2.0)
-            if resp.status_code == 200:
-                return {"status": "ok", "message": "Server restarted"}
-        except Exception:
-            pass
-        time.sleep(1.0)
+    async with _httpx.AsyncClient() as http:
+        while time.time() < deadline:
+            try:
+                resp = await http.get(health_url, timeout=2.0)
+                if resp.status_code == 200:
+                    return {"status": "ok", "message": "Server restarted"}
+            except Exception:
+                # During restart warm-up, transient network/connection
+                # failures are expected; keep retrying until the deadline.
+                pass
+            await _asyncio.sleep(1.0)
     raise HTTPException(
         status_code=500,
         detail=f"Server did not become healthy at {health_url} within 60s.",
@@ -868,7 +929,7 @@ async def shutdown_server(
     return {"status": "shutting down"}
 
 
-_MIGRATE_PROVIDERS = ("mem0", "letta", "supermemory")
+_MIGRATE_PROVIDERS = ("mem0", "letta", "supermemory", "okf")
 
 
 def _migrate_compact_metrics(provider: str, metrics: dict) -> dict:
@@ -931,11 +992,29 @@ def _migrate_load_or_export(
 
     Returns ``(source_label, export_dict)``. ``source_label`` is what the UI
     shows under "Source" — either the file path or "live export".
+
+    OKF is filesystem-only (a directory of markdown files, not a hosted
+    provider), so it has no ``api_key`` branch — ``file`` is required and
+    points at a bundle directory or a single ``.md`` file.
     """
     from memanto.cli.analyze.letta_export import run_letta_export
     from memanto.cli.analyze.mem0_export import run_mem0_export
     from memanto.cli.analyze.supermemory_export import run_supermemory_export
+    from memanto.cli.migrate.okf_loader import load_okf_bundle
     from memanto.cli.migrate.runner import load_export
+
+    if provider == "okf":
+        if not file_path:
+            raise HTTPException(
+                status_code=400,
+                detail="`file` (server-side path to an OKF bundle directory or .md file) is required for OKF.",
+            )
+        path = Path(file_path).expanduser()
+        if not path.exists():
+            raise HTTPException(
+                status_code=400, detail=f"OKF bundle not found: {file_path}"
+            )
+        return str(path), load_okf_bundle(path)
 
     if file_path:
         path = Path(file_path).expanduser()
@@ -1010,8 +1089,16 @@ async def migrate_dry_run(body: dict, _: None = Depends(_require_local)):
         key = row.get("type") or "auto"
         type_counts[key] = type_counts.get(key, 0) + 1
 
-    metrics_fn = _migrate_get_metrics_fn(provider)
-    savings = _migrate_compact_metrics(provider, metrics_fn(export))
+    # OKF has no cost/latency "compare" module (it's a portable local format,
+    # not a hosted provider to benchmark against) — the UI hides the savings
+    # tiles when this comes back empty.
+    savings = (
+        {}
+        if provider == "okf"
+        else _migrate_compact_metrics(
+            provider, _migrate_get_metrics_fn(provider)(export)
+        )
+    )
 
     sample = []
     for row in rows[:5]:
@@ -1085,8 +1172,13 @@ async def migrate_import(body: dict, _: None = Depends(_require_local)):
         raise HTTPException(status_code=500, detail=f"Import failed: {e}")
     elapsed_ms = round((time.perf_counter() - started) * 1000)
 
-    metrics_fn = _migrate_get_metrics_fn(provider)
-    savings = _migrate_compact_metrics(provider, metrics_fn(export))
+    savings = (
+        {}
+        if provider == "okf"
+        else _migrate_compact_metrics(
+            provider, _migrate_get_metrics_fn(provider)(export)
+        )
+    )
 
     return {
         "provider": provider,
