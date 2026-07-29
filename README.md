@@ -7,18 +7,24 @@
 <div align="center">
   <h1>Memory that AI Agents Love!</h1>
 </div>
-
 <h2 align="center">
-  <em>A companion memory agent that lets your agents focus and improve while you keep ownership of everything they learn.</em>
+  <em>Memanto is a companion Memory Agent; an agent whose whole job is managing your other agents' memories. It curates what's worth keeping, consolidates it across sessions, and briefs your agents the moment they start, while you keep ownership of everything they learn.</em>
 </h2>
 
 <p align="center">
-  Persistent memory for Claude Code, Cursor, Codex, and 14+ other agents, built on the world's first information-theoretic search engine. 100% free, open source, and runs entirely on your machine - no API keys, no vector database, no backend to babysit.
+  Works automatically with Claude Code, Cursor, Codex, and 20+ other agents. Fully convertible between semantic backend and Open Knowledge Format (*.md files in llm wiki style), so your memory estate is yours to inspect, export, and migrate anywhere — <code>memanto migrate</code> and it moves with you.
+</p>
+
+<p align="center">
+  <code>pip install memanto</code>
 </p>
 
 <p align="center">
   <a href="https://memanto.ai/discord">
     <img src="https://img.shields.io/badge/Join-Discord-5865F2?style=for-the-badge&logo=discord&logoColor=white" alt="Join Discord">
+  </a>
+  <a href="https://www.reddit.com/r/Memanto/">
+    <img src="https://img.shields.io/badge/Join-Reddit-FF4500?style=for-the-badge&logo=reddit&logoColor=white" alt="Join Reddit">
   </a>
   <a href="https://www.youtube.com/watch?v=vEtOaoweIG4">
     <img src="https://img.shields.io/badge/Setup-Video-FF0000?style=for-the-badge&logo=youtube&logoColor=white" alt="Setup Video">
@@ -39,15 +45,6 @@
 
 <p align="center"><a href="https://trendshift.io/repositories/27378" target="_blank"><img src="https://trendshift.io/api/badge/repositories/27378" alt="moorcheh-ai%2Fmemanto | Trendshift" style="width: 250px; height: 55px;" width="250" height="55"/></a></p>
 
-<p align="center">
-    <a href="https://www.star-history.com/?repos=moorcheh-ai%2Fmemanto&type=date&legend=top-left">
-     <picture>
-       <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=moorcheh-ai/memanto&type=date&theme=dark&legend=top-left&sealed_token=F0cHJrwopUW4YPi2zfB_I0fyL6fMN9vthMIbna4RgBRF8_XghWY1qhlffjMsgfqvqxVNnGiVnHGC7PKwgrUjBZ_rV-rBfekLZGYgRPBJHkMFy2JVJzXa3A" />
-       <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=moorcheh-ai/memanto&type=date&legend=top-left&sealed_token=F0cHJrwopUW4YPi2zfB_I0fyL6fMN9vthMIbna4RgBRF8_XghWY1qhlffjMsgfqvqxVNnGiVnHGC7PKwgrUjBZ_rV-rBfekLZGYgRPBJHkMFy2JVJzXa3A" />
-       <img alt="Star History Chart" src="https://api.star-history.com/chart?repos=moorcheh-ai/memanto&type=date&legend=top-left&sealed_token=F0cHJrwopUW4YPi2zfB_I0fyL6fMN9vthMIbna4RgBRF8_XghWY1qhlffjMsgfqvqxVNnGiVnHGC7PKwgrUjBZ_rV-rBfekLZGYgRPBJHkMFy2JVJzXa3A" />
-     </picture>
-    </a>
-</p>
 
 
 
@@ -198,7 +195,8 @@ This means Memanto doesn't need a separate vector DB, embedding pipeline, or rer
 | Grounded QA over memory | `memanto answer` | Generate RAG answers using retrieved memory context. |
 | Daily intelligence workflows | `memanto daily-summary`, `memanto conflicts` | Generate summaries, detect contradictions, and resolve conflicts interactively. |
 | Session and automation controls | `memanto session ...`, `memanto schedule ...` | Inspect sessions and enable scheduled daily summary runs. |
-| Memory file pipelines | `memanto memory export`, `memanto memory sync` | Export structured memory markdown and sync `MEMORY.md` into projects. |
+| Memory file pipelines | `memanto memory export`, `memanto memory sync` | Export structured memory markdown and sync `MEMORY.md` into projects. Add `--okf` to export/sync a portable [Open Knowledge Format](https://docs.memanto.ai/integrations/okf) bundle instead. |
+| Import & migration | `memanto migrate` | Import memories from Mem0, Letta, or Supermemory - or an [OKF](https://docs.memanto.ai/integrations/okf) bundle into an agent. |
 | Configuration inspection | `memanto config show` | Inspect API key status, active agent/session, server settings, and schedule time. |
 | Multi-agent ecosystem integration | `memanto connect ...` | Connect/remove/list integrations for Claude Code, Codex, Cursor, Windsurf, Antigravity, Gemini CLI, Cline, Continue, OpenCode, Goose, Roo, GitHub Copilot, and Augment (local or global). |
 
@@ -255,6 +253,7 @@ Full endpoint reference is available at [docs.memanto.ai/api](https://docs.meman
 Have questions or feedback? We're here to help:
 - **Docs**: [https://docs.memanto.ai](https://docs.memanto.ai)
 - **Discord**: [Join our Discord server](https://memanto.ai/discord)
+- **Reddit**: [Join our Reddit community](https://www.reddit.com/r/Memanto/)
 - **Email**: support@moorcheh.ai
 - **X / Twitter**: [@moorcheh_ai](https://x.com/moorcheh_ai)
 

@@ -1,11 +1,14 @@
 from unittest.mock import MagicMock
 
+import pytest
 from crewai_memanto.tools import (
     MemantoAnswerTool,
     MemantoRecallTool,
     MemantoRememberTool,
     MemantoSetup,
+    RememberInput,
 )
+from pydantic import ValidationError
 
 from memanto.app.utils.errors import AgentAlreadyExistsError
 
@@ -73,6 +76,28 @@ def test_memanto_remember_tool():
         source="crewai-agent",
         provenance="explicit_statement",
     )
+
+
+@pytest.mark.parametrize(
+    "field,value",
+    [
+        ("title", ""),
+        ("title", "t" * 101),
+        ("content", ""),
+        ("content", "c" * 10001),
+    ],
+)
+def test_memanto_remember_input_enforces_documented_limits(field, value):
+    payload = {
+        "memory_type": "fact",
+        "title": "Valid title",
+        "content": "Valid content",
+        "confidence": 0.9,
+    }
+    payload[field] = value
+
+    with pytest.raises(ValidationError):
+        RememberInput.model_validate(payload)
 
 
 def test_memanto_recall_tool_success():

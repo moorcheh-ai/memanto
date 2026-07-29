@@ -32,7 +32,7 @@ from memanto.app.utils.errors import (
     SessionNotFoundError,
 )
 from memanto.app.utils.ids import generate_id
-from memanto.app.utils.temporal_helpers import as_utc_naive, utc_now
+from memanto.app.utils.temporal_helpers import as_utc_aware, utc_now
 from memanto.app.utils.validation import validate_safe_id
 
 _session_service = None
@@ -64,13 +64,14 @@ class SessionService:
             sessions_dir: Directory for session storage (defaults to ~/.memanto/sessions/)
         """
         self.sessions_dir = sessions_dir or get_data_dir() / "sessions"
-        self.sessions_dir.mkdir(parents=True, exist_ok=True)
-        resolved_secret_key = (
-            secret_key
-            or settings.MEMANTO_SECRET_KEY
-            or self._generate_secure_secret_key()
-        )
-        self.secret_key: str = resolved_secret_key
+        self._secret_key: str | None = secret_key or settings.MEMANTO_SECRET_KEY or None
+
+    @property
+    def secret_key(self) -> str:
+        """JWT signing key, generated only when token operations need it."""
+        if self._secret_key is None:
+            self._secret_key = self._generate_secure_secret_key()
+        return self._secret_key
 
     def _generate_secure_secret_key(self) -> str:
         """Generate (or reuse) a persisted fallback secret for JWT signing.
@@ -85,6 +86,7 @@ class SessionService:
         treated as absent and rewritten.
         """
         secret_file = self.sessions_dir.parent / "secret_key"
+        secret_file.parent.mkdir(parents=True, exist_ok=True)
         existing = self._read_persisted_secret(secret_file)
         if existing is not None:
             return existing
@@ -210,7 +212,7 @@ class SessionService:
             token = SessionToken(**payload)
 
             # Validate expiration
-            if utc_now() > as_utc_naive(token.expires_at):
+            if utc_now() > as_utc_aware(token.expires_at):
                 raise SessionExpiredError(
                     f"Session {token.session_id} expired at {token.expires_at}"
                 )
@@ -298,7 +300,7 @@ class SessionService:
             raise SessionNotFoundError(f"No session found for agent {agent_id}")
 
         ended_at = utc_now()
-        duration = (ended_at - as_utc_naive(session.started_at)).total_seconds() / 3600
+        duration = (ended_at - as_utc_aware(session.started_at)).total_seconds() / 3600
 
         # Update session status
         session.status = SessionStatus.TERMINATED
@@ -430,6 +432,7 @@ class SessionService:
         summary_file = (
             self.sessions_dir / f"{agent_id}_{date_str}_{session_id}_summary.md"
         )
+        self.sessions_dir.mkdir(parents=True, exist_ok=True)
 
         # Determine if we need to write the header
         write_header = not summary_file.exists()
@@ -492,6 +495,7 @@ class SessionService:
         summary_file = (
             self.sessions_dir / f"{agent_id}_{date_str}_{session_id}_summary.md"
         )
+        self.sessions_dir.mkdir(parents=True, exist_ok=True)
 
         write_header = not summary_file.exists()
 
@@ -509,6 +513,7 @@ class SessionService:
     def _set_active_session(self, agent_id: str) -> None:
         """Mark session as active"""
         validate_safe_id(agent_id, "agent_id")
+        self.sessions_dir.mkdir(parents=True, exist_ok=True)
         active_link = self.sessions_dir / "active"
 
         # Remove existing active link
@@ -573,4 +578,4 @@ class SessionService:
             if session is not None:
                 sessions.append(session)
 
-        return sorted(sessions, key=lambda s: as_utc_naive(s.started_at), reverse=True)
+        return sorted(sessions, key=lambda s: as_utc_aware(s.started_at), reverse=True)

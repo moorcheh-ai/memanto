@@ -160,6 +160,78 @@ class TestOnPremClient:
 
 
 class TestSingletonDispatch:
+    def test_backend_switch_rebuilds_cached_client_without_manual_reset(self):
+        from memanto.app.clients import moorcheh as mclients
+        from memanto.app.clients import onprem
+        from memanto.app.config import settings
+
+        original = settings.MEMANTO_BACKEND
+        cloud_client = object()
+        on_prem_client = object()
+        mclients.moorcheh_client.reset_client()
+
+        try:
+            with (
+                patch.object(
+                    mclients, "MoorchehClient", return_value=cloud_client
+                ) as cloud_constructor,
+                patch.object(
+                    onprem, "OnPremClient", return_value=on_prem_client
+                ) as on_prem_constructor,
+            ):
+                settings.MEMANTO_BACKEND = "cloud"
+                assert mclients.moorcheh_client.get_client() is cloud_client
+
+                settings.MEMANTO_BACKEND = "on-prem"
+                assert mclients.moorcheh_client.get_client() is on_prem_client
+
+                cloud_constructor.assert_called_once_with(
+                    api_key=settings.MOORCHEH_API_KEY
+                )
+                on_prem_constructor.assert_called_once_with(
+                    base_url=settings.MOORCHEH_ONPREM_URL,
+                    timeout=settings.MOORCHEH_ONPREM_TIMEOUT,
+                )
+        finally:
+            settings.MEMANTO_BACKEND = original
+            mclients.moorcheh_client.reset_client()
+
+    def test_backend_switch_rebuilds_cached_async_client_without_manual_reset(self):
+        from memanto.app.clients import moorcheh as mclients
+        from memanto.app.clients import onprem
+        from memanto.app.config import settings
+
+        original = settings.MEMANTO_BACKEND
+        cloud_client = object()
+        on_prem_client = object()
+        mclients.moorcheh_client.reset_client()
+
+        try:
+            with (
+                patch.object(
+                    mclients, "AsyncMoorchehClient", return_value=cloud_client
+                ) as cloud_constructor,
+                patch.object(
+                    onprem, "AsyncOnPremClient", return_value=on_prem_client
+                ) as on_prem_constructor,
+            ):
+                settings.MEMANTO_BACKEND = "cloud"
+                assert mclients.moorcheh_client.get_async_client() is cloud_client
+
+                settings.MEMANTO_BACKEND = "on-prem"
+                assert mclients.moorcheh_client.get_async_client() is on_prem_client
+
+                cloud_constructor.assert_called_once_with(
+                    api_key=settings.MOORCHEH_API_KEY
+                )
+                on_prem_constructor.assert_called_once_with(
+                    base_url=settings.MOORCHEH_ONPREM_URL,
+                    timeout=settings.MOORCHEH_ONPREM_TIMEOUT,
+                )
+        finally:
+            settings.MEMANTO_BACKEND = original
+            mclients.moorcheh_client.reset_client()
+
     def test_cloud_returns_cloud_client(self):
         """On cloud, the dispatcher must not return an OnPremClient."""
         from memanto.app.clients import moorcheh as mclients

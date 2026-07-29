@@ -121,6 +121,24 @@ def remove_agent(
     except Exception as e:
         errors.append(f"Skill removal: {e}")
 
+    # Remove hook configuration (only Claude Code currently)
+    if agent.supports_hooks and agent.hook_config:
+        try:
+            hook_result = _remove_hooks(agent, project_path, is_global)
+            if hook_result:
+                steps.append(hook_result)
+        except Exception as e:
+            errors.append(f"Hook removal: {e}")
+
+    # Remove permissions added by MEMANTO
+    if agent.permissions_file and agent.permissions_payload:
+        try:
+            perm_result = _remove_permissions(agent, project_path, is_global)
+            if perm_result:
+                steps.append(perm_result)
+        except Exception as e:
+            errors.append(f"Permission removal: {e}")
+
     try:
         ConfigManager().remove_connection(
             agent_name, str(project_path) if not is_global else None, is_global
@@ -233,6 +251,12 @@ def _remove_instructions(
 
     # For dedicated files (cline, roo, continue, augment, cursor)
     if agent.instruction_is_dir or agent.instruction_format == "mdc":
+        try:
+            existing = instr_path.read_text(encoding="utf-8")
+        except UnicodeDecodeError:
+            return None
+        if MEMANTO_SENTINEL not in existing:
+            return None
         instr_path.unlink()
         # Clean up empty parent dirs
         parent = instr_path.parent
@@ -349,6 +373,83 @@ def _install_hooks(agent: AgentDef, project_path: Path, is_global: bool) -> str 
     return None  # Already configured
 
 
+def _remove_hooks(agent: AgentDef, project_path: Path, is_global: bool) -> str | None:
+    """Remove MEMANTO hook configuration for agents that support hooks."""
+    if not agent.hook_config:
+        return None
+
+    if is_global:
+        if agent.config_global_dir:
+            config_dir = Path.home() / agent.config_global_dir.lstrip("~/")
+        else:
+            return None
+    else:
+        if agent.config_local_dir:
+            config_dir = project_path / agent.config_local_dir
+        else:
+            return None
+
+    settings_path = config_dir / agent.hook_config.settings_file
+    if not settings_path.exists():
+        return None
+
+    settings = json.loads(settings_path.read_text(encoding="utf-8"))
+    hooks = settings.get("hooks")
+    session_start = hooks.get("SessionStart") if isinstance(hooks, dict) else None
+    if not isinstance(session_start, list):
+        return None
+
+    expected_payload = agent.hook_config.hook_payload
+    expected_matcher = expected_payload.get("matcher")
+    expected_hooks = [
+        hook for hook in expected_payload.get("hooks", []) if isinstance(hook, dict)
+    ]
+    expected_commands = {
+        hook.get("command") for hook in expected_hooks if hook.get("command")
+    }
+    if not expected_commands:
+        return None
+
+    changed = False
+    next_session_start = []
+    for group in session_start:
+        if not isinstance(group, dict) or not isinstance(group.get("hooks"), list):
+            next_session_start.append(group)
+            continue
+
+        remaining_hooks = []
+        for hook in group["hooks"]:
+            if (
+                group.get("matcher") == expected_matcher
+                and isinstance(hook, dict)
+                and hook.get("command") in expected_commands
+                and any(hook == expected_hook for expected_hook in expected_hooks)
+            ):
+                changed = True
+                continue
+            remaining_hooks.append(hook)
+
+        if remaining_hooks:
+            updated_group = dict(group)
+            updated_group["hooks"] = remaining_hooks
+            next_session_start.append(updated_group)
+        else:
+            changed = True
+
+    if not changed:
+        return None
+
+    if next_session_start:
+        hooks["SessionStart"] = next_session_start
+    else:
+        hooks.pop("SessionStart", None)
+    if not hooks:
+        settings.pop("hooks", None)
+
+    _write_or_remove_json(settings_path, settings)
+    return "Removed SessionStart hook"
+
+
 # Internal: Permission configuration
 
 
@@ -397,6 +498,56 @@ def _install_permissions(
     return None  # Already configured
 
 
+def _remove_permissions(
+    agent: AgentDef, project_path: Path, is_global: bool
+) -> str | None:
+    """Remove permissions added by MEMANTO without disturbing user entries."""
+    if not agent.permissions_file or not agent.permissions_payload:
+        return None
+
+    if is_global:
+        if agent.config_global_dir:
+            config_dir = Path.home() / agent.config_global_dir.lstrip("~/")
+        else:
+            return None
+        perm_path = config_dir / agent.permissions_file
+    else:
+        if agent.config_local_dir:
+            config_dir = project_path / agent.config_local_dir
+        else:
+            return None
+        perm_path = config_dir / agent.permissions_file
+
+    if not perm_path.exists():
+        return None
+
+    existing = json.loads(perm_path.read_text(encoding="utf-8"))
+    permissions = existing.get("permissions")
+    allow_list = permissions.get("allow") if isinstance(permissions, dict) else None
+    if not isinstance(allow_list, list):
+        return None
+
+    expected_permissions = set(
+        agent.permissions_payload.get("permissions", {}).get("allow", [])
+    )
+    if not expected_permissions:
+        return None
+
+    next_allow = [perm for perm in allow_list if perm not in expected_permissions]
+    if len(next_allow) == len(allow_list):
+        return None
+
+    if next_allow:
+        permissions["allow"] = next_allow
+    else:
+        permissions.pop("allow", None)
+    if isinstance(permissions, dict) and not permissions:
+        existing.pop("permissions", None)
+
+    _write_or_remove_json(perm_path, existing)
+    return "Removed permissions"
+
+
 # Utilities
 
 
@@ -408,3 +559,19 @@ def _display_path(path: Path, is_global: bool) -> str:
         return str(path)
     except ValueError:
         return str(path)
+
+
+def _write_or_remove_json(path: Path, data: dict[str, Any]) -> None:
+    """Persist JSON data, or remove the file when the managed data was all it had."""
+    if data:
+        path.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
+        return
+
+    path.unlink()
+    parent = path.parent
+    try:
+        if parent.exists() and not any(parent.iterdir()):
+            parent.rmdir()
+    except (FileNotFoundError, OSError):
+        # Best-effort cleanup: parent may be removed/changed concurrently or be non-removable.
+        pass
