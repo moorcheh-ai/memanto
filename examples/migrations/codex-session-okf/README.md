@@ -29,7 +29,8 @@ Always review the generated Markdown before importing or publishing it.
 
 | Codex concept | OKF / Memanto field |
 | --- | --- |
-| User or assistant message | One `conversation` memory |
+| User or assistant message | One OKF `conversation` node |
+| Conversation node | Memanto `context` memory via `x_memanto.type` |
 | Record timestamp | `timestamp` |
 | Message role | `x_memanto.role` and `role-*` tag |
 | Rollout file | Truncated SHA-256 source fingerprint |

@@ -7,6 +7,7 @@ tags:
   - migration
   - role-user
 x_memanto:
+  type: context
   source: codex-session-jsonl
   source_fingerprint: 45150a426e733557
   source_line: 1

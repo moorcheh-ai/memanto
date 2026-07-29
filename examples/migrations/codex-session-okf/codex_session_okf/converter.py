@@ -249,6 +249,7 @@ def _okf_document(*, title: str, message: _Message, source_fingerprint: str) -> 
         "  - migration\n"
         f"  - role-{message.role}\n"
         "x_memanto:\n"
+        "  type: context\n"
         "  source: codex-session-jsonl\n"
         f"  source_fingerprint: {source_fingerprint}\n"
         f"  source_line: {message.source_line}\n"

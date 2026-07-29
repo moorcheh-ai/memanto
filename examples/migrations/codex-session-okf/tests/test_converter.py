@@ -50,6 +50,7 @@ def test_exports_only_user_and_assistant_messages(tmp_path: Path) -> None:
     bodies = "\n".join(path.read_text(encoding="utf-8") for path in documents)
     assert "concise answers" in bodies
     assert "Preference noted" in bodies
+    assert "  type: context" in bodies
     assert "private instruction" not in bodies
     assert "secret" not in bodies
 
