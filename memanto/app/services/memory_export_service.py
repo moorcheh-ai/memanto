@@ -85,6 +85,34 @@ MEMORY_TYPE_ORDER = [
 ]
 
 
+def _one_line(value: Any, default: str = "") -> str:
+    """Collapse untrusted Markdown metadata into a single display line."""
+    text = " ".join(str(value or "").split())
+    return text or default
+
+
+def _quote_markdown_block(value: Any) -> list[str]:
+    """Render stored memory content as quoted data, not document structure."""
+    lines = str(value or "").splitlines()
+    return [f"> {line}" if line else ">" for line in lines]
+
+
+def _inline_code(value: Any) -> str:
+    text = _one_line(value)
+    max_run = 0
+    run = 0
+    for ch in text:
+        if ch == "`":
+            run += 1
+            max_run = max(max_run, run)
+        else:
+            run = 0
+    fence = "`" * (max_run + 1)
+    if text.startswith("`") or text.endswith("`"):
+        text = f" {text} "
+    return f"{fence}{text}{fence}"
+
+
 class MemoryExportService:
     """Formats and writes a structured memory.md for an agent."""
 
@@ -147,17 +175,17 @@ class MemoryExportService:
                 continue
 
             for mem in memories:
-                title = mem.get("title") or "Untitled"
+                title = _one_line(mem.get("title"), "Untitled")
                 content = (mem.get("content") or "").strip()
                 confidence = mem.get("confidence")
                 tags = mem.get("tags", [])
-                created_at = mem.get("created_at", "")
-                status = mem.get("status", "")
+                created_at = _one_line(mem.get("created_at", ""))
+                status = _one_line(mem.get("status", ""))
 
                 lines.append(f"### {title}")
                 lines.append("")
                 if content:
-                    lines.append(content)
+                    lines.extend(_quote_markdown_block(content))
                     lines.append("")
 
                 # Metadata line
@@ -170,9 +198,9 @@ class MemoryExportService:
                     meta_parts.append(f"Created: {str(created_at)[:19]}")
                 if tags:
                     tag_str = (
-                        ", ".join(f"`{t}`" for t in tags)
+                        ", ".join(_inline_code(t) for t in tags)
                         if isinstance(tags, list)
-                        else str(tags)
+                        else _one_line(tags)
                     )
                     meta_parts.append(f"Tags: {tag_str}")
 
