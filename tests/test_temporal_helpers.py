@@ -19,6 +19,7 @@ from memanto.app.utils.temporal_helpers import (
 
 
 def test_utc_date_str_uses_the_utc_calendar_day(monkeypatch):
+    """The UTC storage date must not follow a still-previous local day."""
     instant = datetime(2026, 7, 30, 1, 0, tzinfo=timezone.utc)
     local_date = instant.astimezone(timezone(-timedelta(hours=6))).date().isoformat()
     monkeypatch.setattr(temporal_helpers, "utc_now", lambda: instant)
