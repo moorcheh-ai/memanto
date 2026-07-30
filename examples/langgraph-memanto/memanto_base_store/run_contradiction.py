@@ -111,12 +111,17 @@ async def main() -> None:
         print()
 
         # Step 6: Resolve by keeping the newer memory.
+        # list_conflicts() returns unresolved conflicts only, so address the
+        # report by the conflict_index it hands back — never by position here.
         print("Step 6: Resolve conflict (keep_new - the recent stomach issue)...")
+        target = conflicts[0]
         resolved = client.resolve_conflict(
             agent_id=agent_id,
             date=today,
-            conflict_index=0,
+            conflict_index=target.get("conflict_index", 0),
             action="keep_new",
+            expected_old_memory_id=target.get("old_memory_id"),
+            expected_new_memory_id=target.get("new_memory_id"),
         )
         print(f"  Resolution status: {resolved.get('status', 'resolved')}\n")
 

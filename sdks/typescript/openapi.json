@@ -1021,7 +1021,7 @@
           "Memory Operations"
         ],
         "summary": "Resolve Conflict",
-        "description": "Resolve a conflict for an agent.\n\nUses the same underlying conflict resolution service used by CLI.",
+        "description": "Resolve a conflict for an agent.\n\nUses the same underlying conflict resolution service used by CLI.\n\n``conflict_index`` is the ``conflict_index`` field of an entry returned by\n``GET /{agent_id}/conflicts``, not that response's own ordering (it lists\nunresolved conflicts only). Pass ``expected_old_memory_id`` /\n``expected_new_memory_id`` to have the call rejected before any deletion if\nthe index no longer addresses the reviewed conflict.",
         "operationId": "resolve_conflict_api_v2_agents__agent_id__conflicts_resolve_post",
         "parameters": [
           {
@@ -2300,7 +2300,7 @@
           "Web UI"
         ],
         "summary": "Resolve Conflict",
-        "description": "Resolve a single conflict.\nExpects: {\"agent_id\": \"...\", \"date\": \"...\", \"conflict_index\": 0, \"action\": \"keep_old\"|\"keep_new\"|\"keep_both\"|\"remove_both\"|\"manual\", \"manual_content\": \"...\"}",
+        "description": "Resolve a single conflict.\nExpects: {\"agent_id\": \"...\", \"date\": \"...\", \"conflict_index\": 0, \"action\": \"keep_old\"|\"keep_new\"|\"keep_both\"|\"remove_both\"|\"manual\", \"manual_content\": \"...\"}\n\n``conflict_index`` must be the ``conflict_index`` field of the entry from\n``GET /api/ui/conflicts`` \u2014 that response contains only unresolved\nconflicts, so its own ordering is not the index the report uses.\n``expected_old_memory_id`` / ``expected_new_memory_id`` are optional and\nmake the resolve fail closed if the index no longer points at the conflict\nthe caller reviewed (e.g. the report was regenerated in the meantime).",
         "operationId": "resolve_conflict_api_ui_conflicts_resolve_post",
         "requestBody": {
           "content": {
@@ -3124,7 +3124,7 @@
             "type": "integer",
             "minimum": 0.0,
             "title": "Conflict Index",
-            "description": "Conflict index to resolve"
+            "description": "Index of the conflict to resolve. Use the 'conflict_index' field of the entry returned by GET /conflicts \u2014 that response contains only unresolved conflicts, so its own ordering is not the index the report is addressed by."
           },
           "action": {
             "type": "string",
@@ -3173,6 +3173,30 @@
             ],
             "title": "Manual Type",
             "description": "Optional memory type for manual action"
+          },
+          "expected_old_memory_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expected Old Memory Id",
+            "description": "Optional guard: the old_memory_id the caller reviewed. When set, the resolution is rejected (400) before any memory is deleted if the stored conflict does not match."
+          },
+          "expected_new_memory_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expected New Memory Id",
+            "description": "Optional guard for new_memory_id, see expected_old_memory_id."
           }
         },
         "type": "object",

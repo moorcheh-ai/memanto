@@ -1149,6 +1149,12 @@ async def resolve_conflict(
     Resolve a conflict for an agent.
 
     Uses the same underlying conflict resolution service used by CLI.
+
+    ``conflict_index`` is the ``conflict_index`` field of an entry returned by
+    ``GET /{agent_id}/conflicts``, not that response's own ordering (it lists
+    unresolved conflicts only). Pass ``expected_old_memory_id`` /
+    ``expected_new_memory_id`` to have the call rejected before any deletion if
+    the index no longer addresses the reviewed conflict.
     """
     enforce_session_scope(session, agent_id)
 
@@ -1163,6 +1169,8 @@ async def resolve_conflict(
             request.action,
             request.manual_content,
             request.manual_type,
+            request.expected_old_memory_id,
+            request.expected_new_memory_id,
         )
         return {
             "agent_id": agent_id,

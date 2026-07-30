@@ -687,6 +687,13 @@ async def resolve_conflict(body: dict, _: None = Depends(_require_local)):
     """
     Resolve a single conflict.
     Expects: {"agent_id": "...", "date": "...", "conflict_index": 0, "action": "keep_old"|"keep_new"|"keep_both"|"remove_both"|"manual", "manual_content": "..."}
+
+    ``conflict_index`` must be the ``conflict_index`` field of the entry from
+    ``GET /api/ui/conflicts`` — that response contains only unresolved
+    conflicts, so its own ordering is not the index the report uses.
+    ``expected_old_memory_id`` / ``expected_new_memory_id`` are optional and
+    make the resolve fail closed if the index no longer points at the conflict
+    the caller reviewed (e.g. the report was regenerated in the meantime).
     """
     agent_id = str(body.get("agent_id", ""))
     date = str(body.get("date", ""))
@@ -698,6 +705,12 @@ async def resolve_conflict(body: dict, _: None = Depends(_require_local)):
     manual_type = body.get("manual_type")
     if manual_type is not None:
         manual_type = str(manual_type)
+    expected_old_memory_id = body.get("expected_old_memory_id")
+    if expected_old_memory_id is not None:
+        expected_old_memory_id = str(expected_old_memory_id)
+    expected_new_memory_id = body.get("expected_new_memory_id")
+    if expected_new_memory_id is not None:
+        expected_new_memory_id = str(expected_new_memory_id)
 
     if not all([agent_id, date, action]) or conflict_index is None:
         raise HTTPException(
@@ -717,6 +730,8 @@ async def resolve_conflict(body: dict, _: None = Depends(_require_local)):
             action=action,
             manual_content=manual_content,
             manual_type=manual_type,
+            expected_old_memory_id=expected_old_memory_id,
+            expected_new_memory_id=expected_new_memory_id,
         )
         return result
     except ValueError as e:

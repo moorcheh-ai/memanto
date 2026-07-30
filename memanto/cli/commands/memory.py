@@ -1002,7 +1002,9 @@ def conflicts(
     with open(json_path, encoding="utf-8") as f:
         all_conflicts = json.load(f)
 
-    # Map unresolved conflicts to their original indices
+    # Map unresolved conflicts to their original indices. Resolution addresses
+    # the FULL report by position, so the filtered display order must never be
+    # used as the index — see memanto/app/utils/conflicts.py.
     unresolved_indices = [
         idx for idx, c in enumerate(all_conflicts) if not c.get("resolved", False)
     ]
@@ -1118,6 +1120,12 @@ def conflicts(
                 conflict_index=original_idx,
                 action=action,
                 manual_content=manual_content,
+                # Guard: the report is re-read inside the client, so pass the
+                # ids of the conflict we actually showed. If the file changed
+                # since we listed it, the resolve is refused instead of
+                # deleting memories the user never reviewed.
+                expected_old_memory_id=c.get("old_memory_id"),
+                expected_new_memory_id=c.get("new_memory_id"),
             )
 
             status_msgs = {

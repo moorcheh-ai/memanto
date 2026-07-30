@@ -34,6 +34,10 @@ from memanto.app.constants import (
 from memanto.app.constants import (
     ProvenanceType as MemoryProvenance,
 )
+from memanto.app.utils.conflicts import (
+    attach_conflict_indices,
+    verify_conflict_target,
+)
 from memanto.app.utils.errors import (
     AgentNotFoundError,
     InvalidSessionTokenError,
@@ -1355,7 +1359,12 @@ class DirectClient:
             date: Date string (YYYY-MM-DD). Defaults to today.
 
         Returns:
-            List of unresolved conflict dicts.
+            List of unresolved conflict dicts. Each dict carries
+            ``conflict_index`` — its position in the *full* report, which is
+            what :meth:`resolve_conflict` expects. Callers must never derive
+            the index from this list's own ordering: resolved conflicts are
+            filtered out here, so the two numberings diverge as soon as one
+            conflict has been resolved.
         """
 
         if not date:
@@ -1371,8 +1380,9 @@ class DirectClient:
         with open(json_path, encoding="utf-8") as f:
             all_conflicts = json.load(f)
 
-        # Return only unresolved conflicts
-        return [c for c in all_conflicts if not c.get("resolved", False)]
+        # Return only unresolved conflicts, each tagged with its authoritative
+        # position in the full report.
+        return attach_conflict_indices(all_conflicts)
 
     def resolve_conflict(
         self,
@@ -1382,6 +1392,8 @@ class DirectClient:
         action: str,
         manual_content: str | None = None,
         manual_type: str | None = None,
+        expected_old_memory_id: str | None = None,
+        expected_new_memory_id: str | None = None,
     ) -> dict[str, Any]:
         """
         Resolve a single conflict by index.
@@ -1389,14 +1401,27 @@ class DirectClient:
         Args:
             agent_id: Target agent.
             date: Date string (YYYY-MM-DD).
-            conflict_index: 0-based index into the full conflicts list.
+            conflict_index: 0-based index into the full conflicts list, i.e.
+                the ``conflict_index`` field of the entry returned by
+                :meth:`list_conflicts` — *not* its position in that response.
             action: Resolution action — ``keep_old``, ``keep_new``,
                 ``keep_both``, ``remove_both``, or ``manual``.
             manual_content: Required when action is ``manual``.
             manual_type: Memory type for manual replacement (default: old memory's type).
+            expected_old_memory_id: Optional guard. When given, the stored
+                conflict's ``old_memory_id`` must match or the call is
+                rejected before anything is deleted.
+            expected_new_memory_id: Optional guard for ``new_memory_id``.
 
         Returns:
             Dict with resolution result.
+
+        Raises:
+            ValueError: If the action is unknown, the report is missing, the
+                index is out of range, the target conflict was already
+                resolved, or an ``expected_*_memory_id`` guard does not match
+                the stored conflict. All three refusals happen *before* any
+                memory is deleted, because deletion is not reversible.
         """
 
         valid_actions = {"keep_old", "keep_new", "keep_both", "remove_both", "manual"}
@@ -1420,6 +1445,13 @@ class DirectClient:
             )
 
         conflict = all_conflicts[conflict_index]
+        # Fail closed *before* deleting anything: deletion is irreversible.
+        verify_conflict_target(
+            conflict,
+            conflict_index,
+            expected_old_memory_id=expected_old_memory_id,
+            expected_new_memory_id=expected_new_memory_id,
+        )
         old_id = conflict.get("old_memory_id")
         new_id = conflict.get("new_memory_id")
 

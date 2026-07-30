@@ -187,7 +187,16 @@ class ExtractMemoriesRequest(BaseModel):
 class ConflictResolveRequest(BaseModel):
     """Request body for resolving a conflict"""
 
-    conflict_index: int = Field(..., ge=0, description="Conflict index to resolve")
+    conflict_index: int = Field(
+        ...,
+        ge=0,
+        description=(
+            "Index of the conflict to resolve. Use the 'conflict_index' field "
+            "of the entry returned by GET /conflicts — that response contains "
+            "only unresolved conflicts, so its own ordering is not the index "
+            "the report is addressed by."
+        ),
+    )
     action: Literal["keep_old", "keep_new", "keep_both", "remove_both", "manual"] = (
         Field(
             ...,
@@ -204,6 +213,18 @@ class ConflictResolveRequest(BaseModel):
     )
     manual_type: str | None = Field(
         None, description="Optional memory type for manual action"
+    )
+    expected_old_memory_id: str | None = Field(
+        None,
+        description=(
+            "Optional guard: the old_memory_id the caller reviewed. When set, "
+            "the resolution is rejected (400) before any memory is deleted if "
+            "the stored conflict does not match."
+        ),
+    )
+    expected_new_memory_id: str | None = Field(
+        None,
+        description="Optional guard for new_memory_id, see expected_old_memory_id.",
     )
 
     @model_validator(mode="after")

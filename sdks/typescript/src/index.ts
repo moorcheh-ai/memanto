@@ -94,12 +94,22 @@ export interface ConflictDateInput {
 }
 
 export interface ResolveConflictInput {
+  /**
+   * The `conflict_index` field of an entry from `listConflicts()` — not its
+   * position in that array. `listConflicts()` returns unresolved conflicts
+   * only, so the two numberings diverge once a conflict has been resolved and
+   * resolving by array position deletes another conflict's memories.
+   */
   conflictIndex: number;
   /** keep_old | keep_new | keep_both | remove_both | manual */
   action: string;
   date?: string;
   manualContent?: string;
   manualType?: string;
+  /** Optional guard: reject the resolve if the stored conflict's old_memory_id differs. */
+  expectedOldMemoryId?: string;
+  /** Optional guard: reject the resolve if the stored conflict's new_memory_id differs. */
+  expectedNewMemoryId?: string;
 }
 
 export interface UploadFileInput {
@@ -300,6 +310,8 @@ export class Memanto {
         date: input.date,
         manual_content: input.manualContent,
         manual_type: input.manualType,
+        expected_old_memory_id: input.expectedOldMemoryId,
+        expected_new_memory_id: input.expectedNewMemoryId,
       },
     );
   }

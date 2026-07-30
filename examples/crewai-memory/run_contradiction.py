@@ -116,11 +116,16 @@ def main() -> None:
             print(
                 "Step 6: Resolving conflict (keeping the newer, higher-confidence value)..."
             )
+            # list_conflicts() returns unresolved conflicts only, so address the
+            # report by the conflict_index it hands back — never by position.
+            target = conflicts[0]
             resolve_result = client.resolve_conflict(
                 agent_id=AGENT_ID,
                 date=today,
-                conflict_index=0,
+                conflict_index=target.get("conflict_index", 0),
                 action="keep_new",
+                expected_old_memory_id=target.get("old_memory_id"),
+                expected_new_memory_id=target.get("new_memory_id"),
             )
             print(f"  Resolution: {resolve_result.get('status', 'resolved')}")
         else:
