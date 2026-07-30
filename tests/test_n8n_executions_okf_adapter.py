@@ -6,7 +6,7 @@ import json
 from pathlib import Path
 
 import pytest
-import yaml
+import yaml  # type: ignore[import-untyped]
 
 from examples.migrations.n8n_executions.adapter import (
     MappingError,
@@ -16,6 +16,11 @@ from examples.migrations.n8n_executions.adapter import (
 )
 from examples.migrations.n8n_executions.recall_validation import (
     validate_recall_parity,
+)
+from examples.migrations.n8n_executions.run_live_demo import (
+    _clean_output,
+    _validate_exported_bundle,
+    build_command_plan,
 )
 from memanto.app.core import MemoryRecord
 from memanto.cli.migrate.mappers import map_okf
@@ -115,6 +120,14 @@ def _write_json(path: Path, value: object) -> Path:
     return path
 
 
+def _mark_generated_output(path: Path) -> None:
+    """Mark a test directory as safely replaceable by the adapter."""
+    _write_json(
+        path / ".n8n-executions-okf.json",
+        {"generator": "n8n-executions-okf", "version": 1},
+    )
+
+
 def test_converts_public_api_envelope_and_preserves_provenance(tmp_path):
     source = _write_json(
         tmp_path / "executions.json",
@@ -127,6 +140,7 @@ def test_converts_public_api_envelope_and_preserves_provenance(tmp_path):
     assert result["memory_count"] == 2
     assert result["memory_counts_by_type"] == {"decision": 2}
     assert result["round_trip"]["valid"] is True
+    assert result["round_trip"]["semantic_fingerprints_preserved"] is True
 
     entries = load_okf_bundle(output)["memories"]
     assert {entry["title"] for entry in entries} == {
@@ -137,6 +151,17 @@ def test_converts_public_api_envelope_and_preserves_provenance(tmp_path):
     assert acme["x_memanto"]["source"] == "tool"
     assert acme["x_memanto"]["provenance"] == "n8n_execution"
     assert acme["resource"].endswith("/workflow/leadops-demo/executions/101")
+    savings = json.loads(
+        (output / "metrics" / "savings-report.json").read_text(encoding="utf-8")
+    )
+    assert savings["source"]["bytes"] == source.stat().st_size
+    assert savings["portable_okf_markdown"]["files"] > 0
+    assert savings["provider_cost_savings"] is None
+    for markdown_path in output.rglob("*.md"):
+        markdown = markdown_path.read_text(encoding="utf-8")
+        assert "\r" not in markdown
+        assert markdown.endswith("\n")
+        assert all(line == line.rstrip() for line in markdown.splitlines())
 
 
 def test_allow_list_does_not_copy_unselected_email(tmp_path):
@@ -166,6 +191,7 @@ def test_directory_input_is_sorted_and_hashed(tmp_path):
     assert [execution["id"] for execution in executions] == ["1", "2"]
     assert [row["file"] for row in hashes] == ["a.json", "b.json"]
     assert all(len(row["sha256"]) == 64 for row in hashes)
+    assert all(row["size_bytes"] > 0 for row in hashes)
 
 
 def test_output_is_byte_deterministic(tmp_path):
@@ -188,6 +214,7 @@ def test_output_is_byte_deterministic(tmp_path):
         if path.is_file()
     }
     assert first_files == second_files
+    assert all(b"\r\n" not in content for content in first_files.values())
     assert (
         b"Visualizations generated from source snapshot "
         b"2026-07-30T12:00:02.000Z" in first_files[Path("metrics/overview.md")]
@@ -198,6 +225,7 @@ def test_atomically_replaces_stale_output(tmp_path):
     source = _write_json(tmp_path / "execution.json", [_execution()])
     output = tmp_path / "okf"
     output.mkdir()
+    _mark_generated_output(output)
     stale = output / "stale.txt"
     stale.write_text("old", encoding="utf-8")
 
@@ -205,6 +233,20 @@ def test_atomically_replaces_stale_output(tmp_path):
 
     assert not stale.exists()
     assert (output / "migration-manifest.json").exists()
+
+
+def test_refuses_to_replace_unowned_output_directory(tmp_path):
+    """An arbitrary existing directory must never be treated as generated."""
+    source = _write_json(tmp_path / "execution.json", [_execution()])
+    output = tmp_path / "not-ours"
+    output.mkdir()
+    keep = output / "keep.txt"
+    keep.write_text("important", encoding="utf-8")
+
+    with pytest.raises(MappingError, match="unowned output"):
+        convert_n8n_executions(source, _mapping(tmp_path / "map.yaml"), output)
+
+    assert keep.read_text(encoding="utf-8") == "important"
 
 
 def test_round_trip_maps_back_to_memanto_without_loss(tmp_path):
@@ -221,6 +263,7 @@ def test_round_trip_maps_back_to_memanto_without_loss(tmp_path):
         "okf_count": 1,
         "memanto_count": 1,
         "stable_ids_preserved": True,
+        "semantic_fingerprints_preserved": True,
         "issues": [],
     }
     assert rows[0]["type"] == "decision"
@@ -285,3 +328,50 @@ def test_golden_questions_score_source_and_round_trip_parity(tmp_path):
     assert report["valid"] is True
     assert report["recall_parity_score"] == 1.0
     assert report["passed"] == report["questions"] == 1
+
+
+def test_live_plan_is_guarded_and_contains_no_api_key(tmp_path):
+    """The shareable live plan must contain commands but never credentials."""
+    plan = build_command_plan(
+        "n8n-operations",
+        tmp_path / "sample-okf",
+        tmp_path / "roundtrip",
+        reuse_agent=True,
+        activation_hours=6,
+    )
+    rendered = json.dumps(plan)
+
+    assert [step["label"] for step in plan] == [
+        "activate-agent",
+        "import-okf",
+        "export-okf",
+    ]
+    assert "agent activate" not in rendered  # argv remains safely structured
+    assert "MOORCHEH_API_KEY" not in rendered
+    assert "--api-key" not in rendered
+
+
+def test_live_output_redaction_and_export_fact_validation(tmp_path):
+    """Evidence redacts private roots and validates exported factual content."""
+    private_root = tmp_path / "private"
+    cleaned = _clean_output(
+        f"Run dir: {private_root / 'exports' / 'one'}\n\u001b[32mOK\u001b[0m",
+        [private_root],
+    )
+    assert "<private-path>/exports/one" in cleaned
+    assert str(private_root) not in cleaned
+    assert "\u001b[" not in cleaned
+
+    source = _write_json(tmp_path / "execution.json", [_execution()])
+    bundle = tmp_path / "okf"
+    convert_n8n_executions(source, _mapping(tmp_path / "map.yaml"), bundle)
+    validation = _validate_exported_bundle(
+        bundle,
+        [
+            {
+                "id": "acme",
+                "live_must_contain": ["Acme", "82", "Budget above threshold"],
+            }
+        ],
+    )
+    assert validation["valid"] is True

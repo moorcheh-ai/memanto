@@ -39,5 +39,17 @@ The mapped preview SHA-256 is
 - OKF memories: `3`
 - Memanto-mapped rows: `3`
 - Stable source-derived IDs preserved: `true`
+- Selected-field semantic fingerprints preserved: `true`
 - Golden questions: `3/3`
 - Recall parity: `1.0`
+
+## Honest storage report
+
+- Full n8n source JSON: `32,763` bytes
+- Readable OKF Markdown: `4,802` bytes across `8` files
+- Delta: `-27,961` bytes (`-85.34%`)
+- Provider cost/token/latency savings: unavailable (`null`)
+
+This is a measured privacy-preserving reduction, not a provider savings claim:
+the mapping allow-list intentionally excludes headers, emails, workflow code,
+and unrelated execution state.

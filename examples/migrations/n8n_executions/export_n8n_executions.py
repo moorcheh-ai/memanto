@@ -23,6 +23,7 @@ def export_executions(
     workflow_id: str | None = None,
     status: str | None = None,
 ) -> dict:
+    """Page through n8n's public API and return full execution objects."""
     executions: list[dict] = []
     cursor: str | None = None
 
@@ -60,6 +61,7 @@ def export_executions(
 
 
 def main() -> int:
+    """Export executions to a local JSON file and return a process exit code."""
     parser = argparse.ArgumentParser(description="Export full n8n executions.")
     parser.add_argument("--base-url", default="http://localhost:5679")
     parser.add_argument("--api-key", default=os.getenv("N8N_API_KEY"))
@@ -82,9 +84,8 @@ def main() -> int:
         workflow_id=args.workflow_id,
         status=args.status,
     )
-    output.write_text(
-        json.dumps(payload, indent=2, ensure_ascii=False) + "\n",
-        encoding="utf-8",
+    output.write_bytes(
+        (json.dumps(payload, indent=2, ensure_ascii=False) + "\n").encode("utf-8")
     )
     print(f"Exported {len(payload['data'])} execution(s) to {output.resolve()}")
     print("Treat the source export as private; it may contain sensitive payloads.")

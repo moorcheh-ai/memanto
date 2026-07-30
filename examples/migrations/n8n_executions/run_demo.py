@@ -16,6 +16,7 @@ HERE = Path(__file__).resolve().parent
 
 
 def main() -> int:
+    """Generate the sample bundle and fail unless all parity checks pass."""
     parser = argparse.ArgumentParser(
         description="Build and validate the sample n8n -> OKF migration."
     )

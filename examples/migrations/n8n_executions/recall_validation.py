@@ -17,6 +17,7 @@ from .adapter import build_memories, load_executions, load_mapping
 def _flatten_source_memories(
     input_path: str | Path, mapping_path: str | Path
 ) -> list[dict[str, Any]]:
+    """Map source executions in memory without writing an OKF bundle."""
     executions, _ = load_executions(input_path)
     memories_by_type, _ = build_memories(executions, load_mapping(mapping_path))
     return [
@@ -27,6 +28,7 @@ def _flatten_source_memories(
 
 
 def _load_questions(path: str | Path) -> list[dict[str, Any]]:
+    """Load a non-empty golden-question list from YAML."""
     value = yaml.safe_load(Path(path).read_text(encoding="utf-8"))
     questions = value.get("questions") if isinstance(value, dict) else None
     if not isinstance(questions, list) or not questions:
@@ -35,6 +37,7 @@ def _load_questions(path: str | Path) -> list[dict[str, Any]]:
 
 
 def _evaluate(rows: list[dict[str, Any]], question: dict[str, Any]) -> tuple[bool, str]:
+    """Check one exact memory title and its required factual fragments."""
     expected_title = str(question.get("memory_title") or "")
     row = next(
         (candidate for candidate in rows if candidate.get("title") == expected_title),
@@ -93,7 +96,9 @@ def validate_recall_parity(
 
 
 def write_report(path: str | Path, report: dict[str, Any]) -> None:
-    Path(path).write_text(
-        json.dumps(report, indent=2, ensure_ascii=False, sort_keys=True) + "\n",
-        encoding="utf-8",
+    """Write a deterministic UTF-8 parity report."""
+    Path(path).write_bytes(
+        (
+            json.dumps(report, indent=2, ensure_ascii=False, sort_keys=True) + "\n"
+        ).encode("utf-8")
     )

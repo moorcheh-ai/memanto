@@ -34,6 +34,8 @@ _TEMPLATE_FIELD_RE = re.compile(r"\{([^{}]+)\}")
 _INDEX_TIMESTAMP_RE = re.compile(r"(?m)^timestamp: .+$")
 _METRICS_GENERATED_RE = re.compile(r"(?m)^\*Visualizations auto-generated at .+\*$")
 _MISSING = object()
+_OWNERSHIP_MARKER = ".n8n-executions-okf.json"
+_OWNERSHIP_VALUE = {"generator": "n8n-executions-okf", "version": 1}
 
 
 class MappingError(ValueError):
@@ -41,10 +43,12 @@ class MappingError(ValueError):
 
 
 def _sha256_bytes(value: bytes) -> str:
+    """Return a lowercase SHA-256 digest."""
     return hashlib.sha256(value).hexdigest()
 
 
 def _canonical_json(value: Any) -> str:
+    """Serialize a value deterministically for hashes and inline payloads."""
     return json.dumps(
         value,
         ensure_ascii=False,
@@ -54,6 +58,7 @@ def _canonical_json(value: Any) -> str:
 
 
 def _read_json(path: Path) -> Any:
+    """Load JSON and report the source path on malformed input."""
     try:
         return json.loads(path.read_text(encoding="utf-8"))
     except json.JSONDecodeError as exc:
@@ -131,7 +136,7 @@ def _normalise_payload(payload: Any, source: str) -> list[dict[str, Any]]:
 
 def load_executions(
     path: str | Path,
-) -> tuple[list[dict[str, Any]], list[dict[str, str]]]:
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
     """Load executions plus deterministic hashes of every source file."""
     source = Path(path)
     if not source.exists():
@@ -146,12 +151,18 @@ def load_executions(
         raise MappingError(f"No JSON files found in {source}")
 
     executions: list[dict[str, Any]] = []
-    hashes: list[dict[str, str]] = []
+    hashes: list[dict[str, Any]] = []
     for file_path in files:
         raw = file_path.read_bytes()
         payload = _read_json(file_path)
         executions.extend(_normalise_payload(payload, str(file_path)))
-        hashes.append({"file": file_path.name, "sha256": _sha256_bytes(raw)})
+        hashes.append(
+            {
+                "file": file_path.name,
+                "sha256": _sha256_bytes(raw),
+                "size_bytes": len(raw),
+            }
+        )
 
     # Stable order even if n8n returns newest-first or files are rearranged.
     executions.sort(
@@ -182,7 +193,10 @@ def _get_path(value: Any, path: str, default: Any = _MISSING) -> Any:
 
 
 def _render_template(template: str, item: dict[str, Any]) -> str:
+    """Expand conservative dotted-path placeholders from one node item."""
+
     def replace(match: re.Match[str]) -> str:
+        """Render one template match without evaluating arbitrary expressions."""
         path = match.group(1).strip()
         value = _get_path(item, path)
         if isinstance(value, (dict, list)):
@@ -193,6 +207,7 @@ def _render_template(template: str, item: dict[str, Any]) -> str:
 
 
 def _as_markdown(value: Any) -> str:
+    """Render an allow-listed scalar or structured value on one Markdown line."""
     if isinstance(value, bool):
         return "true" if value else "false"
     if value is None:
@@ -205,6 +220,7 @@ def _as_markdown(value: Any) -> str:
 def _iter_node_items(
     execution: dict[str, Any], node_name: str
 ) -> Iterable[tuple[int, int, int, dict[str, Any]]]:
+    """Yield source coordinates and JSON items for a named n8n node."""
     data = execution.get("data")
     if not isinstance(data, dict):
         return
@@ -234,6 +250,7 @@ def _iter_node_items(
 
 
 def _workflow_identity(execution: dict[str, Any]) -> tuple[str, str]:
+    """Resolve a stable workflow ID plus its human-readable name."""
     workflow_data = execution.get("workflowData")
     workflow_data = workflow_data if isinstance(workflow_data, dict) else {}
     workflow_id = str(
@@ -251,6 +268,7 @@ def _stable_memory_id(
     output_index: int,
     item_index: int,
 ) -> str:
+    """Derive a deterministic memory ID from the complete n8n coordinate."""
     coordinate = "\x1f".join(
         (
             workflow_id,
@@ -267,12 +285,14 @@ def _stable_memory_id(
 def _resource_url(
     base_url: str | None, workflow_id: str, execution_id: str
 ) -> str | None:
+    """Build a human-navigable execution URL when a base URL is configured."""
     if not base_url:
         return None
     return f"{base_url.rstrip('/')}/workflow/{workflow_id}/executions/{execution_id}"
 
 
 def _confidence(config: dict[str, Any], item: dict[str, Any]) -> float:
+    """Resolve and clamp provenance confidence to Memanto's accepted range."""
     if config.get("confidence_path"):
         raw = _get_path(item, str(config["confidence_path"]))
         scale = float(config.get("confidence_scale", 1))
@@ -297,6 +317,7 @@ def _build_content(
     output_index: int,
     item_index: int,
 ) -> str:
+    """Build readable allow-listed Markdown with complete n8n provenance."""
     heading = str(mapping.get("content_heading") or mapping["memory_type"]).title()
     lines = [f"# {heading}", ""]
     for field in mapping["fields"]:
@@ -334,7 +355,7 @@ def build_memories(
     base_url = source_config.get("execution_base_url")
 
     memories_by_type: dict[str, list[dict[str, Any]]] = defaultdict(list)
-    skipped = Counter()
+    skipped: Counter[str] = Counter()
     source_rows: list[dict[str, Any]] = []
 
     for execution in executions:
@@ -427,13 +448,26 @@ def build_memories(
     for memories in memories_by_type.values():
         memories.sort(key=lambda row: (str(row.get("created_at") or ""), row["id"]))
     source_rows.sort(key=lambda row: row["memory_id"])
+    memory_fingerprints = sorted(
+        (
+            {
+                "memory_id": memory["id"],
+                "sha256": _memory_fingerprint_from_source(memory_type, memory),
+            }
+            for memory_type, memories in memories_by_type.items()
+            for memory in memories
+        ),
+        key=lambda row: row["memory_id"],
+    )
     return dict(memories_by_type), {
         "skipped": dict(sorted(skipped.items())),
         "source_rows": source_rows,
+        "memory_fingerprints": memory_fingerprints,
     }
 
 
 def _generated_at(executions: list[dict[str, Any]]) -> str:
+    """Use the latest source timestamp instead of a wall-clock timestamp."""
     timestamps = [
         str(execution.get("stoppedAt") or execution.get("startedAt"))
         for execution in executions
@@ -447,7 +481,7 @@ def _normalise_bundle_timestamps(bundle: Path, timestamp: str) -> None:
     for index_path in sorted(bundle.rglob("index.md")):
         original = index_path.read_text(encoding="utf-8")
         updated = _INDEX_TIMESTAMP_RE.sub(f"timestamp: {timestamp}", original)
-        index_path.write_text(updated, encoding="utf-8")
+        index_path.write_bytes(updated.replace("\r\n", "\n").encode("utf-8"))
 
     overview_path = bundle / "metrics" / "overview.md"
     if overview_path.exists():
@@ -456,10 +490,25 @@ def _normalise_bundle_timestamps(bundle: Path, timestamp: str) -> None:
             f"*Visualizations generated from source snapshot {timestamp}*",
             original,
         )
-        overview_path.write_text(updated, encoding="utf-8")
+        overview_path.write_bytes(updated.replace("\r\n", "\n").encode("utf-8"))
+
+
+def _normalise_bundle_newlines(bundle: Path) -> None:
+    """Normalize generated text artifacts to deterministic UTF-8/LF files."""
+    for path in sorted(bundle.rglob("*")):
+        if path.is_file() and path.suffix in {".md", ".json"}:
+            text = path.read_text(encoding="utf-8")
+            normalized = text.replace("\r\n", "\n").replace("\r", "\n")
+            if path.suffix == ".md":
+                normalized = "\n".join(
+                    line.rstrip() for line in normalized.splitlines()
+                )
+                normalized = normalized.rstrip("\n") + "\n"
+            path.write_bytes(normalized.encode("utf-8"))
 
 
 def _bundle_hashes(bundle: Path) -> list[dict[str, str]]:
+    """Hash every committed bundle artifact except self-referential reports."""
     rows: list[dict[str, str]] = []
     for path in sorted(bundle.rglob("*")):
         if path.is_file() and path.name not in {
@@ -473,6 +522,116 @@ def _bundle_hashes(bundle: Path) -> list[dict[str, str]]:
                 }
             )
     return rows
+
+
+def _memory_fingerprint_payload(
+    *,
+    memory_id: str,
+    memory_type: str,
+    title: str,
+    content: str,
+    tags: list[Any],
+    confidence: Any,
+    provenance: Any,
+    source: Any,
+    status: Any,
+    created_at: Any,
+    source_ref: Any,
+) -> dict[str, Any]:
+    """Build the exact privacy-preserving semantic payload used for fidelity."""
+    return {
+        "id": memory_id,
+        "type": memory_type,
+        "title": title,
+        "content": content,
+        "tags": tags,
+        "confidence": confidence,
+        "provenance": provenance,
+        "source": source,
+        "status": status,
+        "created_at": created_at,
+        "source_ref": source_ref,
+    }
+
+
+def _memory_fingerprint_from_source(memory_type: str, memory: dict[str, Any]) -> str:
+    """Hash every selected semantic field before OKF serialization."""
+    payload = _memory_fingerprint_payload(
+        memory_id=str(memory["id"]),
+        memory_type=memory_type,
+        title=str(memory["title"]),
+        content=str(memory["content"]),
+        tags=list(memory.get("tags") or []),
+        confidence=memory.get("confidence"),
+        provenance=memory.get("provenance"),
+        source=memory.get("source"),
+        status=memory.get("status"),
+        created_at=memory.get("created_at"),
+        source_ref=memory.get("source_ref"),
+    )
+    return _sha256_bytes(_canonical_json(payload).encode("utf-8"))
+
+
+def _memory_fingerprint_from_loaded(memory: dict[str, Any]) -> dict[str, str]:
+    """Hash the same semantic fields after loading the OKF document."""
+    x_memanto = memory.get("x_memanto")
+    x_memanto = x_memanto if isinstance(x_memanto, dict) else {}
+    memory_id = str(x_memanto.get("id") or "")
+    payload = _memory_fingerprint_payload(
+        memory_id=memory_id,
+        memory_type=str(memory.get("type") or x_memanto.get("type") or ""),
+        title=str(memory.get("title") or ""),
+        content=str(memory.get("body") or ""),
+        tags=list(memory.get("tags") or []),
+        confidence=x_memanto.get("confidence"),
+        provenance=x_memanto.get("provenance"),
+        source=x_memanto.get("source"),
+        status=x_memanto.get("status"),
+        created_at=memory.get("timestamp"),
+        source_ref=memory.get("resource"),
+    )
+    return {
+        "memory_id": memory_id,
+        "sha256": _sha256_bytes(_canonical_json(payload).encode("utf-8")),
+    }
+
+
+def _storage_report(
+    source_hashes: list[dict[str, Any]], bundle: Path
+) -> dict[str, Any]:
+    """Measure source JSON bytes against readable OKF Markdown bytes."""
+    markdown_files = sorted(bundle.rglob("*.md"))
+    source_bytes = sum(int(row["size_bytes"]) for row in source_hashes)
+    okf_bytes = sum(path.stat().st_size for path in markdown_files)
+    delta_bytes = okf_bytes - source_bytes
+    delta_percent = (
+        round((delta_bytes / source_bytes) * 100, 2) if source_bytes else None
+    )
+    return {
+        "version": 1,
+        "basis": "measured-file-bytes",
+        "source": {
+            "format": "n8n public API JSON",
+            "files": len(source_hashes),
+            "bytes": source_bytes,
+        },
+        "portable_okf_markdown": {
+            "files": len(markdown_files),
+            "bytes": okf_bytes,
+        },
+        "delta_bytes": delta_bytes,
+        "delta_percent": delta_percent,
+        "interpretation": (
+            "portability overhead" if delta_bytes >= 0 else "storage reduction"
+        ),
+        "provider_cost_savings": None,
+        "token_savings": None,
+        "latency_savings": None,
+        "notes": (
+            "n8n execution history has no provider billing/token/latency baseline; "
+            "unavailable values are null rather than invented."
+        ),
+    }
 
 
 def validate_round_trip(bundle: str | Path) -> dict[str, Any]:
@@ -494,6 +653,12 @@ def validate_round_trip(bundle: str | Path) -> dict[str, Any]:
         if isinstance(entry.get("x_memanto"), dict)
     }
     expected_ids = {str(row["memory_id"]) for row in expected_rows}
+    expected_fingerprints = expected_manifest.get("memory_fingerprints") or []
+    actual_fingerprints = sorted(
+        (_memory_fingerprint_from_loaded(entry) for entry in loaded["memories"]),
+        key=lambda row: row["memory_id"],
+    )
+    semantic_fingerprints_preserved = actual_fingerprints == expected_fingerprints
 
     issues: list[str] = []
     if len(loaded["memories"]) != len(expected_rows):
@@ -506,6 +671,8 @@ def validate_round_trip(bundle: str | Path) -> dict[str, Any]:
         issues.append("Some OKF entries could not map back to Memanto rows")
     if any(not row.get("content") or not row.get("title") for row in mapped):
         issues.append("A round-tripped memory lost its title or content")
+    if not semantic_fingerprints_preserved:
+        issues.append("A selected semantic field changed during the OKF round trip")
 
     return {
         "valid": not issues,
@@ -513,18 +680,22 @@ def validate_round_trip(bundle: str | Path) -> dict[str, Any]:
         "okf_count": len(loaded["memories"]),
         "memanto_count": len(mapped),
         "stable_ids_preserved": loaded_ids == expected_ids,
+        "semantic_fingerprints_preserved": semantic_fingerprints_preserved,
         "issues": issues,
     }
 
 
 def _write_json(path: Path, value: Any) -> None:
-    path.write_text(
-        json.dumps(value, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
-        encoding="utf-8",
+    """Write deterministic UTF-8 JSON without platform newline translation."""
+    path.write_bytes(
+        (json.dumps(value, ensure_ascii=False, indent=2, sort_keys=True) + "\n").encode(
+            "utf-8"
+        )
     )
 
 
 def _atomic_publish(staged_bundle: Path, output: Path, stage_root: Path) -> None:
+    """Replace a validated generated bundle with rollback on swap failure."""
     previous = stage_root / "previous-output"
     moved_previous = False
     try:
@@ -541,6 +712,23 @@ def _atomic_publish(staged_bundle: Path, output: Path, stage_root: Path) -> None
             shutil.rmtree(stage_root)
 
 
+def _assert_replaceable_output(output: Path) -> None:
+    """Refuse to replace a directory not owned by this adapter."""
+    if not output.exists():
+        return
+    if not output.is_dir():
+        raise MappingError(f"Output exists and is not a directory: {output}")
+    marker_path = output / _OWNERSHIP_MARKER
+    try:
+        marker = json.loads(marker_path.read_text(encoding="utf-8"))
+    except (FileNotFoundError, json.JSONDecodeError) as exc:
+        raise MappingError(
+            f"Refusing to replace unowned output directory: {output}"
+        ) from exc
+    if marker != _OWNERSHIP_VALUE:
+        raise MappingError(f"Refusing to replace unowned output directory: {output}")
+
+
 def convert_n8n_executions(
     input_path: str | Path,
     mapping_path: str | Path,
@@ -555,6 +743,7 @@ def convert_n8n_executions(
 
     output = Path(output_path).resolve()
     output.parent.mkdir(parents=True, exist_ok=True)
+    _assert_replaceable_output(output)
     stage_root = Path(
         tempfile.mkdtemp(prefix=f".{output.name}-", dir=str(output.parent))
     )
@@ -570,6 +759,8 @@ def convert_n8n_executions(
             split="file",
         )
         _normalise_bundle_timestamps(staged_bundle, generated_at)
+        _normalise_bundle_newlines(staged_bundle)
+        _write_json(staged_bundle / _OWNERSHIP_MARKER, _OWNERSHIP_VALUE)
 
         mapping_bytes = Path(mapping_path).read_bytes()
         manifest = {
@@ -584,6 +775,7 @@ def convert_n8n_executions(
             "memory_counts_by_type": result["per_type_counts"],
             "skipped": stats["skipped"],
             "source_rows": stats["source_rows"],
+            "memory_fingerprints": stats["memory_fingerprints"],
         }
         _write_json(staged_bundle / "migration-manifest.json", manifest)
 
@@ -594,6 +786,10 @@ def convert_n8n_executions(
                 "Round-trip validation failed: " + "; ".join(report["issues"])
             )
 
+        _write_json(
+            staged_bundle / "metrics" / "savings-report.json",
+            _storage_report(source_hashes, staged_bundle),
+        )
         manifest["bundle_files"] = _bundle_hashes(staged_bundle)
         _write_json(staged_bundle / "migration-manifest.json", manifest)
         _atomic_publish(staged_bundle, output, stage_root)
@@ -613,6 +809,7 @@ def convert_n8n_executions(
 
 
 def _parser() -> argparse.ArgumentParser:
+    """Build the adapter command-line parser."""
     parser = argparse.ArgumentParser(
         description="Convert selected n8n execution outputs to an OKF bundle."
     )
@@ -636,6 +833,7 @@ def _parser() -> argparse.ArgumentParser:
 
 
 def main() -> int:
+    """Run conversion or validation and return a process exit code."""
     args = _parser().parse_args()
     result = (
         validate_round_trip(args.output)

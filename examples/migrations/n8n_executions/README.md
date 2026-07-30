@@ -60,6 +60,7 @@ Expected headline result:
 ```text
 3 n8n executions → 3 decision memories → 3 OKF documents
 round trip: valid
+selected-field semantic fingerprints: preserved
 golden recall parity: 3/3 (100%)
 ```
 
@@ -74,6 +75,13 @@ memanto migrate okf examples/migrations/n8n_executions/sample-okf --dry-run
 reported `3` OKF nodes, `3` mapped memories, `0` skipped, and a
 `decision: 3` type breakdown. See `dry-run-evidence.md` and
 `memanto-dry-run-preview.json` for the committed proof.
+
+The committed storage report compares measured files rather than inventing a
+provider baseline: `32,763` bytes of full n8n execution JSON become `4,802`
+bytes across eight readable OKF Markdown files, a reduction of `27,961` bytes
+(`85.34%`) after the allow-list intentionally removes headers, emails, workflow
+code, and unrelated runtime state. Provider cost, token, and latency savings are
+reported as unavailable (`null`).
 
 ## Reproduce the source runs
 
@@ -161,9 +169,17 @@ Each output contains:
 - `migration-manifest.json`: source-file hashes, mapping hash, source count,
   memory count, per-type breakdown, skipped reasons, and every source coordinate;
 - `round-trip-report.json`: OKF loader/mapper counts and stable-ID parity;
+- `metrics/savings-report.json`: measured source-vs-readable-Markdown bytes,
+  with unavailable provider metrics left null;
 - `recall-parity-report.json`: per-question before/after golden recall results;
 - `memories/<type>/*.md`: the inspectable portable memory; and
 - normal Memanto indexes and aggregate metrics.
+
+The manifest also stores one SHA-256 fingerprint per selected semantic memory
+record. The round-trip validator recomputes those fingerprints after Memanto's
+OKF loader reads the bundle, proving every allow-listed title, body, tag,
+timestamp, provenance field, source reference, and confidence value survived
+serialization exactly.
 
 The test suite explicitly plants an email in the source execution and asserts
 that it appears nowhere in the generated bundle.
@@ -189,6 +205,24 @@ Finally, prove the memory is portable in both directions:
 memanto memory export --agent n8n-operations --okf --split file \
   --output ./n8n-operations-roundtrip
 ```
+
+For one guarded live freedom loop, review the secret-free command plan first:
+
+```bash
+python -m examples.migrations.n8n_executions.run_live_demo \
+  --agent n8n-operations \
+  --reuse-agent
+```
+
+Then place the Moorcheh key only in the process environment and add
+`--execute`. The runner activates or creates the dedicated agent, imports all
+three memories through the shipped CLI, retries the three real `recall`
+queries while indexing settles, exports the agent back to OKF under Memanto's
+guarded data directory, validates every expected fact in the exported
+Markdown, and only then copies the evidence into this example.
+
+The key is never accepted as a CLI argument, printed, or written to the report.
+Existing evidence directories are never overwritten.
 
 ## Safety notes
 

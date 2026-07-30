@@ -1,36 +1,44 @@
 {
   "bundle_files": [
     {
+      "file": ".n8n-executions-okf.json",
+      "sha256": "0a8827c30b560e0feaf3894947be1b9c7cf0c0966d89dcc72850a8fbc2597782"
+    },
+    {
       "file": "index.md",
-      "sha256": "0abe417c741ef4e228d136a4195d84baad25537a681567852738905fc2d96d10"
+      "sha256": "da6d1fa41d18880a17bf9d18d7384562e064d82694366af81ea78cb0503c5e00"
     },
     {
       "file": "memories/decision/index.md",
-      "sha256": "7fe30f744c37372e99a7ee59f596271821f73493fdb324a572da09bd64a5d918"
+      "sha256": "8332bfcf7134f411a74d67535ad3d678caa66f86d06a144135adc3e4278c36f9"
     },
     {
       "file": "memories/decision/lead-atlas-fleet-hot-100.md",
-      "sha256": "dc8753c00d6d0cb647a214de726210207830d9b87e1a6022a8858d9a155e8a18"
+      "sha256": "7b3b36c91bdd2fdfdda7809d09aad7f79b4e15294bf4cbc432e714c7d29a77f2"
     },
     {
       "file": "memories/decision/lead-beacon-studio-warm-65.md",
-      "sha256": "cf91242f9786a0081505e74c773091c1ecc5a5e811d44e5d8e1f36b0af856a01"
+      "sha256": "8c710b4bf526791ea619a3c85f3ac29fb639b2483177612441bf5dcb1ce4e550"
     },
     {
       "file": "memories/decision/lead-cedar-hobby-cold-25.md",
-      "sha256": "cd25366deb818c9bb62e868f4772ea494403c8abfa8ba3cf10282998239bd9ad"
+      "sha256": "dcaa9d73cd394e2ccab4caa9f130b2148a92a345f716ed2bb3997851fb0c4763"
     },
     {
       "file": "memories/index.md",
-      "sha256": "45e9ed03ccc3f624eaf66b4e82c502cc3dcb8d17838f18c164c622b9f212fd9d"
+      "sha256": "cb80d60fb0eb9c53396bc6ca79756a6b6a01b871dd1bef5346b54105e0315f83"
     },
     {
       "file": "metrics/index.md",
-      "sha256": "82c7d462e02474c3442e14b8b0f3f76a15cc8738764f13bb82022bb22bd1e5e8"
+      "sha256": "e0616eaf6bdccec52de14571c354299402f22527ee9e2f6aac8ac7609935168d"
     },
     {
       "file": "metrics/overview.md",
-      "sha256": "d007edf0f4b2a61aeac816528313b4ca1ffefdd1142be93979de8ac2f385cc46"
+      "sha256": "fd5b22b8a8ed48afe06d0b312e9c67d9759e567dee332c82cb0838d53c4ad9be"
+    },
+    {
+      "file": "metrics/savings-report.json",
+      "sha256": "c9777eb6a6d1b62f7d1aabc240ba7b4c68bfd5b941b640031f90112a3a718a94"
     }
   ],
   "format": "okf",
@@ -41,13 +49,28 @@
   "memory_counts_by_type": {
     "decision": 3
   },
+  "memory_fingerprints": [
+    {
+      "memory_id": "n8n-057bccc8069d70a10f7508f0",
+      "sha256": "e7d9b6d4aee4207c8397ab5b5332ee608f47d60b445840c4fed5ec652bb0acf1"
+    },
+    {
+      "memory_id": "n8n-4cf4dea1abe0f6a3c4adff37",
+      "sha256": "c39a9418fca578d8618e2f3409797daf7e9d44d9d4d17676e26304a010128e31"
+    },
+    {
+      "memory_id": "n8n-f9e93c7aea9432de737301f5",
+      "sha256": "fb41878558b8acba6f36c505ce38de25554e71f067395aab577018aa7b0cfe88"
+    }
+  ],
   "migration": "n8n-executions",
   "skipped": {},
   "source_execution_count": 3,
   "source_files": [
     {
       "file": "sample-executions.json",
-      "sha256": "a927c54768ce3aa6eeb404f459072938dcb959b568c40d32be8871cfca02b346"
+      "sha256": "a927c54768ce3aa6eeb404f459072938dcb959b568c40d32be8871cfca02b346",
+      "size_bytes": 32763
     }
   ],
   "source_rows": [

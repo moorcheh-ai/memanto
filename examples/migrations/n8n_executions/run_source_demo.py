@@ -11,6 +11,7 @@ HERE = Path(__file__).resolve().parent
 
 
 def main() -> int:
+    """Execute every committed demo scenario through the live n8n webhook."""
     parser = argparse.ArgumentParser(
         description="Send demo scenarios through the live LeadOps n8n workflow."
     )
