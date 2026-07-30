@@ -225,25 +225,37 @@ class MemoryWriteService:
                     )
 
             # Resolve contradictions between memories in the same batch
-            # BEFORE building documents, so superseded status is captured
-            # in the uploaded documents.
+            # and rebuild validated_documents so superseded status is captured.
             superseded_by = self.validation_service.resolve_batch_contradictions(memories)
 
-            # Now build validated documents — superseded memories will have
-            # status="superseded" from resolve_batch_contradictions.
-            for idx, memory in enumerate(memories):
-                # Skip memories that were already rejected (cross-namespace)
-                result_id = str(memory.id) if hasattr(memory, 'id') and memory.id else ""
-                # Find the corresponding result entry
+            if superseded_by:
+                # Update results for superseded memories
                 for result_entry in results:
-                    if str(result_entry.get("id") or "") == result_id:
-                        if str(memory.status).lower() == "superseded":
-                            winner_id = superseded_by.get(result_id)
-                            result_entry["action"] = "store_superseded"
-                            result_entry["reason"] = (
-                                f"superseded within batch by {winner_id}"
-                            )
-                        break
+                    result_id = str(result_entry.get("id") or "")
+                    if result_id in superseded_by:
+                        winner_id = superseded_by[result_id]
+                        result_entry["action"] = "store_superseded"
+                        result_entry["reason"] = (
+                            f"superseded within batch by {winner_id}"
+                        )
+
+                # Rebuild validated_documents so superseded status and
+                # superseded_by are reflected in the uploaded documents.
+                from typing import cast as _cast
+                from moorcheh_sdk.types.document import Document as _D
+                validated_documents.clear()
+                for memory in memories:
+                    mem_id = str(getattr(memory, "id", "") or "")
+                    if mem_id and any(
+                        str(r.get("id") or "") == mem_id for r in results
+                        if str(r.get("status", "")) != "failed"
+                    ):
+                        document = dict(_cast(_D, memory.to_moorcheh_document()))
+                        # Attach superseded_by for batch-contradicted docs
+                        if mem_id in superseded_by:
+                            document["superseded_by"] = superseded_by[mem_id]
+                            document["superseded_at"] = datetime.now(timezone.utc).isoformat()
+                        validated_documents.append(_cast(_D, document))
 
             # Upload all validated documents in single batch to Moorcheh
             if validated_documents and first_namespace:
