@@ -60,8 +60,24 @@ class ConversationMemoryExtractionService:
         response = self.client.answer.generate(**generate_kwargs)
 
         raw_answer = response.get("answer", "")
-        parsed = self._parse_json_answer(raw_answer)
-        return self._normalize_candidates(parsed, max_memories=max_memories)
+        text = raw_answer.strip()
+        if not text:
+            raise ValueError("Memory extraction returned an empty response")
+
+        has_any_array = False
+        for parsed in iter_json_arrays(text):
+            has_any_array = True
+            try:
+                normalized = self._normalize_candidates(parsed, max_memories=max_memories)
+                if normalized:
+                    return normalized
+            except ValueError:
+                continue
+
+        if has_any_array:
+            return []
+
+        raise ValueError("Memory extraction did not return valid JSON")
 
     def _validate_messages(self, messages: list[dict[str, str]]) -> None:
         if not messages:
@@ -108,15 +124,6 @@ class ConversationMemoryExtractionService:
             "Return only JSON. The JSON must be an array of objects with keys: "
             "type, title, content, confidence. Confidence must be 0.0 to 1.0."
         )
-
-    def _parse_json_answer(self, answer: str) -> Any:
-        text = answer.strip()
-        if not text:
-            raise ValueError("Memory extraction returned an empty response")
-
-        for parsed in iter_json_arrays(text):
-            return parsed
-        raise ValueError("Memory extraction did not return valid JSON")
 
     def _normalize_candidates(
         self, parsed: Any, *, max_memories: int

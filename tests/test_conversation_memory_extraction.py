@@ -104,6 +104,52 @@ def test_extract_ignores_non_json_brackets_before_memory_array():
         }
     ]
 
+def test_extract_skips_invalid_json_arrays():
+    client = FakeClient(
+        "Dummy array first: [1, 2]\n"
+        "Real array second:\n"
+        '[{"type":"fact","title":"Validation","content":"Iterate arrays.","confidence":0.95}]'
+    )
+
+    service = ConversationMemoryExtractionService(client)
+    candidates = service.extract(
+        namespace="memanto_agent_test",
+        messages=[{"role": "user", "content": "Iterate arrays."}],
+    )
+
+    assert candidates == [
+        {
+            "type": "fact",
+            "title": "Validation",
+            "content": "Iterate arrays.",
+            "confidence": 0.95,
+            "source": "system",
+            "provenance": "inferred",
+        }
+    ]
+
+def test_extract_ignores_brackets_in_strings():
+    client = FakeClient(
+        '[{"type":"fact","title":"Nested brackets","content":"Like this [1, 2].","confidence":0.95}]'
+    )
+
+    service = ConversationMemoryExtractionService(client)
+    candidates = service.extract(
+        namespace="memanto_agent_test",
+        messages=[{"role": "user", "content": "Like this [1, 2]."}],
+    )
+
+    assert candidates == [
+        {
+            "type": "fact",
+            "title": "Nested brackets",
+            "content": "Like this [1, 2].",
+            "confidence": 0.95,
+            "source": "system",
+            "provenance": "inferred",
+        }
+    ]
+
 def test_extract_omits_unset_active_ai_model(monkeypatch):
     """On-prem fallback should let answer.generate use its configured model."""
     from memanto.app.services import conversation_memory_extraction_service as module

@@ -21,24 +21,26 @@ def iter_json_arrays(text: str) -> Iterator[list[Any]]:
     if not text:
         return
 
-    candidates = [match.group(1).strip() for match in _FENCE_RE.finditer(text)]
-    candidates.append(_FENCE_RE.sub("", text).strip())
-
     decoder = json.JSONDecoder()
     seen: set[str] = set()
+    last_end = 0
 
-    for candidate in candidates:
-        if not candidate:
+    for match in re.finditer(r"\[", text):
+        if match.start() < last_end:
             continue
-        for match in re.finditer(r"\[", candidate):
-            try:
-                parsed, end = decoder.raw_decode(candidate, match.start())
-            except json.JSONDecodeError:
-                continue
-            if not isinstance(parsed, list):
-                continue
-            raw = candidate[match.start() : end]
-            if raw in seen:
-                continue
-            seen.add(raw)
-            yield parsed
+            
+        try:
+            parsed, end = decoder.raw_decode(text, match.start())
+        except json.JSONDecodeError:
+            continue
+            
+        if not isinstance(parsed, list):
+            continue
+            
+        last_end = end
+        
+        raw = text[match.start() : end]
+        if raw in seen:
+            continue
+        seen.add(raw)
+        yield parsed
