@@ -13,6 +13,7 @@ import json
 import re
 import shutil
 import sqlite3
+import tempfile
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Iterable
@@ -56,6 +57,14 @@ CHANNEL_TYPE_HINTS = {
     "observation": "observation",
     "memories": "observation",
     "memory": "observation",
+}
+
+OWNERSHIP_MARKER_FILENAME = ".langgraph-checkpoint-okf.json"
+OWNERSHIP_MARKER = {
+    "bundle_format": "okf",
+    "generated_by": "memanto.examples.langgraph_checkpoint_to_okf",
+    "schema_version": 1,
+    "source": "langgraph-checkpoint-sqlite",
 }
 
 
@@ -411,14 +420,14 @@ def validate_output_path(output: Path) -> Path:
 
 
 def is_generated_okf_bundle(output: Path) -> bool:
-    index = output / "index.md"
-    if not output.is_dir() or not index.exists():
+    marker = output / OWNERSHIP_MARKER_FILENAME
+    if not output.is_dir() or not marker.is_file():
         return False
     try:
-        text = index.read_text(encoding="utf-8")
-    except OSError:
+        data = json.loads(marker.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
         return False
-    return "generated from a real LangGraph SQLite checkpoint" in text
+    return data == OWNERSHIP_MARKER
 
 
 def write_okf_bundle_contents(records: list[MemoryRecord], output: Path) -> None:
@@ -426,6 +435,10 @@ def write_okf_bundle_contents(records: list[MemoryRecord], output: Path) -> None
     (output / "sessions").mkdir()
     (output / "metrics").mkdir()
 
+    output.joinpath(OWNERSHIP_MARKER_FILENAME).write_text(
+        json.dumps(OWNERSHIP_MARKER, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
     output.joinpath("index.md").write_text(render_index(records), encoding="utf-8")
     output.joinpath("sessions", "founder-os-agent.md").write_text(
         render_sessions(records), encoding="utf-8"
@@ -461,12 +474,9 @@ def write_okf_bundle_contents(records: list[MemoryRecord], output: Path) -> None
 def write_okf_bundle(records: list[MemoryRecord], output: Path, *, overwrite: bool = False) -> None:
     target = validate_output_path(output)
     target.parent.mkdir(parents=True, exist_ok=True)
-    temp = target.with_name(f".{target.name}.tmp-{short_hash(str(target))}")
-    if temp.exists():
-        if temp.is_dir():
-            shutil.rmtree(temp)
-        else:
-            temp.unlink()
+    temp = Path(tempfile.mkdtemp(prefix=f".{target.name}.tmp-", dir=target.parent))
+    backup_parent: Path | None = None
+    backup: Path | None = None
 
     try:
         write_okf_bundle_contents(records, temp)
@@ -479,12 +489,25 @@ def write_okf_bundle(records: list[MemoryRecord], output: Path, *, overwrite: bo
                 raise RuntimeError(
                     f"Refusing to overwrite non-generated OKF bundle: {target}"
                 )
-            shutil.rmtree(target)
+            backup_parent = Path(
+                tempfile.mkdtemp(prefix=f".{target.name}.bak-", dir=target.parent)
+            )
+            backup = backup_parent / target.name
+            target.rename(backup)
         temp.rename(target)
     except Exception:
+        if backup is not None and backup.exists() and not target.exists():
+            backup.rename(target)
         if temp.exists():
             shutil.rmtree(temp)
+        if backup_parent is not None and backup_parent.exists() and not any(
+            backup_parent.iterdir()
+        ):
+            backup_parent.rmdir()
         raise
+    else:
+        if backup_parent is not None and backup_parent.exists():
+            shutil.rmtree(backup_parent)
 
 
 def convert(
