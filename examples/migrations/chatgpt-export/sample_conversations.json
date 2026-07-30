@@ -1,0 +1,74 @@
+[
+  {
+    "title": "Project Brainstorming",
+    "create_time": 1700000000.0,
+    "update_time": 1700001000.0,
+    "mapping": {
+      "msg1": {
+        "id": "msg1",
+        "message": {
+          "id": "msg1",
+          "author": {"role": "user"},
+          "create_time": 1700000000.0,
+          "content": {
+            "content_type": "text",
+            "parts": ["Hi! I'm planning to build a new agentic memory system using Python and FastAPI. I prefer using PostgreSQL for the database."]
+          }
+        },
+        "parent": null,
+        "children": ["msg2"]
+      },
+      "msg2": {
+        "id": "msg2",
+        "message": {
+          "id": "msg2",
+          "author": {"role": "assistant"},
+          "create_time": 1700000010.0,
+          "content": {
+            "content_type": "text",
+            "parts": ["That sounds like a great project! Python and FastAPI are excellent choices for building performant APIs, and PostgreSQL is robust for memory storage. Have you considered how you will handle vector embeddings?"]
+          }
+        },
+        "parent": "msg1",
+        "children": []
+      }
+    },
+    "conversation_id": "conv-12345"
+  },
+  {
+    "title": "Diet Preferences",
+    "create_time": 1700080000.0,
+    "update_time": 1700081000.0,
+    "mapping": {
+      "msg3": {
+        "id": "msg3",
+        "message": {
+          "id": "msg3",
+          "author": {"role": "user"},
+          "create_time": 1700080000.0,
+          "content": {
+            "content_type": "text",
+            "parts": ["Please remember that I am allergic to peanuts and I prefer a vegan diet."]
+          }
+        },
+        "parent": null,
+        "children": ["msg4"]
+      },
+      "msg4": {
+        "id": "msg4",
+        "message": {
+          "id": "msg4",
+          "author": {"role": "assistant"},
+          "create_time": 1700080010.0,
+          "content": {
+            "content_type": "text",
+            "parts": ["I have noted your peanut allergy and your preference for a vegan diet. I will keep this in mind for any future recipe recommendations."]
+          }
+        },
+        "parent": "msg3",
+        "children": []
+      }
+    },
+    "conversation_id": "conv-67890"
+  }
+]
