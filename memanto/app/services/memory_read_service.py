@@ -805,7 +805,7 @@ class MemoryReadService:
             filtered = [
                 r
                 for r in filtered
-                if any(tag in r.get("tags", "").split(",") for tag in tags)
+                if any(tag in self._normalize_tags(r.get("tags")) for tag in tags)
             ]
 
         # Apply limit
@@ -846,19 +846,7 @@ class MemoryReadService:
         # Parse tags - can be comma-separated string or array. External imports
         # and older documents may include spaces after commas, so normalize
         # before exact tag filters run.
-        tags_value = get_field("tags")
-        if isinstance(tags_value, str):
-            tags = [
-                tag_value for tag in tags_value.split(",") if (tag_value := tag.strip())
-            ]
-        elif isinstance(tags_value, list):
-            tags = [
-                tag_value
-                for tag in tags_value
-                if tag is not None and (tag_value := str(tag).strip())
-            ]
-        else:
-            tags = []
+        tags = self._normalize_tags(get_field("tags"))
 
         # Extract provenance
         provenance = get_field("provenance") or "explicit_statement"
@@ -915,3 +903,23 @@ class MemoryReadService:
         }
 
         return formatted
+
+    @staticmethod
+    def _normalize_tags(tags_value: Any) -> list[str]:
+        if isinstance(tags_value, str):
+            parsed_tags = tags_value.split(",")
+        elif isinstance(tags_value, list):
+            parsed_tags = tags_value
+        else:
+            return []
+
+        normalized = []
+        for tag in parsed_tags:
+            if tag is None:
+                continue
+            
+            clean_tag = str(tag).strip()
+            if clean_tag:
+                normalized.append(clean_tag)
+                
+        return normalized
