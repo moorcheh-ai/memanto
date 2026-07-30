@@ -60,6 +60,7 @@ _MAX_FOOTER_CHARS = 800  # cap supporting-data footer so it never dominates
 
 
 def _title_from(content: str) -> str:
+    """Derive a short title from the first line of content, truncated to 80 chars."""
     text = content.strip().replace("\n", " ")
     if len(text) <= _DEFAULT_TITLE_CHARS:
         return text
@@ -67,6 +68,7 @@ def _title_from(content: str) -> str:
 
 
 def _coerce_type(raw: str | None) -> str | None:
+    """Validate and normalize a raw type string against Memanto's allowed types."""
     if not raw:
         return None
     t = raw.strip().lower()
@@ -74,6 +76,7 @@ def _coerce_type(raw: str | None) -> str | None:
 
 
 def _scope_tag(scope: dict[str, Any] | None) -> str | None:
+    """Extract a ``key=value`` tag from a scope dict for tagging."""
     if not scope:
         return None
     for k, v in scope.items():
@@ -114,6 +117,7 @@ def _parse_dt(value: Any) -> datetime | None:
 
 
 def _pick_first_dt(record: dict[str, Any], keys: tuple[str, ...]) -> datetime | None:
+    """Return the first successfully parsed datetime from *record* for the given keys."""
     for key in keys:
         dt = _parse_dt(record.get(key))
         if dt is not None:
@@ -169,6 +173,7 @@ def _attach_footer(content: str, footer: str) -> str:
 
 
 def _now_utc() -> datetime:
+    """Return the current UTC datetime."""
     return datetime.now(timezone.utc)
 
 

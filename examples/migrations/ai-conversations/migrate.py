@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import sys
 import textwrap
 from datetime import datetime, timezone
@@ -33,23 +34,29 @@ try:
 except ImportError:
     HAS_RICH = False
     class _FakeConsole:
+        """Minimal console fallback when Rich is not installed."""
         def print(self, *a, **kw):
+            """Print arguments as strings."""
             print(*[str(x) for x in a])
         def rule(self, *a, **kw):
+            """Print a horizontal rule."""
             print("=" * 60)
     console = _FakeConsole()
 
 
 def _heading(title: str) -> None:
+    """Print a section heading to the console."""
     if HAS_RICH:
         console.rule(f"[bold cyan]{title}[/bold cyan]")
     else:
         print(f"\n{'=' * 60}\n  {title}\n{'=' * 60}")
 
 def _info(msg: str) -> None:
+    """Print an informational message."""
     console.print(f"  ... {msg}")
 
 def _ok(msg: str) -> None:
+    """Print a success message."""
     if HAS_RICH:
         console.print(f"  [bold green]OK[/bold green] {msg}")
     else:
@@ -61,9 +68,11 @@ def _ok(msg: str) -> None:
 # ---------------------------------------------------------------------------
 
 def _now_utc():
+    """Return the current UTC datetime."""
     return datetime.now(timezone.utc)
 
 def _safe_dt(value):
+    """Best-effort parse of a value into a UTC datetime."""
     if isinstance(value, datetime):
         return value
     if isinstance(value, (int, float)):
@@ -79,6 +88,7 @@ def _safe_dt(value):
     return None
 
 def _pick_first_dt(obj, keys):
+    """Return the first successfully parsed datetime from *obj* for the given keys."""
     for k in keys:
         v = obj.get(k)
         if v is not None:
@@ -88,12 +98,14 @@ def _pick_first_dt(obj, keys):
     return None
 
 def _title_from(content):
+    """Derive a short title from the first line of content, truncated to 80 chars."""
     first_line = content.split("\n", 1)[0].strip()
     if len(first_line) <= 80:
         return first_line
     return first_line[:77] + "..."
 
 def _format_supporting_data(pairs):
+    """Render key-value pairs into a markdown supporting-data block."""
     lines = []
     for k, v in pairs:
         if v is not None and v != "" and v != "None":
@@ -101,12 +113,14 @@ def _format_supporting_data(pairs):
     return "\n".join(lines)
 
 def _attach_footer(content, footer):
+    """Append a migration-metadata footer to the content string."""
     if footer:
         return f"{content}\n\n---\n*Migration metadata:*\n{footer}"
     return content
 
 
 def _walk_chatgpt_mapping(mapping, current_id, max_depth=200):
+    """Walk ChatGPT's tree-structured mapping dict backwards to collect messages."""
     messages = []
     visited = set()
     node_id = current_id
@@ -136,6 +150,7 @@ def _walk_chatgpt_mapping(mapping, current_id, max_depth=200):
 
 
 def map_chatgpt(export):
+    """Map a ChatGPT data export to Memanto memory payloads."""
     rows = []
     migrated_at = _now_utc()
     conversations = export.get("conversations") or export.get("memories") or []
@@ -151,8 +166,12 @@ def map_chatgpt(export):
             messages = []
             for msg in convo.get("messages") or convo.get("chat_messages") or []:
                 role = ((msg.get("author") or {}).get("role") or msg.get("role") or "").strip()
-                parts = ((msg.get("content") or {}).get("parts") or [])
-                text = " ".join(p for p in parts if isinstance(p, str)).strip()
+                content_obj = msg.get("content") or {}
+                if isinstance(content_obj, str):
+                    text = content_obj.strip()
+                else:
+                    parts = content_obj.get("parts") or []
+                    text = " ".join(p for p in parts if isinstance(p, str)).strip()
                 if text and role in ("user", "human"):
                     messages.append({"text": text, "role": "user"})
         else:
@@ -194,6 +213,7 @@ def map_chatgpt(export):
 
 
 def map_claude(export):
+    """Map a Claude data export to Memanto memory payloads."""
     rows = []
     migrated_at = _now_utc()
     conversations = export.get("conversations") or export.get("memories") or []
@@ -262,7 +282,8 @@ def map_claude(export):
 # ---------------------------------------------------------------------------
 
 def load_export(path):
-    with open(path) as f:
+    """Load a JSON export file and normalize it to a memories/conversations dict."""
+    with open(path, encoding="utf-8") as f:
         data = json.load(f)
     if isinstance(data, list):
         data = {"memories": data, "conversations": data}
@@ -270,6 +291,7 @@ def load_export(path):
 
 
 def map_memories(source, export_data):
+    """Dispatch to the appropriate mapper based on source platform."""
     if source == "chatgpt":
         return map_chatgpt(export_data)
     elif source == "claude":
@@ -278,6 +300,7 @@ def map_memories(source, export_data):
 
 
 def preview_memories(memories):
+    """Display a preview table of mapped memories in the console."""
     if HAS_RICH:
         table = Table(title="Mapped Memories Preview", show_lines=True)
         table.add_column("#", style="dim", width=3)
@@ -307,6 +330,7 @@ def preview_memories(memories):
 
 
 def export_okf_bundle(memories, output_dir):
+    """Export mapped memories as an OKF bundle with manifest and markdown files."""
     output_dir.mkdir(parents=True, exist_ok=True)
     manifest = {
         "okf_version": "1.0",
@@ -320,7 +344,8 @@ def export_okf_bundle(memories, output_dir):
 
     for i, mem in enumerate(memories):
         mem_id = f"mem_{i:04d}"
-        slug = (mem.get("title") or f"memory_{i}")[:50].replace(" ", "_").replace("/", "_")
+        raw_slug = (mem.get("title") or f"memory_{i}")[:50]
+        slug = re.sub(r"[^\w\s-]", "", raw_slug).strip().replace(" ", "_")
         md_content = f"""# {mem.get('title', f'Memory {i}')}
 
 **Type:** {mem.get('type') or 'auto-classified'}
@@ -334,21 +359,22 @@ def export_okf_bundle(memories, output_dir):
 {mem.get('content', '')}
 """
         md_path = memories_dir / f"{mem_id}_{slug}.md"
-        md_path.write_text(md_content)
+        md_path.write_text(md_content, encoding="utf-8")
         manifest["memories"].append({
             "id": mem_id,
             "title": mem.get("title"),
-            "type": mem.get("type"),
+            "type": mem.get("type") or "auto-classified",
             "source": mem.get("source"),
             "file": f"memories/{md_path.name}",
         })
 
     manifest_path = output_dir / "manifest.json"
-    manifest_path.write_text(json.dumps(manifest, indent=2, default=str))
+    manifest_path.write_text(json.dumps(manifest, indent=2, default=str), encoding="utf-8")
     return output_dir
 
 
 def run_recall_test(memories, export_data):
+    """Run a basic recall-parity test checking that key facts are preserved."""
     expected_facts = []
     conversations = export_data.get("conversations") or export_data.get("memories") or []
 
@@ -402,6 +428,7 @@ def run_recall_test(memories, export_data):
 # ---------------------------------------------------------------------------
 
 def main():
+    """CLI entry point for the AI conversation migration demo."""
     parser = argparse.ArgumentParser(
         description="AI Conversation Migration Demo: ChatGPT/Claude -> Memanto -> OKF",
         formatter_class=argparse.RawDescriptionHelpFormatter,
