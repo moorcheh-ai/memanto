@@ -22,7 +22,7 @@ Results:
 - 3/3 golden questions retrieved the expected answer at rank 1
 - 4/4 memories exported back to OKF
 
-Code and reproduction steps: PR_URL
+Code and reproduction steps: https://github.com/moorcheh-ai/memanto/pull/1732
 
 Built for the Memanto Great Memory Migration bounty by @moorchehai:
 https://youtube.com/@moorchehai
@@ -39,8 +39,8 @@ I built a privacy-first Codex → OKF → Memanto migration path:
 • 3/3 recall checks rank #1
 • exported back to readable Markdown
 
-Demo: VIDEO_URL
-Code: PR_URL
+Demo: https://github.com/ILoveBuns/memanto/releases/download/codex-session-okf-demo-v1/codex-memanto-live-evidence-1080p.mp4
+Code: https://github.com/moorcheh-ai/memanto/pull/1732
 
 @moorcheh_ai
 
@@ -61,7 +61,7 @@ The important product boundary is privacy: reusable user and assistant messages
 are portable memory; system prompts, reasoning, tool calls, credentials, and
 transport metadata are not.
 
-Demo: VIDEO_URL
-Code: PR_URL
+Demo: https://github.com/ILoveBuns/memanto/releases/download/codex-session-okf-demo-v1/codex-memanto-live-evidence-1080p.mp4
+Code: https://github.com/moorcheh-ai/memanto/pull/1732
 
 Tag the official Moorcheh AI company page before publishing.
