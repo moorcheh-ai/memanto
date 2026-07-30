@@ -904,3 +904,50 @@ class TestValidateSafeId:
             svc.generate_conflict_report("agent1", "../../etc/passwd")
 
         assert not (tmp_path / "etc").exists()
+
+
+def test_ui_static_xss_escapes():
+    """Regression test for UI HTML injection hardening.
+
+    The single-page UI builds several fragments with ``innerHTML``.  Any value
+    that comes from an agent, memory, backend response, or exception must be HTML
+    escaped before it is interpolated into those fragments.
+    """
+    from pathlib import Path
+
+    ui_html = (
+        Path(__file__).resolve().parents[1]
+        / "memanto"
+        / "app"
+        / "ui"
+        / "static"
+        / "index.html"
+    ).read_text(encoding="utf-8")
+
+    # Dashboard agent profile fields
+    assert "${escHtml(agent.agent_id)}" in ui_html
+    assert "${escHtml(agent.description ||" in ui_html
+    assert "${escHtml(agent.namespace ||" in ui_html
+    assert "${agent.description ||" not in ui_html
+
+    # Answer source titles
+    assert "${escHtml(trunc(s.title || s.id || 'memory', 30))}" in ui_html
+    assert "${trunc(s.title || s.id || 'memory', 30)}" not in ui_html
+
+    # Memory table metadata
+    assert "${escHtml(m.provenance)}" in ui_html
+    assert "${escHtml(m.type ||" in ui_html
+    assert "ID: ${escHtml(memId ||" in ui_html
+    assert "Source: ${escHtml(m.source ||" in ui_html
+    assert "forgetMemory('${" not in ui_html
+    assert 'data-memory-id="${attrEsc(memId)}"' in ui_html
+
+    # Error messages
+    assert "Could not load agent: ${escHtml(e.message)}" in ui_html
+    assert "Session may be expired: ${escHtml(e.message)}" in ui_html
+    assert "Failed to load config: ${escHtml(e.message)}" in ui_html
+    assert "Failed to load analytics: ${escHtml(e.message)}" in ui_html
+    assert "Could not load agent: ${e.message}" not in ui_html
+    assert "Session may be expired: ${e.message}" not in ui_html
+    assert "Failed to load config: ${e.message}" not in ui_html
+    assert "Failed to load analytics: ${e.message}" not in ui_html
