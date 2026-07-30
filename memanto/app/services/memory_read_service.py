@@ -857,27 +857,29 @@ class MemoryReadService:
         content = raw_text
 
         if raw_text:
-            # Wire format (see MemoryRecord.to_moorcheh_document):
-            #   "[TYPE] {title}\n\n{content}"  with an optional trailing
-            #   "\n\nTags: {tags}" block appended only when the record has tags.
-            # Split off the title on the FIRST blank line; everything after it is
-            # the content, which may itself contain blank lines.
-            first_line, first_sep, rest = raw_text.partition("\n\n")
+            first_line, separator, body = raw_text.partition("\n\n")
 
-            title_match = re.match(r"^\[.*?\]\s*(.*)$", first_line)
+            # Extract title: strip the "[TYPE] " prefix from first line
+
+            title_match = re.match(r"^\[.*?\]\s*(.*)$", first_line, flags=re.DOTALL)
             title = title_match.group(1).strip() if title_match else first_line.strip()
+            content = body if separator else raw_text
 
-            # Strip ONLY a genuine trailing tags block, and only when this record
-            # actually has tags (the serializer appends the block iff tags exist).
-            # Prevents (a) wiping content that merely begins with "Tags: " and
-            # (b) leaking the tags line into multi-paragraph content.
-            body, sep, last = rest.rpartition("\n\n")
-            if tags and sep and last.startswith("Tags: "):
-                content = body
-            elif not first_sep:
-                content = raw_text
-            else:
-                content = rest
+            # ``MemoryRecord.to_moorcheh_document`` appends a display-only
+            # tags footer after the content.  Remove exactly that generated
+            # footer while preserving arbitrary paragraphs (including a
+            # user-authored ``Tags:`` paragraph) in the original content.
+            if tags:
+                footer_marker = "\n\nTags: "
+                content_without_footer, marker, footer_tags = content.rpartition(
+                    footer_marker
+                )
+                normalized_footer_tags = [
+                    value.strip() for value in footer_tags.split(",") if value.strip()
+                ]
+                normalized_metadata_tags = [str(value).strip() for value in tags]
+                if marker and normalized_footer_tags == normalized_metadata_tags:
+                    content = content_without_footer
 
         # Build basic formatted item
         formatted = {
