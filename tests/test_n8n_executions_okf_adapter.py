@@ -19,6 +19,7 @@ from examples.migrations.n8n_executions.recall_validation import (
 )
 from examples.migrations.n8n_executions.run_live_demo import (
     _clean_output,
+    _require_empty_reused_agent,
     _validate_exported_bundle,
     build_command_plan,
 )
@@ -349,6 +350,17 @@ def test_live_plan_is_guarded_and_contains_no_api_key(tmp_path):
     assert "agent activate" not in rendered  # argv remains safely structured
     assert "MOORCHEH_API_KEY" not in rendered
     assert "--api-key" not in rendered
+
+
+def test_live_reuse_preflight_accepts_only_proven_empty_agents():
+    """Reusing a populated or ambiguous agent must fail before import."""
+    _require_empty_reused_agent("No memories found matching your query")
+
+    with pytest.raises(RuntimeError, match="non-empty reused agent"):
+        _require_empty_reused_agent("Found 1 memories (Recent)")
+
+    with pytest.raises(RuntimeError, match="Could not prove"):
+        _require_empty_reused_agent("Unexpected backend response")
 
 
 def test_live_output_redaction_and_export_fact_validation(tmp_path):

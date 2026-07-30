@@ -1,4 +1,4 @@
-"""Guarded Memanto cloud import, recall, and OKF export demonstration.
+"""Guarded Memanto cloud import, live Q&A, and OKF export demonstration.
 
 The Moorcheh API key is read only from ``MOORCHEH_API_KEY`` in the process
 environment. It is never accepted as a command-line option, printed, or written
@@ -120,7 +120,7 @@ def _run(
 
 
 def _load_live_questions(path: Path) -> list[dict[str, Any]]:
-    """Load questions with explicit terms expected in live recall output."""
+    """Load questions with explicit terms expected in live Q&A output."""
     raw = yaml.safe_load(path.read_text(encoding="utf-8"))
     questions = raw.get("questions") if isinstance(raw, dict) else None
     if not isinstance(questions, list) or not questions:
@@ -132,7 +132,19 @@ def _load_live_questions(path: Path) -> list[dict[str, Any]]:
     return questions
 
 
-def _recall_until_indexed(
+def _require_empty_reused_agent(output: str) -> None:
+    """Refuse a reused agent when live recall proves it already has memory."""
+    found_match = re.search(r"Found\s+(\d+)\s+memories?", output)
+    if found_match and int(found_match.group(1)) > 0:
+        raise RuntimeError(
+            "Refusing to import into a non-empty reused agent; use a fresh "
+            "dedicated agent to preserve exact round-trip counts"
+        )
+    if "No memories found" not in output:
+        raise RuntimeError("Could not prove that the reused agent is empty")
+
+
+def _answer_until_indexed(
     *,
     questions: list[dict[str, Any]],
     attempts: int,
@@ -140,7 +152,7 @@ def _recall_until_indexed(
     env: dict[str, str],
     private_roots: list[Path],
 ) -> list[dict[str, Any]]:
-    """Retry eventual-consistency recall and require every expected live term."""
+    """Retry live RAG Q&A and require every expected fact in each answer."""
     base = [sys.executable, "-m", "memanto"]
     results: list[dict[str, Any]] = []
     for question in questions:
@@ -149,7 +161,7 @@ def _recall_until_indexed(
         matched_attempt: int | None = None
         for attempt in range(1, attempts + 1):
             output = _run(
-                [*base, "recall", query, "--limit", "3"],
+                [*base, "answer", query, "--limit", "3"],
                 env=env,
                 private_roots=private_roots,
             )
@@ -160,7 +172,7 @@ def _recall_until_indexed(
                 time.sleep(delay_seconds)
         if matched_attempt is None:
             raise RuntimeError(
-                f"Live recall failed for {question.get('id')} after {attempts} attempts"
+                f"Live Q&A failed for {question.get('id')} after {attempts} attempts"
             )
         results.append(
             {
@@ -169,6 +181,7 @@ def _recall_until_indexed(
                 "matched_terms": terms,
                 "attempt": matched_attempt,
                 "passed": True,
+                "answer_output": output,
             }
         )
     return results
@@ -197,6 +210,15 @@ def _validate_exported_bundle(
     }
 
 
+def _normalise_markdown_tree(root: Path) -> None:
+    """Write exported Markdown as deterministic UTF-8/LF without trailing space."""
+    for path in sorted(root.rglob("*.md")):
+        text = path.read_text(encoding="utf-8")
+        normalized = text.replace("\r\n", "\n").replace("\r", "\n")
+        normalized = "\n".join(line.rstrip() for line in normalized.splitlines())
+        path.write_bytes((normalized.rstrip("\n") + "\n").encode("utf-8"))
+
+
 def _write_report(path: Path, report: dict[str, Any]) -> None:
     """Write sanitized validation evidence as deterministic UTF-8 JSON."""
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -210,7 +232,7 @@ def _write_report(path: Path, report: dict[str, Any]) -> None:
 def _parser() -> argparse.ArgumentParser:
     """Build the guarded live-demo command-line parser."""
     parser = argparse.ArgumentParser(
-        description="Run the live Memanto import -> recall -> OKF export loop."
+        description="Run the live Memanto import -> Q&A -> OKF export loop."
     )
     parser.add_argument("--execute", action="store_true")
     parser.add_argument("--agent", default="n8n-operations")
@@ -287,15 +309,32 @@ def main() -> int:
     env = os.environ.copy()
     env["MOORCHEH_API_KEY"] = api_key
     env["COLUMNS"] = "240"
+    env["PYTHONIOENCODING"] = "utf-8"
+    env["PYTHONUTF8"] = "1"
     private_roots = [Path.home(), HERE.parents[2]]
 
     activation_output = _run(plan[0]["argv"], env=env, private_roots=private_roots)
+    if args.reuse_agent:
+        empty_check_output = _run(
+            [
+                sys.executable,
+                "-m",
+                "memanto",
+                "recall",
+                "--recent",
+                "--limit",
+                "1",
+            ],
+            env=env,
+            private_roots=private_roots,
+        )
+        _require_empty_reused_agent(empty_check_output)
     import_output = _run(plan[1]["argv"], env=env, private_roots=private_roots)
     import_match = re.search(r"Imported:\s*(\d+)\s+Failed:\s*(\d+)", import_output)
     if not import_match or import_match.groups() != ("3", "0"):
         raise RuntimeError("Live import did not report Imported: 3 / Failed: 0")
 
-    recalls = _recall_until_indexed(
+    answers = _answer_until_indexed(
         questions=questions,
         attempts=args.attempts,
         delay_seconds=args.delay_seconds,
@@ -307,6 +346,7 @@ def main() -> int:
     if not export_match or export_match.group(1) != "3":
         raise RuntimeError("Live export did not report 3 memories")
 
+    _normalise_markdown_tree(export_path)
     validation = _validate_exported_bundle(export_path, questions)
     if not validation["valid"]:
         raise RuntimeError("Exported live OKF bundle failed factual validation")
@@ -324,9 +364,10 @@ def main() -> int:
         },
         "import": {"imported": 3, "failed": 0, "passed": True},
         "recall": {
-            "passed": len(recalls),
+            "method": "memanto answer (RAG over live recall)",
+            "passed": len(answers),
             "questions": len(questions),
-            "results": recalls,
+            "results": answers,
         },
         "export": {
             "exported": 3,
@@ -336,7 +377,10 @@ def main() -> int:
         "valid": True,
     }
     _write_report(report_path, report)
-    print(json.dumps(report, indent=2, ensure_ascii=False, sort_keys=True))
+    rendered_report = (
+        json.dumps(report, indent=2, ensure_ascii=False, sort_keys=True) + "\n"
+    )
+    sys.stdout.buffer.write(rendered_report.encode("utf-8"))
     return 0
 
 

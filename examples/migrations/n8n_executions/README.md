@@ -216,13 +216,32 @@ python -m examples.migrations.n8n_executions.run_live_demo \
 
 Then place the Moorcheh key only in the process environment and add
 `--execute`. The runner activates or creates the dedicated agent, imports all
-three memories through the shipped CLI, retries the three real `recall`
-queries while indexing settles, exports the agent back to OKF under Memanto's
-guarded data directory, validates every expected fact in the exported
-Markdown, and only then copies the evidence into this example.
+three memories through the shipped CLI, retries three real `memanto answer`
+questions while indexing settles, requires the expected facts in every live
+RAG answer, exports the agent back to OKF under Memanto's guarded data
+directory, validates every expected fact in the exported Markdown, and only
+then copies the sanitized Q&A and round-trip evidence into this example.
 
 The key is never accepted as a CLI argument, printed, or written to the report.
-Existing evidence directories are never overwritten.
+Existing evidence directories are never overwritten. When `--reuse-agent` is
+selected, a live preflight proves the agent is empty before importing; a
+populated or ambiguous agent is rejected to prevent duplicate evidence.
+
+## Recorded live proof
+
+The committed proof was captured on 2026-07-30 UTC with the fresh dedicated
+agent `n8n-operations-proof`:
+
+| Live stage | Verified result |
+| --- | ---: |
+| Shipped OKF import | `3 imported · 0 failed` |
+| Golden RAG questions | `3/3`, each on the first attempt |
+| Shipped OKF export | `3 memories` |
+| Exported factual validation | all expected facts present |
+
+See `live-validation.json` for the sanitized full CLI Q&A and
+`live-roundtrip-okf/` for the exported OKF bundle. No API key or private
+machine path is present in either artifact.
 
 ## Safety notes
 
