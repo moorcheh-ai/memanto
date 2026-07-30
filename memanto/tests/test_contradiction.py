@@ -233,10 +233,12 @@ class TestContradictionHandling:
         client.documents.upload.side_effect = _mixed_upload
         write_service = MemoryWriteService(client)
 
+        # Use explicit ids so the _mixed_upload side_effect can
+        # classify: fail→"failed", unconf→missing status, ok→"success"
         mems = [
-            make_memory(content="Good", title="A"),
-            make_memory(content="Bad", title="B"),
-            make_memory(content="Maybe", title="C"),
+            make_memory(id="mem-ok-1", content="Good", title="A"),
+            make_memory(id="mem-fail-1", content="Bad", title="B"),
+            make_memory(id="mem-unconf-1", content="Maybe", title="C"),
         ]
         result = write_service.batch_store_memories(mems)
 
@@ -248,6 +250,16 @@ class TestContradictionHandling:
             f"successful({result['successful']}) + failed({result['failed']}) "
             f"+ unconfirmed({result['unconfirmed']}) = {total} "
             f"must equal {len(mems)}"
+        )
+        # Each status must be exactly 1
+        assert result["successful"] == 1, (
+            f"Expected 1 successful, got {result['successful']}"
+        )
+        assert result["failed"] == 1, (
+            f"Expected 1 failed, got {result['failed']}"
+        )
+        assert result["unconfirmed"] == 1, (
+            f"Expected 1 unconfirmed, got {result['unconfirmed']}"
         )
 
     def test_batch_resolves_contradictions_within_batch(self):
