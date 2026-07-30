@@ -11,7 +11,7 @@ tags:
 - communication
 - style
 timestamp: '2026-07-27T09:15:00Z'
-resource: langgraph://thread/founder-os-agent/checkpoint/1f18bbec-939d-6d89-8001-924a8e155a5c/channel/memories/0
+resource: langgraph://thread/founder-os-agent/checkpoint/1f18bc22-5bab-625a-8001-f8655bba3ee0/channel/memories/0
 x_memanto:
   confidence: 0.95
   provenance: imported_langgraph_checkpoint
@@ -23,7 +23,7 @@ The user prefers concise executive summaries and wants progress updates to avoid
 
 ## LangGraph provenance
 
-Source path: `1f18bbec-939d-6d89-8001-924a8e155a5c:memories/0`
+Source path: `1f18bc22-5bab-625a-8001-f8655bba3ee0:memories/0`
 
 ```json
 {
@@ -32,6 +32,6 @@ Source path: `1f18bbec-939d-6d89-8001-924a8e155a5c:memories/0`
     "source_session": "s01_foundation"
   },
   "source_id": "lg-mem-001",
-  "source_path": "1f18bbec-939d-6d89-8001-924a8e155a5c:memories/0"
+  "source_path": "1f18bc22-5bab-625a-8001-f8655bba3ee0:memories/0"
 }
 ```

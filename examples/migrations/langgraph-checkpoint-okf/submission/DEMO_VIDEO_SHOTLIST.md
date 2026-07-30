@@ -1,6 +1,6 @@
 # Demo Video Shotlist
 
-Target length: 2 minutes.
+Target length: about 22 seconds.
 
 1. Show the problem: LangGraph has useful memory trapped in checkpoints.
 2. Run `python run_showcase.py`.

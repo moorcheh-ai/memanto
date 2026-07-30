@@ -3,12 +3,15 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
+import pytest
+
 
 EXAMPLE_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(EXAMPLE_ROOT))
 
 from generate_langgraph_checkpoint import generate_checkpoint  # noqa: E402
 from langgraph_checkpoint_to_okf import convert, extract_records  # noqa: E402
+from run_showcase import require_full_parity  # noqa: E402
 from validate_recall_parity import validate  # noqa: E402
 
 
@@ -44,3 +47,8 @@ def test_langgraph_checkpoint_to_okf_showcase(tmp_path):
     assert validation["okf_score"] == 5
     assert validation["parity_percent"] == 100.0
     assert report.exists()
+
+
+def test_showcase_rejects_partial_parity():
+    with pytest.raises(RuntimeError, match="Recall parity validation failed"):
+        require_full_parity({"questions": 2, "parity_score": 1})

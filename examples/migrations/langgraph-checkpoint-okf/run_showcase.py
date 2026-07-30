@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -29,12 +30,16 @@ def rel(path: Path, base: Path = ROOT) -> str:
 
 
 def sanitize_log(text: str) -> str:
-    cleaned = (
-        text.replace(str(REPO_ROOT), "<repo>")
-        .replace(str(Path.home()), "~")
-        .replace("\\", "/")
+    cleaned = text.replace("\\", "/")
+    cleaned = cleaned.replace(str(REPO_ROOT).replace("\\", "/"), "<repo>")
+    cleaned = cleaned.replace(str(Path.home()).replace("\\", "/"), "~")
+    cleaned = re.sub(
+        r"~/\.memanto/migrate/okf/\d{8}_\d{6}",
+        "~/.memanto/migrate/okf/<run-id>",
+        cleaned,
     )
-    return cleaned.encode("ascii", errors="ignore").decode("ascii")
+    cleaned = cleaned.encode("ascii", errors="ignore").decode("ascii")
+    return "\n".join(line.rstrip() for line in cleaned.splitlines())
 
 
 def run_memanto_dry_run() -> dict:
@@ -74,13 +79,26 @@ def run_memanto_dry_run() -> dict:
     return {"returncode": result.returncode, "log": rel(DRY_RUN_LOG)}
 
 
+def require_full_parity(validation: dict) -> None:
+    questions = validation.get("questions")
+    parity_score = validation.get("parity_score")
+    if not isinstance(questions, int) or questions <= 0:
+        raise RuntimeError("Recall parity validation did not report a question count")
+    if parity_score != questions:
+        raise RuntimeError(
+            "Recall parity validation failed: "
+            f"{parity_score}/{questions} questions matched both source and OKF"
+        )
+
+
 def main() -> None:
     SAMPLE_OUTPUT.mkdir(parents=True, exist_ok=True)
 
     source_summary = generate_checkpoint(SOURCE_DB, TRANSCRIPT)
     source_summary["database"] = rel(SOURCE_DB)
-    records = convert(SOURCE_DB, OKF_DIR)
+    records = convert(SOURCE_DB, OKF_DIR, overwrite=True)
     validation = validate(SOURCE_DB, OKF_DIR, GOLDEN_QA, VALIDATION_REPORT)
+    require_full_parity(validation)
     dry_run = run_memanto_dry_run()
 
     summary = {

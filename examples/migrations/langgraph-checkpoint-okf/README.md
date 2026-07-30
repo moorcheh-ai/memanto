@@ -22,16 +22,34 @@ a deterministic golden Q&A set.
 ```bash
 cd examples/migrations/langgraph-checkpoint-okf
 python -m venv .venv
-.venv\Scripts\activate
-pip install -r requirements.txt
-pip install -e ../../..
-python run_showcase.py
 ```
 
-On macOS/Linux, activate with:
+Activate the virtual environment with the command for your shell:
+
+Windows PowerShell:
+
+```powershell
+.venv\Scripts\Activate.ps1
+```
+
+Windows cmd:
+
+```bat
+.venv\Scripts\activate.bat
+```
+
+macOS/Linux:
 
 ```bash
 source .venv/bin/activate
+```
+
+Then install and run:
+
+```bash
+pip install -r requirements.txt
+pip install -e ../../..
+python run_showcase.py
 ```
 
 The runner writes:
@@ -52,7 +70,7 @@ python generate_langgraph_checkpoint.py
 Convert it to OKF:
 
 ```bash
-python langgraph_checkpoint_to_okf.py sample_output/source/langgraph_memory.sqlite --output sample_output/okf_bundle
+python langgraph_checkpoint_to_okf.py sample_output/source/langgraph_memory.sqlite --output sample_output/okf_bundle --overwrite
 ```
 
 Validate source-to-OKF recall parity:

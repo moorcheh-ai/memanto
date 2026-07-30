@@ -11,7 +11,7 @@ tags:
 - product
 - design
 timestamp: '2026-07-27T09:22:00Z'
-resource: langgraph://thread/founder-os-agent/checkpoint/1f18bbec-93ac-663a-8004-0bbb41a5b958/channel/memories/1
+resource: langgraph://thread/founder-os-agent/checkpoint/1f18bc22-5bb9-6da3-8004-4f9b3e705f8d/channel/memories/1
 x_memanto:
   confidence: 0.97
   provenance: imported_langgraph_checkpoint
@@ -23,7 +23,7 @@ Customer-facing tools should use a calm, light, work-focused UI. Do not apply th
 
 ## LangGraph provenance
 
-Source path: `1f18bbec-93ac-663a-8004-0bbb41a5b958:memories/1`
+Source path: `1f18bc22-5bb9-6da3-8004-4f9b3e705f8d:memories/1`
 
 ```json
 {
@@ -32,6 +32,6 @@ Source path: `1f18bbec-93ac-663a-8004-0bbb41a5b958:memories/1`
     "source_session": "s01_foundation"
   },
   "source_id": "lg-mem-002",
-  "source_path": "1f18bbec-93ac-663a-8004-0bbb41a5b958:memories/1"
+  "source_path": "1f18bc22-5bb9-6da3-8004-4f9b3e705f8d:memories/1"
 }
 ```

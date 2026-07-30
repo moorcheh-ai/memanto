@@ -82,6 +82,21 @@ def short_hash(text: str) -> str:
     return hashlib.sha256(text.encode("utf-8")).hexdigest()[:12]
 
 
+def unique_filename(record: MemoryRecord, used: set[str]) -> str:
+    base = slugify(record.title, short_hash(record.content))
+    filename = f"{base}.md"
+    if filename in used:
+        suffix = short_hash(record.source_id or f"{record.source_path}\n{record.content}")
+        stem = base[: max(1, 79 - len(suffix))]
+        filename = f"{stem}-{suffix}.md"
+        counter = 2
+        while filename in used:
+            filename = f"{stem}-{suffix}-{counter}.md"
+            counter += 1
+    used.add(filename)
+    return filename
+
+
 def clean_text(value: Any) -> str:
     if value is None:
         return ""
@@ -384,9 +399,29 @@ def render_metrics(records: list[MemoryRecord]) -> str:
     return "\n".join(lines) + "\n"
 
 
-def write_okf_bundle(records: list[MemoryRecord], output: Path) -> None:
-    if output.exists():
-        shutil.rmtree(output)
+def validate_output_path(output: Path) -> Path:
+    resolved = output.expanduser().resolve()
+    if resolved == Path.cwd().resolve():
+        raise RuntimeError("Refusing to write an OKF bundle into the current directory")
+    if resolved == resolved.parent:
+        raise RuntimeError("Refusing to write an OKF bundle into a filesystem root")
+    if resolved.exists() and not resolved.is_dir():
+        raise RuntimeError(f"Output path exists and is not a directory: {resolved}")
+    return resolved
+
+
+def is_generated_okf_bundle(output: Path) -> bool:
+    index = output / "index.md"
+    if not output.is_dir() or not index.exists():
+        return False
+    try:
+        text = index.read_text(encoding="utf-8")
+    except OSError:
+        return False
+    return "generated from a real LangGraph SQLite checkpoint" in text
+
+
+def write_okf_bundle_contents(records: list[MemoryRecord], output: Path) -> None:
     (output / "memories").mkdir(parents=True)
     (output / "sessions").mkdir()
     (output / "metrics").mkdir()
@@ -407,9 +442,9 @@ def write_okf_bundle(records: list[MemoryRecord], output: Path) -> None:
         memory_index.append(f"- [{memory_type}]({memory_type}/index.md)")
 
         type_index = [f"# {memory_type.title()} Memories", ""]
+        used_filenames: set[str] = set()
         for record in type_records:
-            slug = slugify(record.title, short_hash(record.content))
-            filename = f"{slug}.md"
+            filename = unique_filename(record, used_filenames)
             type_dir.joinpath(filename).write_text(
                 render_memory(record), encoding="utf-8"
             )
@@ -423,11 +458,46 @@ def write_okf_bundle(records: list[MemoryRecord], output: Path) -> None:
     )
 
 
-def convert(db_path: Path, output: Path, thread_id: str | None = None) -> list[MemoryRecord]:
+def write_okf_bundle(records: list[MemoryRecord], output: Path, *, overwrite: bool = False) -> None:
+    target = validate_output_path(output)
+    target.parent.mkdir(parents=True, exist_ok=True)
+    temp = target.with_name(f".{target.name}.tmp-{short_hash(str(target))}")
+    if temp.exists():
+        if temp.is_dir():
+            shutil.rmtree(temp)
+        else:
+            temp.unlink()
+
+    try:
+        write_okf_bundle_contents(records, temp)
+        if target.exists():
+            if not overwrite:
+                raise RuntimeError(
+                    f"Output bundle already exists; pass overwrite=True to replace it: {target}"
+                )
+            if not is_generated_okf_bundle(target):
+                raise RuntimeError(
+                    f"Refusing to overwrite non-generated OKF bundle: {target}"
+                )
+            shutil.rmtree(target)
+        temp.rename(target)
+    except Exception:
+        if temp.exists():
+            shutil.rmtree(temp)
+        raise
+
+
+def convert(
+    db_path: Path,
+    output: Path,
+    thread_id: str | None = None,
+    *,
+    overwrite: bool = False,
+) -> list[MemoryRecord]:
     records = extract_records(db_path, thread_id=thread_id)
     if not records:
         raise RuntimeError(f"No memory records found in {db_path}")
-    write_okf_bundle(records, output)
+    write_okf_bundle(records, output, overwrite=overwrite)
     return records
 
 
@@ -436,9 +506,15 @@ def main() -> None:
     parser.add_argument("db_path", type=Path)
     parser.add_argument("--output", type=Path, default=Path("sample_output/okf_bundle"))
     parser.add_argument("--thread-id", default=None)
+    parser.add_argument("--overwrite", action="store_true")
     args = parser.parse_args()
 
-    records = convert(args.db_path, args.output, thread_id=args.thread_id)
+    records = convert(
+        args.db_path,
+        args.output,
+        thread_id=args.thread_id,
+        overwrite=args.overwrite,
+    )
     print(
         json.dumps(
             {

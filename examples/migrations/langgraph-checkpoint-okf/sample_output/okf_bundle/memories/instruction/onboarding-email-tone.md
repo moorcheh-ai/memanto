@@ -11,7 +11,7 @@ tags:
 - growth
 - email
 timestamp: '2026-07-29T16:40:00Z'
-resource: langgraph://thread/founder-os-agent/checkpoint/1f18bbec-93d3-6730-800d-acbb7a7c8582/channel/memories/4
+resource: langgraph://thread/founder-os-agent/checkpoint/1f18bc22-5be9-6a2f-800d-21ec1453773b/channel/memories/4
 x_memanto:
   confidence: 0.94
   provenance: imported_langgraph_checkpoint
@@ -23,7 +23,7 @@ Onboarding emails should avoid exclamation marks and use a direct, helpful, calm
 
 ## LangGraph provenance
 
-Source path: `1f18bbec-93d3-6730-800d-acbb7a7c8582:memories/4`
+Source path: `1f18bc22-5be9-6a2f-800d-21ec1453773b:memories/4`
 
 ```json
 {
@@ -32,6 +32,6 @@ Source path: `1f18bbec-93d3-6730-800d-acbb7a7c8582:memories/4`
     "source_session": "s03_growth"
   },
   "source_id": "lg-mem-005",
-  "source_path": "1f18bbec-93d3-6730-800d-acbb7a7c8582:memories/4"
+  "source_path": "1f18bc22-5be9-6a2f-800d-21ec1453773b:memories/4"
 }
 ```

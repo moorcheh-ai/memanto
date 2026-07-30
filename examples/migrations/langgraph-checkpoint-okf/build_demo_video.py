@@ -28,10 +28,25 @@ WARN = (255, 205, 97)
 
 
 def font(size: int, bold: bool = False) -> ImageFont.FreeTypeFont | ImageFont.ImageFont:
+    portable_candidates = [
+        "DejaVuSansMono-Bold.ttf" if bold else "DejaVuSansMono.ttf",
+        "DejaVuSans-Bold.ttf" if bold else "DejaVuSans.ttf",
+        "LiberationMono-Bold.ttf" if bold else "LiberationMono-Regular.ttf",
+    ]
+    for candidate in portable_candidates:
+        try:
+            return ImageFont.truetype(candidate, size=size)
+        except OSError:
+            pass
+
     candidates = [
         "C:/Windows/Fonts/consolab.ttf" if bold else "C:/Windows/Fonts/consola.ttf",
         "C:/Windows/Fonts/CascadiaMono.ttf",
         "C:/Windows/Fonts/arial.ttf",
+        "/usr/share/fonts/truetype/dejavu/DejaVuSansMono-Bold.ttf"
+        if bold
+        else "/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf",
+        "/System/Library/Fonts/Menlo.ttc",
     ]
     for candidate in candidates:
         path = Path(candidate)
@@ -87,8 +102,37 @@ def load_summary() -> dict:
     return json.loads(SUMMARY.read_text(encoding="utf-8"))
 
 
+def require_successful_summary(summary: dict) -> tuple[int, int, int]:
+    validation = summary.get("validation")
+    if not isinstance(validation, dict):
+        raise RuntimeError("summary.json is missing validation metrics")
+
+    questions = validation.get("questions")
+    source_score = validation.get("source_score")
+    okf_score = validation.get("okf_score")
+    parity_score = validation.get("parity_score")
+    mapped = summary.get("mapped_memories")
+    source_memories = (summary.get("source") or {}).get("memories")
+    dry_run = summary.get("memanto_migrate_okf_dry_run") or {}
+
+    required_values = [questions, source_score, okf_score, parity_score, mapped, source_memories]
+    if not all(isinstance(value, int) for value in required_values):
+        raise RuntimeError("summary.json validation metrics must be integer counts")
+    if questions <= 0:
+        raise RuntimeError("summary.json reports no validation questions")
+    if source_score != questions or okf_score != questions or parity_score != questions:
+        raise RuntimeError("summary.json validation did not pass all recall checks")
+    if mapped != source_memories:
+        raise RuntimeError("summary.json mapped memory count does not match source memories")
+    if dry_run.get("returncode") != 0:
+        raise RuntimeError("summary.json dry-run did not complete successfully")
+
+    return questions, okf_score, mapped
+
+
 def main() -> None:
     summary = load_summary()
+    questions, okf_score, mapped = require_successful_summary(summary)
     parity = PARITY.read_text(encoding="utf-8")
     dry = DRY_RUN.read_text(encoding="utf-8")
 
@@ -132,12 +176,12 @@ def main() -> None:
         (
             "Recall Parity",
             wrap("\n".join(parity.splitlines()[5:12]), 68),
-            "Golden Q&A passes against both source checkpoint and OKF",
+            f"Golden Q&A parity: {questions}/{questions}; OKF recall: {okf_score}/{questions}",
         ),
         (
             "Official CLI Dry Run",
             wrap("\n".join(line.strip() for line in dry.splitlines()[6:17]), 70),
-            "memanto migrate okf mapped 5/5 and performed no writes",
+            f"memanto migrate okf mapped {mapped}/{mapped} and performed no writes",
         ),
         (
             "Freedom Loop",

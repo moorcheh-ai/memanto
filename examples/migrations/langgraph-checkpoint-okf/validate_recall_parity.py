@@ -40,9 +40,16 @@ def read_okf_memories(okf_dir: Path) -> list[dict[str, Any]]:
 
 
 def contains_terms(rows: list[dict[str, Any]], terms: list[str]) -> tuple[bool, str]:
-    normalized_terms = [normalize(term) for term in terms]
+    normalized_terms = [
+        f" {normalized} "
+        for term in terms
+        if (normalized := normalize(term))
+    ]
+    if not normalized_terms:
+        return False, ""
     for row in rows:
-        haystack = normalize(f"{row.get('title', '')} {row.get('content', '')}")
+        row_text = f"{row.get('title', '')} {row.get('content', '')}"
+        haystack = f" {normalize(row_text)} "
         if all(term in haystack for term in normalized_terms):
             return True, row.get("title", "")
     return False, ""

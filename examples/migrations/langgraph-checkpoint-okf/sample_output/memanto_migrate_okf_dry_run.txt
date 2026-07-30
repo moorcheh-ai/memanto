@@ -2,23 +2,22 @@ COMMAND: python -m memanto.cli.main migrate okf examples/migrations/langgraph-ch
 
 STDOUT:
 
- OKF -> Memanto  Dry run 
+ OKF -> Memanto  Dry run
 
-   Loading OKF bundle from 
+   Loading OKF bundle from
 examples/migrations/langgraph-checkpoint-okf/sample_output/okf_bundle
    Mapping OKF nodes onto Memanto schema...
 
- Dry run complete 
- OKF nodes: 5                                                                
- Mapped memories: 5  (skipped 0)                                             
- Type breakdown: decision: 1, goal: 1, instruction: 1, preference: 2         
-                                                                             
- Dry run  no writes performed.                                              
-                                                                             
- Run dir: ~/.memanto/migrate/okf/20260730_023137                
- Mapped preview:                                                             
- ~/.memanto/migrate/okf/20260730_023137/mapped_preview.json     
+ Dry run complete
+ OKF nodes: 5
+ Mapped memories: 5  (skipped 0)
+ Type breakdown: decision: 1, goal: 1, instruction: 1, preference: 2
 
+ Dry run  no writes performed.
+
+ Run dir: ~/.memanto/migrate/okf/<run-id>
+ Mapped preview:
+ ~/.memanto/migrate/okf/<run-id>/mapped_preview.json
 
 
 STDERR:

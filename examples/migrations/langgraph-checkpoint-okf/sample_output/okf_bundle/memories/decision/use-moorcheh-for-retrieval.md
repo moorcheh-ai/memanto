@@ -11,7 +11,7 @@ tags:
 - architecture
 - retrieval
 timestamp: '2026-07-28T14:31:00Z'
-resource: langgraph://thread/founder-os-agent/checkpoint/1f18bbec-93c4-6cf7-800a-2b05fc4d6f23/channel/memories/3
+resource: langgraph://thread/founder-os-agent/checkpoint/1f18bc22-5bd7-6449-800a-3803d578b9b5/channel/memories/3
 x_memanto:
   confidence: 0.93
   provenance: imported_langgraph_checkpoint
@@ -23,7 +23,7 @@ Use Moorcheh as the retrieval backend for the agent memory prototype because the
 
 ## LangGraph provenance
 
-Source path: `1f18bbec-93c4-6cf7-800a-2b05fc4d6f23:memories/3`
+Source path: `1f18bc22-5bd7-6449-800a-3803d578b9b5:memories/3`
 
 ```json
 {
@@ -32,6 +32,6 @@ Source path: `1f18bbec-93c4-6cf7-800a-2b05fc4d6f23:memories/3`
     "source_session": "s02_launch"
   },
   "source_id": "lg-mem-004",
-  "source_path": "1f18bbec-93c4-6cf7-800a-2b05fc4d6f23:memories/3"
+  "source_path": "1f18bc22-5bd7-6449-800a-3803d578b9b5:memories/3"
 }
 ```

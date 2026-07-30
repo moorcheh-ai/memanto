@@ -11,7 +11,7 @@ tags:
 - fundraising
 - deadline
 timestamp: '2026-07-28T14:05:00Z'
-resource: langgraph://thread/founder-os-agent/checkpoint/1f18bbec-93b8-698c-8007-b426e7e18e4e/channel/memories/2
+resource: langgraph://thread/founder-os-agent/checkpoint/1f18bc22-5bc8-693f-8007-b094e745aa90/channel/memories/2
 x_memanto:
   confidence: 0.96
   provenance: imported_langgraph_checkpoint
@@ -23,7 +23,7 @@ Prepare an investor memo by 2026-08-07 with traction, burn, risks, and a one-pag
 
 ## LangGraph provenance
 
-Source path: `1f18bbec-93b8-698c-8007-b426e7e18e4e:memories/2`
+Source path: `1f18bc22-5bc8-693f-8007-b094e745aa90:memories/2`
 
 ```json
 {
@@ -32,6 +32,6 @@ Source path: `1f18bbec-93b8-698c-8007-b426e7e18e4e:memories/2`
     "source_session": "s02_launch"
   },
   "source_id": "lg-mem-003",
-  "source_path": "1f18bbec-93b8-698c-8007-b426e7e18e4e:memories/2"
+  "source_path": "1f18bc22-5bc8-693f-8007-b094e745aa90:memories/2"
 }
 ```
