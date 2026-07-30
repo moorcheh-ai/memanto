@@ -128,6 +128,8 @@ def run_migration(
     batches = list(chunked(rows, BATCH_LIMIT))
     summary.batches = len(batches)
 
+    from memanto.app.utils.errors import MemoryError
+
     for idx, batch in enumerate(batches, 1):
         if on_progress:
             on_progress(
@@ -135,18 +137,38 @@ def run_migration(
             )
         try:
             result = client.batch_remember(agent_id=agent_id, memories=batch)
-        except Exception as exc:  # noqa: BLE001 — surface any client failure
+        except MemoryError:
+            raise
+        except Exception as exc:
             summary.failed += len(batch)
             summary.errors.append(f"batch {idx}: {exc}")
             continue
+
+        if not isinstance(result, dict):
+            raise MemoryError(
+                message="Data corruption detected: Received malformed batch response envelope during migration.",
+                details={"result_preview": str(result)[:100]},
+            )
+
+        batch_results = result.get("results")
+        if not isinstance(batch_results, list):
+            raise MemoryError(
+                message="Data corruption detected: Received malformed batch result array during migration.",
+                details={"results_preview": str(batch_results)[:100]},
+            )
 
         successful = int(result.get("successful") or 0)
         failed = int(result.get("failed") or 0)
         summary.imported += successful
         summary.failed += failed
 
-        # batch_remember reports per-item errors in results[]; surface a few.
-        for item in (result.get("results") or [])[:5]:
+        # batch_remember reports per-item errors in results[]; surface all errors.
+        for item in batch_results:
+            if not isinstance(item, dict) or not item:
+                raise MemoryError(
+                    message="Data corruption detected: Received malformed batch result from storage layer during migration.",
+                    details={"item_preview": str(item)[:100]},
+                )
             err = item.get("error")
             if err:
                 summary.errors.append(f"batch {idx}: {err}")

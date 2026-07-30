@@ -161,6 +161,66 @@ class TestReadTranscriptForDistillation:
         assert "/grill-with-docs" not in text
         assert len(text) <= 2000
 
+    def test_streams_transcript_without_requiring_readlines(self, monkeypatch) -> None:
+        """Transcript reading must work with line-iterable files.
+
+        Stop hooks can see very large JSONL transcripts. The reader only needs
+        the first skill plus the bounded tail, so it should not require
+        ``readlines()`` to materialize the whole file before parsing.
+        """
+        lines = [
+            json.dumps(
+                {"message": {"role": "user", "content": "/tdd pin the parser bug"}}
+            ),
+            json.dumps(
+                {
+                    "message": {
+                        "role": "assistant",
+                        "content": "We will stream the transcript parser.",
+                    }
+                }
+            ),
+            json.dumps(
+                {
+                    "message": {
+                        "role": "user",
+                        "content": "Final decision: keep only the transcript tail.",
+                    }
+                }
+            ),
+        ]
+
+        class StreamingOnlyFile:
+            def __enter__(self):
+                return self
+
+            def __exit__(self, exc_type, exc, tb):
+                return False
+
+            def __iter__(self):
+                return iter(lines)
+
+            def readlines(self):  # pragma: no cover - old bug path
+                raise AssertionError("readlines() should not be required")
+
+        class FakePath:
+            def __init__(self, raw):
+                self.raw = raw
+
+            def exists(self):
+                return True
+
+            def open(self, encoding=None):
+                return StreamingOnlyFile()
+
+        monkeypatch.setattr(common, "Path", FakePath)
+
+        skill, text = common.read_transcript_for_distillation("stream-only.jsonl")
+
+        assert skill == "tdd"
+        assert "Final decision" in text
+        assert "stream the transcript parser" in text
+
     def test_missing_path_returns_none_and_empty(self) -> None:
         assert common.read_transcript_for_distillation(None) == (None, "")
         assert common.read_transcript_for_distillation("/no/such/file") == (None, "")

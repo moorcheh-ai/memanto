@@ -4,9 +4,9 @@ MEMANTO Core Architecture - Namespace Strategy & Memory Records
 
 import uuid
 from datetime import datetime, timedelta, timezone
-from typing import Any
+from typing import Annotated, Any
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, StringConstraints
 
 from memanto.app.constants import (
     MemoryType,
@@ -14,6 +14,15 @@ from memanto.app.constants import (
     SourceType,
     StatusType,
 )
+
+MemoryTag = Annotated[
+    str, StringConstraints(strip_whitespace=True, min_length=1, max_length=64)
+]
+BoundedTags = Annotated[list[MemoryTag], Field(max_length=20)]
+
+BoundedSourceRef = Annotated[
+    str, StringConstraints(strip_whitespace=True, min_length=1, max_length=512)
+]
 
 
 def agent_namespace(agent_id: str) -> str:
@@ -34,10 +43,10 @@ class MemoryRecord(BaseModel):
     agent_id: str
     actor_id: str
     source: SourceType
-    source_ref: str | None = None
+    source_ref: BoundedSourceRef | None = None
     confidence: float = Field(ge=0.0, le=1.0, default=0.8)
     status: StatusType = "active"
-    tags: list[str] = Field(default_factory=list)
+    tags: BoundedTags = Field(default_factory=list)
 
     # Provenance
     provenance: ProvenanceType = "explicit_statement"
@@ -46,7 +55,7 @@ class MemoryRecord(BaseModel):
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     expires_at: datetime | None = None
-    ttl_seconds: int | None = None
+    ttl_seconds: int | None = Field(default=None, gt=0)
 
     def to_moorcheh_document(self) -> dict[str, Any]:
         """
@@ -86,7 +95,10 @@ class MemoryRecord(BaseModel):
         if self.tags:
             document["tags"] = ",".join(self.tags)  # Comma-separated for filtering
         if self.expires_at:
-            document["expires_at"] = self.expires_at.isoformat()
+            if isinstance(self.expires_at, datetime):
+                document["expires_at"] = self.expires_at.isoformat()
+            else:
+                document["expires_at"] = str(self.expires_at)
         if self.ttl_seconds:
             document["ttl_seconds"] = self.ttl_seconds
 
@@ -98,5 +110,7 @@ class MemoryRecord(BaseModel):
 
     def set_ttl(self, seconds: int):
         """Set TTL and expiration"""
+        if seconds <= 0:
+            raise ValueError("ttl_seconds must be greater than 0")
         self.ttl_seconds = seconds
         self.expires_at = datetime.now(timezone.utc) + timedelta(seconds=seconds)

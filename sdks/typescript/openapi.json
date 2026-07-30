@@ -2916,9 +2916,12 @@
             "anyOf": [
               {
                 "items": {
-                  "type": "string"
+                  "type": "string",
+                  "maxLength": 64,
+                  "minLength": 1
                 },
-                "type": "array"
+                "type": "array",
+                "maxItems": 20
               },
               {
                 "type": "null"
@@ -2929,6 +2932,12 @@
           },
           "source": {
             "type": "string",
+            "enum": [
+              "user",
+              "agent",
+              "tool",
+              "system"
+            ],
             "title": "Source",
             "description": "Source of memory",
             "default": "agent"
@@ -3344,7 +3353,22 @@
           "type": {
             "anyOf": [
               {
-                "type": "string"
+                "type": "string",
+                "enum": [
+                  "fact",
+                  "preference",
+                  "goal",
+                  "decision",
+                  "artifact",
+                  "learning",
+                  "event",
+                  "instruction",
+                  "relationship",
+                  "context",
+                  "observation",
+                  "commitment",
+                  "error"
+                ]
               },
               {
                 "type": "null"
@@ -3369,9 +3393,12 @@
             "anyOf": [
               {
                 "items": {
-                  "type": "string"
+                  "type": "string",
+                  "maxLength": 64,
+                  "minLength": 1
                 },
-                "type": "array"
+                "type": "array",
+                "maxItems": 20
               },
               {
                 "type": "null"
@@ -3382,7 +3409,13 @@
           "source": {
             "anyOf": [
               {
-                "type": "string"
+                "type": "string",
+                "enum": [
+                  "user",
+                  "agent",
+                  "tool",
+                  "system"
+                ]
               },
               {
                 "type": "null"
@@ -3607,6 +3640,21 @@
             ],
             "title": "Type",
             "description": "Memory type filters"
+          },
+          "tags": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tags",
+            "description": "Tag filters"
           }
         },
         "type": "object",
@@ -3651,6 +3699,21 @@
             ],
             "title": "Type",
             "description": "Memory type filters"
+          },
+          "tags": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tags",
+            "description": "Tag filters"
           }
         },
         "type": "object",
@@ -3689,6 +3752,55 @@
             ],
             "title": "Type",
             "description": "Memory type filters"
+          },
+          "tags": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tags",
+            "description": "Tag filters"
+          },
+          "created_after": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created After",
+            "description": "Include only memories created at or after this timestamp. Date-only values (YYYY-MM-DD) use the start of that day."
+          },
+          "created_before": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created Before",
+            "description": "Include only memories created at or before this timestamp. Date-only values (YYYY-MM-DD) use the end of that day."
           }
         },
         "type": "object",
@@ -3744,6 +3856,55 @@
             ],
             "title": "Type",
             "description": "Memory type filters"
+          },
+          "tags": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tags",
+            "description": "Tag filters"
+          },
+          "created_after": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created After",
+            "description": "Include only memories created at or after this timestamp. Date-only values (YYYY-MM-DD) use the start of that day."
+          },
+          "created_before": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created Before",
+            "description": "Include only memories created at or before this timestamp. Date-only values (YYYY-MM-DD) use the end of that day."
           }
         },
         "type": "object",
@@ -3849,9 +4010,12 @@
             "anyOf": [
               {
                 "items": {
-                  "type": "string"
+                  "type": "string",
+                  "maxLength": 64,
+                  "minLength": 1
                 },
-                "type": "array"
+                "type": "array",
+                "maxItems": 20
               },
               {
                 "type": "null"
@@ -3862,6 +4026,12 @@
           },
           "source": {
             "type": "string",
+            "enum": [
+              "user",
+              "agent",
+              "tool",
+              "system"
+            ],
             "title": "Source",
             "description": "Source of memory",
             "default": "agent"
