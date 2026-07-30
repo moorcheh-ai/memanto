@@ -77,12 +77,17 @@ class MemoryValidationService:
             conflicts = cast(list[dict[str, Any]], prefetched_conflicts)
 
         if not conflicts:
-            # Run policy validation for non-conflicting memories
+            # Run policy validation for non-conflicting memories, but preserve
+            # the deterministic contradiction-free reason text that callers expect.
             context["repetition_count"] = 0
             validation_result = self.policy.validate_memory(memory, context)
             if validation_result.get("action") == "store_provisional":
                 memory = self.policy.make_provisional(memory)
                 validation_result["memory"] = memory
+            # Ensure a known reason key so store_memory/batch_store_memories
+            # do not fall back to "Stored successfully".
+            if "reason" not in validation_result:
+                validation_result["reason"] = "validated: no contradicting memories found"
             return validation_result
 
         superseded: list[str] = []
@@ -200,16 +205,15 @@ class MemoryValidationService:
         return conflicts
 
     def _supersede(self, old_item: dict[str, Any], new_memory: MemoryRecord) -> bool:
-        """Mark an existing memory as superseded by the new one."""
+        """Mark an existing memory as superseded by the new one.
+
+        Moorcheh supports overwriting documents by ID, so no explicit delete
+        is needed — a re-upload with status="superseded" is sufficient.
+        Returns False when the upload response indicates failure.
+        """
         try:
             old_id = str(old_item.get("id"))
             namespace = new_memory.namespace()
-
-            delete_result = self.client.documents.delete(
-                namespace_name=namespace, ids=[old_id],
-            )
-            if delete_result.get("actual_deletions", 0) == 0:
-                return False
 
             now_iso = datetime.now(timezone.utc).isoformat()
             document: dict[str, Any] = {
@@ -233,10 +237,15 @@ class MemoryValidationService:
 
             from moorcheh_sdk.types.document import Document
 
-            self.client.documents.upload(
+            upload_result = self.client.documents.upload(
                 namespace_name=namespace,
                 documents=[cast(Document, document)],
             )
+            # Check upload response — a non-success status means the supersede
+            # did not actually take effect.
+            status = str(upload_result.get("status", "")).lower()
+            if status in ("error", "failed"):
+                return False
             return True
 
         except Exception:

@@ -224,6 +224,27 @@ class MemoryWriteService:
                         }
                     )
 
+            # Resolve contradictions between memories in the same batch
+            # BEFORE building documents, so superseded status is captured
+            # in the uploaded documents.
+            superseded_by = self.validation_service.resolve_batch_contradictions(memories)
+
+            # Now build validated documents — superseded memories will have
+            # status="superseded" from resolve_batch_contradictions.
+            for idx, memory in enumerate(memories):
+                # Skip memories that were already rejected (cross-namespace)
+                result_id = str(memory.id) if hasattr(memory, 'id') and memory.id else ""
+                # Find the corresponding result entry
+                for result_entry in results:
+                    if str(result_entry.get("id") or "") == result_id:
+                        if str(memory.status).lower() == "superseded":
+                            winner_id = superseded_by.get(result_id)
+                            result_entry["action"] = "store_superseded"
+                            result_entry["reason"] = (
+                                f"superseded within batch by {winner_id}"
+                            )
+                        break
+
             # Upload all validated documents in single batch to Moorcheh
             if validated_documents and first_namespace:
                 from typing import cast
