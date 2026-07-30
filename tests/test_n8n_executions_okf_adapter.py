@@ -19,6 +19,7 @@ from examples.migrations.n8n_executions.recall_validation import (
 )
 from examples.migrations.n8n_executions.run_live_demo import (
     _clean_output,
+    _report_for_stdout,
     _require_empty_reused_agent,
     _validate_exported_bundle,
     build_command_plan,
@@ -361,6 +362,32 @@ def test_live_reuse_preflight_accepts_only_proven_empty_agents():
 
     with pytest.raises(RuntimeError, match="Could not prove"):
         _require_empty_reused_agent("Unexpected backend response")
+
+
+def test_live_stdout_summary_excludes_full_answer_evidence():
+    """Recording output keeps verified counts but omits verbose answer bodies."""
+    report = {
+        "agent": "proof",
+        "import": {"imported": 3, "failed": 0, "passed": True},
+        "recall": {
+            "method": "memanto answer",
+            "passed": 3,
+            "questions": 3,
+            "results": [{"answer_output": "verbose"}],
+        },
+        "export": {
+            "exported": 3,
+            "memory_count": 3,
+            "all_expected_facts_present": True,
+        },
+        "valid": True,
+    }
+
+    summary = _report_for_stdout(report, summary_only=True)
+
+    assert summary["valid"] is True
+    assert summary["recall"]["passed"] == 3
+    assert "results" not in summary["recall"]
 
 
 def test_live_output_redaction_and_export_fact_validation(tmp_path):

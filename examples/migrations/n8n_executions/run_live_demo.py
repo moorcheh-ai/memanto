@@ -229,6 +229,29 @@ def _write_report(path: Path, report: dict[str, Any]) -> None:
     )
 
 
+def _report_for_stdout(report: dict[str, Any], *, summary_only: bool) -> dict[str, Any]:
+    """Return either full evidence or a concise recording-friendly summary."""
+    if not summary_only:
+        return report
+    return {
+        "agent": report["agent"],
+        "import": report["import"],
+        "recall": {
+            "method": report["recall"]["method"],
+            "passed": report["recall"]["passed"],
+            "questions": report["recall"]["questions"],
+        },
+        "export": {
+            "exported": report["export"]["exported"],
+            "memory_count": report["export"]["memory_count"],
+            "all_expected_facts_present": report["export"][
+                "all_expected_facts_present"
+            ],
+        },
+        "valid": report["valid"],
+    }
+
+
 def _parser() -> argparse.ArgumentParser:
     """Build the guarded live-demo command-line parser."""
     parser = argparse.ArgumentParser(
@@ -240,6 +263,11 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument("--activation-hours", type=int, default=6)
     parser.add_argument("--attempts", type=int, default=6)
     parser.add_argument("--delay-seconds", type=float, default=5.0)
+    parser.add_argument(
+        "--summary-only",
+        action="store_true",
+        help="Print concise counts while retaining full evidence in the report.",
+    )
     parser.add_argument("--bundle", type=Path, default=HERE / "sample-okf")
     parser.add_argument(
         "--questions",
@@ -377,8 +405,9 @@ def main() -> int:
         "valid": True,
     }
     _write_report(report_path, report)
+    stdout_report = _report_for_stdout(report, summary_only=args.summary_only)
     rendered_report = (
-        json.dumps(report, indent=2, ensure_ascii=False, sort_keys=True) + "\n"
+        json.dumps(stdout_report, indent=2, ensure_ascii=False, sort_keys=True) + "\n"
     )
     sys.stdout.buffer.write(rendered_report.encode("utf-8"))
     return 0
