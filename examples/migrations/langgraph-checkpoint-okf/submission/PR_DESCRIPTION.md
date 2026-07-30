@@ -1,5 +1,7 @@
 # PR: Add LangGraph checkpoint to OKF migration showcase
 
+Bounty submission for #1609.
+
 ## Summary
 
 This PR adds a reproducible migration example for exporting durable LangGraph
