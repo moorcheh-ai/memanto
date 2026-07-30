@@ -7,5 +7,5 @@
     "sample_output/validation/recall-parity-report.md",
     "sample_output/memanto_migrate_okf_dry_run.txt"
   ],
-  "public_branch_url": "https://github.com/Vicentegg4212/memanto/blob/codex/langgraph-okf-bounty/examples/migrations/langgraph-checkpoint-okf/submission/langgraph-okf-demo.mp4"
+  "public_branch_url": "examples/migrations/langgraph-checkpoint-okf/submission/langgraph-okf-demo.mp4"
 }

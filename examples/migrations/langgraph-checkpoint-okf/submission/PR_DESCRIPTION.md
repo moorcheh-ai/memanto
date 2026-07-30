@@ -51,8 +51,8 @@ python run_showcase.py
 Committed demo artifact:
 
 - `examples/migrations/langgraph-checkpoint-okf/submission/langgraph-okf-demo.mp4`
-- Public branch link: https://github.com/Vicentegg4212/memanto/blob/codex/langgraph-okf-bounty/examples/migrations/langgraph-checkpoint-okf/submission/langgraph-okf-demo.mp4
-- SHA-256: `bbd28e617aa4f3a60613fe562d0d8546efffd49bc940004ff1be6728c571eadc`
+- Repository path: `examples/migrations/langgraph-checkpoint-okf/submission/langgraph-okf-demo.mp4`
+- SHA-256: `9136a0586053887b6e7ef349a027549148648e74b04c6b494979bb2a4ec7a840`
 
 The video is generated from the current reproducible run by:
 
