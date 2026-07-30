@@ -99,7 +99,7 @@ def test_extract_ignores_non_json_brackets_before_memory_array():
             "title": "Regression tests",
             "content": "Run focused regression tests before pushing memory extraction fixes.",
             "confidence": 0.88,
-            "source": "conversation",
+            "source": "system",
             "provenance": "inferred",
         }
     ]
