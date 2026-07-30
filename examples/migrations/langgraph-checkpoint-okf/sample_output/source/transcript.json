@@ -1,0 +1,46 @@
+{
+  "summary": {
+    "thread_id": "founder-os-agent",
+    "source": "langgraph-checkpoint-sqlite",
+    "database": "sample_output/source/langgraph_memory.sqlite",
+    "turns": 5,
+    "memories": 5
+  },
+  "transcript": [
+    {
+      "session": "s01_foundation",
+      "user": "I prefer concise executive summaries and dislike fluffy progress updates. For internal dashboards, use dark mode with teal accents.",
+      "assistant": "Saved your communication and internal dashboard preferences.",
+      "memory_id": "lg-mem-001",
+      "checkpoint_memories": 1
+    },
+    {
+      "session": "s01_foundation",
+      "user": "Store another preference: customer-facing tools should feel calm, light, and work-focused. Do not copy my internal dark dashboard taste.",
+      "assistant": "Saved the customer-facing UI distinction.",
+      "memory_id": "lg-mem-002",
+      "checkpoint_memories": 2
+    },
+    {
+      "session": "s02_launch",
+      "user": "Our launch goal is an investor memo by 2026-08-07. The memo must include traction, burn, risks, and a one-page ask.",
+      "assistant": "Saved the investor memo goal and required sections.",
+      "memory_id": "lg-mem-003",
+      "checkpoint_memories": 3
+    },
+    {
+      "session": "s02_launch",
+      "user": "Decision: use Moorcheh as retrieval backend for the agent memory prototype after the zero-indexing latency test beat vector search.",
+      "assistant": "Saved the retrieval backend decision and rationale.",
+      "memory_id": "lg-mem-004",
+      "checkpoint_memories": 4
+    },
+    {
+      "session": "s03_growth",
+      "user": "For onboarding emails, avoid exclamation marks. The tone should be direct, helpful, and calm.",
+      "assistant": "Saved the onboarding email tone instruction.",
+      "memory_id": "lg-mem-005",
+      "checkpoint_memories": 5
+    }
+  ]
+}

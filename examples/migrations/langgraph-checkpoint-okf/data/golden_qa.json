@@ -1,0 +1,27 @@
+[
+  {
+    "id": "Q001",
+    "question": "What response style does the user prefer?",
+    "expected_terms": ["concise", "fluff"]
+  },
+  {
+    "id": "Q002",
+    "question": "How should customer-facing tools look?",
+    "expected_terms": ["customer-facing", "calm", "light"]
+  },
+  {
+    "id": "Q003",
+    "question": "When is the investor memo due?",
+    "expected_terms": ["2026-08-07", "investor memo"]
+  },
+  {
+    "id": "Q004",
+    "question": "Which retrieval backend was chosen?",
+    "expected_terms": ["Moorcheh", "retrieval backend"]
+  },
+  {
+    "id": "Q005",
+    "question": "What should onboarding emails avoid?",
+    "expected_terms": ["onboarding emails", "avoid exclamation marks"]
+  }
+]
