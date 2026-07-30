@@ -7,12 +7,12 @@ Moorcheh answer-generation path used by the RAG answer endpoint.
 
 from __future__ import annotations
 
-import json
 import re
 from typing import Any
 
 from memanto.app.clients.backend import get_active_llm_model
 from memanto.app.constants import VALID_MEMORY_TYPES
+from memanto.app.utils.json_extraction import iter_json_arrays
 
 
 class ConversationMemoryExtractionService:
@@ -60,8 +60,24 @@ class ConversationMemoryExtractionService:
         response = self.client.answer.generate(**generate_kwargs)
 
         raw_answer = response.get("answer", "")
-        parsed = self._parse_json_answer(raw_answer)
-        return self._normalize_candidates(parsed, max_memories=max_memories)
+        text = raw_answer.strip()
+        if not text:
+            raise ValueError("Memory extraction returned an empty response")
+
+        has_any_array = False
+        for parsed in iter_json_arrays(text):
+            has_any_array = True
+            try:
+                normalized = self._normalize_candidates(parsed, max_memories=max_memories)
+                if normalized:
+                    return normalized
+            except ValueError:
+                continue
+
+        if has_any_array:
+            return []
+
+        raise ValueError("Memory extraction did not return valid JSON")
 
     def _validate_messages(self, messages: list[dict[str, str]]) -> None:
         if not messages:
@@ -109,24 +125,6 @@ class ConversationMemoryExtractionService:
             "type, title, content, confidence. Confidence must be 0.0 to 1.0."
         )
 
-    def _parse_json_answer(self, answer: str) -> Any:
-        text = answer.strip()
-        if not text:
-            raise ValueError("Memory extraction returned an empty response")
-
-        fenced = re.search(r"```(?:json)?\s*(.*?)```", text, flags=re.DOTALL)
-        if fenced:
-            text = fenced.group(1).strip()
-
-        try:
-            return json.loads(text)
-        except json.JSONDecodeError:
-            start = text.find("[")
-            end = text.rfind("]")
-            if start != -1 and end != -1 and end > start:
-                return json.loads(text[start : end + 1])
-            raise ValueError("Memory extraction did not return valid JSON")
-
     def _normalize_candidates(
         self, parsed: Any, *, max_memories: int
     ) -> list[dict[str, Any]]:
@@ -172,7 +170,7 @@ class ConversationMemoryExtractionService:
                     "title": title,
                     "content": content,
                     "confidence": confidence,
-                    "source": "conversation",
+                    "source": "system",
                     "provenance": "inferred",
                 }
             )
