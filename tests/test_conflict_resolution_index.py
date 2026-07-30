@@ -518,3 +518,111 @@ def test_cli_interactive_resolve_uses_report_index_and_guards(report, recorder):
     assert kwargs["action"] == "keep_new"
     assert kwargs["expected_old_memory_id"] == "mem-old-1"
     assert kwargs["expected_new_memory_id"] == "mem-new-1"
+
+
+# ---------------------------------------------------------------------------
+# The resolve transaction is serialized per report
+# ---------------------------------------------------------------------------
+
+
+def test_lock_is_exclusive_across_processes(fake_home):
+    """A second holder must not be able to enter while the lock is held."""
+    import fcntl
+
+    from memanto.app.utils.conflicts import (
+        conflict_report_lock,
+        conflict_report_lock_path,
+    )
+
+    json_path = _write_report(fake_home, REPORT)
+    lock_path = conflict_report_lock_path(json_path)
+
+    with conflict_report_lock(json_path):
+        assert lock_path.exists()
+        with open(lock_path, "a+") as rival:
+            with pytest.raises(BlockingIOError):
+                fcntl.flock(rival.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+
+    # Released again once the transaction is over.
+    with open(lock_path, "a+") as rival:
+        fcntl.flock(rival.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+        fcntl.flock(rival.fileno(), fcntl.LOCK_UN)
+
+
+@pytest.mark.parametrize("cls", CLIENT_CLASSES)
+def test_concurrent_resolves_delete_a_memory_only_once(cls, report, recorder):
+    """Two resolves racing on one conflict must not both delete.
+
+    Without a lock spanning read -> validate -> delete -> persist, both callers
+    read ``resolved=False``, both delete, and the second write erases the first
+    resolution marker. The slow delete below makes that window wide enough to
+    hit deterministically.
+    """
+    import threading
+    import time
+
+    client = _client(cls, recorder)
+    slow_delete_started = threading.Event()
+
+    original_service = client._get_write_service
+
+    def _slow_service():
+        svc = original_service()
+        real_delete = svc.delete_memory.side_effect
+
+        def _delete(memory_id, namespace):
+            slow_delete_started.set()
+            time.sleep(0.3)
+            return real_delete(memory_id, namespace)
+
+        svc.delete_memory.side_effect = _delete
+        return svc
+
+    client._get_write_service = _slow_service  # type: ignore[method-assign]
+
+    errors: list[Exception] = []
+    successes: list[dict] = []
+
+    def _resolve():
+        try:
+            successes.append(
+                client.resolve_conflict(
+                    agent_id=AGENT, date=DATE, conflict_index=1, action="keep_new"
+                )
+            )
+        except Exception as exc:  # noqa: BLE001 - recorded for the assertion
+            errors.append(exc)
+
+    first = threading.Thread(target=_resolve)
+    second = threading.Thread(target=_resolve)
+    first.start()
+    assert slow_delete_started.wait(timeout=5)
+    second.start()
+    first.join(timeout=10)
+    second.join(timeout=10)
+
+    assert recorder.deleted == ["mem-old-1"], recorder.deleted
+    assert len(successes) == 1
+    assert len(errors) == 1
+    assert "already resolved" in str(errors[0])
+
+    stored = json.loads(report.read_text(encoding="utf-8"))
+    assert stored[1]["resolved"] is True
+    assert stored[1]["resolution"] == "keep_new"
+
+
+@pytest.mark.parametrize("cls", CLIENT_CLASSES)
+def test_lock_does_not_change_the_sequential_path(cls, report, recorder):
+    """Back-to-back resolutions of different conflicts still both apply."""
+    client = _client(cls, recorder)
+
+    client.resolve_conflict(
+        agent_id=AGENT, date=DATE, conflict_index=1, action="keep_new"
+    )
+    client.resolve_conflict(
+        agent_id=AGENT, date=DATE, conflict_index=2, action="keep_old"
+    )
+
+    assert recorder.deleted == ["mem-old-1", "mem-new-2"]
+    stored = json.loads(report.read_text(encoding="utf-8"))
+    assert [c.get("resolved") for c in stored] == [True, True, True]

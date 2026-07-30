@@ -17,9 +17,66 @@ code paths cannot drift apart.
 
 from __future__ import annotations
 
+import os
+from collections.abc import Iterator
+from contextlib import contextmanager
+from pathlib import Path
 from typing import Any
 
 CONFLICT_INDEX_FIELD = "conflict_index"
+
+
+@contextmanager
+def conflict_report_lock(json_path: Path) -> Iterator[None]:
+    """Serialize one report's whole resolve transaction across processes.
+
+    Resolution is read-validate-delete-persist. Without a lock two concurrent
+    resolves (two terminals, a CLI call racing the Web UI) can both read
+    ``resolved=False``, both delete memories, and then each write back its own
+    snapshot — so the last writer erases the other's ``resolved`` marker and
+    the already-resolved guard no longer protects a later retry.
+
+    Uses an advisory ``flock`` on a sidecar ``.lock`` file so the lock spans
+    processes, not just threads. Platforms without ``fcntl`` (Windows) fall
+    back to no locking rather than failing the resolve: the guards inside the
+    transaction still apply, they just are not atomic there.
+    """
+    lock_path = json_path.parent / (json_path.name + ".lock")
+    try:
+        lock_path.parent.mkdir(parents=True, exist_ok=True)
+        handle = open(lock_path, "a+")  # noqa: SIM115 - released in finally
+    except OSError:
+        # Cannot create the lock file (read-only dir, etc.) — do not block the
+        # resolve on it; the in-transaction guards are unchanged.
+        yield
+        return
+
+    try:
+        try:
+            import fcntl
+
+            fcntl.flock(handle.fileno(), fcntl.LOCK_EX)
+        except (ImportError, OSError):
+            pass
+        yield
+    finally:
+        try:
+            import fcntl
+
+            fcntl.flock(handle.fileno(), fcntl.LOCK_UN)
+        except (ImportError, OSError):
+            pass
+        handle.close()
+
+
+def conflict_report_lock_path(json_path: Path) -> Path:
+    """Return the sidecar lock path used for ``json_path`` (for tests/cleanup)."""
+    return json_path.parent / (json_path.name + ".lock")
+
+
+def is_conflict_report_locking_available() -> bool:
+    """Whether advisory cross-process locking is available on this platform."""
+    return os.name == "posix"
 
 
 def attach_conflict_indices(

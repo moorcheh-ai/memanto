@@ -33,6 +33,7 @@ from memanto.app.constants import (
 )
 from memanto.app.utils.conflicts import (
     attach_conflict_indices,
+    conflict_report_lock,
     verify_conflict_target,
 )
 from memanto.app.utils.errors import (
@@ -1304,115 +1305,118 @@ class SdkClient:
         json_path = (
             Path.home() / ".memanto" / "conflicts" / f"{agent_id}_{date}_conflicts.json"
         )
-        if not json_path.exists():
-            raise ValueError(f"No conflict report found for {agent_id} on {date}")
+        with conflict_report_lock(json_path):
+            if not json_path.exists():
+                raise ValueError(f"No conflict report found for {agent_id} on {date}")
 
-        with open(json_path, encoding="utf-8") as f:
-            all_conflicts = json.load(f)
+            with open(json_path, encoding="utf-8") as f:
+                all_conflicts = json.load(f)
 
-        if conflict_index < 0 or conflict_index >= len(all_conflicts):
-            raise ValueError(
-                f"Conflict index {conflict_index} out of range (0-{len(all_conflicts) - 1})"
+            if conflict_index < 0 or conflict_index >= len(all_conflicts):
+                raise ValueError(
+                    f"Conflict index {conflict_index} out of range (0-{len(all_conflicts) - 1})"
+                )
+
+            conflict = all_conflicts[conflict_index]
+            # Fail closed *before* deleting anything: deletion is irreversible.
+            verify_conflict_target(
+                conflict,
+                conflict_index,
+                expected_old_memory_id=expected_old_memory_id,
+                expected_new_memory_id=expected_new_memory_id,
             )
+            old_id = conflict.get("old_memory_id")
+            new_id = conflict.get("new_memory_id")
 
-        conflict = all_conflicts[conflict_index]
-        # Fail closed *before* deleting anything: deletion is irreversible.
-        verify_conflict_target(
-            conflict,
-            conflict_index,
-            expected_old_memory_id=expected_old_memory_id,
-            expected_new_memory_id=expected_new_memory_id,
-        )
-        old_id = conflict.get("old_memory_id")
-        new_id = conflict.get("new_memory_id")
+            # Get namespace for memory operations
+            from memanto.app.core import agent_namespace
 
-        # Get namespace for memory operations
-        from memanto.app.core import agent_namespace
+            namespace = agent_namespace(agent_id)
 
-        namespace = agent_namespace(agent_id)
+            write_service = self._get_write_service()
+            result_details: dict[str, Any] = {"action": action}
 
-        write_service = self._get_write_service()
-        result_details: dict[str, Any] = {"action": action}
-
-        if action == "keep_old":
-            if new_id:
-                try:
-                    write_service.delete_memory(new_id, namespace)
-                    result_details["deleted"] = new_id
-                except Exception as e:
-                    result_details["warning"] = f"Could not delete new memory: {e}"
-
-        elif action == "keep_new":
-            if old_id:
-                try:
-                    write_service.delete_memory(old_id, namespace)
-                    result_details["deleted"] = old_id
-                except Exception as e:
-                    result_details["warning"] = f"Could not delete old memory: {e}"
-
-        elif action == "keep_both":
-            result_details["note"] = "Both memories kept as-is"
-
-        elif action == "remove_both":
-            for mem_id, label in [(old_id, "old"), (new_id, "new")]:
-                if mem_id:
+            if action == "keep_old":
+                if new_id:
                     try:
-                        write_service.delete_memory(mem_id, namespace)
-                        result_details[f"deleted_{label}"] = mem_id
+                        write_service.delete_memory(new_id, namespace)
+                        result_details["deleted"] = new_id
                     except Exception as e:
-                        result_details[f"warning_{label}"] = (
-                            f"Could not delete {label} memory: {e}"
-                        )
+                        result_details["warning"] = f"Could not delete new memory: {e}"
 
-        elif action == "manual":
-            if not manual_content:
-                raise ValueError("manual_content is required when action is 'manual'")
-
-            # Delete both, store manual replacement
-            for mem_id, label in [(old_id, "old"), (new_id, "new")]:
-                if mem_id:
+            elif action == "keep_new":
+                if old_id:
                     try:
-                        write_service.delete_memory(mem_id, namespace)
-                        result_details[f"deleted_{label}"] = mem_id
+                        write_service.delete_memory(old_id, namespace)
+                        result_details["deleted"] = old_id
                     except Exception as e:
-                        result_details[f"warning_{label}"] = (
-                            f"Could not delete {label} memory: {e}"
-                        )
+                        result_details["warning"] = f"Could not delete old memory: {e}"
 
-            # Store the manual replacement
-            mem_type = manual_type or conflict.get("type", "fact")
-            if not isinstance(mem_type, str):
-                mem_type = "fact"
-            if mem_type not in _VALID_MEMORY_TYPES:
-                mem_type = "fact"
-            resolved_type = cast(MemoryType, mem_type)
+            elif action == "keep_both":
+                result_details["note"] = "Both memories kept as-is"
 
-            from memanto.app.core import MemoryRecord
+            elif action == "remove_both":
+                for mem_id, label in [(old_id, "old"), (new_id, "new")]:
+                    if mem_id:
+                        try:
+                            write_service.delete_memory(mem_id, namespace)
+                            result_details[f"deleted_{label}"] = mem_id
+                        except Exception as e:
+                            result_details[f"warning_{label}"] = (
+                                f"Could not delete {label} memory: {e}"
+                            )
 
-            title = (
-                manual_content[:47] + "..."
-                if len(manual_content) > 50
-                else manual_content
-            )
-            memory = MemoryRecord(
-                type=resolved_type,
-                title=title,
-                content=manual_content,
-                agent_id=agent_id,
-                actor_id=agent_id,
-                confidence=0.9,
-                tags=["conflict-resolution"],
-                source="user",
-                provenance="corrected",
-            )
-            store_result = write_service.store_memory(memory)
-            result_details["new_memory_id"] = store_result.get("id")
+            elif action == "manual":
+                if not manual_content:
+                    raise ValueError(
+                        "manual_content is required when action is 'manual'"
+                    )
 
-        # Mark conflict as resolved in the JSON file
-        all_conflicts[conflict_index]["resolved"] = True
-        all_conflicts[conflict_index]["resolution"] = action
-        with open(json_path, "w", encoding="utf-8") as f:
-            json.dump(all_conflicts, f, indent=2, default=str)
+                # Delete both, store manual replacement
+                for mem_id, label in [(old_id, "old"), (new_id, "new")]:
+                    if mem_id:
+                        try:
+                            write_service.delete_memory(mem_id, namespace)
+                            result_details[f"deleted_{label}"] = mem_id
+                        except Exception as e:
+                            result_details[f"warning_{label}"] = (
+                                f"Could not delete {label} memory: {e}"
+                            )
+
+                # Store the manual replacement
+                mem_type = manual_type or conflict.get("type", "fact")
+                if not isinstance(mem_type, str):
+                    mem_type = "fact"
+                if mem_type not in _VALID_MEMORY_TYPES:
+                    mem_type = "fact"
+                resolved_type = cast(MemoryType, mem_type)
+
+                from memanto.app.core import MemoryRecord
+
+                title = (
+                    manual_content[:47] + "..."
+                    if len(manual_content) > 50
+                    else manual_content
+                )
+                memory = MemoryRecord(
+                    type=resolved_type,
+                    title=title,
+                    content=manual_content,
+                    agent_id=agent_id,
+                    actor_id=agent_id,
+                    confidence=0.9,
+                    tags=["conflict-resolution"],
+                    source="user",
+                    provenance="corrected",
+                )
+                store_result = write_service.store_memory(memory)
+                result_details["new_memory_id"] = store_result.get("id")
+
+            # Mark conflict as resolved in the JSON file
+            all_conflicts[conflict_index]["resolved"] = True
+            all_conflicts[conflict_index]["resolution"] = action
+            with open(json_path, "w", encoding="utf-8") as f:
+                json.dump(all_conflicts, f, indent=2, default=str)
 
         result_details["status"] = "resolved"
         return result_details
