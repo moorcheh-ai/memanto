@@ -9,6 +9,7 @@ if TYPE_CHECKING:
     from moorcheh_sdk import MoorchehClient
 
 from memanto.app.core import MemoryRecord
+from memanto.app.legacy.memory_validation_service import MemoryValidationService
 from memanto.app.services.memory_parsing_service import MemoryParsingService
 from memanto.app.utils.errors import MemoryError
 from memanto.app.utils.ids import generate_memory_id
@@ -41,6 +42,7 @@ class MemoryWriteService:
 
         self.client = moorcheh_client
         self._parser = MemoryParsingService()
+        self.validation_service = MemoryValidationService(moorcheh_client)
         self._namespace_service = None
 
     @property
@@ -90,13 +92,11 @@ class MemoryWriteService:
             # Add namespace
             namespace = memory.namespace()
 
-            # skip validation for speed
-            ## Validate memory
-            # validation_result = self.validation_service.validate_memory(memory, context)
-            ## Use validated memory if modified
-            # if "memory" in validation_result:
-            #     memory = validation_result["memory"]
-            validation_result = {"action": "store", "reason": "MVP direct store"}
+            # Validate memory (write-time contradiction resolution)
+            validation_result = self.validation_service.validate_memory(memory, context)
+            # Use validated memory if modified
+            if "memory" in validation_result:
+                memory = validation_result["memory"]
 
             from typing import cast
 
@@ -110,7 +110,7 @@ class MemoryWriteService:
                 namespace_name=namespace, documents=[document]
             )
 
-            return {
+            response = {
                 "id": memory.id,
                 "namespace": namespace,
                 "status": result.get("status", "unknown"),
@@ -120,6 +120,9 @@ class MemoryWriteService:
                 "memory_status": memory.status,
                 "type": memory.type,
             }
+            if validation_result.get("superseded_ids"):
+                response["superseded_ids"] = validation_result["superseded_ids"]
+            return response
 
         except Exception as e:
             raise MemoryError(f"Failed to store memory: {e}")
@@ -182,16 +185,11 @@ class MemoryWriteService:
                         )
                         continue
 
-                    # skip validation for speed
-                    ## Validate memory
-                    # validation_result = self.validation_service.validate_memory(memory, context)
-                    ## Use validated memory if modified
-                    # if "memory" in validation_result:
-                    #     memory = validation_result["memory"]
-                    validation_result = {
-                        "action": "store",
-                        "reason": "MVP direct store",
-                    }
+                    # Validate memory (write-time contradiction resolution)
+                    validation_result = self.validation_service.validate_memory(memory, context)
+                    # Use validated memory if modified
+                    if "memory" in validation_result:
+                        memory = validation_result["memory"]
 
                     from typing import cast
 
@@ -446,7 +444,7 @@ class MemoryWriteService:
 
             from moorcheh_sdk.types.document import Document
 
-            validation_result = {"action": "store", "reason": "MVP direct store"}
+            validation_result = self.validation_service.validate_memory(updated_memory, context)
 
             document = cast(Document, updated_memory.to_moorcheh_document())
 
