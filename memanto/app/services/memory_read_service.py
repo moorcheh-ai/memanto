@@ -862,7 +862,7 @@ class MemoryReadService:
             #   "\n\nTags: {tags}" block appended only when the record has tags.
             # Split off the title on the FIRST blank line; everything after it is
             # the content, which may itself contain blank lines.
-            first_line, _, rest = raw_text.partition("\n\n")
+            first_line, first_sep, rest = raw_text.partition("\n\n")
 
             title_match = re.match(r"^\[.*?\]\s*(.*)$", first_line)
             title = title_match.group(1).strip() if title_match else first_line.strip()
@@ -874,6 +874,8 @@ class MemoryReadService:
             body, sep, last = rest.rpartition("\n\n")
             if tags and sep and last.startswith("Tags: "):
                 content = body
+            elif not first_sep:
+                content = raw_text
             else:
                 content = rest
 
