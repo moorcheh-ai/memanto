@@ -4439,7 +4439,10 @@
 
             const card = document.createElement('div');
             card.className = 'conflict-card';
-            card.id = `conflict-${i}`;
+            // DOM ids are keyed by the same stable index the resolve handlers
+            // look up, so the card can still be found after earlier conflicts
+            // are resolved and the filtered list shifts.
+            card.id = `conflict-${cid}`;
 
             const header = document.createElement('div');
             header.className = 'conflict-header';
@@ -4499,18 +4502,18 @@
                 conflictActionBtn('Keep New', 'btn-primary', () => resolveConflict(cid, rawAgentId, rawDate, 'keep_new')),
                 conflictActionBtn('Keep Both', 'btn-secondary', () => resolveConflict(cid, rawAgentId, rawDate, 'keep_both')),
                 conflictActionBtn('Remove Both', 'btn-danger', () => resolveConflict(cid, rawAgentId, rawDate, 'remove_both')),
-                conflictActionBtn('Manual', 'btn-secondary', () => showManualResolve(i)),
+                conflictActionBtn('Manual', 'btn-secondary', () => showManualResolve(cid)),
             );
 
             const manual = document.createElement('div');
-            manual.id = `manual-${i}`;
+            manual.id = `manual-${cid}`;
             manual.style.cssText = 'display:none;margin-top:12px';
             const formGroup = document.createElement('div');
             formGroup.className = 'form-group';
             const manualLabel = document.createElement('label');
             manualLabel.textContent = 'Manual Replacement Content';
             const textarea = document.createElement('textarea');
-            textarea.id = `manualContent-${i}`;
+            textarea.id = `manualContent-${cid}`;
             textarea.placeholder = 'Enter the correct merged content...';
             textarea.style.minHeight = '60px';
             formGroup.append(manualLabel, textarea);
