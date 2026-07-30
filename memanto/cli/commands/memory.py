@@ -498,14 +498,22 @@ def recall(
         "--recent",
         help="Chronological query: return the most recently stored memories (newest first). No search query needed.",
     ),
+    agent: list[str] | None = typer.Option(
+        None,
+        "--agent",
+        "-a",
+        help="Target agent ID(s). Defaults to active agent. Can be specified multiple times for multi-agent recall.",
+    ),
 ):
     """Search and retrieve memories for the active agent with temporal query support."""
     start = time.perf_counter()
     active_agent_id, active_session_token = config_manager.get_active_session()
 
-    if not active_agent_id or not active_session_token:
+    agents_to_query = agent if agent else [active_agent_id]
+
+    if not agents_to_query or not agents_to_query[0]:
         _error(
-            "No active agent.", hint="Run 'memanto agent activate <agent-id>' first."
+            "No agent specified and no active agent.", hint="Run 'memanto agent activate <agent-id>' first, or use --agent."
         )
 
     # Check for mutually exclusive temporal flags
@@ -525,7 +533,6 @@ def recall(
         )
 
     client = get_client()
-    agent_id = active_agent_id
 
     # CLI-side validation for timestamps to fail fast with a clear error
     def _validate_and_parse_timestamp(ts: str, flag_name: str) -> str:
@@ -560,51 +567,67 @@ def recall(
     try:
         # Determine which API method to call based on temporal flags
         temporal_mode = "standard"
-        with console.status("[cyan]Searching memories...", spinner="dots"):
-            if as_of:
-                results = client.recall_as_of(
-                    agent_id=agent_id,
-                    as_of=as_of,
-                    limit=limit,
-                    type=type,
-                    tags=tag_list,
-                )
-                temporal_mode = "as_of"
-            elif changed_since:
-                results = client.recall_changed_since(
-                    agent_id=agent_id,
-                    since=changed_since,
-                    limit=limit,
-                    type=type,
-                    tags=tag_list,
-                )
-                temporal_mode = "changed_since"
-            elif recent:
-                results = client.recall_recent(
-                    agent_id=agent_id,
-                    limit=limit,
-                    type=type,
-                    tags=tag_list,
-                )
-                temporal_mode = "recent"
-            elif query:
-                # Standard recall
-                results = client.recall(
-                    agent_id=agent_id,
-                    query=query,
-                    limit=limit,
-                    type=type,
-                    tags=tag_list,
-                    min_similarity=min_similarity,
-                )
-            else:
-                _error(
-                    "Missing argument 'QUERY'.",
-                    hint="Try 'memanto recall --help' for help.",
-                )
+        all_memories = []
+        with console.status(f"[cyan]Searching memories across {len(agents_to_query)} agent(s)...", spinner="dots"):
+            for current_agent in agents_to_query:
+                if as_of:
+                    results = client.recall_as_of(
+                        agent_id=current_agent,
+                        as_of=as_of,
+                        limit=limit,
+                        type=type,
+                        tags=tag_list,
+                    )
+                    temporal_mode = "as_of"
+                elif changed_since:
+                    results = client.recall_changed_since(
+                        agent_id=current_agent,
+                        since=changed_since,
+                        limit=limit,
+                        type=type,
+                        tags=tag_list,
+                    )
+                    temporal_mode = "changed_since"
+                elif recent:
+                    results = client.recall_recent(
+                        agent_id=current_agent,
+                        limit=limit,
+                        type=type,
+                        tags=tag_list,
+                    )
+                    temporal_mode = "recent"
+                elif query:
+                    # Standard recall
+                    results = client.recall(
+                        agent_id=current_agent,
+                        query=query,
+                        limit=limit,
+                        type=type,
+                        tags=tag_list,
+                        min_similarity=min_similarity,
+                    )
+                else:
+                    _error(
+                        "Missing argument 'QUERY'.",
+                        hint="Try 'memanto recall --help' for help.",
+                    )
+                
+                mems = results.get("memories", [])
+                for m in mems:
+                    m["_queried_agent"] = current_agent
+                all_memories.extend(mems)
+
         elapsed = time.perf_counter() - start
 
-        memories = results.get("memories", [])
+        if temporal_mode == "recent":
+            all_memories.sort(key=lambda x: x.get("created_at") or "", reverse=True)
+        elif temporal_mode == "standard":
+            all_memories.sort(key=lambda x: _as_float(x.get("score")), reverse=True)
+            
+        if limit:
+            all_memories = all_memories[:limit]
+
+        memories = all_memories
 
         if not memories:
             console.print("[yellow]No memories found matching your query[/yellow]")
@@ -642,12 +665,15 @@ def recall(
 
             # Determine memory source from ID pattern
             id_str = memory.get("id", "unknown")
+            queried_agent = memory.get("_queried_agent")
+            agent_tag = f" [blue]({queried_agent})[/blue]" if queried_agent and len(agents_to_query) > 1 else ""
+            
             if "_summary_" in id_str:
-                source_tag = "[yellow] · file upload · summary [/yellow]"
+                source_tag = f"[yellow] · file upload · summary{agent_tag} [/yellow]"
             elif "_chunk_" in id_str:
-                source_tag = "[yellow] · file upload · chunk [/yellow]"
+                source_tag = f"[yellow] · file upload · chunk{agent_tag} [/yellow]"
             else:
-                source_tag = "[cyan] · memory [/cyan]"
+                source_tag = f"[cyan] · memory{agent_tag} [/cyan]"
 
             # Create panel for each memory
             panel_content = f"[bold]{title}[/bold]\n\n{content[:200]}{'...' if len(content) > 200 else ''}\n\n"
