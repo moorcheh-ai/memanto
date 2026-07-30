@@ -26,6 +26,7 @@ provider stays inert.
 
 from __future__ import annotations
 
+import hashlib
 import json
 import logging
 import os
@@ -66,6 +67,16 @@ _MAX_TITLE_LENGTH = 100
 _MAX_AGENT_ID_LENGTH = 64
 _ACTIVATION_RETRY_COOLDOWN = 60.0
 
+
+def _sanitize_agent_id(raw: str) -> str:
+    """Sanitize charset and append a stable hash if over 64 chars."""
+    sanitized = re.sub(r"[^a-zA-Z0-9_-]", "_", raw)
+    if len(sanitized) > _MAX_AGENT_ID_LENGTH:
+        suffix = hashlib.sha256(raw.encode()).hexdigest()[:8]
+        sanitized = sanitized[: _MAX_AGENT_ID_LENGTH - len(suffix) - 1] + "-" + suffix
+    return sanitized
+
+
 # Memory taxonomy mirrored from memanto.app.constants.VALID_MEMORY_TYPES so the
 # tool schema matches what the backend validates. Kept as a literal list to
 # avoid importing memanto at module-import time.
@@ -89,10 +100,16 @@ _TRIVIAL_RE = re.compile(
     r"^(ok|okay|thanks|thank you|got it|sure|yes|no|yep|nope|k|ty|thx|np)\.?$",
     re.IGNORECASE,
 )
+_MEMORY_OPEN_TAG = r"<\s*memanto-memory(?:\s+[^>]*)?\s*>"
+_MEMORY_CLOSE_TAG = r"<\s*/\s*memanto-memory\s*>"
 _CONTEXT_STRIP_RE = re.compile(
-    r"<memanto-memory>[\s\S]*?</memanto-memory>\s*", re.DOTALL
+    rf"{_MEMORY_OPEN_TAG}[\s\S]*?{_MEMORY_CLOSE_TAG}\s*",
+    re.IGNORECASE,
 )
-_RECALL_TAG_RE = re.compile(r"</?memanto-memory>", re.IGNORECASE)
+_RECALL_TAG_RE = re.compile(
+    rf"{_MEMORY_OPEN_TAG}|{_MEMORY_CLOSE_TAG}",
+    re.IGNORECASE,
+)
 
 
 def _resolve_hermes_home() -> str:
@@ -129,14 +146,6 @@ def _as_bool(value: Any, default: bool) -> bool:
         if lowered in {"false", "0", "no", "n", "off"}:
             return False
     return default
-
-
-def _sanitize_agent_id(raw: str) -> str:
-    """Coerce to Memanto's id charset (letters, digits, ``-``, ``_``)."""
-    cleaned = re.sub(r"[^a-zA-Z0-9_-]", "-", raw or "")
-    cleaned = re.sub(r"-+", "-", cleaned).strip("-")
-    cleaned = cleaned[:_MAX_AGENT_ID_LENGTH].strip("-")
-    return cleaned or "hermes"
 
 
 def _detect_memory_type(text: str) -> str:
@@ -515,8 +524,7 @@ class MemantoMemoryProvider(MemoryProvider):
         sanitized = dict(values or {})
         sanitized.pop("api_key", None)
         # Keep the {identity} template intact; only sanitize concrete ids.
-        if "agent_id" in sanitized and "{identity}" not in str(sanitized["agent_id"]):
-            sanitized["agent_id"] = _sanitize_agent_id(str(sanitized["agent_id"]))
+
         if "pattern" in sanitized:
             pattern = str(sanitized["pattern"]).strip().lower()
             sanitized["pattern"] = (
@@ -698,7 +706,7 @@ class MemantoMemoryProvider(MemoryProvider):
         if self._write_thread and self._write_thread.is_alive():
             self._write_thread.join(timeout=2.0)
         self._write_thread = threading.Thread(
-            target=_run, daemon=False, name="memanto-memory-write"
+            target=_run, daemon=True, name="memanto-memory-write"
         )
         self._write_thread.start()
 
