@@ -46,8 +46,18 @@ python run_showcase.py
 
 ## Demo Video
 
-TODO: Add video link.
+Committed demo artifact:
+
+- `examples/migrations/langgraph-checkpoint-okf/submission/langgraph-okf-demo.mp4`
+
+The video is generated from the current reproducible run by:
+
+```bash
+python build_demo_video.py
+```
 
 ## Social Posts
 
-TODO: Add public post links.
+Public social links are intentionally not filled in this branch because they
+must be posted from an account controlled by the submitter. Drafts are included
+in `submission/SOCIAL_POSTS.md`.
