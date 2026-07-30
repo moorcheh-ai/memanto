@@ -260,6 +260,7 @@ def _render_savings_report(
     export_path: Path,
     run_dir: Path,
 ) -> Path:
+    """Generate and write the token/storage savings report for a migration run."""
     bundle = _PROVIDER_BUNDLES[provider]
     metrics = bundle["metrics"](export)
     narrative, llm_model, llm_method = _generate_narrative(
@@ -280,6 +281,7 @@ def _render_savings_report(
 
 
 def _resolve_target_agent(agent: str | None) -> str:
+    """Resolve the target agent ID from the argument or the active session."""
     if agent and agent.strip():
         return agent.strip()
     active_agent_id, active_session_token = config_manager.get_active_session()
@@ -351,6 +353,7 @@ def _run_migrate_flow(
     )
 
     def progress(msg: str) -> None:
+        """Print a progress message to the console."""
         console.print(f"  [{BRIGHT}]…[/{BRIGHT}] {msg}")
 
     # Step 1 — resolve target only if we will actually write.
@@ -581,6 +584,7 @@ def migrate_okf(
     )
 
     def progress(msg: str) -> None:
+        """Print a progress message to the console."""
         console.print(f"  [{BRIGHT}]…[/{BRIGHT}] {msg}")
 
     target_agent = None if dry_run else _resolve_target_agent(agent)
@@ -715,6 +719,7 @@ def migrate_conversations(
     )
 
     def progress(msg: str) -> None:
+        """Print a progress message to the console."""
         console.print(f"  [{BRIGHT}]…[/{BRIGHT}] {msg}")
 
     target_agent = None if dry_run else _resolve_target_agent(agent)

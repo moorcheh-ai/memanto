@@ -20,9 +20,11 @@ from datetime import datetime, timezone
 # ---------------------------------------------------------------------------
 
 def _now_utc():
+    """Return the current UTC datetime."""
     return datetime.now(timezone.utc)
 
 def _safe_dt(value):
+    """Best-effort parse of a value into a UTC datetime."""
     if isinstance(value, datetime):
         return value
     if isinstance(value, (int, float)):
@@ -38,6 +40,7 @@ def _safe_dt(value):
     return None
 
 def _pick_first_dt(obj, keys):
+    """Return the first successfully parsed datetime from *obj* for the given keys."""
     for k in keys:
         v = obj.get(k)
         if v is not None:
@@ -47,10 +50,12 @@ def _pick_first_dt(obj, keys):
     return None
 
 def _title_from(content):
+    """Derive a short title from the first line of content, truncated to 80 chars."""
     first_line = content.split("\n", 1)[0].strip()
     return first_line[:77] + "..." if len(first_line) > 80 else first_line
 
 def _format_supporting_data(pairs):
+    """Render key-value pairs into a markdown supporting-data block."""
     lines = []
     for k, v in pairs:
         if v is not None and v != "":
@@ -58,9 +63,11 @@ def _format_supporting_data(pairs):
     return "\n".join(lines)
 
 def _attach_footer(content, footer):
+    """Append a migration-metadata footer to the content string."""
     return f"{content}\n\n---\n*Migration metadata:*\n{footer}" if footer else content
 
 def _walk_chatgpt_mapping(mapping, current_id, max_depth=200):
+    """Walk ChatGPT's tree-structured mapping dict backwards to collect messages."""
     messages, visited, node_id = [], set(), current_id
     for _ in range(max_depth):
         if not node_id or node_id in visited:
@@ -81,6 +88,7 @@ def _walk_chatgpt_mapping(mapping, current_id, max_depth=200):
     return messages
 
 def map_chatgpt(export):
+    """Map a ChatGPT data export to memory payloads for validation."""
     rows, migrated_at = [], _now_utc()
     conversations = export.get("conversations") or export.get("memories") or []
     if isinstance(conversations, dict):
@@ -115,6 +123,7 @@ def map_chatgpt(export):
     return rows
 
 def map_claude(export):
+    """Map a Claude data export to memory payloads for validation."""
     rows, migrated_at = [], _now_utc()
     conversations = export.get("conversations") or export.get("memories") or []
     if isinstance(conversations, dict):
@@ -171,6 +180,7 @@ GOLDEN_FACTS = {
 
 
 def check_golden_facts(memories, golden):
+    """Check that golden facts from source exports are preserved in memories."""
     all_content = " ".join(
         (mem.get("content", "") + " " + mem.get("title", "")).lower()
         for mem in memories
@@ -188,13 +198,14 @@ def check_golden_facts(memories, golden):
 
 
 def validate_okf_bundle(bundle_dir):
+    """Validate an OKF bundle directory for structural correctness."""
     issues = []
     manifest_path = bundle_dir / "manifest.json"
     if not manifest_path.exists():
         issues.append("Missing manifest.json")
         return {"valid": False, "issue_count": 1, "issues": issues}
 
-    manifest = json.loads(manifest_path.read_text())
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
     if "okf_version" not in manifest:
         issues.append("manifest.json missing okf_version")
     if "memory_count" not in manifest:
@@ -209,7 +220,7 @@ def validate_okf_bundle(bundle_dir):
         if not mem_file.exists():
             issues.append(f"Missing memory file: {mem.get('file')}")
         else:
-            content = mem_file.read_text()
+            content = mem_file.read_text(encoding="utf-8")
             if len(content) < 50:
                 issues.append(f"Memory {mem.get('id')} too short ({len(content)} chars)")
 
@@ -217,6 +228,7 @@ def validate_okf_bundle(bundle_dir):
 
 
 def main():
+    """CLI entry point for the migration validation script."""
     parser = argparse.ArgumentParser(description="Validate AI conversation migration")
     parser.add_argument("--source", "-s", choices=["chatgpt", "claude"])
     parser.add_argument("--export", "-e", type=Path)
@@ -238,7 +250,7 @@ def main():
     if not args.source or not args.export:
         parser.error("Provide --source and --export")
 
-    with open(args.export) as f:
+    with open(args.export, encoding="utf-8") as f:
         export_data = json.load(f)
     if isinstance(export_data, list):
         export_data = {"memories": export_data, "conversations": export_data}
