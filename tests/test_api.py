@@ -2574,6 +2574,125 @@ class TestCWE200ApiKeyLeak:
         )
 
     @pytest.mark.asyncio
+    async def test_ui_conflicts_default_to_utc_storage_date(
+        self, client, _mock_ui_config_manager
+    ):
+        """The conflict list must use the UTC session-file bucket by default."""
+        mock_direct_client = MagicMock()
+        mock_direct_client.list_conflicts.return_value = []
+
+        with (
+            patch(
+                "memanto.app.ui.routes.ui_router.utc_date_str",
+                return_value="2026-07-30",
+            ),
+            patch(
+                "memanto.app.ui.routes.ui_router._build_ui_direct_client",
+                return_value=mock_direct_client,
+            ),
+        ):
+            resp = await client.get(
+                "/api/ui/conflicts",
+                params={"agent_id": "agent-1"},
+            )
+
+        assert resp.status_code == 200
+        assert resp.json()["date"] == "2026-07-30"
+        mock_direct_client.list_conflicts.assert_called_once_with(
+            agent_id="agent-1", date="2026-07-30"
+        )
+
+    @pytest.mark.asyncio
+    async def test_ui_summary_reader_defaults_to_utc_storage_date(
+        self, client, tmp_path, _mock_ui_config_manager
+    ):
+        """The summary reader must look in the UTC-dated summary bucket."""
+        data_dir = tmp_path / "data"
+        summaries_dir = data_dir / "summaries"
+        summaries_dir.mkdir(parents=True)
+        summary = summaries_dir / "agent-1_2026-07-30.md"
+        summary.write_text("# UTC summary", encoding="utf-8")
+
+        with (
+            patch(
+                "memanto.app.ui.routes.ui_router.utc_date_str",
+                return_value="2026-07-30",
+            ),
+            patch("memanto.app.config.get_data_dir", return_value=data_dir),
+        ):
+            resp = await client.get(
+                "/api/ui/daily-summary",
+                params={"agent_id": "agent-1"},
+            )
+
+        assert resp.status_code == 200
+        assert resp.json()["exists"] is True
+        assert resp.json()["date"] == "2026-07-30"
+        assert resp.json()["content"] == "# UTC summary"
+
+    @pytest.mark.asyncio
+    async def test_ui_summary_generator_defaults_to_utc_storage_date(
+        self, client, _mock_ui_config_manager
+    ):
+        """The summary generator must target the UTC session-file bucket."""
+        mock_direct_client = MagicMock()
+        mock_direct_client.generate_daily_summary.return_value = {
+            "summary": {"status": "success"}
+        }
+
+        with (
+            patch(
+                "memanto.app.ui.routes.ui_router.utc_date_str",
+                return_value="2026-07-30",
+            ),
+            patch(
+                "memanto.app.ui.routes.ui_router._build_ui_direct_client",
+                return_value=mock_direct_client,
+            ),
+        ):
+            resp = await client.post(
+                "/api/ui/daily-summary",
+                json={"agent_id": "agent-1"},
+            )
+
+        assert resp.status_code == 200
+        assert resp.json()["date"] == "2026-07-30"
+        mock_direct_client.generate_daily_summary.assert_called_once_with(
+            agent_id="agent-1", date="2026-07-30", output_path=None
+        )
+
+    @pytest.mark.asyncio
+    async def test_ui_conflict_generator_defaults_to_utc_storage_date(
+        self, client, _mock_ui_config_manager
+    ):
+        """The conflict generator must target the UTC session-file bucket."""
+        mock_direct_client = MagicMock()
+        mock_direct_client.generate_conflict_report.return_value = {
+            "conflicts": {"status": "success"}
+        }
+
+        with (
+            patch(
+                "memanto.app.ui.routes.ui_router.utc_date_str",
+                return_value="2026-07-30",
+            ),
+            patch(
+                "memanto.app.ui.routes.ui_router._build_ui_direct_client",
+                return_value=mock_direct_client,
+            ),
+        ):
+            resp = await client.post(
+                "/api/ui/conflicts/generate",
+                json={"agent_id": "agent-1"},
+            )
+
+        assert resp.status_code == 200
+        assert resp.json()["date"] == "2026-07-30"
+        mock_direct_client.generate_conflict_report.assert_called_once_with(
+            agent_id="agent-1", date="2026-07-30"
+        )
+
+    @pytest.mark.asyncio
     async def test_conflicts_list_rejects_traversal_agent_id(
         self, client, _mock_ui_config_manager
     ):
