@@ -7,6 +7,7 @@ Replaces legacy agent memory endpoints with session-based auth.
 
 import asyncio
 import os
+import re
 import tempfile
 from datetime import date, datetime, time, timezone
 from pathlib import Path
@@ -17,13 +18,14 @@ from pydantic import BaseModel, Field, field_validator
 from memanto.app.clients.backend import get_active_llm_model
 from memanto.app.clients.moorcheh import get_moorcheh_client
 from memanto.app.config import settings
-from memanto.app.constants import VALID_MEMORY_TYPES
+from memanto.app.constants import VALID_MEMORY_TYPES, MemoryType, SourceType
 from memanto.app.core import MemoryRecord
 from memanto.app.models import (
     AnswerRequest,
     AnswerResponse,
     BatchRememberRequest,
     BatchRememberResponse,
+    BoundedTags,
     ConflictResolveRequest,
     ExtractMemoriesRequest,
     RecallResponse,
@@ -39,36 +41,152 @@ from memanto.app.services.conversation_memory_extraction_service import (
 )
 from memanto.app.services.memory_read_service import MemoryReadService
 from memanto.app.services.memory_write_service import MemoryWriteService
-from memanto.app.utils.errors import AuthorizationError, map_error_to_http_exception
-from memanto.app.utils.validation import CostGuard
+from memanto.app.utils.errors import (
+    AuthorizationError,
+    MemoryError,
+    map_error_to_http_exception,
+)
+from memanto.app.utils.validation import (
+    CostGuard,
+    is_successful_write_result,
+    validate_safe_id,
+)
 from memanto.cli.client.direct_client import DirectClient
 from memanto.cli.config.manager import ConfigManager
 
 router = APIRouter()
 
 _config_manager = ConfigManager()
+_SAFE_DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
+
+
+def _validate_summary_key(agent_id: str, date_str: str) -> None:
+    """Reject identifiers that are unsafe for summary/conflict file paths."""
+    if not _SAFE_DATE_RE.fullmatch(date_str):
+        raise HTTPException(status_code=400, detail="Invalid summary identifier")
+    try:
+        validate_safe_id(agent_id, "agent_id")
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid summary identifier")
+
+
+def _validate_memory_type_filters(value: list[str] | None) -> list[str] | None:
+    """Validate optional memory type filters against supported memory types."""
+    if value is None:
+        return value
+
+    invalid = [
+        memory_type for memory_type in value if memory_type not in VALID_MEMORY_TYPES
+    ]
+    if invalid:
+        valid_types = ", ".join(sorted(VALID_MEMORY_TYPES))
+        raise ValueError(
+            f"Invalid memory type filter(s): {', '.join(invalid)}. "
+            f"Must be one of: {valid_types}."
+        )
+    return value
 
 
 class RecallRequest(BaseModel):
+    """Request body for semantic memory recall."""
+
     query: str = Field(..., min_length=1, description="Search query")
     limit: int | None = Field(default=None, ge=1, description="Max results")
     min_similarity: float | None = Field(
         default=None, ge=0.0, le=1.0, description="Minimum similarity score (0-1)"
     )
     type: list[str] | None = Field(default=None, description="Memory type filters")
+    tags: list[str] | None = Field(default=None, description="Tag filters")
+    created_after: datetime | date | None = Field(
+        default=None,
+        description=(
+            "Include only memories created at or after this timestamp. "
+            "Date-only values (YYYY-MM-DD) use the start of that day."
+        ),
+    )
+    created_before: datetime | date | None = Field(
+        default=None,
+        description=(
+            "Include only memories created at or before this timestamp. "
+            "Date-only values (YYYY-MM-DD) use the end of that day."
+        ),
+    )
+
+    @field_validator("created_after", mode="before")
+    @classmethod
+    def parse_created_after(cls, v: object) -> datetime | None:
+        if v is None:
+            return None
+        return _parse_recall_temporal_bound(v, end_of_day=False)
+
+    @field_validator("created_before", mode="before")
+    @classmethod
+    def parse_created_before(cls, v: object) -> datetime | None:
+        if v is None:
+            return None
+        return _parse_recall_temporal_bound(v, end_of_day=True)
+
+    @field_validator("query")
+    @classmethod
+    def query_must_not_be_blank(cls, value: str) -> str:
+        """Reject recall queries that contain only whitespace."""
+        if not value.strip():
+            raise ValueError("query must be a non-empty string")
+        return value
+
+    @field_validator("type")
+    @classmethod
+    def type_filters_must_be_valid(cls, value: list[str] | None) -> list[str] | None:
+        """Reject recall filters that are not supported memory types."""
+        return _validate_memory_type_filters(value)
+
+
+def _parse_recall_temporal_bound(v: object, *, end_of_day: bool) -> datetime:
+    if isinstance(v, datetime):
+        return v if v.tzinfo else v.replace(tzinfo=timezone.utc)
+    if isinstance(v, date):
+        boundary = time(23, 59, 59) if end_of_day else time(0, 0, 0)
+        return datetime.combine(v, boundary, tzinfo=timezone.utc)
+    if isinstance(v, str):
+        if "T" not in v and " " not in v:
+            try:
+                boundary = time(23, 59, 59) if end_of_day else time(0, 0, 0)
+                return datetime.combine(
+                    date.fromisoformat(v), boundary, tzinfo=timezone.utc
+                )
+            except ValueError:
+                pass
+        try:
+            dt = datetime.fromisoformat(v.replace("Z", "+00:00"))
+            return dt if dt.tzinfo else dt.replace(tzinfo=timezone.utc)
+        except ValueError:
+            raise ValueError(
+                f"Invalid value '{v}'. Use YYYY-MM-DD or ISO 8601 datetime."
+            )
+    raise ValueError(f"Cannot parse temporal recall bound from {type(v)}")
 
 
 class RecallAsOfRequest(BaseModel):
+    """Request body for point-in-time memory recall."""
+
     as_of: datetime = Field(
         ...,
         description="Point-in-time — YYYY-MM-DD (defaults to end of day) or full ISO datetime e.g. 2025-11-01T14:30:00Z",
     )
     limit: int | None = Field(default=None, ge=1, description="Max results")
     type: list[str] | None = Field(default=None, description="Memory type filters")
+    tags: list[str] | None = Field(default=None, description="Tag filters")
+
+    @field_validator("type")
+    @classmethod
+    def type_filters_must_be_valid(cls, value: list[str] | None) -> list[str] | None:
+        """Reject as-of recall filters that are not supported memory types."""
+        return _validate_memory_type_filters(value)
 
     @field_validator("as_of", mode="before")
     @classmethod
     def parse_as_of(cls, v: object) -> datetime:
+        """Parse date-only or ISO datetime inputs into an aware timestamp."""
         if isinstance(v, datetime):
             return v if v.tzinfo else v.replace(tzinfo=timezone.utc)
         if isinstance(v, date):
@@ -93,16 +211,26 @@ class RecallAsOfRequest(BaseModel):
 
 
 class RecallChangedSinceRequest(BaseModel):
+    """Request body for querying memories changed since a timestamp."""
+
     since: datetime = Field(
         ...,
         description="Start of change window — YYYY-MM-DD (defaults to start of day) or full ISO datetime e.g. 2025-11-01T00:00:00Z",
     )
     limit: int | None = Field(default=None, ge=1, description="Max results")
     type: list[str] | None = Field(default=None, description="Memory type filters")
+    tags: list[str] | None = Field(default=None, description="Tag filters")
+
+    @field_validator("type")
+    @classmethod
+    def type_filters_must_be_valid(cls, value: list[str] | None) -> list[str] | None:
+        """Reject changed-since recall filters that are not supported memory types."""
+        return _validate_memory_type_filters(value)
 
     @field_validator("since", mode="before")
     @classmethod
     def parse_since(cls, v: object) -> datetime:
+        """Parse date-only or ISO datetime inputs for change filtering."""
         if isinstance(v, datetime):
             return v if v.tzinfo else v.replace(tzinfo=timezone.utc)
         if isinstance(v, date):
@@ -127,29 +255,91 @@ class RecallChangedSinceRequest(BaseModel):
 
 
 class RecallRecentRequest(BaseModel):
+    """Request body for retrieving recent memories."""
+
     limit: int | None = Field(default=None, ge=1, description="Max results")
     type: list[str] | None = Field(default=None, description="Memory type filters")
+    tags: list[str] | None = Field(default=None, description="Tag filters")
+    created_after: datetime | date | None = Field(
+        default=None,
+        description=(
+            "Include only memories created at or after this timestamp. "
+            "Date-only values (YYYY-MM-DD) use the start of that day."
+        ),
+    )
+    created_before: datetime | date | None = Field(
+        default=None,
+        description=(
+            "Include only memories created at or before this timestamp. "
+            "Date-only values (YYYY-MM-DD) use the end of that day."
+        ),
+    )
+
+    @field_validator("type")
+    @classmethod
+    def type_filters_must_be_valid(cls, value: list[str] | None) -> list[str] | None:
+        """Reject recent-recall filters that are not supported memory types."""
+        return _validate_memory_type_filters(value)
+
+    @field_validator("created_after", mode="before")
+    @classmethod
+    def parse_created_after(cls, v: object) -> datetime | None:
+        if v is None:
+            return None
+        return _parse_recall_temporal_bound(v, end_of_day=False)
+
+    @field_validator("created_before", mode="before")
+    @classmethod
+    def parse_created_before(cls, v: object) -> datetime | None:
+        if v is None:
+            return None
+        return _parse_recall_temporal_bound(v, end_of_day=True)
 
 
 class MemoryEditRequest(BaseModel):
+    """Request body for partial memory record updates."""
+
     title: str | None = Field(default=None, max_length=100)
     content: str | None = Field(default=None, max_length=10000)
-    type: str | None = None
+    type: MemoryType | None = None
     confidence: float | None = Field(default=None, ge=0.0, le=1.0)
-    tags: list[str] | None = None
-    source: str | None = None
+    tags: BoundedTags | None = None
+    source: SourceType | None = None
 
     def to_updates(self) -> dict[str, object]:
+        """Return only fields the caller explicitly wants to update."""
         return self.model_dump(exclude_none=True)
 
 
 def enforce_session_scope(session: Session, agent_id: str) -> None:
+    """Ensure a session can only access the agent scope it was issued for."""
     if session.agent_id != agent_id:
         raise map_error_to_http_exception(
             AuthorizationError(
                 f"Session is for agent '{session.agent_id}', cannot access '{agent_id}'"
             )
         )
+
+
+def resolve_recall_limit(request_limit: int | None) -> int:
+    recall_cfg = _config_manager.get_recall_config()
+    raw_limit = (
+        request_limit
+        if request_limit is not None
+        else recall_cfg.get("limit", settings.RECALL_LIMIT)
+    )
+    try:
+        limit = int(raw_limit)
+    except (TypeError, ValueError) as e:
+        raise HTTPException(
+            status_code=400, detail=f"Invalid recall configuration: {e}"
+        ) from e
+    if limit < 1:
+        raise HTTPException(
+            status_code=400, detail="Invalid recall configuration: limit must be >= 1"
+        )
+    CostGuard.validate_k_limit(limit)
+    return limit
 
 
 @router.post("/{agent_id}/remember", response_model=RememberResponse)
@@ -209,22 +399,25 @@ async def remember(
 
         # Store memory in agent's namespace.
         result = await asyncio.to_thread(write_service.store_memory, memory)
+        status = str(result.get("status", "unknown"))
+        response_status = "queued" if is_successful_write_result(result) else status
 
-        # Log to local session Markdown summary
-        session_service = get_session_service()
-        await asyncio.to_thread(
-            session_service.log_memory_to_session_summary,
-            agent_id=agent_id,
-            session_id=session.session_id,
-            memory_record=memory,
-        )
+        # Log to local session Markdown summary only after a durable write.
+        if is_successful_write_result(result):
+            session_service = get_session_service()
+            await asyncio.to_thread(
+                session_service.log_memory_to_session_summary,
+                agent_id=agent_id,
+                session_id=session.session_id,
+                memory_record=memory,
+            )
 
         return {
             "memory_id": result["id"],
             "agent_id": agent_id,
             "session_id": session.session_id,
             "namespace": session.namespace,
-            "status": "queued",
+            "status": response_status,
             "provenance": request.provenance,
             "confidence": request.confidence,
             # Resolved memory type (auto-parsed when not explicitly provided)
@@ -267,6 +460,7 @@ async def batch_remember(
 
         memory_records = []
         for item in request.memories:
+            CostGuard.validate_text_length(item.content, "Memory content")
             title = item.title or (
                 item.content[:47] + "..." if len(item.content) > 50 else item.content
             )
@@ -291,7 +485,11 @@ async def batch_remember(
         # Log each memory to local MD summary
         session_service = get_session_service()
 
-        for record in memory_records:
+        batch_results = result.get("results", [])
+        for index, record in enumerate(memory_records):
+            item_result = batch_results[index] if index < len(batch_results) else None
+            if not is_successful_write_result(item_result):
+                continue
             await asyncio.to_thread(
                 session_service.log_memory_to_session_summary,
                 agent_id=agent_id,
@@ -456,11 +654,33 @@ async def extract_memories_from_conversation(
         )
 
         session_service = get_session_service()
-        for index, record in enumerate(memory_records):
-            batch_results = result.get("results", [])
-            memory_id = (
-                batch_results[index].get("id") if index < len(batch_results) else None
+
+        if not isinstance(result, dict):
+            raise MemoryError(
+                message="Data corruption detected: Received malformed batch result from storage layer.",
+                details={"item_preview": str(result)[:100]},
             )
+
+        batch_results = result.get("results", [])
+        if not isinstance(batch_results, list):
+            raise MemoryError(
+                message="Data corruption detected: Received malformed batch result array from storage layer.",
+                details={"item_preview": str(batch_results)[:100]},
+            )
+
+        for index, record in enumerate(memory_records):
+            item_result = batch_results[index] if index < len(batch_results) else None
+            if item_result is not None and (
+                not isinstance(item_result, dict) or not item_result
+            ):
+                raise MemoryError(
+                    message="Data corruption detected: Received malformed batch result from storage layer.",
+                    details={"item_preview": str(item_result)[:100]},
+                )
+
+            memory_id = item_result.get("id") if item_result else None
+            if not is_successful_write_result(item_result):
+                continue
             await asyncio.to_thread(
                 session_service.log_memory_to_session_summary,
                 agent_id=agent_id,
@@ -529,7 +749,6 @@ async def upload_file(
 
         # Write upload to a temp file so moorcheh SDK can read it
         # Use original filename so the SDK records it as the source
-        file_bytes = await file.read()
         tmp_dir = tempfile.mkdtemp()
         tmp_path = os.path.join(tmp_dir, original_name)
         # Defense-in-depth: verify resolved path is within tmp_dir
@@ -540,9 +759,30 @@ async def upload_file(
                 status_code=400,
                 detail="Invalid filename",
             )
+        # Stream file to disk in 1 MB chunks instead of loading it all into
+        # memory at once. Without this, a 5 GB upload would allocate ~5 GB of
+        # RAM in a single Python bytes object, making the server trivially
+        # exhaustible under concurrent large-file uploads.
+        _MAX_UPLOAD_BYTES = 5 * 1024 * 1024 * 1024  # 5 GB as documented
+        _CHUNK_SIZE = 1024 * 1024  # 1 MB
         try:
+            total_bytes = 0
             with open(tmp_path, "wb") as tmp:
-                tmp.write(file_bytes)
+                while True:
+                    chunk = await file.read(_CHUNK_SIZE)
+                    if not chunk:
+                        break
+                    total_bytes += len(chunk)
+                    if total_bytes > _MAX_UPLOAD_BYTES:
+                        raise HTTPException(
+                            status_code=413,
+                            detail={
+                                "error": "file_too_large",
+                                "message": "File exceeds the maximum upload size of 5 GB",
+                                "max_bytes": _MAX_UPLOAD_BYTES,
+                            },
+                        )
+                    await asyncio.to_thread(tmp.write, chunk)
             result = await asyncio.to_thread(
                 client.documents.upload_file, namespace, tmp_path
             )
@@ -551,12 +791,16 @@ async def upload_file(
 
             shutil.rmtree(tmp_dir, ignore_errors=True)
 
+        file_size = result.get("fileSize")
+        if file_size is None:
+            file_size = result.get("file_size")
+
         return {
             "agent_id": agent_id,
             "session_id": session.session_id,
             "namespace": namespace,
             "file_name": original_name,
-            "file_size": result.get("fileSize"),
+            "file_size": file_size,
             "status": "uploaded" if result.get("success") else "failed",
             "message": result.get("message", ""),
         }
@@ -630,18 +874,13 @@ async def recall(
     enforce_session_scope(session, agent_id)
 
     recall_cfg = _config_manager.get_recall_config()
-    raw_limit = (
-        request.limit
-        if request.limit is not None
-        else recall_cfg.get("limit", settings.RECALL_LIMIT)
-    )
     raw_min_similarity = (
         request.min_similarity
         if request.min_similarity is not None
         else recall_cfg.get("min_similarity")
     )
     try:
-        limit = int(raw_limit)
+        limit = resolve_recall_limit(request.limit)
         min_similarity = (
             None if raw_min_similarity is None else float(raw_min_similarity)
         )
@@ -649,8 +888,6 @@ async def recall(
         raise HTTPException(
             status_code=400, detail=f"Invalid recall configuration: {e}"
         )
-    CostGuard.validate_k_limit(limit)
-
     try:
         # Initialize memory read service
         read_service = MemoryReadService(client)
@@ -661,7 +898,14 @@ async def recall(
             query=request.query,
             agent_id=agent_id,
             type=request.type,
+            tags=request.tags,
             min_similarity_score=min_similarity,
+            created_after=request.created_after.isoformat()
+            if request.created_after
+            else None,
+            created_before=request.created_before.isoformat()
+            if request.created_before
+            else None,
             limit=limit,
         )
 
@@ -709,7 +953,7 @@ async def answer(
         if request.temperature is not None
         else settings.ANSWER_TEMPERATURE
     )
-    ai_model = (
+    resolved_ai_model = (
         request.ai_model
         if request.ai_model is not None
         else get_active_llm_model(settings.ANSWER_MODEL)
@@ -740,11 +984,12 @@ async def answer(
             "query": request.question,
             "top_k": limit,
             "temperature": temperature,
-            "ai_model": ai_model,
             "kiosk_mode": request.kiosk_mode,
             "header_prompt": header_prompt,
             "footer_prompt": footer_prompt,
         }
+        if resolved_ai_model is not None:
+            generate_kwargs["ai_model"] = resolved_ai_model
         if request.kiosk_mode:
             generate_kwargs["threshold"] = (
                 request.threshold if request.threshold is not None else 0.15
@@ -770,17 +1015,24 @@ async def answer(
 
 
 class DailySummaryRequest(BaseModel):
+    """Request body for on-demand daily summary generation."""
+
     date: str | None = Field(
         default=None,
         description="Date string YYYY-MM-DD. Defaults to today.",
     )
     output_path: str | None = Field(
         default=None,
-        description="Optional custom output path for the summary MD file.",
+        description=(
+            "Accepted for backwards compatibility but ignored; summaries use "
+            "the server-controlled output location."
+        ),
     )
 
 
 class ConflictDetectRequest(BaseModel):
+    """Request body for on-demand conflict report generation."""
+
     date: str | None = Field(
         default=None,
         description="Date string YYYY-MM-DD. Defaults to today.",
@@ -802,12 +1054,13 @@ async def generate_daily_summary(
     enforce_session_scope(session, agent_id)
 
     resolved_date = request.date or datetime.now().strftime("%Y-%m-%d")
+    _validate_summary_key(agent_id, resolved_date)
     try:
         result = await asyncio.to_thread(
             DirectClient(settings.MOORCHEH_API_KEY).generate_daily_summary,
             agent_id,
             resolved_date,
-            request.output_path,
+            None,
         )
         return {
             "agent_id": agent_id,
@@ -833,6 +1086,7 @@ async def generate_conflict_report(
     enforce_session_scope(session, agent_id)
 
     resolved_date = request.date or datetime.now().strftime("%Y-%m-%d")
+    _validate_summary_key(agent_id, resolved_date)
     try:
         result = await asyncio.to_thread(
             DirectClient(settings.MOORCHEH_API_KEY).generate_conflict_report,
@@ -866,16 +1120,18 @@ async def list_conflicts(
     # Enforce session scope
     enforce_session_scope(session, agent_id)
 
+    resolved_date = date or datetime.now().strftime("%Y-%m-%d")
+    _validate_summary_key(agent_id, resolved_date)
     try:
         conflicts = await asyncio.to_thread(
             DirectClient(settings.MOORCHEH_API_KEY).list_conflicts,
             agent_id,
-            date,
+            resolved_date,
         )
         return {
             "agent_id": agent_id,
             "session_id": session.session_id,
-            "date": date or datetime.now().strftime("%Y-%m-%d"),
+            "date": resolved_date,
             "conflicts": conflicts,
             "count": len(conflicts),
         }
@@ -897,6 +1153,7 @@ async def resolve_conflict(
     enforce_session_scope(session, agent_id)
 
     resolved_date = request.date or datetime.now().strftime("%Y-%m-%d")
+    _validate_summary_key(agent_id, resolved_date)
     try:
         result = await asyncio.to_thread(
             DirectClient(settings.MOORCHEH_API_KEY).resolve_conflict,
@@ -938,10 +1195,7 @@ async def recall_as_of(
     """
     enforce_session_scope(session, agent_id)
 
-    # request.limit is None → fetch all (no cap). Cost guard only applies when capped.
-    limit = request.limit
-    if limit is not None:
-        CostGuard.validate_k_limit(limit)
+    limit = resolve_recall_limit(request.limit)
 
     try:
         read_service = MemoryReadService(client)
@@ -951,6 +1205,7 @@ async def recall_as_of(
             as_of_date=request.as_of.isoformat(),
             agent_id=agent_id,
             type=request.type,
+            tags=request.tags,
             limit=limit,
         )
 
@@ -986,10 +1241,7 @@ async def recall_changed_since(
     """
     enforce_session_scope(session, agent_id)
 
-    # request.limit is None → fetch all (no cap). Cost guard only applies when capped.
-    limit = request.limit
-    if limit is not None:
-        CostGuard.validate_k_limit(limit)
+    limit = resolve_recall_limit(request.limit)
 
     try:
         read_service = MemoryReadService(client)
@@ -999,6 +1251,7 @@ async def recall_changed_since(
             since_date=request.since.isoformat(),
             agent_id=agent_id,
             type=request.type,
+            tags=request.tags,
             limit=limit,
         )
 
@@ -1035,10 +1288,7 @@ async def recall_recent(
     """
     enforce_session_scope(session, agent_id)
 
-    # request.limit is None → fetch all (no cap). Cost guard only applies when capped.
-    limit = request.limit
-    if limit is not None:
-        CostGuard.validate_k_limit(limit)
+    limit = resolve_recall_limit(request.limit)
 
     try:
         read_service = MemoryReadService(client)
@@ -1047,7 +1297,14 @@ async def recall_recent(
             read_service.search_recent,
             agent_id=agent_id,
             type=request.type,
+            tags=request.tags,
             limit=limit,
+            created_after=request.created_after.isoformat()
+            if request.created_after
+            else None,
+            created_before=request.created_before.isoformat()
+            if request.created_before
+            else None,
         )
 
         return {

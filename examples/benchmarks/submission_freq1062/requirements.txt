@@ -1,0 +1,31 @@
+# Core
+tqdm>=4.0
+numpy>=1.24
+
+# --- Datasets ---
+pyarrow>=14.0.1            # MemoryAgentBench (parquet)
+
+# --- Adapters (install the ones you need) ---
+
+# Memanto (this repo)
+# Already installed: pip install -e ../..
+
+# Mem0 + Groq
+mem0ai>=2.0
+groq>=1.0                # Groq LLM provider
+
+# Cognee
+cognee>=1.0
+
+# Letta
+letta>=0.6               # the server
+letta-client>=1.12       # the SDK
+
+# Zep Cloud
+zep-cloud>=3.0
+
+# Supermemory
+supermemory>=3.0
+llama-cpp-python>=0.3
+sentence-transformers>=3.0
+huggingface-hub>=0.25

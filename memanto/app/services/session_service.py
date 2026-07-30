@@ -8,6 +8,7 @@ Uses JWT tokens for stateless authentication.
 import json
 import logging
 import os
+import secrets
 from datetime import timedelta
 from pathlib import Path
 from typing import Any
@@ -30,7 +31,8 @@ from memanto.app.utils.errors import (
     SessionNotFoundError,
 )
 from memanto.app.utils.ids import generate_id
-from memanto.app.utils.temporal_helpers import utc_now
+from memanto.app.utils.temporal_helpers import as_utc_aware, utc_now
+from memanto.app.utils.validation import validate_safe_id
 
 _session_service = None
 logger = logging.getLogger(__name__)
@@ -60,14 +62,60 @@ class SessionService:
             secret_key: Secret key for JWT signing (defaults to env var or generated)
             sessions_dir: Directory for session storage (defaults to ~/.memanto/sessions/)
         """
-        resolved_secret_key = (
-            secret_key
-            or os.getenv("MEMANTO_SECRET_KEY")
-            or "memanto-default-secret-change-in-production"
-        )
-        self.secret_key: str = resolved_secret_key
         self.sessions_dir = sessions_dir or get_data_dir() / "sessions"
-        self.sessions_dir.mkdir(parents=True, exist_ok=True)
+        self._secret_key: str | None = secret_key or settings.MEMANTO_SECRET_KEY or None
+
+    @property
+    def secret_key(self) -> str:
+        """JWT signing key, generated only when token operations need it."""
+        if self._secret_key is None:
+            self._secret_key = self._generate_secure_secret_key()
+        return self._secret_key
+
+    def _generate_secure_secret_key(self) -> str:
+        """Generate (or reuse) a persisted fallback secret for JWT signing.
+
+        Persisted alongside the sessions directory so sessions survive
+        process restarts instead of every new process invalidating all
+        existing session tokens. Created atomically (O_CREAT | O_EXCL) with
+        restrictive permissions from the moment of creation, so concurrent
+        first-start processes can't race each other into using divergent
+        secrets and there's no window where the file is world-readable. An
+        existing-but-empty file (e.g. left behind by a crash mid-write) is
+        treated as absent and rewritten.
+        """
+        secret_file = self.sessions_dir.parent / "secret_key"
+        secret_file.parent.mkdir(parents=True, exist_ok=True)
+        existing = self._read_persisted_secret(secret_file)
+        if existing is not None:
+            return existing
+
+        secret = secrets.token_hex(32)
+        try:
+            fd = os.open(str(secret_file), os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
+        except FileExistsError:
+            # Lost a race to another process, or the file is a stale empty stub.
+            existing = self._read_persisted_secret(secret_file)
+            if existing is not None:
+                return existing
+            fd = os.open(str(secret_file), os.O_WRONLY | os.O_TRUNC, 0o600)
+        try:
+            os.write(fd, secret.encode())
+        finally:
+            os.close(fd)
+        try:
+            secret_file.chmod(0o600)
+        except OSError:
+            pass  # Windows may not support chmod
+        return secret
+
+    @staticmethod
+    def _read_persisted_secret(secret_file: Path) -> str | None:
+        """Read the persisted JWT secret, treating a missing/empty file as absent."""
+        if not secret_file.exists():
+            return None
+        content = secret_file.read_text().strip()
+        return content or None
 
     def _generate_namespace(self, agent_id: str) -> str:
         """
@@ -163,7 +211,7 @@ class SessionService:
             token = SessionToken(**payload)
 
             # Validate expiration
-            if utc_now() > token.expires_at:
+            if utc_now() > as_utc_aware(token.expires_at):
                 raise SessionExpiredError(
                     f"Session {token.session_id} expired at {token.expires_at}"
                 )
@@ -199,6 +247,7 @@ class SessionService:
         Returns:
             Session object or None if not found
         """
+        validate_safe_id(agent_id, "agent_id")
         session_file = self.sessions_dir / f"{agent_id}.json"
         return self._load_session_file(session_file)
 
@@ -250,7 +299,7 @@ class SessionService:
             raise SessionNotFoundError(f"No session found for agent {agent_id}")
 
         ended_at = utc_now()
-        duration = (ended_at - session.started_at).total_seconds() / 3600
+        duration = (ended_at - as_utc_aware(session.started_at)).total_seconds() / 3600
 
         # Update session status
         session.status = SessionStatus.TERMINATED
@@ -336,6 +385,8 @@ class SessionService:
 
     def _save_session(self, session: Session) -> None:
         """Save session to file"""
+        validate_safe_id(session.agent_id, "agent_id")
+        self.sessions_dir.mkdir(parents=True, exist_ok=True)
         session_file = self.sessions_dir / f"{session.agent_id}.json"
         with open(session_file, "w") as f:
             json.dump(session.model_dump(mode="json"), f, indent=2)
@@ -370,6 +421,8 @@ class SessionService:
             memory_id: The Moorcheh memory ID (if available)
         """
         # Get the timestamp of memory to determine the date string
+        validate_safe_id(agent_id, "agent_id")
+        validate_safe_id(session_id, "session_id")
         dt_now = getattr(memory_record, "created_at", utc_now())
         timestamp = dt_now.strftime("%Y-%m-%d %H:%M:%S")
         date_str = dt_now.strftime("%Y-%m-%d")
@@ -377,6 +430,7 @@ class SessionService:
         summary_file = (
             self.sessions_dir / f"{agent_id}_{date_str}_{session_id}_summary.md"
         )
+        self.sessions_dir.mkdir(parents=True, exist_ok=True)
 
         # Determine if we need to write the header
         write_header = not summary_file.exists()
@@ -429,6 +483,9 @@ class SessionService:
             session_id: The current session's identifier
             memory_id: The Moorcheh memory ID that was deleted
         """
+        validate_safe_id(agent_id, "agent_id")
+        validate_safe_id(session_id, "session_id")
+
         dt_now = utc_now()
         timestamp = dt_now.strftime("%Y-%m-%d %H:%M:%S")
         date_str = dt_now.strftime("%Y-%m-%d")
@@ -436,6 +493,7 @@ class SessionService:
         summary_file = (
             self.sessions_dir / f"{agent_id}_{date_str}_{session_id}_summary.md"
         )
+        self.sessions_dir.mkdir(parents=True, exist_ok=True)
 
         write_header = not summary_file.exists()
 
@@ -452,10 +510,12 @@ class SessionService:
 
     def _set_active_session(self, agent_id: str) -> None:
         """Mark session as active"""
+        validate_safe_id(agent_id, "agent_id")
+        self.sessions_dir.mkdir(parents=True, exist_ok=True)
         active_link = self.sessions_dir / "active"
 
         # Remove existing active link
-        if active_link.exists():
+        if active_link.exists() or active_link.is_symlink():
             active_link.unlink()
 
         # Create new active marker
@@ -470,12 +530,38 @@ class SessionService:
     def _clear_active_session(self) -> None:
         """Clear active session marker"""
         active_link = self.sessions_dir / "active"
-        if active_link.exists():
+        if active_link.exists() or active_link.is_symlink():
             active_link.unlink()
 
     def clear_active_session(self) -> None:
         """Public alias: clear the active-session marker without ending the session."""
         self._clear_active_session()
+
+    def delete_session(self, agent_id: str) -> bool:
+        """
+        Remove persisted session state for an agent.
+
+        Used when an agent is deleted: the agent metadata is gone, so a saved
+        session for that agent must not remain usable through X-Session-Token.
+        """
+        active_link = self.sessions_dir / "active"
+        active_agent_id: str | None = None
+
+        if active_link.is_symlink():
+            active_agent_id = active_link.readlink().stem
+        elif active_link.exists():
+            with open(active_link) as f:
+                active_agent_id = f.read().strip()
+
+        session_file = self.sessions_dir / f"{agent_id}.json"
+        deleted = session_file.exists()
+        if deleted:
+            session_file.unlink()
+
+        if active_agent_id == agent_id:
+            self._clear_active_session()
+
+        return deleted
 
     def list_sessions(self) -> list[Session]:
         """
@@ -490,4 +576,4 @@ class SessionService:
             if session is not None:
                 sessions.append(session)
 
-        return sorted(sessions, key=lambda s: s.started_at, reverse=True)
+        return sorted(sessions, key=lambda s: as_utc_aware(s.started_at), reverse=True)

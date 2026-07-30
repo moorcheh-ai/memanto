@@ -5,7 +5,7 @@ Handles agent creation, listing, and lifecycle management.
 """
 
 import json
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 
 from moorcheh_sdk.exceptions import ConflictError
@@ -15,6 +15,8 @@ from memanto.app.config import get_data_dir
 from memanto.app.core import agent_namespace
 from memanto.app.models.session import AgentCreate, AgentInfo, AgentList
 from memanto.app.utils.errors import AgentAlreadyExistsError, AgentNotFoundError
+from memanto.app.utils.temporal_helpers import as_utc_aware
+from memanto.app.utils.validation import validate_safe_id
 
 
 class AgentService:
@@ -28,7 +30,6 @@ class AgentService:
             agents_dir: Directory for agent metadata storage (defaults to ~/.memanto/agents/)
         """
         self.agents_dir = agents_dir or get_data_dir() / "agents"
-        self.agents_dir.mkdir(parents=True, exist_ok=True)
 
     def _generate_namespace(self, agent_id: str) -> str:
         """
@@ -40,6 +41,7 @@ class AgentService:
 
     def _get_agent_file(self, agent_id: str) -> Path:
         """Get file path for agent metadata"""
+        validate_safe_id(agent_id, "agent_id")
         return self.agents_dir / f"{agent_id}.json"
 
     def create_agent(
@@ -95,7 +97,7 @@ class AgentService:
             namespace=namespace,
             pattern=agent_create.pattern,
             description=agent_create.description,
-            created_at=datetime.utcnow(),
+            created_at=datetime.now(timezone.utc),
             memory_count=0,
             session_count=0,
             status="ready",
@@ -131,14 +133,17 @@ class AgentService:
         Returns:
             AgentList with all agents
         """
-        agents = []
+        agents: list[AgentInfo] = []
+        if not self.agents_dir.exists():
+            return AgentList(agents=agents, count=0)
+
         for agent_file in self.agents_dir.glob("*.json"):
             with open(agent_file) as f:
                 data = json.load(f)
                 agents.append(AgentInfo(**data))
 
-        # Sort by created_at (newest first)
-        agents.sort(key=lambda a: a.created_at, reverse=True)
+        # Sort by created_at (newest first); normalize for legacy naive timestamps.
+        agents.sort(key=lambda a: as_utc_aware(a.created_at), reverse=True)
 
         return AgentList(agents=agents, count=len(agents))
 
@@ -205,6 +210,7 @@ class AgentService:
 
     def _save_agent(self, agent: AgentInfo) -> None:
         """Save agent metadata to file"""
+        self.agents_dir.mkdir(parents=True, exist_ok=True)
         agent_file = self._get_agent_file(agent.agent_id)
         with open(agent_file, "w") as f:
             json.dump(agent.model_dump(mode="json"), f, indent=2)

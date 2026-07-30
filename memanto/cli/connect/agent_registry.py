@@ -305,9 +305,10 @@ def detect_memanto_installed(project_dir: Path) -> list[AgentDef]:
     """Detect which agents have MEMANTO already installed (local)."""
     installed = []
     for agent in AGENT_REGISTRY.values():
-        skill_dir = agent.resolve_skill_local(project_dir)
-        skill_file = skill_dir / "SKILL.md"
-        if skill_file.exists():
+        if _has_memanto_skill(agent, project_dir, is_global=False) and (
+            not agent.instruction_file
+            or _has_memanto_instruction(agent, project_dir, is_global=False)
+        ):
             installed.append(agent)
     return installed
 
@@ -316,8 +317,31 @@ def detect_memanto_installed_global() -> list[AgentDef]:
     """Detect which agents have MEMANTO installed globally."""
     installed = []
     for agent in AGENT_REGISTRY.values():
-        skill_dir = agent.resolve_skill_global()
-        skill_file = skill_dir / "SKILL.md"
-        if skill_file.exists():
+        if _has_memanto_skill(agent, Path.home(), is_global=True) and (
+            not agent.instruction_file
+            or _has_memanto_instruction(agent, Path.home(), is_global=True)
+        ):
             installed.append(agent)
     return installed
+
+
+def _has_memanto_skill(agent: AgentDef, project_dir: Path, is_global: bool) -> bool:
+    skill_dir = (
+        agent.resolve_skill_global()
+        if is_global
+        else agent.resolve_skill_local(project_dir)
+    )
+    return (skill_dir / "SKILL.md").is_file()
+
+
+def _has_memanto_instruction(
+    agent: AgentDef, project_dir: Path, is_global: bool
+) -> bool:
+    instr_path = agent.resolve_instruction_file(project_dir, is_global)
+    if instr_path is None or not instr_path.is_file():
+        return False
+    try:
+        content = instr_path.read_text(encoding="utf-8")
+    except OSError:
+        return False
+    return agent.sentinel in content and agent.sentinel_end in content

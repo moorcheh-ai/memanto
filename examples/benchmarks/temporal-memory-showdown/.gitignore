@@ -1,0 +1,4 @@
+.benchmark-data/
+results/latest.json
+results/latest.md
+results/logs/

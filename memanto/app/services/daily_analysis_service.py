@@ -19,6 +19,7 @@ from memanto.app.utils.temporal_helpers import (
     format_current_local_time,
     format_local_time,
 )
+from memanto.app.utils.validation import validate_output_path, validate_safe_id
 
 
 class DailyAnalysisService:
@@ -49,6 +50,13 @@ class DailyAnalysisService:
         """
         Generate a daily natural language summary for an agent and date.
         """
+        validate_safe_id(agent_id, "agent_id")
+        validate_safe_id(date, "date")
+        # Validate output_path before any I/O so traversal attempts fail fast.
+        resolved_output = validate_output_path(
+            output_path,
+            base_dir=self.summaries_dir.parent,
+        )
         # Find all relevant session MD files
         pattern = f"{agent_id}_{date}_*_summary.md"
         session_files = list(self.sessions_dir.glob(pattern))
@@ -89,20 +97,22 @@ Format the output as a Markdown report:
 ...
 """
         try:
-            result = client.answer.generate(
-                namespace=namespace,
-                query=summary_prompt,
-                ai_model=get_active_llm_model(settings.SUMMARY_MODEL),
-                top_k=50,
-            )
+            generate_kwargs: dict[str, Any] = {
+                "namespace": namespace,
+                "query": summary_prompt,
+                "top_k": 50,
+            }
+            ai_model = get_active_llm_model(settings.SUMMARY_MODEL)
+            if ai_model is not None:
+                generate_kwargs["ai_model"] = ai_model
+            result = client.answer.generate(**generate_kwargs)
             summary_text = result.get("answer", "Failed to generate summary.")
         except Exception as e:
             raise MemoryError(f"AI summarization failed: {str(e)}")
 
-        if output_path:
-            summary_path = Path(output_path)
-            # Ensure parent directories exist
-            summary_path.parent.mkdir(parents=True, exist_ok=True)
+        if resolved_output is not None:
+            resolved_output.parent.mkdir(parents=True, exist_ok=True)
+            summary_path = resolved_output
         else:
             summary_path = self.summaries_dir / f"{agent_id}_{date}.md"
 
@@ -137,9 +147,11 @@ Format the output as a Markdown report:
         """
         Generate a structured conflict report (Contradictions, Conflicts, Updates, Duplicates).
         """
+        validate_safe_id(agent_id, "agent_id")
+        validate_safe_id(date, "date")
+
         conflicts_dir = Path.home() / ".memanto" / "conflicts"
         conflicts_dir.mkdir(parents=True, exist_ok=True)
-
         pattern = f"{agent_id}_{date}_*_summary.md"
         session_files = list(self.sessions_dir.glob(pattern))
 
@@ -191,12 +203,15 @@ Example response format:
 [{{"type": "contradiction", "title": "Database preference changed", "old_memory_id": "abc-123", "old_content": "We use PostgreSQL", "new_memory_id": "def-456", "new_content": "We migrated to MongoDB", "description": "New memory contradicts old database preference", "recommendation": "keep_new"}}]
 """
         try:
-            result = client.answer.generate(
-                namespace=namespace,
-                query=conflict_prompt,
-                ai_model=get_active_llm_model(settings.SUMMARY_MODEL),
-                top_k=50,
-            )
+            generate_kwargs = {
+                "namespace": namespace,
+                "query": conflict_prompt,
+                "top_k": 50,
+            }
+            ai_model = get_active_llm_model(settings.SUMMARY_MODEL)
+            if ai_model is not None:
+                generate_kwargs["ai_model"] = ai_model
+            result = client.answer.generate(**generate_kwargs)
             conflict_text = result.get("answer", "[]")
         except Exception as e:
             raise MemoryError(f"Conflict detection failed: {str(e)}")

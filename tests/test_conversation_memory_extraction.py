@@ -63,7 +63,7 @@ def test_extract_conversation_memories_normalizes_candidates():
             "title": "Editor preference",
             "content": "The user prefers concise pull request summaries.",
             "confidence": 0.91,
-            "source": "conversation",
+            "source": "system",
             "provenance": "inferred",
         },
         {
@@ -71,13 +71,31 @@ def test_extract_conversation_memories_normalizes_candidates():
             "title": "Fallback type",
             "content": "The project uses pytest for unit tests.",
             "confidence": 1.0,
-            "source": "conversation",
+            "source": "system",
             "provenance": "inferred",
         },
     ]
     assert client.answer.call_kwargs["namespace"] == "memanto_agent_test"
     assert client.answer.call_kwargs["temperature"] == 0
     assert "user:" in client.answer.call_kwargs["query"]
+
+
+def test_extract_omits_unset_active_ai_model(monkeypatch):
+    """On-prem fallback should let answer.generate use its configured model."""
+    from memanto.app.services import conversation_memory_extraction_service as module
+
+    monkeypatch.setattr(module, "get_active_llm_model", lambda _: None)
+    client = FakeClient(
+        '[{"type":"fact","title":"Test","content":"Use pytest.","confidence":0.9}]'
+    )
+
+    service = ConversationMemoryExtractionService(client)
+    service.extract(
+        namespace="memanto_agent_test",
+        messages=[{"role": "user", "content": "The project uses pytest."}],
+    )
+
+    assert "ai_model" not in client.answer.call_kwargs
 
 
 def test_extract_rejects_non_json_answers():

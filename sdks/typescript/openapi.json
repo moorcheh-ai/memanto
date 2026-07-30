@@ -102,6 +102,22 @@
               ],
               "title": "X-Session-Token"
             }
+          },
+          {
+            "name": "memanto_session_token",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Memanto Session Token"
+            }
           }
         ],
         "requestBody": {
@@ -171,6 +187,22 @@
                 }
               ],
               "title": "X-Session-Token"
+            }
+          },
+          {
+            "name": "memanto_session_token",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Memanto Session Token"
             }
           }
         ],
@@ -251,6 +283,22 @@
               ],
               "title": "X-Session-Token"
             }
+          },
+          {
+            "name": "memanto_session_token",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Memanto Session Token"
+            }
           }
         ],
         "requestBody": {
@@ -326,6 +374,22 @@
               ],
               "title": "X-Session-Token"
             }
+          },
+          {
+            "name": "memanto_session_token",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Memanto Session Token"
+            }
           }
         ],
         "responses": {
@@ -383,6 +447,22 @@
                 }
               ],
               "title": "X-Session-Token"
+            }
+          },
+          {
+            "name": "memanto_session_token",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Memanto Session Token"
             }
           }
         ],
@@ -451,6 +531,22 @@
                 }
               ],
               "title": "X-Session-Token"
+            }
+          },
+          {
+            "name": "memanto_session_token",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Memanto Session Token"
             }
           }
         ],
@@ -522,6 +618,22 @@
               ],
               "title": "X-Session-Token"
             }
+          },
+          {
+            "name": "memanto_session_token",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Memanto Session Token"
+            }
           }
         ],
         "requestBody": {
@@ -591,6 +703,22 @@
                 }
               ],
               "title": "X-Session-Token"
+            }
+          },
+          {
+            "name": "memanto_session_token",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Memanto Session Token"
             }
           }
         ],
@@ -662,6 +790,22 @@
               ],
               "title": "X-Session-Token"
             }
+          },
+          {
+            "name": "memanto_session_token",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Memanto Session Token"
+            }
           }
         ],
         "requestBody": {
@@ -728,6 +872,22 @@
                 }
               ],
               "title": "X-Session-Token"
+            }
+          },
+          {
+            "name": "memanto_session_token",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Memanto Session Token"
             }
           }
         ],
@@ -814,6 +974,22 @@
               ],
               "title": "X-Session-Token"
             }
+          },
+          {
+            "name": "memanto_session_token",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Memanto Session Token"
+            }
           }
         ],
         "responses": {
@@ -871,6 +1047,22 @@
                 }
               ],
               "title": "X-Session-Token"
+            }
+          },
+          {
+            "name": "memanto_session_token",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Memanto Session Token"
             }
           }
         ],
@@ -939,6 +1131,22 @@
                 }
               ],
               "title": "X-Session-Token"
+            }
+          },
+          {
+            "name": "memanto_session_token",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Memanto Session Token"
             }
           }
         ],
@@ -1010,6 +1218,22 @@
               ],
               "title": "X-Session-Token"
             }
+          },
+          {
+            "name": "memanto_session_token",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Memanto Session Token"
+            }
           }
         ],
         "requestBody": {
@@ -1080,6 +1304,22 @@
               ],
               "title": "X-Session-Token"
             }
+          },
+          {
+            "name": "memanto_session_token",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Memanto Session Token"
+            }
           }
         ],
         "requestBody": {
@@ -1117,26 +1357,6 @@
       }
     },
     "/api/v2/agents": {
-      "get": {
-        "tags": [
-          "Sessions & Agents"
-        ],
-        "summary": "List Agents",
-        "description": "List all agents for this Moorcheh account\n\nReturns agents sorted by creation date (newest first). The ``memory_count``\nof each agent is populated with the live document count from its Moorcheh\nnamespace rather than the stale value in local metadata.",
-        "operationId": "list_agents_api_v2_agents_get",
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/AgentList"
-                }
-              }
-            }
-          }
-        }
-      },
       "post": {
         "tags": [
           "Sessions & Agents"
@@ -1144,15 +1364,49 @@
         "summary": "Create Agent",
         "description": "Create a new MEMANTO agent\n\nCreates:\n- Agent metadata in ~/.memanto/agents/\n- Moorcheh namespace: memanto_agent_{agent_id}\n\nThe agent is ready to activate once created.",
         "operationId": "create_agent_api_v2_agents_post",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "name": "X-Api-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
         "requestBody": {
+          "required": true,
           "content": {
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/AgentCreate"
               }
             }
-          },
-          "required": true
+          }
         },
         "responses": {
           "201": {
@@ -1161,6 +1415,70 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/AgentInfo"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "Sessions & Agents"
+        ],
+        "summary": "List Agents",
+        "description": "List all agents for this Moorcheh account\n\nReturns agents sorted by creation date (newest first). The ``memory_count``\nof each agent is populated with the live document count from its Moorcheh\nnamespace rather than the stale value in local metadata.",
+        "operationId": "list_agents_api_v2_agents_get",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "name": "X-Api-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgentList"
                 }
               }
             }
@@ -1194,6 +1512,38 @@
             "schema": {
               "type": "string",
               "title": "Agent Id"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "name": "X-Api-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
             }
           }
         ],
@@ -1248,6 +1598,38 @@
               "title": "Delete-Backup-Too"
             },
             "description": "Delete Moorcheh namespace backup"
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "name": "X-Api-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
           }
         ],
         "responses": {
@@ -1288,6 +1670,38 @@
             "schema": {
               "type": "string",
               "title": "Agent Id"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "name": "X-Api-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
             }
           }
         ],
@@ -1348,6 +1762,54 @@
               ],
               "title": "X-Session-Token"
             }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "name": "X-Api-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          },
+          {
+            "name": "memanto_session_token",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Memanto Session Token"
+            }
           }
         ],
         "responses": {
@@ -1380,8 +1842,42 @@
           "Sessions & Agents"
         ],
         "summary": "Get Status",
-        "description": "Get current active session status.\n\nNo parameters required \u2014 reads the active session from local state.",
+        "description": "Get current active session status.\n\nRequires management credential or loopback origin (same as other\nagent-lifecycle endpoints). Reads the active session from local state.",
         "operationId": "get_status_api_v2_status_get",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "name": "X-Api-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "Successful Response",
@@ -1389,6 +1885,16 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/SessionInfo"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
                 }
               }
             }
@@ -1462,7 +1968,7 @@
           "Web UI"
         ],
         "summary": "Restart Onprem Backend",
-        "description": "Bounce the on-prem moorcheh stack so it re-reads ``~/.moorcheh/config.json``.\n\n``moorcheh down`` + ``moorcheh up`` (with embedding flags recovered from\nstate.json / config.json). Blocks for up to ~6 minutes total (5min for\n``up``, 60s for ``/health``).",
+        "description": "Bounce the on-prem moorcheh stack so it re-reads ``~/.moorcheh/config.json``.\n\n``moorcheh down`` + ``moorcheh up`` (with embedding flags recovered from\nstate.json / config.json). Waits up to ~6 minutes total (5min for\n``up``, 60s for ``/health``).\n\nA module-level async lock prevents concurrent restart requests from\ninterleaving ``down``/``up`` calls against the same Moorcheh stack,\nwhich can leave the backend in an inconsistent state.",
         "operationId": "restart_onprem_backend_api_ui_onprem_restart_post",
         "responses": {
           "200": {
@@ -1698,7 +2204,7 @@
           "Web UI"
         ],
         "summary": "Generate Daily Summary",
-        "description": "Trigger an on-demand daily summary for the active agent.\nExpects (optional): {\"agent_id\": \"...\", \"date\": \"YYYY-MM-DD\",\n                     \"output_path\": \"...\"}",
+        "description": "Trigger an on-demand daily summary for the active agent.\nExpects (optional): {\"agent_id\": \"...\", \"date\": \"YYYY-MM-DD\"}",
         "operationId": "generate_daily_summary_api_ui_daily_summary_post",
         "requestBody": {
           "content": {
@@ -2410,9 +2916,12 @@
             "anyOf": [
               {
                 "items": {
-                  "type": "string"
+                  "type": "string",
+                  "maxLength": 64,
+                  "minLength": 1
                 },
-                "type": "array"
+                "type": "array",
+                "maxItems": 20
               },
               {
                 "type": "null"
@@ -2423,6 +2932,12 @@
           },
           "source": {
             "type": "string",
+            "enum": [
+              "user",
+              "agent",
+              "tool",
+              "system"
+            ],
             "title": "Source",
             "description": "Source of memory",
             "default": "agent"
@@ -2600,7 +3115,8 @@
           }
         },
         "type": "object",
-        "title": "ConflictDetectRequest"
+        "title": "ConflictDetectRequest",
+        "description": "Request body for on-demand conflict report generation."
       },
       "ConflictResolveRequest": {
         "properties": {
@@ -2612,6 +3128,13 @@
           },
           "action": {
             "type": "string",
+            "enum": [
+              "keep_old",
+              "keep_new",
+              "keep_both",
+              "remove_both",
+              "manual"
+            ],
             "title": "Action",
             "description": "Resolution action: keep_old, keep_new, keep_both, remove_both, manual"
           },
@@ -2707,11 +3230,12 @@
               }
             ],
             "title": "Output Path",
-            "description": "Optional custom output path for the summary MD file."
+            "description": "Accepted for backwards compatibility but ignored; summaries use the server-controlled output location."
           }
         },
         "type": "object",
-        "title": "DailySummaryRequest"
+        "title": "DailySummaryRequest",
+        "description": "Request body for on-demand daily summary generation."
       },
       "ExtractMemoriesRequest": {
         "properties": {
@@ -2829,7 +3353,22 @@
           "type": {
             "anyOf": [
               {
-                "type": "string"
+                "type": "string",
+                "enum": [
+                  "fact",
+                  "preference",
+                  "goal",
+                  "decision",
+                  "artifact",
+                  "learning",
+                  "event",
+                  "instruction",
+                  "relationship",
+                  "context",
+                  "observation",
+                  "commitment",
+                  "error"
+                ]
               },
               {
                 "type": "null"
@@ -2854,9 +3393,12 @@
             "anyOf": [
               {
                 "items": {
-                  "type": "string"
+                  "type": "string",
+                  "maxLength": 64,
+                  "minLength": 1
                 },
-                "type": "array"
+                "type": "array",
+                "maxItems": 20
               },
               {
                 "type": "null"
@@ -2867,7 +3409,13 @@
           "source": {
             "anyOf": [
               {
-                "type": "string"
+                "type": "string",
+                "enum": [
+                  "user",
+                  "agent",
+                  "tool",
+                  "system"
+                ]
               },
               {
                 "type": "null"
@@ -2877,7 +3425,8 @@
           }
         },
         "type": "object",
-        "title": "MemoryEditRequest"
+        "title": "MemoryEditRequest",
+        "description": "Request body for partial memory record updates."
       },
       "MemoryItem": {
         "properties": {
@@ -3091,13 +3640,29 @@
             ],
             "title": "Type",
             "description": "Memory type filters"
+          },
+          "tags": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tags",
+            "description": "Tag filters"
           }
         },
         "type": "object",
         "required": [
           "as_of"
         ],
-        "title": "RecallAsOfRequest"
+        "title": "RecallAsOfRequest",
+        "description": "Request body for point-in-time memory recall."
       },
       "RecallChangedSinceRequest": {
         "properties": {
@@ -3134,13 +3699,29 @@
             ],
             "title": "Type",
             "description": "Memory type filters"
+          },
+          "tags": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tags",
+            "description": "Tag filters"
           }
         },
         "type": "object",
         "required": [
           "since"
         ],
-        "title": "RecallChangedSinceRequest"
+        "title": "RecallChangedSinceRequest",
+        "description": "Request body for querying memories changed since a timestamp."
       },
       "RecallRecentRequest": {
         "properties": {
@@ -3171,10 +3752,60 @@
             ],
             "title": "Type",
             "description": "Memory type filters"
+          },
+          "tags": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tags",
+            "description": "Tag filters"
+          },
+          "created_after": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created After",
+            "description": "Include only memories created at or after this timestamp. Date-only values (YYYY-MM-DD) use the start of that day."
+          },
+          "created_before": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created Before",
+            "description": "Include only memories created at or before this timestamp. Date-only values (YYYY-MM-DD) use the end of that day."
           }
         },
         "type": "object",
-        "title": "RecallRecentRequest"
+        "title": "RecallRecentRequest",
+        "description": "Request body for retrieving recent memories."
       },
       "RecallRequest": {
         "properties": {
@@ -3225,13 +3856,63 @@
             ],
             "title": "Type",
             "description": "Memory type filters"
+          },
+          "tags": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tags",
+            "description": "Tag filters"
+          },
+          "created_after": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created After",
+            "description": "Include only memories created at or after this timestamp. Date-only values (YYYY-MM-DD) use the start of that day."
+          },
+          "created_before": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created Before",
+            "description": "Include only memories created at or before this timestamp. Date-only values (YYYY-MM-DD) use the end of that day."
           }
         },
         "type": "object",
         "required": [
           "query"
         ],
-        "title": "RecallRequest"
+        "title": "RecallRequest",
+        "description": "Request body for semantic memory recall."
       },
       "RecallResponse": {
         "properties": {
@@ -3329,9 +4010,12 @@
             "anyOf": [
               {
                 "items": {
-                  "type": "string"
+                  "type": "string",
+                  "maxLength": 64,
+                  "minLength": 1
                 },
-                "type": "array"
+                "type": "array",
+                "maxItems": 20
               },
               {
                 "type": "null"
@@ -3342,6 +4026,12 @@
           },
           "source": {
             "type": "string",
+            "enum": [
+              "user",
+              "agent",
+              "tool",
+              "system"
+            ],
             "title": "Source",
             "description": "Source of memory",
             "default": "agent"
