@@ -9,7 +9,7 @@ tags:
 x_memanto:
   type: context
   source: codex-session-jsonl
-  source_fingerprint: 45150a426e733557
+  source_fingerprint: 12ee3c12f0e0b9dc
   source_line: 3
   role: user
   privacy_filtered: true

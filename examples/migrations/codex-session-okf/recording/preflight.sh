@@ -4,7 +4,7 @@ set -euo pipefail
 recording_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 demo_dir="$(cd "$recording_dir/.." && pwd)"
 repo_dir="$(cd "$demo_dir/../../.." && pwd)"
-memanto_bin="${MEMANTO_BIN:-/root/.local/bin/memanto}"
+memanto_bin="${MEMANTO_BIN:-$(command -v memanto || true)}"
 python_bin="${PYTHON:-python3}"
 
 pass() { printf 'OK  %s\n' "$1"; }
@@ -29,7 +29,7 @@ if cm.get_backend().value != "cloud":
 print("OK  Moorcheh cloud configuration is available")
 PY
 
-env_file="/root/.memanto/.env"
+env_file="${MEMANTO_ENV_FILE:-${HOME:?HOME is required}/.memanto/.env}"
 test -f "$env_file" || fail "Memanto credential file is missing"
 test "$(stat -c %a "$env_file")" = "600" || fail "Credential file mode is not 600"
 pass "Credential file permissions are 600"
@@ -38,10 +38,17 @@ test -f "$demo_dir/sample/source-session.jsonl" || fail "Public source sample is
 test -f "$demo_dir/sample/golden_qa.json" || fail "Golden questions are missing"
 pass "Public sample and golden questions are present"
 
+command -v rg >/dev/null 2>&1 ||
+  fail "ripgrep is required for the recording safety scan"
+
 if rg -n --pcre2 \
   '(?i)(gh[opusr]_[A-Za-z0-9]{20,}|sk-[A-Za-z0-9_-]{20,}|AIza[A-Za-z0-9_-]{20,}|[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,})' \
   "$demo_dir/sample" >/dev/null; then
   fail "Public sample contains a credential-like token or email address"
+else
+  scanner_status=$?
+  test "$scanner_status" -eq 1 ||
+    fail "Recording safety scan failed with status $scanner_status"
 fi
 pass "Public sample passes the recording safety scan"
 

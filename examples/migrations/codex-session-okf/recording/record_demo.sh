@@ -4,7 +4,7 @@ set -euo pipefail
 recording_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 demo_dir="$(cd "$recording_dir/.." && pwd)"
 repo_dir="$(cd "$demo_dir/../../.." && pwd)"
-memanto_bin="${MEMANTO_BIN:-/root/.local/bin/memanto}"
+memanto_bin="${MEMANTO_BIN:-$(command -v memanto || true)}"
 python_bin="${PYTHON:-python3}"
 work_dir="$(mktemp -d /tmp/memanto-codex-video-demo.XXXXXX)"
 live="${MEMANTO_RECORD_LIVE:-0}"
@@ -25,7 +25,8 @@ scene() {
 }
 
 run_memanto() {
-  "$memanto_bin" "$@" 2>&1 | sed 's#/root/.memanto#~/.memanto#g'
+  "$memanto_bin" "$@" 2>&1 |
+    sed "s#${HOME:?HOME is required}/.memanto#~/.memanto#g"
 }
 
 cd "$repo_dir"

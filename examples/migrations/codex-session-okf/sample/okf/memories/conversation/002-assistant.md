@@ -9,18 +9,13 @@ tags:
 x_memanto:
   type: context
   source: codex-session-jsonl
-  source_fingerprint: 45150a426e733557
+  source_fingerprint: 12ee3c12f0e0b9dc
   source_line: 2
   role: assistant
   privacy_filtered: true
 ---
 
-当前 `/workspace` 主要有：
+当前工作区包括：
 
-- `memanto`：Python 项目，Git 仓库
-- `bounty-radar`：TypeScript/Node.js 项目，Git 仓库
-- `appserver-ts-20260728b`：App Server 的 TypeScript 类型定义
-- `pptx-work`：PPTX 工作目录，目前为空
-- `.venvs`：Python 虚拟环境
-- `.playwright-mcp`：Playwright 运行文件
-- `opportunity-audit-2026-07-28.md`：审计报告文档
+- `memanto`：Python 项目
+- `bounty-radar`：TypeScript/Node.js 项目

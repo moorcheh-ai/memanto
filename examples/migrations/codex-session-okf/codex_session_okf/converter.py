@@ -17,6 +17,10 @@ PRIVATE_BLOCK_RE = re.compile(
     re.DOTALL,
 )
 USER_INPUT_RE = re.compile(r"<user_input>\s*(.*?)\s*</user_input>", re.DOTALL)
+RESIDUAL_TRANSPORT_RE = re.compile(
+    r"</?(?:bridge|lark)_[A-Za-z0-9_-]+(?:\s[^>]*)?>",
+    re.IGNORECASE,
+)
 EMAIL_RE = re.compile(r"(?<![\w.+-])[\w.+-]+@[\w.-]+\.[A-Za-z]{2,}")
 PHONE_RE = re.compile(
     r"(?<!\d)(?:\+\d[\d ()-]{7,}\d|1[3-9]\d[ -]?\d{4}[ -]?\d{4})(?!\d)"
@@ -102,6 +106,9 @@ def redact_text(text: str) -> tuple[str, int]:
     if user_input:
         text = _decode_user_input(user_input.group(1))
 
+    if RESIDUAL_TRANSPORT_RE.search(text):
+        return "", 1
+
     substitutions = (
         (EMAIL_RE, "[REDACTED_EMAIL]"),
         (PHONE_RE, "[REDACTED_PHONE]"),
@@ -115,7 +122,7 @@ def redact_text(text: str) -> tuple[str, int]:
         count += replaced
 
     text = text.strip()
-    if not text or text.startswith("<bridge_"):
+    if not text:
         return "", count + (1 if original else 0)
     return text, count
 

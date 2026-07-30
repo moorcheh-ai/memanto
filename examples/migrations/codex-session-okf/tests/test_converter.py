@@ -68,6 +68,15 @@ def test_extracts_bridge_user_input_and_redacts_identifiers() -> None:
     assert "bridge" not in clean.lower()
 
 
+def test_rejects_residual_transport_wrapper_embedded_after_text() -> None:
+    clean, count = redact_text(
+        "Safe-looking prefix <lark_future_payload>private</lark_future_payload>"
+    )
+
+    assert clean == ""
+    assert count == 1
+
+
 def test_include_filter_and_limit(tmp_path: Path) -> None:
     source = tmp_path / "session.jsonl"
     source.write_text(

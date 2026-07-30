@@ -4,12 +4,29 @@ set -euo pipefail
 recording_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 out_dir="$recording_dir/output"
 narration_dir="$recording_dir/narration"
-ffmpeg="/root/.codex/tools/ffmpeg/ffmpeg"
-tts="/root/.local/bin/edge-tts"
-font="/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"
-mono="/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf"
+ffmpeg="${FFMPEG_BIN:-$(command -v ffmpeg || true)}"
+tts="${EDGE_TTS_BIN:-$(command -v edge-tts || true)}"
+font="${FONT_PATH:-/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf}"
+mono="${MONO_FONT_PATH:-/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf}"
 voice="en-US-AriaNeural"
 durations=(12 13 14 13 14 14 14)
+
+[[ -n "$ffmpeg" && -x "$ffmpeg" ]] || {
+  printf 'ffmpeg is required; install it or set FFMPEG_BIN\n' >&2
+  exit 1
+}
+[[ -n "$tts" && -x "$tts" ]] || {
+  printf 'edge-tts is required; install it or set EDGE_TTS_BIN\n' >&2
+  exit 1
+}
+[[ -f "$font" && -f "$mono" ]] || {
+  printf 'DejaVu fonts are required; set FONT_PATH and MONO_FONT_PATH\n' >&2
+  exit 1
+}
+command -v convert >/dev/null 2>&1 || {
+  printf 'ImageMagick convert is required\n' >&2
+  exit 1
+}
 
 mkdir -p "$out_dir/frames" "$out_dir/audio"
 rm -f "$out_dir/frames/concat.txt" "$out_dir/audio/concat.txt"

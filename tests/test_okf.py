@@ -192,6 +192,27 @@ def test_okf_role_maps_to_valid_memory_source(tmp_path):
     assert "OKF role: assistant" in row["content"]
 
 
+def test_okf_valid_source_precedes_conflicting_role(tmp_path):
+    """A normalized valid producer source takes precedence over the chat role."""
+    (tmp_path / "assistant.md").write_text(
+        "---\n"
+        "type: conversation\n"
+        "title: Assistant answer\n"
+        "x_memanto:\n"
+        "  type: context\n"
+        '  source: " USER "\n'
+        "  role: assistant\n"
+        "---\n\n"
+        "A reusable answer.\n",
+        encoding="utf-8",
+    )
+
+    row = map_okf(load_okf_bundle(tmp_path))[0]
+    assert row["source"] == "user"
+    assert "Original source:" not in row["content"]
+    assert "OKF role: assistant" in row["content"]
+
+
 def test_loader_splits_stacked_file(tmp_path):
     """A stacked per-type file is split back into one entry per memory."""
     memories_by_type = {
