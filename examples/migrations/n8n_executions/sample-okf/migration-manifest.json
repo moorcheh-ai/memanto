@@ -1,0 +1,85 @@
+{
+  "bundle_files": [
+    {
+      "file": "index.md",
+      "sha256": "0abe417c741ef4e228d136a4195d84baad25537a681567852738905fc2d96d10"
+    },
+    {
+      "file": "memories/decision/index.md",
+      "sha256": "7fe30f744c37372e99a7ee59f596271821f73493fdb324a572da09bd64a5d918"
+    },
+    {
+      "file": "memories/decision/lead-atlas-fleet-hot-100.md",
+      "sha256": "dc8753c00d6d0cb647a214de726210207830d9b87e1a6022a8858d9a155e8a18"
+    },
+    {
+      "file": "memories/decision/lead-beacon-studio-warm-65.md",
+      "sha256": "cf91242f9786a0081505e74c773091c1ecc5a5e811d44e5d8e1f36b0af856a01"
+    },
+    {
+      "file": "memories/decision/lead-cedar-hobby-cold-25.md",
+      "sha256": "cd25366deb818c9bb62e868f4772ea494403c8abfa8ba3cf10282998239bd9ad"
+    },
+    {
+      "file": "memories/index.md",
+      "sha256": "45e9ed03ccc3f624eaf66b4e82c502cc3dcb8d17838f18c164c622b9f212fd9d"
+    },
+    {
+      "file": "metrics/index.md",
+      "sha256": "82c7d462e02474c3442e14b8b0f3f76a15cc8738764f13bb82022bb22bd1e5e8"
+    },
+    {
+      "file": "metrics/overview.md",
+      "sha256": "d007edf0f4b2a61aeac816528313b4ca1ffefdd1142be93979de8ac2f385cc46"
+    }
+  ],
+  "format": "okf",
+  "generated_at": "2026-07-30T09:00:59.309Z",
+  "mapping_sha256": "7ca4c3891c64353338ff0dda3c1fcdbc23ebb8ff0d24215b665fd6c730c06451",
+  "mapping_version": 1,
+  "memory_count": 3,
+  "memory_counts_by_type": {
+    "decision": 3
+  },
+  "migration": "n8n-executions",
+  "skipped": {},
+  "source_execution_count": 3,
+  "source_files": [
+    {
+      "file": "sample-executions.json",
+      "sha256": "a927c54768ce3aa6eeb404f459072938dcb959b568c40d32be8871cfca02b346"
+    }
+  ],
+  "source_rows": [
+    {
+      "execution_id": "5",
+      "item": 0,
+      "memory_id": "n8n-057bccc8069d70a10f7508f0",
+      "memory_type": "decision",
+      "node": "Normalize, Score & Route",
+      "output": 0,
+      "run": 0,
+      "workflow_id": "nuMIHADKIMhTbCFc"
+    },
+    {
+      "execution_id": "4",
+      "item": 0,
+      "memory_id": "n8n-4cf4dea1abe0f6a3c4adff37",
+      "memory_type": "decision",
+      "node": "Normalize, Score & Route",
+      "output": 0,
+      "run": 0,
+      "workflow_id": "nuMIHADKIMhTbCFc"
+    },
+    {
+      "execution_id": "6",
+      "item": 0,
+      "memory_id": "n8n-f9e93c7aea9432de737301f5",
+      "memory_type": "decision",
+      "node": "Normalize, Score & Route",
+      "output": 0,
+      "run": 0,
+      "workflow_id": "nuMIHADKIMhTbCFc"
+    }
+  ]
+}

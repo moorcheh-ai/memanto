@@ -1,0 +1,36 @@
+{
+  "method": "deterministic-golden-questions",
+  "passed": 3,
+  "questions": 3,
+  "recall_parity_score": 1.0,
+  "results": [
+    {
+      "id": "atlas-priority-route",
+      "migrated_detail": "All expected facts recalled",
+      "migrated_pass": true,
+      "parity": true,
+      "question": "How was the Atlas Fleet lead qualified and what should happen next?",
+      "source_detail": "All expected facts recalled",
+      "source_pass": true
+    },
+    {
+      "id": "beacon-nurture-route",
+      "migrated_detail": "All expected facts recalled",
+      "migrated_pass": true,
+      "parity": true,
+      "question": "How was the Beacon Studio lead qualified and what should happen next?",
+      "source_detail": "All expected facts recalled",
+      "source_pass": true
+    },
+    {
+      "id": "cedar-education-route",
+      "migrated_detail": "All expected facts recalled",
+      "migrated_pass": true,
+      "parity": true,
+      "question": "How was the Cedar Hobby lead qualified and what should happen next?",
+      "source_detail": "All expected facts recalled",
+      "source_pass": true
+    }
+  ],
+  "valid": true
+}

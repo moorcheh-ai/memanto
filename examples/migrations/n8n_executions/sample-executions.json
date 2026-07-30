@@ -1,0 +1,637 @@
+{
+  "data": [
+    {
+      "id": "6",
+      "finished": true,
+      "mode": "webhook",
+      "retryOf": null,
+      "retrySuccessId": null,
+      "status": "success",
+      "startedAt": "2026-07-30T09:00:59.292Z",
+      "stoppedAt": "2026-07-30T09:00:59.309Z",
+      "workflowId": "nuMIHADKIMhTbCFc",
+      "waitTill": null,
+      "storedAt": "db",
+      "jsonSizeBytes": 6905,
+      "workflowVersionId": "64900af2-641a-427c-ac4f-e9a6f63ad8db",
+      "data": {
+        "version": 1,
+        "startData": {},
+        "resultData": {
+          "runData": {
+            "Lead Intake": [
+              {
+                "startTime": 1785402059299,
+                "executionIndex": 0,
+                "source": [],
+                "hints": [],
+                "executionTime": 0,
+                "executionStatus": "success",
+                "data": {
+                  "main": [
+                    [
+                      {
+                        "json": {
+                          "headers": {
+                            "accept-encoding": "identity",
+                            "content-length": "257",
+                            "host": "localhost:5679",
+                            "user-agent": "Python-urllib/3.12",
+                            "content-type": "application/json",
+                            "connection": "close"
+                          },
+                          "params": {},
+                          "query": {},
+                          "body": {
+                            "name": "Casey Morgan",
+                            "email": "casey@cedar-hobby.example",
+                            "company": "Cedar Hobby",
+                            "companySize": 2,
+                            "budgetUsd": 500,
+                            "urgency": "researching",
+                            "useCase": "Send a monthly newsletter",
+                            "notes": "No sales process change planned yet.",
+                            "source": "demo"
+                          },
+                          "webhookUrl": "http://127.0.0.1:5679/webhook/lead-intake",
+                          "executionMode": "production"
+                        },
+                        "pairedItem": {
+                          "item": 0
+                        }
+                      }
+                    ]
+                  ]
+                }
+              }
+            ],
+            "Normalize, Score & Route": [
+              {
+                "startTime": 1785402059300,
+                "executionIndex": 1,
+                "source": [
+                  {
+                    "previousNode": "Lead Intake",
+                    "previousNodeOutput": 0,
+                    "previousNodeRun": 0
+                  }
+                ],
+                "hints": [],
+                "executionTime": 9,
+                "executionStatus": "success",
+                "data": {
+                  "main": [
+                    [
+                      {
+                        "json": {
+                          "idempotencyKey": "a09c0bc9",
+                          "processedAt": "2026-07-30T09:00:59.307Z",
+                          "followUpAt": "2026-07-31T09:00:59.307Z",
+                          "lead": {
+                            "name": "Casey Morgan",
+                            "email": "casey@cedar-hobby.example",
+                            "company": "Cedar Hobby",
+                            "companySize": 2,
+                            "budgetUsd": 500,
+                            "urgency": "researching",
+                            "useCase": "Send a monthly newsletter",
+                            "notes": "No sales process change planned yet.",
+                            "source": "demo"
+                          },
+                          "qualification": {
+                            "score": 25,
+                            "route": "cold",
+                            "reasons": [
+                              "budget provided",
+                              "company size provided",
+                              "urgency: researching",
+                              "business email",
+                              "complete core profile"
+                            ],
+                            "nextAction": "Add to educational nurture; no sales notification."
+                          }
+                        },
+                        "pairedItem": {
+                          "item": 0
+                        }
+                      }
+                    ]
+                  ]
+                }
+              }
+            ]
+          },
+          "lastNodeExecuted": "Normalize, Score & Route"
+        },
+        "executionData": {
+          "contextData": {},
+          "nodeExecutionStack": [],
+          "metadata": {},
+          "waitingExecution": {},
+          "waitingExecutionSource": {},
+          "runtimeData": {
+            "version": 1,
+            "establishedAt": 1785402059287,
+            "source": "webhook",
+            "triggerNode": {
+              "name": "Lead Intake",
+              "type": "n8n-nodes-base.webhook"
+            },
+            "redaction": {
+              "version": 2,
+              "production": false,
+              "manual": false,
+              "source": "workflow"
+            }
+          }
+        },
+        "resumeToken": "c493eed8fb57ca180a8c6632662d6fc6083e94fb14ce5c4c02897835280663b6"
+      },
+      "workflowData": {
+        "id": "nuMIHADKIMhTbCFc",
+        "name": "LeadOps — Intake, Scoring & Follow-up",
+        "nodes": [
+          {
+            "parameters": {
+              "multipleMethods": false,
+              "httpMethod": "POST",
+              "path": "lead-intake",
+              "authentication": "none",
+              "responseMode": "lastNode",
+              "responseData": "firstEntryJson",
+              "options": {}
+            },
+            "id": "4f34113b-b649-405d-b986-159403391535",
+            "name": "Lead Intake",
+            "type": "n8n-nodes-base.webhook",
+            "typeVersion": 2,
+            "position": [
+              0,
+              0
+            ],
+            "webhookId": "1cf90f9d-87e1-4fe4-b99b-00929002984a"
+          },
+          {
+            "parameters": {
+              "mode": "runOnceForAllItems",
+              "language": "javaScript",
+              "jsCode": "const input = $json.body ?? $json;\nconst clean = (value) => typeof value === 'string' ? value.trim().replace(/\\s+/g, ' ') : '';\nconst numberOrNull = (value) => {\n  if (value === '' || value === null || value === undefined) return null;\n  const parsed = Number(value);\n  return Number.isFinite(parsed) && parsed >= 0 ? parsed : null;\n};\nconst email = clean(input.email).toLowerCase();\nif (!/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email)) throw new Error('A valid email is required.');\nconst urgencyRaw = clean(input.urgency).toLowerCase().replace(/[\\s-]+/g, '_');\nconst urgency = ({ asap: 'immediate', urgent: 'immediate', this_week: 'immediate', month: 'this_month', quarter: 'this_quarter' })[urgencyRaw] ?? urgencyRaw;\nconst lead = {\n  name: clean(input.name),\n  email,\n  company: clean(input.company),\n  companySize: numberOrNull(input.companySize ?? input.company_size),\n  budgetUsd: numberOrNull(input.budgetUsd ?? input.budget_usd ?? input.budget),\n  urgency,\n  useCase: clean(input.useCase ?? input.use_case),\n  notes: clean(input.notes),\n  source: clean(input.source).toLowerCase() || 'unknown',\n};\nlet score = 0;\nconst reasons = [];\nif (lead.budgetUsd === null) { score -= 10; reasons.push('budget missing'); }\nelse if (lead.budgetUsd >= 10000) { score += 30; reasons.push('budget ≥ $10k'); }\nelse if (lead.budgetUsd >= 5000) { score += 22; reasons.push('budget ≥ $5k'); }\nelse if (lead.budgetUsd >= 2000) { score += 12; reasons.push('budget ≥ $2k'); }\nelse { score += 4; reasons.push('budget provided'); }\nif (lead.companySize >= 50) { score += 15; reasons.push('company size ≥ 50'); }\nelse if (lead.companySize >= 10) { score += 10; reasons.push('company size ≥ 10'); }\nelse if (lead.companySize !== null) { score += 4; reasons.push('company size provided'); }\nconst urgencyPoints = { immediate: 20, this_month: 15, this_quarter: 8, researching: 2 };\nif (urgencyPoints[lead.urgency]) { score += urgencyPoints[lead.urgency]; reasons.push(`urgency: ${lead.urgency}`); }\nconst intentText = `${lead.useCase} ${lead.notes}`.toLowerCase();\nconst keywords = ['automation', 'automate', 'crm', 'lead', 'integration', 'workflow', 'manual', 'n8n', 'ai'];\nconst matches = keywords.filter((keyword) => intentText.includes(keyword));\nif (matches.length >= 3) { score += 20; reasons.push('strong automation intent'); }\nelse if (matches.length) { score += 10; reasons.push('automation intent'); }\nconst freeDomains = ['gmail.com', 'hotmail.com', 'icloud.com', 'outlook.com', 'proton.me', 'yahoo.com'];\nif (!freeDomains.includes(email.split('@')[1])) { score += 10; reasons.push('business email'); }\nif (lead.name && lead.company && lead.useCase) { score += 5; reasons.push('complete core profile'); }\nscore = Math.max(0, Math.min(100, score));\nconst route = score >= 70 ? 'hot' : score >= 40 ? 'warm' : 'cold';\nconst slaMinutes = { hot: 15, warm: 240, cold: 1440 };\nconst processedAt = new Date();\nconst followUpAt = new Date(processedAt.valueOf() + slaMinutes[route] * 60000);\nlet hash = 0x811c9dc5;\nfor (const char of `${lead.email}|${lead.company.toLowerCase()}`) {\n  hash ^= char.charCodeAt(0);\n  hash = Math.imul(hash, 0x01000193);\n}\nconst idempotencyKey = (hash >>> 0).toString(16).padStart(8, '0');\nconst nextAction = {\n  hot: 'Offer a priority discovery call.',\n  warm: 'Send a relevant case study and ask one qualifying question.',\n  cold: 'Add to educational nurture; no sales notification.',\n}[route];\nreturn [{ json: { idempotencyKey, processedAt: processedAt.toISOString(), followUpAt: followUpAt.toISOString(), lead, qualification: { score, route, reasons, nextAction } } }];",
+              "notice": ""
+            },
+            "id": "ba7dcd09-f5f7-4cd3-8d3d-a739d56b9d96",
+            "name": "Normalize, Score & Route",
+            "type": "n8n-nodes-base.code",
+            "typeVersion": 2,
+            "position": [
+              288,
+              0
+            ]
+          }
+        ],
+        "connections": {
+          "Lead Intake": {
+            "main": [
+              [
+                {
+                  "node": "Normalize, Score & Route",
+                  "type": "main",
+                  "index": 0
+                }
+              ]
+            ]
+          }
+        },
+        "settings": {
+          "executionOrder": "v1",
+          "binaryMode": "separate",
+          "availableInMCP": false
+        },
+        "nodeGroups": []
+      },
+      "customData": {}
+    },
+    {
+      "id": "5",
+      "finished": true,
+      "mode": "webhook",
+      "retryOf": null,
+      "retrySuccessId": null,
+      "status": "success",
+      "startedAt": "2026-07-30T09:00:59.250Z",
+      "stoppedAt": "2026-07-30T09:00:59.268Z",
+      "workflowId": "nuMIHADKIMhTbCFc",
+      "waitTill": null,
+      "storedAt": "db",
+      "jsonSizeBytes": 6968,
+      "workflowVersionId": "64900af2-641a-427c-ac4f-e9a6f63ad8db",
+      "data": {
+        "version": 1,
+        "startData": {},
+        "resultData": {
+          "runData": {
+            "Lead Intake": [
+              {
+                "startTime": 1785402059258,
+                "executionIndex": 0,
+                "source": [],
+                "hints": [],
+                "executionTime": 0,
+                "executionStatus": "success",
+                "data": {
+                  "main": [
+                    [
+                      {
+                        "json": {
+                          "headers": {
+                            "accept-encoding": "identity",
+                            "content-length": "279",
+                            "host": "localhost:5679",
+                            "user-agent": "Python-urllib/3.12",
+                            "content-type": "application/json",
+                            "connection": "close"
+                          },
+                          "params": {},
+                          "query": {},
+                          "body": {
+                            "name": "Blake Rivera",
+                            "email": "blake@beacon-studio.example",
+                            "company": "Beacon Studio",
+                            "companySize": 15,
+                            "budgetUsd": 2500,
+                            "urgency": "this_quarter",
+                            "useCase": "Reduce manual lead qualification",
+                            "notes": "Exploring a small workflow automation pilot.",
+                            "source": "demo"
+                          },
+                          "webhookUrl": "http://127.0.0.1:5679/webhook/lead-intake",
+                          "executionMode": "production"
+                        },
+                        "pairedItem": {
+                          "item": 0
+                        }
+                      }
+                    ]
+                  ]
+                }
+              }
+            ],
+            "Normalize, Score & Route": [
+              {
+                "startTime": 1785402059259,
+                "executionIndex": 1,
+                "source": [
+                  {
+                    "previousNode": "Lead Intake",
+                    "previousNodeOutput": 0,
+                    "previousNodeRun": 0
+                  }
+                ],
+                "hints": [],
+                "executionTime": 9,
+                "executionStatus": "success",
+                "data": {
+                  "main": [
+                    [
+                      {
+                        "json": {
+                          "idempotencyKey": "7204bd61",
+                          "processedAt": "2026-07-30T09:00:59.266Z",
+                          "followUpAt": "2026-07-30T13:00:59.266Z",
+                          "lead": {
+                            "name": "Blake Rivera",
+                            "email": "blake@beacon-studio.example",
+                            "company": "Beacon Studio",
+                            "companySize": 15,
+                            "budgetUsd": 2500,
+                            "urgency": "this_quarter",
+                            "useCase": "Reduce manual lead qualification",
+                            "notes": "Exploring a small workflow automation pilot.",
+                            "source": "demo"
+                          },
+                          "qualification": {
+                            "score": 65,
+                            "route": "warm",
+                            "reasons": [
+                              "budget ≥ $2k",
+                              "company size ≥ 10",
+                              "urgency: this_quarter",
+                              "strong automation intent",
+                              "business email",
+                              "complete core profile"
+                            ],
+                            "nextAction": "Send a relevant case study and ask one qualifying question."
+                          }
+                        },
+                        "pairedItem": {
+                          "item": 0
+                        }
+                      }
+                    ]
+                  ]
+                }
+              }
+            ]
+          },
+          "lastNodeExecuted": "Normalize, Score & Route"
+        },
+        "executionData": {
+          "contextData": {},
+          "nodeExecutionStack": [],
+          "metadata": {},
+          "waitingExecution": {},
+          "waitingExecutionSource": {},
+          "runtimeData": {
+            "version": 1,
+            "establishedAt": 1785402059243,
+            "source": "webhook",
+            "triggerNode": {
+              "name": "Lead Intake",
+              "type": "n8n-nodes-base.webhook"
+            },
+            "redaction": {
+              "version": 2,
+              "production": false,
+              "manual": false,
+              "source": "workflow"
+            }
+          }
+        },
+        "resumeToken": "964a91a56edca94b99333dd4bdda1ec1fc0cb173fabd52dd02db34f6d81df7c7"
+      },
+      "workflowData": {
+        "id": "nuMIHADKIMhTbCFc",
+        "name": "LeadOps — Intake, Scoring & Follow-up",
+        "nodes": [
+          {
+            "parameters": {
+              "multipleMethods": false,
+              "httpMethod": "POST",
+              "path": "lead-intake",
+              "authentication": "none",
+              "responseMode": "lastNode",
+              "responseData": "firstEntryJson",
+              "options": {}
+            },
+            "id": "4f34113b-b649-405d-b986-159403391535",
+            "name": "Lead Intake",
+            "type": "n8n-nodes-base.webhook",
+            "typeVersion": 2,
+            "position": [
+              0,
+              0
+            ],
+            "webhookId": "1cf90f9d-87e1-4fe4-b99b-00929002984a"
+          },
+          {
+            "parameters": {
+              "mode": "runOnceForAllItems",
+              "language": "javaScript",
+              "jsCode": "const input = $json.body ?? $json;\nconst clean = (value) => typeof value === 'string' ? value.trim().replace(/\\s+/g, ' ') : '';\nconst numberOrNull = (value) => {\n  if (value === '' || value === null || value === undefined) return null;\n  const parsed = Number(value);\n  return Number.isFinite(parsed) && parsed >= 0 ? parsed : null;\n};\nconst email = clean(input.email).toLowerCase();\nif (!/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email)) throw new Error('A valid email is required.');\nconst urgencyRaw = clean(input.urgency).toLowerCase().replace(/[\\s-]+/g, '_');\nconst urgency = ({ asap: 'immediate', urgent: 'immediate', this_week: 'immediate', month: 'this_month', quarter: 'this_quarter' })[urgencyRaw] ?? urgencyRaw;\nconst lead = {\n  name: clean(input.name),\n  email,\n  company: clean(input.company),\n  companySize: numberOrNull(input.companySize ?? input.company_size),\n  budgetUsd: numberOrNull(input.budgetUsd ?? input.budget_usd ?? input.budget),\n  urgency,\n  useCase: clean(input.useCase ?? input.use_case),\n  notes: clean(input.notes),\n  source: clean(input.source).toLowerCase() || 'unknown',\n};\nlet score = 0;\nconst reasons = [];\nif (lead.budgetUsd === null) { score -= 10; reasons.push('budget missing'); }\nelse if (lead.budgetUsd >= 10000) { score += 30; reasons.push('budget ≥ $10k'); }\nelse if (lead.budgetUsd >= 5000) { score += 22; reasons.push('budget ≥ $5k'); }\nelse if (lead.budgetUsd >= 2000) { score += 12; reasons.push('budget ≥ $2k'); }\nelse { score += 4; reasons.push('budget provided'); }\nif (lead.companySize >= 50) { score += 15; reasons.push('company size ≥ 50'); }\nelse if (lead.companySize >= 10) { score += 10; reasons.push('company size ≥ 10'); }\nelse if (lead.companySize !== null) { score += 4; reasons.push('company size provided'); }\nconst urgencyPoints = { immediate: 20, this_month: 15, this_quarter: 8, researching: 2 };\nif (urgencyPoints[lead.urgency]) { score += urgencyPoints[lead.urgency]; reasons.push(`urgency: ${lead.urgency}`); }\nconst intentText = `${lead.useCase} ${lead.notes}`.toLowerCase();\nconst keywords = ['automation', 'automate', 'crm', 'lead', 'integration', 'workflow', 'manual', 'n8n', 'ai'];\nconst matches = keywords.filter((keyword) => intentText.includes(keyword));\nif (matches.length >= 3) { score += 20; reasons.push('strong automation intent'); }\nelse if (matches.length) { score += 10; reasons.push('automation intent'); }\nconst freeDomains = ['gmail.com', 'hotmail.com', 'icloud.com', 'outlook.com', 'proton.me', 'yahoo.com'];\nif (!freeDomains.includes(email.split('@')[1])) { score += 10; reasons.push('business email'); }\nif (lead.name && lead.company && lead.useCase) { score += 5; reasons.push('complete core profile'); }\nscore = Math.max(0, Math.min(100, score));\nconst route = score >= 70 ? 'hot' : score >= 40 ? 'warm' : 'cold';\nconst slaMinutes = { hot: 15, warm: 240, cold: 1440 };\nconst processedAt = new Date();\nconst followUpAt = new Date(processedAt.valueOf() + slaMinutes[route] * 60000);\nlet hash = 0x811c9dc5;\nfor (const char of `${lead.email}|${lead.company.toLowerCase()}`) {\n  hash ^= char.charCodeAt(0);\n  hash = Math.imul(hash, 0x01000193);\n}\nconst idempotencyKey = (hash >>> 0).toString(16).padStart(8, '0');\nconst nextAction = {\n  hot: 'Offer a priority discovery call.',\n  warm: 'Send a relevant case study and ask one qualifying question.',\n  cold: 'Add to educational nurture; no sales notification.',\n}[route];\nreturn [{ json: { idempotencyKey, processedAt: processedAt.toISOString(), followUpAt: followUpAt.toISOString(), lead, qualification: { score, route, reasons, nextAction } } }];",
+              "notice": ""
+            },
+            "id": "ba7dcd09-f5f7-4cd3-8d3d-a739d56b9d96",
+            "name": "Normalize, Score & Route",
+            "type": "n8n-nodes-base.code",
+            "typeVersion": 2,
+            "position": [
+              288,
+              0
+            ]
+          }
+        ],
+        "connections": {
+          "Lead Intake": {
+            "main": [
+              [
+                {
+                  "node": "Normalize, Score & Route",
+                  "type": "main",
+                  "index": 0
+                }
+              ]
+            ]
+          }
+        },
+        "settings": {
+          "executionOrder": "v1",
+          "binaryMode": "separate",
+          "availableInMCP": false
+        },
+        "nodeGroups": []
+      },
+      "customData": {}
+    },
+    {
+      "id": "4",
+      "finished": true,
+      "mode": "webhook",
+      "retryOf": null,
+      "retrySuccessId": null,
+      "status": "success",
+      "startedAt": "2026-07-30T09:00:59.201Z",
+      "stoppedAt": "2026-07-30T09:00:59.222Z",
+      "workflowId": "nuMIHADKIMhTbCFc",
+      "waitTill": null,
+      "storedAt": "db",
+      "jsonSizeBytes": 6966,
+      "workflowVersionId": "64900af2-641a-427c-ac4f-e9a6f63ad8db",
+      "data": {
+        "version": 1,
+        "startData": {},
+        "resultData": {
+          "runData": {
+            "Lead Intake": [
+              {
+                "startTime": 1785402059208,
+                "executionIndex": 0,
+                "source": [],
+                "hints": [],
+                "executionTime": 0,
+                "executionStatus": "success",
+                "data": {
+                  "main": [
+                    [
+                      {
+                        "json": {
+                          "headers": {
+                            "accept-encoding": "identity",
+                            "content-length": "303",
+                            "host": "localhost:5679",
+                            "user-agent": "Python-urllib/3.12",
+                            "content-type": "application/json",
+                            "connection": "close"
+                          },
+                          "params": {},
+                          "query": {},
+                          "body": {
+                            "name": "Avery Stone",
+                            "email": "avery@atlas-fleet.example",
+                            "company": "Atlas Fleet",
+                            "companySize": 120,
+                            "budgetUsd": 15000,
+                            "urgency": "immediate",
+                            "useCase": "Automate CRM lead routing and manual follow-up workflows",
+                            "notes": "The sales team needs an n8n integration this week.",
+                            "source": "demo"
+                          },
+                          "webhookUrl": "http://127.0.0.1:5679/webhook/lead-intake",
+                          "executionMode": "production"
+                        },
+                        "pairedItem": {
+                          "item": 0
+                        }
+                      }
+                    ]
+                  ]
+                }
+              }
+            ],
+            "Normalize, Score & Route": [
+              {
+                "startTime": 1785402059208,
+                "executionIndex": 1,
+                "source": [
+                  {
+                    "previousNode": "Lead Intake",
+                    "previousNodeOutput": 0,
+                    "previousNodeRun": 0
+                  }
+                ],
+                "hints": [],
+                "executionTime": 13,
+                "executionStatus": "success",
+                "data": {
+                  "main": [
+                    [
+                      {
+                        "json": {
+                          "idempotencyKey": "5da0a075",
+                          "processedAt": "2026-07-30T09:00:59.219Z",
+                          "followUpAt": "2026-07-30T09:15:59.219Z",
+                          "lead": {
+                            "name": "Avery Stone",
+                            "email": "avery@atlas-fleet.example",
+                            "company": "Atlas Fleet",
+                            "companySize": 120,
+                            "budgetUsd": 15000,
+                            "urgency": "immediate",
+                            "useCase": "Automate CRM lead routing and manual follow-up workflows",
+                            "notes": "The sales team needs an n8n integration this week.",
+                            "source": "demo"
+                          },
+                          "qualification": {
+                            "score": 100,
+                            "route": "hot",
+                            "reasons": [
+                              "budget ≥ $10k",
+                              "company size ≥ 50",
+                              "urgency: immediate",
+                              "strong automation intent",
+                              "business email",
+                              "complete core profile"
+                            ],
+                            "nextAction": "Offer a priority discovery call."
+                          }
+                        },
+                        "pairedItem": {
+                          "item": 0
+                        }
+                      }
+                    ]
+                  ]
+                }
+              }
+            ]
+          },
+          "lastNodeExecuted": "Normalize, Score & Route"
+        },
+        "executionData": {
+          "contextData": {},
+          "nodeExecutionStack": [],
+          "metadata": {},
+          "waitingExecution": {},
+          "waitingExecutionSource": {},
+          "runtimeData": {
+            "version": 1,
+            "establishedAt": 1785402059196,
+            "source": "webhook",
+            "triggerNode": {
+              "name": "Lead Intake",
+              "type": "n8n-nodes-base.webhook"
+            },
+            "redaction": {
+              "version": 2,
+              "production": false,
+              "manual": false,
+              "source": "workflow"
+            }
+          }
+        },
+        "resumeToken": "495f4fb1a349d1a46d5eac95a2664fb9210465a678b03b874450b93cee67feed"
+      },
+      "workflowData": {
+        "id": "nuMIHADKIMhTbCFc",
+        "name": "LeadOps — Intake, Scoring & Follow-up",
+        "nodes": [
+          {
+            "parameters": {
+              "multipleMethods": false,
+              "httpMethod": "POST",
+              "path": "lead-intake",
+              "authentication": "none",
+              "responseMode": "lastNode",
+              "responseData": "firstEntryJson",
+              "options": {}
+            },
+            "id": "4f34113b-b649-405d-b986-159403391535",
+            "name": "Lead Intake",
+            "type": "n8n-nodes-base.webhook",
+            "typeVersion": 2,
+            "position": [
+              0,
+              0
+            ],
+            "webhookId": "1cf90f9d-87e1-4fe4-b99b-00929002984a"
+          },
+          {
+            "parameters": {
+              "mode": "runOnceForAllItems",
+              "language": "javaScript",
+              "jsCode": "const input = $json.body ?? $json;\nconst clean = (value) => typeof value === 'string' ? value.trim().replace(/\\s+/g, ' ') : '';\nconst numberOrNull = (value) => {\n  if (value === '' || value === null || value === undefined) return null;\n  const parsed = Number(value);\n  return Number.isFinite(parsed) && parsed >= 0 ? parsed : null;\n};\nconst email = clean(input.email).toLowerCase();\nif (!/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email)) throw new Error('A valid email is required.');\nconst urgencyRaw = clean(input.urgency).toLowerCase().replace(/[\\s-]+/g, '_');\nconst urgency = ({ asap: 'immediate', urgent: 'immediate', this_week: 'immediate', month: 'this_month', quarter: 'this_quarter' })[urgencyRaw] ?? urgencyRaw;\nconst lead = {\n  name: clean(input.name),\n  email,\n  company: clean(input.company),\n  companySize: numberOrNull(input.companySize ?? input.company_size),\n  budgetUsd: numberOrNull(input.budgetUsd ?? input.budget_usd ?? input.budget),\n  urgency,\n  useCase: clean(input.useCase ?? input.use_case),\n  notes: clean(input.notes),\n  source: clean(input.source).toLowerCase() || 'unknown',\n};\nlet score = 0;\nconst reasons = [];\nif (lead.budgetUsd === null) { score -= 10; reasons.push('budget missing'); }\nelse if (lead.budgetUsd >= 10000) { score += 30; reasons.push('budget ≥ $10k'); }\nelse if (lead.budgetUsd >= 5000) { score += 22; reasons.push('budget ≥ $5k'); }\nelse if (lead.budgetUsd >= 2000) { score += 12; reasons.push('budget ≥ $2k'); }\nelse { score += 4; reasons.push('budget provided'); }\nif (lead.companySize >= 50) { score += 15; reasons.push('company size ≥ 50'); }\nelse if (lead.companySize >= 10) { score += 10; reasons.push('company size ≥ 10'); }\nelse if (lead.companySize !== null) { score += 4; reasons.push('company size provided'); }\nconst urgencyPoints = { immediate: 20, this_month: 15, this_quarter: 8, researching: 2 };\nif (urgencyPoints[lead.urgency]) { score += urgencyPoints[lead.urgency]; reasons.push(`urgency: ${lead.urgency}`); }\nconst intentText = `${lead.useCase} ${lead.notes}`.toLowerCase();\nconst keywords = ['automation', 'automate', 'crm', 'lead', 'integration', 'workflow', 'manual', 'n8n', 'ai'];\nconst matches = keywords.filter((keyword) => intentText.includes(keyword));\nif (matches.length >= 3) { score += 20; reasons.push('strong automation intent'); }\nelse if (matches.length) { score += 10; reasons.push('automation intent'); }\nconst freeDomains = ['gmail.com', 'hotmail.com', 'icloud.com', 'outlook.com', 'proton.me', 'yahoo.com'];\nif (!freeDomains.includes(email.split('@')[1])) { score += 10; reasons.push('business email'); }\nif (lead.name && lead.company && lead.useCase) { score += 5; reasons.push('complete core profile'); }\nscore = Math.max(0, Math.min(100, score));\nconst route = score >= 70 ? 'hot' : score >= 40 ? 'warm' : 'cold';\nconst slaMinutes = { hot: 15, warm: 240, cold: 1440 };\nconst processedAt = new Date();\nconst followUpAt = new Date(processedAt.valueOf() + slaMinutes[route] * 60000);\nlet hash = 0x811c9dc5;\nfor (const char of `${lead.email}|${lead.company.toLowerCase()}`) {\n  hash ^= char.charCodeAt(0);\n  hash = Math.imul(hash, 0x01000193);\n}\nconst idempotencyKey = (hash >>> 0).toString(16).padStart(8, '0');\nconst nextAction = {\n  hot: 'Offer a priority discovery call.',\n  warm: 'Send a relevant case study and ask one qualifying question.',\n  cold: 'Add to educational nurture; no sales notification.',\n}[route];\nreturn [{ json: { idempotencyKey, processedAt: processedAt.toISOString(), followUpAt: followUpAt.toISOString(), lead, qualification: { score, route, reasons, nextAction } } }];",
+              "notice": ""
+            },
+            "id": "ba7dcd09-f5f7-4cd3-8d3d-a739d56b9d96",
+            "name": "Normalize, Score & Route",
+            "type": "n8n-nodes-base.code",
+            "typeVersion": 2,
+            "position": [
+              288,
+              0
+            ]
+          }
+        ],
+        "connections": {
+          "Lead Intake": {
+            "main": [
+              [
+                {
+                  "node": "Normalize, Score & Route",
+                  "type": "main",
+                  "index": 0
+                }
+              ]
+            ]
+          }
+        },
+        "settings": {
+          "executionOrder": "v1",
+          "binaryMode": "separate",
+          "availableInMCP": false
+        },
+        "nodeGroups": []
+      },
+      "customData": {}
+    }
+  ],
+  "nextCursor": "eyJsYXN0SWQiOiI0IiwibGltaXQiOjN9"
+}
