@@ -114,3 +114,13 @@ class MemoryRecord(BaseModel):
             raise ValueError("ttl_seconds must be greater than 0")
         self.ttl_seconds = seconds
         self.expires_at = datetime.now(timezone.utc) + timedelta(seconds=seconds)
+
+
+class ValidationPolicy:
+    """Minimal stub retained for legacy compatibility (moved to legacy during refactor)."""
+
+    def validate_memory(self, memory, context):
+        return {"action": "store", "memory": memory}
+
+    def make_provisional(self, memory):
+        return memory
