@@ -882,7 +882,13 @@ class MemoryReadService:
     @staticmethod
     def _normalize_tags(tags_value: Any) -> list[str]:
         if isinstance(tags_value, str):
-            return [tag.strip() for tag in tags_value.split(",") if tag.strip()]
+            return [
+                tag_value for tag in tags_value.split(",") if (tag_value := tag.strip())
+            ]
         if isinstance(tags_value, list):
-            return [str(tag).strip() for tag in tags_value if str(tag).strip()]
+            return [
+                tag_value
+                for tag in tags_value
+                if tag is not None and (tag_value := str(tag).strip())
+            ]
         return []
