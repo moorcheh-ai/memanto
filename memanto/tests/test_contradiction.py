@@ -1,7 +1,7 @@
 from unittest.mock import MagicMock
 
 from memanto.app.core import MemoryRecord
-from memanto.app.services.memory_validation_service import MemoryValidationService
+from memanto.app.legacy.memory_validation_service import MemoryValidationService
 from memanto.app.services.memory_write_service import MemoryWriteService
 
 
