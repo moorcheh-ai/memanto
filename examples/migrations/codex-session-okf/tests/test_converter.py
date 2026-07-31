@@ -28,6 +28,7 @@ def test_exports_only_user_and_assistant_messages(tmp_path: Path) -> None:
     source.write_text(
         "\n".join(
             [
+                _record("system", "private system instruction"),
                 _record("developer", "private instruction"),
                 _record("user", "Remember that I prefer concise answers."),
                 _record("assistant", "Preference noted."),
@@ -45,7 +46,7 @@ def test_exports_only_user_and_assistant_messages(tmp_path: Path) -> None:
     output = tmp_path / "okf"
     result = convert_session(source, output)
 
-    assert result.input_records == 4
+    assert result.input_records == 5
     assert result.message_records == 2
     assert result.exported_memories == 2
     documents = sorted((output / "memories" / "conversation").glob("*.md"))
@@ -54,6 +55,7 @@ def test_exports_only_user_and_assistant_messages(tmp_path: Path) -> None:
     assert "Preference noted" in bodies
     assert "  type: context" in bodies
     assert "private instruction" not in bodies
+    assert "private system instruction" not in bodies
     assert "secret" not in bodies
 
 
