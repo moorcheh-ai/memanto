@@ -5,6 +5,7 @@ Idempotency Handling for MEMANTO
 import hashlib
 import re
 import time
+import threading
 from dataclasses import dataclass
 from typing import Any
 
@@ -33,9 +34,14 @@ class IdempotencyStore:
         self.records: dict[str, IdempotencyRecord] = {}
         self.last_cleanup = time.time()
         self.cleanup_interval = 3600  # 1 hour
+        self._lock = threading.Lock()
+        # _lock guards ALL access to self.records.  The check-then-write
+        # pattern in get_record / store_record is not atomic when the two
+        # calls are separated — callers must use get_or_create for
+        # atomicity, or hold the lock externally.
 
     def _cleanup_expired(self) -> None:
-        """Remove expired records"""
+        """Remove expired records.  Caller MUST hold self._lock."""
         now = time.time()
         if now - self.last_cleanup < self.cleanup_interval:
             return
@@ -50,18 +56,19 @@ class IdempotencyStore:
         self.last_cleanup = now
 
     def get_record(self, idempotency_key: str) -> IdempotencyRecord | None:
-        """Get existing idempotency record"""
-        self._cleanup_expired()
+        """Get existing idempotency record (thread-safe)."""
+        with self._lock:
+            self._cleanup_expired()
 
-        record = self.records.get(idempotency_key)
-        if record and not record.is_expired():
-            return record
+            record = self.records.get(idempotency_key)
+            if record and not record.is_expired():
+                return record
 
-        # Remove expired record
-        if record:
-            del self.records[idempotency_key]
+            # Remove expired record
+            if record:
+                del self.records[idempotency_key]
 
-        return None
+            return None
 
     def store_record(
         self,
@@ -70,30 +77,78 @@ class IdempotencyStore:
         response: dict[str, Any],
         ttl_seconds: int = 86400,
     ):
-        """Store idempotency record"""
-        self._cleanup_expired()
+        """Store idempotency record (thread-safe)."""
+        with self._lock:
+            self._cleanup_expired()
 
-        record = IdempotencyRecord(
-            memory_id=memory_id,
-            response=response,
-            created_at=time.time(),
-            ttl_seconds=ttl_seconds,
-        )
+            record = IdempotencyRecord(
+                memory_id=memory_id,
+                response=response,
+                created_at=time.time(),
+                ttl_seconds=ttl_seconds,
+            )
 
-        self.records[idempotency_key] = record
+            self.records[idempotency_key] = record
+
+    def get_or_create(
+        self,
+        idempotency_key: str,
+        memory_id: str,
+        response: dict[str, Any],
+        ttl_seconds: int = 86400,
+    ) -> IdempotencyRecord | None:
+        """Atomically check for an existing record and create one if absent.
+
+        Returns the *existing* record (without modifying it) when a
+        non-expired record is already present, so callers can return the
+        cached response.  Returns ``None`` after creating a *new* record,
+        signalling that the caller should proceed with the real operation.
+
+        This is the atomic replacement for the previous
+        check_idempotency → store_idempotent_response two-call pattern.
+        """
+        with self._lock:
+            self._cleanup_expired()
+
+            existing = self.records.get(idempotency_key)
+            if existing and not existing.is_expired():
+                return existing
+
+            record = IdempotencyRecord(
+                memory_id=memory_id,
+                response=response,
+                created_at=time.time(),
+                ttl_seconds=ttl_seconds,
+            )
+            self.records[idempotency_key] = record
+            return None
+
+    def remove_record(self, idempotency_key: str):
+        """Remove a placeholder record so the operation can be retried.
+
+        Call this when the downstream operation fails after a successful
+        ``get_or_create`` returned None, otherwise the placeholder blocks
+        all future retries of the same idempotency key.
+        """
+        with self._lock:
+            self.records.pop(idempotency_key, None)
 
     def get_stats(self) -> dict[str, Any]:
-        """Get idempotency store statistics"""
-        self._cleanup_expired()
+        """Get idempotency store statistics (thread-safe)."""
+        with self._lock:
+            self._cleanup_expired()
 
-        return {
-            "total_records": len(self.records),
-            "oldest_record_age": min(
-                (time.time() - record.created_at for record in self.records.values()),
-                default=0,
-            ),
-            "memory_usage_estimate": len(str(self.records)),
-        }
+            return {
+                "total_records": len(self.records),
+                "oldest_record_age": min(
+                    (time.time() - record.created_at for record in self.records.values()),
+                    default=0,
+                ),
+                "memory_usage_estimate": len(str(self.records)),
+            }
+
+
+
 
 
 # Global idempotency store
@@ -160,7 +215,12 @@ class IdempotencyHandler:
 
 
 def handle_write_idempotency(idempotency_key: str | None) -> dict[str, Any] | None:
-    """Handle idempotency for write operations"""
+    """Handle idempotency for write operations
+
+    Uses the atomic get_or_create so that the check and the initial store
+    happen under a single lock acquisition — no other request can insert
+    a record for the same key between the check and the write.
+    """
     if not idempotency_key:
         return None
 
@@ -173,7 +233,20 @@ def handle_write_idempotency(idempotency_key: str | None) -> dict[str, Any] | No
             },
         )
 
-    return IdempotencyHandler.check_idempotency(idempotency_key)
+    # Atomically check + reserve.  Returns existing record if already
+    # present (idempotent replay), or None after creating a placeholder.
+    # Callers MUST call store_write_idempotency on success or
+    # idempotency_store.remove_record(key) on failure to prevent the
+    # placeholder from blocking retries.
+    existing = idempotency_store.get_or_create(
+        idempotency_key=idempotency_key,
+        memory_id="pending",
+        response={"status": "pending"},
+    )
+    if existing:
+        return existing.response
+
+    return None
 
 
 def store_write_idempotency(
