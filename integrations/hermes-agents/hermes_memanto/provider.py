@@ -34,7 +34,7 @@ import re
 import threading
 import time
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 try:  # resolved against the host Hermes at runtime
     from agent.memory_provider import MemoryProvider
@@ -66,6 +66,7 @@ _MIN_CAPTURE_LENGTH = 10
 _MAX_TITLE_LENGTH = 100
 _MAX_AGENT_ID_LENGTH = 64
 _ACTIVATION_RETRY_COOLDOWN = 60.0
+_MemorySource = Literal["user", "agent", "tool", "system"]
 
 
 def _sanitize_agent_id(raw: str) -> str:
@@ -351,7 +352,7 @@ class _MemantoClient:
         content: str,
         confidence: float,
         tags: list[str] | None = None,
-        source: str = "hermes",
+        source: _MemorySource = "agent",
         provenance: str = "explicit_statement",
     ) -> dict:
         self.ensure_session()
@@ -650,8 +651,8 @@ class MemantoMemoryProvider(MemoryProvider):
                     title=title,
                     content=content,
                     confidence=_CAPTURE_CONFIDENCE,
-                    tags=["conversation"],
-                    source="hermes",
+                    tags=["conversation", "hermes"],
+                    source="agent",
                     provenance="observed",
                 )
             except Exception:
@@ -688,6 +689,7 @@ class MemantoMemoryProvider(MemoryProvider):
             else clean
         )
         mem_type = "preference" if target == "user" else _detect_memory_type(clean)
+        source: _MemorySource = "user" if target == "user" else "agent"
 
         def _run():
             try:
@@ -697,7 +699,7 @@ class MemantoMemoryProvider(MemoryProvider):
                     content=clean,
                     confidence=0.9,
                     tags=["hermes-memory", target],
-                    source="hermes-memory",
+                    source=source,
                     provenance="explicit_statement",
                 )
             except Exception:
@@ -749,7 +751,7 @@ class MemantoMemoryProvider(MemoryProvider):
                 content=content,
                 confidence=confidence,
                 tags=[str(t) for t in tags],
-                source="hermes-tool",
+                source="tool",
                 provenance="explicit_statement",
             )
             return json.dumps(

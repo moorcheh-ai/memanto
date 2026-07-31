@@ -8,6 +8,8 @@ monkeypatched with an in-memory fake.
 import json
 
 import pytest
+from memanto.app.constants import SourceType
+from pydantic import TypeAdapter
 
 from hermes_memanto.provider import (
     MemantoMemoryProvider,
@@ -59,7 +61,7 @@ class FakeClient:
         content,
         confidence,
         tags=None,
-        source="hermes",
+        source="agent",
         provenance="explicit_statement",
     ):
         self.remember_calls.append(
@@ -371,6 +373,9 @@ def test_sync_turn_persists_event(provider):
     call = provider._client.remember_calls[0]
     assert call["memory_type"] == "event"
     assert "User:" in call["content"] and "Assistant:" in call["content"]
+    assert call["source"] == "agent"
+    assert call["tags"] == ["conversation", "hermes"]
+    assert TypeAdapter(SourceType).validate_python(call["source"]) == "agent"
 
 
 def test_sync_turn_binds_client_at_schedule_time(provider, monkeypatch):
@@ -431,7 +436,9 @@ def test_on_memory_write_mirrors_to_memanto(provider):
     provider.on_memory_write("add", "memory", "The deploy pipeline lives in gh actions")
     provider._write_thread.join(timeout=1)
     assert len(provider._client.remember_calls) == 1
-    assert provider._client.remember_calls[0]["source"] == "hermes-memory"
+    call = provider._client.remember_calls[0]
+    assert call["source"] == "agent"
+    assert TypeAdapter(SourceType).validate_python(call["source"]) == "agent"
 
 
 def test_on_memory_write_uses_daemon_thread(provider):
@@ -445,6 +452,7 @@ def test_on_memory_write_user_target_is_preference(provider):
     provider.on_memory_write("add", "user", "Name is Jordan")
     provider._write_thread.join(timeout=1)
     assert provider._client.remember_calls[0]["memory_type"] == "preference"
+    assert provider._client.remember_calls[0]["source"] == "user"
 
 
 def test_on_memory_write_ignores_non_add(provider):
@@ -469,7 +477,9 @@ def test_remember_tool(provider):
     assert result["saved"] is True
     assert result["memory_id"] == "mem_123"
     assert result["type"] == "preference"
-    assert provider._client.remember_calls[0]["source"] == "hermes-tool"
+    call = provider._client.remember_calls[0]
+    assert call["source"] == "tool"
+    assert TypeAdapter(SourceType).validate_python(call["source"]) == "tool"
 
 
 def test_remember_tool_infers_type_when_invalid(provider):
