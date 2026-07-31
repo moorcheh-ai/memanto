@@ -5,6 +5,7 @@ Idempotency Handling for MEMANTO
 import hashlib
 import re
 import time
+import threading
 from dataclasses import dataclass
 from typing import Any
 
@@ -33,6 +34,7 @@ class IdempotencyStore:
         self.records: dict[str, IdempotencyRecord] = {}
         self.last_cleanup = time.time()
         self.cleanup_interval = 3600  # 1 hour
+        self._lock = threading.Lock()
 
     def _cleanup_expired(self) -> None:
         """Remove expired records"""
@@ -51,17 +53,18 @@ class IdempotencyStore:
 
     def get_record(self, idempotency_key: str) -> IdempotencyRecord | None:
         """Get existing idempotency record"""
-        self._cleanup_expired()
+        with self._lock:
+            self._cleanup_expired()
 
-        record = self.records.get(idempotency_key)
-        if record and not record.is_expired():
-            return record
+            record = self.records.get(idempotency_key)
+            if record and not record.is_expired():
+                return record
 
-        # Remove expired record
-        if record:
-            del self.records[idempotency_key]
+            # Remove expired record
+            if record:
+                del self.records[idempotency_key]
 
-        return None
+            return None
 
     def store_record(
         self,
@@ -71,29 +74,31 @@ class IdempotencyStore:
         ttl_seconds: int = 86400,
     ):
         """Store idempotency record"""
-        self._cleanup_expired()
+        with self._lock:
+            self._cleanup_expired()
 
-        record = IdempotencyRecord(
+            record = IdempotencyRecord(
             memory_id=memory_id,
             response=response,
             created_at=time.time(),
-            ttl_seconds=ttl_seconds,
-        )
+                ttl_seconds=ttl_seconds,
+            )
 
-        self.records[idempotency_key] = record
+            self.records[idempotency_key] = record
 
     def get_stats(self) -> dict[str, Any]:
         """Get idempotency store statistics"""
-        self._cleanup_expired()
+        with self._lock:
+            self._cleanup_expired()
 
-        return {
-            "total_records": len(self.records),
-            "oldest_record_age": min(
-                (time.time() - record.created_at for record in self.records.values()),
-                default=0,
-            ),
-            "memory_usage_estimate": len(str(self.records)),
-        }
+            return {
+                "total_records": len(self.records),
+                "oldest_record_age": min(
+                    (time.time() - record.created_at for record in self.records.values()),
+                    default=0,
+                ),
+                "memory_usage_estimate": len(str(self.records)),
+            }
 
 
 # Global idempotency store
