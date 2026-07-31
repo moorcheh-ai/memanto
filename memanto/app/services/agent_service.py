@@ -5,6 +5,7 @@ Handles agent creation, listing, and lifecycle management.
 """
 
 import json
+import os
 import logging
 from datetime import datetime, timezone
 from pathlib import Path
@@ -212,10 +213,10 @@ class AgentService:
                     pass
             # Remove active session symlink if it points to this agent
             active_link = sessions_dir / "active"
-            if active_link.exists():
+            if active_link.is_symlink():
                 try:
-                    target = active_link.resolve()
-                    if agent_id in str(target):
+                target = os.readlink(active_link)
+                if os.path.basename(target).startswith(f"{agent_id}_"):
                         active_link.unlink()
                 except OSError:
                     pass
