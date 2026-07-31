@@ -210,6 +210,48 @@ class TestSingletonDispatch:
         sync_dispatcher.assert_called_once_with(api_key="explicit-key")
         async_dispatcher.assert_called_once_with(api_key="explicit-key")
 
+    def test_dependency_wrappers_resolve_api_key_headers_through_fastapi(self):
+        """``Annotated`` metadata must preserve real FastAPI header injection."""
+        from fastapi import Depends, FastAPI
+        from fastapi.testclient import TestClient
+
+        from memanto.app.clients import moorcheh as mclients
+
+        app = FastAPI()
+
+        @app.get("/sync")
+        def sync_route(client=Depends(mclients.get_moorcheh_client)):
+            return {"resolved": client}
+
+        @app.get("/async")
+        def async_route(client=Depends(mclients.get_async_moorcheh_client)):
+            return {"resolved": client}
+
+        with (
+            patch.object(
+                mclients.moorcheh_client,
+                "get_client",
+                side_effect=lambda api_key: api_key,
+            ) as sync_dispatcher,
+            patch.object(
+                mclients.moorcheh_client,
+                "get_async_client",
+                side_effect=lambda api_key: api_key,
+            ) as async_dispatcher,
+        ):
+            test_client = TestClient(app)
+            sync_response = test_client.get(
+                "/sync", headers={"X-Api-Key": "header-key"}
+            )
+            async_response = test_client.get(
+                "/async", headers={"X-Api-Key": "header-key"}
+            )
+
+        assert sync_response.json() == {"resolved": "header-key"}
+        assert async_response.json() == {"resolved": "header-key"}
+        sync_dispatcher.assert_called_once_with(api_key="header-key")
+        async_dispatcher.assert_called_once_with(api_key="header-key")
+
     def test_backend_switch_rebuilds_cached_client_without_manual_reset(self):
         from memanto.app.clients import moorcheh as mclients
         from memanto.app.clients import onprem
