@@ -48,6 +48,7 @@ def test_memanto_setup_teardown():
 
 
 def test_memanto_remember_tool():
+    """Verify CrewAI remember writes use the valid tool source."""
     client = MagicMock()
     client.remember.return_value = {"memory_id": "mem-123"}
 

@@ -170,6 +170,7 @@ def test_do_get_not_found(mock_sdk_client):
 
 
 def test_do_put_success(mock_sdk_client):
+    """Verify new store entries use the valid tool source."""
     store = MemantoStore(api_key="test_key")
     client_instance = MagicMock()
     mock_sdk_client.return_value = client_instance
@@ -244,6 +245,7 @@ def test_do_put_upsert_behavior(mock_sdk_client):
 
 
 def test_do_put_stringifies_non_string_content(mock_sdk_client):
+    """Verify stringified store entries retain the valid tool source."""
     store = MemantoStore(api_key="test_key")
     client_instance = MagicMock()
     mock_sdk_client.return_value = client_instance

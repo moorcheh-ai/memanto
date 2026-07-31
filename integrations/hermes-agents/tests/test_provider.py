@@ -64,6 +64,7 @@ class FakeClient:
         source="agent",
         provenance="explicit_statement",
     ):
+        """Record a fake memory write for provider assertions."""
         self.remember_calls.append(
             {
                 "memory_type": memory_type,
@@ -363,6 +364,7 @@ def test_sync_turn_skips_trivial(provider):
 
 
 def test_sync_turn_persists_event(provider):
+    """Verify automatic turn capture writes an agent-sourced event."""
     provider.sync_turn(
         "Please remember I work in Pacific time",
         "Got it — noting your timezone as Pacific.",
@@ -433,6 +435,7 @@ def test_sync_turn_skipped_in_cron_context(monkeypatch, tmp_path):
 
 
 def test_on_memory_write_mirrors_to_memanto(provider):
+    """Verify mirrored agent memory uses the valid agent source."""
     provider.on_memory_write("add", "memory", "The deploy pipeline lives in gh actions")
     provider._write_thread.join(timeout=1)
     assert len(provider._client.remember_calls) == 1
@@ -449,6 +452,7 @@ def test_on_memory_write_uses_daemon_thread(provider):
 
 
 def test_on_memory_write_user_target_is_preference(provider):
+    """Verify user-targeted memory uses the valid user source."""
     provider.on_memory_write("add", "user", "Name is Jordan")
     provider._write_thread.join(timeout=1)
     assert provider._client.remember_calls[0]["memory_type"] == "preference"
@@ -469,6 +473,7 @@ def test_get_tool_schemas_names(provider):
 
 
 def test_remember_tool(provider):
+    """Verify the explicit remember tool uses the valid tool source."""
     result = json.loads(
         provider.handle_tool_call(
             "memanto_remember", {"content": "Prefers TypeScript", "type": "preference"}

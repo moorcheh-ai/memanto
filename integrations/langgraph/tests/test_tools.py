@@ -17,6 +17,7 @@ def test_create_memanto_tools_returns_all_tools():
 
 
 def test_memanto_remember_tool_success():
+    """Verify LangGraph remember writes use the valid tool source."""
     client = MagicMock()
     client.remember.return_value = {"memory_id": "mem-123"}
 

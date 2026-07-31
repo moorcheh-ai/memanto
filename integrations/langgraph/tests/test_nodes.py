@@ -43,6 +43,7 @@ def test_recall_node():
 
 
 def test_remember_node():
+    """Verify node capture writes with the valid agent source."""
     client = MagicMock()
     client.activate_agent.return_value = {"session_token": "mock-token"}
 
@@ -66,6 +67,7 @@ def test_remember_node():
 
 
 def test_dynamic_agent_id_from_config():
+    """Verify dynamic node capture retains a valid agent source."""
     client = MagicMock()
     client.activate_agent.return_value = {"session_token": "mock-token"}
     client.recall.return_value = {"memories": []}
