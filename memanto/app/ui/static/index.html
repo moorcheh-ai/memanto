@@ -3062,10 +3062,11 @@
         // ----------------------------------------------------------------
         // Today's-summary card (dashboard) + cross-page navigation helper
         // ----------------------------------------------------------------
+        /**
+         * Return the UTC calendar date used to bucket session summaries.
+         * Local calendar fields can select yesterday's file near UTC midnight.
+         */
         function todayKey() {
-            // Session summaries are bucketed by UTC date on disk. Deriving the
-            // key from local calendar fields can select yesterday's file near
-            // midnight even though every backend default correctly uses UTC.
             return new Date().toISOString().slice(0, 10);
         }
 
