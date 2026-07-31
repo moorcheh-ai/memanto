@@ -13,6 +13,7 @@ SOURCE_ADAPTER = TypeAdapter(SourceType)
 
 
 def _iter_source_literals(path: Path):
+    """Yield line numbers and literal values assigned to integration sources."""
     tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
 
     for node in ast.walk(tree):
@@ -34,6 +35,7 @@ def _iter_source_literals(path: Path):
 
 
 def test_shipped_integration_source_literals_match_core_contract():
+    """Require shipped integration source literals to satisfy ``SourceType``."""
     invalid_sources: list[str] = []
 
     for path in sorted(INTEGRATIONS_ROOT.rglob("*.py")):
