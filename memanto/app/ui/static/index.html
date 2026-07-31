@@ -3630,11 +3630,9 @@
             return isNaN(d.getTime()) ? null : d;
         }
 
+        /** Return the UTC storage bucket for a memory timestamp. */
         function dayKey(d) {
-            const y = d.getFullYear();
-            const m = String(d.getMonth() + 1).padStart(2, '0');
-            const day = String(d.getDate()).padStart(2, '0');
-            return `${y}-${m}-${day}`;
+            return d.toISOString().slice(0, 10);
         }
 
         function levelForCount(n) {
@@ -3702,7 +3700,7 @@
             const mems = S.history || [];
             const box = document.getElementById('historyContent');
 
-            // Bucket by local day
+            // Bucket by the UTC day used by summaries and conflict scans.
             const byDay = new Map();
             mems.forEach(m => {
                 const d = parseMemDate(m.created_at);
@@ -3713,11 +3711,11 @@
             });
 
             // 53-week window ending the upcoming Saturday
-            const today = new Date(); today.setHours(0, 0, 0, 0);
+            const today = new Date(); today.setUTCHours(0, 0, 0, 0);
             const endDate = new Date(today);
-            endDate.setDate(endDate.getDate() + (6 - endDate.getDay()));
+            endDate.setUTCDate(endDate.getUTCDate() + (6 - endDate.getUTCDay()));
             const startDate = new Date(endDate);
-            startDate.setDate(startDate.getDate() - (53 * 7 - 1));
+            startDate.setUTCDate(startDate.getUTCDate() - (53 * 7 - 1));
 
             const weeks = [];
             const cur = new Date(startDate);
@@ -3727,7 +3725,7 @@
                     const k = dayKey(cur);
                     const count = (byDay.get(k) || []).length;
                     week.push({ date: new Date(cur), key: k, count });
-                    cur.setDate(cur.getDate() + 1);
+                    cur.setUTCDate(cur.getUTCDate() + 1);
                 }
                 weeks.push(week);
             }
@@ -3754,8 +3752,8 @@
             // Month labels — show when month changes between consecutive weeks
             const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
             const monthLabels = weeks.map((week, i) => {
-                const monthThis = week[0].date.getMonth();
-                const monthPrev = i > 0 ? weeks[i - 1][0].date.getMonth() : -1;
+                const monthThis = week[0].date.getUTCMonth();
+                const monthPrev = i > 0 ? weeks[i - 1][0].date.getUTCMonth() : -1;
                 return monthThis !== monthPrev ? monthNames[monthThis] : '';
             });
 
@@ -3786,7 +3784,7 @@
                         <div class="hh-day-labels"><span></span><span>Mon</span><span></span><span>Wed</span><span></span><span>Fri</span><span></span></div>
                         <div class="hh-weeks">${weeks.map(week => week.map(d => {
                             const stale = staleMemCountForDay(d.key);
-                            const dayLabel = d.date.toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+                            const dayLabel = d.date.toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: 'UTC' });
                             const title = `${d.count} ${d.count === 1 ? 'memory' : 'memories'} on ${dayLabel}${stale ? ` • ${stale} stored since last conflict scan — may have unreviewed conflicts` : ''}`;
                             return `<div class="hh-cell${S.historyFilter === d.key ? ' selected' : ''}${stale ? ' stale' : ''}" data-level="${levelForCount(d.count)}" data-key="${d.key}" title="${title}" onclick="filterHistoryByDay('${d.key}')"></div>`;
                         }).join('')).join('')}</div>
@@ -3977,16 +3975,16 @@
                     const db = parseMemDate(b.created_at)?.getTime() || 0;
                     return db - da;
                 });
-                const headerDate = parseMemDate(list[0].created_at);
-                const dateLabel = headerDate
-                    ? headerDate.toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })
+                const headerDate = new Date(`${dateKey}T00:00:00Z`);
+                const dateLabel = !isNaN(headerDate.getTime())
+                    ? headerDate.toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: 'UTC' })
                     : dateKey;
                 html += `<div class="hh-tl-date">${dateLabel}</div>`;
                 list.forEach(m => {
                     const shortId = (m.id || '').toString().substring(0, 7) || '———';
                     const tags = Array.isArray(m.tags) ? m.tags.filter(Boolean) : [];
                     const t = parseMemDate(m.created_at);
-                    const time = t ? t.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' }) : '';
+                    const time = t ? t.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', timeZone: 'UTC', timeZoneName: 'short' }) : '';
                     const conf = (parseFloat(m.confidence) || 0).toFixed(2);
                     const meta = [];
                     if (m.type) meta.push(`<span class="badge badge-info">${escHtml(m.type)}</span>`);

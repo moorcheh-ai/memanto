@@ -2706,6 +2706,24 @@ class TestCWE200ApiKeyLeak:
         assert "return new Date().toISOString().slice(0, 10);" in index_html
         assert "return `${d.getFullYear()}-${m}-${day}`;" not in index_html
 
+    def test_ui_history_uses_utc_storage_day_buckets(self):
+        """History cells and conflict scans must share the UTC storage date."""
+        index_html = (
+            Path(__file__).parents[1]
+            / "memanto"
+            / "app"
+            / "ui"
+            / "static"
+            / "index.html"
+        ).read_text(encoding="utf-8")
+
+        assert "return d.toISOString().slice(0, 10);" in index_html
+        assert "today.setUTCHours(0, 0, 0, 0);" in index_html
+        assert "endDate.setUTCDate(endDate.getUTCDate()" in index_html
+        assert "cur.setUTCDate(cur.getUTCDate() + 1);" in index_html
+        assert "week[0].date.getUTCMonth()" in index_html
+        assert "// Bucket by local day" not in index_html
+
     @pytest.mark.asyncio
     async def test_conflicts_list_rejects_traversal_agent_id(
         self, client, _mock_ui_config_manager
