@@ -355,6 +355,7 @@ class _MemantoClient:
         source: _MemorySource = "agent",
         provenance: str = "explicit_statement",
     ) -> dict:
+        """Store one memory after ensuring the agent session is active."""
         self.ensure_session()
         return self._client.remember(
             agent_id=self._agent_id,
@@ -619,6 +620,7 @@ class MemantoMemoryProvider(MemoryProvider):
     def sync_turn(
         self, user_content: str, assistant_content: str, *, session_id: str = ""
     ) -> None:
+        """Capture a completed user and assistant turn asynchronously."""
         if (
             not self._active
             or not self._auto_capture
@@ -645,6 +647,7 @@ class MemantoMemoryProvider(MemoryProvider):
         content = f"User: {clean_user}\n\nAssistant: {clean_assistant}"
 
         def _run():
+            """Persist the captured conversation turn."""
             try:
                 client.remember(
                     memory_type="event",
@@ -672,6 +675,7 @@ class MemantoMemoryProvider(MemoryProvider):
         content: str,
         metadata: dict[str, Any] | None = None,
     ) -> None:
+        """Mirror an eligible Hermes memory write asynchronously."""
         if (
             not self._active
             or not self._write_enabled
@@ -692,6 +696,7 @@ class MemantoMemoryProvider(MemoryProvider):
         source: _MemorySource = "user" if target == "user" else "agent"
 
         def _run():
+            """Persist the mirrored Hermes memory."""
             try:
                 client.remember(
                     memory_type=mem_type,
@@ -725,6 +730,7 @@ class MemantoMemoryProvider(MemoryProvider):
         return [REMEMBER_SCHEMA, RECALL_SCHEMA, ANSWER_SCHEMA]
 
     def _tool_remember(self, args: dict) -> str:
+        """Handle an explicit ``memanto_remember`` tool call."""
         content = str(args.get("content") or "").strip()
         if not content:
             return tool_error("content is required")

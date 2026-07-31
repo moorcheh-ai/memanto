@@ -213,6 +213,7 @@ def create_remember_node(
     def remember_node(
         state: dict, config: RunnableConfig | None = None
     ) -> dict[str, Any]:
+        """Persist the latest human messages for the resolved agent."""
         resolved_agent_id = agent_id
         if resolved_agent_id is None and config:
             configurable = config.get("configurable", {})

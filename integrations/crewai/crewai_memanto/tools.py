@@ -196,6 +196,7 @@ class MemantoRememberTool(BaseTool):
         confidence: float,
         tags: str = "",
     ) -> str:
+        """Store a CrewAI tool memory in Memanto."""
         tag_list = [t.strip() for t in tags.split(",") if t.strip()] if tags else []
 
         result = self._client.remember(

@@ -26,6 +26,7 @@ VALID_MEMORY_TYPES = (
 
 
 def create_memanto_tools(client: SdkClient, agent_id: str):
+    """Create LangGraph memory tools bound to a Memanto agent."""
     import copy
     import threading
 
