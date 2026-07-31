@@ -1,0 +1,4 @@
+# Claude Code memory adapter - stdlib-only runtime.
+# PyYAML is only needed if you run the bundle writer directly;
+# the parse/extract core has zero third-party dependencies.
+PyYAML>=6.0
