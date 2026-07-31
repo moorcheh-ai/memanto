@@ -225,10 +225,58 @@ def test_encoded_key_prefix_cannot_collide_with_comma_key():
     encoded_looking_tag = MemantoStore._key_to_tag(encoded_looking_key)
 
     assert comma_tag == "lg:key:v1:thread%2Ccheckpoint"
-    assert encoded_looking_tag == "lg:key:v1:v1%3Athread%252Ccheckpoint"
+    assert encoded_looking_tag == "lg:key:v2:v1%3Athread%252Ccheckpoint"
     assert comma_tag != encoded_looking_tag
     assert MemantoStore._tags_to_key([comma_tag]) == comma_key
-    assert MemantoStore._tags_to_key([encoded_looking_tag]) == encoded_looking_key
+    assert (
+        MemantoStore._tags_to_key([encoded_looking_tag, "lg:key-encoding:v2"])
+        == encoded_looking_key
+    )
+
+
+def test_legacy_raw_v1_key_decodes_and_is_migrated_on_put(mock_sdk_client):
+    """An unambiguous pre-change v1 key is updated instead of duplicated."""
+    store = MemantoStore(api_key="test_key")
+    client_instance = MagicMock()
+    mock_sdk_client.return_value = client_instance
+    client_instance.recall_recent.return_value = {
+        "memories": [{"id": "legacy", "tags": ["lg:key:v1:legacy"], "type": "fact"}]
+    }
+
+    assert MemantoStore._tags_to_key(["lg:key:v1:legacy"]) == "v1:legacy"
+
+    store._do_put(
+        PutOp(namespace=("my_ns",), key="v1:legacy", value={"content": "new"})
+    )
+
+    client_instance.remember.assert_not_called()
+    client_instance.update_memory.assert_called_once()
+    assert client_instance.update_memory.call_args.kwargs["updates"]["tags"] == [
+        "lg:key:v2:v1%3Alegacy",
+        "lg:key-encoding:v2",
+    ]
+
+
+def test_ambiguous_legacy_v1_key_fails_safe_on_put(mock_sdk_client):
+    """Do not conflate a legacy raw v1 key with a v1 comma encoding."""
+    store = MemantoStore(api_key="test_key")
+    client_instance = MagicMock()
+    mock_sdk_client.return_value = client_instance
+    client_instance.recall_recent.return_value = {
+        "memories": [{"id": "ambiguous", "tags": ["lg:key:v1:thread%2Ccheckpoint"]}]
+    }
+
+    with pytest.raises(RuntimeError, match="ambiguous legacy key"):
+        store._do_put(
+            PutOp(
+                namespace=("my_ns",),
+                key="v1:thread%2Ccheckpoint",
+                value={"content": "new"},
+            )
+        )
+
+    client_instance.update_memory.assert_not_called()
+    client_instance.remember.assert_not_called()
 
 
 def test_do_put_upsert_behavior(mock_sdk_client):
