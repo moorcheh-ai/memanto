@@ -111,7 +111,7 @@ def create_memanto_tools(client: SdkClient, agent_id: str):
                 content=content,
                 confidence=confidence,
                 tags=tag_list,
-                source="langgraph-agent",
+                source="tool",
             )
         except Exception:
             _do_setup()
@@ -122,7 +122,7 @@ def create_memanto_tools(client: SdkClient, agent_id: str):
                 content=content,
                 confidence=confidence,
                 tags=tag_list,
-                source="langgraph-agent",
+                source="tool",
             )
 
         return f"Memory stored: {result['memory_id']}"

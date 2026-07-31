@@ -60,7 +60,7 @@ def test_remember_node():
         memory_type=None,
         title="My name is Bob.",
         content="My name is Bob.",
-        source="langgraph-node",
+        source="agent",
         provenance="explicit_statement",
     )
 
@@ -87,7 +87,7 @@ def test_dynamic_agent_id_from_config():
         memory_type=None,
         title="Hello",
         content="Hello",
-        source="langgraph-node",
+        source="agent",
         provenance="explicit_statement",
     )
 

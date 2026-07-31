@@ -41,7 +41,7 @@ def test_memanto_remember_tool_success():
         content="This is a test fact.",
         confidence=0.9,
         tags=["test", "tag2"],
-        source="langgraph-agent",
+        source="tool",
     )
 
 

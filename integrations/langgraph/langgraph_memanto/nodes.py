@@ -257,7 +257,7 @@ def create_remember_node(
                 memory_type=None,
                 title=title,
                 content=content,
-                source="langgraph-node",
+                source="agent",
                 provenance="explicit_statement",
             )
         except SessionError:
@@ -270,7 +270,7 @@ def create_remember_node(
                     memory_type=None,
                     title=title,
                     content=content,
-                    source="langgraph-node",
+                    source="agent",
                     provenance="explicit_statement",
                 )
             except Exception as inner_e:

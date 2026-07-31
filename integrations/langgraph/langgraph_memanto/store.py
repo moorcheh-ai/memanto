@@ -275,7 +275,7 @@ class MemantoStore(BaseStore):
                     "content": str(raw_content),
                     "confidence": confidence,
                     "tags": all_tags,
-                    "source": "langgraph-store",
+                    "source": "tool",
                 }
                 if memory_type is not None:
                     updates["type"] = memory_type
@@ -292,7 +292,7 @@ class MemantoStore(BaseStore):
                     content=str(raw_content),
                     confidence=confidence,
                     tags=all_tags,
-                    source="langgraph-store",
+                    source="tool",
                     provenance="explicit_statement",
                 )
 

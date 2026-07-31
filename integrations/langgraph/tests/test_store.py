@@ -190,7 +190,7 @@ def test_do_put_success(mock_sdk_client):
         content="my new fact",
         confidence=0.8,
         tags=["lg:key:my_key"],
-        source="langgraph-store",
+        source="tool",
         provenance="explicit_statement",
     )
 
@@ -258,7 +258,7 @@ def test_do_put_stringifies_non_string_content(mock_sdk_client):
         content="42",
         confidence=0.8,
         tags=["lg:key:answer"],
-        source="langgraph-store",
+        source="tool",
         provenance="explicit_statement",
     )
 

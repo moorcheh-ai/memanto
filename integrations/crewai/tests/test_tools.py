@@ -73,7 +73,7 @@ def test_memanto_remember_tool():
         content="The content",
         confidence=0.9,
         tags=["tag1", "tag2"],
-        source="crewai-agent",
+        source="tool",
         provenance="explicit_statement",
     )
 

@@ -205,7 +205,7 @@ class MemantoRememberTool(BaseTool):
             content=content,
             confidence=confidence,
             tags=tag_list,
-            source="crewai-agent",
+            source="tool",
             provenance="explicit_statement",
         )
 
