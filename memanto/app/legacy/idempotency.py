@@ -123,6 +123,16 @@ class IdempotencyStore:
             self.records[idempotency_key] = record
             return None
 
+    def remove_record(self, idempotency_key: str):
+        """Remove a placeholder record so the operation can be retried.
+
+        Call this when the downstream operation fails after a successful
+        ``get_or_create`` returned None, otherwise the placeholder blocks
+        all future retries of the same idempotency key.
+        """
+        with self._lock:
+            self.records.pop(idempotency_key, None)
+
     def get_stats(self) -> dict[str, Any]:
         """Get idempotency store statistics (thread-safe)."""
         with self._lock:
@@ -225,6 +235,9 @@ def handle_write_idempotency(idempotency_key: str | None) -> dict[str, Any] | No
 
     # Atomically check + reserve.  Returns existing record if already
     # present (idempotent replay), or None after creating a placeholder.
+    # Callers MUST call store_write_idempotency on success or
+    # idempotency_store.remove_record(key) on failure to prevent the
+    # placeholder from blocking retries.
     existing = idempotency_store.get_or_create(
         idempotency_key=idempotency_key,
         memory_id="pending",
