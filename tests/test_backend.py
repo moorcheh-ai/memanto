@@ -160,6 +160,56 @@ class TestOnPremClient:
 
 
 class TestSingletonDispatch:
+    def test_dependency_wrapper_plain_call_uses_configured_sync_key(self):
+        """Direct Python calls must not forward FastAPI ``Header`` metadata."""
+        from memanto.app.clients import moorcheh as mclients
+
+        expected_client = object()
+        with patch.object(
+            mclients.moorcheh_client,
+            "get_client",
+            return_value=expected_client,
+        ) as dispatcher:
+            assert mclients.get_moorcheh_client() is expected_client
+
+        dispatcher.assert_called_once_with(api_key=None)
+
+    def test_dependency_wrapper_plain_call_uses_configured_async_key(self):
+        """The async dependency wrapper needs the same plain-call semantics."""
+        from memanto.app.clients import moorcheh as mclients
+
+        expected_client = object()
+        with patch.object(
+            mclients.moorcheh_client,
+            "get_async_client",
+            return_value=expected_client,
+        ) as dispatcher:
+            assert mclients.get_async_moorcheh_client() is expected_client
+
+        dispatcher.assert_called_once_with(api_key=None)
+
+    def test_dependency_wrappers_preserve_explicit_api_keys(self):
+        """FastAPI-resolved and embedded callers may still pass a key."""
+        from memanto.app.clients import moorcheh as mclients
+
+        with (
+            patch.object(
+                mclients.moorcheh_client,
+                "get_client",
+                return_value=object(),
+            ) as sync_dispatcher,
+            patch.object(
+                mclients.moorcheh_client,
+                "get_async_client",
+                return_value=object(),
+            ) as async_dispatcher,
+        ):
+            mclients.get_moorcheh_client("explicit-key")
+            mclients.get_async_moorcheh_client("explicit-key")
+
+        sync_dispatcher.assert_called_once_with(api_key="explicit-key")
+        async_dispatcher.assert_called_once_with(api_key="explicit-key")
+
     def test_backend_switch_rebuilds_cached_client_without_manual_reset(self):
         from memanto.app.clients import moorcheh as mclients
         from memanto.app.clients import onprem
