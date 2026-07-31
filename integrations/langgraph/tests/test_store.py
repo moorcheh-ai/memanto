@@ -216,6 +216,21 @@ def test_tags_to_key_unescapes_encoded_key_tags():
     )
 
 
+def test_encoded_key_prefix_cannot_collide_with_comma_key():
+    """Encoded-looking raw keys must stay distinct and round-trip exactly."""
+    comma_key = "thread,checkpoint"
+    encoded_looking_key = "v1:thread%2Ccheckpoint"
+
+    comma_tag = MemantoStore._key_to_tag(comma_key)
+    encoded_looking_tag = MemantoStore._key_to_tag(encoded_looking_key)
+
+    assert comma_tag == "lg:key:v1:thread%2Ccheckpoint"
+    assert encoded_looking_tag == "lg:key:v1:v1%3Athread%252Ccheckpoint"
+    assert comma_tag != encoded_looking_tag
+    assert MemantoStore._tags_to_key([comma_tag]) == comma_key
+    assert MemantoStore._tags_to_key([encoded_looking_tag]) == encoded_looking_key
+
+
 def test_do_put_upsert_behavior(mock_sdk_client):
     """LangGraph put acts as an upsert, preserves existing types, and fails safe."""
     store = MemantoStore(api_key="test_key")

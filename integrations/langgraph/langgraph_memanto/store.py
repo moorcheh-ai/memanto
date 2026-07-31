@@ -435,7 +435,10 @@ class MemantoStore(BaseStore):
 
     @staticmethod
     def _key_to_tag(key: str) -> str:
-        if "," in key:
+        # Encode delimiter-bearing keys and keys that would otherwise look like
+        # the encoded representation. Without the prefix guard, the distinct
+        # keys ``foo,bar`` and ``v1:foo%2Cbar`` map to the same tag.
+        if "," in key or key.startswith("v1:"):
             return f"{_ENCODED_KEY_TAG_PREFIX}{quote(key, safe='')}"
         return f"{_KEY_TAG_PREFIX}{key}"
 

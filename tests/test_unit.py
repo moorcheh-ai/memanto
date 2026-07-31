@@ -16,6 +16,7 @@ from memanto.app.core import MemoryRecord
 from memanto.app.models.session import AgentCreate, AgentPattern, Session, SessionStatus
 from memanto.app.services.agent_service import AgentService
 from memanto.app.services.session_service import SessionService
+from memanto.app.utils.errors import AgentAlreadyExistsError
 
 
 class TestSessionService:
@@ -327,6 +328,40 @@ class TestAgentService:
         print("✅ Agent created successfully")
         print(f"   Agent ID: {agent.agent_id}")
         print(f"   Namespace: {agent.namespace}")
+
+    def test_create_agent_recovers_from_stale_lock_file(self, agent_service):
+        """A crash-left lock marker must not permanently reserve an agent ID."""
+        agent_service.agents_dir.mkdir(parents=True)
+        stale_lock = agent_service.agents_dir / "recovered-agent.json.lock"
+        stale_lock.write_text("orphaned by a terminated process", encoding="utf-8")
+
+        agent = agent_service.create_agent(
+            AgentCreate(
+                agent_id="recovered-agent",
+                pattern=AgentPattern.SUPPORT,
+            ),
+            settings.MOORCHEH_API_KEY,
+        )
+
+        assert agent.agent_id == "recovered-agent"
+        assert agent_service.agent_exists("recovered-agent")
+
+    def test_create_agent_rejects_an_actively_locked_id(self, agent_service):
+        """Concurrent creators must still be rejected while the lock is held."""
+        from filelock import FileLock
+
+        agent_service.agents_dir.mkdir(parents=True)
+        lock_path = agent_service.agents_dir / "busy-agent.json.lock"
+
+        with FileLock(lock_path):
+            with pytest.raises(AgentAlreadyExistsError):
+                agent_service.create_agent(
+                    AgentCreate(
+                        agent_id="busy-agent",
+                        pattern=AgentPattern.SUPPORT,
+                    ),
+                    settings.MOORCHEH_API_KEY,
+                )
 
     def test_list_agents(self, agent_service):
         """Test listing agents"""
