@@ -104,6 +104,22 @@
             }
           },
           {
+            "name": "X-Api-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          },
+          {
             "name": "memanto_session_token",
             "in": "cookie",
             "required": false,
@@ -187,6 +203,22 @@
                 }
               ],
               "title": "X-Session-Token"
+            }
+          },
+          {
+            "name": "X-Api-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
             }
           },
           {
@@ -285,6 +317,22 @@
             }
           },
           {
+            "name": "X-Api-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          },
+          {
             "name": "memanto_session_token",
             "in": "cookie",
             "required": false,
@@ -376,6 +424,22 @@
             }
           },
           {
+            "name": "X-Api-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          },
+          {
             "name": "memanto_session_token",
             "in": "cookie",
             "required": false,
@@ -447,6 +511,22 @@
                 }
               ],
               "title": "X-Session-Token"
+            }
+          },
+          {
+            "name": "X-Api-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
             }
           },
           {
@@ -617,6 +697,22 @@
                 }
               ],
               "title": "X-Session-Token"
+            }
+          },
+          {
+            "name": "X-Api-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
             }
           },
           {
@@ -1134,6 +1230,22 @@
             }
           },
           {
+            "name": "X-Api-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          },
+          {
             "name": "memanto_session_token",
             "in": "cookie",
             "required": false,
@@ -1220,6 +1332,22 @@
             }
           },
           {
+            "name": "X-Api-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          },
+          {
             "name": "memanto_session_token",
             "in": "cookie",
             "required": false,
@@ -1303,6 +1431,22 @@
                 }
               ],
               "title": "X-Session-Token"
+            }
+          },
+          {
+            "name": "X-Api-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
             }
           },
           {
@@ -2723,6 +2867,13 @@
           "count": {
             "type": "integer",
             "title": "Count"
+          },
+          "warnings": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Warnings"
           }
         },
         "type": "object",

@@ -689,6 +689,31 @@ class TestAgentService:
 
         print(f"✅ Listed {agent_list.count} agents")
 
+    def test_invalid_agent_metadata_handling(self, agent_service):
+        """Corrupt or invalid agent files must not hide valid agents, should report warnings, and behave like absent local state for lookups."""
+        agent_service.create_agent(
+            AgentCreate(agent_id="valid-agent", pattern=AgentPattern.SUPPORT),
+            settings.MOORCHEH_API_KEY,
+        )
+
+        # JSONDecodeError (corrupt JSON)
+        (agent_service.agents_dir / "broken-agent.json").write_text("{")
+        assert agent_service.get_agent("broken-agent") is None
+
+        # ValidationError (missing required fields)
+        (agent_service.agents_dir / "broken-schema-agent.json").write_text(
+            '{"description": "missing agent_id and pattern"}'
+        )
+        assert agent_service.get_agent("broken-schema-agent") is None
+
+        agent_list = agent_service.list_agents()
+
+        assert agent_list.count == 1
+        assert [agent.agent_id for agent in agent_list.agents] == ["valid-agent"]
+        assert len(agent_list.warnings) == 2
+        assert any("broken-agent.json" in w for w in agent_list.warnings)
+        assert any("broken-schema-agent.json" in w for w in agent_list.warnings)
+
     def test_get_agent(self, agent_service):
         """Test getting agent info"""
         # Create agent
@@ -1729,6 +1754,34 @@ class TestValidateSafeId:
         assert not (tmp_path / "etc").exists()
 
 
+@pytest.mark.parametrize(
+    ("agent_name", "is_global", "expected_suffix"),
+    [
+        ("cursor", True, ".cursor/rules/memanto.mdc"),
+        ("claude-code", True, ".claude/CLAUDE.md"),
+        ("windsurf", True, ".codeium/windsurf/.windsurfrules"),
+        ("cursor", False, "project/.cursor/rules/memanto.mdc"),
+    ],
+)
+def test_resolve_instruction_file_paths(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    agent_name: str,
+    is_global: bool,
+    expected_suffix: str,
+) -> None:
+    """Test resolution of instruction file paths."""
+    monkeypatch.setattr(Path, "home", classmethod(lambda cls: tmp_path))
+    from memanto.cli.connect.agent_registry import AGENT_REGISTRY
+
+    project_dir = tmp_path / "project"
+    resolved = AGENT_REGISTRY[agent_name].resolve_instruction_file(
+        project_dir, is_global=is_global
+    )
+
+    assert resolved == tmp_path / expected_suffix
+
+
 def test_memory_edit_rejects_oversized_source():
     from pydantic import ValidationError
 
@@ -1816,3 +1869,78 @@ def test_batch_upload_error_counts_each_pending_memory_as_failed():
     assert all(
         "Batch upload returned status" in item["error"] for item in result["results"]
     )
+
+
+def test_direct_sync_uses_cached_export_fast_path(tmp_path, monkeypatch):
+    from memanto.cli.client.direct_client import DirectClient
+
+    monkeypatch.setattr(Path, "home", lambda: tmp_path)
+
+    cache_dir = tmp_path / ".memanto" / "exports"
+    cache_dir.mkdir(parents=True)
+    cache_path = cache_dir / "agent-1_memory.md"
+    cache_path.write_text("# MEMORY\n\n### stale memory\n", encoding="utf-8")
+
+    client = DirectClient.__new__(DirectClient)
+    export_calls = []
+
+    def fresh_export(*, agent_id, limit_per_type):
+        export_calls.append((agent_id, limit_per_type))
+        cache_path.write_text(
+            "# MEMORY\n\n### current memory\n\n### newer memory\n",
+            encoding="utf-8",
+        )
+        return {
+            "output_path": str(cache_path),
+            "total_memories": 2,
+            "per_type_counts": {"learning": 2},
+        }
+
+    monkeypatch.setattr(client, "export_memory_md", fresh_export)
+
+    project_dir = tmp_path / "project"
+    result = client.sync_memory_to_project(
+        agent_id="agent-1",
+        project_dir=str(project_dir),
+        limit_per_type=7,
+    )
+
+    target = project_dir / "MEMORY.md"
+    assert export_calls == []
+    assert target.read_text(encoding="utf-8") == cache_path.read_text(encoding="utf-8")
+    assert "stale memory" in target.read_text(encoding="utf-8")
+    assert result == {
+        "output_path": str(target.resolve()),
+        "total_memories": 1,
+        "source": "cache",
+    }
+
+
+def test_onprem_state_survives_interrupted_replace(tmp_path):
+    """An interrupted state replacement must preserve the previous file."""
+    from unittest.mock import patch
+
+    from memanto.cli.config.manager import ConfigManager
+
+    manager = ConfigManager(tmp_path)
+    manager.set_onprem_state(
+        embedding_provider="openai",
+        embedding_model="text-embedding-3-small",
+    )
+    state_path = manager._onprem_state_path()
+    original = state_path.read_text(encoding="utf-8")
+
+    with (
+        patch(
+            "memanto.app.utils.atomic_write.os.replace",
+            side_effect=OSError("simulated interruption"),
+        ),
+        pytest.raises(OSError, match="simulated interruption"),
+    ):
+        manager.set_onprem_state(llm_model="qwen3:8b")
+
+    assert state_path.read_text(encoding="utf-8") == original
+    assert manager.get_onprem_state() == {
+        "embedding_provider": "openai",
+        "embedding_model": "text-embedding-3-small",
+    }

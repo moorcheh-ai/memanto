@@ -278,6 +278,7 @@ def test_missing_agent_is_created_with_scoped_client(
     FakeSdkClient.missing_agents = {"agent-a"}
     FakeSdkClient.fail_activate_agents = set()
 
+    monkeypatch.setenv("MEMANTO_DEFAULT_AGENT_ID", "agent-a")
     lifecycle = MemantoLifecycle(MCPServerSettings())  # type: ignore[call-arg]
 
     client = lifecycle.ensure_ready("agent-a")
@@ -334,3 +335,30 @@ def test_batch_remember_validates_before_lifecycle_side_effects(
     assert len(FakeSdkClient.instances) == 1
     assert FakeSdkClient.instances[0].created_agents == []
     assert FakeSdkClient.instances[0].activated_agents == []
+
+
+def test_auto_create_is_limited_to_default_agent(
+    fake_api_key: str, monkeypatch
+) -> None:
+    """Only the configured default agent can be auto-created; arbitrary IDs fail."""
+    monkeypatch.setattr("memanto_mcp.lifecycle.SdkClient", FakeSdkClient)
+    FakeSdkClient.instances = []
+    FakeSdkClient.missing_agents = {"project-agent", "attacker-agent"}
+    FakeSdkClient.fail_activate_agents = set()
+
+    monkeypatch.setenv("MEMANTO_DEFAULT_AGENT_ID", "project-agent")
+    lifecycle = MemantoLifecycle(MCPServerSettings())  # type: ignore[call-arg]
+
+    # 1. Arbitrary agent fails and does not auto-create
+    with pytest.raises(AgentNotFoundError, match="Only the configured default agent"):
+        lifecycle.ensure_ready("attacker-agent")
+
+    # Ensure no client recorded the creation of "attacker-agent"
+    assert not any(
+        "attacker-agent" in c.created_agents for c in FakeSdkClient.instances
+    )
+
+    # 2. Configured default agent succeeds and auto-creates
+    client = lifecycle.ensure_ready("project-agent")
+    assert client.created_agents == ["project-agent"]
+    assert client.activated_agents == ["project-agent"]

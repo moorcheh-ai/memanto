@@ -123,7 +123,7 @@ All config is via environment variables (load order: process env →
 | `MOORCHEH_API_KEY` | **yes** | — | Moorcheh API key. |
 | `MEMANTO_DEFAULT_AGENT_ID` | recommended | _none_ | Default agent. When set, tool calls may omit `agent_id`. |
 | `MEMANTO_AGENT_PATTERN` | no | `tool` | Pattern (`support`/`project`/`tool`) used when auto-creating the default agent. |
-| `MEMANTO_AGENT_AUTO_CREATE` | no | `true` | Create the default agent on first use if missing. |
+| `MEMANTO_AGENT_AUTO_CREATE` | no | `true` | Create the default agent on first use if missing. Explicit non-default agents must already exist. |
 | `MEMANTO_SESSION_DURATION_HOURS` | no | server default (6) | Session lifetime in hours. |
 | `MEMANTO_EXPOSE_ADMIN` | no | `false` | Register the 4 agent-management tools. |
 | `MEMANTO_MCP_TRANSPORT` | no | `stdio` | `stdio`, `sse`, or `streamable-http`. |

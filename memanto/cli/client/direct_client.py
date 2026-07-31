@@ -15,6 +15,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, cast
 
+from memanto.app.config import get_data_dir
 from memanto.app.constants import (
     ALLOWED_UPDATE_FIELDS as _ALLOWED_UPDATE_FIELDS,
 )
@@ -46,6 +47,7 @@ from memanto.app.utils.validation import (
     InputLimits,
     is_successful_write_result,
     validate_recall_limit,
+    validate_safe_id,
 )
 from memanto.cli.config.manager import ConfigManager
 
@@ -455,15 +457,15 @@ class DirectClient:
         agent_info = self._get_agent_service().create_agent(agent_create, self.api_key)
         return cast(dict[str, Any], agent_info.model_dump(mode="json"))
 
-    def list_agents(self) -> list[dict[str, Any]]:
+    def list_agents(self) -> dict[str, Any]:
         """
         List all registered agents.
 
         Returns:
-            List of agent info dicts.
+            Dictionary with 'agents', 'count', and 'warnings'.
         """
         agent_list = self._get_agent_service().list_agents()
-        return [a.model_dump(mode="json") for a in agent_list.agents]
+        return cast(dict[str, Any], agent_list.model_dump(mode="json"))
 
     def get_agent(self, agent_id: str) -> dict[str, Any]:
         """
@@ -1432,32 +1434,24 @@ class DirectClient:
 
         write_service = self._get_write_service()
         result_details = {"action": action}
-        delete_failures: list[str] = []
-
-        def delete_required_memory(
-            mem_id: str | None, label: str, result_key: str
-        ) -> None:
-            if not mem_id:
-                return
-            try:
-                deleted = write_service.delete_memory(mem_id, namespace)
-            except Exception as e:
-                delete_failures.append(f"{label} memory {mem_id}: {e}")
-                return
-
-            if not deleted:
-                delete_failures.append(f"{label} memory {mem_id}: not deleted")
-                return
-
-            result_details[result_key] = mem_id
 
         if action == "keep_old":
             # Keep old, delete new
-            delete_required_memory(new_id, "new", "deleted")
+            if new_id:
+                try:
+                    write_service.delete_memory(new_id, namespace)
+                    result_details["deleted"] = new_id
+                except Exception as e:
+                    result_details["warning"] = f"Could not delete new memory: {e}"
 
         elif action == "keep_new":
             # Keep new, delete old
-            delete_required_memory(old_id, "old", "deleted")
+            if old_id:
+                try:
+                    write_service.delete_memory(old_id, namespace)
+                    result_details["deleted"] = old_id
+                except Exception as e:
+                    result_details["warning"] = f"Could not delete old memory: {e}"
 
         elif action == "keep_both":
             # No-op — both memories remain active
@@ -1466,14 +1460,31 @@ class DirectClient:
         elif action == "remove_both":
             # Delete both memories
             for mem_id, label in [(old_id, "old"), (new_id, "new")]:
-                delete_required_memory(mem_id, label, f"deleted_{label}")
+                if mem_id:
+                    try:
+                        write_service.delete_memory(mem_id, namespace)
+                        result_details[f"deleted_{label}"] = mem_id
+                    except Exception as e:
+                        result_details[f"warning_{label}"] = (
+                            f"Could not delete {label} memory: {e}"
+                        )
 
         elif action == "manual":
             if not manual_content:
                 raise ValueError("manual_content is required when action is 'manual'")
 
-            # Store the replacement before deleting originals so a failed write
-            # cannot erase both sides of the conflict.
+            # Delete both, store manual replacement
+            for mem_id, label in [(old_id, "old"), (new_id, "new")]:
+                if mem_id:
+                    try:
+                        write_service.delete_memory(mem_id, namespace)
+                        result_details[f"deleted_{label}"] = mem_id
+                    except Exception as e:
+                        result_details[f"warning_{label}"] = (
+                            f"Could not delete {label} memory: {e}"
+                        )
+
+            # Store the manual replacement
             mem_type = manual_type or conflict.get("type", "fact")
             if not isinstance(mem_type, str):
                 mem_type = "fact"
@@ -1503,16 +1514,6 @@ class DirectClient:
             store_result = write_service.store_memory(memory)
             result_details["new_memory_id"] = store_result.get("id")
 
-            for mem_id, label in [(old_id, "old"), (new_id, "new")]:
-                delete_required_memory(mem_id, label, f"deleted_{label}")
-
-        if delete_failures:
-            failures = "; ".join(delete_failures)
-            raise ValueError(
-                "Could not resolve conflict because required memory deletion "
-                f"failed: {failures}"
-            )
-
         # Mark conflict as resolved in the JSON file
         all_conflicts[conflict_index]["resolved"] = True
         all_conflicts[conflict_index]["resolution"] = action
@@ -1539,7 +1540,7 @@ class DirectClient:
         Args:
             agent_id: Target agent.
             output_path: Custom output path. Defaults to
-                ``~/.memanto/exports/{agent_id}_memory.md``.
+                the active backend's export directory.
             limit_per_type: Max memories per type (default 25).
 
         Returns:
@@ -1578,7 +1579,7 @@ class DirectClient:
         """
         Sync agent memories to a project directory's MEMORY.md.
 
-        Uses the cached export at ``~/.memanto/exports/{agent_id}_memory.md``
+        Uses the cached export in the active backend's data directory
         when available. Falls back to a fresh export if
         the cache file does not exist.
 
@@ -1592,14 +1593,14 @@ class DirectClient:
             (``"cache"`` or ``"fresh"``).
         """
 
-        cache_path = Path.home() / ".memanto" / "exports" / f"{agent_id}_memory.md"
+        validate_safe_id(agent_id, "agent_id")
+        cache_path = get_data_dir() / "exports" / f"{agent_id}_memory.md"
         target_path = Path(project_dir) / "MEMORY.md"
         target_path.parent.mkdir(parents=True, exist_ok=True)
 
         if cache_path.exists():
-            # Fast path: copy cached export
+            # Fast path: copy cached export without an API-backed refresh.
             shutil.copy2(str(cache_path), str(target_path))
-            # Count memories from the cached file
             content = cache_path.read_text(encoding="utf-8")
             mem_count = content.count("### ")
             return {
@@ -1608,16 +1609,12 @@ class DirectClient:
                 "source": "cache",
             }
 
-        # Fallback: run a fresh export to the default location, then copy
-        logger.debug(
-            "No cached export found, generating fresh export for '%s'", agent_id
-        )
+        logger.debug("Refreshing memory export before syncing '%s'", agent_id)
         export_result = self.export_memory_md(
             agent_id=agent_id,
             limit_per_type=limit_per_type,
         )
 
-        # Now copy the freshly generated export to the project
         exported_path = Path(export_result["output_path"])
         if exported_path.exists():
             shutil.copy2(str(exported_path), str(target_path))

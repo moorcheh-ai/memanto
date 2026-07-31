@@ -131,8 +131,18 @@ class TestMEMANTOCLI:
         assert result.exit_code == 0
         assert "Memory that AI Agents Love!" in result.stdout
 
-    def test_status_command(self, mock_all_clients):
+    @patch("memanto.cli.commands.core.httpx.get")
+    def test_status_command(self, mock_get, mock_all_clients):
         """Test 'memanto status'"""
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {
+            "status": "healthy",
+            "version": "1.0.0",
+            "moorcheh_connected": True,
+        }
+        mock_get.return_value = mock_response
+
         # Status command might use helper functions, let's just check it runs
         result = runner.invoke(app, ["status"])
         assert result.exit_code == 0
@@ -170,10 +180,13 @@ class TestMEMANTOCLI:
 
     def test_agent_list(self, mock_all_clients):
         """Test 'memanto agent list'"""
-        mock_all_clients.list_agents.return_value = [
-            {"agent_id": "agent-1", "pattern": "support", "description": "Desc 1"},
-            {"agent_id": "agent-2", "pattern": "tool", "description": "Desc 2"},
-        ]
+        mock_all_clients.list_agents.return_value = {
+            "agents": [
+                {"agent_id": "agent-1", "pattern": "support", "description": "Desc 1"},
+                {"agent_id": "agent-2", "pattern": "tool", "description": "Desc 2"},
+            ],
+            "warnings": [],
+        }
 
         result = runner.invoke(app, ["agent", "list"])
         assert result.exit_code == 0
