@@ -9,6 +9,12 @@ from typing import Any
 from fastapi import HTTPException
 from pydantic import BaseModel, Field, validator
 
+# Maximum length for agent_id / session_id values.
+# Most filesystems limit filenames to 255 bytes. With the ``.json`` suffix (5
+# bytes) and parent path components, an ID longer than 128 chars can exceed
+# that limit and cause OSError on file creation/read.
+MAX_ID_LENGTH = 128
+
 
 class InputLimits:
     """Input size and cost limits"""
@@ -173,6 +179,10 @@ def validate_safe_id(value: str, field_name: str = "id") -> str:
     agent_id contains '..' or OS-level path separators.
 
     Only alphanumeric characters, hyphens, and underscores are allowed.
+    Additionally, the value must not exceed MAX_ID_LENGTH characters to
+    prevent filesystem errors (most filesystems limit filenames to 255
+    bytes; with the ``.json`` suffix and parent path components, an ID
+    longer than 128 chars can exceed that limit and cause OSError).
     """
     if not value:
         raise ValueError(f"{field_name} must not be empty")
@@ -182,6 +192,11 @@ def validate_safe_id(value: str, field_name: str = "id") -> str:
         raise ValueError(
             f"{field_name} '{value}' contains invalid characters. "
             "Only letters, digits, hyphens, and underscores are allowed."
+        )
+    if len(value) > MAX_ID_LENGTH:
+        raise ValueError(
+            f"{field_name} exceeds maximum length of {MAX_ID_LENGTH} characters "
+            f"(got {len(value)}). Overly long IDs can cause filesystem errors."
         )
     return value
 
