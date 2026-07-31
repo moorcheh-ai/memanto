@@ -2692,6 +2692,20 @@ class TestCWE200ApiKeyLeak:
             agent_id="agent-1", date="2026-07-30"
         )
 
+    def test_ui_today_key_uses_utc_calendar_date(self):
+        """The browser must not override UTC backend defaults with local time."""
+        index_html = (
+            Path(__file__).parents[1]
+            / "memanto"
+            / "app"
+            / "ui"
+            / "static"
+            / "index.html"
+        ).read_text(encoding="utf-8")
+
+        assert "return new Date().toISOString().slice(0, 10);" in index_html
+        assert "return `${d.getFullYear()}-${m}-${day}`;" not in index_html
+
     @pytest.mark.asyncio
     async def test_conflicts_list_rejects_traversal_agent_id(
         self, client, _mock_ui_config_manager

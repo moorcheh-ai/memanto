@@ -3063,10 +3063,10 @@
         // Today's-summary card (dashboard) + cross-page navigation helper
         // ----------------------------------------------------------------
         function todayKey() {
-            const d = new Date();
-            const m = String(d.getMonth() + 1).padStart(2, '0');
-            const day = String(d.getDate()).padStart(2, '0');
-            return `${d.getFullYear()}-${m}-${day}`;
+            // Session summaries are bucketed by UTC date on disk. Deriving the
+            // key from local calendar fields can select yesterday's file near
+            // midnight even though every backend default correctly uses UTC.
+            return new Date().toISOString().slice(0, 10);
         }
 
         async function refreshTodaySummaryCard() {
