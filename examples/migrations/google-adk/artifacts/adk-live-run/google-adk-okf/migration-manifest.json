@@ -1,0 +1,253 @@
+{
+  "adapter": {
+    "name": "memanto-google-adk-okf",
+    "version": "1.0.0"
+  },
+  "files": [
+    {
+      "bytes": 1136,
+      "path": "archive/state-history/adk-app-decision-feature-flag-cache-ttl-03ccade6027b.md",
+      "sha256": "7990105f7eab9fcd808ef4a3968a62101673354a3a0abe3054d6ba70e64b1de3"
+    },
+    {
+      "bytes": 1052,
+      "path": "archive/state-history/adk-app-goal-release-window-09e080e30701.md",
+      "sha256": "8f7e71c3fe3b84df96df432e26cc1ee4adc9961cc78bd73a6767ad0791a3d23c"
+    },
+    {
+      "bytes": 1081,
+      "path": "archive/state-history/adk-app-relationship-release-ownership-3d60036341e2.md",
+      "sha256": "4f539cac57085093470c1876d3ec59f253e55eae1a6b9124d71b33be235745ba"
+    },
+    {
+      "bytes": 387,
+      "path": "archive/state-history/index.md",
+      "sha256": "9e8dca32282157857a93aca966c0d7f3549faae86b212087ac2b10b67bc3d582"
+    },
+    {
+      "bytes": 412,
+      "path": "index.md",
+      "sha256": "0943686f0b658fac6b13f1850a51081488e03d75a6bc21989a90e84652debdf5"
+    },
+    {
+      "bytes": 1474,
+      "path": "memories/commitment/adk-app-commitment-release-readiness-b3bdabeca4b5.md",
+      "sha256": "792faa687bd069cad9f315aa3345eeb75b2230fe40167c729a3014b2d52ceaab"
+    },
+    {
+      "bytes": 229,
+      "path": "memories/commitment/index.md",
+      "sha256": "6bad6d828b553cfeb5c110b5066c0a538c4d79004b7672613c60d4af3c2c775c"
+    },
+    {
+      "bytes": 1706,
+      "path": "memories/decision/adk-app-decision-canary-and-rollback-6e8237827ebe.md",
+      "sha256": "5da78e667d4a5f581b10ded386572594995d7b402d77da0a4ac294200656fdeb"
+    },
+    {
+      "bytes": 1733,
+      "path": "memories/decision/adk-app-decision-feature-flag-cache-ttl-03ccade6027b.md",
+      "sha256": "558ba47fe095acf145b5eab663c7564d4689a009ae1935dc0147e36e6e48bd47"
+    },
+    {
+      "bytes": 312,
+      "path": "memories/decision/index.md",
+      "sha256": "53d2154c8ecec821132254c284d24160a23e5048d36b9ccc813281d245badedd"
+    },
+    {
+      "bytes": 1661,
+      "path": "memories/event/adk-app-event-final-rehearsal-26d2c882a046.md",
+      "sha256": "77a7f0dd3bee9d3b9e400358784696a13ef34cbf3d27592627f4089cc2e4dd38"
+    },
+    {
+      "bytes": 210,
+      "path": "memories/event/index.md",
+      "sha256": "23f52b16be088cd730ecf67b2b072057b467e8e2ca15b271e65874f847a72b3c"
+    },
+    {
+      "bytes": 1418,
+      "path": "memories/fact/adk-app-fact-project-stack-0e3338aed3fb.md",
+      "sha256": "f94f97059fbc72f13047dc783e7ae23dcf17d0c70ad3bce22b61f890da2645d3"
+    },
+    {
+      "bytes": 203,
+      "path": "memories/fact/index.md",
+      "sha256": "2d0f221fa63b10ad4537a6392103b2a1151bf6a7950ce7477be5a90ed62cafc9"
+    },
+    {
+      "bytes": 1507,
+      "path": "memories/goal/adk-app-goal-release-window-09e080e30701.md",
+      "sha256": "a389dbeb42bcf496d36ef8e435de9a50ca4c609528aaca2be6bae3b4ffa7770a"
+    },
+    {
+      "bytes": 205,
+      "path": "memories/goal/index.md",
+      "sha256": "1dfb1d88d03f073c54cbe27a09d7833dc4feff5fff5359dafb7c2674151f9a1d"
+    },
+    {
+      "bytes": 503,
+      "path": "memories/index.md",
+      "sha256": "5badf8b7fd61790b1410ad5c5635bf81307c4972b838bd8e7a35f5f42a9a7595"
+    },
+    {
+      "bytes": 1495,
+      "path": "memories/instruction/adk-app-instruction-deployment-calendar-33a89d54a8ea.md",
+      "sha256": "876126e6ff30648c313ed51544498624954d471cc3d42af7dd93a17ad2c08e0c"
+    },
+    {
+      "bytes": 236,
+      "path": "memories/instruction/index.md",
+      "sha256": "9d0a66936fc514df80e577c324c5c01d279b2d722088291a83c50284bc7113a2"
+    },
+    {
+      "bytes": 1847,
+      "path": "memories/learning/adk-app-learning-staging-database-preflight-10ccf95d697a.md",
+      "sha256": "9511a2557198f47a2b2e426bffd4f8281219e6480421daf85dbb45eed028d635"
+    },
+    {
+      "bytes": 241,
+      "path": "memories/learning/index.md",
+      "sha256": "e19d236d58741856dc8768b0d7e2d9e81ac91a65976b38cac7623f4d9ed43e6b"
+    },
+    {
+      "bytes": 1614,
+      "path": "memories/preference/adk-user-preference-release-update-format-da749525d66d.md",
+      "sha256": "35c21cc4fc7ddc79c97fe3c223c658dc185b355941163bd4cba63e7a77ac029e"
+    },
+    {
+      "bytes": 238,
+      "path": "memories/preference/index.md",
+      "sha256": "162e9cdc219e07a709ffe9633678721d36dc9261ef519ca53a7097785c806bf2"
+    },
+    {
+      "bytes": 1660,
+      "path": "memories/relationship/adk-app-relationship-release-ownership-3d60036341e2.md",
+      "sha256": "edcdc1f36852e20aaf73ebd9636845ec156e52b48ca6dc3918786c30a46ead14"
+    },
+    {
+      "bytes": 235,
+      "path": "memories/relationship/index.md",
+      "sha256": "53b7eca2445ead44927f484a8bca308a0555ba52b70be2fc6a7c0d4389fd7338"
+    },
+    {
+      "bytes": 1092,
+      "path": "sessions/01-kickoff-3ae4229e06.md",
+      "sha256": "923f888bc8567e743c48b61ba513a0e2eee15893f5c15e7d8d33ca89d2ee0f1a"
+    },
+    {
+      "bytes": 1159,
+      "path": "sessions/02-schedule-correction-742647cd32.md",
+      "sha256": "dd889859768a0af84455aa00b050635eba8e5f3f7eaba9c8e3583c0377df7a86"
+    },
+    {
+      "bytes": 1036,
+      "path": "sessions/03-staging-rehearsal-1873b89281.md",
+      "sha256": "a35884b274429e6552b0c841de16a70020dde1ce458c0c4b1cb85d8b453c5a57"
+    },
+    {
+      "bytes": 1039,
+      "path": "sessions/04-rollout-policy-8af6bb493f.md",
+      "sha256": "2f0799b50e09ac95cea525059473266abe0e25a637a6c4dc112829e829322277"
+    },
+    {
+      "bytes": 996,
+      "path": "sessions/05-owner-handoff-f9af9fefc1.md",
+      "sha256": "a9c9f015c20eea21131b552d8be3fa0867355f9aed33b1c2734887c4a6a8aba4"
+    },
+    {
+      "bytes": 1153,
+      "path": "sessions/06-cache-correction-4a4cfdea96.md",
+      "sha256": "44444ef10c222ed04231c845f74f88b1f8680933a87d5346fd4abfc4354ec2be"
+    },
+    {
+      "bytes": 1051,
+      "path": "sessions/07-final-rehearsal-5b4f70b8e1.md",
+      "sha256": "a32d3fda2f1a7ab445b84222e2d6c6b6a0adb12a63b2863388b8d4679656f689"
+    },
+    {
+      "bytes": 1039,
+      "path": "sessions/08-current-truth-c758c3312b.md",
+      "sha256": "c483856f4fe2dbc7ebee299780fc32559cb4992b8e1fd2594f4cf744748f1667"
+    },
+    {
+      "bytes": 626,
+      "path": "sessions/index.md",
+      "sha256": "44346ef7ee8c352fc9373c1f62625c867944cdd87aa9cfd2def6640e901cdf95"
+    },
+    {
+      "bytes": 23622,
+      "path": "source/google-adk-sqlite-snapshot.json",
+      "sha256": "6c619728cd9b91ad5c56ecd0d3a8ef7b6002324fd4768adadbc4afab341d74c5"
+    }
+  ],
+  "filters": {
+    "app_name": "atlas-release-copilot",
+    "user_id": "dana"
+  },
+  "import_scope": "memories/",
+  "migration": {
+    "events_preserved": 17,
+    "mapped_memories": 10,
+    "redacted_values": 0,
+    "sessions_preserved": 8,
+    "skipped": 0,
+    "source_state_records": 10,
+    "state_updates_preserved": 13,
+    "superseded_timelines_archived": 3,
+    "type_counts": {
+      "commitment": 1,
+      "decision": 2,
+      "event": 1,
+      "fact": 1,
+      "goal": 1,
+      "instruction": 1,
+      "learning": 1,
+      "preference": 1,
+      "relationship": 1
+    }
+  },
+  "schema": "google-adk-okf-manifest/v1",
+  "source": {
+    "captured_at": "2026-07-31T16:47:49.413615Z",
+    "database_name": "google-adk-sessions.db",
+    "database_sha256": "53fe4b9a40eeb1691bc7244aa58837385543bbcb4fcfb56dbd60de6993f3b4a0",
+    "google_adk_version": "2.6.0",
+    "provider": "google-adk",
+    "redacted_values": 0,
+    "redaction_enabled": true,
+    "schema": "google-adk-sqlite-json/v1",
+    "service": "SqliteSessionService",
+    "snapshot_path": "source/google-adk-sqlite-snapshot.json",
+    "snapshot_sha256": "6c619728cd9b91ad5c56ecd0d3a8ef7b6002324fd4768adadbc4afab341d74c5",
+    "table_columns": {
+      "app_states": [
+        "app_name",
+        "state",
+        "update_time"
+      ],
+      "events": [
+        "app_name",
+        "event_data",
+        "id",
+        "invocation_id",
+        "session_id",
+        "timestamp",
+        "user_id"
+      ],
+      "sessions": [
+        "app_name",
+        "create_time",
+        "id",
+        "state",
+        "update_time",
+        "user_id"
+      ],
+      "user_states": [
+        "app_name",
+        "state",
+        "update_time",
+        "user_id"
+      ]
+    }
+  }
+}

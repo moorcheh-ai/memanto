@@ -1,0 +1,12 @@
+{
+  "artifact_verification": true,
+  "bundle": "google-adk-okf",
+  "completed_at": "2026-07-31T16:47:52.824020Z",
+  "memanto_dry_run": true,
+  "migration_report": "migration-report.json",
+  "okf_recall": 1.0,
+  "schema": "google-adk-demo-run/v1",
+  "source_recall": 1.0,
+  "source_run": "evidence/source-run.json",
+  "zero_amnesia": true
+}

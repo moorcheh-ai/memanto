@@ -1,0 +1,45 @@
+{
+  "mapping": {
+    "mapped_memories": 10,
+    "redacted_values": 0,
+    "skipped": 0,
+    "superseded_timelines_archived": 3,
+    "type_counts": {
+      "commitment": 1,
+      "decision": 2,
+      "event": 1,
+      "fact": 1,
+      "goal": 1,
+      "instruction": 1,
+      "learning": 1,
+      "preference": 1,
+      "relationship": 1
+    }
+  },
+  "memanto_dry_run": {
+    "command": "memanto migrate okf <bundle> --dry-run",
+    "returncode": 0,
+    "transcript": "evidence/memanto-dry-run.txt"
+  },
+  "provider_savings": {
+    "available": false,
+    "reason": "The shipped OKF importer intentionally has no --report flag, and Google ADK SqliteSessionService records no provider token, latency, or billing baseline. No synthetic savings are claimed."
+  },
+  "recall_fidelity": {
+    "average_delta": 0.0,
+    "okf_average": 1.0,
+    "source_average": 1.0,
+    "zero_amnesia": true
+  },
+  "round_trip_status": "Local source→OKF fidelity and shipped Memanto dry-run are complete. Cloud import→recall→OKF export requires MOORCHEH_API_KEY and is run with run_roundtrip.py.",
+  "schema": "google-adk-okf-migration-report/v1",
+  "source": {
+    "database_sha256": "53fe4b9a40eeb1691bc7244aa58837385543bbcb4fcfb56dbd60de6993f3b4a0",
+    "events": 17,
+    "provider": "google-adk",
+    "service": "SqliteSessionService",
+    "sessions": 8,
+    "state_records": 10,
+    "state_updates": 13
+  }
+}

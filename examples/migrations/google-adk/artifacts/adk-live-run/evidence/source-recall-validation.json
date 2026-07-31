@@ -1,0 +1,145 @@
+{
+  "average_score": 1.0,
+  "corpus": "google-adk-current-state",
+  "documents": 10,
+  "method": "Deterministic lexical retrieval over current durable state; each question scores the fraction of required answer groups found.",
+  "passed": 8,
+  "questions": 8,
+  "results": [
+    {
+      "answer_excerpt": "goal.release_window\nBeacon releases Tuesday, August 4, 2026 at 14:00 UTC.\n\ncommitment.release_readiness\nBeacon is ready for its approved August 4 release plan.\n\nrelationship.release_ownership\nLuis Ortega is the current Beacon release DRI, and Priya Shah is the backup.",
+      "id": "release-window",
+      "matched_groups": [
+        true,
+        true
+      ],
+      "question": "When is the current Beacon production release window?",
+      "score": 1.0,
+      "top_document_ids": [
+        "app:atlas-release-copilot:goal.release_window",
+        "app:atlas-release-copilot:commitment.release_readiness",
+        "app:atlas-release-copilot:relationship.release_ownership"
+      ],
+      "total_groups": 2
+    },
+    {
+      "answer_excerpt": "relationship.release_ownership\nLuis Ortega is the current Beacon release DRI, and Priya Shah is the backup.\n\ncommitment.release_readiness\nBeacon is ready for its approved August 4 release plan.\n\ngoal.release_window\nBeacon releases Tuesday, August 4, 2026 at 14:00 UTC.",
+      "id": "release-owner",
+      "matched_groups": [
+        true,
+        true
+      ],
+      "question": "Who is the current Beacon release DRI and who is backup?",
+      "score": 1.0,
+      "top_document_ids": [
+        "app:atlas-release-copilot:relationship.release_ownership",
+        "app:atlas-release-copilot:commitment.release_readiness",
+        "app:atlas-release-copilot:goal.release_window"
+      ],
+      "total_groups": 2
+    },
+    {
+      "answer_excerpt": "instruction.deployment_calendar\nBeacon production deployments never occur on Fridays.\n\ngoal.release_window\nBeacon releases Tuesday, August 4, 2026 at 14:00 UTC.\n\ncommitment.release_readiness\nBeacon is ready for its approved August 4 release plan.",
+      "id": "deployment-calendar",
+      "matched_groups": [
+        true
+      ],
+      "question": "What day-of-week deployment rule applies to Beacon?",
+      "score": 1.0,
+      "top_document_ids": [
+        "app:atlas-release-copilot:instruction.deployment_calendar",
+        "app:atlas-release-copilot:goal.release_window",
+        "app:atlas-release-copilot:commitment.release_readiness"
+      ],
+      "total_groups": 1
+    },
+    {
+      "answer_excerpt": "preference.release_update_format\nDana prefers release updates in Markdown, with at most five bullets and no tables.\n\ncommitment.release_readiness\nBeacon is ready for its approved August 4 release plan.\n\nrelationship.release_ownership\nLuis Ortega is the current Beacon release DRI, and Priya Shah is the backup.",
+      "id": "update-format",
+      "matched_groups": [
+        true,
+        true,
+        true
+      ],
+      "question": "How should Dana's release updates be formatted?",
+      "score": 1.0,
+      "top_document_ids": [
+        "user:atlas-release-copilot:preference.release_update_format",
+        "app:atlas-release-copilot:commitment.release_readiness",
+        "app:atlas-release-copilot:relationship.release_ownership"
+      ],
+      "total_groups": 3
+    },
+    {
+      "answer_excerpt": "learning.staging_database_preflight\nThe first Beacon staging migration failed because the PostgreSQL 16 pg_trgm extension was missing. After enabling pg_trgm it succeeded in 3 minutes 42 seconds with 185 ms p95 latency. The runbook now requires a pg_trgm preflight.\n\ncommitment.release_readiness\nBeacon is ready for its approved August 4 release plan.\n\ndecision.canary_and_rollback\nBeacon starts at a 10 percent canary for 30 minutes. Promote only while errors remain below 1 percent and p95 latency remains below 250 ms; otherwise roll back immediately.",
+      "id": "database-preflight",
+      "matched_groups": [
+        true,
+        true
+      ],
+      "question": "What database prerequisite did staging reveal?",
+      "score": 1.0,
+      "top_document_ids": [
+        "app:atlas-release-copilot:learning.staging_database_preflight",
+        "app:atlas-release-copilot:commitment.release_readiness",
+        "app:atlas-release-copilot:decision.canary_and_rollback"
+      ],
+      "total_groups": 2
+    },
+    {
+      "answer_excerpt": "decision.canary_and_rollback\nBeacon starts at a 10 percent canary for 30 minutes. Promote only while errors remain below 1 percent and p95 latency remains below 250 ms; otherwise roll back immediately.\n\nevent.final_rehearsal\nBeacon's final rehearsal succeeded on July 24, 2026. The pg_trgm preflight passed, migration took 3 minutes 39 seconds, canary errors were 0.3 percent, and p95 latency was 181 ms.\n\ncommitment.release_readiness\nBeacon is ready for its approved August 4 release plan.",
+      "id": "canary-policy",
+      "matched_groups": [
+        true,
+        true,
+        true,
+        true
+      ],
+      "question": "What is the Beacon canary and rollback policy?",
+      "score": 1.0,
+      "top_document_ids": [
+        "app:atlas-release-copilot:decision.canary_and_rollback",
+        "app:atlas-release-copilot:event.final_rehearsal",
+        "app:atlas-release-copilot:commitment.release_readiness"
+      ],
+      "total_groups": 4
+    },
+    {
+      "answer_excerpt": "decision.feature_flag_cache_ttl\nThe approved Beacon production feature-flag cache TTL is 6 hours so the flag can be unwound on the same shift.\n\ncommitment.release_readiness\nBeacon is ready for its approved August 4 release plan.\n\ndecision.canary_and_rollback\nBeacon starts at a 10 percent canary for 30 minutes. Promote only while errors remain below 1 percent and p95 latency remains below 250 ms; otherwise roll back immediately.",
+      "id": "cache-ttl",
+      "matched_groups": [
+        true
+      ],
+      "question": "What is the approved feature-flag cache TTL?",
+      "score": 1.0,
+      "top_document_ids": [
+        "app:atlas-release-copilot:decision.feature_flag_cache_ttl",
+        "app:atlas-release-copilot:commitment.release_readiness",
+        "app:atlas-release-copilot:decision.canary_and_rollback"
+      ],
+      "total_groups": 1
+    },
+    {
+      "answer_excerpt": "event.final_rehearsal\nBeacon's final rehearsal succeeded on July 24, 2026. The pg_trgm preflight passed, migration took 3 minutes 39 seconds, canary errors were 0.3 percent, and p95 latency was 181 ms.\n\ncommitment.release_readiness\nBeacon is ready for its approved August 4 release plan.\n\ndecision.canary_and_rollback\nBeacon starts at a 10 percent canary for 30 minutes. Promote only while errors remain below 1 percent and p95 latency remains below 250 ms; otherwise roll back immediately.",
+      "id": "final-rehearsal",
+      "matched_groups": [
+        true,
+        true,
+        true,
+        true
+      ],
+      "question": "What were the final Beacon rehearsal results?",
+      "score": 1.0,
+      "top_document_ids": [
+        "app:atlas-release-copilot:event.final_rehearsal",
+        "app:atlas-release-copilot:commitment.release_readiness",
+        "app:atlas-release-copilot:decision.canary_and_rollback"
+      ],
+      "total_groups": 4
+    }
+  ],
+  "schema": "google-adk-golden-validation/v1",
+  "score_distribution": {
+    "1.0": 8
+  }
+}

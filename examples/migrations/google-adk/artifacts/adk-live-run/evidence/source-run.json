@@ -1,0 +1,29 @@
+{
+  "app_name": "atlas-release-copilot",
+  "database_name": "google-adk-sessions.db",
+  "database_sha256": "53fe4b9a40eeb1691bc7244aa58837385543bbcb4fcfb56dbd60de6993f3b4a0",
+  "events_written": 17,
+  "final_merged_state_keys": [
+    "app:commitment.release_readiness",
+    "app:decision.canary_and_rollback",
+    "app:decision.feature_flag_cache_ttl",
+    "app:event.final_rehearsal",
+    "app:fact.project_stack",
+    "app:goal.release_window",
+    "app:instruction.deployment_calendar",
+    "app:learning.staging_database_preflight",
+    "app:relationship.release_ownership",
+    "user:preference.release_update_format"
+  ],
+  "generator": "create_source.py",
+  "google_adk_version": "2.6.0",
+  "llm_disclosure": "The run is deterministic and offline: scripted user/agent turns are persisted by the official ADK service without calling an LLM.",
+  "schema": "google-adk-source-run/v1",
+  "service": "google.adk.sessions.SqliteSessionService",
+  "sessions_created": 8,
+  "state_updates_written": 13,
+  "used_llm": false,
+  "used_public_service_api": true,
+  "used_raw_sql_in_generator": false,
+  "user_id": "dana"
+}

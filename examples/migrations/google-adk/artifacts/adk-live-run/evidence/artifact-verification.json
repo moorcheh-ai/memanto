@@ -1,0 +1,9 @@
+{
+  "bundle": "google-adk-okf",
+  "failures": [],
+  "files_checked": 35,
+  "mapped_memories": 10,
+  "passed": true,
+  "replayed_concepts": 10,
+  "schema": "google-adk-artifact-verification/v1"
+}
