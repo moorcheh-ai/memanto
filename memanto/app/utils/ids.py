@@ -2,6 +2,7 @@
 ID Generation Utilities
 """
 
+import re
 import time
 import uuid
 
@@ -30,5 +31,12 @@ def generate_session_id() -> str:
 
 
 def is_valid_memory_id(memory_id: str) -> bool:
-    """Validate memory ID format"""
-    return bool(memory_id and len(memory_id) > 4 and "_" in memory_id)
+    """Validate memory ID format using strict pattern.
+    
+    Only allows alphanumeric characters, hyphens, and underscores.
+    Requires minimum length of 5 characters.
+    Must contain at least one underscore (to separate prefix from random part).
+    """
+    if not memory_id or len(memory_id) < 5:
+        return False
+    return bool(re.fullmatch(r"[A-Za-z0-9_-]+", memory_id))

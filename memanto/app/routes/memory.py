@@ -528,6 +528,7 @@ async def edit_memory(
     The session must be for the specified agent_id.
     """
     enforce_session_scope(session, agent_id)
+    validate_safe_id(memory_id, "memory_id")
 
     updates = request.to_updates()
     if not updates:
@@ -825,6 +826,7 @@ async def delete_memory(
     The session must be for the specified agent_id.
     """
     enforce_session_scope(session, agent_id)
+    validate_safe_id(memory_id, "memory_id")
 
     try:
         write_service = MemoryWriteService(client)
