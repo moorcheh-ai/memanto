@@ -215,8 +215,8 @@ class AgentService:
             active_link = sessions_dir / "active"
             if active_link.is_symlink():
                 try:
-                target = os.readlink(active_link)
-                if os.path.basename(target).startswith(f"{agent_id}_"):
+                    target = os.readlink(active_link)
+                    if os.path.basename(target).startswith(f"{agent_id}_"):
                         active_link.unlink()
                 except OSError:
                     pass
