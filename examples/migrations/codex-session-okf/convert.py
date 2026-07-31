@@ -12,6 +12,7 @@ from codex_session_okf import convert_session
 
 
 def _positive_int(value: str) -> int:
+    """Parse a strictly positive command-line integer."""
     parsed = int(value)
     if parsed < 1:
         raise argparse.ArgumentTypeError("must be at least 1")
@@ -19,6 +20,7 @@ def _positive_int(value: str) -> int:
 
 
 def main() -> None:
+    """Parse CLI arguments, convert the rollout, and print its summary."""
     parser = argparse.ArgumentParser(
         description="Convert privacy-filtered Codex JSONL messages to OKF."
     )

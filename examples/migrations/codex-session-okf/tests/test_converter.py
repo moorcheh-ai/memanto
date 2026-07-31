@@ -8,6 +8,7 @@ from codex_session_okf.converter import redact_text
 
 
 def _record(role: str, text: str, timestamp: str = "2026-07-29T00:00:00Z") -> str:
+    """Build one Codex JSONL message record for converter tests."""
     return json.dumps(
         {
             "timestamp": timestamp,
@@ -22,6 +23,7 @@ def _record(role: str, text: str, timestamp: str = "2026-07-29T00:00:00Z") -> st
 
 
 def test_exports_only_user_and_assistant_messages(tmp_path: Path) -> None:
+    """Export conversational roles while excluding private transport data."""
     source = tmp_path / "session.jsonl"
     source.write_text(
         "\n".join(
@@ -56,6 +58,7 @@ def test_exports_only_user_and_assistant_messages(tmp_path: Path) -> None:
 
 
 def test_extracts_bridge_user_input_and_redacts_identifiers() -> None:
+    """Extract the user payload and redact email and phone identifiers."""
     text = """
 <bridge_context>{"senderId":"ou_123456789abcdef"}</bridge_context>
 <bridge_instructions>internal transport details</bridge_instructions>
@@ -69,6 +72,7 @@ def test_extracts_bridge_user_input_and_redacts_identifiers() -> None:
 
 
 def test_rejects_residual_transport_wrapper_embedded_after_text() -> None:
+    """Drop text that still contains an unknown transport wrapper."""
     clean, count = redact_text(
         "Safe-looking prefix <lark_future_payload>private</lark_future_payload>"
     )
@@ -78,6 +82,7 @@ def test_rejects_residual_transport_wrapper_embedded_after_text() -> None:
 
 
 def test_include_filter_and_limit(tmp_path: Path) -> None:
+    """Apply the optional content filter before enforcing the export limit."""
     source = tmp_path / "session.jsonl"
     source.write_text(
         "\n".join(
@@ -106,6 +111,7 @@ def test_include_filter_and_limit(tmp_path: Path) -> None:
 
 
 def test_rerun_removes_stale_generated_memories(tmp_path: Path) -> None:
+    """Remove generated memories left behind by a smaller rerun."""
     source = tmp_path / "session.jsonl"
     source.write_text(
         "\n".join([_record("user", "first"), _record("assistant", "second")]),
@@ -122,6 +128,7 @@ def test_rerun_removes_stale_generated_memories(tmp_path: Path) -> None:
 
 
 def test_rejects_non_positive_limit(tmp_path: Path) -> None:
+    """Reject a conversion limit that cannot export any memories."""
     source = tmp_path / "session.jsonl"
     source.write_text(_record("user", "first"), encoding="utf-8")
 

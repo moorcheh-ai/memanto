@@ -14,6 +14,7 @@ from memanto.cli.migrate.okf_loader import load_okf_bundle
 
 
 def _mem(mem_id, title, content, **extra):
+    """Build a minimal memory dictionary for OKF round-trip tests."""
     base = {
         "id": mem_id,
         "title": title,

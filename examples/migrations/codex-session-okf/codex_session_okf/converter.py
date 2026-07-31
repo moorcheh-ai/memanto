@@ -44,6 +44,8 @@ class ConversionResult:
 
 @dataclass(frozen=True)
 class _Message:
+    """Normalized conversation message selected from a rollout record."""
+
     timestamp: str
     role: str
     text: str
@@ -128,6 +130,7 @@ def redact_text(text: str) -> tuple[str, int]:
 
 
 def _read_messages(source: Path) -> tuple[list[_Message], int]:
+    """Read valid message records from a Codex JSONL rollout."""
     messages: list[_Message] = []
     input_records = 0
     with source.open(encoding="utf-8") as handle:
@@ -146,6 +149,7 @@ def _read_messages(source: Path) -> tuple[list[_Message], int]:
 
 
 def _extract_message(record: dict[str, Any], line_number: int) -> _Message | None:
+    """Extract one allowed user or assistant message from a rollout record."""
     if record.get("type") != "response_item":
         return None
     payload = record.get("payload")
@@ -170,6 +174,7 @@ def _extract_message(record: dict[str, Any], line_number: int) -> _Message | Non
 
 
 def _text_parts(content: Iterable[Any]) -> Iterable[str]:
+    """Yield non-empty textual parts from a message content array."""
     for item in content:
         if not isinstance(item, dict):
             continue
@@ -181,6 +186,7 @@ def _text_parts(content: Iterable[Any]) -> Iterable[str]:
 
 
 def _decode_user_input(value: str) -> str:
+    """Decode a Bridge user_input JSON payload while tolerating plain text."""
     try:
         parsed = json.loads(value)
     except json.JSONDecodeError:
@@ -191,6 +197,7 @@ def _decode_user_input(value: str) -> str:
 
 
 def _write_bundle(source: Path, output_dir: Path, messages: list[_Message]) -> None:
+    """Write selected messages and indexes as an OKF bundle."""
     memories_dir = output_dir / "memories" / "conversation"
     memories_dir.mkdir(parents=True, exist_ok=True)
     # This directory is owned by the adapter. Remove only its generated Markdown
@@ -244,6 +251,7 @@ def _write_bundle(source: Path, output_dir: Path, messages: list[_Message]) -> N
 
 
 def _okf_document(*, title: str, message: _Message, source_fingerprint: str) -> str:
+    """Render one normalized message as an OKF Markdown document."""
     safe_title = json.dumps(title, ensure_ascii=False)
     safe_timestamp = json.dumps(message.timestamp, ensure_ascii=False)
     return (

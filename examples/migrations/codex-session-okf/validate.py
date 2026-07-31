@@ -9,6 +9,7 @@ from pathlib import Path
 
 
 def main() -> None:
+    """Compare source and exported OKF recall against golden expectations."""
     parser = argparse.ArgumentParser()
     parser.add_argument("source", type=Path)
     parser.add_argument("okf", type=Path)

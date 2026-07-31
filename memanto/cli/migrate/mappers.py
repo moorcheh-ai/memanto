@@ -69,6 +69,7 @@ _MAX_FOOTER_CHARS = 800  # cap supporting-data footer so it never dominates
 
 
 def _title_from(content: str) -> str:
+    """Build a compact single-line title from memory content."""
     text = content.strip().replace("\n", " ")
     if len(text) <= _DEFAULT_TITLE_CHARS:
         return text
@@ -76,6 +77,7 @@ def _title_from(content: str) -> str:
 
 
 def _coerce_type(raw: str | None) -> str | None:
+    """Normalize a candidate memory type when it is supported."""
     if not raw:
         return None
     t = raw.strip().lower()
@@ -83,6 +85,7 @@ def _coerce_type(raw: str | None) -> str | None:
 
 
 def _coerce_source(raw: Any) -> str | None:
+    """Normalize a candidate source to a valid Memanto source."""
     if not isinstance(raw, str):
         return None
     source = raw.strip().lower()
@@ -90,6 +93,7 @@ def _coerce_source(raw: Any) -> str | None:
 
 
 def _scope_tag(scope: dict[str, Any] | None) -> str | None:
+    """Convert the first populated export scope entry into a tag."""
     if not scope:
         return None
     for k, v in scope.items():
@@ -130,6 +134,7 @@ def _parse_dt(value: Any) -> datetime | None:
 
 
 def _pick_first_dt(record: dict[str, Any], keys: tuple[str, ...]) -> datetime | None:
+    """Return the first parseable timestamp among candidate record keys."""
     for key in keys:
         dt = _parse_dt(record.get(key))
         if dt is not None:
@@ -185,6 +190,7 @@ def _attach_footer(content: str, footer: str) -> str:
 
 
 def _now_utc() -> datetime:
+    """Return the current timezone-aware UTC datetime."""
     return datetime.now(timezone.utc)
 
 
