@@ -8,6 +8,8 @@ foreign OKF bundle whose free-form ``type`` and unknown keys must land in the
 ``[Supporting data]`` footer without loss.
 """
 
+from time import perf_counter
+
 from memanto.app.services.okf_export_service import OkfExportService
 from memanto.cli.migrate.mappers import map_okf
 from memanto.cli.migrate.okf_loader import load_okf_bundle
@@ -186,3 +188,37 @@ def test_loader_splits_stacked_file(tmp_path):
     assert {m["title"] for m in export["memories"]} == {
         f"Standup {i}" for i in range(5)
     }
+
+
+def test_loader_extracts_multiple_links_around_malformed_markup(tmp_path):
+    """Malformed candidates do not hide valid links that follow them."""
+    okf_file = tmp_path / "links.md"
+    okf_file.write_text(
+        "---\ntype: fact\ntitle: Links\n---\n"
+        "Broken [label] text, then [first](/one) and [](ignored), "
+        "then [second](https://example.com/two).\n",
+        encoding="utf-8",
+    )
+
+    memory = load_okf_bundle(okf_file)["memories"][0]
+
+    assert memory["links"] == [
+        "first -> /one",
+        "second -> https://example.com/two",
+    ]
+
+
+def test_loader_handles_many_unclosed_link_markers_quickly(tmp_path):
+    """A malformed large note must not make link extraction scale quadratically."""
+    okf_file = tmp_path / "malformed-links.md"
+    okf_file.write_text(
+        "---\ntype: fact\ntitle: Malformed links\n---\n" + "[" * 25_000,
+        encoding="utf-8",
+    )
+
+    started = perf_counter()
+    memory = load_okf_bundle(okf_file)["memories"][0]
+    elapsed = perf_counter() - started
+
+    assert memory["links"] == []
+    assert elapsed < 1.0
