@@ -1,3 +1,5 @@
+"""Expose Memanto memory tools for LangGraph agents."""
+
 from __future__ import annotations
 
 from typing import Annotated
@@ -5,6 +7,7 @@ from typing import Annotated
 from langchain_core.tools import tool
 from pydantic import Field
 
+from memanto.app.utils.errors import SessionError
 from memanto.cli.client.sdk_client import SdkClient
 
 # Valid Memanto memory types with definitions for the LLM
@@ -26,6 +29,8 @@ VALID_MEMORY_TYPES = (
 
 
 def create_memanto_tools(client: SdkClient, agent_id: str):
+    """Create LangGraph tools bound to a Memanto client and agent."""
+
     import copy
     import threading
 
@@ -113,7 +118,7 @@ def create_memanto_tools(client: SdkClient, agent_id: str):
                 tags=tag_list,
                 source="langgraph-agent",
             )
-        except Exception:
+        except SessionError:
             _do_setup()
             result = client.remember(
                 agent_id=agent_id,

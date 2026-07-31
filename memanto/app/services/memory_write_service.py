@@ -30,8 +30,6 @@ _REMOVED_TRUST_FIELDS = frozenset(
     }
 )
 
-_SUCCESSFUL_UPLOAD_STATUSES = {"queued", "success", "ok"}
-
 
 class MemoryWriteService:
     """Persist memory records to Moorcheh-backed namespaces."""
@@ -239,7 +237,7 @@ class MemoryWriteService:
                 moorcheh_status = str(upload_result.get("status", "unknown")).lower()
                 for result in results:
                     if result["status"] == "pending":
-                        if moorcheh_status in _SUCCESSFUL_UPLOAD_STATUSES:
+                        if moorcheh_status in SUCCESSFUL_UPLOAD_STATUSES:
                             result["status"] = moorcheh_status
                         else:
                             result["status"] = "failed"
@@ -249,18 +247,22 @@ class MemoryWriteService:
 
             # Count successes, failures, and namespace-rejected items separately
             # so that successful + failed + rejected == total_submitted always.
-            _known = set(SUCCESSFUL_UPLOAD_STATUSES) | {"failed", "rejected"}
-            successful = sum(
-                1
-                for r in results
-                if str(r["status"]).lower() in SUCCESSFUL_UPLOAD_STATUSES
-            )
-            failed = sum(1 for r in results if str(r["status"]).lower() == "failed")
-            rejected = sum(1 for r in results if str(r["status"]).lower() == "rejected")
-            # Absorb any non-standard upload statuses into failed so the invariant holds
-            failed += len(results) - successful - failed - rejected
+            successful = 0
+            failed = 0
+            rejected = 0
             for r in results:
-                if str(r["status"]).lower() not in _known:
+                status = str(r["status"]).lower()
+                if status in SUCCESSFUL_UPLOAD_STATUSES:
+                    successful += 1
+                elif status == "rejected":
+                    rejected += 1
+                else:
+                    # Validation failures carry status="failed"/action="rejected"
+                    # and must stay in `failed`: the batch endpoints return only
+                    # successful/failed (see routes/memory.py), so counting them
+                    # as `rejected` would drop them from the response entirely.
+                    # Non-standard upload statuses are absorbed here too.
+                    failed += 1
                     r["status"] = "failed"
 
             return {
@@ -350,6 +352,7 @@ class MemoryWriteService:
                 confidence=updates.get("confidence", metadata.get("confidence", 0.8)),
                 status=updates.get("status", metadata.get("status", "active")),
                 tags=updates.get("tags", metadata.get("tags", [])),
+                provenance=metadata.get("provenance") or "explicit_statement",
             )
 
             # Update timestamps (preserve created_at, set updated_at to now)
@@ -414,16 +417,24 @@ class MemoryWriteService:
             except Exception as e:
                 raise MemoryError(f"Upload failed. Error: {e}")
 
+            status = upload_result.get("status", "unknown")
+            if str(status).lower() not in SUCCESSFUL_UPLOAD_STATUSES:
+                raise MemoryError(
+                    f"Failed to upload updated memory {memory_id}: {status}"
+                )
+
             return {
                 "id": memory_id,
                 "namespace": namespace,
-                "status": upload_result.get("status", "unknown"),
+                "status": status,
                 "action": "updated",
                 "reason": "Memory updated successfully via overwrite",
                 "validation": validation_result.get("action", "validated"),
                 "updated_fields": list(updates.keys()),
             }
 
+        except MemoryError:
+            raise
         except Exception as e:
             raise MemoryError(f"Failed to update memory: {e}")
 

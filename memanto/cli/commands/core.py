@@ -331,6 +331,34 @@ def _prompt_embedding_provider() -> tuple[str, str, str]:
     return "ollama", "nomic-embed-text", ""
 
 
+def _import_user_config() -> tuple:
+    """Import moorcheh-client's user-config helpers across its layouts.
+
+    moorcheh-client 0.1.5 reorganised the package into ``client`` and ``cli``
+    subpackages, moving ``moorcheh/user_config.py`` to
+    ``moorcheh/cli/user_config.py``. Because the dependency is declared as
+    ``moorcheh-client>=0.1.3`` with no upper bound, a fresh install resolves to
+    0.1.5 and the old import path raises ImportError, which aborted on-prem
+    setup entirely. Try the new location first, then fall back to the old one so
+    0.1.3 through 0.1.5 all work.
+    """
+    try:
+        from moorcheh.cli.user_config import (  # type: ignore[import-not-found]
+            EmbeddingConfig,
+            LlmConfig,
+            default_base_url,
+            save_runtime_config,
+        )
+    except ImportError:
+        from moorcheh.user_config import (  # type: ignore[import-not-found]
+            EmbeddingConfig,
+            LlmConfig,
+            default_base_url,
+            save_runtime_config,
+        )
+    return EmbeddingConfig, LlmConfig, default_base_url, save_runtime_config
+
+
 # Valid on-prem LLM identifiers, sourced from moorcheh.user_config. Listed
 # explicitly so the prompt is stable even if moorcheh-client adds/removes
 # models. Keep in sync with ``moorcheh.user_config.LLM_PROVIDER_MODELS``.
@@ -439,12 +467,12 @@ def _persist_moorcheh_llm_config(
     ``save_runtime_config`` helper so the schema stays in sync.
     """
     try:
-        from moorcheh.user_config import (  # type: ignore[import-not-found]
+        (
             EmbeddingConfig,
             LlmConfig,
             default_base_url,
             save_runtime_config,
-        )
+        ) = _import_user_config()
     except ImportError as e:
         _error(f"moorcheh.user_config unavailable: {e}")
         return

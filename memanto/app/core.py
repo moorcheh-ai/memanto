@@ -2,11 +2,12 @@
 MEMANTO Core Architecture - Namespace Strategy & Memory Records
 """
 
+import re
 import uuid
 from datetime import datetime, timedelta, timezone
 from typing import Annotated, Any
 
-from pydantic import BaseModel, Field, StringConstraints
+from pydantic import BaseModel, Field, StringConstraints, field_validator
 
 from memanto.app.constants import (
     MemoryType,
@@ -38,6 +39,22 @@ class MemoryRecord(BaseModel):
     type: MemoryType | None = None
     title: str = Field(max_length=100)
     content: str = Field(max_length=10000)
+
+    @field_validator("title", mode="before")
+    @classmethod
+    def _normalize_title_newlines(cls, value: Any) -> Any:
+        """Collapse line breaks in titles to single spaces.
+
+        Titles are single-line labels: the serialized document format is
+        ``[TYPE] title\\n\\ncontent``, so a newline inside the title corrupts
+        the title/content boundary on readback (the ``[TYPE]`` prefix leaks
+        into the recalled title and compounds on every update). Newline titles
+        arrive from any caller, including the derived-title fallback that
+        slices multi-line content.
+        """
+        if isinstance(value, str) and ("\n" in value or "\r" in value):
+            return re.sub(r"[ \t]*[\r\n]+[ \t]*", " ", value).strip()
+        return value
 
     # Metadata fields
     agent_id: str

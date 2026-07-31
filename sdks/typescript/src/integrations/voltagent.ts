@@ -52,6 +52,17 @@ export function createMemantoVoltAgentTools(
 ) {
   const { include, defaultLimit } = options;
 
+  // A configured default bypasses the Zod parameter schemas below because it
+  // is applied only after VoltAgent has validated the model's arguments. Keep
+  // it inside the stricter recallMemory contract so an omitted model limit
+  // cannot silently send an invalid value to the Memanto API.
+  if (
+    defaultLimit !== undefined &&
+    (!Number.isInteger(defaultLimit) || defaultLimit < 1 || defaultLimit > 50)
+  ) {
+    throw new RangeError("defaultLimit must be an integer between 1 and 50");
+  }
+
   const all = {
     recallMemory: createTool({
       name: "recallMemory",

@@ -428,6 +428,7 @@ class MemoryItem(BaseModel):
     ttl_seconds: int | None = None
     actor_id: str | None = None
     source: str | None = None
+    source_ref: str | None = None
     agent_id: str | None = None
     score: float | None = None
     provenance: str = "explicit_statement"

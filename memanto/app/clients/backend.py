@@ -16,6 +16,8 @@ from pathlib import Path
 
 
 class Backend(str, Enum):
+    """Identify a supported Memanto backend deployment type."""
+
     CLOUD = "cloud"
     ON_PREM = "on-prem"
 
@@ -55,4 +57,33 @@ def get_active_llm_model(cloud_default: str) -> str | None:
         state = json.loads(state_path.read_text())
     except Exception:
         return None
+    # Valid JSON is not necessarily an object: a truncated or hand-edited
+    # state.json can hold a list/string/number, where ``.get`` would raise
+    # AttributeError instead of degrading to the documented ``None``.
+    if not isinstance(state, dict):
+        return None
     return state.get("llm_model") or None
+
+
+def get_active_embedding_model() -> str | None:
+    """Return the configured on-prem embedding model, when it is knowable.
+
+    Moorcheh Cloud owns its embedding configuration server-side, so callers
+    receive ``None`` there and should use a model-independent safe fallback.
+    """
+    from memanto.app.config import settings
+
+    if parse_backend(settings.MEMANTO_BACKEND) != Backend.ON_PREM:
+        return None
+
+    state_path = Path.home() / ".memanto" / "on-prem" / "state.json"
+    if not state_path.exists():
+        return None
+    try:
+        state = json.loads(state_path.read_text())
+    except Exception:
+        return None
+    if not isinstance(state, dict):
+        return None
+    model = state.get("embedding_model")
+    return model if isinstance(model, str) and model else None

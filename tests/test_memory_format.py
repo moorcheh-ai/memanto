@@ -3,11 +3,56 @@
 from unittest.mock import MagicMock
 
 from memanto.app.core import MemoryRecord
+from memanto.app.models import RecallResponse, TemporalRecallResponse
 from memanto.app.services.memory_read_service import MemoryReadService
 
 
 def _make_read_service():
     return MemoryReadService(MagicMock())
+
+
+def _formatted_memory_with_source_ref():
+    memory = MemoryRecord(
+        type="fact",
+        title="Imported fact",
+        content="This memory came from an external document.",
+        agent_id="test-agent",
+        actor_id="user",
+        source="system",
+        source_ref="document://guide/section-2",
+    )
+
+    return _make_read_service()._format_memory_item(memory.to_moorcheh_document())
+
+
+def test_recall_response_preserves_formatted_source_ref():
+    formatted = _formatted_memory_with_source_ref()
+
+    response = RecallResponse(
+        agent_id="test-agent",
+        session_id="test-session",
+        query="external document",
+        memories=[formatted],
+        count=1,
+    )
+
+    assert formatted["source_ref"] == "document://guide/section-2"
+    assert response.model_dump()["memories"][0]["source_ref"] == formatted["source_ref"]
+
+
+def test_temporal_recall_response_preserves_formatted_source_ref():
+    formatted = _formatted_memory_with_source_ref()
+
+    response = TemporalRecallResponse(
+        agent_id="test-agent",
+        session_id="test-session",
+        memories=[formatted],
+        count=1,
+        temporal_mode="recent",
+    )
+
+    assert formatted["source_ref"] == "document://guide/section-2"
+    assert response.model_dump()["memories"][0]["source_ref"] == formatted["source_ref"]
 
 
 def test_content_with_newlines_and_tags_preserves_content_integrity():

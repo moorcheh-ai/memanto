@@ -4,6 +4,10 @@ MEMANTO Core Unit Tests (No Server Required)
 Tests the session and agent services directly without HTTP layer.
 """
 
+import os
+import stat
+import threading
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from unittest.mock import MagicMock, patch
@@ -17,6 +21,7 @@ from memanto.app.models.session import AgentCreate, AgentPattern, Session, Sessi
 from memanto.app.services.agent_service import AgentService
 from memanto.app.services.session_service import SessionService
 from memanto.app.utils.errors import AgentAlreadyExistsError
+from memanto.app.utils.errors import InvalidSessionTokenError
 
 
 class TestSessionService:
@@ -69,6 +74,82 @@ class TestSessionService:
         print(f"   Session ID: {session.session_id}")
         print(f"   Namespace: {session.namespace}")
         print(f"   Expires in: {time_diff / 3600:.2f} hours")
+
+    @pytest.mark.skipif(os.name == "nt", reason="POSIX permission bits required")
+    def test_session_token_storage_is_owner_only(self, temp_dir):
+        """Persisted bearer tokens must not be readable by other local users."""
+        sessions_dir = temp_dir / "sessions"
+        service = SessionService(
+            secret_key="test-secret-key-min-32-bytes-1234",
+            sessions_dir=sessions_dir,
+        )
+
+        session = service.create_session(agent_id="private-agent", duration_hours=1)
+        record = MemoryRecord(
+            type="fact",
+            title="Private fact",
+            content="Private memory content",
+            agent_id="private-agent",
+            actor_id="user",
+            source="user",
+        )
+        service.log_memory_to_session_summary(
+            "private-agent", session.session_id, record
+        )
+
+        session_file = sessions_dir / "private-agent.json"
+        summary_file = next(sessions_dir.glob("*_summary.md"))
+        assert stat.S_IMODE(sessions_dir.stat().st_mode) == 0o700
+        assert stat.S_IMODE(session_file.stat().st_mode) == 0o600
+        assert stat.S_IMODE(summary_file.stat().st_mode) == 0o600
+
+    @pytest.mark.skipif(os.name == "nt", reason="POSIX permission bits required")
+    def test_first_storage_access_hardens_existing_session_artifacts(self, temp_dir):
+        """Using upgraded storage must close exposure left by older versions."""
+        sessions_dir = temp_dir / "sessions"
+        sessions_dir.mkdir(mode=0o777)
+        session_file = sessions_dir / "existing.json"
+        summary_file = sessions_dir / "existing_summary.md"
+        session_file.write_text('{"session_token": "live-bearer-token"}')
+        summary_file.write_text("private memory content")
+        sessions_dir.chmod(0o777)
+        session_file.chmod(0o666)
+        summary_file.chmod(0o666)
+
+        service = SessionService(
+            secret_key="test-secret-key-min-32-bytes-1234",
+            sessions_dir=sessions_dir,
+        )
+        service.list_sessions()
+
+        assert stat.S_IMODE(sessions_dir.stat().st_mode) == 0o700
+        assert stat.S_IMODE(session_file.stat().st_mode) == 0o600
+        assert stat.S_IMODE(summary_file.stat().st_mode) == 0o600
+
+    def test_interrupted_session_save_preserves_previous_record(self, session_service):
+        """A failed replacement must not truncate the live bearer-token record."""
+        session = session_service.create_session(
+            agent_id="test-agent", duration_hours=1
+        )
+        session_file = session_service.sessions_dir / "test-agent.json"
+        original_contents = session_file.read_text(encoding="utf-8")
+        replacement = session.model_copy(update={"session_id": "sess-replacement"})
+
+        def interrupted_dump(data, file_obj, **kwargs):
+            file_obj.write('{"session_id":')
+            file_obj.flush()
+            raise OSError("simulated interrupted write")
+
+        with patch(
+            "memanto.app.services.session_service.json.dump",
+            side_effect=interrupted_dump,
+        ):
+            with pytest.raises(OSError, match="simulated interrupted write"):
+                session_service._save_session(replacement)
+
+        assert session_file.read_text(encoding="utf-8") == original_contents
+        assert session_service.get_session("test-agent") == session
+        assert not list(session_service.sessions_dir.glob(".*.tmp"))
 
     def test_validate_session(self, session_service):
         """Test session validation"""
@@ -183,6 +264,139 @@ class TestSessionService:
         # Just verify the logic exists
         print("✅ Session expiration logic exists")
 
+    def test_auto_renew_is_single_flight_per_agent(self, session_service, monkeypatch):
+        """Parallel near-expiry requests must not mint competing tokens."""
+        session_service.create_session(agent_id="test-agent", duration_hours=1)
+        monkeypatch.setattr(settings, "SESSION_EXTEND_THRESHOLD_MINUTES", 120)
+
+        original_renew = session_service.renew_session
+        first_entered = threading.Event()
+        second_entered = threading.Event()
+        release_first = threading.Event()
+        counter_lock = threading.Lock()
+        call_count = 0
+
+        def controlled_renew(agent_id, pattern=None):
+            nonlocal call_count
+            with counter_lock:
+                call_count += 1
+                call_number = call_count
+            if call_number == 1:
+                first_entered.set()
+                assert release_first.wait(timeout=2)
+            elif call_number == 2:
+                second_entered.set()
+            return original_renew(agent_id=agent_id, pattern=pattern)
+
+        monkeypatch.setattr(session_service, "renew_session", controlled_renew)
+
+        with ThreadPoolExecutor(max_workers=2) as pool:
+            first = pool.submit(session_service.check_and_auto_renew, "test-agent")
+            assert first_entered.wait(timeout=2)
+            second = pool.submit(session_service.check_and_auto_renew, "test-agent")
+            second_entered.wait(timeout=0.25)
+            release_first.set()
+            results = [first.result(timeout=2), second.result(timeout=2)]
+
+        renewed = [session for session in results if session is not None]
+        assert len(renewed) == 1
+        session_service.validate_session(renewed[0].session_token)
+
+    def test_lifecycle_operations_for_different_agents_can_overlap(
+        self, session_service, monkeypatch
+    ):
+        """One agent's session file I/O must not block another agent."""
+        original_save = session_service._save_session
+        first_save_entered = threading.Event()
+        release_first_save = threading.Event()
+
+        def controlled_save(session):
+            if session.agent_id == "agent-a":
+                first_save_entered.set()
+                assert release_first_save.wait(timeout=2)
+            original_save(session)
+
+        monkeypatch.setattr(session_service, "_save_session", controlled_save)
+
+        with ThreadPoolExecutor(max_workers=2) as pool:
+            first = pool.submit(session_service.create_session, "agent-a")
+            assert first_save_entered.wait(timeout=2)
+            second = pool.submit(session_service.create_session, "agent-b")
+            second_session = second.result(timeout=1)
+            release_first_save.set()
+            first_session = first.result(timeout=2)
+
+        assert first_session.agent_id == "agent-a"
+        assert second_session.agent_id == "agent-b"
+
+    def test_active_session_read_waits_for_marker_update(self, session_service):
+        """Readers must not observe an active marker during its replacement."""
+        session = session_service.create_session("test-agent")
+        read_started = threading.Event()
+
+        def read_active_session():
+            read_started.set()
+            return session_service.get_active_session()
+
+        pool = ThreadPoolExecutor(max_workers=1)
+        try:
+            with session_service._active_marker_lock:
+                pending_read = pool.submit(read_active_session)
+                assert read_started.wait(timeout=2)
+                assert not pending_read.done()
+            active_session = pending_read.result(timeout=2)
+        finally:
+            pool.shutdown(wait=True)
+
+        assert active_session is not None
+        assert active_session.session_id == session.session_id
+
+    def test_end_session_revokes_concurrent_auto_renewal(
+        self, session_service, monkeypatch
+    ):
+        """Logout must terminate a renewal that was already in flight."""
+        original = session_service.create_session(
+            agent_id="test-agent", duration_hours=1
+        )
+        monkeypatch.setattr(settings, "SESSION_EXTEND_THRESHOLD_MINUTES", 120)
+
+        original_renew = session_service.renew_session
+        renewal_entered = threading.Event()
+        release_renewal = threading.Event()
+        termination_saved = threading.Event()
+        original_save = session_service._save_session
+
+        def controlled_renew(agent_id, pattern=None):
+            renewal_entered.set()
+            assert release_renewal.wait(timeout=2)
+            return original_renew(agent_id=agent_id, pattern=pattern)
+
+        def observed_save(session):
+            original_save(session)
+            if session.status == SessionStatus.TERMINATED:
+                termination_saved.set()
+
+        monkeypatch.setattr(session_service, "renew_session", controlled_renew)
+        monkeypatch.setattr(session_service, "_save_session", observed_save)
+
+        with ThreadPoolExecutor(max_workers=2) as pool:
+            renewing = pool.submit(session_service.check_and_auto_renew, "test-agent")
+            assert renewal_entered.wait(timeout=2)
+            ending = pool.submit(session_service.end_session, "test-agent")
+
+            # Logout cannot persist a stale termination while renewal owns the
+            # lifecycle. It proceeds immediately after the fresh token exists.
+            assert not termination_saved.wait(timeout=0.25)
+            release_renewal.set()
+            renewed = renewing.result(timeout=2)
+            summary = ending.result(timeout=2)
+
+        assert renewed is not None
+        assert renewed.session_id != original.session_id
+        assert summary.session_id == renewed.session_id
+        with pytest.raises(InvalidSessionTokenError):
+            session_service.validate_session(renewed.session_token)
+
     def test_end_session(self, session_service):
         """Test ending session"""
         # Create session
@@ -234,6 +448,74 @@ class TestSessionService:
         )
         assert other_root.secret_key != first.secret_key
 
+    def test_concurrent_first_start_uses_one_persisted_secret(
+        self, temp_dir, monkeypatch
+    ):
+        """Concurrent service starts must agree on the JWT signing secret."""
+        monkeypatch.delenv("MEMANTO_SECRET_KEY", raising=False)
+        monkeypatch.setattr(settings, "MEMANTO_SECRET_KEY", "")
+
+        sessions_dir = temp_dir / "sessions"
+        second_truncated_secret = threading.Event()
+        release_first_writer = threading.Event()
+        thread_role = threading.local()
+        real_open = os.open
+        real_fdopen = os.fdopen
+        real_write = os.write
+
+        def observed_open(path, flags, mode=0o777):
+            if (
+                getattr(thread_role, "value", None) == "second"
+                and Path(path).name == "secret_key"
+                and flags & os.O_TRUNC
+            ):
+                second_truncated_secret.set()
+            return real_open(path, flags, mode)
+
+        def delayed_write(fd, data):
+            if getattr(thread_role, "value", None) == "first" and len(data) == 64:
+                assert release_first_writer.wait(timeout=5)
+            return real_write(fd, data)
+
+        def delayed_fdopen(fd, *args, **kwargs):
+            file_handle = real_fdopen(fd, *args, **kwargs)
+            if getattr(thread_role, "value", None) != "first":
+                return file_handle
+
+            class DelayedWriter:
+                def __enter__(self):
+                    return self
+
+                def __exit__(self, exc_type, exc_value, traceback):
+                    return file_handle.__exit__(exc_type, exc_value, traceback)
+
+                def write(self, data):
+                    assert release_first_writer.wait(timeout=5)
+                    return file_handle.write(data)
+
+                def __getattr__(self, name):
+                    return getattr(file_handle, name)
+
+            return DelayedWriter()
+
+        def create_service(role):
+            thread_role.value = role
+            return SessionService(sessions_dir=sessions_dir).secret_key
+
+        monkeypatch.setattr(os, "open", observed_open)
+        monkeypatch.setattr(os, "fdopen", delayed_fdopen)
+        monkeypatch.setattr(os, "write", delayed_write)
+
+        with ThreadPoolExecutor(max_workers=2) as pool:
+            first = pool.submit(create_service, "first")
+            second = pool.submit(create_service, "second")
+            second_truncated_secret.wait(timeout=0.1)
+            release_first_writer.set()
+            returned_secrets = [first.result(timeout=5), second.result(timeout=5)]
+
+        persisted_secret = (temp_dir / "secret_key").read_text()
+        assert returned_secrets == [persisted_secret, persisted_secret]
+
     def test_get_active_session_ignores_invalid_session_file(self, session_service):
         """A corrupt active session file should not crash status checks."""
         active_marker = session_service.sessions_dir / "active"
@@ -242,6 +524,68 @@ class TestSessionService:
         (session_service.sessions_dir / "broken-agent.json").write_text("{")
 
         assert session_service.get_active_session() is None
+
+    def test_get_active_session_tolerates_external_marker_removal(
+        self, session_service, monkeypatch
+    ):
+        """A marker removed by another process during its read is treated as absent."""
+        active_marker = session_service.sessions_dir / "active"
+        active_marker.parent.mkdir(parents=True, exist_ok=True)
+        active_marker.write_text("test-agent")
+        original_open = open
+
+        def disappearing_marker(file, *args, **kwargs):
+            if Path(file) == active_marker:
+                active_marker.unlink(missing_ok=True)
+                raise FileNotFoundError(active_marker)
+            return original_open(file, *args, **kwargs)
+
+        monkeypatch.setattr("builtins.open", disappearing_marker)
+
+        assert session_service.get_active_session() is None
+
+    def test_clear_active_session_tolerates_external_marker_removal(
+        self, session_service, monkeypatch
+    ):
+        """A marker removed after an existence check does not crash cleanup."""
+        active_marker = session_service.sessions_dir / "active"
+        active_marker.parent.mkdir(parents=True, exist_ok=True)
+        active_marker.write_text("test-agent")
+        original_exists = Path.exists
+
+        def disappearing_marker(path):
+            exists = original_exists(path)
+            if path == active_marker and exists:
+                path.unlink()
+                return True
+            return exists
+
+        monkeypatch.setattr(Path, "exists", disappearing_marker)
+
+        session_service.clear_active_session()
+
+        assert not original_exists(active_marker)
+
+    def test_delete_session_tolerates_external_marker_removal(
+        self, session_service, monkeypatch
+    ):
+        """Deleting session state succeeds if another process removes the marker."""
+        session_service.create_session("test-agent")
+        active_marker = session_service.sessions_dir / "active"
+        active_marker.unlink()
+        active_marker.write_text("test-agent")
+        original_open = open
+
+        def disappearing_marker(file, *args, **kwargs):
+            if Path(file) == active_marker:
+                active_marker.unlink(missing_ok=True)
+                raise FileNotFoundError(active_marker)
+            return original_open(file, *args, **kwargs)
+
+        monkeypatch.setattr("builtins.open", disappearing_marker)
+
+        assert session_service.delete_session("test-agent") is True
+        assert not (session_service.sessions_dir / "test-agent.json").exists()
 
     def test_list_sessions_skips_invalid_session_files(self, session_service):
         """One corrupt session record must not hide all valid sessions."""
@@ -603,6 +947,125 @@ class TestMemoryWriteServiceDelete:
         uploaded = client.documents.upload.call_args.kwargs["documents"][0]
         # Should normalize 'manual' (invalid SourceType) to 'system'
         assert uploaded.get("source") == "system"
+
+
+class TestMemoryWriteServiceUpdateIntegrity:
+    def test_update_memory_preserves_read_service_metadata(self):
+        from memanto.app.services.memory_write_service import MemoryWriteService
+
+        client = MagicMock()
+        client.documents.get.return_value = {
+            "items": [
+                {
+                    "id": "mem-2",
+                    "text": (
+                        "[DECISION] Architecture decision\n\n"
+                        "Use same-ID document replacement for edits."
+                    ),
+                    "metadata": {
+                        "agent_id": "agent-1",
+                        "memory_type": "decision",
+                        "actor_id": "user",
+                        "source": "test",
+                        "source_ref": "issue-770",
+                        "confidence": 0.95,
+                        "status": "active",
+                        "tags": "integrity",
+                        "provenance": "validated",
+                    },
+                }
+            ]
+        }
+        client.documents.upload.return_value = {"status": "queued"}
+
+        MemoryWriteService(client).update_memory(
+            "mem-2",
+            "memanto_agent_agent-1",
+            {"content": "Updated without losing original metadata."},
+        )
+
+        uploaded = client.documents.upload.call_args.kwargs["documents"][0]
+        assert uploaded["memory_type"] == "decision"
+        assert uploaded["provenance"] == "validated"
+        assert uploaded["source_ref"] == "issue-770"
+        assert uploaded["tags"] == "integrity"
+
+    def test_update_memory_accepts_case_insensitive_success_status(self):
+        from memanto.app.services.memory_write_service import MemoryWriteService
+
+        client = MagicMock()
+        client.documents.upload.return_value = {"status": "OK"}
+        existing_memory = {
+            "id": "mem-1",
+            "type": "fact",
+            "title": "Original title",
+            "content": "Original content",
+            "agent_id": "agent-1",
+            "actor_id": "user",
+            "source": "test",
+            "confidence": 0.9,
+            "status": "active",
+            "tags": [],
+        }
+
+        with patch(
+            "memanto.app.services.memory_read_service.MemoryReadService.get_memory",
+            return_value=existing_memory,
+        ):
+            result = MemoryWriteService(client).update_memory(
+                "mem-1",
+                "memanto_agent_agent-1",
+                {"content": "Updated content"},
+            )
+
+        assert result["action"] == "updated"
+        assert result["status"] == "OK"
+        client.documents.delete.assert_not_called()
+
+    @pytest.mark.parametrize(
+        "upload_result,expected_status",
+        [
+            ({"status": "failed"}, "failed"),
+            ({"status": None}, None),
+            ({}, "unknown"),
+        ],
+    )
+    def test_update_memory_rejects_non_success_status_without_delete(
+        self, upload_result, expected_status
+    ):
+        from memanto.app.services.memory_write_service import MemoryWriteService
+        from memanto.app.utils.errors import MemoryError
+
+        client = MagicMock()
+        client.documents.upload.return_value = upload_result
+        existing_memory = {
+            "id": "mem-1",
+            "type": "fact",
+            "title": "Original title",
+            "content": "Original content",
+            "agent_id": "agent-1",
+            "actor_id": "user",
+            "source": "test",
+            "confidence": 0.9,
+            "status": "active",
+            "tags": [],
+        }
+
+        with patch(
+            "memanto.app.services.memory_read_service.MemoryReadService.get_memory",
+            return_value=existing_memory,
+        ):
+            with pytest.raises(MemoryError) as exc_info:
+                MemoryWriteService(client).update_memory(
+                    "mem-1",
+                    "memanto_agent_agent-1",
+                    {"content": "Updated content"},
+                )
+
+        assert str(exc_info.value) == (
+            f"Failed to upload updated memory mem-1: {expected_status}"
+        )
+        client.documents.delete.assert_not_called()
 
 
 class TestMemoryReadServiceFormatting:

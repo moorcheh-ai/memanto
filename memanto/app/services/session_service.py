@@ -5,10 +5,16 @@ Handles session creation, validation, and management.
 Uses JWT tokens for stateless authentication.
 """
 
+import errno
 import json
 import logging
 import os
 import secrets
+import tempfile
+import threading
+import time
+from collections.abc import Iterator
+from contextlib import contextmanager
 from datetime import timedelta
 from pathlib import Path
 from typing import Any
@@ -25,7 +31,6 @@ from memanto.app.models.session import (
     SessionSummary,
     SessionToken,
 )
-from memanto.app.utils.atomic_write import atomic_write_text
 from memanto.app.utils.errors import (
     InvalidSessionTokenError,
     SessionExpiredError,
@@ -55,6 +60,9 @@ def get_session_service() -> "SessionService":
 class SessionService:
     """Service for managing sessions"""
 
+    _PRIVATE_FILE_MODE = 0o600
+    _PRIVATE_DIR_MODE = 0o700
+
     def __init__(self, secret_key: str | None = None, sessions_dir: Path | None = None):
         """
         Initialize session service
@@ -65,6 +73,15 @@ class SessionService:
         """
         self.sessions_dir = sessions_dir or get_data_dir() / "sessions"
         self._secret_key: str | None = secret_key or settings.MEMANTO_SECRET_KEY or None
+        self._storage_hardened = False
+        # Serialize lifecycle operations for the same agent so renewal cannot
+        # publish a fresh bearer token after logout has completed. Keep the
+        # process-wide active marker on its own narrower lock so unrelated
+        # agents can create, renew, and terminate sessions concurrently.
+        self._agent_locks: dict[str, threading.RLock] = {}
+        self._agent_locks_guard = threading.Lock()
+        self._active_marker_lock = threading.RLock()
+        self._summary_lock = threading.Lock()
 
     @property
     def secret_key(self) -> str:
@@ -73,42 +90,174 @@ class SessionService:
             self._secret_key = self._generate_secure_secret_key()
         return self._secret_key
 
+    def _lock_for_agent(self, agent_id: str) -> threading.RLock:
+        """Return the stable lifecycle lock for one agent."""
+        validate_safe_id(agent_id, "agent_id")
+        with self._agent_locks_guard:
+            lock = self._agent_locks.get(agent_id)
+            if lock is None:
+                lock = threading.RLock()
+                self._agent_locks[agent_id] = lock
+            return lock
+
+    @staticmethod
+    def _set_private_permissions(path: Path, mode: int) -> None:
+        """Best-effort owner-only permissions for persisted session state."""
+        try:
+            path.chmod(mode)
+        except OSError:
+            # Windows ACLs are not represented by POSIX mode bits. Creation and
+            # access still follow the owning user's ACL in that environment.
+            pass
+
+    def _harden_session_storage(self) -> None:
+        """Create and protect both new and pre-existing session artifacts.
+
+        Session JSON files contain live bearer tokens, while summary files can
+        contain private memory content. A normal ``mkdir``/``open`` sequence on
+        POSIX inherits the process umask and commonly creates these as 0755 and
+        0644, allowing other local accounts to traverse and read them.
+        """
+        if self._storage_hardened and self.sessions_dir.exists():
+            return
+        self.sessions_dir.mkdir(
+            parents=True, exist_ok=True, mode=self._PRIVATE_DIR_MODE
+        )
+        self._set_private_permissions(self.sessions_dir, self._PRIVATE_DIR_MODE)
+        for path in self.sessions_dir.iterdir():
+            if path.is_symlink() or not path.is_file():
+                continue
+            self._set_private_permissions(path, self._PRIVATE_FILE_MODE)
+        self._storage_hardened = True
+
+    def _open_private_text(self, path: Path, flags: int, mode: str, **kwargs):
+        """Open a text file with owner-only permissions from first creation."""
+        fd = os.open(str(path), flags, self._PRIVATE_FILE_MODE)
+        try:
+            try:
+                fchmod = getattr(os, "fchmod", None)
+                if fchmod is not None:
+                    fchmod(fd, self._PRIVATE_FILE_MODE)
+            except OSError:
+                # Best-effort only: some platforms and filesystems reject fchmod
+                # even though os.open already created the file with this mode.
+                pass
+            return os.fdopen(fd, mode, **kwargs)
+        except Exception:
+            os.close(fd)
+            raise
+
+    def _write_private_json_atomic(self, path: Path, data: Any) -> None:
+        """Atomically replace a private JSON file after a complete durable write.
+
+        Writing directly to the live path with ``O_TRUNC`` can destroy the only
+        valid session record if serialization or the process fails mid-write.
+        A sibling temporary file keeps readers on the previous complete record
+        until the replacement is ready.
+        """
+        tmp_path = path.with_name(f".{path.name}.{secrets.token_hex(8)}.tmp")
+        flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL
+        try:
+            with self._open_private_text(
+                tmp_path, flags, "w", encoding="utf-8"
+            ) as tmp_file:
+                json.dump(data, tmp_file, indent=2)
+                tmp_file.flush()
+                os.fsync(tmp_file.fileno())
+            os.replace(tmp_path, path)
+            self._set_private_permissions(path, self._PRIVATE_FILE_MODE)
+        finally:
+            try:
+                tmp_path.unlink()
+            except FileNotFoundError:
+                # Expected on the success path: os.replace already moved the
+                # temp file onto the target, so there is nothing left to clean up.
+                pass
+
     def _generate_secure_secret_key(self) -> str:
         """Generate (or reuse) a persisted fallback secret for JWT signing.
 
         Persisted alongside the sessions directory so sessions survive
         process restarts instead of every new process invalidating all
-        existing session tokens. Created atomically (O_CREAT | O_EXCL) with
-        restrictive permissions from the moment of creation, so concurrent
-        first-start processes can't race each other into using divergent
-        secrets and there's no window where the file is world-readable. An
+        existing session tokens. A cross-process lock serializes the initial
+        read/write so concurrent first-start workers cannot return divergent
+        secrets. The file has restrictive permissions from creation, and an
         existing-but-empty file (e.g. left behind by a crash mid-write) is
-        treated as absent and rewritten.
+        safely rewritten by the lock holder.
         """
         secret_file = self.sessions_dir.parent / "secret_key"
         secret_file.parent.mkdir(parents=True, exist_ok=True)
-        existing = self._read_persisted_secret(secret_file)
-        if existing is not None:
-            return existing
-
-        secret = secrets.token_hex(32)
-        try:
-            fd = os.open(str(secret_file), os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
-        except FileExistsError:
-            # Lost a race to another process, or the file is a stale empty stub.
+        lock_file = secret_file.with_name(f"{secret_file.name}.lock")
+        with self._exclusive_file_lock(lock_file):
             existing = self._read_persisted_secret(secret_file)
             if existing is not None:
                 return existing
-            fd = os.open(str(secret_file), os.O_WRONLY | os.O_TRUNC, 0o600)
+
+            secret = secrets.token_hex(32)
+            fd, temp_name = tempfile.mkstemp(
+                prefix=f".{secret_file.name}.", dir=secret_file.parent
+            )
+            temp_file = Path(temp_name)
+            try:
+                with os.fdopen(fd, "w", encoding="utf-8") as file_handle:
+                    file_handle.write(secret)
+                    file_handle.flush()
+                    os.fsync(file_handle.fileno())
+                os.replace(temp_file, secret_file)
+                try:
+                    secret_file.chmod(0o600)
+                except OSError:
+                    pass  # Windows may not support chmod
+            finally:
+                temp_file.unlink(missing_ok=True)
+            return secret
+
+    @staticmethod
+    @contextmanager
+    def _exclusive_file_lock(lock_file: Path) -> Iterator[None]:
+        """Hold an advisory cross-process lock on one byte of ``lock_file``."""
+        fd = os.open(str(lock_file), os.O_CREAT | os.O_RDWR, 0o600)
+        locked = False
         try:
-            os.write(fd, secret.encode())
+            if os.fstat(fd).st_size == 0:
+                os.write(fd, b"\0")
+                os.fsync(fd)
+            os.lseek(fd, 0, os.SEEK_SET)
+
+            if os.name == "nt":
+                import msvcrt
+
+                while True:
+                    try:
+                        msvcrt.locking(fd, msvcrt.LK_NBLCK, 1)
+                        break
+                    except OSError as exc:
+                        if exc.errno not in {
+                            errno.EACCES,
+                            errno.EAGAIN,
+                            errno.EDEADLK,
+                        }:
+                            raise
+                        os.lseek(fd, 0, os.SEEK_SET)
+                        time.sleep(0.05)
+            else:
+                import fcntl
+
+                fcntl.flock(fd, fcntl.LOCK_EX)  # type: ignore[attr-defined]
+            locked = True
+            yield
         finally:
+            if locked:
+                os.lseek(fd, 0, os.SEEK_SET)
+                if os.name == "nt":
+                    import msvcrt
+
+                    msvcrt.locking(fd, msvcrt.LK_UNLCK, 1)
+                else:
+                    import fcntl
+
+                    fcntl.flock(fd, fcntl.LOCK_UN)  # type: ignore[attr-defined]
             os.close(fd)
-        try:
-            secret_file.chmod(0o600)
-        except OSError:
-            pass  # Windows may not support chmod
-        return secret
 
     @staticmethod
     def _read_persisted_secret(secret_file: Path) -> str | None:
@@ -148,6 +297,16 @@ class SessionService:
         Returns:
             Session object with JWT token
         """
+        with self._lock_for_agent(agent_id):
+            return self._create_session(agent_id, pattern, duration_hours)
+
+    def _create_session(
+        self,
+        agent_id: str,
+        pattern: AgentPattern | None,
+        duration_hours: int | None,
+    ) -> Session:
+        """Create and publish a session while the agent lifecycle lock is held."""
         # Use config default if not explicitly provided
         if duration_hours is None:
             duration_hours = settings.SESSION_DEFAULT_DURATION_HOURS
@@ -259,28 +418,39 @@ class SessionService:
         Returns:
             Session object or None if no active session or session is expired
         """
-        active_link = self.sessions_dir / "active"
-        if not active_link.exists():
-            return None
+        with self._active_marker_lock:
+            active_link = self.sessions_dir / "active"
 
-        # Read symlink (or file on Windows)
-        if active_link.is_symlink():
-            target = active_link.readlink()
-            agent_id = target.stem
-        else:
-            with open(active_link) as f:
-                agent_id = f.read().strip()
+            try:
+                # Read symlink (or file on Windows). Another process can replace
+                # or remove the marker while this process holds its local lock.
+                if active_link.is_symlink():
+                    target = active_link.readlink()
+                    agent_id = target.stem
+                else:
+                    with open(active_link) as f:
+                        agent_id = f.read().strip()
+            except OSError:
+                return None
 
-        session = self.get_session(agent_id)
-        if not session:
-            return None
+            try:
+                session = self.get_session(agent_id)
+            except ValueError:
+                # An empty or malformed marker (e.g. a crash between unlink and
+                # the fallback write in _set_active_session) fails validate_safe_id.
+                # An unreadable marker means "no active session", exactly as the
+                # OSError path above already treats it.
+                return None
+            if not session:
+                return None
 
-        # If session is expired, clear the stale active marker and return None
-        if not session.is_active():
-            self._clear_active_session()
-            return None
+            # If session is expired, clear the stale marker and return None.
+            # The marker lock is re-entrant for this cleanup path.
+            if not session.is_active():
+                self._clear_active_session()
+                return None
 
-        return session
+            return session
 
     def end_session(self, agent_id: str) -> SessionSummary:
         """
@@ -295,6 +465,11 @@ class SessionService:
         Raises:
             SessionNotFoundError: If session doesn't exist
         """
+        with self._lock_for_agent(agent_id):
+            return self._end_session(agent_id)
+
+    def _end_session(self, agent_id: str) -> SessionSummary:
+        """Terminate a session while excluding concurrent token rotation."""
         session = self.get_session(agent_id)
         if not session:
             raise SessionNotFoundError(f"No session found for agent {agent_id}")
@@ -368,35 +543,48 @@ class SessionService:
         if not settings.SESSION_AUTO_RENEW_ENABLED:
             return None
 
-        session = self.get_session(agent_id)
-        if not session or not session.is_active():
-            return None
+        # Validation and renewal must be one operation. Without the per-agent
+        # lifecycle lock, parallel requests can all observe the same
+        # near-expiry session, mint competing tokens, and immediately
+        # invalidate every replacement except the last file write. The same
+        # lock also makes logout authoritative over an in-flight renewal.
+        with self._lock_for_agent(agent_id):
+            session = self.get_session(agent_id)
+            if not session or not session.is_active():
+                return None
 
-        remaining = session.time_remaining()
-        threshold = timedelta(minutes=settings.SESSION_EXTEND_THRESHOLD_MINUTES)
+            remaining = session.time_remaining()
+            threshold = timedelta(minutes=settings.SESSION_EXTEND_THRESHOLD_MINUTES)
 
-        if remaining <= threshold:
-            # Renew with a fresh session
-            return self.renew_session(
-                agent_id=agent_id,
-                pattern=session.pattern,
-            )
+            if remaining <= threshold:
+                # Renew with a fresh session
+                return self.renew_session(
+                    agent_id=agent_id,
+                    pattern=session.pattern,
+                )
 
         return None
 
     def _save_session(self, session: Session) -> None:
-        """Save session to file"""
+        """Save session to file.
+
+        Deliberately does NOT use the shared ``atomic_write_text`` helper that
+        agent metadata and CLI config use. Both are crash-safe, but session
+        files hold live bearer tokens, so this path additionally hardens the
+        containing directory to 0o700 and any pre-existing session files to
+        0o600 before writing. Swapping in the generic helper would silently
+        drop that hardening.
+        """
         validate_safe_id(session.agent_id, "agent_id")
+        self._harden_session_storage()
         session_file = self.sessions_dir / f"{session.agent_id}.json"
-        atomic_write_text(
-            session_file,
-            json.dumps(session.model_dump(mode="json"), indent=2),
-        )
+        self._write_private_json_atomic(session_file, session.model_dump(mode="json"))
 
     def _load_session_file(self, session_file: Path) -> Session | None:
         """Load one session file, treating corrupt local state as absent."""
         if not session_file.exists():
             return None
+        self._harden_session_storage()
 
         try:
             with open(session_file) as f:
@@ -432,10 +620,7 @@ class SessionService:
         summary_file = (
             self.sessions_dir / f"{agent_id}_{date_str}_{session_id}_summary.md"
         )
-        self.sessions_dir.mkdir(parents=True, exist_ok=True)
-
-        # Determine if we need to write the header
-        write_header = not summary_file.exists()
+        self._harden_session_storage()
 
         # Format the memory into Markdown
         memory_type = (getattr(memory_record, "type", None) or "unclassified").upper()
@@ -449,27 +634,59 @@ class SessionService:
         status = getattr(memory_record, "status", None)
         tags = getattr(memory_record, "tags", None)
 
-        with open(summary_file, "a", encoding="utf-8") as f:
-            if write_header:
-                f.write(f"# Session Summary for {agent_id}\n")
-                f.write(f"**Session ID:** `{session_id}`\n\n")
-                f.write("---\n\n")
+        lines = [f"### [{timestamp}] [{memory_type}] {title}\n"]
+        if memory_id:
+            lines.append(f"- **Memory ID**: `{memory_id}`\n")
+        lines.append(f"- **Confidence**: `{confidence}`\n")
+        if status:
+            lines.append(f"- **Status**: `{status}`\n")
+        if source:
+            lines.append(f"- **Source**: `{source}`\n")
+        if provenance:
+            lines.append(f"- **Provenance**: `{provenance}`\n")
+        if tags:
+            lines.append(f"- **Tags**: {', '.join(f'`{t}`' for t in tags)}\n")
+        lines.append("- **Content**:\n")
+        lines.append(f"> {content.replace(chr(10), chr(10) + '> ')}\n\n")
+        lines.append("---\n\n")
 
-            f.write(f"### [{timestamp}] [{memory_type}] {title}\n")
-            if memory_id:
-                f.write(f"- **Memory ID**: `{memory_id}`\n")
-            f.write(f"- **Confidence**: `{confidence}`\n")
-            if status:
-                f.write(f"- **Status**: `{status}`\n")
-            if source:
-                f.write(f"- **Source**: `{source}`\n")
-            if provenance:
-                f.write(f"- **Provenance**: `{provenance}`\n")
-            if tags:
-                f.write(f"- **Tags**: {', '.join(f'`{t}`' for t in tags)}\n")
-            f.write("- **Content**:\n")
-            f.write(f"> {content.replace(chr(10), chr(10) + '> ')}\n\n")
-            f.write("---\n\n")
+        self._append_session_summary(
+            summary_file=summary_file,
+            agent_id=agent_id,
+            session_id=session_id,
+            entry="".join(lines),
+        )
+
+    def try_log_memory_to_session_summary(
+        self,
+        agent_id: str,
+        session_id: str,
+        memory_record: Any,
+        memory_id: str | None = None,
+    ) -> bool:
+        """Best-effort summary logging for an already committed memory.
+
+        The remote memory store is authoritative. Once that write succeeds, an
+        auxiliary local Markdown failure must not make callers report the
+        operation as failed (and potentially retry it with a new memory ID).
+        """
+        try:
+            self.log_memory_to_session_summary(
+                agent_id=agent_id,
+                session_id=session_id,
+                memory_record=memory_record,
+                memory_id=memory_id,
+            )
+        except Exception as exc:
+            logger.warning(
+                "Memory %s was committed for agent %s, but session summary "
+                "logging failed: %s",
+                memory_id or getattr(memory_record, "id", "unknown"),
+                agent_id,
+                exc,
+            )
+            return False
+        return True
 
     def log_memory_deletion_to_session_summary(
         self,
@@ -495,45 +712,93 @@ class SessionService:
         summary_file = (
             self.sessions_dir / f"{agent_id}_{date_str}_{session_id}_summary.md"
         )
-        self.sessions_dir.mkdir(parents=True, exist_ok=True)
+        self._harden_session_storage()
 
-        write_header = not summary_file.exists()
+        entry = (
+            f"### [{timestamp}] [DELETED] Memory Deleted\n"
+            f"- **Memory ID**: `{memory_id}`\n"
+            "- **Confidence**: `1.0`\n"
+            "---\n\n"
+        )
+        self._append_session_summary(
+            summary_file=summary_file,
+            agent_id=agent_id,
+            session_id=session_id,
+            entry=entry,
+        )
 
-        with open(summary_file, "a", encoding="utf-8") as f:
-            if write_header:
-                f.write(f"# Session Summary for {agent_id}\n")
-                f.write(f"**Session ID:** `{session_id}`\n\n")
-                f.write("---\n\n")
+    def _append_session_summary(
+        self,
+        summary_file: Path,
+        agent_id: str,
+        session_id: str,
+        entry: str,
+    ) -> None:
+        """Append one complete entry without racing header creation or peer writes."""
+        with self._summary_lock:
+            header = ""
+            if not summary_file.exists():
+                header = (
+                    f"# Session Summary for {agent_id}\n"
+                    f"**Session ID:** `{session_id}`\n\n"
+                    "---\n\n"
+                )
 
-            f.write(f"### [{timestamp}] [DELETED] Memory Deleted\n")
-            f.write(f"- **Memory ID**: `{memory_id}`\n")
-            f.write("- **Confidence**: `1.0`\n")
-            f.write("---\n\n")
+            flags = os.O_WRONLY | os.O_CREAT | os.O_APPEND
+            with self._open_private_text(
+                summary_file, flags, "a", encoding="utf-8"
+            ) as f:
+                f.write(header + entry)
+
+    def try_log_memory_deletion_to_session_summary(
+        self,
+        agent_id: str,
+        session_id: str,
+        memory_id: str,
+    ) -> bool:
+        """Best-effort summary logging for an already committed deletion."""
+        try:
+            self.log_memory_deletion_to_session_summary(
+                agent_id=agent_id,
+                session_id=session_id,
+                memory_id=memory_id,
+            )
+        except Exception as exc:
+            logger.warning(
+                "Memory %s was deleted for agent %s, but session summary "
+                "logging failed: %s",
+                memory_id,
+                agent_id,
+                exc,
+            )
+            return False
+        return True
 
     def _set_active_session(self, agent_id: str) -> None:
         """Mark session as active"""
         validate_safe_id(agent_id, "agent_id")
-        self.sessions_dir.mkdir(parents=True, exist_ok=True)
-        active_link = self.sessions_dir / "active"
+        with self._active_marker_lock:
+            self._harden_session_storage()
+            active_link = self.sessions_dir / "active"
 
-        # Remove existing active link
-        if active_link.exists() or active_link.is_symlink():
-            active_link.unlink()
+            # Remove existing active link
+            active_link.unlink(missing_ok=True)
 
-        # Create new active marker
-        # On Windows, write agent_id to file instead of symlink
-        try:
-            active_link.symlink_to(f"{agent_id}.json")
-        except (OSError, NotImplementedError):
-            # Fallback for Windows or systems without symlink support
-            with open(active_link, "w") as f:
-                f.write(agent_id)
+            # Create new active marker
+            # On Windows, write agent_id to file instead of symlink
+            try:
+                active_link.symlink_to(f"{agent_id}.json")
+            except (OSError, NotImplementedError):
+                # Fallback for Windows or systems without symlink support
+                flags = os.O_WRONLY | os.O_CREAT | os.O_TRUNC
+                with self._open_private_text(active_link, flags, "w") as f:
+                    f.write(agent_id)
 
     def _clear_active_session(self) -> None:
         """Clear active session marker"""
-        active_link = self.sessions_dir / "active"
-        if active_link.exists() or active_link.is_symlink():
-            active_link.unlink()
+        with self._active_marker_lock:
+            active_link = self.sessions_dir / "active"
+            active_link.unlink(missing_ok=True)
 
     def clear_active_session(self) -> None:
         """Public alias: clear the active-session marker without ending the session."""
@@ -546,24 +811,32 @@ class SessionService:
         Used when an agent is deleted: the agent metadata is gone, so a saved
         session for that agent must not remain usable through X-Session-Token.
         """
-        active_link = self.sessions_dir / "active"
-        active_agent_id: str | None = None
+        with self._lock_for_agent(agent_id), self._active_marker_lock:
+            active_link = self.sessions_dir / "active"
+            active_agent_id: str | None = None
 
-        if active_link.is_symlink():
-            active_agent_id = active_link.readlink().stem
-        elif active_link.exists():
-            with open(active_link) as f:
-                active_agent_id = f.read().strip()
+            try:
+                if active_link.is_symlink():
+                    active_agent_id = active_link.readlink().stem
+                else:
+                    with open(active_link) as f:
+                        active_agent_id = f.read().strip()
+            except OSError as exc:
+                # Best-effort: a missing or unreadable active marker must not
+                # block deleting this agent's persisted session state. Leaving
+                # active_agent_id as None simply skips the marker cleanup below.
+                logger.debug(
+                    "Could not read active session marker '%s': %s", active_link, exc
+                )
 
-        session_file = self.sessions_dir / f"{agent_id}.json"
-        deleted = session_file.exists()
-        if deleted:
-            session_file.unlink()
+            session_file = self.sessions_dir / f"{agent_id}.json"
+            deleted = session_file.exists()
+            session_file.unlink(missing_ok=True)
 
-        if active_agent_id == agent_id:
-            self._clear_active_session()
+            if active_agent_id == agent_id:
+                self._clear_active_session()
 
-        return deleted
+            return deleted
 
     def list_sessions(self) -> list[Session]:
         """

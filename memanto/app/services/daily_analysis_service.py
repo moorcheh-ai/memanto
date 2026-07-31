@@ -6,10 +6,14 @@ the AI daily summary and the conflict report.
 """
 
 import json
+from functools import lru_cache
 from pathlib import Path
 from typing import Any, cast
 
-from memanto.app.clients.backend import get_active_llm_model
+from memanto.app.clients.backend import (
+    get_active_embedding_model,
+    get_active_llm_model,
+)
 from memanto.app.clients.moorcheh import get_moorcheh_client
 from memanto.app.config import get_data_dir, settings
 from memanto.app.core import agent_namespace
@@ -20,6 +24,59 @@ from memanto.app.utils.temporal_helpers import (
     format_local_time,
 )
 from memanto.app.utils.validation import validate_output_path, validate_safe_id
+
+# Context window of the embedding models Memanto targets. The query budget sits
+# below it so the retrieval query still fits after the backend adds its own
+# framing. Asserted against in tests/test_daily_summary_query_length.py.
+_EMBEDDING_CONTEXT_TOKENS = 2_048
+_EMBEDDING_QUERY_TOKEN_BUDGET = 1_800
+
+
+@lru_cache(maxsize=8)
+def _get_embedding_tokenizer(model: str | None) -> Any | None:
+    """Load the active model's tokenizer without adding a hard dependency.
+
+    ``tiktoken`` is used only when it is already installed and recognizes the
+    configured model. Unknown and server-managed models fall back to the
+    byte-bound path below; this function never downloads tokenizer assets.
+    """
+    if not model:
+        return None
+    try:
+        import tiktoken  # type: ignore[import-not-found]
+    except ImportError:
+        return None
+    try:
+        return tiktoken.encoding_for_model(model)
+    except KeyError:
+        return None
+
+
+def _truncate_embedding_query(
+    text: str,
+    *,
+    model: str | None,
+    token_budget: int = _EMBEDDING_QUERY_TOKEN_BUDGET,
+) -> str:
+    """Fit text within the embedding budget using a tokenizer or safe bound."""
+    tokenizer = _get_embedding_tokenizer(model)
+    if tokenizer is not None:
+        # disallowed_special=() treats tokens like "<|endoftext|>" as ordinary
+        # text. Session content is arbitrary user prose, and tiktoken's default
+        # raises ValueError on those markers -- here that would escape before
+        # generate_summary's try/except turns failures into MemoryError.
+        token_ids = tokenizer.encode(text, disallowed_special=())
+        if len(token_ids) <= token_budget:
+            return text
+        return str(tokenizer.decode(token_ids[:token_budget]))
+
+    # Byte-level BPE and SentencePiece token counts cannot exceed the number
+    # of UTF-8 bytes in their input. Limiting bytes is conservative for normal
+    # prose and also bounds dense Unicode when the backend tokenizer is hidden.
+    encoded = text.encode("utf-8")
+    if len(encoded) <= token_budget:
+        return text
+    return encoded[:token_budget].decode("utf-8", errors="ignore")
 
 
 class DailyAnalysisService:
@@ -80,13 +137,15 @@ class DailyAnalysisService:
         client = get_moorcheh_client()
         namespace = agent_namespace(agent_id)
 
-        summary_prompt = f"""
+        header_prompt = f"""
 Summarize the following session memories from {date} into a concise natural language daily summary.
 Focus on key themes, accomplishments, and high-level activities.
 
 Sessions Content:
 {full_text}
+"""
 
+        footer_prompt = f"""
 Format the output as a Markdown report:
 # Daily Summary for {agent_id} - {date}
 **Generated at:** {format_current_local_time()}
@@ -96,11 +155,17 @@ Format the output as a Markdown report:
 ## Key Themes & Activities
 ...
 """
+        retrieval_query = _truncate_embedding_query(
+            full_text,
+            model=get_active_embedding_model(),
+        )
         try:
             generate_kwargs: dict[str, Any] = {
                 "namespace": namespace,
-                "query": summary_prompt,
+                "query": retrieval_query,
                 "top_k": 50,
+                "header_prompt": header_prompt,
+                "footer_prompt": footer_prompt,
             }
             ai_model = get_active_llm_model(settings.SUMMARY_MODEL)
             if ai_model is not None:

@@ -46,6 +46,11 @@ from memanto.app.utils.errors import (
     MemoryError,
     map_error_to_http_exception,
 )
+from memanto.app.utils.temporal_helpers import (
+    END_OF_DAY,
+    is_date_only,
+    parse_date_only,
+)
 from memanto.app.utils.validation import (
     CostGuard,
     is_successful_write_result,
@@ -115,6 +120,8 @@ class RecallRequest(BaseModel):
     @field_validator("created_after", mode="before")
     @classmethod
     def parse_created_after(cls, v: object) -> datetime | None:
+        """Parse the inclusive lower timestamp bound for recall."""
+
         if v is None:
             return None
         return _parse_recall_temporal_bound(v, end_of_day=False)
@@ -122,6 +129,8 @@ class RecallRequest(BaseModel):
     @field_validator("created_before", mode="before")
     @classmethod
     def parse_created_before(cls, v: object) -> datetime | None:
+        """Parse the inclusive upper timestamp bound for recall."""
+
         if v is None:
             return None
         return _parse_recall_temporal_bound(v, end_of_day=True)
@@ -142,17 +151,22 @@ class RecallRequest(BaseModel):
 
 
 def _parse_recall_temporal_bound(v: object, *, end_of_day: bool) -> datetime:
+    # End-of-day must be END_OF_DAY (23:59:59.999999), matching
+    # parse_as_of_timestamp: the temporal filter compares with a strict `>`,
+    # so a 23:59:59 bound silently drops memories created in the final
+    # sub-second of the requested day. Date-only detection is delegated to the
+    # shared helper for the same reason as RecallAsOfRequest.parse_as_of.
     if isinstance(v, datetime):
         return v if v.tzinfo else v.replace(tzinfo=timezone.utc)
     if isinstance(v, date):
-        boundary = time(23, 59, 59) if end_of_day else time(0, 0, 0)
+        boundary = END_OF_DAY if end_of_day else time(0, 0, 0)
         return datetime.combine(v, boundary, tzinfo=timezone.utc)
     if isinstance(v, str):
-        if "T" not in v and " " not in v:
+        if is_date_only(v):
             try:
-                boundary = time(23, 59, 59) if end_of_day else time(0, 0, 0)
+                boundary = END_OF_DAY if end_of_day else time(0, 0, 0)
                 return datetime.combine(
-                    date.fromisoformat(v), boundary, tzinfo=timezone.utc
+                    parse_date_only(v), boundary, tzinfo=timezone.utc
                 )
             except ValueError:
                 pass
@@ -190,13 +204,14 @@ class RecallAsOfRequest(BaseModel):
         if isinstance(v, datetime):
             return v if v.tzinfo else v.replace(tzinfo=timezone.utc)
         if isinstance(v, date):
-            return datetime.combine(v, time(23, 59, 59), tzinfo=timezone.utc)
+            return datetime.combine(v, END_OF_DAY, tzinfo=timezone.utc)
         if isinstance(v, str):
-            # Date-only (no time component) → end of day
-            if "T" not in v and " " not in v:
+            # Date-only (no time component) → end of day. Delegated to the shared
+            # helper so this route and the read service cannot drift apart.
+            if is_date_only(v):
                 try:
                     return datetime.combine(
-                        date.fromisoformat(v), time(23, 59, 59), tzinfo=timezone.utc
+                        parse_date_only(v), END_OF_DAY, tzinfo=timezone.utc
                     )
                 except ValueError:
                     pass
@@ -236,11 +251,13 @@ class RecallChangedSinceRequest(BaseModel):
         if isinstance(v, date):
             return datetime.combine(v, time(0, 0, 0), tzinfo=timezone.utc)
         if isinstance(v, str):
-            # Date-only (no time component) → start of day
-            if "T" not in v and " " not in v:
+            # Date-only (no time component) → start of day. Uses the same shared
+            # helper as the other date-only paths in this module so all three
+            # agree on what counts as a date, on every supported Python.
+            if is_date_only(v):
                 try:
                     return datetime.combine(
-                        date.fromisoformat(v), time(0, 0, 0), tzinfo=timezone.utc
+                        parse_date_only(v), time(0, 0, 0), tzinfo=timezone.utc
                     )
                 except ValueError:
                     pass
@@ -284,6 +301,8 @@ class RecallRecentRequest(BaseModel):
     @field_validator("created_after", mode="before")
     @classmethod
     def parse_created_after(cls, v: object) -> datetime | None:
+        """Parse the inclusive lower timestamp bound for recent recall."""
+
         if v is None:
             return None
         return _parse_recall_temporal_bound(v, end_of_day=False)
@@ -291,6 +310,8 @@ class RecallRecentRequest(BaseModel):
     @field_validator("created_before", mode="before")
     @classmethod
     def parse_created_before(cls, v: object) -> datetime | None:
+        """Parse the inclusive upper timestamp bound for recent recall."""
+
         if v is None:
             return None
         return _parse_recall_temporal_bound(v, end_of_day=True)
@@ -322,6 +343,8 @@ def enforce_session_scope(session: Session, agent_id: str) -> None:
 
 
 def resolve_recall_limit(request_limit: int | None) -> int:
+    """Resolve and validate the effective recall result limit."""
+
     recall_cfg = _config_manager.get_recall_config()
     raw_limit = (
         request_limit
@@ -406,10 +429,11 @@ async def remember(
         if is_successful_write_result(result):
             session_service = get_session_service()
             await asyncio.to_thread(
-                session_service.log_memory_to_session_summary,
+                session_service.try_log_memory_to_session_summary,
                 agent_id=agent_id,
                 session_id=session.session_id,
                 memory_record=memory,
+                memory_id=result.get("id"),
             )
 
         return {
@@ -490,11 +514,13 @@ async def batch_remember(
             item_result = batch_results[index] if index < len(batch_results) else None
             if not is_successful_write_result(item_result):
                 continue
+            memory_id = item_result.get("id") if isinstance(item_result, dict) else None
             await asyncio.to_thread(
-                session_service.log_memory_to_session_summary,
+                session_service.try_log_memory_to_session_summary,
                 agent_id=agent_id,
                 session_id=session.session_id,
                 memory_record=record,
+                memory_id=memory_id,
             )
 
         return {
@@ -682,7 +708,7 @@ async def extract_memories_from_conversation(
             if not is_successful_write_result(item_result):
                 continue
             await asyncio.to_thread(
-                session_service.log_memory_to_session_summary,
+                session_service.try_log_memory_to_session_summary,
                 agent_id=agent_id,
                 session_id=session.session_id,
                 memory_record=record,

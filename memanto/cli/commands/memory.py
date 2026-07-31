@@ -14,6 +14,7 @@ import typer
 from rich.panel import Panel
 
 from memanto.app.constants import SourceType
+from memanto.app.utils.temporal_helpers import get_yesterday_range
 from memanto.cli.commands._shared import (
     BOLD_PRIMARY,
     BRIGHT,
@@ -533,6 +534,14 @@ def recall(
 
         if not ts:
             return ts
+
+        # ``--as-of yesterday`` means the state at the end of that calendar
+        # day. The generic relative helper returns the start of the day because
+        # its normal consumer is a changed-since / created-after query; using
+        # that value here drops almost all memories created yesterday.
+        if flag_name == "--as-of" and ts.lower().strip() == "yesterday":
+            _, yesterday_end = get_yesterday_range()
+            return yesterday_end
 
         # Try parsing as relative time (e.g., "today", "last 2 hours")
         rel_ts = parse_relative_time(ts)

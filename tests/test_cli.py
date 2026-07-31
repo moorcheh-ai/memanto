@@ -805,6 +805,18 @@ class TestMEMANTOCLI:
         assert "Invalid timestamp format" in result.stdout
         mock_all_clients.recall_changed_since.assert_not_called()
 
+    def test_recall_as_of_yesterday_uses_end_of_day(self, mock_all_clients):
+        """Relative as-of recall must include the whole of yesterday."""
+        from memanto.app.utils.temporal_helpers import get_yesterday_range
+
+        mock_all_clients.recall_as_of.return_value = {"memories": [], "count": 0}
+        _, yesterday_end = get_yesterday_range()
+
+        result = runner.invoke(app, ["recall", "--as-of", "yesterday"])
+
+        assert result.exit_code == 0
+        assert mock_all_clients.recall_as_of.call_args.kwargs["as_of"] == yesterday_end
+
     @pytest.mark.parametrize(
         "client_class_path",
         [
