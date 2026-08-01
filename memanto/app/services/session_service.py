@@ -452,16 +452,7 @@ class SessionService:
             except OSError:
                 return None
 
-            try:
-                session = self.get_session(agent_id)
-            except ValueError as exc:
-                # An empty or malformed marker (e.g. a crash between unlink and
-                # the fallback write in _set_active_session) fails validate_safe_id.
-                # An unreadable marker means "no active session", exactly as the
-                # OSError path above already treats it.
-                logger.warning("Clearing invalid active session marker: %s", exc)
-                self._clear_active_session()
-                return None
+            session = self.get_session(agent_id)
             if not session:
                 self._clear_active_session()
                 return None
