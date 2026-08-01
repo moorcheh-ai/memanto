@@ -1,0 +1,64 @@
+{
+  "sessions": [
+    {
+      "id": "session-001",
+      "user_id": "user-123",
+      "created_at": "2024-01-15T10:00:00Z",
+      "updated_at": "2024-01-15T10:30:00Z",
+      "summary": {
+        "content": "User discussed Python project setup preferences. Prefers uv over pip for dependency management. Wants pre-commit hooks for code quality.",
+        "created_at": "2024-01-15T10:30:00Z"
+      },
+      "messages": [
+        {
+          "id": "msg-001",
+          "role": "user",
+          "content": "What is the best way to manage Python dependencies in 2024?",
+          "created_at": "2024-01-15T10:00:00Z"
+        },
+        {
+          "id": "msg-002",
+          "role": "assistant",
+          "content": "I recommend using uv for fast dependency resolution and virtual environment management. It's a drop-in replacement for pip with 10x speed.",
+          "created_at": "2024-01-15T10:01:00Z"
+        },
+        {
+          "id": "msg-003",
+          "role": "user",
+          "content": "Great, I will try uv. How do I set up pre-commit hooks?",
+          "created_at": "2024-01-15T10:05:00Z"
+        },
+        {
+          "id": "msg-004",
+          "role": "assistant",
+          "content": "Install pre-commit via pip, create a .pre-commit-config.yaml file, and run pre-commit install to set up the git hooks.",
+          "created_at": "2024-01-15T10:06:00Z"
+        }
+      ]
+    },
+    {
+      "id": "session-002",
+      "user_id": "user-123",
+      "created_at": "2024-01-16T14:00:00Z",
+      "updated_at": "2024-01-16T14:15:00Z",
+      "summary": {
+        "content": "User asked about testing strategies for async Python code. Recommended pytest-asyncio for async test support.",
+        "created_at": "2024-01-16T14:15:00Z"
+      },
+      "messages": [
+        {
+          "id": "msg-005",
+          "role": "user",
+          "content": "How do I test async Python functions?",
+          "created_at": "2024-01-16T14:00:00Z"
+        },
+        {
+          "id": "msg-006",
+          "role": "assistant",
+          "content": "Use pytest-asyncio. Mark your test with @pytest.mark.asyncio and write async def test_... functions.",
+          "created_at": "2024-01-16T14:01:00Z"
+        }
+      ]
+    }
+  ]
+}
