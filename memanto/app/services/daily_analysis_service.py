@@ -267,10 +267,15 @@ If there are NO conflicts, return an empty array: []
 Example response format:
 [{{"type": "contradiction", "title": "Database preference changed", "old_memory_id": "abc-123", "old_content": "We use PostgreSQL", "new_memory_id": "def-456", "new_content": "We migrated to MongoDB", "description": "New memory contradicts old database preference", "recommendation": "keep_new"}}]
 """
+        retrieval_query = _truncate_embedding_query(
+            full_text,
+            model=get_active_embedding_model(),
+        )
         try:
             generate_kwargs = {
                 "namespace": namespace,
-                "query": conflict_prompt,
+                "query": retrieval_query,
+                "header_prompt": conflict_prompt,
                 "top_k": 50,
             }
             ai_model = get_active_llm_model(settings.SUMMARY_MODEL)
