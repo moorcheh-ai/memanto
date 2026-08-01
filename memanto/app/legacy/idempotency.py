@@ -88,6 +88,32 @@ class IdempotencyStore:
 
             self.records[idempotency_key] = record
 
+    def reserve_or_get(
+        self,
+        idempotency_key: str,
+        memory_id: str,
+        response: dict[str, Any],
+        ttl_seconds: int = 86400,
+    ) -> tuple[bool, IdempotencyRecord]:
+        """
+        Atomic reserve-or-get operation preventing TOCTOU race conditions (Bounty #770).
+        Returns tuple: (is_owner: bool, record: IdempotencyRecord)
+        """
+        with self._lock:
+            self._cleanup_expired()
+            existing = self.records.get(idempotency_key)
+            if existing and not existing.is_expired():
+                return False, existing
+
+            record = IdempotencyRecord(
+                memory_id=memory_id,
+                response=response,
+                created_at=time.time(),
+                ttl_seconds=ttl_seconds,
+            )
+            self.records[idempotency_key] = record
+            return True, record
+
     def get_stats(self) -> dict[str, Any]:
         """Get idempotency store statistics thread-safely"""
         with self._lock:
