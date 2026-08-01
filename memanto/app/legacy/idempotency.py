@@ -19,6 +19,7 @@ class IdempotencyRecord:
     response: dict[str, Any]
     created_at: float
     ttl_seconds: int = 86400  # 24 hours default
+    in_progress: bool = False
 
     def is_expired(self) -> bool:
         """Check if record is expired"""
@@ -51,27 +52,46 @@ class IdempotencyStore:
         self.last_cleanup = now
 
     def get_record(self, idempotency_key: str) -> IdempotencyRecord | None:
-        """Get existing idempotency record"""
+        """Get existing idempotency record (completed only)"""
         with self._lock:
             self._cleanup_expired()
 
             record = self.records.get(idempotency_key)
-            if record and not record.is_expired():
+            if record and not record.is_expired() and not record.in_progress:
                 return record
             # Remove expired record
-            if record:
+            if record and record.is_expired():
                 del self.records[idempotency_key]
 
             return None
+    def claim_record(self, idempotency_key: str, ttl_seconds: int = 86400) -> tuple[bool, IdempotencyRecord | None]:
+        ""Atomically claim an idempotency key as in-progress."""
+        with self._lock:
+            self._cleanup_expired()
 
-    def store_record(
+            record = self.records.get(idempotency_key)
+            if record:
+                if record.is_expired():
+                    del self.records[idempotency_key]
+                else:
+                    return False, record
+            placeholder = IdempotencyRecord(
+                memory_id="",
+                response={},
+                created_at=time.time(),
+                ttl_seconds=ttl_seconds,
+                in_progress=True,
+            )
+            self.records[idempotency_key] = placeholder
+            return True, placeholder
+    def complete_record(
         self,
         idempotency_key: str,
         memory_id: str,
         response: dict[str, Any],
         ttl_seconds: int = 86400,
-    ):
-        """Store idempotency record"""
+    ) -> None:
+        ""Finalize an in-progress reservation with the response."""
         with self._lock:
             self._cleanup_expired()
 
@@ -80,9 +100,23 @@ class IdempotencyStore:
                 response=response,
                 created_at=time.time(),
                 ttl_seconds=ttl_seconds,
+                in_progress=False,
             )
-
             self.records[idempotency_key] = record
+    def store_record(
+        self,
+        idempotency_key: str,
+        memory_id: str,
+        response: dict[str, Any],
+        ttl_seconds: int = 86400,
+    ):
+        """Store idempotency record"""
+        self.complete_record(
+            idempotency_key=idempotency_key,
+            memory_id=memory_id,
+            response=response,
+            ttl_seconds=ttl_seconds,
+        )
 
     def get_stats(self) -> dict[str, Any]:
         """Get idempotency store statistics"""
@@ -112,11 +146,18 @@ class IdempotencyHandler:
         if not idempotency_key:
             return None
 
-        record = idempotency_store.get_record(idempotency_key)
-        if record:
+        claimed, record = idempotency_store.claim_record(idempotency_key)
+        if not claimed and record:
+            if record.in_progress:
+                raise HTTPException(
+                    status_code=409,
+                    detail={
+                        "error": "idempotency_in_progress",
+                        "message": "Idempotency key is currently being processed",
+                    },
+                )
             # Return cached response
             return record.response
-
         return None
 
     @staticmethod
@@ -130,7 +171,7 @@ class IdempotencyHandler:
         if not idempotency_key:
             return
 
-        idempotency_store.store_record(
+        idempotency_store.complete_record(
             idempotency_key=idempotency_key,
             memory_id=memory_id,
             response=response,
