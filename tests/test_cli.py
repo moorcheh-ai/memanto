@@ -713,6 +713,49 @@ class TestMEMANTOCLI:
         assert "Found 2 memories" in result.stdout
         assert "Found memory 1" in result.stdout
 
+    def test_recall_forwards_min_confidence(self, mock_all_clients):
+        """The CLI must expose the service's confidence filter."""
+        mock_all_clients.recall.return_value = {"memories": [], "count": 0}
+
+        result = runner.invoke(app, ["recall", "test query", "--min-confidence", "0.8"])
+
+        assert result.exit_code == 0
+        call_kwargs = mock_all_clients.recall.call_args.kwargs
+        assert call_kwargs["min_confidence"] == 0.8
+
+    def test_sdk_recall_forwards_min_confidence(self):
+        """SdkClient must keep parity with DirectClient for recall filters."""
+        from memanto.cli.client.sdk_client import SdkClient
+
+        client = SdkClient.__new__(SdkClient)
+        read_service = MagicMock()
+        read_service.search_memories.return_value = {
+            "results": [{"id": "mem_high"}],
+            "total_found": 1,
+        }
+
+        with (
+            patch.object(
+                SdkClient,
+                "_get_validated_session_for_agent",
+                return_value=MagicMock(namespace="memanto_agent_test-agent"),
+            ),
+            patch.object(SdkClient, "_get_read_service", return_value=read_service),
+            patch("memanto.cli.client.sdk_client.ConfigManager") as config_manager_cls,
+        ):
+            config_manager_cls.return_value.get_recall_config.return_value = {
+                "limit": 10,
+                "min_similarity": None,
+            }
+            result = client.recall(
+                agent_id="test-agent",
+                query="reliable facts",
+                min_confidence=0.8,
+            )
+
+        assert result["memories"] == [{"id": "mem_high"}]
+        assert read_service.search_memories.call_args.kwargs["min_confidence"] == 0.8
+
     def test_recall_recent(self, mock_all_clients):
         """`memanto recall --recent` lists newest memories chronologically."""
         mock_all_clients.recall_recent.return_value = {

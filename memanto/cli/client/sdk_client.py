@@ -876,6 +876,7 @@ class SdkClient:
         type: list[str] | None = None,
         tags: list[str] | None = None,
         min_similarity: float | None = None,
+        min_confidence: float | None = None,
         created_after: datetime | None = None,
         created_before: datetime | None = None,
     ) -> dict[str, Any]:
@@ -889,6 +890,7 @@ class SdkClient:
             type: Filter by types.
             tags: Filter by tags.
             min_similarity: Minimum similarity threshold.
+            min_confidence: Minimum confidence threshold.
             created_after: Only memories created after this datetime.
             created_before: Only memories created before this datetime.
 
@@ -914,6 +916,7 @@ class SdkClient:
             agent_id=agent_id,
             type=type,
             tags=tags,
+            min_confidence=min_confidence,
             min_similarity_score=min_similarity,
             created_after=created_after.isoformat() if created_after else None,
             created_before=created_before.isoformat() if created_before else None,

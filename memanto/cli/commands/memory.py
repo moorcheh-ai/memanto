@@ -481,6 +481,13 @@ def recall(
     min_similarity: float | None = typer.Option(
         None, "--min-similarity", help="Minimum similarity score"
     ),
+    min_confidence: float | None = typer.Option(
+        None,
+        "--min-confidence",
+        min=0.0,
+        max=1.0,
+        help="Minimum stored confidence score (0.0-1.0)",
+    ),
     tags: str | None = typer.Option(
         None, "--tags", help="Filter by tags (comma-separated)"
     ),
@@ -605,6 +612,7 @@ def recall(
                     type=type,
                     tags=tag_list,
                     min_similarity=min_similarity,
+                    min_confidence=min_confidence,
                 )
             else:
                 _error(
