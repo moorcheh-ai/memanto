@@ -105,92 +105,94 @@ Before making your repository public:
 - [ ] No `.env` file in git history: `git log --all -- .env` (should be empty after cleanup)
 - [ ] `.env.example` only contains placeholders
 - [ ] No hardcoded API keys in code: `git grep -i "mk_" "*.py" "*.ts" "*.js"`
-- [ ] All documentation examples use placeholders
-- [ ] GitHub secret scanning alerts reviewed and addressed
+- [ ] All dependencies are up to date: `pip audit` or `npm audit`
+- [ ] Docker images do not contain secrets
+- [ ] CI/CD environment variables are stored as secrets, not plaintext
 
 ---
 
-## Security Features in MEMANTO
+## Claude to Memanto OKF Bundle Migration Guide
 
-MEMANTO implements multiple security layers:
+This section documents the migration process from Claude-based configurations to the Memanto OKF Bundle.
 
-### 1. Authentication & Authorization
-- Server-owned `MOORCHEH_API_KEY` required at startup for backend access
-- Client `X-Session-Token` required for session-scoped and memory endpoints
-- Tenant ID derived from authenticated principal (never from request body)
-- Multi-tenant isolation enforced at namespace level
+### Overview
 
-### 2. Rate Limiting
-- Per-tenant quotas prevent abuse
-- Configurable limits: 60 writes/min, 120 reads/min
+The Memanto OKF Bundle Migration Adapter provides a structured path for transitioning existing Claude integrations to the Memanto platform while maintaining security best practices throughout the migration process.
 
-### 3. Input Validation
-- Content size limits (10KB text, 5KB metadata)
-- Anti-poisoning validation for facts and preferences
-- Pydantic model validation for all requests
+### Configuration Conversion
 
-### 4. Secure Defaults
-- HTTPS enforced in production
-- CORS properly configured
-- Structured logging with PII redaction
-- Safe deletion with audit trail
+When migrating from Claude to Memanto OKF Bundle, update your configuration as follows:
 
-For detailed security architecture, see [SECURITY_ISOLATION_ONE_PAGER.md](SECURITY_ISOLATION_ONE_PAGER.md).
-
----
-
-## Production Security Checklist
-
-### Environment Configuration
-- [ ] Use environment-specific API keys (dev/staging/prod)
-- [ ] Rotate keys regularly (quarterly minimum)
-- [ ] Use secret management tools (not .env files) in production
-- [ ] Enable HTTPS/TLS for all endpoints
-- [ ] Configure CORS with specific origins (not `*`)
-
-### Monitoring & Auditing
-- [ ] Enable structured logging
-- [ ] Monitor for unusual API activity
-- [ ] Set up alerts for rate limit violations
-- [ ] Regular security audits of access logs
-- [ ] Implement log aggregation (ELK, Datadog, etc.)
-
-### Network Security
-- [ ] Deploy behind API gateway or reverse proxy
-- [ ] Use VPC/private networks when possible
-- [ ] Implement DDoS protection
-- [ ] Regular vulnerability scanning
-- [ ] Keep dependencies updated
-
----
-
-## Dependencies Security
-
-### Regular Updates
+**Before (Claude configuration):**
 ```bash
-# Check for security vulnerabilities
-pip install safety
-safety check
-
-# Update dependencies
-pip list --outdated
-pip install --upgrade <package>
+# Old Claude credentials (to be removed)
+ANTHROPIC_API_KEY=sk-ant-your-claude-key-here
+CLAUDE_MODEL=claude-3-opus-20240229
 ```
 
-### Automated Scanning
-- GitHub Dependabot enabled for this repository
-- Review and merge security PRs promptly
-- Test thoroughly before deploying dependency updates
+**After (Memanto OKF Bundle configuration):**
+```bash
+# New Memanto credentials
+MOORCHEH_API_KEY=mk_your_api_key_here
+MEMANTO_OKF_BUNDLE=true
+MEMANTO_MODEL=memanto-okf-bundle-v1
+```
 
----
+### Credential Replacement
 
-## Contact
+⚠️ **CRITICAL SECURITY STEPS during migration:**
 
-For security questions or concerns:
-- **General**: Dr. Majid Fekri, CTO Moorcheh.ai
-- **Security Issues**: support@moorcheh.ai
-- **Moorcheh Platform**: https://moorcheh.ai/security
+1. **Revoke Claude/Anthropic API keys** immediately after migration is complete
+2. **Never store both old and new credentials** in the same `.env` file simultaneously
+3. **Generate fresh Memanto credentials** from the Moorcheh dashboard
+4. **Audit all configuration files** to ensure no Claude credentials remain:
+   ```bash
+   # Search for any remaining Claude/Anthropic credentials
+   git grep -i "sk-ant-" "*.py" "*.ts" "*.js" "*.env*"
+   git grep -i "anthropic" "*.py" "*.ts" "*.js"
+   git grep -i "claude" "*.py" "*.ts" "*.js" "*.yaml" "*.yml"
+   ```
 
----
+### Validation
 
-**Last Updated**: March 2026
+After migration, validate the new configuration:
+
+```bash
+# Verify Memanto OKF Bundle connectivity
+curl -H "Authorization: Bearer $MOORCHEH_API_KEY" \
+     https://api.moorcheh.ai/v1/health
+
+# Confirm no Claude credentials are active
+# Check Anthropic dashboard and revoke any remaining keys
+```
+
+### Rollback Procedure
+
+If migration needs to be rolled back:
+
+1. **Do not reuse revoked Claude credentials** - generate new ones if needed
+2. Restore previous configuration from a secure backup
+3. Document the reason for rollback
+4. Re-audit credentials before attempting migration again
+
+### Post-Migration Verification
+
+- [ ] All Claude/Anthropic API keys have been revoked in the Anthropic console
+- [ ] Memanto OKF Bundle credentials are active and validated
+- [ ] Application functionality verified with new credentials
+- [ ] No residual Claude configuration in codebase
+- [ ] Logs audited to confirm no credential leakage during migration
+- [ ] `.env.example` updated to reflect Memanto OKF Bundle configuration only
+
+### Migration Security Checklist
+
+- [ ] Old Claude credentials removed from all `.env` files
+- [ ] Old Claude credentials removed from git history (if ever committed)
+- [ ] Claude/Anthropic API keys revoked in external dashboard
+- [ ] New Memanto credentials stored only in `.env` (never committed)
+- [ ] All dependencies updated to Memanto OKF Bundle compatible versions
+- [ ] Security scanning completed on migrated codebase
+- [ ] Access controls reviewed and updated for Memanto endpoints
+- [ ] Team members notified of credential rotation requirement
+- [ ] CI/CD pipeline updated with new Memanto secrets
+- [ ] Monitoring and alerting reconfigured for Memanto OKF Bundle endpoints
