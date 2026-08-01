@@ -487,11 +487,116 @@ def map_okf(export: dict[str, Any]) -> list[dict[str, Any]]:
     return rows
 
 
+
+
+# --------------------------------------------------------------------------
+# Zep
+# --------------------------------------------------------------------------
+
+def map_zep(export: dict[str, Any]) -> list[dict[str, Any]]:
+    """Map a Zep session export to rich Memanto memory payloads.
+
+    Zep stores conversation history as sessions containing messages and
+    auto-generated summaries. This mapper transforms each summary into a
+    ``context`` memory and each message into an ``event`` memory, preserving
+    the session ID, user ID, and role as supporting data.
+    """
+    rows: list[dict[str, Any]] = []
+    migrated_at = _now_utc()
+
+    for session in export.get("sessions", []) or []:
+        session_id = session.get("id")
+        user_id = session.get("user_id")
+        session_created = _pick_first_dt(session, ("created_at", "createdAt"))
+        session_updated = _pick_first_dt(session, ("updated_at", "updatedAt"))
+
+        # --- Map session summary as a context memory ---
+        summary = session.get("summary")
+        if isinstance(summary, dict):
+            summary_content = (summary.get("content") or "").strip()
+            if summary_content:
+                summary_created = _pick_first_dt(summary, ("created_at", "createdAt")) or session_updated
+
+                footer = _format_supporting_data(
+                    [
+                        ("Source", f"zep:summary:{session_id}" if session_id else None),
+                        ("Zep session id", session_id),
+                        ("Zep user id", user_id),
+                        ("Session created_at", session_created.isoformat() if session_created else None),
+                        ("Summary created_at", summary_created.isoformat() if summary_created else None),
+                    ]
+                )
+
+                rows.append(
+                    {
+                        "title": _title_from(summary_content),
+                        "content": _attach_footer(summary_content, footer),
+                        "type": "context",
+                        "tags": [f"zep-session:{session_id}"] if session_id else [],
+                        "confidence": 0.9,
+                        "source": "zep",
+                        "source_ref": f"summary:{session_id}" if session_id else None,
+                        "provenance": "imported",
+                        "created_at": summary_created or session_created,
+                        "updated_at": migrated_at,
+                    }
+                )
+
+        # --- Map individual messages as event memories ---
+        for msg in session.get("messages", []) or []:
+            content = (msg.get("content") or "").strip()
+            if not content:
+                continue
+
+            role = msg.get("role", "unknown")
+            msg_created = _pick_first_dt(msg, ("created_at", "createdAt"))
+
+            memory_type = "event"
+
+            tags: list[str] = []
+            if session_id:
+                tags.append(f"zep-session:{session_id}")
+            tags.append(f"role:{role}")
+
+            footer = _format_supporting_data(
+                [
+                    ("Source", f"zep:message:{session_id}:{msg.get('id', '')}" if session_id else None),
+                    ("Zep session id", session_id),
+                    ("Zep user id", user_id),
+                    ("Role", role),
+                    ("Message id", msg.get("id")),
+                    ("Message metadata", msg.get("metadata")),
+                    ("Session created_at", session_created.isoformat() if session_created else None),
+                    ("Message created_at", msg_created.isoformat() if msg_created else None),
+                ]
+            )
+
+            display_content = f"[{role}] {content}"
+
+            rows.append(
+                {
+                    "title": _title_from(content),
+                    "content": _attach_footer(display_content, footer),
+                    "type": memory_type,
+                    "tags": tags,
+                    "confidence": 0.7,
+                    "source": "zep",
+                    "source_ref": f"message:{session_id}:{msg.get('id', '')}" if session_id else None,
+                    "provenance": "imported",
+                    "created_at": msg_created or session_created,
+                    "updated_at": migrated_at,
+                }
+            )
+
+    return rows
+
+
 MAPPERS: dict[str, Callable[[dict[str, Any]], list[dict[str, Any]]]] = {
     "mem0": map_mem0,
     "letta": map_letta,
     "supermemory": map_supermemory,
     "okf": map_okf,
+    "zep": map_zep,
 }
 
 
@@ -502,3 +607,4 @@ def type_breakdown(rows: list[dict[str, Any]]) -> dict[str, int]:
         key = row.get("type") or "auto"
         counts[key] = counts.get(key, 0) + 1
     return counts
+

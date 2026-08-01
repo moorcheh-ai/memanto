@@ -153,7 +153,7 @@ class IdempotencyHandler:
 
         # Should contain only safe characters
 
-        if not re.match(r"^[a-zA-Z0-9_-]+$", idempotency_key):
+        if not re.fullmatch(r"[a-zA-Z0-9_-]+", idempotency_key):
             return False
 
         return True

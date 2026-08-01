@@ -9,6 +9,13 @@ from typing import Any
 from fastapi import HTTPException
 from pydantic import BaseModel, Field, validator
 
+# Maximum length for agent_id / session_id values.
+# A conservative application limit that leaves headroom for platform-specific
+# path-length constraints (some systems enforce a 255-byte limit on the full
+# path, not just the filename component). Real agent IDs are UUIDs (36 chars)
+# or short slugs, so 128 chars is generous while preventing pathological inputs.
+MAX_ID_LENGTH = 128
+
 
 class InputLimits:
     """Input size and cost limits"""
@@ -173,6 +180,9 @@ def validate_safe_id(value: str, field_name: str = "id") -> str:
     agent_id contains '..' or OS-level path separators.
 
     Only alphanumeric characters, hyphens, and underscores are allowed.
+    Additionally, the value must not exceed MAX_ID_LENGTH characters to
+    prevent filesystem errors on systems with path-length limits and to
+    reject pathological inputs early (real IDs are UUIDs or short slugs).
     """
     if not value:
         raise ValueError(f"{field_name} must not be empty")
@@ -182,6 +192,11 @@ def validate_safe_id(value: str, field_name: str = "id") -> str:
         raise ValueError(
             f"{field_name} '{value}' contains invalid characters. "
             "Only letters, digits, hyphens, and underscores are allowed."
+        )
+    if len(value) > MAX_ID_LENGTH:
+        raise ValueError(
+            f"{field_name} exceeds maximum length of {MAX_ID_LENGTH} characters "
+            f"(got {len(value)}). Overly long IDs can cause filesystem errors."
         )
     return value
 
