@@ -97,6 +97,57 @@ If the alert references a **real API key**:
 
 ---
 
+## Contribution Security Guidelines
+
+### Prohibited Content
+
+To maintain the integrity and safety of this project, the following types of content are strictly prohibited in all contributions (code, documentation, comments, commit messages, issues, and pull requests):
+
+#### 🚫 Financial Content
+- Cryptocurrency wallet addresses or solicitations
+- Investment advice or financial promotions
+- Requests for monetary donations or payments
+- Links to payment platforms or fundraising campaigns
+- Promotional content for financial products or services
+
+#### 🚫 Phishing and Malicious Content
+- Links designed to harvest credentials or personal information
+- Fake login pages or credential capture mechanisms
+- Malicious scripts or obfuscated code intended to cause harm
+- Content impersonating legitimate services, organizations, or individuals
+- Embedded trackers or unauthorized data collection mechanisms
+
+#### 🚫 Social Engineering Content
+- Manipulative language designed to deceive contributors or users
+- False urgency or artificial scarcity tactics
+- Impersonation of maintainers, bots, or automated systems
+- Fake security alerts or warnings intended to cause alarm
+- Content designed to manipulate users into taking harmful actions
+
+#### 🚫 Unauthorized Fundraising
+- Bounty claims not sanctioned by the official project maintainers
+- Crowdfunding links or solicitations
+- Requests for tips, gratuities, or compensation outside official channels
+- Unauthorized references to bug bounty programs or reward schemes
+
+### Maintainer Verification
+
+Project maintainers will review all contributions for compliance with these guidelines. Submissions that contain prohibited content will be:
+
+1. **Immediately closed** without merge
+2. **Flagged** for review by the security team
+3. **Reported** to GitHub Trust & Safety if the content is malicious or abusive
+
+### Reporting Non-Compliant Submissions
+
+If you identify a pull request, issue, or comment that violates these guidelines:
+
+1. **Do not engage** with the content or follow any links it contains
+2. **Report it** to the maintainers via email: support@moorcheh.ai with subject `[MEMANTO Security] Non-Compliant Submission`
+3. **Use GitHub's reporting tools** to flag abusive or spam content directly on the platform
+
+---
+
 ## Verification Checklist
 
 Before making your repository public:
@@ -105,92 +156,6 @@ Before making your repository public:
 - [ ] No `.env` file in git history: `git log --all -- .env` (should be empty after cleanup)
 - [ ] `.env.example` only contains placeholders
 - [ ] No hardcoded API keys in code: `git grep -i "mk_" "*.py" "*.ts" "*.js"`
-- [ ] All documentation examples use placeholders
-- [ ] GitHub secret scanning alerts reviewed and addressed
-
----
-
-## Security Features in MEMANTO
-
-MEMANTO implements multiple security layers:
-
-### 1. Authentication & Authorization
-- Server-owned `MOORCHEH_API_KEY` required at startup for backend access
-- Client `X-Session-Token` required for session-scoped and memory endpoints
-- Tenant ID derived from authenticated principal (never from request body)
-- Multi-tenant isolation enforced at namespace level
-
-### 2. Rate Limiting
-- Per-tenant quotas prevent abuse
-- Configurable limits: 60 writes/min, 120 reads/min
-
-### 3. Input Validation
-- Content size limits (10KB text, 5KB metadata)
-- Anti-poisoning validation for facts and preferences
-- Pydantic model validation for all requests
-
-### 4. Secure Defaults
-- HTTPS enforced in production
-- CORS properly configured
-- Structured logging with PII redaction
-- Safe deletion with audit trail
-
-For detailed security architecture, see [SECURITY_ISOLATION_ONE_PAGER.md](SECURITY_ISOLATION_ONE_PAGER.md).
-
----
-
-## Production Security Checklist
-
-### Environment Configuration
-- [ ] Use environment-specific API keys (dev/staging/prod)
-- [ ] Rotate keys regularly (quarterly minimum)
-- [ ] Use secret management tools (not .env files) in production
-- [ ] Enable HTTPS/TLS for all endpoints
-- [ ] Configure CORS with specific origins (not `*`)
-
-### Monitoring & Auditing
-- [ ] Enable structured logging
-- [ ] Monitor for unusual API activity
-- [ ] Set up alerts for rate limit violations
-- [ ] Regular security audits of access logs
-- [ ] Implement log aggregation (ELK, Datadog, etc.)
-
-### Network Security
-- [ ] Deploy behind API gateway or reverse proxy
-- [ ] Use VPC/private networks when possible
-- [ ] Implement DDoS protection
-- [ ] Regular vulnerability scanning
-- [ ] Keep dependencies updated
-
----
-
-## Dependencies Security
-
-### Regular Updates
-```bash
-# Check for security vulnerabilities
-pip install safety
-safety check
-
-# Update dependencies
-pip list --outdated
-pip install --upgrade <package>
-```
-
-### Automated Scanning
-- GitHub Dependabot enabled for this repository
-- Review and merge security PRs promptly
-- Test thoroughly before deploying dependency updates
-
----
-
-## Contact
-
-For security questions or concerns:
-- **General**: Dr. Majid Fekri, CTO Moorcheh.ai
-- **Security Issues**: support@moorcheh.ai
-- **Moorcheh Platform**: https://moorcheh.ai/security
-
----
-
-**Last Updated**: March 2026
+- [ ] All dependencies are up to date and free of known vulnerabilities
+- [ ] No prohibited or social-engineering content present in contributions
+- [ ] All contributions reviewed for phishing, financial solicitation, and fundraising material
