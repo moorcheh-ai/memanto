@@ -11,6 +11,9 @@ from typing import Any
 from fastapi import HTTPException
 
 
+import threading
+
+
 @dataclass
 class IdempotencyRecord:
     """Idempotency record for duplicate prevention"""
@@ -26,16 +29,17 @@ class IdempotencyRecord:
 
 
 class IdempotencyStore:
-    """In-memory idempotency store (production should use Redis/database)"""
+    """Thread-safe idempotency store preventing TOCTOU race conditions (Bounty #770)"""
 
     def __init__(self) -> None:
         # Storage: idempotency_key -> IdempotencyRecord
         self.records: dict[str, IdempotencyRecord] = {}
         self.last_cleanup = time.time()
         self.cleanup_interval = 3600  # 1 hour
+        self._lock = threading.RLock()
 
     def _cleanup_expired(self) -> None:
-        """Remove expired records"""
+        """Remove expired records (must be called within self._lock)"""
         now = time.time()
         if now - self.last_cleanup < self.cleanup_interval:
             return
@@ -50,18 +54,19 @@ class IdempotencyStore:
         self.last_cleanup = now
 
     def get_record(self, idempotency_key: str) -> IdempotencyRecord | None:
-        """Get existing idempotency record"""
-        self._cleanup_expired()
+        """Get existing idempotency record thread-safely"""
+        with self._lock:
+            self._cleanup_expired()
 
-        record = self.records.get(idempotency_key)
-        if record and not record.is_expired():
-            return record
+            record = self.records.get(idempotency_key)
+            if record and not record.is_expired():
+                return record
 
-        # Remove expired record
-        if record:
-            del self.records[idempotency_key]
+            # Remove expired record
+            if record:
+                del self.records[idempotency_key]
 
-        return None
+            return None
 
     def store_record(
         self,
@@ -70,30 +75,32 @@ class IdempotencyStore:
         response: dict[str, Any],
         ttl_seconds: int = 86400,
     ):
-        """Store idempotency record"""
-        self._cleanup_expired()
+        """Store idempotency record thread-safely"""
+        with self._lock:
+            self._cleanup_expired()
 
-        record = IdempotencyRecord(
-            memory_id=memory_id,
-            response=response,
-            created_at=time.time(),
-            ttl_seconds=ttl_seconds,
-        )
+            record = IdempotencyRecord(
+                memory_id=memory_id,
+                response=response,
+                created_at=time.time(),
+                ttl_seconds=ttl_seconds,
+            )
 
-        self.records[idempotency_key] = record
+            self.records[idempotency_key] = record
 
     def get_stats(self) -> dict[str, Any]:
-        """Get idempotency store statistics"""
-        self._cleanup_expired()
+        """Get idempotency store statistics thread-safely"""
+        with self._lock:
+            self._cleanup_expired()
 
-        return {
-            "total_records": len(self.records),
-            "oldest_record_age": min(
-                (time.time() - record.created_at for record in self.records.values()),
-                default=0,
-            ),
-            "memory_usage_estimate": len(str(self.records)),
-        }
+            return {
+                "total_records": len(self.records),
+                "oldest_record_age": min(
+                    (time.time() - record.created_at for record in self.records.values()),
+                    default=0,
+                ),
+                "memory_usage_estimate": len(str(self.records)),
+            }
 
 
 # Global idempotency store
