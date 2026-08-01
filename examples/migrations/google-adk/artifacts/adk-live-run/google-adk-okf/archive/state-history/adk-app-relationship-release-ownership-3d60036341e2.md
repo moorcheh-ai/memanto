@@ -1,10 +1,10 @@
 ---
 {
   "generated": {
-    "at": "2026-07-31T16:47:49.413615Z",
+    "at": "2026-08-01T09:43:04.409881Z",
     "by": "memanto-google-adk-okf/1.0.0"
   },
-  "resource": "google-adk://sqlite/53fe4b9a40eeb169/atlas-release-copilot/app/relationship.release_ownership",
+  "resource": "google-adk://sqlite/9d4e01eee56aefea/atlas-release-copilot/app/relationship.release_ownership",
   "status": "deprecated",
   "title": "History: Release ownership",
   "type": "state-history",
@@ -23,7 +23,7 @@
 ## Update 1 — superseded
 
 - Timestamp: `2026-07-06T09:00:02Z`
-- Event: `49f70531-6fc7-4e3d-968c-c32e34828634`
+- Event: `d4302e9f-c45f-4772-b405-bc7ff0b4d3ff`
 - Author: `release_copilot`
 
 ```json
@@ -33,7 +33,7 @@
 ## Update 2 — current
 
 - Timestamp: `2026-07-20T08:30:02Z`
-- Event: `5ca96ff9-1272-4613-a56e-bbc264fc7ce1`
+- Event: `1f0b3cae-d719-41fd-8148-776c50ac179b`
 - Author: `release_copilot`
 
 ```json

@@ -1,7 +1,7 @@
 ---
 {
   "generated": {
-    "at": "2026-07-31T16:47:49.413615Z",
+    "at": "2026-08-01T09:43:04.409881Z",
     "by": "memanto-google-adk-okf/1.0.0"
   },
   "status": "stable",
@@ -21,8 +21,9 @@
 
 - App: `atlas-release-copilot`
 - User: `dana`
-- Created: `2026-07-31T16:47:49.332826Z`
-- Updated: `2026-07-25T08:15:02Z`
+- First persisted event: `2026-07-25T08:15:01Z`
+- Last persisted event: `2026-07-25T08:15:02Z`
+- Captured: `2026-08-01T09:43:04.409881Z`
 
 > Context-only transcript. Memanto's OKF importer scopes imports to `memories/`.
 

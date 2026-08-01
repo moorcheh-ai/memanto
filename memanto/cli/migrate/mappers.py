@@ -453,7 +453,10 @@ def map_okf(export: dict[str, Any]) -> list[dict[str, Any]]:
 
         raw_source = x_memanto.get("source")
         source = (
-            raw_source if raw_source in {"user", "agent", "tool", "system"} else "tool"
+            raw_source
+            if isinstance(raw_source, str)
+            and raw_source in {"user", "agent", "tool", "system"}
+            else "tool"
         )
         created_at = _parse_dt(entry.get("timestamp"))
 

@@ -4,7 +4,9 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import re
 import sqlite3
+import subprocess
 import sys
 from pathlib import Path
 
@@ -15,6 +17,14 @@ from memanto.cli.migrate.okf_loader import load_okf_bundle
 
 ADAPTER_PATH = (
     Path(__file__).parents[1] / "examples" / "migrations" / "google-adk" / "adapter.py"
+)
+EXAMPLE_DIR = ADAPTER_PATH.parent
+RUN_DEMO_PATH = EXAMPLE_DIR / "run_demo.py"
+ROUNDTRIP_PATH = EXAMPLE_DIR / "run_roundtrip.py"
+LONG_DESCRIPTION = (
+    "The first staging migration failed because PostgreSQL pg_trgm was missing. "
+    "After enabling the extension it succeeded with healthy latency, and the "
+    "release runbook now requires a pg_trgm preflight before every migration."
 )
 SPEC = importlib.util.spec_from_file_location("google_adk_okf_adapter", ADAPTER_PATH)
 assert SPEC and SPEC.loader
@@ -112,7 +122,10 @@ def _database(path: Path) -> Path:
                     {
                         "goal.release_window": "Current window is August 4 at 14:00 UTC.",
                         "decision.cache_ttl": "Approved cache TTL is 6 hours.",
+                        "learning.long_description": LONG_DESCRIPTION,
                         "api_key": "do-not-publish",
+                        "accessToken": "camel-secret",
+                        "tokenizer_config": "keep-me",
                     }
                 ),
                 1785500000.0,
@@ -210,9 +223,18 @@ def test_readonly_capture_filters_scope_and_redacts_credentials(tmp_path):
     assert len(snapshot["sessions"]) == 1
     serialized = adapter.canonical_json(snapshot)
     assert "do-not-publish" not in serialized
-    assert "<redacted sha256:" in serialized
-    assert snapshot["source"]["redacted_values"] == 1
+    assert "camel-secret" not in serialized
+    assert "<redacted>" in serialized
+    assert "keep-me" in serialized
+    assert snapshot["source"]["redacted_values"] == 2
     assert snapshot["source"]["google_adk_version"] == "2.6.0"
+
+
+def test_sensitive_key_detection_handles_camelcase_without_false_positives():
+    for key in ("accessToken", "refreshToken", "clientSecret", "userPassword"):
+        assert adapter._is_sensitive_key(key)
+    for key in ("tokenizer_config", "secretary", "passwordless_mode"):
+        assert not adapter._is_sensitive_key(key)
 
 
 def test_mapping_uses_scope_and_key_types_without_importing_temp_state(tmp_path):
@@ -238,11 +260,88 @@ def test_current_truth_import_excludes_superseded_history(tmp_path):
     archive = "\n".join(
         path.read_text(encoding="utf-8") for path in (bundle / "archive").rglob("*.md")
     )
-    assert len(rows) == manifest["migration"]["mapped_memories"] == 5
+    assert len(rows) == manifest["migration"]["mapped_memories"] == 8
     assert "Approved cache TTL is 6 hours" in joined
     assert "Draft TTL is 24 hours" not in joined
     assert "Draft TTL is 24 hours" in archive
     assert manifest["migration"]["superseded_timelines_archived"] == 1
+
+
+def test_histories_sort_overlapping_session_updates_chronologically():
+    snapshot = {
+        "sessions": [
+            {
+                "app_name": "app",
+                "user_id": "user",
+                "session_id": "started-first",
+                "events": [
+                    {
+                        "id": "event-z",
+                        "timestamp": "2026-07-10T12:00:03Z",
+                        "invocation_id": "inv-z",
+                        "event_data": {
+                            "author": "agent",
+                            "actions": {"stateDelta": {"app:goal.release": "stale"}},
+                        },
+                    }
+                ],
+            },
+            {
+                "app_name": "app",
+                "user_id": "user",
+                "session_id": "started-later",
+                "events": [
+                    {
+                        "id": "event-a",
+                        "timestamp": "2026-07-10T12:00:02Z",
+                        "invocation_id": "inv-a",
+                        "event_data": {
+                            "author": "user",
+                            "actions": {"stateDelta": {"app:goal.release": "earlier"}},
+                        },
+                    }
+                ],
+            },
+        ]
+    }
+
+    histories = adapter.state_histories(snapshot)
+    updates = histories[("app", "app", None, None, "goal.release")]
+    assert [item["event_id"] for item in updates] == ["event-a", "event-z"]
+
+
+def test_bundle_preserves_full_descriptions_and_resolvable_audit_links(tmp_path):
+    snapshot = _snapshot(_database(tmp_path / "sessions.db"))
+    bundle = tmp_path / "bundle"
+    adapter.write_bundle(snapshot, bundle)
+
+    entries = load_okf_bundle(bundle)["memories"]
+    learning = next(entry for entry in entries if entry["title"] == "Long description")
+    assert learning["description"] == LONG_DESCRIPTION
+
+    links_checked = 0
+    for path in (bundle / "memories").rglob("*.md"):
+        text = path.read_text(encoding="utf-8")
+        for target in re.findall(r"\[Audit trail[^]]*\]\(([^)]+)\)", text):
+            resolved = (path.parent / target).resolve()
+            resolved.relative_to(bundle.resolve())
+            assert resolved.is_file()
+            links_checked += 1
+    assert links_checked == 1
+
+
+def test_session_transcripts_use_persisted_event_chronology(tmp_path):
+    snapshot = _snapshot(_database(tmp_path / "sessions.db"))
+    bundle = tmp_path / "bundle"
+    adapter.write_bundle(snapshot, bundle)
+    transcript = next((bundle / "sessions").glob("session-1-*.md")).read_text(
+        encoding="utf-8"
+    )
+
+    assert "- First persisted event: `" in transcript
+    assert "- Last persisted event: `" in transcript
+    assert "- Captured: `2026-07-31T12:00:00Z`" in transcript
+    assert "- Created:" not in transcript
 
 
 def test_snapshot_replay_is_byte_deterministic(tmp_path):
@@ -302,6 +401,50 @@ def test_output_requires_force_and_force_replaces_exact_target(tmp_path):
     adapter.write_bundle(snapshot, bundle, force=True)
     assert not marker.exists()
     assert (bundle / "migration-manifest.json").is_file()
+
+
+def test_run_demo_force_refuses_unowned_directory(tmp_path):
+    unsafe = tmp_path / "user-files"
+    unsafe.mkdir()
+    marker = unsafe / "keep.txt"
+    marker.write_text("do not delete", encoding="utf-8")
+
+    result = subprocess.run(
+        [sys.executable, str(RUN_DEMO_PATH), "--artifacts", str(unsafe), "--force"],
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+
+    assert result.returncode == 2
+    assert "refusing to delete" in result.stdout
+    assert marker.read_text(encoding="utf-8") == "do not delete"
+
+
+def test_roundtrip_capture_redacts_the_configured_api_key():
+    spec = importlib.util.spec_from_file_location(
+        "google_adk_roundtrip_test", ROUNDTRIP_PATH
+    )
+    assert spec and spec.loader
+    module = importlib.util.module_from_spec(spec)
+    previous_adapter = sys.modules.get("adapter")
+    sys.modules["adapter"] = adapter
+    sys.path.insert(0, str(EXAMPLE_DIR))
+    try:
+        spec.loader.exec_module(module)
+    finally:
+        sys.path.remove(str(EXAMPLE_DIR))
+        if previous_adapter is None:
+            del sys.modules["adapter"]
+        else:
+            sys.modules["adapter"] = previous_adapter
+
+    assert (
+        module._redact_secret_text(
+            "request failed for mk_test_secret", {"MOORCHEH_API_KEY": "mk_test_secret"}
+        )
+        == "request failed for <redacted>"
+    )
 
 
 def test_verifier_rejects_manifest_paths_outside_bundle(tmp_path):

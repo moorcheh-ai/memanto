@@ -1,10 +1,10 @@
-# Session Summary for google-adk-okf-atlascraft-20260801
+# Session Summary for google-adk-okf-atlascraft-review-20260801
 **Session ID:** `unknown`
 
 ---
 
 ### [2026-07-06 09:00:02] [FACT] Project stack
-- **Memory ID**: `e89d6e0d-0d94-4c5c-ab80-fca42bd10dd2`
+- **Memory ID**: `6b11ebe7-cc97-42c6-b64e-a0fb2db45bcd`
 - **Confidence**: `0.9`
 - **Status**: `active`
 - **Source**: `tool`
@@ -24,10 +24,10 @@
 > ---
 > [Supporting data]
 > - OKF source: memories\fact\adk-app-fact-project-stack-0e3338aed3fb.md
-> - OKF resource: google-adk://sqlite/53fe4b9a40eeb169/atlas-release-copilot/app/fact.project_stack
+> - OKF resource: google-adk://sqlite/9d4e01eee56aefea/atlas-release-copilot/app/fact.project_stack
 > - OKF original source: google-adk
-> - OKF generated: at=2026-07-31T16:47:49.413615Z; by=memanto-google-adk-okf/1.0.0
-> - OKF sources: {'id': 'adk-app-fact-project-stack-0e3338aed3fb', 'resource': 'google-adk://sqlite/53fe4b9a40eeb169/atlas-release-copilot/app/fact.project_stack', 'type': 'google-adk-sqlite-state'}
+> - OKF generated: at=2026-08-01T09:43:04.409881Z; by=memanto-google-adk-okf/1.0.0
+> - OKF sources: {'id': 'adk-app-fact-project-stack-0e3338aed3fb', 'resource': 'google-adk://sqlite/9d4e01eee56aefea/atlas-release-copilot/app/fact.project_stack', 'type': 'google-adk-sqlite-state'}
 > - OKF status: stable
 > - OKF x_google_adk: app_name=atlas-release-copilot; distinct_values=1; scope=app; state_key=fact.project_stack; state_updates=1
 

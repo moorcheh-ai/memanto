@@ -40,7 +40,7 @@ From the Memanto repository root, with
 [uv](https://docs.astral.sh/uv/getting-started/installation/) installed:
 
 ```bash
-uv run --group dev --with google-adk==2.6.0 python examples/migrations/google-adk/run_demo.py --force
+uv run --group dev --with-requirements examples/migrations/google-adk/requirements.txt python examples/migrations/google-adk/run_demo.py --force
 ```
 
 The command performs the whole offline proof:
@@ -74,8 +74,9 @@ python examples/migrations/google-adk/adapter.py \
   --output ./your-google-adk-okf
 ```
 
-Omit `--app` or `--user` to capture more scopes. Credential-like state fields
-are redacted by default with a stable hash marker. Use
+Omit `--app` or `--user` to capture more scopes. Credential-like state fields,
+including camelCase names such as `accessToken`, are replaced by a non-reversible
+`<redacted>` marker. Use
 `--include-sensitive` only for a private bundle you control.
 
 Preview exactly what Memanto will ingest:

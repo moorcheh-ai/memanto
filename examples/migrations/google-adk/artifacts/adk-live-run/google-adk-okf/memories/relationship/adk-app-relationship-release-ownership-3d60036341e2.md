@@ -2,14 +2,14 @@
 {
   "description": "Luis Ortega is the current Beacon release DRI, and Priya Shah is the backup.",
   "generated": {
-    "at": "2026-07-31T16:47:49.413615Z",
+    "at": "2026-08-01T09:43:04.409881Z",
     "by": "memanto-google-adk-okf/1.0.0"
   },
-  "resource": "google-adk://sqlite/53fe4b9a40eeb169/atlas-release-copilot/app/relationship.release_ownership",
+  "resource": "google-adk://sqlite/9d4e01eee56aefea/atlas-release-copilot/app/relationship.release_ownership",
   "sources": [
     {
       "id": "adk-app-relationship-release-ownership-3d60036341e2",
-      "resource": "google-adk://sqlite/53fe4b9a40eeb169/atlas-release-copilot/app/relationship.release_ownership",
+      "resource": "google-adk://sqlite/9d4e01eee56aefea/atlas-release-copilot/app/relationship.release_ownership",
       "type": "google-adk-sqlite-state"
     }
   ],
@@ -53,4 +53,4 @@ Luis Ortega is the current Beacon release DRI, and Priya Shah is the backup.
 - State key: `relationship.release_ownership`
 - App: `atlas-release-copilot`
 
-[Audit trail (2 persisted updates)](../../../archive/state-history/adk-app-relationship-release-ownership-3d60036341e2.md)
+[Audit trail (2 persisted updates)](../../archive/state-history/adk-app-relationship-release-ownership-3d60036341e2.md)

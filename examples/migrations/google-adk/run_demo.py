@@ -25,6 +25,7 @@ HERE = Path(__file__).resolve().parent
 REPO_ROOT = HERE.parents[2]
 DEFAULT_ARTIFACTS = HERE / "artifacts" / "adk-live-run"
 ANSI_RE = re.compile(r"\x1b\[[0-?]*[ -/]*[@-~]")
+RUN_SUMMARY_SCHEMA = "google-adk-demo-run/v1"
 
 
 def _write_json(path: Path, value: Any) -> None:
@@ -33,6 +34,19 @@ def _write_json(path: Path, value: Any) -> None:
         json.dumps(value, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
         encoding="utf-8",
     )
+
+
+def _is_replaceable_artifacts_dir(path: Path) -> bool:
+    """Return true only for an empty or previously completed demo directory."""
+    if not path.is_dir():
+        return False
+    try:
+        if not any(path.iterdir()):
+            return True
+        summary = json.loads((path / "run-summary.json").read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return False
+    return isinstance(summary, dict) and summary.get("schema") == RUN_SUMMARY_SCHEMA
 
 
 def _memanto_executable() -> Path | None:
@@ -173,6 +187,12 @@ def main(argv: list[str] | None = None) -> int:
         if not args.force:
             print(f"error: artifacts already exist: {artifacts}; pass --force")
             return 2
+        if not _is_replaceable_artifacts_dir(artifacts):
+            print(
+                f"error: refusing to delete {artifacts}: it is not an empty or "
+                "previously completed Google ADK demo artifacts directory"
+            )
+            return 2
         shutil.rmtree(artifacts)
     artifacts.mkdir(parents=True)
     bundle = artifacts / "google-adk-okf"
@@ -245,7 +265,7 @@ def main(argv: list[str] | None = None) -> int:
         report = migration_report(manifest, source_report, okf_report, parity, dry_run)
         _write_json(artifacts / "migration-report.json", report)
         summary = {
-            "schema": "google-adk-demo-run/v1",
+            "schema": RUN_SUMMARY_SCHEMA,
             "completed_at": datetime.now(timezone.utc)
             .isoformat()
             .replace("+00:00", "Z"),

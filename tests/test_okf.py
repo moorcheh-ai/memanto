@@ -195,6 +195,23 @@ def test_foreign_okf_source_is_normalized_without_losing_provider(tmp_path):
     assert "OKF original source: google-adk" in row["content"]
 
 
+def test_foreign_okf_unhashable_source_is_normalized_without_crashing():
+    row = map_okf(
+        {
+            "memories": [
+                {
+                    "title": "Imported fact",
+                    "body": "Captured from a foreign provider.",
+                    "x_memanto": {"source": ["google-adk"]},
+                }
+            ]
+        }
+    )[0]
+
+    assert row["source"] == "tool"
+    assert "google-adk" in row["content"]
+
+
 def test_loader_splits_stacked_file(tmp_path):
     """A stacked per-type file is split back into one entry per memory."""
     memories_by_type = {

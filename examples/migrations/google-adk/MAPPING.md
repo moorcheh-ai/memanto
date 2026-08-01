@@ -79,8 +79,10 @@ the complete correction trail.
 
 By default, any nested field whose key clearly denotes a password, token,
 secret, cookie, credential, authorization value, API key, or private key is
-replaced by `<redacted sha256:…>`. The digest proves stable equality without
-publishing the value. The manifest reports the number of redactions.
+replaced by `<redacted>`. Delimited and camelCase credential names are both
+recognized. No value-derived digest is published, because even an unsalted
+truncated digest can expose low-entropy secrets. The manifest reports the number
+of redactions.
 
 `--include-sensitive` is an explicit escape hatch for private migrations. It
 should not be used for a public OKF bundle or bounty artifact.

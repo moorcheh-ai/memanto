@@ -130,6 +130,26 @@ def verify_bundle(bundle: str | Path) -> dict[str, object]:
                     f"superseded value leaked into active memory: {concept['id']}"
                 )
 
+    for memory_path in (root / "memories").rglob("*.md"):
+        text = memory_path.read_text(encoding="utf-8")
+        for target in re.findall(r"\[Audit trail[^]]*\]\(([^)]+)\)", text):
+            try:
+                relative = Path(target)
+                if relative.is_absolute():
+                    raise ValueError
+                audit_path = (memory_path.parent / relative).resolve()
+                audit_path.relative_to(root)
+            except ValueError:
+                failures.append(
+                    f"unsafe audit link: {memory_path.relative_to(root).as_posix()}"
+                )
+                continue
+            if not audit_path.is_file():
+                failures.append(
+                    "missing audit link target: "
+                    f"{memory_path.relative_to(root).as_posix()} -> {target}"
+                )
+
     return {
         "schema": "google-adk-artifact-verification/v1",
         "bundle": root.name,

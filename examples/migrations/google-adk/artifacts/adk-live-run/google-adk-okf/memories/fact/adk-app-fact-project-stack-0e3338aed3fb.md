@@ -2,14 +2,14 @@
 {
   "description": "Beacon is the Helios API release. It runs PostgreSQL 16 and Redis 7.2.",
   "generated": {
-    "at": "2026-07-31T16:47:49.413615Z",
+    "at": "2026-08-01T09:43:04.409881Z",
     "by": "memanto-google-adk-okf/1.0.0"
   },
-  "resource": "google-adk://sqlite/53fe4b9a40eeb169/atlas-release-copilot/app/fact.project_stack",
+  "resource": "google-adk://sqlite/9d4e01eee56aefea/atlas-release-copilot/app/fact.project_stack",
   "sources": [
     {
       "id": "adk-app-fact-project-stack-0e3338aed3fb",
-      "resource": "google-adk://sqlite/53fe4b9a40eeb169/atlas-release-copilot/app/fact.project_stack",
+      "resource": "google-adk://sqlite/9d4e01eee56aefea/atlas-release-copilot/app/fact.project_stack",
       "type": "google-adk-sqlite-state"
     }
   ],

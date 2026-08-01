@@ -44,6 +44,12 @@ def _normalize_markdown_tree(root: Path) -> None:
         )
 
 
+def _redact_secret_text(value: str, env: dict[str, str]) -> str:
+    """Remove the exact configured API key from captured command output."""
+    secret = env.get("MOORCHEH_API_KEY", "").strip()
+    return value.replace(secret, "<redacted>") if secret else value
+
+
 def _executable() -> Path:
     name = "memanto.exe" if os.name == "nt" else "memanto"
     sibling = Path(sys.executable).parent / name
@@ -72,11 +78,15 @@ def _run(
         capture_output=True,
         check=False,
     )
-    output = ANSI_RE.sub(
-        "", result.stdout + ("\n" + result.stderr if result.stderr else "")
+    output = _redact_secret_text(
+        ANSI_RE.sub(
+            "", result.stdout + ("\n" + result.stderr if result.stderr else "")
+        ),
+        env,
     )
+    display_command = _redact_secret_text("memanto " + " ".join(args), env)
     record = {
-        "command": "memanto " + " ".join(args),
+        "command": display_command,
         "returncode": result.returncode,
         "output": output.strip(),
     }

@@ -9,9 +9,9 @@ tags:
 - type:preference
 - user:dana
 timestamp: '2026-07-08T15:20:02+00:00'
-resource: google-adk://sqlite/53fe4b9a40eeb169/atlas-release-copilot/user/dana/preference.release_update_format
+resource: google-adk://sqlite/9d4e01eee56aefea/atlas-release-copilot/user/dana/preference.release_update_format
 x_memanto:
-  id: 1c973f2f-ab25-47e0-b90f-6bbe7ec491fb
+  id: e0ab9180-ca75-4b8e-a143-e7d9b6914f81
   confidence: 0.95
   provenance: imported
   source: tool
@@ -33,9 +33,9 @@ Dana prefers release updates in Markdown, with at most five bullets and no table
 ---
 [Supporting data]
 - OKF source: memories\preference\adk-user-preference-release-update-format-da749525d66d.md
-- OKF resource: google-adk://sqlite/53fe4b9a40eeb169/atlas-release-copilot/user/dana/preference.release_update_format
+- OKF resource: google-adk://sqlite/9d4e01eee56aefea/atlas-release-copilot/user/dana/preference.release_update_format
 - OKF original source: google-adk
-- OKF generated: at=2026-07-31T16:47:49.413615Z; by=memanto-google-adk-okf/1.0.0
-- OKF sources: {'id': 'adk-user-preference-release-update-format-da749525d66d', 'resource': 'google-adk://sqlite/53fe4b9a40eeb169/atlas-release-copilot/user/dana/preference.release_update_format', 'type': 'google...
+- OKF generated: at=2026-08-01T09:43:04.409881Z; by=memanto-google-adk-okf/1.0.0
+- OKF sources: {'id': 'adk-user-preference-release-update-format-da749525d66d', 'resource': 'google-adk://sqlite/9d4e01eee56aefea/atlas-release-copilot/user/dana/preference.release_update_format', 'type': 'google...
 - OKF status: stable
 - OKF x_google_adk: app_name=atlas-release-copilot; distinct_values=1; scope=user; state_key=preference.release_update_format; state_updates=1; user_id=dana

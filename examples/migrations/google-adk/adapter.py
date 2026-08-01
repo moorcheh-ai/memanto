@@ -150,15 +150,23 @@ def _json_object(value: Any, *, label: str) -> dict[str, Any]:
     return decoded
 
 
-def _redacted_marker(value: Any) -> str:
-    digest = sha256_bytes(canonical_json(value).encode("utf-8"))[:12]
-    return f"<redacted sha256:{digest}>"
+def _is_sensitive_key(key: str) -> bool:
+    """Recognize delimited and camelCase credential field names."""
+    normalized = re.sub(r"(?<=[a-z0-9])(?=[A-Z])", "_", key)
+    normalized = re.sub(r"(?<=[A-Z])(?=[A-Z][a-z])", "_", normalized)
+    return bool(SENSITIVE_KEY_RE.search(normalized))
+
+
+def _redacted_marker() -> str:
+    # Do not publish a digest of the raw value: low-entropy passwords and PINs
+    # are recoverable from an unsalted hash even when the digest is truncated.
+    return "<redacted>"
 
 
 def redact_value(value: Any, *, key: str = "") -> tuple[Any, int]:
     """Redact values whose field name clearly denotes a credential."""
-    if key and SENSITIVE_KEY_RE.search(key):
-        return _redacted_marker(value), 1
+    if key and _is_sensitive_key(key):
+        return _redacted_marker(), 1
     if isinstance(value, dict):
         result: dict[str, Any] = {}
         total = 0
@@ -486,6 +494,15 @@ def state_histories(
                         "value": value,
                     }
                 )
+    for updates in result.values():
+        # App- and user-scoped deltas can arrive from overlapping sessions, so
+        # session iteration order is not necessarily chronological.
+        updates.sort(
+            key=lambda item: (
+                item.get("timestamp") or "",
+                str(item.get("event_id") or ""),
+            )
+        )
     return result
 
 
@@ -706,14 +723,16 @@ def _frontmatter(data: dict[str, Any]) -> str:
 
 
 def _relative_audit_path(concept: dict[str, Any]) -> str:
-    return f"../../../archive/state-history/{concept['id']}.md"
+    return f"../../archive/state-history/{concept['id']}.md"
 
 
 def render_concept(concept: dict[str, Any], captured_at: str) -> str:
     front = {
         "type": concept["type"],
         "title": concept["title"],
-        "description": concept["content"].splitlines()[0][:200],
+        # OKF loaders may prefer description to body. Preserve the complete
+        # concept so the imported value cannot be silently truncated.
+        "description": concept["content"],
         "resource": concept["resource"],
         "tags": concept["tags"],
         "timestamp": concept["updated_at"] or captured_at,
@@ -834,6 +853,19 @@ def _event_text(event_data: dict[str, Any]) -> str:
 
 def render_session(session: dict[str, Any], captured_at: str) -> str:
     title = f"Google ADK session {session['session_id']}"
+    events = session.get("events", [])
+    first_event = next(
+        (event.get("timestamp") for event in events if event.get("timestamp")),
+        None,
+    )
+    last_event = next(
+        (
+            event.get("timestamp")
+            for event in reversed(events)
+            if event.get("timestamp")
+        ),
+        None,
+    )
     front = {
         "type": "session",
         "title": title,
@@ -847,7 +879,7 @@ def render_session(session: dict[str, Any], captured_at: str) -> str:
             "app_name": session["app_name"],
             "user_id": session["user_id"],
             "session_id": session["session_id"],
-            "events": len(session.get("events", [])),
+            "events": len(events),
         },
     }
     lines = [
@@ -857,13 +889,14 @@ def render_session(session: dict[str, Any], captured_at: str) -> str:
         "",
         f"- App: `{session['app_name']}`",
         f"- User: `{session['user_id']}`",
-        f"- Created: `{session.get('create_time') or 'unknown'}`",
-        f"- Updated: `{session.get('update_time') or 'unknown'}`",
+        f"- First persisted event: `{first_event or 'unknown'}`",
+        f"- Last persisted event: `{last_event or 'unknown'}`",
+        f"- Captured: `{captured_at}`",
         "",
         "> Context-only transcript. Memanto's OKF importer scopes imports to `memories/`.",
         "",
     ]
-    for event in session.get("events", []):
+    for event in events:
         event_data = event.get("event_data") or {}
         author = str(event_data.get("author") or "unknown")
         text = _event_text(event_data)

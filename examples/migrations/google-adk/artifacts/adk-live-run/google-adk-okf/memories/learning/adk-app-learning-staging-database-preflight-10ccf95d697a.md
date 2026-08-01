@@ -1,15 +1,15 @@
 ---
 {
-  "description": "The first Beacon staging migration failed because the PostgreSQL 16 pg_trgm extension was missing. After enabling pg_trgm it succeeded in 3 minutes 42 seconds with 185 ms p95 latency. The runbook now ",
+  "description": "The first Beacon staging migration failed because the PostgreSQL 16 pg_trgm extension was missing. After enabling pg_trgm it succeeded in 3 minutes 42 seconds with 185 ms p95 latency. The runbook now requires a pg_trgm preflight.",
   "generated": {
-    "at": "2026-07-31T16:47:49.413615Z",
+    "at": "2026-08-01T09:43:04.409881Z",
     "by": "memanto-google-adk-okf/1.0.0"
   },
-  "resource": "google-adk://sqlite/53fe4b9a40eeb169/atlas-release-copilot/app/learning.staging_database_preflight",
+  "resource": "google-adk://sqlite/9d4e01eee56aefea/atlas-release-copilot/app/learning.staging_database_preflight",
   "sources": [
     {
       "id": "adk-app-learning-staging-database-preflight-10ccf95d697a",
-      "resource": "google-adk://sqlite/53fe4b9a40eeb169/atlas-release-copilot/app/learning.staging_database_preflight",
+      "resource": "google-adk://sqlite/9d4e01eee56aefea/atlas-release-copilot/app/learning.staging_database_preflight",
       "type": "google-adk-sqlite-state"
     }
   ],
