@@ -1,49 +1,37 @@
 [
   {
     "title": "Lead Atlas Fleet: hot (100)",
-    "content": "# Lead Routing Decision\n\n- **Company**: Atlas Fleet\n- **Use case**: Automate CRM lead routing and manual follow-up workflows\n- **Qualification score**: 100\n- **Route**: hot\n- **Reasons**: `[\"budget ≥ $10k\",\"company size ≥ 50\",\"urgency: immediate\",\"strong automation intent\",\"business email\",\"complete core profile\"]`\n- **Next action**: Offer a priority discovery call.\n- **Processed at**: 2026-07-30T09:00:59.219Z\n- **Follow up at**: 2026-07-30T09:15:59.219Z\n- **Idempotency key**: 5da0a075\n\n## n8n provenance\n\n- **Workflow**: LeadOps — Intake, Scoring & Follow-up (`nuMIHADKIMhTbCFc`)\n- **Execution**: `4`\n- **Node**: Normalize, Score & Route\n- **Position**: run 0, output 0, item 0\n- **Execution status**: success\n\n---\n[Supporting data]\n- OKF source: memories\\decision\\lead-atlas-fleet-hot-100.md\n- OKF resource: http://localhost:5679/workflow/nuMIHADKIMhTbCFc/executions/4",
+    "content": "# Lead Routing Decision: Atlas Fleet\n\n- **Company**: Atlas Fleet\n- **Use case**: Automate CRM lead routing and manual follow-up workflows\n- **Qualification score**: 100\n- **Route**: hot\n- **Reasons**: `[\"budget ≥ $10k\",\"company size ≥ 50\",\"urgency: immediate\",\"strong automation intent\",\"business email\",\"complete core profile\"]`\n- **Next action**: Offer a priority discovery call.\n- **Processed at**: 2026-07-30T09:00:59.219Z\n- **Follow up at**: 2026-07-30T09:15:59.219Z\n- **Idempotency key**: 5da0a075\n\n## n8n provenance\n\n- **Workflow**: LeadOps — Intake, Scoring & Follow-up (`nuMIHADKIMhTbCFc`)\n- **Execution**: `4`\n- **Node**: Normalize, Score & Route\n- **Position**: run 0, output 0, item 0\n- **Execution status**: success\n\n---\n[Supporting data]\n- OKF source: memories/decision/lead-atlas-fleet-hot-100.md\n- OKF resource: n8n://workflow/nuMIHADKIMhTbCFc/executions/4",
     "type": "decision",
-    "tags": [
-      "n8n",
-      "leadops",
-      "route:hot"
-    ],
+    "tags": ["n8n", "leadops", "route:hot"],
     "confidence": 1.0,
     "source": "tool",
-    "source_ref": "http://localhost:5679/workflow/nuMIHADKIMhTbCFc/executions/4",
-    "provenance": "imported",
+    "source_ref": "n8n://workflow/nuMIHADKIMhTbCFc/executions/4",
+    "provenance": "n8n_execution",
     "created_at": "2026-07-30 09:00:59.222000+00:00",
     "updated_at": "2026-07-30 09:54:36.615720+00:00"
   },
   {
     "title": "Lead Beacon Studio: warm (65)",
-    "content": "# Lead Routing Decision\n\n- **Company**: Beacon Studio\n- **Use case**: Reduce manual lead qualification\n- **Qualification score**: 65\n- **Route**: warm\n- **Reasons**: `[\"budget ≥ $2k\",\"company size ≥ 10\",\"urgency: this_quarter\",\"strong automation intent\",\"business email\",\"complete core profile\"]`\n- **Next action**: Send a relevant case study and ask one qualifying question.\n- **Processed at**: 2026-07-30T09:00:59.266Z\n- **Follow up at**: 2026-07-30T13:00:59.266Z\n- **Idempotency key**: 7204bd61\n\n## n8n provenance\n\n- **Workflow**: LeadOps — Intake, Scoring & Follow-up (`nuMIHADKIMhTbCFc`)\n- **Execution**: `5`\n- **Node**: Normalize, Score & Route\n- **Position**: run 0, output 0, item 0\n- **Execution status**: success\n\n---\n[Supporting data]\n- OKF source: memories\\decision\\lead-beacon-studio-warm-65.md\n- OKF resource: http://localhost:5679/workflow/nuMIHADKIMhTbCFc/executions/5",
+    "content": "# Lead Routing Decision: Beacon Studio\n\n- **Company**: Beacon Studio\n- **Use case**: Reduce manual lead qualification\n- **Qualification score**: 65\n- **Route**: warm\n- **Reasons**: `[\"budget ≥ $2k\",\"company size ≥ 10\",\"urgency: this_quarter\",\"strong automation intent\",\"business email\",\"complete core profile\"]`\n- **Next action**: Send a relevant case study and ask one qualifying question.\n- **Processed at**: 2026-07-30T09:00:59.266Z\n- **Follow up at**: 2026-07-30T13:00:59.266Z\n- **Idempotency key**: 7204bd61\n\n## n8n provenance\n\n- **Workflow**: LeadOps — Intake, Scoring & Follow-up (`nuMIHADKIMhTbCFc`)\n- **Execution**: `5`\n- **Node**: Normalize, Score & Route\n- **Position**: run 0, output 0, item 0\n- **Execution status**: success\n\n---\n[Supporting data]\n- OKF source: memories/decision/lead-beacon-studio-warm-65.md\n- OKF resource: n8n://workflow/nuMIHADKIMhTbCFc/executions/5",
     "type": "decision",
-    "tags": [
-      "n8n",
-      "leadops",
-      "route:warm"
-    ],
+    "tags": ["n8n", "leadops", "route:warm"],
     "confidence": 1.0,
     "source": "tool",
-    "source_ref": "http://localhost:5679/workflow/nuMIHADKIMhTbCFc/executions/5",
-    "provenance": "imported",
+    "source_ref": "n8n://workflow/nuMIHADKIMhTbCFc/executions/5",
+    "provenance": "n8n_execution",
     "created_at": "2026-07-30 09:00:59.268000+00:00",
     "updated_at": "2026-07-30 09:54:36.615720+00:00"
   },
   {
     "title": "Lead Cedar Hobby: cold (25)",
-    "content": "# Lead Routing Decision\n\n- **Company**: Cedar Hobby\n- **Use case**: Send a monthly newsletter\n- **Qualification score**: 25\n- **Route**: cold\n- **Reasons**: `[\"budget provided\",\"company size provided\",\"urgency: researching\",\"business email\",\"complete core profile\"]`\n- **Next action**: Add to educational nurture; no sales notification.\n- **Processed at**: 2026-07-30T09:00:59.307Z\n- **Follow up at**: 2026-07-31T09:00:59.307Z\n- **Idempotency key**: a09c0bc9\n\n## n8n provenance\n\n- **Workflow**: LeadOps — Intake, Scoring & Follow-up (`nuMIHADKIMhTbCFc`)\n- **Execution**: `6`\n- **Node**: Normalize, Score & Route\n- **Position**: run 0, output 0, item 0\n- **Execution status**: success\n\n---\n[Supporting data]\n- OKF source: memories\\decision\\lead-cedar-hobby-cold-25.md\n- OKF resource: http://localhost:5679/workflow/nuMIHADKIMhTbCFc/executions/6",
+    "content": "# Lead Routing Decision: Cedar Hobby\n\n- **Company**: Cedar Hobby\n- **Use case**: Send a monthly newsletter\n- **Qualification score**: 25\n- **Route**: cold\n- **Reasons**: `[\"budget provided\",\"company size provided\",\"urgency: researching\",\"business email\",\"complete core profile\"]`\n- **Next action**: Add to educational nurture; no sales notification.\n- **Processed at**: 2026-07-30T09:00:59.307Z\n- **Follow up at**: 2026-07-31T09:00:59.307Z\n- **Idempotency key**: a09c0bc9\n\n## n8n provenance\n\n- **Workflow**: LeadOps — Intake, Scoring & Follow-up (`nuMIHADKIMhTbCFc`)\n- **Execution**: `6`\n- **Node**: Normalize, Score & Route\n- **Position**: run 0, output 0, item 0\n- **Execution status**: success\n\n---\n[Supporting data]\n- OKF source: memories/decision/lead-cedar-hobby-cold-25.md\n- OKF resource: n8n://workflow/nuMIHADKIMhTbCFc/executions/6",
     "type": "decision",
-    "tags": [
-      "n8n",
-      "leadops",
-      "route:cold"
-    ],
+    "tags": ["n8n", "leadops", "route:cold"],
     "confidence": 1.0,
     "source": "tool",
-    "source_ref": "http://localhost:5679/workflow/nuMIHADKIMhTbCFc/executions/6",
-    "provenance": "imported",
+    "source_ref": "n8n://workflow/nuMIHADKIMhTbCFc/executions/6",
+    "provenance": "n8n_execution",
     "created_at": "2026-07-30 09:00:59.309000+00:00",
     "updated_at": "2026-07-30 09:54:36.615720+00:00"
   }

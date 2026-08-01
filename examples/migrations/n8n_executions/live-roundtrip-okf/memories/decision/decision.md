@@ -7,17 +7,17 @@ tags:
 - leadops
 - route:warm
 timestamp: '2026-07-30T09:00:59.268000+00:00'
-resource: http://localhost:5679/workflow/nuMIHADKIMhTbCFc/executions/5
+resource: n8n://workflow/nuMIHADKIMhTbCFc/executions/5
 x_memanto:
   id: 361c0046-1c6d-4aa9-a950-e39df10d46a7
   confidence: 1
-  provenance: imported
+  provenance: n8n_execution
   source: tool
   status: active
   type: decision
 ---
 
-# Lead Routing Decision
+# Lead Routing Decision: Beacon Studio
 
 - **Company**: Beacon Studio
 - **Use case**: Reduce manual lead qualification
@@ -39,8 +39,8 @@ x_memanto:
 
 ---
 [Supporting data]
-- OKF source: memories\decision\lead-beacon-studio-warm-65.md
-- OKF resource: http://localhost:5679/workflow/nuMIHADKIMhTbCFc/executions/5
+- OKF source: memories/decision/lead-beacon-studio-warm-65.md
+- OKF resource: n8n://workflow/nuMIHADKIMhTbCFc/executions/5
 
 <!-- okf-entry -->
 ---
@@ -52,17 +52,17 @@ tags:
 - leadops
 - route:hot
 timestamp: '2026-07-30T09:00:59.222000+00:00'
-resource: http://localhost:5679/workflow/nuMIHADKIMhTbCFc/executions/4
+resource: n8n://workflow/nuMIHADKIMhTbCFc/executions/4
 x_memanto:
   id: 1f4ac259-97e7-439c-ac86-23484dba0f4f
   confidence: 1
-  provenance: imported
+  provenance: n8n_execution
   source: tool
   status: active
   type: decision
 ---
 
-# Lead Routing Decision
+# Lead Routing Decision: Atlas Fleet
 
 - **Company**: Atlas Fleet
 - **Use case**: Automate CRM lead routing and manual follow-up workflows
@@ -84,8 +84,8 @@ x_memanto:
 
 ---
 [Supporting data]
-- OKF source: memories\decision\lead-atlas-fleet-hot-100.md
-- OKF resource: http://localhost:5679/workflow/nuMIHADKIMhTbCFc/executions/4
+- OKF source: memories/decision/lead-atlas-fleet-hot-100.md
+- OKF resource: n8n://workflow/nuMIHADKIMhTbCFc/executions/4
 
 <!-- okf-entry -->
 ---
@@ -97,17 +97,17 @@ tags:
 - leadops
 - route:cold
 timestamp: '2026-07-30T09:00:59.309000+00:00'
-resource: http://localhost:5679/workflow/nuMIHADKIMhTbCFc/executions/6
+resource: n8n://workflow/nuMIHADKIMhTbCFc/executions/6
 x_memanto:
   id: 964af21d-d989-4240-96a4-e3a2f5c1a390
   confidence: 1
-  provenance: imported
+  provenance: n8n_execution
   source: tool
   status: active
   type: decision
 ---
 
-# Lead Routing Decision
+# Lead Routing Decision: Cedar Hobby
 
 - **Company**: Cedar Hobby
 - **Use case**: Send a monthly newsletter
@@ -129,5 +129,5 @@ x_memanto:
 
 ---
 [Supporting data]
-- OKF source: memories\decision\lead-cedar-hobby-cold-25.md
-- OKF resource: http://localhost:5679/workflow/nuMIHADKIMhTbCFc/executions/6
+- OKF source: memories/decision/lead-cedar-hobby-cold-25.md
+- OKF resource: n8n://workflow/nuMIHADKIMhTbCFc/executions/6

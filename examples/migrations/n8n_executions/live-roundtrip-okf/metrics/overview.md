@@ -9,11 +9,11 @@
 
 ### Memory Activity Timeline
 
-```
+```text
 Hour  00  03  06  09  12  15  18  21  24
       ╠═══╬═══╬═══╬═══╬═══╬═══╬═══╬═══╣
                   ●●●
-```
+```text
 
 **3** memories across **1** active hours
 

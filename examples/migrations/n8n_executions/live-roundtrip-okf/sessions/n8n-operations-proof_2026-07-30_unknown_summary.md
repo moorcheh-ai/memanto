@@ -3,15 +3,15 @@
 
 ---
 
-### [2026-07-30 09:00:59] [DECISION] Lead Atlas Fleet: hot (100)
+## [2026-07-30 09:00:59] [DECISION] Lead Atlas Fleet: hot (100)
 - **Memory ID**: `1f4ac259-97e7-439c-ac86-23484dba0f4f`
 - **Confidence**: `1.0`
 - **Status**: `active`
 - **Source**: `tool`
-- **Provenance**: `imported`
+- **Provenance**: `n8n_execution`
 - **Tags**: `n8n`, `leadops`, `route:hot`
 - **Content**:
-> # Lead Routing Decision
+> # Lead Routing Decision: Atlas Fleet
 >
 > - **Company**: Atlas Fleet
 > - **Use case**: Automate CRM lead routing and manual follow-up workflows
@@ -33,20 +33,20 @@
 >
 > ---
 > [Supporting data]
-> - OKF source: memories\decision\lead-atlas-fleet-hot-100.md
-> - OKF resource: http://localhost:5679/workflow/nuMIHADKIMhTbCFc/executions/4
+> - OKF source: memories/decision/lead-atlas-fleet-hot-100.md
+> - OKF resource: n8n://workflow/nuMIHADKIMhTbCFc/executions/4
 
 ---
 
-### [2026-07-30 09:00:59] [DECISION] Lead Beacon Studio: warm (65)
+## [2026-07-30 09:00:59] [DECISION] Lead Beacon Studio: warm (65)
 - **Memory ID**: `361c0046-1c6d-4aa9-a950-e39df10d46a7`
 - **Confidence**: `1.0`
 - **Status**: `active`
 - **Source**: `tool`
-- **Provenance**: `imported`
+- **Provenance**: `n8n_execution`
 - **Tags**: `n8n`, `leadops`, `route:warm`
 - **Content**:
-> # Lead Routing Decision
+> # Lead Routing Decision: Beacon Studio
 >
 > - **Company**: Beacon Studio
 > - **Use case**: Reduce manual lead qualification
@@ -68,20 +68,20 @@
 >
 > ---
 > [Supporting data]
-> - OKF source: memories\decision\lead-beacon-studio-warm-65.md
-> - OKF resource: http://localhost:5679/workflow/nuMIHADKIMhTbCFc/executions/5
+> - OKF source: memories/decision/lead-beacon-studio-warm-65.md
+> - OKF resource: n8n://workflow/nuMIHADKIMhTbCFc/executions/5
 
 ---
 
-### [2026-07-30 09:00:59] [DECISION] Lead Cedar Hobby: cold (25)
+## [2026-07-30 09:00:59] [DECISION] Lead Cedar Hobby: cold (25)
 - **Memory ID**: `964af21d-d989-4240-96a4-e3a2f5c1a390`
 - **Confidence**: `1.0`
 - **Status**: `active`
 - **Source**: `tool`
-- **Provenance**: `imported`
+- **Provenance**: `n8n_execution`
 - **Tags**: `n8n`, `leadops`, `route:cold`
 - **Content**:
-> # Lead Routing Decision
+> # Lead Routing Decision: Cedar Hobby
 >
 > - **Company**: Cedar Hobby
 > - **Use case**: Send a monthly newsletter
@@ -103,7 +103,7 @@
 >
 > ---
 > [Supporting data]
-> - OKF source: memories\decision\lead-cedar-hobby-cold-25.md
-> - OKF resource: http://localhost:5679/workflow/nuMIHADKIMhTbCFc/executions/6
+> - OKF source: memories/decision/lead-cedar-hobby-cold-25.md
+> - OKF resource: n8n://workflow/nuMIHADKIMhTbCFc/executions/6
 
 ---

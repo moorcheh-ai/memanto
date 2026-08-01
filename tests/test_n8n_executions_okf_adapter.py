@@ -401,6 +401,15 @@ def test_live_output_redaction_and_export_fact_validation(tmp_path):
     assert str(private_root) not in cleaned
     assert "\u001b[" not in cleaned
 
+    secret = "test-secret-value-12345"
+    redacted = _clean_output(
+        f"Authorization: {secret}",
+        [private_root],
+        [secret],
+    )
+    assert secret not in redacted
+    assert "<redacted-secret>" in redacted
+
     source = _write_json(tmp_path / "execution.json", [_execution()])
     bundle = tmp_path / "okf"
     convert_n8n_executions(source, _mapping(tmp_path / "map.yaml"), bundle)
