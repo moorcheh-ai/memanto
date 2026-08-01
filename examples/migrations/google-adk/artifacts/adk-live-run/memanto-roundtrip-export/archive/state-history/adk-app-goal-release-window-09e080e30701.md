@@ -1,10 +1,10 @@
 ---
 {
   "generated": {
-    "at": "2026-08-01T10:09:38.571652Z",
+    "at": "2026-08-01T10:39:52.159236Z",
     "by": "memanto-google-adk-okf/1.0.0"
   },
-  "resource": "google-adk://sqlite/ab81135ad9829f36/atlas-release-copilot/app/goal.release_window",
+  "resource": "google-adk://sqlite/f622f1697993d042/atlas-release-copilot/app/goal.release_window",
   "status": "deprecated",
   "title": "History: Release window",
   "type": "state-history",
@@ -23,7 +23,7 @@
 ## Update 1 — superseded
 
 - Timestamp: `2026-07-06T09:00:02Z`
-- Event: `b54e1e59-2097-4ced-922c-ae0b152aed6d`
+- Event: `9ecb564c-a567-4d95-a0f7-2bbddae4eb18`
 - Author: `release_copilot`
 
 ```json
@@ -33,7 +33,7 @@
 ## Update 2 — current
 
 - Timestamp: `2026-07-08T15:20:02Z`
-- Event: `16fe8bc1-db80-43a7-a15f-62ce88fe4934`
+- Event: `0bfc36a0-4edc-4150-bc80-58740ca66071`
 - Author: `release_copilot`
 
 ```json

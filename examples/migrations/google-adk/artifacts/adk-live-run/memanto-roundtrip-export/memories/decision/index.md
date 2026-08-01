@@ -1,7 +1,7 @@
 ---
 type: index
 title: decision
-timestamp: 2026-08-01T10:15:34Z
+timestamp: 2026-08-01T10:41:39Z
 ---
 
 # decision (2)

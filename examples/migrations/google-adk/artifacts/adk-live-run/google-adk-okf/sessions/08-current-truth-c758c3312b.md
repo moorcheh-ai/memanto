@@ -1,7 +1,7 @@
 ---
 {
   "generated": {
-    "at": "2026-08-01T10:09:38.571652Z",
+    "at": "2026-08-01T10:39:52.159236Z",
     "by": "memanto-google-adk-okf/1.0.0"
   },
   "status": "stable",
@@ -23,7 +23,7 @@
 - User: `dana`
 - First persisted event: `2026-07-25T08:15:01Z`
 - Last persisted event: `2026-07-25T08:15:02Z`
-- Captured: `2026-08-01T10:09:38.571652Z`
+- Captured: `2026-08-01T10:39:52.159236Z`
 
 > Context-only transcript. Memanto's OKF importer scopes imports to `memories/`.
 

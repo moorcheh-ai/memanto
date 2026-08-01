@@ -1,10 +1,10 @@
 ---
 {
   "generated": {
-    "at": "2026-08-01T10:09:38.571652Z",
+    "at": "2026-08-01T10:39:52.159236Z",
     "by": "memanto-google-adk-okf/1.0.0"
   },
-  "resource": "google-adk://sqlite/ab81135ad9829f36/atlas-release-copilot/app/decision.feature_flag_cache_ttl",
+  "resource": "google-adk://sqlite/f622f1697993d042/atlas-release-copilot/app/decision.feature_flag_cache_ttl",
   "status": "deprecated",
   "title": "History: Feature flag cache ttl",
   "type": "state-history",
@@ -23,7 +23,7 @@
 ## Update 1 — superseded
 
 - Timestamp: `2026-07-21T13:05:01Z`
-- Event: `3c5f7d51-df1e-47dd-b699-aebf5d032497`
+- Event: `4a143a3f-d4df-461d-ab6b-7b5c138d85be`
 - Author: `release_copilot`
 
 ```json
@@ -33,7 +33,7 @@
 ## Update 2 — current
 
 - Timestamp: `2026-07-21T13:05:03Z`
-- Event: `13c03c57-9188-4b31-be24-71a7b462e94b`
+- Event: `c511ba15-4c4e-4902-895d-ce8e196397ab`
 - Author: `release_copilot`
 
 ```json

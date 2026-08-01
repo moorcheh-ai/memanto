@@ -55,6 +55,26 @@ finally:
         sys.modules["adapter"] = PREVIOUS_ADAPTER_MODULE
 
 
+def _load_roundtrip_module():
+    spec = importlib.util.spec_from_file_location(
+        "google_adk_roundtrip_test", ROUNDTRIP_PATH
+    )
+    assert spec and spec.loader
+    module = importlib.util.module_from_spec(spec)
+    previous_adapter = sys.modules.get("adapter")
+    sys.modules["adapter"] = adapter
+    sys.path.insert(0, str(EXAMPLE_DIR))
+    try:
+        spec.loader.exec_module(module)
+    finally:
+        sys.path.remove(str(EXAMPLE_DIR))
+        if previous_adapter is None:
+            del sys.modules["adapter"]
+        else:
+            sys.modules["adapter"] = previous_adapter
+    return module
+
+
 SCHEMA = """
 CREATE TABLE app_states (
     app_name TEXT PRIMARY KEY,
@@ -468,22 +488,7 @@ def test_run_demo_force_refuses_unowned_directory(tmp_path):
 
 
 def test_roundtrip_capture_redacts_the_configured_api_key():
-    spec = importlib.util.spec_from_file_location(
-        "google_adk_roundtrip_test", ROUNDTRIP_PATH
-    )
-    assert spec and spec.loader
-    module = importlib.util.module_from_spec(spec)
-    previous_adapter = sys.modules.get("adapter")
-    sys.modules["adapter"] = adapter
-    sys.path.insert(0, str(EXAMPLE_DIR))
-    try:
-        spec.loader.exec_module(module)
-    finally:
-        sys.path.remove(str(EXAMPLE_DIR))
-        if previous_adapter is None:
-            del sys.modules["adapter"]
-        else:
-            sys.modules["adapter"] = previous_adapter
+    module = _load_roundtrip_module()
 
     assert (
         module._redact_secret_text(
@@ -491,6 +496,50 @@ def test_roundtrip_capture_redacts_the_configured_api_key():
         )
         == "request failed for <redacted>"
     )
+
+
+def test_roundtrip_clears_only_stale_summaries_for_new_agent(tmp_path):
+    module = _load_roundtrip_module()
+    stale = tmp_path / "target_2026-08-01_unknown_summary.md"
+    keep_agent = tmp_path / "other_2026-08-01_unknown_summary.md"
+    keep_non_summary = tmp_path / "target_notes.md"
+    for path in (stale, keep_agent, keep_non_summary):
+        path.write_text("evidence", encoding="utf-8")
+
+    assert module._clear_stale_session_summaries("target", tmp_path) == 1
+    assert not stale.exists()
+    assert keep_agent.is_file()
+    assert keep_non_summary.is_file()
+
+
+def test_roundtrip_rejects_duplicate_active_resources(tmp_path):
+    module = _load_roundtrip_module()
+    sessions = tmp_path / "sessions"
+    sessions.mkdir()
+    first = sessions / "first_summary.md"
+    second = sessions / "second_summary.md"
+    first.write_text("- OKF resource: `google-adk://same`\n", encoding="utf-8")
+    second.write_text("- OKF resource: `google-adk://same`\n", encoding="utf-8")
+
+    with pytest.raises(adapter.AdapterError, match="Duplicate active OKF resource"):
+        module._assert_unique_summary_resources(tmp_path)
+
+
+def test_roundtrip_maps_every_persisted_event_date_with_create_fallback():
+    module = _load_roundtrip_module()
+    assert module._source_session_dates(
+        {
+            "create_time": "2026-07-01T00:00:00Z",
+            "events": [
+                {"timestamp": "2026-07-03T23:00:00Z"},
+                {"timestamp": "2026-07-02T01:00:00Z"},
+                {"timestamp": "2026-07-03T01:00:00Z"},
+            ],
+        }
+    ) == ["2026-07-02", "2026-07-03"]
+    assert module._source_session_dates(
+        {"create_time": "2026-07-01T00:00:00Z", "events": []}
+    ) == ["2026-07-01"]
 
 
 def test_verifier_rejects_manifest_paths_outside_bundle(tmp_path):
@@ -541,3 +590,25 @@ def test_verifier_detects_short_meaningful_superseded_values():
     )
     assert not verifier._contains_meaningful_value("A normal active memory.", "a")
     assert not verifier._contains_meaningful_value("Marker: <redacted>", "<redacted>")
+
+
+@pytest.mark.parametrize(
+    ("content", "value"),
+    [
+        (
+            'Current value:\n{\n  "mode": "legacy",\n  "retries": 3\n}',
+            {"mode": "legacy", "retries": 3},
+        ),
+        ("Current value: [\n  true,\n  7\n]", [True, 7]),
+        ("Current value: 42", 42),
+        ("Current value: true", True),
+    ],
+)
+def test_verifier_detects_structured_superseded_values(content, value):
+    assert verifier._contains_meaningful_value(content, value)
+
+
+def test_verifier_ignores_superseded_values_in_supporting_data():
+    assert not verifier._contains_meaningful_value(
+        "Current value is modern.\n[Supporting data]\nOld value: legacy", "legacy"
+    )

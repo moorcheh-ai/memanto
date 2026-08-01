@@ -7,177 +7,177 @@
     {
       "bytes": 1136,
       "path": "archive/state-history/adk-app-decision-feature-flag-cache-ttl-03ccade6027b.md",
-      "sha256": "deab2673c4cc5952192828b2a4843494b452789d4b2cbe30df96ee906ae24336"
+      "sha256": "bb2a256bb1a20fdd00f6c67a98dfdbd3c4787ee94005506a74b58e73e8837966"
     },
     {
       "bytes": 1052,
       "path": "archive/state-history/adk-app-goal-release-window-09e080e30701.md",
-      "sha256": "5bcd8926d6efc6aef1e2562e15ab625aac7da6ecc5bd15291e0feda13919514f"
+      "sha256": "916fdbd5cdda5cd533ad1108142bd0817310e53ae9a214d154752af7fc833a90"
     },
     {
       "bytes": 1081,
       "path": "archive/state-history/adk-app-relationship-release-ownership-3d60036341e2.md",
-      "sha256": "c17cbbe42a0d037ad3f06f038561063646beecec4af9a2e567179c0b4fb39916"
+      "sha256": "873b139e610cfbcd0b1c649abadd0d4f60026603033a122d54dcbf4d00505b4d"
     },
     {
       "bytes": 387,
       "path": "archive/state-history/index.md",
-      "sha256": "ea4a981e91d225b5abc76bce409aa395034b865a17a89dda658848ba9ef7fec1"
+      "sha256": "49909eb868a906373b2ac30844dbcb0a9f9267dd892bae4103abc5d9b95c48c8"
     },
     {
       "bytes": 412,
       "path": "index.md",
-      "sha256": "302454c1901e5c88ec78151b4d853a405b6ca958cc8273a8288c1c23d1478125"
+      "sha256": "76511839b1107329077931493e6d98a01291624e0659f9e09ad1849bb2a9f539"
     },
     {
       "bytes": 1474,
       "path": "memories/commitment/adk-app-commitment-release-readiness-b3bdabeca4b5.md",
-      "sha256": "795d828ddabf11092a6287f7f8600a54200648ab1c9c573052d3be61b275c590"
+      "sha256": "076f0c3cd5270a670422de2eb44e9310f26e19ea2a8c0da31c5248d77490a7f1"
     },
     {
       "bytes": 229,
       "path": "memories/commitment/index.md",
-      "sha256": "43af4cdc9ddafc3b7bd138f9a2c765abb0e5f5e1e62d637c1ec040b4fc3b4084"
+      "sha256": "0d574d9ae5ffcc2a520fb942069c77efeba940f92506ec41fe34769ed7245ec8"
     },
     {
       "bytes": 1706,
       "path": "memories/decision/adk-app-decision-canary-and-rollback-6e8237827ebe.md",
-      "sha256": "fc5860b267969ef76746457bac7414b55f6b657c712b431715d610d85ae50ff4"
+      "sha256": "d04e4b02b69a697432902e1f7a4fc581d9c0166706f8b57019a15af2eef7bae2"
     },
     {
       "bytes": 1730,
       "path": "memories/decision/adk-app-decision-feature-flag-cache-ttl-03ccade6027b.md",
-      "sha256": "d27ad6d4c0c625d90f4fa94b717e0c3cb860e276ae51e3adc2640325c9e8d63b"
+      "sha256": "e9af63e6e0e69c16609adc3b44ed98623c1bcbe8bbe81e40841aa40915c25346"
     },
     {
       "bytes": 312,
       "path": "memories/decision/index.md",
-      "sha256": "c7825ed5fab71667863e7f25b74abf33c19b045348e2db5b1a85481d37d5fff3"
+      "sha256": "6e16fb0634636436c1c8a128ab8789de5b9a32a62027726f2f3edfa21a4d8358"
     },
     {
       "bytes": 1661,
       "path": "memories/event/adk-app-event-final-rehearsal-26d2c882a046.md",
-      "sha256": "a27345fad1c5752b6f229d82081eb39b4aaa7e83daf1c21ac4ce7aff0809cf83"
+      "sha256": "fcb3c8757be6c5f734d204a46e19b81e7a76697cb046a2a528a6281629087b1c"
     },
     {
       "bytes": 210,
       "path": "memories/event/index.md",
-      "sha256": "f999a2fe889641ba09c6a3a52a19701b078e2e92b245297a8c1b6d199fbd05d2"
+      "sha256": "a9727c844a2d167bcd01b0abc1ab159f67f1dbf3adabc93566d064f6eb2677c4"
     },
     {
       "bytes": 1418,
       "path": "memories/fact/adk-app-fact-project-stack-0e3338aed3fb.md",
-      "sha256": "9b728dc3707035da5fd1e2d3c1df9fd858281d7eea249bfc6583e3db6d49dccf"
+      "sha256": "5108d3ef81ef89f70d14a5c00502000603814a552cb46f7a7e52f1d7714166f8"
     },
     {
       "bytes": 203,
       "path": "memories/fact/index.md",
-      "sha256": "a7ea6b61230f4afc403255b6e46d9071b8b77f46c823c06aeafa1ecc8ee9272b"
+      "sha256": "93aeb243bfb7c23a4df1dae93104051ec0cd3e02d409e0d96300a6cc21b73d08"
     },
     {
       "bytes": 1504,
       "path": "memories/goal/adk-app-goal-release-window-09e080e30701.md",
-      "sha256": "63ddb4c7fc8b43c8001dc31fe782509afcc9cad28b21c70dc1f60936529fa9a4"
+      "sha256": "2f29971e94aa5388b9025792221745b052fa95f942b36b792c6b99107573648a"
     },
     {
       "bytes": 205,
       "path": "memories/goal/index.md",
-      "sha256": "58aee1f589dde0a0c979d21cfe3a18b3e5f7ee756a45ed90f63104c30c2d0671"
+      "sha256": "cb42b939a140db9800c6974ecde48569a7c2ca25134ee468710e06744e4c9d77"
     },
     {
       "bytes": 503,
       "path": "memories/index.md",
-      "sha256": "3d5aa885f2994c4d0289dccfb22be0a811ffe54baa97c500b212106d36437e11"
+      "sha256": "b9a200395dc7fde3ab07856be3add88807059e4764cb50a364168f9631f6cbd4"
     },
     {
       "bytes": 1495,
       "path": "memories/instruction/adk-app-instruction-deployment-calendar-33a89d54a8ea.md",
-      "sha256": "28967561ef986c74a321c2f4eb9cdc5c93b4492ba31bc778e8c3846cc40bc7de"
+      "sha256": "a5105d38d7bed6fd11be47da9baf33a209734b7675f2524ed31e27430c4c2025"
     },
     {
       "bytes": 236,
       "path": "memories/instruction/index.md",
-      "sha256": "b79dba1fab3c59aeb43b7bf6e8ba23be6203878ea54f16520e8a04696730c586"
+      "sha256": "43e0d5eace6c9f97b863dca9b90a0ca6fbad5feba5fabcb044a3323360b6ffe4"
     },
     {
       "bytes": 1876,
       "path": "memories/learning/adk-app-learning-staging-database-preflight-10ccf95d697a.md",
-      "sha256": "0c8b54277f91378dbbe5a30f1e68284f8a96a665bbc131245f2a38bd687caed0"
+      "sha256": "f51f5eac62e35fa8add2fbf996235a1ed6bdcaf39e57f07594ac1558a54578d2"
     },
     {
       "bytes": 241,
       "path": "memories/learning/index.md",
-      "sha256": "1cc2fb7c31c14a732dc210afe5c500faba7d31b6c1fc21c070dcdd45216fbe64"
+      "sha256": "530d098400c1c57c976344104ed15cb7d092ca3cd8929ba289d9f1fc47027095"
     },
     {
       "bytes": 1614,
       "path": "memories/preference/adk-user-preference-release-update-format-da749525d66d.md",
-      "sha256": "da518de5f6098e08346900dd01ef05f06cae50b0c254ce76deb33eec38b7c278"
+      "sha256": "5b2bfad115870a4b86fd664934ad21c2936dfd40560e7d48f479e5240ac9cb2d"
     },
     {
       "bytes": 238,
       "path": "memories/preference/index.md",
-      "sha256": "83fe8ce8323b0e8e35f657438ae7d20879372a36e77b65ffed84e743c8e67f46"
+      "sha256": "ba91b0ac8bdc1d511ac78506851d28fca47e5ab566fa2be8dfd41ae03e4d695a"
     },
     {
       "bytes": 1657,
       "path": "memories/relationship/adk-app-relationship-release-ownership-3d60036341e2.md",
-      "sha256": "ffab46000bbd125fef5cfa16685c364d367fb3589e7b56c980d8c61929c2dede"
+      "sha256": "5de295de716558eaa8cbc30093fecdfa96ef925e173f3b12f6dbe7b5077b3271"
     },
     {
       "bytes": 235,
       "path": "memories/relationship/index.md",
-      "sha256": "60223b9f8e39d489469ab2277e61c264f064c5c1bc8424458b55654f42e9ab8b"
+      "sha256": "f7b2b7c925275f1452d392d578d9e3eacd1b2fb52249add154d0a966e2b458c1"
     },
     {
       "bytes": 1155,
       "path": "sessions/01-kickoff-3ae4229e06.md",
-      "sha256": "fb417ec606ecfcea9d8682bc97d563ffc627411274b0fb0c5db6699115708439"
+      "sha256": "7812613996ae16f6ce56b68bf20e2557e0fb6a7e22ea2849dfa10553a527f48f"
     },
     {
       "bytes": 1222,
       "path": "sessions/02-schedule-correction-742647cd32.md",
-      "sha256": "c4775c5773478200581c7b765e5a65a5b3e5c5f06d43a8190e535ac2e7a51803"
+      "sha256": "dd84bde7cb8aa6ca7c2c2cd612e6a1e5dfee5a4c50cc4ca50d696eda4b3ce1cf"
     },
     {
       "bytes": 1099,
       "path": "sessions/03-staging-rehearsal-1873b89281.md",
-      "sha256": "a42db1cd39622f0e4d938315a962d17b8ac97e6e7f62c8c8db99786187bdd0fe"
+      "sha256": "324aacbac0cb09c932d72bc4c379648e0db4ac1c41185caa131581dbbd2b3d19"
     },
     {
       "bytes": 1102,
       "path": "sessions/04-rollout-policy-8af6bb493f.md",
-      "sha256": "95ff740f5e06b1d7304d1f61e1bc16a48b0d6b443083cf6aaa1688c6d4e9fcf3"
+      "sha256": "79c987714d60d9983f9126c7e6b755636615c522433710936482d21c7792bf1c"
     },
     {
       "bytes": 1059,
       "path": "sessions/05-owner-handoff-f9af9fefc1.md",
-      "sha256": "efb231eaed42f5dd1f2545932cad0905ca67a1a9a88fea8196d6f8b5d7a8f0b6"
+      "sha256": "919f503ed97291df78c3e2edae06c9c5eb7deb2a911667df5f538a139e8e274c"
     },
     {
       "bytes": 1216,
       "path": "sessions/06-cache-correction-4a4cfdea96.md",
-      "sha256": "655b20e47fba408b726276212b29aa093a29b0d412176d0af8a0fe6513067319"
+      "sha256": "d34cff23a9908ab2371de6a67737f47eb95008cb4376e62007af07c847dad439"
     },
     {
       "bytes": 1114,
       "path": "sessions/07-final-rehearsal-5b4f70b8e1.md",
-      "sha256": "300e4c141e8ad46fea6549ffedf152666050d41ac42bea18d0b3cf2620aa3c5a"
+      "sha256": "8880b82ce8514f834496190551e755bc04700923b6c83e9ffcf89d1ea4e8e06c"
     },
     {
       "bytes": 1102,
       "path": "sessions/08-current-truth-c758c3312b.md",
-      "sha256": "c8c388c8926f956ca66b5388be050783b75c6b220cb776e1b811a6d537f40b78"
+      "sha256": "2e3edb3345bff08367969a8670edbee2b40de271409b4040e2c29f81723553e3"
     },
     {
       "bytes": 626,
       "path": "sessions/index.md",
-      "sha256": "9f307c02ecd0b20f57afbb2295f26919d7753080eac74a62c049453d76361189"
+      "sha256": "a7ac446cb4b8041ed97bf69535bc34f267ce3193c7925a902d45076ac15a0708"
     },
     {
       "bytes": 23622,
       "path": "source/google-adk-sqlite-snapshot.json",
-      "sha256": "3d9d6f1ee1f904d9bc5724bd161202bc91a056ae8775f955a547ab8b33237add"
+      "sha256": "22c6b470b55b2798a54ec100aa33c1df52d4f8170a57f51aaa180601d8d9e53c"
     }
   ],
   "filters": {
@@ -208,9 +208,9 @@
   },
   "schema": "google-adk-okf-manifest/v1",
   "source": {
-    "captured_at": "2026-08-01T10:09:38.571652Z",
+    "captured_at": "2026-08-01T10:39:52.159236Z",
     "database_name": "google-adk-sessions.db",
-    "database_sha256": "ab81135ad9829f369e3e837268c8edbf3a58a7418c18a0ea3b0f6dca1df4e0d6",
+    "database_sha256": "f622f1697993d042a1aa1c8573364a14ddbcda064caf07488b326be4b63d7428",
     "google_adk_version": "2.6.0",
     "provider": "google-adk",
     "redacted_values": 0,
@@ -218,7 +218,7 @@
     "schema": "google-adk-sqlite-json/v1",
     "service": "SqliteSessionService",
     "snapshot_path": "source/google-adk-sqlite-snapshot.json",
-    "snapshot_sha256": "3d9d6f1ee1f904d9bc5724bd161202bc91a056ae8775f955a547ab8b33237add",
+    "snapshot_sha256": "22c6b470b55b2798a54ec100aa33c1df52d4f8170a57f51aaa180601d8d9e53c",
     "table_columns": {
       "app_states": [
         "app_name",

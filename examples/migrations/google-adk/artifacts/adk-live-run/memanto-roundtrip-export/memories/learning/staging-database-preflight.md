@@ -8,9 +8,9 @@ tags:
 - source:google-adk
 - type:learning
 timestamp: '2026-07-13T11:45:01+00:00'
-resource: google-adk://sqlite/ab81135ad9829f36/atlas-release-copilot/app/learning.staging_database_preflight
+resource: google-adk://sqlite/f622f1697993d042/atlas-release-copilot/app/learning.staging_database_preflight
 x_memanto:
-  id: ac6dc5db-3560-4cd8-8313-7da241c8ecdf
+  id: 4e36724a-3131-4338-b7ad-bd554e72fc9d
   confidence: 0.9
   provenance: imported
   source: tool
@@ -31,9 +31,9 @@ The first Beacon staging migration failed because the PostgreSQL 16 pg_trgm exte
 ---
 [Supporting data]
 - OKF source: memories/learning/adk-app-learning-staging-database-preflight-10ccf95d697a.md
-- OKF resource: google-adk://sqlite/ab81135ad9829f36/atlas-release-copilot/app/learning.staging_database_preflight
+- OKF resource: google-adk://sqlite/f622f1697993d042/atlas-release-copilot/app/learning.staging_database_preflight
 - OKF original source: google-adk
-- OKF generated: at=2026-08-01T10:09:38.571652Z; by=memanto-google-adk-okf/1.0.0
-- OKF sources: {'id': 'adk-app-learning-staging-database-preflight-10ccf95d697a', 'resource': 'google-adk://sqlite/ab81135ad9829f36/atlas-release-copilot/app/learning.staging_database_preflight', 'type': 'google-...
+- OKF generated: at=2026-08-01T10:39:52.159236Z; by=memanto-google-adk-okf/1.0.0
+- OKF sources: {'id': 'adk-app-learning-staging-database-preflight-10ccf95d697a', 'resource': 'google-adk://sqlite/f622f1697993d042/atlas-release-copilot/app/learning.staging_database_preflight', 'type': 'google-...
 - OKF status: stable
 - OKF x_google_adk: app_name=atlas-release-copilot; distinct_values=1; scope=app; state_key=learning.staging_database_preflight; state_updates=1

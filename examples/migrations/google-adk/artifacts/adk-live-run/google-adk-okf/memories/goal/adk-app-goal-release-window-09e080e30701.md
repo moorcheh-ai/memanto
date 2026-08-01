@@ -2,14 +2,14 @@
 {
   "description": "Beacon releases Tuesday, August 4, 2026 at 14:00 UTC.",
   "generated": {
-    "at": "2026-08-01T10:09:38.571652Z",
+    "at": "2026-08-01T10:39:52.159236Z",
     "by": "memanto-google-adk-okf/1.0.0"
   },
-  "resource": "google-adk://sqlite/ab81135ad9829f36/atlas-release-copilot/app/goal.release_window",
+  "resource": "google-adk://sqlite/f622f1697993d042/atlas-release-copilot/app/goal.release_window",
   "sources": [
     {
       "id": "adk-app-goal-release-window-09e080e30701",
-      "resource": "google-adk://sqlite/ab81135ad9829f36/atlas-release-copilot/app/goal.release_window",
+      "resource": "google-adk://sqlite/f622f1697993d042/atlas-release-copilot/app/goal.release_window",
       "type": "google-adk-sqlite-state"
     }
   ],

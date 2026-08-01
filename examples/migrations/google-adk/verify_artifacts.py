@@ -12,16 +12,31 @@ import adapter
 
 
 def _contains_meaningful_value(content: str, value: object) -> bool:
-    """Match short superseded values without treating tiny fragments as leaks."""
-    if not isinstance(value, str):
+    """Match superseded scalar or structured values in primary memory content."""
+    primary_content = content.partition("[Supporting data]")[0]
+    if adapter._is_redacted_only(value):
         return False
-    candidate = value.strip()
-    if len(candidate) < 3 or adapter._is_redacted_only(candidate):
-        return False
+    if isinstance(value, str):
+        candidate = value.strip()
+        if len(candidate) < 3:
+            return False
+        return (
+            re.search(
+                rf"(?<!\w){re.escape(candidate)}(?!\w)",
+                primary_content,
+                flags=re.IGNORECASE,
+            )
+            is not None
+        )
+
+    candidate = adapter.canonical_json(value)
+    if isinstance(value, (dict, list)):
+        normalized_content = re.sub(r"\s+", "", primary_content).casefold()
+        return candidate.casefold() in normalized_content
     return (
         re.search(
-            rf"(?<!\w){re.escape(candidate)}(?!\w)",
-            content,
+            rf"(?<![\w.]){re.escape(candidate)}(?![\w.])",
+            primary_content,
             flags=re.IGNORECASE,
         )
         is not None

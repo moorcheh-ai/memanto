@@ -2,14 +2,14 @@
 {
   "description": "Beacon starts at a 10 percent canary for 30 minutes. Promote only while errors remain below 1 percent and p95 latency remains below 250 ms; otherwise roll back immediately.",
   "generated": {
-    "at": "2026-08-01T10:09:38.571652Z",
+    "at": "2026-08-01T10:39:52.159236Z",
     "by": "memanto-google-adk-okf/1.0.0"
   },
-  "resource": "google-adk://sqlite/ab81135ad9829f36/atlas-release-copilot/app/decision.canary_and_rollback",
+  "resource": "google-adk://sqlite/f622f1697993d042/atlas-release-copilot/app/decision.canary_and_rollback",
   "sources": [
     {
       "id": "adk-app-decision-canary-and-rollback-6e8237827ebe",
-      "resource": "google-adk://sqlite/ab81135ad9829f36/atlas-release-copilot/app/decision.canary_and_rollback",
+      "resource": "google-adk://sqlite/f622f1697993d042/atlas-release-copilot/app/decision.canary_and_rollback",
       "type": "google-adk-sqlite-state"
     }
   ],

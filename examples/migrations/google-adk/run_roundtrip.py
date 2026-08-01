@@ -25,6 +25,7 @@ DEFAULT_BUNDLE = HERE / "artifacts" / "adk-live-run" / "google-adk-okf"
 DEFAULT_ARTIFACTS = HERE / "artifacts" / "adk-live-run"
 ANSI_RE = re.compile(r"\x1b\[[0-?]*[ -/]*[@-~]")
 COMMAND_TIMEOUT_SECONDS = 180
+OKF_RESOURCE_RE = re.compile(r"OKF resource:\s*`?([^`\s]+)")
 
 
 def _write_json(path: Path, value: Any) -> None:
@@ -43,6 +44,55 @@ def _normalize_markdown_tree(root: Path) -> None:
             "\n".join(line.rstrip() for line in lines).rstrip() + "\n",
             encoding="utf-8",
         )
+
+
+def _source_session_dates(session: dict[str, Any]) -> list[str]:
+    """Return every persisted event date, falling back only when none exist."""
+    dates = sorted(
+        {
+            str(event["timestamp"])[:10]
+            for event in (session.get("events") or [])
+            if event.get("timestamp")
+        }
+    )
+    if not dates and session.get("create_time"):
+        dates.append(str(session["create_time"])[:10])
+    return dates or ["unknown"]
+
+
+def _clear_stale_session_summaries(
+    agent_id: str, sessions_dir: Path | None = None
+) -> int:
+    """Remove local derived summaries before importing into a newly created agent."""
+    root = sessions_dir or (get_data_dir() / "sessions")
+    if not root.is_dir():
+        return 0
+    removed = 0
+    prefix = f"{agent_id}_"
+    for path in root.glob("*_summary.md"):
+        if path.name.startswith(prefix):
+            path.unlink()
+            removed += 1
+    return removed
+
+
+def _assert_unique_summary_resources(root: Path) -> int:
+    """Reject round-trip evidence containing duplicate active OKF resources."""
+    seen: dict[str, Path] = {}
+    count = 0
+    for path in sorted((root / "sessions").glob("*_summary.md")):
+        resources = OKF_RESOURCE_RE.findall(path.read_text(encoding="utf-8"))
+        for resource in resources:
+            if resource in seen:
+                first = seen[resource].relative_to(root).as_posix()
+                duplicate = path.relative_to(root).as_posix()
+                raise adapter.AdapterError(
+                    "Duplicate active OKF resource in session summaries: "
+                    f"{resource} ({first}, {duplicate})"
+                )
+            seen[resource] = path
+            count += 1
+    return count
 
 
 def _repair_export_context(root: Path, source_bundle: Path, agent_id: str) -> None:
@@ -73,22 +123,18 @@ def _repair_export_context(root: Path, source_bundle: Path, agent_id: str) -> No
     rows = []
     mapped_summary_names: set[str] = set()
     for session in snapshot.get("sessions", []):
-        events = session.get("events") or []
-        timestamp = next(
-            (event.get("timestamp") for event in events if event.get("timestamp")),
-            session.get("create_time"),
-        )
-        source_date = str(timestamp or "unknown")[:10]
-        matched = summaries_by_date.get(source_date, [])
-        for path in matched:
-            mapped_summary_names.add(path.name)
-        links = (
-            ", ".join(f"[{path.name}](sessions/{path.name})" for path in matched)
-            or "No date-grouped summary emitted"
-        )
-        rows.append(
-            f"| `{session.get('session_id', 'unknown')}` | `{source_date}` | {links} |"
-        )
+        for source_date in _source_session_dates(session):
+            matched = summaries_by_date.get(source_date, [])
+            for path in matched:
+                mapped_summary_names.add(path.name)
+            links = (
+                ", ".join(f"[{path.name}](sessions/{path.name})" for path in matched)
+                or "No date-grouped summary emitted"
+            )
+            rows.append(
+                f"| `{session.get('session_id', 'unknown')}` | `{source_date}` | "
+                f"{links} |"
+            )
 
     unmatched = [
         path for path in summary_files if path.name not in mapped_summary_names
@@ -242,6 +288,7 @@ def main(argv: list[str] | None = None) -> int:
     executable = _executable()
     env = {**os.environ, "NO_COLOR": "1", "TERM": "dumb"}
     records = []
+    stale_session_summaries_removed = 0
 
     try:
         if args.reuse_agent:
@@ -270,6 +317,7 @@ def main(argv: list[str] | None = None) -> int:
                     env=env,
                 )
             )
+            stale_session_summaries_removed = _clear_stale_session_summaries(agent_id)
             records.append(
                 _run(
                     executable,
@@ -352,6 +400,7 @@ def main(argv: list[str] | None = None) -> int:
         shutil.copytree(cached_export_dir, export_dir)
         _repair_export_context(export_dir, bundle, agent_id)
         _normalize_markdown_tree(export_dir)
+        exported_resources = _assert_unique_summary_resources(export_dir)
         try:
             bundle_label = bundle.relative_to(artifacts).as_posix()
         except ValueError:
@@ -377,6 +426,8 @@ def main(argv: list[str] | None = None) -> int:
                 }
                 for record in records
             ],
+            "stale_session_summaries_removed": stale_session_summaries_removed,
+            "unique_exported_resources": exported_resources,
             "export_path": export_dir.name,
             "api_key_persisted_in_artifacts": False,
         }

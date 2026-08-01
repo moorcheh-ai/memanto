@@ -2,14 +2,14 @@
 {
   "description": "Beacon production deployments never occur on Fridays.",
   "generated": {
-    "at": "2026-08-01T10:09:38.571652Z",
+    "at": "2026-08-01T10:39:52.159236Z",
     "by": "memanto-google-adk-okf/1.0.0"
   },
-  "resource": "google-adk://sqlite/ab81135ad9829f36/atlas-release-copilot/app/instruction.deployment_calendar",
+  "resource": "google-adk://sqlite/f622f1697993d042/atlas-release-copilot/app/instruction.deployment_calendar",
   "sources": [
     {
       "id": "adk-app-instruction-deployment-calendar-33a89d54a8ea",
-      "resource": "google-adk://sqlite/ab81135ad9829f36/atlas-release-copilot/app/instruction.deployment_calendar",
+      "resource": "google-adk://sqlite/f622f1697993d042/atlas-release-copilot/app/instruction.deployment_calendar",
       "type": "google-adk-sqlite-state"
     }
   ],
