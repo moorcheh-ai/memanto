@@ -97,6 +97,54 @@ If the alert references a **real API key**:
 
 ---
 
+## Claude-to-Memanto OKF Bundle Migration
+
+If you are migrating from a Claude-based configuration to a Memanto OKF Bundle, follow these steps to ensure a secure and correct transition.
+
+### Configuration
+
+1. Export your existing Claude configuration to a compatible OKF Bundle format:
+   ```bash
+   memanto migrate --from claude --to okf-bundle --config claude_config.json --output memanto_bundle.okf
+   ```
+2. Update your environment variables to reference Memanto credentials instead of Claude API keys:
+   ```bash
+   # Remove old Claude credentials
+   # ANTHROPIC_API_KEY=sk_...  <-- remove this
+
+   # Add Memanto credentials
+   MOORCHEH_API_KEY=mk_your_api_key_here
+   ```
+
+### Validation
+
+After migration, validate the OKF Bundle integrity:
+```bash
+memanto validate --bundle memanto_bundle.okf
+```
+
+Ensure all endpoints, model references, and prompt templates have been correctly translated from Claude format to Memanto OKF format.
+
+### Security Precautions
+
+- **Never** include Claude API keys (`sk_ant_...`) or Memanto API keys (`mk_...`) in the bundle file itself.
+- Store all credentials exclusively in environment variables or a secrets manager.
+- Audit the migrated bundle for any embedded secrets before committing:
+  ```bash
+  git grep -i "sk_ant_\|mk_" "*.okf" "*.json"
+  ```
+- Rotate both your Claude and Memanto API keys after migration is complete.
+
+### Rollback
+
+If migration fails or produces unexpected results:
+
+1. Restore your previous Claude configuration from backup.
+2. Revert environment variables to Claude credentials.
+3. Report the issue to **support@moorcheh.ai** with subject: `[MEMANTO Migration] OKF Bundle Issue`.
+
+---
+
 ## Verification Checklist
 
 Before making your repository public:
@@ -105,92 +153,8 @@ Before making your repository public:
 - [ ] No `.env` file in git history: `git log --all -- .env` (should be empty after cleanup)
 - [ ] `.env.example` only contains placeholders
 - [ ] No hardcoded API keys in code: `git grep -i "mk_" "*.py" "*.ts" "*.js"`
-- [ ] All documentation examples use placeholders
-- [ ] GitHub secret scanning alerts reviewed and addressed
-
----
-
-## Security Features in MEMANTO
-
-MEMANTO implements multiple security layers:
-
-### 1. Authentication & Authorization
-- Server-owned `MOORCHEH_API_KEY` required at startup for backend access
-- Client `X-Session-Token` required for session-scoped and memory endpoints
-- Tenant ID derived from authenticated principal (never from request body)
-- Multi-tenant isolation enforced at namespace level
-
-### 2. Rate Limiting
-- Per-tenant quotas prevent abuse
-- Configurable limits: 60 writes/min, 120 reads/min
-
-### 3. Input Validation
-- Content size limits (10KB text, 5KB metadata)
-- Anti-poisoning validation for facts and preferences
-- Pydantic model validation for all requests
-
-### 4. Secure Defaults
-- HTTPS enforced in production
-- CORS properly configured
-- Structured logging with PII redaction
-- Safe deletion with audit trail
-
-For detailed security architecture, see [SECURITY_ISOLATION_ONE_PAGER.md](SECURITY_ISOLATION_ONE_PAGER.md).
-
----
-
-## Production Security Checklist
-
-### Environment Configuration
-- [ ] Use environment-specific API keys (dev/staging/prod)
-- [ ] Rotate keys regularly (quarterly minimum)
-- [ ] Use secret management tools (not .env files) in production
-- [ ] Enable HTTPS/TLS for all endpoints
-- [ ] Configure CORS with specific origins (not `*`)
-
-### Monitoring & Auditing
-- [ ] Enable structured logging
-- [ ] Monitor for unusual API activity
-- [ ] Set up alerts for rate limit violations
-- [ ] Regular security audits of access logs
-- [ ] Implement log aggregation (ELK, Datadog, etc.)
-
-### Network Security
-- [ ] Deploy behind API gateway or reverse proxy
-- [ ] Use VPC/private networks when possible
-- [ ] Implement DDoS protection
-- [ ] Regular vulnerability scanning
-- [ ] Keep dependencies updated
-
----
-
-## Dependencies Security
-
-### Regular Updates
-```bash
-# Check for security vulnerabilities
-pip install safety
-safety check
-
-# Update dependencies
-pip list --outdated
-pip install --upgrade <package>
-```
-
-### Automated Scanning
-- GitHub Dependabot enabled for this repository
-- Review and merge security PRs promptly
-- Test thoroughly before deploying dependency updates
-
----
-
-## Contact
-
-For security questions or concerns:
-- **General**: Dr. Majid Fekri, CTO Moorcheh.ai
-- **Security Issues**: support@moorcheh.ai
-- **Moorcheh Platform**: https://moorcheh.ai/security
-
----
-
-**Last Updated**: March 2026
+- [ ] No hardcoded Claude API keys in code: `git grep -i "sk_ant_" "*.py" "*.ts" "*.js"`
+- [ ] All OKF Bundle files are free of embedded credentials
+- [ ] Migration bundle validated with `memanto validate`
+- [ ] All secrets rotated after migration
+- [ ] GitHub secret scanning alerts reviewed and resolved
