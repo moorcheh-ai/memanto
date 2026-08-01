@@ -1,0 +1,162 @@
+{
+  "adapter": "codex-cli-sessions-to-okf",
+  "adapter_version": "0.1.0",
+  "generated_at": "2026-08-01T21:53:42.359551Z",
+  "source": {
+    "sha256": "85ced504bf42bf80d6ff46919d58c52b7b723fa8929b277d68cdd9d4793d9198",
+    "bytes": 62938881,
+    "conversation_messages": 294,
+    "path_published": false
+  },
+  "selection": {
+    "roles": [
+      "assistant",
+      "user"
+    ],
+    "include_regex": "ProofPatch|Solana|receipt|recibo|reproduc",
+    "exclude_regex": null,
+    "take": "last",
+    "max_records": 14,
+    "selected": 14
+  },
+  "migration_summary": {
+    "source_conversation_messages": 294,
+    "selected_source_records": 14,
+    "mapped_okf_memories": 14,
+    "skipped_selected_records": 0,
+    "per_role": {
+      "assistant": 14
+    }
+  },
+  "privacy": {
+    "raw_text_published": false,
+    "literal_values_persisted": false,
+    "redactions": {},
+    "gate_findings": 0
+  },
+  "savings_report": {
+    "source_rollout_bytes": 62938881,
+    "selected_source_text_bytes": 4750,
+    "published_redacted_text_bytes": 4750,
+    "source_api_calls": 0,
+    "migration_api_calls": 0,
+    "token_savings": "not_applicable_local_source",
+    "latency_savings": "not_applicable_local_source",
+    "note": "Codex rollouts and OKF are local files; no cost or latency baseline is invented."
+  },
+  "records": [
+    {
+      "entry_id": "40c4c3fdc04d4eea",
+      "role": "assistant",
+      "source_line": 4702,
+      "source_record_sha256": "40c4c3fdc04d4eeab6d50fea857f90f9d51045e6a91589b2f37ad5643f77b2b3",
+      "content_sha256": "5620cc4f5a9884739061ad39df75bfe911d581fbfd8d99542a37a2ea5aa733c6",
+      "redaction_count": 0
+    },
+    {
+      "entry_id": "303736d7bf9322db",
+      "role": "assistant",
+      "source_line": 4822,
+      "source_record_sha256": "303736d7bf9322db12d6defa0e9fdcad02e244058c4e5a44bea10010624d5a3e",
+      "content_sha256": "6ef393234b65b151c6a70787004af319634ec85bd58d1f144058e323aa7433f1",
+      "redaction_count": 0
+    },
+    {
+      "entry_id": "74beffcf844ccd99",
+      "role": "assistant",
+      "source_line": 5071,
+      "source_record_sha256": "74beffcf844ccd992371b12dd3b3ebe27ed38a66daa83a6c8efe62f5befec98c",
+      "content_sha256": "18badb4b79eeea9ed31379b61bde4c8d584ee5d2cebc5d0656076673f785f9e7",
+      "redaction_count": 0
+    },
+    {
+      "entry_id": "e9ce49caf0456533",
+      "role": "assistant",
+      "source_line": 5163,
+      "source_record_sha256": "e9ce49caf0456533021b0868f3a7cefd7d5867c1eccbc82bce4cbe80c26ffab2",
+      "content_sha256": "20f5f4c4586d0a3eedf8841d27de455ddc5fa69f6800693901282a9de66c01b0",
+      "redaction_count": 0
+    },
+    {
+      "entry_id": "8101b1c5357227ee",
+      "role": "assistant",
+      "source_line": 5484,
+      "source_record_sha256": "8101b1c5357227ee75dcb2ce246bba64161d547db534f350a960f692658bde8c",
+      "content_sha256": "d8ee106f4b9ba0986987165d26322330f9caa7ce25402492c7b1c8a7b5029839",
+      "redaction_count": 0
+    },
+    {
+      "entry_id": "c9e1ccf2028bfa02",
+      "role": "assistant",
+      "source_line": 5831,
+      "source_record_sha256": "c9e1ccf2028bfa0268478f207832272194fec792db952a06a7c7f703b2b0e741",
+      "content_sha256": "a4812b33a1a1475c915a33ecbfe1bc0f6c1f01619327c16f694fefa390c9cd46",
+      "redaction_count": 0
+    },
+    {
+      "entry_id": "0a6fc07da6f13a74",
+      "role": "assistant",
+      "source_line": 5916,
+      "source_record_sha256": "0a6fc07da6f13a74578fa7415fccc8869bc96620504559321276d6b0b64b1b62",
+      "content_sha256": "9a97ebd5ddb5916467a6657d0983c8f3dbe2166166a5a9f8c9ea16fbea91e780",
+      "redaction_count": 0
+    },
+    {
+      "entry_id": "0ced6cea986bfc2e",
+      "role": "assistant",
+      "source_line": 6068,
+      "source_record_sha256": "0ced6cea986bfc2ecc76a8dbb63d5ab82005468757e46eaba5d64550cad54621",
+      "content_sha256": "2334d2d52ff0047b5d6b4c84a6f45fd91adda0b59757545cce54ff869ec043da",
+      "redaction_count": 0
+    },
+    {
+      "entry_id": "17beb66c9ee6b2d8",
+      "role": "assistant",
+      "source_line": 6916,
+      "source_record_sha256": "17beb66c9ee6b2d82aecb35d3371306c15df120e2c475696ed8d3e16069e15b9",
+      "content_sha256": "1aea453b2abecefb7003ee952fa9bbb4f00c4d386af2ece03a3efcbbdb1a4959",
+      "redaction_count": 0
+    },
+    {
+      "entry_id": "16401806659fd927",
+      "role": "assistant",
+      "source_line": 7173,
+      "source_record_sha256": "16401806659fd927a08e10d43c62462ce99b87ffc1b01e28f4ef345997a38c02",
+      "content_sha256": "2884c155cd1072c12cd0728580d36262545de2bd879bc4fce35d6f6fddcdc143",
+      "redaction_count": 0
+    },
+    {
+      "entry_id": "a42f7f14223fc2d1",
+      "role": "assistant",
+      "source_line": 7206,
+      "source_record_sha256": "a42f7f14223fc2d1134db3a1a408f21f03783e1aec675c12e5006db44966558f",
+      "content_sha256": "fa0b1a8c08aa0695fbbe0257b96c03b02d3d6e04b1b29354bf0337e19d149177",
+      "redaction_count": 0
+    },
+    {
+      "entry_id": "4d0d3a71a5563a5e",
+      "role": "assistant",
+      "source_line": 7443,
+      "source_record_sha256": "4d0d3a71a5563a5e97271dd077b41f983c2e05a662608f0a73299a25d026299f",
+      "content_sha256": "78e0a17f31b910ead0f48789114fcb9b2cf765b990a4d22287678d683dda20a9",
+      "redaction_count": 0
+    },
+    {
+      "entry_id": "da6447f2ba127cf3",
+      "role": "assistant",
+      "source_line": 9124,
+      "source_record_sha256": "da6447f2ba127cf316c0a5e4033c4a3b43d537502c1bfd456c954ff086f73a56",
+      "content_sha256": "7191f84141104697067d88ac95b88f0f0ac8e541c910a58b33ed0be59ceac71e",
+      "redaction_count": 0
+    },
+    {
+      "entry_id": "69b7b063097d6d36",
+      "role": "assistant",
+      "source_line": 9722,
+      "source_record_sha256": "69b7b063097d6d3606558bb4e5a9829ffeae06fb058a6f43e5363f4b6dfee0a0",
+      "content_sha256": "b43a957ef468c3da013c86b00d6322fb8a6f521da804d87252c98f8b879af8b0",
+      "redaction_count": 0
+    }
+  ],
+  "bundle_sha256": "2b15029153677059fc2e2c2cd6d16519c08d603011224076fb456888808afd5b"
+}

@@ -1,0 +1,13 @@
+{
+  "valid": true,
+  "adapter_version": "0.1.0",
+  "source_sha256_match": true,
+  "selected_source_records": 14,
+  "okf_entries": 14,
+  "source_to_okf_matched": 14,
+  "source_to_okf_coverage": 1.0,
+  "content_hash_parity": true,
+  "privacy_gate_findings": 0,
+  "bundle_sha256": "2b15029153677059fc2e2c2cd6d16519c08d603011224076fb456888808afd5b",
+  "failures": []
+}
