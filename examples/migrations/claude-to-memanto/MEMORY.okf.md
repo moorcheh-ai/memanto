@@ -1,21 +1,58 @@
-# Open Knowledge Format (OKF) Bundle - Claude Export
+---
+format: okf
+version: '1.0'
+source: claude-export
+total_memories: 5
+exported_at: 2026-08-01T14:09:35Z
+---
 
-## Metadata
-- Source: Claude Export
-- Total Memories: 2
-- Target Wallet: 0xBd6B1B6118eC9D736EE1d5E476f86BCA1b3739f5
+```memory
+id: okf_claude_e58e01a040d08209
+type: preference
+confidence: 0.9
+created_at: 2026-08-01T07:00:00Z
+source: Project Strategy Session
+---
+Prefiero que todo el código esté escrito en TypeScript estricto y React 19.
+```
 
-## Memories
+```memory
+id: okf_claude_6dcd63da20e67179
+type: decision
+confidence: 0.9
+created_at: 2026-08-01T07:05:00Z
+source: Project Strategy Session
+---
+Decidí que vamos a usar PostgreSQL para la base de datos principal.
+```
 
-### Memory [okf_claude_96c78b82e5d2]
-- **Type:** preference
-- **Confidence:** 0.95
-- **Created At:** 2026-08-01T07:00:00Z
-- **Content:** Prefiero que todo el código esté escrito en TypeScript estricto y React 19.
+```memory
+id: okf_claude_2878382a90f42dce
+type: fact
+confidence: 0.75
+created_at: unknown
+source: Project Strategy Session
+---
+El servidor debe reiniciar cada noche a las 3 AM UTC para limpiar la caché temporal.
+```
 
-### Memory [okf_claude_e5f56cca72a2]
-- **Type:** fact
-- **Confidence:** 0.95
-- **Created At:** 2026-08-01T07:05:00Z
-- **Content:** La billetera de pago para todas las recompensas es 0xBd6B1B6118eC9D736EE1d5E476f86BCA1b3739f5.
+```memory
+id: okf_claude_44d87e8a0474ea42
+type: fact
+confidence: 0.75
+created_at: 2026-08-01T07:10:00Z
+source: Project Strategy Session
+---
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+```
+
+```memory
+id: okf_claude_cca6800f4ee234d7
+type: fact
+confidence: 0.75
+created_at: 2026-08-01T07:15:00Z
+source: Project Strategy Session
+---
+El delimitador ` ` ` no debería romper el parsing del bundle OKF generado.
+```
 

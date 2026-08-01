@@ -4,13 +4,27 @@
     "chat_messages": [
       {
         "sender": "human",
-        "text": "Prefiero que todo el c\u00f3digo est\u00e9 escrito en TypeScript estricto y React 19.",
+        "text": "Prefiero que todo el código esté escrito en TypeScript estricto y React 19.",
         "created_at": "2026-08-01T07:00:00Z"
       },
       {
         "sender": "human",
-        "text": "La billetera de pago para todas las recompensas es 0xBd6B1B6118eC9D736EE1d5E476f86BCA1b3739f5.",
+        "text": "Decidí que vamos a usar PostgreSQL para la base de datos principal.",
         "created_at": "2026-08-01T07:05:00Z"
+      },
+      {
+        "sender": "human",
+        "text": "El servidor debe reiniciar cada noche a las 3 AM UTC para limpiar la caché temporal."
+      },
+      {
+        "sender": "human",
+        "text": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA contenido largo para verificar truncamiento correcto del contenido.",
+        "created_at": "2026-08-01T07:10:00Z"
+      },
+      {
+        "sender": "human",
+        "text": "El delimitador ``` no debería romper el parsing del bundle OKF generado.",
+        "created_at": "2026-08-01T07:15:00Z"
       }
     ]
   }
