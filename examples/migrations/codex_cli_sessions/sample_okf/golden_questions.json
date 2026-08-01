@@ -1,0 +1,51 @@
+{
+  "schema_version": "1.0",
+  "language": "es",
+  "questions": [
+    {
+      "id": "memo-ambiguity",
+      "question": "¿Qué ambigüedad corrigió la auditoría de la transacción Memo?",
+      "expected_source_record_sha256": "74beffcf844ccd992371b12dd3b3ebe27ed38a66daa83a6c8efe62f5befec98c",
+      "answer_contains": [
+        "exactamente una",
+        "instrucción Memo"
+      ]
+    },
+    {
+      "id": "proofpatch-suite",
+      "question": "¿Cuántas pruebas aprobó la suite final de ProofPatch?",
+      "expected_source_record_sha256": "0a6fc07da6f13a74578fa7415fccc8869bc96620504559321276d6b0b64b1b62",
+      "answer_contains": [
+        "190 aprobadas",
+        "0 fallos"
+      ]
+    },
+    {
+      "id": "disconnected-output",
+      "question": "¿Por qué se detenía el proceso al intentar registrar cada acción?",
+      "expected_source_record_sha256": "16401806659fd927a08e10d43c62462ce99b87ffc1b01e28f4ef345997a38c02",
+      "answer_contains": [
+        "salida desconectada",
+        "registrar cada acción"
+      ]
+    },
+    {
+      "id": "three-round-replay",
+      "question": "¿Cuántas firmas autorizadas, solicitudes y acciones indebidas produjo la reproducción?",
+      "expected_source_record_sha256": "a42f7f14223fc2d1134db3a1a408f21f03783e1aec675c12e5006db44966558f",
+      "answer_contains": [
+        "6 firmas autorizadas",
+        "9 solicitudes",
+        "0 acciones indebidas"
+      ]
+    },
+    {
+      "id": "server-outage",
+      "question": "¿Qué hacía el supervisor cuando el servidor del torneo quedó fuera de servicio?",
+      "expected_source_record_sha256": "69b7b063097d6d3606558bb4e5a9829ffeae06fb058a6f43e5363f4b6dfee0a0",
+      "answer_contains": [
+        "supervisor continúa intentando"
+      ]
+    }
+  ]
+}

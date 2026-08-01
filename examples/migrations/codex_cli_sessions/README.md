@@ -26,6 +26,8 @@ Instead, the bundle carries cryptographic provenance:
   record exists, verifies exact body parity, and runs the privacy gate;
 - `artifacts/roundtrip_report.json` records 100% source-to-OKF coverage, exact
   content-hash parity, and zero privacy findings;
+- five golden questions retrieve the same expected memory before and after the
+  migration, with 5/5 answer-evidence and recall-parity checks passing;
 - Memanto's shipped loader maps all 14 sample OKF nodes and skips zero.
 
 The raw source remains genuinely verifiable during review or a live demo while
@@ -58,8 +60,9 @@ The command performs the full non-live proof:
 2. selects and privacy-redacts conversation memories;
 3. writes an OKF bundle and provenance manifest;
 4. validates source coverage and exact content parity;
-5. loads and maps the bundle through Memanto's shipped OKF code;
-6. writes `roundtrip_report.json` and `memanto_dry_run_report.json`.
+5. runs any `golden_questions.json` against source and OKF memories;
+6. loads and maps the bundle through Memanto's shipped OKF code;
+7. writes `roundtrip_report.json` and `memanto_dry_run_report.json`.
 
 For the actual CLI dry-run:
 
@@ -102,6 +105,14 @@ recomputes those digests from the raw rollout and checks that the selected set
 matches the OKF and manifest sets exactly. It then hashes each redacted Markdown
 body and compares it with the recorded digest. A modified, missing, or invented
 entry fails validation.
+
+The sample's five golden questions use the same deterministic lexical retriever
+against the frozen source messages and the migrated OKF bodies. Each question
+declares its expected source-record digest and required answer evidence. The
+report counts a question only when both sides retrieve that exact record, the
+retrieval identifiers agree, and the answer evidence exists on both sides. This
+is a reproducible 5/5 before/after recall-parity check; a live Memanto recall run
+can use the same questions after import.
 
 Run the focused checks:
 

@@ -149,7 +149,25 @@ def test_validation_proves_source_and_content_parity(tmp_path: Path) -> None:
     output = tmp_path / "bundle"
     report_path = tmp_path / "report.json"
     _rollout(source)
-    export_bundle(_export_args(source, output))
+    manifest = export_bundle(_export_args(source, output))
+    user_record = next(row for row in manifest["records"] if row["role"] == "user")
+    (output / "golden_questions.json").write_text(
+        json.dumps(
+            {
+                "questions": [
+                    {
+                        "id": "cedar-port",
+                        "question": "What port does Project Cedar use?",
+                        "expected_source_record_sha256": user_record[
+                            "source_record_sha256"
+                        ],
+                        "answer_contains": "port 8042",
+                    }
+                ]
+            }
+        ),
+        encoding="utf-8",
+    )
 
     report = validate_bundle(
         argparse.Namespace(source=source, bundle=output, report=report_path)
@@ -158,6 +176,9 @@ def test_validation_proves_source_and_content_parity(tmp_path: Path) -> None:
     assert report["source_to_okf_coverage"] == 1.0
     assert report["content_hash_parity"] is True
     assert report["privacy_gate_findings"] == 0
+    assert report["golden_qa"]["questions"] == 1
+    assert report["golden_qa"]["fully_correct"] == 1
+    assert report["golden_qa"]["recall_parity_score"] == 1.0
     assert json.loads(report_path.read_text(encoding="utf-8"))["valid"] is True
 
 

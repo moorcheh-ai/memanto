@@ -498,13 +498,130 @@ def _parse_entry_for_validation(path: Path) -> dict[str, Any]:
     return fields
 
 
+TOKEN_RE = re.compile(r"[^\W_]+", re.UNICODE)
+STOPWORDS = {
+    "a",
+    "al",
+    "and",
+    "como",
+    "con",
+    "de",
+    "del",
+    "el",
+    "en",
+    "for",
+    "how",
+    "la",
+    "las",
+    "los",
+    "of",
+    "por",
+    "que",
+    "the",
+    "to",
+    "un",
+    "una",
+    "y",
+}
+
+
+def _tokens(text: str) -> set[str]:
+    return {
+        token
+        for token in TOKEN_RE.findall(text.casefold())
+        if len(token) > 1 and token not in STOPWORDS
+    }
+
+
+def _retrieve(query: str, documents: dict[str, str]) -> str | None:
+    query_tokens = _tokens(query)
+    if not query_tokens:
+        return None
+    ranked: list[tuple[float, str]] = []
+    for record_hash, text in documents.items():
+        document_tokens = _tokens(text)
+        overlap = query_tokens & document_tokens
+        if not overlap:
+            continue
+        # Reward coverage first and mildly penalize very broad documents. The
+        # same deterministic scorer is used before and after migration.
+        score = len(overlap) / len(query_tokens) + len(overlap) / max(
+            len(document_tokens), 1
+        )
+        ranked.append((score, record_hash))
+    return max(ranked, default=(0.0, None))[1]
+
+
+def _normalize_evidence(text: str) -> str:
+    return " ".join(text.casefold().split())
+
+
+def validate_golden_recall(
+    golden_path: Path,
+    source_documents: dict[str, str],
+    okf_documents: dict[str, str],
+) -> dict[str, Any]:
+    """Score deterministic golden-Q&A recall before and after migration."""
+    payload = json.loads(golden_path.read_text(encoding="utf-8"))
+    questions = payload.get("questions", [])
+    if not isinstance(questions, list) or not questions:
+        raise ValueError(f"golden Q&A has no questions: {golden_path}")
+    results: list[dict[str, Any]] = []
+    for item in questions:
+        if not isinstance(item, dict):
+            raise ValueError("golden Q&A entries must be objects")
+        question = str(item.get("question") or "")
+        expected = str(item.get("expected_source_record_sha256") or "")
+        evidence = item.get("answer_contains") or []
+        if isinstance(evidence, str):
+            evidence = [evidence]
+        if not question or not expected or not isinstance(evidence, list):
+            raise ValueError("golden Q&A entry is missing required fields")
+        source_match = _retrieve(question, source_documents)
+        okf_match = _retrieve(question, okf_documents)
+        source_text = _normalize_evidence(source_documents.get(expected, ""))
+        okf_text = _normalize_evidence(okf_documents.get(expected, ""))
+        evidence_values = [
+            _normalize_evidence(str(value)) for value in evidence if str(value).strip()
+        ]
+        source_evidence = all(value in source_text for value in evidence_values)
+        okf_evidence = all(value in okf_text for value in evidence_values)
+        results.append(
+            {
+                "id": str(item.get("id") or len(results) + 1),
+                "source_retrieved_expected": source_match == expected,
+                "okf_retrieved_expected": okf_match == expected,
+                "retrieval_parity": source_match == okf_match,
+                "source_answer_evidence": source_evidence,
+                "okf_answer_evidence": okf_evidence,
+            }
+        )
+    correct = sum(
+        row["source_retrieved_expected"]
+        and row["okf_retrieved_expected"]
+        and row["retrieval_parity"]
+        and row["source_answer_evidence"]
+        and row["okf_answer_evidence"]
+        for row in results
+    )
+    return {
+        "questions": len(results),
+        "fully_correct": correct,
+        "recall_parity_score": correct / len(results),
+        "results": results,
+    }
+
+
 def validate_bundle(args: argparse.Namespace) -> dict[str, Any]:
     source = args.source.resolve()
     bundle = args.bundle.resolve()
     manifest = json.loads((bundle / "manifest.json").read_text(encoding="utf-8"))
     source_digest = _sha256_file(source)
     source_records = list(iter_message_records(source))
-    source_hashes = {record.source_record_sha256 for record in source_records}
+    source_documents = {
+        record.source_record_sha256: record.text for record in source_records
+    }
+    source_hashes = set(source_documents)
     okf_entries = [
         _parse_entry_for_validation(path)
         for path in sorted((bundle / "memories" / "conversation").glob("*.md"))
@@ -517,10 +634,12 @@ def validate_bundle(args: argparse.Namespace) -> dict[str, Any]:
         row["source_record_sha256"]: row for row in manifest.get("records", [])
     }
     okf_source_hashes: set[str] = set()
+    okf_documents: dict[str, str] = {}
     for entry in okf_entries:
         published_text = Path(str(entry["_path"])).read_text(encoding="utf-8")
         source_hash = str(entry.get("source_record_sha256", ""))
         okf_source_hashes.add(source_hash)
+        okf_documents[source_hash] = str(entry.get("_content", ""))
         if source_hash not in source_hashes:
             failures.append(
                 f"OKF entry has no matching source record: {source_hash[:16]}"
@@ -540,6 +659,18 @@ def validate_bundle(args: argparse.Namespace) -> dict[str, Any]:
     if digest != manifest.get("bundle_sha256"):
         failures.append("bundle digest differs from manifest")
 
+    golden_path = getattr(args, "golden", None)
+    if golden_path is None:
+        default_golden = bundle / "golden_questions.json"
+        golden_path = default_golden if default_golden.exists() else None
+    golden_report = None
+    if golden_path is not None:
+        golden_report = validate_golden_recall(
+            Path(golden_path), source_documents, okf_documents
+        )
+        if golden_report["recall_parity_score"] != 1.0:
+            failures.append("golden Q&A recall parity is below 100%")
+
     selected = len(manifest_records)
     matched = len(okf_source_hashes & source_hashes)
     report = {
@@ -552,6 +683,7 @@ def validate_bundle(args: argparse.Namespace) -> dict[str, Any]:
         "source_to_okf_coverage": matched / selected if selected else 0.0,
         "content_hash_parity": not any("content hash" in item for item in failures),
         "privacy_gate_findings": sum("privacy gate" in item for item in failures),
+        "golden_qa": golden_report,
         "bundle_sha256": digest,
         "failures": failures,
     }
@@ -595,6 +727,7 @@ def build_parser() -> argparse.ArgumentParser:
     validate.add_argument("source", type=Path)
     validate.add_argument("bundle", type=Path)
     validate.add_argument("--report", type=Path)
+    validate.add_argument("--golden", type=Path, help="optional golden Q&A JSON")
     return parser
 
 

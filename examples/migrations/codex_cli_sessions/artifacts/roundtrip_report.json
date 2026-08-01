@@ -8,6 +8,53 @@
   "source_to_okf_coverage": 1.0,
   "content_hash_parity": true,
   "privacy_gate_findings": 0,
+  "golden_qa": {
+    "questions": 5,
+    "fully_correct": 5,
+    "recall_parity_score": 1.0,
+    "results": [
+      {
+        "id": "memo-ambiguity",
+        "source_retrieved_expected": true,
+        "okf_retrieved_expected": true,
+        "retrieval_parity": true,
+        "source_answer_evidence": true,
+        "okf_answer_evidence": true
+      },
+      {
+        "id": "proofpatch-suite",
+        "source_retrieved_expected": true,
+        "okf_retrieved_expected": true,
+        "retrieval_parity": true,
+        "source_answer_evidence": true,
+        "okf_answer_evidence": true
+      },
+      {
+        "id": "disconnected-output",
+        "source_retrieved_expected": true,
+        "okf_retrieved_expected": true,
+        "retrieval_parity": true,
+        "source_answer_evidence": true,
+        "okf_answer_evidence": true
+      },
+      {
+        "id": "three-round-replay",
+        "source_retrieved_expected": true,
+        "okf_retrieved_expected": true,
+        "retrieval_parity": true,
+        "source_answer_evidence": true,
+        "okf_answer_evidence": true
+      },
+      {
+        "id": "server-outage",
+        "source_retrieved_expected": true,
+        "okf_retrieved_expected": true,
+        "retrieval_parity": true,
+        "source_answer_evidence": true,
+        "okf_answer_evidence": true
+      }
+    ]
+  },
   "bundle_sha256": "2b15029153677059fc2e2c2cd6d16519c08d603011224076fb456888808afd5b",
   "failures": []
 }

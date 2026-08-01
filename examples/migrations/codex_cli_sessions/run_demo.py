@@ -37,6 +37,9 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--max-records", type=int, default=25)
     parser.add_argument("--take", choices=("first", "last"), default="last")
     parser.add_argument(
+        "--golden", type=Path, help="golden Q&A JSON tied to the selected source"
+    )
+    parser.add_argument(
         "--redact-literal",
         action="append",
         default=[],
@@ -69,6 +72,7 @@ def main() -> int:
             source=args.source,
             bundle=args.output,
             report=report_path,
+            golden=args.golden,
         )
     )
 
@@ -91,6 +95,7 @@ def main() -> int:
         "source_to_okf_coverage": validation["source_to_okf_coverage"],
         "content_hash_parity": validation["content_hash_parity"],
         "privacy_gate_findings": validation["privacy_gate_findings"],
+        "golden_qa": validation["golden_qa"],
         "memanto_dry_run": dry_run,
         "output": str(args.output.resolve()),
     }
