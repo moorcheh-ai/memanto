@@ -29,6 +29,21 @@ def _contains_meaningful_value(content: str, value: object) -> bool:
             is not None
         )
 
+    if isinstance(value, dict):
+        raw_content = value.get("content", value.get("text", value.get("value")))
+        if raw_content not in (None, ""):
+            rendered = adapter._content_from_value("State value", value)[1].strip()
+            if adapter._is_redacted_only(rendered):
+                return False
+            return (
+                re.search(
+                    rf"(?<!\w){re.escape(rendered)}(?!\w)",
+                    primary_content,
+                    flags=re.IGNORECASE,
+                )
+                is not None
+            )
+
     candidate = adapter.canonical_json(value)
     if isinstance(value, (dict, list)):
         normalized_content = re.sub(r"\s+", "", primary_content).casefold()

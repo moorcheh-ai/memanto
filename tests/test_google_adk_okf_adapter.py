@@ -599,6 +599,7 @@ def test_verifier_detects_short_meaningful_superseded_values():
             'Current value:\n{\n  "mode": "legacy",\n  "retries": 3\n}',
             {"mode": "legacy", "retries": 3},
         ),
+        ("Current value: legacy", {"content": "legacy"}),
         ("Current value: [\n  true,\n  7\n]", [True, 7]),
         ("Current value: 42", 42),
         ("Current value: true", True),
