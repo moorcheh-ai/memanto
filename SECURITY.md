@@ -105,92 +105,40 @@ Before making your repository public:
 - [ ] No `.env` file in git history: `git log --all -- .env` (should be empty after cleanup)
 - [ ] `.env.example` only contains placeholders
 - [ ] No hardcoded API keys in code: `git grep -i "mk_" "*.py" "*.ts" "*.js"`
-- [ ] All documentation examples use placeholders
-- [ ] GitHub secret scanning alerts reviewed and addressed
+- [ ] All dependencies are up to date and free of known vulnerabilities
+- [ ] Docker images do not contain secrets or credentials
+- [ ] CI/CD pipelines use encrypted secrets, not plaintext values
+- [ ] Access tokens and API keys have the minimum required permissions
 
 ---
 
-## Security Features in MEMANTO
+## Migration Security Considerations
 
-MEMANTO implements multiple security layers:
+### Claude to Memanto OKF Bundle Migration
 
-### 1. Authentication & Authorization
-- Server-owned `MOORCHEH_API_KEY` required at startup for backend access
-- Client `X-Session-Token` required for session-scoped and memory endpoints
-- Tenant ID derived from authenticated principal (never from request body)
-- Multi-tenant isolation enforced at namespace level
+When migrating from Claude to Memanto OKF Bundle:
 
-### 2. Rate Limiting
-- Per-tenant quotas prevent abuse
-- Configurable limits: 60 writes/min, 120 reads/min
+- **Do not** carry over any existing API keys or credentials from the previous system
+- **Generate new** Moorcheh API keys after migration
+- **Audit** all configuration files for leftover references to old credentials
+- **Verify** that migration adapter code does not log or expose sensitive data
+- **Test** the migrated system in a staging environment before production deployment
 
-### 3. Input Validation
-- Content size limits (10KB text, 5KB metadata)
-- Anti-poisoning validation for facts and preferences
-- Pydantic model validation for all requests
+### Dependency Security
 
-### 4. Secure Defaults
-- HTTPS enforced in production
-- CORS properly configured
-- Structured logging with PII redaction
-- Safe deletion with audit trail
-
-For detailed security architecture, see [SECURITY_ISOLATION_ONE_PAGER.md](SECURITY_ISOLATION_ONE_PAGER.md).
+- Regularly audit dependencies: `pip audit` or `npm audit`
+- Pin dependency versions in production
+- Use a software composition analysis (SCA) tool to monitor for CVEs
 
 ---
 
-## Production Security Checklist
+## Responsible Disclosure
 
-### Environment Configuration
-- [ ] Use environment-specific API keys (dev/staging/prod)
-- [ ] Rotate keys regularly (quarterly minimum)
-- [ ] Use secret management tools (not .env files) in production
-- [ ] Enable HTTPS/TLS for all endpoints
-- [ ] Configure CORS with specific origins (not `*`)
+We appreciate security researchers who help keep MEMANTO safe. We ask that you:
 
-### Monitoring & Auditing
-- [ ] Enable structured logging
-- [ ] Monitor for unusual API activity
-- [ ] Set up alerts for rate limit violations
-- [ ] Regular security audits of access logs
-- [ ] Implement log aggregation (ELK, Datadog, etc.)
+1. Give us reasonable time to investigate and fix the issue before public disclosure
+2. Avoid accessing or modifying user data without permission
+3. Do not perform denial of service attacks
+4. Act in good faith and avoid privacy violations
 
-### Network Security
-- [ ] Deploy behind API gateway or reverse proxy
-- [ ] Use VPC/private networks when possible
-- [ ] Implement DDoS protection
-- [ ] Regular vulnerability scanning
-- [ ] Keep dependencies updated
-
----
-
-## Dependencies Security
-
-### Regular Updates
-```bash
-# Check for security vulnerabilities
-pip install safety
-safety check
-
-# Update dependencies
-pip list --outdated
-pip install --upgrade <package>
-```
-
-### Automated Scanning
-- GitHub Dependabot enabled for this repository
-- Review and merge security PRs promptly
-- Test thoroughly before deploying dependency updates
-
----
-
-## Contact
-
-For security questions or concerns:
-- **General**: Dr. Majid Fekri, CTO Moorcheh.ai
-- **Security Issues**: support@moorcheh.ai
-- **Moorcheh Platform**: https://moorcheh.ai/security
-
----
-
-**Last Updated**: March 2026
+We will acknowledge receipt of your vulnerability report within 48 hours and provide a more detailed response within 5 business days.
