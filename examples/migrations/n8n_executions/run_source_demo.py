@@ -39,11 +39,24 @@ def main() -> int:
         )
         with urlopen(request, timeout=30) as response:  # noqa: S310
             payload = json.load(response)
+        if not isinstance(payload, dict):
+            raise ValueError("n8n webhook response must be a JSON object")
         result = payload.get("result", payload)
+        if isinstance(result, list):
+            if len(result) != 1 or not isinstance(result[0], dict):
+                raise ValueError("n8n webhook result list must contain one object")
+            result = result[0]
+        if not isinstance(result, dict):
+            raise ValueError("n8n webhook result must be a JSON object")
         qualification = result.get("qualification") or {}
+        if not isinstance(qualification, dict):
+            raise ValueError("n8n webhook qualification must be a JSON object")
+        lead = result.get("lead") or {}
+        if not isinstance(lead, dict):
+            raise ValueError("n8n webhook lead must be a JSON object")
         results.append(
             {
-                "company": (result.get("lead") or {}).get("company"),
+                "company": lead.get("company"),
                 "score": qualification.get("score"),
                 "route": qualification.get("route"),
                 "status": "executed by n8n",

@@ -739,7 +739,13 @@ def convert_n8n_executions(
     mapping = load_mapping(mapping_path)
     memories_by_type, stats = build_memories(executions, mapping)
     if not any(memories_by_type.values()):
-        raise MappingError("No memories were produced by the configured mappings")
+        skipped = (
+            ", ".join(f"{key}={value}" for key, value in stats["skipped"].items())
+            or "none"
+        )
+        raise MappingError(
+            f"No memories were produced by the configured mappings; skipped={skipped}"
+        )
 
     output = Path(output_path).resolve()
     output.parent.mkdir(parents=True, exist_ok=True)
@@ -786,6 +792,7 @@ def convert_n8n_executions(
                 "Round-trip validation failed: " + "; ".join(report["issues"])
             )
 
+        (staged_bundle / "metrics").mkdir(parents=True, exist_ok=True)
         _write_json(
             staged_bundle / "metrics" / "savings-report.json",
             _storage_report(source_hashes, staged_bundle),

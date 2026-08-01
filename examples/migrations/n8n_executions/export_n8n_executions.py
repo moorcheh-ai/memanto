@@ -11,7 +11,7 @@ import argparse
 import json
 import os
 from pathlib import Path
-from urllib.parse import urlencode
+from urllib.parse import urlencode, urlparse
 from urllib.request import Request, urlopen
 
 
@@ -24,6 +24,13 @@ def export_executions(
     status: str | None = None,
 ) -> dict:
     """Page through n8n's public API and return full execution objects."""
+    parsed = urlparse(base_url)
+    if parsed.scheme not in {"http", "https"} or not parsed.netloc:
+        raise ValueError("base_url must be an absolute http(s) URL")
+    loopback_hosts = {"localhost", "127.0.0.1", "::1"}
+    if parsed.scheme == "http" and parsed.hostname not in loopback_hosts:
+        raise ValueError("remote n8n endpoints must use https; http is loopback-only")
+
     executions: list[dict] = []
     cursor: str | None = None
 
@@ -53,7 +60,12 @@ def export_executions(
         if len(executions) >= limit:
             executions = executions[:limit]
             break
-        cursor = page.get("nextCursor")
+        next_cursor = page.get("nextCursor")
+        if next_cursor is not None and not isinstance(next_cursor, str):
+            raise ValueError("n8n API nextCursor must be a string or null")
+        if next_cursor == cursor:
+            raise ValueError("n8n API pagination made no progress")
+        cursor = next_cursor
         if not cursor:
             break
 

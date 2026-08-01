@@ -1,7 +1,7 @@
 {
   "basis": "measured-file-bytes",
-  "delta_bytes": -27979,
-  "delta_percent": -85.4,
+  "delta_bytes": -27706,
+  "delta_percent": -85.28,
   "interpretation": "storage reduction",
   "latency_savings": null,
   "notes": "n8n execution history has no provider billing/token/latency baseline; unavailable values are null rather than invented.",
@@ -11,7 +11,7 @@
   },
   "provider_cost_savings": null,
   "source": {
-    "bytes": 32763,
+    "bytes": 32490,
     "files": 1,
     "format": "n8n public API JSON"
   },

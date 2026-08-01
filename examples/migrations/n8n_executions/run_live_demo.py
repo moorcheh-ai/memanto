@@ -82,12 +82,19 @@ def build_command_plan(
     ]
 
 
-def _clean_output(value: str, private_roots: list[Path]) -> str:
-    """Strip terminal control codes and redact machine-specific absolute paths."""
+def _clean_output(
+    value: str,
+    private_roots: list[Path],
+    secret_values: list[str] | None = None,
+) -> str:
+    """Strip terminal codes, local paths, and secret environment values."""
     cleaned = _ANSI_RE.sub("", value).replace("\\", "/")
     for root in private_roots:
         rendered = str(root.resolve()).replace("\\", "/")
         cleaned = cleaned.replace(rendered, "<private-path>")
+    for secret in secret_values or []:
+        if len(secret) >= 8:
+            cleaned = cleaned.replace(secret, "<redacted-secret>")
     return cleaned.strip()
 
 
@@ -110,6 +117,15 @@ def _run(
     output = _clean_output(
         "\n".join(part for part in (result.stdout, result.stderr) if part),
         private_roots,
+        [
+            value
+            for name, value in env.items()
+            if value
+            and any(
+                marker in name.casefold()
+                for marker in ("key", "token", "secret", "password")
+            )
+        ],
     )
     if result.returncode:
         raise RuntimeError(
@@ -341,7 +357,7 @@ def main() -> int:
     env["PYTHONUTF8"] = "1"
     private_roots = [Path.home(), HERE.parents[2]]
 
-    activation_output = _run(plan[0]["argv"], env=env, private_roots=private_roots)
+    _run(plan[0]["argv"], env=env, private_roots=private_roots)
     if args.reuse_agent:
         empty_check_output = _run(
             [
@@ -388,7 +404,7 @@ def main() -> int:
         "source_bundle": bundle.name,
         "activation": {
             "mode": "reuse" if args.reuse_agent else "create",
-            "passed": bool(activation_output),
+            "passed": True,
         },
         "import": {"imported": 3, "failed": 0, "passed": True},
         "recall": {
