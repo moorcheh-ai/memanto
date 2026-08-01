@@ -5,9 +5,28 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 from pathlib import Path
 
 import adapter
+
+
+def _manifest_path(root: Path, value: object, *, label: str) -> Path:
+    """Resolve a manifest path without allowing it to escape the bundle."""
+    if not isinstance(value, str) or not value:
+        raise adapter.AdapterError(f"Invalid {label}: expected a relative path")
+    relative = Path(value)
+    if relative.is_absolute():
+        raise adapter.AdapterError(f"Unsafe {label}: {value}")
+    resolved_root = root.resolve()
+    resolved = (resolved_root / relative).resolve()
+    try:
+        resolved.relative_to(resolved_root)
+    except ValueError as exc:
+        raise adapter.AdapterError(f"Unsafe {label}: {value}") from exc
+    if resolved == resolved_root:
+        raise adapter.AdapterError(f"Unsafe {label}: {value}")
+    return resolved
 
 
 def verify_bundle(bundle: str | Path) -> dict[str, object]:
@@ -16,24 +35,71 @@ def verify_bundle(bundle: str | Path) -> dict[str, object]:
     if not manifest_path.is_file():
         raise adapter.AdapterError(f"Manifest not found: {manifest_path}")
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    if not isinstance(manifest, dict):
+        raise adapter.AdapterError("Migration manifest must be a JSON object")
     if manifest.get("schema") != adapter.MANIFEST_SCHEMA:
         raise adapter.AdapterError("Unexpected migration manifest schema")
 
     failures = []
-    for expected in manifest.get("files", []):
-        path = root / expected["path"]
+    expected_files = manifest.get("files")
+    if not isinstance(expected_files, list):
+        raise adapter.AdapterError("Manifest files must be a JSON array")
+    seen_paths: set[str] = set()
+    for index, expected in enumerate(expected_files):
+        if not isinstance(expected, dict):
+            raise adapter.AdapterError(f"Invalid manifest file entry at index {index}")
+        expected_path = expected.get("path")
+        expected_bytes = expected.get("bytes")
+        expected_sha256 = expected.get("sha256")
+        if (
+            not isinstance(expected_bytes, int)
+            or expected_bytes < 0
+            or not isinstance(expected_sha256, str)
+            or re.fullmatch(r"[0-9a-f]{64}", expected_sha256) is None
+        ):
+            raise adapter.AdapterError(
+                f"Invalid manifest metadata for file entry at index {index}"
+            )
+        if not isinstance(expected_path, str) or expected_path in seen_paths:
+            raise adapter.AdapterError(
+                f"Invalid or duplicate manifest path at file entry {index}"
+            )
+        seen_paths.add(expected_path)
+        path = _manifest_path(root, expected_path, label="manifest file path")
         if not path.is_file():
-            failures.append(f"missing: {expected['path']}")
+            failures.append(f"missing: {expected_path}")
             continue
-        if path.stat().st_size != expected["bytes"]:
-            failures.append(f"size: {expected['path']}")
-        if adapter.sha256_file(path) != expected["sha256"]:
-            failures.append(f"sha256: {expected['path']}")
+        if path.stat().st_size != expected_bytes:
+            failures.append(f"size: {expected_path}")
+        if adapter.sha256_file(path) != expected_sha256:
+            failures.append(f"sha256: {expected_path}")
 
-    snapshot_path = root / manifest["source"]["snapshot_path"]
+    source = manifest.get("source")
+    if not isinstance(source, dict):
+        raise adapter.AdapterError("Manifest source must be a JSON object")
+    snapshot_path = _manifest_path(
+        root, source.get("snapshot_path"), label="source snapshot path"
+    )
+    snapshot_sha256 = source.get("snapshot_sha256")
+    if (
+        not isinstance(snapshot_sha256, str)
+        or re.fullmatch(r"[0-9a-f]{64}", snapshot_sha256) is None
+    ):
+        raise adapter.AdapterError("Invalid source snapshot SHA-256")
+    if not snapshot_path.is_file():
+        raise adapter.AdapterError(f"Source snapshot not found: {snapshot_path}")
+    if adapter.sha256_file(snapshot_path) != snapshot_sha256:
+        failures.append("sha256: source snapshot")
+
+    migration = manifest.get("migration")
+    if not isinstance(migration, dict):
+        raise adapter.AdapterError("Manifest migration must be a JSON object")
+    expected_count = migration.get("mapped_memories")
+    if not isinstance(expected_count, int) or expected_count < 0:
+        raise adapter.AdapterError("Invalid mapped memory count")
+
     snapshot = adapter.load_snapshot(snapshot_path)
     concepts = adapter.build_concepts(snapshot)
-    expected_count = manifest["migration"]["mapped_memories"]
     if len(concepts) != expected_count:
         failures.append(
             f"replay count: expected {expected_count}, reconstructed {len(concepts)}"

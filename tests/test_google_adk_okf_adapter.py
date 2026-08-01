@@ -5,6 +5,7 @@ from __future__ import annotations
 import importlib.util
 import json
 import sqlite3
+import sys
 from pathlib import Path
 
 import pytest
@@ -19,6 +20,28 @@ SPEC = importlib.util.spec_from_file_location("google_adk_okf_adapter", ADAPTER_
 assert SPEC and SPEC.loader
 adapter = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(adapter)
+
+VERIFY_PATH = (
+    Path(__file__).parents[1]
+    / "examples"
+    / "migrations"
+    / "google-adk"
+    / "verify_artifacts.py"
+)
+VERIFY_SPEC = importlib.util.spec_from_file_location(
+    "google_adk_okf_verifier", VERIFY_PATH
+)
+assert VERIFY_SPEC and VERIFY_SPEC.loader
+verifier = importlib.util.module_from_spec(VERIFY_SPEC)
+PREVIOUS_ADAPTER_MODULE = sys.modules.get("adapter")
+sys.modules["adapter"] = adapter
+try:
+    VERIFY_SPEC.loader.exec_module(verifier)
+finally:
+    if PREVIOUS_ADAPTER_MODULE is None:
+        del sys.modules["adapter"]
+    else:
+        sys.modules["adapter"] = PREVIOUS_ADAPTER_MODULE
 
 
 SCHEMA = """
@@ -279,3 +302,32 @@ def test_output_requires_force_and_force_replaces_exact_target(tmp_path):
     adapter.write_bundle(snapshot, bundle, force=True)
     assert not marker.exists()
     assert (bundle / "migration-manifest.json").is_file()
+
+
+def test_verifier_rejects_manifest_paths_outside_bundle(tmp_path):
+    root = tmp_path / "bundle"
+    root.mkdir()
+    manifest = {
+        "schema": adapter.MANIFEST_SCHEMA,
+        "files": [
+            {
+                "path": "../outside.txt",
+                "bytes": 0,
+                "sha256": "0" * 64,
+            }
+        ],
+        "source": {
+            "snapshot_path": "source/snapshot.json",
+            "snapshot_sha256": "0" * 64,
+        },
+        "migration": {"mapped_memories": 0},
+    }
+    (root / "migration-manifest.json").write_text(
+        json.dumps(manifest), encoding="utf-8"
+    )
+
+    with pytest.raises(adapter.AdapterError, match="Unsafe manifest file path"):
+        verifier.verify_bundle(root)
+
+    with pytest.raises(adapter.AdapterError, match="expected a relative path"):
+        verifier._manifest_path(root, "", label="source snapshot path")
