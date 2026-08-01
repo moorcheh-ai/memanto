@@ -307,6 +307,39 @@ def _file_manifest(root: Path) -> list[dict[str, Any]]:
     return rows
 
 
+def _show_okf_preview(root: Path, transcript: Any) -> list[dict[str, Any]]:
+    """Print human-readable OKF files and return their secret-free metadata."""
+    candidates = [root / "memories" / "index.md"]
+    candidates.extend(
+        sorted(
+            path
+            for path in (root / "memories").rglob("*.md")
+            if path.name != "index.md"
+        )[:1]
+    )
+    previews: list[dict[str, Any]] = []
+    for path in candidates:
+        if not path.is_file():
+            continue
+        content = _sanitize_output(path.read_text(encoding="utf-8"))
+        relative = path.relative_to(root).as_posix()
+        heading = f"\n=== readable_okf: {relative} ===\n"
+        block = heading + content.rstrip() + "\n"
+        print(block, end="", flush=True)
+        transcript.write(block)
+        previews.append(
+            {
+                "path": relative,
+                "bytes": len(content.encode("utf-8")),
+                "sha256": hashlib.sha256(content.encode("utf-8")).hexdigest(),
+            }
+        )
+    transcript.flush()
+    if not previews:
+        raise FileNotFoundError(f"portable OKF contains no readable Markdown: {root}")
+    return previews
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     """Execute the live proof and persist a secret-free evidence package."""
     args = build_parser().parse_args(argv)
@@ -344,6 +377,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         environment = dict(os.environ)
         environment.update({"DEBUG": "false", "NO_COLOR": "1", "PYTHONUTF8": "1"})
         results: list[dict[str, Any]] = []
+        okf_previews: list[dict[str, Any]] = []
         transcript_path = output / "live_transcript.txt"
         started_at = _utc_now()
         with transcript_path.open("w", encoding="utf-8", newline="\n") as transcript:
@@ -356,6 +390,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                         environment=environment,
                     )
                 )
+            okf_previews = _show_okf_preview(portable_output, transcript)
         verification = verify_live_results(results, cases, args.answer_count)
         public_results = []
         for result in results:
@@ -375,6 +410,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             "commands": public_results,
             "verification": verification,
             "portable_okf_files": _file_manifest(portable_output),
+            "readable_okf_previews": okf_previews,
             "secrets_persisted": False,
         }
         (output / "live_demo_report.json").write_text(

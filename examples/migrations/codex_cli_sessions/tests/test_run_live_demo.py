@@ -8,10 +8,22 @@ sys.path.insert(0, str(EXAMPLE_DIR))
 
 from run_live_demo import (  # noqa: E402
     _load_golden_cases,
+    _show_okf_preview,
     build_command_plan,
     main,
     verify_live_results,
 )
+
+
+class _Transcript:
+    def __init__(self) -> None:
+        self.text = ""
+
+    def write(self, value: str) -> None:
+        self.text += value
+
+    def flush(self) -> None:
+        pass
 
 
 def test_live_plan_uses_shipped_cli_for_complete_freedom_loop(
@@ -95,3 +107,26 @@ def test_live_result_verification_checks_empty_then_exact_recall_and_rag() -> No
     results[-1]["_stdout"] = "Used unrelated memory"
     failed = verify_live_results(results, cases, answer_count=1)
     assert failed["verified"] is False
+
+
+def test_live_demo_prints_readable_portable_okf(tmp_path: Path, capsys) -> None:
+    root = tmp_path / "portable_okf"
+    memory_dir = root / "memories" / "conversation"
+    memory_dir.mkdir(parents=True)
+    (root / "memories" / "index.md").write_text(
+        "# Portable memory index\n", encoding="utf-8"
+    )
+    (memory_dir / "decision.md").write_text(
+        '---\ntitle: "Readable decision"\n---\n\nOwned memory.\n',
+        encoding="utf-8",
+    )
+    transcript = _Transcript()
+
+    previews = _show_okf_preview(root, transcript)
+
+    assert [item["path"] for item in previews] == [
+        "memories/index.md",
+        "memories/conversation/decision.md",
+    ]
+    assert "Readable decision" in transcript.text
+    assert "Owned memory." in capsys.readouterr().out
