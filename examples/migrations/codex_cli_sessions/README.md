@@ -86,6 +86,21 @@ memanto migrate okf ./codex-okf-demo --agent your-agent
 memanto memory export --agent your-agent --okf
 ```
 
+For a recordable end-to-end proof, set `MOORCHEH_API_KEY` and run:
+
+```bash
+uv run python examples/migrations/codex_cli_sessions/run_live_demo.py \
+  --output ./codex-okf-live-evidence
+```
+
+The live runner creates a fresh empty agent, records no-result recall before
+import, invokes the shipped `memanto migrate okf` command, repeats all five
+golden recalls, asks the same questions through `memanto answer`, and exports
+the cloud memories back to a new portable OKF bundle. It streams the real CLI
+output for screen recording and writes a transcript plus a secret-free JSON
+report with command exit codes and exported-file hashes. It never reads or
+prints the key value and refuses to overwrite an existing evidence directory.
+
 ## Source-to-OKF mapping
 
 | Codex rollout concept | Selection rule | OKF representation | Memanto behavior |
