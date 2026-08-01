@@ -756,6 +756,42 @@ class TestMEMANTOCLI:
         assert result["memories"] == [{"id": "mem_high"}]
         assert read_service.search_memories.call_args.kwargs["min_confidence"] == 0.8
 
+    def test_sdk_recall_keeps_positional_datetime_compatibility(self):
+        """Adding confidence filtering must not remap legacy date arguments."""
+        from memanto.cli.client.sdk_client import SdkClient
+
+        client = SdkClient.__new__(SdkClient)
+        read_service = MagicMock()
+        read_service.search_memories.return_value = {"results": [], "total_found": 0}
+        created_after = datetime(2026, 1, 1, tzinfo=timezone.utc)
+        created_before = datetime(2026, 2, 1, tzinfo=timezone.utc)
+
+        with (
+            patch.object(SdkClient, "_get_validated_session_for_agent"),
+            patch.object(SdkClient, "_get_read_service", return_value=read_service),
+            patch("memanto.cli.client.sdk_client.ConfigManager") as config_manager_cls,
+        ):
+            config_manager_cls.return_value.get_recall_config.return_value = {
+                "limit": 10,
+                "min_similarity": None,
+            }
+            client.recall(
+                "test-agent",
+                "reliable facts",
+                10,
+                None,
+                None,
+                None,
+                created_after,
+                created_before,
+                min_confidence=0.8,
+            )
+
+        call_kwargs = read_service.search_memories.call_args.kwargs
+        assert call_kwargs["created_after"] == created_after.isoformat()
+        assert call_kwargs["created_before"] == created_before.isoformat()
+        assert call_kwargs["min_confidence"] == 0.8
+
     def test_recall_recent(self, mock_all_clients):
         """`memanto recall --recent` lists newest memories chronologically."""
         mock_all_clients.recall_recent.return_value = {
