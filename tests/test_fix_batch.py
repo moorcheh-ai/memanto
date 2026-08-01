@@ -1,9 +1,6 @@
 ﻿""" Unit tests for bug fix batch: memory validation & constants. """
-import re
-import sys
-sys.path.insert(0, "I:/Project/money/memanto")
 
-from memanto.app.utils.ids import is_valid_memory_id, generate_id, generate_memory_id
+from memanto.app.utils.ids import generate_id, generate_memory_id, is_valid_memory_id
 
 
 def test_is_valid_memory_id_accepts_valid_ids():
@@ -57,5 +54,3 @@ def test_generate_memory_id_has_underscore():
     assert "_" in mid
     assert is_valid_memory_id(mid) is True
 
-
-print("All 10 tests PASSED")

@@ -49,6 +49,7 @@ from memanto.app.utils.errors import (
 from memanto.app.utils.validation import (
     CostGuard,
     is_successful_write_result,
+    validate_memory_id,
     validate_safe_id,
 )
 from memanto.cli.client.direct_client import DirectClient
@@ -528,7 +529,10 @@ async def edit_memory(
     The session must be for the specified agent_id.
     """
     enforce_session_scope(session, agent_id)
-    validate_safe_id(memory_id, "memory_id")
+    try:
+        validate_memory_id(memory_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid memory identifier")
 
     updates = request.to_updates()
     if not updates:
@@ -826,7 +830,10 @@ async def delete_memory(
     The session must be for the specified agent_id.
     """
     enforce_session_scope(session, agent_id)
-    validate_safe_id(memory_id, "memory_id")
+    try:
+        validate_memory_id(memory_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid memory identifier")
 
     try:
         write_service = MemoryWriteService(client)

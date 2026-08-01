@@ -9,6 +9,8 @@ from typing import Any
 from fastapi import HTTPException
 from pydantic import BaseModel, Field, validator
 
+from memanto.app.utils.ids import is_valid_memory_id
+
 
 class InputLimits:
     """Input size and cost limits"""
@@ -182,6 +184,20 @@ def validate_safe_id(value: str, field_name: str = "id") -> str:
         raise ValueError(
             f"{field_name} '{value}' contains invalid characters. "
             "Only letters, digits, hyphens, and underscores are allowed."
+        )
+    return value
+
+
+def validate_memory_id(value: str) -> str:
+    """Validate a memory ID using the same contract as is_valid_memory_id.
+
+    Requires at least 5 characters and an underscore; only alphanumeric
+    characters, hyphens, and underscores are allowed.
+    """
+    if not is_valid_memory_id(value):
+        raise ValueError(
+            "memory_id must be at least 5 characters, contain an underscore, "
+            "and use only letters, digits, hyphens, and underscores."
         )
     return value
 
