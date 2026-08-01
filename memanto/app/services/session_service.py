@@ -411,6 +411,26 @@ class SessionService:
         session_file = self.sessions_dir / f"{agent_id}.json"
         return self._load_session_file(session_file)
 
+    @staticmethod
+    def _read_active_agent_id(active_link: Path) -> str:
+        """Read and validate the agent id stored in the active marker."""
+        if active_link.is_symlink():
+            target = active_link.readlink()
+            if (
+                target.is_absolute()
+                or target.parent != Path(".")
+                or target.suffix != ".json"
+                or target.name != f"{target.stem}.json"
+            ):
+                raise ValueError(f"Invalid active session symlink target: {target}")
+            agent_id = target.stem
+        else:
+            with open(active_link) as f:
+                agent_id = f.read().strip()
+
+        validate_safe_id(agent_id, "agent_id")
+        return agent_id
+
     def get_active_session(self) -> Session | None:
         """
         Get currently active session
@@ -424,24 +444,11 @@ class SessionService:
             try:
                 # Read symlink (or file on Windows). Another process can replace
                 # or remove the marker while this process holds its local lock.
-                if active_link.is_symlink():
-                    target = active_link.readlink()
-                    if target.is_absolute() or target.parent != Path("."):
-                        logger.warning(
-                            "Clearing invalid active session symlink: %s", target
-                        )
-                        self._clear_active_session()
-                        return None
-                    if target.suffix != ".json" or target.name != f"{target.stem}.json":
-                        logger.warning(
-                            "Clearing invalid active session symlink: %s", target
-                        )
-                        self._clear_active_session()
-                        return None
-                    agent_id = target.stem
-                else:
-                    with open(active_link) as f:
-                        agent_id = f.read().strip()
+                agent_id = self._read_active_agent_id(active_link)
+            except ValueError as exc:
+                logger.warning("Clearing invalid active session marker: %s", exc)
+                self._clear_active_session()
+                return None
             except OSError:
                 return None
 
@@ -831,11 +838,10 @@ class SessionService:
             active_agent_id: str | None = None
 
             try:
-                if active_link.is_symlink():
-                    active_agent_id = active_link.readlink().stem
-                else:
-                    with open(active_link) as f:
-                        active_agent_id = f.read().strip()
+                active_agent_id = self._read_active_agent_id(active_link)
+            except ValueError as exc:
+                logger.warning("Clearing invalid active session marker: %s", exc)
+                self._clear_active_session()
             except OSError as exc:
                 # Best-effort: a missing or unreadable active marker must not
                 # block deleting this agent's persisted session state. Leaving

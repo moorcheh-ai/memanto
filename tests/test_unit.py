@@ -605,7 +605,7 @@ class TestSessionService:
             pytest.skip(f"symlink creation unavailable: {exc}")
 
         assert session_service.get_active_session() is None
-        assert not active_marker.exists()
+        assert not os.path.lexists(active_marker)
 
     def test_get_active_session_clears_dangling_symlink(self, session_service):
         """A dangling active symlink should be removed during session recovery."""
@@ -617,7 +617,7 @@ class TestSessionService:
             pytest.skip(f"symlink creation unavailable: {exc}")
 
         assert session_service.get_active_session() is None
-        assert not active_marker.exists()
+        assert not os.path.lexists(active_marker)
 
     def test_get_active_session_clears_missing_session_marker(self, session_service):
         """A stale active marker should be removed when its session is gone."""
@@ -638,6 +638,20 @@ class TestSessionService:
             session_service.delete_session("../outside")
 
         assert outside.read_text(encoding="utf-8") == "keep me"
+
+    def test_delete_session_clears_traversal_active_marker(self, session_service):
+        """Deleting a session should also discard an invalid active symlink."""
+        session_service.create_session("test-agent")
+        active_marker = session_service.sessions_dir / "active"
+        active_marker.unlink()
+        try:
+            active_marker.symlink_to("../other-agent.json")
+        except OSError as exc:
+            pytest.skip(f"symlink creation unavailable: {exc}")
+
+        assert session_service.delete_session("test-agent") is True
+        assert not os.path.lexists(active_marker)
+        assert not (session_service.sessions_dir / "test-agent.json").exists()
 
     def test_list_sessions_skips_invalid_session_files(self, session_service):
         """One corrupt session record must not hide all valid sessions."""
