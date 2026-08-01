@@ -8,6 +8,23 @@ If you discover a security vulnerability in MEMANTO, please report it to:
 
 **Please do not** open public GitHub issues for security vulnerabilities.
 
+**Maintainer Enforcement**: Security violations will be addressed by maintainers who reserve the right to remove malicious content, ban contributors, and report incidents to appropriate authorities.
+
+---
+
+## Prohibited Content and Conduct
+
+The following are strictly prohibited in this repository:
+
+- **Financial scams**: No content promoting fraudulent financial schemes, fake investments, or money laundering
+- **Phishing**: No content designed to deceive users into revealing credentials or personal information
+- **Malicious content**: No malware, ransomware, spyware, or any code intended to harm users or systems
+- **Social engineering**: No manipulation tactics designed to exploit contributors or users
+- **Unauthorized fundraising**: No solicitation of funds, donations, or financial contributions without explicit maintainer approval
+- **Bounty fraud**: No fabricated bounty claims, fake issue references, or attempts to extract payment through deceptive pull requests
+
+Any pull request or issue found to contain prohibited content will be immediately closed and the contributor may be permanently banned.
+
 ---
 
 ## Secret Management Best Practices
@@ -105,92 +122,9 @@ Before making your repository public:
 - [ ] No `.env` file in git history: `git log --all -- .env` (should be empty after cleanup)
 - [ ] `.env.example` only contains placeholders
 - [ ] No hardcoded API keys in code: `git grep -i "mk_" "*.py" "*.ts" "*.js"`
-- [ ] All documentation examples use placeholders
-- [ ] GitHub secret scanning alerts reviewed and addressed
-
----
-
-## Security Features in MEMANTO
-
-MEMANTO implements multiple security layers:
-
-### 1. Authentication & Authorization
-- Server-owned `MOORCHEH_API_KEY` required at startup for backend access
-- Client `X-Session-Token` required for session-scoped and memory endpoints
-- Tenant ID derived from authenticated principal (never from request body)
-- Multi-tenant isolation enforced at namespace level
-
-### 2. Rate Limiting
-- Per-tenant quotas prevent abuse
-- Configurable limits: 60 writes/min, 120 reads/min
-
-### 3. Input Validation
-- Content size limits (10KB text, 5KB metadata)
-- Anti-poisoning validation for facts and preferences
-- Pydantic model validation for all requests
-
-### 4. Secure Defaults
-- HTTPS enforced in production
-- CORS properly configured
-- Structured logging with PII redaction
-- Safe deletion with audit trail
-
-For detailed security architecture, see [SECURITY_ISOLATION_ONE_PAGER.md](SECURITY_ISOLATION_ONE_PAGER.md).
-
----
-
-## Production Security Checklist
-
-### Environment Configuration
-- [ ] Use environment-specific API keys (dev/staging/prod)
-- [ ] Rotate keys regularly (quarterly minimum)
-- [ ] Use secret management tools (not .env files) in production
-- [ ] Enable HTTPS/TLS for all endpoints
-- [ ] Configure CORS with specific origins (not `*`)
-
-### Monitoring & Auditing
-- [ ] Enable structured logging
-- [ ] Monitor for unusual API activity
-- [ ] Set up alerts for rate limit violations
-- [ ] Regular security audits of access logs
-- [ ] Implement log aggregation (ELK, Datadog, etc.)
-
-### Network Security
-- [ ] Deploy behind API gateway or reverse proxy
-- [ ] Use VPC/private networks when possible
-- [ ] Implement DDoS protection
-- [ ] Regular vulnerability scanning
-- [ ] Keep dependencies updated
-
----
-
-## Dependencies Security
-
-### Regular Updates
-```bash
-# Check for security vulnerabilities
-pip install safety
-safety check
-
-# Update dependencies
-pip list --outdated
-pip install --upgrade <package>
-```
-
-### Automated Scanning
-- GitHub Dependabot enabled for this repository
-- Review and merge security PRs promptly
-- Test thoroughly before deploying dependency updates
-
----
-
-## Contact
-
-For security questions or concerns:
-- **General**: Dr. Majid Fekri, CTO Moorcheh.ai
-- **Security Issues**: support@moorcheh.ai
-- **Moorcheh Platform**: https://moorcheh.ai/security
-
----
-
-**Last Updated**: March 2026
+- [ ] All dependencies reviewed for malicious packages: `pip audit` or `npm audit`
+- [ ] No prohibited content (scams, phishing, malicious code) present in contributions
+- [ ] All external URLs and links verified as legitimate
+- [ ] No unauthorized fundraising or bounty fraud attempts in issues or pull requests
+- [ ] Docker images scanned for vulnerabilities
+- [ ] All contributors have signed the contributor agreement
