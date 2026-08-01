@@ -11,8 +11,24 @@ import argparse
 import json
 import os
 from pathlib import Path
+from typing import Any
 from urllib.parse import urlencode, urlparse
-from urllib.request import Request, urlopen
+from urllib.request import (
+    HTTPRedirectHandler,
+    Request,
+    build_opener,
+)
+
+
+class _NoRedirectHandler(HTTPRedirectHandler):
+    """Prevent API-key-bearing requests from following cross-origin redirects."""
+
+    def redirect_request(self, *args: Any, **kwargs: Any) -> None:
+        """Return no redirected request so the caller receives the 3xx response."""
+        return None
+
+
+_NO_REDIRECT_OPENER = build_opener(_NoRedirectHandler())
 
 
 def export_executions(
@@ -50,7 +66,7 @@ def export_executions(
                 "X-N8N-API-KEY": api_key,
             },
         )
-        with urlopen(request, timeout=30) as response:  # noqa: S310
+        with _NO_REDIRECT_OPENER.open(request, timeout=30) as response:  # noqa: S310
             page = json.load(response)
 
         rows = page.get("data")
@@ -63,7 +79,7 @@ def export_executions(
         next_cursor = page.get("nextCursor")
         if next_cursor is not None and not isinstance(next_cursor, str):
             raise ValueError("n8n API nextCursor must be a string or null")
-        if next_cursor == cursor:
+        if next_cursor is not None and next_cursor == cursor:
             raise ValueError("n8n API pagination made no progress")
         cursor = next_cursor
         if not cursor:
