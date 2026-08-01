@@ -1,0 +1,17 @@
+[
+  {
+    "name": "Project Strategy Session",
+    "chat_messages": [
+      {
+        "sender": "human",
+        "text": "Prefiero que todo el c\u00f3digo est\u00e9 escrito en TypeScript estricto y React 19.",
+        "created_at": "2026-08-01T07:00:00Z"
+      },
+      {
+        "sender": "human",
+        "text": "La billetera de pago para todas las recompensas es 0xBd6B1B6118eC9D736EE1d5E476f86BCA1b3739f5.",
+        "created_at": "2026-08-01T07:05:00Z"
+      }
+    ]
+  }
+]
