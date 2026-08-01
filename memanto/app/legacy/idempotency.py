@@ -4,14 +4,12 @@ Idempotency Handling for MEMANTO
 
 import hashlib
 import re
+import threading
 import time
 from dataclasses import dataclass
 from typing import Any
 
 from fastapi import HTTPException
-
-
-import threading
 
 
 @dataclass
@@ -154,18 +152,41 @@ class IdempotencyHandler:
         response: dict[str, Any] | None = None,
         ttl_seconds: int = 86400,
     ) -> tuple[bool, dict[str, Any] | None]:
-        """Atomic reservation handler for production write idempotency"""
+        """Atomic reservation handler for production write idempotency.
+
+        Validates the key format before reserving. When *response* is
+        ``None`` the reservation is stored with a sentinel so callers
+        can distinguish an in-progress reservation from a completed
+        empty response.
+        """
         if not idempotency_key:
             return True, None
 
-        response_dict = response if response is not None else {}
+        if not IdempotencyHandler.validate_idempotency_key(idempotency_key):
+            raise HTTPException(
+                status_code=400,
+                detail={
+                    "error": "invalid_idempotency_key",
+                    "message": "Idempotency key must be 8-128 characters, "
+                    "alphanumeric with _ and - allowed",
+                },
+            )
+
+        # Use a sentinel dict so callers can tell an in-progress
+        # reservation from a completed (possibly empty) response.
+        _IN_PROGRESS_SENTINEL = {"__in_progress__": True}
+        response_dict = response if response is not None else _IN_PROGRESS_SENTINEL
         is_owner, record = idempotency_store.reserve_or_get(
             idempotency_key=idempotency_key,
             memory_id=memory_id,
             response=response_dict,
             ttl_seconds=ttl_seconds,
         )
-        return is_owner, record.response
+        stored = record.response
+        # Non-owners seeing the sentinel should treat it as "not ready yet"
+        if not is_owner and stored.get("__in_progress__"):
+            return False, None
+        return is_owner, stored
 
     @staticmethod
     def store_idempotent_response(
