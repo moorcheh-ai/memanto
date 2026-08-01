@@ -31,7 +31,17 @@
     "source_average": 1.0,
     "zero_amnesia": true
   },
-  "round_trip_status": "Local source→OKF fidelity and shipped Memanto dry-run are complete. Cloud import→recall→OKF export requires MOORCHEH_API_KEY and is run with run_roundtrip.py.",
+  "round_trip": {
+    "agent_id": "google-adk-okf-atlascraft-20260801",
+    "average_score": 1.0,
+    "exported_memories": 10,
+    "imported_memories": 10,
+    "passed": 8,
+    "questions": 8,
+    "recall_evidence": "evidence/cloud-recall-validation.json",
+    "summary": "roundtrip-summary.json"
+  },
+  "round_trip_status": "Complete: the live Moorcheh cloud imported 10/10 memories, answered all 8 golden questions with 100% recall parity, and exported 10/10 memories back to OKF.",
   "schema": "google-adk-okf-migration-report/v1",
   "source": {
     "database_sha256": "53fe4b9a40eeb1691bc7244aa58837385543bbcb4fcfb56dbd60de6993f3b4a0",

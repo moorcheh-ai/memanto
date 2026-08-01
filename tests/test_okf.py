@@ -125,6 +125,7 @@ def test_memanto_round_trip_preserves_extras(tmp_path):
     pg = by_title["Postgres is the DB"]
     assert pg["type"] == "fact"  # x_memanto.type round-trips
     assert pg["confidence"] == 0.9  # x_memanto.confidence round-trips
+    assert pg["source"] == "user"  # valid Memanto source round-trips
     assert pg["source_ref"] == "https://example.com/db"  # resource -> source_ref
     assert pg["provenance"] == "imported"
     assert set(pg["tags"]) == {"infra", "db"}
@@ -162,13 +163,36 @@ def test_foreign_okf_bundle_is_lossless(tmp_path):
 
     row = map_okf(export)[0]
     assert row["type"] is None  # free-form type -> auto-classify
-    assert row["source"] == "okf"
+    assert row["source"] == "tool"
     assert row["source_ref"] == "https://console.cloud.google.com/bigquery?t=orders"
     assert row["provenance"] == "imported"
     assert "One row per completed customer order." in row["content"]  # description
     assert "OKF type: BigQuery Table" in row["content"]  # unmapped type -> footer
     assert "OKF owner: data-team" in row["content"]  # unknown key -> footer
     assert "customers -> /tables/customers.md" in row["content"]  # link -> footer
+
+
+def test_foreign_okf_source_is_normalized_without_losing_provider(tmp_path):
+    """Provider labels are not valid MemoryRecord sources; import them as a
+    tool observation and retain the original provider in supporting data."""
+    svc = OkfExportService(exports_dir=tmp_path / "exports")
+    result = svc.write_okf_bundle(
+        "agent1",
+        {
+            "fact": [
+                _mem(
+                    "f1",
+                    "Imported fact",
+                    "Captured from Google ADK.",
+                    source="google-adk",
+                )
+            ]
+        },
+    )
+
+    row = map_okf(load_okf_bundle(result["output_path"]))[0]
+    assert row["source"] == "tool"
+    assert "OKF original source: google-adk" in row["content"]
 
 
 def test_loader_splits_stacked_file(tmp_path):

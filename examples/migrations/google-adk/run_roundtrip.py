@@ -18,6 +18,8 @@ from typing import Any
 import adapter
 from scenario import GOLDEN_QUESTIONS
 
+from memanto.app.config import get_data_dir
+
 HERE = Path(__file__).resolve().parent
 DEFAULT_BUNDLE = HERE / "artifacts" / "adk-live-run" / "google-adk-okf"
 DEFAULT_ARTIFACTS = HERE / "artifacts" / "adk-live-run"
@@ -30,6 +32,16 @@ def _write_json(path: Path, value: Any) -> None:
         json.dumps(value, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
         encoding="utf-8",
     )
+
+
+def _normalize_markdown_tree(root: Path) -> None:
+    """Keep generated cloud evidence portable and free of diff-only whitespace."""
+    for path in root.rglob("*.md"):
+        lines = path.read_text(encoding="utf-8").splitlines()
+        path.write_text(
+            "\n".join(line.rstrip() for line in lines).rstrip() + "\n",
+            encoding="utf-8",
+        )
 
 
 def _executable() -> Path:
@@ -76,7 +88,10 @@ def _run(
 
 
 def _score(output: str, groups: tuple[tuple[str, ...], ...]) -> float:
-    folded = output.casefold()
+    # Rich wraps table cells with ``|`` at terminal boundaries. Normalize the
+    # rendered output so a phrase split across lines is still scored intact.
+    folded = output.casefold().replace("|", " ")
+    folded = re.sub(r"\s+", " ", folded)
     return sum(
         any(alias.casefold() in folded for alias in group) for group in groups
     ) / len(groups)
@@ -87,6 +102,11 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--bundle", type=Path, default=DEFAULT_BUNDLE)
     parser.add_argument("--artifacts", type=Path, default=DEFAULT_ARTIFACTS)
     parser.add_argument("--agent", help="New Memanto agent id (default: timestamped)")
+    parser.add_argument(
+        "--reuse-agent",
+        action="store_true",
+        help="Reuse an already imported agent instead of creating and importing again",
+    )
     parser.add_argument("--recall-attempts", type=int, default=6)
     parser.add_argument("--recall-delay", type=float, default=5.0)
     return parser
@@ -115,30 +135,40 @@ def main(argv: list[str] | None = None) -> int:
     records = []
 
     try:
-        records.append(
-            _run(
-                executable,
-                [
-                    "agent",
-                    "create",
-                    agent_id,
-                    "--pattern",
-                    "project",
-                    "--description",
-                    "Google ADK portable-memory round trip",
-                ],
-                cwd=repo_root,
-                env=env,
+        if args.reuse_agent:
+            records.append(
+                _run(
+                    executable,
+                    ["agent", "activate", agent_id],
+                    cwd=repo_root,
+                    env=env,
+                )
             )
-        )
-        records.append(
-            _run(
-                executable,
-                ["migrate", "okf", str(bundle), "--agent", agent_id],
-                cwd=repo_root,
-                env=env,
+        else:
+            records.append(
+                _run(
+                    executable,
+                    [
+                        "agent",
+                        "create",
+                        agent_id,
+                        "--pattern",
+                        "project",
+                        "--description",
+                        "Google ADK portable-memory round trip",
+                    ],
+                    cwd=repo_root,
+                    env=env,
+                )
             )
-        )
+            records.append(
+                _run(
+                    executable,
+                    ["migrate", "okf", str(bundle), "--agent", agent_id],
+                    cwd=repo_root,
+                    env=env,
+                )
+            )
 
         recall_results = []
         for question in GOLDEN_QUESTIONS:
@@ -169,7 +199,23 @@ def main(argv: list[str] | None = None) -> int:
             assert best is not None
             recall_results.append(best)
 
+        recall_average = sum(item["score"] for item in recall_results) / len(
+            recall_results
+        )
+        _write_json(
+            artifacts / "evidence" / "cloud-recall-validation.json",
+            {
+                "schema": "google-adk-memanto-cloud-recall/v1",
+                "agent_id": agent_id,
+                "questions": len(recall_results),
+                "passed": sum(item["score"] == 1.0 for item in recall_results),
+                "average_score": round(recall_average, 4),
+                "results": recall_results,
+            },
+        )
+
         export_dir = artifacts / "memanto-roundtrip-export"
+        cached_export_dir = get_data_dir() / "exports" / f"{agent_id}_okf"
         records.append(
             _run(
                 executable,
@@ -183,21 +229,31 @@ def main(argv: list[str] | None = None) -> int:
                     "100",
                     "--split",
                     "file",
-                    "--output",
-                    str(export_dir),
                 ],
                 cwd=repo_root,
                 env=env,
             )
         )
+        if not cached_export_dir.is_dir():
+            raise adapter.AdapterError(
+                f"Memanto reported success but export is missing: {cached_export_dir}"
+            )
+        if export_dir.exists():
+            shutil.rmtree(export_dir)
+        shutil.copytree(cached_export_dir, export_dir)
+        _normalize_markdown_tree(export_dir)
         average = sum(item["score"] for item in recall_results) / len(recall_results)
+        try:
+            bundle_label = bundle.relative_to(artifacts).as_posix()
+        except ValueError:
+            bundle_label = bundle.name
         summary = {
             "schema": "google-adk-memanto-roundtrip/v1",
             "completed_at": datetime.now(timezone.utc)
             .isoformat()
             .replace("+00:00", "Z"),
             "agent_id": agent_id,
-            "bundle": str(bundle),
+            "bundle": bundle_label,
             "imported_via": "memanto migrate okf",
             "queried_via": "memanto recall",
             "exported_via": "memanto memory export --okf",
@@ -205,8 +261,14 @@ def main(argv: list[str] | None = None) -> int:
             "passed": sum(item["score"] == 1.0 for item in recall_results),
             "average_score": round(average, 4),
             "results": recall_results,
-            "commands": records,
-            "export_path": str(export_dir),
+            "commands": [
+                {
+                    "command": record["command"],
+                    "returncode": record["returncode"],
+                }
+                for record in records
+            ],
+            "export_path": export_dir.name,
             "api_key_persisted_in_artifacts": False,
         }
         _write_json(artifacts / "roundtrip-summary.json", summary)
