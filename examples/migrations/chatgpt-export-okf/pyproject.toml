@@ -1,0 +1,9 @@
+[project]
+name = "chatgpt-export-okf"
+version = "0.1.0"
+description = "Convert ChatGPT data exports into portable Open Knowledge Format bundles"
+requires-python = ">=3.10"
+license = {text = "MIT"}
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
