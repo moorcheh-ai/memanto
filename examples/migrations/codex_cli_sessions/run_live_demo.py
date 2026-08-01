@@ -68,9 +68,7 @@ def _load_golden_cases(path: Path, bundle: Path) -> list[dict[str, str]]:
     items = payload.get("questions", [])
     manifest = json.loads((bundle / "manifest.json").read_text(encoding="utf-8"))
     record_by_source = {
-        str(record.get("source_record_sha256") or ""): str(
-            record.get("entry_id") or ""
-        )
+        str(record.get("source_record_sha256") or ""): str(record.get("entry_id") or "")
         for record in manifest.get("records", [])
         if isinstance(record, dict)
     }
