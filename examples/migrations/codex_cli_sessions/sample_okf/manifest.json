@@ -1,11 +1,12 @@
 {
   "adapter": "codex-cli-sessions-to-okf",
   "adapter_version": "0.1.0",
-  "generated_at": "2026-08-01T21:53:42.359551Z",
+  "generated_at": "2026-08-01T22:25:14.791164Z",
   "source": {
     "sha256": "85ced504bf42bf80d6ff46919d58c52b7b723fa8929b277d68cdd9d4793d9198",
     "bytes": 62938881,
-    "conversation_messages": 294,
+    "conversation_messages": 293,
+    "unparseable_lines_skipped": 0,
     "path_published": false
   },
   "selection": {
@@ -13,14 +14,14 @@
       "assistant",
       "user"
     ],
-    "include_regex": "ProofPatch|Solana|receipt|recibo|reproduc",
-    "exclude_regex": null,
+    "include_filter_applied": true,
+    "exclude_filter_applied": false,
     "take": "last",
     "max_records": 14,
     "selected": 14
   },
   "migration_summary": {
-    "source_conversation_messages": 294,
+    "source_conversation_messages": 293,
     "selected_source_records": 14,
     "mapped_okf_memories": 14,
     "skipped_selected_records": 0,
@@ -31,13 +32,15 @@
   "privacy": {
     "raw_text_published": false,
     "literal_values_persisted": false,
-    "redactions": {},
+    "redactions": {
+      "credential_transfer_instruction": 1
+    },
     "gate_findings": 0
   },
   "savings_report": {
     "source_rollout_bytes": 62938881,
     "selected_source_text_bytes": 4750,
-    "published_redacted_text_bytes": 4750,
+    "published_redacted_text_bytes": 4716,
     "source_api_calls": 0,
     "migration_api_calls": 0,
     "token_savings": "not_applicable_local_source",
@@ -106,8 +109,8 @@
       "role": "assistant",
       "source_line": 6068,
       "source_record_sha256": "0ced6cea986bfc2ecc76a8dbb63d5ab82005468757e46eaba5d64550cad54621",
-      "content_sha256": "2334d2d52ff0047b5d6b4c84a6f45fd91adda0b59757545cce54ff869ec043da",
-      "redaction_count": 0
+      "content_sha256": "a1c28f4ea1be36a6682c50c1a83efe587b03f3024f88d14e4d7f81511366f52c",
+      "redaction_count": 1
     },
     {
       "entry_id": "17beb66c9ee6b2d8",
@@ -158,5 +161,5 @@
       "redaction_count": 0
     }
   ],
-  "bundle_sha256": "2b15029153677059fc2e2c2cd6d16519c08d603011224076fb456888808afd5b"
+  "bundle_sha256": "e983c43dc6f1cc9d800652e9b5d2084b3b5da25dc69d3373f58ae184b9292404"
 }

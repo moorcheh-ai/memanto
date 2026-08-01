@@ -1,6 +1,6 @@
 {
   "command": "memanto migrate okf examples/migrations/codex_cli_sessions/sample_okf --dry-run",
-  "executed_at": "2026-08-01T21:45:48Z",
+  "executed_at": "2026-08-01T22:25:15.985747Z",
   "okf_nodes": 14,
   "mapped_memories": 14,
   "skipped": 0,

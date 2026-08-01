@@ -5,10 +5,15 @@ import json
 import sys
 from pathlib import Path
 
+import pytest
+
 EXAMPLE_DIR = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(EXAMPLE_DIR))
 
+import codex_to_okf  # noqa: E402
+import run_demo  # noqa: E402
 from codex_to_okf import (  # noqa: E402
+    _parse_entry_for_validation,
     export_bundle,
     iter_message_records,
     privacy_findings,
@@ -49,7 +54,10 @@ def _rollout(path: Path) -> None:
                 "content": [
                     {
                         "type": "input_text",
-                        "text": "Remember Project Cedar uses port 8042. Email me at a@b.com.",
+                        "text": (
+                            "Remember Project Cedar uses port 8042. Bare token "
+                            "sk-abcdefghijklmnop must be removed. Email me at a@b.com."
+                        ),
                     },
                     {"type": "input_image", "image_url": "data:private"},
                 ],
@@ -82,7 +90,10 @@ def _rollout(path: Path) -> None:
                 "content": [
                     {
                         "type": "input_text",
-                        "text": '<codex_internal_context source="goal">hidden</codex_internal_context>',
+                        "text": (
+                            "innocent prefix <environment_context>hidden"
+                            "</environment_context>"
+                        ),
                     }
                 ],
             },
@@ -97,6 +108,7 @@ def _rollout(path: Path) -> None:
             "response_item",
             {"type": "function_call_output", "output": "private tool output"},
         ),
+        "not valid json",
     ]
     path.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
@@ -130,7 +142,11 @@ def test_exports_only_public_messages_and_redacts(tmp_path: Path) -> None:
     assert manifest["privacy"]["literal_values_persisted"] is False
     assert manifest["privacy"]["redactions"]["literal"] == 1
     assert manifest["privacy"]["redactions"]["email"] == 1
+    assert manifest["privacy"]["redactions"]["openai_key"] == 1
     assert manifest["privacy"]["redactions"]["secret_assignment"] == 1
+    assert manifest["source"]["unparseable_lines_skipped"] == 1
+    assert manifest["selection"]["include_filter_applied"] is True
+    assert "include_regex" not in manifest["selection"]
 
     published = "\n".join(
         path.read_text(encoding="utf-8") for path in output.rglob("*.md")
@@ -141,7 +157,8 @@ def test_exports_only_public_messages_and_redacts(tmp_path: Path) -> None:
     assert "Never export me" not in published
     assert "Private reasoning" not in published
     assert "private tool output" not in published
-    assert not privacy_findings(published)
+    for path in (output / "memories" / "conversation").glob("*.md"):
+        assert not privacy_findings(_parse_entry_for_validation(path)["_content"])
 
 
 def test_validation_proves_source_and_content_parity(tmp_path: Path) -> None:
@@ -198,6 +215,26 @@ def test_validation_detects_tampering(tmp_path: Path) -> None:
     assert any("bundle digest" in failure for failure in report["failures"])
 
 
+def test_validation_compares_content_hash_with_manifest(tmp_path: Path) -> None:
+    source = tmp_path / "rollout.jsonl"
+    output = tmp_path / "bundle"
+    _rollout(source)
+    export_bundle(_export_args(source, output))
+    manifest_path = output / "manifest.json"
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    manifest["records"][0]["content_sha256"] = "0" * 64
+    manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+
+    report = validate_bundle(
+        argparse.Namespace(source=source, bundle=output, report=None)
+    )
+    assert report["valid"] is False
+    assert report["content_hash_parity"] is False
+    assert any(
+        "manifest content hash mismatch" in failure for failure in report["failures"]
+    )
+
+
 def test_redaction_handles_tokens_accounts_and_home_paths() -> None:
     text = (
         "token " + "gho_" + "abcdefghijklmnopqrstuvwxyz123456 and wallet "
@@ -209,3 +246,75 @@ def test_redaction_handles_tokens_accounts_and_home_paths() -> None:
     assert "Alice" not in redacted
     assert counts == {"base58_account": 1, "github_token": 1, "user_home": 1}
     assert not privacy_findings(redacted)
+
+
+def test_privacy_gate_fails_closed_before_creating_bundle(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    source = tmp_path / "rollout.jsonl"
+    output = tmp_path / "bundle"
+    _rollout(source)
+    monkeypatch.setattr(codex_to_okf, "privacy_findings", lambda _text: ["forced"])
+
+    with pytest.raises(ValueError, match="privacy gate rejected"):
+        export_bundle(_export_args(source, output))
+    assert not output.exists()
+
+
+def test_force_refuses_to_delete_non_bundle_directory(tmp_path: Path) -> None:
+    source = tmp_path / "rollout.jsonl"
+    output = tmp_path / "not-a-bundle"
+    output.mkdir()
+    sentinel = output / "keep.txt"
+    sentinel.write_text("keep", encoding="utf-8")
+    _rollout(source)
+    args = _export_args(source, output)
+    args.force = True
+
+    with pytest.raises(ValueError, match="refusing --force"):
+        export_bundle(args)
+    assert sentinel.read_text(encoding="utf-8") == "keep"
+
+
+def test_demo_main_reports_schema_and_exit_status(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    source = tmp_path / "rollout.jsonl"
+    output = tmp_path / "demo"
+    _rollout(source)
+    common = [
+        str(source),
+        "--include",
+        "Cedar",
+        "--max-records",
+        "10",
+    ]
+
+    assert run_demo.main([*common, "--output", str(output)]) == 0
+    dry_run = json.loads(
+        (output / "memanto_dry_run_report.json").read_text(encoding="utf-8")
+    )
+    assert set(dry_run) == {
+        "command",
+        "executed_at",
+        "okf_nodes",
+        "mapped_memories",
+        "skipped",
+        "writes_performed",
+        "api_key_required",
+    }
+    assert dry_run["api_key_required"] is False
+    assert dry_run["skipped"] == 0
+
+    monkeypatch.setattr(
+        run_demo,
+        "validate_bundle",
+        lambda _args: {
+            "valid": False,
+            "source_to_okf_coverage": 1.0,
+            "content_hash_parity": False,
+            "privacy_gate_findings": 0,
+            "golden_qa": None,
+        },
+    )
+    assert run_demo.main([*common, "--output", str(tmp_path / "invalid-demo")]) == 1

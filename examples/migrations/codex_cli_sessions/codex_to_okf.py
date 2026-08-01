@@ -24,90 +24,93 @@ from typing import Any
 
 ADAPTER_VERSION = "0.1.0"
 OKF_TYPE = "Codex CLI Conversation"
+BUNDLE_ADAPTER = "codex-cli-sessions-to-okf"
 
 INTERNAL_MESSAGE_RE = re.compile(
-    r"^\s*<(?:codex_internal_context|environment_context|permissions instructions)\b",
+    r"<(?:codex_internal_context|environment_context|permissions instructions)\b",
     re.IGNORECASE,
 )
 
+# A single specification keeps redaction and the fail-closed privacy gate in
+# sync. The gate intentionally uses a stricter OpenAI-key boundary than the
+# replacement rule, while every other category shares the same pattern.
 # Order matters: redact assignment lines before matching individual token shapes.
-REDACTION_RULES: tuple[tuple[str, re.Pattern[str]], ...] = (
+PRIVACY_RULE_SPECS: tuple[tuple[str, str, str], ...] = (
     (
         "secret_assignment",
-        re.compile(
-            r"(?im)^.*(?:api[_ -]?key|access[_ -]?token|password|private[_ -]?key)"
-            r"\s*(?::|=).*$"
-        ),
+        r"(?im)^.*(?:api[_ -]?key|access[_ -]?token|password|private[_ -]?key)"
+        r"\s*(?::|=).*$",
+        r"(?im)^.*(?:api[_ -]?key|access[_ -]?token|password|private[_ -]?key)"
+        r"\s*(?::|=).*$",
     ),
     (
         "openai_key",
-        re.compile(r"\bsk-[A-Za-z0-9_\-\s]{12,120}", re.IGNORECASE),
+        r"(?i)\bsk-[A-Za-z0-9_-]{12,120}",
+        r"(?i)\bsk-[A-Za-z0-9_-]{12,}\b",
     ),
     (
         "github_token",
-        re.compile(r"\bgh[opusr]_[A-Za-z0-9]{20,}\b", re.IGNORECASE),
+        r"(?i)\bgh[opusr]_[A-Za-z0-9]{20,}\b",
+        r"(?i)\bgh[opusr]_[A-Za-z0-9]{20,}\b",
     ),
     (
         "jwt",
-        re.compile(
-            r"\beyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\."
-            r"[A-Za-z0-9_-]{8,}\b"
-        ),
+        r"\beyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\."
+        r"[A-Za-z0-9_-]{8,}\b",
+        r"\beyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\."
+        r"[A-Za-z0-9_-]{8,}\b",
     ),
     (
         "email",
-        re.compile(r"\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b", re.IGNORECASE),
+        r"(?i)\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b",
+        r"(?i)\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b",
     ),
     (
         "phone",
-        re.compile(r"(?<!\w)(?:\+?\d[\s().-]*){9,15}(?!\w)"),
+        r"(?<!\w)(?:\+?\d[\s().-]*){9,15}(?!\w)",
+        r"(?<!\w)(?:\+?\d[\s().-]*){9,15}(?!\w)",
     ),
     (
         "private_url_parameter",
-        re.compile(r"(?i)([?&](?:token|key|secret|auth|signature)=)[^&\s)]+"),
+        r"(?i)([?&](?:token|key|secret|auth|signature)=)[^&\s)]+",
+        r"(?i)([?&](?:token|key|secret|auth|signature)=)[^&\s)]+",
     ),
     (
         "user_home",
-        re.compile(r"(?i)(?:[A-Z]:\\Users\\|/home/)[^\\/\s]+"),
+        r"(?i)(?:[A-Z]:\\Users\\|/home/)[^\\/\s]+",
+        r"(?i)(?:[A-Z]:\\Users\\|/home/)[^\\/\s]+",
     ),
     # Solana addresses and similar long base58 account identifiers. Hex digests
     # are intentionally left intact because they are useful provenance evidence.
     (
         "base58_account",
-        re.compile(r"(?<![A-Za-z0-9])[1-9A-HJ-NP-Za-km-z]{32,44}(?![A-Za-z0-9])"),
+        r"(?<![A-Za-z0-9])[1-9A-HJ-NP-Za-km-z]{32,44}(?![A-Za-z0-9])",
+        r"(?<![A-Za-z0-9])[1-9A-HJ-NP-Za-km-z]{32,44}(?![A-Za-z0-9])",
+    ),
+    (
+        "credential_transfer_instruction",
+        r"(?is)\b(?:send|share|paste|env[ií]a(?:me)?|comparte)\b"
+        r"[^.\n]{0,160}\b(?:credentials?|private\s+keys?|api\s*keys?|secrets?|"
+        r"credenciales?|claves?\s+privadas?|tokens?)\b[^.\n]*[.!]?",
+        r"(?is)\b(?:send|share|paste|env[ií]a(?:me)?|comparte)\b"
+        r"[^.\n]{0,160}\b(?:credentials?|private\s+keys?|api\s*keys?|secrets?|"
+        r"credenciales?|claves?\s+privadas?|tokens?)\b[^.\n]*[.!]?",
     ),
 )
 
-PRIVACY_GATE_RULES: tuple[tuple[str, re.Pattern[str]], ...] = (
-    (
-        "secret_assignment",
-        re.compile(
-            r"(?im)^.*(?:api[_ -]?key|access[_ -]?token|password|private[_ -]?key)"
-            r"\s*(?::|=).*$"
-        ),
-    ),
-    ("openai_key", re.compile(r"\bsk-[A-Za-z0-9_-]{12,}\b", re.IGNORECASE)),
-    ("github_token", re.compile(r"\bgh[opusr]_[A-Za-z0-9]{20,}\b", re.IGNORECASE)),
-    (
-        "jwt",
-        re.compile(
-            r"\beyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\."
-            r"[A-Za-z0-9_-]{8,}\b"
-        ),
-    ),
-    (
-        "email",
-        re.compile(r"\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b", re.IGNORECASE),
-    ),
-    (
-        "base58_account",
-        re.compile(r"(?<![A-Za-z0-9])[1-9A-HJ-NP-Za-km-z]{32,44}(?![A-Za-z0-9])"),
-    ),
+REDACTION_RULES: tuple[tuple[str, re.Pattern[str]], ...] = tuple(
+    (name, re.compile(redaction_pattern))
+    for name, redaction_pattern, _ in PRIVACY_RULE_SPECS
+)
+PRIVACY_GATE_RULES: tuple[tuple[str, re.Pattern[str]], ...] = tuple(
+    (name, re.compile(gate_pattern)) for name, _, gate_pattern in PRIVACY_RULE_SPECS
 )
 
 
 @dataclass(frozen=True)
 class MessageRecord:
+    """One eligible public conversation message and its source provenance."""
+
     line_number: int
     timestamp: str
     session_id: str
@@ -118,6 +121,8 @@ class MessageRecord:
 
 @dataclass(frozen=True)
 class ExportedRecord:
+    """One privacy-redacted message prepared for OKF rendering."""
+
     record: MessageRecord
     entry_id: str
     title: str
@@ -126,15 +131,25 @@ class ExportedRecord:
     redactions: dict[str, int]
 
 
+@dataclass
+class ParseStats:
+    """Counts source records deliberately skipped during JSONL parsing."""
+
+    unparseable_lines: int = 0
+
+
 def _sha256_bytes(value: bytes) -> str:
+    """Return a lowercase SHA-256 digest for bytes."""
     return hashlib.sha256(value).hexdigest()
 
 
 def _sha256_text(value: str) -> str:
+    """Return a lowercase SHA-256 digest for UTF-8 text."""
     return _sha256_bytes(value.encode("utf-8"))
 
 
 def _sha256_file(path: Path) -> str:
+    """Stream a file into SHA-256 without loading it all into memory."""
     digest = hashlib.sha256()
     with path.open("rb") as handle:
         for chunk in iter(lambda: handle.read(1024 * 1024), b""):
@@ -145,6 +160,7 @@ def _sha256_file(path: Path) -> str:
 def _source_envelope_hash(
     session_id: str, line_number: int, timestamp: str, role: str, text: str
 ) -> str:
+    """Hash the canonical source envelope used as the provenance identity."""
     envelope = {
         "line_number": line_number,
         "role": role,
@@ -159,6 +175,7 @@ def _source_envelope_hash(
 
 
 def _message_text(payload: dict[str, Any]) -> str:
+    """Extract only public text blocks from a rollout message payload."""
     blocks = payload.get("content")
     if not isinstance(blocks, list):
         return ""
@@ -174,14 +191,18 @@ def _message_text(payload: dict[str, Any]) -> str:
     return "\n\n".join(texts).strip()
 
 
-def iter_message_records(source: Path) -> Iterable[MessageRecord]:
+def iter_message_records(
+    source: Path, stats: ParseStats | None = None
+) -> Iterable[MessageRecord]:
     """Yield public conversation messages from a Codex rollout JSONL file."""
+    parse_stats = stats if stats is not None else ParseStats()
     current_session_id = "unknown"
     with source.open("r", encoding="utf-8") as handle:
         for line_number, raw_line in enumerate(handle, start=1):
             try:
                 item = json.loads(raw_line)
             except json.JSONDecodeError:
+                parse_stats.unparseable_lines += 1
                 continue
             if not isinstance(item, dict):
                 continue
@@ -199,7 +220,7 @@ def iter_message_records(source: Path) -> Iterable[MessageRecord]:
             if role not in {"user", "assistant"}:
                 continue
             text = _message_text(payload)
-            if not text or INTERNAL_MESSAGE_RE.match(text):
+            if not text or INTERNAL_MESSAGE_RE.search(text):
                 continue
             timestamp = str(item.get("timestamp") or "")
             yield MessageRecord(
@@ -219,11 +240,10 @@ def redact_text(text: str, literals: Sequence[str] = ()) -> tuple[str, dict[str,
     redacted = text
     counts: Counter[str] = Counter()
     for literal in sorted({v for v in literals if v}, key=len, reverse=True):
-        count = redacted.lower().count(literal.lower())
+        redacted, count = re.subn(
+            re.escape(literal), "[REDACTED_LITERAL]", redacted, flags=re.I
+        )
         if count:
-            redacted = re.sub(
-                re.escape(literal), "[REDACTED_LITERAL]", redacted, flags=re.I
-            )
             counts["literal"] += count
     replacements = {
         "secret_assignment": "[REDACTED_SECRET_ASSIGNMENT]",
@@ -235,6 +255,10 @@ def redact_text(text: str, literals: Sequence[str] = ()) -> tuple[str, dict[str,
         "private_url_parameter": r"\1[REDACTED]",
         "user_home": "[USER_HOME]",
         "base58_account": "[REDACTED_ACCOUNT]",
+        "credential_transfer_instruction": (
+            "[SAFETY_SUMMARY: Private credentials must remain confidential and "
+            "must not be sent or shared.]"
+        ),
     }
     for name, pattern in REDACTION_RULES:
         redacted, count = pattern.subn(replacements[name], redacted)
@@ -244,6 +268,7 @@ def redact_text(text: str, literals: Sequence[str] = ()) -> tuple[str, dict[str,
 
 
 def privacy_findings(text: str) -> list[str]:
+    """Return privacy-rule names still present in published message text."""
     return [name for name, pattern in PRIVACY_GATE_RULES if pattern.search(text)]
 
 
@@ -256,6 +281,7 @@ def select_records(
     max_records: int,
     take: str,
 ) -> list[MessageRecord]:
+    """Apply role, regex, ordering, and count selection deterministically."""
     selected = [
         record
         for record in records
@@ -271,6 +297,7 @@ def select_records(
 
 
 def _safe_timestamp(value: str) -> str:
+    """Return a source timestamp or a valid UTC fallback."""
     if not value:
         return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
     return value
@@ -282,6 +309,7 @@ def _json_yaml(value: Any) -> str:
 
 
 def _render_entry(item: ExportedRecord) -> str:
+    """Render one exported record as an OKF-compatible Markdown document."""
     record = item.record
     tags = ["codex-cli", "conversation", record.role, "privacy-redacted"]
     session_ref = _sha256_text(record.session_id)[:16]
@@ -313,6 +341,7 @@ def _render_entry(item: ExportedRecord) -> str:
 
 
 def _slug(item: ExportedRecord) -> str:
+    """Build a stable chronological filename for an exported record."""
     stamp = re.sub(r"[^0-9]", "", item.record.timestamp)[:14] or "undated"
     return f"{stamp}-{item.record.role}-{item.entry_id}.md"
 
@@ -320,6 +349,7 @@ def _slug(item: ExportedRecord) -> str:
 def _build_exported(
     records: Sequence[MessageRecord], literals: Sequence[str]
 ) -> list[ExportedRecord]:
+    """Redact selected records and fail closed before any output is created."""
     exported: list[ExportedRecord] = []
     for index, record in enumerate(records, start=1):
         redacted, counts = redact_text(record.text, literals)
@@ -345,6 +375,7 @@ def _build_exported(
 
 
 def _bundle_digest(memory_dir: Path) -> str:
+    """Hash the complete ordered set of conversation-memory files."""
     digest = hashlib.sha256()
     for path in sorted(memory_dir.glob("*.md")):
         digest.update(path.name.encode("utf-8"))
@@ -354,10 +385,25 @@ def _bundle_digest(memory_dir: Path) -> str:
     return digest.hexdigest()
 
 
+def _is_adapter_bundle(path: Path) -> bool:
+    """Return whether a directory has this adapter's recognizable marker."""
+    if not path.is_dir() or path.is_symlink():
+        return False
+    manifest_path = path / "manifest.json"
+    try:
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    except (FileNotFoundError, json.JSONDecodeError, OSError):
+        return False
+    adapter = manifest.get("adapter")
+    return isinstance(adapter, str) and adapter == BUNDLE_ADAPTER
+
+
 def export_bundle(args: argparse.Namespace) -> dict[str, Any]:
+    """Export selected rollout messages into a validated OKF bundle."""
     source = args.source.resolve()
     output = args.output.resolve()
-    records = list(iter_message_records(source))
+    parse_stats = ParseStats()
+    records = list(iter_message_records(source, parse_stats))
     include = re.compile(args.include, re.IGNORECASE) if args.include else None
     exclude = re.compile(args.exclude, re.IGNORECASE) if args.exclude else None
     selected = select_records(
@@ -375,6 +421,10 @@ def export_bundle(args: argparse.Namespace) -> dict[str, Any]:
     if output.exists():
         if not args.force:
             raise FileExistsError(f"output already exists: {output} (use --force)")
+        if not _is_adapter_bundle(output):
+            raise ValueError(
+                f"refusing --force for non-{BUNDLE_ADAPTER} output: {output}"
+            )
         shutil.rmtree(output)
     memory_dir = output / "memories" / "conversation"
     memory_dir.mkdir(parents=True)
@@ -408,19 +458,20 @@ def export_bundle(args: argparse.Namespace) -> dict[str, Any]:
     )
     role_counts = Counter(item.record.role for item in exported)
     manifest = {
-        "adapter": "codex-cli-sessions-to-okf",
+        "adapter": BUNDLE_ADAPTER,
         "adapter_version": ADAPTER_VERSION,
         "generated_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
         "source": {
             "sha256": _sha256_file(source),
             "bytes": source_size,
             "conversation_messages": len(records),
+            "unparseable_lines_skipped": parse_stats.unparseable_lines,
             "path_published": False,
         },
         "selection": {
             "roles": sorted(set(args.roles)),
-            "include_regex": args.include,
-            "exclude_regex": args.exclude,
+            "include_filter_applied": bool(args.include),
+            "exclude_filter_applied": bool(args.exclude),
             "take": args.take,
             "max_records": args.max_records,
             "selected": len(exported),
@@ -464,9 +515,6 @@ def export_bundle(args: argparse.Namespace) -> dict[str, Any]:
         ],
     }
     manifest_path = output / "manifest.json"
-    manifest_path.write_text(
-        json.dumps(manifest, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
-    )
     manifest["bundle_sha256"] = _bundle_digest(memory_dir)
     manifest_path.write_text(
         json.dumps(manifest, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
@@ -480,6 +528,7 @@ FRONTMATTER_FIELD_RE = re.compile(
 
 
 def _parse_entry_for_validation(path: Path) -> dict[str, Any]:
+    """Parse the small frontmatter subset emitted by this adapter."""
     text = path.read_text(encoding="utf-8")
     if not text.startswith("---\n") or "\n---\n" not in text[4:]:
         raise ValueError(f"invalid OKF frontmatter: {path}")
@@ -526,6 +575,7 @@ STOPWORDS = {
 
 
 def _tokens(text: str) -> set[str]:
+    """Return normalized lexical tokens for deterministic recall checks."""
     return {
         token
         for token in TOKEN_RE.findall(text.casefold())
@@ -534,6 +584,7 @@ def _tokens(text: str) -> set[str]:
 
 
 def _retrieve(query: str, documents: dict[str, str]) -> str | None:
+    """Retrieve one document with a deterministic lexical-overlap score."""
     query_tokens = _tokens(query)
     if not query_tokens:
         return None
@@ -553,6 +604,7 @@ def _retrieve(query: str, documents: dict[str, str]) -> str | None:
 
 
 def _normalize_evidence(text: str) -> str:
+    """Normalize whitespace and case for answer-evidence comparisons."""
     return " ".join(text.casefold().split())
 
 
@@ -613,11 +665,13 @@ def validate_golden_recall(
 
 
 def validate_bundle(args: argparse.Namespace) -> dict[str, Any]:
+    """Validate source linkage, entry integrity, privacy, and golden recall."""
     source = args.source.resolve()
     bundle = args.bundle.resolve()
     manifest = json.loads((bundle / "manifest.json").read_text(encoding="utf-8"))
     source_digest = _sha256_file(source)
-    source_records = list(iter_message_records(source))
+    parse_stats = ParseStats()
+    source_records = list(iter_message_records(source, parse_stats))
     source_documents = {
         record.source_record_sha256: record.text for record in source_records
     }
@@ -628,15 +682,20 @@ def validate_bundle(args: argparse.Namespace) -> dict[str, Any]:
     ]
 
     failures: list[str] = []
+    content_hash_mismatches = 0
+    privacy_gate_issue_count = 0
     if source_digest != manifest["source"]["sha256"]:
         failures.append("source digest differs from manifest")
+    if parse_stats.unparseable_lines != manifest["source"].get(
+        "unparseable_lines_skipped", 0
+    ):
+        failures.append("unparseable source-line count differs from manifest")
     manifest_records = {
         row["source_record_sha256"]: row for row in manifest.get("records", [])
     }
     okf_source_hashes: set[str] = set()
     okf_documents: dict[str, str] = {}
     for entry in okf_entries:
-        published_text = Path(str(entry["_path"])).read_text(encoding="utf-8")
         source_hash = str(entry.get("source_record_sha256", ""))
         okf_source_hashes.add(source_hash)
         okf_documents[source_hash] = str(entry.get("_content", ""))
@@ -647,9 +706,20 @@ def validate_bundle(args: argparse.Namespace) -> dict[str, Any]:
         expected = str(entry.get("content_sha256", ""))
         actual = _sha256_text(str(entry.get("_content", "")))
         if actual != expected:
+            content_hash_mismatches += 1
             failures.append(f"content hash mismatch: {entry['_path']}")
-        findings = privacy_findings(published_text)
+        manifest_expected = str(
+            manifest_records.get(source_hash, {}).get("content_sha256", "")
+        )
+        if actual != manifest_expected:
+            content_hash_mismatches += 1
+            failures.append(f"manifest content hash mismatch: {entry['_path']}")
+        # The adapter controls frontmatter metadata and hashes. Scan the only
+        # user-derived published field so timestamps and digests cannot be
+        # mistaken for phone numbers.
+        findings = privacy_findings(str(entry.get("_content", "")))
         if findings:
+            privacy_gate_issue_count += len(findings)
             failures.append(
                 f"privacy gate failed for {entry['_path']}: {', '.join(findings)}"
             )
@@ -681,8 +751,8 @@ def validate_bundle(args: argparse.Namespace) -> dict[str, Any]:
         "okf_entries": len(okf_entries),
         "source_to_okf_matched": matched,
         "source_to_okf_coverage": matched / selected if selected else 0.0,
-        "content_hash_parity": not any("content hash" in item for item in failures),
-        "privacy_gate_findings": sum("privacy gate" in item for item in failures),
+        "content_hash_parity": content_hash_mismatches == 0,
+        "privacy_gate_findings": privacy_gate_issue_count,
         "golden_qa": golden_report,
         "bundle_sha256": digest,
         "failures": failures,
@@ -695,6 +765,7 @@ def validate_bundle(args: argparse.Namespace) -> dict[str, Any]:
 
 
 def build_parser() -> argparse.ArgumentParser:
+    """Build the export and validation command-line parser."""
     parser = argparse.ArgumentParser(description=__doc__)
     subparsers = parser.add_subparsers(dest="command", required=True)
 
@@ -732,6 +803,7 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def main(argv: Sequence[str] | None = None) -> int:
+    """Run the requested CLI action and return a shell-friendly exit code."""
     args = build_parser().parse_args(argv)
     try:
         if args.command == "export":

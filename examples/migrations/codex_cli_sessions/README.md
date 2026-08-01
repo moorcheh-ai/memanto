@@ -16,22 +16,26 @@ a credential, email address, JWT, or long base58 account identifier.
 `sample_okf/` was generated from a lived-in, multi-day Codex session used for a
 real software delivery workflow—not handwritten fixture data. The private raw
 rollout is not published because doing so would defeat the privacy story.
-Instead, the bundle carries cryptographic provenance:
+Instead, the bundle carries cryptographic source linkage and integrity metadata:
 
 - the manifest records the SHA-256 digest and byte size of the frozen raw
   rollout without recording its local path;
 - every OKF document carries the SHA-256 digest of its canonical source
   envelope and its privacy-redacted body;
-- the validator re-reads the private source, proves every selected source
-  record exists, verifies exact body parity, and runs the privacy gate;
+- the validator re-reads the private source, verifies every selected source
+  record exists, compares each body hash with both its frontmatter and the
+  matching manifest record, and runs the privacy gate;
 - `artifacts/roundtrip_report.json` records 100% source-to-OKF coverage, exact
   content-hash parity, and zero privacy findings;
 - five golden questions retrieve the same expected memory before and after the
   migration, with 5/5 answer-evidence and recall-parity checks passing;
 - Memanto's shipped loader maps all 14 sample OKF nodes and skips zero.
 
-The raw source remains genuinely verifiable during review or a live demo while
-the public artifact remains safe to inspect and fork.
+The raw source remains reproducibly checkable during review or a live demo while
+the public artifact remains safe to inspect and fork. The bundle is unsigned:
+its self-recorded digests detect accidental or partial changes, but establishing
+origin against a hostile rewriter requires a separately trusted digest or
+signature.
 
 ## One-command reproducibility
 
@@ -63,6 +67,10 @@ The command performs the full non-live proof:
 5. runs any `golden_questions.json` against source and OKF memories;
 6. loads and maps the bundle through Memanto's shipped OKF code;
 7. writes `roundtrip_report.json` and `memanto_dry_run_report.json`.
+
+The output path must not already exist. To rerun against an existing bundle
+created by this adapter, add `--force`; the command refuses to recursively
+remove files, symlinks, or directories without this adapter's manifest marker.
 
 For the actual CLI dry-run:
 
@@ -103,8 +111,10 @@ The source-record digest is calculated from canonical JSON containing the
 session id, JSONL line number, timestamp, role, and original text. Validation
 recomputes those digests from the raw rollout and checks that the selected set
 matches the OKF and manifest sets exactly. It then hashes each redacted Markdown
-body and compares it with the recorded digest. A modified, missing, or invented
-entry fails validation.
+body and compares it with both the entry's digest and the corresponding manifest
+record. A modified, missing, or invented entry fails validation unless an
+attacker can rewrite the entire unsigned bundle; use an externally trusted
+digest or signature when adversarial authenticity matters.
 
 The sample's five golden questions use the same deterministic lexical retriever
 against the frozen source messages and the migrated OKF bodies. Each question
@@ -132,8 +142,8 @@ and redaction counts. Both source and migration API-call counts are zero.
 
 ## Privacy model and limitations
 
-- `--include` and `--exclude` run before redaction; do not publish those private
-  selector values if they identify a person or project.
+- `--include` and `--exclude` run before redaction. Their values are never
+  persisted; the manifest records only whether each filter was applied.
 - `--redact-literal` values are applied case-insensitively and are never stored
   in the manifest.
 - Automated redaction is defense in depth, not a substitute for reviewing a

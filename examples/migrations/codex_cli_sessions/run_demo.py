@@ -6,12 +6,15 @@ from __future__ import annotations
 import argparse
 import json
 import os
+from collections.abc import Sequence
+from datetime import datetime, timezone
 from pathlib import Path
 
 from codex_to_okf import export_bundle, validate_bundle
 
 
 def _normalize_debug_env() -> None:
+    """Normalize unrelated ambient DEBUG values before importing Memanto."""
     # Some shells use DEBUG=release as a generic build marker, while Memanto
     # expects DEBUG to be boolean. Isolate the demo from that ambient convention.
     if os.environ.get("DEBUG", "").lower() not in {
@@ -29,6 +32,7 @@ def _normalize_debug_env() -> None:
 
 
 def build_parser() -> argparse.ArgumentParser:
+    """Build the one-command demo CLI parser."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("source", type=Path, help="real Codex rollout JSONL")
     parser.add_argument("--output", type=Path, default=Path("codex-okf-demo"))
@@ -36,6 +40,11 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--exclude", help="case-insensitive exclusion regex")
     parser.add_argument("--max-records", type=int, default=25)
     parser.add_argument("--take", choices=("first", "last"), default="last")
+    parser.add_argument(
+        "--force",
+        action="store_true",
+        help="replace an existing bundle created by this adapter",
+    )
     parser.add_argument(
         "--golden", type=Path, help="golden Q&A JSON tied to the selected source"
     )
@@ -48,12 +57,13 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
-def main() -> int:
+def main(argv: Sequence[str] | None = None) -> int:
+    """Run export, validation, and Memanto's pure dry-run mapping workflow."""
     _normalize_debug_env()
     from memanto.cli.migrate.mappers import map_okf
     from memanto.cli.migrate.okf_loader import load_okf_bundle
 
-    args = build_parser().parse_args()
+    args = build_parser().parse_args(argv)
     export_args = argparse.Namespace(
         source=args.source,
         output=args.output,
@@ -63,7 +73,7 @@ def main() -> int:
         max_records=args.max_records,
         take=args.take,
         redact_literal=args.redact_literal,
-        force=True,
+        force=args.force,
     )
     manifest = export_bundle(export_args)
     report_path = args.output / "roundtrip_report.json"
@@ -81,10 +91,13 @@ def main() -> int:
     loaded = load_okf_bundle(args.output)
     mapped = map_okf(loaded)
     dry_run = {
+        "command": f"memanto migrate okf {args.output.as_posix()} --dry-run",
+        "executed_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
         "okf_nodes": len(loaded["memories"]),
         "mapped_memories": len(mapped),
         "skipped": len(loaded["memories"]) - len(mapped),
         "writes_performed": 0,
+        "api_key_required": False,
     }
     (args.output / "memanto_dry_run_report.json").write_text(
         json.dumps(dry_run, indent=2) + "\n", encoding="utf-8"
