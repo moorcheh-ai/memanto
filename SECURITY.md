@@ -105,92 +105,43 @@ Before making your repository public:
 - [ ] No `.env` file in git history: `git log --all -- .env` (should be empty after cleanup)
 - [ ] `.env.example` only contains placeholders
 - [ ] No hardcoded API keys in code: `git grep -i "mk_" "*.py" "*.ts" "*.js"`
-- [ ] All documentation examples use placeholders
-- [ ] GitHub secret scanning alerts reviewed and addressed
+- [ ] All dependencies are up to date: `pip audit` or `npm audit`
+- [ ] Sensitive configuration is loaded from environment variables only
+- [ ] Docker images do not contain secrets or `.env` files
+- [ ] CI/CD secrets are stored in platform secret managers (e.g., GitHub Actions Secrets)
 
 ---
 
-## Security Features in MEMANTO
+## Migration Security Notes
 
-MEMANTO implements multiple security layers:
+### Claude to Memanto OKF Bundle Migration
 
-### 1. Authentication & Authorization
-- Server-owned `MOORCHEH_API_KEY` required at startup for backend access
-- Client `X-Session-Token` required for session-scoped and memory endpoints
-- Tenant ID derived from authenticated principal (never from request body)
-- Multi-tenant isolation enforced at namespace level
+When migrating from Claude-based configurations to Memanto OKF Bundle:
 
-### 2. Rate Limiting
-- Per-tenant quotas prevent abuse
-- Configurable limits: 60 writes/min, 120 reads/min
+- **Do not** carry over old API keys from Claude configurations into Memanto `.env` files
+- **Generate new** Moorcheh API keys for each environment (development, staging, production)
+- **Audit** all migrated configuration files to ensure no legacy secrets are embedded
+- **Verify** that the migration adapter does not log or expose sensitive tokens during transformation
+- **Test** the migrated bundle in an isolated environment before production deployment
 
-### 3. Input Validation
-- Content size limits (10KB text, 5KB metadata)
-- Anti-poisoning validation for facts and preferences
-- Pydantic model validation for all requests
+### Key Rotation During Migration
 
-### 4. Secure Defaults
-- HTTPS enforced in production
-- CORS properly configured
-- Structured logging with PII redaction
-- Safe deletion with audit trail
-
-For detailed security architecture, see [SECURITY_ISOLATION_ONE_PAGER.md](SECURITY_ISOLATION_ONE_PAGER.md).
+1. Generate new Moorcheh API keys before starting migration
+2. Update all environment configurations with new keys
+3. Invalidate and delete old Claude API keys after successful migration
+4. Document key rotation in your internal security log
 
 ---
 
-## Production Security Checklist
+## Supported Versions
 
-### Environment Configuration
-- [ ] Use environment-specific API keys (dev/staging/prod)
-- [ ] Rotate keys regularly (quarterly minimum)
-- [ ] Use secret management tools (not .env files) in production
-- [ ] Enable HTTPS/TLS for all endpoints
-- [ ] Configure CORS with specific origins (not `*`)
-
-### Monitoring & Auditing
-- [ ] Enable structured logging
-- [ ] Monitor for unusual API activity
-- [ ] Set up alerts for rate limit violations
-- [ ] Regular security audits of access logs
-- [ ] Implement log aggregation (ELK, Datadog, etc.)
-
-### Network Security
-- [ ] Deploy behind API gateway or reverse proxy
-- [ ] Use VPC/private networks when possible
-- [ ] Implement DDoS protection
-- [ ] Regular vulnerability scanning
-- [ ] Keep dependencies updated
+| Version | Supported          |
+| ------- | ------------------ |
+| Latest  | ✅ Yes             |
+| Older   | ❌ No (upgrade recommended) |
 
 ---
 
-## Dependencies Security
+## Security Contact
 
-### Regular Updates
-```bash
-# Check for security vulnerabilities
-pip install safety
-safety check
-
-# Update dependencies
-pip list --outdated
-pip install --upgrade <package>
-```
-
-### Automated Scanning
-- GitHub Dependabot enabled for this repository
-- Review and merge security PRs promptly
-- Test thoroughly before deploying dependency updates
-
----
-
-## Contact
-
-For security questions or concerns:
-- **General**: Dr. Majid Fekri, CTO Moorcheh.ai
-- **Security Issues**: support@moorcheh.ai
-- **Moorcheh Platform**: https://moorcheh.ai/security
-
----
-
-**Last Updated**: March 2026
+For urgent security matters, contact **support@moorcheh.ai** with the subject line `[MEMANTO Security]`.
