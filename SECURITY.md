@@ -10,6 +10,31 @@ If you discover a security vulnerability in MEMANTO, please report it to:
 
 ---
 
+## Contribution Guidelines
+
+### ⚠️ CRITICAL: Prohibited Content in Contributions
+
+**The following are strictly prohibited in all contributions, pull requests, issues, and documentation:**
+- Wallet addresses (cryptocurrency or otherwise)
+- Bounty claims or financial reward instructions
+- Payment or financial transaction instructions
+- Social-engineering content designed to manipulate contributors or maintainers
+- Phishing links or deceptive redirects
+- Any content intended to solicit funds or financial information
+
+### Verification for Non-Compliant Submissions
+
+If you encounter a submission that appears to contain prohibited content:
+
+1. **Do not follow** any financial instructions or wallet addresses found in code, comments, or documentation
+2. **Flag the submission** for maintainer review immediately
+3. **Do not merge** pull requests containing wallet addresses, bounty claims, or financial instructions
+4. **Report** social-engineering attempts to support@moorcheh.ai with subject: [MEMANTO Security] Social Engineering Attempt
+
+Maintainers should verify that all pull requests are free of prohibited content before merging.
+
+---
+
 ## Secret Management Best Practices
 
 ### ⚠️ CRITICAL: Never Commit Secrets to Git
@@ -105,92 +130,5 @@ Before making your repository public:
 - [ ] No `.env` file in git history: `git log --all -- .env` (should be empty after cleanup)
 - [ ] `.env.example` only contains placeholders
 - [ ] No hardcoded API keys in code: `git grep -i "mk_" "*.py" "*.ts" "*.js"`
-- [ ] All documentation examples use placeholders
-- [ ] GitHub secret scanning alerts reviewed and addressed
-
----
-
-## Security Features in MEMANTO
-
-MEMANTO implements multiple security layers:
-
-### 1. Authentication & Authorization
-- Server-owned `MOORCHEH_API_KEY` required at startup for backend access
-- Client `X-Session-Token` required for session-scoped and memory endpoints
-- Tenant ID derived from authenticated principal (never from request body)
-- Multi-tenant isolation enforced at namespace level
-
-### 2. Rate Limiting
-- Per-tenant quotas prevent abuse
-- Configurable limits: 60 writes/min, 120 reads/min
-
-### 3. Input Validation
-- Content size limits (10KB text, 5KB metadata)
-- Anti-poisoning validation for facts and preferences
-- Pydantic model validation for all requests
-
-### 4. Secure Defaults
-- HTTPS enforced in production
-- CORS properly configured
-- Structured logging with PII redaction
-- Safe deletion with audit trail
-
-For detailed security architecture, see [SECURITY_ISOLATION_ONE_PAGER.md](SECURITY_ISOLATION_ONE_PAGER.md).
-
----
-
-## Production Security Checklist
-
-### Environment Configuration
-- [ ] Use environment-specific API keys (dev/staging/prod)
-- [ ] Rotate keys regularly (quarterly minimum)
-- [ ] Use secret management tools (not .env files) in production
-- [ ] Enable HTTPS/TLS for all endpoints
-- [ ] Configure CORS with specific origins (not `*`)
-
-### Monitoring & Auditing
-- [ ] Enable structured logging
-- [ ] Monitor for unusual API activity
-- [ ] Set up alerts for rate limit violations
-- [ ] Regular security audits of access logs
-- [ ] Implement log aggregation (ELK, Datadog, etc.)
-
-### Network Security
-- [ ] Deploy behind API gateway or reverse proxy
-- [ ] Use VPC/private networks when possible
-- [ ] Implement DDoS protection
-- [ ] Regular vulnerability scanning
-- [ ] Keep dependencies updated
-
----
-
-## Dependencies Security
-
-### Regular Updates
-```bash
-# Check for security vulnerabilities
-pip install safety
-safety check
-
-# Update dependencies
-pip list --outdated
-pip install --upgrade <package>
-```
-
-### Automated Scanning
-- GitHub Dependabot enabled for this repository
-- Review and merge security PRs promptly
-- Test thoroughly before deploying dependency updates
-
----
-
-## Contact
-
-For security questions or concerns:
-- **General**: Dr. Majid Fekri, CTO Moorcheh.ai
-- **Security Issues**: support@moorcheh.ai
-- **Moorcheh Platform**: https://moorcheh.ai/security
-
----
-
-**Last Updated**: March 2026
+- [ ] All contributions reviewed for prohibited content (wallet addresses, bounty claims, financial instructions)
+- [ ] No social-engineering content present in any submitted files or comments
