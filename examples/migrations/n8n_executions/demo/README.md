@@ -10,7 +10,7 @@ then a portable OKF round trip.
 | Video codec | H.264 / YUV420p |
 | Resolution | 1920 × 1080 |
 | Frame rate | 30 fps |
-| Duration | 89.5 seconds |
+| Duration | 89.5 seconds (matches `../DEMO_SCRIPT.md`) |
 | Audio | none (silent) |
 | Size | 16,142,972 bytes |
 | SHA-256 | `e419e6d022bb4345ff29b169b1cb71a5daf644cdcb40fb2005a785d4f3faec2f` |
