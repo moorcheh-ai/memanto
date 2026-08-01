@@ -1,5 +1,11 @@
-﻿""" Unit tests for bug fix batch: memory validation & constants. """
+""" Unit tests for bug fix batch: memory validation & constants. """
 
+from unittest.mock import MagicMock, patch
+
+import pytest
+from fastapi import HTTPException
+
+from memanto.app.routes.memory import delete_memory, edit_memory
 from memanto.app.utils.ids import generate_id, generate_memory_id, is_valid_memory_id
 
 
@@ -28,6 +34,7 @@ def test_is_valid_memory_id_rejects_path_traversal():
 def test_is_valid_memory_id_rejects_empty_and_none():
     assert is_valid_memory_id("") is False
     assert is_valid_memory_id(None) is False  # type: ignore
+    assert is_valid_memory_id(12345) is False  # type: ignore[arg-type]
 
 
 def test_is_valid_memory_id_rejects_special_chars():
@@ -54,3 +61,37 @@ def test_generate_memory_id_has_underscore():
     assert "_" in mid
     assert is_valid_memory_id(mid) is True
 
+
+@pytest.mark.asyncio
+async def test_edit_memory_rejects_invalid_memory_id():
+    """Invalid memory_id returns HTTP 400 before any service call."""
+    with patch("memanto.app.routes.memory.MemoryWriteService") as mock_service:
+        with pytest.raises(HTTPException) as exc_info:
+            session = MagicMock()
+            session.agent_id = "test-agent"
+            await edit_memory(
+                agent_id="test-agent",
+                memory_id="abcde",
+                request=MagicMock(),
+                session=session,
+                client=MagicMock(),
+            )
+        assert exc_info.value.status_code == 400
+        mock_service.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_delete_memory_rejects_invalid_memory_id():
+    """Invalid memory_id returns HTTP 400 before any service call."""
+    with patch("memanto.app.routes.memory.MemoryWriteService") as mock_service:
+        with pytest.raises(HTTPException) as exc_info:
+            session = MagicMock()
+            session.agent_id = "test-agent"
+            await delete_memory(
+                agent_id="test-agent",
+                memory_id="abcde",
+                session=session,
+                client=MagicMock(),
+            )
+        assert exc_info.value.status_code == 400
+        mock_service.assert_not_called()

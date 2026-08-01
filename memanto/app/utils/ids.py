@@ -37,7 +37,9 @@ def is_valid_memory_id(memory_id: str) -> bool:
     Requires minimum length of 5 characters.
     Must contain at least one underscore (to separate prefix from random part).
     """
-    if not memory_id or len(memory_id) < 5:
+    if not isinstance(memory_id, str) or not memory_id:
+        return False
+    if len(memory_id) < 5:
         return False
     if "_" not in memory_id:
         return False
