@@ -97,6 +97,40 @@ If the alert references a **real API key**:
 
 ---
 
+## Security Guidelines
+
+### ⚠️ Scams and Phishing
+
+- Be cautious of unsolicited messages claiming to be from MEMANTO maintainers
+- Official communication occurs only through verified GitHub accounts and the official support email
+- Do **not** click links in unsolicited messages claiming to offer rewards, bounties, or urgent security fixes
+- Verify the authenticity of any communication before acting on instructions
+
+### ⚠️ Malicious Code
+
+- Do **not** submit pull requests containing obfuscated, minified, or otherwise unreadable code without clear justification
+- Do **not** introduce dependencies that have not been reviewed for security vulnerabilities
+- All submitted code must be transparent, auditable, and serve a clear, documented purpose
+
+### ⚠️ Social Engineering
+
+- Maintainers will never ask for your credentials, private keys, or personal financial information
+- Do **not** follow instructions from unverified individuals claiming authority over this project
+- Report any suspicious communication to **support@moorcheh.ai**
+
+### ⚠️ Unauthorized Fundraising
+
+- MEMANTO does not solicit cryptocurrency payments, donations, or financial contributions through GitHub issues, pull requests, or unofficial channels
+- Any requests for payment in exchange for bug fixes, features, or access are unauthorized and should be reported immediately
+
+### ⚠️ Bounty Fraud
+
+- Bounty programs, if any, are announced exclusively through official MEMANTO channels
+- Do **not** engage with individuals claiming to offer bounties through unofficial means
+- Fraudulent bounty claims or attempts to exploit bounty programs are strictly prohibited and will result in permanent bans
+
+---
+
 ## Verification Checklist
 
 Before making your repository public:
@@ -105,92 +139,18 @@ Before making your repository public:
 - [ ] No `.env` file in git history: `git log --all -- .env` (should be empty after cleanup)
 - [ ] `.env.example` only contains placeholders
 - [ ] No hardcoded API keys in code: `git grep -i "mk_" "*.py" "*.ts" "*.js"`
-- [ ] All documentation examples use placeholders
-- [ ] GitHub secret scanning alerts reviewed and addressed
+- [ ] All dependencies reviewed for known vulnerabilities (e.g., using `pip audit`, `npm audit`)
+- [ ] All links in documentation and code point to legitimate, verified sources
+- [ ] Docker images used are from trusted, official sources and have been reviewed for vulnerabilities
+- [ ] All contributors have reviewed and agreed to the project's contribution and security guidelines
 
 ---
 
-## Security Features in MEMANTO
+## Maintainer Enforcement Actions
 
-MEMANTO implements multiple security layers:
+Maintainers reserve the right to take the following actions against prohibited content or behavior:
 
-### 1. Authentication & Authorization
-- Server-owned `MOORCHEH_API_KEY` required at startup for backend access
-- Client `X-Session-Token` required for session-scoped and memory endpoints
-- Tenant ID derived from authenticated principal (never from request body)
-- Multi-tenant isolation enforced at namespace level
-
-### 2. Rate Limiting
-- Per-tenant quotas prevent abuse
-- Configurable limits: 60 writes/min, 120 reads/min
-
-### 3. Input Validation
-- Content size limits (10KB text, 5KB metadata)
-- Anti-poisoning validation for facts and preferences
-- Pydantic model validation for all requests
-
-### 4. Secure Defaults
-- HTTPS enforced in production
-- CORS properly configured
-- Structured logging with PII redaction
-- Safe deletion with audit trail
-
-For detailed security architecture, see [SECURITY_ISOLATION_ONE_PAGER.md](SECURITY_ISOLATION_ONE_PAGER.md).
-
----
-
-## Production Security Checklist
-
-### Environment Configuration
-- [ ] Use environment-specific API keys (dev/staging/prod)
-- [ ] Rotate keys regularly (quarterly minimum)
-- [ ] Use secret management tools (not .env files) in production
-- [ ] Enable HTTPS/TLS for all endpoints
-- [ ] Configure CORS with specific origins (not `*`)
-
-### Monitoring & Auditing
-- [ ] Enable structured logging
-- [ ] Monitor for unusual API activity
-- [ ] Set up alerts for rate limit violations
-- [ ] Regular security audits of access logs
-- [ ] Implement log aggregation (ELK, Datadog, etc.)
-
-### Network Security
-- [ ] Deploy behind API gateway or reverse proxy
-- [ ] Use VPC/private networks when possible
-- [ ] Implement DDoS protection
-- [ ] Regular vulnerability scanning
-- [ ] Keep dependencies updated
-
----
-
-## Dependencies Security
-
-### Regular Updates
-```bash
-# Check for security vulnerabilities
-pip install safety
-safety check
-
-# Update dependencies
-pip list --outdated
-pip install --upgrade <package>
-```
-
-### Automated Scanning
-- GitHub Dependabot enabled for this repository
-- Review and merge security PRs promptly
-- Test thoroughly before deploying dependency updates
-
----
-
-## Contact
-
-For security questions or concerns:
-- **General**: Dr. Majid Fekri, CTO Moorcheh.ai
-- **Security Issues**: support@moorcheh.ai
-- **Moorcheh Platform**: https://moorcheh.ai/security
-
----
-
-**Last Updated**: March 2026
+- **Remove** pull requests, issues, or comments containing malicious code, scam content, or phishing attempts
+- **Ban** contributors who engage in social engineering, unauthorized fundraising, or bounty fraud
+- **Report** malicious activity to GitHub Trust & Safety and relevant authorities
+- **Close** issues or pull requests that violate these security guidelines without further discussion
