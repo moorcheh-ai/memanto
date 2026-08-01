@@ -147,7 +147,25 @@ class IdempotencyHandler:
             # Return cached response
             return record.response
 
-        return None
+    @staticmethod
+    def reserve_or_get_idempotent_response(
+        idempotency_key: str | None,
+        memory_id: str = "",
+        response: dict[str, Any] | None = None,
+        ttl_seconds: int = 86400,
+    ) -> tuple[bool, dict[str, Any] | None]:
+        """Atomic reservation handler for production write idempotency"""
+        if not idempotency_key:
+            return True, None
+
+        response_dict = response if response is not None else {}
+        is_owner, record = idempotency_store.reserve_or_get(
+            idempotency_key=idempotency_key,
+            memory_id=memory_id,
+            response=response_dict,
+            ttl_seconds=ttl_seconds,
+        )
+        return is_owner, record.response
 
     @staticmethod
     def store_idempotent_response(
@@ -156,7 +174,7 @@ class IdempotencyHandler:
         response: dict[str, Any],
         ttl_seconds: int = 86400,
     ):
-        """Store response for idempotency"""
+        """Store response for idempotency thread-safely"""
         if not idempotency_key:
             return
 
@@ -193,7 +211,7 @@ class IdempotencyHandler:
 
 
 def handle_write_idempotency(idempotency_key: str | None) -> dict[str, Any] | None:
-    """Handle idempotency for write operations"""
+    """Handle idempotency for write operations thread-safely"""
     if not idempotency_key:
         return None
 
@@ -212,7 +230,7 @@ def handle_write_idempotency(idempotency_key: str | None) -> dict[str, Any] | No
 def store_write_idempotency(
     idempotency_key: str | None, memory_id: str, response: dict[str, Any]
 ):
-    """Store write operation for idempotency"""
+    """Store write operation for idempotency thread-safely"""
     if idempotency_key:
         IdempotencyHandler.store_idempotent_response(
             idempotency_key=idempotency_key, memory_id=memory_id, response=response
