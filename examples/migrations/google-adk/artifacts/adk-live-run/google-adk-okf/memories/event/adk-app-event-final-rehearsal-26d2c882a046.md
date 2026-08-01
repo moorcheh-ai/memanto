@@ -2,14 +2,14 @@
 {
   "description": "Beacon's final rehearsal succeeded on July 24, 2026. The pg_trgm preflight passed, migration took 3 minutes 39 seconds, canary errors were 0.3 percent, and p95 latency was 181 ms.",
   "generated": {
-    "at": "2026-08-01T09:43:04.409881Z",
+    "at": "2026-08-01T10:09:38.571652Z",
     "by": "memanto-google-adk-okf/1.0.0"
   },
-  "resource": "google-adk://sqlite/9d4e01eee56aefea/atlas-release-copilot/app/event.final_rehearsal",
+  "resource": "google-adk://sqlite/ab81135ad9829f36/atlas-release-copilot/app/event.final_rehearsal",
   "sources": [
     {
       "id": "adk-app-event-final-rehearsal-26d2c882a046",
-      "resource": "google-adk://sqlite/9d4e01eee56aefea/atlas-release-copilot/app/event.final_rehearsal",
+      "resource": "google-adk://sqlite/ab81135ad9829f36/atlas-release-copilot/app/event.final_rehearsal",
       "type": "google-adk-sqlite-state"
     }
   ],

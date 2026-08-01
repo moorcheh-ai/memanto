@@ -130,8 +130,10 @@ This version is tested against the JSON-backed Google ADK `2.6.0`
 `SqliteSessionService` schema (`app_states`, `user_states`, `sessions`, and
 `events`). It validates every required table and column before reading. A
 legacy SQLAlchemy/pickle database fails with an explicit instruction to run
-ADK's official session migration tooling; it is never guessed at or partially
-converted.
+ADK's documented `adk migrate session --source_db_url=... --dest_db_url=...`
+command; it is never guessed at or partially converted. The adapter hashes the
+database before and after the read and aborts if a concurrent writer changed it,
+so the published digest cannot describe a different SQLite state.
 
 Output replacement is opt-in with `--force` and uses a sibling staging
 directory. A failed build leaves an existing bundle intact. Snapshot replay is
@@ -145,6 +147,12 @@ and the result of Memanto's real OKF loader/mapper.
 - Nested objects are kept intact as one concept unless they explicitly expose
   `content`, `title`, `tags`, or `confidence` fields.
 - Temporary `temp:` state is never persisted by ADK and cannot be migrated.
+- A state key deleted before capture has no current memory and no standalone
+  `archive/state-history/` document. Its retained `stateDelta` events remain in
+  `source/google-adk-sqlite-snapshot.json`, which is the complete replay source.
+- Credential values replaced solely by `<redacted>` remain provable in the
+  source snapshot but are counted as skipped instead of becoming empty recall
+  memories.
 - The OKF importer has no provider savings report, and SQLite stores no token,
   latency, or billing baseline. The migration report deliberately claims no
   synthetic savings.

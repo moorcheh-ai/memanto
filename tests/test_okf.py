@@ -50,6 +50,7 @@ def test_auto_split_layout(tmp_path):
 
     # Small type -> file per memory (+ index); large type -> stacked file.
     assert (base / "index.md").exists()
+    assert "Z\n---" in (base / "index.md").read_text(encoding="utf-8")
     assert (memories / "index.md").exists()
     assert (memories / "fact" / "postgres-is-the-db.md").exists()
     assert (memories / "fact" / "index.md").exists()
@@ -93,6 +94,7 @@ def test_context_sections_and_import_scope(tmp_path):
     export = load_okf_bundle(base)
     assert len(export["memories"]) == 1
     assert export["memories"][0]["title"] == "A fact"
+    assert "\\" not in export["memories"][0]["source_path"]
 
 
 def test_memanto_round_trip_preserves_extras(tmp_path):

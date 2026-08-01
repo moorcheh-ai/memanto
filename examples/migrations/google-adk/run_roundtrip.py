@@ -24,6 +24,7 @@ HERE = Path(__file__).resolve().parent
 DEFAULT_BUNDLE = HERE / "artifacts" / "adk-live-run" / "google-adk-okf"
 DEFAULT_ARTIFACTS = HERE / "artifacts" / "adk-live-run"
 ANSI_RE = re.compile(r"\x1b\[[0-?]*[ -/]*[@-~]")
+COMMAND_TIMEOUT_SECONDS = 180
 
 
 def _write_json(path: Path, value: Any) -> None:
@@ -42,6 +43,91 @@ def _normalize_markdown_tree(root: Path) -> None:
             "\n".join(line.rstrip() for line in lines).rstrip() + "\n",
             encoding="utf-8",
         )
+
+
+def _repair_export_context(root: Path, source_bundle: Path, agent_id: str) -> None:
+    """Keep audit links resolvable and account for ADK-to-summary grouping."""
+    source_archive = source_bundle / "archive"
+    export_archive = root / "archive"
+    if source_archive.is_dir():
+        shutil.copytree(source_archive, export_archive, dirs_exist_ok=True)
+
+    for section in ("sessions", "daily-summaries"):
+        for path in (root / section).glob("*.md"):
+            value = path.read_text(encoding="utf-8")
+            path.write_text(
+                value.replace("](../../archive/", "](../archive/"),
+                encoding="utf-8",
+            )
+
+    snapshot = adapter.load_snapshot(
+        source_bundle / "source" / "google-adk-sqlite-snapshot.json"
+    )
+    summary_files = sorted((root / "sessions").glob("*_summary.md"))
+    summaries_by_date: dict[str, list[Path]] = {}
+    for path in summary_files:
+        match = re.search(r"_(\d{4}-\d{2}-\d{2})_.*_summary\.md$", path.name)
+        if match:
+            summaries_by_date.setdefault(match.group(1), []).append(path)
+
+    rows = []
+    mapped_summary_names: set[str] = set()
+    for session in snapshot.get("sessions", []):
+        events = session.get("events") or []
+        timestamp = next(
+            (event.get("timestamp") for event in events if event.get("timestamp")),
+            session.get("create_time"),
+        )
+        source_date = str(timestamp or "unknown")[:10]
+        matched = summaries_by_date.get(source_date, [])
+        for path in matched:
+            mapped_summary_names.add(path.name)
+        links = (
+            ", ".join(f"[{path.name}](sessions/{path.name})" for path in matched)
+            or "No date-grouped summary emitted"
+        )
+        rows.append(
+            f"| `{session.get('session_id', 'unknown')}` | `{source_date}` | {links} |"
+        )
+
+    unmatched = [
+        path for path in summary_files if path.name not in mapped_summary_names
+    ]
+    mapping_lines = [
+        "# Source-session accounting",
+        "",
+        f"The source bundle contains **{len(snapshot.get('sessions', []))} Google ADK "
+        "sessions**. Memanto's OKF export contains "
+        f"**{len(summary_files)} date-grouped session summaries** for agent "
+        f"`{agent_id}`. These are derived activity views, not a one-to-one rewrite "
+        "of source session identifiers; `session_id=unknown` in their filenames is "
+        "therefore not presented as source identity.",
+        "",
+        "| Google ADK source session | Persisted event date (UTC) | Memanto derived summary |",
+        "|---|---|---|",
+        *rows,
+    ]
+    if unmatched:
+        mapping_lines.extend(
+            [
+                "",
+                "Derived summaries without a same-date source session:",
+                *[f"- [{path.name}](sessions/{path.name})" for path in unmatched],
+            ]
+        )
+    mapping_lines.append("")
+    (root / "SOURCE_SESSION_MAPPING.md").write_text(
+        "\n".join(mapping_lines), encoding="utf-8"
+    )
+
+    index_path = root / "index.md"
+    index = index_path.read_text(encoding="utf-8").rstrip()
+    index_path.write_text(
+        index
+        + "\n- [Source-session accounting](SOURCE_SESSION_MAPPING.md) — ADK source "
+        "sessions mapped to Memanto's date-grouped summaries\n",
+        encoding="utf-8",
+    )
 
 
 def _redact_secret_text(value: str, env: dict[str, str]) -> str:
@@ -70,21 +156,30 @@ def _run(
     allow_failure: bool = False,
 ) -> dict[str, Any]:
     command = [str(executable), *args]
-    result = subprocess.run(
-        command,
-        cwd=cwd,
-        env=env,
-        text=True,
-        capture_output=True,
-        check=False,
-    )
+    display_command = _redact_secret_text("memanto " + " ".join(args), env)
+    try:
+        result = subprocess.run(
+            command,
+            cwd=cwd,
+            env=env,
+            text=True,
+            capture_output=True,
+            check=False,
+            timeout=COMMAND_TIMEOUT_SECONDS,
+        )
+    except subprocess.TimeoutExpired as exc:
+        partial = str(exc.stdout or "") + str(exc.stderr or "")
+        partial = _redact_secret_text(ANSI_RE.sub("", partial), env)
+        raise adapter.AdapterError(
+            f"Command timed out after {COMMAND_TIMEOUT_SECONDS}s "
+            f"({display_command}): {partial[-800:]}"
+        ) from exc
     output = _redact_secret_text(
         ANSI_RE.sub(
             "", result.stdout + ("\n" + result.stderr if result.stderr else "")
         ),
         env,
     )
-    display_command = _redact_secret_text("memanto " + " ".join(args), env)
     record = {
         "command": display_command,
         "returncode": result.returncode,
@@ -140,6 +235,10 @@ def main(argv: list[str] | None = None) -> int:
         "google-adk-okf-%Y%m%d%H%M%S"
     )
     repo_root = HERE.parents[2]
+    try:
+        bundle_argument = bundle.relative_to(repo_root).as_posix()
+    except ValueError:
+        bundle_argument = str(bundle)
     executable = _executable()
     env = {**os.environ, "NO_COLOR": "1", "TERM": "dumb"}
     records = []
@@ -174,7 +273,7 @@ def main(argv: list[str] | None = None) -> int:
             records.append(
                 _run(
                     executable,
-                    ["migrate", "okf", str(bundle), "--agent", agent_id],
+                    ["migrate", "okf", bundle_argument, "--agent", agent_id],
                     cwd=repo_root,
                     env=env,
                 )
@@ -251,8 +350,8 @@ def main(argv: list[str] | None = None) -> int:
         if export_dir.exists():
             shutil.rmtree(export_dir)
         shutil.copytree(cached_export_dir, export_dir)
+        _repair_export_context(export_dir, bundle, agent_id)
         _normalize_markdown_tree(export_dir)
-        average = sum(item["score"] for item in recall_results) / len(recall_results)
         try:
             bundle_label = bundle.relative_to(artifacts).as_posix()
         except ValueError:
@@ -269,7 +368,7 @@ def main(argv: list[str] | None = None) -> int:
             "exported_via": "memanto memory export --okf",
             "questions": len(recall_results),
             "passed": sum(item["score"] == 1.0 for item in recall_results),
-            "average_score": round(average, 4),
+            "average_score": round(recall_average, 4),
             "results": recall_results,
             "commands": [
                 {

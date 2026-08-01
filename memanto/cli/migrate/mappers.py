@@ -35,7 +35,7 @@ from collections.abc import Callable
 from datetime import datetime, timezone
 from typing import Any
 
-from memanto.app.constants import VALID_MEMORY_TYPES
+from memanto.app.constants import VALID_MEMORY_TYPES, VALID_SOURCE_TYPES
 
 # Mem0 ships category labels per memory. Map the common ones to Memanto's
 # typed primitives; everything else falls through to None (auto-classify).
@@ -454,8 +454,7 @@ def map_okf(export: dict[str, Any]) -> list[dict[str, Any]]:
         raw_source = x_memanto.get("source")
         source = (
             raw_source
-            if isinstance(raw_source, str)
-            and raw_source in {"user", "agent", "tool", "system"}
+            if isinstance(raw_source, str) and raw_source in VALID_SOURCE_TYPES
             else "tool"
         )
         created_at = _parse_dt(entry.get("timestamp"))

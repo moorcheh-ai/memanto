@@ -8,9 +8,9 @@ tags:
 - source:google-adk
 - type:instruction
 timestamp: '2026-07-08T15:20:02+00:00'
-resource: google-adk://sqlite/9d4e01eee56aefea/atlas-release-copilot/app/instruction.deployment_calendar
+resource: google-adk://sqlite/ab81135ad9829f36/atlas-release-copilot/app/instruction.deployment_calendar
 x_memanto:
-  id: 4da325ea-0de8-4cbd-ad4f-205f61ca5794
+  id: 5907d32a-6c4f-41fe-be75-d290c7af4cb2
   confidence: 0.9
   provenance: imported
   source: tool
@@ -30,10 +30,10 @@ Beacon production deployments never occur on Fridays.
 
 ---
 [Supporting data]
-- OKF source: memories\instruction\adk-app-instruction-deployment-calendar-33a89d54a8ea.md
-- OKF resource: google-adk://sqlite/9d4e01eee56aefea/atlas-release-copilot/app/instruction.deployment_calendar
+- OKF source: memories/instruction/adk-app-instruction-deployment-calendar-33a89d54a8ea.md
+- OKF resource: google-adk://sqlite/ab81135ad9829f36/atlas-release-copilot/app/instruction.deployment_calendar
 - OKF original source: google-adk
-- OKF generated: at=2026-08-01T09:43:04.409881Z; by=memanto-google-adk-okf/1.0.0
-- OKF sources: {'id': 'adk-app-instruction-deployment-calendar-33a89d54a8ea', 'resource': 'google-adk://sqlite/9d4e01eee56aefea/atlas-release-copilot/app/instruction.deployment_calendar', 'type': 'google-adk-sqli...
+- OKF generated: at=2026-08-01T10:09:38.571652Z; by=memanto-google-adk-okf/1.0.0
+- OKF sources: {'id': 'adk-app-instruction-deployment-calendar-33a89d54a8ea', 'resource': 'google-adk://sqlite/ab81135ad9829f36/atlas-release-copilot/app/instruction.deployment_calendar', 'type': 'google-adk-sqli...
 - OKF status: stable
 - OKF x_google_adk: app_name=atlas-release-copilot; distinct_values=1; scope=app; state_key=instruction.deployment_calendar; state_updates=1

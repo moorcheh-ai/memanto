@@ -212,7 +212,9 @@ def validate_source_schema(connection: sqlite3.Connection) -> dict[str, list[str
     if missing_tables:
         raise AdapterError(
             "Not a current Google ADK SqliteSessionService database; missing "
-            f"table(s): {', '.join(missing_tables)}"
+            f"table(s): {', '.join(missing_tables)}. Migrate it with "
+            "`adk migrate session --source_db_url=<old-url> "
+            "--dest_db_url=<new-url>`, then retry."
         )
 
     schema: dict[str, list[str]] = {}
@@ -227,8 +229,9 @@ def validate_source_schema(connection: sqlite3.Connection) -> dict[str, list[str
         raise AdapterError(
             "The database uses an unsupported or legacy ADK schema (missing "
             + "; ".join(mismatches)
-            + "). Migrate it with Google ADK's "
-            "google.adk.sessions.migration tooling, then retry."
+            + "). Migrate it with Google ADK's documented command "
+            "`adk migrate session --source_db_url=<old-url> "
+            "--dest_db_url=<new-url>`, then retry."
         )
     return schema
 
@@ -389,6 +392,14 @@ def snapshot_database(
                     "events": events,
                 }
             )
+
+    captured_database_sha256 = sha256_file(path)
+    if captured_database_sha256 != database_sha256:
+        raise AdapterError(
+            "The Google ADK SQLite database changed during capture. Stop writers "
+            "or take a stable database copy, then retry so the published digest "
+            "matches the captured rows."
+        )
 
     if not app_rows and not user_rows and not sessions:
         scope = ", ".join(
@@ -569,6 +580,23 @@ def _content_from_value(
     return title, canonical_json(value, pretty=True), [], None
 
 
+def _is_redacted_only(value: Any) -> bool:
+    """Return true when a state value contains no information beyond redaction."""
+    if isinstance(value, str):
+        return bool(
+            re.fullmatch(
+                r"<redacted(?:\s+sha256:[0-9a-f]+)?>",
+                value.strip(),
+                flags=re.IGNORECASE,
+            )
+        )
+    if isinstance(value, dict):
+        return bool(value) and all(_is_redacted_only(item) for item in value.values())
+    if isinstance(value, list):
+        return bool(value) and all(_is_redacted_only(item) for item in value)
+    return False
+
+
 def _concept_id(target: tuple[str, str, str | None, str | None, str]) -> str:
     digest = sha256_bytes(canonical_json(target).encode("utf-8"))[:12]
     return f"adk-{target[0]}-{slugify(target[-1], limit=38)}-{digest}"
@@ -607,6 +635,10 @@ def build_concepts(snapshot: dict[str, Any]) -> list[dict[str, Any]]:
     ) -> None:
         for key in sorted(state):
             value = state[key]
+            if _is_redacted_only(value):
+                # The source snapshot still proves that a value existed and was
+                # redacted, but an empty marker is not useful recall content.
+                continue
             target = (scope, app_name, user_id, session_id, str(key))
             history = list(histories.get(target, []))
             if history and canonical_json(history[-1].get("value")) != canonical_json(
@@ -1157,9 +1189,20 @@ def main(argv: list[str] | None = None) -> int:
                 source_version=args.source_version,
             )
         else:
-            if args.app_filter or args.user_filter or args.captured_at:
+            snapshot_only_args = [
+                flag
+                for flag, supplied in (
+                    ("--app", args.app_filter is not None),
+                    ("--user", args.user_filter is not None),
+                    ("--captured-at", args.captured_at is not None),
+                    ("--source-version", args.source_version is not None),
+                    ("--include-sensitive", args.include_sensitive),
+                )
+                if supplied
+            ]
+            if snapshot_only_args:
                 raise AdapterError(
-                    "--app, --user, and --captured-at apply only to --db captures"
+                    f"{', '.join(snapshot_only_args)} apply only to --db captures"
                 )
             snapshot = load_snapshot(args.snapshot)
         manifest = write_bundle(snapshot, args.output, force=args.force)

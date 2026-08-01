@@ -64,7 +64,7 @@
       "question": "How should Dana's release updates be formatted?",
       "score": 1.0,
       "top_document_ids": [
-        "user:atlas-release-copilot:preference.release_update_format",
+        "user:atlas-release-copilot:dana:preference.release_update_format",
         "app:atlas-release-copilot:commitment.release_readiness",
         "app:atlas-release-copilot:relationship.release_ownership"
       ],

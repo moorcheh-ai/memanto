@@ -8,6 +8,7 @@ import re
 import sqlite3
 import subprocess
 import sys
+from contextlib import closing
 from pathlib import Path
 
 import pytest
@@ -112,7 +113,7 @@ def _event(
 
 
 def _database(path: Path) -> Path:
-    with sqlite3.connect(path) as connection:
+    with closing(sqlite3.connect(path)) as connection:
         connection.executescript(SCHEMA)
         connection.execute(
             "INSERT INTO app_states VALUES (?, ?, ?)",
@@ -201,6 +202,7 @@ def _database(path: Path) -> Path:
                     json.dumps(event),
                 ),
             )
+        connection.commit()
     return path
 
 
@@ -247,6 +249,8 @@ def test_mapping_uses_scope_and_key_types_without_importing_temp_state(tmp_path)
     assert by_key["context.topic"]["type"] == "context"
     assert by_key["preference.update_format"]["scope"] == "user"
     assert "temp:tool_buffer" not in by_key
+    assert "api_key" not in by_key
+    assert "accessToken" not in by_key
     assert by_key["decision.cache_ttl"]["distinct_values"] == 2
 
 
@@ -260,7 +264,8 @@ def test_current_truth_import_excludes_superseded_history(tmp_path):
     archive = "\n".join(
         path.read_text(encoding="utf-8") for path in (bundle / "archive").rglob("*.md")
     )
-    assert len(rows) == manifest["migration"]["mapped_memories"] == 8
+    assert len(rows) == manifest["migration"]["mapped_memories"] == 6
+    assert manifest["migration"]["skipped"] == 2
     assert "Approved cache TTL is 6 hours" in joined
     assert "Draft TTL is 24 hours" not in joined
     assert "Draft TTL is 24 hours" in archive
@@ -383,10 +388,51 @@ def test_non_text_event_remains_in_snapshot_and_transcript(tmp_path):
 
 def test_refuses_unknown_schema(tmp_path):
     path = tmp_path / "wrong.db"
-    with sqlite3.connect(path) as connection:
+    with closing(sqlite3.connect(path)) as connection:
         connection.execute("CREATE TABLE sessions (id TEXT)")
-    with pytest.raises(adapter.AdapterError, match="missing table"):
+    with pytest.raises(adapter.AdapterError, match="missing table") as exc_info:
         adapter.snapshot_database(path)
+    assert "adk migrate session --source_db_url" in str(exc_info.value)
+
+
+def test_capture_rejects_database_changed_during_read(tmp_path, monkeypatch):
+    path = _database(tmp_path / "sessions.db")
+    real_sha256_file = adapter.sha256_file
+    calls = 0
+
+    def changing_digest(target):
+        nonlocal calls
+        calls += 1
+        digest = real_sha256_file(target)
+        return digest if calls == 1 else "0" * 64
+
+    monkeypatch.setattr(adapter, "sha256_file", changing_digest)
+    with pytest.raises(adapter.AdapterError, match="changed during capture"):
+        adapter.snapshot_database(path)
+
+
+@pytest.mark.parametrize(
+    "flag",
+    [
+        "--app=release-agent",
+        "--user=dana",
+        "--captured-at=2026-08-01T00:00:00Z",
+        "--source-version=2.6.0",
+        "--include-sensitive",
+    ],
+)
+def test_snapshot_replay_rejects_database_capture_options(tmp_path, flag, capsys):
+    snapshot_path = tmp_path / "snapshot.json"
+    snapshot_path.write_text(
+        adapter.canonical_json(_snapshot(_database(tmp_path / "sessions.db"))),
+        encoding="utf-8",
+    )
+    result = adapter.main(
+        ["--snapshot", str(snapshot_path), "--output", str(tmp_path / "out"), flag]
+    )
+
+    assert result == 2
+    assert "apply only to --db captures" in capsys.readouterr().out
 
 
 def test_output_requires_force_and_force_replaces_exact_target(tmp_path):
@@ -474,3 +520,24 @@ def test_verifier_rejects_manifest_paths_outside_bundle(tmp_path):
 
     with pytest.raises(adapter.AdapterError, match="expected a relative path"):
         verifier._manifest_path(root, "", label="source snapshot path")
+
+
+def test_verifier_detects_unlisted_memory_files(tmp_path):
+    bundle = tmp_path / "bundle"
+    adapter.write_bundle(_snapshot(_database(tmp_path / "sessions.db")), bundle)
+    extra = bundle / "memories" / "fact" / "unlisted.md"
+    extra.parent.mkdir(parents=True, exist_ok=True)
+    extra.write_text("# Not in the manifest\n", encoding="utf-8")
+
+    report = verifier.verify_bundle(bundle)
+
+    assert not report["passed"]
+    assert "unlisted memory file: memories/fact/unlisted.md" in report["failures"]
+
+
+def test_verifier_detects_short_meaningful_superseded_values():
+    assert verifier._contains_meaningful_value(
+        "Current value accidentally says old.", "old"
+    )
+    assert not verifier._contains_meaningful_value("A normal active memory.", "a")
+    assert not verifier._contains_meaningful_value("Marker: <redacted>", "<redacted>")

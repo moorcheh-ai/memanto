@@ -11,6 +11,23 @@ from pathlib import Path
 import adapter
 
 
+def _contains_meaningful_value(content: str, value: object) -> bool:
+    """Match short superseded values without treating tiny fragments as leaks."""
+    if not isinstance(value, str):
+        return False
+    candidate = value.strip()
+    if len(candidate) < 3 or adapter._is_redacted_only(candidate):
+        return False
+    return (
+        re.search(
+            rf"(?<!\w){re.escape(candidate)}(?!\w)",
+            content,
+            flags=re.IGNORECASE,
+        )
+        is not None
+    )
+
+
 def _manifest_path(root: Path, value: object, *, label: str) -> Path:
     """Resolve a manifest path without allowing it to escape the bundle."""
     if not isinstance(value, str) or not value:
@@ -74,6 +91,19 @@ def verify_bundle(bundle: str | Path) -> dict[str, object]:
         if adapter.sha256_file(path) != expected_sha256:
             failures.append(f"sha256: {expected_path}")
 
+    expected_memory_files = {
+        path
+        for path in seen_paths
+        if path == "memories" or path.startswith("memories/")
+    }
+    actual_memory_files = {
+        path.relative_to(root).as_posix()
+        for path in (root / "memories").rglob("*")
+        if path.is_file()
+    }
+    for extra_path in sorted(actual_memory_files - expected_memory_files):
+        failures.append(f"unlisted memory file: {extra_path}")
+
     source = manifest.get("source")
     if not isinstance(source, dict):
         raise adapter.AdapterError("Manifest source must be a JSON object")
@@ -121,11 +151,7 @@ def verify_bundle(bundle: str | Path) -> dict[str, object]:
             continue
         for update in concept["history"][:-1]:
             old_value = update.get("value")
-            if (
-                isinstance(old_value, str)
-                and len(old_value) >= 20
-                and old_value in active["content"]
-            ):
+            if _contains_meaningful_value(active["content"], old_value):
                 failures.append(
                     f"superseded value leaked into active memory: {concept['id']}"
                 )

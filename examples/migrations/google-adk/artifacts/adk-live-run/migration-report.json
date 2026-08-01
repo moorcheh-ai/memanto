@@ -34,7 +34,7 @@
   "round_trip_status": "Local source→OKF fidelity and shipped Memanto dry-run are complete. Cloud import→recall→OKF export requires MOORCHEH_API_KEY and is run with run_roundtrip.py.",
   "schema": "google-adk-okf-migration-report/v1",
   "source": {
-    "database_sha256": "9d4e01eee56aefeaeb2615393cc6186b2af4494bb10b46862907a3e4a09a79e9",
+    "database_sha256": "ab81135ad9829f369e3e837268c8edbf3a58a7418c18a0ea3b0f6dca1df4e0d6",
     "events": 17,
     "provider": "google-adk",
     "service": "SqliteSessionService",

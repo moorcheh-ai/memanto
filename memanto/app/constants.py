@@ -61,6 +61,8 @@ VALID_MEMORY_TYPES = {
     "error",
 }
 
+VALID_SOURCE_TYPES = {"user", "agent", "tool", "system"}
+
 VALID_PROVENANCE_TYPES = {
     "explicit_statement",
     "inferred",

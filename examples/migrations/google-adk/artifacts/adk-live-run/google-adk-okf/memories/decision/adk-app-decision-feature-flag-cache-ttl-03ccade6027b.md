@@ -2,14 +2,14 @@
 {
   "description": "The approved Beacon production feature-flag cache TTL is 6 hours so the flag can be unwound on the same shift.",
   "generated": {
-    "at": "2026-08-01T09:43:04.409881Z",
+    "at": "2026-08-01T10:09:38.571652Z",
     "by": "memanto-google-adk-okf/1.0.0"
   },
-  "resource": "google-adk://sqlite/9d4e01eee56aefea/atlas-release-copilot/app/decision.feature_flag_cache_ttl",
+  "resource": "google-adk://sqlite/ab81135ad9829f36/atlas-release-copilot/app/decision.feature_flag_cache_ttl",
   "sources": [
     {
       "id": "adk-app-decision-feature-flag-cache-ttl-03ccade6027b",
-      "resource": "google-adk://sqlite/9d4e01eee56aefea/atlas-release-copilot/app/decision.feature_flag_cache_ttl",
+      "resource": "google-adk://sqlite/ab81135ad9829f36/atlas-release-copilot/app/decision.feature_flag_cache_ttl",
       "type": "google-adk-sqlite-state"
     }
   ],

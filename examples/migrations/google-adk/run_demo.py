@@ -26,6 +26,7 @@ REPO_ROOT = HERE.parents[2]
 DEFAULT_ARTIFACTS = HERE / "artifacts" / "adk-live-run"
 ANSI_RE = re.compile(r"\x1b\[[0-?]*[ -/]*[@-~]")
 RUN_SUMMARY_SCHEMA = "google-adk-demo-run/v1"
+DRY_RUN_TIMEOUT_SECONDS = 120
 
 
 def _write_json(path: Path, value: Any) -> None:
@@ -90,31 +91,47 @@ def run_memanto_dry_run(bundle: Path, artifacts: Path) -> dict[str, Any]:
         "COLUMNS": "240",
         "LINES": "60",
     }
-    result = subprocess.run(
-        command,
-        cwd=REPO_ROOT,
-        env=env,
-        text=True,
-        capture_output=True,
-        check=False,
-    )
+    timed_out = False
+    try:
+        result = subprocess.run(
+            command,
+            cwd=REPO_ROOT,
+            env=env,
+            text=True,
+            capture_output=True,
+            check=False,
+            timeout=DRY_RUN_TIMEOUT_SECONDS,
+        )
+        stdout = result.stdout
+        stderr = result.stderr
+        returncode = result.returncode
+    except subprocess.TimeoutExpired as exc:
+        timed_out = True
+        stdout = str(exc.stdout or "")
+        stderr = str(exc.stderr or "")
+        returncode = 124
     transcript = (
         "$ memanto migrate okf <bundle> --dry-run\n\n"
-        + result.stdout
-        + (f"\n[stderr]\n{result.stderr}" if result.stderr else "")
+        + stdout
+        + (f"\n[stderr]\n{stderr}" if stderr else "")
     )
     transcript = _normalize_transcript(transcript, artifacts)
     evidence = artifacts / "evidence"
     evidence.mkdir(parents=True, exist_ok=True)
     (evidence / "memanto-dry-run.txt").write_text(transcript, encoding="utf-8")
-    if result.returncode != 0:
+    if timed_out:
+        raise adapter.AdapterError(
+            f"The shipped dry-run timed out after {DRY_RUN_TIMEOUT_SECONDS}s; see "
+            f"{evidence / 'memanto-dry-run.txt'}"
+        )
+    if returncode != 0:
         raise adapter.AdapterError(
             "The shipped `memanto migrate okf --dry-run` command failed; see "
             f"{evidence / 'memanto-dry-run.txt'}"
         )
     return {
         "command": "memanto migrate okf <bundle> --dry-run",
-        "returncode": result.returncode,
+        "returncode": returncode,
         "transcript": "evidence/memanto-dry-run.txt",
     }
 

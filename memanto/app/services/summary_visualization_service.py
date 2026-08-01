@@ -15,9 +15,10 @@ class SummaryVisualizationService:
     """Generates ASCII-art visualizations for daily summaries"""
 
     # Regex to parse session summary headings:
-    #   ### [2026-02-27 14:30:00] [FACT] Some title
+    #   ## [2026-02-27 14:30:00] [FACT] Some title
+    # Legacy H3 entries remain readable for existing session files.
     _HEADING_RE = re.compile(
-        r"^###\s+\[(\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2})\]\s+\[(\w+)\]\s+(.+)$",
+        r"^#{2,3}\s+\[(\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2})\]\s+\[(\w+)\]\s+(.+)$",
         re.MULTILINE,
     )
     # Regex to parse confidence lines:
@@ -214,7 +215,7 @@ class SummaryVisualizationService:
 
         lines = [
             "### Memory Activity Timeline\n",
-            "```",
+            "```text",
             label_row,
             bar,
             marker_row,
@@ -249,7 +250,7 @@ class SummaryVisualizationService:
         # Determine label width for alignment
         max_label_len = max(len(t) for t, _ in sorted_types)
 
-        lines = ["### Memory Type Distribution\n", "```"]
+        lines = ["### Memory Type Distribution\n", "```text"]
         for mem_type, count in sorted_types:
             bar_len = max(1, round(count * scale))
             bar = "█" * bar_len

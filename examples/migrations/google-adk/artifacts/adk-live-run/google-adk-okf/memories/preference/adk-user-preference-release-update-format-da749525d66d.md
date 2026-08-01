@@ -2,14 +2,14 @@
 {
   "description": "Dana prefers release updates in Markdown, with at most five bullets and no tables.",
   "generated": {
-    "at": "2026-08-01T09:43:04.409881Z",
+    "at": "2026-08-01T10:09:38.571652Z",
     "by": "memanto-google-adk-okf/1.0.0"
   },
-  "resource": "google-adk://sqlite/9d4e01eee56aefea/atlas-release-copilot/user/dana/preference.release_update_format",
+  "resource": "google-adk://sqlite/ab81135ad9829f36/atlas-release-copilot/user/dana/preference.release_update_format",
   "sources": [
     {
       "id": "adk-user-preference-release-update-format-da749525d66d",
-      "resource": "google-adk://sqlite/9d4e01eee56aefea/atlas-release-copilot/user/dana/preference.release_update_format",
+      "resource": "google-adk://sqlite/ab81135ad9829f36/atlas-release-copilot/user/dana/preference.release_update_format",
       "type": "google-adk-sqlite-state"
     }
   ],

@@ -2,14 +2,14 @@
 {
   "description": "Beacon is ready for its approved August 4 release plan.",
   "generated": {
-    "at": "2026-08-01T09:43:04.409881Z",
+    "at": "2026-08-01T10:09:38.571652Z",
     "by": "memanto-google-adk-okf/1.0.0"
   },
-  "resource": "google-adk://sqlite/9d4e01eee56aefea/atlas-release-copilot/app/commitment.release_readiness",
+  "resource": "google-adk://sqlite/ab81135ad9829f36/atlas-release-copilot/app/commitment.release_readiness",
   "sources": [
     {
       "id": "adk-app-commitment-release-readiness-b3bdabeca4b5",
-      "resource": "google-adk://sqlite/9d4e01eee56aefea/atlas-release-copilot/app/commitment.release_readiness",
+      "resource": "google-adk://sqlite/ab81135ad9829f36/atlas-release-copilot/app/commitment.release_readiness",
       "type": "google-adk-sqlite-state"
     }
   ],

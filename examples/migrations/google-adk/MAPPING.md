@@ -71,6 +71,12 @@ timestamp order to a deprecated audit document beneath
 `archive/state-history/`. The active concept links to that audit document but
 does not repeat stale values in its body.
 
+The archive is intentionally current-key-driven. If an application deleted a
+key before capture, no active concept or standalone history document is emitted;
+the raw `stateDelta` records still remain in
+`source/google-adk-sqlite-snapshot.json`. This avoids reviving deleted state
+while retaining the complete source evidence.
+
 This prevents an import from reviving the demo's superseded July 31 date,
 Maya-as-DRI assignment, or 24-hour TTL. A reviewer still owns and can inspect
 the complete correction trail.
@@ -82,7 +88,8 @@ secret, cookie, credential, authorization value, API key, or private key is
 replaced by `<redacted>`. Delimited and camelCase credential names are both
 recognized. No value-derived digest is published, because even an unsalted
 truncated digest can expose low-entropy secrets. The manifest reports the number
-of redactions.
+of redactions. A value containing only redaction markers is retained in the
+source snapshot and counted as skipped, not imported as an empty memory.
 
 `--include-sensitive` is an explicit escape hatch for private migrations. It
 should not be used for a public OKF bundle or bounty artifact.

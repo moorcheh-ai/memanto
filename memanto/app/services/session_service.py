@@ -634,7 +634,7 @@ class SessionService:
         status = getattr(memory_record, "status", None)
         tags = getattr(memory_record, "tags", None)
 
-        lines = [f"### [{timestamp}] [{memory_type}] {title}\n"]
+        lines = [f"## [{timestamp}] [{memory_type}] {title}\n"]
         if memory_id:
             lines.append(f"- **Memory ID**: `{memory_id}`\n")
         lines.append(f"- **Confidence**: `{confidence}`\n")
@@ -715,7 +715,7 @@ class SessionService:
         self._harden_session_storage()
 
         entry = (
-            f"### [{timestamp}] [DELETED] Memory Deleted\n"
+            f"## [{timestamp}] [DELETED] Memory Deleted\n"
             f"- **Memory ID**: `{memory_id}`\n"
             "- **Confidence**: `1.0`\n"
             "---\n\n"

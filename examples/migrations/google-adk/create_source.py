@@ -34,10 +34,15 @@ async def create_database(path: Path, *, force: bool = False) -> dict[str, Any]:
 
     path = path.expanduser().resolve()
     path.parent.mkdir(parents=True, exist_ok=True)
-    if path.exists():
+    sidecars = [Path(f"{path}-wal"), Path(f"{path}-shm")]
+    if path.exists() or any(sidecar.exists() for sidecar in sidecars):
         if not force:
-            raise RuntimeError(f"Source database already exists: {path}")
-        path.unlink()
+            raise RuntimeError(
+                f"Source database or SQLite sidecar already exists: {path}"
+            )
+        for artifact in (path, *sidecars):
+            if artifact.exists():
+                artifact.unlink()
 
     service = SqliteSessionService(str(path))
     events_written = 0

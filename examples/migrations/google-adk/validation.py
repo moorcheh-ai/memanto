@@ -57,7 +57,17 @@ def source_documents(snapshot: dict[str, Any]) -> list[dict[str, str]]:
                 )
                 documents.append(
                     {
-                        "id": f"{scope}:{row['app_name']}:{key}",
+                        "id": ":".join(
+                            str(part)
+                            for part in (
+                                scope,
+                                row["app_name"],
+                                row.get("user_id"),
+                                row.get("session_id"),
+                                key,
+                            )
+                            if part is not None
+                        ),
                         "title": str(key),
                         "content": str(content),
                     }
