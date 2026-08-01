@@ -15,6 +15,10 @@ then a portable OKF round trip.
 | Size | 16,142,972 bytes |
 | SHA-256 | `e419e6d022bb4345ff29b169b1cb71a5daf644cdcb40fb2005a785d4f3faec2f` |
 
+The duration, size, and digest above are generated from the checked-in
+`memanto-bounty-video.mp4`; the matching scene timings are defined in
+`../DEMO_SCRIPT.md`.
+
 The live terminal footage is cropped inside the composition. Sampled rendered
 frames contain no local machine paths or API keys. The source evidence and
 privacy audit are documented in the accompanying local publication proof.

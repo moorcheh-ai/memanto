@@ -121,6 +121,10 @@ python -m examples.migrations.n8n_executions.export_n8n_executions `
   --output n8n-executions.private.json
 ```
 
+HTTP is intentionally limited to loopback hosts for local development. For a
+remote n8n deployment, use an `https://` base URL; the exporter rejects remote
+HTTP before sending the API key.
+
 Treat the raw export as private. It can contain every item that passed through
 the workflow. Review `mapping.yaml`, then convert it:
 
