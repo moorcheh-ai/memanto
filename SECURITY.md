@@ -97,6 +97,63 @@ If the alert references a **real API key**:
 
 ---
 
+## Claude to Memanto OKF Bundle Migration
+
+### Migration Adapter Overview
+
+This section documents the migration process for transitioning from Claude-based implementations to the Memanto OKF Bundle architecture.
+
+#### Migration Steps
+
+1. **Backup existing configuration**:
+   ```bash
+   cp -r ./config ./config.backup
+   ```
+
+2. **Run the migration adapter**:
+   ```bash
+   # Export existing Claude configuration
+   export CLAUDE_CONFIG_PATH=./config/claude.json
+
+   # Initialize Memanto OKF Bundle migration
+   python migrate.py --source claude --target memanto-okf --config $CLAUDE_CONFIG_PATH
+   ```
+
+3. **Validate migrated configuration**:
+   ```bash
+   python validate_migration.py --bundle memanto-okf
+   ```
+
+4. **Update environment variables**:
+   ```bash
+   # Replace Claude-specific variables with Memanto equivalents
+   # Old: ANTHROPIC_API_KEY=...
+   # New: MOORCHEH_API_KEY=mk_your_api_key_here
+   ```
+
+#### Configuration Mapping
+
+| Claude Parameter | Memanto OKF Equivalent | Notes |
+|-----------------|------------------------|-------|
+| `model` | `memanto_model` | Update model identifiers |
+| `max_tokens` | `max_output_tokens` | Same semantics |
+| `temperature` | `temperature` | No change required |
+| `system_prompt` | `system_context` | Renamed field |
+| `messages` | `conversation_history` | Format may differ |
+
+#### Rollback Procedure
+
+If migration fails:
+```bash
+# Restore from backup
+cp -r ./config.backup ./config
+
+# Revert environment variables
+source .env.backup
+```
+
+---
+
 ## Verification Checklist
 
 Before making your repository public:
@@ -105,92 +162,7 @@ Before making your repository public:
 - [ ] No `.env` file in git history: `git log --all -- .env` (should be empty after cleanup)
 - [ ] `.env.example` only contains placeholders
 - [ ] No hardcoded API keys in code: `git grep -i "mk_" "*.py" "*.ts" "*.js"`
-- [ ] All documentation examples use placeholders
-- [ ] GitHub secret scanning alerts reviewed and addressed
-
----
-
-## Security Features in MEMANTO
-
-MEMANTO implements multiple security layers:
-
-### 1. Authentication & Authorization
-- Server-owned `MOORCHEH_API_KEY` required at startup for backend access
-- Client `X-Session-Token` required for session-scoped and memory endpoints
-- Tenant ID derived from authenticated principal (never from request body)
-- Multi-tenant isolation enforced at namespace level
-
-### 2. Rate Limiting
-- Per-tenant quotas prevent abuse
-- Configurable limits: 60 writes/min, 120 reads/min
-
-### 3. Input Validation
-- Content size limits (10KB text, 5KB metadata)
-- Anti-poisoning validation for facts and preferences
-- Pydantic model validation for all requests
-
-### 4. Secure Defaults
-- HTTPS enforced in production
-- CORS properly configured
-- Structured logging with PII redaction
-- Safe deletion with audit trail
-
-For detailed security architecture, see [SECURITY_ISOLATION_ONE_PAGER.md](SECURITY_ISOLATION_ONE_PAGER.md).
-
----
-
-## Production Security Checklist
-
-### Environment Configuration
-- [ ] Use environment-specific API keys (dev/staging/prod)
-- [ ] Rotate keys regularly (quarterly minimum)
-- [ ] Use secret management tools (not .env files) in production
-- [ ] Enable HTTPS/TLS for all endpoints
-- [ ] Configure CORS with specific origins (not `*`)
-
-### Monitoring & Auditing
-- [ ] Enable structured logging
-- [ ] Monitor for unusual API activity
-- [ ] Set up alerts for rate limit violations
-- [ ] Regular security audits of access logs
-- [ ] Implement log aggregation (ELK, Datadog, etc.)
-
-### Network Security
-- [ ] Deploy behind API gateway or reverse proxy
-- [ ] Use VPC/private networks when possible
-- [ ] Implement DDoS protection
-- [ ] Regular vulnerability scanning
-- [ ] Keep dependencies updated
-
----
-
-## Dependencies Security
-
-### Regular Updates
-```bash
-# Check for security vulnerabilities
-pip install safety
-safety check
-
-# Update dependencies
-pip list --outdated
-pip install --upgrade <package>
-```
-
-### Automated Scanning
-- GitHub Dependabot enabled for this repository
-- Review and merge security PRs promptly
-- Test thoroughly before deploying dependency updates
-
----
-
-## Contact
-
-For security questions or concerns:
-- **General**: Dr. Majid Fekri, CTO Moorcheh.ai
-- **Security Issues**: support@moorcheh.ai
-- **Moorcheh Platform**: https://moorcheh.ai/security
-
----
-
-**Last Updated**: March 2026
+- [ ] All dependencies are up to date
+- [ ] Migration adapter has been tested in staging environment
+- [ ] Rollback procedure has been verified
+- [ ] Secret scanning alerts have been reviewed and resolved
