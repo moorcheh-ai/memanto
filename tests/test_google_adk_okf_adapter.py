@@ -613,3 +613,13 @@ def test_verifier_ignores_superseded_values_in_supporting_data():
     assert not verifier._contains_meaningful_value(
         "Current value is modern.\n[Supporting data]\nOld value: legacy", "legacy"
     )
+
+
+def test_verifier_ignores_empty_or_redacted_structured_content():
+    assert not verifier._contains_meaningful_value(
+        "Any active memory", {"content": " "}
+    )
+    assert not verifier._contains_meaningful_value(
+        "Current value: {'apiKey': '<redacted>'}",
+        {"title": "Credential metadata", "content": {"apiKey": "<redacted>"}},
+    )

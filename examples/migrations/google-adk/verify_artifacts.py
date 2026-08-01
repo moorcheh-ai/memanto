@@ -32,8 +32,10 @@ def _contains_meaningful_value(content: str, value: object) -> bool:
     if isinstance(value, dict):
         raw_content = value.get("content", value.get("text", value.get("value")))
         if raw_content not in (None, ""):
+            if adapter._is_redacted_only(raw_content):
+                return False
             rendered = adapter._content_from_value("State value", value)[1].strip()
-            if adapter._is_redacted_only(rendered):
+            if len(rendered) < 3:
                 return False
             return (
                 re.search(
