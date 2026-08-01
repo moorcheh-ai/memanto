@@ -1,0 +1,26 @@
+[
+  {
+    "id": "demo-conversation-001",
+    "title": "Release planning",
+    "mapping": {
+      "node-user": {
+        "parent": null,
+        "message": {
+          "id": "message-user-001",
+          "author": {"role": "user"},
+          "create_time": 1785571200,
+          "content": {"content_type": "text", "parts": ["We will ship the accessibility fixes on Friday. Contact demo@example.com if blocked."]}
+        }
+      },
+      "node-assistant": {
+        "parent": "node-user",
+        "message": {
+          "id": "message-assistant-001",
+          "author": {"role": "assistant"},
+          "create_time": 1785571260,
+          "content": {"content_type": "text", "parts": ["I will track the Friday release and escalate blockers to the release owner."]}
+        }
+      }
+    }
+  }
+]
