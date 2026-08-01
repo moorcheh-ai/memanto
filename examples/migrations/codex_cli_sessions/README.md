@@ -98,8 +98,11 @@ import, invokes the shipped `memanto migrate okf` command, repeats all five
 golden recalls, asks the same questions through `memanto answer`, and exports
 the cloud memories back to a new portable OKF bundle. It streams the real CLI
 output for screen recording and writes a transcript plus a secret-free JSON
-report with command exit codes and exported-file hashes. It never reads or
-prints the key value and refuses to overwrite an existing evidence directory.
+report with command exit codes and exported-file hashes. The command fails
+closed unless every pre-import recall is empty, every post-import recall returns
+the exact expected OKF title, and every requested RAG answer cites that same
+title in its context. It never reads or prints the key value and refuses to
+overwrite an existing evidence directory.
 
 ## Source-to-OKF mapping
 
