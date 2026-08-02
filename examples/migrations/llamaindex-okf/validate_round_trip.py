@@ -7,7 +7,7 @@ import json
 from pathlib import Path
 
 import yaml
-from migrate_to_okf import _text_from_message, load_rows
+from migrate_to_okf import _text_from_message, load_rows, redact_data
 
 
 def okf_records(bundle: Path) -> dict[int, dict]:
@@ -42,7 +42,7 @@ def validate(database: Path, bundle: Path, golden_path: Path) -> dict:
             "status": extension["status"] == row["status"],
             "order": extension["order"] == order,
             "additional_kwargs": extension["additional_kwargs"]
-            == source_data.get("additional_kwargs", {}),
+            == redact_data(source_data.get("additional_kwargs", {})),
         }
         failures.extend(
             f"source row {row['id']} failed {name} parity"

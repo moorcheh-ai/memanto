@@ -29,7 +29,7 @@ VALID_TYPES = {
 }
 SECRET_PATTERNS = (
     (
-        re.compile(r"(?i)\b(?:api[_ -]?key|token|password)\s*[:=]\s*\S+"),
+        re.compile(r"(?i)\b(?:api[_ -]?key|token|password|secret)\s*[:=]\s*\S+"),
         "[REDACTED_SECRET]",
     ),
     (
@@ -152,6 +152,7 @@ def convert(database: Path, output: Path) -> dict[str, Any]:
         role = str(row["role"])
         session_id = str(row["key"])
         memory_type = _memory_type(role, metadata, text)
+        explicit_type = str(metadata.get("memory_type", "")).lower()
         title = _title(text, memory_type)
         record_id = f"llamaindex-{row['id']:05d}"
         timestamp = _iso_timestamp(int(row["timestamp"]))
@@ -165,7 +166,7 @@ def convert(database: Path, output: Path) -> dict[str, Any]:
             "timestamp": timestamp,
             "x_memanto": {
                 "type": memory_type,
-                "confidence": 1.0 if metadata.get("memory_type") else 0.75,
+                "confidence": 1.0 if explicit_type in VALID_TYPES else 0.75,
                 "source": "llamaindex",
                 "provenance": "imported",
                 "status": row["status"],

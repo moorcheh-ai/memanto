@@ -35,6 +35,10 @@ pip install -r requirements.txt
 python run_demo.py
 ```
 
+For a byte-for-byte pinned Python 3.12 demo environment, install
+`requirements-lock.txt`. The smaller `requirements.txt` remains the portable
+minimum for users integrating the adapter into an existing environment.
+
 The command prints the run directory and the exact next command. Preview what
 Memanto will import, without making any server write:
 

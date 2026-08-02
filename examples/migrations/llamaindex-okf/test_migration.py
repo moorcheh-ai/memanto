@@ -1,3 +1,5 @@
+import json
+import sqlite3
 from pathlib import Path
 
 from generate_source import build_store
@@ -18,6 +20,8 @@ def test_real_llamaindex_store_round_trips_to_okf(tmp_path):
     rows = load_rows(database)
     assert len(rows) == 13
     assert {row["status"] for row in rows} == {"active", "archived"}
+    assert sum(row["status"] == "active" for row in rows) == 10
+    assert sum(row["status"] == "archived" for row in rows) == 3
     assert manifest["source_records"] == 13
     assert manifest["mapped_memories"] == 13
     assert manifest["skipped"] == 0
@@ -51,6 +55,54 @@ def test_nested_metadata_redaction_preserves_structure():
         "owner": "[REDACTED_EMAIL]",
         "nested": {"access_token": "[REDACTED_SECRET]", "count": 2},
     }
+
+
+def test_sensitive_message_text_is_redacted_end_to_end(tmp_path):
+    database = tmp_path / "source.sqlite"
+    bundle = tmp_path / "bundle"
+    build_store(database)
+    with sqlite3.connect(database) as connection:
+        row_id, raw = connection.execute(
+            "SELECT id, data FROM llama_index_memory ORDER BY id LIMIT 1"
+        ).fetchone()
+        data = json.loads(raw)
+        data["blocks"][0]["text"] = "Email person@example.com; secret: hunter2"
+        connection.execute(
+            "UPDATE llama_index_memory SET data = ? WHERE id = ?",
+            (json.dumps(data), row_id),
+        )
+
+    convert(database, bundle)
+    rendered = "\n".join(
+        path.read_text(encoding="utf-8")
+        for path in (bundle / "memories").glob("*/*.md")
+    )
+    assert "person@example.com" not in rendered
+    assert "hunter2" not in rendered
+    assert "[REDACTED_EMAIL]" in rendered
+    assert "[REDACTED_SECRET]" in rendered
+
+
+def test_unsupported_explicit_type_uses_fallback_confidence(tmp_path):
+    database = tmp_path / "source.sqlite"
+    bundle = tmp_path / "bundle"
+    build_store(database)
+    with sqlite3.connect(database) as connection:
+        row_id, raw = connection.execute(
+            "SELECT id, data FROM llama_index_memory ORDER BY id LIMIT 1"
+        ).fetchone()
+        data = json.loads(raw)
+        data["additional_kwargs"]["memory_type"] = "note"
+        connection.execute(
+            "UPDATE llama_index_memory SET data = ? WHERE id = ?",
+            (json.dumps(data), row_id),
+        )
+
+    convert(database, bundle)
+    record = next((bundle / "memories" / "fact").glob("*.md")).read_text(
+        encoding="utf-8"
+    )
+    assert "confidence: 0.75" in record
 
 
 def test_human_reviewed_assistant_fallback_is_observation():

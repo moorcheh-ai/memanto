@@ -3,10 +3,19 @@
 from __future__ import annotations
 
 import argparse
+import sqlite3
 from pathlib import Path
 
 from llama_index.core.base.llms.types import ChatMessage
 from llama_index.core.memory import Memory
+
+TABLE = "llama_index_memory"
+BASE_TIMESTAMP_NS = 1_785_657_600_000_000_000
+
+
+def deterministic_tokens(text: str) -> list[str]:
+    """Use a stable tokenizer so archival boundaries do not vary by process."""
+    return text.split()
 
 SESSIONS = {
     "orchid-product": [
@@ -99,7 +108,11 @@ def build_store(database: Path) -> int:
     uri = f"sqlite+aiosqlite:///{database.resolve()}"
     count = 0
     for session_id, messages in SESSIONS.items():
-        settings = {"session_id": session_id, "async_database_uri": uri}
+        settings = {
+            "session_id": session_id,
+            "async_database_uri": uri,
+            "tokenizer_fn": deterministic_tokens,
+        }
         if session_id == "orchid-research":
             # A small queue exercises LlamaIndex's real active -> archived
             # waterfall while retaining every row in the persisted store.
@@ -118,6 +131,15 @@ def build_store(database: Path) -> int:
                 )
             )
             count += 1
+    # SQLAlchemyChatStore assigns wall-clock nanoseconds. Canonicalize the
+    # generated fixture after exercising the real API so sample hashes and
+    # timestamps are byte-for-byte reproducible across runs.
+    with sqlite3.connect(database) as connection:
+        ids = [row[0] for row in connection.execute(f"SELECT id FROM {TABLE}")]
+        connection.executemany(
+            f"UPDATE {TABLE} SET timestamp = ? WHERE id = ?",
+            [(BASE_TIMESTAMP_NS + index, message_id) for index, message_id in enumerate(ids)],
+        )
     return count
 
 
