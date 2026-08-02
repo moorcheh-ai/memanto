@@ -1,7 +1,7 @@
 from pathlib import Path
 
 from generate_source import build_store
-from migrate_to_okf import convert, load_rows, redact_data
+from migrate_to_okf import _memory_type, convert, load_rows, redact_data
 from validate_round_trip import validate
 
 HERE = Path(__file__).parent
@@ -50,3 +50,13 @@ def test_nested_metadata_redaction_preserves_structure():
         "owner": "[REDACTED_EMAIL]",
         "nested": {"access_token": "[REDACTED_SECRET]", "count": 2},
     }
+
+
+def test_human_reviewed_assistant_fallback_is_observation():
+    """Lock the submitter-reviewed fallback: assistant replies are observations."""
+    assert _memory_type("assistant", {}, "A neutral assistant reply") == "observation"
+    assert _memory_type("model", {}, "A neutral model reply") == "observation"
+    assert _memory_type("chatbot", {}, "A neutral chatbot reply") == "observation"
+    assert _memory_type(
+        "assistant", {"memory_type": "learning"}, "An explicitly typed reply"
+    ) == "learning"

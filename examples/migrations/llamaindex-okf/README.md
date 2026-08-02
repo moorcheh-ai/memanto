@@ -87,6 +87,14 @@ commitments are recognized by phrases; tool messages become artifacts;
 assistant messages become observations; remaining messages become facts.
 Memanto can still auto-classify or refine these after import.
 
+### Human-reviewed fallback decision
+
+The submitter reviewed the ambiguous assistant-message fallback and explicitly
+selected `observation` rather than `learning`. The rationale is that an
+assistant reply records what the agent said or observed at that moment; it does
+not prove that the content became a durable, validated learning. An explicit
+supported `memory_type` still takes precedence over this fallback.
+
 ## Privacy and integrity
 
 - The source database is never modified.
