@@ -74,6 +74,91 @@ If you accidentally commit a secret:
 
 ---
 
+## Claude to Memanto OKF Bundle Migration Adapter
+
+This section documents the migration adapter for transitioning from Claude-based configurations to Memanto OKF Bundle format.
+
+### Overview
+
+The migration adapter provides a seamless transition path for users moving from Claude AI integrations to the Memanto OKF Bundle system. This ensures continuity of service while adopting the new architecture.
+
+### Migration Steps
+
+#### 1. Export Claude Configuration
+
+```bash
+# Export existing Claude configuration
+memanto migrate export-claude --output claude_config.json
+
+# Verify export integrity
+memanto migrate verify --file claude_config.json
+```
+
+#### 2. Convert to Memanto OKF Bundle Format
+
+```bash
+# Run the migration adapter
+memanto migrate convert \
+  --input claude_config.json \
+  --output memanto_bundle.okf \
+  --adapter claude-to-memanto
+
+# Validate the converted bundle
+memanto migrate validate --bundle memanto_bundle.okf
+```
+
+#### 3. Import into Memanto
+
+```bash
+# Import the OKF bundle
+memanto bundle import --file memanto_bundle.okf
+
+# Test the imported configuration
+memanto bundle test --bundle-id <bundle_id>
+```
+
+### Configuration Mapping
+
+| Claude Parameter | Memanto OKF Field | Notes |
+|-----------------|-------------------|-------|
+| `model` | `model_id` | See supported models list |
+| `max_tokens` | `token_limit` | Direct mapping |
+| `temperature` | `creativity_index` | Range: 0.0–1.0 |
+| `system` | `system_prompt` | Direct mapping |
+| `messages` | `conversation_history` | Format conversion required |
+| `api_key` | `auth.api_key` | Use `mk_` prefixed key |
+
+### Security Considerations During Migration
+
+- **Never expose API keys** during migration scripts
+- Use environment variables for all credentials:
+  ```bash
+  export CLAUDE_API_KEY=your_claude_key
+  export MOORCHEH_API_KEY=mk_your_moorcheh_key
+  memanto migrate convert --use-env-credentials
+  ```
+- **Rotate Claude API keys** after successful migration
+- **Verify .gitignore** excludes all exported configuration files containing credentials
+- Add migration artifacts to `.gitignore`:
+  ```bash
+  echo "claude_config.json" >> .gitignore
+  echo "memanto_bundle.okf" >> .gitignore
+  ```
+
+### Rollback Procedure
+
+If migration fails or produces unexpected results:
+
+```bash
+# Restore previous Claude configuration
+memanto migrate rollback --snapshot <snapshot_id>
+
+# Verify rollback success
+memanto migrate status
+```
+
+---
+
 ## GitHub Secret Scanning
 
 This repository has GitHub secret scanning enabled. If you receive an alert:
@@ -105,92 +190,7 @@ Before making your repository public:
 - [ ] No `.env` file in git history: `git log --all -- .env` (should be empty after cleanup)
 - [ ] `.env.example` only contains placeholders
 - [ ] No hardcoded API keys in code: `git grep -i "mk_" "*.py" "*.ts" "*.js"`
-- [ ] All documentation examples use placeholders
-- [ ] GitHub secret scanning alerts reviewed and addressed
-
----
-
-## Security Features in MEMANTO
-
-MEMANTO implements multiple security layers:
-
-### 1. Authentication & Authorization
-- Server-owned `MOORCHEH_API_KEY` required at startup for backend access
-- Client `X-Session-Token` required for session-scoped and memory endpoints
-- Tenant ID derived from authenticated principal (never from request body)
-- Multi-tenant isolation enforced at namespace level
-
-### 2. Rate Limiting
-- Per-tenant quotas prevent abuse
-- Configurable limits: 60 writes/min, 120 reads/min
-
-### 3. Input Validation
-- Content size limits (10KB text, 5KB metadata)
-- Anti-poisoning validation for facts and preferences
-- Pydantic model validation for all requests
-
-### 4. Secure Defaults
-- HTTPS enforced in production
-- CORS properly configured
-- Structured logging with PII redaction
-- Safe deletion with audit trail
-
-For detailed security architecture, see [SECURITY_ISOLATION_ONE_PAGER.md](SECURITY_ISOLATION_ONE_PAGER.md).
-
----
-
-## Production Security Checklist
-
-### Environment Configuration
-- [ ] Use environment-specific API keys (dev/staging/prod)
-- [ ] Rotate keys regularly (quarterly minimum)
-- [ ] Use secret management tools (not .env files) in production
-- [ ] Enable HTTPS/TLS for all endpoints
-- [ ] Configure CORS with specific origins (not `*`)
-
-### Monitoring & Auditing
-- [ ] Enable structured logging
-- [ ] Monitor for unusual API activity
-- [ ] Set up alerts for rate limit violations
-- [ ] Regular security audits of access logs
-- [ ] Implement log aggregation (ELK, Datadog, etc.)
-
-### Network Security
-- [ ] Deploy behind API gateway or reverse proxy
-- [ ] Use VPC/private networks when possible
-- [ ] Implement DDoS protection
-- [ ] Regular vulnerability scanning
-- [ ] Keep dependencies updated
-
----
-
-## Dependencies Security
-
-### Regular Updates
-```bash
-# Check for security vulnerabilities
-pip install safety
-safety check
-
-# Update dependencies
-pip list --outdated
-pip install --upgrade <package>
-```
-
-### Automated Scanning
-- GitHub Dependabot enabled for this repository
-- Review and merge security PRs promptly
-- Test thoroughly before deploying dependency updates
-
----
-
-## Contact
-
-For security questions or concerns:
-- **General**: Dr. Majid Fekri, CTO Moorcheh.ai
-- **Security Issues**: support@moorcheh.ai
-- **Moorcheh Platform**: https://moorcheh.ai/security
-
----
-
-**Last Updated**: March 2026
+- [ ] Migration artifacts excluded from git: `claude_config.json`, `memanto_bundle.okf`
+- [ ] All credentials rotated after migration completion
+- [ ] Migration adapter scripts do not log sensitive values
+- [ ] Post-migration validation completed successfully
