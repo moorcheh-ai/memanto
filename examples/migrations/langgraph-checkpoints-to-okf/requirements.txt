@@ -1,0 +1,4 @@
+langgraph>=0.2
+langgraph-checkpoint-sqlite>=2.0
+pyyaml>=6.0
+pytest>=8.0

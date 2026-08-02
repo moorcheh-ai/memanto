@@ -1,0 +1,40 @@
+{
+  "generated_at": "2026-08-02T23:34:15.974274+00:00",
+  "source": "langgraph SqliteSaver checkpoints",
+  "source_db": "checkpoints.sqlite",
+  "threads": {
+    "alex-travel": {
+      "checkpoint_id": "1f18ecaa-cb91-600e-800d-e36cc4d14466",
+      "checkpoints": 15
+    },
+    "alex-work-policy": {
+      "checkpoint_id": "1f18ecaa-cb9f-6be3-8004-a86b0de107b9",
+      "checkpoints": 6
+    }
+  },
+  "total_memories": 11,
+  "per_type": {
+    "fact": 3,
+    "preference": 4,
+    "constraint": 2,
+    "decision": 1,
+    "commitment": 1
+  },
+  "per_thread": {
+    "alex-travel": 9,
+    "alex-work-policy": 2
+  },
+  "files": [
+    "001-user-name-is-alex-rivera.md",
+    "002-user-prefers-aisle-seat-when-flying.md",
+    "003-user-home-airport-is-sfo.md",
+    "004-hotel-budget-is-under-250-per-night.md",
+    "005-user-prefers-boutique-hotels-over-chains.md",
+    "006-user-is-vegetarian-plan-restaurants-accordingly.md",
+    "007-user-resolved-diet-change-no-longer-vegetarian-r.md",
+    "008-user-united-mileageplus-number-is-8842-1190.md",
+    "009-confirmed-seating-preference-aisle-over-window-a.md",
+    "010-work-travel-policy-book-only-refundable-fares.md",
+    "011-finance-requires-receipts-within-48-hours-of-tri.md"
+  ]
+}
