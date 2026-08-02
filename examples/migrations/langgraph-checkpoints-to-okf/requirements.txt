@@ -1,4 +1,13 @@
-langgraph>=0.2
-langgraph-checkpoint-sqlite>=2.0
-pyyaml>=6.0
-pytest>=8.0
+# Core pipeline (pinned to the tested baseline)
+langgraph==1.2.10
+langgraph-checkpoint-sqlite==3.1.1
+pyyaml==6.0.3
+
+# Tests
+pytest==9.1.1
+
+# Demo video generator (make_demo.py only)
+numpy==2.5.1
+pillow==12.3.0
+imageio==2.37.4
+imageio-ffmpeg==0.6.0

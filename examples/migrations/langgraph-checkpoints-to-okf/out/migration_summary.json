@@ -1,14 +1,14 @@
 {
-  "generated_at": "2026-08-02T23:34:15.974274+00:00",
+  "generated_at": "2026-08-02T23:49:43.628100+00:00",
   "source": "langgraph SqliteSaver checkpoints",
   "source_db": "checkpoints.sqlite",
   "threads": {
     "alex-travel": {
-      "checkpoint_id": "1f18ecaa-cb91-600e-800d-e36cc4d14466",
+      "checkpoint_id": "1f18eccd-5c31-63f9-800d-41682a0448ac",
       "checkpoints": 15
     },
     "alex-work-policy": {
-      "checkpoint_id": "1f18ecaa-cb9f-6be3-8004-a86b0de107b9",
+      "checkpoint_id": "1f18eccd-5c40-6e68-8004-af61e0b5c3cf",
       "checkpoints": 6
     }
   },

@@ -28,11 +28,12 @@ from __future__ import annotations
 import json
 import os
 import re
+import sqlite3
 from datetime import datetime, timezone
 
 import yaml
 from langgraph.checkpoint.sqlite import SqliteSaver
-from seed_agent import DB_PATH, SCRIPT
+from seed_agent import DB_PATH
 
 OUT_DIR = os.path.join(os.path.dirname(__file__), "out")
 BUNDLE_DIR = os.path.join(OUT_DIR, "okf-bundle")
@@ -61,11 +62,37 @@ def _now() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
-def read_thread_memories() -> dict[str, dict]:
-    """Read the latest checkpoint per thread via LangGraph's official API."""
+def discover_thread_ids(db_path: str | None = None) -> list[str]:
+    """Enumerate every thread persisted in the checkpoint store.
+
+    The adapter must migrate ALL stored threads — not just the ones the demo
+    seeder knows about — so thread IDs are discovered from the store itself.
+    """
+    db_path = db_path or DB_PATH  # resolved at call time, not def time
+    if not os.path.exists(db_path):
+        return []
+    with sqlite3.connect(db_path) as conn:
+        rows = conn.execute("SELECT DISTINCT thread_id FROM checkpoints").fetchall()
+    return sorted(r[0] for r in rows if r[0])
+
+
+def read_thread_memories(thread_ids: list[str] | None = None) -> dict[str, dict]:
+    """Read the latest checkpoint per thread via LangGraph's official API.
+
+    Defaults to every thread discovered in the store; an explicit list may be
+    passed to migrate a subset (validated against stored threads).
+    """
+    stored = discover_thread_ids()
+    if thread_ids is None:
+        thread_ids = stored
+    else:
+        unknown = [t for t in thread_ids if t not in stored]
+        if unknown:
+            raise ValueError(f"thread(s) not present in checkpoint store: {unknown}")
+
     result: dict[str, dict] = {}
     with SqliteSaver.from_conn_string(DB_PATH) as saver:
-        for thread_id in SCRIPT:
+        for thread_id in thread_ids:
             config = {"configurable": {"thread_id": thread_id}}
             checkpoints = list(saver.list(config))
             if not checkpoints:

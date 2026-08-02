@@ -9,14 +9,14 @@ tags:
 - checkpoint-migration
 - alex-travel
 - preference
-timestamp: '2026-08-02T23:34:15.745102+00:00'
+timestamp: '2026-08-02T23:49:43.590669+00:00'
 x_memanto:
   type: preference
   confidence: 0.85
   source: langgraph-checkpoints
 thread_id: alex-travel
 turn: 2
-checkpoint_id: 1f18ecaa-cb91-600e-800d-e36cc4d14466
+checkpoint_id: 1f18eccd-5c31-63f9-800d-41682a0448ac
 checkpoint_step: 13
 extraction_rule: under \$(\d+) a night
 ---
@@ -26,9 +26,9 @@ Hotel budget is under $250 per night.
 ## Provenance
 
 - Source: LangGraph `SqliteSaver` checkpoint store (`checkpoints.sqlite`)
-- Thread: `alex-travel` · Turn: 2 · Checkpoint: `1f18ecaa-cb91-600e-800d-e36cc4d14466` (step 13)
+- Thread: `alex-travel` · Turn: 2 · Checkpoint: `1f18eccd-5c31-63f9-800d-41682a0448ac` (step 13)
 - Extraction rule: `under \$(\d+) a night`
-- Migrated: 2026-08-02T23:34:15.969130+00:00
+- Migrated: 2026-08-02T23:49:43.623228+00:00
 
 Migrated with the LangGraph → OKF adapter. See the
 [LangGraph persistence docs](https://langchain-ai.github.io/langgraph/concepts/persistence/).

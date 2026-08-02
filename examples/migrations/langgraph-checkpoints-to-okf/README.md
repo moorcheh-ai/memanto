@@ -9,7 +9,7 @@ evaporates. This adapter turns a real LangGraph `SqliteSaver` checkpoint
 store into a portable, human-readable **OKF bundle** that Memanto's shipped
 tooling imports losslessly:
 
-```
+```text
 LangGraph checkpoints.sqlite  ──adapter──▶  OKF markdown bundle  ──memanto migrate okf──▶  Memanto
         (locked in)                        (you own it)                     (portable)
 ```
@@ -45,7 +45,7 @@ memanto migrate okf out/okf-bundle
 | Step | File | What happens |
 |------|------|--------------|
 | 1. Seed | `seed_agent.py` | Runs a **real LangGraph StateGraph** — a travel-planner agent accumulating memories over 7 sessions across 2 threads (incl. a *resolved contradiction*: "vegetarian" → "eating meat again"). Every turn is persisted by LangGraph's `SqliteSaver` into `checkpoints.sqlite`. Deterministic rule-based extraction keeps the demo 100% reproducible with zero API keys. |
-| 2. Migrate | `adapter.py` | Reads the checkpoint DB via LangGraph's **official reader API**, takes the latest checkpoint per thread, and emits one OKF markdown document per memory into `out/okf-bundle/memories/`, plus `out/migration_summary.json` (source records → mapped docs, per-type & per-thread breakdown). |
+| 2. Migrate | `adapter.py` | **Discovers every thread stored in the checkpoint DB** (no hard-coded list — any real store works), reads the latest checkpoint per thread via LangGraph's **official reader API**, and emits one OKF markdown document per memory into `out/okf-bundle/memories/`, plus `out/migration_summary.json` (source records → mapped docs, per-type & per-thread breakdown). |
 | 3. Validate | `validate.py` | Golden Q&A set: 9 probe questions (name, seat, airport, budget, diet status, loyalty number, policies) must be answerable from **both** the source store and the OKF bundle. Prints recall parity — **9/9 (100%)**. |
 
 ## Mapping table (LangGraph → OKF/Memanto)
@@ -90,12 +90,13 @@ import it into Memanto, or anywhere else OKF flows.
 
 ## Files
 
-```
+```text
 seed_agent.py      # real LangGraph run → checkpoints.sqlite
 adapter.py         # checkpoints → OKF bundle (the deliverable)
 validate.py        # golden Q&A recall parity
 run.py             # single-command pipeline
 tests/             # incl. memanto-loader acceptance test
+make_demo.py       # regenerates demo.mp4 from a real captured run
 demo.mp4           # terminal recording of the real run
 out/okf-bundle/    # the committed OKF artifact
 ```

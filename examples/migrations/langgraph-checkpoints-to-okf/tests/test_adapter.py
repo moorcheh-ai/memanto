@@ -22,10 +22,17 @@ import validate  # noqa: E402
 
 @pytest.fixture(scope="session", autouse=True)
 def pipeline(tmp_path_factory):
-    """Rebuild the store and bundle once for the whole test session."""
-    seed_agent.DB_PATH = str(tmp_path_factory.mktemp("lg") / "checkpoints.sqlite")
-    seed_agent.seed(force=True)
+    """Rebuild the store and bundle once for the whole test session,
+    redirecting every generated artifact into a temp directory."""
+    tmp = tmp_path_factory.mktemp("lg")
+    seed_agent.DB_PATH = str(tmp / "checkpoints.sqlite")
     adapter.DB_PATH = seed_agent.DB_PATH
+    adapter.OUT_DIR = str(tmp / "out")
+    adapter.BUNDLE_DIR = str(tmp / "out" / "okf-bundle")
+    adapter.SUMMARY_PATH = str(tmp / "out" / "migration_summary.json")
+    validate.BUNDLE_DIR = adapter.BUNDLE_DIR
+    validate.SUMMARY_PATH = adapter.SUMMARY_PATH
+    seed_agent.seed(force=True)
     summary = adapter.run()
     return summary
 
@@ -84,3 +91,31 @@ def test_rerun_is_idempotent():
     adapter.run()
     after = sorted(os.listdir(os.path.join(adapter.BUNDLE_DIR, "memories")))
     assert before == after
+
+
+def test_thread_discovery_covers_non_script_threads(tmp_path):
+    """Threads not present in the demo SCRIPT must still be discovered and
+    migrated; requesting an unknown thread must fail loudly."""
+    from langgraph.checkpoint.sqlite import SqliteSaver
+
+    db = str(tmp_path / "extra.sqlite")
+    with SqliteSaver.from_conn_string(db) as saver:
+        app = seed_agent.build_graph(saver)
+        app.invoke(
+            {"messages": [{"role": "user", "content": "My home airport is JFK"}]},
+            config={"configurable": {"thread_id": "unscripted-thread"}},
+        )
+
+    assert "unscripted-thread" in adapter.discover_thread_ids(db)
+
+    old_db = adapter.DB_PATH
+    adapter.DB_PATH = db
+    try:
+        data = adapter.read_thread_memories()
+        with pytest.raises(ValueError, match="not present"):
+            adapter.read_thread_memories(["does-not-exist"])
+    finally:
+        adapter.DB_PATH = old_db
+
+    assert "unscripted-thread" in data
+    assert any("JFK" in m["text"] for m in data["unscripted-thread"]["memories"])

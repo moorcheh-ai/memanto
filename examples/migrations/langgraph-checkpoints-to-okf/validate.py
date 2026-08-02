@@ -37,11 +37,26 @@ def _corpus_from_source() -> list[str]:
     return texts
 
 
+def _memory_body(markdown: str) -> str:
+    """Extract only the answer-bearing memory body from an OKF document:
+    drop the YAML frontmatter and everything from the '## Provenance'
+    heading onward (metadata must not count toward recall)."""
+    text = markdown
+    if text.startswith("---\n"):
+        end = text.find("\n---\n", 4)
+        if end != -1:
+            text = text[end + 5 :]
+    prov = text.find("\n## Provenance")
+    if prov != -1:
+        text = text[:prov]
+    return text.strip()
+
+
 def _corpus_from_bundle() -> list[str]:
     texts: list[str] = []
     for path in glob.glob(os.path.join(BUNDLE_DIR, "memories", "*.md")):
         with open(path, encoding="utf-8") as f:
-            texts.append(f.read())
+            texts.append(_memory_body(f.read()))
     return texts
 
 
