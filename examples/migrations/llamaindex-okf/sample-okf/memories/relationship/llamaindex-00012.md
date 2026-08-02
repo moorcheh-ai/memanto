@@ -7,7 +7,7 @@ tags:
 - llamaindex
 - session:orchid-research
 - role:user
-timestamp: '2026-08-02T16:39:58.638861Z'
+timestamp: '2026-08-02T08:00:00Z'
 x_memanto:
   type: relationship
   confidence: 1.0
@@ -19,7 +19,7 @@ x_llamaindex:
   session_id: orchid-research
   role: user
   status: active
-  order: 12
+  order: 9
   additional_kwargs:
     memory_type: relationship
     topic: pilot
