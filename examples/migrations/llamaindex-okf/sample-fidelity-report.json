@@ -1,0 +1,42 @@
+{
+  "source_records": 13,
+  "okf_records": 13,
+  "record_recall": 1.0,
+  "field_parity_checks": 78,
+  "golden_questions": 6,
+  "golden_recall": 1.0,
+  "passed": true,
+  "failures": [],
+  "qa_results": [
+    {
+      "question": "What does Orchid do?",
+      "expected": "It helps small museums catalogue objects",
+      "passed": true
+    },
+    {
+      "question": "What is the preferred release-note style?",
+      "expected": "concise release notes with a short example before technical detail",
+      "passed": true
+    },
+    {
+      "question": "Which feature must ship before public sharing?",
+      "expected": "offline-first sync before adding public sharing",
+      "passed": true
+    },
+    {
+      "question": "What is the corrected pilot target?",
+      "expected": "pilot museum count is 14, not 12",
+      "passed": true
+    },
+    {
+      "question": "Who reviews the import template?",
+      "expected": "Mina is the registrar who will review the import template",
+      "passed": true
+    },
+    {
+      "question": "Which personal data should not be collected?",
+      "expected": "Avoid collecting donor addresses",
+      "passed": true
+    }
+  ]
+}

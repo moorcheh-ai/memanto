@@ -1,0 +1,52 @@
+from pathlib import Path
+
+from generate_source import build_store
+from migrate_to_okf import convert, load_rows, redact_data
+from validate_round_trip import validate
+
+HERE = Path(__file__).parent
+
+
+def test_real_llamaindex_store_round_trips_to_okf(tmp_path):
+    database = tmp_path / "source.sqlite"
+    bundle = tmp_path / "bundle"
+    assert build_store(database) == 13
+    manifest = convert(database, bundle)
+    report = validate(database, bundle, HERE / "golden_qa.json")
+
+    rows = load_rows(database)
+    assert len(rows) == 13
+    assert {row["status"] for row in rows} == {"active", "archived"}
+    assert manifest["source_records"] == 13
+    assert manifest["mapped_memories"] == 13
+    assert manifest["skipped"] == 0
+    assert report["record_recall"] == 1.0
+    assert report["golden_recall"] == 1.0
+    assert report["passed"] is True
+
+
+def test_converter_refuses_to_overwrite_bundle(tmp_path):
+    database = tmp_path / "source.sqlite"
+    bundle = tmp_path / "bundle"
+    build_store(database)
+    convert(database, bundle)
+
+    try:
+        convert(database, bundle)
+    except FileExistsError:
+        pass
+    else:
+        raise AssertionError("converter should not overwrite an existing bundle")
+
+
+def test_nested_metadata_redaction_preserves_structure():
+    source = {
+        "api_key": "sk-do-not-copy",
+        "owner": "person@example.com",
+        "nested": {"access_token": "abc", "count": 2},
+    }
+    assert redact_data(source) == {
+        "api_key": "[REDACTED_SECRET]",
+        "owner": "[REDACTED_EMAIL]",
+        "nested": {"access_token": "[REDACTED_SECRET]", "count": 2},
+    }
