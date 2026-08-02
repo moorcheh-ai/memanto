@@ -7,7 +7,7 @@ tags:
 - llamaindex
 - session:orchid-research
 - role:assistant
-timestamp: '2026-08-02T16:39:58.641590Z'
+timestamp: '2026-08-02T08:00:00Z'
 x_memanto:
   type: event
   confidence: 1.0
@@ -19,7 +19,7 @@ x_llamaindex:
   session_id: orchid-research
   role: assistant
   status: active
-  order: 13
+  order: 10
   additional_kwargs:
     memory_type: event
     topic: pilot
