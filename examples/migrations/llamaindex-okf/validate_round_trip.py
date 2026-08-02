@@ -4,10 +4,61 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 from pathlib import Path
 
 import yaml
 from migrate_to_okf import _text_from_message, load_rows, redact_data
+
+STOP_WORDS = {
+    "a",
+    "an",
+    "and",
+    "be",
+    "does",
+    "is",
+    "not",
+    "of",
+    "the",
+    "to",
+    "what",
+    "which",
+    "who",
+}
+
+
+def _tokens(text: str) -> set[str]:
+    tokens = set()
+    for raw in re.findall(r"[a-z0-9]+", text.lower()):
+        token = raw
+        for suffix in ("ing", "ed", "es", "s"):
+            if token.endswith(suffix) and len(token) > len(suffix) + 3:
+                token = token[: -len(suffix)]
+                break
+        if token not in STOP_WORDS:
+            tokens.add(token)
+    return tokens
+
+
+def retrieve_answer(question: str, records: list[str], expected: str) -> dict:
+    """Retrieve the best record by deterministic query-token overlap."""
+    query = _tokens(question)
+    ranked = sorted(
+        (
+            (len(query & _tokens(record)), index, record)
+            for index, record in enumerate(records)
+        ),
+        key=lambda item: (-item[0], item[1]),
+    )
+    score, _, retrieved = ranked[0] if ranked else (0, -1, "")
+    passed = score > 0 and expected.lower() in retrieved.lower()
+    return {
+        "question": question,
+        "expected": expected,
+        "retrieved": retrieved or None,
+        "overlap_score": score,
+        "passed": passed,
+    }
 
 
 def okf_records(bundle: Path) -> dict[int, dict]:
@@ -50,14 +101,10 @@ def validate(database: Path, bundle: Path, golden_path: Path) -> dict:
             if not passed
         )
 
-    corpus = "\n".join(record["text"].lower() for record in migrated.values())
+    migrated_texts = [record["text"] for record in migrated.values()]
     golden = json.loads(golden_path.read_text(encoding="utf-8"))
     qa_results = [
-        {
-            "question": case["question"],
-            "expected": case["expected"],
-            "passed": case["expected"].lower() in corpus,
-        }
+        retrieve_answer(case["question"], migrated_texts, case["expected"])
         for case in golden
     ]
     failures.extend(

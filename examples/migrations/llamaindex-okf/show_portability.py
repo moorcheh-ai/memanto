@@ -7,28 +7,23 @@ import json
 from pathlib import Path
 
 from migrate_to_okf import _text_from_message, load_rows
-from validate_round_trip import okf_records
+from validate_round_trip import okf_records, retrieve_answer
 
 
-def source_corpus(database: Path) -> str:
-    return "\n".join(
+def source_records(database: Path) -> list[str]:
+    return [
         _text_from_message(json.loads(row["data"])) for row in load_rows(database)
-    )
+    ]
 
 
-def portable_corpus(bundle: Path) -> str:
-    return "\n".join(record["text"] for record in okf_records(bundle).values())
+def portable_records(bundle: Path) -> list[str]:
+    return [record["text"] for record in okf_records(bundle).values()]
 
 
-def score(corpus: str, golden_path: Path) -> dict:
-    lowered = corpus.lower()
+def score(records: list[str], golden_path: Path) -> dict:
     cases = json.loads(golden_path.read_text(encoding="utf-8"))
     results = [
-        {
-            "question": case["question"],
-            "answer": case["expected"] if case["expected"].lower() in lowered else None,
-            "passed": case["expected"].lower() in lowered,
-        }
+        retrieve_answer(case["question"], records, case["expected"])
         for case in cases
     ]
     return {
@@ -39,9 +34,9 @@ def score(corpus: str, golden_path: Path) -> dict:
 
 
 def portability_story(database: Path, bundle: Path, golden_path: Path) -> dict:
-    source = score(source_corpus(database), golden_path)
-    switched_without_export = score("", golden_path)
-    recovered_from_okf = score(portable_corpus(bundle), golden_path)
+    source = score(source_records(database), golden_path)
+    switched_without_export = score([], golden_path)
+    recovered_from_okf = score(portable_records(bundle), golden_path)
     return {
         "before_switch_llamaindex": source,
         "after_switch_without_export": switched_without_export,

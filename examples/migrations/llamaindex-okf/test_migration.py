@@ -5,7 +5,7 @@ from pathlib import Path
 from generate_source import build_store
 from migrate_to_okf import _memory_type, convert, load_rows, redact_data
 from show_portability import portability_story
-from validate_round_trip import validate
+from validate_round_trip import retrieve_answer, validate
 
 HERE = Path(__file__).parent
 
@@ -127,3 +127,13 @@ def test_portability_story_exposes_lock_in_and_recovery(tmp_path):
     assert story["after_switch_without_export"]["answered"] == 0
     assert story["after_open_okf"]["answered"] == 6
     assert story["passed"] is True
+
+
+def test_recall_requires_the_question_specific_record():
+    result = retrieve_answer(
+        "What is the preferred color?",
+        ["The capital is Paris.", "The preferred color is blue."],
+        "Paris",
+    )
+    assert result["retrieved"] == "The preferred color is blue."
+    assert result["passed"] is False
