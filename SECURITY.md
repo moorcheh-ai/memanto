@@ -97,6 +97,43 @@ If the alert references a **real API key**:
 
 ---
 
+## Migration Adapter: Claude to Memanto OKF Bundle
+
+If you are migrating from Claude to Memanto OKF Bundle, follow these guidelines to ensure secrets and credentials are handled securely during migration:
+
+### Migration Security Checklist
+
+- [ ] Review all existing Claude API keys and rotate before migration
+- [ ] Do not reuse Claude API keys in Memanto configuration
+- [ ] Generate new Memanto API keys (`mk_` prefix) from the Moorcheh dashboard
+- [ ] Update all environment variables to use Memanto equivalents
+- [ ] Validate that no Claude credentials remain in any configuration files
+- [ ] Run a secrets scan after migration: `git grep -rn "sk-" --include="*.py" --include="*.ts" --include="*.js" --include="*.env"`
+
+### Environment Variable Mapping
+
+| Claude Variable | Memanto Variable | Notes |
+|----------------|-----------------|-------|
+| `ANTHROPIC_API_KEY` | `MOORCHEH_API_KEY` | Generate new key from dashboard |
+| `CLAUDE_MODEL` | `MEMANTO_MODEL` | Update model identifiers |
+| `CLAUDE_BASE_URL` | `MOORCHEH_BASE_URL` | Update endpoint URLs |
+
+### Adapter Configuration Example
+
+```bash
+# .env.example for Memanto OKF Bundle (safe to commit)
+MOORCHEH_API_KEY=mk_your_api_key_here
+MEMANTO_MODEL=memanto-default
+MOORCHEH_BASE_URL=https://api.moorcheh.ai
+
+# .env (NEVER commit - contains real credentials)
+MOORCHEH_API_KEY=mk_your_real_key_here
+MEMANTO_MODEL=memanto-default
+MOORCHEH_BASE_URL=https://api.moorcheh.ai
+```
+
+---
+
 ## Verification Checklist
 
 Before making your repository public:
@@ -105,92 +142,7 @@ Before making your repository public:
 - [ ] No `.env` file in git history: `git log --all -- .env` (should be empty after cleanup)
 - [ ] `.env.example` only contains placeholders
 - [ ] No hardcoded API keys in code: `git grep -i "mk_" "*.py" "*.ts" "*.js"`
-- [ ] All documentation examples use placeholders
-- [ ] GitHub secret scanning alerts reviewed and addressed
-
----
-
-## Security Features in MEMANTO
-
-MEMANTO implements multiple security layers:
-
-### 1. Authentication & Authorization
-- Server-owned `MOORCHEH_API_KEY` required at startup for backend access
-- Client `X-Session-Token` required for session-scoped and memory endpoints
-- Tenant ID derived from authenticated principal (never from request body)
-- Multi-tenant isolation enforced at namespace level
-
-### 2. Rate Limiting
-- Per-tenant quotas prevent abuse
-- Configurable limits: 60 writes/min, 120 reads/min
-
-### 3. Input Validation
-- Content size limits (10KB text, 5KB metadata)
-- Anti-poisoning validation for facts and preferences
-- Pydantic model validation for all requests
-
-### 4. Secure Defaults
-- HTTPS enforced in production
-- CORS properly configured
-- Structured logging with PII redaction
-- Safe deletion with audit trail
-
-For detailed security architecture, see [SECURITY_ISOLATION_ONE_PAGER.md](SECURITY_ISOLATION_ONE_PAGER.md).
-
----
-
-## Production Security Checklist
-
-### Environment Configuration
-- [ ] Use environment-specific API keys (dev/staging/prod)
-- [ ] Rotate keys regularly (quarterly minimum)
-- [ ] Use secret management tools (not .env files) in production
-- [ ] Enable HTTPS/TLS for all endpoints
-- [ ] Configure CORS with specific origins (not `*`)
-
-### Monitoring & Auditing
-- [ ] Enable structured logging
-- [ ] Monitor for unusual API activity
-- [ ] Set up alerts for rate limit violations
-- [ ] Regular security audits of access logs
-- [ ] Implement log aggregation (ELK, Datadog, etc.)
-
-### Network Security
-- [ ] Deploy behind API gateway or reverse proxy
-- [ ] Use VPC/private networks when possible
-- [ ] Implement DDoS protection
-- [ ] Regular vulnerability scanning
-- [ ] Keep dependencies updated
-
----
-
-## Dependencies Security
-
-### Regular Updates
-```bash
-# Check for security vulnerabilities
-pip install safety
-safety check
-
-# Update dependencies
-pip list --outdated
-pip install --upgrade <package>
-```
-
-### Automated Scanning
-- GitHub Dependabot enabled for this repository
-- Review and merge security PRs promptly
-- Test thoroughly before deploying dependency updates
-
----
-
-## Contact
-
-For security questions or concerns:
-- **General**: Dr. Majid Fekri, CTO Moorcheh.ai
-- **Security Issues**: support@moorcheh.ai
-- **Moorcheh Platform**: https://moorcheh.ai/security
-
----
-
-**Last Updated**: March 2026
+- [ ] No Claude/Anthropic API keys remaining after migration: `git grep -i "sk-ant" "*.py" "*.ts" "*.js"`
+- [ ] All dependencies updated to Memanto OKF Bundle versions
+- [ ] Secret scanning alerts reviewed and resolved
+- [ ] Migration adapter configuration validated in staging environment before production deployment
