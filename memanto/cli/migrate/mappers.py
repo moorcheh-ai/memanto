@@ -225,7 +225,7 @@ def map_mem0(export: dict[str, Any]) -> list[dict[str, Any]]:
                 "type": memory_type,
                 "tags": tags,
                 "confidence": 0.8,
-                "source": "mem0",
+                "source": "system",
                 "source_ref": str(mem.get("id")) if mem.get("id") else None,
                 "provenance": "imported",
                 "created_at": created_at,
@@ -284,7 +284,7 @@ def map_letta(export: dict[str, Any]) -> list[dict[str, Any]]:
                 "type": "observation",
                 "tags": tags,
                 "confidence": 0.8,
-                "source": "letta",
+                "source": "system",
                 "source_ref": str(passage.get("id")) if passage.get("id") else None,
                 "provenance": "imported",
                 "created_at": created_at,
@@ -346,7 +346,7 @@ def map_supermemory(export: dict[str, Any]) -> list[dict[str, Any]]:
                 "type": None,
                 "tags": tags,
                 "confidence": 0.8,
-                "source": "supermemory",
+                "source": "system",
                 "source_ref": str(mem.get("id")) if mem.get("id") else None,
                 "provenance": "imported",
                 "created_at": created_at,
@@ -394,7 +394,7 @@ def map_supermemory(export: dict[str, Any]) -> list[dict[str, Any]]:
                     "type": "artifact",
                     "tags": doc_tags,
                     "confidence": 0.7,
-                    "source": "supermemory",
+                    "source": "system",
                     "source_ref": (f"{doc_id}:{chunk.get('id')}" if doc_id else None),
                     "provenance": "imported",
                     "created_at": doc_created,
@@ -451,7 +451,14 @@ def map_okf(export: dict[str, Any]) -> list[dict[str, Any]]:
             confidence = 0.8
         confidence = min(1.0, max(0.0, confidence))
 
-        source = x_memanto.get("source") or "okf"
+        # Normalize source to a valid SourceType.  Provider names like "okf"
+        # are not valid SourceType values and would cause Pydantic validation
+        # errors when creating MemoryRecords downstream.  Fall back to the
+        # original source classification when it is a valid SourceType;
+        # otherwise treat the migration as a system-level operation.
+        _VALID_SOURCES = {"user", "agent", "tool", "system"}
+        raw_source = x_memanto.get("source")
+        source = raw_source if raw_source in _VALID_SOURCES else "system"
         created_at = _parse_dt(entry.get("timestamp"))
 
         footer_items: list[tuple[str, Any]] = [
