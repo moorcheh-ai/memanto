@@ -113,3 +113,31 @@ def test_extract_requires_messages():
 
     with pytest.raises(ValueError, match="at least one message"):
         service.extract(namespace="memanto_agent_test", messages=[])
+
+
+def test_conversation_text_includes_first_message_when_oversized():
+    """A single message longer than MAX_CONTENT_CHARS must still appear
+    (truncated) so the query is never empty."""
+    service = ConversationMemoryExtractionService(FakeClient("[]"))
+    long_content = "x" * (service.MAX_CONTENT_CHARS + 500)
+    text = service._conversation_text(
+        [{"role": "user", "content": long_content}]
+    )
+    assert text.startswith("user:")
+    assert len(text) <= service.MAX_CONTENT_CHARS + len("user: ")
+    assert text.strip() != ""
+
+
+def test_conversation_text_truncates_after_budget():
+    """When the second message pushes total over the budget, only the
+    first message should appear."""
+    service = ConversationMemoryExtractionService(FakeClient("[]"))
+    half = service.MAX_CONTENT_CHARS // 2 + 100
+    text = service._conversation_text(
+        [
+            {"role": "user", "content": "a" * half},
+            {"role": "assistant", "content": "b" * half},
+        ]
+    )
+    assert text.startswith("user:")
+    assert "assistant:" not in text
