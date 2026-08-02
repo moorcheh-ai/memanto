@@ -2,6 +2,7 @@ from pathlib import Path
 
 from generate_source import build_store
 from migrate_to_okf import _memory_type, convert, load_rows, redact_data
+from show_portability import portability_story
 from validate_round_trip import validate
 
 HERE = Path(__file__).parent
@@ -60,3 +61,17 @@ def test_human_reviewed_assistant_fallback_is_observation():
     assert _memory_type(
         "assistant", {"memory_type": "learning"}, "An explicitly typed reply"
     ) == "learning"
+
+
+def test_portability_story_exposes_lock_in_and_recovery(tmp_path):
+    database = tmp_path / "source.sqlite"
+    bundle = tmp_path / "bundle"
+    build_store(database)
+    convert(database, bundle)
+
+    story = portability_story(database, bundle, HERE / "golden_qa.json")
+
+    assert story["before_switch_llamaindex"]["answered"] == 6
+    assert story["after_switch_without_export"]["answered"] == 0
+    assert story["after_open_okf"]["answered"] == 6
+    assert story["passed"] is True

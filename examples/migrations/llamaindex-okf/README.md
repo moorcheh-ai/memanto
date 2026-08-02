@@ -68,6 +68,16 @@ memanto migrate okf ./my-okf-bundle --dry-run
 The converter refuses to overwrite an existing output directory and opens the
 source database in SQLite read-only mode.
 
+To reproduce the lock-in and recovery story without a paid model:
+
+```bash
+python show_portability.py ./source.sqlite ./my-okf-bundle
+```
+
+The command proves the same golden recall sequence shown in the demo:
+LlamaIndex source `6/6` → fresh tool without an export `0/6` → portable OKF
+`6/6`.
+
 ## Mapping table
 
 | LlamaIndex concept | Memanto type | OKF representation |
@@ -104,6 +114,14 @@ supported `memory_type` still takes precedence over this fallback.
 - Unknown `additional_kwargs` are preserved under a namespaced OKF extension.
 - No API key, paid model, remote service, or destructive action is required for
   the offline proof.
+
+## Savings report
+
+The official `memanto migrate okf` help states that OKF is a local file bundle
+with no API key and no savings report. This Path B showcase therefore reports
+the applicable values directly: zero remote API calls, zero remote writes in
+dry-run mode, zero paid-model calls, and zero skipped records. It deliberately
+does not invent token or latency savings that the OKF importer does not emit.
 
 ## Tests
 

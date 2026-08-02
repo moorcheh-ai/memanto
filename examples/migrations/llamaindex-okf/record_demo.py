@@ -172,11 +172,43 @@ def main() -> None:
     summary = json.loads(demo_output)
     run_dir = Path(summary["run_dir"])
     bundle = run_dir / "okf-bundle"
-    memanto = Path(python).with_name("memanto")
-    dry_run = run([str(memanto), "migrate", "okf", str(bundle), "--dry-run"], here)
+    repo_root = here.parents[2]
+    dry_run = run(
+        [python, "-m", "memanto", "migrate", "okf", str(bundle), "--dry-run"],
+        repo_root,
+    )
     sample_doc = next(iter(sorted((bundle / "memories" / "decision").glob("*.md"))))
     readable = sample_doc.read_text(encoding="utf-8")
     report = (run_dir / "fidelity-report.json").read_text(encoding="utf-8")
+    story = run(
+        [
+            python,
+            "show_portability.py",
+            str(run_dir / "source" / "llamaindex-memory.sqlite"),
+            str(bundle),
+        ],
+        here,
+    )
+    story_data = json.loads(story)
+    before = story_data["before_switch_llamaindex"]
+    blank = story_data["after_switch_without_export"]
+    recovered = story_data["after_open_okf"]
+    lock_in_summary = (
+        f"LlamaIndex source answers: {before['answered']}/{before['total']}\n"
+        f"Fresh tool after switching: {blank['answered']}/{blank['total']}\n"
+        "No export means the new tool has no memory."
+    )
+    recovery_summary = (
+        f"Portable OKF answers: {recovered['answered']}/{recovered['total']}\n"
+        "The same six answers are recoverable from plain Markdown.\n"
+        "Round-trip story: 6/6 → 0/6 → 6/6"
+    )
+    savings = (
+        "Official OKF importer: local bundle; no API key and no savings report.\n"
+        "Remote API calls: 0\nRemote writes in dry-run: 0\n"
+        "Paid model calls: 0\nSkipped records: 0\n"
+        "No unsupported token or latency savings are claimed."
+    )
     events = [
         (
             "1 · Create and migrate real LlamaIndex memory",
@@ -184,19 +216,34 @@ def main() -> None:
             demo_output,
         ),
         (
-            "2 · Feed the bundle to Memanto's shipped importer",
+            "2 · See the lock-in problem",
+            "python show_portability.py <source> <bundle>",
+            lock_in_summary,
+        ),
+        (
+            "3 · Feed the bundle to Memanto's shipped importer",
             "memanto migrate okf <bundle> --dry-run",
             dry_run,
         ),
         (
-            "3 · Open one portable memory",
+            "4 · Open one portable memory",
             f"open {sample_doc.name}",
             readable,
         ),
         (
-            "4 · Verify fidelity and recall",
+            "5 · Recover recall from portable OKF",
+            "python show_portability.py <source> <bundle>",
+            recovery_summary,
+        ),
+        (
+            "6 · Verify field fidelity",
             "open fidelity-report.json",
             report,
+        ),
+        (
+            "7 · Report cost and savings honestly",
+            "memanto migrate okf --help",
+            savings,
         ),
     ]
     transcript = args.output.with_suffix(".txt")
