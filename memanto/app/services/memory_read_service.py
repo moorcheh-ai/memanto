@@ -439,13 +439,18 @@ class MemoryReadService:
 
             # Filter to only changed memories
             changed_memories = []
-            seen_ids = set()
+            seen_ids: set[Any] = set()
 
             for memory in all_memories:
                 mem_id = memory.get("id")
-                if mem_id in seen_ids:
+                # Only dedup by id when the id is present. Memories with a
+                # missing or None id are not duplicates of each other --
+                # treating them as such silently drops all but the first
+                # id-less memory (data loss, bounty #770).
+                if mem_id is not None and mem_id in seen_ids:
                     continue
-                seen_ids.add(mem_id)
+                if mem_id is not None:
+                    seen_ids.add(mem_id)
 
                 # Check if created after since_date (new memory)
                 created_at = memory.get("created_at")
