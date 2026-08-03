@@ -84,8 +84,14 @@ class ConversationMemoryExtractionService:
     def _conversation_text(self, messages: list[dict[str, str]]) -> str:
         lines: list[str] = []
         total = 0
-        for message in messages:
+        for index, message in enumerate(messages):
             line = f"{message['role'].strip()}: {message['content'].strip()}"
+            if index == 0 and len(line) > self.MAX_CONTENT_CHARS:
+                # First message alone exceeds the budget: keep a truncated
+                # version instead of returning an empty query.
+                lines.append(line[: self.MAX_CONTENT_CHARS])
+                total = self.MAX_CONTENT_CHARS
+                continue
             total += len(line)
             if total > self.MAX_CONTENT_CHARS:
                 break

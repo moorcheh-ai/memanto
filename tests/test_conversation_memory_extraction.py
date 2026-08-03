@@ -113,3 +113,30 @@ def test_extract_requires_messages():
 
     with pytest.raises(ValueError, match="at least one message"):
         service.extract(namespace="memanto_agent_test", messages=[])
+
+
+def test_conversation_text_returns_normal_messages():
+    service = ConversationMemoryExtractionService(FakeClient("[]"))
+    out = service._conversation_text(
+        [{"role": "user", "content": "hello"}, {"role": "assistant", "content": "world"}]
+    )
+    assert out == "user: hello\nassistant: world"
+
+
+def test_conversation_text_keeps_truncated_first_message_when_oversized():
+    service = ConversationMemoryExtractionService(FakeClient("[]"))
+    out = service._conversation_text(
+        [{"role": "user", "content": "x" * 15000}, {"role": "assistant", "content": "short"}]
+    )
+    assert out, "query must never be empty when the first message exceeds the budget"
+    assert len(out) == service.MAX_CONTENT_CHARS
+    assert "short" not in out  # later messages dropped once budget consumed
+
+
+def test_conversation_text_cuts_later_messages_on_cumulative_overflow():
+    service = ConversationMemoryExtractionService(FakeClient("[]"))
+    out = service._conversation_text(
+        [{"role": "user", "content": "a" * 8000}, {"role": "assistant", "content": "b" * 8000}]
+    )
+    assert "user: " in out
+    assert "assistant: " not in out  # second message exceeds budget, must be cut
