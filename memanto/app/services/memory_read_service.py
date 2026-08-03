@@ -618,6 +618,9 @@ class MemoryReadService:
                     break
 
         latest_by_id: dict[str, tuple[tuple[datetime, int], dict[str, Any]]] = {}
+        # Memories without an id are kept as-is (no dedup possible).
+        # Only dedup memories that have a valid id (bounty #770).
+        idless_memories: list[dict[str, Any]] = []
         for index, item in enumerate(items):
             # Skip summary chunks — only return real memory documents
             if isinstance(item, dict) and item.get("is_summary"):
@@ -625,8 +628,9 @@ class MemoryReadService:
             formatted = self._format_memory_item(item)
             mid = formatted.get("id")
             if not mid:
+                # Keep id-less memories without dedup (bounty #770).
+                idless_memories.append(formatted)
                 continue
-
             # Point-in-time dedup: only versions that existed at the target
             # date compete for the newest-version slot, so a delete-and-recreate
             # after as_of cannot displace the version valid then (bounty #770).
@@ -645,7 +649,7 @@ class MemoryReadService:
             if existing is None or version_key >= existing[0]:
                 latest_by_id[cast(str, mid)] = (version_key, formatted)
 
-        memories: list[dict[str, Any]] = []
+        memories: list[dict[str, Any]] = list(idless_memories)
         for _, formatted in latest_by_id.values():
             if type and formatted.get("type") not in type:
                 continue
