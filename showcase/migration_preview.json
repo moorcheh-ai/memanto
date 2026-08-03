@@ -1,0 +1,254 @@
+[
+  {
+    "title": "User prefers Python for all new projects unless performance requires Rust or Go",
+    "content": "User prefers Python for all new projects unless performance requires Rust or Go\n\n---\n[Supporting data]\n- Source: mem0:mem_001\n- Categories: preferences\n- Mem0 metadata: source=chat; confidence=high\n- Mem0 score: 0.92\n- Hash: a1b2\n- Source created_at: 2026-07-13T12:08:15.467706+00:00",
+    "type": "preference",
+    "tags": [
+      "preferences"
+    ],
+    "confidence": 0.8,
+    "source": "mem0",
+    "source_ref": "mem_001",
+    "provenance": "imported",
+    "created_at": "2026-07-13 12:08:15.467706+00:00",
+    "updated_at": "2026-08-03 12:08:32.496648+00:00"
+  },
+  {
+    "title": "User's preferred database is PostgreSQL with asyncpg driver",
+    "content": "User's preferred database is PostgreSQL with asyncpg driver\n\n---\n[Supporting data]\n- Source: mem0:mem_002\n- Categories: preferences, professional_info\n- Mem0 metadata: source=config\n- Mem0 score: 0.88\n- Hash: c3d4\n- Source created_at: 2026-07-13T12:08:15.467706+00:00",
+    "type": "preference",
+    "tags": [
+      "preferences",
+      "professional_info"
+    ],
+    "confidence": 0.8,
+    "source": "mem0",
+    "source_ref": "mem_002",
+    "provenance": "imported",
+    "created_at": "2026-07-13 12:08:15.467706+00:00",
+    "updated_at": "2026-08-03 12:08:32.496648+00:00"
+  },
+  {
+    "title": "User works remotely from Shenzhen, China (UTC+8)",
+    "content": "User works remotely from Shenzhen, China (UTC+8)\n\n---\n[Supporting data]\n- Source: mem0:mem_003\n- Categories: personal_details\n- Mem0 metadata: source=profile\n- Mem0 score: 0.95\n- Hash: e5f6\n- Source created_at: 2026-07-13T12:08:15.467706+00:00",
+    "type": "fact",
+    "tags": [
+      "personal_details"
+    ],
+    "confidence": 0.8,
+    "source": "mem0",
+    "source_ref": "mem_003",
+    "provenance": "imported",
+    "created_at": "2026-07-13 12:08:15.467706+00:00",
+    "updated_at": "2026-08-03 12:08:32.496648+00:00"
+  },
+  {
+    "title": "User is building a content-farm system that auto-generates and distributes te...",
+    "content": "User is building a content-farm system that auto-generates and distributes tech review articles\n\n---\n[Supporting data]\n- Source: mem0:mem_004\n- Categories: work, goals_and_plans\n- Mem0 metadata: source=chat\n- Mem0 score: 0.9\n- Hash: g7h8\n- Source created_at: 2026-07-14T12:08:15.467706+00:00",
+    "type": "fact",
+    "tags": [
+      "work",
+      "goals_and_plans"
+    ],
+    "confidence": 0.8,
+    "source": "mem0",
+    "source_ref": "mem_004",
+    "provenance": "imported",
+    "created_at": "2026-07-14 12:08:15.467706+00:00",
+    "updated_at": "2026-08-03 12:08:32.496648+00:00"
+  },
+  {
+    "title": "User uses Obsidian for knowledge management with multiple vaults",
+    "content": "User uses Obsidian for knowledge management with multiple vaults\n\n---\n[Supporting data]\n- Source: mem0:mem_005\n- Categories: personal_details, preferences\n- Mem0 metadata: source=chat\n- Mem0 score: 0.87\n- Hash: i9j0\n- Source created_at: 2026-07-14T12:08:15.467706+00:00",
+    "type": "fact",
+    "tags": [
+      "personal_details",
+      "preferences"
+    ],
+    "confidence": 0.8,
+    "source": "mem0",
+    "source_ref": "mem_005",
+    "provenance": "imported",
+    "created_at": "2026-07-14 12:08:15.467706+00:00",
+    "updated_at": "2026-08-03 12:08:32.496648+00:00"
+  },
+  {
+    "title": "User wants all API responses wrapped in a Result<T, E> type pattern, not exce...",
+    "content": "User wants all API responses wrapped in a Result<T, E> type pattern, not exceptions\n\n---\n[Supporting data]\n- Source: mem0:mem_006\n- Categories: preferences, professional_info\n- Mem0 metadata: source=code_review\n- Mem0 score: 0.85\n- Hash: k1l2\n- Source created_at: 2026-07-20T12:08:15.467706+00:00",
+    "type": "preference",
+    "tags": [
+      "preferences",
+      "professional_info"
+    ],
+    "confidence": 0.8,
+    "source": "mem0",
+    "source_ref": "mem_006",
+    "provenance": "imported",
+    "created_at": "2026-07-20 12:08:15.467706+00:00",
+    "updated_at": "2026-08-03 12:08:32.496648+00:00"
+  },
+  {
+    "title": "User prefers async/await over threading for I/O-bound operations",
+    "content": "User prefers async/await over threading for I/O-bound operations\n\n---\n[Supporting data]\n- Source: mem0:mem_007\n- Categories: preferences\n- Mem0 metadata: source=chat\n- Mem0 score: 0.82\n- Hash: m3n4\n- Source created_at: 2026-07-20T12:08:15.467706+00:00",
+    "type": "preference",
+    "tags": [
+      "preferences"
+    ],
+    "confidence": 0.8,
+    "source": "mem0",
+    "source_ref": "mem_007",
+    "provenance": "imported",
+    "created_at": "2026-07-20 12:08:15.467706+00:00",
+    "updated_at": "2026-08-03 12:08:32.496648+00:00"
+  },
+  {
+    "title": "Content-farm articles should target both English (Medium/Dev.to) and Chinese...",
+    "content": "Content-farm articles should target both English (Medium/Dev.to) and Chinese (什么值得买) audiences\n\n---\n[Supporting data]\n- Source: mem0:mem_008\n- Categories: work, goals_and_plans\n- Mem0 metadata: source=chat\n- Mem0 score: 0.88\n- Hash: o5p6\n- Source created_at: 2026-07-21T12:08:15.467706+00:00",
+    "type": "fact",
+    "tags": [
+      "work",
+      "goals_and_plans"
+    ],
+    "confidence": 0.8,
+    "source": "mem0",
+    "source_ref": "mem_008",
+    "provenance": "imported",
+    "created_at": "2026-07-21 12:08:15.467706+00:00",
+    "updated_at": "2026-08-03 12:08:32.496648+00:00"
+  },
+  {
+    "title": "CORRECTION: User corrected the agent — they prefer Chinese for internal tasks...",
+    "content": "CORRECTION: User corrected the agent — they prefer Chinese for internal tasks and English for external audiences. This overrides earlier assumption that all comms should be English.\n\n---\n[Supporting data]\n- Source: mem0:mem_009\n- Categories: observations, decisions\n- Mem0 metadata: source=chat; correction=True\n- Mem0 score: 0.75\n- Hash: q7r8\n- Source created_at: 2026-07-22T12:08:15.467706+00:00",
+    "type": "observation",
+    "tags": [
+      "observations",
+      "decisions"
+    ],
+    "confidence": 0.8,
+    "source": "mem0",
+    "source_ref": "mem_009",
+    "provenance": "imported",
+    "created_at": "2026-07-22 12:08:15.467706+00:00",
+    "updated_at": "2026-08-03 12:08:32.496648+00:00"
+  },
+  {
+    "title": "User's GitHub username is lena2099. Key repos: tech-tools-hub, urllib3 fork,...",
+    "content": "User's GitHub username is lena2099. Key repos: tech-tools-hub, urllib3 fork, website fork\n\n---\n[Supporting data]\n- Source: mem0:mem_010\n- Categories: professional_info, personal_details\n- Mem0 metadata: source=integration\n- Mem0 score: 0.93\n- Hash: s9t0\n- Source created_at: 2026-07-23T12:08:15.467706+00:00",
+    "type": "fact",
+    "tags": [
+      "professional_info",
+      "personal_details"
+    ],
+    "confidence": 0.8,
+    "source": "mem0",
+    "source_ref": "mem_010",
+    "provenance": "imported",
+    "created_at": "2026-07-23 12:08:15.467706+00:00",
+    "updated_at": "2026-08-03 12:08:32.496648+00:00"
+  },
+  {
+    "title": "User uses DeepSeek as primary LLM, not OpenAI. API key configured in GitHub S...",
+    "content": "User uses DeepSeek as primary LLM, not OpenAI. API key configured in GitHub Secrets\n\n---\n[Supporting data]\n- Source: mem0:mem_011\n- Categories: preferences, professional_info\n- Mem0 metadata: source=config\n- Mem0 score: 0.9\n- Hash: u1v2\n- Source created_at: 2026-07-27T12:08:15.467706+00:00",
+    "type": "preference",
+    "tags": [
+      "preferences",
+      "professional_info"
+    ],
+    "confidence": 0.8,
+    "source": "mem0",
+    "source_ref": "mem_011",
+    "provenance": "imported",
+    "created_at": "2026-07-27 12:08:15.467706+00:00",
+    "updated_at": "2026-08-03 12:08:32.496648+00:00"
+  },
+  {
+    "title": "CONTRADICTION: User previously said they prefer Python, but for the content-f...",
+    "content": "CONTRADICTION: User previously said they prefer Python, but for the content-farm distribution engine they chose TypeScript for the Bluesky/Pinterest integrations\n\n---\n[Supporting data]\n- Source: mem0:mem_012\n- Categories: decisions, observations\n- Mem0 metadata: source=code_review; contradiction=True\n- Mem0 score: 0.7\n- Hash: w3x4\n- Source created_at: 2026-07-28T12:08:15.467706+00:00",
+    "type": "decision",
+    "tags": [
+      "decisions",
+      "observations"
+    ],
+    "confidence": 0.8,
+    "source": "mem0",
+    "source_ref": "mem_012",
+    "provenance": "imported",
+    "created_at": "2026-07-28 12:08:15.467706+00:00",
+    "updated_at": "2026-08-03 12:08:32.496648+00:00"
+  },
+  {
+    "title": "User's primary monetization is Amazon Associates and JD.com affiliate links....",
+    "content": "User's primary monetization is Amazon Associates and JD.com affiliate links. Secondary goal is building a personal brand on 什么值得买\n\n---\n[Supporting data]\n- Source: mem0:mem_013\n- Categories: work, goals_and_plans\n- Mem0 metadata: source=chat\n- Mem0 score: 0.85\n- Hash: y5z6\n- Source created_at: 2026-07-29T12:08:15.467706+00:00",
+    "type": "fact",
+    "tags": [
+      "work",
+      "goals_and_plans"
+    ],
+    "confidence": 0.8,
+    "source": "mem0",
+    "source_ref": "mem_013",
+    "provenance": "imported",
+    "created_at": "2026-07-29 12:08:15.467706+00:00",
+    "updated_at": "2026-08-03 12:08:32.496648+00:00"
+  },
+  {
+    "title": "User participated in bounty on moorcheh-ai/memanto #1609 — building a Path A...",
+    "content": "User participated in bounty on moorcheh-ai/memanto #1609 — building a Path A OKF migration showcase\n\n---\n[Supporting data]\n- Source: mem0:mem_014\n- Categories: work, events\n- Mem0 metadata: source=github\n- Mem0 score: 0.8\n- Hash: a7b8\n- Source created_at: 2026-07-31T12:08:15.467706+00:00",
+    "type": "fact",
+    "tags": [
+      "work",
+      "events"
+    ],
+    "confidence": 0.8,
+    "source": "mem0",
+    "source_ref": "mem_014",
+    "provenance": "imported",
+    "created_at": "2026-07-31 12:08:15.467706+00:00",
+    "updated_at": "2026-08-03 12:08:32.496648+00:00"
+  },
+  {
+    "title": "PREFERENCE UPDATE: User now wants bullet-point style for Chinese articles and...",
+    "content": "PREFERENCE UPDATE: User now wants bullet-point style for Chinese articles and narrative style for English articles (overrides previous uniform style instruction)\n\n---\n[Supporting data]\n- Source: mem0:mem_015\n- Categories: preferences, decisions\n- Mem0 metadata: source=chat; update=True\n- Mem0 score: 0.78\n- Hash: c9d0\n- Source created_at: 2026-08-01T12:08:15.467706+00:00",
+    "type": "preference",
+    "tags": [
+      "preferences",
+      "decisions"
+    ],
+    "confidence": 0.8,
+    "source": "mem0",
+    "source_ref": "mem_015",
+    "provenance": "imported",
+    "created_at": "2026-08-01 12:08:15.467706+00:00",
+    "updated_at": "2026-08-03 12:08:32.496648+00:00"
+  },
+  {
+    "title": "User's Fiverr account was targeted by phishing. Key lesson: never leave Fiver...",
+    "content": "User's Fiverr account was targeted by phishing. Key lesson: never leave Fiverr platform for payment verification\n\n---\n[Supporting data]\n- Source: mem0:mem_016\n- Categories: observations, events\n- Mem0 metadata: source=chat\n- Mem0 score: 0.72\n- Hash: e1f2\n- Source created_at: 2026-08-02T12:08:15.467706+00:00",
+    "type": "observation",
+    "tags": [
+      "observations",
+      "events"
+    ],
+    "confidence": 0.8,
+    "source": "mem0",
+    "source_ref": "mem_016",
+    "provenance": "imported",
+    "created_at": "2026-08-02 12:08:15.467706+00:00",
+    "updated_at": "2026-08-03 12:08:32.496648+00:00"
+  },
+  {
+    "title": "BIG PICTURE: User wants agent memory portability — they don't want to be lock...",
+    "content": "BIG PICTURE: User wants agent memory portability — they don't want to be locked into any single platform. The OKF migration is personal, not just a bounty.\n\n---\n[Supporting data]\n- Source: mem0:mem_017\n- Categories: preferences, goals_and_plans\n- Mem0 metadata: source=chat\n- Mem0 score: 0.88\n- Hash: g3h4\n- Source created_at: 2026-08-03T12:08:15.467706+00:00",
+    "type": "preference",
+    "tags": [
+      "preferences",
+      "goals_and_plans"
+    ],
+    "confidence": 0.8,
+    "source": "mem0",
+    "source_ref": "mem_017",
+    "provenance": "imported",
+    "created_at": "2026-08-03 12:08:15.467706+00:00",
+    "updated_at": "2026-08-03 12:08:32.496648+00:00"
+  }
+]
