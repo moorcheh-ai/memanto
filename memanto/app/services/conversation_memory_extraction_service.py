@@ -92,7 +92,10 @@ class ConversationMemoryExtractionService:
                 lines.append(line[: self.MAX_CONTENT_CHARS])
                 total = self.MAX_CONTENT_CHARS
                 continue
-            total += len(line)
+            # Account for the "\n" separator that will be added when joining
+            # (every line after the first costs len(line) + 1).
+            separator_cost = 1 if lines else 0
+            total += len(line) + separator_cost
             if total > self.MAX_CONTENT_CHARS:
                 break
             lines.append(line)

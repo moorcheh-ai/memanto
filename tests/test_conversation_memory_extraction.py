@@ -140,3 +140,25 @@ def test_conversation_text_cuts_later_messages_on_cumulative_overflow():
     )
     assert "user: " in out
     assert "assistant: " not in out  # second message exceeds budget, must be cut
+
+
+def test_conversation_text_counts_newline_separator_in_budget():
+    service = ConversationMemoryExtractionService(FakeClient("[]"))
+    # "user: " (6) + 5994 a's = 6000; "assistant: " (11) + 5988 b's = 5999.
+    # Joined with "\n" = 6000 + 1 + 5999 = exactly 12000 = MAX_CONTENT_CHARS.
+    out = service._conversation_text(
+        [{"role": "user", "content": "a" * 5994}, {"role": "assistant", "content": "b" * 5988}]
+    )
+    assert len(out) == service.MAX_CONTENT_CHARS
+    assert out == f"user: {'a' * 5994}\nassistant: {'b' * 5988}"
+
+
+def test_conversation_text_drops_line_when_separator_pushes_over():
+    service = ConversationMemoryExtractionService(FakeClient("[]"))
+    # "user: " (6) + 5994 a's = 6000; "assistant: " (11) + 5989 b's = 6000.
+    # With separator: 6000 + 1 + 6000 = 12001 > MAX → second line must be cut.
+    out = service._conversation_text(
+        [{"role": "user", "content": "a" * 5994}, {"role": "assistant", "content": "b" * 5989}]
+    )
+    assert len(out) == 6000
+    assert "assistant: " not in out
