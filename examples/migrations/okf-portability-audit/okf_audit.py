@@ -10,7 +10,9 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import sys
 from dataclasses import asdict, dataclass, field
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -62,6 +64,22 @@ def _text(value: Any) -> str:
     return "" if value is None else str(value).strip()
 
 
+def _normalized_timestamp(value: Any) -> str:
+    if isinstance(value, datetime):
+        parsed = value
+    else:
+        text = _text(value)
+        if not text:
+            return ""
+        try:
+            parsed = datetime.fromisoformat(text.replace("Z", "+00:00"))
+        except ValueError:
+            return text
+    if parsed.tzinfo is None or parsed.utcoffset() is None:
+        parsed = parsed.replace(tzinfo=timezone.utc)
+    return parsed.astimezone(timezone.utc).isoformat()
+
+
 def _normalized_body(entry: dict[str, Any]) -> str:
     """Remove only the reversible wrapper added by ``map_okf``.
 
@@ -80,9 +98,16 @@ def _normalized_body(entry: dict[str, Any]) -> str:
 
     content, footer = body.rsplit(marker, 1)
     administrative = ("- OKF source:", "- OKF resource:", "- Links:")
-    meaningful = [
-        line for line in footer.splitlines() if not line.startswith(administrative)
-    ]
+    meaningful: list[str] = []
+    previous_was_administrative = False
+    for line in footer.splitlines():
+        if line.startswith(administrative):
+            previous_was_administrative = True
+            continue
+        if line == "..." and previous_was_administrative:
+            continue
+        previous_was_administrative = False
+        meaningful.append(line)
     if meaningful:
         return content.rstrip() + marker + "\n".join(meaningful)
     return content.rstrip()
@@ -101,7 +126,7 @@ def _portable(entry: dict[str, Any]) -> dict[str, Any]:
         "description": _text(entry.get("description")),
         "resource": _text(entry.get("resource")),
         "tags": sorted({_text(tag) for tag in entry.get("tags") or [] if tag}),
-        "timestamp": _text(entry.get("timestamp")),
+        "timestamp": _normalized_timestamp(entry.get("timestamp")),
         "body": _normalized_body(entry),
         "x_memanto": x_memanto,
         "extra": entry.get("extra") or {},
@@ -296,6 +321,9 @@ def main(argv: list[str] | None = None) -> int:
     if args.output:
         args.output.write_text(output, encoding="utf-8")
     else:
+        reconfigure = getattr(sys.stdout, "reconfigure", None)
+        if callable(reconfigure):
+            reconfigure(encoding="utf-8")
         print(output, end="")
     return 1 if args.fail_on_change and not report.is_lossless else 0
 

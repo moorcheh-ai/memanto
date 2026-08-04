@@ -15,6 +15,26 @@ It reports:
 The audit is read-only and deterministic, so its JSON mode can be used as a CI
 gate while Markdown gives a reviewer-friendly migration receipt.
 
+## Reproduce with real public data
+
+The included generator fetches a genuine GitHub issue archive and every public
+comment through the official API, then emits a human-readable OKF bundle. It
+does not use a hand-written fixture or require a GitHub token for public repos.
+
+```bash
+python examples/migrations/okf-portability-audit/github_issue_to_okf.py \
+  moorcheh-ai/memanto 1609 ./github-memory
+python examples/migrations/okf-portability-audit/roundtrip_demo.py \
+  ./github-memory ./round-tripped
+python examples/migrations/okf-portability-audit/okf_audit.py \
+  ./github-memory ./round-tripped --fail-on-change
+```
+
+At the time this showcase was validated, issue #1609 contained one issue and 25
+comments. The long issue body was split at paragraph boundaries to respect the
+Memanto content limit, producing 27 real memory nodes. The importer/exporter
+round trip kept all 27 portable records with no removals or changed fields.
+
 ## Run the included lossless example
 
 From the repository root:

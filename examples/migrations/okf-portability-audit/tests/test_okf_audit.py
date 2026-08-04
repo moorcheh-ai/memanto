@@ -7,11 +7,19 @@ import sys
 from pathlib import Path
 
 EXAMPLE_DIR = Path(__file__).parents[1]
-SPEC = importlib.util.spec_from_file_location("okf_audit", EXAMPLE_DIR / "okf_audit.py")
-assert SPEC and SPEC.loader
-okf_audit = importlib.util.module_from_spec(SPEC)
-sys.modules[SPEC.name] = okf_audit
-SPEC.loader.exec_module(okf_audit)
+
+
+def _load_module(name: str, filename: str):
+    spec = importlib.util.spec_from_file_location(name, EXAMPLE_DIR / filename)
+    assert spec and spec.loader
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+    return module
+
+
+okf_audit = _load_module("okf_audit", "okf_audit.py")
+github_issue_to_okf = _load_module("github_issue_to_okf", "github_issue_to_okf.py")
 
 
 def _write_entry(
@@ -156,3 +164,55 @@ def test_cli_writes_json_and_fails_on_change(tmp_path):
 
     assert exit_code == 1
     assert '"is_lossless": false' in output.read_text(encoding="utf-8")
+
+
+def test_real_archive_records_split_long_issue_without_losing_text():
+    issue_body = "First paragraph.\n\n" + ("memory " * 1200)
+    issue = {
+        "id": 99,
+        "number": 7,
+        "title": "Lived-in memory archive",
+        "repository_url": "https://api.github.com/repos/example/project",
+        "html_url": "https://github.com/example/project/issues/7",
+        "labels": [{"name": "memory"}],
+        "state": "open",
+        "created_at": "2026-08-04T00:00:00Z",
+        "body": issue_body,
+    }
+    comments = [
+        {
+            "id": 101,
+            "user": {"login": "reviewer"},
+            "html_url": "https://github.com/example/project/issues/7#comment-101",
+            "created_at": "2026-08-04T01:00:00Z",
+            "body": "A real correction.",
+        }
+    ]
+
+    records = github_issue_to_okf.records_from_archive(issue, comments)
+
+    issue_records = [record for record in records if record["type"] == "artifact"]
+    assert len(issue_records) >= 2
+    assert all(len(record["body"]) <= 7000 for record in issue_records)
+    assert records[-1]["resource"].endswith("#comment-101")
+
+
+def test_generated_archive_is_a_loader_compatible_bundle(tmp_path):
+    issue = {
+        "id": 99,
+        "number": 7,
+        "title": "Memory archive",
+        "repository_url": "https://api.github.com/repos/example/project",
+        "html_url": "https://github.com/example/project/issues/7",
+        "labels": [],
+        "state": "open",
+        "created_at": "2026-08-04T00:00:00Z",
+        "body": "A genuine issue body.",
+    }
+    records = github_issue_to_okf.records_from_archive(issue, [])
+
+    github_issue_to_okf.write_bundle(records, tmp_path)
+    loaded = okf_audit.load_okf_bundle(tmp_path)["memories"]
+
+    assert len(loaded) == 1
+    assert loaded[0]["resource"] == issue["html_url"]
