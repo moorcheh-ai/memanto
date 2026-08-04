@@ -17,8 +17,9 @@ from memanto.cli.migrate.okf_loader import load_okf_bundle
 def round_trip(source: Path, target: Path) -> dict[str, Any]:
     """Map OKF memories through Memanto and export to a new bundle.
 
-    Only the importable ``memories/`` section participates. Export-only context
-    such as ``daily-summaries/`` and ``sessions/`` is intentionally not copied.
+    For Memanto bundles with ``memories/``, only that importable section
+    participates. For foreign bundles without ``memories/``, the loader scans
+    all Markdown files. Export-only context is not preserved as context.
     """
     resolved_source = source.resolve()
     resolved_target = target.resolve()

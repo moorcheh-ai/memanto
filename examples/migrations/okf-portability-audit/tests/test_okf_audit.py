@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import importlib.util
+import os
 import sys
 from pathlib import Path
 
@@ -293,6 +294,37 @@ def test_report_output_resolves_symlinked_bundle_paths(tmp_path):
         raise AssertionError("Symlinked input accepted an overlapping output")
 
 
+def test_report_output_breaks_hard_links_without_modifying_inputs(tmp_path):
+    """Atomic report replacement leaves hard-linked audited records unchanged."""
+    source = tmp_path / "source"
+    target = tmp_path / "target"
+    _write_entry(source, "a.md", mem_id="m1", title="Choice", body="Redis")
+    _write_entry(target, "a.md", mem_id="m2", title="Choice", body="Redis")
+    source_file = source / "memories" / "fact" / "a.md"
+    original = source_file.read_text(encoding="utf-8")
+
+    for index, source_input in enumerate((source, source_file)):
+        output = tmp_path / f"hard-linked-report-{index}.json"
+        try:
+            os.link(source_file, output)
+        except OSError:
+            return
+        exit_code = okf_audit.main(
+            [
+                str(source_input),
+                str(target),
+                "--format",
+                "json",
+                "--output",
+                str(output),
+            ]
+        )
+
+        assert exit_code == 0
+        assert source_file.read_text(encoding="utf-8") == original
+        assert '"is_lossless": true' in output.read_text(encoding="utf-8")
+
+
 def test_roundtrip_rejects_overlapping_or_existing_targets(tmp_path):
     """The demo cannot overwrite, nest within, or contain its source bundle."""
     source = tmp_path / "source"
@@ -441,6 +473,31 @@ def test_one_command_demo_preserves_failed_audit_report(tmp_path, monkeypatch):
 
     saved = run_demo.json.loads((workdir / "audit.json").read_text(encoding="utf-8"))
     assert saved == report
+
+
+def test_one_command_demo_preserves_original_non_json_failure(tmp_path, monkeypatch):
+    """A failed audit without JSON propagates its original process status."""
+    workdir = tmp_path / "new-showcase"
+
+    def fake_run(command, *, capture=False):
+        if capture:
+            raise run_demo.subprocess.CalledProcessError(
+                7,
+                command,
+                output="audit crashed before producing JSON",
+            )
+        return run_demo.subprocess.CompletedProcess(command, 0)
+
+    monkeypatch.setattr(run_demo, "_run", fake_run)
+
+    try:
+        run_demo.run_showcase("acme/repo", 7, workdir)
+    except run_demo.subprocess.CalledProcessError as error:
+        assert error.returncode == 7
+    else:
+        raise AssertionError("Invalid audit output masked the process failure")
+
+    assert not (workdir / "audit.json").exists()
 
 
 def test_generated_archive_is_a_loader_compatible_bundle(tmp_path):

@@ -10,7 +10,9 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import os
 import sys
+import tempfile
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
@@ -354,6 +356,27 @@ def validate_report_output(source: Path, target: Path, output: Path) -> None:
             raise ValueError(f"Report output is inside audited bundle: {output}")
 
 
+def write_report(output: Path, content: str) -> None:
+    """Atomically replace the report entry without following an existing hard link."""
+    temporary: Path | None = None
+    try:
+        with tempfile.NamedTemporaryFile(
+            mode="w",
+            encoding="utf-8",
+            dir=output.parent,
+            prefix=f".{output.name}.",
+            suffix=".tmp",
+            delete=False,
+        ) as handle:
+            temporary = Path(handle.name)
+            handle.write(content)
+        os.replace(temporary, output)
+    except Exception:
+        if temporary is not None:
+            temporary.unlink(missing_ok=True)
+        raise
+
+
 def main(argv: list[str] | None = None) -> int:
     """Run the audit CLI and return its process exit code."""
     args = _build_parser().parse_args(argv)
@@ -366,7 +389,7 @@ def main(argv: list[str] | None = None) -> int:
         output = render_markdown(report)
 
     if args.output:
-        args.output.write_text(output, encoding="utf-8")
+        write_report(args.output, output)
     else:
         reconfigure = getattr(sys.stdout, "reconfigure", None)
         if callable(reconfigure):

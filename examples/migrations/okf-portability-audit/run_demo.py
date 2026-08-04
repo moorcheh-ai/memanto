@@ -90,7 +90,12 @@ def run_showcase(
             audit_stdout = error.stdout or ""
     if show_report:
         print(audit_stdout, end="", flush=True)
-    report = json.loads(audit_stdout)
+    try:
+        report = json.loads(audit_stdout)
+    except json.JSONDecodeError:
+        if audit_error is not None:
+            raise audit_error from None
+        raise
     report_path.write_text(
         json.dumps(report, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
     )
