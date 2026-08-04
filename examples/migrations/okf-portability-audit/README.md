@@ -20,6 +20,8 @@ gate while Markdown gives a reviewer-friendly migration receipt.
 The included generator fetches a genuine GitHub issue archive and every public
 comment through the official API, then emits a human-readable OKF bundle. It
 does not use a hand-written fixture or require a GitHub token for public repos.
+Issue bodies and comments are split losslessly when necessary, and each chunk
+retains the original GitHub URL and a unique portable identifier.
 
 ```bash
 python examples/migrations/okf-portability-audit/github_issue_to_okf.py \
@@ -49,8 +51,8 @@ The example intentionally renames a file while preserving the memory's stable
 `resource`. The result passes fidelity, records the move separately, and matches
 the checked-in [`EXPECTED.md`](EXPECTED.md) receipt.
 
-To exercise Memanto's production loader, mapper, and exporter locally before
-running the audit:
+To exercise Memanto's production loader, mapper, automatic type classifier, and
+exporter locally before running the audit, choose a new non-existing target:
 
 ```bash
 python examples/migrations/okf-portability-audit/roundtrip_demo.py \
@@ -78,14 +80,21 @@ destination may already contain memories and OKF layout is intentionally free.
 
 ## Identity and fidelity rules
 
-Nodes are matched by `resource`, then a deterministic hash of normalized `type`
-and `title`, then `x_memanto.id` when no semantic identity exists. The comparison
-covers body, title, type, description, resource, timestamp, tags, portable
+Nodes with a title are matched by their `resource` plus a deterministic hash of
+normalized `type` and `title`; records without a title fall back to `resource`,
+then `x_memanto.id`. This keeps separately chunked records at one source URL
+distinct. The comparison
+covers body, title, type, description, resource, links, timestamp, tags, portable
 `x_memanto` fields, and unknown frontmatter. Runtime IDs and status may be
 reassigned by a destination, so they are excluded. It also normalizes the
 reversible description and administrative footer wrapper added by `map_okf`;
 unknown supporting data is never hidden. Paths are excluded from fidelity and
 reported as moves instead.
+
+The local round-trip demo intentionally processes only the importable
+`memories/` section. Export-only context such as `daily-summaries/` and
+`sessions/` is outside its scope. It refuses existing or overlapping targets;
+the audit also refuses to write its report over or inside either input bundle.
 
 ## Tests
 
@@ -94,4 +103,5 @@ pytest examples/migrations/okf-portability-audit/tests -q
 ```
 
 The suite covers lossless moves, changed and removed nodes, duplicate IDs,
-provenance gaps, JSON output, and the CI exit code.
+provenance gaps, exact long-body reconstruction, safe paths, JSON output, and
+the CI exit code.

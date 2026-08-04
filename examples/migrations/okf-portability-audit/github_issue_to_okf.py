@@ -16,6 +16,7 @@ API_ROOT = "https://api.github.com"
 
 
 def _fetch_json(url: str) -> Any:
+    """Fetch one GitHub API JSON document with a bounded request timeout."""
     request = urllib.request.Request(
         url,
         headers={
@@ -55,33 +56,28 @@ def fetch_issue_archive(
 
 
 def _slug(text: str) -> str:
+    """Create a filesystem-safe deterministic slug."""
     slug = re.sub(r"[^a-z0-9]+", "-", text.casefold()).strip("-")
     return slug[:60].rstrip("-") or "memory"
 
 
 def _chunks(text: str, limit: int = 7000) -> list[str]:
-    """Split long Markdown on paragraphs so Memanto's content limit is safe."""
+    """Split Markdown losslessly near paragraph boundaries under ``limit``."""
     if len(text) <= limit:
         return [text]
     chunks: list[str] = []
-    current = ""
-    for paragraph in text.split("\n\n"):
-        candidate = f"{current}\n\n{paragraph}".strip() if current else paragraph
-        if len(candidate) <= limit:
-            current = candidate
-            continue
-        if current:
-            chunks.append(current)
-        while len(paragraph) > limit:
-            chunks.append(paragraph[:limit])
-            paragraph = paragraph[limit:]
-        current = paragraph
-    if current:
-        chunks.append(current)
+    start = 0
+    while len(text) - start > limit:
+        boundary = text.rfind("\n\n", start, start + limit + 1)
+        end = boundary + 2 if boundary > start else start + limit
+        chunks.append(text[start:end])
+        start = end
+    chunks.append(text[start:])
     return chunks
 
 
 def _frontmatter(record: dict[str, Any]) -> str:
+    """Render one record's portable OKF frontmatter."""
     data = {
         "type": record["type"],
         "title": record["title"],
@@ -129,19 +125,38 @@ def records_from_archive(
         )
     for comment in comments:
         author = comment["user"]["login"]
-        records.append(
-            {
-                "id": f"github-comment-{comment['id']}",
-                "type": "observation",
-                "title": f"Comment by {author} on issue #{issue['number']}",
-                "description": f"Public GitHub comment by {author}.",
-                "resource": comment["html_url"],
-                "tags": ["github", "issue-comment", f"author:{author}"],
-                "timestamp": comment["created_at"],
-                "body": comment.get("body") or "(Empty comment)",
-            }
-        )
+        comment_parts = _chunks(comment.get("body") or "(Empty comment)")
+        for index, body in enumerate(comment_parts, start=1):
+            suffix = (
+                f" (part {index}/{len(comment_parts)})"
+                if len(comment_parts) > 1
+                else ""
+            )
+            records.append(
+                {
+                    "id": f"github-comment-{comment['id']}-part-{index}",
+                    "type": "observation",
+                    "title": (
+                        f"Comment by {author} on issue #{issue['number']}{suffix}"
+                    ),
+                    "description": f"Public GitHub comment by {author}{suffix}.",
+                    "resource": comment["html_url"],
+                    "tags": [
+                        "github",
+                        "issue-comment",
+                        f"author:{author}",
+                        f"part:{index}",
+                    ],
+                    "timestamp": comment["created_at"],
+                    "body": body,
+                }
+            )
     return records
+
+
+def _markdown_label(text: str) -> str:
+    """Escape characters that can terminate a Markdown link label."""
+    return text.replace("\\", "\\\\").replace("[", "\\[").replace("]", "\\]")
 
 
 def write_bundle(records: list[dict[str, Any]], output: Path) -> None:
@@ -154,8 +169,11 @@ def write_bundle(records: list[dict[str, Any]], output: Path) -> None:
         memory_type = record["type"]
         type_dir = output / "memories" / memory_type
         type_dir.mkdir(parents=True, exist_ok=True)
-        filename = f"{_slug(record['title'])}-{record['id'].split('-')[-1]}.md"
-        document = f"---\n{_frontmatter(record)}\n---\n\n{record['body'].strip()}\n"
+        filename = f"{_slug(record['title'])}-{_slug(record['id'])}.md"
+        body = record["body"]
+        document = f"---\n{_frontmatter(record)}\n---\n\n{body}"
+        if not document.endswith("\n"):
+            document += "\n"
         (type_dir / filename).write_text(document, encoding="utf-8")
         links_by_type.setdefault(memory_type, []).append((record["title"], filename))
 
@@ -163,7 +181,9 @@ def write_bundle(records: list[dict[str, Any]], output: Path) -> None:
     for memory_type, links in sorted(links_by_type.items()):
         type_dir = output / "memories" / memory_type
         lines = ["---", "type: index", f"title: {memory_type}", "---", ""]
-        lines.extend(f"- [{title}]({filename})" for title, filename in links)
+        lines.extend(
+            f"- [{_markdown_label(title)}]({filename})" for title, filename in links
+        )
         (type_dir / "index.md").write_text("\n".join(lines) + "\n", encoding="utf-8")
         memory_links.append((memory_type, f"{memory_type}/index.md"))
 
@@ -178,6 +198,7 @@ def write_bundle(records: list[dict[str, Any]], output: Path) -> None:
 
 
 def main() -> int:
+    """Run the public GitHub archive exporter."""
     parser = argparse.ArgumentParser(
         description="Export a real public GitHub issue discussion to OKF."
     )

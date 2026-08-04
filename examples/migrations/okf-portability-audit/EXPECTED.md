@@ -26,7 +26,7 @@
 
 ## Moved files
 
-- Primary database (resource:https://example.com/architecture/database): memories/fact/database.md -> memories/fact/database-renamed.md
+- Primary database (resource:https://example.com/architecture/database|semantic:c6a3f784cc17d0bd): memories/fact/database.md -> memories/fact/database-renamed.md
 
 ## Duplicate source identities
 

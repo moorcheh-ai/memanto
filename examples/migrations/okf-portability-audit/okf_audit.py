@@ -55,16 +55,19 @@ class AuditReport:
         )
 
     def to_dict(self) -> dict[str, Any]:
+        """Return a JSON-serializable report including the derived verdict."""
         result = asdict(self)
         result["is_lossless"] = self.is_lossless
         return result
 
 
 def _text(value: Any) -> str:
+    """Return a trimmed text representation for scalar frontmatter fields."""
     return "" if value is None else str(value).strip()
 
 
 def _normalized_timestamp(value: Any) -> str:
+    """Normalize valid timestamps to an aware UTC ISO-8601 representation."""
     if isinstance(value, datetime):
         parsed = value
     else:
@@ -87,16 +90,25 @@ def _normalized_body(entry: dict[str, Any]) -> str:
     already represented in frontmatter. Unknown supporting data remains in the
     body and therefore still triggers a fidelity difference.
     """
-    body = _text(entry.get("body"))
-    description = _text(entry.get("description"))
-    if description and body.startswith(description):
-        body = body[len(description) :].lstrip()
-
+    raw_body = entry.get("body")
+    body = raw_body if isinstance(raw_body, str) else _text(raw_body)
     marker = "\n\n---\n[Supporting data]\n"
     if marker not in body:
         return body
 
     content, footer = body.rsplit(marker, 1)
+    resource = _text(entry.get("resource"))
+    source_line = next(
+        (line for line in footer.splitlines() if line.startswith("- OKF source:")),
+        None,
+    )
+    resource_line = f"- OKF resource: {resource}" if resource else None
+    exporter_wrapper = bool(source_line) and (
+        resource_line is None or resource_line in footer.splitlines()
+    )
+    if not exporter_wrapper:
+        return body
+
     administrative = ("- OKF source:", "- OKF resource:", "- Links:")
     meaningful: list[str] = []
     previous_was_administrative = False
@@ -125,6 +137,7 @@ def _portable(entry: dict[str, Any]) -> dict[str, Any]:
         "title": _text(entry.get("title")),
         "description": _text(entry.get("description")),
         "resource": _text(entry.get("resource")),
+        "links": sorted({_text(link) for link in entry.get("links") or [] if link}),
         "tags": sorted({_text(tag) for tag in entry.get("tags") or [] if tag}),
         "timestamp": _normalized_timestamp(entry.get("timestamp")),
         "body": _normalized_body(entry),
@@ -136,10 +149,8 @@ def _portable(entry: dict[str, Any]) -> dict[str, Any]:
 def _identity(entry: dict[str, Any]) -> str:
     """Prefer portable origin IDs, then semantics, then runtime IDs."""
     x_memanto = entry.get("x_memanto") or {}
-    if entry.get("resource"):
-        return f"resource:{entry['resource']}"
-
     title = _text(entry.get("title"))
+    resource = _text(entry.get("resource"))
     if title:
         semantic_key = {
             "type": _text(entry.get("type")).casefold(),
@@ -148,7 +159,13 @@ def _identity(entry: dict[str, Any]) -> str:
         encoded = json.dumps(semantic_key, ensure_ascii=False, sort_keys=True).encode(
             "utf-8"
         )
-        return "semantic:" + hashlib.sha256(encoded).hexdigest()[:16]
+        semantic = hashlib.sha256(encoded).hexdigest()[:16]
+        if resource:
+            return f"resource:{resource}|semantic:{semantic}"
+        return f"semantic:{semantic}"
+
+    if resource:
+        return f"resource:{resource}"
 
     if x_memanto.get("id"):
         return f"id:{x_memanto['id']}"
@@ -158,6 +175,7 @@ def _identity(entry: dict[str, Any]) -> str:
 def _index(
     entries: list[dict[str, Any]],
 ) -> tuple[dict[str, dict[str, Any]], list[str]]:
+    """Index unique entries and report ambiguous duplicate identities."""
     indexed: dict[str, dict[str, Any]] = {}
     duplicates: set[str] = set()
     for entry in entries:
@@ -170,13 +188,16 @@ def _index(
 
 
 def _label(entry: dict[str, Any], identity: str) -> str:
+    """Build a stable human-readable record label."""
     title = _text(entry.get("title")) or "Untitled"
     return f"{title} ({identity})"
 
 
-def _provenance_gaps(entries: dict[str, dict[str, Any]]) -> list[str]:
+def _provenance_gaps(entries: list[dict[str, Any]]) -> list[str]:
+    """Report every entry that lacks both origin and provenance metadata."""
     gaps: list[str] = []
-    for identity, entry in entries.items():
+    for entry in entries:
+        identity = _identity(entry)
         x_memanto = entry.get("x_memanto") or {}
         has_origin = bool(
             entry.get("resource")
@@ -202,8 +223,8 @@ def compare_bundles(source: str | Path, target: str | Path) -> AuditReport:
         target_count=len(target_entries),
         source_duplicates=source_duplicates,
         target_duplicates=target_duplicates,
-        source_provenance_gaps=_provenance_gaps(source_index),
-        target_provenance_gaps=_provenance_gaps(target_index),
+        source_provenance_gaps=_provenance_gaps(source_entries),
+        target_provenance_gaps=_provenance_gaps(target_entries),
     )
 
     report.removed = [
@@ -218,6 +239,17 @@ def compare_bundles(source: str | Path, target: str | Path) -> AuditReport:
         after = target_index[key]
         before_portable = _portable(before)
         after_portable = _portable(after)
+        description = before_portable["description"]
+        prefixed_body = f"{description}\n\n{before_portable['body']}"
+        if (
+            description
+            and description not in before_portable["body"]
+            and after_portable["body"] == prefixed_body
+        ):
+            # ``map_okf`` prepends a missing description to memory content.
+            # Accept only that exact, source-derived transformation; a native
+            # body that already begins with its description stays untouched.
+            after_portable["body"] = before_portable["body"]
         fields = tuple(
             name
             for name in before_portable
@@ -286,6 +318,7 @@ def render_markdown(report: AuditReport) -> str:
 
 
 def _build_parser() -> argparse.ArgumentParser:
+    """Construct the command-line parser."""
     parser = argparse.ArgumentParser(
         description="Audit fidelity between two OKF bundle directories."
     )
@@ -310,8 +343,22 @@ def _build_parser() -> argparse.ArgumentParser:
     return parser
 
 
+def validate_report_output(source: Path, target: Path, output: Path) -> None:
+    """Reject report paths that could modify either audited input bundle."""
+    resolved_output = output.resolve()
+    for candidate in (source, target):
+        resolved_input = candidate.resolve()
+        if resolved_output == resolved_input:
+            raise ValueError(f"Report output overlaps audited input: {output}")
+        if resolved_input.is_dir() and resolved_output.is_relative_to(resolved_input):
+            raise ValueError(f"Report output is inside audited bundle: {output}")
+
+
 def main(argv: list[str] | None = None) -> int:
+    """Run the audit CLI and return its process exit code."""
     args = _build_parser().parse_args(argv)
+    if args.output:
+        validate_report_output(args.source, args.target, args.output)
     report = compare_bundles(args.source, args.target)
     if args.format == "json":
         output = json.dumps(report.to_dict(), indent=2, ensure_ascii=False) + "\n"
