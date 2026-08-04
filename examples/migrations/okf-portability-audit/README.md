@@ -37,6 +37,44 @@ comments. The long issue body was split at paragraph boundaries to respect the
 Memanto content limit, producing 27 real memory nodes. The importer/exporter
 round trip kept all 27 portable records with no removals or changed fields.
 
+### One-command showcase
+
+Run the complete real-data path—archive generation, the official Memanto CLI
+dry run, production-code round trip, and lossless audit—with one command:
+
+```bash
+python examples/migrations/okf-portability-audit/run_demo.py
+```
+
+The command creates a new isolated work directory, prints every executed step,
+and leaves an `audit.json` receipt. It performs no cloud writes and needs no API
+key. Pass `--show-report` to print the complete JSON instead of only the compact
+summary. Results depend only on the public issue archive at execution time.
+
+### Demo video
+
+Watch the checked-in [live pipeline recording](demo/memanto-okf-portability-demo.mp4).
+It shows the genuine public archive entering the official Memanto dry run, the
+production round trip, the final 27→27 lossless receipt, and a readable OKF
+memory. The capture contains real command output and visibly discloses that the
+implementation was AI-assisted.
+
+### Mapping and honest savings report
+
+| GitHub source concept | OKF / Memanto representation | Fidelity evidence |
+| --- | --- | --- |
+| Issue body | `artifact` memory | Lossless chunks with issue URL and timestamp |
+| Issue comment | `observation` memory | Lossless chunks with original comment URL and author tag |
+| Labels and state | OKF tags | Compared as normalized portable fields |
+| Source IDs | `x_memanto.id` | Preserved as origin metadata; destination runtime IDs may change |
+| Source URL | `resource` | Used with type/title semantics as a stable identity |
+
+The validated run used 1 issue plus 25 public comments: 27 source records, 27
+mapped records, 0 skipped, 27 round-tripped records, 0 removals, and 0 changed
+portable fields. Token and retrieval-latency savings are **not applicable** to
+this Path C workflow: it audits at-rest portability and makes no invented model
+or retrieval baseline. Storage remains human-readable Markdown at both ends.
+
 ## Run the included lossless example
 
 From the repository root:

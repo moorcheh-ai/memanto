@@ -22,6 +22,7 @@ def _load_module(name: str, filename: str):
 okf_audit = _load_module("okf_audit", "okf_audit.py")
 github_issue_to_okf = _load_module("github_issue_to_okf", "github_issue_to_okf.py")
 roundtrip_demo = _load_module("roundtrip_demo", "roundtrip_demo.py")
+run_demo = _load_module("run_demo", "run_demo.py")
 
 
 def _write_entry(
@@ -395,6 +396,16 @@ def test_bundle_indexes_escape_labels_and_keep_repeated_authors(tmp_path):
 
     assert len(documents) == 2
     assert "Comment by user \\[ops\\] on issue #7" in index
+
+
+def test_one_command_demo_rejects_existing_workdir(tmp_path):
+    """The orchestrator cannot mix evidence with a stale prior run."""
+    try:
+        run_demo.run_showcase("acme/repo", 7, tmp_path)
+    except FileExistsError:
+        pass
+    else:
+        raise AssertionError("Existing showcase directory was accepted")
 
 
 def test_generated_archive_is_a_loader_compatible_bundle(tmp_path):
