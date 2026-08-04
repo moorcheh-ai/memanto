@@ -49,7 +49,9 @@ python examples/migrations/okf-portability-audit/run_demo.py
 The command creates a new isolated work directory, prints every executed step,
 and leaves an `audit.json` receipt. It performs no cloud writes and needs no API
 key. Pass `--show-report` to print the complete JSON instead of only the compact
-summary. Results depend only on the public issue archive at execution time.
+summary. Results depend on the public issue archive at execution time, the local
+generator, Memanto CLI, round-trip and audit code, and their installed dependency
+versions.
 
 ### Demo video
 

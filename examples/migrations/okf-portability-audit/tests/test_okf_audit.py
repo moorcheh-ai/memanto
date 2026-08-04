@@ -408,6 +408,41 @@ def test_one_command_demo_rejects_existing_workdir(tmp_path):
         raise AssertionError("Existing showcase directory was accepted")
 
 
+def test_one_command_demo_preserves_failed_audit_report(tmp_path, monkeypatch):
+    """A fidelity failure leaves its JSON receipt before propagating the error."""
+    workdir = tmp_path / "new-showcase"
+    report = {
+        "source_count": 1,
+        "target_count": 0,
+        "unchanged": 0,
+        "removed": ["lost"],
+        "changed": [],
+        "is_lossless": False,
+    }
+
+    def fake_run(command, *, capture=False):
+        assert workdir.is_dir()
+        if capture:
+            raise run_demo.subprocess.CalledProcessError(
+                1,
+                command,
+                output=run_demo.json.dumps(report),
+            )
+        return run_demo.subprocess.CompletedProcess(command, 0)
+
+    monkeypatch.setattr(run_demo, "_run", fake_run)
+
+    try:
+        run_demo.run_showcase("acme/repo", 7, workdir)
+    except run_demo.subprocess.CalledProcessError as error:
+        assert error.returncode == 1
+    else:
+        raise AssertionError("Failed audit did not propagate its exit status")
+
+    saved = run_demo.json.loads((workdir / "audit.json").read_text(encoding="utf-8"))
+    assert saved == report
+
+
 def test_generated_archive_is_a_loader_compatible_bundle(tmp_path):
     """Generated archive records load through Memanto's production loader."""
     issue = {

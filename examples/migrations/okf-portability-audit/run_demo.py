@@ -46,6 +46,7 @@ def run_showcase(
     """Generate, dry-run, round-trip, and audit one genuine GitHub archive."""
     if workdir.exists():
         raise FileExistsError(f"Work directory must be new: {workdir}")
+    workdir.mkdir(parents=True)
 
     root = Path(__file__).resolve().parent
     source = workdir / "github-memory"
@@ -69,24 +70,32 @@ def run_showcase(
 
     _run(["memanto", "migrate", "okf", str(source), "--dry-run"])
     _run([sys.executable, str(roundtrip), str(source), str(target)])
-    audit_result = _run(
-        [
-            sys.executable,
-            str(audit),
-            str(source),
-            str(target),
-            "--format",
-            "json",
-            "--fail-on-change",
-        ],
-        capture=True,
-    )
+    audit_command = [
+        sys.executable,
+        str(audit),
+        str(source),
+        str(target),
+        "--format",
+        "json",
+        "--fail-on-change",
+    ]
+    audit_error: subprocess.CalledProcessError | None = None
+    try:
+        audit_stdout = _run(audit_command, capture=True).stdout
+    except subprocess.CalledProcessError as error:
+        audit_error = error
+        if isinstance(error.stdout, bytes):
+            audit_stdout = error.stdout.decode("utf-8")
+        else:
+            audit_stdout = error.stdout or ""
     if show_report:
-        print(audit_result.stdout, end="", flush=True)
-    report = json.loads(audit_result.stdout)
+        print(audit_stdout, end="", flush=True)
+    report = json.loads(audit_stdout)
     report_path.write_text(
         json.dumps(report, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
     )
+    if audit_error is not None:
+        raise audit_error
 
     elapsed = round(time.perf_counter() - started, 2)
     summary = {
