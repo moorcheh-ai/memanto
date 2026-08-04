@@ -4,6 +4,8 @@
 1280×720 recording of the one-command showcase running against the live public
 archive for `moorcheh-ai/memanto#1609` on August 4, 2026.
 
+Public showcase: <https://youtu.be/25Y2MVPtGzo>
+
 The recording shows:
 
 1. the real GitHub issue and 25 comments becoming 27 OKF memories;

@@ -53,8 +53,9 @@ summary. Results depend only on the public issue archive at execution time.
 
 ### Demo video
 
-Watch the checked-in [live pipeline recording](demo/memanto-okf-portability-demo.mp4).
-It shows the genuine public archive entering the official Memanto dry run, the
+Watch the [public YouTube showcase](https://youtu.be/25Y2MVPtGzo), with a
+checked-in [archival copy](demo/memanto-okf-portability-demo.mp4). It shows the
+genuine public archive entering the official Memanto dry run, the
 production round trip, the final 27→27 lossless receipt, and a readable OKF
 memory. The capture contains real command output and visibly discloses that the
 implementation was AI-assisted.
