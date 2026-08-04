@@ -776,11 +776,25 @@ class MemoryReadService:
         for result in results:
             raw_created = result.get("created_at")
             if not raw_created:
+                # Fail open: a memory without a created_at timestamp should
+                # not be silently dropped when a temporal filter is active.
+                # The memory may have been written outside Memanto own store
+                # path (manual test data, other tools sharing the namespace)
+                # with a missing or corrupt timestamp field. Dropping it here
+                # causes timeline amnesia - the exact data-loss pattern that
+                # bounty #770 is designed to catch. This is consistent with
+                # _filter_expired_memories, which also keeps memories whose
+                # expires_at cannot be parsed.
+                filtered.append(result)
                 continue
 
             try:
                 created_dt = parse_iso_timestamp(raw_created)
             except (ValueError, AttributeError, TypeError):
+                # Fail open: an unparseable timestamp is not proof the memory
+                # falls outside the requested time window. Keep it rather than
+                # silently dropping it (timeline amnesia).
+                filtered.append(result)
                 continue
 
             if after_dt is not None and created_dt < after_dt:
