@@ -3027,14 +3027,14 @@
                     const agent = await api('GET', `/api/v2/agents/${S.agentId}`);
                     profile.innerHTML = `
                 <table class="config-table"><tbody>
-                <tr><td>Agent ID</td><td><strong style="color:var(--accent)">${agent.agent_id}</strong></td></tr>
-                <tr><td>Pattern</td><td><span class="badge badge-accent">${agent.pattern || '—'}</span></td></tr>
-                <tr><td>Description</td><td>${agent.description || '—'}</td></tr>
-                <tr><td>Namespace</td><td><code style="color:var(--cyan);font-family:var(--font-mono)">${agent.namespace || '—'}</code></td></tr>
+                <tr><td>Agent ID</td><td><strong style="color:var(--accent)">${escHtml(agent.agent_id)}</strong></td></tr>
+                <tr><td>Pattern</td><td><span class="badge badge-accent">${escHtml(agent.pattern || '—')}</span></td></tr>
+                <tr><td>Description</td><td>${escHtml(agent.description || '—')}</td></tr>
+                <tr><td>Namespace</td><td><code style="color:var(--cyan);font-family:var(--font-mono)">${escHtml(agent.namespace || '—')}</code></td></tr>
                 <tr><td>Created</td><td>${fmtDate(agent.created_at)}</td></tr>
                 <tr><td>Sessions</td><td>${agent.session_count ?? '—'}</td></tr>
                 </tbody></table>`;
-                } catch (e) { profile.innerHTML = `<p style="color:var(--text-dim)">Could not load agent: ${e.message}</p>`; }
+                } catch (e) { profile.innerHTML = `<p style="color:var(--text-dim)">Could not load agent: ${escHtml(e.message)}</p>`; }
             } else {
                 profile.innerHTML = '<p style="color:var(--text-dim)">No active agent. <a href="#" onclick="goToPage(\'agents\');return false" style="color:var(--accent);text-decoration:none">Go to the Agents page</a> to activate one.</p>';
             }
@@ -3046,14 +3046,14 @@
                     const mins = Math.floor(((sess.time_remaining_seconds || 0) % 3600) / 60);
                     session.innerHTML = `
                 <table class="config-table"><tbody>
-                <tr><td>Status</td><td><span class="badge badge-success">${sess.status || 'active'}</span></td></tr>
-                <tr><td>Pattern</td><td>${sess.pattern || '—'}</td></tr>
-                <tr><td>Namespace</td><td><code style="color:var(--cyan);font-family:var(--font-mono)">${sess.namespace || '—'}</code></td></tr>
+                <tr><td>Status</td><td><span class="badge badge-success">${escHtml(sess.status || 'active')}</span></td></tr>
+                <tr><td>Pattern</td><td>${escHtml(sess.pattern || '—')}</td></tr>
+                <tr><td>Namespace</td><td><code style="color:var(--cyan);font-family:var(--font-mono)">${escHtml(sess.namespace || '—')}</code></td></tr>
                 <tr><td>Started</td><td>${fmtDate(sess.started_at)}</td></tr>
                 <tr><td>Expires</td><td>${fmtDate(sess.expires_at)}</td></tr>
                 <tr><td>Time Remaining</td><td><strong style="color:var(--accent)">${hrs}h ${mins}m</strong></td></tr>
                 </tbody></table>`;
-                } catch (e) { session.innerHTML = `<p style="color:var(--warning)">Session may be expired: ${e.message}</p>`; }
+                } catch (e) { session.innerHTML = `<p style="color:var(--warning)">Session may be expired: ${escHtml(e.message)}</p>`; }
             } else {
                 session.innerHTML = '<p style="color:var(--text-dim)">No active session</p>';
             }
@@ -3062,11 +3062,12 @@
         // ----------------------------------------------------------------
         // Today's-summary card (dashboard) + cross-page navigation helper
         // ----------------------------------------------------------------
+        /**
+         * Return the UTC calendar date used to bucket session summaries.
+         * Local calendar fields can select yesterday's file near UTC midnight.
+         */
         function todayKey() {
-            const d = new Date();
-            const m = String(d.getMonth() + 1).padStart(2, '0');
-            const day = String(d.getDate()).padStart(2, '0');
-            return `${d.getFullYear()}-${m}-${day}`;
+            return new Date().toISOString().slice(0, 10);
         }
 
         async function refreshTodaySummaryCard() {
@@ -3168,7 +3169,7 @@
                 document.getElementById('answerLoading').remove();
                 let sourcesHtml = '';
                 if (res.sources && res.sources.length) {
-                    sourcesHtml = `<div class="chat-sources">Sources: ${res.sources.map(s => `<span class="badge badge-info" style="margin:2px">${trunc(s.title || s.id || 'memory', 30)}</span>`).join('')}</div>`;
+                    sourcesHtml = `<div class="chat-sources">Sources: ${res.sources.map(s => `<span class="badge badge-info" style="margin:2px">${escHtml(trunc(s.title || s.id || 'memory', 30))}</span>`).join('')}</div>`;
                 }
                 msgs.innerHTML += `<div class="chat-msg assistant">${escHtml(res.answer || 'No answer generated.')}${sourcesHtml}</div>`;
             } catch (e) {
@@ -3197,7 +3198,7 @@
                 const mems = res.memories || [];
                 if (!mems.length) { box.innerHTML = '<p style="color:var(--text-dim);padding:20px">No memories found</p>'; return; }
                 box.innerHTML = buildMemoryTable(mems, true);
-            } catch (e) { box.innerHTML = `<p style="color:var(--error);padding:20px">Error: ${e.message}</p>`; }
+            } catch (e) { box.innerHTML = `<p style="color:var(--error);padding:20px">Error: ${escHtml(e.message)}</p>`; }
         }
 
         // ================================================================
@@ -3411,7 +3412,7 @@
                 S.explorerAll = res.memories || [];
                 populateSourceFilter(S.explorerAll);
                 renderExplorer();
-            } catch (e) { box.innerHTML = `<p style="color:var(--error);padding:20px">Error: ${e.message}</p>`; }
+            } catch (e) { box.innerHTML = `<p style="color:var(--error);padding:20px">Error: ${escHtml(e.message)}</p>`; }
         }
 
         // Populate the source dropdown from the distinct sources present in the data,
@@ -3461,12 +3462,12 @@
                 const tags = Array.isArray(m.tags) ? m.tags.filter(t => t).join(', ') : (m.tags || '');
                 const statusBadge = m.status === 'active' ? '<span class="badge badge-success">active</span>' :
                     m.status === 'superseded' ? '<span class="badge badge-warning">superseded</span>' :
-                        `<span class="badge badge-info">${m.status || '—'}</span>`;
-                const provBadge = m.provenance ? `<span class="badge badge-accent">${m.provenance}</span>` : '—';
+                        `<span class="badge badge-info">${escHtml(m.status || '—')}</span>`;
+                const provBadge = m.provenance ? `<span class="badge badge-accent">${escHtml(m.provenance)}</span>` : '—';
                 const mJson = attrEsc(JSON.stringify(m));
                 html += `<tr class="${expandable ? 'expandable' : ''}" ${expandable ? 'onclick="toggleRow(this)"' : ''}>
             <td style="color:var(--text-primary);font-weight:500">${escHtml(trunc(m.title || 'Untitled', 60))}</td>
-            <td><span class="badge badge-info">${m.type || '—'}</span></td>
+            <td><span class="badge badge-info">${escHtml(m.type || '—')}</span></td>
             <td>${m.source ? `<span class="badge badge-accent">${escHtml(m.source)}</span>` : '—'}</td>
             <td>${confBadge(m.confidence)}</td>
             <td>${statusBadge}</td>
@@ -3480,9 +3481,9 @@
                         ? `<button class="btn btn-secondary btn-sm" style="margin-right: 8px;" data-mem="${mJson}" onclick="openEditMemoryModal(JSON.parse(this.dataset.mem))">Edit</button>`
                         : '';
                     const forgetBtn = memId
-                        ? `<button class="btn btn-danger btn-sm" onclick="forgetMemory('${escHtml(memId)}', this, event)">Forget</button>`
+                        ? `<button class="btn btn-danger btn-sm" data-memory-id="${attrEsc(memId)}" onclick="forgetMemory(this.dataset.memoryId, this, event)">Forget</button>`
                         : '<span style="font-size:11px;color:var(--text-dim)">No ID — cannot forget</span>';
-                    html += `<tr class="expand-row"><td colspan="8"><div class="expand-content">${escHtml(m.content || m.text || 'No content')}\n\nID: ${memId || '—'}\nScore: ${m.score ?? '—'}\nSource: ${m.source || '—'}\nUpdated: ${fmtDate(m.updated_at)}</div><div style="padding:8px 16px;display:flex;justify-content:flex-end">${editBtn}${forgetBtn}</div></td></tr>`;
+                    html += `<tr class="expand-row"><td colspan="8"><div class="expand-content">${escHtml(m.content || m.text || 'No content')}\n\nID: ${escHtml(memId || '—')}\nScore: ${escHtml(String(m.score ?? '—'))}\nSource: ${escHtml(m.source || '—')}\nUpdated: ${escHtml(fmtDate(m.updated_at))}</div><div style="padding:8px 16px;display:flex;justify-content:flex-end">${editBtn}${forgetBtn}</div></td></tr>`;
                 }
             });
             html += '</tbody></table>';
@@ -3629,11 +3630,9 @@
             return isNaN(d.getTime()) ? null : d;
         }
 
+        /** Return the UTC storage bucket for a memory timestamp. */
         function dayKey(d) {
-            const y = d.getFullYear();
-            const m = String(d.getMonth() + 1).padStart(2, '0');
-            const day = String(d.getDate()).padStart(2, '0');
-            return `${y}-${m}-${day}`;
+            return d.toISOString().slice(0, 10);
         }
 
         function levelForCount(n) {
@@ -3693,7 +3692,7 @@
                 // navigated here with a specific day pre-selected).
                 renderHistory();
             } catch (e) {
-                box.innerHTML = `<p style="color:var(--error);padding:20px">Error: ${e.message}</p>`;
+                box.innerHTML = `<p style="color:var(--error);padding:20px">Error: ${escHtml(e.message)}</p>`;
             }
         }
 
@@ -3701,7 +3700,7 @@
             const mems = S.history || [];
             const box = document.getElementById('historyContent');
 
-            // Bucket by local day
+            // Bucket by the UTC day used by summaries and conflict scans.
             const byDay = new Map();
             mems.forEach(m => {
                 const d = parseMemDate(m.created_at);
@@ -3712,11 +3711,11 @@
             });
 
             // 53-week window ending the upcoming Saturday
-            const today = new Date(); today.setHours(0, 0, 0, 0);
+            const today = new Date(); today.setUTCHours(0, 0, 0, 0);
             const endDate = new Date(today);
-            endDate.setDate(endDate.getDate() + (6 - endDate.getDay()));
+            endDate.setUTCDate(endDate.getUTCDate() + (6 - endDate.getUTCDay()));
             const startDate = new Date(endDate);
-            startDate.setDate(startDate.getDate() - (53 * 7 - 1));
+            startDate.setUTCDate(startDate.getUTCDate() - (53 * 7 - 1));
 
             const weeks = [];
             const cur = new Date(startDate);
@@ -3726,7 +3725,7 @@
                     const k = dayKey(cur);
                     const count = (byDay.get(k) || []).length;
                     week.push({ date: new Date(cur), key: k, count });
-                    cur.setDate(cur.getDate() + 1);
+                    cur.setUTCDate(cur.getUTCDate() + 1);
                 }
                 weeks.push(week);
             }
@@ -3753,8 +3752,8 @@
             // Month labels — show when month changes between consecutive weeks
             const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
             const monthLabels = weeks.map((week, i) => {
-                const monthThis = week[0].date.getMonth();
-                const monthPrev = i > 0 ? weeks[i - 1][0].date.getMonth() : -1;
+                const monthThis = week[0].date.getUTCMonth();
+                const monthPrev = i > 0 ? weeks[i - 1][0].date.getUTCMonth() : -1;
                 return monthThis !== monthPrev ? monthNames[monthThis] : '';
             });
 
@@ -3785,7 +3784,7 @@
                         <div class="hh-day-labels"><span></span><span>Mon</span><span></span><span>Wed</span><span></span><span>Fri</span><span></span></div>
                         <div class="hh-weeks">${weeks.map(week => week.map(d => {
                             const stale = staleMemCountForDay(d.key);
-                            const dayLabel = d.date.toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+                            const dayLabel = d.date.toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: 'UTC' });
                             const title = `${d.count} ${d.count === 1 ? 'memory' : 'memories'} on ${dayLabel}${stale ? ` • ${stale} stored since last conflict scan — may have unreviewed conflicts` : ''}`;
                             return `<div class="hh-cell${S.historyFilter === d.key ? ' selected' : ''}${stale ? ' stale' : ''}" data-level="${levelForCount(d.count)}" data-key="${d.key}" title="${title}" onclick="filterHistoryByDay('${d.key}')"></div>`;
                         }).join('')).join('')}</div>
@@ -3976,16 +3975,16 @@
                     const db = parseMemDate(b.created_at)?.getTime() || 0;
                     return db - da;
                 });
-                const headerDate = parseMemDate(list[0].created_at);
-                const dateLabel = headerDate
-                    ? headerDate.toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })
+                const headerDate = new Date(`${dateKey}T00:00:00Z`);
+                const dateLabel = !isNaN(headerDate.getTime())
+                    ? headerDate.toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: 'UTC' })
                     : dateKey;
                 html += `<div class="hh-tl-date">${dateLabel}</div>`;
                 list.forEach(m => {
                     const shortId = (m.id || '').toString().substring(0, 7) || '———';
                     const tags = Array.isArray(m.tags) ? m.tags.filter(Boolean) : [];
                     const t = parseMemDate(m.created_at);
-                    const time = t ? t.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' }) : '';
+                    const time = t ? t.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', timeZone: 'UTC', timeZoneName: 'short' }) : '';
                     const conf = (parseFloat(m.confidence) || 0).toFixed(2);
                     const meta = [];
                     if (m.type) meta.push(`<span class="badge badge-info">${escHtml(m.type)}</span>`);
@@ -4204,7 +4203,7 @@
                 });
 
             } catch (e) {
-                document.getElementById('configContent').innerHTML = `<p style="color:var(--error)">Failed to load config: ${e.message}</p>`;
+                document.getElementById('configContent').innerHTML = `<p style="color:var(--error)">Failed to load config: ${escHtml(e.message)}</p>`;
             }
         }
 
@@ -4426,22 +4425,14 @@
             return btn;
         }
 
-        function buildConflictCard(c, i, rawAgentId, rawDate) {
+        function buildConflictCard(c, rawAgentId, rawDate) {
             const ctype = (c.type || 'conflict').toUpperCase();
             const explanation = c.explanation || c.reason || 'Conflicting information detected.';
 
-            // Resolve by the STABLE index into the full report (provided by the
-            // backend as c.index), NOT by this card's position `i` in the
-            // filtered list. The two diverge once any earlier conflict is
-            // resolved, and resolving by position deletes the wrong memory.
-            // Fall back to `i` only for older backends that omit c.index.
-            const cid = (c.index !== undefined && c.index !== null) ? c.index : i;
+            const cid = c.index;
 
             const card = document.createElement('div');
             card.className = 'conflict-card';
-            // DOM ids are keyed by the same stable index the resolve handlers
-            // look up, so the card can still be found after earlier conflicts
-            // are resolved and the filtered list shifts.
             card.id = `conflict-${cid}`;
 
             const header = document.createElement('div');
@@ -4547,7 +4538,7 @@
             summary.append('Found ', countStrong, ' unresolved conflict(s) for ', agentStrong, ` on ${rawDate}`);
 
             container.appendChild(summary);
-            conflicts.forEach((c, i) => container.appendChild(buildConflictCard(c, i, rawAgentId, rawDate)));
+            conflicts.forEach(c => container.appendChild(buildConflictCard(c, rawAgentId, rawDate)));
         }
 
         async function loadConflicts() {
@@ -4736,7 +4727,7 @@
                     tagsContainer.innerHTML = cloudHtml;
                 }
             } catch (e) {
-                cards.innerHTML = `<p style="color:var(--error);padding:20px">Failed to load analytics: ${e.message}</p>`;
+                cards.innerHTML = `<p style="color:var(--error);padding:20px">Failed to load analytics: ${escHtml(e.message)}</p>`;
             }
         }
         // ================================================================
