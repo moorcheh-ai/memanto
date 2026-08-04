@@ -86,7 +86,11 @@ class ConversationMemoryExtractionService:
         total = 0
         for i, message in enumerate(messages):
             line = f"{message['role'].strip()}: {message['content'].strip()}"
-            total += len(line)
+            # Account for the newline separator that join() adds between
+            # accepted messages.  Without this, two lines whose lengths sum
+            # to exactly MAX_CONTENT_CHARS produce a query that exceeds it.
+            separator_len = 1 if lines else 0
+            total += len(line) + separator_len
             if total > self.MAX_CONTENT_CHARS:
                 # Always include at least the first message so the query is
                 # never empty.  Truncate it if it alone exceeds the budget.

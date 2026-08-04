@@ -120,12 +120,12 @@ def test_conversation_text_includes_first_message_when_oversized():
     (truncated) so the query is never empty."""
     service = ConversationMemoryExtractionService(FakeClient("[]"))
     long_content = "x" * (service.MAX_CONTENT_CHARS + 500)
-    text = service._conversation_text(
-        [{"role": "user", "content": long_content}]
-    )
-    assert text.startswith("user:")
-    assert len(text) <= service.MAX_CONTENT_CHARS + len("user: ")
-    assert text.strip() != ""
+    text = service._conversation_text([{"role": "user", "content": long_content}])
+    # The text must include the role prefix and truncated content, not just "user:"
+    assert text.startswith("user: ")
+    assert "x" in text  # actual content was retained
+    assert len(text) <= service.MAX_CONTENT_CHARS
+    assert len(text) > len("user: ")  # more than just the prefix
 
 
 def test_conversation_text_truncates_after_budget():
@@ -139,5 +139,8 @@ def test_conversation_text_truncates_after_budget():
             {"role": "assistant", "content": "b" * half},
         ]
     )
-    assert text.startswith("user:")
-    assert "assistant:" not in text
+    # First message must be complete with its content
+    assert text.startswith("user: ")
+    assert "a" in text  # first message content retained
+    assert "assistant:" not in text  # second message excluded
+    assert len(text) <= service.MAX_CONTENT_CHARS
