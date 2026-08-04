@@ -20,9 +20,9 @@ gate while Markdown gives a reviewer-friendly migration receipt.
 From the repository root:
 
 ```bash
-python examples/okf-portability-audit/okf_audit.py \
-  examples/okf-portability-audit/sample/before \
-  examples/okf-portability-audit/sample/after
+python examples/migrations/okf-portability-audit/okf_audit.py \
+  examples/migrations/okf-portability-audit/sample/before \
+  examples/migrations/okf-portability-audit/sample/after
 ```
 
 The example intentionally renames a file while preserving the memory's stable
@@ -33,10 +33,10 @@ To exercise Memanto's production loader, mapper, and exporter locally before
 running the audit:
 
 ```bash
-python examples/okf-portability-audit/roundtrip_demo.py \
-  examples/okf-portability-audit/sample/before ./round-tripped
-python examples/okf-portability-audit/okf_audit.py \
-  examples/okf-portability-audit/sample/before ./round-tripped
+python examples/migrations/okf-portability-audit/roundtrip_demo.py \
+  examples/migrations/okf-portability-audit/sample/before ./round-tripped
+python examples/migrations/okf-portability-audit/okf_audit.py \
+  examples/migrations/okf-portability-audit/sample/before ./round-tripped
 ```
 
 ## Audit a real migration
@@ -47,7 +47,7 @@ Export the source, migrate it, and export the destination:
 memanto memory export --okf --agent source-agent --output ./before
 memanto migrate okf ./before --agent destination-agent
 memanto memory export --okf --agent destination-agent --output ./after
-python examples/okf-portability-audit/okf_audit.py ./before ./after \
+python examples/migrations/okf-portability-audit/okf_audit.py ./before ./after \
   --format json --output audit.json --fail-on-change
 ```
 
@@ -70,7 +70,7 @@ reported as moves instead.
 ## Tests
 
 ```bash
-pytest examples/okf-portability-audit/tests -q
+pytest examples/migrations/okf-portability-audit/tests -q
 ```
 
 The suite covers lossless moves, changed and removed nodes, duplicate IDs,
