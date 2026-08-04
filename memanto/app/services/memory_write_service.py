@@ -405,11 +405,41 @@ class MemoryWriteService:
                 # ``document`` is a TypedDict; cast to a plain dict to attach
                 # extra schema-external keys (e.g. original_id) dynamically.
                 extra_document = cast(dict[str, Any], document)
+                # Only carry forward schema-external keys (e.g. original_id).
+                # ``existing_memory_data`` is the *formatted* dict returned by
+                # get_memory, whose flat keys (title/content/type/score/tags/
+                # status/created_at/...) are either superseded by the new
+                # document or transient search artifacts — copying them forward
+                # would persist stale values (e.g. the previous search's
+                # relevance ``score``) into storage and let consumers reading
+                # flat fields observe pre-edit state.
+                _SCHEMA_INTERNAL_KEYS = frozenset(
+                    {
+                        "id",
+                        "text",
+                        "title",
+                        "content",
+                        "memory_type",
+                        "type",
+                        "tags",
+                        "status",
+                        "score",
+                        "created_at",
+                        "updated_at",
+                        "expires_at",
+                        "confidence",
+                        "source",
+                        "session_id",
+                        "namespace",
+                        "original_id",
+                    }
+                )
                 for key in existing_meta:
                     if (
                         key not in document
                         and key != "text"
                         and key not in _REMOVED_TRUST_FIELDS
+                        and key not in _SCHEMA_INTERNAL_KEYS
                     ):
                         extra_document[key] = existing_meta[key]
 

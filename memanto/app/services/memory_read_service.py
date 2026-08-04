@@ -19,6 +19,27 @@ from memanto.app.utils.errors import MemoryError
 
 _FILTER_TOKEN_RE = re.compile(r"^[A-Za-z0-9_.-]+$")
 
+# Moorcheh parses "#key:value" (metadata filter) and "#tag" (tag filter) tokens
+# embedded in free-text queries. Any '#' in user-supplied text must be escaped
+# so it cannot inject filters. We replace '#' with the Unicode full-width
+# '＃' — Moorcheh does not treat it as a filter marker, and search still
+# matches the textual content containing it.
+_ESCAPED_HASH = "＃"
+
+
+def _escape_moorcheh_filter_tokens(query: str) -> str:
+    """Escape '#' characters in a free-text query to prevent filter injection.
+
+    Without this, a query such as ``"notes #memory_type:preference"`` would be
+    interpreted by Moorcheh as *both* a text search for "notes" *and* a
+    ``memory_type = preference`` metadata filter, silently narrowing (or
+    emptying) recall results and bypassing the server-side ``type``/``tags``/
+    ``status`` filters appended by :meth:`_build_filtered_query`.
+    """
+    if not query:
+        return query
+    return query.replace("#", _ESCAPED_HASH)
+
 
 def _validate_filter_token(value: Any, field_name: str) -> str:
     """Return a safe Moorcheh filter token or reject query-syntax injection."""
@@ -137,6 +158,24 @@ class MemoryReadService:
         Supports pagination via limit/offset parameters.
         """
         try:
+            # Fail closed instead of silently truncating: Moorcheh caps top_k at
+            # MOORCHEH_MAX_TOP_K (=100), so requesting an offset+limit beyond
+            # that cap cannot be satisfied truthfully. Previously such requests
+            # returned an empty page with has_more=False, silently hiding every
+            # result past the first 100 and breaking callers that rely on
+            # offset/limit/has_more pagination.
+            if limit <= 0:
+                raise ValueError("limit must be a positive integer")
+            if offset < 0:
+                raise ValueError("offset must be a non-negative integer")
+            max_fetchable = MOORCHEH_MAX_TOP_K
+            if offset + limit > max_fetchable:
+                raise ValueError(
+                    f"offset+limit ({offset + limit}) exceeds the maximum "
+                    f"fetchable window of {max_fetchable} (Moorcheh top_k cap); "
+                    "request a smaller window or query a narrower filter"
+                )
+
             # Determine namespaces to search
             namespaces = self._get_search_namespaces(agent_id)
 
@@ -186,7 +225,7 @@ class MemoryReadService:
             # Moorcheh's hard cap rather than only when a temporal/confidence
             # filter is explicitly requested.
             top_k = min(
-                max(requested_limit, POST_FILTER_CANDIDATE_POOL), MOORCHEH_MAX_TOP_K
+                max(requested_limit + 1, POST_FILTER_CANDIDATE_POOL), MOORCHEH_MAX_TOP_K
             )
 
             # Perform search with server-side filtering.
@@ -732,7 +771,14 @@ class MemoryReadService:
 
         # Combine query with filters
         if filter_parts:
-            return f"{query} {' '.join(filter_parts)}"
+            # Sanitize user-supplied free-text query: Moorcheh parses "#key:value"
+            # and "#tag" tokens as metadata filters. A malicious (or accidental)
+            # query like "notes #memory_type:preference" would inject filters
+            # that silently narrow/empty recall results and bypass the
+            # server-side type/tags/status filters appended below. Escape every
+            # '#' in the free-text query so it is treated as literal text.
+            sanitized_query = _escape_moorcheh_filter_tokens(query)
+            return f"{sanitized_query} {' '.join(filter_parts)}"
         return query
 
     def _apply_temporal_filter(

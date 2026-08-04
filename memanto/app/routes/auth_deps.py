@@ -226,6 +226,13 @@ def get_current_session(
             # fails signature/session_id validation.
             if session_cookie:
                 set_session_cookie(response, renewed.session_token, request)
+            # Header-based callers (X-Session-Token: curl, SDKs, third-party
+            # integrations) have no cookie to refresh, so the renewed token
+            # must be returned to them explicitly — otherwise their very next
+            # request 401s with "no longer active" and they are silently
+            # locked out of an auto-renewed session.
+            if x_session_token:
+                response.headers["X-Session-Token"] = renewed.session_token
 
         return session
 
