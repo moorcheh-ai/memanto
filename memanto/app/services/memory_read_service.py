@@ -1013,7 +1013,20 @@ class MemoryReadService:
             # (b) leaking the tags line into multi-paragraph content.
             body, sep, last = rest.rpartition("\n\n")
             if tags and sep and last.startswith("Tags: "):
-                content = body
+                # Verify the trailing block matches the actual tags to avoid
+                # stripping legitimate content paragraphs that happen to start
+                # with "Tags: " (bounty #770 - silent data loss on readback).
+                trailing_tags = [
+                    tag_value
+                    for tag_value in (
+                        t.strip() for t in last[len("Tags: "):].split(",")
+                    )
+                    if tag_value
+                ]
+                if trailing_tags == tags:
+                    content = body
+                else:
+                    content = rest
             else:
                 content = rest
 
