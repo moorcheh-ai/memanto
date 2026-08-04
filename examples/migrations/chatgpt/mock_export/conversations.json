@@ -1,0 +1,74 @@
+[
+  {
+    "title": "Learning Python",
+    "create_time": 1704067200.0,
+    "update_time": 1704067260.0,
+    "mapping": {
+      "system": {
+        "id": "system",
+        "message": {
+          "author": {"role": "system"},
+          "content": {"parts": ["You are ChatGPT"]}
+        },
+        "parent": null,
+        "children": ["user1"]
+      },
+      "user1": {
+        "id": "user1",
+        "message": {
+          "author": {"role": "user"},
+          "create_time": 1704067210.0,
+          "content": {"parts": ["Hi, I want to learn Python. Can you remember that I am a beginner?"]}
+        },
+        "parent": "system",
+        "children": ["assistant1"]
+      },
+      "assistant1": {
+        "id": "assistant1",
+        "message": {
+          "author": {"role": "assistant"},
+          "create_time": 1704067220.0,
+          "content": {"parts": ["Hello! I've noted that you're a beginner learning Python. We'll take it step by step!"]}
+        },
+        "parent": "user1",
+        "children": []
+      }
+    }
+  },
+  {
+    "title": "Dietary Preferences",
+    "create_time": 1704153600.0,
+    "update_time": 1704153660.0,
+    "mapping": {
+      "system": {
+        "id": "system",
+        "message": {
+          "author": {"role": "system"},
+          "content": {"parts": ["You are ChatGPT"]}
+        },
+        "parent": null,
+        "children": ["user1"]
+      },
+      "user1": {
+        "id": "user1",
+        "message": {
+          "author": {"role": "user"},
+          "create_time": 1704153610.0,
+          "content": {"parts": ["Remember that I am allergic to peanuts and I prefer vegan recipes."]}
+        },
+        "parent": "system",
+        "children": ["assistant1"]
+      },
+      "assistant1": {
+        "id": "assistant1",
+        "message": {
+          "author": {"role": "assistant"},
+          "create_time": 1704153620.0,
+          "content": {"parts": ["Got it! I will remember that you are allergic to peanuts and prefer vegan recipes for all our future interactions."]}
+        },
+        "parent": "user1",
+        "children": []
+      }
+    }
+  }
+]
