@@ -627,13 +627,12 @@ class MemoryReadService:
             # after as_of cannot displace the version valid then (bounty #770).
             if before_dt is not None:
                 raw_created = formatted.get("created_at")
-                if not raw_created:
-                    continue
-                try:
-                    if parse_iso_timestamp(str(raw_created)) > before_dt:
-                        continue
-                except (TypeError, ValueError):
-                    continue
+                if raw_created:
+                    try:
+                        if parse_iso_timestamp(str(raw_created)) > before_dt:
+                            continue
+                    except (TypeError, ValueError):
+                        pass  # Fail-open: keep memories with unparseable timestamps
 
             version_key = self._memory_version_key(formatted, index)
             existing = latest_by_id.get(cast(str, mid))
