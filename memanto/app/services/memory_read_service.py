@@ -1006,29 +1006,36 @@ class MemoryReadService:
             # stripped instead of leaking into the returned title.
             title_match = re.match(r"^\[.*?\]\s*(.*)$", first_line, re.DOTALL)
             title = title_match.group(1).strip() if title_match else first_line.strip()
+            # Strip ONLY a genuine trailing tags block using a unique
+            # versioned marker. The serializer appends
+            # "<!--memanto-tags:v1-->
+Tags: ..." only when tags exist.
+            # For backward compatibility with pre-marker records, also
+            # check the old "Tags: " format but only strip when tags
+            # match exactly (bounty #770 - silent data loss on readback).
+            _TAGS_MARKER = "<!--memanto-tags:v1-->"
+            if _TAGS_MARKER in rest:
+                # New format: strip everything from the marker onwards
+                content = rest[:rest.index(_TAGS_MARKER)].rstrip()
+            else:
+                # Old format: check if trailing paragraph is a tags block
+                body, sep, last = rest.rpartition("
 
-            # Strip ONLY a genuine trailing tags block, and only when this record
-            # actually has tags (the serializer appends the block iff tags exist).
-            # Prevents (a) wiping content that merely begins with "Tags: " and
-            # (b) leaking the tags line into multi-paragraph content.
-            body, sep, last = rest.rpartition("\n\n")
-            if tags and sep and last.startswith("Tags: "):
-                # Verify the trailing block matches the actual tags to avoid
-                # stripping legitimate content paragraphs that happen to start
-                # with "Tags: " (bounty #770 - silent data loss on readback).
-                trailing_tags = [
-                    tag_value
-                    for tag_value in (
-                        t.strip() for t in last[len("Tags: "):].split(",")
-                    )
-                    if tag_value
-                ]
-                if trailing_tags == tags:
-                    content = body
+")
+                if tags and sep and last.startswith("Tags: "):
+                    trailing_tags = [
+                        tag_value
+                        for tag_value in (
+                            t.strip() for t in last[len("Tags: "):].split(",")
+                        )
+                        if tag_value
+                    ]
+                    if trailing_tags == tags:
+                        content = body
+                    else:
+                        content = rest
                 else:
                     content = rest
-            else:
-                content = rest
 
         # Build basic formatted item
         formatted = {
