@@ -1,0 +1,76 @@
+
+== 1/4  Generate a real SQLiteSession with the OpenAI Agents SDK
+openai-agents 0.19.4 -> /tmp/okf-demo-9Mbd1L/agent_sessions.db
+  turn 1 (preference / standing instruction): Understood — metric units only, three sentences maximum. I have stored...
+  turn 2 (fact about the system): Noted: the orders service runs on PostgreSQL 16 and ships from the rel...
+  turn 3 (structured content blocks + tool call): The platform team's deploy window is Tuesday 14:00-16:00 UTC, with no ...
+  turn 4 (correction that supersedes the tool result): Corrected: the deploy window is Thursday 09:00 UTC and the Tuesday slo...
+  turn 5 (preference reversal): The three-sentence limit is dropped. I will answer in detail with bull...
+  turn 6 (commitment with a due date): Recorded your commitment: a migration plan for the orders service, due...
+  turn 7 (second tool call): Logged as INC-2141 against pgbouncer, two occurrences, status open....
+  sandbox-smoke-test: 1 turn
+
+Sessions : 2
+Items    : 21
+Model    : 10 scripted calls (no network)
+Snapshot : /tmp/okf-demo-9Mbd1L/session_snapshot.json
+Read snapshot sha256: 8b7cea0377d91379f6e7be8b4de1146ce6a3b2439ec4f024fb607c569ab9d089
+
+== 2/4  Convert it to an OKF 0.2 bundle
+session_id                        items  updated_at
+workspace-buddy-demo                 19  2026-08-05 16:51:57
+sandbox-smoke-test                    2  2026-08-05 16:51:57
+Session      : workspace-buddy-demo
+Source items : 19
+Mapped docs  : 16 (assistant-message=7, tool-call=2, user-message=7)
+Skipped items: 1 (reasoning_trace=1)
+OKF bundle   : /tmp/okf-demo-9Mbd1L/okf
+Report       : /tmp/okf-demo-9Mbd1L/report.json
+
+== 3/4  Import it through Memanto (dry run — no credentials needed)
+╭─────────────────────────╮
+│ OKF -> Memanto  Dry run │
+╰─────────────────────────╯
+  … Loading OKF bundle from /tmp/okf-demo-9Mbd1L/okf
+  … Mapping OKF nodes onto Memanto schema...
+
+╭──────────────────────────────────────── Dry run complete ────────────────────────────────────────╮
+│ OKF nodes: 16                                                                                    │
+│ Mapped memories: 16  (skipped 0)                                                                 │
+│ Type breakdown: artifact: 2, auto: 14                                                            │
+│                                                                                                  │
+│ Dry run — no writes performed.                                                                   │
+│                                                                                                  │
+│ Run dir: /tmp/okf-demo-9Mbd1L/home/.memanto/migrate/okf/20260805_165200                          │
+│ Mapped preview:                                                                                  │
+│ /tmp/okf-demo-9Mbd1L/home/.memanto/migrate/okf/20260805_165200/mapped_preview.json               │
+╰──────────────────────────────────────────────────────────────────────────────────────────────────╯
+
+== 4/4  Verify the committed sample artifacts
+[PASS] committed bundle matches a fresh run (21 files)
+[PASS] adapter output is deterministic across runs
+[PASS] committed report matches a fresh run
+[PASS] report read-snapshot hash matches the captured source database
+[PASS] second run is stable
+[PASS] every source item is accounted for (19 items)
+[PASS] memanto load_okf_bundle + map_okf yields 16 memories
+[PASS] every mapped memory keeps its source_ref, timestamp and source
+
+source items   : 19
+mapped         : 16 {'assistant-message': 7, 'tool-call': 2, 'user-message': 7}
+skipped        : 1 {'reasoning_trace': 1}
+memanto types  : {'auto': 14, 'artifact': 2}
+
+8/8 checks passed
+
+== Counts from this run
+  source tool      : openai-agents (OpenAI Agents SDK) SQLiteSession 0.19.4
+  session          : workspace-buddy-demo
+  read snapshot    : 8b7cea0377d91379…
+  source items     : 19
+  mapped documents : 16  {'assistant-message': 7, 'tool-call': 2, 'user-message': 7}
+  skipped items    : 1  {'reasoning_trace': 1}
+  memanto types    : {'artifact': 2, 'auto (Memanto classifies)': 14}
+  every source item accounted for: OK
+
+Done. Workspace /tmp/okf-demo-9Mbd1L removed; sample/ untouched.
