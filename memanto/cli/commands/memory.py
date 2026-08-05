@@ -1011,9 +1011,12 @@ def conflicts(
 
     # Load full conflict list to get original indices
 
-    json_path = (
-        Path.home() / ".memanto" / "conflicts" / f"{agent_id}_{date}_conflicts.json"
-    )
+    # The generator writes under get_data_dir()/conflicts (honoring
+    # MEMANTO_DATA_DIR / on-prem data root); reading the hardcoded
+    # ~/.memanto path would miss every report on an on-prem install.
+    from memanto.app.config import get_data_dir
+
+    json_path = get_data_dir() / "conflicts" / f"{agent_id}_{date}_conflicts.json"
     with open(json_path, encoding="utf-8") as f:
         all_conflicts = json.load(f)
 

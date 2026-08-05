@@ -16,7 +16,18 @@ from memanto.app.constants import (
 )
 
 MemoryTag = Annotated[
-    str, StringConstraints(strip_whitespace=True, min_length=1, max_length=64)
+    str,
+    StringConstraints(
+        strip_whitespace=True,
+        min_length=1,
+        max_length=64,
+        # Commas are the wire-format separator: to_moorcheh_document joins
+        # tags with "," and readers split on ",". A tag containing a comma
+        # is silently corrupted on the write->read round-trip (the tag is
+        # split into two, a phantom tag appears) and makes #tag filtering
+        # match the wrong rows. Reject it at the schema boundary.
+        pattern=r"^[^,]+$",
+    ),
 ]
 BoundedTags = Annotated[list[MemoryTag], Field(max_length=20)]
 
