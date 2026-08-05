@@ -1138,10 +1138,19 @@ class MemoryReadService:
 
     @staticmethod
     def _normalize_tags(tags_value: Any) -> list[str]:
+        # Treat string and list serialization identically: the wire format
+        # is comma-separated (to_moorcheh_document joins with ","), so a
+        # comma-bearing element in a list form must split the same way as
+        # the identical CSV string — otherwise filtering/search results
+        # depend on how the storage layer happened to serialize tags.
         if isinstance(tags_value, str):
             parsed_tags = tags_value.split(",")
         elif isinstance(tags_value, list):
-            parsed_tags = tags_value
+            parsed_tags = []
+            for tag in tags_value:
+                if tag is None:
+                    continue
+                parsed_tags.extend(str(tag).split(","))
         else:
             return []
 
