@@ -1005,16 +1005,22 @@ class MemoryReadService:
             # footer while preserving arbitrary paragraphs (including a
             # user-authored ``Tags:`` paragraph) in the original content.
             if tags:
-                footer_marker = "\n\nTags: "
-                content_without_footer, marker, footer_tags = content.rpartition(
-                    footer_marker
-                )
-                normalized_footer_tags = [
-                    value.strip() for value in footer_tags.split(",") if value.strip()
-                ]
-                normalized_metadata_tags = [str(value).strip() for value in tags]
-                if marker and normalized_footer_tags == normalized_metadata_tags:
-                    content = content_without_footer
+                _TAGS_MARKER = "<!--memanto-tags:v1-->"
+                if _TAGS_MARKER in content:
+                    content = content[:content.index(_TAGS_MARKER)].rstrip()
+                else:
+                    footer_marker = "
+
+Tags: "
+                    content_without_footer, marker, footer_tags = content.rpartition(
+                        footer_marker
+                    )
+                    normalized_footer_tags = [
+                        value.strip() for value in footer_tags.split(",") if value.strip()
+                    ]
+                    normalized_metadata_tags = [str(value).strip() for value in tags]
+                    if marker and normalized_footer_tags == normalized_metadata_tags:
+                        content = content_without_footer
 
         # Build basic formatted item
         formatted = {
