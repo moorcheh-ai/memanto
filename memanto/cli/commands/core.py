@@ -2,7 +2,6 @@
 MEMANTO CLI - Core commands (status, serve, ui, main_callback).
 """
 
-import json
 import os
 import platform
 import shutil
@@ -11,7 +10,10 @@ import subprocess
 import sys
 import threading
 import time
+import webbrowser
 from datetime import datetime
+from pathlib import Path
+from urllib.parse import urlparse
 
 import httpx
 import typer
@@ -96,8 +98,7 @@ def _prompt_backend_choice() -> Backend:
     )
     console.print(
         f"  [{BRIGHT}]2[/{BRIGHT}]  Moorcheh On-Prem  "
-        "[dim](~5-10 min install, Docker required, no API key, "
-        "no `answer` command)[/dim]"
+        "[dim](~5-10 min install, Docker required, no API key)[/dim]"
     )
     choice = typer.prompt("  Enter 1 or 2", default="1")
     console.print()
@@ -140,6 +141,23 @@ def _cloud_setup() -> None:
     console.print()
 
 
+def _prompt_onprem_setup_mode() -> bool:
+    """Ask user for setup mode. Returns True for Quick Setup, False for Choose Models."""
+    console.print()
+    console.print(f"[{BOLD_BRIGHT}]On-Prem Setup Mode[/{BOLD_BRIGHT}]")
+    console.print(
+        f"  [{BRIGHT}]1[/{BRIGHT}]  Quick Setup  "
+        f"[dim]- Ollama with nomic-embed-text (embedding) + qwen2.5 (LLM), zero config[/dim]"
+    )
+    console.print(
+        f"  [{BRIGHT}]2[/{BRIGHT}]  Choose Models  "
+        f"[dim]- pick your own embedding and LLM providers[/dim]"
+    )
+    choice = typer.prompt("  Enter 1 or 2", default="1")
+    console.print()
+    return str(choice).strip() == "1"
+
+
 def _onprem_setup() -> None:
     """On-prem branch: install moorcheh-client if missing, configure, start."""
     console.print(
@@ -153,26 +171,80 @@ def _onprem_setup() -> None:
 
     _ensure_docker_available()
     _ensure_moorcheh_client_installed()
-    embedding_provider, embedding_model, embedding_key = _prompt_embedding_provider()
+
+    existing_state = config_manager.get_onprem_state()
+    if (
+        existing_state.get("embedding_provider")
+        and existing_state.get("embedding_model")
+        and existing_state.get("llm_provider")
+        and existing_state.get("llm_model")
+    ):
+        embedding_provider = existing_state["embedding_provider"]
+        embedding_model = existing_state["embedding_model"]
+        embedding_key = _recover_moorcheh_api_key("embedding", embedding_provider)
+        llm_provider = existing_state["llm_provider"]
+        llm_model = existing_state["llm_model"]
+        llm_key = _recover_moorcheh_api_key("llm", llm_provider)
+        console.print(
+            f"[dim]  Reusing previous on-prem setup: "
+            f"{embedding_provider} / {embedding_model} + {llm_provider} / {llm_model}[/dim]"
+        )
+    else:
+        quick_setup = _prompt_onprem_setup_mode()
+        if quick_setup:
+            embedding_provider, embedding_model, embedding_key = (
+                "ollama",
+                "nomic-embed-text",
+                "",
+            )
+            llm_provider, llm_model, llm_key = "ollama", "qwen2.5", ""
+            console.print(
+                "[dim]  Quick Setup: Ollama with nomic-embed-text "
+                "(embedding) + qwen2.5 (LLM)[/dim]"
+            )
+        else:
+            embedding_provider, embedding_model, embedding_key = (
+                _prompt_embedding_provider()
+            )
+            llm_provider, llm_model, llm_key = _prompt_llm_provider(
+                embedding_provider, embedding_key
+            )
+    # Write the FULL config (embedding + LLM) to ~/.moorcheh/config.json BEFORE
+    # `moorcheh up`, so the server reads the complete config on first boot and
+    # we don't have to bounce the stack. `moorcheh up` itself only knows
+    # `--embedding-*` flags, so without this pre-write the LLM section would
+    # be missing until we restart.
+    _persist_moorcheh_llm_config(
+        embedding_provider,
+        embedding_model,
+        embedding_key,
+        llm_provider,
+        llm_model,
+        llm_key,
+    )
     _moorcheh_up_and_wait(embedding_provider, embedding_model, embedding_key)
 
-    # Ollama runs in a container started by `moorcheh up`; pull the embedding
-    # model inside that container now that the stack is healthy.
+    # Pull any Ollama models needed (embedding and/or LLM). `moorcheh up` uses
+    # native host Ollama when one is running and a bundled container otherwise;
+    # _pull_ollama_model handles both.
     if embedding_provider == "ollama":
-        _pull_ollama_model_in_container(embedding_model)
+        _pull_ollama_model(embedding_model)
+    if llm_provider == "ollama" and llm_model != embedding_model:
+        _pull_ollama_model(llm_model)
 
-    # Persist on-prem config + write state.json under ~/.memanto/on-prem/.
-    onprem_dir = config_manager.config_dir / "on-prem"
-    onprem_dir.mkdir(parents=True, exist_ok=True)
-    state = {
-        "installed_at": datetime.utcnow().isoformat() + "Z",
-        "embedding_provider": embedding_provider,
-        "embedding_model": embedding_model,
-        "url": "http://localhost:8080",
-    }
-    (onprem_dir / "state.json").write_text(json.dumps(state, indent=2))
-    config_manager.set_onprem_config(
-        embedding_provider=embedding_provider, url="http://localhost:8080"
+    # Persist everything on-prem in ~/.memanto/on-prem/state.json — the
+    # shared ~/.memanto/config.yaml belongs to the cloud backend; on-prem
+    # never writes into it. ``ConfigManager.get_answer_config()`` reads
+    # ``llm_model`` from this file when the active backend is on-prem, so
+    # ``memanto answer`` automatically picks the right LLM without any
+    # cross-backend pollution.
+    config_manager.set_onprem_state(
+        installed_at=datetime.utcnow().isoformat() + "Z",
+        embedding_provider=embedding_provider,
+        embedding_model=embedding_model,
+        llm_provider=llm_provider,
+        llm_model=llm_model,
+        url="http://localhost:8080",
     )
 
 
@@ -210,8 +282,10 @@ def _ensure_moorcheh_client_installed() -> None:
 
     console.print("[dim]  Installing moorcheh-client...[/dim]")
     try:
+        # >=0.1.3 exposes namespaces/documents/files/answer resources matching
+        # the cloud SDK shape; on-prem Answer requires this version.
         subprocess.check_call(
-            [sys.executable, "-m", "pip", "install", "moorcheh-client"]
+            [sys.executable, "-m", "pip", "install", "moorcheh-client>=0.1.3"]
         )
     except subprocess.CalledProcessError as e:
         _error(f"Failed to install moorcheh-client: {e}")
@@ -247,19 +321,210 @@ def _prompt_embedding_provider() -> tuple[str, str, str]:
             _error(f"{provider.title()} API key cannot be empty.")
         return provider, model, key.strip()
 
-    # Ollama: no native install needed. `moorcheh up` starts Ollama in a
-    # container; we pull the embedding model inside that container after the
-    # server is healthy (see _pull_ollama_model_in_container).
+    # Ollama: no native install needed. `moorcheh up` reuses a native Ollama if
+    # one is already running, otherwise it starts a bundled container. We pull
+    # the embedding model once the server is healthy (see _pull_ollama_model).
     console.print(
-        "[dim]  Ollama will be started in a container by `moorcheh up`. "
-        "The embedding model will be pulled into that container.[/dim]"
+        "[dim]  `moorcheh up` will reuse a running Ollama or start one in a "
+        "container. The embedding model will be pulled automatically.[/dim]"
     )
     return "ollama", "nomic-embed-text", ""
 
 
+def _import_user_config() -> tuple:
+    """Import moorcheh-client's user-config helpers across its layouts.
+
+    moorcheh-client 0.1.5 reorganised the package into ``client`` and ``cli``
+    subpackages, moving ``moorcheh/user_config.py`` to
+    ``moorcheh/cli/user_config.py``. Because the dependency is declared as
+    ``moorcheh-client>=0.1.3`` with no upper bound, a fresh install resolves to
+    0.1.5 and the old import path raises ImportError, which aborted on-prem
+    setup entirely. Try the new location first, then fall back to the old one so
+    0.1.3 through 0.1.5 all work.
+    """
+    try:
+        from moorcheh.cli.user_config import (  # type: ignore[import-not-found]
+            EmbeddingConfig,
+            LlmConfig,
+            default_base_url,
+            save_runtime_config,
+        )
+    except ImportError:
+        from moorcheh.user_config import (  # type: ignore[import-not-found]
+            EmbeddingConfig,
+            LlmConfig,
+            default_base_url,
+            save_runtime_config,
+        )
+    return EmbeddingConfig, LlmConfig, default_base_url, save_runtime_config
+
+
+# Valid on-prem LLM identifiers, sourced from moorcheh.user_config. Listed
+# explicitly so the prompt is stable even if moorcheh-client adds/removes
+# models. Keep in sync with ``moorcheh.user_config.LLM_PROVIDER_MODELS``.
+_LLM_RECOMMENDED = {
+    "ollama": "qwen2.5",
+    "openai": "gpt-4o-mini",
+    "cohere": "command-r-plus-08-2024",
+}
+
+
+def _prompt_llm_provider(
+    embedding_provider: str, embedding_key: str
+) -> tuple[str, str, str]:
+    """Ask user for LLM provider for ``answer.generate``.
+
+    Returns ``(provider, model, api_key_or_empty)``. Mirrors the embedding
+    flow: pick a provider, the recommended model is used automatically
+    (``qwen2.5`` / ``gpt-4o-mini`` / ``command-r-plus-08-2024``). Users who
+    want a different model can edit ``answer.model`` in
+    ``~/.memanto/on-prem/config.yaml`` later.
+    """
+    console.print()
+    console.print(f"[{BOLD_BRIGHT}]Answer LLM provider[/{BOLD_BRIGHT}]")
+    console.print(
+        f"  [{BRIGHT}]1[/{BRIGHT}]  Ollama (local, zero API keys)  "
+        f"[dim]- model: {_LLM_RECOMMENDED['ollama']}[/dim]"
+    )
+    console.print(
+        f"  [{BRIGHT}]2[/{BRIGHT}]  OpenAI  "
+        f"[dim]- model: {_LLM_RECOMMENDED['openai']}, requires an API key[/dim]"
+    )
+    console.print(
+        f"  [{BRIGHT}]3[/{BRIGHT}]  Cohere  "
+        f"[dim]- model: {_LLM_RECOMMENDED['cohere']}, requires an API key[/dim]"
+    )
+    # Default to whichever provider was chosen for embeddings (likely already
+    # has its key set), else Ollama.
+    default_choice = {"ollama": "1", "openai": "2", "cohere": "3"}.get(
+        embedding_provider, "1"
+    )
+    choice = typer.prompt("  Enter 1, 2, or 3", default=default_choice)
+    provider = {"1": "ollama", "2": "openai", "3": "cohere"}.get(
+        str(choice).strip(), "ollama"
+    )
+    model = _LLM_RECOMMENDED[provider]
+    console.print()
+
+    if provider in ("openai", "cohere"):
+        # Reuse the embedding API key when the same provider was chosen so we
+        # don't double-prompt; otherwise ask.
+        if provider == embedding_provider and embedding_key:
+            console.print(
+                f"[dim]  Reusing {provider.title()} API key from embedding setup.[/dim]"
+            )
+            key = embedding_key
+        else:
+            key = typer.prompt(
+                f"  Enter your {provider.title()} API key", hide_input=True
+            ).strip()
+            if not key:
+                _error(f"{provider.title()} API key cannot be empty.")
+        return provider, model, key
+
+    console.print(
+        f"[dim]  Ollama LLM model {model} will be pulled into the container.[/dim]"
+    )
+    return "ollama", model, ""
+
+
+def _recover_moorcheh_api_key(section: str, provider: str) -> str:
+    """Read an api_key out of ``~/.moorcheh/config.json`` for re-onboarding.
+
+    ``section`` is ``"embedding"`` or ``"llm"``. Returns ``""`` for providers
+    that don't need a key (ollama) or when the file/key is missing — callers
+    must handle that (typically by failing fast at ``moorcheh up`` if a paid
+    provider needs a key we couldn't recover).
+    """
+    if provider == "ollama":
+        return ""
+    import json as _json
+
+    cfg = Path.home() / ".moorcheh" / "config.json"
+    if not cfg.exists():
+        return ""
+    try:
+        data = _json.loads(cfg.read_text())
+    except Exception:
+        return ""
+    block = data.get(section) or {}
+    key = block.get("api_key") or ""
+    return key if isinstance(key, str) else ""
+
+
+def _persist_moorcheh_llm_config(
+    embedding_provider: str,
+    embedding_model: str,
+    embedding_key: str,
+    llm_provider: str,
+    llm_model: str,
+    llm_key: str,
+) -> None:
+    """Write the LLM section into ``~/.moorcheh/config.json``.
+
+    ``moorcheh up`` writes only the embedding section; the on-prem server
+    needs both to serve ``answer.generate``. Uses moorcheh-client's own
+    ``save_runtime_config`` helper so the schema stays in sync.
+    """
+    try:
+        (
+            EmbeddingConfig,
+            LlmConfig,
+            default_base_url,
+            save_runtime_config,
+        ) = _import_user_config()
+    except ImportError as e:
+        _error(f"moorcheh.user_config unavailable: {e}")
+        return
+
+    embedding_cfg = EmbeddingConfig(
+        provider=embedding_provider,
+        model=embedding_model,
+        api_key=embedding_key or None,
+        base_url=default_base_url(embedding_provider),
+    )
+    llm_cfg = LlmConfig(
+        provider=llm_provider,
+        model=llm_model,
+        api_key=llm_key or None,
+        base_url=default_base_url(llm_provider),
+    )
+    try:
+        save_runtime_config(embedding_cfg, llm_cfg)
+        console.print("[green]  ✓ LLM config saved to ~/.moorcheh/config.json[/green]")
+    except Exception as e:
+        _error(f"Failed to persist LLM config: {e}")
+
+
+def _pull_ollama_model(model: str) -> None:
+    """Pull an Ollama model after ``moorcheh up`` started the stack.
+
+    ``moorcheh up`` reuses a native Ollama already running on the host and only
+    starts a bundled container when none is reachable. In both cases the Ollama
+    HTTP API is exposed on the host at 127.0.0.1:11434 (the bundled container
+    publishes the port), so pull over HTTP when reachable and only fall back to
+    ``docker exec`` for a bundled container we can't reach over HTTP.
+    """
+    try:
+        from moorcheh.ollama_setup import ollama_is_reachable, pull_ollama_model_http
+    except ImportError:
+        ollama_is_reachable = None
+
+    if ollama_is_reachable is not None and ollama_is_reachable():
+        console.print(f"[dim]  Pulling {model} into Ollama (127.0.0.1:11434)...[/dim]")
+        try:
+            pull_ollama_model_http(model)
+        except Exception as e:
+            _error(f"Failed to pull Ollama model {model}: {e}")
+        console.print(f"[green]  ✓ Ollama model {model} ready[/green]")
+        return
+
+    _pull_ollama_model_in_container(model)
+
+
 def _pull_ollama_model_in_container(model: str) -> None:
-    """After ``moorcheh up`` started the stack, pull the embedding model
-    inside the Ollama container via ``docker exec``.
+    """Pull an Ollama model inside the bundled Ollama container via
+    ``docker exec`` (fallback when the host HTTP API is not reachable).
 
     Looks for a running container with image ``ollama/ollama``; falls back to
     name-match. Errors clearly with a manual command if we can't locate it.
@@ -292,8 +557,8 @@ def _pull_ollama_model_in_container(model: str) -> None:
     try:
         subprocess.check_call(["docker", "exec", container_id, "ollama", "pull", model])
     except subprocess.CalledProcessError as e:
-        _error(f"Failed to pull embedding model inside container: {e}")
-    console.print("[green]  ✓ Embedding model ready in container[/green]")
+        _error(f"Failed to pull model {model} inside container: {e}")
+    console.print(f"[green]  ✓ Ollama model {model} ready in container[/green]")
 
 
 def _moorcheh_up_and_wait(provider: str, model: str, key: str) -> None:
@@ -414,7 +679,6 @@ def status():
 
     # Configuration
     is_configured = config_manager.is_configured()
-    server_cfg = config_manager.get_server_config()
 
     cfg_table = Table(show_header=False, box=None, padding=(0, 2))
     cfg_table.add_column("Key", style="dim")
@@ -440,7 +704,7 @@ def status():
         except Exception:
             cfg_table.add_row("On-Prem Server", "[red]● offline[/red]")
 
-    server_url = f"http://{server_cfg['url']}:{server_cfg['port']}"
+    server_url = config_manager.get_server_url()
     if is_configured:
         cfg_table.add_row("Local REST API URL", server_url)
         if backend == Backend.CLOUD:
@@ -748,13 +1012,43 @@ def serve(
 # ============================================================================
 
 
+def _open_dashboard_window(url: str) -> None:
+    """Open ``url`` safely in the user's default browser.
+
+    Validates that the URL uses an HTTP/HTTPS scheme and avoids shell interpolation
+    to prevent command injection.
+    """
+    parsed = urlparse(url)
+    if parsed.scheme not in ("http", "https") or not parsed.netloc:
+        console.print(f"[{WARNING}]Refusing to open non-HTTP(S) URL:[/{WARNING}] {url}")
+        return
+
+    # On Windows, try to open Edge or Chrome in standalone app mode for a native feel.
+    success = False
+    if sys.platform == "win32":
+        for browser in ("msedge", "chrome"):
+            try:
+                subprocess.Popen(
+                    ["cmd", "/c", "start", "", browser, f"--app={url}"],
+                    shell=False,
+                )
+                success = True
+                break
+            except (FileNotFoundError, OSError):
+                continue
+
+    # Fallback to default browser (POSIX / macOS, or Windows when both
+    # Edge and Chrome are missing).
+    if not success:
+        webbrowser.open_new(url)
+
+
 @app.command()
 def ui(
     host: str = typer.Option(None, "--host", help="Server host (defaults to config)"),
     port: int = typer.Option(None, "--port", help="Server port (defaults to config)"),
 ):
     """Start MEMANTO server and open the Web UI Dashboard."""
-    import webbrowser
 
     server_cfg = config_manager.get_server_config()
     host = host or server_cfg.get("url", "0.0.0.0")
@@ -787,28 +1081,6 @@ def ui(
     sock.close()
 
     ui_url = f"http://localhost:{port}/ui"
-
-    def _open_dashboard_window(url: str):
-        import subprocess
-        import sys
-
-        # On Windows, try to open Edge or Chrome in standalone app mode for a native feel
-        success = False
-        if sys.platform == "win32":
-            try:
-                # Need shell=True for `start` command to resolve registry paths
-                subprocess.Popen(f'start msedge --app="{url}"', shell=True)
-                success = True
-            except Exception:
-                try:
-                    subprocess.Popen(f'start chrome --app="{url}"', shell=True)
-                    success = True
-                except Exception:
-                    pass
-
-        # Fallback to default browser
-        if not success:
-            webbrowser.open_new(url)
 
     if port_in_use:
         console.print(f"\n[green]Server already running on port {port}.[/green]")

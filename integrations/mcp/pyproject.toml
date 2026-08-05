@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "memanto-mcp"
-version = "0.1.0"
+version = "0.1.1"
 description = "Model Context Protocol (MCP) server for Memanto - persistent semantic memory for any MCP-compatible agent"
 readme = "README.md"
 license = { text = "MIT" }
@@ -38,7 +38,9 @@ classifiers = [
 ]
 dependencies = [
     "mcp[cli]>=1.2.0",
-    "memanto>=0.1.0",
+    # 0.2.11 narrowed MemoryRecord.source to a closed Literal; the tool schema
+    # here mirrors that set, so older cores are not interchangeable.
+    "memanto>=0.2.11",
     "pydantic>=2.0.0",
     "pydantic-settings>=2.0.0",
     "python-dotenv>=1.0.0",

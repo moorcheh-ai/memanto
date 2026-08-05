@@ -1,3 +1,5 @@
+"""Expose Memanto memory tools for LangGraph agents."""
+
 from __future__ import annotations
 
 from typing import Annotated
@@ -5,6 +7,7 @@ from typing import Annotated
 from langchain_core.tools import tool
 from pydantic import Field
 
+from memanto.app.utils.errors import SessionError
 from memanto.cli.client.sdk_client import SdkClient
 
 # Valid Memanto memory types with definitions for the LLM
@@ -26,15 +29,30 @@ VALID_MEMORY_TYPES = (
 
 
 def create_memanto_tools(client: SdkClient, agent_id: str):
+    """Create LangGraph tools bound to a Memanto client and agent."""
+
+    import copy
+    import threading
+
+    client = copy.copy(client)
+    _setup_lock = threading.Lock()
+    _setup_done = False
+
     def _do_setup():
-        try:
-            client.create_agent(agent_id=agent_id, pattern="tool")
-        except Exception:
-            pass
-        try:
-            client.activate_agent(agent_id, duration_hours=6)
-        except Exception:
-            pass
+        nonlocal _setup_done
+        with _setup_lock:
+            if _setup_done:
+                return
+            try:
+                client.create_agent(agent_id=agent_id, pattern="tool")
+            except Exception:
+                pass
+            try:
+                client.activate_agent(agent_id, duration_hours=6)
+            except Exception:
+                pass
+            else:
+                _setup_done = True
 
     @tool
     def memanto_remember(
@@ -53,13 +71,17 @@ def create_memanto_tools(client: SdkClient, agent_id: str):
         title: Annotated[
             str,
             Field(
-                description="Short title for the memory (max 100 characters).",
+                min_length=1,
+                max_length=100,
+                description="Short title for the memory (1-100 characters).",
             ),
         ],
         content: Annotated[
             str,
             Field(
-                description="The memory content to store (max 10000 characters). Be concise and atomic.",
+                min_length=1,
+                max_length=10000,
+                description="The memory content to store (1-10000 characters). Be concise and atomic.",
             ),
         ],
         confidence: Annotated[
@@ -96,7 +118,7 @@ def create_memanto_tools(client: SdkClient, agent_id: str):
                 tags=tag_list,
                 source="langgraph-agent",
             )
-        except Exception:
+        except SessionError:
             _do_setup()
             result = client.remember(
                 agent_id=agent_id,
@@ -135,14 +157,6 @@ def create_memanto_tools(client: SdkClient, agent_id: str):
                 ),
             ),
         ] = "",
-        min_similarity: Annotated[
-            float | None,
-            Field(
-                ge=0.0,
-                le=1.0,
-                description="Minimum similarity score from 0.0 to 1.0 to filter low-relevance memories.",
-            ),
-        ] = None,
     ) -> str:
         """
         Search Memanto's persistent memory database using natural language.
@@ -162,7 +176,6 @@ def create_memanto_tools(client: SdkClient, agent_id: str):
                 query=query,
                 limit=limit,
                 type=type_list,
-                min_similarity=min_similarity,
             )
         except Exception:
             _do_setup()
@@ -171,7 +184,6 @@ def create_memanto_tools(client: SdkClient, agent_id: str):
                 query=query,
                 limit=limit,
                 type=type_list,
-                min_similarity=min_similarity,
             )
 
         memories = result.get("memories", [])

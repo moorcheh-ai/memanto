@@ -169,19 +169,13 @@ def show_welcome_banner(config_manager: ConfigManager) -> None:
         ("memanto agent create <agent_name_or_id>", "Create a new memanto agent"),
         ('memanto remember "..."', "Store a memory"),
         ('memanto recall "..."', "Search memories"),
+        ('memanto answer "..."', "Ask a question (RAG)"),
+        ("memanto connect list", "See agent integrations"),
+        ("memanto connect <agent>", "Connect to an AI agent"),
+        ("memanto ui", "Open the web dashboard UI"),
+        ("memanto status", "Full dashboard"),
+        ("memanto serve", "Start local REST API server"),
     ]
-    # `answer` is a cloud-only feature (RAG via Moorcheh's LLM endpoint).
-    if backend == Backend.CLOUD:
-        commands.append(('memanto answer "..."', "Ask a question (RAG)"))
-    commands.extend(
-        [
-            ("memanto connect list", "See agent integrations"),
-            ("memanto connect <agent>", "Connect to an AI agent"),
-            ("memanto ui", "Open the web dashboard UI"),
-            ("memanto status", "Full dashboard"),
-            ("memanto serve", "Start local REST API server"),
-        ]
-    )
 
     cmd_table = Table(show_header=False, box=None, padding=(0, 1), show_edge=False)
     cmd_table.add_column("Cmd", style=BOLD_BRIGHT, min_width=28)

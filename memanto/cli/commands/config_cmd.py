@@ -49,14 +49,13 @@ def config_show():
     table.add_row("Interactive Mode", str(cli_cfg.get("interactive_mode", True)))
     table.add_row("Smart Parse", str(cli_cfg.get("smart_parse", True)))
 
-    # Answer Config (cloud only — on-prem server does not expose RAG)
-    if backend == Backend.CLOUD:
-        table.add_section()
-        table.add_row("[bold]Answer Config[/bold]", "")
-        table.add_row("  Model", ans_cfg.get("model", "—"))
-        table.add_row("  Temperature", str(ans_cfg.get("temperature", 0.7)))
-        table.add_row("  Limit", str(ans_cfg.get("answer_limit", 5)))
-        table.add_row("  Threshold", str(ans_cfg.get("threshold", 0.25)))
+    # Answer Config
+    table.add_section()
+    table.add_row("[bold]Answer Config[/bold]", "")
+    table.add_row("  Model", ans_cfg.get("model", "—"))
+    table.add_row("  Temperature", str(ans_cfg.get("temperature", 0.7)))
+    table.add_row("  Limit", str(ans_cfg.get("answer_limit", 5)))
+    table.add_row("  Threshold", str(ans_cfg.get("threshold", 0.25)))
 
     # Recall Config
     table.add_section()

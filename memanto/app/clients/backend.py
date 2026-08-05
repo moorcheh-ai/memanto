@@ -4,23 +4,22 @@ Backend selection and protocol for Memanto's Moorcheh client.
 Memanto can talk to two backends:
 - ``cloud``   - Moorcheh Cloud via the ``moorcheh_sdk`` package (API key).
 - ``on-prem`` - A local ``moorcheh`` server (Docker) via the ``moorcheh-client``
-  package. No Moorcheh API key needed. Does not support ``answer.generate``.
+  package. No Moorcheh API key needed.
 
-Both clients are expected to expose the same attribute shape used across
-``memanto/app/`` (namespaces/documents/answer with method names matching the
-cloud SDK), so service code never branches on backend.
+Both clients expose the same ``namespaces / documents / similarity_search /
+answer / files / vectors`` shape, so service code never branches on backend.
 """
 
+import json
 from enum import Enum
+from pathlib import Path
 
 
 class Backend(str, Enum):
+    """Identify a supported Memanto backend deployment type."""
+
     CLOUD = "cloud"
     ON_PREM = "on-prem"
-
-
-class OnPremFeatureUnavailable(Exception):
-    """Raised when on-prem hits a feature that only Moorcheh Cloud supports."""
 
 
 def parse_backend(value: str | None) -> Backend:
@@ -31,3 +30,60 @@ def parse_backend(value: str | None) -> Backend:
         return Backend(value.strip().lower())
     except ValueError:
         return Backend.CLOUD
+
+
+def get_active_llm_model(cloud_default: str) -> str | None:
+    """Active LLM model identifier for ``answer.generate`` / summary.
+
+    Cloud: returns ``cloud_default`` (i.e. ``settings.ANSWER_MODEL`` or
+    ``settings.SUMMARY_MODEL`` — caller picks the right one).
+
+    On-prem: returns ``llm_model`` from ``~/.memanto/on-prem/state.json`` (set
+    during onboarding). Returns ``None`` when state is missing/empty so the
+    caller can omit ``ai_model`` and let the on-prem server fall back to its
+    ``~/.moorcheh/config.json`` LLM. No coercion magic happens elsewhere in
+    the stack — what this returns is what gets sent.
+    """
+    # Local import to avoid circular dependency with ``app.config``.
+    from memanto.app.config import settings
+
+    if parse_backend(settings.MEMANTO_BACKEND) == Backend.CLOUD:
+        return cloud_default
+
+    state_path = Path.home() / ".memanto" / "on-prem" / "state.json"
+    if not state_path.exists():
+        return None
+    try:
+        state = json.loads(state_path.read_text())
+    except Exception:
+        return None
+    # Valid JSON is not necessarily an object: a truncated or hand-edited
+    # state.json can hold a list/string/number, where ``.get`` would raise
+    # AttributeError instead of degrading to the documented ``None``.
+    if not isinstance(state, dict):
+        return None
+    return state.get("llm_model") or None
+
+
+def get_active_embedding_model() -> str | None:
+    """Return the configured on-prem embedding model, when it is knowable.
+
+    Moorcheh Cloud owns its embedding configuration server-side, so callers
+    receive ``None`` there and should use a model-independent safe fallback.
+    """
+    from memanto.app.config import settings
+
+    if parse_backend(settings.MEMANTO_BACKEND) != Backend.ON_PREM:
+        return None
+
+    state_path = Path.home() / ".memanto" / "on-prem" / "state.json"
+    if not state_path.exists():
+        return None
+    try:
+        state = json.loads(state_path.read_text())
+    except Exception:
+        return None
+    if not isinstance(state, dict):
+        return None
+    model = state.get("embedding_model")
+    return model if isinstance(model, str) and model else None

@@ -1,7 +1,7 @@
 [project]
 name = "memanto"
 dynamic = ["version"]
-description = "Memory that AI Agents Love!"
+description = "A companion memory agent that lets your agents focus and improve while you keep ownership of everything they learn."
 authors = [{ name = "Majid Fekri", email = "majid.fekri@edgeaiinnovations.com" }]
 requires-python = ">=3.10,<4"
 readme = "README.md"
@@ -35,7 +35,7 @@ classifiers = [
 dependencies = [
     "fastapi>=0.104.0",
     "uvicorn[standard]>=0.24.0",
-    "moorcheh-sdk>=1.3.5",
+    "moorcheh-sdk>=1.3.7",
     "pydantic>=2.0.0",
     "pydantic-settings>=2.0.0",
     "python-dotenv>=1.0.0",
@@ -46,6 +46,7 @@ dependencies = [
     "rich>=13.0.0",
     "python-multipart>=0.0.7",
     "rapidfuzz>=3.0.0",
+    "filelock>=3.13.0",
 ]
 
 [project.urls]
@@ -57,7 +58,9 @@ Repository = "https://github.com/moorcheh-ai/memanto"
 [project.optional-dependencies]
 all = [
     "pytest>=8.2.0,<9",
+    "pytest-asyncio>=0.21.0",
     "pytest-mock>=3.12.0,<4",
+    "pytest-timeout>=2.1.0",
     "mypy>=1.10.0,<2",
     "build>=1.2.2.post1,<2",
     "twine>=6.1.0,<7",
@@ -106,6 +109,7 @@ ignore_missing_imports = true
 exclude = [
     "^integrations/",
     "^examples/",
+    "^memanto/app/legacy/",
 ]
 
 # Optional: Configure pytest
@@ -123,7 +127,7 @@ filterwarnings = [
 [tool.ruff]
 target-version = "py310"
 line-length = 88
-extend-exclude = ["legacy_archive"]
+extend-exclude = ["legacy_archive", "memanto/app/legacy"]
 
 [tool.ruff.lint]
 select = [

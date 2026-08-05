@@ -7,6 +7,7 @@ Calls the Moorcheh API directly through existing service classes
 import json
 import logging
 import os
+import re
 import shutil
 import urllib.error
 import urllib.request
@@ -14,6 +15,10 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, cast
 
+from memanto.app.config import get_data_dir
+from memanto.app.constants import (
+    ALLOWED_UPDATE_FIELDS as _ALLOWED_UPDATE_FIELDS,
+)
 from memanto.app.constants import (
     VALID_MEMORY_TYPES as _VALID_MEMORY_TYPES,
 )
@@ -25,6 +30,7 @@ from memanto.app.constants import (
 )
 from memanto.app.constants import (
     MemoryType,
+    SourceType,
 )
 from memanto.app.constants import (
     ProvenanceType as MemoryProvenance,
@@ -32,11 +38,17 @@ from memanto.app.constants import (
 from memanto.app.utils.errors import (
     AgentNotFoundError,
     InvalidSessionTokenError,
+    MemoryError,
     SessionError,
     SessionExpiredError,
     SessionNotFoundError,
 )
-from memanto.app.utils.validation import InputLimits
+from memanto.app.utils.validation import (
+    InputLimits,
+    is_successful_write_result,
+    validate_recall_limit,
+    validate_safe_id,
+)
 from memanto.cli.config.manager import ConfigManager
 
 logger = logging.getLogger(__name__)
@@ -258,16 +270,25 @@ class DirectClient:
         self._read_service = None
         self._agent_service = None
         self._session_service = None
-        self._daily_summary_service = None
+        self._daily_analysis_service = None
         self._export_service = None
 
     # Lazy initializers
 
     def _get_moorcheh(self):
-        """Return (or create) the ``MoorchehClient`` singleton."""
+        """Return (or create) the backend-aware Moorcheh client.
+
+        Dispatches to cloud ``MoorchehClient`` or on-prem ``OnPremClient`` based
+        on the active backend, mirroring ``SdkClient._get_moorcheh``. Without
+        this, on-prem callers (e.g. UI ``batch_remember`` for migrate) hit
+        cloud and get a "namespace not found" 404 for agents that only exist
+        locally.
+        """
         if self._moorcheh is None:
-            logger.debug("Initializing MoorchehClient")
-            self._moorcheh = MoorchehClient(api_key=self.api_key)
+            from memanto.app.clients.moorcheh import moorcheh_client
+
+            logger.debug("Initializing Moorcheh client via backend dispatcher")
+            self._moorcheh = moorcheh_client.get_client(api_key=self.api_key)
         return self._moorcheh
 
     def _get_write_service(self):
@@ -302,13 +323,15 @@ class DirectClient:
             self._session_service = get_session_service()
         return self._session_service
 
-    def _get_daily_summary_service(self):
-        """Return (or create) the ``DailySummaryService`` singleton."""
-        if self._daily_summary_service is None:
-            from memanto.app.services.daily_summary_service import DailySummaryService
+    def _get_daily_analysis_service(self):
+        """Return (or create) the ``DailyAnalysisService`` singleton."""
+        if self._daily_analysis_service is None:
+            from memanto.app.services.daily_analysis_service import (
+                DailyAnalysisService,
+            )
 
-            self._daily_summary_service = DailySummaryService(api_key=self.api_key)
-        return self._daily_summary_service
+            self._daily_analysis_service = DailyAnalysisService()
+        return self._daily_analysis_service
 
     def _get_export_service(self):
         """Return (or create) the ``MemoryExportService`` singleton."""
@@ -325,9 +348,24 @@ class DirectClient:
         Return the active session for *agent_id*, validating it like the FastAPI
         dependency ``get_current_session``.
         """
-        # Cache hit: avoid redundant disk I/O and JWT decodes in the same request
-        if self._cached_session and self.agent_id == agent_id:
-            return self._cached_session
+        # Cache hit: avoid redundant JWT decodes while the session remains
+        # active. Still runs the same near-expiry auto-renew check as the
+        # cold path below, so long-lived clients keep renewing instead of
+        # eventually hitting SessionExpiredError.
+        if self._cached_session:
+            if self.agent_id == agent_id and self._cached_session.agent_id == agent_id:
+                if not self._cached_session.is_active():
+                    self._cached_session = None
+                    raise SessionExpiredError(
+                        f"Cached session for agent {agent_id} is no longer active"
+                    )
+                session_service = self._get_session_service()
+                renewed = session_service.check_and_auto_renew(agent_id=agent_id)
+                if renewed:
+                    self._cached_session = renewed
+                    self.session_token = renewed.session_token
+                return self._cached_session
+            self._cached_session = None
 
         if not self.session_token or not self.agent_id:
             raise SessionError(
@@ -396,6 +434,12 @@ class DirectClient:
             ValueError: If *pattern* is invalid.
             AgentAlreadyExistsError: If agent already exists.
         """
+        if not agent_id:
+            raise ValueError("agent_id must not be empty")
+        if not re.fullmatch(r"^[a-zA-Z0-9_-]+$", agent_id):
+            raise ValueError(
+                f"Invalid agent_id: '{agent_id}'. Only alphanumeric characters, hyphens, and underscores are allowed."
+            )
         if pattern not in _VALID_PATTERNS:
             raise ValueError(
                 f"Invalid pattern '{pattern}'. Must be one of: {', '.join(sorted(_VALID_PATTERNS))}"
@@ -413,15 +457,15 @@ class DirectClient:
         agent_info = self._get_agent_service().create_agent(agent_create, self.api_key)
         return cast(dict[str, Any], agent_info.model_dump(mode="json"))
 
-    def list_agents(self) -> list[dict[str, Any]]:
+    def list_agents(self) -> dict[str, Any]:
         """
         List all registered agents.
 
         Returns:
-            List of agent info dicts.
+            Dictionary with 'agents', 'count', and 'warnings'.
         """
         agent_list = self._get_agent_service().list_agents()
-        return [a.model_dump(mode="json") for a in agent_list.agents]
+        return cast(dict[str, Any], agent_list.model_dump(mode="json"))
 
     def get_agent(self, agent_id: str) -> dict[str, Any]:
         """
@@ -453,6 +497,10 @@ class DirectClient:
         """
         logger.debug("Deleting agent '%s'", agent_id)
         self._get_agent_service().delete_agent(agent_id)
+        if self.agent_id == agent_id:
+            self.session_token = None
+            self.agent_id = None
+            self._cached_session = None
         return {"status": "deleted", "agent_id": agent_id}
 
     # Session Management
@@ -496,6 +544,7 @@ class DirectClient:
 
         self.session_token = session.session_token
         self.agent_id = agent_id
+        self._cached_session = session
 
         return {
             "session_token": session.session_token,
@@ -519,6 +568,7 @@ class DirectClient:
         summary = self._get_session_service().end_session(agent_id)
         self.session_token = None
         self.agent_id = None
+        self._cached_session = None
         return cast(dict[str, Any], summary.model_dump(mode="json"))
 
     def get_session_info(self) -> dict[str, Any]:
@@ -561,7 +611,7 @@ class DirectClient:
         content: str,
         confidence: float = 0.8,
         tags: list[str] | None = None,
-        source: str = "user",
+        source: SourceType = "user",
         provenance: str | None = None,
     ) -> dict[str, Any]:
         """
@@ -610,8 +660,7 @@ class DirectClient:
             type=resolved_memory_type,
             title=title,
             content=content,
-            scope_type="agent",
-            scope_id=agent_id,
+            agent_id=agent_id,
             actor_id=agent_id,
             confidence=confidence,
             tags=tags or [],
@@ -622,10 +671,10 @@ class DirectClient:
         logger.debug("Storing memory for agent '%s' (type=%s)", agent_id, memory_type)
         result = self._get_write_service().store_memory(memory)
 
-        # Log to local session Markdown summary
-        if self.session_token:
+        # Log to local session Markdown summary only after a durable write.
+        if self.session_token and is_successful_write_result(result):
             session_id = "unknown"
-            self._get_session_service().log_memory_to_session_summary(
+            self._get_session_service().try_log_memory_to_session_summary(
                 agent_id=agent_id,
                 session_id=session_id,
                 memory_record=memory,
@@ -675,7 +724,7 @@ class DirectClient:
         memory_records = []
         for i, item in enumerate(memories):
             raw_content = item.get("content", "")
-            if not raw_content:
+            if not isinstance(raw_content, str) or not raw_content.strip():
                 raise ValueError(f"Memory at index {i} has no content")
 
             raw_title = item.get("title")
@@ -684,18 +733,33 @@ class DirectClient:
             )
             raw_type = item.get("type")
 
-            memory = MemoryRecord(
-                type=raw_type,
-                title=title,
-                content=raw_content,
-                scope_type="agent",
-                scope_id=agent_id,
-                actor_id=agent_id,
-                confidence=item.get("confidence", 0.8),
-                tags=item.get("tags", []),
-                source="user",
-                provenance="explicit_statement",
-            )
+            # Optional per-item overrides for the migrate flow — keep source
+            # provenance, original ids, and source-side timestamps. Defaults
+            # preserve the original single-user-write behavior.
+            provenance = item.get("provenance") or "explicit_statement"
+            if provenance not in _VALID_PROVENANCE:
+                raise ValueError(
+                    f"Invalid provenance '{provenance}' at index {i}. "
+                    f"Must be one of: {', '.join(sorted(_VALID_PROVENANCE))}"
+                )
+
+            kwargs: dict[str, Any] = {
+                "type": raw_type,
+                "title": title,
+                "content": raw_content,
+                "agent_id": agent_id,
+                "actor_id": agent_id,
+                "confidence": item.get("confidence", 0.8),
+                "tags": item.get("tags", []),
+                "source": item.get("source") or "user",
+                "provenance": provenance,
+            }
+            for opt_key in ("source_ref", "created_at", "updated_at"):
+                val = item.get(opt_key)
+                if val is not None:
+                    kwargs[opt_key] = val
+
+            memory = MemoryRecord(**kwargs)
             memory_records.append(memory)
 
         logger.debug(
@@ -714,11 +778,34 @@ class DirectClient:
             session_svc = self._get_session_service()
 
             # Extract per-memory IDs from the batch result
+            if not isinstance(result, dict):
+                raise MemoryError(
+                    message="Data corruption detected: Received malformed batch result from storage layer.",
+                    details={"item_preview": str(result)[:100]},
+                )
+
             batch_results = result.get("results", [])
+            if not isinstance(batch_results, list):
+                raise MemoryError(
+                    message="Data corruption detected: Received malformed batch result array from storage layer.",
+                    details={"item_preview": str(batch_results)[:100]},
+                )
 
             for i, mem in enumerate(memory_records):
-                mem_id = batch_results[i].get("id") if i < len(batch_results) else None
-                session_svc.log_memory_to_session_summary(
+                item_result = batch_results[i] if i < len(batch_results) else None
+                if item_result is not None and (
+                    not isinstance(item_result, dict) or not item_result
+                ):
+                    raise MemoryError(
+                        message="Data corruption detected: Received malformed batch result from storage layer.",
+                        details={"item_preview": str(item_result)[:100]},
+                    )
+                if not is_successful_write_result(item_result):
+                    continue
+                mem_id = (
+                    item_result.get("id") if isinstance(item_result, dict) else None
+                )
+                session_svc.try_log_memory_to_session_summary(
                     agent_id=agent_id,
                     session_id=session_id,
                     memory_record=mem,
@@ -726,6 +813,180 @@ class DirectClient:
                 )
 
         return result
+
+    def update_memory(
+        self, agent_id: str, memory_id: str, updates: dict[str, Any]
+    ) -> dict[str, Any]:
+        """
+        Update a single memory in the active agent namespace.
+
+        Args:
+            agent_id: Target agent.
+            memory_id: Memory document ID to update.
+            updates: Fields to update.
+
+        Returns:
+            Dict with update result metadata.
+
+        Raises:
+            ValueError: If no update fields are provided.
+        """
+        session = self._get_validated_session_for_agent(agent_id)
+        if not updates:
+            raise ValueError("Provide at least one field to update")
+        unknown_fields = set(updates) - _ALLOWED_UPDATE_FIELDS
+        if unknown_fields:
+            raise ValueError(
+                f"Unknown update fields: {', '.join(sorted(unknown_fields))}. "
+                f"Allowed fields: {', '.join(sorted(_ALLOWED_UPDATE_FIELDS))}."
+            )
+        if "content" in updates:
+            content = updates["content"]
+            if content is None or not str(content).strip():
+                raise ValueError("Memory content must be a non-empty string")
+            if len(str(content)) > _MAX_CONTENT_LENGTH:
+                raise ValueError(
+                    f"Memory content exceeds {_MAX_CONTENT_LENGTH} characters"
+                )
+        if "title" in updates:
+            title = updates["title"]
+            if title is not None and len(str(title)) > _MAX_TITLE_LENGTH:
+                raise ValueError(f"Memory title exceeds {_MAX_TITLE_LENGTH} characters")
+        if "type" in updates:
+            memory_type = updates["type"]
+            if memory_type not in _VALID_MEMORY_TYPES:
+                raise ValueError(
+                    f"Invalid memory_type '{memory_type}'. "
+                    f"Must be one of: {', '.join(sorted(_VALID_MEMORY_TYPES))}"
+                )
+        if "confidence" in updates:
+            try:
+                confidence_value = float(updates["confidence"])  # type: ignore[arg-type]
+            except (TypeError, ValueError):
+                raise ValueError(
+                    f"Confidence must be a number between 0.0 and 1.0, got {updates['confidence']!r}"
+                )
+            if not 0.0 <= confidence_value <= 1.0:
+                raise ValueError(
+                    f"Confidence must be between 0.0 and 1.0, got {confidence_value}"
+                )
+            # Normalize to float so downstream write service persists a numeric
+            # confidence even when the caller passed "0.7" as a string. CodeRabbit
+            # review 2026-06-14T14:03:20Z flagged that string values were
+            # previously forwarded unchanged.
+            updates["confidence"] = confidence_value
+
+        result = self._get_write_service().update_memory(
+            memory_id, session.namespace, updates
+        )
+
+        return {
+            "agent_id": agent_id,
+            "namespace": session.namespace,
+            "memory_id": memory_id,
+            "status": result.get("status", "updated"),
+            "action": result.get("action", "updated"),
+            "updated_fields": result.get("updated_fields", list(updates.keys())),
+        }
+
+    def extract_memories_from_conversation(
+        self,
+        agent_id: str,
+        messages: list[dict[str, str]],
+        dry_run: bool = False,
+        max_memories: int = 20,
+        ai_model: str | None = None,
+    ) -> dict[str, Any]:
+        """
+        Extract typed memories from conversation turns.
+
+        Args:
+            agent_id: Target agent.
+            messages: Chat-style messages with ``role`` and ``content`` keys.
+            dry_run: When True, preview extracted candidates without storing them.
+            max_memories: Maximum number of candidate memories to extract.
+            ai_model: Optional model override for extraction.
+
+        Returns:
+            A dictionary containing extracted candidates and, unless ``dry_run``
+            is enabled, the batch storage result.
+
+        Raises:
+            SessionError: If no active session exists for the agent.
+        """
+
+        session = self._get_validated_session_for_agent(agent_id)
+
+        from memanto.app.services.conversation_memory_extraction_service import (
+            ConversationMemoryExtractionService,
+        )
+
+        service = ConversationMemoryExtractionService(self._get_moorcheh())
+        candidates = service.extract(
+            namespace=session.namespace,
+            messages=messages,
+            max_memories=max_memories,
+            ai_model=ai_model,
+        )
+
+        if dry_run:
+            return {
+                "dry_run": True,
+                "candidates": candidates,
+                "count": len(candidates),
+            }
+
+        result = self.batch_remember(agent_id=agent_id, memories=candidates)
+        return {
+            "dry_run": False,
+            "candidates": candidates,
+            **result,
+        }
+
+    def delete_memory(self, agent_id: str, memory_id: str) -> dict[str, Any]:
+        """
+        Delete one memory from the active agent namespace.
+
+        Args:
+            agent_id: Target agent.
+            memory_id: Memory document ID to delete.
+
+        Returns:
+            Confirmation dict with ``status``, ``agent_id``, ``memory_id``, and
+            ``namespace``.
+
+        Raises:
+            ValueError: If the memory does not exist in the active agent namespace.
+        """
+        session = self._get_validated_session_for_agent(agent_id)
+        namespace = session.namespace
+
+        logger.debug(
+            "Deleting memory '%s' from agent '%s' namespace '%s'",
+            memory_id,
+            agent_id,
+            namespace,
+        )
+        deleted = self._get_write_service().delete_memory(memory_id, namespace)
+        if not deleted:
+            raise ValueError(
+                f"Memory '{memory_id}' was not found for agent '{agent_id}'"
+            )
+
+        # Log deletion to local session Markdown summary
+        if self.session_token:
+            self._get_session_service().try_log_memory_deletion_to_session_summary(
+                agent_id=agent_id,
+                session_id=session.session_id,
+                memory_id=memory_id,
+            )
+
+        return {
+            "status": "deleted",
+            "agent_id": agent_id,
+            "memory_id": memory_id,
+            "namespace": namespace,
+        }
 
     def recall(
         self,
@@ -773,8 +1034,7 @@ class DirectClient:
         )
         result = self._get_read_service().search_memories(
             query=query,
-            scope_type="agent",
-            scope_id=agent_id,
+            agent_id=agent_id,
             type=type,
             tags=tags,
             min_confidence=min_confidence,
@@ -797,6 +1057,7 @@ class DirectClient:
         as_of: str,
         limit: int | None = None,
         type: list[str] | None = None,
+        tags: list[str] | None = None,
     ) -> dict[str, Any]:
         """
         Point-in-time recall: what memories existed at a given moment?
@@ -806,12 +1067,14 @@ class DirectClient:
             as_of: ISO-8601 date/datetime string.
             limit: Max results (defaults to config).
             type: Optional type filter.
+            tags: Optional tag filter.
 
         Returns:
             Dict with ``memories`` and ``count``.
         """
         if limit is None:
             limit = ConfigManager().get_recall_config()["limit"]
+        validate_recall_limit(limit)
 
         # Ensure there is a valid, non-expired session for this agent
         self._get_validated_session_for_agent(agent_id)
@@ -820,6 +1083,7 @@ class DirectClient:
             as_of_date=as_of,
             agent_id=agent_id,
             type=type,
+            tags=tags,
             limit=limit,
         )
 
@@ -836,6 +1100,7 @@ class DirectClient:
         since: str,
         limit: int | None = None,
         type: list[str] | None = None,
+        tags: list[str] | None = None,
     ) -> dict[str, Any]:
         """
         Differential retrieval: what changed since a given date?
@@ -845,12 +1110,14 @@ class DirectClient:
             since: ISO-8601 date/datetime string.
             limit: Max results (defaults to config).
             type: Optional type filter.
+            tags: Optional tag filter.
 
         Returns:
             Dict with ``memories`` and ``count``.
         """
         if limit is None:
             limit = ConfigManager().get_recall_config()["limit"]
+        validate_recall_limit(limit)
 
         # Ensure there is a valid, non-expired session for this agent
         self._get_validated_session_for_agent(agent_id)
@@ -859,6 +1126,7 @@ class DirectClient:
             since_date=since,
             agent_id=agent_id,
             type=type,
+            tags=tags,
             limit=limit,
         )
 
@@ -874,6 +1142,7 @@ class DirectClient:
         agent_id: str,
         limit: int | None = None,
         type: list[str] | None = None,
+        tags: list[str] | None = None,
     ) -> dict[str, Any]:
         """
         Recall the most recently stored memories (newest first).
@@ -882,12 +1151,14 @@ class DirectClient:
             agent_id: Target agent.
             limit: Max results (defaults to config).
             type: Optional type filter.
+            tags: Optional tag filter.
 
         Returns:
             Dict with ``memories`` and ``count``.
         """
         if limit is None:
             limit = ConfigManager().get_recall_config()["limit"]
+        validate_recall_limit(limit)
 
         # Ensure there is a valid, non-expired session for this agent
         self._get_validated_session_for_agent(agent_id)
@@ -895,6 +1166,7 @@ class DirectClient:
         result = self._get_read_service().search_recent(
             agent_id=agent_id,
             type=type,
+            tags=tags,
             limit=limit,
         )
 
@@ -1005,7 +1277,10 @@ class DirectClient:
         self, agent_id: str, date: str, output_path: str | None = None
     ) -> dict[str, Any]:
         """
-        Generate a daily AI summary from session MD files.
+        Generate a daily AI summary from session MD files (on-demand).
+
+        Conflict detection is a separate concern — see
+        :meth:`generate_conflict_report`.
 
         Args:
             agent_id: Target agent.
@@ -1013,23 +1288,22 @@ class DirectClient:
             output_path: Optional custom output path for the summary MD file.
 
         Returns:
-            Dict with ``status``, ``summary_path``, ``sessions_count``.
+            Dict with ``summary`` and ``export`` sub-results.
         """
         # Ensure agent exists
         self.get_agent(agent_id)
 
         logger.debug(
-            "Generating daily summary and conflict report for agent '%s' on %s",
+            "Generating daily summary for agent '%s' on %s",
             agent_id,
             date,
         )
 
-        service = self._get_daily_summary_service()
+        service = self._get_daily_analysis_service()
 
         summary_result = service.generate_summary(
             agent_id, date, output_path=output_path
         )
-        conflict_result = service.generate_conflict_report(agent_id, date)
 
         # Auto-export memories to keep local MD cache up to date
         try:
@@ -1042,9 +1316,35 @@ class DirectClient:
 
         return {
             "summary": summary_result,
-            "conflicts": conflict_result,
             "export": export_result,
         }
+
+    def generate_conflict_report(self, agent_id: str, date: str) -> dict[str, Any]:
+        """
+        Generate the conflict report for an agent/date.
+
+        Runs the LLM conflict-detection pass over the day's session
+        memories and writes the JSON report to ``~/.memanto/conflicts/``.
+
+        Args:
+            agent_id: Target agent.
+            date: Date string (YYYY-MM-DD).
+
+        Returns:
+            Dict with ``conflicts`` sub-result.
+        """
+        # Ensure agent exists
+        self.get_agent(agent_id)
+
+        logger.debug(
+            "Generating conflict report for agent '%s' on %s",
+            agent_id,
+            date,
+        )
+
+        service = self._get_daily_analysis_service()
+        conflict_result = service.generate_conflict_report(agent_id, date)
+        return {"conflicts": conflict_result}
 
     # Conflict Resolution
 
@@ -1128,10 +1428,9 @@ class DirectClient:
         new_id = conflict.get("new_memory_id")
 
         # Get namespace for memory operations
-        from memanto.app.core import create_memory_scope
+        from memanto.app.core import agent_namespace
 
-        scope = create_memory_scope("agent", agent_id)
-        namespace = scope.to_namespace()
+        namespace = agent_namespace(agent_id)
 
         write_service = self._get_write_service()
         result_details = {"action": action}
@@ -1205,8 +1504,7 @@ class DirectClient:
                 type=resolved_type,
                 title=title,
                 content=manual_content,
-                scope_type="agent",
-                scope_id=agent_id,
+                agent_id=agent_id,
                 actor_id=agent_id,
                 confidence=0.9,
                 tags=["conflict-resolution"],
@@ -1242,30 +1540,18 @@ class DirectClient:
         Args:
             agent_id: Target agent.
             output_path: Custom output path. Defaults to
-                ``~/.memanto/exports/{agent_id}_memory.md``.
+                the active backend's export directory.
             limit_per_type: Max memories per type (default 25).
 
         Returns:
             Dict with ``output_path``, ``total_memories``, ``per_type_counts``.
         """
+        self._validate_export_limit(limit_per_type)
+
         # Ensure there is a valid, non-expired session for this agent
         self._get_validated_session_for_agent(agent_id)
 
-        from memanto.app.services.memory_export_service import MEMORY_TYPE_ORDER
-
-        memories_by_type: dict[str, list] = {}
-
-        for mem_type in MEMORY_TYPE_ORDER:
-            try:
-                result = self.recall(
-                    agent_id=agent_id,
-                    query="*",
-                    limit=limit_per_type,
-                    type=[mem_type],
-                )
-                memories_by_type[mem_type] = result.get("memories", [])
-            except Exception:
-                memories_by_type[mem_type] = []
+        memories_by_type = self._gather_memories_by_type(agent_id, limit_per_type)
 
         export_svc = self._get_export_service()
         out = output_path if output_path else None
@@ -1293,7 +1579,7 @@ class DirectClient:
         """
         Sync agent memories to a project directory's MEMORY.md.
 
-        Uses the cached export at ``~/.memanto/exports/{agent_id}_memory.md``
+        Uses the cached export in the active backend's data directory
         when available. Falls back to a fresh export if
         the cache file does not exist.
 
@@ -1307,14 +1593,14 @@ class DirectClient:
             (``"cache"`` or ``"fresh"``).
         """
 
-        cache_path = Path.home() / ".memanto" / "exports" / f"{agent_id}_memory.md"
+        validate_safe_id(agent_id, "agent_id")
+        cache_path = get_data_dir() / "exports" / f"{agent_id}_memory.md"
         target_path = Path(project_dir) / "MEMORY.md"
         target_path.parent.mkdir(parents=True, exist_ok=True)
 
         if cache_path.exists():
-            # Fast path: copy cached export
+            # Fast path: copy cached export without an API-backed refresh.
             shutil.copy2(str(cache_path), str(target_path))
-            # Count memories from the cached file
             content = cache_path.read_text(encoding="utf-8")
             mem_count = content.count("### ")
             return {
@@ -1323,16 +1609,12 @@ class DirectClient:
                 "source": "cache",
             }
 
-        # Fallback: run a fresh export to the default location, then copy
-        logger.debug(
-            "No cached export found, generating fresh export for '%s'", agent_id
-        )
+        logger.debug("Refreshing memory export before syncing '%s'", agent_id)
         export_result = self.export_memory_md(
             agent_id=agent_id,
             limit_per_type=limit_per_type,
         )
 
-        # Now copy the freshly generated export to the project
         exported_path = Path(export_result["output_path"])
         if exported_path.exists():
             shutil.copy2(str(exported_path), str(target_path))
@@ -1341,6 +1623,125 @@ class DirectClient:
             "output_path": str(target_path.resolve()),
             "total_memories": export_result.get("total_memories", 0),
             "source": "fresh",
+        }
+
+    def _gather_memories_by_type(
+        self, agent_id: str, limit_per_type: int
+    ) -> dict[str, list]:
+        """Recall memories for every type, grouped by type.
+
+        Raises ``ConnectionError`` when *every* type recall fails (backend
+        unreachable) so callers don't overwrite a good export with nothing.
+        """
+        from memanto.app.services.memory_export_service import MEMORY_TYPE_ORDER
+
+        memories_by_type: dict[str, list] = {}
+        failed_types = 0
+
+        for mem_type in MEMORY_TYPE_ORDER:
+            try:
+                result = self.recall(
+                    agent_id=agent_id,
+                    query="*",
+                    limit=limit_per_type,
+                    type=[mem_type],
+                )
+                memories_by_type[mem_type] = result.get("memories", [])
+            except Exception:
+                memories_by_type[mem_type] = []
+                failed_types += 1
+
+        if failed_types == len(MEMORY_TYPE_ORDER):
+            raise ConnectionError(
+                f"Failed to recall any memories for agent '{agent_id}' — "
+                "the backend appears unreachable. Refusing to write an "
+                "empty export."
+            )
+        return memories_by_type
+
+    def export_okf_bundle(
+        self,
+        agent_id: str,
+        output_dir: str | None = None,
+        split: str = "auto",
+        limit_per_type: int = 25,
+    ) -> dict[str, Any]:
+        """Export all memories for an agent as an OKF bundle directory.
+
+        Args:
+            agent_id: Target agent.
+            output_dir: Bundle directory. Defaults to
+                ``~/.memanto/exports/{agent_id}_okf``.
+            split: OKF layout — ``auto``, ``file``, or ``type``.
+            limit_per_type: Max memories per type (default 25).
+
+        Returns:
+            Dict with ``output_path``, ``total_memories``, ``per_type_counts``.
+        """
+        self._get_validated_session_for_agent(agent_id)
+
+        from memanto.app.config import get_data_dir
+        from memanto.app.services.okf_export_service import OkfExportService
+
+        memories_by_type = self._gather_memories_by_type(agent_id, limit_per_type)
+
+        data_dir = get_data_dir()
+        summaries = sorted((data_dir / "summaries").glob(f"{agent_id}_*.md"))
+        sessions = sorted((data_dir / "sessions").glob(f"{agent_id}_*_summary.md"))
+
+        return OkfExportService().write_okf_bundle(
+            agent_id=agent_id,
+            memories_by_type=memories_by_type,
+            output_dir=Path(output_dir) if output_dir else None,
+            split=split,
+            summaries=summaries,
+            sessions=sessions,
+        )
+
+    def sync_okf_to_project(
+        self,
+        agent_id: str,
+        project_dir: str,
+        split: str = "auto",
+        limit_per_type: int = 25,
+    ) -> dict[str, Any]:
+        """Sync agent memories to a project directory as an OKF bundle (``<project>/okf``).
+
+        Runs a fresh export into the cache, then copies the bundle into the
+        project. Falls back to the previous cached bundle when the backend is
+        unreachable (``source="stale-cache"``).
+        """
+        target = Path(project_dir) / "okf"
+        cache = Path.home() / ".memanto" / "exports" / f"{agent_id}_okf"
+
+        try:
+            result = self.export_okf_bundle(
+                agent_id=agent_id, split=split, limit_per_type=limit_per_type
+            )
+            src = Path(result["output_path"])
+            total = result["total_memories"]
+            source = "fresh"
+        except ConnectionError:
+            if not cache.exists():
+                raise
+            from memanto.cli.migrate.okf_loader import load_okf_bundle
+
+            src = cache
+            total = len(load_okf_bundle(cache)["memories"])
+            source = "stale-cache"
+
+        tmp = target.with_suffix(".okf.tmp")
+        if tmp.exists():
+            shutil.rmtree(tmp)
+        shutil.copytree(src, tmp)
+        if target.exists():
+            shutil.rmtree(target)
+        tmp.rename(target)
+
+        return {
+            "output_path": str(target.resolve()),
+            "total_memories": total,
+            "source": source,
         }
 
     # Health Check
@@ -1390,5 +1791,14 @@ class DirectClient:
         """Validate search parameters."""
         if not query or not query.strip():
             raise ValueError("Search query must be a non-empty string")
-        if not 1 <= limit <= 100:
-            raise ValueError(f"Limit must be between 1 and 100, got {limit}")
+        validate_recall_limit(limit)
+
+    @staticmethod
+    def _validate_export_limit(limit_per_type: int) -> None:
+        """Validate per-type export limits before querying every memory type."""
+        if not isinstance(limit_per_type, int) or isinstance(limit_per_type, bool):
+            raise ValueError("limit_per_type must be an integer between 1 and 100")
+        if not 1 <= limit_per_type <= 100:
+            raise ValueError(
+                f"limit_per_type must be between 1 and 100, got {limit_per_type}"
+            )

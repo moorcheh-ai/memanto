@@ -5,16 +5,23 @@ Handles agent creation, listing, and lifecycle management.
 """
 
 import json
-from datetime import datetime
+import logging
+from datetime import datetime, timezone
 from pathlib import Path
 
 from moorcheh_sdk.exceptions import ConflictError
+from pydantic import ValidationError
 
 from memanto.app.clients.moorcheh import get_moorcheh_client
 from memanto.app.config import get_data_dir
-from memanto.app.core import create_memory_scope
+from memanto.app.core import agent_namespace
 from memanto.app.models.session import AgentCreate, AgentInfo, AgentList
+from memanto.app.utils.atomic_write import atomic_write_text
 from memanto.app.utils.errors import AgentAlreadyExistsError, AgentNotFoundError
+from memanto.app.utils.temporal_helpers import as_utc_aware
+from memanto.app.utils.validation import validate_safe_id
+
+logger = logging.getLogger(__name__)
 
 
 class AgentService:
@@ -28,19 +35,18 @@ class AgentService:
             agents_dir: Directory for agent metadata storage (defaults to ~/.memanto/agents/)
         """
         self.agents_dir = agents_dir or get_data_dir() / "agents"
-        self.agents_dir.mkdir(parents=True, exist_ok=True)
 
     def _generate_namespace(self, agent_id: str) -> str:
         """
-        Generate namespace for agent using core MemoryScope
+        Generate the Moorcheh namespace for an agent.
 
-        Format: memanto_{scope}_{scope_id}
+        Format: memanto_agent_{agent_id}
         """
-        scope = create_memory_scope(scope_type="agent", scope_id=agent_id)
-        return scope.to_namespace()
+        return agent_namespace(agent_id)
 
     def _get_agent_file(self, agent_id: str) -> Path:
         """Get file path for agent metadata"""
+        validate_safe_id(agent_id, "agent_id")
         return self.agents_dir / f"{agent_id}.json"
 
     def create_agent(
@@ -65,41 +71,52 @@ class AgentService:
                 f"Agent '{agent_create.agent_id}' already exists"
             )
 
-        namespace = self._generate_namespace(agent_create.agent_id)
+        lock_file = agent_file.with_suffix(".json.lock")
+        self.agents_dir.mkdir(parents=True, exist_ok=True)
 
-        # Create namespace in Moorcheh - CRITICAL: Must succeed.
-        # ``moorcheh_api_key`` is honored on cloud; ignored on on-prem.
-        client = get_moorcheh_client()
-
+        # Atomically claim the agent ID before creating its namespace.
         try:
-            # Use Moorcheh SDK to create namespace with type="text"
-            client.namespaces.create(namespace, type="text")
-            print(f"[OK] Namespace created in Moorcheh: {namespace}")
-        except ConflictError:
-            # Namespace already exists - this is OK, agent might have been created before
-            print(f"[OK] Namespace already exists in Moorcheh: {namespace}")
-        except Exception as e:
-            # Unexpected error - fail the agent creation
-            raise Exception(
-                f"Failed to create namespace '{namespace}' in Moorcheh: {str(e)}"
+            with open(lock_file, "x"):
+                pass
+        except FileExistsError:
+            raise AgentAlreadyExistsError(
+                f"Agent '{agent_create.agent_id}' already exists"
             )
 
-        # Create agent metadata
-        agent = AgentInfo(
-            agent_id=agent_create.agent_id,
-            namespace=namespace,
-            pattern=agent_create.pattern,
-            description=agent_create.description,
-            created_at=datetime.utcnow(),
-            memory_count=0,
-            session_count=0,
-            status="ready",
-        )
+        try:
+            namespace = self._generate_namespace(agent_create.agent_id)
+            client = get_moorcheh_client(api_key=moorcheh_api_key)
 
-        # Save agent metadata
-        self._save_agent(agent)
+            try:
+                client.namespaces.create(namespace, type="text")
+                print(f"[OK] Namespace created in Moorcheh: {namespace}")
+            except ConflictError:
+                print(f"[OK] Namespace already exists in Moorcheh: {namespace}")
+            except Exception as exc:
+                message = str(exc).lower()
+                if (
+                    "namespace" in message and "already exists" in message
+                ) or "conflict" in message:
+                    print(f"[OK] Namespace already exists in Moorcheh: {namespace}")
+                else:
+                    raise Exception(
+                        f"Failed to create namespace '{namespace}' in Moorcheh: {exc}"
+                    )
 
-        return agent
+            agent = AgentInfo(
+                agent_id=agent_create.agent_id,
+                namespace=namespace,
+                pattern=agent_create.pattern,
+                description=agent_create.description,
+                created_at=datetime.now(timezone.utc),
+                memory_count=0,
+                session_count=0,
+                status="ready",
+            )
+            self._save_agent(agent)
+            return agent
+        finally:
+            lock_file.unlink(missing_ok=True)
 
     def get_agent(self, agent_id: str) -> AgentInfo | None:
         """
@@ -115,9 +132,17 @@ class AgentService:
         if not agent_file.exists():
             return None
 
-        with open(agent_file) as f:
-            data = json.load(f)
-            return AgentInfo(**data)
+        try:
+            return self._load_agent_file(agent_file)
+        except (
+            OSError,
+            json.JSONDecodeError,
+            TypeError,
+            ValidationError,
+            UnicodeDecodeError,
+        ) as exc:
+            logger.warning("Skipping invalid agent file %s: %s", agent_file, exc)
+            return None
 
     def list_agents(self) -> AgentList:
         """
@@ -126,16 +151,30 @@ class AgentService:
         Returns:
             AgentList with all agents
         """
-        agents = []
+        agents: list[AgentInfo] = []
+        warnings: list[str] = []
+        if not self.agents_dir.exists():
+            return AgentList(agents=agents, count=0, warnings=warnings)
+
         for agent_file in self.agents_dir.glob("*.json"):
-            with open(agent_file) as f:
-                data = json.load(f)
-                agents.append(AgentInfo(**data))
+            try:
+                agent = self._load_agent_file(agent_file)
+                if agent is not None:
+                    agents.append(agent)
+            except (
+                OSError,
+                json.JSONDecodeError,
+                TypeError,
+                ValidationError,
+                UnicodeDecodeError,
+            ) as exc:
+                logger.warning("Skipping invalid agent file %s: %s", agent_file, exc)
+                warnings.append(f"Could not load agent file '{agent_file.name}': {exc}")
 
-        # Sort by created_at (newest first)
-        agents.sort(key=lambda a: a.created_at, reverse=True)
+        # Sort by created_at (newest first); normalize for legacy naive timestamps.
+        agents.sort(key=lambda a: as_utc_aware(a.created_at), reverse=True)
 
-        return AgentList(agents=agents, count=len(agents))
+        return AgentList(agents=agents, count=len(agents), warnings=warnings)
 
     def update_agent_stats(
         self,
@@ -201,5 +240,16 @@ class AgentService:
     def _save_agent(self, agent: AgentInfo) -> None:
         """Save agent metadata to file"""
         agent_file = self._get_agent_file(agent.agent_id)
-        with open(agent_file, "w") as f:
-            json.dump(agent.model_dump(mode="json"), f, indent=2)
+        atomic_write_text(
+            agent_file,
+            json.dumps(agent.model_dump(mode="json"), indent=2),
+        )
+
+    def _load_agent_file(self, agent_file: Path) -> AgentInfo | None:
+        """Load one agent metadata file. Raises exception if file is corrupted."""
+        if not agent_file.exists():
+            return None
+
+        with open(agent_file) as f:
+            data = json.load(f)
+        return AgentInfo(**data)

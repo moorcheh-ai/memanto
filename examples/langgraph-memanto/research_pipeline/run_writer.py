@@ -12,9 +12,9 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from core.memanto_tools import create_memanto_tools
 from dotenv import load_dotenv
 from langchain_openai import ChatOpenAI
+from langgraph_memanto import create_memanto_tools
 
 from memanto.cli.client.sdk_client import SdkClient
 
@@ -25,14 +25,14 @@ tools = create_memanto_tools(client, "research_agent")
 memanto_recall = next(t for t in tools if t.name == "memanto_recall")
 memanto_answer = next(t for t in tools if t.name == "memanto_answer")
 
-MEMANTO_API_KEY = os.getenv("MOORCHEH_API_KEY", "")
+MOORCHEH_API_KEY = os.getenv("MOORCHEH_API_KEY", "")
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY", "")
 AGENT_ID = os.getenv("MEMANTO_AGENT_ID", "langgraph-research-team")
 TOPIC = os.getenv("RESEARCH_TOPIC", "AI agent framework market size and trends 2024")
 
 
 def main():
-    if not MEMANTO_API_KEY or not OPENROUTER_API_KEY:
+    if not MOORCHEH_API_KEY or not OPENROUTER_API_KEY:
         print("ERROR: Missing API keys.")
         print(
             "Copy .env.example to .env and fill in MOORCHEH_API_KEY and OPENROUTER_API_KEY"

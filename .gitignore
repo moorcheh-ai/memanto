@@ -105,3 +105,6 @@ temp/
 # Generated version file
 **/_version.py
 benchmark_results.json
+
+# npm pack output
+*.tgz

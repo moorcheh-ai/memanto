@@ -1381,7 +1381,8 @@
 
             .charts-row,
             .form-row,
-            .conflict-memories {
+            .conflict-memories,
+            .hh-stats {
                 grid-template-columns: 1fr;
             }
         }
@@ -1498,6 +1499,23 @@
         .hh-cell.selected {
             outline: 2px solid var(--accent);
             outline-offset: 1px;
+        }
+
+        .hh-cell.stale {
+            position: relative;
+        }
+
+        .hh-cell.stale::after {
+            content: '';
+            position: absolute;
+            top: -2px;
+            right: -2px;
+            width: 5px;
+            height: 5px;
+            border-radius: 50%;
+            background: var(--error);
+            box-shadow: 0 0 0 1px rgba(13, 17, 23, 0.85);
+            pointer-events: none;
         }
 
         .hh-legend {
@@ -1658,8 +1676,576 @@
             color: var(--text-dim);
             font-weight: 400;
         }
+
+        .hh-summary-panel {
+            position: sticky;
+            top: 12px;
+            background: var(--bg-surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            display: flex;
+            flex-direction: column;
+            max-height: 75vh;
+            overflow: hidden;
+        }
+
+        .hh-summary-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 14px;
+            border-bottom: 1px solid var(--border);
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            background: var(--bg-card);
+        }
+
+        .hh-summary-close {
+            background: transparent;
+            border: none;
+            color: var(--text-dim);
+            font-size: 20px;
+            line-height: 1;
+            cursor: pointer;
+            padding: 0 6px;
+            border-radius: 4px;
+        }
+
+        .hh-summary-close:hover {
+            color: var(--text-primary);
+            background: var(--bg-card);
+        }
+
+        .hh-summary-action {
+            background: transparent;
+            border: 1px solid var(--border);
+            color: var(--text-secondary);
+            font-size: 10px;
+            font-weight: 600;
+            letter-spacing: 0.3px;
+            text-transform: uppercase;
+            line-height: 1;
+            cursor: pointer;
+            padding: 5px 8px;
+            border-radius: 4px;
+        }
+
+        .hh-summary-action:hover:not(:disabled) {
+            color: var(--accent);
+            border-color: var(--accent);
+        }
+
+        .hh-summary-action:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .hh-summary-body {
+            flex: 1;
+            overflow-y: auto;
+            padding: 12px 14px;
+        }
+
+        .hh-summary-content {
+            font-family: var(--font-mono);
+            font-size: 11px;
+            line-height: 1.55;
+            color: var(--text-secondary);
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            margin: 0;
+        }
+
+        .hh-summary-md {
+            font-size: 13px;
+            line-height: 1.6;
+            color: var(--text-secondary);
+            word-wrap: break-word;
+        }
+
+        .hh-summary-md h1,
+        .hh-summary-md h2,
+        .hh-summary-md h3,
+        .hh-summary-md h4 {
+            color: var(--text-primary);
+            font-weight: 700;
+            margin: 16px 0 8px;
+            line-height: 1.3;
+        }
+
+        .hh-summary-md h1 { font-size: 16px; }
+        .hh-summary-md h2 { font-size: 14px; color: var(--accent); }
+        .hh-summary-md h3 { font-size: 13px; }
+        .hh-summary-md h4 { font-size: 12px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.4px; }
+
+        .hh-summary-md p {
+            margin: 0 0 10px;
+        }
+
+        .hh-summary-md ul,
+        .hh-summary-md ol {
+            margin: 0 0 10px;
+            padding-left: 20px;
+        }
+
+        .hh-summary-md li {
+            margin-bottom: 4px;
+        }
+
+        .hh-summary-md strong {
+            color: var(--text-primary);
+            font-weight: 700;
+        }
+
+        .hh-summary-md em {
+            color: var(--text-dim);
+            font-style: italic;
+        }
+
+        .hh-summary-md a {
+            color: var(--accent);
+            text-decoration: none;
+        }
+
+        .hh-summary-md a:hover {
+            text-decoration: underline;
+        }
+
+        .hh-summary-md hr {
+            border: none;
+            border-top: 1px solid var(--border);
+            margin: 16px 0;
+        }
+
+        .hh-summary-md code {
+            font-family: var(--font-mono);
+            font-size: 11px;
+            background: var(--bg-card);
+            color: var(--accent);
+            padding: 1px 5px;
+            border-radius: 3px;
+        }
+
+        .hh-summary-md pre {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-xs);
+            padding: 10px 12px;
+            overflow-x: auto;
+            margin: 0 0 12px;
+        }
+
+        .hh-summary-md pre code {
+            background: transparent;
+            color: var(--text-secondary);
+            padding: 0;
+            font-size: 11px;
+            line-height: 1.45;
+        }
+
+        .hh-summary-md blockquote {
+            border-left: 3px solid var(--accent);
+            padding: 4px 12px;
+            margin: 0 0 10px;
+            color: var(--text-dim);
+            background: var(--bg-card);
+        }
+
+        .hh-summary-md table {
+            border-collapse: collapse;
+            width: 100%;
+            margin: 0 0 12px;
+            font-size: 12px;
+        }
+
+        .hh-summary-md th,
+        .hh-summary-md td {
+            border: 1px solid var(--border);
+            padding: 6px 8px;
+            text-align: left;
+        }
+
+        .hh-summary-md th {
+            background: var(--bg-card);
+            color: var(--text-primary);
+            font-weight: 600;
+        }
+
+        /* ===== MIGRATE PAGE ============================================ */
+        .mig-step {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 13px;
+            color: var(--text-dim);
+        }
+
+        .mig-tile {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 28px 22px;
+            cursor: pointer;
+            text-align: left;
+            transition: all 0.25s ease;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .mig-tile:hover {
+            border-color: var(--accent);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 32px var(--accent-glow);
+        }
+
+        .mig-tile.selected {
+            border-color: var(--accent);
+            background: linear-gradient(180deg, var(--accent-glow) 0%, var(--bg-card) 60%);
+        }
+
+        .mig-tile-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 16px;
+            font-family: var(--font-mono);
+            background: var(--accent-glow);
+            color: var(--accent);
+            letter-spacing: 0.5px;
+            overflow: hidden;
+        }
+
+        .mig-tile-icon img {
+            width: 28px;
+            height: 28px;
+            object-fit: contain;
+        }
+
+        .mig-tile-icon.has-img {
+            background: var(--bg-surface);
+            border: 1px solid var(--border);
+        }
+
+        .mig-tile h3 {
+            margin: 0;
+            font-size: 16px;
+            color: var(--text-primary);
+        }
+
+        .mig-tile p {
+            margin: 0;
+            font-size: 12px;
+            color: var(--text-dim);
+            line-height: 1.5;
+        }
+
+        .mig-source-tabs {
+            display: flex;
+            gap: 4px;
+            background: var(--bg-card);
+            padding: 4px;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            width: fit-content;
+            margin-bottom: 14px;
+        }
+
+        .mig-source-tab {
+            padding: 8px 16px;
+            border-radius: 6px;
+            border: none;
+            background: transparent;
+            color: var(--text-secondary);
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+
+        .mig-source-tab.active {
+            background: var(--accent-glow);
+            color: var(--accent);
+        }
+
+        /* ----- Progress overlay (the "not boring" part) -------------- */
+        .mig-progress {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 36px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 22px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .mig-progress::before {
+            content: '';
+            position: absolute;
+            inset: -2px;
+            background: conic-gradient(from 0deg, transparent 0deg, var(--accent-glow) 90deg, transparent 180deg);
+            animation: mig-rotate 4s linear infinite;
+            opacity: 0.4;
+            z-index: 0;
+        }
+
+        .mig-progress-inner {
+            position: relative;
+            z-index: 1;
+            background: var(--bg-card);
+            border-radius: var(--radius);
+            padding: 32px 48px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 22px;
+            min-width: 360px;
+        }
+
+        @keyframes mig-rotate {
+            to { transform: rotate(360deg); }
+        }
+
+        .mig-orbit {
+            position: relative;
+            width: 78px;
+            height: 78px;
+        }
+
+        .mig-orbit .ring {
+            position: absolute;
+            inset: 0;
+            border-radius: 50%;
+            border: 2px solid var(--border);
+            border-top-color: var(--accent);
+            border-right-color: var(--accent);
+            animation: spin 1.2s linear infinite;
+        }
+
+        .mig-orbit .ring.inner {
+            inset: 14px;
+            border-top-color: transparent;
+            border-right-color: transparent;
+            border-bottom-color: var(--accent);
+            border-left-color: var(--accent);
+            animation: spin 1.6s linear infinite reverse;
+            opacity: 0.7;
+        }
+
+        .mig-orbit .core {
+            position: absolute;
+            inset: 28px;
+            border-radius: 50%;
+            background: var(--accent);
+            box-shadow: 0 0 24px var(--accent-glow-strong);
+            animation: mig-pulse 1.8s ease-in-out infinite;
+        }
+
+        @keyframes mig-pulse {
+            0%, 100% { transform: scale(0.9); opacity: 0.85; }
+            50% { transform: scale(1.15); opacity: 1; }
+        }
+
+        .mig-progress-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--text-primary);
+            text-align: center;
+        }
+
+        .mig-progress-sub {
+            font-size: 13px;
+            color: var(--text-dim);
+            font-family: var(--font-mono);
+            min-height: 18px;
+            text-align: center;
+        }
+
+        .mig-step-list {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .mig-step-pill {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 12px;
+            border-radius: 999px;
+            border: 1px solid var(--border);
+            background: var(--bg-surface);
+            color: var(--text-dim);
+            font-size: 11px;
+            font-family: var(--font-mono);
+            text-transform: uppercase;
+            letter-spacing: 0.4px;
+            transition: all 0.3s ease;
+        }
+
+        .mig-step-pill.active {
+            border-color: var(--accent);
+            color: var(--accent);
+            background: var(--accent-glow);
+            box-shadow: 0 0 16px var(--accent-glow);
+        }
+
+        .mig-step-pill.done {
+            border-color: var(--success);
+            color: var(--success);
+            background: var(--success-bg);
+        }
+
+        .mig-step-pill .dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: currentColor;
+        }
+
+        .mig-step-pill.active .dot {
+            animation: mig-blink 0.9s ease-in-out infinite;
+        }
+
+        @keyframes mig-blink {
+            0%, 100% { opacity: 0.3; }
+            50% { opacity: 1; }
+        }
+
+        /* ----- Bar chart of batch progress --------------------------- */
+        .mig-bar {
+            width: 100%;
+            height: 6px;
+            background: var(--bg-surface);
+            border-radius: 999px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .mig-bar-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--accent), var(--accent-hover));
+            box-shadow: 0 0 16px var(--accent-glow-strong);
+            transition: width 0.4s ease;
+            width: 0%;
+        }
+
+        .mig-bar.indeterminate .mig-bar-fill {
+            width: 35%;
+            animation: mig-slide 1.4s ease-in-out infinite;
+        }
+
+        @keyframes mig-slide {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(285%); }
+        }
+
+        /* ----- Result stats grid ------------------------------------- */
+        .mig-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 14px;
+            margin-top: 18px;
+        }
+
+        .mig-stat {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 18px;
+            transition: all 0.2s;
+        }
+
+        .mig-stat:hover {
+            border-color: var(--border-hover);
+        }
+
+        .mig-stat .label {
+            font-size: 11px;
+            color: var(--text-dim);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 8px;
+            font-family: var(--font-mono);
+        }
+
+        .mig-stat .value {
+            font-size: 26px;
+            font-weight: 700;
+            color: var(--text-primary);
+            line-height: 1;
+            font-feature-settings: "tnum";
+        }
+
+        .mig-stat .value.accent { color: var(--accent); }
+        .mig-stat .value.success { color: var(--success); }
+        .mig-stat .value.warning { color: var(--warning); }
+        .mig-stat .value.error { color: var(--error); }
+
+        .mig-stat .sub {
+            font-size: 11px;
+            color: var(--text-dim);
+            margin-top: 6px;
+            font-family: var(--font-mono);
+        }
+
+        .mig-type-chips {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-top: 14px;
+        }
+
+        .mig-type-chip {
+            background: var(--accent-glow);
+            color: var(--accent);
+            border-radius: 999px;
+            padding: 4px 10px;
+            font-size: 11px;
+            font-family: var(--font-mono);
+            font-weight: 600;
+        }
+
+        .mig-sample-row {
+            border-bottom: 1px solid var(--border);
+            padding: 10px 0;
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) auto;
+            gap: 16px;
+            align-items: center;
+            font-size: 13px;
+        }
+
+        .mig-sample-row:last-child { border-bottom: none; }
+
+        .mig-sample-row .ttl { color: var(--text-primary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .mig-sample-row .meta { color: var(--text-dim); font-size: 11px; font-family: var(--font-mono); white-space: nowrap; }
+
+        .mig-error-banner {
+            background: var(--error-bg);
+            border: 1px solid var(--error);
+            border-radius: 8px;
+            padding: 12px 14px;
+            color: var(--error);
+            font-size: 13px;
+        }
     </style>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked@12.0.0/marked.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/dompurify@3.0.11/dist/purify.min.js"></script>
 </head>
 
 <body>
@@ -1727,6 +2313,12 @@
                         <path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71" />
                     </svg>
                     <span>Connections</span>
+                </button>
+                <button class="nav-item" data-page="migrate">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M14 5l7 7-7 7M3 12h18" />
+                    </svg>
+                    <span>Migrate</span>
                 </button>
                 <button class="nav-item" data-page="config">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -1799,6 +2391,7 @@
                     <button class="tab" data-tab="ask">Answer (RAG)</button>
                     <button class="tab" data-tab="recall">Recall</button>
                     <button class="tab" data-tab="upload">Upload File</button>
+                    <button class="tab" data-tab="extract">Extract</button>
                 </div>
                 <!-- Remember -->
                 <div class="panel pg-tab active" id="tab-remember">
@@ -1885,6 +2478,25 @@
                     <button class="btn btn-primary" id="btnUpload" onclick="doUpload()">Upload to Memory</button>
                     <div id="uploadResult" style="margin-top:16px"></div>
                 </div>
+                <!-- Extract -->
+                <div class="panel pg-tab" id="tab-extract">
+                    <div class="form-group">
+                        <label>Conversation JSON</label>
+                        <textarea id="extractInput" style="font-family: var(--font-mono); min-height: 200px;" placeholder='[&#10;  {"role": "user", "content": "I like dark mode."},&#10;  {"role": "assistant", "content": "Noted."}&#10;]'></textarea>
+                    </div>
+                    <div style="display: flex; gap: 10px;">
+                        <button class="btn btn-secondary" id="btnExtractPreview" onclick="doExtractPreview()">Preview Extraction</button>
+                        <button class="btn btn-primary" id="btnExtractDirect" onclick="doExtractAndSave()">Extract & Save</button>
+                    </div>
+
+                    <div id="extractResults" style="display: none; margin-top: 24px;">
+                        <div class="panel-title" style="display: flex; justify-content: space-between; align-items: center;">
+                            <span>Extracted Memories</span>
+                            <button class="btn btn-primary btn-sm" id="btnSaveExtraction" onclick="doExtractSave()">Save to Database</button>
+                        </div>
+                        <div id="extractCards" class="cards-row"></div>
+                    </div>
+                </div>
             </section>
 
             <!-- MEMORY EXPLORER -->
@@ -1893,11 +2505,20 @@
                     <h2>Memory Explorer</h2>
                     <p>Browse, search, and filter all stored memories</p>
                 </div>
-                <div class="time-machine-bar">
+                <div class="time-machine-bar" style="flex-wrap:wrap">
                     <span>🕰️</span>
-                    <label>Time Machine:</label>
-                    <input type="date" id="tmDate">
-                    <button class="btn btn-sm btn-secondary" onclick="doTimeMachine()">Travel</button>
+                    <label>View:</label>
+                    <select id="tmMode" onchange="onTmModeChange()" style="width:150px">
+                        <option value="">Latest</option>
+                        <option value="asof">As of date</option>
+                        <option value="since">Changed since</option>
+                        <option value="range">Date range</option>
+                    </select>
+                    <input type="date" id="tmDate" style="display:none">
+                    <input type="date" id="tmFrom" style="display:none">
+                    <span id="tmRangeSep" style="display:none;color:var(--text-dim)">to</span>
+                    <input type="date" id="tmTo" style="display:none">
+                    <button class="btn btn-sm btn-secondary" onclick="loadExplorer()">Apply</button>
                     <button class="btn btn-sm btn-secondary" onclick="resetTimeMachine()">Reset to Now</button>
                     <span id="tmStatus"
                         style="font-size:11px;color:var(--text-dim);font-family:var(--font-mono)"></span>
@@ -1937,6 +2558,14 @@
                     <h2>Conflict Resolution</h2>
                     <p>Review and resolve contradicting memories</p>
                 </div>
+                <div style="display:flex;gap:10px;margin-bottom:18px;align-items:center;flex-wrap:wrap">
+                    <button class="btn btn-primary btn-sm" id="btnDetectConflicts" onclick="detectConflictsNow()">⚡ Detect Conflicts Now</button>
+                    <button class="btn btn-secondary btn-sm" onclick="loadConflicts()">Refresh</button>
+                    <div style="margin-left:auto;display:flex;align-items:center;gap:8px">
+                        <label for="conflictsDateInput" style="color:var(--text-dim);font-size:13px">Date</label>
+                        <input type="date" id="conflictsDateInput" onchange="loadConflicts()" style="background:var(--bg-secondary);border:1px solid var(--border);color:var(--text);padding:6px 10px;border-radius:6px;font-family:inherit;font-size:13px">
+                    </div>
+                </div>
                 <div id="conflictsContent">
                     <div class="loading-overlay"><span class="spinner"></span> Loading conflicts...</div>
                 </div>
@@ -1970,6 +2599,15 @@
                 <div id="historyContent">
                     <div class="loading-overlay"><span class="spinner"></span> Loading history...</div>
                 </div>
+            </section>
+
+            <!-- MIGRATE -->
+            <section class="page" id="page-migrate">
+                <div class="page-header">
+                    <h2>Migrate</h2>
+                    <p>Import memories from Mem0, Letta, or Supermemory into your active Memanto agent.</p>
+                </div>
+                <div id="migrateContent"></div>
             </section>
 
             <!-- CONFIG -->
@@ -2029,7 +2667,7 @@
             const headers = { 'Content-Type': 'application/json' };
             if (S.apiKey) headers['Authorization'] = `Bearer ${S.apiKey}`;
             if (S.token) headers['X-Session-Token'] = S.token;
-            const opts = { method, headers };
+            const opts = { method, headers, credentials: 'same-origin' };
             if (body) opts.body = JSON.stringify(body);
             const res = await fetch(path, opts);
             if (!res.ok) {
@@ -2042,6 +2680,10 @@
             return res.json();
         }
 
+        function hasActiveSession() {
+            return !!(S.agentId && (S.token || (S.config && S.config.has_active_session)));
+        }
+
         // Toast
         function toast(msg, type = 'success') {
             const el = document.createElement('div');
@@ -2049,6 +2691,54 @@
             el.textContent = msg;
             document.getElementById('toasts').appendChild(el);
             setTimeout(() => el.remove(), 4000);
+        }
+
+        // Confirm dialog — themed replacement for browser ``confirm()``. Returns
+        // a Promise<boolean>. Callers should ``await confirmDialog({...})``.
+        // ``danger: true`` styles the primary action with ``btn-danger``.
+        function confirmDialog({ title = 'Confirm', message = '', confirmLabel = 'Confirm', cancelLabel = 'Cancel', danger = false } = {}) {
+            return new Promise(resolve => {
+                const backdrop = document.createElement('div');
+                backdrop.className = 'modal-backdrop';
+                const primaryCls = danger ? 'btn btn-danger' : 'btn btn-primary';
+                backdrop.innerHTML = `<div class="modal" style="width:min(440px,90vw)">
+                    <div class="modal-header">
+                        <h3>${escHtml(title)}</h3>
+                        <button class="modal-close" data-act="cancel">×</button>
+                    </div>
+                    <p style="color:var(--text-secondary);line-height:1.6;margin-bottom:20px">${escHtml(message)}</p>
+                    <div style="display:flex;justify-content:flex-end;gap:8px">
+                        <button class="btn btn-secondary" data-act="cancel">${escHtml(cancelLabel)}</button>
+                        <button class="${primaryCls}" data-act="confirm">${escHtml(confirmLabel)}</button>
+                    </div>
+                </div>`;
+                const close = (result) => {
+                    document.removeEventListener('keydown', onKey);
+                    backdrop.remove();
+                    resolve(result);
+                };
+                const onKey = (e) => {
+                    if (e.key === 'Escape') close(false);
+                    else if (e.key === 'Enter') close(true);
+                };
+                backdrop.addEventListener('click', (e) => {
+                    // Click on the backdrop itself (outside the .modal) cancels.
+                    if (e.target === backdrop) { close(false); return; }
+                    // Button delegation: walk up to nearest [data-act] in case
+                    // the click landed on inner text/icon rather than the
+                    // <button> element.
+                    const actEl = e.target.closest && e.target.closest('[data-act]');
+                    if (!actEl) return;
+                    const act = actEl.getAttribute('data-act');
+                    if (act === 'cancel') close(false);
+                    else if (act === 'confirm') close(true);
+                });
+                document.addEventListener('keydown', onKey);
+                document.body.appendChild(backdrop);
+                // Focus the primary action so Enter just works
+                const btn = backdrop.querySelector('[data-act="confirm"]');
+                if (btn) btn.focus();
+            });
         }
 
         // Confidence class
@@ -2096,6 +2786,7 @@
                 if (btn.dataset.page === 'dashboard') loadDashboard();
                 if (btn.dataset.page === 'conflicts') loadConflicts();
                 if (btn.dataset.page === 'connections') loadConnections();
+                if (btn.dataset.page === 'migrate') openMigrate();
                 if (btn.dataset.page === 'history' && !S._historyLoaded) { loadHistory(); S._historyLoaded = true; }
             });
         });
@@ -2128,7 +2819,7 @@
             try {
                 S.config = await api('GET', '/api/ui/config');
                 S.agentId = S.config.active_agent_id;
-                S.token = S.config.session_token;
+                S.token = null;
                 if (S.config.api_key_configured) {
                     S.apiKey = S.config.api_key || null;
                 }
@@ -2142,8 +2833,6 @@
             loadConflictBadge();
         }
 
-        // On-prem disables features the Moorcheh on-prem server doesn't expose
-        // (LLM answer, file upload). Hide those affordances; cloud is unchanged.
         function isOnPrem() {
             return !!(S.config && S.config.backend === 'on-prem');
         }
@@ -2153,21 +2842,8 @@
         }
 
         function applyBackendVisibility() {
-            const onPrem = isOnPrem();
-            const answerTab = document.querySelector('#pgTabs .tab[data-tab="ask"]');
-            const uploadTab = document.querySelector('#pgTabs .tab[data-tab="upload"]');
-            const answerPanel = document.getElementById('tab-ask');
-            const uploadPanel = document.getElementById('tab-upload');
-            [answerTab, uploadTab, answerPanel, uploadPanel].forEach(el => {
-                if (el) el.style.display = onPrem ? 'none' : '';
-            });
-            // If the previously-active tab is now hidden, fall back to Remember.
-            if (onPrem) {
-                const activeTab = document.querySelector('#pgTabs .tab.active');
-                if (activeTab && (activeTab.dataset.tab === 'ask' || activeTab.dataset.tab === 'upload')) {
-                    document.querySelector('#pgTabs .tab[data-tab="remember"]').click();
-                }
-            }
+            // Both backends expose the same Playground features (answer, upload,
+            // recall, remember). Reserved for future backend-specific affordances.
         }
 
         function updateSidebarStatus() {
@@ -2195,8 +2871,16 @@
             try {
                 const data = await api('GET', '/api/ui/conflicts');
                 const badge = document.getElementById('conflictBadge');
+                await fetchConflictScans();
+                await fetchRecentMemories();
+                const staleToday = staleMemCountForDay(todayKey());
                 if (data.count > 0) {
                     badge.textContent = data.count;
+                    badge.title = `${data.count} unresolved conflict(s) today`;
+                    badge.style.display = 'inline-flex';
+                } else if (staleToday > 0) {
+                    badge.textContent = '!';
+                    badge.title = `${staleToday} ${staleToday === 1 ? 'memory' : 'memories'} stored since the last conflict scan — run Detect Conflicts`;
                     badge.style.display = 'inline-flex';
                 } else {
                     badge.style.display = 'none';
@@ -2256,12 +2940,12 @@
             if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Activating...'; }
             try {
                 const session = await api('POST', `/api/v2/agents/${agentId}/activate`);
-                // Adopt the new session so all subsequent operations use it
+                // Adopt the active session; browser calls authenticate via the
+                // HttpOnly same-origin cookie set by the server.
                 S.agentId = session.agent_id;
-                S.token = session.session_token;
+                S.token = null;
                 if (S.config) {
                     S.config.active_agent_id = session.agent_id;
-                    S.config.session_token = session.session_token;
                     S.config.has_active_session = true;
                 }
                 // Invalidate cached views tied to the previous agent
@@ -2285,7 +2969,6 @@
                 S.token = null;
                 if (S.config) {
                     S.config.active_agent_id = null;
-                    S.config.session_token = null;
                     S.config.has_active_session = false;
                 }
                 S._explorerLoaded = false;
@@ -2330,50 +3013,117 @@
         ${isOnPrem()
             ? `<div class="card"><div class="card-label">Backend</div><div class="card-value" style="font-size:14px"><span style="color:var(--success)">On-Prem</span></div><div class="card-sub">${escHtml(S.config?.on_prem?.url || 'http://localhost:8080')}</div></div>`
             : `<div class="card"><div class="card-label">API Key</div><div class="card-value" style="font-size:14px">${S.config?.api_key_configured ? '<span style="color:var(--success)">✓ Configured</span>' : '<span style="color:var(--error)">✗ Missing</span>'}</div><div class="card-sub">${S.config?.api_key_preview || ''}</div></div>`}
+        <div class="card" id="cardTodaySummary" style="cursor:pointer" onclick="openHistoryForToday()" title="View or generate today's summary">
+            <div class="card-label">Today's Summary</div>
+            <div class="card-value" style="font-size:14px;color:var(--text-dim)">…</div>
+            <div class="card-sub">checking…</div>
+        </div>
     `;
+            // Async probe — show whether today's summary already exists
+            if (S.agentId) refreshTodaySummaryCard();
 
             if (S.agentId) {
                 try {
                     const agent = await api('GET', `/api/v2/agents/${S.agentId}`);
                     profile.innerHTML = `
                 <table class="config-table"><tbody>
-                <tr><td>Agent ID</td><td><strong style="color:var(--accent)">${agent.agent_id}</strong></td></tr>
-                <tr><td>Pattern</td><td><span class="badge badge-accent">${agent.pattern || '—'}</span></td></tr>
-                <tr><td>Description</td><td>${agent.description || '—'}</td></tr>
-                <tr><td>Namespace</td><td><code style="color:var(--cyan);font-family:var(--font-mono)">${agent.namespace || '—'}</code></td></tr>
+                <tr><td>Agent ID</td><td><strong style="color:var(--accent)">${escHtml(agent.agent_id)}</strong></td></tr>
+                <tr><td>Pattern</td><td><span class="badge badge-accent">${escHtml(agent.pattern || '—')}</span></td></tr>
+                <tr><td>Description</td><td>${escHtml(agent.description || '—')}</td></tr>
+                <tr><td>Namespace</td><td><code style="color:var(--cyan);font-family:var(--font-mono)">${escHtml(agent.namespace || '—')}</code></td></tr>
                 <tr><td>Created</td><td>${fmtDate(agent.created_at)}</td></tr>
                 <tr><td>Sessions</td><td>${agent.session_count ?? '—'}</td></tr>
                 </tbody></table>`;
-                } catch (e) { profile.innerHTML = `<p style="color:var(--text-dim)">Could not load agent: ${e.message}</p>`; }
+                } catch (e) { profile.innerHTML = `<p style="color:var(--text-dim)">Could not load agent: ${escHtml(e.message)}</p>`; }
             } else {
                 profile.innerHTML = '<p style="color:var(--text-dim)">No active agent. <a href="#" onclick="goToPage(\'agents\');return false" style="color:var(--accent);text-decoration:none">Go to the Agents page</a> to activate one.</p>';
             }
 
-            if (S.token && S.agentId) {
+            if (hasActiveSession()) {
                 try {
                     const sess = await api('GET', '/api/v2/status');
                     const hrs = Math.floor((sess.time_remaining_seconds || 0) / 3600);
                     const mins = Math.floor(((sess.time_remaining_seconds || 0) % 3600) / 60);
                     session.innerHTML = `
                 <table class="config-table"><tbody>
-                <tr><td>Status</td><td><span class="badge badge-success">${sess.status || 'active'}</span></td></tr>
-                <tr><td>Pattern</td><td>${sess.pattern || '—'}</td></tr>
-                <tr><td>Namespace</td><td><code style="color:var(--cyan);font-family:var(--font-mono)">${sess.namespace || '—'}</code></td></tr>
+                <tr><td>Status</td><td><span class="badge badge-success">${escHtml(sess.status || 'active')}</span></td></tr>
+                <tr><td>Pattern</td><td>${escHtml(sess.pattern || '—')}</td></tr>
+                <tr><td>Namespace</td><td><code style="color:var(--cyan);font-family:var(--font-mono)">${escHtml(sess.namespace || '—')}</code></td></tr>
                 <tr><td>Started</td><td>${fmtDate(sess.started_at)}</td></tr>
                 <tr><td>Expires</td><td>${fmtDate(sess.expires_at)}</td></tr>
                 <tr><td>Time Remaining</td><td><strong style="color:var(--accent)">${hrs}h ${mins}m</strong></td></tr>
                 </tbody></table>`;
-                } catch (e) { session.innerHTML = `<p style="color:var(--warning)">Session may be expired: ${e.message}</p>`; }
+                } catch (e) { session.innerHTML = `<p style="color:var(--warning)">Session may be expired: ${escHtml(e.message)}</p>`; }
             } else {
                 session.innerHTML = '<p style="color:var(--text-dim)">No active session</p>';
             }
+        }
+
+        // ----------------------------------------------------------------
+        // Today's-summary card (dashboard) + cross-page navigation helper
+        // ----------------------------------------------------------------
+        function todayKey() {
+            const d = new Date();
+            const m = String(d.getMonth() + 1).padStart(2, '0');
+            const day = String(d.getDate()).padStart(2, '0');
+            return `${d.getFullYear()}-${m}-${day}`;
+        }
+
+        async function refreshTodaySummaryCard() {
+            const card = document.getElementById('cardTodaySummary');
+            if (!card) return;
+            const valueEl = card.querySelector('.card-value');
+            const subEl = card.querySelector('.card-sub');
+            try {
+                const res = await api('GET', `/api/ui/daily-summary?date=${todayKey()}`);
+                if (res.exists) {
+                    valueEl.style.color = 'var(--success)';
+                    valueEl.style.fontSize = '14px';
+                    valueEl.innerHTML = '<span style="color:var(--success)">✓ Available</span>';
+                    subEl.textContent = "Click to view today's summary";
+                } else {
+                    valueEl.style.color = 'var(--accent)';
+                    valueEl.style.fontSize = '14px';
+                    valueEl.innerHTML = '<span style="color:var(--accent)">Generate</span>';
+                    subEl.textContent = "No summary yet — click to create";
+                }
+            } catch (e) {
+                valueEl.textContent = '—';
+                subEl.textContent = 'Unavailable';
+            }
+        }
+
+        async function openHistoryForToday() {
+            openHistoryForDay(todayKey());
+        }
+
+        async function goToConflictsForDay(key) {
+            // Seed the date input before navigation so loadConflicts()'s
+            // initial pass picks up the selected day (avoids a race where
+            // a today-scoped fetch overwrites the selected-day results).
+            const input = document.getElementById('conflictsDateInput');
+            if (input) input.value = key || todayKey();
+            goToPage('conflicts');
+            await detectConflictsNow();
+        }
+
+        async function openHistoryForDay(key) {
+            S.historyFilter = key;
+            S.summaryOpen = true;
+            const wasLoaded = !!S._historyLoaded;
+            goToPage('history');
+            // If history is already loaded, re-render now so the summary
+            // tab appears immediately (the nav handler doesn't reload).
+            // Otherwise the in-flight loadHistory() will renderHistory()
+            // for us — it now preserves the filter/summaryOpen state.
+            if (wasLoaded) renderHistory();
         }
 
         // ================================================================
         // PLAYGROUND - REMEMBER
         // ================================================================
         async function doRemember() {
-            if (!S.agentId || !S.token) { toast('No active agent/session. Activate via CLI first.', 'error'); return; }
+            if (!hasActiveSession()) { toast('No active agent/session. Activate via CLI first.', 'error'); return; }
             const content = document.getElementById('remContent').value.trim();
             if (!content) { toast('Memory content is required', 'error'); return; }
             const title = document.getElementById('remTitle').value.trim() || (content.length > 47 ? content.substring(0, 47) + '...' : content);
@@ -2395,6 +3145,7 @@
                 document.getElementById('remContent').value = '';
                 document.getElementById('remTitle').value = '';
                 document.getElementById('remTags').value = '';
+                loadConflictBadge();
             } catch (e) { toast('Failed: ' + e.message, 'error'); }
             btn.disabled = false; btn.innerHTML = 'Store Memory';
         }
@@ -2403,7 +3154,7 @@
         // PLAYGROUND - ANSWER (RAG)
         // ================================================================
         async function doAnswer() {
-            if (!S.agentId || !S.token) { toast('No active agent/session', 'error'); return; }
+            if (!hasActiveSession()) { toast('No active agent/session', 'error'); return; }
             const input = document.getElementById('askInput');
             const q = input.value.trim();
             if (!q) return;
@@ -2417,7 +3168,7 @@
                 document.getElementById('answerLoading').remove();
                 let sourcesHtml = '';
                 if (res.sources && res.sources.length) {
-                    sourcesHtml = `<div class="chat-sources">Sources: ${res.sources.map(s => `<span class="badge badge-info" style="margin:2px">${trunc(s.title || s.id || 'memory', 30)}</span>`).join('')}</div>`;
+                    sourcesHtml = `<div class="chat-sources">Sources: ${res.sources.map(s => `<span class="badge badge-info" style="margin:2px">${escHtml(trunc(s.title || s.id || 'memory', 30))}</span>`).join('')}</div>`;
                 }
                 msgs.innerHTML += `<div class="chat-msg assistant">${escHtml(res.answer || 'No answer generated.')}${sourcesHtml}</div>`;
             } catch (e) {
@@ -2431,7 +3182,7 @@
         // PLAYGROUND - RECALL
         // ================================================================
         async function doRecall() {
-            if (!S.agentId || !S.token) { toast('No active agent/session', 'error'); return; }
+            if (!hasActiveSession()) { toast('No active agent/session', 'error'); return; }
             const q = document.getElementById('recQuery').value.trim();
             if (!q) { toast('Search query is required', 'error'); return; }
             const body = { query: q, limit: parseInt(document.getElementById('recLimit').value) || 10 };
@@ -2445,8 +3196,8 @@
                 const res = await api('POST', `/api/v2/agents/${S.agentId}/recall`, body);
                 const mems = res.memories || [];
                 if (!mems.length) { box.innerHTML = '<p style="color:var(--text-dim);padding:20px">No memories found</p>'; return; }
-                box.innerHTML = buildMemoryTable(mems);
-            } catch (e) { box.innerHTML = `<p style="color:var(--error);padding:20px">Error: ${e.message}</p>`; }
+                box.innerHTML = buildMemoryTable(mems, true);
+            } catch (e) { box.innerHTML = `<p style="color:var(--error);padding:20px">Error: ${escHtml(e.message)}</p>`; }
         }
 
         // ================================================================
@@ -2456,7 +3207,7 @@
         const MAX_UPLOAD_BYTES = 5 * 1024 * 1024 * 1024; // 5GB — mirrors the backend/SDK limit
 
         async function doUpload() {
-            if (!S.agentId || !S.token) { toast('No active agent/session. Activate an agent first.', 'error'); return; }
+            if (!hasActiveSession()) { toast('No active agent/session. Activate an agent first.', 'error'); return; }
             const input = document.getElementById('uplFile');
             const file = input.files && input.files[0];
             if (!file) { toast('Choose a file to upload', 'error'); return; }
@@ -2483,7 +3234,7 @@
             btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Uploading...';
             out.innerHTML = '';
             try {
-                const res = await fetch(`/api/v2/agents/${S.agentId}/upload-file`, { method: 'POST', headers, body: fd });
+                const res = await fetch(`/api/v2/agents/${S.agentId}/upload-file`, { method: 'POST', headers, body: fd, credentials: 'same-origin' });
                 const data = await res.json().catch(() => ({ detail: res.statusText }));
                 if (!res.ok) {
                     let msg = data.detail || res.statusText;
@@ -2505,37 +3256,162 @@
         }
 
         // ================================================================
+        // EXTRACT FROM CHAT
+        // ================================================================
+        let _extractionCandidates = [];
+
+        async function doExtractPreview() {
+            if (!S.agentId) { toast('No active agent. Activate an agent first.', 'error'); return; }
+            const input = document.getElementById('extractInput').value.trim();
+            if (!input) { toast('Please enter a conversation JSON', 'error'); return; }
+            let messages;
+            try {
+                messages = JSON.parse(input);
+                if (!Array.isArray(messages)) throw new Error('Root must be an array');
+            } catch(e) {
+                return toast('Invalid JSON: ' + e.message, 'error');
+            }
+            const btn = document.getElementById('btnExtractPreview');
+            const originalText = btn.innerHTML;
+            btn.innerHTML = '<span class="spinner" style="display:inline-block;width:12px;height:12px;border:2px solid currentColor;border-right-color:transparent;border-radius:50%;animation:spin 0.75s linear infinite"></span> Extracting...';
+            btn.disabled = true;
+            try {
+                const res = await api('POST', `/api/v2/agents/${S.agentId}/remember/extract`, {
+                    messages,
+                    dry_run: true
+                });
+                _extractionCandidates = res.candidates || [];
+                renderExtractionCards();
+                document.getElementById('extractResults').style.display = 'block';
+                toast(`Extracted ${_extractionCandidates.length} candidates`);
+            } catch(e) {
+                toast(e.message, 'error');
+            } finally {
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+            }
+        }
+
+        function renderExtractionCards() {
+            const container = document.getElementById('extractCards');
+            if (_extractionCandidates.length === 0) {
+                container.innerHTML = '<div class="hh-empty">No memories extracted.</div>';
+                document.getElementById('btnSaveExtraction').disabled = true;
+                return;
+            }
+            document.getElementById('btnSaveExtraction').disabled = false;
+            container.innerHTML = _extractionCandidates.map((c, i) => `
+                <div class="card" id="extCard-${i}">
+                    <div style="display:flex; justify-content:space-between; margin-bottom:8px; align-items:center;">
+                        <div class="badge badge-accent" style="margin:0">${escHtml(c.type || 'fact')}</div>
+                        <input type="checkbox" checked onchange="_extractionCandidates[${i}]._skip = !this.checked">
+                    </div>
+                    <textarea style="width:100%; min-height:80px; font-size:12px; margin-bottom:8px" onchange="_extractionCandidates[${i}].content = this.value">${escHtml(c.content)}</textarea>
+                    <div style="display:flex; gap:8px">
+                        <div style="flex:1">
+                            <label style="font-size:9px">Confidence</label>
+                            <input type="number" step="0.05" min="0" max="1" style="padding:4px; font-size:11px" value="${c.confidence || 0.8}" onchange="_extractionCandidates[${i}].confidence = parseFloat(this.value)">
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        async function doExtractSave() {
+            if (!S.agentId) { toast('No active agent', 'error'); return; }
+            const toSave = _extractionCandidates.filter(c => !c._skip);
+            if (toSave.length === 0) { toast('No memories selected to save', 'warning'); return; }
+
+            const btn = document.getElementById('btnSaveExtraction');
+            const originalText = btn.innerHTML;
+            btn.innerHTML = 'Saving...';
+            btn.disabled = true;
+
+            try {
+                const memoriesToCreate = toSave.map(c => ({
+                    content: c.content,
+                    type: c.type || 'fact',
+                    confidence: c.confidence || 0.8,
+                    source: c.source || 'agent',
+                    provenance: c.provenance || 'inferred'
+                }));
+
+                const res = await api('POST', `/api/v2/agents/${S.agentId}/batch-remember`, { memories: memoriesToCreate });
+                toast(`Saved ${res.success_count || memoriesToCreate.length} memories successfully`);
+                _extractionCandidates = [];
+                document.getElementById('extractResults').style.display = 'none';
+                document.getElementById('extractInput').value = '';
+            } catch(e) {
+                toast(e.message, 'error');
+            } finally {
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+            }
+        }
+
+        // ================================================================
         // MEMORY EXPLORER
         // ================================================================
-        async function loadExplorer(asOfDate) {
-            if (!S.agentId || !S.token) {
+        async function loadExplorer() {
+            if (!hasActiveSession()) {
                 document.getElementById('explorerTable').innerHTML = '<p style="color:var(--text-dim);padding:20px">No active agent. <a href="#" onclick="goToPage(\'agents\');return false" style="color:var(--accent);text-decoration:none">Go to the Agents page</a> to activate one.</p>';
                 return;
             }
             const q = document.getElementById('expSearch').value.trim();
             const type = document.getElementById('expType').value;
+            const mode = document.getElementById('tmMode').value;
+            const tmDate = document.getElementById('tmDate').value;
+            const from = document.getElementById('tmFrom').value;
+            const to = document.getElementById('tmTo').value;
+
+            if ((mode === 'asof' || mode === 'since') && !tmDate) {
+                toast(`Select a ${mode === 'asof' ? '"as of"' : '"changed since"'} date first`, 'error');
+                return;
+            }
+            if (mode === 'range' && !from && !to) {
+                toast('Pick a From or To date for the range', 'error');
+                return;
+            }
+
             const box = document.getElementById('explorerTable');
             box.innerHTML = '<div class="loading-overlay"><span class="spinner"></span> Loading memories...</div>';
-            try {
-                let url, body;
-                if (asOfDate) {
-                    body = { as_of: asOfDate, limit: 50 };
-                    if (type) body.type = [type];
-                    url = `/api/v2/agents/${S.agentId}/recall/as-of`;
-                } else if (!q) {
-                    body = { limit: 50 };
-                    if (type) body.type = [type];
-                    url = `/api/v2/agents/${S.agentId}/recall/recent`;
-                } else {
-                    body = { query: q, limit: 50 };
-                    if (type) body.type = [type];
+            document.getElementById('tmStatus').textContent =
+                mode === 'asof' ? `Viewing memory as of ${tmDate}` :
+                mode === 'since' ? `Showing changes since ${tmDate}` :
+                mode === 'range' ? `Showing ${from || '…'} → ${to || '…'}` : '';
+
+            let url, body = { limit: 50 };
+            if (type) body.type = [type];
+
+            // Send bare YYYY-MM-DD values as-is (not Date.toISOString()) — the
+            // backend's own date-only parsing already applies the right day
+            // boundary (start-of-day for since/created_after, end-of-day for
+            // as_of/created_before) in UTC. Pre-converting here would collapse
+            // "as of" to midnight instead of end-of-day and, for the range's
+            // "to" bound, silently mix in the browser's local timezone.
+            if (mode === 'asof') {
+                body.as_of = tmDate;
+                url = `/api/v2/agents/${S.agentId}/recall/as-of`;
+            } else if (mode === 'since') {
+                body.since = tmDate;
+                url = `/api/v2/agents/${S.agentId}/recall/changed-since`;
+            } else {
+                if (from) body.created_after = from;
+                if (to) body.created_before = to;
+                if (q) {
+                    body.query = q;
                     url = `/api/v2/agents/${S.agentId}/recall`;
+                } else {
+                    url = `/api/v2/agents/${S.agentId}/recall/recent`;
                 }
+            }
+
+            try {
                 const res = await api('POST', url, body);
                 S.explorerAll = res.memories || [];
                 populateSourceFilter(S.explorerAll);
                 renderExplorer();
-            } catch (e) { box.innerHTML = `<p style="color:var(--error);padding:20px">Error: ${e.message}</p>`; }
+            } catch (e) { box.innerHTML = `<p style="color:var(--error);padding:20px">Error: ${escHtml(e.message)}</p>`; }
         }
 
         // Populate the source dropdown from the distinct sources present in the data,
@@ -2560,46 +3436,184 @@
             box.innerHTML = buildMemoryTable(S.memories, true);
         }
 
-        function doTimeMachine() {
-            const d = document.getElementById('tmDate').value;
-            if (!d) { toast('Select a date first', 'error'); return; }
-            document.getElementById('tmStatus').textContent = `Viewing memory as of ${d}`;
-            loadExplorer(new Date(d).toISOString());
+        // Toggle which date input(s) are visible for the selected Explorer view mode.
+        function onTmModeChange() {
+            const mode = document.getElementById('tmMode').value;
+            document.getElementById('tmDate').style.display = (mode === 'asof' || mode === 'since') ? '' : 'none';
+            const rangeDisplay = mode === 'range' ? '' : 'none';
+            document.getElementById('tmFrom').style.display = rangeDisplay;
+            document.getElementById('tmRangeSep').style.display = rangeDisplay;
+            document.getElementById('tmTo').style.display = rangeDisplay;
         }
         function resetTimeMachine() {
+            document.getElementById('tmMode').value = '';
             document.getElementById('tmDate').value = '';
+            document.getElementById('tmFrom').value = '';
+            document.getElementById('tmTo').value = '';
+            onTmModeChange();
             document.getElementById('tmStatus').textContent = '';
             loadExplorer();
         }
 
         function buildMemoryTable(mems, expandable = false) {
             let html = `<table><thead><tr><th>Title</th><th>Type</th><th>Source</th><th>Confidence</th><th>Status</th><th>Provenance</th><th>Created</th><th>Tags</th></tr></thead><tbody>`;
-            mems.forEach((m, i) => {
+            mems.forEach((m) => {
                 const tags = Array.isArray(m.tags) ? m.tags.filter(t => t).join(', ') : (m.tags || '');
                 const statusBadge = m.status === 'active' ? '<span class="badge badge-success">active</span>' :
                     m.status === 'superseded' ? '<span class="badge badge-warning">superseded</span>' :
-                        `<span class="badge badge-info">${m.status || '—'}</span>`;
-                const provBadge = m.provenance ? `<span class="badge badge-accent">${m.provenance}</span>` : '—';
-                const contradicted = m.contradiction_detected ? ' <span class="badge badge-error">⚠ contradicted</span>' : '';
-                const validated = (m.validation_count && m.validation_count > 0) ? ` <span class="badge badge-success">✓×${m.validation_count}</span>` : '';
-                html += `<tr class="${expandable ? 'expandable' : ''}" onclick="toggleRow('exp-${i}')">
+                        `<span class="badge badge-info">${escHtml(m.status || '—')}</span>`;
+                const provBadge = m.provenance ? `<span class="badge badge-accent">${escHtml(m.provenance)}</span>` : '—';
+                const mJson = attrEsc(JSON.stringify(m));
+                html += `<tr class="${expandable ? 'expandable' : ''}" ${expandable ? 'onclick="toggleRow(this)"' : ''}>
             <td style="color:var(--text-primary);font-weight:500">${escHtml(trunc(m.title || 'Untitled', 60))}</td>
-            <td><span class="badge badge-info">${m.type || '—'}</span></td>
+            <td><span class="badge badge-info">${escHtml(m.type || '—')}</span></td>
             <td>${m.source ? `<span class="badge badge-accent">${escHtml(m.source)}</span>` : '—'}</td>
             <td>${confBadge(m.confidence)}</td>
-            <td>${statusBadge}${contradicted}${validated}</td>
+            <td>${statusBadge}</td>
             <td>${provBadge}</td>
             <td style="white-space:nowrap">${fmtDate(m.created_at)}</td>
             <td style="font-size:11px">${escHtml(trunc(tags, 40))}</td>
         </tr>`;
                 if (expandable) {
-                    html += `<tr class="expand-row" id="exp-${i}"><td colspan="8"><div class="expand-content">${escHtml(m.content || m.text || 'No content')}\n\nID: ${m.id || '—'}\nScore: ${m.score ?? '—'}\nSource: ${m.source || '—'}\nUpdated: ${fmtDate(m.updated_at)}</div></td></tr>`;
+                    const memId = m.id ? String(m.id) : '';
+                    const editBtn = memId
+                        ? `<button class="btn btn-secondary btn-sm" style="margin-right: 8px;" data-mem="${mJson}" onclick="openEditMemoryModal(JSON.parse(this.dataset.mem))">Edit</button>`
+                        : '';
+                    const forgetBtn = memId
+                        ? `<button class="btn btn-danger btn-sm" data-memory-id="${attrEsc(memId)}" onclick="forgetMemory(this.dataset.memoryId, this, event)">Forget</button>`
+                        : '<span style="font-size:11px;color:var(--text-dim)">No ID — cannot forget</span>';
+                    html += `<tr class="expand-row"><td colspan="8"><div class="expand-content">${escHtml(m.content || m.text || 'No content')}\n\nID: ${escHtml(memId || '—')}\nScore: ${escHtml(String(m.score ?? '—'))}\nSource: ${escHtml(m.source || '—')}\nUpdated: ${escHtml(fmtDate(m.updated_at))}</div><div style="padding:8px 16px;display:flex;justify-content:flex-end">${editBtn}${forgetBtn}</div></td></tr>`;
                 }
             });
             html += '</tbody></table>';
             return html;
         }
-        function toggleRow(id) { const r = document.getElementById(id); if (r) r.classList.toggle('open'); }
+        // Expand-row toggling is done via DOM adjacency (not a shared id lookup):
+        // buildMemoryTable() renders on several pages that stay in the DOM at once
+        // (.page uses display:none, not removal), so ids like "exp-0" collided
+        // across pages and toggled the wrong (hidden) table's row.
+        function toggleRow(rowEl) { const r = rowEl.nextElementSibling; if (r) r.classList.toggle('open'); }
+
+        // Delete a single memory from the active agent. Mirrors the CLI
+        // ``memanto forget`` command and the ``DELETE /api/v2/agents/{id}/
+        // memories/{mid}`` REST route. Removes both rows (data + expand) from
+        // the DOM on success; also drops the entry from ``S.memories`` /
+        // ``S.history`` so explorer/history views stay consistent without a
+        // full refetch.
+        async function forgetMemory(memoryId, btn, ev) {
+            if (ev) { ev.stopPropagation(); ev.preventDefault(); }
+            if (!hasActiveSession()) { toast('No active agent/session', 'error'); return; }
+            if (!memoryId) { toast('Memory ID missing', 'error'); return; }
+            const ok = await confirmDialog({
+                title: 'Forget memory?',
+                message: `Memory '${memoryId}' will be permanently deleted from agent '${S.agentId}'. This cannot be undone.`,
+                confirmLabel: 'Forget',
+                cancelLabel: 'Cancel',
+                danger: true,
+            });
+            if (!ok) return;
+            const orig = btn ? btn.innerHTML : null;
+            if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Forgetting...'; }
+            try {
+                await api('DELETE', `/api/v2/agents/${S.agentId}/memories/${encodeURIComponent(memoryId)}`);
+                toast(`Forgot memory ${memoryId}`);
+                const expandRow = btn ? btn.closest('tr.expand-row') : null;
+                const dataRow = expandRow ? expandRow.previousElementSibling : null;
+                if (dataRow) dataRow.remove();
+                if (expandRow) expandRow.remove();
+                if (Array.isArray(S.memories)) S.memories = S.memories.filter(m => String(m.id) !== String(memoryId));
+                if (Array.isArray(S.history)) S.history = S.history.filter(m => String(m.id) !== String(memoryId));
+            } catch (e) {
+                toast('Failed to forget memory: ' + e.message, 'error');
+                if (btn) { btn.disabled = false; btn.innerHTML = orig || 'Forget'; }
+            }
+        }
+
+        // ================================================================
+        // EDIT MEMORY MODAL
+        // ================================================================
+        function openEditMemoryModal(m) {
+            if (!S.agentId) {
+                toast('No active agent selected.', 'error');
+                return;
+            }
+            const modal = document.createElement('div');
+            modal.className = 'modal-backdrop';
+            modal.id = 'editMemoryModal';
+            const tagsStr = Array.isArray(m.tags) ? m.tags.join(', ') : (m.tags || '');
+            const types = ['fact', 'preference', 'goal', 'decision', 'artifact', 'learning', 'event', 'instruction', 'relationship', 'context', 'observation', 'commitment', 'error'];
+            const typeOpts = types.map(t => `<option value="${t}" ${t === (m.type || 'fact') ? 'selected' : ''}>${t}</option>`).join('');
+            
+            modal.innerHTML = `<div class="modal" onclick="event.stopPropagation()" style="max-width: 600px; width: 100%;">
+                <div class="modal-header">
+                    <h3>Edit Memory</h3>
+                    <button class="modal-close" onclick="closeEditMemoryModal()">×</button>
+                </div>
+                <div class="form-group">
+                    <label>Title</label>
+                    <input id="editMemTitle" type="text" value="${attrEsc(m.title || '')}">
+                </div>
+                <div class="form-group">
+                    <label>Content</label>
+                    <textarea id="editMemContent" style="min-height: 120px;">${escHtml(m.content || m.text || '')}</textarea>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Type</label>
+                        <select id="editMemType">${typeOpts}</select>
+                    </div>
+                    <div class="form-group">
+                        <label>Confidence</label>
+                        <input id="editMemConfidence" type="number" step="0.1" min="0" max="1" value="${m.confidence ?? 0.8}">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Tags (comma-separated)</label>
+                    <input id="editMemTags" type="text" value="${attrEsc(tagsStr)}">
+                </div>
+                <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:16px">
+                    <button class="btn btn-secondary" onclick="closeEditMemoryModal()">Cancel</button>
+                    <button class="btn btn-primary" data-mem-id="${attrEsc(String(m.id || ''))}" onclick="executeEditMemory(this.dataset.memId, this)">Save Changes</button>
+                </div>
+            </div>`;
+            modal.addEventListener('click', e => { if (e.target === modal) closeEditMemoryModal(); });
+            document.body.appendChild(modal);
+        }
+
+        function closeEditMemoryModal() {
+            const m = document.getElementById('editMemoryModal');
+            if (m) m.remove();
+        }
+
+        async function executeEditMemory(id, btnElement) {
+            const title = document.getElementById('editMemTitle').value.trim();
+            const content = document.getElementById('editMemContent').value.trim();
+            const type = document.getElementById('editMemType').value;
+            const conf = parseFloat(document.getElementById('editMemConfidence').value);
+            const tags = document.getElementById('editMemTags').value.split(',').map(t => t.trim()).filter(Boolean);
+
+            const updates = {};
+            if (title) updates.title = title;
+            if (content) updates.content = content;
+            if (type) updates.type = type;
+            if (!isNaN(conf)) updates.confidence = conf;
+            updates.tags = tags;
+
+            try {
+                const oldText = btnElement.textContent;
+                btnElement.textContent = 'Saving...';
+                btnElement.disabled = true;
+                
+                await api('PATCH', `/api/v2/agents/${S.agentId}/memories/${encodeURIComponent(id)}`, updates);
+                toast('Memory updated successfully');
+                closeEditMemoryModal();
+                if (typeof loadExplorer === 'function') loadExplorer(); // refresh explorer view
+            } catch (e) {
+                toast('Update failed: ' + e.message, 'error');
+                btnElement.textContent = 'Save Changes';
+                btnElement.disabled = false;
+            }
+        }
 
         // ================================================================
         // HISTORY (GitHub-style contribution graph + timeline)
@@ -2630,20 +3644,56 @@
             return 4;
         }
 
+        // How many of a day's memories were stored after the last conflict
+        // scan for that day (0 = nothing unreviewed). A day with memories but
+        // no scan counts all of them as unreviewed. Reads S.history +
+        // S.conflictScans, so callers must populate both first.
+        function staleMemCountForDay(key) {
+            const mems = (S.history || []).filter(m => {
+                const d = parseMemDate(m.created_at);
+                return d && dayKey(d) === key;
+            });
+            if (!mems.length) return 0;
+            const scan = (S.conflictScans || {})[key];
+            const scanned = scan ? Date.parse(scan.scanned_at) : NaN;
+            if (isNaN(scanned)) return mems.length;
+            return mems.filter(m => {
+                const d = parseMemDate(m.created_at);
+                return d && d.getTime() > scanned;
+            }).length;
+        }
+
+        async function fetchConflictScans() {
+            try {
+                const r = await api('GET', '/api/ui/conflict-scans');
+                S.conflictScans = r.scans || {};
+            } catch { S.conflictScans = S.conflictScans || {}; }
+        }
+
+        async function fetchRecentMemories() {
+            if (!hasActiveSession()) return;
+            try {
+                const res = await api('POST', `/api/v2/agents/${S.agentId}/recall/recent`, {});
+                S.history = res.memories || [];
+            } catch { }
+        }
+
         async function loadHistory() {
             const box = document.getElementById('historyContent');
-            if (!S.agentId || !S.token) {
+            if (!hasActiveSession()) {
                 box.innerHTML = '<p style="color:var(--text-dim);padding:20px">No active agent. <a href="#" onclick="goToPage(\'agents\');return false" style="color:var(--accent);text-decoration:none">Go to the Agents page</a> to activate one.</p>';
                 return;
             }
             box.innerHTML = '<div class="loading-overlay"><span class="spinner"></span> Loading history...</div>';
             try {
-                const res = await api('POST', `/api/v2/agents/${S.agentId}/recall/recent`, { limit: 100 });
+                const res = await api('POST', `/api/v2/agents/${S.agentId}/recall/recent`, {});
                 S.history = res.memories || [];
-                S.historyFilter = null;
+                await fetchConflictScans();
+                // Preserve any pre-set filter/summary state (e.g. dashboard
+                // navigated here with a specific day pre-selected).
                 renderHistory();
             } catch (e) {
-                box.innerHTML = `<p style="color:var(--error);padding:20px">Error: ${e.message}</p>`;
+                box.innerHTML = `<p style="color:var(--error);padding:20px">Error: ${escHtml(e.message)}</p>`;
             }
         }
 
@@ -2708,7 +3758,14 @@
                 return monthThis !== monthPrev ? monthNames[monthThis] : '';
             });
 
-            const headlineCount = [...byDay.values()].reduce((s, v) => s + v.length, 0);
+            // Only count memories whose day falls inside the displayed 53-week
+            // window — byDay holds the full S.history (now unbounded), so an
+            // unfiltered reduce would mislabel the "in the last year" headline.
+            const startKey = dayKey(startDate);
+            const endKey = dayKey(endDate);
+            const headlineCount = [...byDay.entries()]
+                .filter(([k]) => k >= startKey && k <= endKey)
+                .reduce((s, [, v]) => s + v.length, 0);
 
             let html = '';
             html += `<div class="hh-stats">
@@ -2720,15 +3777,23 @@
 
             html += `<div class="panel">
                 <div class="panel-title" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
-                    <span>${headlineCount} ${headlineCount === 1 ? 'memory' : 'memories'} in the last year <span class="hh-cap-note">(showing latest ${total} fetched; API capped at 100)</span></span>
+                    <span>${headlineCount} ${headlineCount === 1 ? 'memory' : 'memories'} in the last year</span>
                 </div>
                 <div class="hh-container">
                     <div class="hh-months"><span></span>${monthLabels.map(l => `<span>${l}</span>`).join('')}</div>
                     <div class="hh-grid-wrap">
                         <div class="hh-day-labels"><span></span><span>Mon</span><span></span><span>Wed</span><span></span><span>Fri</span><span></span></div>
-                        <div class="hh-weeks">${weeks.map(week => week.map(d => `<div class="hh-cell${S.historyFilter === d.key ? ' selected' : ''}" data-level="${levelForCount(d.count)}" data-key="${d.key}" title="${d.count} ${d.count === 1 ? 'memory' : 'memories'} on ${d.date.toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}" onclick="filterHistoryByDay('${d.key}')"></div>`).join('')).join('')}</div>
+                        <div class="hh-weeks">${weeks.map(week => week.map(d => {
+                            const stale = staleMemCountForDay(d.key);
+                            const dayLabel = d.date.toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+                            const title = `${d.count} ${d.count === 1 ? 'memory' : 'memories'} on ${dayLabel}${stale ? ` • ${stale} stored since last conflict scan — may have unreviewed conflicts` : ''}`;
+                            return `<div class="hh-cell${S.historyFilter === d.key ? ' selected' : ''}${stale ? ' stale' : ''}" data-level="${levelForCount(d.count)}" data-key="${d.key}" title="${title}" onclick="filterHistoryByDay('${d.key}')"></div>`;
+                        }).join('')).join('')}</div>
                     </div>
                     <div class="hh-legend">
+                        <span class="hh-cell stale" data-level="2" title="Memories were stored on this day after the last conflict scan — possibly unreviewed"></span>
+                        <span>Stored since last conflict scan — may contain unreviewed conflicts</span>
+                        <span style="flex:1"></span>
                         <span>Less</span>
                         <span class="hh-cell" data-level="0"></span>
                         <span class="hh-cell" data-level="1"></span>
@@ -2740,17 +3805,147 @@
                 </div>
             </div>`;
 
+            const showSummaryPane = !!(S.historyFilter && S.summaryOpen);
+            const timelineInner = total === 0
+                ? '<div class="hh-empty">No memories yet. Store one from the Playground to see it here.</div>'
+                : `<div class="hh-timeline">${buildHistoryTimeline(byDay)}</div>`;
+
             html += `<div class="panel">
                 <div class="panel-title" style="display:flex;justify-content:space-between;align-items:center;gap:8px">
                     <span>Timeline${S.historyFilter ? ` — ${S.historyFilter}` : ''}</span>
                     ${S.historyFilter ? `<button class="btn btn-secondary btn-sm" onclick="clearHistoryFilter()">Clear filter</button>` : ''}
                 </div>
-                ${total === 0
-                    ? '<div class="hh-empty">No memories yet. Store one from the Playground to see it here.</div>'
-                    : `<div class="hh-timeline">${buildHistoryTimeline(byDay)}</div>`}
+                ${showSummaryPane
+                    ? `<div style="display:flex;gap:16px;align-items:flex-start">
+                        <div style="flex:0 0 calc(60% - 8px);min-width:0">${timelineInner}</div>
+                        <div style="flex:0 0 calc(40% - 8px);min-width:0" id="historySummaryPane">
+                            <div class="hh-summary-panel">
+                                <div class="hh-summary-header">
+                                    <span>Summary — ${S.historyFilter}</span>
+                                    <div style="display:flex;align-items:center;gap:6px">
+                                        <button class="hh-summary-action" id="btnRegenSummary" onclick="regenerateDaySummary('${S.historyFilter}')" title="Regenerate from latest sessions" style="display:none">↻ Regenerate</button>
+                                        <button class="hh-summary-close" onclick="closeHistorySummary()" title="Close">×</button>
+                                    </div>
+                                </div>
+                                <div class="hh-summary-body" id="historySummaryBody">
+                                    <div class="loading-overlay"><span class="spinner"></span> Loading summary…</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>`
+                    : timelineInner}
             </div>`;
 
             box.innerHTML = html;
+
+            if (showSummaryPane) loadDaySummaryPanel(S.historyFilter);
+        }
+
+        function closeHistorySummary() {
+            S.summaryOpen = false;
+            renderHistory();
+        }
+
+        async function loadDaySummaryPanel(key) {
+            const body = document.getElementById('historySummaryBody');
+            if (!body) return;
+            body.innerHTML = '<div class="loading-overlay"><span class="spinner"></span> Loading summary…</div>';
+            try {
+                const res = await api('GET', `/api/ui/daily-summary?date=${encodeURIComponent(key)}`);
+                renderDaySummaryPanel(key, res);
+            } catch (e) {
+                body.innerHTML = `<p style="color:var(--error);padding:12px;font-size:13px">Failed to load: ${escHtml(e.message)}</p>`;
+            }
+        }
+
+        function renderMarkdownSafe(src) {
+            const raw = src || '';
+            // Fall back to escaped <pre> if either CDN library failed to load.
+            if (typeof marked === 'undefined' || typeof DOMPurify === 'undefined') {
+                return `<pre class="hh-summary-content">${escHtml(raw)}</pre>`;
+            }
+            try {
+                const html = marked.parse(raw, { gfm: true, breaks: false });
+                return `<div class="hh-summary-md">${DOMPurify.sanitize(html)}</div>`;
+            } catch (e) {
+                return `<pre class="hh-summary-content">${escHtml(raw)}</pre>`;
+            }
+        }
+
+        function renderDaySummaryPanel(key, res) {
+            const body = document.getElementById('historySummaryBody');
+            if (!body) return;
+            const regenBtn = document.getElementById('btnRegenSummary');
+            if (res && res.exists) {
+                body.innerHTML = renderMarkdownSafe(res.content);
+                if (regenBtn) regenBtn.style.display = '';
+            } else {
+                body.innerHTML = `
+                    <div style="padding:24px 12px;text-align:center;color:var(--text-dim)">
+                        <div style="font-size:36px;margin-bottom:12px;opacity:0.4">📝</div>
+                        <p style="font-size:13px;margin-bottom:16px">No summary for <strong style="color:var(--text-secondary)">${escHtml(key)}</strong> yet.</p>
+                        <button class="btn btn-primary btn-sm" id="btnGenSummary" onclick="generateDaySummary('${escHtml(key)}')">⚡ Generate Summary</button>
+                    </div>`;
+                if (regenBtn) regenBtn.style.display = 'none';
+            }
+        }
+
+        async function regenerateDaySummary(key) {
+            const btn = document.getElementById('btnRegenSummary');
+            const prev = btn ? btn.innerHTML : null;
+            if (btn) { btn.disabled = true; btn.innerHTML = '↻ …'; }
+            const body = document.getElementById('historySummaryBody');
+            if (body) body.innerHTML = '<div class="loading-overlay"><span class="spinner"></span> Regenerating…</div>';
+            try {
+                const res = await api('POST', '/api/ui/daily-summary', { date: key });
+                const status = (res.summary && res.summary.status) || 'unknown';
+                if (status === 'success') {
+                    toast('Summary regenerated.');
+                    loadDaySummaryPanel(key);
+                    if (key === todayKey()) refreshTodaySummaryCard();
+                } else if (status === 'no_sessions') {
+                    toast('No sessions found on that day.', 'warning');
+                    loadDaySummaryPanel(key);
+                } else if (status === 'skipped_on_prem') {
+                    toast('Daily summary is cloud-only — switch backend with: memanto config backend cloud', 'error');
+                    loadDaySummaryPanel(key);
+                } else {
+                    toast(`Regeneration finished with status: ${status}`, 'warning');
+                    loadDaySummaryPanel(key);
+                }
+            } catch (e) {
+                toast('Failed: ' + e.message, 'error');
+                loadDaySummaryPanel(key);
+            } finally {
+                if (btn) { btn.disabled = false; btn.innerHTML = prev; }
+            }
+        }
+
+        async function generateDaySummary(key) {
+            const btn = document.getElementById('btnGenSummary');
+            const prev = btn ? btn.innerHTML : null;
+            if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Generating…'; }
+            try {
+                const res = await api('POST', '/api/ui/daily-summary', { date: key });
+                const status = (res.summary && res.summary.status) || 'unknown';
+                if (status === 'success') {
+                    toast('Daily summary generated.');
+                    loadDaySummaryPanel(key);
+                    if (key === todayKey()) refreshTodaySummaryCard();
+                } else if (status === 'no_sessions') {
+                    toast('No sessions found on that day.', 'warning');
+                    if (btn) { btn.disabled = false; btn.innerHTML = prev; }
+                } else if (status === 'skipped_on_prem') {
+                    toast('Daily summary is cloud-only — switch backend with: memanto config backend cloud', 'error');
+                    if (btn) { btn.disabled = false; btn.innerHTML = prev; }
+                } else {
+                    toast(`Summary finished with status: ${status}`, 'warning');
+                    if (btn) { btn.disabled = false; btn.innerHTML = prev; }
+                }
+            } catch (e) {
+                toast('Failed: ' + e.message, 'error');
+                if (btn) { btn.disabled = false; btn.innerHTML = prev; }
+            }
         }
 
         function buildHistoryTimeline(byDay) {
@@ -2762,6 +3957,19 @@
             }
 
             let html = '';
+            if (filter) {
+                const staleCount = staleMemCountForDay(filter);
+                if (staleCount > 0) {
+                    const scan = (S.conflictScans || {})[filter];
+                    const reason = scan
+                        ? `${staleCount} ${staleCount === 1 ? 'memory was' : 'memories were'} stored after the last conflict scan (${fmtDate(scan.scanned_at)})`
+                        : `${staleCount} ${staleCount === 1 ? 'memory has' : 'memories have'} never been scanned`;
+                    html += `<div style="background:rgba(239,68,68,0.12);border:1px solid var(--error);border-radius:8px;padding:12px 14px;margin-bottom:14px;font-size:13px;color:var(--text-secondary);display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+                        <span>⚠ ${reason} for <strong>${filter}</strong>. Run conflict detection to review.</span>
+                        <button class="btn btn-primary btn-sm" style="margin-left:auto" onclick="goToConflictsForDay('${filter}')">Run Detect Conflicts</button>
+                    </div>`;
+                }
+            }
             dates.forEach(dateKey => {
                 const list = byDay.get(dateKey).slice().sort((a, b) => {
                     const da = parseMemDate(a.created_at)?.getTime() || 0;
@@ -2801,12 +4009,20 @@
         }
 
         function filterHistoryByDay(key) {
-            S.historyFilter = (S.historyFilter === key) ? null : key;
+            if (S.historyFilter === key) {
+                // Re-clicking the same day clears the filter and closes the tab.
+                S.historyFilter = null;
+                S.summaryOpen = false;
+            } else {
+                S.historyFilter = key;
+                S.summaryOpen = true;
+            }
             renderHistory();
         }
 
         function clearHistoryFilter() {
             S.historyFilter = null;
+            S.summaryOpen = false;
             renderHistory();
         }
 
@@ -2846,7 +4062,8 @@
                 <table class="config-table" style="width:100%"><tbody>
                 <tr><td>Mode</td><td><span class="badge badge-success">On-Prem</span></td></tr>
                 <tr><td>Server URL</td><td><code style="font-family:var(--font-mono)">${escHtml(onPremCfg.url || 'http://localhost:8080')}</code></td></tr>
-                <tr><td>Embedding Provider</td><td>${onPremCfg.embedding_provider ? `<code style="font-family:var(--font-mono)">${escHtml(onPremCfg.embedding_provider)}</code>` : '—'}</td></tr>
+                <tr><td>Embedding</td><td>${onPremCfg.embedding_provider ? `<code style="font-family:var(--font-mono)">${escHtml(onPremCfg.embedding_provider)}${onPremCfg.embedding_model ? ' / ' + escHtml(onPremCfg.embedding_model) : ''}</code>` : '—'}</td></tr>
+                <tr><td>LLM</td><td>${onPremCfg.llm_provider ? `<code style="font-family:var(--font-mono)">${escHtml(onPremCfg.llm_provider)}${onPremCfg.llm_model ? ' / ' + escHtml(onPremCfg.llm_model) : ''}</code>` : '—'}</td></tr>
                 </tbody></table>
                 <p style="color:var(--text-dim);font-size:12px;margin-top:8px">Switch backends via CLI: <code style="color:var(--accent);font-family:var(--font-mono)">memanto config backend cloud</code></p>
             </div>
@@ -2902,8 +4119,36 @@
                     ${cfgToggle('cfgSessAutoRenew', 'Auto-renew sessions before expiry', sess.auto_renew_enabled ?? true)}
                 </div>
             </div>
-            <!-- ANSWER CONFIG (cloud only — on-prem server does not expose RAG) -->
-            ${onPrem ? '' : `
+            <!-- ANSWER CONFIG -->
+            ${onPrem ? `
+            <div class="panel">
+                <div class="panel-title">🤖 LLM Config (On-Prem)</div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Provider</label>
+                        <select id="cfgOnpremLlmProvider" onchange="onpremProviderChanged()">
+                            <option value="ollama" ${onPremCfg.llm_provider === 'ollama' ? 'selected' : ''}>Ollama (local)</option>
+                            <option value="openai" ${onPremCfg.llm_provider === 'openai' ? 'selected' : ''}>OpenAI</option>
+                            <option value="cohere" ${onPremCfg.llm_provider === 'cohere' ? 'selected' : ''}>Cohere</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Model</label>
+                        <input id="cfgOnpremLlmModel" value="${escHtml(onPremCfg.llm_model || '')}" placeholder="e.g. qwen2.5, gpt-4o-mini, command-r-plus-08-2024">
+                    </div>
+                </div>
+                <div class="form-group" id="cfgOnpremApiKeyRow" style="${(onPremCfg.llm_provider || 'ollama') === 'ollama' ? 'display:none' : ''}">
+                    <label>API Key</label>
+                    <input id="cfgOnpremApiKey" type="password" placeholder="Leave blank to keep existing key">
+                </div>
+                <div style="display:flex;gap:12px;margin-top:8px">
+                    <button class="btn btn-secondary" id="btnRestartOnprem" onclick="restartOnpremBackend()">↻ Restart On-Prem Backend</button>
+                </div>
+                <p style="color:var(--text-dim);font-size:12px;margin-top:8px">
+                    Saving writes to <code style="font-family:var(--font-mono)">~/.memanto/on-prem/state.json</code> and <code style="font-family:var(--font-mono)">~/.moorcheh/config.json</code>. Click <strong>Restart</strong> to apply on the running server.
+                </p>
+            </div>
+            ` : `
             <div class="panel">
                 <div class="panel-title">🤖 Answer Config</div>
                 <div class="form-group"><label>Model</label><input id="cfgAiModel" value="${ans.model || 'anthropic.claude-sonnet-4-20250514-v1:0'}" placeholder="e.g. anthropic.claude-sonnet-4-20250514-v1:0"></div>
@@ -2938,7 +4183,7 @@
             <!-- SCHEDULE -->
             <div class="panel">
                 <div class="panel-title">📅 Schedule</div>
-                <div class="form-group"><label>Daily Summary & Conflict Scan Time (HH:MM)</label><input id="cfgSchedule" value="${c.schedule_time || '23:55'}" placeholder="HH:MM" style="width:120px"></div>
+                <div class="form-group"><label>Daily Summary + Conflict Scan Time (HH:MM)</label><input id="cfgSchedule" value="${c.schedule_time || '23:55'}" placeholder="HH:MM" style="width:120px"></div>
             </div>
             <!-- SAVE -->
             <div style="display:flex;gap:12px;margin-top:8px">
@@ -2959,7 +4204,7 @@
                 });
 
             } catch (e) {
-                document.getElementById('configContent').innerHTML = `<p style="color:var(--error)">Failed to load config: ${e.message}</p>`;
+                document.getElementById('configContent').innerHTML = `<p style="color:var(--error)">Failed to load config: ${escHtml(e.message)}</p>`;
             }
         }
 
@@ -3007,17 +4252,23 @@
                         auto_renew_enabled: document.getElementById('cfgSessAutoRenew').checked,
                         auto_renew_interval_hours: parseInt(document.getElementById('cfgSessRenewInterval').value) || 6,
                     },
-                    // Answer Config panel is hidden on on-prem (no RAG support),
-                    // so its inputs may not be in the DOM — skip the block.
-                    ...(document.getElementById('cfgAiModel') ? {
-                        answer: {
+                    answer: isOnPrem()
+                        ? (() => {
+                            const providerEl = document.getElementById('cfgOnpremLlmProvider');
+                            const modelEl = document.getElementById('cfgOnpremLlmModel');
+                            const keyEl = document.getElementById('cfgOnpremApiKey');
+                            const p = { provider: providerEl ? providerEl.value : '', model: modelEl ? modelEl.value.trim() : '' };
+                            const k = keyEl ? keyEl.value : '';
+                            if (k) p.api_key = k;
+                            return p;
+                        })()
+                        : {
                             model: document.getElementById('cfgAiModel').value.trim(),
                             temperature: parseFloat(document.getElementById('cfgAiTemp').value) || 0.7,
                             answer_limit: parseInt(document.getElementById('cfgAiAnswerLimit').value) || 5,
                             threshold: parseFloat(document.getElementById('cfgAiThreshold').value) || 0.25,
                             kiosk_mode: document.getElementById('cfgAiKioskMode').checked,
                         },
-                    } : {}),
                     recall: {
                         limit: parseInt(document.getElementById('cfgRecallLimit').value) || 10,
                         min_similarity: document.getElementById('cfgRecallMinSimilarity').value ? parseFloat(document.getElementById('cfgRecallMinSimilarity').value) : 0
@@ -3036,83 +4287,291 @@
         // Legacy alias
         async function saveConfig() { await saveAllConfig(); }
 
+        // Toggle the API-key row when the on-prem LLM provider changes.
+        function onpremProviderChanged() {
+            const sel = document.getElementById('cfgOnpremLlmProvider');
+            const row = document.getElementById('cfgOnpremApiKeyRow');
+            if (!sel || !row) return;
+            row.style.display = sel.value === 'ollama' ? 'none' : '';
+        }
+
+        // Restart the on-prem stack so the moorcheh server re-reads its config.
+        async function restartOnpremBackend() {
+            if (!confirm('Restart the on-prem stack? `moorcheh down` + `moorcheh up` typically takes 20-60s.')) return;
+            const btn = document.getElementById('btnRestartOnprem');
+            if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Restarting...'; }
+            try {
+                const res = await api('POST', '/api/ui/onprem/restart', {});
+                toast('Backend restarted: ' + (res.message || 'ok'));
+                S.config = await api('GET', '/api/ui/config');
+            } catch (e) {
+                toast('Restart failed: ' + e.message, 'error');
+            } finally {
+                if (btn) { btn.disabled = false; btn.innerHTML = '↻ Restart On-Prem Backend'; }
+            }
+        }
+
         // ================================================================
         // CONFLICTS
         // ================================================================
+        function conflictsDateValue() {
+            const el = document.getElementById('conflictsDateInput');
+            const v = el && el.value ? el.value : '';
+            return v || todayKey();
+        }
+
+        async function detectConflictsNow() {
+            const btn = document.getElementById('btnDetectConflicts');
+            const prev = btn ? btn.innerHTML : null;
+            if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Detecting...'; }
+            try {
+                const date = conflictsDateValue();
+                const data = await api('POST', '/api/ui/conflicts/generate', { date });
+                const status = (data.conflicts && data.conflicts.status) || 'unknown';
+                if (status === 'success') {
+                    const count = (data.conflicts && data.conflicts.conflict_count) || 0;
+                    toast(count > 0
+                        ? `Conflict detection complete: ${count} conflict(s) found.`
+                        : 'Conflict detection complete: no conflicts found.');
+                } else if (status === 'no_sessions') {
+                    toast('No sessions found for the selected date.', 'warning');
+                } else if (status === 'skipped_on_prem') {
+                    toast('Conflict detection is cloud-only — switch backend with: memanto config backend cloud', 'error');
+                } else {
+                    toast(`Conflict detection finished with status: ${status}`, 'warning');
+                }
+                // Scan rewrites the conflict file (mtime advances or file is
+                // newly created). Refresh scans + history so the History dot
+                // clears and the Conflicts banner re-renders.
+                await invalidateConflictState();
+            } catch (e) {
+                toast('Failed to detect conflicts: ' + e.message, 'error');
+            } finally {
+                if (btn) { btn.disabled = false; btn.innerHTML = prev; }
+            }
+        }
+
+        function buildConflictBannerEl(scanDate, scan, staleCount) {
+            if (staleCount > 0) {
+                const div = document.createElement('div');
+                div.style.cssText = 'background:rgba(239,68,68,0.12);border:1px solid var(--error);border-radius:8px;padding:12px 14px;margin-bottom:16px;font-size:13px;color:var(--text-secondary)';
+                const strong = document.createElement('strong');
+                strong.style.color = 'var(--error)';
+                strong.textContent = `${staleCount} ${staleCount === 1 ? 'memory' : 'memories'}`;
+                div.append(document.createTextNode('⚠ '), strong);
+                if (scan) {
+                    div.append(document.createTextNode(` stored since the last conflict scan (${fmtDate(scan.scanned_at)}) for ${scanDate}. `));
+                } else {
+                    div.append(document.createTextNode(` stored since the last conflict scan — this day has never been scanned for ${scanDate}. `));
+                }
+                const tail = document.createElement('span');
+                const tailTpl = document.createElement('template');
+                tailTpl.innerHTML = 'Click <strong>Detect Conflicts Now</strong> to re-check.';
+                tail.appendChild(tailTpl.content.cloneNode(true));
+                div.appendChild(tail);
+                return div;
+            }
+            if (scan) {
+                const div = document.createElement('div');
+                div.style.cssText = 'color:var(--text-dim);font-size:12px;margin-bottom:16px';
+                div.textContent = `Last conflict scan for ${scanDate}: ${fmtDate(scan.scanned_at)}.`;
+                return div;
+            }
+            return null;
+        }
+
+        function renderConflictsEmpty(container, bannerEl) {
+            container.replaceChildren();
+            if (bannerEl) container.appendChild(bannerEl);
+            const wrap = document.createElement('div');
+            wrap.style.cssText = 'text-align:center;padding:60px 20px';
+            const icon = document.createElement('div');
+            icon.style.cssText = 'font-size:48px;margin-bottom:16px;opacity:0.3';
+            icon.textContent = '✓';
+            const title = document.createElement('p');
+            title.style.cssText = 'color:var(--success);font-size:16px;font-weight:600;margin-bottom:8px';
+            title.textContent = 'No Conflicts';
+            const descTpl = document.createElement('template');
+            descTpl.innerHTML = '<p style="color:var(--text-dim);font-size:13px">All memories are consistent. Click <strong>Detect Conflicts Now</strong> above (or run <code style="font-family:var(--font-mono);color:var(--accent)">memanto detect-conflicts</code>) to scan for new conflicts.</p>';
+            wrap.append(icon, title, descTpl.content.cloneNode(true));
+            container.appendChild(wrap);
+        }
+
+        function buildConflictMetaBlock(memoryId, timestamp, source) {
+            const block = document.createElement('div');
+            block.style.cssText = 'margin-top:12px;display:flex;flex-direction:column;gap:4px;font-size:10px;font-family:var(--font-mono);color:var(--text-dim)';
+            const idRow = document.createElement('div');
+            idRow.append('ID: ', spanSecondary(memoryId));
+            const whenRow = document.createElement('div');
+            whenRow.append('When: ', spanSecondary(fmtDate(timestamp)));
+            const srcRow = document.createElement('div');
+            srcRow.append('Source: ', spanSecondary(source || 'unknown'));
+            block.append(idRow, whenRow, srcRow);
+            return block;
+        }
+
+        function spanSecondary(text) {
+            const span = document.createElement('span');
+            span.style.color = 'var(--text-secondary)';
+            span.textContent = text ?? '—';
+            return span;
+        }
+
+        function conflictActionBtn(label, className, onClick) {
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = `btn btn-sm ${className}`;
+            btn.textContent = label;
+            btn.addEventListener('click', onClick);
+            return btn;
+        }
+
+        function buildConflictCard(c, i, rawAgentId, rawDate) {
+            const ctype = (c.type || 'conflict').toUpperCase();
+            const explanation = c.explanation || c.reason || 'Conflicting information detected.';
+
+            const card = document.createElement('div');
+            card.className = 'conflict-card';
+            card.id = `conflict-${i}`;
+
+            const header = document.createElement('div');
+            header.className = 'conflict-header';
+            const headerLeft = document.createElement('div');
+            const typeSpan = document.createElement('span');
+            typeSpan.className = 'conflict-type';
+            typeSpan.textContent = ctype;
+            const badge = document.createElement('span');
+            badge.className = 'badge badge-warning';
+            badge.style.marginLeft = '8px';
+            badge.textContent = 'Unresolved';
+            headerLeft.append(typeSpan, badge);
+            const indexSpan = document.createElement('span');
+            indexSpan.style.cssText = 'font-size:11px;color:var(--text-dim);font-family:var(--font-mono)';
+            indexSpan.textContent = `#${i}`;
+            header.append(headerLeft, indexSpan);
+
+            const expl = document.createElement('p');
+            expl.style.cssText = 'color:var(--text-secondary);font-size:13px;margin-bottom:16px;line-height:1.6';
+            expl.textContent = explanation;
+
+            const memories = document.createElement('div');
+            memories.className = 'conflict-memories';
+
+            const oldMem = document.createElement('div');
+            oldMem.className = 'conflict-memory';
+            const oldLabel = document.createElement('div');
+            oldLabel.className = 'conflict-memory-label';
+            oldLabel.textContent = 'Old Memory';
+            const oldContent = document.createElement('div');
+            oldContent.className = 'conflict-memory-content';
+            oldContent.textContent = c.old_content || c.old_memory || '—';
+            oldMem.append(oldLabel, oldContent);
+            if (c.old_memory_id) {
+                oldMem.appendChild(buildConflictMetaBlock(c.old_memory_id, c.old_created_at || c.old_timestamp, c.old_source));
+            }
+
+            const newMem = document.createElement('div');
+            newMem.className = 'conflict-memory';
+            const newLabel = document.createElement('div');
+            newLabel.className = 'conflict-memory-label';
+            newLabel.textContent = 'New Memory';
+            const newContent = document.createElement('div');
+            newContent.className = 'conflict-memory-content';
+            newContent.textContent = c.new_content || c.new_memory || '—';
+            newMem.append(newLabel, newContent);
+            if (c.new_memory_id) {
+                newMem.appendChild(buildConflictMetaBlock(c.new_memory_id, c.new_created_at || c.new_timestamp, c.new_source));
+            }
+
+            memories.append(oldMem, newMem);
+
+            const actions = document.createElement('div');
+            actions.className = 'conflict-actions';
+            actions.append(
+                conflictActionBtn('Keep Old', 'btn-secondary', () => resolveConflict(i, rawAgentId, rawDate, 'keep_old')),
+                conflictActionBtn('Keep New', 'btn-primary', () => resolveConflict(i, rawAgentId, rawDate, 'keep_new')),
+                conflictActionBtn('Keep Both', 'btn-secondary', () => resolveConflict(i, rawAgentId, rawDate, 'keep_both')),
+                conflictActionBtn('Remove Both', 'btn-danger', () => resolveConflict(i, rawAgentId, rawDate, 'remove_both')),
+                conflictActionBtn('Manual', 'btn-secondary', () => showManualResolve(i)),
+            );
+
+            const manual = document.createElement('div');
+            manual.id = `manual-${i}`;
+            manual.style.cssText = 'display:none;margin-top:12px';
+            const formGroup = document.createElement('div');
+            formGroup.className = 'form-group';
+            const manualLabel = document.createElement('label');
+            manualLabel.textContent = 'Manual Replacement Content';
+            const textarea = document.createElement('textarea');
+            textarea.id = `manualContent-${i}`;
+            textarea.placeholder = 'Enter the correct merged content...';
+            textarea.style.minHeight = '60px';
+            formGroup.append(manualLabel, textarea);
+            const submitBtn = conflictActionBtn('Submit Manual Resolution', 'btn-primary', () => {
+                const content = textarea.value.trim();
+                if (!content) {
+                    toast('Enter manual replacement content before submitting.', 'warning');
+                    textarea.focus();
+                    return;
+                }
+                resolveConflict(i, rawAgentId, rawDate, 'manual', content);
+            });
+            manual.append(formGroup, submitBtn);
+
+            card.append(header, expl, memories, actions, manual);
+            return card;
+        }
+
+        function renderConflictsList(container, bannerEl, conflicts, rawAgentId, rawDate) {
+            container.replaceChildren();
+            if (bannerEl) container.appendChild(bannerEl);
+
+            const summary = document.createElement('p');
+            summary.style.cssText = 'color:var(--text-secondary);margin-bottom:20px;font-size:13px';
+            const countStrong = document.createElement('strong');
+            countStrong.style.color = 'var(--warning)';
+            countStrong.textContent = String(conflicts.length);
+            const agentStrong = document.createElement('strong');
+            agentStrong.style.color = 'var(--accent)';
+            agentStrong.textContent = rawAgentId;
+            summary.append('Found ', countStrong, ' unresolved conflict(s) for ', agentStrong, ` on ${rawDate}`);
+
+            container.appendChild(summary);
+            conflicts.forEach((c, i) => container.appendChild(buildConflictCard(c, i, rawAgentId, rawDate)));
+        }
+
         async function loadConflicts() {
             const container = document.getElementById('conflictsContent');
             container.innerHTML = '<div class="loading-overlay"><span class="spinner"></span> Loading conflicts...</div>';
 
             try {
-                const data = await api('GET', '/api/ui/conflicts');
+                const dateInput = document.getElementById('conflictsDateInput');
+                if (dateInput && !dateInput.value) dateInput.value = todayKey();
+                const date = conflictsDateValue();
+                const data = await api('GET', `/api/ui/conflicts?date=${encodeURIComponent(date)}`);
                 const conflicts = data.conflicts || [];
+                await fetchConflictScans();
+                await fetchRecentMemories();
+
+                const scanDate = data.date || date;
+                const scan = (S.conflictScans || {})[scanDate];
+                const staleCount = staleMemCountForDay(scanDate);
+                const rawAgentId = data.agent_id || '';
+                const rawDate = data.date || date;
+                const bannerEl = buildConflictBannerEl(scanDate, scan, staleCount);
 
                 if (!conflicts.length) {
-                    container.innerHTML = `
-                <div style="text-align:center;padding:60px 20px">
-                    <div style="font-size:48px;margin-bottom:16px;opacity:0.3">✓</div>
-                    <p style="color:var(--success);font-size:16px;font-weight:600;margin-bottom:8px">No Conflicts</p>
-                    <p style="color:var(--text-dim);font-size:13px">All memories are consistent. Run <code style="font-family:var(--font-mono);color:var(--accent)">memanto daily-summary</code> to check for new conflicts.</p>
-                </div>`;
+                    renderConflictsEmpty(container, bannerEl);
                     return;
                 }
 
-                let html = `<p style="color:var(--text-secondary);margin-bottom:20px;font-size:13px">Found <strong style="color:var(--warning)">${conflicts.length}</strong> unresolved conflict(s) for <strong style="color:var(--accent)">${data.agent_id}</strong> on ${data.date}</p>`;
-
-                conflicts.forEach((c, i) => {
-                    const ctype = (c.type || 'conflict').toUpperCase();
-                    const explanation = c.explanation || c.reason || 'Conflicting information detected.';
-
-                    html += `
-            <div class="conflict-card" id="conflict-${i}">
-                <div class="conflict-header">
-                    <div>
-                        <span class="conflict-type">${escHtml(ctype)}</span>
-                        <span class="badge badge-warning" style="margin-left:8px">Unresolved</span>
-                    </div>
-                    <span style="font-size:11px;color:var(--text-dim);font-family:var(--font-mono)">#${i}</span>
-                </div>
-                <p style="color:var(--text-secondary);font-size:13px;margin-bottom:16px;line-height:1.6">${escHtml(explanation)}</p>
-                <div class="conflict-memories">
-                    <div class="conflict-memory">
-                        <div class="conflict-memory-label">Old Memory</div>
-                        <div class="conflict-memory-content">${escHtml(c.old_content || c.old_memory || '—')}</div>
-                        ${c.old_memory_id ? `<div style="margin-top:12px;display:flex;flex-direction:column;gap:4px;font-size:10px;font-family:var(--font-mono);color:var(--text-dim)">
-                            <div>ID: <span style="color:var(--text-secondary)">${c.old_memory_id}</span></div>
-                            <div>When: <span style="color:var(--text-secondary)">${fmtDate(c.old_created_at || c.old_timestamp)}</span></div>
-                            <div>Source: <span style="color:var(--text-secondary)">${escHtml(c.old_source || 'unknown')}</span></div>
-                        </div>` : ''}
-                    </div>
-                    <div class="conflict-memory">
-                        <div class="conflict-memory-label">New Memory</div>
-                        <div class="conflict-memory-content">${escHtml(c.new_content || c.new_memory || '—')}</div>
-                        ${c.new_memory_id ? `<div style="margin-top:12px;display:flex;flex-direction:column;gap:4px;font-size:10px;font-family:var(--font-mono);color:var(--text-dim)">
-                            <div>ID: <span style="color:var(--text-secondary)">${c.new_memory_id}</span></div>
-                            <div>When: <span style="color:var(--text-secondary)">${fmtDate(c.new_created_at || c.new_timestamp)}</span></div>
-                            <div>Source: <span style="color:var(--text-secondary)">${escHtml(c.new_source || 'unknown')}</span></div>
-                        </div>` : ''}
-                    </div>
-                </div>
-                <div class="conflict-actions">
-                    <button class="btn btn-sm btn-secondary" onclick="resolveConflict(${i}, '${data.agent_id}', '${data.date}', 'keep_old')">Keep Old</button>
-                    <button class="btn btn-sm btn-primary" onclick="resolveConflict(${i}, '${data.agent_id}', '${data.date}', 'keep_new')">Keep New</button>
-                    <button class="btn btn-sm btn-secondary" onclick="resolveConflict(${i}, '${data.agent_id}', '${data.date}', 'keep_both')">Keep Both</button>
-                    <button class="btn btn-sm btn-danger" onclick="resolveConflict(${i}, '${data.agent_id}', '${data.date}', 'remove_both')">Remove Both</button>
-                    <button class="btn btn-sm btn-secondary" onclick="showManualResolve(${i}, '${data.agent_id}', '${data.date}')">Manual</button>
-                </div>
-                <div id="manual-${i}" style="display:none;margin-top:12px">
-                    <div class="form-group">
-                        <label>Manual Replacement Content</label>
-                        <textarea id="manualContent-${i}" placeholder="Enter the correct merged content..." style="min-height:60px"></textarea>
-                    </div>
-                    <button class="btn btn-sm btn-primary" onclick="resolveConflict(${i}, '${data.agent_id}', '${data.date}', 'manual', document.getElementById('manualContent-${i}').value)">Submit Manual Resolution</button>
-                </div>
-            </div>`;
-                });
-
-                container.innerHTML = html;
+                renderConflictsList(container, bannerEl, conflicts, rawAgentId, rawDate);
             } catch (e) {
-                container.innerHTML = `<p style="color:var(--error);padding:20px">Failed to load conflicts: ${e.message}</p>`;
+                container.replaceChildren();
+                const err = document.createElement('p');
+                err.style.cssText = 'color:var(--error);padding:20px';
+                err.textContent = `Failed to load conflicts: ${e.message}`;
+                container.appendChild(err);
             }
         }
 
@@ -3132,15 +4591,31 @@
                 card.style.pointerEvents = 'none';
                 card.querySelector('.conflict-header .badge').className = 'badge badge-success';
                 card.querySelector('.conflict-header .badge').textContent = 'Resolved';
-                loadConflictBadge();
+                // Resolve rewrites the conflict file (mtime advances). Refresh
+                // the scan map + history cache so the History dot and the
+                // Conflicts "Last scan" banner reflect the new state.
+                await invalidateConflictState();
             } catch (e) { toast('Resolution failed: ' + e.message, 'error'); }
+        }
+
+        // Called after any operation that mutates conflict files (detect, resolve).
+        // Refreshes shared state and re-renders any visible page that depends on it.
+        // (loadConflictBadge() refreshes history itself — don't double-fetch here.)
+        async function invalidateConflictState() {
+            await fetchConflictScans();
+            await loadConflictBadge();
+            if (S._historyLoaded) renderHistory();
+            const conflictsPage = document.getElementById('page-conflicts');
+            if (conflictsPage && conflictsPage.classList.contains('active')) {
+                loadConflicts();
+            }
         }
 
         // ================================================================
         // ANALYTICS
         // ================================================================
         async function loadAnalytics() {
-            if (!S.agentId || !S.token) {
+            if (!hasActiveSession()) {
                 document.getElementById('analyticsCards').innerHTML = '<p style="color:var(--text-dim);padding:20px">Activate an agent to see analytics</p>';
                 return;
             }
@@ -3148,7 +4623,7 @@
             cards.innerHTML = '<div class="loading-overlay"><span class="spinner"></span> Loading analytics...</div>';
 
             try {
-                const res = await api('POST', `/api/v2/agents/${S.agentId}/recall/recent`, { limit: 100 });
+                const res = await api('POST', `/api/v2/agents/${S.agentId}/recall/recent`, {});
                 const mems = res.memories || [];
 
                 const typeCounts = {};
@@ -3160,10 +4635,10 @@
                 mems.forEach(m => {
                     const t = m.type || 'unknown';
                     typeCounts[t] = (typeCounts[t] || 0) + 1;
-                    
+
                     const s = m.source || 'unknown';
                     sourceBuckets[s] = (sourceBuckets[s] || 0) + 1;
-                    
+
                     if (m.tags && Array.isArray(m.tags)) {
                         m.tags.forEach(tag => {
                             if (tag) tagCounts[tag] = (tagCounts[tag] || 0) + 1;
@@ -3200,7 +4675,7 @@
 
                 const colors = ['#06b6d4', '#6366f1', '#22c55e', '#f59e0b', '#ec4899', '#8b5cf6', '#f97316'];
                 const sourceColors = ['#ec4899', '#f97316', '#8b5cf6', '#06b6d4', '#22c55e'];
-                
+
                 if (S.charts.usage) S.charts.usage.destroy();
                 if (S.charts.type) S.charts.type.destroy();
                 if (S.charts.conf) S.charts.conf.destroy();
@@ -3251,7 +4726,7 @@
                     tagsContainer.innerHTML = cloudHtml;
                 }
             } catch (e) {
-                cards.innerHTML = `<p style="color:var(--error);padding:20px">Failed to load analytics: ${e.message}</p>`;
+                cards.innerHTML = `<p style="color:var(--error);padding:20px">Failed to load analytics: ${escHtml(e.message)}</p>`;
             }
         }
         // ================================================================
@@ -3292,6 +4767,349 @@
                 return `<span class="agent-logo${sizeClass}" style="${bg}"><img src="${meta.src}" alt="" loading="lazy" onerror="${onerr}"></span>`;
             }
             return `<span class="agent-logo${sizeClass}" style="${bg}"><span class="agent-letter">${letter}</span></span>`;
+        }
+
+        // ================================================================
+        // MIGRATE
+        // ================================================================
+        const MIG_PROVIDERS = [
+            { id: 'mem0', label: 'Mem0', tagline: 'Distilled user facts and preferences', docs: 'https://app.mem0.ai' },
+            { id: 'letta', label: 'Letta', tagline: 'Archival memory passages', docs: 'https://docs.letta.com' },
+            { id: 'supermemory', label: 'Supermemory', tagline: 'Documents and chunks', docs: 'https://supermemory.ai/docs' },
+            { id: 'okf', label: 'Open Knowledge Format', tagline: 'Portable local memory bundles (.md)', docs: 'https://github.com/GoogleCloudPlatform/knowledge-catalog/tree/main/okf' },
+        ];
+
+        // Official brand logos. Primary uses each org's GitHub avatar
+        // (`github.com/<org>.png` is a documented stable redirect to the
+        // org's profile image), which is brand-owned and high-resolution.
+        // Fallback is DuckDuckGo's favicon service. Final fallback is
+        // letter initials — same 3-tier chain as AGENT_LOGOS above.
+        const MIG_PROVIDER_LOGOS = {
+            'mem0':        { src: 'https://github.com/mem0ai.png',           fallback: 'https://icons.duckduckgo.com/ip3/mem0.ai.ico' },
+            'letta':       { src: 'https://github.com/letta-ai.png',         fallback: 'https://icons.duckduckgo.com/ip3/letta.com.ico' },
+            'supermemory': { src: 'https://github.com/supermemoryai.png',    fallback: 'https://icons.duckduckgo.com/ip3/supermemory.ai.ico' },
+            'okf':         { src: 'https://github.com/GoogleCloudPlatform.png', fallback: 'https://icons.duckduckgo.com/ip3/cloud.google.com.ico' },
+        };
+
+        function migProviderLogo(id, label) {
+            const initials = (label || id || '?').slice(0, 2).toUpperCase();
+            const meta = MIG_PROVIDER_LOGOS[id];
+            if (meta && meta.src) {
+                // 3-tier onerror: src → fallback (once) → letter initials.
+                // Mirrors agentLogo()'s chain so the outer .mig-tile-icon
+                // styling is preserved if the network fails entirely.
+                const fallback = meta.fallback || '';
+                const onerr = `if(!this.dataset.fb && '${fallback}'){this.dataset.fb=1; this.src='${fallback}'} else {this.outerHTML='${initials}'}`;
+                return `<div class="mig-tile-icon has-img"><img src="${meta.src}" alt="${escHtml(label || id)} logo" loading="lazy" onerror="${onerr}"></div>`;
+            }
+            return `<div class="mig-tile-icon">${initials}</div>`;
+        }
+
+        function openMigrate() {
+            S.migrate = S.migrate || { provider: null, source: 'file', file: '', apiKey: '', preview: null };
+            renderMigrate();
+        }
+
+        function renderMigrate() {
+            const root = document.getElementById('migrateContent');
+            const st = S.migrate;
+            const tiles = MIG_PROVIDERS.map(p => `
+                <button class="mig-tile ${st.provider === p.id ? 'selected' : ''}" onclick="selectMigrateProvider('${p.id}')">
+                    ${migProviderLogo(p.id, p.label)}
+                    <h3>${p.label}</h3>
+                    <p>${p.tagline}</p>
+                </button>
+            `).join('');
+
+            const noActiveSession = !hasActiveSession();
+            const agentBanner = noActiveSession
+                ? `<div class="mig-error-banner" style="margin-bottom:18px">No active agent/session. <a href="#" onclick="goToPage('agents');return false" style="color:inherit;text-decoration:underline">Activate one</a> before importing.</div>`
+                : '';
+
+            const sourceForm = st.provider ? renderMigrateSource(st) : '';
+            const preview = st.preview ? renderMigratePreview(st.preview) : '';
+
+            root.innerHTML = `
+                ${agentBanner}
+                <div class="card" style="margin-bottom:18px">
+                    <div class="card-label" style="margin-bottom:14px">1. Choose source</div>
+                    <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(220px, 1fr));gap:14px">
+                        ${tiles}
+                    </div>
+                </div>
+                ${sourceForm}
+                ${preview}
+            `;
+        }
+
+        function selectMigrateProvider(id) {
+            S.migrate.provider = id;
+            S.migrate.preview = null;
+            // OKF is a local file format — there's no hosted API to pull a live export from.
+            if (id === 'okf') S.migrate.source = 'file';
+            renderMigrate();
+        }
+
+        function renderMigrateSource(st) {
+            const p = MIG_PROVIDERS.find(x => x.id === st.provider);
+            const isOkf = st.provider === 'okf';
+            const fileActive = st.source === 'file' || isOkf;
+            const fileField = isOkf
+                ? `<div>
+                        <label style="display:block;font-size:12px;color:var(--text-dim);margin-bottom:6px">Server-side path to an OKF bundle directory (or a single .md file)</label>
+                        <input id="migFile" placeholder="e.g. C:/Users/you/okf-export" value="${escHtml(st.file || '')}" oninput="invalidateMigratePreview()" style="width:100%;font-family:var(--font-mono);font-size:12px">
+                    </div>`
+                : `<div>
+                        <label style="display:block;font-size:12px;color:var(--text-dim);margin-bottom:6px">Server-side path to a JSON export file</label>
+                        <input id="migFile" placeholder="e.g. C:/Users/you/Downloads/mem0_export.json" value="${escHtml(st.file || '')}" oninput="invalidateMigratePreview()" style="width:100%;font-family:var(--font-mono);font-size:12px">
+                    </div>`;
+            const apiField = `<div>
+                    <label style="display:block;font-size:12px;color:var(--text-dim);margin-bottom:6px">${escHtml(p.label)} API key  ·  <a href="${p.docs}" target="_blank" style="color:var(--accent);text-decoration:none">get one</a></label>
+                    <input id="migApiKey" type="password" placeholder="${st.provider === 'mem0' ? 'm0_...' : st.provider === 'letta' ? 'sk-let-...' : 'sm_...'}" value="${escHtml(st.apiKey || '')}" oninput="invalidateMigratePreview()" style="width:100%;font-family:var(--font-mono);font-size:12px">
+                    <div style="font-size:11px;color:var(--text-dim);margin-top:6px">Used once for this export — not saved to disk.</div>
+                </div>`;
+            return `
+                <div class="card" style="margin-bottom:18px">
+                    <div class="card-label" style="margin-bottom:14px">2. Provide source data</div>
+                    ${isOkf ? '' : `<div class="mig-source-tabs">
+                        <button class="mig-source-tab ${fileActive ? 'active' : ''}" onclick="setMigrateSource('file')">From file</button>
+                        <button class="mig-source-tab ${!fileActive ? 'active' : ''}" onclick="setMigrateSource('api')">Live export (API key)</button>
+                    </div>`}
+                    ${fileActive ? fileField : apiField}
+                    <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:18px">
+                        <button class="btn btn-secondary" onclick="runMigratePreview()">Preview (dry run)</button>
+                        <button class="btn btn-primary" onclick="runMigrateImport()" ${hasActiveSession() ? '' : 'disabled style="opacity:0.5;cursor:not-allowed"'}>Import now</button>
+                    </div>
+                </div>
+            `;
+        }
+
+        function setMigrateSource(kind) {
+            // Snapshot current input values before re-render so the user
+            // doesn't lose what they typed when switching tabs.
+            captureMigrateInputs();
+            S.migrate.source = kind;
+            // Switching source mode invalidates any prior preview — the
+            // stats would describe a different body than the import sends.
+            S.migrate.preview = null;
+            renderMigrate();
+        }
+
+        function invalidateMigratePreview() {
+            // Drop a stale preview as soon as the user edits the source — the
+            // preview's stats would no longer describe the body the import
+            // would send. We hide the preview card directly rather than
+            // calling renderMigrate(), which would steal input focus.
+            if (!S.migrate.preview) return;
+            S.migrate.preview = null;
+            const preview = document.querySelector('#migrateContent .card:last-child');
+            if (preview && preview.querySelector('.mig-stats')) preview.remove();
+        }
+
+        function captureMigrateInputs() {
+            const fileEl = document.getElementById('migFile');
+            if (fileEl) S.migrate.file = fileEl.value.trim();
+            const keyEl = document.getElementById('migApiKey');
+            if (keyEl) S.migrate.apiKey = keyEl.value.trim();
+        }
+
+        function migrateBody() {
+            captureMigrateInputs();
+            const st = S.migrate;
+            const body = { provider: st.provider };
+            if (st.source === 'file') {
+                if (!st.file) { toast('Pick a file path first', 'error'); return null; }
+                body.file = st.file;
+            } else {
+                if (!st.apiKey) { toast(`Enter a ${st.provider} API key`, 'error'); return null; }
+                body.api_key = st.apiKey;
+            }
+            return body;
+        }
+
+        // ----- Animated progress overlay --------------------------------
+        const MIG_STEPS = [
+            { id: 'load', label: 'Loading export' },
+            { id: 'map', label: 'Mapping schema' },
+            { id: 'write', label: 'Writing batches' },
+        ];
+
+        function migProgressMarkup(title, sub, activeStep) {
+            const pills = MIG_STEPS.map(s => {
+                let cls = '';
+                if (s.id === activeStep) cls = 'active';
+                else {
+                    const order = MIG_STEPS.findIndex(x => x.id === activeStep);
+                    const me = MIG_STEPS.findIndex(x => x.id === s.id);
+                    if (order > me) cls = 'done';
+                }
+                return `<span class="mig-step-pill ${cls}"><span class="dot"></span>${escHtml(s.label)}</span>`;
+            }).join('');
+            return `
+                <div class="mig-progress">
+                    <div class="mig-progress-inner">
+                        <div class="mig-orbit"><div class="ring"></div><div class="ring inner"></div><div class="core"></div></div>
+                        <div class="mig-progress-title" id="migProgressTitle">${escHtml(title)}</div>
+                        <div class="mig-progress-sub" id="migProgressSub">${escHtml(sub)}</div>
+                        <div class="mig-step-list" id="migStepList">${pills}</div>
+                        <div class="mig-bar indeterminate" id="migBar"><div class="mig-bar-fill"></div></div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function setMigStep(step, sub) {
+            const root = document.getElementById('migrateContent');
+            // Re-render only the progress card (already inside #migrateContent).
+            const title = step === 'write' ? 'Importing memories' : step === 'map' ? 'Mapping memories' : 'Loading source';
+            root.innerHTML = migProgressMarkup(title, sub || '', step);
+        }
+
+        async function runMigratePreview() {
+            const body = migrateBody();
+            if (!body) return;
+            setMigStep('load', 'Reading the export...');
+            try {
+                // Tiny pause so the orbit animation registers before the
+                // (often-cached) file load returns.
+                await new Promise(r => setTimeout(r, 250));
+                setMigStep('map', `Asking Memanto to map ${body.provider} records...`);
+                const res = await api('POST', '/api/ui/migrate/dry-run', body);
+                S.migrate.preview = res;
+                S.migrate.lastResult = null;
+                renderMigrate();
+            } catch (e) {
+                renderMigrate();
+                toast('Preview failed: ' + e.message, 'error');
+            }
+        }
+
+        async function runMigrateImport() {
+            if (!hasActiveSession()) { toast('Activate an agent/session first', 'error'); return; }
+            const body = migrateBody();
+            if (!body) return;
+            const ok = await confirmDialog({
+                title: 'Import into Memanto?',
+                message: `This will write all mapped memories into agent "${S.agentId}". The mapped supporting data and original timestamps are preserved.`,
+                confirmLabel: 'Import',
+            });
+            if (!ok) return;
+
+            setMigStep('load', `Loading ${body.provider} export...`);
+            await new Promise(r => setTimeout(r, 200));
+            setMigStep('map', 'Mapping onto Memanto schema...');
+            await new Promise(r => setTimeout(r, 200));
+            setMigStep('write', 'Sending batches of 100...');
+
+            let res;
+            try {
+                res = await api('POST', '/api/ui/migrate/import', body);
+            } catch (e) {
+                renderMigrate();
+                toast('Import failed: ' + e.message, 'error');
+                return;
+            }
+
+            S.migrate.lastResult = res;
+            // Drop the live API key from page state once import is done — it's
+            // no longer needed and shouldn't linger in memory.
+            S.migrate.apiKey = '';
+            renderMigrateResult(res);
+            postMigrateRefresh();
+            toast(`Imported ${res.summary.imported} memories from ${body.provider}`, 'success');
+        }
+
+        // ----- Preview (after dry-run) ----------------------------------
+        function renderMigratePreview(preview) {
+            const t = preview.type_counts || {};
+            const chips = Object.entries(t).map(([k, v]) => `<span class="mig-type-chip">${escHtml(k)} · ${v}</span>`).join('');
+            const sample = (preview.sample || []).map(s => `
+                <div class="mig-sample-row">
+                    <div class="ttl">${escHtml(s.title || '')}</div>
+                    <div class="meta">${escHtml(s.type)}${s.source_ref ? ' · ' + escHtml(s.source_ref) : ''}${s.created_at ? ' · ' + fmtDate(s.created_at) : ''}</div>
+                </div>
+            `).join('') || '<p style="color:var(--text-dim);font-size:13px">No mapped rows.</p>';
+
+            const sv = preview.savings || {};
+            // OKF has no cost/latency baseline to compare against (it's a local
+            // format, not a hosted provider we benchmark) — the backend returns
+            // an empty savings object for it, so those tiles are omitted here.
+            const savingsTiles = Object.keys(sv).length ? `
+                        <div class="mig-stat"><div class="label">Tokens saved</div><div class="value success">${(sv.tokens_saved || 0).toLocaleString()}</div><div class="sub">vs. ${escHtml(preview.provider)} extraction</div></div>
+                        <div class="mig-stat"><div class="label">Read latency</div><div class="value">${sv.read_ms_memanto || '—'} ms</div><div class="sub">~${sv.latency_speedup_x || '—'}× faster than ~${sv.read_ms_source || '—'}ms</div></div>
+                        <div class="mig-stat"><div class="label">Storage saved</div><div class="value">${escHtml(sv.storage_saved_human || '—')}</div><div class="sub">~${sv.storage_compression_ratio || '—'}× smaller</div></div>` : '';
+            return `
+                <div class="card">
+                    <div class="card-label" style="margin-bottom:6px">3. Dry-run preview · ${escHtml(preview.provider)}</div>
+                    <p style="color:var(--text-dim);font-size:12px;margin:0 0 14px 0;font-family:var(--font-mono)">${escHtml(preview.source_label)}</p>
+                    <div class="mig-stats">
+                        <div class="mig-stat"><div class="label">Source records</div><div class="value">${preview.source_count.toLocaleString()}</div></div>
+                        <div class="mig-stat"><div class="label">Would import</div><div class="value accent">${preview.mapped_count.toLocaleString()}</div><div class="sub">${preview.skipped} skipped (empty)</div></div>
+                        <div class="mig-stat"><div class="label">Batches</div><div class="value">${preview.batch_count}</div><div class="sub">100 / req</div></div>
+                        ${savingsTiles}
+                    </div>
+                    <div class="mig-type-chips">${chips || '<span style="color:var(--text-dim);font-size:12px">No type breakdown</span>'}</div>
+                    <div style="margin-top:22px">
+                        <div class="card-label" style="margin-bottom:6px">Sample (first 5)</div>
+                        ${sample}
+                    </div>
+                </div>
+            `;
+        }
+
+        // ----- Result (after real import) -------------------------------
+        function renderMigrateResult(res) {
+            const root = document.getElementById('migrateContent');
+            const sum = res.summary || {};
+            const sv = res.savings || {};
+            const chips = Object.entries(sum.type_counts || {}).map(([k, v]) => `<span class="mig-type-chip">${escHtml(k)} · ${v}</span>`).join('');
+            const errors = (sum.errors || []).slice(0, 3).map(e => `<div style="font-size:12px;color:var(--error);font-family:var(--font-mono);margin-top:4px">${escHtml(e)}</div>`).join('');
+            const errBox = sum.failed
+                ? `<div class="mig-error-banner" style="margin-top:14px"><strong>${sum.failed} failed</strong>${errors ? '<br>' + errors : ''}</div>`
+                : '';
+            const savingsTiles = Object.keys(sv).length ? `
+                        <div class="mig-stat"><div class="label">Tokens saved</div><div class="value">${(sv.tokens_saved || 0).toLocaleString()}</div><div class="sub">~$${Number(sv.extraction_cost_usd || 0).toFixed(2)}</div></div>
+                        <div class="mig-stat"><div class="label">Latency</div><div class="value accent">${sv.read_ms_memanto || '—'} ms</div><div class="sub">~${sv.latency_speedup_x || '—'}× faster than ${sv.read_ms_source || '—'}ms</div></div>` : '';
+
+            root.innerHTML = `
+                <div class="card" style="border-color:${sum.failed ? 'var(--warning)' : 'var(--success)'}">
+                    <div class="card-label" style="margin-bottom:6px">Import complete · ${escHtml(res.provider)} → ${escHtml(res.agent_id)}</div>
+                    <p style="color:var(--text-dim);font-size:12px;margin:0 0 14px 0;font-family:var(--font-mono)">${escHtml(res.source_label)} · ${(res.elapsed_ms / 1000).toFixed(1)}s</p>
+                    <div class="mig-stats">
+                        <div class="mig-stat"><div class="label">Imported</div><div class="value success">${(sum.imported || 0).toLocaleString()}</div><div class="sub">written to ${escHtml(res.agent_id)}</div></div>
+                        <div class="mig-stat"><div class="label">Failed</div><div class="value ${sum.failed ? 'error' : ''}">${sum.failed || 0}</div></div>
+                        <div class="mig-stat"><div class="label">Skipped</div><div class="value warning">${sum.skipped || 0}</div><div class="sub">empty content</div></div>
+                        <div class="mig-stat"><div class="label">Batches</div><div class="value">${sum.batches || 0}</div><div class="sub">100 / req</div></div>
+                        ${savingsTiles}
+                    </div>
+                    <div class="mig-type-chips">${chips}</div>
+                    ${errBox}
+                    <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:22px">
+                        <button class="btn btn-secondary" onclick="goToPage('explorer')">Open Explorer</button>
+                        <button class="btn btn-primary" onclick="resetMigrate()">Migrate another</button>
+                    </div>
+                </div>
+            `;
+        }
+
+        function resetMigrate() {
+            S.migrate = { provider: null, source: 'file', file: '', apiKey: '', preview: null };
+            renderMigrate();
+        }
+
+        // After a real import, refresh everything affected so the user
+        // doesn't have to manually reload Explorer/Dashboard/History.
+        async function postMigrateRefresh() {
+            S._explorerLoaded = false;
+            S._historyLoaded = false;
+            try { await loadConflictBadge(); } catch { }
+            // If the user happens to already be on a refreshable page, refresh
+            // it in place. Otherwise the next nav into it picks up the change
+            // (thanks to the cleared cache flags above).
+            const activePage = document.querySelector('.nav-item.active')?.dataset.page;
+            if (activePage === 'dashboard') { try { await loadDashboard(); } catch { } }
+            if (activePage === 'agents') { try { await loadAgents(); } catch { } }
+            if (activePage === 'analytics') { try { await loadAnalytics(); } catch { } }
         }
 
         async function loadConnections() {
@@ -3400,7 +5218,7 @@
         async function loadConnectionMemories(conn) {
             const box = document.getElementById('connMemories');
             if (!box) return;
-            if (!S.agentId || !S.token) {
+            if (!hasActiveSession()) {
                 box.innerHTML = '<p style="color:var(--text-dim);padding:12px 0;font-size:13px">No active Memanto agent. <a href="#" onclick="goToPage(\'agents\');return false" style="color:var(--accent);text-decoration:none">Activate one</a> to see memories from this connection.</p>';
                 return;
             }

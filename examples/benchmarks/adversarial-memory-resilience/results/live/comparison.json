@@ -1,0 +1,37 @@
+{
+  "hit": {
+    "mean_delta_left_minus_right": 0.2152777777777778,
+    "ci95_low": 0.1388888888888889,
+    "ci95_high": 0.2916666666666667
+  },
+  "reciprocal_rank": {
+    "mean_delta_left_minus_right": 0.07881944444444444,
+    "ci95_low": 0.017821180555555552,
+    "ci95_high": 0.1384288194444444
+  },
+  "stale_exposure": {
+    "mean_delta_left_minus_right": 0.08333333333333333,
+    "ci95_low": 0.041666666666666664,
+    "ci95_high": 0.13194444444444445
+  },
+  "poison_exposure": {
+    "mean_delta_left_minus_right": 0.0625,
+    "ci95_low": 0.013888888888888888,
+    "ci95_high": 0.11805555555555555
+  },
+  "foreign_exposure": {
+    "mean_delta_left_minus_right": 0.0,
+    "ci95_low": 0.0,
+    "ci95_high": 0.0
+  },
+  "retrieved_tokens": {
+    "mean_delta_left_minus_right": 0.7916666666666666,
+    "ci95_low": 0.1388888888888889,
+    "ci95_high": 1.5208333333333333
+  },
+  "mean_retrieval_latency_seconds": {
+    "mean_delta_left_minus_right": 0.3183270270839987,
+    "ci95_low": 0.3058664512000481,
+    "ci95_high": 0.3323102277979766
+  }
+}

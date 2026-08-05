@@ -5,6 +5,7 @@ Server-side settings (loaded from .env via pydantic-settings).
 CLI config models have been moved to cli/config/manager.py.
 """
 
+import logging
 import os
 from pathlib import Path
 
@@ -12,6 +13,8 @@ import yaml  # type: ignore[import-untyped]
 from dotenv import load_dotenv
 from pydantic import BaseModel
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+logger = logging.getLogger(__name__)
 
 # Load project .env first, then ~/.memanto/.env for the API key
 load_dotenv()
@@ -57,15 +60,25 @@ if _config_file.exists():
             _backend = _memanto.get("backend")
             if _backend:
                 os.environ["MEMANTO_BACKEND"] = str(_backend)
-            _on_prem = _memanto.get("on_prem", {})
-            _op_url = _on_prem.get("url")
+    except Exception as _exc:
+        logger.warning("Failed to load ~/.memanto/config.yaml: %s", _exc)
+
+    # On-prem URL lives in ~/.memanto/on-prem/state.json so on-prem onboarding
+    # never has to touch the shared cloud yaml.
+    try:
+        import json as _json
+
+        _state_path = Path.home() / ".memanto" / "on-prem" / "state.json"
+        if _state_path.exists():
+            _state = _json.loads(_state_path.read_text())
+            _op_url = _state.get("url")
             if _op_url:
                 os.environ["MOORCHEH_ONPREM_URL"] = str(_op_url)
-            _op_embed = _on_prem.get("embedding_provider")
+            _op_embed = _state.get("embedding_provider")
             if _op_embed:
                 os.environ["MOORCHEH_ONPREM_EMBEDDING_PROVIDER"] = str(_op_embed)
-    except Exception:
-        pass
+    except Exception as _exc:
+        logger.warning("Failed to load ~/.memanto/on-prem/state.json: %s", _exc)
 
 
 # CLI & YAML Format Models (kept for backward compat with config.yaml structure)
@@ -107,6 +120,9 @@ class Settings(BaseSettings):
     MEMANTO_BACKEND: str = "cloud"
     MOORCHEH_ONPREM_URL: str = "http://localhost:8080"
     MOORCHEH_ONPREM_EMBEDDING_PROVIDER: str = ""
+    # HTTP read timeout (seconds) for the on-prem MoorchehClient. Default 300
+    # so first-call LLM cold-starts on Ollama don't hit the SDK's 30s default.
+    MOORCHEH_ONPREM_TIMEOUT: int = 300
 
     # Server Configuration
     HOST: str = "0.0.0.0"
@@ -115,9 +131,14 @@ class Settings(BaseSettings):
 
     # CORS Configuration
     ALLOWED_ORIGINS: list[str] = ["*"]
+    # Setting allow_credentials=True with a wildcard origin causes Starlette to
+    # reflect any request Origin back, allowing any site to make credentialed
+    # cross-origin requests.  Default to False; set to True only when ALLOWED_ORIGINS
+    # lists explicit trusted domains (never with "*").
+    CORS_ALLOW_CREDENTIALS: bool = False
 
     # Session Configuration
-    MEMANTO_SECRET_KEY: str = "memanto-default-secret-change-in-production"
+    MEMANTO_SECRET_KEY: str = ""
     SESSION_DEFAULT_DURATION_HOURS: int = 6
     SESSION_AUTO_EXTEND: bool = True
     SESSION_EXTEND_THRESHOLD_MINUTES: int = 30

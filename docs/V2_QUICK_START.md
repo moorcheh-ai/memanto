@@ -326,6 +326,7 @@ except httpx.HTTPStatusError as e:
 
 - **Full Documentation**: [SESSION_ARCHITECTURE.md](SESSION_ARCHITECTURE.md)
 - **API Reference**: http://localhost:8000/docs
+- **TypeScript SDK**: See [`@moorcheh-ai/memanto`](../sdks/typescript) for the Node.js/TypeScript client
 
 ---
 

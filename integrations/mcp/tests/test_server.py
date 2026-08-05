@@ -7,9 +7,14 @@ no network requests are made.
 from __future__ import annotations
 
 import pytest
+from memanto.app.constants import (
+    VALID_MEMORY_TYPES,
+    VALID_PROVENANCE_TYPES,
+)
 
 from memanto_mcp.config import MCPServerSettings
 from memanto_mcp.server import build_server
+from memanto_mcp.tools import VALID_SOURCE_TYPES
 
 MAIN_TOOL_NAMES = {
     "remember",
@@ -47,6 +52,24 @@ async def test_admin_tools_registered_when_enabled(
     assert ADMIN_TOOL_NAMES.issubset(tools), (
         f"Missing admin tools: {ADMIN_TOOL_NAMES - tools}"
     )
+
+
+@pytest.mark.asyncio
+async def test_advertised_enums_match_memanto_core(fake_api_key: str) -> None:
+    """The tool schema is a contract with the calling model.
+
+    Memanto core validates these fields at write time, so an enum that drifts
+    from core hands the model a value that is guaranteed to fail on write.
+    Every advertised source is separately round-tripped through a real
+    MemoryRecord in test_tools.py, which is what pins the source list.
+    """
+    mcp = build_server(MCPServerSettings())  # type: ignore[call-arg]
+    tools = {t.name: t for t in await mcp.list_tools()}
+    props = tools["remember"].inputSchema["properties"]
+
+    assert set(props["type"]["enum"]) == VALID_MEMORY_TYPES
+    assert set(props["provenance"]["enum"]) == VALID_PROVENANCE_TYPES
+    assert set(props["source"]["enum"]) == VALID_SOURCE_TYPES
 
 
 @pytest.mark.asyncio
