@@ -113,7 +113,10 @@ class MemoryRecord(BaseModel):
         # Format text as standardized card for semantic search
         text = f"[{memory_type.upper()}] {self.title}\n\n{self.content}"
         if self.tags:
-            text += f"\n\nTags: {', '.join(self.tags)}"
+            text += f"
+
+<!--memanto-tags:v1-->
+Tags: {, '.join(self.tags)}"
 
         # Build document with flat metadata fields (not nested!)
         document = {
