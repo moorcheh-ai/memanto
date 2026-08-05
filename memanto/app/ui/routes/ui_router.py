@@ -246,12 +246,18 @@ async def update_ui_config(updates: dict, _: None = Depends(_require_local)):
 
     if "recall" in updates and isinstance(updates["recall"], dict):
         rec = updates["recall"]
-        _config_manager.set_recall_config(
-            limit=int(rec["limit"]) if "limit" in rec else None,
-            min_similarity=float(rec["min_similarity"])
-            if "min_similarity" in rec and rec["min_similarity"] is not None
-            else None,
-        )
+        try:
+            _config_manager.set_recall_config(
+                limit=int(rec["limit"]) if "limit" in rec else None,
+                min_similarity=float(rec["min_similarity"])
+                if "min_similarity" in rec and rec["min_similarity"] is not None
+                else None,
+            )
+        except ValueError as exc:
+            # int()/float() on a non-numeric value (or an out-of-range value
+            # rejected by set_recall_config) must surface as a clean 400,
+            # matching every other config section, not an unhandled 500.
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
 
     return {"status": "updated", "updated_keys": list(updates.keys())}
 
@@ -550,7 +556,12 @@ async def list_conflict_scans(
         agent_id = aid
     _validate_agent_id(str(agent_id))
 
-    conflicts_dir = Path.home() / ".memanto" / "conflicts"
+    # The conflict generator writes under get_data_dir()/conflicts (honoring
+    # MEMANTO_DATA_DIR / on-prem data root); reading the hardcoded
+    # ~/.memanto path would miss every scan on an on-prem install.
+    from memanto.app.config import get_data_dir
+
+    conflicts_dir = get_data_dir() / "conflicts"
     scans: dict[str, dict] = {}
     if conflicts_dir.exists():
         suffix = "_conflicts.json"

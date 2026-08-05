@@ -53,7 +53,13 @@ class OkfExportService:
     """Formats and writes an OKF bundle for an agent."""
 
     def __init__(self, exports_dir: Path | None = None):
-        self.exports_dir = exports_dir or (Path.home() / ".memanto" / "exports")
+        # Align with MemoryExportService: honor the configured data root
+        # (MEMANTO_DATA_DIR / on-prem ~/.memanto/on-prem) so both exporters
+        # write under the same tree instead of splitting on-prem exports
+        # across ~/.memanto/exports and ~/.memanto/on-prem/exports.
+        from memanto.app.config import get_data_dir
+
+        self.exports_dir = exports_dir or (get_data_dir() / "exports")
 
     # Public API
     def write_okf_bundle(
