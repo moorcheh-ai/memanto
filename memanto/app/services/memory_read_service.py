@@ -443,7 +443,7 @@ class MemoryReadService:
 
             for memory in all_memories:
                 mem_id = memory.get("id")
-                if mem_id in seen_ids:
+                if mem_id is not None and mem_id in seen_ids:
                     continue
                 seen_ids.add(mem_id)
 
