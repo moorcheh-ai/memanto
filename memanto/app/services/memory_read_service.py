@@ -613,6 +613,7 @@ class MemoryReadService:
                     break
 
         latest_by_id: dict[str, tuple[tuple[datetime, int], dict[str, Any]]] = {}
+        no_id_memories: list[dict[str, Any]] = []
         for index, item in enumerate(items):
             # Skip summary chunks — only return real memory documents
             if isinstance(item, dict) and item.get("is_summary"):
@@ -620,6 +621,9 @@ class MemoryReadService:
             formatted = self._format_memory_item(item)
             mid = formatted.get("id")
             if not mid:
+                # Memories without an id cannot be deduplicated; keep them
+                # as-is so they are not silently dropped (bounty #770).
+                no_id_memories.append(formatted)
                 continue
 
             # Point-in-time dedup: only versions that existed at the target
@@ -650,6 +654,9 @@ class MemoryReadService:
                     continue
 
             memories.append(formatted)
+
+        # Append memories without an id (cannot be deduplicated, must be retained)
+        memories.extend(no_id_memories)
 
         if filter_expired:
             return self._filter_expired_memories(memories)
