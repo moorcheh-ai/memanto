@@ -1009,9 +1009,7 @@ class MemoryReadService:
                 if _TAGS_MARKER in content:
                     content = content[:content.index(_TAGS_MARKER)].rstrip()
                 else:
-                    footer_marker = "
-
-Tags: "
+                    footer_marker = "\n\nTags: "
                     content_without_footer, marker, footer_tags = content.rpartition(
                         footer_marker
                     )
