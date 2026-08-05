@@ -295,10 +295,17 @@ class MemoryReadService:
             paginated_results = all_results[offset : offset + limit]
             has_more = len(all_results) > offset + limit
 
+            # total_found is the post-filter match count (what clients use to
+            # decide "are there more" and to render result totals), NOT the
+            # length of the returned page. Reporting the page length here made
+            # every paged recall show total_found == limit even when hundreds
+            # of memories matched, silently lying to paginating clients.
+            match_total = len(all_results)
+
             return {
                 "results": paginated_results,
-                "total_found": len(paginated_results),
-                "total_available": len(all_results),
+                "total_found": match_total,
+                "total_available": match_total,
                 "offset": offset,
                 "limit": limit,
                 "has_more": has_more,
@@ -392,8 +399,17 @@ class MemoryReadService:
 
                 valid_memories.append(memory)
 
-            # Apply limit
+            # Apply limit — fail closed on invalid values instead of silently
+            # slicing with Python negative-index semantics (a negative limit
+            # would return everything-but-the-last-N, a zero limit an empty
+            # window indistinguishable from "no memories"). Mirrors the
+            # validation in search_memories so every recall path has the same
+            # contract.
             if limit is not None:
+                if not isinstance(limit, int) or isinstance(limit, bool):
+                    raise ValueError("limit must be a positive integer")
+                if limit <= 0:
+                    raise ValueError("limit must be a positive integer")
                 valid_memories = valid_memories[:limit]
 
             return {
@@ -487,8 +503,14 @@ class MemoryReadService:
 
             changed_memories.sort(key=_changed_sort_key, reverse=True)
 
-            # Apply limit
+            # Apply limit — fail closed on invalid values (negative limits
+            # would silently return everything-but-the-last-N via Python
+            # negative-index slicing; zero would fake an empty result set).
             if limit is not None:
+                if not isinstance(limit, int) or isinstance(limit, bool):
+                    raise ValueError("limit must be a positive integer")
+                if limit <= 0:
+                    raise ValueError("limit must be a positive integer")
                 changed_memories = changed_memories[:limit]
 
             return {
@@ -550,7 +572,17 @@ class MemoryReadService:
 
             unique_memories.sort(key=_created_sort_key, reverse=True)
 
-            results = unique_memories if limit is None else unique_memories[:limit]
+            # Apply limit — fail closed on invalid values (negative limits
+            # would silently return everything-but-the-last-N via Python
+            # negative-index slicing; zero would fake an empty result set).
+            if limit is not None:
+                if not isinstance(limit, int) or isinstance(limit, bool):
+                    raise ValueError("limit must be a positive integer")
+                if limit <= 0:
+                    raise ValueError("limit must be a positive integer")
+                unique_memories = unique_memories[:limit]
+
+            results = unique_memories
             return {"results": results, "total_found": len(results)}
 
         except Exception as e:
@@ -597,7 +629,17 @@ class MemoryReadService:
         items: list[Any] = []
         for ns in namespaces:
             next_token: str | None = None
+            seen_tokens: set[str] = set()
+            pages_fetched = 0
             while True:
+                # Bound the pagination loop: a storage layer that keeps
+                # returning has_more=True with a repeated (or never-ending)
+                # next_token must not spin forever. 200 pages x 100 docs is
+                # 20k documents — far beyond any single-agent memory set, and
+                # far below what an accidental loop could burn.
+                pages_fetched += 1
+                if pages_fetched > 200:
+                    break
                 kwargs: dict[str, Any] = {"namespace_name": ns, "limit": 100}
                 if next_token:
                     kwargs["next_token"] = next_token
@@ -611,6 +653,11 @@ class MemoryReadService:
                 next_token = pagination.get("next_token")
                 if not next_token:
                     break
+                # A token we have already seen this namespace cannot advance
+                # the cursor — the backend is stuck, so stop rather than loop.
+                if next_token in seen_tokens:
+                    break
+                seen_tokens.add(next_token)
 
         latest_by_id: dict[str, tuple[tuple[datetime, int], dict[str, Any]]] = {}
         for index, item in enumerate(items):
