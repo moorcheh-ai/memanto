@@ -43,6 +43,7 @@ def test_query_filter_injection_is_escaped():
 
 
 def test_escape_helper_handles_edge_cases():
+    """The escape helper must handle empty input and plain text unchanged."""
     assert _escape_moorcheh_filter_tokens("") == ""
     assert _escape_moorcheh_filter_tokens("plain text") == "plain text"
     assert _escape_moorcheh_filter_tokens("a#b#c") == "a＃b＃c"
@@ -74,6 +75,7 @@ def test_pagination_beyond_cap_fails_closed():
 
 
 def test_valid_pagination_window_allowed():
+    """A window exactly at the top_k cap is legal and must not raise."""
     svc = MemoryReadService.__new__(MemoryReadService)
     # Window exactly at the cap is legal and must not raise before dispatch.
     try:
@@ -91,6 +93,7 @@ def test_valid_pagination_window_allowed():
 # 3. HIGH-3: auto-renew silently invalidates X-Session-Token header clients
 # ---------------------------------------------------------------------------
 def _import_auth_deps():
+    """Import and reload auth_deps so the test sees the current source."""
     import importlib
     import memanto.app.routes.auth_deps as auth_deps
     return importlib.reload(auth_deps), auth_deps
@@ -112,6 +115,7 @@ def test_renewal_returns_token_to_header_clients():
 # 4. MED-6: update_memory persists stale flat fields (incl. search score)
 # ---------------------------------------------------------------------------
 def test_update_copy_whitelist_excludes_schema_internal_keys():
+    """Schema-internal/transient keys must be excluded from the copy-forward whitelist."""
     import memanto.app.services.memory_write_service as wsvc
     src = Path(wsvc.__file__).read_text(encoding="utf-8")
     # The fix must exclude transient/formatting keys from being copied forward.
