@@ -9,6 +9,7 @@
 #   2. the OKF 0.2 adapter over that database
 #   3. Memanto's real `migrate okf --dry-run` import path
 #   4. the committed-artifact verifier
+#   5. offline before/after query parity over the run's own bundle
 #
 # Needs `pip install -r requirements.txt` and the memanto package importable.
 # Never writes to sample/ — the committed artifacts are left untouched.
@@ -30,12 +31,12 @@ mkdir -p "$HOME"
 
 step() { printf '\n\033[1m== %s\033[0m\n' "$1"; }
 
-step "1/4  Generate a real SQLiteSession with the OpenAI Agents SDK"
+step "1/5  Generate a real SQLiteSession with the OpenAI Agents SDK"
 "$PYTHON" generate_session.py \
     --db "$WORK/agent_sessions.db" \
     --snapshot "$WORK/session_snapshot.json"
 
-step "2/4  Convert it to an OKF 0.2 bundle"
+step "2/5  Convert it to an OKF 0.2 bundle"
 # Record the source version actually installed, so the report is self-describing.
 SDK_VERSION="$("$PYTHON" -c 'from importlib.metadata import version; print(version("openai-agents"))')"
 "$PYTHON" okf_adapter.py --db "$WORK/agent_sessions.db" --list-sessions
@@ -46,11 +47,20 @@ SDK_VERSION="$("$PYTHON" -c 'from importlib.metadata import version; print(versi
     --report "$WORK/report.json" \
     --source-package-version "$SDK_VERSION"
 
-step "3/4  Import it through Memanto (dry run — no credentials needed)"
+step "3/5  Import it through Memanto (dry run — no credentials needed)"
 "$PYTHON" -m memanto migrate okf "$WORK/okf" --dry-run
 
-step "4/4  Verify the committed sample artifacts"
+step "4/5  Verify the committed sample artifacts"
 "$PYTHON" verify_artifacts.py
+
+step "5/5  Offline before/after query parity for this run's own bundle"
+# Not live Moorcheh recall: a transparent lexical retrieval over the raw SDK
+# items and the memories Memanto would store. See parity_check.py.
+"$PYTHON" parity_check.py \
+    --snapshot "$WORK/session_snapshot.json" \
+    --bundle "$WORK/okf" \
+    --report "$WORK/report.json" \
+    --json "$WORK/query-parity.json"
 
 step "Counts from this run"
 "$PYTHON" - "$WORK/report.json" <<'PY'

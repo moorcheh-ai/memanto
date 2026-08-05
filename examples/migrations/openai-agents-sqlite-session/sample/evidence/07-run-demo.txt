@@ -1,6 +1,6 @@
 
-== 1/4  Generate a real SQLiteSession with the OpenAI Agents SDK
-openai-agents 0.19.4 -> /tmp/okf-demo-9Mbd1L/agent_sessions.db
+== 1/5  Generate a real SQLiteSession with the OpenAI Agents SDK
+openai-agents 0.19.4 -> /tmp/okf-demo-Kpj4mj/agent_sessions.db
   turn 1 (preference / standing instruction): Understood — metric units only, three sentences maximum. I have stored...
   turn 2 (fact about the system): Noted: the orders service runs on PostgreSQL 16 and ships from the rel...
   turn 3 (structured content blocks + tool call): The platform team's deploy window is Tuesday 14:00-16:00 UTC, with no ...
@@ -13,25 +13,25 @@ openai-agents 0.19.4 -> /tmp/okf-demo-9Mbd1L/agent_sessions.db
 Sessions : 2
 Items    : 21
 Model    : 10 scripted calls (no network)
-Snapshot : /tmp/okf-demo-9Mbd1L/session_snapshot.json
-Read snapshot sha256: 8b7cea0377d91379f6e7be8b4de1146ce6a3b2439ec4f024fb607c569ab9d089
+Snapshot : /tmp/okf-demo-Kpj4mj/session_snapshot.json
+Read snapshot sha256: caaefa8b8de53dc3d5f4f5a9d7f8963c9c0a5b482733559f6b856cef0f7ec331
 
-== 2/4  Convert it to an OKF 0.2 bundle
+== 2/5  Convert it to an OKF 0.2 bundle
 session_id                        items  updated_at
-workspace-buddy-demo                 19  2026-08-05 16:51:57
-sandbox-smoke-test                    2  2026-08-05 16:51:57
+workspace-buddy-demo                 19  2026-08-05 18:05:25
+sandbox-smoke-test                    2  2026-08-05 18:05:25
 Session      : workspace-buddy-demo
 Source items : 19
 Mapped docs  : 16 (assistant-message=7, tool-call=2, user-message=7)
 Skipped items: 1 (reasoning_trace=1)
-OKF bundle   : /tmp/okf-demo-9Mbd1L/okf
-Report       : /tmp/okf-demo-9Mbd1L/report.json
+OKF bundle   : /tmp/okf-demo-Kpj4mj/okf
+Report       : /tmp/okf-demo-Kpj4mj/report.json
 
-== 3/4  Import it through Memanto (dry run — no credentials needed)
+== 3/5  Import it through Memanto (dry run — no credentials needed)
 ╭─────────────────────────╮
 │ OKF -> Memanto  Dry run │
 ╰─────────────────────────╯
-  … Loading OKF bundle from /tmp/okf-demo-9Mbd1L/okf
+  … Loading OKF bundle from /tmp/okf-demo-Kpj4mj/okf
   … Mapping OKF nodes onto Memanto schema...
 
 ╭──────────────────────────────────────── Dry run complete ────────────────────────────────────────╮
@@ -41,12 +41,12 @@ Report       : /tmp/okf-demo-9Mbd1L/report.json
 │                                                                                                  │
 │ Dry run — no writes performed.                                                                   │
 │                                                                                                  │
-│ Run dir: /tmp/okf-demo-9Mbd1L/home/.memanto/migrate/okf/20260805_165200                          │
+│ Run dir: /tmp/okf-demo-Kpj4mj/home/.memanto/migrate/okf/20260805_180527                          │
 │ Mapped preview:                                                                                  │
-│ /tmp/okf-demo-9Mbd1L/home/.memanto/migrate/okf/20260805_165200/mapped_preview.json               │
+│ /tmp/okf-demo-Kpj4mj/home/.memanto/migrate/okf/20260805_180527/mapped_preview.json               │
 ╰──────────────────────────────────────────────────────────────────────────────────────────────────╯
 
-== 4/4  Verify the committed sample artifacts
+== 4/5  Verify the committed sample artifacts
 [PASS] committed bundle matches a fresh run (21 files)
 [PASS] adapter output is deterministic across runs
 [PASS] committed report matches a fresh run
@@ -55,22 +55,57 @@ Report       : /tmp/okf-demo-9Mbd1L/report.json
 [PASS] every source item is accounted for (19 items)
 [PASS] memanto load_okf_bundle + map_okf yields 16 memories
 [PASS] every mapped memory keeps its source_ref, timestamp and source
+[PASS] all 7 questions keep their answer (>=80% expected facts each, offline)
 
 source items   : 19
 mapped         : 16 {'assistant-message': 7, 'tool-call': 2, 'user-message': 7}
 skipped        : 1 {'reasoning_trace': 1}
 memanto types  : {'auto': 14, 'artifact': 2}
+query parity   : 7/7 questions answered on both sides (offline — not live recall)
 
-8/8 checks passed
+9/9 checks passed
+
+== 5/5  Offline before/after query parity for this run's own bundle
+Before/after query parity — offline, no live recall
+  corpora: 17 raw SDK items -> 15 Memanto memories
+  method : idf-weighted cosine over word tokens, top-3 recall (newer evidence wins ties), graded by expected-fact coverage
+  excluded question-only rows: agent_messages:5
+
+  [ok  ] When does the platform team deploy?
+         expects Thursday, 09:00 UTC
+         before agent_messages:11, agent_messages:10 (100%) -> after agent_messages:10, agent_messages:11 (100%)
+         correction beats stale evidence [agent_messages:9, agent_messages:8, agent_messages:9, agent_messages:7]: True
+  [ok  ] Which database does the orders service run on?
+         expects PostgreSQL 16
+         before agent_messages:3, agent_messages:4 (100%) -> after agent_messages:3, agent_messages:4 (100%)
+  [ok  ] When is the migration plan due?
+         expects 2026-08-14, migration plan
+         before agent_messages:15, agent_messages:14 (100%) -> after agent_messages:15, agent_messages:14 (100%)
+  [ok  ] Should answers be short or detailed with bullet points?
+         expects detailed, bullet points
+         before agent_messages:12, agent_messages:13 (100%) -> after agent_messages:12, agent_messages:13 (100%)
+         correction beats stale evidence [agent_messages:1, agent_messages:2]: True
+  [ok  ] Why did the staging rollout fail?
+         expects pgbouncer, connection pool
+         before agent_messages:17, agent_messages:16, agent_messages:18, agent_messages:19 (100%) -> after agent_messages:16, agent_messages:17, agent_messages:19 (100%)
+  [ok  ] What incident was filed for the connection pool?
+         expects INC-2141, pgbouncer
+         before agent_messages:17, agent_messages:16, agent_messages:18, agent_messages:19 (100%) -> after agent_messages:17, agent_messages:16, agent_messages:19 (100%)
+  [ok  ] Which tool looked up the team calendar?
+         expects lookup_team_calendar
+         before agent_messages:7 (100%) -> after agent_messages:7 (100%)
+
+parity 100% (7/7 questions), required 100% with 80% fact coverage each: PASS
+report /tmp/okf-demo-Kpj4mj/query-parity.json
 
 == Counts from this run
   source tool      : openai-agents (OpenAI Agents SDK) SQLiteSession 0.19.4
   session          : workspace-buddy-demo
-  read snapshot    : 8b7cea0377d91379…
+  read snapshot    : caaefa8b8de53dc3…
   source items     : 19
   mapped documents : 16  {'assistant-message': 7, 'tool-call': 2, 'user-message': 7}
   skipped items    : 1  {'reasoning_trace': 1}
   memanto types    : {'artifact': 2, 'auto (Memanto classifies)': 14}
   every source item accounted for: OK
 
-Done. Workspace /tmp/okf-demo-9Mbd1L removed; sample/ untouched.
+Done. Workspace /tmp/okf-demo-Kpj4mj removed; sample/ untouched.

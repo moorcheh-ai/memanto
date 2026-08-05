@@ -386,47 +386,48 @@ def _package_version() -> str:
         return "unknown"
 
 
-def _read_snapshot_sha256(db_path: Path) -> str:
-    """Hash the database the way the adapter does — via a consistent snapshot that
-    includes WAL state — so the committed capture and the migration report can be
-    checked against each other."""
+def write_snapshot(db_path: Path, snapshot_path: Path) -> dict[str, Any]:
+    """Dump the database's schema and raw rows verbatim, for committed evidence.
+
+    Schema, rows and ``read_snapshot_sha256`` all come from **one**
+    ``consistent_snapshot`` copy — the same mechanism the adapter uses. Reading
+    the rows through one connection and hashing a second, independent snapshot
+    would let a concurrent writer land between them, so the committed capture
+    could describe rows the hash does not cover.
+    """
     import okf_adapter
 
-    with okf_adapter.consistent_snapshot(db_path) as snapshot:
-        return _sha256(snapshot)
-
-
-def write_snapshot(db_path: Path, snapshot_path: Path) -> dict[str, Any]:
-    """Dump the database's schema and raw rows verbatim, for committed evidence."""
-    conn = sqlite3.connect(f"{db_path.resolve().as_uri()}?mode=ro", uri=True)
-    try:
-        schema = dict(
-            conn.execute(
-                "SELECT name, sql FROM sqlite_master WHERE type = 'table' "
-                "AND name NOT LIKE 'sqlite_%' ORDER BY name"
+    with okf_adapter.consistent_snapshot(db_path) as snapshot_db:
+        read_snapshot_sha256 = _sha256(snapshot_db)
+        conn = sqlite3.connect(f"{snapshot_db.resolve().as_uri()}?mode=ro", uri=True)
+        try:
+            schema = dict(
+                conn.execute(
+                    "SELECT name, sql FROM sqlite_master WHERE type = 'table' "
+                    "AND name NOT LIKE 'sqlite_%' ORDER BY name"
+                )
             )
-        )
-        sessions = [
-            {"session_id": sid, "created_at": created, "updated_at": updated}
-            for sid, created, updated in conn.execute(
-                "SELECT session_id, created_at, updated_at FROM agent_sessions "
-                "ORDER BY session_id"
-            )
-        ]
-        messages = [
-            {
-                "id": row_id,
-                "session_id": sid,
-                "message_data": data,
-                "created_at": created,
-            }
-            for row_id, sid, data, created in conn.execute(
-                "SELECT id, session_id, message_data, created_at FROM agent_messages "
-                "ORDER BY id"
-            )
-        ]
-    finally:
-        conn.close()
+            sessions = [
+                {"session_id": sid, "created_at": created, "updated_at": updated}
+                for sid, created, updated in conn.execute(
+                    "SELECT session_id, created_at, updated_at FROM agent_sessions "
+                    "ORDER BY session_id"
+                )
+            ]
+            messages = [
+                {
+                    "id": row_id,
+                    "session_id": sid,
+                    "message_data": data,
+                    "created_at": created,
+                }
+                for row_id, sid, data, created in conn.execute(
+                    "SELECT id, session_id, message_data, created_at "
+                    "FROM agent_messages ORDER BY id"
+                )
+            ]
+        finally:
+            conn.close()
 
     snapshot = {
         "_comment": (
@@ -442,8 +443,9 @@ def write_snapshot(db_path: Path, snapshot_path: Path) -> dict[str, Any]:
             # Raw main-file hash, for reference only: under WAL it can be
             # identical for two different logical states.
             "db_file_sha256": _sha256(db_path),
-            # The authoritative one — matches the migration report's field.
-            "read_snapshot_sha256": _read_snapshot_sha256(db_path),
+            # The authoritative one — matches the migration report's field, and
+            # covers exactly the rows dumped below.
+            "read_snapshot_sha256": read_snapshot_sha256,
         },
         "captured_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "schema": schema,

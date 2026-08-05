@@ -29,6 +29,7 @@ agents.Runner + agents.SQLiteSession  ->  sessions.db  ->  okf_adapter.py  ->  O
 
 ```
 run_demo.sh              One-command reproduction: generate -> convert -> import -> verify.
+parity_check.py          Offline before/after query parity (not live recall).
 okf_adapter.py           The bridge: SQLiteSession -> OKF 0.2. Stdlib only, CLI driven.
 generate_session.py      Populates a real SQLiteSession by running the SDK's Runner.
 verify_artifacts.py      Re-derives sample/okf from sample/source and diffs it.
@@ -63,38 +64,52 @@ rather than your `~/.memanto`, never writes to `sample/`, and fails fast on the
 first error. Its transcript is committed as
 `sample/evidence/07-run-demo.txt`.
 
-The individual steps, if you'd rather drive them yourself:
+The individual steps, if you'd rather drive them yourself. They write into a
+throwaway workspace, so the committed `sample/` fixtures stay untouched and the
+verifier keeps checking them rather than files you just regenerated:
 
 ```bash
+WORK=$(mktemp -d)                            # everything below lands here
+
 # 1. Produce the source data with the real SDK (no API key, no network).
-python generate_session.py
+python generate_session.py --db "$WORK/agent_sessions.db" \
+                           --snapshot "$WORK/session_snapshot.json"
 
 # 2. See what is in the database.
-python okf_adapter.py --db sample/source/agent_sessions.db --list-sessions
+python okf_adapter.py --db "$WORK/agent_sessions.db" --list-sessions
 
 # 3. Convert one session into an OKF 0.2 bundle.
 python okf_adapter.py \
-    --db sample/source/agent_sessions.db \
+    --db "$WORK/agent_sessions.db" \
     --session workspace-buddy-demo \
-    --out sample/okf \
-    --report sample/evidence/adapter-report.json \
-    --source-package-version 0.19.4 \
-    --force
+    --out "$WORK/okf" \
+    --report "$WORK/report.json" \
+    --source-package-version 0.19.4
 
 # 4. Import it through Memanto's real OKF path.
-memanto migrate okf sample/okf --dry-run     # drop --dry-run to write, needs a Moorcheh key
+memanto migrate okf "$WORK/okf" --dry-run    # drop --dry-run to write, needs a Moorcheh key
 
-# 5. Prove the committed artifacts match the committed source.
+# 5. Prove the *committed* artifacts match the *committed* source.
 python verify_artifacts.py
+python parity_check.py
+
+rm -rf "$WORK"
 ```
 
 Steps 2–5 need no API keys at all. Step 1 needs none either — see below.
 
-Re-running step 1 rewrites the database with fresh wall-clock timestamps, so the
-regenerated bundle will differ from the committed one in its `timestamp` fields
-(only). `verify_artifacts.py` and the test suite compare against
-`sample/source/session_snapshot.json`, the committed record of the run that
-produced `sample/okf`, so they stay exact.
+Step 1 produces fresh wall-clock timestamps, so a bundle you generate now will
+differ from the committed one in its `timestamp` fields (only). That is exactly
+why these steps stay out of `sample/`: `verify_artifacts.py` proves the
+committed bundle re-derives from `sample/source/session_snapshot.json`, and it
+can only do that if neither has been overwritten.
+
+> **Maintainers only.** To refresh the committed fixtures deliberately, run the
+> same commands with `--db sample/source/agent_sessions.db`,
+> `--snapshot sample/source/session_snapshot.json`, `--out sample/okf --force`
+> and `--report sample/evidence/adapter-report.json`, then re-capture the
+> `sample/evidence/*` transcripts. Everything in `sample/` is regenerated
+> together or not at all.
 
 ## Is the source data real?
 
@@ -284,6 +299,57 @@ carried through.
 > Everything above is a credential-free dry run reproduced by the commands in
 > this README. With a key, drop `--dry-run` and add `--agent <id>`.
 
+### Does the migration keep the answers findable?
+
+Counts prove nothing was dropped; they do not prove the memories are still
+*useful*. `parity_check.py` closes that gap without needing credentials:
+
+```
+$ python parity_check.py
+  excluded question-only rows: agent_messages:5
+
+  [ok  ] When does the platform team deploy?
+         expects Thursday, 09:00 UTC
+         before agent_messages:11, agent_messages:10 (100%) -> after agent_messages:10, agent_messages:11 (100%)
+         correction beats stale evidence [agent_messages:9, agent_messages:8, ...]: True
+  ...
+parity 100% (7/7 questions), required 100% with 80% fact coverage each: PASS
+```
+
+Seven questions are put to **both** corpora — the raw SDK items from
+`session_snapshot.json`, and the memories Memanto's own `load_okf_bundle` +
+`map_okf` produce from the committed bundle — using one transparent retriever
+(IDF-weighted cosine over word tokens, top-3 recall). **Every** question must
+pass; a migration that loses one answer has lost it.
+
+What a pass requires, and why:
+
+* **Answer-bearing evidence, not the question itself.** A user turn that only
+  asks something (`agent_messages:5`, "What is the deploy window…?") is excluded
+  from both corpora. Left in, a query "passes" by retrieving its own question
+  back — which says nothing about whether the answer survived.
+* **>= 80% of an explicit expected-fact set, on each side independently.** The
+  facts are phrases copied out of the scripted run (`QUERIES` in
+  `parity_check.py`) — `PostgreSQL 16`, `2026-08-14`, `INC-2141`, and so on — so
+  "retrieved something vaguely related" is not enough.
+* **Newer evidence wins a correction.** The scenario corrects the deploy window
+  (Tuesday → Thursday) and reverses the formatting rule. Recall is extended
+  forward to items that revise a hit, and the check asserts the newest
+  answer-bearing item beats the newest superseded one. Both sides must answer
+  *Thursday 09:00 UTC*, never the Tuesday the calendar tool returned.
+* **Equivalent concepts, not identical rows.** The incident is evidenced by the
+  user's own statement *and* by the merged tool record; either is a valid answer,
+  so the sides must share an answering **concept**, not a row id.
+
+The gate has teeth: deleting only the correction drops that one query to 0%
+coverage and fails the run, and stripping the bundle's content collapses it —
+both are regression tests.
+
+> **This is preservation / query parity, measured offline — not live Moorcheh
+> recall.** No cloud call is made, and none is simulated. It shows the migrated
+> corpus still answers the same questions from the same evidence; it says nothing
+> about Moorcheh's own retrieval quality, which needs a key to measure.
+
 ### Evidence
 
 | File | What it is |
@@ -294,8 +360,10 @@ carried through.
 | `sample/evidence/adapter-report.json` | per-item report: every mapped row, every skipped row and why |
 | `sample/evidence/04-memanto-migrate-dry-run.txt` | `memanto migrate okf --dry-run` |
 | `sample/evidence/05-memanto-mapped-preview.json` | Memanto's own mapped preview for that dry run |
-| `sample/evidence/06-verify-artifacts.txt` | `verify_artifacts.py`, 8/8 checks |
+| `sample/evidence/06-verify-artifacts.txt` | `verify_artifacts.py`, 9/9 checks |
 | `sample/evidence/07-run-demo.txt` | a full `./run_demo.sh` transcript, end to end |
+| `sample/evidence/08-query-parity.json` | per-question before/after retrieval parity |
+| `sample/evidence/09-query-parity.txt` | the same, human-readable |
 
 ---
 
@@ -305,7 +373,7 @@ carried through.
 pytest tests/test_openai_agents_session_migration.py -q      # from the repo root
 ```
 
-54 tests, no `openai-agents` install required (they rebuild a real SQLite
+62 tests, no `openai-agents` install required (they rebuild a real SQLite
 database from the committed snapshot):
 
 * **Source parser** — schema introspection, identifier rejection (`agent_messages;
@@ -330,6 +398,11 @@ database from the committed snapshot):
 * **OKF 0.2 conformance** — index files carry no frontmatter except the root's
   `okf_version`; `generated.by` matches a §7 actor form; an unparseable source
   timestamp emits neither `timestamp` nor `generated`.
+* **Query parity** — all seven questions keep their answer on both sides, each
+  with >=80% expected-fact coverage; question-only rows are excluded from both
+  corpora; the deploy-window correction beats the stale tool answer; the result
+  is deterministic and matches the committed evidence; and both losing the
+  correction alone and gutting the bundle fail the gate.
 * **Determinism** — two runs, byte-identical trees and identical reports.
 * **Committed artifact integrity** — `sample/okf` is regenerated from
   `sample/source/session_snapshot.json` and diffed byte for byte; the committed

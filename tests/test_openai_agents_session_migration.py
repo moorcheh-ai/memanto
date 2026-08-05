@@ -22,9 +22,11 @@ import filecmp
 import hashlib
 import json
 import re
+import shutil
 import sqlite3
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
 from typing import Any
 from urllib.parse import unquote, urlsplit
@@ -40,11 +42,13 @@ EXAMPLE_DIR = (
 sys.path.insert(0, str(EXAMPLE_DIR))
 
 import okf_adapter  # noqa: E402
+import parity_check  # noqa: E402
 from okf_adapter import AdapterError  # noqa: E402
 
 SNAPSHOT_PATH = EXAMPLE_DIR / "sample" / "source" / "session_snapshot.json"
 BUNDLE_DIR = EXAMPLE_DIR / "sample" / "okf"
 REPORT_PATH = EXAMPLE_DIR / "sample" / "evidence" / "adapter-report.json"
+PARITY_EVIDENCE = EXAMPLE_DIR / "sample" / "evidence" / "08-query-parity.json"
 SESSION_ID = "workspace-buddy-demo"
 
 
@@ -298,7 +302,7 @@ def test_wal_only_writes_are_read_and_hashed(tmp_path: Path) -> None:
     )
     # The human-facing report names the user's database, never a temp path.
     assert second["source"]["db_file"] == db.name
-    assert "/tmp" not in json.dumps(second["source"])
+    assert tempfile.gettempdir() not in json.dumps(second["source"])
 
 
 def test_consistent_snapshot_is_isolated_and_always_cleaned_up(
@@ -1113,6 +1117,210 @@ def test_run_demo_never_writes_into_the_committed_sample() -> None:
         "verify_artifacts.py",
     ):
         assert stage in script
+
+
+# ---------------------------------------------------------------------------
+# Before/after query parity (offline — not live recall)
+# ---------------------------------------------------------------------------
+
+
+def test_every_query_keeps_its_answer(
+    snapshot: dict[str, Any], committed_report: dict[str, Any]
+) -> None:
+    """Every question must still be answerable after the migration — all of them,
+    not a majority. Deterministic lexical retrieval over both corpora; no model,
+    no network, no Moorcheh call."""
+    pytest.importorskip("memanto")
+    parity = parity_check.run_parity(
+        snapshot=snapshot, bundle=BUNDLE_DIR, report=committed_report
+    )
+
+    assert parity["questions"] == len(parity_check.QUERIES)
+    assert parity["threshold"] == 1.0
+    assert parity["parity"] == 1.0, [
+        r["question"] for r in parity["results"] if not r["passed"]
+    ]
+    assert parity["meets_threshold"]
+
+    # The corpora are the real ones, minus the question-only rows.
+    assert (
+        parity["corpus_sizes"]["after_memories"]
+        < committed_report["counts"]["mapped_documents"]
+    )
+    # Labelled honestly.
+    assert "not live" in parity["_comment"].lower()
+    assert parity["not_measured"] == "live Moorcheh recall quality"
+
+
+def test_query_only_rows_cannot_answer_anything(
+    snapshot: dict[str, Any], committed_report: dict[str, Any]
+) -> None:
+    """A user turn that only asks something is excluded from both corpora, so a
+    query can never 'pass' by retrieving its own question back."""
+    pytest.importorskip("memanto")
+    excluded = parity_check.question_rows(snapshot, SESSION_ID)
+    assert excluded, "the scenario contains a question-only user turn"
+
+    for row_id in excluded:
+        payload = json.loads(
+            next(
+                r["message_data"]
+                for r in snapshot["agent_messages"]
+                if int(r["id"]) == row_id
+            )
+        )
+        assert payload["role"] == "user"
+        assert parity_check._raw_text(payload).strip().endswith("?")
+
+    before = dict(parity_check.before_corpus(snapshot, SESSION_ID, excluded))
+    after = dict(parity_check.after_corpus(BUNDLE_DIR, excluded))
+    assert not (excluded & before.keys())
+    assert not (excluded & after.keys())
+
+    parity = parity_check.run_parity(
+        snapshot=snapshot, bundle=BUNDLE_DIR, report=committed_report
+    )
+    assert parity["excluded_question_rows"] == [
+        f"agent_messages:{row}" for row in sorted(excluded)
+    ]
+    retrieved = {
+        item["source_item"]
+        for result in parity["results"]
+        for side in ("before", "after")
+        for item in result[side]["retrieved"]
+    }
+    assert not (retrieved & set(parity["excluded_question_rows"]))
+
+
+def test_query_parity_passes_are_earned(
+    snapshot: dict[str, Any], committed_report: dict[str, Any]
+) -> None:
+    """A pass needs answer-bearing evidence on both sides, >=80% expected-fact
+    coverage each, corrections beating stale evidence, and a shared concept."""
+    pytest.importorskip("memanto")
+    parity = parity_check.run_parity(
+        snapshot=snapshot, bundle=BUNDLE_DIR, report=committed_report
+    )
+    assert parity["fact_coverage_threshold"] == 0.80
+
+    for result in parity["results"]:
+        assert result["passed"], result["question"]
+        for side in ("before", "after"):
+            evidence = result[side]
+            assert evidence["fact_coverage"] >= 0.80
+            assert evidence["meets_coverage"]
+            assert evidence["answer_items"], f"{result['question']}: no evidence"
+            assert evidence["correction_wins"]
+            assert set(evidence["facts_found"]) <= set(result["expected_facts"])
+        # Equivalent concepts are allowed; identical row ids are not required.
+        assert result["shared_answer_concepts"]
+
+
+def test_correction_supersedes_the_stale_answer(
+    snapshot: dict[str, Any], committed_report: dict[str, Any]
+) -> None:
+    """The deploy window was corrected mid-session. Both sides must answer with
+    the Thursday correction, not the Tuesday the calendar tool returned."""
+    pytest.importorskip("memanto")
+    parity = parity_check.run_parity(
+        snapshot=snapshot, bundle=BUNDLE_DIR, report=committed_report
+    )
+    deploy = parity["results"][0]
+    assert deploy["superseded_facts"] == ["Tuesday 14:00-16:00"]
+
+    for side in ("before", "after"):
+        evidence = deploy[side]
+        # The stale evidence is retrieved — and beaten by newer evidence.
+        assert evidence["superseded_items"]
+        newest_answer = max(int(i.split(":")[1]) for i in evidence["answer_items"])
+        newest_stale = max(int(i.split(":")[1]) for i in evidence["superseded_items"])
+        assert newest_answer > newest_stale
+        assert evidence["facts_found"] == ["Thursday", "09:00 UTC"]
+
+
+def test_parity_fails_when_only_the_correction_is_lost(
+    snapshot: dict[str, Any], committed_report: dict[str, Any], tmp_path: Path
+) -> None:
+    """Losing just the correction — leaving the stale answer in place — must fail
+    the affected query, not be absorbed by an aggregate score."""
+    pytest.importorskip("memanto")
+    stripped = tmp_path / "okf"
+    shutil.copytree(BUNDLE_DIR, stripped)
+    for doc in stripped.rglob("*.md"):
+        if "Thursday 09:00 UTC" in doc.read_text(encoding="utf-8"):
+            doc.unlink()
+
+    parity = parity_check.run_parity(
+        snapshot=snapshot, bundle=stripped, report=committed_report
+    )
+    deploy = parity["results"][0]
+    assert not deploy["passed"]
+    assert deploy["after"]["fact_coverage"] == 0.0
+    assert not parity["meets_threshold"]
+
+
+def test_query_parity_is_deterministic(
+    snapshot: dict[str, Any], committed_report: dict[str, Any]
+) -> None:
+    pytest.importorskip("memanto")
+    first = parity_check.run_parity(
+        snapshot=snapshot, bundle=BUNDLE_DIR, report=committed_report
+    )
+    second = parity_check.run_parity(
+        snapshot=snapshot, bundle=BUNDLE_DIR, report=committed_report
+    )
+    assert first == second
+
+
+def test_query_parity_detects_a_broken_migration(
+    snapshot: dict[str, Any], committed_report: dict[str, Any], tmp_path: Path
+) -> None:
+    """The gate has teeth: gut the migrated corpus and parity must collapse."""
+    pytest.importorskip("memanto")
+    gutted = tmp_path / "okf"
+    shutil.copytree(BUNDLE_DIR, gutted)
+    for doc in gutted.rglob("*.md"):
+        if doc.name == "index.md":
+            continue
+        # Keep the document structurally importable — type and resource, so it
+        # still maps to a memory — but strip every trace of what it said. Title
+        # and description carry the text too, so body-only redaction is not
+        # enough to prove the check is measuring content.
+        front = dict(
+            line.split(": ", 1)
+            for line in doc.read_text(encoding="utf-8").split("---\n")[1].splitlines()
+            if line.startswith(("type: ", "resource: "))
+        )
+        doc.write_text(
+            "---\n"
+            f"type: {front['type']}\n"
+            f"resource: {front['resource']}\n"
+            'title: "redacted"\n'
+            "---\n\nredacted\n",
+            encoding="utf-8",
+        )
+
+    parity = parity_check.run_parity(
+        snapshot=snapshot, bundle=gutted, report=committed_report
+    )
+    assert not parity["meets_threshold"]
+    # Not zero: a few facts survive in the document slugs the adapter derives
+    # from titles (``0007-lookup-team-calendar.md``), which is itself real
+    # preservation. The point is that the gate fails.
+    assert parity["parity"] < 0.5
+    assert [r["question"] for r in parity["results"] if not r["passed"]]
+
+
+def test_committed_parity_evidence_matches_a_fresh_run(
+    snapshot: dict[str, Any], committed_report: dict[str, Any]
+) -> None:
+    """The committed parity evidence is what the checker produces today."""
+    pytest.importorskip("memanto")
+    committed = _load_json(PARITY_EVIDENCE)
+    fresh = parity_check.run_parity(
+        snapshot=snapshot, bundle=BUNDLE_DIR, report=committed_report
+    )
+    assert committed == fresh
 
 
 # ---------------------------------------------------------------------------

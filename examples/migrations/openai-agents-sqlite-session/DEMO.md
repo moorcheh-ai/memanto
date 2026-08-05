@@ -9,16 +9,23 @@ credential-free, so the take can be recorded end to end without redaction.
 cd examples/migrations/openai-agents-sqlite-session
 python -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt && pip install -e ../../..
-rm -rf sample/okf sample/source/agent_sessions.db     # start from a clean slate
+
+export WORK=$(mktemp -d)     # every shot writes here, never into sample/
 clear
 ```
 
-Shots 1–6 below walk through the stages one at a time, which reads better on
-camera. If you want a single take with no typing, `./run_demo.sh` runs all of it
-end to end in a throwaway workspace — good for the closing shot or a short cut.
+**Keep `$WORK` in front of the camera and `sample/` out of it.** The committed
+fixtures under `sample/` are what shot 6's verifier checks; if a shot regenerates
+them, the verifier ends up validating files you just made instead of the
+committed ones, and the take proves nothing. Nothing below writes to `sample/`.
 
-Terminal ~100 columns, large font. Have `sample/okf/memories/tool-call/` open in
-an editor in a second window for shot 4.
+Shots 1–6 walk through the stages one at a time, which reads better on camera.
+If you want a single take with no typing, `./run_demo.sh` runs all of it end to
+end in its own throwaway workspace — good for the closing shot or a short cut.
+
+Terminal ~100 columns, large font. For shot 4, open `$WORK/okf/memories/tool-call/`
+in an editor in a second window — the same bundle the shot displays. (The
+committed `sample/okf/` looks identical apart from timestamps; leave it alone.)
 
 ---
 
@@ -27,7 +34,8 @@ an editor in a second window for shot 4.
 **On screen:** the title line, then `generate_session.py` running.
 
 ```bash
-python generate_session.py
+python generate_session.py --db "$WORK/agent_sessions.db" \
+                           --snapshot "$WORK/session_snapshot.json"
 ```
 
 > "The OpenAI Agents SDK stores your agent's memory in a SQLite file. This is a
@@ -39,7 +47,7 @@ Let the seven `turn N (…)` lines scroll. Land on `Items : 21`.
 ## Shot 2 — the raw source (0:12–0:25)
 
 ```bash
-sqlite3 sample/source/agent_sessions.db \
+sqlite3 "$WORK/agent_sessions.db" \
   "SELECT id, substr(message_data,1,72) FROM agent_messages LIMIT 5;"
 ```
 
@@ -49,12 +57,12 @@ sqlite3 sample/source/agent_sessions.db \
 ## Shot 3 — the bridge (0:25–0:45)
 
 ```bash
-python okf_adapter.py --db sample/source/agent_sessions.db --list-sessions
+python okf_adapter.py --db "$WORK/agent_sessions.db" --list-sessions
 
 python okf_adapter.py \
-  --db sample/source/agent_sessions.db \
+  --db "$WORK/agent_sessions.db" \
   --session workspace-buddy-demo \
-  --out sample/okf --report report.json
+  --out "$WORK/okf" --report "$WORK/report.json"
 ```
 
 Pause on the summary block:
@@ -72,7 +80,7 @@ Skipped items: 1 (reasoning_trace=1)
 ## Shot 4 — human-readable output (0:45–1:00)
 
 ```bash
-cat sample/okf/memories/tool-call/0007-lookup-team-calendar.md
+cat "$WORK"/okf/memories/tool-call/0007-lookup-team-calendar.md
 ```
 
 > "Readable markdown. The arguments, the result, the role, the timestamp, and the
@@ -83,7 +91,7 @@ Scroll the frontmatter slowly; hover on `resource:` and `sources:`.
 ## Shot 5 — into Memanto (1:00–1:20)
 
 ```bash
-memanto migrate okf sample/okf --dry-run
+memanto migrate okf "$WORK/okf" --dry-run
 ```
 
 Land on the panel:
@@ -105,13 +113,17 @@ at the dry run — do not imply a live import happened.)*
 ## Shot 6 — the receipts (1:20–1:30)
 
 ```bash
-python verify_artifacts.py
+python verify_artifacts.py            # checks the committed sample/, not $WORK
+python parity_check.py
+rm -rf "$WORK"
 ```
 
 > "The committed sample regenerates byte-for-byte from the committed source.
-> Eight checks, all green."
+> Nine checks, all green. And every question still gets its answer after the
+> migration — including the corrected deploy window, not the stale one.
+> Seven of seven, offline, no cloud calls."
 
-Hold on `8/8 checks passed`.
+Hold on `9/9 checks passed`, then on `parity 100% (7/7 questions)`.
 
 ---
 

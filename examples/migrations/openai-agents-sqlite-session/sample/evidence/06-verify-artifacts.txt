@@ -6,10 +6,12 @@
 [PASS] every source item is accounted for (19 items)
 [PASS] memanto load_okf_bundle + map_okf yields 16 memories
 [PASS] every mapped memory keeps its source_ref, timestamp and source
+[PASS] all 7 questions keep their answer (>=80% expected facts each, offline)
 
 source items   : 19
 mapped         : 16 {'assistant-message': 7, 'tool-call': 2, 'user-message': 7}
 skipped        : 1 {'reasoning_trace': 1}
 memanto types  : {'auto': 14, 'artifact': 2}
+query parity   : 7/7 questions answered on both sides (offline — not live recall)
 
-8/8 checks passed
+9/9 checks passed

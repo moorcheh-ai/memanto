@@ -28,6 +28,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import okf_adapter  # noqa: E402
+import parity_check  # noqa: E402
 
 HERE = Path(__file__).resolve().parent
 SNAPSHOT = HERE / "sample" / "source" / "session_snapshot.json"
@@ -141,6 +142,8 @@ def verify(session_id: str = SESSION_ID) -> int:
             and first["mapped"] == committed_report["mapped"]
             and first["skipped"] == committed_report["skipped"]
             and first["output"] == committed_report["output"]
+            # Catches a committed report left behind by an older adapter version.
+            and first["adapter"] == committed_report["adapter"]
             and {k: v for k, v in first["source"].items() if k not in volatile}
             == {
                 k: v for k, v in committed_report["source"].items() if k not in volatile
@@ -172,7 +175,8 @@ def verify(session_id: str = SESSION_ID) -> int:
             )
         )
 
-    # 4. Memanto round-trip (optional).
+    # 4. Memanto round-trip + 5. query parity (both need the memanto package).
+    parity = None
     try:
         from memanto.cli.migrate.mappers import map_okf, type_breakdown
         from memanto.cli.migrate.okf_loader import load_okf_bundle
@@ -205,6 +209,19 @@ def verify(session_id: str = SESSION_ID) -> int:
             )
         )
 
+        # 5. Offline before/after query parity (needs the Memanto mapper above).
+        parity = parity_check.load_parity_report(SNAPSHOT, BUNDLE, REPORT)
+        lost = [r["question"] for r in parity["results"] if not r["passed"]]
+        checks.append(
+            (
+                f"all {parity['questions']} questions keep their answer "
+                f"(>={parity['fact_coverage_threshold']:.0%} expected facts each, "
+                "offline)",
+                parity["meets_threshold"],
+                f"lost: {'; '.join(lost)}",
+            )
+        )
+
     width = max(len(label) for label, _, _ in checks)
     failures = 0
     for label, ok, detail in checks:
@@ -225,6 +242,11 @@ def verify(session_id: str = SESSION_ID) -> int:
     print(f"skipped        : {counts['skipped_items']} {counts['skipped_by_reason']}")
     if breakdown is not None:
         print(f"memanto types  : {breakdown}")
+    if parity is not None:
+        print(
+            f"query parity   : {parity['passed']}/{parity['questions']} questions "
+            "answered on both sides (offline — not live recall)"
+        )
     print(f"\n{len(checks) - failures}/{len(checks)} checks passed")
     return 1 if failures else 0
 

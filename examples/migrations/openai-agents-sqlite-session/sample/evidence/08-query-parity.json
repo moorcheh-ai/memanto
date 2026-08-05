@@ -1,0 +1,803 @@
+{
+  "_comment": "Offline before/after query parity. The 'before' corpus is the raw OpenAI Agents SDK session capture; the 'after' corpus is the memories Memanto's own load_okf_bundle + map_okf produce from the committed OKF bundle. Rows that only ask a question are excluded from both, so a query can never 'pass' by retrieving itself. Each query is graded against facts copied from the scripted run, and every query must pass. This measures preservation and retrievability, NOT live Moorcheh recall — no cloud call is made or simulated.",
+  "method": "idf-weighted cosine over word tokens, top-3 recall (newer evidence wins ties), graded by expected-fact coverage",
+  "measures": "preservation / query parity (offline)",
+  "not_measured": "live Moorcheh recall quality",
+  "session_id": "workspace-buddy-demo",
+  "excluded_question_rows": [
+    "agent_messages:5"
+  ],
+  "corpus_sizes": {
+    "before_items": 17,
+    "after_memories": 15
+  },
+  "threshold": 1.0,
+  "fact_coverage_threshold": 0.8,
+  "questions": 7,
+  "passed": 7,
+  "parity": 1.0,
+  "meets_threshold": true,
+  "results": [
+    {
+      "question": "When does the platform team deploy?",
+      "expected_facts": [
+        "Thursday",
+        "09:00 UTC"
+      ],
+      "superseded_facts": [
+        "Tuesday 14:00-16:00"
+      ],
+      "before": {
+        "retrieved": [
+          {
+            "source_item": "agent_messages:7",
+            "score": 0.4601
+          },
+          {
+            "source_item": "agent_messages:9",
+            "score": 0.3713
+          },
+          {
+            "source_item": "agent_messages:8",
+            "score": 0.3208
+          },
+          {
+            "source_item": "agent_messages:11",
+            "score": 0.3208
+          },
+          {
+            "source_item": "agent_messages:10",
+            "score": 0.3002
+          }
+        ],
+        "answer_items": [
+          "agent_messages:11",
+          "agent_messages:10"
+        ],
+        "answer_concepts": [
+          "memories/assistant-message/0011-corrected-the-deploy-window-is-thursday-09-00-utc-and-th.md",
+          "memories/user-message/0010-correction-the-deploy-window-moved-to-thursday-09-00-utc.md"
+        ],
+        "superseded_items": [
+          "agent_messages:9",
+          "agent_messages:8"
+        ],
+        "facts_expected": [
+          "Thursday",
+          "09:00 UTC"
+        ],
+        "facts_found": [
+          "Thursday",
+          "09:00 UTC"
+        ],
+        "fact_coverage": 1.0,
+        "meets_coverage": true,
+        "correction_wins": true
+      },
+      "after": {
+        "retrieved": [
+          {
+            "source_item": "agent_messages:9",
+            "score": 0.3114
+          },
+          {
+            "source_item": "agent_messages:7",
+            "score": 0.2792
+          },
+          {
+            "source_item": "agent_messages:14",
+            "score": 0.1948
+          },
+          {
+            "source_item": "agent_messages:10",
+            "score": 0.5542
+          },
+          {
+            "source_item": "agent_messages:11",
+            "score": 0.6208
+          },
+          {
+            "source_item": "agent_messages:12",
+            "score": 0.4626
+          },
+          {
+            "source_item": "agent_messages:13",
+            "score": 0.5438
+          },
+          {
+            "source_item": "agent_messages:15",
+            "score": 0.597
+          },
+          {
+            "source_item": "agent_messages:16",
+            "score": 0.5166
+          },
+          {
+            "source_item": "agent_messages:17",
+            "score": 0.3925
+          },
+          {
+            "source_item": "agent_messages:19",
+            "score": 0.5156
+          }
+        ],
+        "answer_items": [
+          "agent_messages:10",
+          "agent_messages:11"
+        ],
+        "answer_concepts": [
+          "memories/assistant-message/0011-corrected-the-deploy-window-is-thursday-09-00-utc-and-th.md",
+          "memories/user-message/0010-correction-the-deploy-window-moved-to-thursday-09-00-utc.md"
+        ],
+        "superseded_items": [
+          "agent_messages:9",
+          "agent_messages:7"
+        ],
+        "facts_expected": [
+          "Thursday",
+          "09:00 UTC"
+        ],
+        "facts_found": [
+          "Thursday",
+          "09:00 UTC"
+        ],
+        "fact_coverage": 1.0,
+        "meets_coverage": true,
+        "correction_wins": true
+      },
+      "shared_answer_concepts": [
+        "memories/assistant-message/0011-corrected-the-deploy-window-is-thursday-09-00-utc-and-th.md",
+        "memories/user-message/0010-correction-the-deploy-window-moved-to-thursday-09-00-utc.md"
+      ],
+      "passed": true
+    },
+    {
+      "question": "Which database does the orders service run on?",
+      "expected_facts": [
+        "PostgreSQL 16"
+      ],
+      "superseded_facts": [],
+      "before": {
+        "retrieved": [
+          {
+            "source_item": "agent_messages:3",
+            "score": 0.4272
+          },
+          {
+            "source_item": "agent_messages:14",
+            "score": 0.3976
+          },
+          {
+            "source_item": "agent_messages:15",
+            "score": 0.3473
+          },
+          {
+            "source_item": "agent_messages:4",
+            "score": 0.6071
+          }
+        ],
+        "answer_items": [
+          "agent_messages:3",
+          "agent_messages:4"
+        ],
+        "answer_concepts": [
+          "memories/assistant-message/0004-noted-the-orders-service-runs-on-postgresql-16-and-ships.md",
+          "memories/user-message/0003-the-orders-service-runs-on-postgresql-16-and-deploys-from.md"
+        ],
+        "superseded_items": [],
+        "facts_expected": [
+          "PostgreSQL 16"
+        ],
+        "facts_found": [
+          "PostgreSQL 16"
+        ],
+        "fact_coverage": 1.0,
+        "meets_coverage": true,
+        "correction_wins": true
+      },
+      "after": {
+        "retrieved": [
+          {
+            "source_item": "agent_messages:3",
+            "score": 0.2628
+          },
+          {
+            "source_item": "agent_messages:4",
+            "score": 0.2508
+          },
+          {
+            "source_item": "agent_messages:15",
+            "score": 0.177
+          },
+          {
+            "source_item": "agent_messages:7",
+            "score": 0.4498
+          },
+          {
+            "source_item": "agent_messages:9",
+            "score": 0.5704
+          },
+          {
+            "source_item": "agent_messages:10",
+            "score": 0.5321
+          },
+          {
+            "source_item": "agent_messages:11",
+            "score": 0.4521
+          },
+          {
+            "source_item": "agent_messages:12",
+            "score": 0.5211
+          },
+          {
+            "source_item": "agent_messages:13",
+            "score": 0.4653
+          },
+          {
+            "source_item": "agent_messages:14",
+            "score": 0.6096
+          },
+          {
+            "source_item": "agent_messages:16",
+            "score": 0.5936
+          },
+          {
+            "source_item": "agent_messages:17",
+            "score": 0.3758
+          },
+          {
+            "source_item": "agent_messages:19",
+            "score": 0.4536
+          }
+        ],
+        "answer_items": [
+          "agent_messages:3",
+          "agent_messages:4"
+        ],
+        "answer_concepts": [
+          "memories/assistant-message/0004-noted-the-orders-service-runs-on-postgresql-16-and-ships.md",
+          "memories/user-message/0003-the-orders-service-runs-on-postgresql-16-and-deploys-from.md"
+        ],
+        "superseded_items": [],
+        "facts_expected": [
+          "PostgreSQL 16"
+        ],
+        "facts_found": [
+          "PostgreSQL 16"
+        ],
+        "fact_coverage": 1.0,
+        "meets_coverage": true,
+        "correction_wins": true
+      },
+      "shared_answer_concepts": [
+        "memories/assistant-message/0004-noted-the-orders-service-runs-on-postgresql-16-and-ships.md",
+        "memories/user-message/0003-the-orders-service-runs-on-postgresql-16-and-deploys-from.md"
+      ],
+      "passed": true
+    },
+    {
+      "question": "When is the migration plan due?",
+      "expected_facts": [
+        "2026-08-14",
+        "migration plan"
+      ],
+      "superseded_facts": [],
+      "before": {
+        "retrieved": [
+          {
+            "source_item": "agent_messages:15",
+            "score": 0.547
+          },
+          {
+            "source_item": "agent_messages:14",
+            "score": 0.3782
+          }
+        ],
+        "answer_items": [
+          "agent_messages:15",
+          "agent_messages:14"
+        ],
+        "answer_concepts": [
+          "memories/assistant-message/0015-recorded-your-commitment-a-migration-plan-for-the-orders.md",
+          "memories/user-message/0014-i-promised-the-platform-team-a-migration-plan-for-the-ord.md"
+        ],
+        "superseded_items": [],
+        "facts_expected": [
+          "2026-08-14",
+          "migration plan"
+        ],
+        "facts_found": [
+          "2026-08-14",
+          "migration plan"
+        ],
+        "fact_coverage": 1.0,
+        "meets_coverage": true,
+        "correction_wins": true
+      },
+      "after": {
+        "retrieved": [
+          {
+            "source_item": "agent_messages:15",
+            "score": 0.3012
+          },
+          {
+            "source_item": "agent_messages:14",
+            "score": 0.2287
+          },
+          {
+            "source_item": "agent_messages:16",
+            "score": 0.4203
+          },
+          {
+            "source_item": "agent_messages:17",
+            "score": 0.3534
+          },
+          {
+            "source_item": "agent_messages:19",
+            "score": 0.4644
+          }
+        ],
+        "answer_items": [
+          "agent_messages:15",
+          "agent_messages:14"
+        ],
+        "answer_concepts": [
+          "memories/assistant-message/0015-recorded-your-commitment-a-migration-plan-for-the-orders.md",
+          "memories/user-message/0014-i-promised-the-platform-team-a-migration-plan-for-the-ord.md"
+        ],
+        "superseded_items": [],
+        "facts_expected": [
+          "2026-08-14",
+          "migration plan"
+        ],
+        "facts_found": [
+          "2026-08-14",
+          "migration plan"
+        ],
+        "fact_coverage": 1.0,
+        "meets_coverage": true,
+        "correction_wins": true
+      },
+      "shared_answer_concepts": [
+        "memories/assistant-message/0015-recorded-your-commitment-a-migration-plan-for-the-orders.md",
+        "memories/user-message/0014-i-promised-the-platform-team-a-migration-plan-for-the-ord.md"
+      ],
+      "passed": true
+    },
+    {
+      "question": "Should answers be short or detailed with bullet points?",
+      "expected_facts": [
+        "detailed",
+        "bullet points"
+      ],
+      "superseded_facts": [
+        "three sentences"
+      ],
+      "before": {
+        "retrieved": [
+          {
+            "source_item": "agent_messages:12",
+            "score": 0.5596
+          },
+          {
+            "source_item": "agent_messages:13",
+            "score": 0.3083
+          },
+          {
+            "source_item": "agent_messages:1",
+            "score": 0.1135
+          },
+          {
+            "source_item": "agent_messages:2",
+            "score": 0.5996
+          }
+        ],
+        "answer_items": [
+          "agent_messages:12",
+          "agent_messages:13"
+        ],
+        "answer_concepts": [
+          "memories/assistant-message/0013-the-three-sentence-limit-is-dropped-i-will-answer-in-det.md",
+          "memories/user-message/0012-actually-drop-the-three-sentence-rule-i-would-rather-ge.md"
+        ],
+        "superseded_items": [
+          "agent_messages:1",
+          "agent_messages:2"
+        ],
+        "facts_expected": [
+          "detailed",
+          "bullet points"
+        ],
+        "facts_found": [
+          "detailed",
+          "bullet points"
+        ],
+        "fact_coverage": 1.0,
+        "meets_coverage": true,
+        "correction_wins": true
+      },
+      "after": {
+        "retrieved": [
+          {
+            "source_item": "agent_messages:12",
+            "score": 0.193
+          },
+          {
+            "source_item": "agent_messages:13",
+            "score": 0.0991
+          },
+          {
+            "source_item": "agent_messages:4",
+            "score": 0.043
+          },
+          {
+            "source_item": "agent_messages:14",
+            "score": 0.4785
+          },
+          {
+            "source_item": "agent_messages:15",
+            "score": 0.4028
+          },
+          {
+            "source_item": "agent_messages:16",
+            "score": 0.4498
+          },
+          {
+            "source_item": "agent_messages:17",
+            "score": 0.311
+          },
+          {
+            "source_item": "agent_messages:19",
+            "score": 0.3753
+          },
+          {
+            "source_item": "agent_messages:7",
+            "score": 0.4405
+          },
+          {
+            "source_item": "agent_messages:9",
+            "score": 0.6032
+          },
+          {
+            "source_item": "agent_messages:10",
+            "score": 0.4301
+          },
+          {
+            "source_item": "agent_messages:11",
+            "score": 0.4819
+          }
+        ],
+        "answer_items": [
+          "agent_messages:12",
+          "agent_messages:13"
+        ],
+        "answer_concepts": [
+          "memories/assistant-message/0013-the-three-sentence-limit-is-dropped-i-will-answer-in-det.md",
+          "memories/user-message/0012-actually-drop-the-three-sentence-rule-i-would-rather-ge.md"
+        ],
+        "superseded_items": [],
+        "facts_expected": [
+          "detailed",
+          "bullet points"
+        ],
+        "facts_found": [
+          "detailed",
+          "bullet points"
+        ],
+        "fact_coverage": 1.0,
+        "meets_coverage": true,
+        "correction_wins": true
+      },
+      "shared_answer_concepts": [
+        "memories/assistant-message/0013-the-three-sentence-limit-is-dropped-i-will-answer-in-det.md",
+        "memories/user-message/0012-actually-drop-the-three-sentence-rule-i-would-rather-ge.md"
+      ],
+      "passed": true
+    },
+    {
+      "question": "Why did the staging rollout fail?",
+      "expected_facts": [
+        "pgbouncer",
+        "connection pool"
+      ],
+      "superseded_facts": [],
+      "before": {
+        "retrieved": [
+          {
+            "source_item": "agent_messages:17",
+            "score": 0.3787
+          },
+          {
+            "source_item": "agent_messages:16",
+            "score": 0.3432
+          },
+          {
+            "source_item": "agent_messages:18",
+            "score": 0.3251
+          },
+          {
+            "source_item": "agent_messages:19",
+            "score": 0.4573
+          }
+        ],
+        "answer_items": [
+          "agent_messages:17",
+          "agent_messages:16",
+          "agent_messages:18",
+          "agent_messages:19"
+        ],
+        "answer_concepts": [
+          "memories/assistant-message/0019-logged-as-inc-2141-against-pgbouncer-two-occurrences-st.md",
+          "memories/tool-call/0017-record-incident.md",
+          "memories/user-message/0016-log-an-incident-the-staging-rollout-failed-twice-last-we.md"
+        ],
+        "superseded_items": [],
+        "facts_expected": [
+          "pgbouncer",
+          "connection pool"
+        ],
+        "facts_found": [
+          "pgbouncer",
+          "connection pool"
+        ],
+        "fact_coverage": 1.0,
+        "meets_coverage": true,
+        "correction_wins": true
+      },
+      "after": {
+        "retrieved": [
+          {
+            "source_item": "agent_messages:16",
+            "score": 0.2805
+          },
+          {
+            "source_item": "agent_messages:17",
+            "score": 0.2141
+          },
+          {
+            "source_item": "agent_messages:19",
+            "score": 0.4378
+          }
+        ],
+        "answer_items": [
+          "agent_messages:16",
+          "agent_messages:17",
+          "agent_messages:19"
+        ],
+        "answer_concepts": [
+          "memories/assistant-message/0019-logged-as-inc-2141-against-pgbouncer-two-occurrences-st.md",
+          "memories/tool-call/0017-record-incident.md",
+          "memories/user-message/0016-log-an-incident-the-staging-rollout-failed-twice-last-we.md"
+        ],
+        "superseded_items": [],
+        "facts_expected": [
+          "pgbouncer",
+          "connection pool"
+        ],
+        "facts_found": [
+          "pgbouncer",
+          "connection pool"
+        ],
+        "fact_coverage": 1.0,
+        "meets_coverage": true,
+        "correction_wins": true
+      },
+      "shared_answer_concepts": [
+        "memories/assistant-message/0019-logged-as-inc-2141-against-pgbouncer-two-occurrences-st.md",
+        "memories/tool-call/0017-record-incident.md",
+        "memories/user-message/0016-log-an-incident-the-staging-rollout-failed-twice-last-we.md"
+      ],
+      "passed": true
+    },
+    {
+      "question": "What incident was filed for the connection pool?",
+      "expected_facts": [
+        "INC-2141",
+        "pgbouncer"
+      ],
+      "superseded_facts": [],
+      "before": {
+        "retrieved": [
+          {
+            "source_item": "agent_messages:17",
+            "score": 0.4638
+          },
+          {
+            "source_item": "agent_messages:16",
+            "score": 0.4203
+          },
+          {
+            "source_item": "agent_messages:18",
+            "score": 0.3982
+          },
+          {
+            "source_item": "agent_messages:19",
+            "score": 0.4573
+          }
+        ],
+        "answer_items": [
+          "agent_messages:17",
+          "agent_messages:16",
+          "agent_messages:18",
+          "agent_messages:19"
+        ],
+        "answer_concepts": [
+          "memories/assistant-message/0019-logged-as-inc-2141-against-pgbouncer-two-occurrences-st.md",
+          "memories/tool-call/0017-record-incident.md",
+          "memories/user-message/0016-log-an-incident-the-staging-rollout-failed-twice-last-we.md"
+        ],
+        "superseded_items": [],
+        "facts_expected": [
+          "INC-2141",
+          "pgbouncer"
+        ],
+        "facts_found": [
+          "pgbouncer",
+          "INC-2141"
+        ],
+        "fact_coverage": 1.0,
+        "meets_coverage": true,
+        "correction_wins": true
+      },
+      "after": {
+        "retrieved": [
+          {
+            "source_item": "agent_messages:17",
+            "score": 0.306
+          },
+          {
+            "source_item": "agent_messages:16",
+            "score": 0.229
+          },
+          {
+            "source_item": "agent_messages:19",
+            "score": 0.4446
+          }
+        ],
+        "answer_items": [
+          "agent_messages:17",
+          "agent_messages:16",
+          "agent_messages:19"
+        ],
+        "answer_concepts": [
+          "memories/assistant-message/0019-logged-as-inc-2141-against-pgbouncer-two-occurrences-st.md",
+          "memories/tool-call/0017-record-incident.md",
+          "memories/user-message/0016-log-an-incident-the-staging-rollout-failed-twice-last-we.md"
+        ],
+        "superseded_items": [],
+        "facts_expected": [
+          "INC-2141",
+          "pgbouncer"
+        ],
+        "facts_found": [
+          "INC-2141",
+          "pgbouncer"
+        ],
+        "fact_coverage": 1.0,
+        "meets_coverage": true,
+        "correction_wins": true
+      },
+      "shared_answer_concepts": [
+        "memories/assistant-message/0019-logged-as-inc-2141-against-pgbouncer-two-occurrences-st.md",
+        "memories/tool-call/0017-record-incident.md",
+        "memories/user-message/0016-log-an-incident-the-staging-rollout-failed-twice-last-we.md"
+      ],
+      "passed": true
+    },
+    {
+      "question": "Which tool looked up the team calendar?",
+      "expected_facts": [
+        "lookup_team_calendar"
+      ],
+      "superseded_facts": [],
+      "before": {
+        "retrieved": [
+          {
+            "source_item": "agent_messages:7",
+            "score": 0.6016
+          },
+          {
+            "source_item": "agent_messages:8",
+            "score": 0.28
+          },
+          {
+            "source_item": "agent_messages:10",
+            "score": 0.1793
+          },
+          {
+            "source_item": "agent_messages:9",
+            "score": 0.333
+          },
+          {
+            "source_item": "agent_messages:11",
+            "score": 0.5822
+          }
+        ],
+        "answer_items": [
+          "agent_messages:7"
+        ],
+        "answer_concepts": [
+          "memories/tool-call/0007-lookup-team-calendar.md"
+        ],
+        "superseded_items": [],
+        "facts_expected": [
+          "lookup_team_calendar"
+        ],
+        "facts_found": [
+          "lookup_team_calendar"
+        ],
+        "fact_coverage": 1.0,
+        "meets_coverage": true,
+        "correction_wins": true
+      },
+      "after": {
+        "retrieved": [
+          {
+            "source_item": "agent_messages:7",
+            "score": 0.4517
+          },
+          {
+            "source_item": "agent_messages:17",
+            "score": 0.1394
+          },
+          {
+            "source_item": "agent_messages:9",
+            "score": 0.0893
+          },
+          {
+            "source_item": "agent_messages:10",
+            "score": 0.4375
+          },
+          {
+            "source_item": "agent_messages:11",
+            "score": 0.4296
+          },
+          {
+            "source_item": "agent_messages:12",
+            "score": 0.3845
+          },
+          {
+            "source_item": "agent_messages:13",
+            "score": 0.4174
+          },
+          {
+            "source_item": "agent_messages:14",
+            "score": 0.5025
+          },
+          {
+            "source_item": "agent_messages:15",
+            "score": 0.4525
+          },
+          {
+            "source_item": "agent_messages:16",
+            "score": 0.3976
+          },
+          {
+            "source_item": "agent_messages:19",
+            "score": 0.3848
+          }
+        ],
+        "answer_items": [
+          "agent_messages:7"
+        ],
+        "answer_concepts": [
+          "memories/tool-call/0007-lookup-team-calendar.md"
+        ],
+        "superseded_items": [],
+        "facts_expected": [
+          "lookup_team_calendar"
+        ],
+        "facts_found": [
+          "lookup_team_calendar"
+        ],
+        "fact_coverage": 1.0,
+        "meets_coverage": true,
+        "correction_wins": true
+      },
+      "shared_answer_concepts": [
+        "memories/tool-call/0007-lookup-team-calendar.md"
+      ],
+      "passed": true
+    }
+  ]
+}

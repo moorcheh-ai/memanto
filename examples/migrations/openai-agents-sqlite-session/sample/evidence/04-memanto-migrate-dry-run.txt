@@ -11,6 +11,6 @@
 │                                                                                                  │
 │ Dry run — no writes performed.                                                                   │
 │                                                                                                  │
-│ Run dir: /tmp/memanto-demo-home/.memanto/migrate/okf/20260805_164944                             │
-│ Mapped preview: /tmp/memanto-demo-home/.memanto/migrate/okf/20260805_164944/mapped_preview.json  │
+│ Run dir: /tmp/memanto-demo-home/.memanto/migrate/okf/20260805_174848                             │
+│ Mapped preview: /tmp/memanto-demo-home/.memanto/migrate/okf/20260805_174848/mapped_preview.json  │
 ╰──────────────────────────────────────────────────────────────────────────────────────────────────╯

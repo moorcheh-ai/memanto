@@ -8,12 +8,12 @@
     "tool": "openai-agents (OpenAI Agents SDK) SQLiteSession",
     "package_version": "0.19.4",
     "db_file": "agent_sessions.db",
-    "read_snapshot_sha256": "4873410960062ce7dddd8882138ba9344015753cb267de289aa9c16b6ec4bae4",
+    "read_snapshot_sha256": "834c34b0c7416af40a349ff0a1dc68116a684fa74cdf84c2ad1ac92b41f4a9ec",
     "sessions_table": "agent_sessions",
     "messages_table": "agent_messages",
     "session_id": "workspace-buddy-demo",
-    "session_created_at": "2026-08-05T16:46:35+00:00",
-    "session_updated_at": "2026-08-05T16:46:42+00:00"
+    "session_created_at": "2026-08-05T17:48:25+00:00",
+    "session_updated_at": "2026-08-05T17:48:32+00:00"
   },
   "counts": {
     "source_items": 19,
@@ -50,7 +50,7 @@
       "kind": "user-message",
       "role": "user",
       "turn": 1,
-      "timestamp": "2026-08-05T16:46:35+00:00",
+      "timestamp": "2026-08-05T17:48:25+00:00",
       "memanto_type": "auto",
       "okf_document": "memories/user-message/0001-standing-rule-for-this-workspace-reply-in-metric-units-a.md"
     },
@@ -62,7 +62,7 @@
       "kind": "assistant-message",
       "role": "assistant",
       "turn": 1,
-      "timestamp": "2026-08-05T16:46:35+00:00",
+      "timestamp": "2026-08-05T17:48:25+00:00",
       "memanto_type": "auto",
       "okf_document": "memories/assistant-message/0002-understood-metric-units-only-three-sentences-maximum.md"
     },
@@ -74,7 +74,7 @@
       "kind": "user-message",
       "role": "user",
       "turn": 2,
-      "timestamp": "2026-08-05T16:46:36+00:00",
+      "timestamp": "2026-08-05T17:48:26+00:00",
       "memanto_type": "auto",
       "okf_document": "memories/user-message/0003-the-orders-service-runs-on-postgresql-16-and-deploys-from.md"
     },
@@ -86,7 +86,7 @@
       "kind": "assistant-message",
       "role": "assistant",
       "turn": 2,
-      "timestamp": "2026-08-05T16:46:36+00:00",
+      "timestamp": "2026-08-05T17:48:26+00:00",
       "memanto_type": "auto",
       "okf_document": "memories/assistant-message/0004-noted-the-orders-service-runs-on-postgresql-16-and-ships.md"
     },
@@ -98,7 +98,7 @@
       "kind": "user-message",
       "role": "user",
       "turn": 3,
-      "timestamp": "2026-08-05T16:46:38+00:00",
+      "timestamp": "2026-08-05T17:48:27+00:00",
       "memanto_type": "auto",
       "okf_document": "memories/user-message/0005-what-is-the-deploy-window-for-the-platform-team-over-the.md"
     },
@@ -111,7 +111,7 @@
       "kind": "tool-call",
       "role": "assistant",
       "turn": 3,
-      "timestamp": "2026-08-05T16:46:38+00:00",
+      "timestamp": "2026-08-05T17:48:27+00:00",
       "memanto_type": "artifact",
       "okf_document": "memories/tool-call/0007-lookup-team-calendar.md"
     },
@@ -123,7 +123,7 @@
       "kind": "assistant-message",
       "role": "assistant",
       "turn": 3,
-      "timestamp": "2026-08-05T16:46:38+00:00",
+      "timestamp": "2026-08-05T17:48:27+00:00",
       "memanto_type": "auto",
       "okf_document": "memories/assistant-message/0009-the-platform-team-s-deploy-window-is-tuesday-14-00-16-00.md"
     },
@@ -135,7 +135,7 @@
       "kind": "user-message",
       "role": "user",
       "turn": 4,
-      "timestamp": "2026-08-05T16:46:39+00:00",
+      "timestamp": "2026-08-05T17:48:28+00:00",
       "memanto_type": "auto",
       "okf_document": "memories/user-message/0010-correction-the-deploy-window-moved-to-thursday-09-00-utc.md"
     },
@@ -147,7 +147,7 @@
       "kind": "assistant-message",
       "role": "assistant",
       "turn": 4,
-      "timestamp": "2026-08-05T16:46:39+00:00",
+      "timestamp": "2026-08-05T17:48:28+00:00",
       "memanto_type": "auto",
       "okf_document": "memories/assistant-message/0011-corrected-the-deploy-window-is-thursday-09-00-utc-and-th.md"
     },
@@ -159,7 +159,7 @@
       "kind": "user-message",
       "role": "user",
       "turn": 5,
-      "timestamp": "2026-08-05T16:46:40+00:00",
+      "timestamp": "2026-08-05T17:48:30+00:00",
       "memanto_type": "auto",
       "okf_document": "memories/user-message/0012-actually-drop-the-three-sentence-rule-i-would-rather-ge.md"
     },
@@ -171,7 +171,7 @@
       "kind": "assistant-message",
       "role": "assistant",
       "turn": 5,
-      "timestamp": "2026-08-05T16:46:40+00:00",
+      "timestamp": "2026-08-05T17:48:30+00:00",
       "memanto_type": "auto",
       "okf_document": "memories/assistant-message/0013-the-three-sentence-limit-is-dropped-i-will-answer-in-det.md"
     },
@@ -183,7 +183,7 @@
       "kind": "user-message",
       "role": "user",
       "turn": 6,
-      "timestamp": "2026-08-05T16:46:41+00:00",
+      "timestamp": "2026-08-05T17:48:31+00:00",
       "memanto_type": "auto",
       "okf_document": "memories/user-message/0014-i-promised-the-platform-team-a-migration-plan-for-the-ord.md"
     },
@@ -195,7 +195,7 @@
       "kind": "assistant-message",
       "role": "assistant",
       "turn": 6,
-      "timestamp": "2026-08-05T16:46:41+00:00",
+      "timestamp": "2026-08-05T17:48:31+00:00",
       "memanto_type": "auto",
       "okf_document": "memories/assistant-message/0015-recorded-your-commitment-a-migration-plan-for-the-orders.md"
     },
@@ -207,7 +207,7 @@
       "kind": "user-message",
       "role": "user",
       "turn": 7,
-      "timestamp": "2026-08-05T16:46:42+00:00",
+      "timestamp": "2026-08-05T17:48:32+00:00",
       "memanto_type": "auto",
       "okf_document": "memories/user-message/0016-log-an-incident-the-staging-rollout-failed-twice-last-we.md"
     },
@@ -220,7 +220,7 @@
       "kind": "tool-call",
       "role": "assistant",
       "turn": 7,
-      "timestamp": "2026-08-05T16:46:42+00:00",
+      "timestamp": "2026-08-05T17:48:32+00:00",
       "memanto_type": "artifact",
       "okf_document": "memories/tool-call/0017-record-incident.md"
     },
@@ -232,7 +232,7 @@
       "kind": "assistant-message",
       "role": "assistant",
       "turn": 7,
-      "timestamp": "2026-08-05T16:46:42+00:00",
+      "timestamp": "2026-08-05T17:48:32+00:00",
       "memanto_type": "auto",
       "okf_document": "memories/assistant-message/0019-logged-as-inc-2141-against-pgbouncer-two-occurrences-st.md"
     }
@@ -264,9 +264,9 @@
     ],
     "documents": 16,
     "item_timestamp_range": [
-      "2026-08-05T16:46:35+00:00",
-      "2026-08-05T16:46:42+00:00"
+      "2026-08-05T17:48:25+00:00",
+      "2026-08-05T17:48:32+00:00"
     ]
   },
-  "generated_at": "2026-08-05T16:46:43+00:00"
+  "generated_at": "2026-08-05T17:48:34+00:00"
 }

@@ -12,4 +12,4 @@ Sessions : 2
 Items    : 21
 Model    : 10 scripted calls (no network)
 Snapshot : sample/source/session_snapshot.json
-Read snapshot sha256: 4873410960062ce7dddd8882138ba9344015753cb267de289aa9c16b6ec4bae4
+Read snapshot sha256: 834c34b0c7416af40a349ff0a1dc68116a684fa74cdf84c2ad1ac92b41f4a9ec

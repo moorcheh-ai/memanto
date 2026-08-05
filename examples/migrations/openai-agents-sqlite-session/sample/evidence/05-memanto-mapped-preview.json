@@ -1,7 +1,7 @@
 [
   {
     "title": "Assistant · turn 1 · Understood — metric units only, three sentences maximum....",
-    "content": "Assistant message from turn 1 of OpenAI Agents SDK session `workspace-buddy-demo`.\n\nUnderstood — metric units only, three sentences maximum. I have stored that as a standing rule for this workspace.\n\n**Provenance** — OpenAI Agents SDK `SQLiteSession` · session `workspace-buddy-demo` · item `agent_messages:2` · role `assistant` · recorded `2026-08-05T16:46:35+00:00`.\n\n---\n[Supporting data]\n- OKF source: memories/assistant-message/0002-understood-metric-units-only-three-sentences-maximum.md\n- OKF type: openai-agents.assistant-message\n- OKF resource: openai-agents-sqlite://workspace-buddy-demo/agent_messages/2\n- OKF status: stable\n- OKF generated: by=openai-agents-sqlite-session-to-okf/1.0.0; at=2026-08-05T16:46:35+00:00\n- OKF sources: {'resource': 'openai-agents-sqlite://workspace-buddy-demo/agent_messages/2', 'id': 'agent_messages:2'}",
+    "content": "Assistant message from turn 1 of OpenAI Agents SDK session `workspace-buddy-demo`.\n\nUnderstood — metric units only, three sentences maximum. I have stored that as a standing rule for this workspace.\n\n**Provenance** — OpenAI Agents SDK `SQLiteSession` · session `workspace-buddy-demo` · item `agent_messages:2` · role `assistant` · recorded `2026-08-05T17:48:25+00:00`.\n\n---\n[Supporting data]\n- OKF source: memories/assistant-message/0002-understood-metric-units-only-three-sentences-maximum.md\n- OKF type: openai-agents.assistant-message\n- OKF resource: openai-agents-sqlite://workspace-buddy-demo/agent_messages/2\n- OKF status: stable\n- OKF generated: by=openai-agents-sqlite-session-to-okf/1.0.0; at=2026-08-05T17:48:25+00:00\n- OKF sources: {'resource': 'openai-agents-sqlite://workspace-buddy-demo/agent_messages/2', 'id': 'agent_messages:2'}",
     "type": null,
     "tags": [
       "openai-agents",
@@ -14,12 +14,12 @@
     "source": "openai-agents-sqlite-session",
     "source_ref": "openai-agents-sqlite://workspace-buddy-demo/agent_messages/2",
     "provenance": "imported",
-    "created_at": "2026-08-05 16:46:35+00:00",
-    "updated_at": "2026-08-05 16:49:44.954056+00:00"
+    "created_at": "2026-08-05 17:48:25+00:00",
+    "updated_at": "2026-08-05 17:48:48.278965+00:00"
   },
   {
     "title": "Assistant · turn 2 · Noted: the orders service runs on PostgreSQL 16 and ships...",
-    "content": "Assistant message from turn 2 of OpenAI Agents SDK session `workspace-buddy-demo`.\n\nNoted: the orders service runs on PostgreSQL 16 and ships from the release branch. I will assume that stack for future answers.\n\n**Provenance** — OpenAI Agents SDK `SQLiteSession` · session `workspace-buddy-demo` · item `agent_messages:4` · role `assistant` · recorded `2026-08-05T16:46:36+00:00`.\n\n---\n[Supporting data]\n- OKF source: memories/assistant-message/0004-noted-the-orders-service-runs-on-postgresql-16-and-ships.md\n- OKF type: openai-agents.assistant-message\n- OKF resource: openai-agents-sqlite://workspace-buddy-demo/agent_messages/4\n- OKF status: stable\n- OKF generated: by=openai-agents-sqlite-session-to-okf/1.0.0; at=2026-08-05T16:46:36+00:00\n- OKF sources: {'resource': 'openai-agents-sqlite://workspace-buddy-demo/agent_messages/4', 'id': 'agent_messages:4'}",
+    "content": "Assistant message from turn 2 of OpenAI Agents SDK session `workspace-buddy-demo`.\n\nNoted: the orders service runs on PostgreSQL 16 and ships from the release branch. I will assume that stack for future answers.\n\n**Provenance** — OpenAI Agents SDK `SQLiteSession` · session `workspace-buddy-demo` · item `agent_messages:4` · role `assistant` · recorded `2026-08-05T17:48:26+00:00`.\n\n---\n[Supporting data]\n- OKF source: memories/assistant-message/0004-noted-the-orders-service-runs-on-postgresql-16-and-ships.md\n- OKF type: openai-agents.assistant-message\n- OKF resource: openai-agents-sqlite://workspace-buddy-demo/agent_messages/4\n- OKF status: stable\n- OKF generated: by=openai-agents-sqlite-session-to-okf/1.0.0; at=2026-08-05T17:48:26+00:00\n- OKF sources: {'resource': 'openai-agents-sqlite://workspace-buddy-demo/agent_messages/4', 'id': 'agent_messages:4'}",
     "type": null,
     "tags": [
       "openai-agents",
@@ -32,12 +32,12 @@
     "source": "openai-agents-sqlite-session",
     "source_ref": "openai-agents-sqlite://workspace-buddy-demo/agent_messages/4",
     "provenance": "imported",
-    "created_at": "2026-08-05 16:46:36+00:00",
-    "updated_at": "2026-08-05 16:49:44.954056+00:00"
+    "created_at": "2026-08-05 17:48:26+00:00",
+    "updated_at": "2026-08-05 17:48:48.278965+00:00"
   },
   {
     "title": "Assistant · turn 3 · The platform team's deploy window is Tuesday 14:00-16:00...",
-    "content": "Assistant message from turn 3 of OpenAI Agents SDK session `workspace-buddy-demo`.\n\nThe platform team's deploy window is Tuesday 14:00-16:00 UTC, with no freeze in the next 30 days.\n\n**Provenance** — OpenAI Agents SDK `SQLiteSession` · session `workspace-buddy-demo` · item `agent_messages:9` · role `assistant` · recorded `2026-08-05T16:46:38+00:00`.\n\n---\n[Supporting data]\n- OKF source: memories/assistant-message/0009-the-platform-team-s-deploy-window-is-tuesday-14-00-16-00.md\n- OKF type: openai-agents.assistant-message\n- OKF resource: openai-agents-sqlite://workspace-buddy-demo/agent_messages/9\n- OKF status: stable\n- OKF generated: by=openai-agents-sqlite-session-to-okf/1.0.0; at=2026-08-05T16:46:38+00:00\n- OKF sources: {'resource': 'openai-agents-sqlite://workspace-buddy-demo/agent_messages/9', 'id': 'agent_messages:9'}",
+    "content": "Assistant message from turn 3 of OpenAI Agents SDK session `workspace-buddy-demo`.\n\nThe platform team's deploy window is Tuesday 14:00-16:00 UTC, with no freeze in the next 30 days.\n\n**Provenance** — OpenAI Agents SDK `SQLiteSession` · session `workspace-buddy-demo` · item `agent_messages:9` · role `assistant` · recorded `2026-08-05T17:48:27+00:00`.\n\n---\n[Supporting data]\n- OKF source: memories/assistant-message/0009-the-platform-team-s-deploy-window-is-tuesday-14-00-16-00.md\n- OKF type: openai-agents.assistant-message\n- OKF resource: openai-agents-sqlite://workspace-buddy-demo/agent_messages/9\n- OKF status: stable\n- OKF generated: by=openai-agents-sqlite-session-to-okf/1.0.0; at=2026-08-05T17:48:27+00:00\n- OKF sources: {'resource': 'openai-agents-sqlite://workspace-buddy-demo/agent_messages/9', 'id': 'agent_messages:9'}",
     "type": null,
     "tags": [
       "openai-agents",
@@ -50,12 +50,12 @@
     "source": "openai-agents-sqlite-session",
     "source_ref": "openai-agents-sqlite://workspace-buddy-demo/agent_messages/9",
     "provenance": "imported",
-    "created_at": "2026-08-05 16:46:38+00:00",
-    "updated_at": "2026-08-05 16:49:44.954056+00:00"
+    "created_at": "2026-08-05 17:48:27+00:00",
+    "updated_at": "2026-08-05 17:48:48.278965+00:00"
   },
   {
     "title": "Assistant · turn 4 · Corrected: the deploy window is Thursday 09:00 UTC and th...",
-    "content": "Assistant message from turn 4 of OpenAI Agents SDK session `workspace-buddy-demo`.\n\nCorrected: the deploy window is Thursday 09:00 UTC and the Tuesday slot is retired. I will use the Thursday window from now on.\n\n**Provenance** — OpenAI Agents SDK `SQLiteSession` · session `workspace-buddy-demo` · item `agent_messages:11` · role `assistant` · recorded `2026-08-05T16:46:39+00:00`.\n\n---\n[Supporting data]\n- OKF source: memories/assistant-message/0011-corrected-the-deploy-window-is-thursday-09-00-utc-and-th.md\n- OKF type: openai-agents.assistant-message\n- OKF resource: openai-agents-sqlite://workspace-buddy-demo/agent_messages/11\n- OKF status: stable\n- OKF generated: by=openai-agents-sqlite-session-to-okf/1.0.0; at=2026-08-05T16:46:39+00:00\n- OKF sources: {'resource': 'openai-agents-sqlite://workspace-buddy-demo/agent_messages/11', 'id': 'agent_messages:11'}",
+    "content": "Assistant message from turn 4 of OpenAI Agents SDK session `workspace-buddy-demo`.\n\nCorrected: the deploy window is Thursday 09:00 UTC and the Tuesday slot is retired. I will use the Thursday window from now on.\n\n**Provenance** — OpenAI Agents SDK `SQLiteSession` · session `workspace-buddy-demo` · item `agent_messages:11` · role `assistant` · recorded `2026-08-05T17:48:28+00:00`.\n\n---\n[Supporting data]\n- OKF source: memories/assistant-message/0011-corrected-the-deploy-window-is-thursday-09-00-utc-and-th.md\n- OKF type: openai-agents.assistant-message\n- OKF resource: openai-agents-sqlite://workspace-buddy-demo/agent_messages/11\n- OKF status: stable\n- OKF generated: by=openai-agents-sqlite-session-to-okf/1.0.0; at=2026-08-05T17:48:28+00:00\n- OKF sources: {'resource': 'openai-agents-sqlite://workspace-buddy-demo/agent_messages/11', 'id': 'agent_messages:11'}",
     "type": null,
     "tags": [
       "openai-agents",
@@ -68,12 +68,12 @@
     "source": "openai-agents-sqlite-session",
     "source_ref": "openai-agents-sqlite://workspace-buddy-demo/agent_messages/11",
     "provenance": "imported",
-    "created_at": "2026-08-05 16:46:39+00:00",
-    "updated_at": "2026-08-05 16:49:44.954056+00:00"
+    "created_at": "2026-08-05 17:48:28+00:00",
+    "updated_at": "2026-08-05 17:48:48.278965+00:00"
   },
   {
     "title": "Assistant · turn 5 · The three-sentence limit is dropped. I will answer in det...",
-    "content": "Assistant message from turn 5 of OpenAI Agents SDK session `workspace-buddy-demo`.\n\nThe three-sentence limit is dropped. I will answer in detail with bullet points from here on.\n\n**Provenance** — OpenAI Agents SDK `SQLiteSession` · session `workspace-buddy-demo` · item `agent_messages:13` · role `assistant` · recorded `2026-08-05T16:46:40+00:00`.\n\n---\n[Supporting data]\n- OKF source: memories/assistant-message/0013-the-three-sentence-limit-is-dropped-i-will-answer-in-det.md\n- OKF type: openai-agents.assistant-message\n- OKF resource: openai-agents-sqlite://workspace-buddy-demo/agent_messages/13\n- OKF status: stable\n- OKF generated: by=openai-agents-sqlite-session-to-okf/1.0.0; at=2026-08-05T16:46:40+00:00\n- OKF sources: {'resource': 'openai-agents-sqlite://workspace-buddy-demo/agent_messages/13', 'id': 'agent_messages:13'}",
+    "content": "Assistant message from turn 5 of OpenAI Agents SDK session `workspace-buddy-demo`.\n\nThe three-sentence limit is dropped. I will answer in detail with bullet points from here on.\n\n**Provenance** — OpenAI Agents SDK `SQLiteSession` · session `workspace-buddy-demo` · item `agent_messages:13` · role `assistant` · recorded `2026-08-05T17:48:30+00:00`.\n\n---\n[Supporting data]\n- OKF source: memories/assistant-message/0013-the-three-sentence-limit-is-dropped-i-will-answer-in-det.md\n- OKF type: openai-agents.assistant-message\n- OKF resource: openai-agents-sqlite://workspace-buddy-demo/agent_messages/13\n- OKF status: stable\n- OKF generated: by=openai-agents-sqlite-session-to-okf/1.0.0; at=2026-08-05T17:48:30+00:00\n- OKF sources: {'resource': 'openai-agents-sqlite://workspace-buddy-demo/agent_messages/13', 'id': 'agent_messages:13'}",
     "type": null,
     "tags": [
       "openai-agents",
@@ -86,12 +86,12 @@
     "source": "openai-agents-sqlite-session",
     "source_ref": "openai-agents-sqlite://workspace-buddy-demo/agent_messages/13",
     "provenance": "imported",
-    "created_at": "2026-08-05 16:46:40+00:00",
-    "updated_at": "2026-08-05 16:49:44.954056+00:00"
+    "created_at": "2026-08-05 17:48:30+00:00",
+    "updated_at": "2026-08-05 17:48:48.278965+00:00"
   },
   {
     "title": "Assistant · turn 6 · Recorded your commitment: a migration plan for the orders...",
-    "content": "Assistant message from turn 6 of OpenAI Agents SDK session `workspace-buddy-demo`.\n\nRecorded your commitment: a migration plan for the orders service, due to the platform team by 2026-08-14.\n\n**Provenance** — OpenAI Agents SDK `SQLiteSession` · session `workspace-buddy-demo` · item `agent_messages:15` · role `assistant` · recorded `2026-08-05T16:46:41+00:00`.\n\n---\n[Supporting data]\n- OKF source: memories/assistant-message/0015-recorded-your-commitment-a-migration-plan-for-the-orders.md\n- OKF type: openai-agents.assistant-message\n- OKF resource: openai-agents-sqlite://workspace-buddy-demo/agent_messages/15\n- OKF status: stable\n- OKF generated: by=openai-agents-sqlite-session-to-okf/1.0.0; at=2026-08-05T16:46:41+00:00\n- OKF sources: {'resource': 'openai-agents-sqlite://workspace-buddy-demo/agent_messages/15', 'id': 'agent_messages:15'}",
+    "content": "Assistant message from turn 6 of OpenAI Agents SDK session `workspace-buddy-demo`.\n\nRecorded your commitment: a migration plan for the orders service, due to the platform team by 2026-08-14.\n\n**Provenance** — OpenAI Agents SDK `SQLiteSession` · session `workspace-buddy-demo` · item `agent_messages:15` · role `assistant` · recorded `2026-08-05T17:48:31+00:00`.\n\n---\n[Supporting data]\n- OKF source: memories/assistant-message/0015-recorded-your-commitment-a-migration-plan-for-the-orders.md\n- OKF type: openai-agents.assistant-message\n- OKF resource: openai-agents-sqlite://workspace-buddy-demo/agent_messages/15\n- OKF status: stable\n- OKF generated: by=openai-agents-sqlite-session-to-okf/1.0.0; at=2026-08-05T17:48:31+00:00\n- OKF sources: {'resource': 'openai-agents-sqlite://workspace-buddy-demo/agent_messages/15', 'id': 'agent_messages:15'}",
     "type": null,
     "tags": [
       "openai-agents",
@@ -104,12 +104,12 @@
     "source": "openai-agents-sqlite-session",
     "source_ref": "openai-agents-sqlite://workspace-buddy-demo/agent_messages/15",
     "provenance": "imported",
-    "created_at": "2026-08-05 16:46:41+00:00",
-    "updated_at": "2026-08-05 16:49:44.954056+00:00"
+    "created_at": "2026-08-05 17:48:31+00:00",
+    "updated_at": "2026-08-05 17:48:48.278965+00:00"
   },
   {
     "title": "Assistant · turn 7 · Logged as INC-2141 against pgbouncer, two occurrences, st...",
-    "content": "Assistant message from turn 7 of OpenAI Agents SDK session `workspace-buddy-demo`.\n\nLogged as INC-2141 against pgbouncer, two occurrences, status open.\n\n**Provenance** — OpenAI Agents SDK `SQLiteSession` · session `workspace-buddy-demo` · item `agent_messages:19` · role `assistant` · recorded `2026-08-05T16:46:42+00:00`.\n\n---\n[Supporting data]\n- OKF source: memories/assistant-message/0019-logged-as-inc-2141-against-pgbouncer-two-occurrences-st.md\n- OKF type: openai-agents.assistant-message\n- OKF resource: openai-agents-sqlite://workspace-buddy-demo/agent_messages/19\n- OKF status: stable\n- OKF generated: by=openai-agents-sqlite-session-to-okf/1.0.0; at=2026-08-05T16:46:42+00:00\n- OKF sources: {'resource': 'openai-agents-sqlite://workspace-buddy-demo/agent_messages/19', 'id': 'agent_messages:19'}",
+    "content": "Assistant message from turn 7 of OpenAI Agents SDK session `workspace-buddy-demo`.\n\nLogged as INC-2141 against pgbouncer, two occurrences, status open.\n\n**Provenance** — OpenAI Agents SDK `SQLiteSession` · session `workspace-buddy-demo` · item `agent_messages:19` · role `assistant` · recorded `2026-08-05T17:48:32+00:00`.\n\n---\n[Supporting data]\n- OKF source: memories/assistant-message/0019-logged-as-inc-2141-against-pgbouncer-two-occurrences-st.md\n- OKF type: openai-agents.assistant-message\n- OKF resource: openai-agents-sqlite://workspace-buddy-demo/agent_messages/19\n- OKF status: stable\n- OKF generated: by=openai-agents-sqlite-session-to-okf/1.0.0; at=2026-08-05T17:48:32+00:00\n- OKF sources: {'resource': 'openai-agents-sqlite://workspace-buddy-demo/agent_messages/19', 'id': 'agent_messages:19'}",
     "type": null,
     "tags": [
       "openai-agents",
@@ -122,12 +122,12 @@
     "source": "openai-agents-sqlite-session",
     "source_ref": "openai-agents-sqlite://workspace-buddy-demo/agent_messages/19",
     "provenance": "imported",
-    "created_at": "2026-08-05 16:46:42+00:00",
-    "updated_at": "2026-08-05 16:49:44.954056+00:00"
+    "created_at": "2026-08-05 17:48:32+00:00",
+    "updated_at": "2026-08-05 17:48:48.278965+00:00"
   },
   {
     "title": "Tool call · turn 3 · lookup_team_calendar",
-    "content": "Tool `lookup_team_calendar` was called during turn 3 of OpenAI Agents SDK session `workspace-buddy-demo`.\n\n**Arguments**\n\n```json\n{\n  \"horizon_days\": 30,\n  \"team\": \"platform\"\n}\n```\n\n**Result**\n\n```json\n{\n  \"deploy_window\": \"Tuesday 14:00-16:00 UTC\",\n  \"freeze\": \"none\",\n  \"horizon_days\": 30,\n  \"source\": \"demo-calendar-fixture\",\n  \"team\": \"platform\"\n}\n```\n\n> Note: Tool call id `call_0001`.\n\n**Provenance** — OpenAI Agents SDK `SQLiteSession` · session `workspace-buddy-demo` · item `agent_messages:7`, `agent_messages:8` · role `assistant` · recorded `2026-08-05T16:46:38+00:00`.\n\n---\n[Supporting data]\n- OKF source: memories/tool-call/0007-lookup-team-calendar.md\n- OKF resource: openai-agents-sqlite://workspace-buddy-demo/agent_messages/7\n- OKF status: stable\n- OKF generated: by=openai-agents-sqlite-session-to-okf/1.0.0; at=2026-08-05T16:46:38+00:00\n- OKF sources: {'resource': 'openai-agents-sqlite://workspace-buddy-demo/agent_messages/7', 'id': 'agent_messages:7'}, {'resource': 'openai-agents-sqlite://workspace-buddy-demo/agent_messages/8', 'id': 'agent_mes...",
+    "content": "Tool `lookup_team_calendar` was called during turn 3 of OpenAI Agents SDK session `workspace-buddy-demo`.\n\n**Arguments**\n\n```json\n{\n  \"horizon_days\": 30,\n  \"team\": \"platform\"\n}\n```\n\n**Result**\n\n```json\n{\n  \"deploy_window\": \"Tuesday 14:00-16:00 UTC\",\n  \"freeze\": \"none\",\n  \"horizon_days\": 30,\n  \"source\": \"demo-calendar-fixture\",\n  \"team\": \"platform\"\n}\n```\n\n> Note: Tool call id `call_0001`.\n\n**Provenance** — OpenAI Agents SDK `SQLiteSession` · session `workspace-buddy-demo` · item `agent_messages:7`, `agent_messages:8` · role `assistant` · recorded `2026-08-05T17:48:27+00:00`.\n\n---\n[Supporting data]\n- OKF source: memories/tool-call/0007-lookup-team-calendar.md\n- OKF resource: openai-agents-sqlite://workspace-buddy-demo/agent_messages/7\n- OKF status: stable\n- OKF generated: by=openai-agents-sqlite-session-to-okf/1.0.0; at=2026-08-05T17:48:27+00:00\n- OKF sources: {'resource': 'openai-agents-sqlite://workspace-buddy-demo/agent_messages/7', 'id': 'agent_messages:7'}, {'resource': 'openai-agents-sqlite://workspace-buddy-demo/agent_messages/8', 'id': 'agent_mes...",
     "type": "artifact",
     "tags": [
       "openai-agents",
@@ -140,12 +140,12 @@
     "source": "openai-agents-sqlite-session",
     "source_ref": "openai-agents-sqlite://workspace-buddy-demo/agent_messages/7",
     "provenance": "imported",
-    "created_at": "2026-08-05 16:46:38+00:00",
-    "updated_at": "2026-08-05 16:49:44.954056+00:00"
+    "created_at": "2026-08-05 17:48:27+00:00",
+    "updated_at": "2026-08-05 17:48:48.278965+00:00"
   },
   {
     "title": "Tool call · turn 7 · record_incident",
-    "content": "Tool `record_incident` was called during turn 7 of OpenAI Agents SDK session `workspace-buddy-demo`.\n\n**Arguments**\n\n```json\n{\n  \"component\": \"pgbouncer\",\n  \"occurrences\": 2,\n  \"summary\": \"Staging rollout failed: connection pool too small\"\n}\n```\n\n**Result**\n\n```json\n{\n  \"component\": \"pgbouncer\",\n  \"incident_id\": \"INC-2141\",\n  \"occurrences\": 2,\n  \"status\": \"open\",\n  \"summary\": \"Staging rollout failed: connection pool too small\"\n}\n```\n\n> Note: Tool call id `call_0002`.\n\n**Provenance** — OpenAI Agents SDK `SQLiteSession` · session `workspace-buddy-demo` · item `agent_messages:17`, `agent_messages:18` · role `assistant` · recorded `2026-08-05T16:46:42+00:00`.\n\n---\n[Supporting data]\n- OKF source: memories/tool-call/0017-record-incident.md\n- OKF resource: openai-agents-sqlite://workspace-buddy-demo/agent_messages/17\n- OKF status: stable\n- OKF generated: by=openai-agents-sqlite-session-to-okf/1.0.0; at=2026-08-05T16:46:42+00:00\n- OKF sources: {'resource': 'openai-agents-sqlite://workspace-buddy-demo/agent_messages/17', 'id': 'agent_messages:17'}, {'resource': 'openai-agents-sqlite://workspace-buddy-demo/agent_messages/18', 'id': 'agent_...",
+    "content": "Tool `record_incident` was called during turn 7 of OpenAI Agents SDK session `workspace-buddy-demo`.\n\n**Arguments**\n\n```json\n{\n  \"component\": \"pgbouncer\",\n  \"occurrences\": 2,\n  \"summary\": \"Staging rollout failed: connection pool too small\"\n}\n```\n\n**Result**\n\n```json\n{\n  \"component\": \"pgbouncer\",\n  \"incident_id\": \"INC-2141\",\n  \"occurrences\": 2,\n  \"status\": \"open\",\n  \"summary\": \"Staging rollout failed: connection pool too small\"\n}\n```\n\n> Note: Tool call id `call_0002`.\n\n**Provenance** — OpenAI Agents SDK `SQLiteSession` · session `workspace-buddy-demo` · item `agent_messages:17`, `agent_messages:18` · role `assistant` · recorded `2026-08-05T17:48:32+00:00`.\n\n---\n[Supporting data]\n- OKF source: memories/tool-call/0017-record-incident.md\n- OKF resource: openai-agents-sqlite://workspace-buddy-demo/agent_messages/17\n- OKF status: stable\n- OKF generated: by=openai-agents-sqlite-session-to-okf/1.0.0; at=2026-08-05T17:48:32+00:00\n- OKF sources: {'resource': 'openai-agents-sqlite://workspace-buddy-demo/agent_messages/17', 'id': 'agent_messages:17'}, {'resource': 'openai-agents-sqlite://workspace-buddy-demo/agent_messages/18', 'id': 'agent_...",
     "type": "artifact",
     "tags": [
       "openai-agents",
@@ -158,12 +158,12 @@
     "source": "openai-agents-sqlite-session",
     "source_ref": "openai-agents-sqlite://workspace-buddy-demo/agent_messages/17",
     "provenance": "imported",
-    "created_at": "2026-08-05 16:46:42+00:00",
-    "updated_at": "2026-08-05 16:49:44.954056+00:00"
+    "created_at": "2026-08-05 17:48:32+00:00",
+    "updated_at": "2026-08-05 17:48:48.278965+00:00"
   },
   {
     "title": "User · turn 1 · Standing rule for this workspace: reply in metric units a...",
-    "content": "User message from turn 1 of OpenAI Agents SDK session `workspace-buddy-demo`.\n\nStanding rule for this workspace: reply in metric units and keep answers to three sentences or fewer.\n\n**Provenance** — OpenAI Agents SDK `SQLiteSession` · session `workspace-buddy-demo` · item `agent_messages:1` · role `user` · recorded `2026-08-05T16:46:35+00:00`.\n\n---\n[Supporting data]\n- OKF source: memories/user-message/0001-standing-rule-for-this-workspace-reply-in-metric-units-a.md\n- OKF type: openai-agents.user-message\n- OKF resource: openai-agents-sqlite://workspace-buddy-demo/agent_messages/1\n- OKF status: stable\n- OKF generated: by=openai-agents-sqlite-session-to-okf/1.0.0; at=2026-08-05T16:46:35+00:00\n- OKF sources: {'resource': 'openai-agents-sqlite://workspace-buddy-demo/agent_messages/1', 'id': 'agent_messages:1'}",
+    "content": "User message from turn 1 of OpenAI Agents SDK session `workspace-buddy-demo`.\n\nStanding rule for this workspace: reply in metric units and keep answers to three sentences or fewer.\n\n**Provenance** — OpenAI Agents SDK `SQLiteSession` · session `workspace-buddy-demo` · item `agent_messages:1` · role `user` · recorded `2026-08-05T17:48:25+00:00`.\n\n---\n[Supporting data]\n- OKF source: memories/user-message/0001-standing-rule-for-this-workspace-reply-in-metric-units-a.md\n- OKF type: openai-agents.user-message\n- OKF resource: openai-agents-sqlite://workspace-buddy-demo/agent_messages/1\n- OKF status: stable\n- OKF generated: by=openai-agents-sqlite-session-to-okf/1.0.0; at=2026-08-05T17:48:25+00:00\n- OKF sources: {'resource': 'openai-agents-sqlite://workspace-buddy-demo/agent_messages/1', 'id': 'agent_messages:1'}",
     "type": null,
     "tags": [
       "openai-agents",
@@ -176,12 +176,12 @@
     "source": "openai-agents-sqlite-session",
     "source_ref": "openai-agents-sqlite://workspace-buddy-demo/agent_messages/1",
     "provenance": "imported",
-    "created_at": "2026-08-05 16:46:35+00:00",
-    "updated_at": "2026-08-05 16:49:44.954056+00:00"
+    "created_at": "2026-08-05 17:48:25+00:00",
+    "updated_at": "2026-08-05 17:48:48.278965+00:00"
   },
   {
     "title": "User · turn 2 · The orders service runs on PostgreSQL 16 and deploys from...",
-    "content": "User message from turn 2 of OpenAI Agents SDK session `workspace-buddy-demo`.\n\nThe orders service runs on PostgreSQL 16 and deploys from the release branch.\n\n**Provenance** — OpenAI Agents SDK `SQLiteSession` · session `workspace-buddy-demo` · item `agent_messages:3` · role `user` · recorded `2026-08-05T16:46:36+00:00`.\n\n---\n[Supporting data]\n- OKF source: memories/user-message/0003-the-orders-service-runs-on-postgresql-16-and-deploys-from.md\n- OKF type: openai-agents.user-message\n- OKF resource: openai-agents-sqlite://workspace-buddy-demo/agent_messages/3\n- OKF status: stable\n- OKF generated: by=openai-agents-sqlite-session-to-okf/1.0.0; at=2026-08-05T16:46:36+00:00\n- OKF sources: {'resource': 'openai-agents-sqlite://workspace-buddy-demo/agent_messages/3', 'id': 'agent_messages:3'}",
+    "content": "User message from turn 2 of OpenAI Agents SDK session `workspace-buddy-demo`.\n\nThe orders service runs on PostgreSQL 16 and deploys from the release branch.\n\n**Provenance** — OpenAI Agents SDK `SQLiteSession` · session `workspace-buddy-demo` · item `agent_messages:3` · role `user` · recorded `2026-08-05T17:48:26+00:00`.\n\n---\n[Supporting data]\n- OKF source: memories/user-message/0003-the-orders-service-runs-on-postgresql-16-and-deploys-from.md\n- OKF type: openai-agents.user-message\n- OKF resource: openai-agents-sqlite://workspace-buddy-demo/agent_messages/3\n- OKF status: stable\n- OKF generated: by=openai-agents-sqlite-session-to-okf/1.0.0; at=2026-08-05T17:48:26+00:00\n- OKF sources: {'resource': 'openai-agents-sqlite://workspace-buddy-demo/agent_messages/3', 'id': 'agent_messages:3'}",
     "type": null,
     "tags": [
       "openai-agents",
@@ -194,12 +194,12 @@
     "source": "openai-agents-sqlite-session",
     "source_ref": "openai-agents-sqlite://workspace-buddy-demo/agent_messages/3",
     "provenance": "imported",
-    "created_at": "2026-08-05 16:46:36+00:00",
-    "updated_at": "2026-08-05 16:49:44.954056+00:00"
+    "created_at": "2026-08-05 17:48:26+00:00",
+    "updated_at": "2026-08-05 17:48:48.278965+00:00"
   },
   {
     "title": "User · turn 3 · What is the deploy window for the platform team over the...",
-    "content": "User message from turn 3 of OpenAI Agents SDK session `workspace-buddy-demo`.\n\nWhat is the deploy window for the platform team over the next month?\n\n**Provenance** — OpenAI Agents SDK `SQLiteSession` · session `workspace-buddy-demo` · item `agent_messages:5` · role `user` · recorded `2026-08-05T16:46:38+00:00`.\n\n---\n[Supporting data]\n- OKF source: memories/user-message/0005-what-is-the-deploy-window-for-the-platform-team-over-the.md\n- OKF type: openai-agents.user-message\n- OKF resource: openai-agents-sqlite://workspace-buddy-demo/agent_messages/5\n- OKF status: stable\n- OKF generated: by=openai-agents-sqlite-session-to-okf/1.0.0; at=2026-08-05T16:46:38+00:00\n- OKF sources: {'resource': 'openai-agents-sqlite://workspace-buddy-demo/agent_messages/5', 'id': 'agent_messages:5'}",
+    "content": "User message from turn 3 of OpenAI Agents SDK session `workspace-buddy-demo`.\n\nWhat is the deploy window for the platform team over the next month?\n\n**Provenance** — OpenAI Agents SDK `SQLiteSession` · session `workspace-buddy-demo` · item `agent_messages:5` · role `user` · recorded `2026-08-05T17:48:27+00:00`.\n\n---\n[Supporting data]\n- OKF source: memories/user-message/0005-what-is-the-deploy-window-for-the-platform-team-over-the.md\n- OKF type: openai-agents.user-message\n- OKF resource: openai-agents-sqlite://workspace-buddy-demo/agent_messages/5\n- OKF status: stable\n- OKF generated: by=openai-agents-sqlite-session-to-okf/1.0.0; at=2026-08-05T17:48:27+00:00\n- OKF sources: {'resource': 'openai-agents-sqlite://workspace-buddy-demo/agent_messages/5', 'id': 'agent_messages:5'}",
     "type": null,
     "tags": [
       "openai-agents",
@@ -212,12 +212,12 @@
     "source": "openai-agents-sqlite-session",
     "source_ref": "openai-agents-sqlite://workspace-buddy-demo/agent_messages/5",
     "provenance": "imported",
-    "created_at": "2026-08-05 16:46:38+00:00",
-    "updated_at": "2026-08-05 16:49:44.954056+00:00"
+    "created_at": "2026-08-05 17:48:27+00:00",
+    "updated_at": "2026-08-05 17:48:48.278965+00:00"
   },
   {
     "title": "User · turn 4 · Correction: the deploy window moved to Thursday 09:00 UTC...",
-    "content": "User message from turn 4 of OpenAI Agents SDK session `workspace-buddy-demo`.\n\nCorrection: the deploy window moved to Thursday 09:00 UTC. The Tuesday slot is retired, so ignore what the calendar returned.\n\n**Provenance** — OpenAI Agents SDK `SQLiteSession` · session `workspace-buddy-demo` · item `agent_messages:10` · role `user` · recorded `2026-08-05T16:46:39+00:00`.\n\n---\n[Supporting data]\n- OKF source: memories/user-message/0010-correction-the-deploy-window-moved-to-thursday-09-00-utc.md\n- OKF type: openai-agents.user-message\n- OKF resource: openai-agents-sqlite://workspace-buddy-demo/agent_messages/10\n- OKF status: stable\n- OKF generated: by=openai-agents-sqlite-session-to-okf/1.0.0; at=2026-08-05T16:46:39+00:00\n- OKF sources: {'resource': 'openai-agents-sqlite://workspace-buddy-demo/agent_messages/10', 'id': 'agent_messages:10'}",
+    "content": "User message from turn 4 of OpenAI Agents SDK session `workspace-buddy-demo`.\n\nCorrection: the deploy window moved to Thursday 09:00 UTC. The Tuesday slot is retired, so ignore what the calendar returned.\n\n**Provenance** — OpenAI Agents SDK `SQLiteSession` · session `workspace-buddy-demo` · item `agent_messages:10` · role `user` · recorded `2026-08-05T17:48:28+00:00`.\n\n---\n[Supporting data]\n- OKF source: memories/user-message/0010-correction-the-deploy-window-moved-to-thursday-09-00-utc.md\n- OKF type: openai-agents.user-message\n- OKF resource: openai-agents-sqlite://workspace-buddy-demo/agent_messages/10\n- OKF status: stable\n- OKF generated: by=openai-agents-sqlite-session-to-okf/1.0.0; at=2026-08-05T17:48:28+00:00\n- OKF sources: {'resource': 'openai-agents-sqlite://workspace-buddy-demo/agent_messages/10', 'id': 'agent_messages:10'}",
     "type": null,
     "tags": [
       "openai-agents",
@@ -230,12 +230,12 @@
     "source": "openai-agents-sqlite-session",
     "source_ref": "openai-agents-sqlite://workspace-buddy-demo/agent_messages/10",
     "provenance": "imported",
-    "created_at": "2026-08-05 16:46:39+00:00",
-    "updated_at": "2026-08-05 16:49:44.954056+00:00"
+    "created_at": "2026-08-05 17:48:28+00:00",
+    "updated_at": "2026-08-05 17:48:48.278965+00:00"
   },
   {
     "title": "User · turn 5 · Actually, drop the three-sentence rule. I would rather ge...",
-    "content": "User message from turn 5 of OpenAI Agents SDK session `workspace-buddy-demo`.\n\nActually, drop the three-sentence rule. I would rather get detailed answers with bullet points.\n\n**Provenance** — OpenAI Agents SDK `SQLiteSession` · session `workspace-buddy-demo` · item `agent_messages:12` · role `user` · recorded `2026-08-05T16:46:40+00:00`.\n\n---\n[Supporting data]\n- OKF source: memories/user-message/0012-actually-drop-the-three-sentence-rule-i-would-rather-ge.md\n- OKF type: openai-agents.user-message\n- OKF resource: openai-agents-sqlite://workspace-buddy-demo/agent_messages/12\n- OKF status: stable\n- OKF generated: by=openai-agents-sqlite-session-to-okf/1.0.0; at=2026-08-05T16:46:40+00:00\n- OKF sources: {'resource': 'openai-agents-sqlite://workspace-buddy-demo/agent_messages/12', 'id': 'agent_messages:12'}",
+    "content": "User message from turn 5 of OpenAI Agents SDK session `workspace-buddy-demo`.\n\nActually, drop the three-sentence rule. I would rather get detailed answers with bullet points.\n\n**Provenance** — OpenAI Agents SDK `SQLiteSession` · session `workspace-buddy-demo` · item `agent_messages:12` · role `user` · recorded `2026-08-05T17:48:30+00:00`.\n\n---\n[Supporting data]\n- OKF source: memories/user-message/0012-actually-drop-the-three-sentence-rule-i-would-rather-ge.md\n- OKF type: openai-agents.user-message\n- OKF resource: openai-agents-sqlite://workspace-buddy-demo/agent_messages/12\n- OKF status: stable\n- OKF generated: by=openai-agents-sqlite-session-to-okf/1.0.0; at=2026-08-05T17:48:30+00:00\n- OKF sources: {'resource': 'openai-agents-sqlite://workspace-buddy-demo/agent_messages/12', 'id': 'agent_messages:12'}",
     "type": null,
     "tags": [
       "openai-agents",
@@ -248,12 +248,12 @@
     "source": "openai-agents-sqlite-session",
     "source_ref": "openai-agents-sqlite://workspace-buddy-demo/agent_messages/12",
     "provenance": "imported",
-    "created_at": "2026-08-05 16:46:40+00:00",
-    "updated_at": "2026-08-05 16:49:44.954056+00:00"
+    "created_at": "2026-08-05 17:48:30+00:00",
+    "updated_at": "2026-08-05 17:48:48.278965+00:00"
   },
   {
     "title": "User · turn 6 · I promised the platform team a migration plan for the ord...",
-    "content": "User message from turn 6 of OpenAI Agents SDK session `workspace-buddy-demo`.\n\nI promised the platform team a migration plan for the orders service by 2026-08-14.\n\n**Provenance** — OpenAI Agents SDK `SQLiteSession` · session `workspace-buddy-demo` · item `agent_messages:14` · role `user` · recorded `2026-08-05T16:46:41+00:00`.\n\n---\n[Supporting data]\n- OKF source: memories/user-message/0014-i-promised-the-platform-team-a-migration-plan-for-the-ord.md\n- OKF type: openai-agents.user-message\n- OKF resource: openai-agents-sqlite://workspace-buddy-demo/agent_messages/14\n- OKF status: stable\n- OKF generated: by=openai-agents-sqlite-session-to-okf/1.0.0; at=2026-08-05T16:46:41+00:00\n- OKF sources: {'resource': 'openai-agents-sqlite://workspace-buddy-demo/agent_messages/14', 'id': 'agent_messages:14'}",
+    "content": "User message from turn 6 of OpenAI Agents SDK session `workspace-buddy-demo`.\n\nI promised the platform team a migration plan for the orders service by 2026-08-14.\n\n**Provenance** — OpenAI Agents SDK `SQLiteSession` · session `workspace-buddy-demo` · item `agent_messages:14` · role `user` · recorded `2026-08-05T17:48:31+00:00`.\n\n---\n[Supporting data]\n- OKF source: memories/user-message/0014-i-promised-the-platform-team-a-migration-plan-for-the-ord.md\n- OKF type: openai-agents.user-message\n- OKF resource: openai-agents-sqlite://workspace-buddy-demo/agent_messages/14\n- OKF status: stable\n- OKF generated: by=openai-agents-sqlite-session-to-okf/1.0.0; at=2026-08-05T17:48:31+00:00\n- OKF sources: {'resource': 'openai-agents-sqlite://workspace-buddy-demo/agent_messages/14', 'id': 'agent_messages:14'}",
     "type": null,
     "tags": [
       "openai-agents",
@@ -266,12 +266,12 @@
     "source": "openai-agents-sqlite-session",
     "source_ref": "openai-agents-sqlite://workspace-buddy-demo/agent_messages/14",
     "provenance": "imported",
-    "created_at": "2026-08-05 16:46:41+00:00",
-    "updated_at": "2026-08-05 16:49:44.954056+00:00"
+    "created_at": "2026-08-05 17:48:31+00:00",
+    "updated_at": "2026-08-05 17:48:48.278965+00:00"
   },
   {
     "title": "User · turn 7 · Log an incident: the staging rollout failed twice last we...",
-    "content": "User message from turn 7 of OpenAI Agents SDK session `workspace-buddy-demo`.\n\nLog an incident: the staging rollout failed twice last week because the pgbouncer connection pool was too small.\n\n**Provenance** — OpenAI Agents SDK `SQLiteSession` · session `workspace-buddy-demo` · item `agent_messages:16` · role `user` · recorded `2026-08-05T16:46:42+00:00`.\n\n---\n[Supporting data]\n- OKF source: memories/user-message/0016-log-an-incident-the-staging-rollout-failed-twice-last-we.md\n- OKF type: openai-agents.user-message\n- OKF resource: openai-agents-sqlite://workspace-buddy-demo/agent_messages/16\n- OKF status: stable\n- OKF generated: by=openai-agents-sqlite-session-to-okf/1.0.0; at=2026-08-05T16:46:42+00:00\n- OKF sources: {'resource': 'openai-agents-sqlite://workspace-buddy-demo/agent_messages/16', 'id': 'agent_messages:16'}",
+    "content": "User message from turn 7 of OpenAI Agents SDK session `workspace-buddy-demo`.\n\nLog an incident: the staging rollout failed twice last week because the pgbouncer connection pool was too small.\n\n**Provenance** — OpenAI Agents SDK `SQLiteSession` · session `workspace-buddy-demo` · item `agent_messages:16` · role `user` · recorded `2026-08-05T17:48:32+00:00`.\n\n---\n[Supporting data]\n- OKF source: memories/user-message/0016-log-an-incident-the-staging-rollout-failed-twice-last-we.md\n- OKF type: openai-agents.user-message\n- OKF resource: openai-agents-sqlite://workspace-buddy-demo/agent_messages/16\n- OKF status: stable\n- OKF generated: by=openai-agents-sqlite-session-to-okf/1.0.0; at=2026-08-05T17:48:32+00:00\n- OKF sources: {'resource': 'openai-agents-sqlite://workspace-buddy-demo/agent_messages/16', 'id': 'agent_messages:16'}",
     "type": null,
     "tags": [
       "openai-agents",
@@ -284,7 +284,7 @@
     "source": "openai-agents-sqlite-session",
     "source_ref": "openai-agents-sqlite://workspace-buddy-demo/agent_messages/16",
     "provenance": "imported",
-    "created_at": "2026-08-05 16:46:42+00:00",
-    "updated_at": "2026-08-05 16:49:44.954056+00:00"
+    "created_at": "2026-08-05 17:48:32+00:00",
+    "updated_at": "2026-08-05 17:48:48.278965+00:00"
   }
 ]
