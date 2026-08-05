@@ -1237,9 +1237,10 @@ class SdkClient:
         if not date:
             date = datetime.now().strftime("%Y-%m-%d")
 
-        json_path = (
-            Path.home() / ".memanto" / "conflicts" / f"{agent_id}_{date}_conflicts.json"
-        )
+        # The generator writes under get_data_dir()/conflicts (honoring
+        # MEMANTO_DATA_DIR / on-prem data root); reading the hardcoded
+        # ~/.memanto path would miss every report on an on-prem install.
+        json_path = get_data_dir() / "conflicts" / f"{agent_id}_{date}_conflicts.json"
 
         if not json_path.exists():
             return []
@@ -1280,9 +1281,7 @@ class SdkClient:
                 f"Invalid action '{action}'. Must be one of: {', '.join(sorted(valid_actions))}"
             )
 
-        json_path = (
-            Path.home() / ".memanto" / "conflicts" / f"{agent_id}_{date}_conflicts.json"
-        )
+        json_path = get_data_dir() / "conflicts" / f"{agent_id}_{date}_conflicts.json"
         if not json_path.exists():
             raise ValueError(f"No conflict report found for {agent_id} on {date}")
 
