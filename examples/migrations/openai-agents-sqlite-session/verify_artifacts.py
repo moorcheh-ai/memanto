@@ -210,7 +210,7 @@ def verify(session_id: str = SESSION_ID) -> int:
         )
 
         # 5. Offline before/after query parity (needs the Memanto mapper above).
-        parity = parity_check.load_parity_report(SNAPSHOT, BUNDLE, REPORT)
+        parity = parity_check.load_parity_report(SNAPSHOT, BUNDLE, REPORT, session_id)
         lost = [r["question"] for r in parity["results"] if not r["passed"]]
         checks.append(
             (

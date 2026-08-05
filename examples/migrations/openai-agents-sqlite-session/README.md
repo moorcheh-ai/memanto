@@ -304,14 +304,15 @@ carried through.
 Counts prove nothing was dropped; they do not prove the memories are still
 *useful*. `parity_check.py` closes that gap without needing credentials:
 
-```
+```console
 $ python parity_check.py
   excluded question-only rows: agent_messages:5
 
   [ok  ] When does the platform team deploy?
          expects Thursday, 09:00 UTC
-         before agent_messages:11, agent_messages:10 (100%) -> after agent_messages:10, agent_messages:11 (100%)
-         correction beats stale evidence [agent_messages:9, agent_messages:8, ...]: True
+         before agent_messages:10, agent_messages:11 (100% of 5/17 recalled)
+             -> after agent_messages:11, agent_messages:10 (100% of 6/15 recalled)
+         correction beats stale evidence [agent_messages:9, agent_messages:8]: True
   ...
 parity 100% (7/7 questions), required 100% with 80% fact coverage each: PASS
 ```
@@ -337,6 +338,16 @@ What a pass requires, and why:
   forward to items that revise a hit, and the check asserts the newest
   answer-bearing item beats the newest superseded one. Both sides must answer
   *Thursday 09:00 UTC*, never the Tuesday the calendar tool returned.
+
+  That extension is deliberately **tight**. Migrated memories all carry the same
+  `[Supporting data]` footer, so document-to-document similarity is inflated —
+  left unbounded the step dragged in 13 of 15 memories, and "coverage" then only
+  proved the facts existed *somewhere in the corpus*. A revision now has to clear
+  the relevance bar against the original question too, and each hit contributes
+  at most one, capping recall at `TOP_K + TOP_K` items (2–6 of 15–17 in
+  practice). The report keeps the two numbers apart: `query_score` is relevance
+  to the question, `revision_similarity` is how much a revision resembles what it
+  revises.
 * **Equivalent concepts, not identical rows.** The incident is evidenced by the
   user's own statement *and* by the merged tool record; either is a valid answer,
   so the sides must share an answering **concept**, not a row id.
@@ -373,7 +384,7 @@ both are regression tests.
 pytest tests/test_openai_agents_session_migration.py -q      # from the repo root
 ```
 
-62 tests, no `openai-agents` install required (they rebuild a real SQLite
+71 collected cases (60 test functions, the rest parametrised), no `openai-agents` install required (they rebuild a real SQLite
 database from the committed snapshot):
 
 * **Source parser** — schema introspection, identifier rejection (`agent_messages;

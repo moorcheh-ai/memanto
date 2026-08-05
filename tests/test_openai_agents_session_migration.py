@@ -1216,6 +1216,44 @@ def test_query_parity_passes_are_earned(
         assert result["shared_answer_concepts"]
 
 
+def test_recall_stays_bounded_and_separates_the_two_similarities(
+    snapshot: dict[str, Any], committed_report: dict[str, Any]
+) -> None:
+    """Migrated memories share a ``[Supporting data]`` footer, which inflates
+    document-to-document similarity. Unbounded, the revision step drags in most
+    of the corpus and coverage stops meaning anything, so recall is capped and a
+    revision must still be relevant to the question."""
+    pytest.importorskip("memanto")
+    parity = parity_check.run_parity(
+        snapshot=snapshot, bundle=BUNDLE_DIR, report=committed_report
+    )
+    cap = parity_check.TOP_K * (1 + parity_check.MAX_REVISIONS_PER_HIT)
+
+    for result in parity["results"]:
+        for side in ("before", "after"):
+            evidence = result[side]
+            assert evidence["retrieved_count"] == len(evidence["retrieved"])
+            assert evidence["retrieved_count"] <= cap, result["question"]
+            # Never a majority of the corpus — that would prove only that the
+            # fact exists somewhere, not that the query reaches it.
+            assert evidence["retrieved_count"] < evidence["corpus_size"] / 2
+
+            revisions = 0
+            for hit in evidence["retrieved"]:
+                # Query relevance is reported for every hit, and separately from
+                # the document-to-document revision similarity.
+                assert hit["query_score"] >= parity_check.MIN_SCORE
+                if hit["revises"] is None:
+                    assert hit["revision_similarity"] is None
+                else:
+                    revisions += 1
+                    assert (
+                        hit["revision_similarity"] >= parity_check.SUPERSEDE_SIMILARITY
+                    )
+                    assert hit["revises"] != hit["source_item"]
+            assert revisions <= parity_check.TOP_K * parity_check.MAX_REVISIONS_PER_HIT
+
+
 def test_correction_supersedes_the_stale_answer(
     snapshot: dict[str, Any], committed_report: dict[str, Any]
 ) -> None:
@@ -1309,6 +1347,83 @@ def test_query_parity_detects_a_broken_migration(
     # preservation. The point is that the gate fails.
     assert parity["parity"] < 0.5
     assert [r["question"] for r in parity["results"] if not r["passed"]]
+
+
+@pytest.mark.parametrize(
+    ("mutate", "match"),
+    [
+        (lambda s, r: s.update(agent_messages="not a list"), "agent_messages"),
+        (
+            lambda s, r: s["agent_messages"].append(
+                {"id": 99, "session_id": SESSION_ID, "message_data": "{not json"}
+            ),
+            "not valid JSON",
+        ),
+        (
+            lambda s, r: s["agent_messages"].append(
+                {"id": 98, "session_id": SESSION_ID, "message_data": 17}
+            ),
+            "expected a JSON string",
+        ),
+        (lambda s, r: r.update(mapped="not a list"), "'mapped' entries"),
+        (lambda s, r: r["mapped"].append({"okf_document": "x"}), "source_items"),
+        (
+            lambda s, r: r["mapped"].append(
+                {"okf_document": "x", "source_items": ["agent_messages:not-an-id"]}
+            ),
+            "unreadable source item",
+        ),
+    ],
+)
+def test_malformed_inputs_raise_parity_error(
+    snapshot: dict[str, Any],
+    committed_report: dict[str, Any],
+    mutate: Any,
+    match: str,
+) -> None:
+    """Bad snapshots, source_refs and reports must surface as ParityError so the
+    CLI exits cleanly instead of dumping a traceback."""
+    pytest.importorskip("memanto")
+    broken_snapshot = json.loads(json.dumps(snapshot))
+    broken_report = json.loads(json.dumps(committed_report))
+    mutate(broken_snapshot, broken_report)
+
+    with pytest.raises(parity_check.ParityError, match=match):
+        parity_check.run_parity(
+            snapshot=broken_snapshot, bundle=BUNDLE_DIR, report=broken_report
+        )
+
+
+def test_cli_reports_malformed_input_without_a_traceback(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    bad = tmp_path / "snapshot.json"
+    bad.write_text("{not json", encoding="utf-8")
+    assert parity_check.main(["--snapshot", str(bad)]) == 1
+    assert "not valid JSON" in capsys.readouterr().err
+
+    missing = tmp_path / "absent.json"
+    assert parity_check.main(["--report", str(missing)]) == 1
+    assert "not found" in capsys.readouterr().err
+
+
+def test_parity_session_id_is_threaded_through(
+    snapshot: dict[str, Any], committed_report: dict[str, Any]
+) -> None:
+    """``--session`` / the verifier's session id reaches ``run_parity``."""
+    pytest.importorskip("memanto")
+    parity = parity_check.load_parity_report(
+        SNAPSHOT_PATH, BUNDLE_DIR, REPORT_PATH, SESSION_ID
+    )
+    assert parity["session_id"] == SESSION_ID
+
+    with pytest.raises(parity_check.ParityError, match="no rows for session"):
+        parity_check.run_parity(
+            snapshot=snapshot,
+            bundle=BUNDLE_DIR,
+            report=committed_report,
+            session_id="sandbox-smoke-test-not-here",
+        )
 
 
 def test_committed_parity_evidence_matches_a_fresh_run(

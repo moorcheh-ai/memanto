@@ -1,6 +1,6 @@
 {
   "_comment": "Offline before/after query parity. The 'before' corpus is the raw OpenAI Agents SDK session capture; the 'after' corpus is the memories Memanto's own load_okf_bundle + map_okf produce from the committed OKF bundle. Rows that only ask a question are excluded from both, so a query can never 'pass' by retrieving itself. Each query is graded against facts copied from the scripted run, and every query must pass. This measures preservation and retrievability, NOT live Moorcheh recall — no cloud call is made or simulated.",
-  "method": "idf-weighted cosine over word tokens, top-3 recall (newer evidence wins ties), graded by expected-fact coverage",
+  "method": "idf-weighted cosine over word tokens, top-3 recall (newer evidence wins ties), extended by at most 1 still-relevant revision per hit, graded by expected-fact coverage",
   "measures": "preservation / query parity (offline)",
   "not_measured": "live Moorcheh recall quality",
   "session_id": "workspace-buddy-demo",
@@ -31,28 +31,40 @@
         "retrieved": [
           {
             "source_item": "agent_messages:7",
-            "score": 0.4601
+            "query_score": 0.4601,
+            "revises": null,
+            "revision_similarity": null
           },
           {
             "source_item": "agent_messages:9",
-            "score": 0.3713
+            "query_score": 0.3713,
+            "revises": null,
+            "revision_similarity": null
           },
           {
             "source_item": "agent_messages:8",
-            "score": 0.3208
-          },
-          {
-            "source_item": "agent_messages:11",
-            "score": 0.3208
+            "query_score": 0.3208,
+            "revises": null,
+            "revision_similarity": null
           },
           {
             "source_item": "agent_messages:10",
-            "score": 0.3002
+            "query_score": 0.1299,
+            "revises": "agent_messages:8",
+            "revision_similarity": 0.3002
+          },
+          {
+            "source_item": "agent_messages:11",
+            "query_score": 0.1234,
+            "revises": "agent_messages:9",
+            "revision_similarity": 0.3208
           }
         ],
+        "retrieved_count": 5,
+        "corpus_size": 17,
         "answer_items": [
-          "agent_messages:11",
-          "agent_messages:10"
+          "agent_messages:10",
+          "agent_messages:11"
         ],
         "answer_concepts": [
           "memories/assistant-message/0011-corrected-the-deploy-window-is-thursday-09-00-utc-and-th.md",
@@ -78,52 +90,46 @@
         "retrieved": [
           {
             "source_item": "agent_messages:9",
-            "score": 0.3114
+            "query_score": 0.3114,
+            "revises": null,
+            "revision_similarity": null
           },
           {
             "source_item": "agent_messages:7",
-            "score": 0.2792
+            "query_score": 0.2792,
+            "revises": null,
+            "revision_similarity": null
           },
           {
             "source_item": "agent_messages:14",
-            "score": 0.1948
-          },
-          {
-            "source_item": "agent_messages:10",
-            "score": 0.5542
+            "query_score": 0.1948,
+            "revises": null,
+            "revision_similarity": null
           },
           {
             "source_item": "agent_messages:11",
-            "score": 0.6208
-          },
-          {
-            "source_item": "agent_messages:12",
-            "score": 0.4626
-          },
-          {
-            "source_item": "agent_messages:13",
-            "score": 0.5438
+            "query_score": 0.0889,
+            "revises": "agent_messages:9",
+            "revision_similarity": 0.6208
           },
           {
             "source_item": "agent_messages:15",
-            "score": 0.597
+            "query_score": 0.0963,
+            "revises": "agent_messages:14",
+            "revision_similarity": 0.6644
           },
           {
-            "source_item": "agent_messages:16",
-            "score": 0.5166
-          },
-          {
-            "source_item": "agent_messages:17",
-            "score": 0.3925
-          },
-          {
-            "source_item": "agent_messages:19",
-            "score": 0.5156
+            "source_item": "agent_messages:10",
+            "query_score": 0.0886,
+            "revises": "agent_messages:7",
+            "revision_similarity": 0.4375
           }
         ],
+        "retrieved_count": 6,
+        "corpus_size": 15,
         "answer_items": [
-          "agent_messages:10",
-          "agent_messages:11"
+          "agent_messages:11",
+          "agent_messages:10"
         ],
         "answer_concepts": [
           "memories/assistant-message/0011-corrected-the-deploy-window-is-thursday-09-00-utc-and-th.md",
@@ -161,21 +167,31 @@
         "retrieved": [
           {
             "source_item": "agent_messages:3",
-            "score": 0.4272
+            "query_score": 0.4272,
+            "revises": null,
+            "revision_similarity": null
           },
           {
             "source_item": "agent_messages:14",
-            "score": 0.3976
+            "query_score": 0.3976,
+            "revises": null,
+            "revision_similarity": null
           },
           {
             "source_item": "agent_messages:15",
-            "score": 0.3473
+            "query_score": 0.3473,
+            "revises": null,
+            "revision_similarity": null
           },
           {
             "source_item": "agent_messages:4",
-            "score": 0.6071
+            "query_score": 0.3161,
+            "revises": "agent_messages:3",
+            "revision_similarity": 0.6071
           }
         ],
+        "retrieved_count": 4,
+        "corpus_size": 17,
         "answer_items": [
           "agent_messages:3",
           "agent_messages:4"
@@ -199,57 +215,31 @@
         "retrieved": [
           {
             "source_item": "agent_messages:3",
-            "score": 0.2628
+            "query_score": 0.2628,
+            "revises": null,
+            "revision_similarity": null
           },
           {
             "source_item": "agent_messages:4",
-            "score": 0.2508
+            "query_score": 0.2508,
+            "revises": null,
+            "revision_similarity": null
           },
           {
             "source_item": "agent_messages:15",
-            "score": 0.177
-          },
-          {
-            "source_item": "agent_messages:7",
-            "score": 0.4498
-          },
-          {
-            "source_item": "agent_messages:9",
-            "score": 0.5704
-          },
-          {
-            "source_item": "agent_messages:10",
-            "score": 0.5321
-          },
-          {
-            "source_item": "agent_messages:11",
-            "score": 0.4521
-          },
-          {
-            "source_item": "agent_messages:12",
-            "score": 0.5211
-          },
-          {
-            "source_item": "agent_messages:13",
-            "score": 0.4653
+            "query_score": 0.177,
+            "revises": null,
+            "revision_similarity": null
           },
           {
             "source_item": "agent_messages:14",
-            "score": 0.6096
-          },
-          {
-            "source_item": "agent_messages:16",
-            "score": 0.5936
-          },
-          {
-            "source_item": "agent_messages:17",
-            "score": 0.3758
-          },
-          {
-            "source_item": "agent_messages:19",
-            "score": 0.4536
+            "query_score": 0.1193,
+            "revises": "agent_messages:3",
+            "revision_similarity": 0.6096
           }
         ],
+        "retrieved_count": 4,
+        "corpus_size": 15,
         "answer_items": [
           "agent_messages:3",
           "agent_messages:4"
@@ -286,13 +276,19 @@
         "retrieved": [
           {
             "source_item": "agent_messages:15",
-            "score": 0.547
+            "query_score": 0.547,
+            "revises": null,
+            "revision_similarity": null
           },
           {
             "source_item": "agent_messages:14",
-            "score": 0.3782
+            "query_score": 0.3782,
+            "revises": null,
+            "revision_similarity": null
           }
         ],
+        "retrieved_count": 2,
+        "corpus_size": 17,
         "answer_items": [
           "agent_messages:15",
           "agent_messages:14"
@@ -318,25 +314,19 @@
         "retrieved": [
           {
             "source_item": "agent_messages:15",
-            "score": 0.3012
+            "query_score": 0.3012,
+            "revises": null,
+            "revision_similarity": null
           },
           {
             "source_item": "agent_messages:14",
-            "score": 0.2287
-          },
-          {
-            "source_item": "agent_messages:16",
-            "score": 0.4203
-          },
-          {
-            "source_item": "agent_messages:17",
-            "score": 0.3534
-          },
-          {
-            "source_item": "agent_messages:19",
-            "score": 0.4644
+            "query_score": 0.2287,
+            "revises": null,
+            "revision_similarity": null
           }
         ],
+        "retrieved_count": 2,
+        "corpus_size": 15,
         "answer_items": [
           "agent_messages:15",
           "agent_messages:14"
@@ -377,21 +367,25 @@
         "retrieved": [
           {
             "source_item": "agent_messages:12",
-            "score": 0.5596
+            "query_score": 0.5596,
+            "revises": null,
+            "revision_similarity": null
           },
           {
             "source_item": "agent_messages:13",
-            "score": 0.3083
+            "query_score": 0.3083,
+            "revises": null,
+            "revision_similarity": null
           },
           {
             "source_item": "agent_messages:1",
-            "score": 0.1135
-          },
-          {
-            "source_item": "agent_messages:2",
-            "score": 0.5996
+            "query_score": 0.1135,
+            "revises": null,
+            "revision_similarity": null
           }
         ],
+        "retrieved_count": 3,
+        "corpus_size": 17,
         "answer_items": [
           "agent_messages:12",
           "agent_messages:13"
@@ -401,8 +395,7 @@
           "memories/user-message/0012-actually-drop-the-three-sentence-rule-i-would-rather-ge.md"
         ],
         "superseded_items": [
-          "agent_messages:1",
-          "agent_messages:2"
+          "agent_messages:1"
         ],
         "facts_expected": [
           "detailed",
@@ -420,53 +413,25 @@
         "retrieved": [
           {
             "source_item": "agent_messages:12",
-            "score": 0.193
+            "query_score": 0.193,
+            "revises": null,
+            "revision_similarity": null
           },
           {
             "source_item": "agent_messages:13",
-            "score": 0.0991
+            "query_score": 0.0991,
+            "revises": null,
+            "revision_similarity": null
           },
           {
             "source_item": "agent_messages:4",
-            "score": 0.043
-          },
-          {
-            "source_item": "agent_messages:14",
-            "score": 0.4785
-          },
-          {
-            "source_item": "agent_messages:15",
-            "score": 0.4028
-          },
-          {
-            "source_item": "agent_messages:16",
-            "score": 0.4498
-          },
-          {
-            "source_item": "agent_messages:17",
-            "score": 0.311
-          },
-          {
-            "source_item": "agent_messages:19",
-            "score": 0.3753
-          },
-          {
-            "source_item": "agent_messages:7",
-            "score": 0.4405
-          },
-          {
-            "source_item": "agent_messages:9",
-            "score": 0.6032
-          },
-          {
-            "source_item": "agent_messages:10",
-            "score": 0.4301
-          },
-          {
-            "source_item": "agent_messages:11",
-            "score": 0.4819
+            "query_score": 0.043,
+            "revises": null,
+            "revision_similarity": null
           }
         ],
+        "retrieved_count": 3,
+        "corpus_size": 15,
         "answer_items": [
           "agent_messages:12",
           "agent_messages:13"
@@ -505,29 +470,31 @@
         "retrieved": [
           {
             "source_item": "agent_messages:17",
-            "score": 0.3787
+            "query_score": 0.3787,
+            "revises": null,
+            "revision_similarity": null
           },
           {
             "source_item": "agent_messages:16",
-            "score": 0.3432
+            "query_score": 0.3432,
+            "revises": null,
+            "revision_similarity": null
           },
           {
             "source_item": "agent_messages:18",
-            "score": 0.3251
-          },
-          {
-            "source_item": "agent_messages:19",
-            "score": 0.4573
+            "query_score": 0.3251,
+            "revises": null,
+            "revision_similarity": null
           }
         ],
+        "retrieved_count": 3,
+        "corpus_size": 17,
         "answer_items": [
           "agent_messages:17",
           "agent_messages:16",
-          "agent_messages:18",
-          "agent_messages:19"
+          "agent_messages:18"
         ],
         "answer_concepts": [
-          "memories/assistant-message/0019-logged-as-inc-2141-against-pgbouncer-two-occurrences-st.md",
           "memories/tool-call/0017-record-incident.md",
           "memories/user-message/0016-log-an-incident-the-staging-rollout-failed-twice-last-we.md"
         ],
@@ -548,24 +515,24 @@
         "retrieved": [
           {
             "source_item": "agent_messages:16",
-            "score": 0.2805
+            "query_score": 0.2805,
+            "revises": null,
+            "revision_similarity": null
           },
           {
             "source_item": "agent_messages:17",
-            "score": 0.2141
-          },
-          {
-            "source_item": "agent_messages:19",
-            "score": 0.4378
+            "query_score": 0.2141,
+            "revises": null,
+            "revision_similarity": null
           }
         ],
+        "retrieved_count": 2,
+        "corpus_size": 15,
         "answer_items": [
           "agent_messages:16",
-          "agent_messages:17",
-          "agent_messages:19"
+          "agent_messages:17"
         ],
         "answer_concepts": [
-          "memories/assistant-message/0019-logged-as-inc-2141-against-pgbouncer-two-occurrences-st.md",
           "memories/tool-call/0017-record-incident.md",
           "memories/user-message/0016-log-an-incident-the-staging-rollout-failed-twice-last-we.md"
         ],
@@ -583,7 +550,6 @@
         "correction_wins": true
       },
       "shared_answer_concepts": [
-        "memories/assistant-message/0019-logged-as-inc-2141-against-pgbouncer-two-occurrences-st.md",
         "memories/tool-call/0017-record-incident.md",
         "memories/user-message/0016-log-an-incident-the-staging-rollout-failed-twice-last-we.md"
       ],
@@ -600,29 +566,31 @@
         "retrieved": [
           {
             "source_item": "agent_messages:17",
-            "score": 0.4638
+            "query_score": 0.4638,
+            "revises": null,
+            "revision_similarity": null
           },
           {
             "source_item": "agent_messages:16",
-            "score": 0.4203
+            "query_score": 0.4203,
+            "revises": null,
+            "revision_similarity": null
           },
           {
             "source_item": "agent_messages:18",
-            "score": 0.3982
-          },
-          {
-            "source_item": "agent_messages:19",
-            "score": 0.4573
+            "query_score": 0.3982,
+            "revises": null,
+            "revision_similarity": null
           }
         ],
+        "retrieved_count": 3,
+        "corpus_size": 17,
         "answer_items": [
           "agent_messages:17",
           "agent_messages:16",
-          "agent_messages:18",
-          "agent_messages:19"
+          "agent_messages:18"
         ],
         "answer_concepts": [
-          "memories/assistant-message/0019-logged-as-inc-2141-against-pgbouncer-two-occurrences-st.md",
           "memories/tool-call/0017-record-incident.md",
           "memories/user-message/0016-log-an-incident-the-staging-rollout-failed-twice-last-we.md"
         ],
@@ -643,24 +611,24 @@
         "retrieved": [
           {
             "source_item": "agent_messages:17",
-            "score": 0.306
+            "query_score": 0.306,
+            "revises": null,
+            "revision_similarity": null
           },
           {
             "source_item": "agent_messages:16",
-            "score": 0.229
-          },
-          {
-            "source_item": "agent_messages:19",
-            "score": 0.4446
+            "query_score": 0.229,
+            "revises": null,
+            "revision_similarity": null
           }
         ],
+        "retrieved_count": 2,
+        "corpus_size": 15,
         "answer_items": [
           "agent_messages:17",
-          "agent_messages:16",
-          "agent_messages:19"
+          "agent_messages:16"
         ],
         "answer_concepts": [
-          "memories/assistant-message/0019-logged-as-inc-2141-against-pgbouncer-two-occurrences-st.md",
           "memories/tool-call/0017-record-incident.md",
           "memories/user-message/0016-log-an-incident-the-staging-rollout-failed-twice-last-we.md"
         ],
@@ -678,7 +646,6 @@
         "correction_wins": true
       },
       "shared_answer_concepts": [
-        "memories/assistant-message/0019-logged-as-inc-2141-against-pgbouncer-two-occurrences-st.md",
         "memories/tool-call/0017-record-incident.md",
         "memories/user-message/0016-log-an-incident-the-staging-rollout-failed-twice-last-we.md"
       ],
@@ -694,25 +661,31 @@
         "retrieved": [
           {
             "source_item": "agent_messages:7",
-            "score": 0.6016
+            "query_score": 0.6016,
+            "revises": null,
+            "revision_similarity": null
           },
           {
             "source_item": "agent_messages:8",
-            "score": 0.28
+            "query_score": 0.28,
+            "revises": null,
+            "revision_similarity": null
           },
           {
             "source_item": "agent_messages:10",
-            "score": 0.1793
+            "query_score": 0.1793,
+            "revises": null,
+            "revision_similarity": null
           },
           {
             "source_item": "agent_messages:9",
-            "score": 0.333
-          },
-          {
-            "source_item": "agent_messages:11",
-            "score": 0.5822
+            "query_score": 0.1337,
+            "revises": "agent_messages:8",
+            "revision_similarity": 0.6902
           }
         ],
+        "retrieved_count": 4,
+        "corpus_size": 17,
         "answer_items": [
           "agent_messages:7"
         ],
@@ -734,49 +707,37 @@
         "retrieved": [
           {
             "source_item": "agent_messages:7",
-            "score": 0.4517
+            "query_score": 0.4517,
+            "revises": null,
+            "revision_similarity": null
           },
           {
             "source_item": "agent_messages:17",
-            "score": 0.1394
+            "query_score": 0.1394,
+            "revises": null,
+            "revision_similarity": null
           },
           {
             "source_item": "agent_messages:9",
-            "score": 0.0893
-          },
-          {
-            "source_item": "agent_messages:10",
-            "score": 0.4375
-          },
-          {
-            "source_item": "agent_messages:11",
-            "score": 0.4296
-          },
-          {
-            "source_item": "agent_messages:12",
-            "score": 0.3845
-          },
-          {
-            "source_item": "agent_messages:13",
-            "score": 0.4174
+            "query_score": 0.0893,
+            "revises": null,
+            "revision_similarity": null
           },
           {
             "source_item": "agent_messages:14",
-            "score": 0.5025
+            "query_score": 0.0838,
+            "revises": "agent_messages:9",
+            "revision_similarity": 0.6353
           },
           {
             "source_item": "agent_messages:15",
-            "score": 0.4525
-          },
-          {
-            "source_item": "agent_messages:16",
-            "score": 0.3976
-          },
-          {
-            "source_item": "agent_messages:19",
-            "score": 0.3848
+            "query_score": 0.0414,
+            "revises": "agent_messages:7",
+            "revision_similarity": 0.4525
           }
         ],
+        "retrieved_count": 5,
+        "corpus_size": 15,
         "answer_items": [
           "agent_messages:7"
         ],

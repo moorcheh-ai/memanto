@@ -78,6 +78,13 @@ TOP_K = 3
 #: nothing with "the platform team's deploy window is Tuesday").
 SUPERSEDE_SIMILARITY = 0.30
 
+#: The extension is deliberately tight. Migrated memories all carry the same
+#: ``[Supporting data]`` footer, which inflates document-to-document similarity —
+#: unbounded, the step drags in most of the corpus and "coverage" then only
+#: proves the facts exist *somewhere*. So a revision must also still be relevant
+#: to the original query, and each hit contributes at most this many.
+MAX_REVISIONS_PER_HIT = 1
+
 
 @dataclass(frozen=True)
 class Query:
@@ -186,45 +193,68 @@ def _score(query: dict[str, float], doc: dict[str, float]) -> float:
 
 def _retrieve(
     question: str, docs: list[tuple[int, str]], k: int = TOP_K
-) -> list[tuple[int, float]]:
+) -> list[dict[str, Any]]:
     """Recall for *question*: the ``k`` most relevant items, then any later item
     that revises one of them.
 
     Two steps, both auditable:
 
     1. rank by IDF-weighted cosine, ties breaking towards the **newer** row;
-    2. extend forward — for each hit, pull in later items that are talking about
+    2. extend forward — for each hit, pull in a later item that is talking about
        the same thing (``SUPERSEDE_SIMILARITY``), so a correction cannot be
        missed just because it is worded differently from what it corrects.
+
+    Step 2 is bounded on both sides: a revision must clear ``MIN_SCORE`` against
+    the *query* as well, and each hit contributes at most
+    ``MAX_REVISIONS_PER_HIT``. The two similarities are different things and stay
+    separate in the result — ``query_score`` is relevance to the question,
+    ``revision_similarity`` is how much the revision looks like what it revises.
     """
     tokenised = {row_id: _tokens(text) for row_id, text in docs}
     idf = _idf(list(tokenised.values()))
     vectors = {row_id: _vector(t, idf) for row_id, t in tokenised.items()}
     query = _vector(_tokens(question), idf)
+    query_scores = {
+        row_id: round(_score(query, vectors[row_id]), 4) for row_id in tokenised
+    }
 
-    scored = [
-        (round(_score(query, vectors[row_id]), 4), row_id) for row_id in tokenised
-    ]
     ranked = sorted(
-        (item for item in scored if item[0] >= MIN_SCORE),
-        key=lambda item: (item[0], item[1]),
+        (row_id for row_id in tokenised if query_scores[row_id] >= MIN_SCORE),
+        key=lambda row_id: (query_scores[row_id], row_id),
         reverse=True,
     )
-    hits = [(row_id, score) for score, row_id in ranked[:k]]
-
-    seen = {row_id for row_id, _ in hits}
-    revisions = [
-        (later, round(_score(vectors[hit], vectors[later]), 4))
-        for hit, _ in hits
-        for later in sorted(tokenised)
-        if later > hit
-        and later not in seen
-        and _score(vectors[hit], vectors[later]) >= SUPERSEDE_SIMILARITY
+    hits: list[dict[str, Any]] = [
+        {
+            "row": row_id,
+            "query_score": query_scores[row_id],
+            "revises": None,
+            "revision_similarity": None,
+        }
+        for row_id in ranked[:k]
     ]
-    for row_id, score in revisions:
-        if row_id not in seen:
-            seen.add(row_id)
-            hits.append((row_id, score))
+
+    seen = {hit["row"] for hit in hits}
+    for hit_row in list(seen):
+        candidates = []
+        for later in sorted(tokenised):
+            if later <= hit_row or later in seen:
+                continue
+            if query_scores[later] < MIN_SCORE:
+                continue  # a revision has to answer the question too
+            similarity = round(_score(vectors[hit_row], vectors[later]), 4)
+            if similarity >= SUPERSEDE_SIMILARITY:
+                candidates.append((later, similarity))
+        candidates.sort(key=lambda c: (-c[1], c[0]))
+        for later, similarity in candidates[:MAX_REVISIONS_PER_HIT]:
+            seen.add(later)
+            hits.append(
+                {
+                    "row": later,
+                    "query_score": query_scores[later],
+                    "revises": hit_row,
+                    "revision_similarity": similarity,
+                }
+            )
     return hits
 
 
@@ -237,6 +267,43 @@ def _facts_present(text: str, facts: tuple[str, ...]) -> list[str]:
 # ---------------------------------------------------------------------------
 # Corpora
 # ---------------------------------------------------------------------------
+
+
+def _snapshot_rows(snapshot: dict[str, Any], session_id: str) -> list[dict[str, Any]]:
+    """Session rows from the capture, with every malformed shape reported as a
+    ``ParityError`` rather than an ``AttributeError`` traceback at the CLI."""
+    rows = snapshot.get("agent_messages")
+    if not isinstance(rows, list):
+        raise ParityError(
+            "Snapshot is missing a list of 'agent_messages' — is this a "
+            "session_snapshot.json produced by generate_session.py?"
+        )
+    selected = []
+    for index, row in enumerate(rows):
+        if not isinstance(row, dict):
+            raise ParityError(f"agent_messages[{index}] is not an object")
+        if row.get("session_id") != session_id:
+            continue
+        try:
+            row_id = int(row["id"])
+        except (KeyError, TypeError, ValueError):
+            raise ParityError(f"agent_messages[{index}] has no usable integer 'id'")
+        raw = row.get("message_data")
+        if not isinstance(raw, str):
+            raise ParityError(
+                f"agent_messages:{row_id} message_data is "
+                f"{type(raw).__name__}, expected a JSON string"
+            )
+        try:
+            payload = json.loads(raw)
+        except (json.JSONDecodeError, ValueError) as exc:
+            raise ParityError(
+                f"agent_messages:{row_id} message_data is not valid JSON ({exc})"
+            )
+        selected.append({"id": row_id, "payload": payload})
+    if not selected:
+        raise ParityError(f"Snapshot has no rows for session {session_id!r}")
+    return selected
 
 
 def _raw_text(payload: Any) -> str:
@@ -272,15 +339,12 @@ def question_rows(snapshot: dict[str, Any], session_id: str) -> set[int]:
     nothing about whether the answer survived the migration.
     """
     asked = set()
-    for row in snapshot["agent_messages"]:
-        if row["session_id"] != session_id:
+    for row in _snapshot_rows(snapshot, session_id):
+        payload = row["payload"]
+        if not isinstance(payload, dict) or payload.get("role") != "user":
             continue
-        payload = json.loads(row["message_data"])
-        if payload.get("role") != "user":
-            continue
-        text = _raw_text(payload).strip()
-        if text.endswith("?"):
-            asked.add(int(row["id"]))
+        if _raw_text(payload).strip().endswith("?"):
+            asked.add(row["id"])
     return asked
 
 
@@ -289,12 +353,12 @@ def before_corpus(
 ) -> list[tuple[int, str]]:
     """The raw SDK session: ``(row id, text)`` for every answer-bearing item."""
     docs = []
-    for row in snapshot["agent_messages"]:
-        if row["session_id"] != session_id or int(row["id"]) in exclude:
+    for row in _snapshot_rows(snapshot, session_id):
+        if row["id"] in exclude:
             continue
-        text = _raw_text(json.loads(row["message_data"]))
+        text = _raw_text(row["payload"])
         if text:
-            docs.append((int(row["id"]), text))
+            docs.append((row["id"], text))
     if not docs:
         raise ParityError(f"No source text found for session {session_id!r}")
     return docs
@@ -315,13 +379,24 @@ def after_corpus(bundle: Path, exclude: set[int]) -> list[tuple[int, str]]:
             f"(pip install -e ../../..): {exc}"
         )
 
+    try:
+        mapped = map_okf(load_okf_bundle(bundle))
+    except FileNotFoundError as exc:
+        raise ParityError(f"OKF bundle not readable: {exc}")
+
     docs = []
-    for row in map_okf(load_okf_bundle(bundle)):
+    for row in mapped:
         ref = str(row.get("source_ref") or "")
         content = str(row.get("content") or "")
         if not ref or not content:
             continue
-        row_id = int(ref.rsplit("/", 1)[-1])
+        try:
+            row_id = int(ref.rsplit("/", 1)[-1])
+        except ValueError:
+            raise ParityError(
+                f"Mapped memory has an unreadable source_ref {ref!r}: expected it "
+                "to end in the source row id"
+            )
         if row_id not in exclude:
             docs.append((row_id, content))
     if not docs:
@@ -331,10 +406,31 @@ def after_corpus(bundle: Path, exclude: set[int]) -> list[tuple[int, str]]:
 
 def concept_index(report: dict[str, Any]) -> dict[int, str]:
     """``row id -> OKF document``, so a merged tool call + result is one concept."""
+    entries = report.get("mapped")
+    if not isinstance(entries, list):
+        raise ParityError(
+            "Adapter report is missing a list of 'mapped' entries — is this an "
+            "adapter-report.json produced by okf_adapter.py?"
+        )
     index: dict[int, str] = {}
-    for entry in report["mapped"]:
-        for item in entry["source_items"]:
-            index[int(item.split(":")[-1])] = entry["okf_document"]
+    for position, entry in enumerate(entries):
+        if not isinstance(entry, dict):
+            raise ParityError(f"Adapter report mapped[{position}] is not an object")
+        document = entry.get("okf_document")
+        items = entry.get("source_items")
+        if not isinstance(document, str) or not isinstance(items, list):
+            raise ParityError(
+                f"Adapter report mapped[{position}] needs 'okf_document' and a "
+                "list of 'source_items'"
+            )
+        for item in items:
+            try:
+                index[int(str(item).split(":")[-1])] = document
+            except ValueError:
+                raise ParityError(
+                    f"Adapter report mapped[{position}] has an unreadable source "
+                    f"item {item!r}: expected '<table>:<row id>'"
+                )
     return index
 
 
@@ -355,7 +451,8 @@ def _evaluate_side(
     covered: list[str] = []
     answer_rows: list[int] = []
     stale_rows: list[int] = []
-    for row_id, _score_value in hits:
+    for hit in hits:
+        row_id = hit["row"]
         text = text_by_row[row_id]
         found = _facts_present(text, query.expects)
         if found:
@@ -372,9 +469,22 @@ def _evaluate_side(
     )
     return {
         "retrieved": [
-            {"source_item": f"agent_messages:{row}", "score": score}
-            for row, score in hits
+            {
+                "source_item": f"agent_messages:{hit['row']}",
+                # Relevance to the question...
+                "query_score": hit["query_score"],
+                # ...kept apart from "this later item revises that hit".
+                "revises": (
+                    f"agent_messages:{hit['revises']}"
+                    if hit["revises"] is not None
+                    else None
+                ),
+                "revision_similarity": hit["revision_similarity"],
+            }
+            for hit in hits
         ],
+        "retrieved_count": len(hits),
+        "corpus_size": len(corpus),
         "answer_items": [f"agent_messages:{row}" for row in answer_rows],
         "answer_concepts": sorted(
             {concepts[row] for row in answer_rows if row in concepts}
@@ -446,7 +556,9 @@ def run_parity(
         ),
         "method": (
             f"idf-weighted cosine over word tokens, top-{TOP_K} recall "
-            "(newer evidence wins ties), graded by expected-fact coverage"
+            "(newer evidence wins ties), extended by at most "
+            f"{MAX_REVISIONS_PER_HIT} still-relevant revision per hit, graded by "
+            "expected-fact coverage"
         ),
         "measures": "preservation / query parity (offline)",
         "not_measured": "live Moorcheh recall quality",
@@ -463,15 +575,29 @@ def run_parity(
     }
 
 
+def _read_json(path: Path, label: str) -> dict[str, Any]:
+    try:
+        loaded = json.loads(path.read_text(encoding="utf-8"))
+    except FileNotFoundError:
+        raise ParityError(f"{label} not found: {path}")
+    except (json.JSONDecodeError, ValueError) as exc:
+        raise ParityError(f"{label} is not valid JSON ({path}): {exc}")
+    if not isinstance(loaded, dict):
+        raise ParityError(f"{label} must be a JSON object: {path}")
+    return loaded
+
+
 def load_parity_report(
     snapshot_path: Path = SNAPSHOT,
     bundle: Path = BUNDLE,
     report_path: Path = REPORT,
+    session_id: str = SESSION_ID,
 ) -> dict[str, Any]:
     return run_parity(
-        snapshot=json.loads(snapshot_path.read_text(encoding="utf-8")),
+        snapshot=_read_json(snapshot_path, "Source snapshot"),
         bundle=bundle,
-        report=json.loads(report_path.read_text(encoding="utf-8")),
+        report=_read_json(report_path, "Adapter report"),
+        session_id=session_id,
     )
 
 
@@ -480,11 +606,16 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--bundle", type=Path, default=BUNDLE)
     parser.add_argument("--snapshot", type=Path, default=SNAPSHOT)
     parser.add_argument("--report", type=Path, default=REPORT)
+    parser.add_argument(
+        "--session", default=SESSION_ID, help="Session id to check parity for."
+    )
     parser.add_argument("--json", type=Path, help="Write the parity report here.")
     args = parser.parse_args(argv)
 
     try:
-        parity = load_parity_report(args.snapshot, args.bundle, args.report)
+        parity = load_parity_report(
+            args.snapshot, args.bundle, args.report, args.session
+        )
     except ParityError as exc:
         print(f"error: {exc}", file=sys.stderr)
         return 1
@@ -506,9 +637,11 @@ def main(argv: list[str] | None = None) -> int:
         print(f"         expects {', '.join(result['expected_facts'])}")
         print(
             f"         before {', '.join(before['answer_items']) or 'no answer'} "
-            f"({before['fact_coverage']:.0%}) -> after "
-            f"{', '.join(after['answer_items']) or 'no answer'} "
-            f"({after['fact_coverage']:.0%})"
+            f"({before['fact_coverage']:.0%} of "
+            f"{before['retrieved_count']}/{before['corpus_size']} recalled) -> "
+            f"after {', '.join(after['answer_items']) or 'no answer'} "
+            f"({after['fact_coverage']:.0%} of "
+            f"{after['retrieved_count']}/{after['corpus_size']} recalled)"
         )
         if result["superseded_facts"]:
             stale = ", ".join(before["superseded_items"] + after["superseded_items"])
