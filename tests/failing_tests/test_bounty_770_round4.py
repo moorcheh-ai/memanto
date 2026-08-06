@@ -132,6 +132,68 @@ def test_cli_conflicts_command_uses_get_data_dir():
     )
 
 
+def test_cli_conflicts_reads_configured_data_dir_at_runtime(tmp_path, monkeypatch):
+    """Runtime proof: with get_data_dir() pointed at a temp root, the CLI
+    conflicts command must load its report from THAT root, not from
+    ~/.memanto (which would raise FileNotFoundError / read stale data)."""
+    import json
+
+    import memanto.app.config as config_mod
+
+    # Point get_data_dir at a temp root and write the report there.
+    monkeypatch.setattr(config_mod, "get_data_dir", lambda: tmp_path)
+    conflicts_dir = tmp_path / "conflicts"
+    conflicts_dir.mkdir(parents=True, exist_ok=True)
+    report_path = conflicts_dir / "a1_2026-01-15_conflicts.json"
+    report_path.write_text(
+        json.dumps(
+            [
+                {
+                    "type": "CONTRADICTION",
+                    "title": "t",
+                    "old_memory_id": "m1",
+                    "new_memory_id": "m2",
+                    "old_content": "old",
+                    "new_content": "new",
+                    "recommendation": "keep_new",
+                    "resolved": False,
+                }
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    import typer
+
+    import memanto.cli.commands.memory as mem_cli
+
+    class FakeClient:
+        def list_conflicts(self, agent_id, date):
+            return [
+                {
+                    "type": "CONTRADICTION",
+                    "title": "t",
+                    "old_memory_id": "m1",
+                    "new_memory_id": "m2",
+                    "old_content": "old",
+                    "new_content": "new",
+                    "recommendation": "keep_new",
+                }
+            ]
+
+    monkeypatch.setattr(mem_cli, "get_client", lambda: FakeClient())
+    monkeypatch.setattr(
+        mem_cli.config_manager, "get_active_session", lambda: ("a1", "tok")
+    )
+    # Quit immediately after the first panel so the loop terminates.
+    monkeypatch.setattr(typer, "prompt", lambda *a, **k: "q")
+
+    # Must not raise FileNotFoundError and must report the configured-path
+    # report was found.
+    mem_cli.conflicts(date="2026-01-15", agent_id="a1", list_only=False)
+    assert report_path.exists(), "report fixture missing"
+
+
 # ---------------------------------------------------------------------------
 # 3. _normalize_tags must treat string and list serialization identically
 # ---------------------------------------------------------------------------
@@ -165,4 +227,34 @@ if __name__ == "__main__":
         except Exception as e:
             failures += 1
             print(f"FAIL: {t.__name__}: {e}")
+
+    # The runtime CLI test needs pytest-style fixtures; run it standalone
+    # with hand-rolled stand-ins so `python tests/...py` still exercises it.
+    import tempfile
+
+    from _pytest.monkeypatch import MonkeyPatch
+
+    class _TmpPath:
+        def __init__(self, root):
+            self._root = Path(root)
+
+        def __truediv__(self, other):
+            return self._root / other
+
+        def mkdir(self, *a, **k):
+            return self._root.mkdir(*a, **k)
+
+        def __str__(self):
+            return str(self._root)
+
+    try:
+        tmp_path = _TmpPath(tempfile.mkdtemp(prefix="memanto_r4_"))
+        mp = MonkeyPatch()
+        test_cli_conflicts_reads_configured_data_dir_at_runtime(tmp_path, mp)
+        mp.undo()
+        print("PASS: test_cli_conflicts_reads_configured_data_dir_at_runtime")
+    except Exception as e:
+        failures += 1
+        print(f"FAIL: test_cli_conflicts_reads_configured_data_dir_at_runtime: {e}")
+
     sys.exit(1 if failures else 0)

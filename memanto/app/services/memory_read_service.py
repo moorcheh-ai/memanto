@@ -88,6 +88,24 @@ class MemoryReadService:
         self.client = moorcheh_client
         self._namespace_service = None
 
+    @staticmethod
+    def _validate_limit(limit: int | None) -> None:
+        """Fail closed on invalid limit values.
+
+        Called OUTSIDE the try/except wrappers of the public recall methods
+        so the ValueError contract propagates to callers directly instead of
+        being re-wrapped in MemoryError (which would make an invalid argument
+        indistinguishable from a storage failure). A negative limit would
+        otherwise silently return everything-but-the-last-N via Python's
+        negative-index slicing; zero would fake an empty result set.
+        """
+        if limit is None:
+            return
+        if not isinstance(limit, int) or isinstance(limit, bool):
+            raise ValueError("limit must be a positive integer")
+        if limit <= 0:
+            raise ValueError("limit must be a positive integer")
+
     @property
     def namespace_service(self):
         """Return the namespace service, creating it on first access."""
@@ -380,6 +398,7 @@ class MemoryReadService:
             tags: Optional tag filters
             limit: Max results
         """
+        self._validate_limit(limit)
         try:
             from memanto.app.utils.temporal_helpers import (
                 parse_as_of_timestamp,
@@ -445,10 +464,6 @@ class MemoryReadService:
             # validation in search_memories so every recall path has the same
             # contract.
             if limit is not None:
-                if not isinstance(limit, int) or isinstance(limit, bool):
-                    raise ValueError("limit must be a positive integer")
-                if limit <= 0:
-                    raise ValueError("limit must be a positive integer")
                 valid_memories = valid_memories[:limit]
 
             return {
@@ -481,6 +496,7 @@ class MemoryReadService:
             tags: Optional tag filters
             limit: Max results
         """
+        self._validate_limit(limit)
         try:
             from memanto.app.utils.temporal_helpers import parse_iso_timestamp
 
@@ -546,10 +562,6 @@ class MemoryReadService:
             # would silently return everything-but-the-last-N via Python
             # negative-index slicing; zero would fake an empty result set).
             if limit is not None:
-                if not isinstance(limit, int) or isinstance(limit, bool):
-                    raise ValueError("limit must be a positive integer")
-                if limit <= 0:
-                    raise ValueError("limit must be a positive integer")
                 changed_memories = changed_memories[:limit]
 
             return {
@@ -582,6 +594,7 @@ class MemoryReadService:
             created_after: ISO timestamp - include only memories created at/after this time
             created_before: ISO timestamp - include only memories created at/before this time
         """
+        self._validate_limit(limit)
         try:
             from memanto.app.utils.temporal_helpers import parse_iso_timestamp
 
@@ -615,10 +628,6 @@ class MemoryReadService:
             # would silently return everything-but-the-last-N via Python
             # negative-index slicing; zero would fake an empty result set).
             if limit is not None:
-                if not isinstance(limit, int) or isinstance(limit, bool):
-                    raise ValueError("limit must be a positive integer")
-                if limit <= 0:
-                    raise ValueError("limit must be a positive integer")
                 unique_memories = unique_memories[:limit]
 
             results = unique_memories
@@ -666,10 +675,13 @@ class MemoryReadService:
                 pass  # Fail open: keep newest-version dedup behaviour.
 
         items: list[Any] = []
+        # Retrieval budget is GLOBAL across all namespaces, not per-namespace:
+        # a search over N namespaces must not be able to fetch N x 200 pages
+        # (coderabbit #1815). 200 pages x 100 docs = 20k documents total.
+        pages_fetched = 0
         for ns in namespaces:
             next_token: str | None = None
             seen_tokens: set[str] = set()
-            pages_fetched = 0
             while True:
                 # Bound the pagination loop: a storage layer that keeps
                 # returning has_more=True with a repeated (or never-ending)
