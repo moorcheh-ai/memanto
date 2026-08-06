@@ -388,6 +388,22 @@ class MemoryWriteService:
                             pass  # Keep the default if the stored timestamp is invalid
                     else:
                         updated_memory.expires_at = raw_expires_at
+            else:
+                # Preserve expires_at when ttl_seconds is absent (bounty #770).
+                # A memory can have expires_at set without ttl_seconds (e.g. via
+                # direct metadata write). Without this branch, any field update
+                # silently drops the expiration, making the memory permanent.
+                raw_expires_at = metadata.get("expires_at")
+                if raw_expires_at:
+                    if isinstance(raw_expires_at, str):
+                        try:
+                            updated_memory.expires_at = datetime.fromisoformat(
+                                raw_expires_at.replace("Z", "+00:00")
+                            )
+                        except (ValueError, AttributeError):
+                            pass
+                    else:
+                        updated_memory.expires_at = raw_expires_at
 
             # Step 3: Upload new version (overwrites existing document with same ID)
             from typing import Any, cast
