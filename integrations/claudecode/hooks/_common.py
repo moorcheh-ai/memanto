@@ -21,7 +21,6 @@ import logging
 import os
 import re
 import sys
-from collections import deque
 from collections.abc import Callable
 from pathlib import Path
 from typing import Any
@@ -134,46 +133,67 @@ def read_transcript_text(
     find (string content, or content blocks carrying a ``text`` field),
     labelling it by role when available. Returns the trailing ``max_chars``.
     """
-    _, rendered = _read_transcript_full(
-        transcript_path, max_messages=max_messages, max_chars=max_chars
-    )
-    return rendered
+    messages = _read_transcript_messages(transcript_path)
+    return _render_messages(messages, max_messages=max_messages, max_chars=max_chars)
 
 
 def read_transcript_for_distillation(
     transcript_path: str | None,
+    last_assistant_message: str | None = None,
     max_messages: int = 40,
     max_chars: int = 8000,
 ) -> tuple[str | None, str]:
-    """Return ``(skill, tail_text)`` from a single pass over the transcript.
+    """Return ``(skill, current_turn_text)`` for one Stop-hook invocation.
 
-    Long sessions truncate to the tail for the LLM (the latest discussion is
-    where decisions usually crystallise), but the user's original ``/tdd`` or
-    ``/grill-with-docs`` invocation typically sits at the very start of the
-    conversation and would fall outside that tail. We scan the entire
-    transcript for the first skill token, then return it alongside the
-    truncated text so ``distill_and_store`` can tag memories correctly even
-    on long sessions.
+    Claude Code fires ``Stop`` once per turn, not once per session. Re-sending
+    the cumulative transcript on every invocation makes earlier decisions get
+    extracted and stored repeatedly. Scope distillation to the latest user
+    turn instead, while retaining the most recent skill invocation for tags.
+
+    Async hooks can read the transcript after a newer turn has already been
+    appended. ``last_assistant_message`` anchors the snapshot to the turn that
+    triggered this hook so two overlapping hook processes cannot both ingest
+    the newest turn.
     """
-    return _read_transcript_full(
-        transcript_path, max_messages=max_messages, max_chars=max_chars
-    )
-
-
-def _read_transcript_full(
-    transcript_path: str | None,
-    max_messages: int,
-    max_chars: int,
-) -> tuple[str | None, str]:
-    """Read the transcript once and return (first-skill-seen, tail-text)."""
-    if not transcript_path:
+    messages = _read_transcript_messages(transcript_path)
+    if not messages:
         return None, ""
+
+    end = _anchored_end(messages, last_assistant_message)
+    if end is None:
+        return None, ""
+    scoped = messages[:end]
+
+    skill: str | None = None
+    for role, text in scoped:
+        if _is_user_role(role):
+            found = detect_skill(text)
+            if found:
+                skill = found
+
+    turn_start = 0
+    for index in range(len(scoped) - 1, -1, -1):
+        if _is_user_role(scoped[index][0]):
+            turn_start = index
+            break
+
+    rendered = _render_messages(
+        scoped[turn_start:], max_messages=max_messages, max_chars=max_chars
+    )
+    return skill, rendered
+
+
+def _read_transcript_messages(
+    transcript_path: str | None,
+) -> list[tuple[str | None, str]]:
+    """Read parseable prose messages from a Claude Code transcript."""
+    if not transcript_path:
+        return []
     path = Path(transcript_path)
     if not path.exists():
-        return None, ""
+        return []
 
-    pieces: deque[str] = deque(maxlen=max(0, int(max_messages)))
-    skill: str | None = None
+    messages: list[tuple[str | None, str]] = []
     try:
         with path.open(encoding="utf-8") as fh:
             for line in fh:
@@ -187,18 +207,55 @@ def _read_transcript_full(
                 role, text = _extract_role_text(entry)
                 if not text:
                     continue
-                # First skill mention wins — typically the opening user prompt.
-                if skill is None:
-                    found = detect_skill(text)
-                    if found:
-                        skill = found
-                pieces.append(f"{role}: {text}" if role else text)
+                messages.append((str(role) if role is not None else None, text))
     except Exception:
         logger.debug("Failed to read Claude Code transcript", exc_info=True)
-        return None, ""
+        return []
 
-    rendered = "\n".join(pieces)
-    return skill, rendered[-max_chars:]
+    return messages
+
+
+def _render_messages(
+    messages: list[tuple[str | None, str]],
+    *,
+    max_messages: int,
+    max_chars: int,
+) -> str:
+    """Render a bounded transcript slice for LLM distillation."""
+    pieces = [f"{role}: {text}" if role else text for role, text in messages]
+    rendered = "\n".join(pieces[-max_messages:])
+    return rendered[-max_chars:]
+
+
+def _is_user_role(role: str | None) -> bool:
+    """Recognise user roles across the common transcript variants."""
+    return bool(role and role.strip().lower() in {"user", "human"})
+
+
+def _is_assistant_role(role: str | None) -> bool:
+    """Recognise assistant roles across the common transcript variants."""
+    return bool(role and role.strip().lower() in {"assistant", "ai"})
+
+
+def _anchored_end(
+    messages: list[tuple[str | None, str]],
+    last_assistant_message: str | None,
+) -> int | None:
+    """Return the unique exclusive end index for the Stop event's own turn.
+
+    Missing, stale, or ambiguous anchors fail closed so an asynchronous hook
+    cannot silently distill a newer or duplicated turn.
+    """
+    if not last_assistant_message or not last_assistant_message.strip():
+        return None
+
+    needle = " ".join(last_assistant_message.split())
+    matches: list[int] = []
+    for index, (role, text) in enumerate(messages):
+        if _is_assistant_role(role) and " ".join(text.split()) == needle:
+            matches.append(index + 1)
+
+    return matches[0] if len(matches) == 1 else None
 
 
 def _extract_role_text(entry: Any) -> tuple[str | None, str]:

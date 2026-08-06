@@ -1,3 +1,5 @@
+import json
+
 import pytest
 
 from memanto.app.services.conversation_memory_extraction_service import (
@@ -80,6 +82,79 @@ def test_extract_conversation_memories_normalizes_candidates():
     assert "user:" in client.answer.call_kwargs["query"]
 
 
+def test_extract_ignores_non_json_brackets_before_memory_array():
+    client = FakeClient(
+        "I checked the transcript [notes] and extracted this:\n"
+        '[{"type":"learning","title":"Regression tests","content":"Run focused '
+        'regression tests before pushing memory extraction fixes.","confidence":0.88}]'
+    )
+
+    service = ConversationMemoryExtractionService(client)
+    candidates = service.extract(
+        namespace="memanto_agent_test",
+        messages=[{"role": "user", "content": "Remember to test extraction fixes."}],
+    )
+
+    assert candidates == [
+        {
+            "type": "learning",
+            "title": "Regression tests",
+            "content": "Run focused regression tests before pushing memory extraction fixes.",
+            "confidence": 0.88,
+            "source": "system",
+            "provenance": "inferred",
+        }
+    ]
+
+
+def test_extract_skips_invalid_json_arrays():
+    client = FakeClient(
+        "Dummy array first: [1, 2]\n"
+        "Real array second:\n"
+        '[{"type":"fact","title":"Validation","content":"Iterate arrays.","confidence":0.95}]'
+    )
+
+    service = ConversationMemoryExtractionService(client)
+    candidates = service.extract(
+        namespace="memanto_agent_test",
+        messages=[{"role": "user", "content": "Iterate arrays."}],
+    )
+
+    assert candidates == [
+        {
+            "type": "fact",
+            "title": "Validation",
+            "content": "Iterate arrays.",
+            "confidence": 0.95,
+            "source": "system",
+            "provenance": "inferred",
+        }
+    ]
+
+
+def test_extract_ignores_brackets_in_strings():
+    client = FakeClient(
+        '[{"type":"fact","title":"Nested brackets","content":"Like this [1, 2].","confidence":0.95}]'
+    )
+
+    service = ConversationMemoryExtractionService(client)
+    candidates = service.extract(
+        namespace="memanto_agent_test",
+        messages=[{"role": "user", "content": "Like this [1, 2]."}],
+    )
+
+    assert candidates == [
+        {
+            "type": "fact",
+            "title": "Nested brackets",
+            "content": "Like this [1, 2].",
+            "confidence": 0.95,
+            "source": "system",
+            "provenance": "inferred",
+        }
+    ]
+
+
 def test_extract_omits_unset_active_ai_model(monkeypatch):
     """On-prem fallback should let answer.generate use its configured model."""
     from memanto.app.services import conversation_memory_extraction_service as module
@@ -113,3 +188,29 @@ def test_extract_requires_messages():
 
     with pytest.raises(ValueError, match="at least one message"):
         service.extract(namespace="memanto_agent_test", messages=[])
+
+
+def test_extract_caps_candidate_content_to_memory_record_limit():
+    oversized = "x" * 10_001
+    service = ConversationMemoryExtractionService(
+        FakeClient(
+            json.dumps(
+                [
+                    {
+                        "type": "fact",
+                        "title": "Large memory",
+                        "content": oversized,
+                        "confidence": 0.9,
+                    }
+                ]
+            )
+        )
+    )
+
+    candidates = service.extract(
+        namespace="memanto_agent_test",
+        messages=[{"role": "user", "content": "Remember the supplied document."}],
+    )
+
+    assert len(candidates[0]["content"]) == 10_000
+    assert candidates[0]["content"].endswith("...")

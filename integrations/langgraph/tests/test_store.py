@@ -408,7 +408,7 @@ def test_do_search_filters_min_confidence_without_changing_similarity(
     client_instance.recall.assert_called_once_with(
         agent_id="langgraph_my_ns",
         query="test query",
-        limit=100,
+        limit=store._MEMANTO_RECALL_CAP,
         type=None,
         tags=None,
         min_similarity=0.2,

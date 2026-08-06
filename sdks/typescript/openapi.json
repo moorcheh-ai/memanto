@@ -3083,14 +3083,11 @@
           },
           "source": {
             "type": "string",
-            "enum": [
-              "user",
-              "agent",
-              "tool",
-              "system"
-            ],
+            "maxLength": 64,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9._-]+$",
             "title": "Source",
-            "description": "Source of memory",
+            "description": "Who wrote this memory \u2014 'user', 'agent', or a specific writer such as 'cursor', 'codex', or 'claude_code'.",
             "default": "agent"
           },
           "provenance": {
@@ -3561,12 +3558,9 @@
             "anyOf": [
               {
                 "type": "string",
-                "enum": [
-                  "user",
-                  "agent",
-                  "tool",
-                  "system"
-                ]
+                "maxLength": 64,
+                "minLength": 1,
+                "pattern": "^[A-Za-z0-9._-]+$"
               },
               {
                 "type": "null"
@@ -3712,6 +3706,17 @@
               }
             ],
             "title": "Source"
+          },
+          "source_ref": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Ref"
           },
           "agent_id": {
             "anyOf": [
@@ -4177,14 +4182,11 @@
           },
           "source": {
             "type": "string",
-            "enum": [
-              "user",
-              "agent",
-              "tool",
-              "system"
-            ],
+            "maxLength": 64,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9._-]+$",
             "title": "Source",
-            "description": "Source of memory",
+            "description": "Who wrote this memory \u2014 'user', 'agent', or a specific writer such as 'cursor', 'codex', or 'claude_code'.",
             "default": "agent"
           },
           "provenance": {

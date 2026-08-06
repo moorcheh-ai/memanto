@@ -20,7 +20,8 @@ custom agents, …) can plug into long-term memory in a single config line.
 pip install memanto-mcp
 ```
 
-Requires Python 3.10+ and a [Moorcheh API key](https://console.moorcheh.ai/api-keys)
+Requires Python 3.10+, `memanto>=0.2.11`, and a
+[Moorcheh API key](https://console.moorcheh.ai/api-keys)
 (free tier: 100K ops/month).
 
 ## Quick start (Claude Desktop)
@@ -112,6 +113,9 @@ Memory types accepted by `remember` / `batch_remember`:
 
 Provenance values: `explicit_statement`, `inferred`, `corrected`,
 `validated`, `observed`, `imported`.
+
+Source values: `user`, `agent` (default), `tool`, `system`. Memanto core
+validates these at write time — a free-form label is rejected.
 
 ## Configuration
 

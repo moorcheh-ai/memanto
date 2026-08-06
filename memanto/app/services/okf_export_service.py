@@ -23,7 +23,7 @@ frontmatter keys.
 
 import re
 import shutil
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -257,19 +257,24 @@ class OkfExportService:
 
     @staticmethod
     def _parse_ts(value: Any) -> datetime:
-        """Best-effort parse of a stored ``created_at`` into a datetime; falls
-        back to now so the activity timeline always has an hour bucket."""
+        """Best-effort parse of a stored ``created_at`` into an aware UTC datetime;
+        falls back to now so the activity timeline always has an hour bucket."""
         if isinstance(value, datetime):
-            return value
+            if value.tzinfo is None or value.utcoffset() is None:
+                return value.replace(tzinfo=timezone.utc)
+            return value.astimezone(timezone.utc)
         if isinstance(value, str) and value.strip():
             text = value.strip()
             if text.endswith("Z"):
                 text = text[:-1] + "+00:00"
             try:
-                return datetime.fromisoformat(text)
+                dt = datetime.fromisoformat(text)
+                if dt.tzinfo is None or dt.utcoffset() is None:
+                    return dt.replace(tzinfo=timezone.utc)
+                return dt.astimezone(timezone.utc)
             except ValueError:
                 pass
-        return datetime.now()
+        return datetime.now(timezone.utc)
 
     # Rendering helpers
     def _render_okf_doc(self, mem: dict[str, Any], mem_type: str) -> str:
@@ -283,9 +288,21 @@ class OkfExportService:
         if description:
             frontmatter["description"] = description
 
-        tags = mem.get("tags") or []
-        if tags:
-            frontmatter["tags"] = list(tags)
+        # Tags arrive in two shapes depending on where the record came from:
+        # Moorcheh serializes the flat ``tags`` field as a comma-separated string,
+        # while the in-memory recall path already hands back a list.  Normalize so
+        # the OKF frontmatter always carries one list entry per tag instead of
+        # splitting a comma-joined string character-by-character (e.g.
+        # ``["project", "db"]`` was previously written as
+        # ``["p", "r", "o", "j", "e", "c", "t", ",", "d", "b"]``).
+        raw_tags = mem.get("tags") or []
+        if raw_tags:
+            if isinstance(raw_tags, str):
+                frontmatter["tags"] = [
+                    t.strip() for t in raw_tags.split(",") if t.strip()
+                ]
+            else:
+                frontmatter["tags"] = list(raw_tags)
 
         created_at = mem.get("created_at")
         if created_at:

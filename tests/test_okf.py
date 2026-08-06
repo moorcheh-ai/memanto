@@ -14,6 +14,8 @@ from memanto.app.services.okf_export_service import OkfExportService
 from memanto.cli.migrate.mappers import map_okf
 from memanto.cli.migrate.okf_loader import load_okf_bundle
 
+import yaml  # type: ignore[import-untyped]
+
 
 def _mem(mem_id, title, content, **extra):
     base = {
@@ -222,3 +224,45 @@ def test_loader_handles_many_unclosed_link_markers_quickly(tmp_path):
 
     assert memory["links"] == []
     assert elapsed < 1.0
+
+
+def test_okf_export_splits_comma_separated_tags(tmp_path):
+    """Tags serialized by Moorcheh arrive as a comma-separated string. The
+    export must emit one frontmatter list entry per tag, not split the string
+    character-by-character.
+
+    Regression for BountyHub #770: with tags='project,db' the old
+    ``list(tags)`` wrote ["p", "r", "o", "j", "e", "c", "t", ",", "d", "b"].
+    """
+    svc = OkfExportService(exports_dir=tmp_path / "exports")
+    # Moorcheh wire format: flat ``tags`` field is a comma-joined string.
+    memories_by_type = {
+        "fact": [
+            _mem("f1", "Postgres", "Use PG 16.", tags="project, db, prod"),
+        ],
+    }
+    result = svc.write_okf_bundle("agent1", memories_by_type, split="file")
+    fact_md = (
+        svc.exports_dir / "agent1_okf" / "memories" / "fact" / "postgres.md"
+    )
+    front = fact_md.read_text(encoding="utf-8").split("---", 2)[1]
+    fm = yaml.safe_load(front)
+    assert set(fm["tags"]) == {"project", "db", "prod"}
+
+
+def test_okf_export_preserves_list_tags(tmp_path):
+    """Tags from the in-memory recall path arrive as a list; the export must
+    still emit a proper frontmatter list of those tags (unchanged behaviour)."""
+    svc = OkfExportService(exports_dir=tmp_path / "exports")
+    memories_by_type = {
+        "fact": [
+            _mem("f1", "A fact", "Body.", tags=["infra", "db"]),
+        ],
+    }
+    svc.write_okf_bundle("agent1", memories_by_type, split="file")
+    fact_md = (
+        svc.exports_dir / "agent1_okf" / "memories" / "fact" / "a-fact.md"
+    )
+    fm = yaml.safe_load(fact_md.read_text(encoding="utf-8").split("---", 2)[1])
+    assert set(fm["tags"]) == {"infra", "db"}
+

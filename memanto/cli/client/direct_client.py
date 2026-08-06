@@ -43,6 +43,7 @@ from memanto.app.utils.errors import (
     SessionExpiredError,
     SessionNotFoundError,
 )
+from memanto.app.utils.temporal_helpers import utc_date_str
 from memanto.app.utils.validation import (
     InputLimits,
     is_successful_write_result,
@@ -674,7 +675,7 @@ class DirectClient:
         # Log to local session Markdown summary only after a durable write.
         if self.session_token and is_successful_write_result(result):
             session_id = "unknown"
-            self._get_session_service().log_memory_to_session_summary(
+            self._get_session_service().try_log_memory_to_session_summary(
                 agent_id=agent_id,
                 session_id=session_id,
                 memory_record=memory,
@@ -802,8 +803,10 @@ class DirectClient:
                     )
                 if not is_successful_write_result(item_result):
                     continue
-                mem_id = item_result.get("id") if item_result else None
-                session_svc.log_memory_to_session_summary(
+                mem_id = (
+                    item_result.get("id") if isinstance(item_result, dict) else None
+                )
+                session_svc.try_log_memory_to_session_summary(
                     agent_id=agent_id,
                     session_id=session_id,
                     memory_record=mem,
@@ -973,7 +976,7 @@ class DirectClient:
 
         # Log deletion to local session Markdown summary
         if self.session_token:
-            self._get_session_service().log_memory_deletion_to_session_summary(
+            self._get_session_service().try_log_memory_deletion_to_session_summary(
                 agent_id=agent_id,
                 session_id=session.session_id,
                 memory_id=memory_id,
@@ -1357,11 +1360,12 @@ class DirectClient:
             date: Date string (YYYY-MM-DD). Defaults to today.
 
         Returns:
-            List of unresolved conflict dicts.
+            List of unresolved conflict dicts, each with a stable ``index``
+            into the full conflict report.
         """
 
         if not date:
-            date = datetime.now().strftime("%Y-%m-%d")
+            date = utc_date_str()
 
         json_path = (
             Path.home() / ".memanto" / "conflicts" / f"{agent_id}_{date}_conflicts.json"
@@ -1373,8 +1377,12 @@ class DirectClient:
         with open(json_path, encoding="utf-8") as f:
             all_conflicts = json.load(f)
 
-        # Return only unresolved conflicts
-        return [c for c in all_conflicts if not c.get("resolved", False)]
+        # Keep unresolved conflicts but preserve each full-report index.
+        return [
+            {**c, "index": idx}
+            for idx, c in enumerate(all_conflicts)
+            if not c.get("resolved", False)
+        ]
 
     def resolve_conflict(
         self,
@@ -1391,7 +1399,8 @@ class DirectClient:
         Args:
             agent_id: Target agent.
             date: Date string (YYYY-MM-DD).
-            conflict_index: 0-based index into the full conflicts list.
+            conflict_index: Stable 0-based index into the full conflict report
+                (use ``list_conflicts(...)[i]["index"]``).
             action: Resolution action — ``keep_old``, ``keep_new``,
                 ``keep_both``, ``remove_both``, or ``manual``.
             manual_content: Required when action is ``manual``.
@@ -1422,6 +1431,15 @@ class DirectClient:
             )
 
         conflict = all_conflicts[conflict_index]
+
+        # Guard against stale/desynced conflict indexes.
+        if conflict.get("resolved", False):
+            raise ValueError(
+                f"Conflict at index {conflict_index} is already resolved. "
+                "Re-list conflicts and resolve using the 'index' field returned "
+                "by list_conflicts."
+            )
+
         old_id = conflict.get("old_memory_id")
         new_id = conflict.get("new_memory_id")
 
