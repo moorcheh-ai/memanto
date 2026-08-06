@@ -13,6 +13,7 @@ backends expose it.
 from typing import Any
 
 from fastapi import Header
+from fastapi.params import Param
 from moorcheh_sdk import AsyncMoorchehClient, MoorchehClient
 
 from memanto.app.clients.backend import Backend, parse_backend
@@ -123,6 +124,8 @@ def get_moorcheh_client(
     api_key: str | None = Header(None, alias="X-Api-Key"),
 ) -> Any:
     """Dependency injection function (cloud or on-prem)."""
+    if isinstance(api_key, Param):
+        api_key = None
     return moorcheh_client.get_client(api_key=api_key)
 
 
@@ -130,4 +133,6 @@ def get_async_moorcheh_client(
     api_key: str | None = Header(None, alias="X-Api-Key"),
 ) -> Any:
     """Dependency injection function for async client (cloud or on-prem)."""
+    if isinstance(api_key, Param):
+        api_key = None
     return moorcheh_client.get_async_client(api_key=api_key)

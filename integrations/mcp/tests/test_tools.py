@@ -11,7 +11,7 @@ import pytest
 from memanto.app.core import MemoryRecord
 from memanto.cli.client.sdk_client import SdkClient
 
-from memanto_mcp.tools import VALID_SOURCE_TYPES, _normalize_tags, register_tools
+from memanto_mcp.tools import DEFAULT_SOURCE, _normalize_tags, register_tools
 
 
 class FakeMCP:
@@ -166,6 +166,16 @@ def _as_memory_record(call_kwargs: dict[str, Any]) -> MemoryRecord:
     )
 
 
+def _ctx_for_client(name: str | None) -> SimpleNamespace:
+    """Fake the slice of Context that carries the initialize handshake info."""
+    client_params = (
+        SimpleNamespace(clientInfo=SimpleNamespace(name=name))
+        if name is not None
+        else None
+    )
+    return SimpleNamespace(session=SimpleNamespace(client_params=client_params))
+
+
 def test_remember_defaults_are_accepted_by_memanto_core() -> None:
     """Every default the tool ships must survive core's model validation."""
     mcp = FakeMCP()
@@ -176,13 +186,15 @@ def test_remember_defaults_are_accepted_by_memanto_core() -> None:
 
     assert result.status == "ok"
     record = _as_memory_record(lifecycle.client.remember.call_args.kwargs)
-    assert record.source == "agent"
+    assert record.source == DEFAULT_SOURCE
     assert record.provenance == "explicit_statement"
 
 
-@pytest.mark.parametrize("source", sorted(VALID_SOURCE_TYPES))
-def test_remember_accepts_every_advertised_source(source: str) -> None:
-    """Each value the schema offers must be storable by the installed core."""
+@pytest.mark.parametrize(
+    "source", ["user", "agent", "tool", "system", "cursor", "codex", "claude_code"]
+)
+def test_remember_accepts_any_writer_label(source: str) -> None:
+    """Sources are open: an explicit writer name reaches core unchanged."""
     mcp = FakeMCP()
     lifecycle = FakeLifecycle()
     register_tools(mcp, lifecycle)  # type: ignore[arg-type]
@@ -195,31 +207,78 @@ def test_remember_accepts_every_advertised_source(source: str) -> None:
     )
 
 
+@pytest.mark.parametrize(
+    ("client_name", "expected"),
+    [
+        ("cursor", "cursor"),
+        ("Cursor", "cursor"),
+        ("claude-ai", "claude-ai"),
+        ("Visual Studio Code", "visual-studio-code"),
+        ("Claude Code", "claude-code"),
+        (None, DEFAULT_SOURCE),
+        ("", DEFAULT_SOURCE),
+        ("###", DEFAULT_SOURCE),
+    ],
+)
+def test_remember_attributes_the_write_to_the_calling_client(
+    client_name: str | None, expected: str
+) -> None:
+    """Per-client attribution is the point of an open source field."""
+    mcp = FakeMCP()
+    lifecycle = FakeLifecycle()
+    register_tools(mcp, lifecycle)  # type: ignore[arg-type]
+
+    result = mcp.tools["remember"](
+        content="A stable fact.", ctx=_ctx_for_client(client_name)
+    )
+
+    assert result.status == "ok"
+    assert _as_memory_record(lifecycle.client.remember.call_args.kwargs).source == (
+        expected
+    )
+
+
+def test_remember_prefers_an_explicit_source_over_the_client_name() -> None:
+    mcp = FakeMCP()
+    lifecycle = FakeLifecycle()
+    register_tools(mcp, lifecycle)  # type: ignore[arg-type]
+
+    result = mcp.tools["remember"](
+        content="A stable fact.", source="mem0", ctx=_ctx_for_client("cursor")
+    )
+
+    assert result.status == "ok"
+    assert lifecycle.client.remember.call_args.kwargs["source"] == "mem0"
+
+
 def test_batch_remember_rejects_source_core_would_refuse() -> None:
     mcp = FakeMCP()
     lifecycle = FakeLifecycle()
     register_tools(mcp, lifecycle)  # type: ignore[arg-type]
 
     result = mcp.tools["batch_remember"](
-        memories=[{"content": "A fact.", "source": "mcp-agent"}]
+        memories=[{"content": "A fact.", "source": "claude code"}]
     )
 
     assert result.status == "error"
-    assert "source='mcp-agent'" in (result.message or "")
+    assert "source='claude code'" in (result.message or "")
     lifecycle.client.batch_remember.assert_not_called()
 
 
-def test_batch_remember_defaults_missing_source_to_agent() -> None:
-    """The SDK defaults an absent source to 'user'; `remember` uses 'agent'."""
+def test_batch_remember_attributes_missing_sources_to_the_client() -> None:
+    """The SDK defaults an absent source to 'user', losing the writer."""
     mcp = FakeMCP()
     lifecycle = FakeLifecycle()
     register_tools(mcp, lifecycle)  # type: ignore[arg-type]
 
-    result = mcp.tools["batch_remember"](memories=[{"content": "A fact."}])
+    result = mcp.tools["batch_remember"](
+        memories=[{"content": "A fact."}, {"content": "Another.", "source": "mem0"}],
+        ctx=_ctx_for_client("codex"),
+    )
 
     assert result.status == "ok"
     sent = lifecycle.client.batch_remember.call_args.kwargs["memories"]
-    assert sent[0]["source"] == "agent"
+    assert [m["source"] for m in sent] == ["codex", "mem0"]
 
 
 def test_recall_delegates_min_similarity_to_the_backend() -> None:

@@ -20,7 +20,7 @@ custom agents, …) can plug into long-term memory in a single config line.
 pip install memanto-mcp
 ```
 
-Requires Python 3.10+, `memanto>=0.2.11`, and a
+Requires Python 3.10+, `memanto>=0.2.13`, `mcp>=1.2,<2`, and a
 [Moorcheh API key](https://console.moorcheh.ai/api-keys)
 (free tier: 100K ops/month).
 
@@ -114,8 +114,19 @@ Memory types accepted by `remember` / `batch_remember`:
 Provenance values: `explicit_statement`, `inferred`, `corrected`,
 `validated`, `observed`, `imported`.
 
-Source values: `user`, `agent` (default), `tool`, `system`. Memanto core
-validates these at write time — a free-form label is rejected.
+### Source attribution
+
+`source` names *who wrote* a memory, so recall can be attributed and filtered
+per writer. It is open: `user`, `agent`, `tool`, `system`, or a specific
+writer such as `cursor`, `codex`, `claude_code`, `mem0`. Labels are limited to
+64 letters, digits, `.`, `_`, or `-` so that `#source:<value>` stays a usable
+filter.
+
+When a tool call omits `source`, the server attributes the write to the
+**connected MCP client** from the initialize handshake (`cursor`, `codex`,
+`claude-ai`, …), falling back to `mcp-agent` when the client sends no name.
+Two editors sharing one agent therefore stay distinguishable in recall without
+any extra configuration.
 
 ## Configuration
 

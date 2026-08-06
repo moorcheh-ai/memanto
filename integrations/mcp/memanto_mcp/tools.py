@@ -14,11 +14,18 @@ at tool-registration time, and we use closure-scoped type aliases (e.g.
 """
 
 import logging
-from typing import Annotated, Any, Literal, TypeVar, get_args
+import re
+from typing import Annotated, Any, Literal, TypeVar
 
+from mcp.server.fastmcp import Context
 from memanto.app.constants import (
     VALID_MEMORY_TYPES,
     VALID_PROVENANCE_TYPES,
+)
+from memanto.app.core import (
+    SOURCE_MAX_LENGTH,
+    SOURCE_PATTERN,
+    is_valid_source,
 )
 from memanto.app.utils.errors import (
     AgentAlreadyExistsError,
@@ -64,11 +71,26 @@ ProvenanceLiteral = Literal[
     "imported",
 ]
 
-# Memanto core validates ``MemoryRecord.source`` against this closed set; a
-# free-form label (e.g. an agent name) is rejected at write time.
-SourceLiteral = Literal["user", "agent", "tool", "system"]
+# Attribution fallback when the transport carries no client identity.
+DEFAULT_SOURCE = "mcp-agent"
 
-VALID_SOURCE_TYPES = frozenset(get_args(SourceLiteral))
+# A source names the writer of a memory. Memanto keeps it open ("user",
+# "agent", "cursor", "codex", ...) but bounded, so reuse core's own rule rather
+# than restating it here: the schema we advertise then matches what core will
+# accept at write time.
+SOURCE_CONSTRAINT = Field(
+    default=None,
+    description=(
+        "Who wrote this memory. Defaults to the connected MCP client "
+        "(e.g. 'cursor', 'codex', 'claude-ai'), falling back to "
+        f"'{DEFAULT_SOURCE}'. Up to {SOURCE_MAX_LENGTH} letters, digits, "
+        "'.', '_', or '-'."
+    ),
+    max_length=SOURCE_MAX_LENGTH,
+    pattern=SOURCE_PATTERN,
+)
+
+_SOURCE_SANITIZE_RE = re.compile(r"[^A-Za-z0-9._-]+")
 
 # Hard caps mirroring the Memanto core service (see SdkClient).
 _MAX_CONTENT_LENGTH = InputLimits.MAX_TEXT_LENGTH
@@ -209,6 +231,34 @@ def _format_exception(exc: Exception) -> str:
     return f"{type(exc).__name__}: {exc}"
 
 
+def _sanitize_source(raw: Any) -> str | None:
+    """Coerce a client-supplied name into a valid Memanto source label.
+
+    Client names are free text ("Visual Studio Code", "Claude Code"), so fold
+    them to the bounded label shape instead of dropping the attribution.
+    """
+    if not raw:
+        return None
+    token = _SOURCE_SANITIZE_RE.sub("-", str(raw).strip().lower()).strip("-")
+    return token[:SOURCE_MAX_LENGTH] or None
+
+
+def _client_source(ctx: Context | None) -> str:
+    """Name the MCP client behind this call so writes stay attributable.
+
+    Clients identify themselves during the initialize handshake ("cursor",
+    "codex", "claude-ai", ...), which is exactly the per-writer observability
+    Memanto's open ``source`` field is for. Falls back to a generic label when
+    no client info reached us (direct calls, clients that omit it).
+    """
+    try:
+        client_params = ctx.session.client_params if ctx is not None else None
+        name = client_params.clientInfo.name if client_params else None
+    except AttributeError:
+        name = None
+    return _sanitize_source(name) or DEFAULT_SOURCE
+
+
 def _normalize_tags(raw: Any) -> list[str]:
     """Accept MCP client tag shapes while preserving SDK list semantics."""
     if raw is None:
@@ -329,18 +379,9 @@ def register_tools(mcp: Any, lifecycle: MemantoLifecycle) -> None:
                 ),
             ),
         ] = "explicit_statement",
-        source: Annotated[
-            SourceLiteral,
-            Field(
-                description=(
-                    "Who produced this memory. 'user' means the user supplied "
-                    "it, 'agent' means you did (default), 'tool' means it came "
-                    "out of a tool call, 'system' means it was injected by the "
-                    "platform."
-                ),
-            ),
-        ] = "agent",
+        source: Annotated[str | None, SOURCE_CONSTRAINT] = None,
         agent_id: AgentIdField = None,
+        ctx: Context | None = None,
     ) -> RememberResult:
         """Store a single memory for the resolved agent."""
         try:
@@ -358,7 +399,7 @@ def register_tools(mcp: Any, lifecycle: MemantoLifecycle) -> None:
                 content=content,
                 confidence=confidence,
                 tags=_normalize_tags(tags),
-                source=source,
+                source=source or _client_source(ctx),
                 provenance=provenance,
             )
             return RememberResult(
@@ -398,17 +439,20 @@ def register_tools(mcp: Any, lifecycle: MemantoLifecycle) -> None:
                     "List of memory dicts. Each item supports the same fields "
                     "as `remember` (content [required], type, title, "
                     "confidence, tags, source, provenance) with the same "
-                    "allowed values. Max 100 items."
+                    "allowed values; an item without a source is attributed to "
+                    "the calling client. Max 100 items."
                 ),
                 min_length=1,
                 max_length=_MAX_BATCH_SIZE,
             ),
         ],
         agent_id: AgentIdField = None,
+        ctx: Context | None = None,
     ) -> BatchRememberResult:
         """Validate and store multiple memories for the resolved agent."""
         try:
             resolved = lifecycle.resolve_agent_id(agent_id)
+            default_source = _client_source(ctx)
             # Validate before round-trip so we fail fast with a clear error.
             normalized_memories: list[dict[str, Any]] = []
             for i, item in enumerate(memories):
@@ -432,16 +476,16 @@ def register_tools(mcp: Any, lifecycle: MemantoLifecycle) -> None:
                         f"memories[{i}].provenance={prov!r} is not valid. "
                         f"Choose one of: {sorted(VALID_PROVENANCE_TYPES)}"
                     )
-                src = item.get("source") or "agent"
-                if src not in VALID_SOURCE_TYPES:
+                src = item.get("source") or default_source
+                if not is_valid_source(src):
                     raise ValueError(
-                        f"memories[{i}].source={src!r} is not valid. "
-                        f"Choose one of: {sorted(VALID_SOURCE_TYPES)}"
+                        f"memories[{i}].source={src!r} is not valid. Use up to "
+                        f"{SOURCE_MAX_LENGTH} letters, digits, '.', '_', or '-'."
                     )
                 normalized_item = dict(item)
                 normalized_item["tags"] = _normalize_tags(item.get("tags"))
-                # The SDK defaults a missing source to "user"; keep batch
-                # writes consistent with `remember`, whose default is "agent".
+                # The SDK defaults a missing source to "user"; attribute the
+                # write to the calling client instead, like `remember` does.
                 normalized_item["source"] = src
                 normalized_memories.append(normalized_item)
 
