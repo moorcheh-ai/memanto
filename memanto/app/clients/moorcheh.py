@@ -10,7 +10,7 @@ Service code keeps calling ``get_moorcheh_client()`` and uses the same
 backends expose it.
 """
 
-from typing import Any
+from typing import Annotated, Any
 
 from fastapi import Header
 from moorcheh_sdk import AsyncMoorchehClient, MoorchehClient
@@ -120,14 +120,20 @@ moorcheh_client = MoorchehClientSingleton()
 
 
 def get_moorcheh_client(
-    api_key: str | None = Header(None, alias="X-Api-Key"),
+    api_key: Annotated[str | None, Header(alias="X-Api-Key")] = None,
 ) -> Any:
-    """Dependency injection function (cloud or on-prem)."""
+    """Return the active client as a FastAPI dependency or plain Python call.
+
+    Keeping ``None`` as the actual default matters for internal callers such
+    as the answer and upload routes, which invoke this function directly.
+    With ``Header(...)`` as the default value, those calls passed FastAPI's
+    ``Header`` metadata object to the cloud SDK as the API key.
+    """
     return moorcheh_client.get_client(api_key=api_key)
 
 
 def get_async_moorcheh_client(
-    api_key: str | None = Header(None, alias="X-Api-Key"),
+    api_key: Annotated[str | None, Header(alias="X-Api-Key")] = None,
 ) -> Any:
-    """Dependency injection function for async client (cloud or on-prem)."""
+    """Async equivalent of :func:`get_moorcheh_client`."""
     return moorcheh_client.get_async_client(api_key=api_key)

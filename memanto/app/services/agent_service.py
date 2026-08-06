@@ -233,6 +233,10 @@ class AgentService:
 
         agent_file.unlink()
 
+        # Best-effort cleanup: remove stale lock left by interrupted create.
+        lock_file = agent_file.with_suffix(".json.lock")
+        lock_file.unlink(missing_ok=True)
+
     def agent_exists(self, agent_id: str) -> bool:
         """
         Check if agent exists

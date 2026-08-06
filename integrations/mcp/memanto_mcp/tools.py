@@ -14,7 +14,7 @@ at tool-registration time, and we use closure-scoped type aliases (e.g.
 """
 
 import logging
-from typing import Annotated, Any, Literal, TypeVar
+from typing import Annotated, Any, Literal, TypeVar, get_args
 
 from memanto.app.constants import (
     VALID_MEMORY_TYPES,
@@ -63,6 +63,12 @@ ProvenanceLiteral = Literal[
     "observed",
     "imported",
 ]
+
+# Memanto core validates ``MemoryRecord.source`` against this closed set; a
+# free-form label (e.g. an agent name) is rejected at write time.
+SourceLiteral = Literal["user", "agent", "tool", "system"]
+
+VALID_SOURCE_TYPES = frozenset(get_args(SourceLiteral))
 
 # Hard caps mirroring the Memanto core service (see SdkClient).
 _MAX_CONTENT_LENGTH = InputLimits.MAX_TEXT_LENGTH
@@ -324,14 +330,16 @@ def register_tools(mcp: Any, lifecycle: MemantoLifecycle) -> None:
             ),
         ] = "explicit_statement",
         source: Annotated[
-            str,
+            SourceLiteral,
             Field(
                 description=(
-                    "Free-form label for the source of this memory "
-                    "(e.g. 'user', 'web', 'tool-call', or your agent name)."
+                    "Who produced this memory. 'user' means the user supplied "
+                    "it, 'agent' means you did (default), 'tool' means it came "
+                    "out of a tool call, 'system' means it was injected by the "
+                    "platform."
                 ),
             ),
-        ] = "mcp-agent",
+        ] = "agent",
         agent_id: AgentIdField = None,
     ) -> RememberResult:
         """Store a single memory for the resolved agent."""
@@ -389,7 +397,8 @@ def register_tools(mcp: Any, lifecycle: MemantoLifecycle) -> None:
                 description=(
                     "List of memory dicts. Each item supports the same fields "
                     "as `remember` (content [required], type, title, "
-                    "confidence, tags, source, provenance). Max 100 items."
+                    "confidence, tags, source, provenance) with the same "
+                    "allowed values. Max 100 items."
                 ),
                 min_length=1,
                 max_length=_MAX_BATCH_SIZE,
@@ -423,8 +432,17 @@ def register_tools(mcp: Any, lifecycle: MemantoLifecycle) -> None:
                         f"memories[{i}].provenance={prov!r} is not valid. "
                         f"Choose one of: {sorted(VALID_PROVENANCE_TYPES)}"
                     )
+                src = item.get("source") or "agent"
+                if src not in VALID_SOURCE_TYPES:
+                    raise ValueError(
+                        f"memories[{i}].source={src!r} is not valid. "
+                        f"Choose one of: {sorted(VALID_SOURCE_TYPES)}"
+                    )
                 normalized_item = dict(item)
                 normalized_item["tags"] = _normalize_tags(item.get("tags"))
+                # The SDK defaults a missing source to "user"; keep batch
+                # writes consistent with `remember`, whose default is "agent".
+                normalized_item["source"] = src
                 normalized_memories.append(normalized_item)
 
             client = lifecycle.ensure_ready(resolved)
@@ -500,7 +518,11 @@ def register_tools(mcp: Any, lifecycle: MemantoLifecycle) -> None:
                 default=None,
                 ge=0.0,
                 le=1.0,
-                description="Minimum similarity score 0-1.",
+                description=(
+                    "Minimum similarity score 0-1. Applied by the search "
+                    "backend, so the top-N is filled with results that pass "
+                    "the threshold. Defaults to the server config value."
+                ),
             ),
         ] = None,
         agent_id: AgentIdField = None,
@@ -514,10 +536,9 @@ def register_tools(mcp: Any, lifecycle: MemantoLifecycle) -> None:
                 query=query,
                 limit=limit,
                 type=list(type) if type else None,
+                min_similarity=min_similarity,
             )
             hits = [_to_memory_hit(m) for m in result.get("memories", [])]
-            if min_similarity is not None:
-                hits = [h for h in hits if (h.score or 0.0) >= min_similarity]
             return RecallResult(
                 status="ok",
                 agent_id=resolved,
@@ -742,15 +763,16 @@ def register_tools(mcp: Any, lifecycle: MemantoLifecycle) -> None:
             ),
         ] = None,
         kiosk_mode: Annotated[
-            bool,
+            bool | None,
             Field(
+                default=None,
                 description=(
                     "If true, refuses to answer when no memory clears the "
                     "similarity threshold (useful for strictly grounded "
-                    "applications)."
+                    "applications). Defaults to the server config value."
                 ),
             ),
-        ] = False,
+        ] = None,
         agent_id: AgentIdField = None,
     ) -> AnswerResult:
         """Answer a question using memories from the resolved agent."""
@@ -855,8 +877,26 @@ def _register_admin_tools(mcp: Any, lifecycle: MemantoLifecycle) -> None:
     def list_agents() -> AgentListResult:
         """List available Memanto agents through the admin client."""
         try:
-            agents = lifecycle.client.list_agents()
-            return AgentListResult(status="ok", count=len(agents), agents=agents)
+            # SdkClient returned a bare list of agents up to memanto 0.2.12 and
+            # a {"agents", "count", "warnings"} envelope after it. Both are in
+            # our supported range, so accept either. The warnings flag agents
+            # whose local metadata could not be read: surface them instead of
+            # silently reporting a short list.
+            response = lifecycle.client.list_agents()
+            if isinstance(response, dict):
+                agents = response.get("agents", [])
+                count = response.get("count", len(agents))
+                warnings = response.get("warnings", [])
+            else:
+                agents = list(response)
+                count = len(agents)
+                warnings = []
+            return AgentListResult(
+                status="ok",
+                count=count,
+                agents=agents,
+                message="; ".join(warnings) if warnings else None,
+            )
         except Exception as exc:
             logger.exception("list_agents failed")
             return _error_payload(AgentListResult, _format_exception(exc))

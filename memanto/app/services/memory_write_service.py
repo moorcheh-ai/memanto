@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING, Any
 if TYPE_CHECKING:
     from moorcheh_sdk import MoorchehClient
 
-from memanto.app.core import MemoryRecord
+from memanto.app.core import MemoryRecord, is_valid_source
 from memanto.app.services.memory_parsing_service import MemoryParsingService
 from memanto.app.utils.errors import MemoryError
 from memanto.app.utils.ids import generate_memory_id
@@ -332,9 +332,12 @@ class MemoryWriteService:
                     f"in namespace {namespace}"
                 )
 
-            # Normalize legacy source values
+            # Sources are open labels (the writer's name), so keep whatever the
+            # record carries. Only a value MemoryRecord would reject — blank, or
+            # one holding characters that break `#source:` filters — falls back,
+            # so an edit cannot fail on data written before the label was bounded.
             source_val = updates.get("source", metadata.get("source", "system"))
-            if source_val not in {"user", "agent", "tool", "system"}:
+            if not is_valid_source(source_val):
                 source_val = "system"
 
             # Build updated memory record

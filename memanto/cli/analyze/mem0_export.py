@@ -7,7 +7,11 @@ ships a new version.
 
 Endpoints (Mem0 Platform REST API — https://docs.mem0.ai/api-reference):
     GET  /v1/entities/                                 list users/agents/apps/runs
-    GET  /v1/memories/?<scope>&page=&page_size=        list memories scoped to one entity
+    POST /v3/memories/?page=&page_size=                list memories scoped to one entity
+
+Mem0 v3 requires entity identifiers inside a JSON ``filters`` object. Passing
+them as top-level query parameters, as the retired v1 endpoint allowed, is
+rejected by the current Platform API.
 
 Auth: ``Authorization: Token <api_key>`` (Mem0's convention — not Bearer).
 """
@@ -51,6 +55,19 @@ def _get_json(
     resp = client.get(path, params=params or {})
     if resp.status_code >= 400:
         raise RuntimeError(f"GET {path} -> {resp.status_code}: {resp.text[:500]}")
+    return resp.json() if resp.content else {}
+
+
+def _post_json(
+    client: httpx.Client,
+    path: str,
+    *,
+    params: dict[str, Any] | None = None,
+    json: dict[str, Any] | None = None,
+) -> Any:
+    resp = client.post(path, params=params or {}, json=json or {})
+    if resp.status_code >= 400:
+        raise RuntimeError(f"POST {path} -> {resp.status_code}: {resp.text[:500]}")
     return resp.json() if resp.content else {}
 
 
@@ -122,8 +139,13 @@ def paginate_memories(
     last_page: dict[str, Any] = {}
 
     while True:
-        params = {**filters, "page": page, "page_size": page_size}
-        response = _get_json(client, "/v1/memories/", params=params)
+        params = {"page": page, "page_size": page_size}
+        response = _post_json(
+            client,
+            "/v3/memories/",
+            params=params,
+            json={"filters": filters},
+        )
         last_page = response if isinstance(response, dict) else {}
         batch = last_page.get("results") or []
         if not batch:

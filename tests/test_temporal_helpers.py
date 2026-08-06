@@ -1,4 +1,4 @@
-from datetime import timezone
+from datetime import datetime, timedelta, timezone
 
 import pytest
 
@@ -8,6 +8,7 @@ from memanto.app.routes.memory import (
     RecallRequest,
 )
 from memanto.app.services.memory_read_service import MemoryReadService
+from memanto.app.utils import temporal_helpers
 from memanto.app.utils.temporal_helpers import (
     build_temporal_query,
     get_yesterday_range,
@@ -15,6 +16,16 @@ from memanto.app.utils.temporal_helpers import (
     parse_iso_timestamp,
     parse_relative_time,
 )
+
+
+def test_utc_date_str_uses_the_utc_calendar_day(monkeypatch):
+    """The UTC storage date must not follow a still-previous local day."""
+    instant = datetime(2026, 7, 30, 1, 0, tzinfo=timezone.utc)
+    local_date = instant.astimezone(timezone(-timedelta(hours=6))).date().isoformat()
+    monkeypatch.setattr(temporal_helpers, "utc_now", lambda: instant)
+
+    assert local_date == "2026-07-29"
+    assert temporal_helpers.utc_date_str() == "2026-07-30"
 
 
 def test_parse_iso_timestamp_normalizes_offset_to_utc():

@@ -1,5 +1,3 @@
-[![MCP Toplist](https://mcptoplist.com/badge/glama%2Fmoorcheh-ai%2Fmemanto.svg)](https://mcptoplist.com/server/glama%2Fmoorcheh-ai%2Fmemanto)
-
 <p align="center">
     <a href="https://www.memanto.ai/">
     <img alt="MEMANTO Logo" src="https://github.com/moorcheh-ai/memanto/raw/main/assets/memanto-logo.svg" width="500">
@@ -44,7 +42,7 @@
     <a href="https://x.com/moorcheh_ai" target="_blank"><img src="https://img.shields.io/twitter/url/https/twitter.com/langchain.svg?style=social&label=Follow%20%40Moorcheh.ai" alt="Twitter / X"></a>
 </p>
 
-
+<p align="center"><a href="https://mcptoplist.com/server/glama%2Fmoorcheh-ai%2Fmemanto"><img src="https://mcptoplist.com/badge/glama%2Fmoorcheh-ai%2Fmemanto.svg" alt="mcp top list" width="250" height="30"></a></p>
 <p align="center"><a href="https://trendshift.io/repositories/27378" target="_blank"><img src="https://trendshift.io/api/badge/repositories/27378" alt="moorcheh-ai%2Fmemanto | Trendshift" style="width: 250px; height: 55px;" width="250" height="55"/></a></p>
 
 

@@ -62,8 +62,6 @@ logger = logging.getLogger(__name__)
 
 _KEY_TAG_PREFIX = "lg:key:"
 _ENCODED_KEY_TAG_PREFIX = "lg:key:v1:"
-_ESCAPED_KEY_TAG_PREFIX = "lg:key:v2:"
-_ESCAPED_KEY_TAG_MARKER = "lg:key-encoding:v2"
 _RESERVED_PREFIX = "lg:"
 
 _VALID_MEMORY_TYPES = {
@@ -175,8 +173,8 @@ class MemantoStore(BaseStore):
         semantic recall if not found in the recent window.
         """
         client, agent_id = self._ensure_client(op.namespace)
-        required_tags = self._key_tags(op.key)
-        legacy_tag = self._legacy_key_tag(op.key)
+        key_tag = self._key_to_tag(op.key)
+        required_tags = [key_tag]
 
         # recall_recent avoids semantic bias in key lookup
         result = client.recall_recent(
@@ -187,30 +185,15 @@ class MemantoStore(BaseStore):
             tags = self._normalize_tags(mem.get("tags"))
             if all(t in tags for t in required_tags):
                 return self._memory_to_item(mem, op.namespace, op.key)
-            if legacy_tag and legacy_tag in tags:
-                if self._legacy_key_tag_is_ambiguous(op.key):
-                    if strict:
-                        raise RuntimeError(
-                            f"Cannot safely resolve ambiguous legacy key {op.key!r}"
-                        )
-                    continue
-                return self._memory_to_item(mem, op.namespace, op.key)
 
         # Fallback: semantic recall may surface older memories
         try:
-            lookup_tags = [required_tags]
-            if legacy_tag:
-                lookup_tags.append([legacy_tag])
-
-            results = [
-                client.recall(
-                    agent_id=agent_id,
-                    query=op.key or "*",
-                    limit=self._MEMANTO_RECALL_CAP,
-                    tags=tags,
-                )
-                for tags in lookup_tags
-            ]
+            result = client.recall(
+                agent_id=agent_id,
+                query=op.key or "*",
+                limit=self._MEMANTO_RECALL_CAP,
+                tags=[key_tag],
+            )
         except Exception as exc:
             if strict:
                 raise RuntimeError(
@@ -219,19 +202,10 @@ class MemantoStore(BaseStore):
             logger.warning("MemantoStore._do_get fallback recall failed: %s", exc)
             return None
 
-        for result in results:
-            for mem in result.get("memories", []):
-                tags = self._normalize_tags(mem.get("tags"))
-                if all(t in tags for t in required_tags):
-                    return self._memory_to_item(mem, op.namespace, op.key)
-                if legacy_tag and legacy_tag in tags:
-                    if self._legacy_key_tag_is_ambiguous(op.key):
-                        if strict:
-                            raise RuntimeError(
-                                f"Cannot safely resolve ambiguous legacy key {op.key!r}"
-                            )
-                        continue
-                    return self._memory_to_item(mem, op.namespace, op.key)
+        for mem in result.get("memories", []):
+            tags = self._normalize_tags(mem.get("tags"))
+            if all(t in tags for t in required_tags):
+                return self._memory_to_item(mem, op.namespace, op.key)
         return None
 
     # ------------------------------------------------------------------ #
@@ -279,7 +253,7 @@ class MemantoStore(BaseStore):
         user_tags = [
             str(t) for t in raw_tags if not str(t).startswith(_RESERVED_PREFIX)
         ]
-        all_tags = user_tags + self._key_tags(op.key)
+        all_tags = user_tags + [self._key_to_tag(op.key)]
 
         client, agent_id = self._ensure_client(op.namespace)
 
@@ -461,45 +435,15 @@ class MemantoStore(BaseStore):
 
     @staticmethod
     def _key_to_tag(key: str) -> str:
-        # v1 is the historical comma encoding. Use a marked v2 encoding for
-        # raw keys beginning with v1 so they cannot collide with v1 payloads.
-        if key.startswith("v1:"):
-            return f"{_ESCAPED_KEY_TAG_PREFIX}{quote(key, safe='')}"
         if "," in key:
             return f"{_ENCODED_KEY_TAG_PREFIX}{quote(key, safe='')}"
         return f"{_KEY_TAG_PREFIX}{key}"
 
-    @classmethod
-    def _key_tags(cls, key: str) -> list[str]:
-        tags = [cls._key_to_tag(key)]
-        if key.startswith("v1:"):
-            tags.append(_ESCAPED_KEY_TAG_MARKER)
-        return tags
-
-    @staticmethod
-    def _legacy_key_tag(key: str) -> str | None:
-        return f"{_KEY_TAG_PREFIX}{key}" if key.startswith("v1:") else None
-
-    @staticmethod
-    def _legacy_key_tag_is_ambiguous(key: str) -> bool:
-        if not key.startswith("v1:"):
-            return False
-        payload = key[len("v1:") :]
-        return "," in unquote(payload)
-
     @staticmethod
     def _tags_to_key(tags: list[str]) -> str | None:
-        if _ESCAPED_KEY_TAG_MARKER in tags:
-            for t in tags:
-                if t.startswith(_ESCAPED_KEY_TAG_PREFIX):
-                    return unquote(t[len(_ESCAPED_KEY_TAG_PREFIX) :])
         for t in tags:
             if t.startswith(_ENCODED_KEY_TAG_PREFIX):
-                payload = t[len(_ENCODED_KEY_TAG_PREFIX) :]
-                decoded = unquote(payload)
-                # Historical v1 encoding was only used for comma-bearing keys.
-                # A non-comma payload is therefore a legacy raw ``v1:`` key.
-                return decoded if "," in decoded else f"v1:{payload}"
+                return unquote(t[len(_ENCODED_KEY_TAG_PREFIX) :])
         for t in tags:
             if t.startswith(_KEY_TAG_PREFIX):
                 return t[len(_KEY_TAG_PREFIX) :]

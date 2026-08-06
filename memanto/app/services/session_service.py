@@ -229,7 +229,7 @@ class SessionService:
 
                 while True:
                     try:
-                        msvcrt.locking(fd, msvcrt.LK_NBLCK, 1)
+                        msvcrt.locking(fd, msvcrt.LK_NBLCK, 1)  # type: ignore[attr-defined]
                         break
                     except OSError as exc:
                         if exc.errno not in {
@@ -252,7 +252,7 @@ class SessionService:
                 if os.name == "nt":
                     import msvcrt
 
-                    msvcrt.locking(fd, msvcrt.LK_UNLCK, 1)
+                    msvcrt.locking(fd, msvcrt.LK_UNLCK, 1)  # type: ignore[attr-defined]
                 else:
                     import fcntl
 
@@ -435,11 +435,11 @@ class SessionService:
 
             try:
                 session = self.get_session(agent_id)
-            except ValueError:
+            except (ValueError, OSError):
                 # An empty or malformed marker (e.g. a crash between unlink and
                 # the fallback write in _set_active_session) fails validate_safe_id.
-                # An unreadable marker means "no active session", exactly as the
-                # OSError path above already treats it.
+                # An overlong marker can also raise OSError (ENAMETOOLONG) when
+                # probing the session path. Either way: no active session.
                 return None
             if not session:
                 return None
@@ -582,7 +582,12 @@ class SessionService:
 
     def _load_session_file(self, session_file: Path) -> Session | None:
         """Load one session file, treating corrupt local state as absent."""
-        if not session_file.exists():
+        try:
+            if not session_file.exists():
+                return None
+        except OSError as exc:
+            # e.g. ENAMETOOLONG from a corrupt active-marker agent_id
+            logger.warning("Skipping invalid session path %s: %s", session_file, exc)
             return None
         self._harden_session_storage()
 
