@@ -77,6 +77,9 @@ def write_bundle(memories: list[dict], sessions: list[dict], stats: dict,
             else:
                 out.unlink()
         os.replace(tmp, out)
+        # _write_bundle_contents wrote into the temp dir — report the final,
+        # live path, not the (now gone) temp location.
+        result["bundle_dir"] = str(out)
     except BaseException:
         shutil.rmtree(tmp, ignore_errors=True)
         raise

@@ -77,6 +77,15 @@ def test_index_filename_reserved(tmp_path):
     assert "Index" in memory_file.read_text(encoding="utf-8")
 
 
+def test_bundle_dir_is_final_path(tmp_path):
+    """bundle_dir must point at the live output dir, not the temp swap path."""
+    result = extract_memories(CONV)
+    written = write_bundle(result["memories"], result["sessions"], result["stats"], tmp_path)
+    assert written["bundle_dir"] == str(tmp_path)
+    assert Path(written["bundle_dir"]).is_dir()
+    assert (Path(written["bundle_dir"]) / "index.md").is_file()
+
+
 def test_bundle_replaces_previous_cleanly(tmp_path):
     """Regeneration swaps the whole dir — stray/stale files never survive."""
     result = extract_memories(CONV)
