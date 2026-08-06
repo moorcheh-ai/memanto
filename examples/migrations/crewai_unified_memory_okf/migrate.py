@@ -469,6 +469,16 @@ def write_okf_bundle(
     """Write a deterministic, atomic OKF bundle and return its manifest."""
 
     output = safe_destructive_target(output, purpose="output directory")
+    source_database = source_database.resolve()
+    if (
+        output == source_database
+        or output.is_relative_to(source_database)
+        or source_database.is_relative_to(output)
+    ):
+        raise ValueError(
+            "Output directory overlaps source database: "
+            f"output={output}; source={source_database}"
+        )
     if output.exists() and not force:
         raise FileExistsError(f"Output already exists (use --force): {output}")
 

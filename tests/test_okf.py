@@ -221,7 +221,7 @@ def test_visualizations_use_typed_fences_and_singular_hours():
         ]
     )
     assert markdown.count("```text") == 2
-    assert "**1** memories across **1** active hour" in markdown
+    assert "**1** memories across **1** active hour\n" in markdown
 
 
 def test_visualization_parser_accepts_current_and_legacy_headings(tmp_path):

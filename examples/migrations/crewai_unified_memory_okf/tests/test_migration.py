@@ -260,6 +260,46 @@ def test_atomic_publish_restores_previous_bundle_on_failure(tmp_path, monkeypatc
     assert sentinel.read_text(encoding="utf-8") == "preserve me"
 
 
+@pytest.mark.parametrize("relation", ["equal", "output-parent", "output-child"])
+def test_output_cannot_overlap_source_database(tmp_path, relation):
+    """Reject equal, parent, and child output paths without touching source data."""
+
+    if relation == "equal":
+        source = output = tmp_path / "source"
+    elif relation == "output-parent":
+        output = tmp_path / "tree"
+        source = output / "source"
+    else:
+        source = tmp_path / "source"
+        output = source / "bundle"
+
+    source.mkdir(parents=True)
+    sentinel = source / "lancedb-source.txt"
+    sentinel.write_text("preserve source", encoding="utf-8")
+    record = CrewAIRecord(
+        id="public",
+        content="Public content",
+        scope="/facts",
+        categories=("fact",),
+        metadata={},
+        importance=0.5,
+        created_at="2026-08-05T00:00:00Z",
+        last_accessed="2026-08-05T00:00:00Z",
+        source="agent",
+        private=False,
+    )
+
+    with pytest.raises(ValueError, match="overlaps source database"):
+        write_okf_bundle(
+            [record],
+            output,
+            source_database=source,
+            force=True,
+        )
+
+    assert sentinel.read_text(encoding="utf-8") == "preserve source"
+
+
 def test_tags_are_bounded_and_deduplicated():
     """Keep generated tags unique and within Memanto bounds."""
 
