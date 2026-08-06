@@ -453,6 +453,7 @@ def test_one_command_demo_preserves_failed_audit_report(tmp_path, monkeypatch):
     }
 
     def fake_run(command, *, capture=False):
+        """Simulate a pipeline whose audit emits a failing JSON receipt."""
         assert workdir.is_dir()
         if capture:
             raise run_demo.subprocess.CalledProcessError(
@@ -480,6 +481,7 @@ def test_one_command_demo_preserves_original_non_json_failure(tmp_path, monkeypa
     workdir = tmp_path / "new-showcase"
 
     def fake_run(command, *, capture=False):
+        """Simulate an audit failure that produces no parseable JSON."""
         if capture:
             raise run_demo.subprocess.CalledProcessError(
                 7,
