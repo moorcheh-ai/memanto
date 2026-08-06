@@ -1,0 +1,112 @@
+{
+  "adapter": "crewai-unified-memory-to-okf",
+  "adapter_version": "1.0.0",
+  "created_at": "2026-08-06T00:42:49.204458Z",
+  "source": {
+    "framework": "CrewAI",
+    "storage": "LanceDB",
+    "schema": "unified-memory",
+    "database": "crewai-memory",
+    "table": "memories",
+    "total_records": 8,
+    "canonical_sha256": "5bb119dd79f241b840d84dfa23ca7d94479d3bf0d02f0bc30e197238f9ba6e9d"
+  },
+  "migration": {
+    "selected_records": 8,
+    "mapped_records": 8,
+    "skipped_private": 0,
+    "redactions": 0,
+    "per_type": {
+      "decision": 2,
+      "error": 1,
+      "goal": 1,
+      "instruction": 1,
+      "learning": 1,
+      "preference": 1,
+      "relationship": 1
+    },
+    "embedding_policy": "omitted-derived-data"
+  },
+  "records": [
+    {
+      "crewai_id": "43c69696-2be5-40f3-b92b-77c3bb48ef6c",
+      "source_record_sha256": "7d1b184b6be9e0adbdea4ec620295d061441055e75f9d801be64063f71f70a0a",
+      "okf_path": "memories/decision/original-sqlite-decision-43c69696-2be5-40f3-b.md",
+      "okf_file_sha256": "5310da0abe902b456c8255e1378adbce6159ff5ab30aaaab23084dce652f6e29",
+      "memanto_type": "decision",
+      "mapping_basis": "metadata.memory_type",
+      "private": false,
+      "redactions": 0
+    },
+    {
+      "crewai_id": "84b237f2-3188-4230-9776-67ec3c5e4db6",
+      "source_record_sha256": "504313e902204b263dc907c8b5b794ca82902f0713ba17bce2c7bf678378a597",
+      "okf_path": "memories/decision/postgresql-16-is-the-current-ledger-decision-84b237f2-3188-4230-9.md",
+      "okf_file_sha256": "5de23d22438247151dd22d8900a414b26da50064e136d52d43323d9c7e788998",
+      "memanto_type": "decision",
+      "mapping_basis": "metadata.memory_type",
+      "private": false,
+      "redactions": 0
+    },
+    {
+      "crewai_id": "85450f4d-2eb3-4f62-bf51-2f1d0bc71c99",
+      "source_record_sha256": "59575c7259f2016ad15e8ce6b1742a5a8e0403277e29f50b51a3383cc6d5dbfb",
+      "okf_path": "memories/instruction/analytics-email-privacy-rule-85450f4d-2eb3-4f62-b.md",
+      "okf_file_sha256": "79433eb7cfbf5fead65ef3c83ee3930a7d7ee7651811276bd0c3154a5e035d24",
+      "memanto_type": "instruction",
+      "mapping_basis": "metadata.memory_type",
+      "private": false,
+      "redactions": 0
+    },
+    {
+      "crewai_id": "e7017675-11b8-49a7-96ce-f570d402f979",
+      "source_record_sha256": "68520fac7d1420535b96784b1689a236613a677dabaabf4f1634d6258a7f6c56",
+      "okf_path": "memories/preference/sponsor-reporting-preference-e7017675-11b8-49a7-9.md",
+      "okf_file_sha256": "b6a731de533c086d47f55993a12fdae1e68f983710cfae15510e9fbba2edc2ef",
+      "memanto_type": "preference",
+      "mapping_basis": "metadata.memory_type",
+      "private": false,
+      "redactions": 0
+    },
+    {
+      "crewai_id": "bc26de54-75d1-47bd-938b-d185650124b8",
+      "source_record_sha256": "a7be2788257ff3728f8e69e30cb9f4eaa0fc4bc349c9e0eae340c856fdbe68e7",
+      "okf_path": "memories/error/aur-218-duplicate-invoice-root-cause-bc26de54-75d1-47bd-9.md",
+      "okf_file_sha256": "5fd89d84a62d5696c0f3de3d6e0c8f21cd2b47a233da00f7550192081ba2f5b6",
+      "memanto_type": "error",
+      "mapping_basis": "metadata.memory_type",
+      "private": false,
+      "redactions": 0
+    },
+    {
+      "crewai_id": "b380bc30-d008-4fee-b554-8e390ec2a3ac",
+      "source_record_sha256": "57a64e347612d1b04d42efd34dc226b31ba573353404ed2cabc0d7c75236d6d5",
+      "okf_path": "memories/learning/aur-218-idempotency-remediation-b380bc30-d008-4fee-b.md",
+      "okf_file_sha256": "b8dbe20ae3faeaf31f3afe73ff23b5fefc2d021c9715a7bb4322928ed79b1b46",
+      "memanto_type": "learning",
+      "mapping_basis": "metadata.memory_type",
+      "private": false,
+      "redactions": 0
+    },
+    {
+      "crewai_id": "87b70ac8-30d2-41d0-8453-b5d2502383b0",
+      "source_record_sha256": "65b1e398007820d27dc60fbbfdf45d3180c00ab897f99154d1e300c76e053847",
+      "okf_path": "memories/goal/aurora-eu-pilot-exit-goal-87b70ac8-30d2-41d0-8.md",
+      "okf_file_sha256": "a78da879d13119019dd0e5d52ce54af18cca892ad8e2864ebc857bc42f023da7",
+      "memanto_type": "goal",
+      "mapping_basis": "metadata.memory_type",
+      "private": false,
+      "redactions": 0
+    },
+    {
+      "crewai_id": "9f451abf-0167-42e6-9d16-8dcd4317ce0f",
+      "source_record_sha256": "63ea2ee2cce8f21120525b7fe12b19e784f27a3ed45f68cea1fcc9ccd7930187",
+      "okf_path": "memories/relationship/aurora-checkout-ownership-9f451abf-0167-42e6-9.md",
+      "okf_file_sha256": "5673066374bdad0045546d32962d63cd30017edf402792c1f6951e12f989cd87",
+      "memanto_type": "relationship",
+      "mapping_basis": "metadata.memory_type",
+      "private": false,
+      "redactions": 0
+    }
+  ]
+}

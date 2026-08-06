@@ -1,0 +1,125 @@
+{
+  "source_tool": "CrewAI",
+  "crewai_version": "1.15.12",
+  "storage": "LanceDB unified memory",
+  "generated_at": "2026-08-06T00:42:48.875977Z",
+  "public_api_calls": [
+    "Memory.remember",
+    "Memory.list_records",
+    "Memory.recall"
+  ],
+  "external_llm_calls": 0,
+  "embedding": {
+    "provider": "deterministic local token hash",
+    "dimensions": 384
+  },
+  "record_count": 8,
+  "ids_by_key": {
+    "database-decision-old": "43c69696-2be5-40f3-b92b-77c3bb48ef6c",
+    "database-decision-current": "84b237f2-3188-4230-9776-67ec3c5e4db6",
+    "privacy-instruction": "85450f4d-2eb3-4f62-bf51-2f1d0bc71c99",
+    "stakeholder-preference": "e7017675-11b8-49a7-96ce-f570d402f979",
+    "incident-learning": "bc26de54-75d1-47bd-938b-d185650124b8",
+    "incident-remediation": "b380bc30-d008-4fee-b554-8e390ec2a3ac",
+    "pilot-goal": "87b70ac8-30d2-41d0-8453-b5d2502383b0",
+    "ownership-relationship": "9f451abf-0167-42e6-9d16-8dcd4317ce0f"
+  },
+  "golden_recall": [
+    {
+      "question": "Which database was selected for concurrent writers and point-in-time recovery?",
+      "expected_key": "database-decision-current",
+      "expected_id": "84b237f2-3188-4230-9776-67ec3c5e4db6",
+      "expected_rank": 1,
+      "top_ids": [
+        "84b237f2-3188-4230-9776-67ec3c5e4db6",
+        "85450f4d-2eb3-4f62-bf51-2f1d0bc71c99",
+        "e7017675-11b8-49a7-96ce-f570d402f979"
+      ],
+      "top_contents": [
+        "The Aurora order ledger must use PostgreSQL 16, replacing SQLite, because concurrent writers and point-in-time recovery are required.",
+        "Never persist raw customer email addresses in analytics events; store a salted irreversible hash and keep the salt in the secret manager.",
+        "The pilot sponsor prefers concise evidence tables with raw numbers and confidence bounds; avoid hype and decorative dashboards."
+      ]
+    },
+    {
+      "question": "What is the analytics email privacy rule?",
+      "expected_key": "privacy-instruction",
+      "expected_id": "85450f4d-2eb3-4f62-bf51-2f1d0bc71c99",
+      "expected_rank": 1,
+      "top_ids": [
+        "85450f4d-2eb3-4f62-bf51-2f1d0bc71c99",
+        "9f451abf-0167-42e6-9d16-8dcd4317ce0f",
+        "43c69696-2be5-40f3-b92b-77c3bb48ef6c"
+      ],
+      "top_contents": [
+        "Never persist raw customer email addresses in analytics events; store a salted irreversible hash and keep the salt in the secret manager.",
+        "Maya owns the Aurora checkout workstream, and Rafael is the security approver required before the EU pilot can launch.",
+        "The Aurora pilot originally selected SQLite for the order ledger because the prototype ran on one node."
+      ]
+    },
+    {
+      "question": "What caused incident AUR-218 duplicate invoices?",
+      "expected_key": "incident-learning",
+      "expected_id": "bc26de54-75d1-47bd-938b-d185650124b8",
+      "expected_rank": 1,
+      "top_ids": [
+        "bc26de54-75d1-47bd-938b-d185650124b8",
+        "b380bc30-d008-4fee-b554-8e390ec2a3ac",
+        "e7017675-11b8-49a7-96ce-f570d402f979"
+      ],
+      "top_contents": [
+        "Invoice retry incident AUR-218 duplicated three invoices because the worker retried after a timeout without an idempotency key.",
+        "All invoice creation calls now require the event UUID as an idempotency key, and the database enforces a unique constraint on it.",
+        "The pilot sponsor prefers concise evidence tables with raw numbers and confidence bounds; avoid hype and decorative dashboards."
+      ]
+    },
+    {
+      "question": "What idempotency remediation prevents duplicate invoices?",
+      "expected_key": "incident-remediation",
+      "expected_id": "b380bc30-d008-4fee-b554-8e390ec2a3ac",
+      "expected_rank": 2,
+      "top_ids": [
+        "bc26de54-75d1-47bd-938b-d185650124b8",
+        "b380bc30-d008-4fee-b554-8e390ec2a3ac",
+        "43c69696-2be5-40f3-b92b-77c3bb48ef6c"
+      ],
+      "top_contents": [
+        "Invoice retry incident AUR-218 duplicated three invoices because the worker retried after a timeout without an idempotency key.",
+        "All invoice creation calls now require the event UUID as an idempotency key, and the database enforces a unique constraint on it.",
+        "The Aurora pilot originally selected SQLite for the order ledger because the prototype ran on one node."
+      ]
+    },
+    {
+      "question": "What is the Aurora EU pilot deadline and checkout p95 goal?",
+      "expected_key": "pilot-goal",
+      "expected_id": "87b70ac8-30d2-41d0-8453-b5d2502383b0",
+      "expected_rank": 1,
+      "top_ids": [
+        "87b70ac8-30d2-41d0-8453-b5d2502383b0",
+        "9f451abf-0167-42e6-9d16-8dcd4317ce0f",
+        "43c69696-2be5-40f3-b92b-77c3bb48ef6c"
+      ],
+      "top_contents": [
+        "Ship the Aurora EU pilot by 2026-08-28 with checkout p95 below 350 milliseconds and zero unresolved severity-one defects.",
+        "Maya owns the Aurora checkout workstream, and Rafael is the security approver required before the EU pilot can launch.",
+        "The Aurora pilot originally selected SQLite for the order ledger because the prototype ran on one node."
+      ]
+    },
+    {
+      "question": "Who owns Aurora checkout and who approves security?",
+      "expected_key": "ownership-relationship",
+      "expected_id": "9f451abf-0167-42e6-9d16-8dcd4317ce0f",
+      "expected_rank": 2,
+      "top_ids": [
+        "84b237f2-3188-4230-9776-67ec3c5e4db6",
+        "9f451abf-0167-42e6-9d16-8dcd4317ce0f",
+        "e7017675-11b8-49a7-96ce-f570d402f979"
+      ],
+      "top_contents": [
+        "The Aurora order ledger must use PostgreSQL 16, replacing SQLite, because concurrent writers and point-in-time recovery are required.",
+        "Maya owns the Aurora checkout workstream, and Rafael is the security approver required before the EU pilot can launch.",
+        "The pilot sponsor prefers concise evidence tables with raw numbers and confidence bounds; avoid hype and decorative dashboards."
+      ]
+    }
+  ]
+}

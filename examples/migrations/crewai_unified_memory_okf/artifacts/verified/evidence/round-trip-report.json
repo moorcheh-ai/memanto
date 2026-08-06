@@ -1,0 +1,194 @@
+{
+  "validated_at": "2026-08-06T00:42:52.028758Z",
+  "source_records": 8,
+  "okf_entries": 8,
+  "memanto_mapped_rows": 8,
+  "exact_record_hashes": 8,
+  "mapping_checks_passed": 8,
+  "golden_recall_parity": "6/6",
+  "source_bundle_sha256": "5bb119dd79f241b840d84dfa23ca7d94479d3bf0d02f0bc30e197238f9ba6e9d",
+  "reconstructed_bundle_sha256": "5bb119dd79f241b840d84dfa23ca7d94479d3bf0d02f0bc30e197238f9ba6e9d",
+  "exact_bundle_match": true,
+  "embedding_policy": "Embedding vectors are intentionally excluded because they are derived, model-specific data; all semantic/provenance fields are exact.",
+  "hash_checks": [
+    {
+      "id": "43c69696-2be5-40f3-b92b-77c3bb48ef6c",
+      "source_sha256": "7d1b184b6be9e0adbdea4ec620295d061441055e75f9d801be64063f71f70a0a",
+      "declared_sha256": "7d1b184b6be9e0adbdea4ec620295d061441055e75f9d801be64063f71f70a0a",
+      "reconstructed_sha256": "7d1b184b6be9e0adbdea4ec620295d061441055e75f9d801be64063f71f70a0a",
+      "exact": true
+    },
+    {
+      "id": "84b237f2-3188-4230-9776-67ec3c5e4db6",
+      "source_sha256": "504313e902204b263dc907c8b5b794ca82902f0713ba17bce2c7bf678378a597",
+      "declared_sha256": "504313e902204b263dc907c8b5b794ca82902f0713ba17bce2c7bf678378a597",
+      "reconstructed_sha256": "504313e902204b263dc907c8b5b794ca82902f0713ba17bce2c7bf678378a597",
+      "exact": true
+    },
+    {
+      "id": "bc26de54-75d1-47bd-938b-d185650124b8",
+      "source_sha256": "a7be2788257ff3728f8e69e30cb9f4eaa0fc4bc349c9e0eae340c856fdbe68e7",
+      "declared_sha256": "a7be2788257ff3728f8e69e30cb9f4eaa0fc4bc349c9e0eae340c856fdbe68e7",
+      "reconstructed_sha256": "a7be2788257ff3728f8e69e30cb9f4eaa0fc4bc349c9e0eae340c856fdbe68e7",
+      "exact": true
+    },
+    {
+      "id": "87b70ac8-30d2-41d0-8453-b5d2502383b0",
+      "source_sha256": "65b1e398007820d27dc60fbbfdf45d3180c00ab897f99154d1e300c76e053847",
+      "declared_sha256": "65b1e398007820d27dc60fbbfdf45d3180c00ab897f99154d1e300c76e053847",
+      "reconstructed_sha256": "65b1e398007820d27dc60fbbfdf45d3180c00ab897f99154d1e300c76e053847",
+      "exact": true
+    },
+    {
+      "id": "85450f4d-2eb3-4f62-bf51-2f1d0bc71c99",
+      "source_sha256": "59575c7259f2016ad15e8ce6b1742a5a8e0403277e29f50b51a3383cc6d5dbfb",
+      "declared_sha256": "59575c7259f2016ad15e8ce6b1742a5a8e0403277e29f50b51a3383cc6d5dbfb",
+      "reconstructed_sha256": "59575c7259f2016ad15e8ce6b1742a5a8e0403277e29f50b51a3383cc6d5dbfb",
+      "exact": true
+    },
+    {
+      "id": "b380bc30-d008-4fee-b554-8e390ec2a3ac",
+      "source_sha256": "57a64e347612d1b04d42efd34dc226b31ba573353404ed2cabc0d7c75236d6d5",
+      "declared_sha256": "57a64e347612d1b04d42efd34dc226b31ba573353404ed2cabc0d7c75236d6d5",
+      "reconstructed_sha256": "57a64e347612d1b04d42efd34dc226b31ba573353404ed2cabc0d7c75236d6d5",
+      "exact": true
+    },
+    {
+      "id": "e7017675-11b8-49a7-96ce-f570d402f979",
+      "source_sha256": "68520fac7d1420535b96784b1689a236613a677dabaabf4f1634d6258a7f6c56",
+      "declared_sha256": "68520fac7d1420535b96784b1689a236613a677dabaabf4f1634d6258a7f6c56",
+      "reconstructed_sha256": "68520fac7d1420535b96784b1689a236613a677dabaabf4f1634d6258a7f6c56",
+      "exact": true
+    },
+    {
+      "id": "9f451abf-0167-42e6-9d16-8dcd4317ce0f",
+      "source_sha256": "63ea2ee2cce8f21120525b7fe12b19e784f27a3ed45f68cea1fcc9ccd7930187",
+      "declared_sha256": "63ea2ee2cce8f21120525b7fe12b19e784f27a3ed45f68cea1fcc9ccd7930187",
+      "reconstructed_sha256": "63ea2ee2cce8f21120525b7fe12b19e784f27a3ed45f68cea1fcc9ccd7930187",
+      "exact": true
+    }
+  ],
+  "mapping_checks": [
+    {
+      "id": "43c69696-2be5-40f3-b92b-77c3bb48ef6c",
+      "mapped": true,
+      "type_preserved": true,
+      "confidence_preserved": true,
+      "tags_preserved": true,
+      "resource_preserved": true
+    },
+    {
+      "id": "84b237f2-3188-4230-9776-67ec3c5e4db6",
+      "mapped": true,
+      "type_preserved": true,
+      "confidence_preserved": true,
+      "tags_preserved": true,
+      "resource_preserved": true
+    },
+    {
+      "id": "bc26de54-75d1-47bd-938b-d185650124b8",
+      "mapped": true,
+      "type_preserved": true,
+      "confidence_preserved": true,
+      "tags_preserved": true,
+      "resource_preserved": true
+    },
+    {
+      "id": "87b70ac8-30d2-41d0-8453-b5d2502383b0",
+      "mapped": true,
+      "type_preserved": true,
+      "confidence_preserved": true,
+      "tags_preserved": true,
+      "resource_preserved": true
+    },
+    {
+      "id": "85450f4d-2eb3-4f62-bf51-2f1d0bc71c99",
+      "mapped": true,
+      "type_preserved": true,
+      "confidence_preserved": true,
+      "tags_preserved": true,
+      "resource_preserved": true
+    },
+    {
+      "id": "b380bc30-d008-4fee-b554-8e390ec2a3ac",
+      "mapped": true,
+      "type_preserved": true,
+      "confidence_preserved": true,
+      "tags_preserved": true,
+      "resource_preserved": true
+    },
+    {
+      "id": "e7017675-11b8-49a7-96ce-f570d402f979",
+      "mapped": true,
+      "type_preserved": true,
+      "confidence_preserved": true,
+      "tags_preserved": true,
+      "resource_preserved": true
+    },
+    {
+      "id": "9f451abf-0167-42e6-9d16-8dcd4317ce0f",
+      "mapped": true,
+      "type_preserved": true,
+      "confidence_preserved": true,
+      "tags_preserved": true,
+      "resource_preserved": true
+    }
+  ],
+  "recall_checks": [
+    {
+      "question": "Which database was selected for concurrent writers and point-in-time recovery?",
+      "expected_id": "84b237f2-3188-4230-9776-67ec3c5e4db6",
+      "crewai_rank": 1,
+      "portable_okf_rank": 1,
+      "crewai_top_3": true,
+      "portable_okf_top_3": true,
+      "parity": true
+    },
+    {
+      "question": "What is the analytics email privacy rule?",
+      "expected_id": "85450f4d-2eb3-4f62-bf51-2f1d0bc71c99",
+      "crewai_rank": 1,
+      "portable_okf_rank": 1,
+      "crewai_top_3": true,
+      "portable_okf_top_3": true,
+      "parity": true
+    },
+    {
+      "question": "What caused incident AUR-218 duplicate invoices?",
+      "expected_id": "bc26de54-75d1-47bd-938b-d185650124b8",
+      "crewai_rank": 1,
+      "portable_okf_rank": 1,
+      "crewai_top_3": true,
+      "portable_okf_top_3": true,
+      "parity": true
+    },
+    {
+      "question": "What idempotency remediation prevents duplicate invoices?",
+      "expected_id": "b380bc30-d008-4fee-b554-8e390ec2a3ac",
+      "crewai_rank": 2,
+      "portable_okf_rank": 1,
+      "crewai_top_3": true,
+      "portable_okf_top_3": true,
+      "parity": true
+    },
+    {
+      "question": "What is the Aurora EU pilot deadline and checkout p95 goal?",
+      "expected_id": "87b70ac8-30d2-41d0-8453-b5d2502383b0",
+      "crewai_rank": 1,
+      "portable_okf_rank": 1,
+      "crewai_top_3": true,
+      "portable_okf_top_3": true,
+      "parity": true
+    },
+    {
+      "question": "Who owns Aurora checkout and who approves security?",
+      "expected_id": "9f451abf-0167-42e6-9d16-8dcd4317ce0f",
+      "crewai_rank": 2,
+      "portable_okf_rank": 1,
+      "crewai_top_3": true,
+      "portable_okf_top_3": true,
+      "parity": true
+    }
+  ],
+  "passed": true
+}
