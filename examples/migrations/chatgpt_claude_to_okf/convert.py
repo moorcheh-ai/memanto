@@ -23,13 +23,20 @@ from adapters.okf import write_bundle
 SOURCES = {"chatgpt": load_chatgpt, "claude": load_claude}
 
 
+def _non_negative_int(v: str) -> int:
+    n = int(v)
+    if n < 0:
+        raise argparse.ArgumentTypeError(f"must be >= 0, got {n}")
+    return n
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("source", choices=sorted(SOURCES))
     ap.add_argument("export_dir", type=str, help="path to the unzipped export")
     ap.add_argument("--out", default="okf_bundle", help="output bundle directory")
-    ap.add_argument("--max-per-type", type=int, default=40)
-    ap.add_argument("--max-total", type=int, default=250)
+    ap.add_argument("--max-per-type", type=_non_negative_int, default=40)
+    ap.add_argument("--max-total", type=_non_negative_int, default=250)
     args = ap.parse_args()
     if args.max_per_type < 0 or args.max_total < 0:
         ap.error("--max-per-type and --max-total must be >= 0")

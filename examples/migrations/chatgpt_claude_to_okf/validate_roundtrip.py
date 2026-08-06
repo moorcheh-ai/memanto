@@ -107,14 +107,21 @@ def llm_judge(golden: list[dict], bundle_dir: Path, sample: int = 20) -> dict:
         return {"error": str(e)}
 
 
+def _non_negative_int(v: str) -> int:
+    n = int(v)
+    if n < 0:
+        raise argparse.ArgumentTypeError(f"must be >= 0, got {n}")
+    return n
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("source", choices=sorted(SOURCES))
     ap.add_argument("export_dir", type=str)
     ap.add_argument("bundle_dir", type=str, default="okf_bundle", nargs="?")
     ap.add_argument("--llm", action="store_true", help="also run an optional LLM-as-judge (requires OPENAI_API_KEY)")
-    ap.add_argument("--max-per-type", type=int, default=None, help="override extraction cap per type")
-    ap.add_argument("--max-total", type=int, default=None, help="override extraction cap total")
+    ap.add_argument("--max-per-type", type=_non_negative_int, default=None, help="override extraction cap per type (>= 0)")
+    ap.add_argument("--max-total", type=_non_negative_int, default=None, help="override extraction cap total (>= 0)")
     args = ap.parse_args()
 
     conversations = SOURCES[args.source](args.export_dir)
