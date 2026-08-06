@@ -1,0 +1,21 @@
+# Core adapter (offline-capable pieces)
+pyyaml>=6.0
+python-dotenv>=1.0
+
+# Graphiti + backends. Prefer neo4j via docker-compose; kuzu is the zero-Docker fallback.
+graphiti-core[kuzu,falkordb,anthropic,google-genai]>=0.29.0
+
+# Phase 3 LLM-as-judge
+anthropic>=0.40
+
+# Phase 4 Mem0 consolidation source
+mem0ai>=0.1.0
+
+# Memanto CLI — install from the repo root (pip install -e .) so the migrate /
+# memory export commands this example shells out to are available. Listed here
+# only as a reminder; the editable install is what run_all expects.
+# memanto
+
+# Dev / CI
+pytest>=8.0
+ruff>=0.6

@@ -1,0 +1,11 @@
+.env
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+data/graphiti.kuzu/
+data/graphiti.kuzu*
+data/okf_pre_consolidation/
+data/populate_manifest.json
+*.log

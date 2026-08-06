@@ -1,0 +1,23 @@
+# Preferred backend for this example. Neo4j Community 5.x with APOC, which is
+# what Graphiti's docs recommend. FalkorDB is an alternative one-liner if you
+# prefer Redis-protocol graphs — see the README.
+services:
+  neo4j:
+    image: neo4j:5.26-community
+    ports:
+      - "7474:7474"
+      - "7687:7687"
+    environment:
+      NEO4J_AUTH: neo4j/${NEO4J_PASSWORD:-graphiti-okf-demo}
+      NEO4J_PLUGINS: '["apoc"]'
+      NEO4J_dbms_security_procedures_unrestricted: apoc.*
+    volumes:
+      - neo4j_data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:7474 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+
+volumes:
+  neo4j_data:
