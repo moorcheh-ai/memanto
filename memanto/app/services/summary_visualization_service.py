@@ -14,10 +14,10 @@ from pathlib import Path
 class SummaryVisualizationService:
     """Generates ASCII-art visualizations for daily summaries"""
 
-    # Regex to parse session summary headings:
-    #   ### [2026-02-27 14:30:00] [FACT] Some title
+    # Parse current H2 entries and legacy H3 entries already on disk.
+    #   ## [2026-02-27 14:30:00] [FACT] Some title
     _HEADING_RE = re.compile(
-        r"^###\s+\[(\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2})\]\s+\[(\w+)\]\s+(.+)$",
+        r"^#{2,3}\s+\[(\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2})\]\s+\[(\w+)\]\s+(.+)$",
         re.MULTILINE,
     )
     # Regex to parse confidence lines:
@@ -211,15 +211,16 @@ class SummaryVisualizationService:
         # Count summary
         total = len(memories)
         active_hours = len(hour_counts)
+        hour_label = "active hour" if active_hours == 1 else "active hours"
 
         lines = [
             "### Memory Activity Timeline\n",
-            "```",
+            "```text",
             label_row,
             bar,
             marker_row,
             "```\n",
-            f"**{total}** memories across **{active_hours}** active hours\n",
+            f"**{total}** memories across **{active_hours}** {hour_label}\n",
         ]
         return "\n".join(lines)
 
@@ -249,7 +250,7 @@ class SummaryVisualizationService:
         # Determine label width for alignment
         max_label_len = max(len(t) for t, _ in sorted_types)
 
-        lines = ["### Memory Type Distribution\n", "```"]
+        lines = ["### Memory Type Distribution\n", "```text"]
         for mem_type, count in sorted_types:
             bar_len = max(1, round(count * scale))
             bar = "█" * bar_len

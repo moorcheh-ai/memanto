@@ -20,6 +20,8 @@ from pathlib import Path
 from typing import Any
 from unittest.mock import MagicMock
 
+from migrate import safe_destructive_target
+
 EMBEDDING_DIMENSIONS = 384
 
 
@@ -224,25 +226,15 @@ GOLDEN_QUESTIONS: tuple[dict[str, str], ...] = (
 )
 
 
-def _safe_generated_target(path: Path) -> Path:
-    target = path.resolve()
-    forbidden = {
-        Path(target.anchor).resolve(),
-        Path.home().resolve(),
-        Path.cwd().resolve(),
-    }
-    if target in forbidden or len(target.parts) < 3:
-        raise ValueError(f"Refusing unsafe generated-data target: {target}")
-    return target
-
-
 def generate(
     database: Path, evidence_dir: Path, *, force: bool = False
 ) -> dict[str, Any]:
     """Populate and query a real CrewAI memory store."""
 
-    database = _safe_generated_target(database)
-    evidence_dir = _safe_generated_target(evidence_dir)
+    database = safe_destructive_target(database, purpose="generated-data target")
+    evidence_dir = safe_destructive_target(
+        evidence_dir, purpose="generated-data target"
+    )
     for target in (database, evidence_dir):
         if target.exists():
             if not force:
@@ -263,51 +255,53 @@ def generate(
         exploration_budget=0,
     )
     ids_by_key: dict[str, str] = {}
-    for item in SOURCE_MEMORIES:
-        record = memory.remember(
-            item["content"],
-            scope=item["scope"],
-            categories=item["categories"],
-            metadata=item["metadata"],
-            importance=item["importance"],
-            source=item["source"],
-            agent_role=item["agent_role"],
-        )
-        if record is None:
-            raise RuntimeError(f"CrewAI did not persist {item['key']}")
-        ids_by_key[item["key"]] = record.id
-
-    records = memory.list_records(scope="/", limit=100)
-    if len(records) != len(SOURCE_MEMORIES):
-        raise RuntimeError(
-            f"CrewAI stored {len(records)} records, expected {len(SOURCE_MEMORIES)}"
-        )
-
     recall_results: list[dict[str, Any]] = []
-    for item in GOLDEN_QUESTIONS:
-        matches = memory.recall(item["question"], depth="shallow", limit=3)
-        expected_id = ids_by_key[item["expected_key"]]
-        rank = next(
-            (
-                index
-                for index, match in enumerate(matches, start=1)
-                if match.record.id == expected_id
-            ),
-            None,
-        )
-        recall_results.append(
-            {
-                "question": item["question"],
-                "expected_key": item["expected_key"],
-                "expected_id": expected_id,
-                "expected_rank": rank,
-                "top_ids": [match.record.id for match in matches],
-                "top_contents": [match.record.content for match in matches],
-            }
-        )
+    try:
+        for item in SOURCE_MEMORIES:
+            record = memory.remember(
+                item["content"],
+                scope=item["scope"],
+                categories=item["categories"],
+                metadata=item["metadata"],
+                importance=item["importance"],
+                source=item["source"],
+                agent_role=item["agent_role"],
+            )
+            if record is None:
+                raise RuntimeError(f"CrewAI did not persist {item['key']}")
+            ids_by_key[item["key"]] = record.id
 
-    memory.close()
-    if offline_llm.call.call_count:
+        records = memory.list_records(scope="/", limit=100)
+        if len(records) != len(SOURCE_MEMORIES):
+            raise RuntimeError(
+                f"CrewAI stored {len(records)} records, expected {len(SOURCE_MEMORIES)}"
+            )
+
+        for item in GOLDEN_QUESTIONS:
+            matches = memory.recall(item["question"], depth="shallow", limit=3)
+            expected_id = ids_by_key[item["expected_key"]]
+            rank = next(
+                (
+                    index
+                    for index, match in enumerate(matches, start=1)
+                    if match.record.id == expected_id
+                ),
+                None,
+            )
+            recall_results.append(
+                {
+                    "question": item["question"],
+                    "expected_key": item["expected_key"],
+                    "expected_id": expected_id,
+                    "expected_rank": rank,
+                    "top_ids": [match.record.id for match in matches],
+                    "top_contents": [match.record.content for match in matches],
+                }
+            )
+    finally:
+        memory.close()
+
+    if offline_llm.mock_calls:
         raise RuntimeError("Offline generation unexpectedly called an LLM")
 
     evidence_dir.mkdir(parents=True)
@@ -340,6 +334,8 @@ def generate(
 
 
 def build_parser() -> argparse.ArgumentParser:
+    """Build the source-generation command-line parser."""
+
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("database", type=Path, help="LanceDB output directory")
     parser.add_argument("evidence_dir", type=Path, help="Evidence output directory")
@@ -350,6 +346,8 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def main(argv: list[str] | None = None) -> int:
+    """Generate the source store and its evidence from CLI arguments."""
+
     args = build_parser().parse_args(argv)
     generate(args.database, args.evidence_dir, force=args.force)
     return 0

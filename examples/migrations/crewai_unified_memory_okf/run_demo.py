@@ -13,6 +13,8 @@ from generate_source import generate
 from migrate import read_lancedb_records, write_okf_bundle
 from validate import validate
 
+DRY_RUN_TIMEOUT_SECONDS = 120
+
 
 def _configure_utf8_console() -> None:
     """Avoid Windows legacy-codepage failures in CrewAI/Memanto rich output."""
@@ -23,7 +25,24 @@ def _configure_utf8_console() -> None:
             reconfigure(encoding="utf-8", errors="replace")
 
 
+def _sanitize_transcript(text: str, *, bundle: Path) -> str:
+    """Replace machine-specific absolute paths with stable placeholders."""
+
+    replacements = (
+        (str(bundle.resolve()), "<OKF_BUNDLE>"),
+        (bundle.resolve().as_posix(), "<OKF_BUNDLE>"),
+        (str(Path.home().resolve()), "<USER_HOME>"),
+        (Path.home().resolve().as_posix(), "<USER_HOME>"),
+    )
+    sanitized = text
+    for value, placeholder in replacements:
+        sanitized = sanitized.replace(value, placeholder)
+    return sanitized
+
+
 def run_demo(output: Path, *, skip_memanto_cli: bool = False) -> int:
+    """Run source generation, OKF migration, dry-run import, and validation."""
+
     output = output.resolve()
     source_database = output / "source" / "crewai-memory"
     evidence_dir = output / "evidence"
@@ -49,26 +68,35 @@ def run_demo(output: Path, *, skip_memanto_cli: bool = False) -> int:
         environment["NO_COLOR"] = "1"
         environment["PYTHONIOENCODING"] = "utf-8"
         environment["PYTHONUTF8"] = "1"
-        result = subprocess.run(
-            [
-                sys.executable,
-                "-m",
-                "memanto",
-                "migrate",
-                "okf",
-                str(okf_bundle),
-                "--dry-run",
-            ],
-            check=False,
-            capture_output=True,
-            text=True,
-            encoding="utf-8",
-            errors="replace",
-            env=environment,
-        )
+        environment["COLUMNS"] = "240"
+        try:
+            result = subprocess.run(
+                [
+                    sys.executable,
+                    "-m",
+                    "memanto",
+                    "migrate",
+                    "okf",
+                    str(okf_bundle),
+                    "--dry-run",
+                ],
+                check=False,
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+                errors="replace",
+                env=environment,
+                timeout=DRY_RUN_TIMEOUT_SECONDS,
+            )
+        except subprocess.TimeoutExpired as exc:
+            raise RuntimeError(
+                "Memanto dry-run did not finish within "
+                f"{DRY_RUN_TIMEOUT_SECONDS} seconds"
+            ) from exc
         transcript = result.stdout + (
             "\nSTDERR:\n" + result.stderr if result.stderr else ""
         )
+        transcript = _sanitize_transcript(transcript, bundle=okf_bundle)
         (evidence_dir / "memanto-dry-run.txt").write_text(
             transcript, encoding="utf-8", newline="\n"
         )
@@ -94,6 +122,8 @@ def run_demo(output: Path, *, skip_memanto_cli: bool = False) -> int:
 
 
 def build_parser() -> argparse.ArgumentParser:
+    """Build the end-to-end demo command-line parser."""
+
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--output",
@@ -110,6 +140,8 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def main(argv: list[str] | None = None) -> int:
+    """Configure the console and run the demo from CLI arguments."""
+
     _configure_utf8_console()
     args = build_parser().parse_args(argv)
     return run_demo(args.output, skip_memanto_cli=args.skip_memanto_cli)

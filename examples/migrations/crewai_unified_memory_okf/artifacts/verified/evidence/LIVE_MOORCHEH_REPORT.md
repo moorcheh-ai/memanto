@@ -51,3 +51,8 @@ Memanto reported 8 exported memories. Loading the exported bundle again with
 Memanto's own `load_okf_bundle` and `map_okf` returned 8 loaded and 8 mapped
 memories with the same type distribution. The exported bundle is checked in at
 `artifacts/verified/live-export`.
+
+The checked-in Markdown applies this PR's renderer-only portability fixes:
+OKF source references use forward slashes, session entries use H2 headings,
+and visualization fences declare `text`. Memory IDs, content, confidence,
+types, recall evidence, and live import/export totals are unchanged.

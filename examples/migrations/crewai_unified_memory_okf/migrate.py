@@ -13,6 +13,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import os
 import re
 import shutil
 import tempfile
@@ -66,6 +67,8 @@ SECRET_PATTERNS = (
     re.compile(r"(?i)\b(api[_-]?key|password|secret|token)\b\s*[:=]\s*[^\s,;]+"),
 )
 TABLE_NAME_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
+ISO_BASIC_OFFSET_RE = re.compile(r"([+-]\d{2})(\d{2})$")
+ISO_FRACTION_RE = re.compile(r"[.,](\d+)(?=(?:[+-]\d{2}:\d{2})?$)")
 
 
 @dataclass(frozen=True)
@@ -84,6 +87,8 @@ class CrewAIRecord:
     private: bool
 
     def canonical_dict(self) -> dict[str, Any]:
+        """Return every vector-free source field in canonical hash order."""
+
         return {
             "id": self.id,
             "content": self.content,
@@ -99,6 +104,8 @@ class CrewAIRecord:
 
     @property
     def sha256(self) -> str:
+        """Return the canonical fidelity hash for this source record."""
+
         return canonical_sha256(self.canonical_dict())
 
 
@@ -115,10 +122,14 @@ def canonical_json(value: Any) -> str:
 
 
 def canonical_sha256(value: Any) -> str:
+    """Hash a value after canonical JSON serialization."""
+
     return hashlib.sha256(canonical_json(value).encode("utf-8")).hexdigest()
 
 
 def file_sha256(path: Path) -> str:
+    """Stream a file into SHA-256 without loading it all into memory."""
+
     digest = hashlib.sha256()
     with path.open("rb") as handle:
         for block in iter(lambda: handle.read(1024 * 1024), b""):
@@ -127,6 +138,8 @@ def file_sha256(path: Path) -> str:
 
 
 def _parse_json_field(value: Any, expected: type, field: str) -> Any:
+    """Decode and type-check a JSON-backed LanceDB column."""
+
     if value in (None, ""):
         return expected()
     parsed = value
@@ -144,14 +157,21 @@ def _parse_json_field(value: Any, expected: type, field: str) -> Any:
 
 
 def _iso_datetime(value: Any, field: str) -> str:
+    """Normalize common ISO-8601 variants to a UTC ``Z`` timestamp."""
+
     if isinstance(value, datetime):
         parsed = value
     else:
         raw = str(value or "").strip()
         if not raw:
             raise ValueError(f"CrewAI field {field!r} is empty")
+        normalized = raw[:-1] + "+00:00" if raw.endswith("Z") else raw
+        normalized = ISO_BASIC_OFFSET_RE.sub(r"\1:\2", normalized)
+        normalized = ISO_FRACTION_RE.sub(
+            lambda match: "." + (match.group(1) + "000000")[:6], normalized
+        )
         try:
-            parsed = datetime.fromisoformat(raw.replace("Z", "+00:00"))
+            parsed = datetime.fromisoformat(normalized)
         except ValueError as exc:
             raise ValueError(
                 f"CrewAI field {field!r} is not an ISO-8601 datetime: {raw!r}"
@@ -178,7 +198,8 @@ def row_to_record(row: dict[str, Any]) -> CrewAIRecord:
 
     categories = _parse_json_field(row["categories_str"], list, "categories_str")
     metadata = _parse_json_field(row["metadata_str"], dict, "metadata_str")
-    importance = float(row.get("importance", 0.5))
+    raw_importance = row.get("importance")
+    importance = float(0.5 if raw_importance is None else raw_importance)
     if not 0.0 <= importance <= 1.0:
         raise ValueError(f"CrewAI importance must be between 0 and 1: {importance}")
 
@@ -273,11 +294,15 @@ def infer_memanto_type(record: CrewAIRecord) -> tuple[str, str]:
 
 
 def _slug(value: str, *, fallback: str = "memory", limit: int = 54) -> str:
+    """Create a bounded, filesystem-safe slug."""
+
     slug = re.sub(r"[^a-z0-9]+", "-", value.lower()).strip("-")
     return (slug or fallback)[:limit].rstrip("-")
 
 
 def _title(record: CrewAIRecord) -> str:
+    """Choose a concise human-readable title for an OKF memory."""
+
     metadata_title = record.metadata.get("title")
     if isinstance(metadata_title, str) and metadata_title.strip():
         raw = metadata_title.strip()
@@ -287,11 +312,15 @@ def _title(record: CrewAIRecord) -> str:
 
 
 def _tag(value: str) -> str:
+    """Normalize a value into one bounded Memanto tag."""
+
     normalized = re.sub(r"[^a-z0-9._-]+", "-", value.lower()).strip("-")
-    return normalized[:64]
+    return normalized[:64].rstrip("-")
 
 
 def record_tags(record: CrewAIRecord) -> list[str]:
+    """Build stable, bounded, de-duplicated tags from CrewAI fields."""
+
     values = ["crewai", *record.categories]
     values.extend(f"scope-{part}" for part in record.scope.split("/") if part)
     if record.private:
@@ -342,6 +371,8 @@ def _render_document(
     metadata: dict[str, Any],
     redactions: int,
 ) -> str:
+    """Render one vector-free CrewAI record as an OKF Markdown document."""
+
     source_uri = f"crewai://unified-memory/{record.id}"
     crewai_extension = {
         "schema": "unified-memory-lancedb",
@@ -382,21 +413,47 @@ def _render_document(
 
 
 def _render_index(title: str, links: Iterable[tuple[str, str]]) -> str:
+    """Render an OKF navigation index."""
+
     lines = ["---", "type: index", f"title: {json.dumps(title)}", "---", ""]
     lines.extend(f"- [{label}]({target})" for label, target in links)
     return "\n".join(lines) + "\n"
 
 
-def _safe_output_target(output: Path) -> Path:
-    target = output.resolve()
+def safe_destructive_target(path: Path, *, purpose: str) -> Path:
+    """Reject broad paths before a generated directory can be replaced."""
+
+    target = path.resolve()
     forbidden = {
         Path(target.anchor).resolve(),
         Path.home().resolve(),
         Path.cwd().resolve(),
     }
     if target in forbidden or len(target.parts) < 3:
-        raise ValueError(f"Refusing unsafe output directory: {target}")
+        raise ValueError(f"Refusing unsafe {purpose}: {target}")
     return target
+
+
+def _publish_directory_atomically(temp_root: Path, output: Path) -> None:
+    """Publish a directory while preserving the previous bundle on failure."""
+
+    previous: Path | None = None
+    if output.exists():
+        previous = Path(
+            tempfile.mkdtemp(prefix=f".{output.name}-previous-", dir=output.parent)
+        )
+        previous.rmdir()
+        os.replace(output, previous)
+
+    try:
+        os.replace(temp_root, output)
+    except Exception:
+        if previous is not None and previous.exists() and not output.exists():
+            os.replace(previous, output)
+        raise
+    else:
+        if previous is not None:
+            shutil.rmtree(previous)
 
 
 def write_okf_bundle(
@@ -411,7 +468,7 @@ def write_okf_bundle(
 ) -> dict[str, Any]:
     """Write a deterministic, atomic OKF bundle and return its manifest."""
 
-    output = _safe_output_target(output)
+    output = safe_destructive_target(output, purpose="output directory")
     if output.exists() and not force:
         raise FileExistsError(f"Output already exists (use --force): {output}")
 
@@ -509,7 +566,7 @@ def write_okf_bundle(
         manifest: dict[str, Any] = {
             "adapter": "crewai-unified-memory-to-okf",
             "adapter_version": ADAPTER_VERSION,
-            "created_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+            "created_at": max(record.created_at for record in records),
             "source": {
                 "framework": "CrewAI",
                 "storage": "LanceDB",
@@ -558,9 +615,7 @@ def write_okf_bundle(
             "\n".join(summary_lines) + "\n", encoding="utf-8", newline="\n"
         )
 
-        if output.exists():
-            shutil.rmtree(output)
-        temp_root.replace(output)
+        _publish_directory_atomically(temp_root, output)
         return manifest
     except Exception:
         shutil.rmtree(temp_root, ignore_errors=True)
@@ -568,13 +623,20 @@ def write_okf_bundle(
 
 
 def build_parser() -> argparse.ArgumentParser:
+    """Build the command-line parser for the migration adapter."""
+
     parser = argparse.ArgumentParser(
         description="Migrate current CrewAI unified-memory LanceDB records to OKF"
     )
     parser.add_argument("source", type=Path, help="CrewAI LanceDB directory")
     parser.add_argument("output", type=Path, help="Destination OKF bundle directory")
     parser.add_argument("--table", default="memories", help="LanceDB table name")
-    parser.add_argument("--max-records", type=int, default=50_000)
+    parser.add_argument(
+        "--max-records",
+        type=int,
+        default=50_000,
+        help="Maximum records to read, between 1 and 50,000",
+    )
     parser.add_argument(
         "--include-private",
         action="store_true",
@@ -590,6 +652,8 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def main(argv: list[str] | None = None) -> int:
+    """Run the adapter CLI and print its migration summary."""
+
     args = build_parser().parse_args(argv)
     records = read_lancedb_records(
         args.source, table_name=args.table, max_records=args.max_records

@@ -26,7 +26,7 @@ Never persist raw customer email addresses in analytics events; store a salted i
 
 ---
 [Supporting data]
-- OKF source: memories\instruction\analytics-email-privacy-rule-85450f4d-2eb3-4f62-b.md
+- OKF source: memories/instruction/analytics-email-privacy-rule-85450f4d-2eb3-4f62-b.md
 - OKF resource: crewai://unified-memory/85450f4d-2eb3-4f62-bf51-2f1d0bc71c99
 - OKF crewai: schema=unified-memory-lancedb; id=85450f4d-2eb3-4f62-bf51-2f1d0bc71c99; scope=/instructions/security; categories=['instruction', 'privacy', 'pii']; metadata={'title': 'Analytics email privacy rule'...
 - OKF source_record_sha256: 59575c7259f2016ad15e8ce6b1742a5a8e0403277e29f50b51a3383cc6d5dbfb

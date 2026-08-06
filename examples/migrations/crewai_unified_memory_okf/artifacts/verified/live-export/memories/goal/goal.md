@@ -26,7 +26,7 @@ Ship the Aurora EU pilot by 2026-08-28 with checkout p95 below 350 milliseconds 
 
 ---
 [Supporting data]
-- OKF source: memories\goal\aurora-eu-pilot-exit-goal-87b70ac8-30d2-41d0-8.md
+- OKF source: memories/goal/aurora-eu-pilot-exit-goal-87b70ac8-30d2-41d0-8.md
 - OKF resource: crewai://unified-memory/87b70ac8-30d2-41d0-8453-b5d2502383b0
 - OKF crewai: schema=unified-memory-lancedb; id=87b70ac8-30d2-41d0-8453-b5d2502383b0; scope=/goals/delivery; categories=['goal', 'deadline', 'slo']; metadata={'title': 'Aurora EU pilot exit goal', 'memory_type':...
 - OKF source_record_sha256: 65b1e398007820d27dc60fbbfdf45d3180c00ab897f99154d1e300c76e053847

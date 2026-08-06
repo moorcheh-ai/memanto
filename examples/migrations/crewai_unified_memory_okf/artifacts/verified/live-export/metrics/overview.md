@@ -9,17 +9,17 @@
 
 ### Memory Activity Timeline
 
-```
+```text
 Hour  00  03  06  09  12  15  18  21  24
       ╠═══╬═══╬═══╬═══╬═══╬═══╬═══╬═══╣
       ●●●●
 ```
 
-**8** memories across **1** active hours
+**8** memories across **1** active hour
 
 ### Memory Type Distribution
 
-```
+```text
 DECISION      ████████████████████ 2
 INSTRUCTION   ██████████ 1
 GOAL          ██████████ 1

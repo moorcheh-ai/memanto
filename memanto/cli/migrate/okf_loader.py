@@ -112,7 +112,7 @@ def _parse_entry(chunk: str, file_path: Path, rel_base: Path) -> dict[str, Any] 
     links = [f"{text} -> {target}" for text, target in _LINK_RE.findall(body)]
 
     try:
-        source_path = str(file_path.relative_to(rel_base))
+        source_path = file_path.relative_to(rel_base).as_posix()
     except ValueError:
         source_path = file_path.name
 

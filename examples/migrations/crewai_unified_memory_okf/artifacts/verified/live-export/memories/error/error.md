@@ -26,7 +26,7 @@ Invoice retry incident AUR-218 duplicated three invoices because the worker retr
 
 ---
 [Supporting data]
-- OKF source: memories\error\aur-218-duplicate-invoice-root-cause-bc26de54-75d1-47bd-9.md
+- OKF source: memories/error/aur-218-duplicate-invoice-root-cause-bc26de54-75d1-47bd-9.md
 - OKF resource: crewai://unified-memory/bc26de54-75d1-47bd-938b-d185650124b8
 - OKF crewai: schema=unified-memory-lancedb; id=bc26de54-75d1-47bd-938b-d185650124b8; scope=/errors/billing; categories=['error', 'incident', 'billing']; metadata={'title': 'AUR-218 duplicate invoice root cause'...
 - OKF source_record_sha256: a7be2788257ff3728f8e69e30cb9f4eaa0fc4bc349c9e0eae340c856fdbe68e7

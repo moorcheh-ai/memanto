@@ -49,9 +49,9 @@ The complete run normally finishes in under two minutes after dependencies
 are installed. No API key is required for generation, migration, validation,
 or the Memanto dry-run.
 
-**Demo:** [`artifacts/verified/demo.mp4`](artifacts/verified/demo.mp4) is an
-18-second recording generated from a successful real run. It ends with the
-separately verified live import, recall, and export totals.
+**Demo:** [watch the public YouTube showcase](https://youtu.be/sV5yvIjbejk),
+or open [`artifacts/verified/demo.mp4`](artifacts/verified/demo.mp4) locally.
+The 18-second recording was generated from a successful real run.
 
 ## Use your own CrewAI store
 
@@ -150,10 +150,10 @@ and the exported [`live-export`](artifacts/verified/live-export/) bundle.
 
 ## Privacy and limitations
 
-- Migration is local and read-only with respect to the CrewAI database.
+- Migration is local and read-only for the CrewAI database.
 - Secret redaction is opt-in because silent mutation would violate fidelity.
-- A redacted record correctly will not pass an exact-content hash check; the
-  manifest reports its redaction count.
+- A redacted record does not pass the exact-content hash check. This is the
+  expected result, and the manifest reports its redaction count.
 - The deterministic embedder is solely for the reproducible source run. The
   adapter reads stores produced by any embedding provider because vectors are
   not migrated.

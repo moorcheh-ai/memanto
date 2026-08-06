@@ -39,6 +39,8 @@ STOPWORDS = {
 
 
 def _tokens(text: str) -> Counter[str]:
+    """Tokenize text for deterministic lexical recall scoring."""
+
     return Counter(
         token
         for token in TOKEN_RE.findall(text.lower())
@@ -47,6 +49,8 @@ def _tokens(text: str) -> Counter[str]:
 
 
 def _cosine(left: Counter[str], right: Counter[str]) -> float:
+    """Compute cosine similarity between sparse token counters."""
+
     common = set(left) & set(right)
     numerator = sum(left[token] * right[token] for token in common)
     left_norm = math.sqrt(sum(value * value for value in left.values()))
@@ -57,6 +61,8 @@ def _cosine(left: Counter[str], right: Counter[str]) -> float:
 
 
 def _rank_rows(question: str, rows: list[dict[str, Any]]) -> list[str]:
+    """Rank mapped rows by lexical similarity and stable tie-breakers."""
+
     query = _tokens(question)
     ranked = sorted(
         rows,
@@ -71,6 +77,8 @@ def _rank_rows(question: str, rows: list[dict[str, Any]]) -> list[str]:
 
 
 def _record_from_entry(entry: dict[str, Any]) -> CrewAIRecord:
+    """Reconstruct one CrewAI record from its OKF extension fields."""
+
     extra = entry.get("extra") or {}
     crewai = extra.get("crewai")
     if not isinstance(crewai, dict):
@@ -95,6 +103,8 @@ def validate(
     source_evidence_path: Path,
     report_dir: Path,
 ) -> dict[str, Any]:
+    """Validate exact reconstruction, mapping fidelity, and recall parity."""
+
     source_records = read_lancedb_records(source_database)
     source_by_id = {record.id: record for record in source_records}
     loaded = load_okf_bundle(bundle)
@@ -137,7 +147,13 @@ def validate(
                 "mapped": row is not None,
                 "type_preserved": bool(row and row.get("type") == expected_type),
                 "confidence_preserved": bool(
-                    row and float(row.get("confidence", -1)) == reconstructed.importance
+                    row
+                    and math.isclose(
+                        float(row.get("confidence", -1)),
+                        reconstructed.importance,
+                        rel_tol=1e-9,
+                        abs_tol=1e-9,
+                    )
                 ),
                 "tags_preserved": bool(
                     row and set(row.get("tags") or []) == expected_tags
@@ -267,6 +283,8 @@ def validate(
 
 
 def build_parser() -> argparse.ArgumentParser:
+    """Build the validation command-line parser."""
+
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("source", type=Path, help="CrewAI LanceDB directory")
     parser.add_argument("bundle", type=Path, help="Generated OKF bundle")
@@ -276,6 +294,8 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def main(argv: list[str] | None = None) -> int:
+    """Run validation and return a process status matching the report."""
+
     args = build_parser().parse_args(argv)
     report = validate(args.source, args.bundle, args.source_evidence, args.report_dir)
     return 0 if report["passed"] else 1

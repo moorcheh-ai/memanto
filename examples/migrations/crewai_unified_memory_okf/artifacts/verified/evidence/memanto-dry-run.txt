@@ -2,8 +2,7 @@
 │ OKF -> Memanto  Dry run │
 └─────────────────────────┘
   … Loading OKF bundle from
-C:\Users\Andx\Documents\Codex\2026-08-05\new-chat\work\memanto\examples\migrati
-ons\crewai_unified_memory_okf\artifacts\verified\okf-bundle
+<OKF_BUNDLE>
   … Mapping OKF nodes onto Memanto schema...
 
 ┌───────────────────────────── Dry run complete ──────────────────────────────┐
@@ -14,7 +13,7 @@ ons\crewai_unified_memory_okf\artifacts\verified\okf-bundle
 │                                                                             │
 │ Dry run — no writes performed.                                              │
 │                                                                             │
-│ Run dir: C:\Users\Andx\.memanto\migrate\okf\20260806_004251                 │
+│ Run dir: <USER_HOME>\.memanto\migrate\okf\20260806_004251                  │
 │ Mapped preview:                                                             │
-│ C:\Users\Andx\.memanto\migrate\okf\20260806_004251\mapped_preview.json      │
+│ <USER_HOME>\.memanto\migrate\okf\20260806_004251\mapped_preview.json       │
 └─────────────────────────────────────────────────────────────────────────────┘

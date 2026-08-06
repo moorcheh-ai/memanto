@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 import os
 import re
 import subprocess
@@ -12,8 +13,10 @@ import tempfile
 import textwrap
 import time
 from pathlib import Path
+from typing import Any
 
 import imageio_ffmpeg
+from generate_source import SOURCE_MEMORIES
 from PIL import Image, ImageDraw, ImageFont
 
 WIDTH = 1280
@@ -21,13 +24,32 @@ HEIGHT = 720
 FPS = 24
 ANSI_RE = re.compile(r"\x1b(?:\[[0-?]*[ -/]*[@-~]|\][^\x07]*(?:\x07|\x1b\\))")
 DECORATION = frozenset(" +-│─┌┐└┘├┤┬┴┼╭╮╰╯═║╔╗╚╝")
+FONT_DIRECTORIES = (
+    Path(os.environ.get("WINDIR", r"C:\Windows")) / "Fonts",
+    Path("/usr/share/fonts/truetype/dejavu"),
+    Path("/usr/share/fonts/truetype/liberation2"),
+    Path("/usr/local/share/fonts"),
+    Path.home() / ".fonts",
+    Path("/System/Library/Fonts"),
+    Path("/Library/Fonts"),
+)
+FALLBACK_FONTS = (
+    "consola.ttf",
+    "DejaVuSansMono.ttf",
+    "DejaVuSans.ttf",
+    "LiberationMono-Regular.ttf",
+    "Menlo.ttc",
+)
 
 
 def _font(name: str, size: int) -> ImageFont.FreeTypeFont | ImageFont.ImageFont:
-    windows_fonts = Path(os.environ.get("WINDIR", r"C:\Windows")) / "Fonts"
-    for candidate in (windows_fonts / name, windows_fonts / "consola.ttf"):
-        if candidate.exists():
-            return ImageFont.truetype(str(candidate), size=size)
+    """Load a scalable font across Windows, Linux, and macOS."""
+
+    for candidate_name in dict.fromkeys((name, *FALLBACK_FONTS)):
+        for directory in FONT_DIRECTORIES:
+            candidate = directory / candidate_name
+            if candidate.is_file():
+                return ImageFont.truetype(str(candidate), size=size)
     return ImageFont.load_default()
 
 
@@ -37,7 +59,9 @@ TITLE = _font("segoeuib.ttf", 44)
 SUBTITLE = _font("segoeui.ttf", 24)
 
 
-def _capture_real_run(script_dir: Path) -> tuple[list[str], float]:
+def _capture_real_run(script_dir: Path) -> tuple[list[str], float, dict[str, Any]]:
+    """Run the real pipeline and capture both terminal output and its report."""
+
     environment = os.environ.copy()
     environment.update(
         {
@@ -49,13 +73,14 @@ def _capture_real_run(script_dir: Path) -> tuple[list[str], float]:
     )
     started = time.monotonic()
     with tempfile.TemporaryDirectory(prefix="crewai-okf-video-") as temporary:
+        run_root = Path(temporary) / "real-run"
         command = [
             sys.executable,
             str(script_dir / "run_demo.py"),
             "--output",
-            str(Path(temporary) / "real-run"),
+            str(run_root),
         ]
-        process = subprocess.Popen(
+        with subprocess.Popen(
             command,
             cwd=script_dir,
             env=environment,
@@ -64,32 +89,45 @@ def _capture_real_run(script_dir: Path) -> tuple[list[str], float]:
             text=True,
             encoding="utf-8",
             errors="replace",
+        ) as process:
+            assert process.stdout is not None
+            captured = [line.rstrip() for line in process.stdout]
+            return_code = process.wait()
+        if return_code:
+            raise RuntimeError(f"Real demo run failed with exit code {return_code}")
+        report = json.loads(
+            (run_root / "evidence" / "round-trip-report.json").read_text(
+                encoding="utf-8"
+            )
         )
-        assert process.stdout is not None
-        captured = [line.rstrip() for line in process.stdout]
-        return_code = process.wait()
     elapsed = time.monotonic() - started
-    if return_code:
-        raise RuntimeError(f"Real demo run failed with exit code {return_code}")
-    return _compact_terminal_lines(captured), elapsed
+    return _compact_terminal_lines(captured), elapsed, report
 
 
 def _compact_terminal_lines(lines: list[str]) -> list[str]:
+    """Remove decorative noise while retaining every substantive run event."""
+
     compact: list[str] = []
     memory_saves = 0
     for raw in lines:
         clean = ANSI_RE.sub("", raw)
+        stripped = clean.strip()
+        if not stripped or not (set(stripped) - DECORATION):
+            continue
         clean = "".join(
             character if 32 <= ord(character) < 127 else " " for character in clean
         )
         clean = clean.strip()
-        if not clean or not (set(clean) - DECORATION):
+        if not clean:
             continue
         if clean in {"Memory Save Started", "Status: Saving..."}:
             continue
         if clean == "Memory Save Completed":
             memory_saves += 1
-            clean = f"[CrewAI] Memory.remember completed ({memory_saves}/8)"
+            clean = (
+                "[CrewAI] Memory.remember completed "
+                f"({memory_saves}/{len(SOURCE_MEMORIES)})"
+            )
         if clean.startswith("Time:") or clean == "Source: Unified Memory":
             continue
         for wrapped in textwrap.wrap(clean, width=103) or [clean]:
@@ -98,6 +136,8 @@ def _compact_terminal_lines(lines: list[str]) -> list[str]:
 
 
 def _canvas() -> tuple[Image.Image, ImageDraw.ImageDraw]:
+    """Create the common terminal-window frame."""
+
     image = Image.new("RGB", (WIDTH, HEIGHT), "#07111f")
     draw = ImageDraw.Draw(image)
     draw.rounded_rectangle((28, 24, WIDTH - 28, HEIGHT - 24), 22, fill="#0d1b2a")
@@ -110,6 +150,8 @@ def _canvas() -> tuple[Image.Image, ImageDraw.ImageDraw]:
 
 
 def _title_frame(step: int) -> Image.Image:
+    """Render the animated title frame for one reveal step."""
+
     image, draw = _canvas()
     draw.text((95, 170), "CrewAI unified memory", font=TITLE, fill="#e8f4ff")
     draw.text((95, 230), "→ owned OKF → Memanto", font=TITLE, fill="#55d6be")
@@ -134,6 +176,8 @@ def _title_frame(step: int) -> Image.Image:
 
 
 def _terminal_frame(lines: list[str], progress: float) -> Image.Image:
+    """Render captured terminal lines and their progress indicator."""
+
     image, draw = _canvas()
     draw.text(
         (66, 118),
@@ -166,14 +210,29 @@ def _terminal_frame(lines: list[str], progress: float) -> Image.Image:
     return image
 
 
-def _result_frame(runtime: float, step: int) -> Image.Image:
+def _result_frame(runtime: float, step: int, report: dict[str, Any]) -> Image.Image:
+    """Render result rows derived from the captured validation report."""
+
     image, draw = _canvas()
     draw.text((76, 122), "VERIFIED RESULT", font=TITLE, fill="#8df59b")
+    total = int(report["source_records"])
     rows = (
-        ("SOURCE", "8 real CrewAI records • 6 recall queries • 0 LLM calls"),
-        ("FIDELITY", "8/8 exact source → declared → reconstructed SHA-256"),
-        ("MEMANTO", "8/8 mapped • 0 skipped • 7 semantic memory types"),
-        ("LIVE", "8/8 imported • 6/6 expected at rank #1 • 8/8 exported"),
+        (
+            "SOURCE",
+            f"{total} real CrewAI records • {len(report['recall_checks'])} recall queries • 0 LLM calls",
+        ),
+        (
+            "FIDELITY",
+            f"{report['exact_record_hashes']}/{total} exact record SHA-256 • bundle match: {report['exact_bundle_match']}",
+        ),
+        (
+            "MEMANTO",
+            f"{report['mapping_checks_passed']}/{total} mapped • golden recall parity {report['golden_recall_parity']}",
+        ),
+        (
+            "DRY RUN",
+            "Memanto shipped CLI loaded the owned OKF bundle • no writes",
+        ),
     )
     for index, (label, value) in enumerate(rows):
         y = 225 + index * 76
@@ -197,10 +256,12 @@ def _result_frame(runtime: float, step: int) -> Image.Image:
 
 
 def record(output: Path) -> None:
+    """Capture a new run and encode it as a compact H.264 MP4."""
+
     script_dir = Path(__file__).resolve().parent
     output = output.resolve()
     output.parent.mkdir(parents=True, exist_ok=True)
-    lines, runtime = _capture_real_run(script_dir)
+    lines, runtime, report = _capture_real_run(script_dir)
     writer = imageio_ffmpeg.write_frames(
         str(output),
         (WIDTH, HEIGHT),
@@ -227,13 +288,15 @@ def record(output: Path) -> None:
             writer.send(_terminal_frame(revealed, 1.0).tobytes())
 
         for frame in range(FPS * 6):
-            writer.send(_result_frame(runtime, frame).tobytes())
+            writer.send(_result_frame(runtime, frame, report).tobytes())
     finally:
         writer.close()
     print(f"Recorded {len(lines)} real terminal lines to {output}")
 
 
 def main() -> int:
+    """Parse the output path and record the demo."""
+
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--output",

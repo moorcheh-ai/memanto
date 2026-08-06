@@ -26,7 +26,7 @@ The pilot sponsor prefers concise evidence tables with raw numbers and confidenc
 
 ---
 [Supporting data]
-- OKF source: memories\preference\sponsor-reporting-preference-e7017675-11b8-49a7-9.md
+- OKF source: memories/preference/sponsor-reporting-preference-e7017675-11b8-49a7-9.md
 - OKF resource: crewai://unified-memory/e7017675-11b8-49a7-96ce-f570d402f979
 - OKF crewai: schema=unified-memory-lancedb; id=e7017675-11b8-49a7-96ce-f570d402f979; scope=/preferences/stakeholders; categories=['preference', 'reporting', 'stakeholder']; metadata={'title': 'Sponsor reporting...
 - OKF source_record_sha256: 68520fac7d1420535b96784b1689a236613a677dabaabf4f1634d6258a7f6c56

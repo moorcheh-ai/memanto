@@ -1,7 +1,7 @@
 {
   "adapter": "crewai-unified-memory-to-okf",
   "adapter_version": "1.0.0",
-  "created_at": "2026-08-06T00:42:49.204458Z",
+  "created_at": "2026-08-06T00:42:48.358273Z",
   "source": {
     "framework": "CrewAI",
     "storage": "LanceDB",
