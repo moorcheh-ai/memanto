@@ -31,6 +31,8 @@ def main() -> int:
     ap.add_argument("--max-per-type", type=int, default=40)
     ap.add_argument("--max-total", type=int, default=250)
     args = ap.parse_args()
+    if args.max_per_type < 0 or args.max_total < 0:
+        ap.error("--max-per-type and --max-total must be >= 0")
 
     loader = SOURCES[args.source]
     conversations = loader(args.export_dir)

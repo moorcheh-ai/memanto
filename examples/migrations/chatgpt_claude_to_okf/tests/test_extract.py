@@ -15,6 +15,7 @@ TURNS = [
     {"role": "assistant", "text": "That sounds great, let me know how it goes.", "ts": 6},
     {"role": "user", "text": "I'm building a Telegram bot in Python, my goal is to launch it this month.", "ts": 7},
     {"role": "user", "text": "I made a mistake last week with the credit card payment.", "ts": 8},
+    {"role": "assistant", "text": "Noted — Tuesday/Thursday runs, coffee limit, Monday check-up. I'll add all of that to your profile.", "ts": 9},
 ]
 
 CONV = [{"id": "c1", "title": "test", "source": "chatgpt", "turns": TURNS}]
@@ -49,6 +50,14 @@ def test_extraction_counts():
     texts = [m["content"].lower() for m in memories]
     assert not any("can you help me" in t for t in texts)
     assert not any("hi there" in t for t in texts)
+
+
+def test_assistant_turns_not_extracted():
+    """Assistant replies are confirmations, not memories — never extract them."""
+    result = extract_memories(CONV)
+    texts = [m["content"].lower() for m in result["memories"]]
+    assert not any("noted" in t for t in texts), "assistant turn leaked into memories"
+    assert not any("coffee limit" in t for t in texts)
 
 
 def test_dedupe():

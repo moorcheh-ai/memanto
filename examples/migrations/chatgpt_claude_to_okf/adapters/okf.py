@@ -19,6 +19,7 @@ the exact fields `memanto migrate okf` reads back.
 from __future__ import annotations
 
 import json
+import shutil
 from collections import Counter
 from pathlib import Path
 
@@ -58,6 +59,14 @@ def _type_index(types: list[str], counts: Counter) -> str:
 def write_bundle(memories: list[dict], sessions: list[dict], stats: dict,
                  out_dir: str | Path, bundle_name: str = "okf-bundle") -> dict:
     out = Path(out_dir)
+    # Remove stale artifacts from previous runs so a regenerated bundle never
+    # mixes old and new files (e.g. memories deleted by a stricter extraction).
+    for stale in ("memories", "sessions", "metrics", "index.md"):
+        p = out / stale
+        if p.is_dir():
+            shutil.rmtree(p)
+        elif p.is_file():
+            p.unlink()
     memories_dir = out / "memories"
     sessions_dir = out / "sessions"
     metrics_dir = out / "metrics"
@@ -71,6 +80,7 @@ def write_bundle(memories: list[dict], sessions: list[dict], stats: dict,
     counts = Counter(m["type"] for m in memories)
     type_files = {}
 
+    used: set[str] = set()
     for mem_type, items in by_type.items():
         tdir = memories_dir / mem_type
         tdir.mkdir(exist_ok=True)
@@ -78,6 +88,14 @@ def write_bundle(memories: list[dict], sessions: list[dict], stats: dict,
         for m in items:
             slug = _slug(m["title"])
             fname = f"{slug}.md"
+            if fname in used:
+                # 48-char slug truncation can collide — disambiguate instead
+                # of silently overwriting an existing memory file.
+                base, n = fname[:-3], 2
+                while f"{base}-{n}.md" in used:
+                    n += 1
+                fname = f"{base}-{n}.md"
+            used.add(fname)
             path = tdir / fname
             body = m["content"] + "\n"
             if m.get("resource"):

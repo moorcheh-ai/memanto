@@ -1,22 +1,21 @@
 #!/usr/bin/env python3
-"""Round-trip validation: prove recall parity after migration.
+"""Post-migration recall check: offline keyword parity + optional LLM-as-judge.
 
-Strategy (Path A spirit, no API key required by default):
-  1. Build a golden Q&A set from the source export: for each extracted memory,
-     ask "What is <title>?" — the answer is the memory content.
-  2. Offline parity: verify the migrated OKF bundle still contains the answer
-     tokens (keyword recall/precision).
-  3. Optional LLM-as-judge (OPENAI_API_KEY or ANTHROPIC_API_KEY set):
-     generate answers from the bundle (or from Memanto via `memanto answer`)
-     and have an LLM score semantic parity 0..1 per question.
+Honest scoping: the offline check measures keyword overlap between the golden
+answers (from the source export) and the generated OKF bundle. It is a strong
+signal that nothing was lost in extraction, but it is NOT a true round-trip
+through Memanto — that requires actually running `memanto migrate okf` (import)
+and `memanto memory export --okf` (export) on a live agent. Both steps are
+documented in README; this script is the fast, deterministic gate.
 
 Usage:
-    python validate_roundtrip.py chatgpt sample_data/chatgpt_export okf_bundle
-    OPENAI_API_KEY=... python validate_roundtrip.py chatgpt sample_data/chatgpt_export okf_bundle --llm
+    python validate_roundtrip.py chatgpt sample_data/chatgpt_export my_memories
+    OPENAI_API_KEY=... python validate_roundtrip.py chatgpt sample_data/chatgpt_export my_memories --llm
 """
 from __future__ import annotations
 
 import argparse
+import json
 import os
 import re
 import sys
@@ -114,8 +113,11 @@ def main() -> int:
     golden = build_golden(conversations, args.source)
     result = offline_parity(golden, Path(args.bundle_dir))
     print(f"Golden questions: {result['questions']}")
-    print(f"Offline recall   : {result['recall']} ({result['recall_hits']} hits)")
+    print(f"Offline keyword recall: {result['recall']} ({result['recall_hits']} hits)")
     print(f"Recall by type   : {result['by_type']}")
+    print("Note: offline keyword recall checks the generated bundle only; the")
+    print("true round-trip (import via `memanto migrate okf` + export) is the")
+    print("separate CLI step documented in README.")
     if args.llm:
         print("LLM judge       :", llm_judge(golden, Path(args.bundle_dir)))
     return 0 if result["recall"] >= 0.8 else 1

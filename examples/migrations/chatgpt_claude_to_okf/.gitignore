@@ -2,3 +2,10 @@
 __pycache__/
 *.pyc
 .pytest_cache/
+
+# secrets — never commit API keys or credentials
+.env
+.env.*
+!.env.example
+*.pem
+*.key

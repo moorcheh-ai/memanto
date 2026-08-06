@@ -47,6 +47,8 @@ def load_claude(export_dir: str | Path) -> list[dict]:
     if index_path is not None:
         try:
             for entry in json.loads(index_path.read_text(encoding="utf-8")):
+                if not isinstance(entry, dict):
+                    continue  # tolerate malformed/non-object index entries
                 uuid = str(entry.get("uuid") or "")
                 if uuid:
                     index[uuid] = entry

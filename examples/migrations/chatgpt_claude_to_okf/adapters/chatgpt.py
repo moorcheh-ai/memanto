@@ -55,8 +55,18 @@ def load_chatgpt(export_dir: str | Path) -> list[dict]:
             f"(looked for chatgpt/conversations.json and conversations.json)"
         )
     data = json.loads(conv_file.read_text(encoding="utf-8"))
+    if isinstance(data, dict):
+        # Some exports wrap the array under a key (e.g. {"conversations": [...]}).
+        data = data.get("conversations") or data.get("data") or []
+    if not isinstance(data, list):
+        raise ValueError(
+            f"Unexpected conversations.json shape: expected a list of conversations, "
+            f"got {type(data).__name__}"
+        )
     conversations = []
     for conv in data:
+        if not isinstance(conv, dict):
+            continue
         conv_id = str(conv.get("id") or conv.get("conversation_id") or "")
         title = conv.get("title") or conv.get("name") or f"conversation-{conv_id[:8] or len(conversations)}"
         mapping = conv.get("mapping") or {}
@@ -78,7 +88,13 @@ def load_chatgpt(export_dir: str | Path) -> list[dict]:
             turns.append({"role": role, "text": text, "ts": float(ts) if isinstance(ts, (int, float)) else None})
         if not turns:
             continue
-        turns.sort(key=lambda t: t["ts"] if t["ts"] is not None else 0)
+        # Turns without a timestamp sort after dated turns, keeping their
+        # original relative order — never map a missing ts to epoch 0.
+        ordered = sorted(
+            enumerate(turns),
+            key=lambda it: (it[1]["ts"] if it[1]["ts"] is not None else float("-inf"), it[0]),
+        )
+        turns = [t for _, t in ordered]
         conversations.append({
             "id": conv_id or f"chatgpt-{len(conversations)}",
             "title": str(title),

@@ -1,3 +1,3 @@
 # instruction
 
-7 memories
+5 memories

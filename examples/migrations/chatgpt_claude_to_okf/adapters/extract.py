@@ -8,9 +8,10 @@ Strategy:
   4. Drop junk (questions, pleasantries, meta-talk).
   5. Dedupe by normalized text; repeated statements bump confidence.
 
-All 13 MEMANTO types are used: fact, preference, goal, decision, artifact,
-learning, event, instruction, context, observation, commitment, relationship,
-error.
+Twelve types have explicit rules below; `fact` is the low-confidence fallback
+for substantive first-person statements. Together they cover all 13 MEMANTO
+types: fact, preference, goal, decision, artifact, learning, event,
+instruction, context, observation, commitment, relationship, error.
 """
 from __future__ import annotations
 
@@ -200,8 +201,9 @@ def extract_memories(conversations: list[dict], source: str | None = None,
         conv_memories = []
         for turn in conv.get("turns", []):
             if turn["role"] != "user":
-                # assistant statements are only mined for observations/errors
-                pass
+                # Assistant replies (acknowledgements, summaries, confirmations)
+                # are not memories — only user statements are mined.
+                continue
             for sent in _sentences(turn["text"]):
                 if _is_junk(sent):
                     continue
@@ -220,6 +222,7 @@ def extract_memories(conversations: list[dict], source: str | None = None,
                     "tags": [mem_type, src],
                     "timestamp": _ts_iso(turn.get("ts")),
                     "resource": f"{conv['title']} ({src})",
+                    "session_id": conv["id"],
                     "x_memanto": {
                         "confidence": conf,
                         "provenance": prov,
@@ -247,6 +250,14 @@ def extract_memories(conversations: list[dict], source: str | None = None,
         capped.extend(items[:max_per_type])
     capped.sort(key=lambda m: m["timestamp"] or "")
     capped = capped[:max_total]
+
+    # Session records must reflect the *capped* memory set — otherwise they
+    # reference memories trimmed away by max-per-type / max-total.
+    capped_by_session: dict[str, list[str]] = {}
+    for m in capped:
+        capped_by_session.setdefault(m.get("session_id", ""), []).append(m["type"])
+    for s in sessions:
+        s["memories"] = capped_by_session.get(s["id"], [])
 
     from collections import Counter
     counts = Counter(m["type"] for m in capped)

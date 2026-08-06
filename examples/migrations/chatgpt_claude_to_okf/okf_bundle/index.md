@@ -7,7 +7,7 @@ memanto migrate okf . --dry-run
 memanto migrate okf . --agent my-agent
 ```
 
-Total memories: 63
+Total memories: 61
 
 - [memories/](memories/)
 - [sessions/](sessions/)
