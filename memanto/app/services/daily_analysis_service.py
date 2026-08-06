@@ -171,7 +171,18 @@ Format the output as a Markdown report:
             if ai_model is not None:
                 generate_kwargs["ai_model"] = ai_model
             result = client.answer.generate(**generate_kwargs)
-            summary_text = result.get("answer", "Failed to generate summary.")
+            summary_text = result.get("answer")
+            if not summary_text or not str(summary_text).strip():
+                # Empty/missing answer (rate limit, model error, malformed
+                # response) must fail loudly — writing the placeholder or an
+                # empty file and returning status=success would silently
+                # corrupt the day's summary. Mirrors the legacy
+                # context_summarization_service guard (bounty #770).
+                raise MemoryError(
+                    "Failed to generate summary - empty response from AI"
+                )
+        except MemoryError:
+            raise
         except Exception as e:
             raise MemoryError(f"AI summarization failed: {str(e)}")
 
