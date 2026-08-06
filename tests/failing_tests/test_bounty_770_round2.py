@@ -117,8 +117,9 @@ class _FakeClient:
 # 1. Temporal recall limit must reject negative/zero, not silently slice
 # ---------------------------------------------------------------------------
 def test_search_changed_since_rejects_negative_limit():
-    """limit=-1 must raise, not return everything-but-the-last (Python
-    negative-index slicing on the result list)."""
+    """limit=-1 must raise ValueError (not a wrapped MemoryError), never
+    silently return everything-but-the-last via Python negative-index
+    slicing on the result list."""
     from memanto.app.services.memory_read_service import MemoryReadService
 
     svc = MemoryReadService(_FakeClient())
@@ -129,20 +130,20 @@ def test_search_changed_since_rejects_negative_limit():
             limit=-1,
         )
         raise AssertionError("expected an error for negative limit")
-    except Exception as e:
+    except ValueError as e:
         assert "limit must be a positive integer" in str(e)
 
 
 def test_search_recent_rejects_zero_limit():
-    """limit=0 must raise, not return an empty window indistinguishable from
-    'no memories'."""
+    """limit=0 must raise ValueError, not return an empty window
+    indistinguishable from 'no memories'."""
     from memanto.app.services.memory_read_service import MemoryReadService
 
     svc = MemoryReadService(_FakeClient())
     try:
         svc.search_recent(agent_id="agent-1", limit=0)
         raise AssertionError("expected an error for zero limit")
-    except Exception as e:
+    except ValueError as e:
         assert "limit must be a positive integer" in str(e)
 
 
@@ -154,7 +155,7 @@ def test_search_as_of_rejects_negative_limit():
     try:
         svc.search_as_of(as_of_date="2026-01-15", agent_id="agent-1", limit=-3)
         raise AssertionError("expected an error for negative limit")
-    except Exception as e:
+    except ValueError as e:
         assert "limit must be a positive integer" in str(e)
 
 
