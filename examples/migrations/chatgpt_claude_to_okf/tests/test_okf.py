@@ -53,3 +53,45 @@ def test_frontmatter_json_valid(tmp_path):
             key, _, val = line.partition(":")
             if key in ("tags",) and val.strip():
                 _json.loads(val)  # must parse
+
+
+def test_index_filename_reserved(tmp_path):
+    """A memory whose slug is 'index' must not be overwritten by the type index."""
+    turns = [
+        {"role": "user", "text": "I prefer Postgres.", "ts": 1},
+        {"role": "user", "text": "I prefer keeping an Index of my projects.", "ts": 2},
+    ]
+    conv = [{"id": "c1", "title": "Indexing", "source": "chatgpt", "turns": turns}]
+    result = extract_memories(conv)
+    # force a memory whose slug lands on 'index'
+    result["memories"][0]["title"] = "Index"
+    result["memories"][0]["type"] = "preference"
+    write_bundle(result["memories"], result["sessions"], result["stats"], tmp_path)
+
+    tdir = tmp_path / "memories" / "preference"
+    index_md = tdir / "index.md"
+    assert index_md.is_file() and index_md.read_text(encoding="utf-8").startswith("# preference")
+    # the memory is preserved under a disambiguated name
+    memory_file = tdir / "index-2.md"
+    assert memory_file.is_file(), f"expected disambiguated {memory_file}"
+    assert "Index" in memory_file.read_text(encoding="utf-8")
+
+
+def test_bundle_replaces_previous_cleanly(tmp_path):
+    """Regeneration swaps the whole dir — stray/stale files never survive."""
+    result = extract_memories(CONV)
+    write_bundle(result["memories"], result["sessions"], result["stats"], tmp_path)
+    # plant a stale artifact from a hypothetical previous version
+    (tmp_path / "stale-file.md").write_text("old", encoding="utf-8")
+    (tmp_path / "memories" / "obsolete-type").mkdir(exist_ok=True)
+    (tmp_path / "memories" / "obsolete-type" / "old.md").write_text("old", encoding="utf-8")
+
+    # regenerate (fresh memories, no obsolete-type)
+    write_bundle(result["memories"], result["sessions"], result["stats"], tmp_path)
+
+    assert not (tmp_path / "stale-file.md").exists(), "stale root file survived"
+    assert not (tmp_path / "memories" / "obsolete-type").exists(), "stale type dir survived"
+    assert (tmp_path / "index.md").is_file()
+    # no temp dirs left behind
+    leftovers = list(tmp_path.parent.glob(f".{tmp_path.name}.tmp-*"))
+    assert not leftovers, f"temp dirs left: {leftovers}"

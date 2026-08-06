@@ -19,7 +19,9 @@ the exact fields `memanto migrate okf` reads back.
 from __future__ import annotations
 
 import json
+import os
 import shutil
+import tempfile
 from collections import Counter
 from pathlib import Path
 
@@ -58,15 +60,31 @@ def _type_index(types: list[str], counts: Counter) -> str:
 
 def write_bundle(memories: list[dict], sessions: list[dict], stats: dict,
                  out_dir: str | Path, bundle_name: str = "okf-bundle") -> dict:
+    """Write the bundle atomically: build in a temp dir, then swap into place.
+
+    The previous bundle at out_dir is only replaced after the new one has been
+    fully written — a failure mid-write never destroys the existing bundle, and
+    the final directory is guaranteed clean (no stale files from earlier runs).
+    """
     out = Path(out_dir)
-    # Remove stale artifacts from previous runs so a regenerated bundle never
-    # mixes old and new files (e.g. memories deleted by a stricter extraction).
-    for stale in ("memories", "sessions", "metrics", "index.md"):
-        p = out / stale
-        if p.is_dir():
-            shutil.rmtree(p)
-        elif p.is_file():
-            p.unlink()
+    out.parent.mkdir(parents=True, exist_ok=True)
+    tmp = Path(tempfile.mkdtemp(prefix=f".{out.name}.tmp-", dir=out.parent))
+    try:
+        result = _write_bundle_contents(memories, sessions, stats, tmp, bundle_name)
+        if out.exists():
+            if out.is_dir():
+                shutil.rmtree(out)
+            else:
+                out.unlink()
+        os.replace(tmp, out)
+    except BaseException:
+        shutil.rmtree(tmp, ignore_errors=True)
+        raise
+    return result
+
+
+def _write_bundle_contents(memories: list[dict], sessions: list[dict], stats: dict,
+                           out: Path, bundle_name: str) -> dict:
     memories_dir = out / "memories"
     sessions_dir = out / "sessions"
     metrics_dir = out / "metrics"
@@ -80,7 +98,9 @@ def write_bundle(memories: list[dict], sessions: list[dict], stats: dict,
     counts = Counter(m["type"] for m in memories)
     type_files = {}
 
-    used: set[str] = set()
+    # "index.md" is reserved: each type dir writes its own index, so a memory
+    # whose slug collides with it must be disambiguated, never overwritten.
+    used: set[str] = {"index.md"}
     for mem_type, items in by_type.items():
         tdir = memories_dir / mem_type
         tdir.mkdir(exist_ok=True)

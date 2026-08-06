@@ -88,11 +88,11 @@ def load_chatgpt(export_dir: str | Path) -> list[dict]:
             turns.append({"role": role, "text": text, "ts": float(ts) if isinstance(ts, (int, float)) else None})
         if not turns:
             continue
-        # Turns without a timestamp sort after dated turns, keeping their
+        # Turns without a timestamp sort AFTER dated turns, keeping their
         # original relative order — never map a missing ts to epoch 0.
         ordered = sorted(
             enumerate(turns),
-            key=lambda it: (it[1]["ts"] if it[1]["ts"] is not None else float("-inf"), it[0]),
+            key=lambda it: (it[1]["ts"] if it[1]["ts"] is not None else float("inf"), it[0]),
         )
         turns = [t for _, t in ordered]
         conversations.append({
