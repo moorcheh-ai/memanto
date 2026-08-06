@@ -9,8 +9,8 @@ and `memanto memory export --okf` (export) on a live agent. Both steps are
 documented in README; this script is the fast, deterministic gate.
 
 Usage:
-    python validate_roundtrip.py chatgpt sample_data/chatgpt_export my_memories
-    OPENAI_API_KEY=... python validate_roundtrip.py chatgpt sample_data/chatgpt_export my_memories --llm
+    python validate_roundtrip.py chatgpt sample_data/chatgpt_export okf_bundle_real
+    OPENAI_API_KEY=... python validate_roundtrip.py chatgpt sample_data/chatgpt_export okf_bundle_real --llm
 """
 from __future__ import annotations
 
@@ -35,8 +35,14 @@ def _tokens(text: str) -> set[str]:
     return {w for w in re.findall(r"[a-z0-9\u00c0-\u1ef9]{3,}", text.lower()) if w not in STOPWORDS}
 
 
-def build_golden(conversations: list[dict], source: str) -> list[dict]:
-    result = extract_memories(conversations, source=source)
+def build_golden(conversations: list[dict], source: str,
+                 max_per_type: int | None = None, max_total: int | None = None) -> list[dict]:
+    kwargs: dict = {}
+    if max_per_type is not None:
+        kwargs["max_per_type"] = max_per_type
+    if max_total is not None:
+        kwargs["max_total"] = max_total
+    result = extract_memories(conversations, source=source, **kwargs)
     return [{"q": f"What is {m['title']}?", "a": m["content"], "type": m["type"]}
             for m in result["memories"]]
 
@@ -66,12 +72,12 @@ def offline_parity(golden: list[dict], bundle_dir: Path) -> dict:
 
 
 def llm_judge(golden: list[dict], bundle_dir: Path, sample: int = 20) -> dict:
-    """LLM-as-judge over a sample of golden Q&As (needs OPENAI/ANTHROPIC key)."""
+    """LLM-as-judge over a sample of golden Q&As (needs OPENAI_API_KEY)."""
     import urllib.request
 
-    api_key = os.environ.get("OPENAI_API_KEY") or os.environ.get("ANTHROPIC_API_KEY")
+    api_key = os.environ.get("OPENAI_API_KEY")
     if not api_key:
-        return {"error": "OPENAI_API_KEY or ANTHROPIC_API_KEY required for --llm"}
+        return {"error": "OPENAI_API_KEY required for --llm (OpenAI Chat Completions endpoint)"}
     bundle_text = ""
     for p in (bundle_dir / "memories").rglob("*.md"):
         if p.name != "index.md":
@@ -106,11 +112,14 @@ def main() -> int:
     ap.add_argument("source", choices=sorted(SOURCES))
     ap.add_argument("export_dir", type=str)
     ap.add_argument("bundle_dir", type=str, default="okf_bundle", nargs="?")
-    ap.add_argument("--llm", action="store_true")
+    ap.add_argument("--llm", action="store_true", help="also run an optional LLM-as-judge (requires OPENAI_API_KEY)")
+    ap.add_argument("--max-per-type", type=int, default=None, help="override extraction cap per type")
+    ap.add_argument("--max-total", type=int, default=None, help="override extraction cap total")
     args = ap.parse_args()
 
     conversations = SOURCES[args.source](args.export_dir)
-    golden = build_golden(conversations, args.source)
+    golden = build_golden(conversations, args.source,
+                          max_per_type=args.max_per_type, max_total=args.max_total)
     result = offline_parity(golden, Path(args.bundle_dir))
     print(f"Golden questions: {result['questions']}")
     print(f"Offline keyword recall: {result['recall']} ({result['recall_hits']} hits)")

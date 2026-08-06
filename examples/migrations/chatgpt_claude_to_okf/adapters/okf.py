@@ -18,6 +18,7 @@ the exact fields `memanto migrate okf` reads back.
 """
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import shutil
@@ -69,14 +70,24 @@ def write_bundle(memories: list[dict], sessions: list[dict], stats: dict,
     out = Path(out_dir)
     out.parent.mkdir(parents=True, exist_ok=True)
     tmp = Path(tempfile.mkdtemp(prefix=f".{out.name}.tmp-", dir=out.parent))
+    rollback: Path | None = None
     try:
         result = _write_bundle_contents(memories, sessions, stats, tmp, bundle_name)
         if out.exists():
-            if out.is_dir():
-                shutil.rmtree(out)
-            else:
-                out.unlink()
-        os.replace(tmp, out)
+            # Move the previous bundle aside instead of deleting it: if the
+            # replacement fails, the prior valid bundle is restored.
+            rollback = out.parent / f".{out.name}.old-{os.getpid()}"
+            if rollback.exists():
+                shutil.rmtree(rollback)
+            os.replace(out, rollback)
+        try:
+            os.replace(tmp, out)
+        except BaseException:
+            if rollback is not None and not out.exists():
+                os.replace(rollback, out)
+            raise
+        if rollback is not None:
+            shutil.rmtree(rollback, ignore_errors=True)
         # _write_bundle_contents wrote into the temp dir — report the final,
         # live path, not the (now gone) temp location.
         result["bundle_dir"] = str(out)
@@ -132,9 +143,18 @@ def _write_bundle_contents(memories: list[dict], sessions: list[dict], stats: di
 
     # sessions: provenance log per conversation
     session_files = []
+    used_sessions: set[str] = set()
     for s in sessions:
         slug = _slug(s["title"])[:40]
-        fname = f"{slug}-{str(s['id'])[:8]}.md"
+        # digest of the FULL session id — first-8-char prefixes can collide
+        digest = hashlib.md5(str(s["id"]).encode("utf-8")).hexdigest()[:8]
+        fname = f"{slug}-{digest}.md"
+        if fname in used_sessions:
+            base, n = fname[:-3], 2
+            while f"{base}-{n}.md" in used_sessions:
+                n += 1
+            fname = f"{base}-{n}.md"
+        used_sessions.add(fname)
         lines = [
             f"# {s['title']}",
             "",
@@ -142,7 +162,12 @@ def _write_bundle_contents(memories: list[dict], sessions: list[dict], stats: di
             f"- turns: {s['turns']}",
             f"- memories extracted: {len(s['memories'])}",
             f"- breakdown: {dict(Counter(s['memories']))}",
+            "",
+            "## Unmatched turns (junk / no memory signal)",
+            "",
         ]
+        for u in s.get("unmatched", []):
+            lines.append(f"- {u[:140]}")
         (sessions_dir / fname).write_text("\n".join(lines) + "\n", encoding="utf-8")
         session_files.append(fname)
 

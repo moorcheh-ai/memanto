@@ -15,12 +15,8 @@ python3 -m pytest tests/ -q
 echo "== [4/5] Round-trip validation (offline recall parity) =="
 python3 validate_roundtrip.py chatgpt sample_data/chatgpt_export okf_bundle
 
-echo "== [5/5] Memanto CLI dry-run (requires MOORCHEH_API_KEY) =="
-if [ -n "${MOORCHEH_API_KEY:-}" ]; then
-  memanto migrate okf ./okf_bundle --dry-run
-else
-  echo "skipped — set MOORCHEH_API_KEY to validate against the real Memanto import"
-fi
+echo "== [5/5] Memanto CLI dry-run (local bundle, no API key needed) =="
+memanto migrate okf ./okf_bundle --dry-run
 
 echo
 echo "Done. Bundle: $(pwd)/okf_bundle"

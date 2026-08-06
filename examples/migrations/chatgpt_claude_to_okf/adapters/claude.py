@@ -74,9 +74,13 @@ def load_claude(export_dir: str | Path) -> list[dict]:
                     obj = json.loads(line)
                 except json.JSONDecodeError:
                     continue
+                if not isinstance(obj, dict):
+                    continue  # tolerate non-object records
                 if obj.get("type") not in ("user", "assistant"):
                     continue
-                msg = obj.get("message") or {}
+                msg = obj.get("message")
+                if not isinstance(msg, dict):
+                    continue
                 text = _message_text(msg.get("content"))
                 if not text:
                     continue

@@ -199,6 +199,7 @@ def extract_memories(conversations: list[dict], source: str | None = None,
     for conv in conversations:
         src = source or conv.get("source", "chatgpt")
         conv_memories = []
+        unmatched = []
         for turn in conv.get("turns", []):
             if turn["role"] != "user":
                 # Assistant replies (acknowledgements, summaries, confirmations)
@@ -206,14 +207,21 @@ def extract_memories(conversations: list[dict], source: str | None = None,
                 continue
             for sent in _sentences(turn["text"]):
                 if _is_junk(sent):
+                    unmatched.append(sent)
                     continue
                 mem_type, conf, prov = _classify(sent)
                 if mem_type is None:
+                    unmatched.append(sent)
                     continue
                 norm = _normalize(sent)
-                seen[norm] = seen.get(norm, 0) + 1
-                if seen[norm] > 1:
-                    continue  # dedupe — first occurrence wins
+                if norm in seen:
+                    # Repeated statement: keep the first occurrence and bump
+                    # its confidence (bounded), per the docstring strategy.
+                    first = memories[seen[norm]]
+                    first["x_memanto"]["confidence"] = min(
+                        1.0, first["x_memanto"]["confidence"] + 0.1)
+                    continue
+                seen[norm] = len(memories)
                 memories.append({
                     "type": mem_type,
                     "title": _title_from(sent),
@@ -238,6 +246,7 @@ def extract_memories(conversations: list[dict], source: str | None = None,
             "created": conv.get("created"),
             "turns": len(conv.get("turns", [])),
             "memories": conv_memories,
+            "unmatched": unmatched[:20],
         })
 
     # cap per type (keep highest confidence first)

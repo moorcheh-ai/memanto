@@ -9,3 +9,6 @@ __pycache__/
 !.env.example
 *.pem
 *.key
+
+# real-data output (quickstart target) — never commit personal exports
+okf_bundle_real/

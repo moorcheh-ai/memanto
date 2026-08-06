@@ -1,8 +1,8 @@
 [
   {
     "title": "Postgres migration planning",
-    "create_time": 1778215599.1979358,
-    "update_time": 1778316399.1979358,
+    "create_time": 1770000000.0,
+    "update_time": 1770100800.0,
     "mapping": {
       "conv_000_n0": {
         "id": "conv_000_n0",
@@ -13,7 +13,7 @@
             "name": null,
             "metadata": {}
           },
-          "create_time": 1778215599.1979358,
+          "create_time": 1770000000.0,
           "update_time": null,
           "content": {
             "content_type": "text",
@@ -41,7 +41,7 @@
             "name": null,
             "metadata": {}
           },
-          "create_time": 1778240799.1979358,
+          "create_time": 1770025200.0,
           "update_time": null,
           "content": {
             "content_type": "text",
@@ -69,7 +69,7 @@
             "name": null,
             "metadata": {}
           },
-          "create_time": 1778265999.1979358,
+          "create_time": 1770050400.0,
           "update_time": null,
           "content": {
             "content_type": "text",
@@ -97,7 +97,7 @@
             "name": null,
             "metadata": {}
           },
-          "create_time": 1778291199.1979358,
+          "create_time": 1770075600.0,
           "update_time": null,
           "content": {
             "content_type": "text",
@@ -125,7 +125,7 @@
             "name": null,
             "metadata": {}
           },
-          "create_time": 1778316399.1979358,
+          "create_time": 1770100800.0,
           "update_time": null,
           "content": {
             "content_type": "text",
@@ -149,8 +149,8 @@
   },
   {
     "title": "Frontend stack choices",
-    "create_time": 1778409999.1979358,
-    "update_time": 1778510799.1979358,
+    "create_time": 1770194400.0,
+    "update_time": 1770295200.0,
     "mapping": {
       "conv_001_n0": {
         "id": "conv_001_n0",
@@ -161,7 +161,7 @@
             "name": null,
             "metadata": {}
           },
-          "create_time": 1778409999.1979358,
+          "create_time": 1770194400.0,
           "update_time": null,
           "content": {
             "content_type": "text",
@@ -189,7 +189,7 @@
             "name": null,
             "metadata": {}
           },
-          "create_time": 1778435199.1979358,
+          "create_time": 1770219600.0,
           "update_time": null,
           "content": {
             "content_type": "text",
@@ -217,7 +217,7 @@
             "name": null,
             "metadata": {}
           },
-          "create_time": 1778460399.1979358,
+          "create_time": 1770244800.0,
           "update_time": null,
           "content": {
             "content_type": "text",
@@ -245,7 +245,7 @@
             "name": null,
             "metadata": {}
           },
-          "create_time": 1778485599.1979358,
+          "create_time": 1770270000.0,
           "update_time": null,
           "content": {
             "content_type": "text",
@@ -273,7 +273,7 @@
             "name": null,
             "metadata": {}
           },
-          "create_time": 1778510799.1979358,
+          "create_time": 1770295200.0,
           "update_time": null,
           "content": {
             "content_type": "text",
@@ -297,8 +297,8 @@
   },
   {
     "title": "Learning Go",
-    "create_time": 1778604399.1979358,
-    "update_time": 1778705199.1979358,
+    "create_time": 1770388800.0,
+    "update_time": 1770489600.0,
     "mapping": {
       "conv_002_n0": {
         "id": "conv_002_n0",
@@ -309,7 +309,7 @@
             "name": null,
             "metadata": {}
           },
-          "create_time": 1778604399.1979358,
+          "create_time": 1770388800.0,
           "update_time": null,
           "content": {
             "content_type": "text",
@@ -337,7 +337,7 @@
             "name": null,
             "metadata": {}
           },
-          "create_time": 1778629599.1979358,
+          "create_time": 1770414000.0,
           "update_time": null,
           "content": {
             "content_type": "text",
@@ -365,7 +365,7 @@
             "name": null,
             "metadata": {}
           },
-          "create_time": 1778654799.1979358,
+          "create_time": 1770439200.0,
           "update_time": null,
           "content": {
             "content_type": "text",
@@ -393,7 +393,7 @@
             "name": null,
             "metadata": {}
           },
-          "create_time": 1778679999.1979358,
+          "create_time": 1770464400.0,
           "update_time": null,
           "content": {
             "content_type": "text",
@@ -421,7 +421,7 @@
             "name": null,
             "metadata": {}
           },
-          "create_time": 1778705199.1979358,
+          "create_time": 1770489600.0,
           "update_time": null,
           "content": {
             "content_type": "text",
@@ -445,8 +445,8 @@
   },
   {
     "title": "Health and fitness",
-    "create_time": 1778798799.1979358,
-    "update_time": 1778899599.1979358,
+    "create_time": 1770583200.0,
+    "update_time": 1770684000.0,
     "mapping": {
       "conv_003_n0": {
         "id": "conv_003_n0",
@@ -457,7 +457,7 @@
             "name": null,
             "metadata": {}
           },
-          "create_time": 1778798799.1979358,
+          "create_time": 1770583200.0,
           "update_time": null,
           "content": {
             "content_type": "text",
@@ -485,7 +485,7 @@
             "name": null,
             "metadata": {}
           },
-          "create_time": 1778823999.1979358,
+          "create_time": 1770608400.0,
           "update_time": null,
           "content": {
             "content_type": "text",
@@ -513,7 +513,7 @@
             "name": null,
             "metadata": {}
           },
-          "create_time": 1778849199.1979358,
+          "create_time": 1770633600.0,
           "update_time": null,
           "content": {
             "content_type": "text",
@@ -541,7 +541,7 @@
             "name": null,
             "metadata": {}
           },
-          "create_time": 1778874399.1979358,
+          "create_time": 1770658800.0,
           "update_time": null,
           "content": {
             "content_type": "text",
@@ -569,7 +569,7 @@
             "name": null,
             "metadata": {}
           },
-          "create_time": 1778899599.1979358,
+          "create_time": 1770684000.0,
           "update_time": null,
           "content": {
             "content_type": "text",
@@ -593,8 +593,8 @@
   },
   {
     "title": "Family plans",
-    "create_time": 1778993199.1979358,
-    "update_time": 1779068799.1979358,
+    "create_time": 1770777600.0,
+    "update_time": 1770853200.0,
     "mapping": {
       "conv_004_n0": {
         "id": "conv_004_n0",
@@ -605,7 +605,7 @@
             "name": null,
             "metadata": {}
           },
-          "create_time": 1778993199.1979358,
+          "create_time": 1770777600.0,
           "update_time": null,
           "content": {
             "content_type": "text",
@@ -633,7 +633,7 @@
             "name": null,
             "metadata": {}
           },
-          "create_time": 1779018399.1979358,
+          "create_time": 1770802800.0,
           "update_time": null,
           "content": {
             "content_type": "text",
@@ -661,7 +661,7 @@
             "name": null,
             "metadata": {}
           },
-          "create_time": 1779043599.1979358,
+          "create_time": 1770828000.0,
           "update_time": null,
           "content": {
             "content_type": "text",
@@ -689,7 +689,7 @@
             "name": null,
             "metadata": {}
           },
-          "create_time": 1779068799.1979358,
+          "create_time": 1770853200.0,
           "update_time": null,
           "content": {
             "content_type": "text",
@@ -713,8 +713,8 @@
   },
   {
     "title": "Side project: recipe bot",
-    "create_time": 1779162399.1979358,
-    "update_time": 1779263199.1979358,
+    "create_time": 1770946800.0,
+    "update_time": 1771047600.0,
     "mapping": {
       "conv_005_n0": {
         "id": "conv_005_n0",
@@ -725,7 +725,7 @@
             "name": null,
             "metadata": {}
           },
-          "create_time": 1779162399.1979358,
+          "create_time": 1770946800.0,
           "update_time": null,
           "content": {
             "content_type": "text",
@@ -753,7 +753,7 @@
             "name": null,
             "metadata": {}
           },
-          "create_time": 1779187599.1979358,
+          "create_time": 1770972000.0,
           "update_time": null,
           "content": {
             "content_type": "text",
@@ -781,7 +781,7 @@
             "name": null,
             "metadata": {}
           },
-          "create_time": 1779212799.1979358,
+          "create_time": 1770997200.0,
           "update_time": null,
           "content": {
             "content_type": "text",
@@ -809,7 +809,7 @@
             "name": null,
             "metadata": {}
           },
-          "create_time": 1779237999.1979358,
+          "create_time": 1771022400.0,
           "update_time": null,
           "content": {
             "content_type": "text",
@@ -837,7 +837,7 @@
             "name": null,
             "metadata": {}
           },
-          "create_time": 1779263199.1979358,
+          "create_time": 1771047600.0,
           "update_time": null,
           "content": {
             "content_type": "text",
@@ -861,8 +861,8 @@
   },
   {
     "title": "Job interview prep",
-    "create_time": 1779356799.1979358,
-    "update_time": 1779432399.1979358,
+    "create_time": 1771141200.0,
+    "update_time": 1771216800.0,
     "mapping": {
       "conv_006_n0": {
         "id": "conv_006_n0",
@@ -873,7 +873,7 @@
             "name": null,
             "metadata": {}
           },
-          "create_time": 1779356799.1979358,
+          "create_time": 1771141200.0,
           "update_time": null,
           "content": {
             "content_type": "text",
@@ -901,7 +901,7 @@
             "name": null,
             "metadata": {}
           },
-          "create_time": 1779381999.1979358,
+          "create_time": 1771166400.0,
           "update_time": null,
           "content": {
             "content_type": "text",
@@ -929,7 +929,7 @@
             "name": null,
             "metadata": {}
           },
-          "create_time": 1779407199.1979358,
+          "create_time": 1771191600.0,
           "update_time": null,
           "content": {
             "content_type": "text",
@@ -957,7 +957,7 @@
             "name": null,
             "metadata": {}
           },
-          "create_time": 1779432399.1979358,
+          "create_time": 1771216800.0,
           "update_time": null,
           "content": {
             "content_type": "text",
@@ -981,8 +981,8 @@
   },
   {
     "title": "Budget and finance",
-    "create_time": 1779525999.1979358,
-    "update_time": 1779576399.1979358,
+    "create_time": 1771310400.0,
+    "update_time": 1771360800.0,
     "mapping": {
       "conv_007_n0": {
         "id": "conv_007_n0",
@@ -993,7 +993,7 @@
             "name": null,
             "metadata": {}
           },
-          "create_time": 1779525999.1979358,
+          "create_time": 1771310400.0,
           "update_time": null,
           "content": {
             "content_type": "text",
@@ -1021,7 +1021,7 @@
             "name": null,
             "metadata": {}
           },
-          "create_time": 1779551199.1979358,
+          "create_time": 1771335600.0,
           "update_time": null,
           "content": {
             "content_type": "text",
@@ -1049,7 +1049,7 @@
             "name": null,
             "metadata": {}
           },
-          "create_time": 1779576399.1979358,
+          "create_time": 1771360800.0,
           "update_time": null,
           "content": {
             "content_type": "text",
@@ -1073,8 +1073,8 @@
   },
   {
     "title": "Travel: Japan",
-    "create_time": 1779669999.1979358,
-    "update_time": 1779745599.1979358,
+    "create_time": 1771454400.0,
+    "update_time": 1771530000.0,
     "mapping": {
       "conv_008_n0": {
         "id": "conv_008_n0",
@@ -1085,7 +1085,7 @@
             "name": null,
             "metadata": {}
           },
-          "create_time": 1779669999.1979358,
+          "create_time": 1771454400.0,
           "update_time": null,
           "content": {
             "content_type": "text",
@@ -1113,7 +1113,7 @@
             "name": null,
             "metadata": {}
           },
-          "create_time": 1779695199.1979358,
+          "create_time": 1771479600.0,
           "update_time": null,
           "content": {
             "content_type": "text",
@@ -1141,7 +1141,7 @@
             "name": null,
             "metadata": {}
           },
-          "create_time": 1779720399.1979358,
+          "create_time": 1771504800.0,
           "update_time": null,
           "content": {
             "content_type": "text",
@@ -1169,7 +1169,7 @@
             "name": null,
             "metadata": {}
           },
-          "create_time": 1779745599.1979358,
+          "create_time": 1771530000.0,
           "update_time": null,
           "content": {
             "content_type": "text",
@@ -1193,8 +1193,8 @@
   },
   {
     "title": "Open source contributions",
-    "create_time": 1779839199.1979358,
-    "update_time": 1779914799.1979358,
+    "create_time": 1771623600.0,
+    "update_time": 1771699200.0,
     "mapping": {
       "conv_009_n0": {
         "id": "conv_009_n0",
@@ -1205,12 +1205,12 @@
             "name": null,
             "metadata": {}
           },
-          "create_time": 1779839199.1979358,
+          "create_time": 1771623600.0,
           "update_time": null,
           "content": {
             "content_type": "text",
             "parts": [
-              "I'm contributing to an open source AI agent project on GitHub. I'm working on a new memory adapter."
+              "I'm contributing to an open-source AI agent project on GitHub. I'm working on a new memory adapter."
             ]
           },
           "status": "finished_successfully",
@@ -1233,7 +1233,7 @@
             "name": null,
             "metadata": {}
           },
-          "create_time": 1779864399.1979358,
+          "create_time": 1771648800.0,
           "update_time": null,
           "content": {
             "content_type": "text",
@@ -1261,7 +1261,7 @@
             "name": null,
             "metadata": {}
           },
-          "create_time": 1779889599.1979358,
+          "create_time": 1771674000.0,
           "update_time": null,
           "content": {
             "content_type": "text",
@@ -1289,7 +1289,7 @@
             "name": null,
             "metadata": {}
           },
-          "create_time": 1779914799.1979358,
+          "create_time": 1771699200.0,
           "update_time": null,
           "content": {
             "content_type": "text",
@@ -1313,8 +1313,8 @@
   },
   {
     "title": "Content creation",
-    "create_time": 1780008399.1979358,
-    "update_time": 1780083999.1979358,
+    "create_time": 1771792800.0,
+    "update_time": 1771868400.0,
     "mapping": {
       "conv_010_n0": {
         "id": "conv_010_n0",
@@ -1325,7 +1325,7 @@
             "name": null,
             "metadata": {}
           },
-          "create_time": 1780008399.1979358,
+          "create_time": 1771792800.0,
           "update_time": null,
           "content": {
             "content_type": "text",
@@ -1353,7 +1353,7 @@
             "name": null,
             "metadata": {}
           },
-          "create_time": 1780033599.1979358,
+          "create_time": 1771818000.0,
           "update_time": null,
           "content": {
             "content_type": "text",
@@ -1381,7 +1381,7 @@
             "name": null,
             "metadata": {}
           },
-          "create_time": 1780058799.1979358,
+          "create_time": 1771843200.0,
           "update_time": null,
           "content": {
             "content_type": "text",
@@ -1409,7 +1409,7 @@
             "name": null,
             "metadata": {}
           },
-          "create_time": 1780083999.1979358,
+          "create_time": 1771868400.0,
           "update_time": null,
           "content": {
             "content_type": "text",
@@ -1433,8 +1433,8 @@
   },
   {
     "title": "House hunting",
-    "create_time": 1780177599.1979358,
-    "update_time": 1780227999.1979358,
+    "create_time": 1771962000.0,
+    "update_time": 1772012400.0,
     "mapping": {
       "conv_011_n0": {
         "id": "conv_011_n0",
@@ -1445,7 +1445,7 @@
             "name": null,
             "metadata": {}
           },
-          "create_time": 1780177599.1979358,
+          "create_time": 1771962000.0,
           "update_time": null,
           "content": {
             "content_type": "text",
@@ -1473,7 +1473,7 @@
             "name": null,
             "metadata": {}
           },
-          "create_time": 1780202799.1979358,
+          "create_time": 1771987200.0,
           "update_time": null,
           "content": {
             "content_type": "text",
@@ -1501,7 +1501,7 @@
             "name": null,
             "metadata": {}
           },
-          "create_time": 1780227999.1979358,
+          "create_time": 1772012400.0,
           "update_time": null,
           "content": {
             "content_type": "text",

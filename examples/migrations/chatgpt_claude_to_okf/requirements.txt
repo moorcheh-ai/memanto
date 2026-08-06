@@ -1,2 +1,4 @@
-memanto>=0.2.13
-pytest>=8.0
+# Pinned to the exact versions used to generate and validate the committed
+# bundle (memanto 0.2.13, pytest 9.1.1) — reproducibility first.
+memanto==0.2.13
+pytest==9.1.1

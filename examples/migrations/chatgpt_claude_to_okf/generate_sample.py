@@ -13,10 +13,12 @@ from __future__ import annotations
 
 import argparse
 import json
-import time
 from pathlib import Path
 
-BASE_TS = time.time() - 90 * 24 * 3600  # ~90 days ago
+# Fixed epoch so generate_sample is fully deterministic and reproducible.
+# 1_770_000_000 = 2026-02-02T05:33:20Z (the "~90 days ago" flavor is kept only
+# in the relative spacing between conversations).
+BASE_TS = 1_770_000_000.0
 
 CONVERSATIONS = [
     ("Postgres migration planning", [
@@ -78,7 +80,7 @@ CONVERSATIONS = [
         ("assistant", "Shinjuku base, JR Pass, no Disney — noted for the itinerary."),
     ]),
     ("Open source contributions", [
-        ("user", "I'm contributing to an open source AI agent project on GitHub. I'm working on a new memory adapter."),
+        ("user", "I'm contributing to an open-source AI agent project on GitHub. I'm working on a new memory adapter."),
         ("user", "The repo maintainer asked me to always run lint before pushing. I'll follow that rule from now on."),
         ("user", "I found a bug in the CLI yesterday — the error handling for missing API keys is broken."),
         ("assistant", "Good catch. The maintainer should appreciate a fix with a test."),

@@ -33,8 +33,8 @@ EN (X):
 >
 > I just liberated 90 days of my ChatGPT history into portable markdown (OKF):
 > 🧠 61 memories · 11 types · preferences, decisions, goals, corrections
-> 📦 Imported into @memanto_ai — 61/61 nodes, 0 lost
-> ✅ Offline keyword recall: 1.0 — same answers, zero amnesia
+> 📦 `memanto migrate okf` dry-run: 61/61 nodes mapped, 0 lost
+> ✅ Offline keyword recall: 1.0 — nothing lost in extraction
 >
 > In → owned → portable. The freedom loop is real.
 > PR → github.com/moorcheh-ai/memanto/pull/1823 | Bounty #1609 @bountyhub
