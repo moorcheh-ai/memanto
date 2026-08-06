@@ -1,0 +1,2 @@
+memanto>=0.2.13
+pytest>=8.0
