@@ -282,7 +282,17 @@ def _load_or_export(
     bundle = _PROVIDER_BUNDLES[provider]
     if file is not None:
         progress(f"Loading export from {file}")
-        return file, load_export(file)
+        try:
+            return file, load_export(file)
+        except (FileNotFoundError, OSError) as exc:
+            # A missing or unreadable --file is user error: fail with a
+            # friendly message (the CLI converts ValueError to _error)
+            # instead of a raw FileNotFoundError traceback.
+            raise ValueError(f"Export file not found or unreadable: {file} ({exc})")
+        except ValueError as exc:
+            # load_export re-raises json.JSONDecodeError for broken content;
+            # surface it as a friendly message too.
+            raise ValueError(f"Export file is not valid JSON: {file} ({exc})")
 
     key = _resolve_provider_key(provider, api_key)
     try:

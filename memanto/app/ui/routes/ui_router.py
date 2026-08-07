@@ -6,6 +6,7 @@ Serves the Web UI static files and provides UI-specific API endpoints.
 
 import asyncio
 import ipaddress
+import json
 import os
 import re
 import signal
@@ -265,6 +266,24 @@ async def update_ui_config(updates: dict, _: None = Depends(_require_local)):
 _ONPREM_LLM_PROVIDERS = {"ollama", "openai", "cohere"}
 
 
+def _coerce_str(value: Any, field_name: str, default: str = "") -> str:
+    """Coerce a UI body value to str, rejecting non-scalar JSON types.
+
+    ``body: dict`` is loosely typed, so a client can send
+    ``{"api_key": 12345}`` or ``{"provider": [...]}``. Calling ``.strip()``
+    on such values raises AttributeError which escapes as an HTTP 500;
+    rejecting them with a 400 keeps every endpoint's fail-closed semantics.
+    """
+    if value is None:
+        return default
+    if not isinstance(value, (str, int, float, bool)):
+        raise HTTPException(
+            status_code=400,
+            detail=f"{field_name} must be a string, got {type(value).__name__}",
+        )
+    return str(value).strip()
+
+
 def _update_onprem_answer(ans: dict) -> None:
     """Persist on-prem LLM config: state.json (provider/model) + ``~/.moorcheh/config.json``.
 
@@ -286,9 +305,11 @@ def _update_onprem_answer(ans: dict) -> None:
 
     # Provider may be omitted (model-only change); reuse the currently
     # configured provider in that case.
-    provider = (ans.get("provider") or state.get("llm_provider") or "").strip().lower()
-    model = (ans.get("model") or "").strip()
-    api_key = (ans.get("api_key") or "").strip()
+    provider = _coerce_str(
+        ans.get("provider") or state.get("llm_provider"), "provider"
+    ).lower()
+    model = _coerce_str(ans.get("model"), "model")
+    api_key = _coerce_str(ans.get("api_key"), "api_key")
 
     if not provider or not model:
         raise HTTPException(status_code=400, detail="Provider and model are required.")
@@ -490,7 +511,12 @@ async def update_api_key(body: dict, _: None = Depends(_require_local)):
     Update the Moorcheh API key from the Web UI.
     Expects: {"api_key": "new-key-value"}
     """
-    new_key = body.get("api_key", "").strip()
+    new_key = body.get("api_key", "")
+    if not isinstance(new_key, str):
+        raise HTTPException(
+            status_code=400, detail="api_key must be a string"
+        )
+    new_key = new_key.strip()
     if not new_key:
         raise HTTPException(status_code=400, detail="API key cannot be empty")
     _config_manager.set_api_key(new_key)
@@ -1043,7 +1069,16 @@ def _migrate_load_or_export(
             raise HTTPException(
                 status_code=400, detail=f"Export file not found: {file_path}"
             )
-        return str(path), load_export(path)
+        try:
+            return str(path), load_export(path)
+        except (json.JSONDecodeError, OSError, ValueError) as exc:
+            # A user-supplied file that exists but is not valid export JSON
+            # is bad input, not a server fault: map it to 400 instead of
+            # letting the exception escape as an unhandled 500.
+            raise HTTPException(
+                status_code=400,
+                detail=f"Export file is not valid JSON: {file_path} ({exc})",
+            )
 
     if not api_key or not api_key.strip():
         raise HTTPException(
@@ -1091,7 +1126,7 @@ async def migrate_dry_run(body: dict, _: None = Depends(_require_local)):
     """
     from memanto.cli.migrate.runner import map_export, source_count
 
-    provider = (body.get("provider") or "").strip().lower()
+    provider = _coerce_str(body.get("provider"), "provider").lower()
     if provider not in _MIGRATE_PROVIDERS:
         raise HTTPException(
             status_code=400,
@@ -1157,7 +1192,7 @@ async def migrate_import(body: dict, _: None = Depends(_require_local)):
     """
     from memanto.cli.migrate.runner import run_migration
 
-    provider = (body.get("provider") or "").strip().lower()
+    provider = _coerce_str(body.get("provider"), "provider").lower()
     if provider not in _MIGRATE_PROVIDERS:
         raise HTTPException(
             status_code=400,
