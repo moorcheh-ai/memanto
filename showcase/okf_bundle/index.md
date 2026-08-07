@@ -5,7 +5,7 @@ title: OKF Memory Bundle — lena2099 Agent Migration Showcase
 
 # OKF Memory Bundle
 
-This bundle contains the full agent memory exported from Mem0 via Memanto's
+This bundle contains the complete agent memory exported from Mem0 via Memanto's
 `memanto migrate mem0` + `memanto memory export --okf` pipeline.
 
 - **Source:** Mem0 account (3 entities, 17 memories)
