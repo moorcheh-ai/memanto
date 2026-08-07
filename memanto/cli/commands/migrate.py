@@ -659,3 +659,120 @@ def migrate_supermemory(
         dry_run=dry_run,
         report=report,
     )
+
+
+@migrate_app.command("chatgpt")
+def migrate_chatgpt(
+    file: Path = typer.Option(
+        ...,
+        "--file",
+        "-f",
+        help="Path to the ChatGPT conversations.json export file.",
+    ),
+    agent: str | None = typer.Option(
+        None,
+        "--agent",
+        "-a",
+        help="Target Memanto agent id (defaults to the active agent).",
+    ),
+    dry_run: bool = typer.Option(
+        False,
+        "--dry-run",
+        help="Preview the mapping without writing.",
+    ),
+):
+    """Import a ChatGPT data export (conversations.json) into the active (or selected) agent.
+
+    Examples:
+        memanto migrate chatgpt --file ./conversations.json --dry-run
+        memanto migrate chatgpt --file ./conversations.json --agent my-agent
+    """
+    if not file.exists():
+        _error(
+            f"ChatGPT export not found: {file}",
+            hint="Provide the path to your ChatGPT conversations.json file.",
+        )
+
+    stamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
+    run_dir = config_manager.get_migrate_dir("chatgpt") / stamp
+    run_dir.mkdir(parents=True, exist_ok=True)
+
+    mode = "Dry run" if dry_run else "Migrate"
+    console.print(
+        Panel.fit(
+            f"[{BOLD_PRIMARY}]ChatGPT -> Memanto  {mode}[/{BOLD_PRIMARY}]",
+            border_style=PRIMARY,
+        )
+    )
+
+    def progress(msg: str) -> None:
+        console.print(f"  [{BRIGHT}]…[/{BRIGHT}] {msg}")
+
+    target_agent = None if dry_run else _resolve_target_agent(agent)
+
+    progress(f"Loading ChatGPT export from {file}")
+    try:
+        import json
+        export_data = json.loads(file.read_text(encoding="utf-8"))
+        if isinstance(export_data, list):
+            export = {"conversations": export_data}
+        else:
+            export = export_data
+    except Exception as exc:
+        _error(f"Failed to load ChatGPT export: {exc}")
+
+    progress("Mapping ChatGPT conversations onto Memanto schema...")
+    client = None if dry_run else get_client()
+    summary, rows = run_migration(
+        provider="chatgpt",
+        export=export,
+        client=client,
+        agent_id=target_agent or "",
+        dry_run=dry_run,
+        on_progress=progress,
+    )
+
+    preview_path = write_preview(rows, run_dir / "mapped_preview.json")
+
+    type_lines = (
+        ", ".join(f"{k}: {v}" for k, v in sorted(summary.type_counts.items())) or "—"
+    )
+    body_lines = [
+        f"[dim]Conversations/messages:[/dim] {summary.source_count}",
+        f"[dim]Mapped memories:[/dim] {summary.mapped_count}  "
+        f"[dim](skipped {summary.skipped})[/dim]",
+        f"[dim]Type breakdown:[/dim] {type_lines}",
+    ]
+    if dry_run:
+        body_lines.append("")
+        body_lines.append("[yellow]Dry run — no writes performed.[/yellow]")
+    else:
+        body_lines.append(
+            f"[dim]Imported:[/dim] {summary.imported}  "
+            f"[dim]Failed:[/dim] {summary.failed}  "
+            f"[dim]Batches:[/dim] {summary.batches}"
+        )
+        body_lines.append(f"[dim]Target agent:[/dim] {target_agent}")
+
+    body_lines.append("")
+    body_lines.append(f"[dim]Run dir:[/dim] {run_dir}")
+    body_lines.append(f"[dim]Mapped preview:[/dim] {preview_path}")
+    if summary.errors:
+        body_lines.append(
+            f"[red]First error:[/red] {summary.errors[0]}  "
+            "[dim](see run dir for more)[/dim]"
+        )
+
+    border = WARNING if summary.failed else SUCCESS
+    console.print()
+    console.print(
+        Panel(
+            "\n".join(body_lines),
+            title=(
+                "[bold yellow]Dry run complete[/bold yellow]"
+                if dry_run
+                else "[bold green]Import complete[/bold green]"
+            ),
+            border_style=border,
+        )
+    )

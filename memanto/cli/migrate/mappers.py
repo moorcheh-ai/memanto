@@ -487,11 +487,82 @@ def map_okf(export: dict[str, Any]) -> list[dict[str, Any]]:
     return rows
 
 
+# --------------------------------------------------------------------------
+# ChatGPT
+# --------------------------------------------------------------------------
+
+
+def map_chatgpt(export: dict[str, Any]) -> list[dict[str, Any]]:
+    """Map a ChatGPT export (wrapped in {"conversations": [...]}) to Memanto memories."""
+    rows: list[dict[str, Any]] = []
+    migrated_at = _now_utc()
+
+    for conv in export.get("conversations", []) or []:
+        conv_id = conv.get("conversation_id")
+        title = conv.get("title") or "ChatGPT Conversation"
+        
+        mapping = conv.get("mapping") or {}
+        
+        for msg_id, node in mapping.items():
+            if not isinstance(node, dict):
+                continue
+            message = node.get("message")
+            if not message or not isinstance(message, dict):
+                continue
+            
+            author = message.get("author") or {}
+            role = author.get("role")
+            if role not in ("user", "assistant"):
+                continue
+                
+            content_dict = message.get("content") or {}
+            parts = content_dict.get("parts") or []
+            
+            text_parts = [str(p) for p in parts if isinstance(p, str)]
+            content = " ".join(text_parts).strip()
+            if not content:
+                continue
+            
+            created_at = _parse_dt(message.get("create_time"))
+            
+            tags = ["chatgpt"]
+            if conv_id:
+                tags.append(f"conv_id={conv_id}")
+            
+            mem_type = "observation" if role == "assistant" else "fact"
+            
+            footer = _format_supporting_data(
+                [
+                    ("Source", f"chatgpt:{conv_id}:{msg_id}" if conv_id else None),
+                    ("Conversation title", title),
+                    ("Role", role),
+                    ("Source created_at", created_at.isoformat() if created_at else None),
+                ]
+            )
+            
+            rows.append(
+                {
+                    "title": _title_from(content),
+                    "content": _attach_footer(content, footer),
+                    "type": mem_type,
+                    "tags": tags,
+                    "confidence": 0.8,
+                    "source": "chatgpt",
+                    "source_ref": str(msg_id),
+                    "provenance": "imported",
+                    "created_at": created_at,
+                    "updated_at": migrated_at,
+                }
+            )
+    return rows
+
+
 MAPPERS: dict[str, Callable[[dict[str, Any]], list[dict[str, Any]]]] = {
     "mem0": map_mem0,
     "letta": map_letta,
     "supermemory": map_supermemory,
     "okf": map_okf,
+    "chatgpt": map_chatgpt,
 }
 
 
