@@ -246,6 +246,16 @@ def create_remember_node(
             return {"messages": []}
 
         content = "\n\n".join(messages_to_remember)
+        # The memory store caps content at InputLimits.MAX_TEXT_LENGTH (10k
+        # chars) and rejects anything larger with a ValueError. Truncate here
+        # (keeping the newest text, i.e. the end of the joined content) so a
+        # long pasted document or code block is stored instead of silently
+        # dropped — the previous behavior swallowed the ValueError in the
+        # except below, logged an error, and returned {"messages": []} as if
+        # the write had succeeded.
+        max_content = 10_000
+        if len(content) > max_content:
+            content = content[-max_content:]
         title = content if len(content) <= 50 else content[:47] + "..."
 
         agent_client, agent_lock = _cache.get(resolved_agent_id)

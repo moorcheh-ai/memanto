@@ -403,8 +403,32 @@ class MemantoStore(BaseStore):
             logger.warning("MemantoStore: Failed to list agents: %s", e)
             return []
 
+        # SdkClient.list_agents returns the AgentList envelope dict
+        # ({"agents": [...], "count": N, "warnings": [...]}), not a bare
+        # list. Iterating the dict directly would yield its string keys and
+        # crash on .get(); unwrap the list defensively so both the current
+        # envelope shape and a hypothetical bare-list backend work.
+        if isinstance(agents, dict):
+            agent_items = agents.get("agents")
+            if not isinstance(agent_items, list):
+                logger.warning(
+                    "MemantoStore: unexpected list_agents payload keys: %s",
+                    sorted(agents),
+                )
+                return []
+        elif isinstance(agents, list):
+            agent_items = agents
+        else:
+            logger.warning(
+                "MemantoStore: unexpected list_agents payload type: %s",
+                type(agents).__name__,
+            )
+            return []
+
         namespaces = []
-        for agent in agents:
+        for agent in agent_items:
+            if not isinstance(agent, dict):
+                continue
             agent_id = agent.get("agent_id") or agent.get("id") or ""
             if agent_id.startswith(self._agent_prefix):
                 ns_str = agent_id[len(self._agent_prefix) :]
