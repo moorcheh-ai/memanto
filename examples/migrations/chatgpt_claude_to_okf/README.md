@@ -107,7 +107,7 @@ malformed, empty, or unsupported records are skipped at parse time).
 |---|---|---|
 | Migration value & fidelity (30) | New adapters for 2 unsupported sources, real-format parsing, offline keyword recall 1.0, honest mapping table | this README, `convert.py`, `validate_roundtrip.py` |
 | OKF portability story (15) | Human-inspectable bundle, per-type index, metrics, provenance logs | `okf_bundle/` committed |
-| Reusability & cleanliness (20) | Single-command `run.sh`, `requirements.txt` (pinned), 19 pytest tests, clean layout ready to merge into `examples/migrations/` | `tests/` |
+| Reusability & cleanliness (20) | Single-command `run.sh`, `requirements.txt` (pinned), 21 pytest tests, clean layout ready to merge into `examples/migrations/` | `tests/` |
 | Use case & storytelling (10) | "Escape lock-in" narrative, lived-in sample store, before/after recall proof | README + SUBMISSION demo script |
 | Social virality (25) | Launch posts + demo video drafted | SUBMISSION.md |
 

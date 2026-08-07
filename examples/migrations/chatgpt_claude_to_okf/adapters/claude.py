@@ -92,7 +92,13 @@ def load_claude(export_dir: str | Path) -> list[dict]:
                 })
         if not turns:
             continue
-        turns.sort(key=lambda t: t["ts"] if t["ts"] is not None else 0)
+        # Turns without a timestamp sort AFTER dated turns, keeping their
+        # original JSONL order — never map a missing ts to epoch 0.
+        ordered = sorted(
+            enumerate(turns),
+            key=lambda it: (it[1]["ts"] if it[1]["ts"] is not None else float("inf"), it[0]),
+        )
+        turns = [t for _, t in ordered]
         conversations[conv_id] = {
             "id": conv_id,
             "title": meta.get("name") or meta.get("title") or f"conversation-{conv_id[:8]}",
