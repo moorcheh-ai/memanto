@@ -1,0 +1,33 @@
+{
+  "conversations": [
+    {
+      "id": "conv-001",
+      "title": "Python Best Practices",
+      "create_time": "2024-01-15T10:30:00Z",
+      "messages": [
+        {
+          "author": {
+            "role": "user"
+          },
+          "content": {
+            "parts": [
+              "What are Python best practices?"
+            ]
+          },
+          "create_time": "2024-01-15T10:30:00Z"
+        },
+        {
+          "author": {
+            "role": "assistant"
+          },
+          "content": {
+            "parts": [
+              "Use type hints, write docstrings, follow PEP 8..."
+            ]
+          },
+          "create_time": "2024-01-15T10:31:00Z"
+        }
+      ]
+    }
+  ]
+}
