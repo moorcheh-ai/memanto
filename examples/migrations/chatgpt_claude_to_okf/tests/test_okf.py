@@ -55,6 +55,61 @@ def test_frontmatter_json_valid(tmp_path):
                 _json.loads(val)  # must parse
 
 
+def test_frontmatter_contract_complete(tmp_path):
+    """x_memanto provenance must carry the required keys with valid ranges."""
+    import yaml
+
+    result = extract_memories(CONV)
+    write_bundle(result["memories"], result["sessions"], result["stats"], tmp_path)
+    checked = 0
+    for p in (tmp_path / "memories").rglob("*.md"):
+        if p.name == "index.md":
+            continue
+        raw = p.read_text(encoding="utf-8")
+        meta = yaml.safe_load(raw.split("---")[1])
+        assert "x_memanto" in meta, f"x_memanto missing in {p}"
+        xm = meta["x_memanto"]
+        for k in ("confidence", "provenance", "source", "type"):
+            assert k in xm, f"x_memanto.{k} missing in {p}"
+        assert meta.get("type") == xm.get("type"), f"type mismatch in {p}"
+        assert 0.0 <= xm["confidence"] <= 1.0, f"confidence out of range in {p}"
+        checked += 1
+    assert checked > 0
+
+
+def test_atomic_replacement_failure_preserves_previous(tmp_path, monkeypatch):
+    """If the tmp->out replacement fails, the previous bundle stays intact and
+    no temp/rollback directories are left behind."""
+    import os
+
+    result = extract_memories(CONV)
+    write_bundle(result["memories"], result["sessions"], result["stats"], tmp_path)
+    old_index = (tmp_path / "index.md").read_text(encoding="utf-8")
+
+    real_replace = os.replace
+    calls = {"n": 0}
+
+    def failing_replace(src, dst):
+        calls["n"] += 1
+        if calls["n"] == 2:  # the tmp -> out step
+            raise OSError("simulated replacement failure")
+        return real_replace(src, dst)
+
+    monkeypatch.setattr(os, "replace", failing_replace)
+    try:
+        write_bundle(result["memories"], result["sessions"], result["stats"], tmp_path)
+        raised = False
+    except OSError:
+        raised = True
+    finally:
+        monkeypatch.undo()
+    assert raised, "expected write_bundle to raise on replacement failure"
+    assert (tmp_path / "index.md").read_text(encoding="utf-8") == old_index, "previous bundle was not preserved"
+    leftovers = list(tmp_path.parent.glob(f".{tmp_path.name}.old-*")) + \
+                list(tmp_path.parent.glob(f".{tmp_path.name}.tmp-*"))
+    assert not leftovers, f"leftover temp/rollback dirs: {leftovers}"
+
+
 def test_index_filename_reserved(tmp_path):
     """A memory whose slug is 'index' must not be overwritten by the type index."""
     turns = [

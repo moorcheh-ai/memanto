@@ -21,8 +21,8 @@
 ## Kịch bản demo video (2-3 phút)
 1. **Hook (0:00-0:10)**: "Your AI assistant remembers you. But who owns that memory?" — mở export ChatGPT, chỉ vào 90 ngày hội thoại.
 2. **The trap (0:10-0:30)**: đóng khung thực tế — memory nằm trong schema độc quyền, đổi tool là mất hết. (Screen: file conversations.json)
-3. **The escape (0:30-1:15)**: chạy `python convert.py chatgpt ./export --out okf_bundle` — chỉ bundle mọc ra: memories/, sessions/, metrics/. Mở 1 file .md: frontmatter sạch, con người đọc được.
-4. **Ownership proof (1:15-1:50)**: `memanto migrate okf ./okf_bundle --dry-run` → "61 nodes mapped, 0 skipped". Mở metrics/overview.md: 61 memories, 11 types.
+3. **The escape (0:30-1:15)**: chạy `python convert.py chatgpt ./export --out okf_bundle_real` — chỉ bundle mọc ra: memories/, sessions/, metrics/. Mở 1 file .md: frontmatter sạch, con người đọc được.
+4. **Ownership proof (1:15-1:50)**: `memanto migrate okf ./okf_bundle_real --dry-run` → "61 nodes mapped, 0 skipped". Mở metrics/overview.md: 61 memories, 11 types.
 5. **Zero amnesia (1:50-2:30)**: `validate_roundtrip.py` → "Offline keyword recall: 1.0". Hỏi lại 3 câu mà agent cũ từng biết ("What database did we choose?", "What's my goal this month?", "When is my check-up?") → trả lời đúng từ bundle.
 6. **CTA (2:30-2:45)**: "Escape lock-in. Own your memory." + link repo/issue.
 

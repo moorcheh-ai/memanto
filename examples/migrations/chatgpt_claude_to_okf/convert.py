@@ -12,6 +12,7 @@ Then validate against the real Memanto CLI:
 from __future__ import annotations
 
 import argparse
+import shlex
 import sys
 from pathlib import Path
 
@@ -56,8 +57,8 @@ def main() -> int:
     print(f"[3/3] Wrote OKF bundle -> {written['bundle_dir']}", file=sys.stderr)
     print()
     print("Next steps:")
-    print(f"  memanto migrate okf {args.out} --dry-run")
-    print(f"  memanto migrate okf {args.out} --agent my-agent")
+    print(f"  memanto migrate okf {shlex.quote(args.out)} --dry-run")
+    print(f"  memanto migrate okf {shlex.quote(args.out)} --agent my-agent")
     return 0
 
 

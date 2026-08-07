@@ -48,19 +48,25 @@ def build_golden(conversations: list[dict], source: str,
 
 
 def offline_parity(golden: list[dict], bundle_dir: Path) -> dict:
-    bundle_text = ""
+    # Tokenize each memory file SEPARATELY: aggregated tokens across distinct
+    # memories must not satisfy the threshold — an answer is "recallable" only
+    # if a single memory carries enough of it.
+    per_file_tokens = []
     for p in (bundle_dir / "memories").rglob("*.md"):
         if p.name == "index.md":
             continue
-        bundle_text += p.read_text(encoding="utf-8") + "\n"
-    bundle_tokens = _tokens(bundle_text)
+        per_file_tokens.append(_tokens(p.read_text(encoding="utf-8")))
 
     hits = 0
     per_type = Counter()
     for g in golden:
-        overlap = _tokens(g["a"]) & bundle_tokens
-        score = len(overlap) / max(1, len(_tokens(g["a"])))
-        if score >= 0.5:
+        answer_tokens = _tokens(g["a"])
+        best = 0.0
+        for ft in per_file_tokens:
+            overlap = answer_tokens & ft
+            score = len(overlap) / max(1, len(answer_tokens))
+            best = max(best, score)
+        if best >= 0.5:
             hits += 1
             per_type[g["type"]] += 1
     return {

@@ -1,4 +1,9 @@
 # Pinned to the exact versions used to generate and validate the committed
 # bundle (memanto 0.2.13, pytest 9.1.1) — reproducibility first.
+# Transitive deps of memanto are constrained to CVE-safe releases:
+#   - python-multipart >= 0.0.20 (DoS fix for 0.0.7–0.0.19)
+#   - PyJWT >= 2.10.0 (algorithm-confusion hardening)
 memanto==0.2.13
 pytest==9.1.1
+PyJWT>=2.10.0
+python-multipart>=0.0.20

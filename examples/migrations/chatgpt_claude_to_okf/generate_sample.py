@@ -16,7 +16,7 @@ import json
 from pathlib import Path
 
 # Fixed epoch so generate_sample is fully deterministic and reproducible.
-# 1_770_000_000 = 2026-02-02T05:33:20Z (the "~90 days ago" flavor is kept only
+# 1_770_000_000 = 2026-02-02T02:40:00Z (the "~90 days ago" flavor is kept only
 # in the relative spacing between conversations).
 BASE_TS = 1_770_000_000.0
 

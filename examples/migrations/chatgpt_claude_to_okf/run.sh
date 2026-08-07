@@ -12,7 +12,7 @@ python3 convert.py chatgpt sample_data/chatgpt_export --out okf_bundle
 echo "== [3/5] Run tests =="
 python3 -m pytest tests/ -q
 
-echo "== [4/5] Round-trip validation (offline recall parity) =="
+echo "== [4/5] Offline bundle recall validation =="
 python3 validate_roundtrip.py chatgpt sample_data/chatgpt_export okf_bundle
 
 echo "== [5/5] Memanto CLI dry-run (local bundle, no API key needed) =="

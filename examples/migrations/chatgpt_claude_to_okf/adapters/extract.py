@@ -192,6 +192,13 @@ def _slug(s: str, max_len: int = 48) -> str:
 def extract_memories(conversations: list[dict], source: str | None = None,
                      max_per_type: int = 40, max_total: int = 250) -> dict:
     """Return {"memories": [...], "stats": {...}, "sessions": [...]}."""
+    # Validate at the public boundary: negative caps must never slice.
+    if max_per_type is None:
+        max_per_type = 40
+    if max_total is None:
+        max_total = 250
+    if max_per_type < 0 or max_total < 0:
+        raise ValueError("max_per_type and max_total must be >= 0")
     memories: list[dict] = []
     seen: dict[str, int] = {}
     sessions = []
