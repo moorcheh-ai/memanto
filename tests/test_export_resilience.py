@@ -53,9 +53,10 @@ class TestExportMemoryMdRefusesEmptyOnTotalFailure:
             client.export_memory_md(agent_id="test-agent")
 
     @pytest.mark.parametrize("client_cls", [SdkClient, DirectClient])
-    def test_partial_failure_still_exports(self, client_cls, monkeypatch, tmp_path):
-        """One type erroring while others succeed must not raise — only a
-        *total* outage (every type failing) should refuse to write."""
+    def test_partial_failure_refuses_incomplete_export(
+        self, client_cls, monkeypatch, tmp_path
+    ):
+        """One failed type must not be represented as a genuinely empty type."""
         client = _build_client(client_cls, monkeypatch, tmp_path)
 
         def fake_recall(agent_id, query, limit, type):
@@ -65,8 +66,11 @@ class TestExportMemoryMdRefusesEmptyOnTotalFailure:
 
         monkeypatch.setattr(client, "recall", MagicMock(side_effect=fake_recall))
 
-        result = client.export_memory_md(agent_id="test-agent")
-        assert result["total_memories"] > 0
+        with pytest.raises(
+            ConnectionError,
+            match=f"incomplete.*{MEMORY_TYPE_ORDER[0]}|{MEMORY_TYPE_ORDER[0]}.*incomplete",
+        ):
+            client.export_memory_md(agent_id="test-agent")
 
 
 class TestSyncUsesCacheFastPath:

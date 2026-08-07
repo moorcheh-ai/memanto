@@ -930,7 +930,7 @@ class MemoryReadService:
             filtered = [
                 r
                 for r in filtered
-                if any(tag in r.get("tags", "").split(",") for tag in tags)
+                if any(tag in self._normalize_tags(r.get("tags")) for tag in tags)
             ]
 
         # Apply limit
@@ -971,19 +971,7 @@ class MemoryReadService:
         # Parse tags - can be comma-separated string or array. External imports
         # and older documents may include spaces after commas, so normalize
         # before exact tag filters run.
-        tags_value = get_field("tags")
-        if isinstance(tags_value, str):
-            tags = [
-                tag_value for tag in tags_value.split(",") if (tag_value := tag.strip())
-            ]
-        elif isinstance(tags_value, list):
-            tags = [
-                tag_value
-                for tag in tags_value
-                if tag is not None and (tag_value := str(tag).strip())
-            ]
-        else:
-            tags = []
+        tags = self._normalize_tags(get_field("tags"))
 
         # Extract provenance
         provenance = get_field("provenance") or "explicit_statement"
@@ -994,28 +982,39 @@ class MemoryReadService:
         content = raw_text
 
         if raw_text:
-            # Wire format (see MemoryRecord.to_moorcheh_document):
-            #   "[TYPE] {title}\n\n{content}"  with an optional trailing
-            #   "\n\nTags: {tags}" block appended only when the record has tags.
-            # Split off the title on the FIRST blank line; everything after it is
-            # the content, which may itself contain blank lines.
-            first_line, _, rest = raw_text.partition("\n\n")
+            first_line, separator, body = raw_text.partition("\n\n")
 
-            # DOTALL: documents stored before titles were normalized may still
-            # carry a raw newline inside the title block; the prefix must be
-            # stripped instead of leaking into the returned title.
-            title_match = re.match(r"^\[.*?\]\s*(.*)$", first_line, re.DOTALL)
-            title = title_match.group(1).strip() if title_match else first_line.strip()
-
-            # Strip ONLY a genuine trailing tags block, and only when this record
-            # actually has tags (the serializer appends the block iff tags exist).
-            # Prevents (a) wiping content that merely begins with "Tags: " and
-            # (b) leaking the tags line into multi-paragraph content.
-            body, sep, last = rest.rpartition("\n\n")
-            if tags and sep and last.startswith("Tags: "):
-                content = body
+            # Treat bracketed prefixes as typed headers only for known
+            # memory types; otherwise keep the raw first line as title.
+            title_match = re.match(r"^\[(.*?)\]\s*(.*)$", first_line, flags=re.DOTALL)
+            if title_match and title_match.group(1).lower() in VALID_MEMORY_TYPES:
+                title = title_match.group(2).strip()
             else:
-                content = rest
+                title_match = None
+                title = first_line.strip()
+
+            if separator:
+                content = body
+            elif title_match:
+                content = ""
+            else:
+                content = raw_text
+
+            # ``MemoryRecord.to_moorcheh_document`` appends a display-only
+            # tags footer after the content.  Remove exactly that generated
+            # footer while preserving arbitrary paragraphs (including a
+            # user-authored ``Tags:`` paragraph) in the original content.
+            if tags:
+                footer_marker = "\n\nTags: "
+                content_without_footer, marker, footer_tags = content.rpartition(
+                    footer_marker
+                )
+                normalized_footer_tags = [
+                    value.strip() for value in footer_tags.split(",") if value.strip()
+                ]
+                normalized_metadata_tags = [str(value).strip() for value in tags]
+                if marker and normalized_footer_tags == normalized_metadata_tags:
+                    content = content_without_footer
 
         # Build basic formatted item
         formatted = {
@@ -1043,3 +1042,23 @@ class MemoryReadService:
         }
 
         return formatted
+
+    @staticmethod
+    def _normalize_tags(tags_value: Any) -> list[str]:
+        if isinstance(tags_value, str):
+            parsed_tags = tags_value.split(",")
+        elif isinstance(tags_value, list):
+            parsed_tags = tags_value
+        else:
+            return []
+
+        normalized = []
+        for tag in parsed_tags:
+            if tag is None:
+                continue
+
+            clean_tag = str(tag).strip()
+            if clean_tag:
+                normalized.append(clean_tag)
+
+        return normalized

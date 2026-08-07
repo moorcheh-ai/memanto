@@ -21,6 +21,7 @@ from memanto.app.constants import (
 from memanto.app.core import (
     BoundedSourceRef,
     BoundedTags,
+    MemorySource,
 )
 
 
@@ -40,7 +41,7 @@ class MemoryStoreRequest(BaseModel):
     content: str = Field(max_length=10000)
     agent_id: str
     actor_id: str
-    source: SourceType
+    source: MemorySource
     source_ref: BoundedSourceRef | None = None
     confidence: float = Field(ge=0.0, le=1.0, default=0.8)
     tags: BoundedTags = Field(default_factory=list)
@@ -60,7 +61,7 @@ class MemoryBatchItem(BaseModel):
     type: MemoryType
     title: str = Field(max_length=100)
     content: str = Field(max_length=10000)
-    source: SourceType
+    source: MemorySource
     source_ref: BoundedSourceRef | None = None
     confidence: float = Field(ge=0.0, le=1.0, default=0.8)
     tags: BoundedTags = Field(default_factory=list)
@@ -98,7 +99,13 @@ class BatchRememberItem(BaseModel):
     )
     confidence: float = Field(0.8, ge=0.0, le=1.0, description="Confidence score (0-1)")
     tags: BoundedTags | None = Field(None, description="Tags for this memory")
-    source: SourceType = Field("agent", description="Source of memory")
+    source: MemorySource = Field(
+        "agent",
+        description=(
+            "Who wrote this memory — 'user', 'agent', or a specific writer "
+            "such as 'cursor', 'codex', or 'claude_code'."
+        ),
+    )
     provenance: str = Field(
         "explicit_statement",
         description="How memory was obtained (explicit_statement, inferred, observed, etc.)",

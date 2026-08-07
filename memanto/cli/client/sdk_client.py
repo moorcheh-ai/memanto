@@ -40,6 +40,7 @@ from memanto.app.utils.errors import (
     SessionExpiredError,
     SessionNotFoundError,
 )
+from memanto.app.utils.temporal_helpers import utc_date_str
 from memanto.app.utils.validation import (
     InputLimits,
     is_successful_write_result,
@@ -878,6 +879,7 @@ class SdkClient:
         min_similarity: float | None = None,
         created_after: datetime | None = None,
         created_before: datetime | None = None,
+        min_confidence: float | None = None,
     ) -> dict[str, Any]:
         """
         Search memories by semantic similarity.
@@ -891,6 +893,7 @@ class SdkClient:
             min_similarity: Minimum similarity threshold.
             created_after: Only memories created after this datetime.
             created_before: Only memories created before this datetime.
+            min_confidence: Minimum confidence threshold.
 
         Returns:
             Dict with ``agent_id``, ``query``, ``memories``, ``count``.
@@ -914,6 +917,7 @@ class SdkClient:
             agent_id=agent_id,
             type=type,
             tags=tags,
+            min_confidence=min_confidence,
             min_similarity_score=min_similarity,
             created_after=created_after.isoformat() if created_after else None,
             created_before=created_before.isoformat() if created_before else None,
@@ -1232,10 +1236,11 @@ class SdkClient:
             date: Date string (YYYY-MM-DD). Defaults to today.
 
         Returns:
-            List of unresolved conflict dicts.
+            List of unresolved conflict dicts, each with a stable ``index``
+            into the full conflict report.
         """
         if not date:
-            date = datetime.now().strftime("%Y-%m-%d")
+            date = utc_date_str()
 
         json_path = (
             Path.home() / ".memanto" / "conflicts" / f"{agent_id}_{date}_conflicts.json"
@@ -1247,8 +1252,12 @@ class SdkClient:
         with open(json_path, encoding="utf-8") as f:
             all_conflicts = json.load(f)
 
-        # Return only unresolved conflicts
-        return [c for c in all_conflicts if not c.get("resolved", False)]
+        # Keep unresolved conflicts but preserve each full-report index.
+        return [
+            {**c, "index": idx}
+            for idx, c in enumerate(all_conflicts)
+            if not c.get("resolved", False)
+        ]
 
     def resolve_conflict(
         self,
@@ -1265,7 +1274,8 @@ class SdkClient:
         Args:
             agent_id: Target agent.
             date: Date string (YYYY-MM-DD).
-            conflict_index: 0-based index into the full conflicts list.
+            conflict_index: Stable 0-based index into the full conflict report
+                (use ``list_conflicts(...)[i]["index"]``).
             action: Resolution action — ``keep_old``, ``keep_new``,
                 ``keep_both``, ``remove_both``, or ``manual``.
             manual_content: Required when action is ``manual``.
@@ -1295,6 +1305,15 @@ class SdkClient:
             )
 
         conflict = all_conflicts[conflict_index]
+
+        # Guard against stale/desynced conflict indexes.
+        if conflict.get("resolved", False):
+            raise ValueError(
+                f"Conflict at index {conflict_index} is already resolved. "
+                "Re-list conflicts and resolve using the 'index' field returned "
+                "by list_conflicts."
+            )
+
         old_id = conflict.get("old_memory_id")
         new_id = conflict.get("new_memory_id")
 
@@ -1501,13 +1520,13 @@ class SdkClient:
     ) -> dict[str, list]:
         """Recall memories for every type, grouped by type.
 
-        Raises ``ConnectionError`` when *every* type recall fails (backend
-        unreachable) so callers don't overwrite a good export with nothing.
+        Raises ``ConnectionError`` when any type recall fails so callers don't
+        overwrite a good export with an incomplete snapshot.
         """
         from memanto.app.services.memory_export_service import MEMORY_TYPE_ORDER
 
         memories_by_type: dict[str, list] = {}
-        failed_types = 0
+        failed_types: list[str] = []
 
         for mem_type in MEMORY_TYPE_ORDER:
             try:
@@ -1520,13 +1539,16 @@ class SdkClient:
                 memories_by_type[mem_type] = result.get("memories", [])
             except Exception:
                 memories_by_type[mem_type] = []
-                failed_types += 1
+                failed_types.append(mem_type)
 
-        if failed_types == len(MEMORY_TYPE_ORDER):
+        if failed_types:
+            if len(failed_types) == len(MEMORY_TYPE_ORDER):
+                detail = "the backend appears unreachable"
+            else:
+                detail = f"failed types: {', '.join(failed_types)}"
             raise ConnectionError(
-                f"Failed to recall any memories for agent '{agent_id}' — "
-                "the backend appears unreachable. Refusing to write an "
-                "empty export."
+                f"Failed to recall a complete memory set for agent '{agent_id}' — "
+                f"{detail}. Refusing to write an incomplete export."
             )
         return memories_by_type
 

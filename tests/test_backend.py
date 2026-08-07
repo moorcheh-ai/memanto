@@ -199,6 +199,31 @@ class TestOnPremClient:
 
 
 class TestSingletonDispatch:
+    def test_dependency_wrappers_plain_calls_use_none_api_key(self):
+        """Plain calls must forward ``None`` (not FastAPI ``Header`` metadata)."""
+        from memanto.app.clients import moorcheh as mclients
+
+        sync_client = object()
+        async_client = object()
+
+        with (
+            patch.object(
+                mclients.moorcheh_client,
+                "get_client",
+                return_value=sync_client,
+            ) as sync_dispatcher,
+            patch.object(
+                mclients.moorcheh_client,
+                "get_async_client",
+                return_value=async_client,
+            ) as async_dispatcher,
+        ):
+            assert mclients.get_moorcheh_client() is sync_client
+            assert mclients.get_async_moorcheh_client() is async_client
+
+        sync_dispatcher.assert_called_once_with(api_key=None)
+        async_dispatcher.assert_called_once_with(api_key=None)
+
     def test_backend_switch_rebuilds_cached_client_without_manual_reset(self):
         from memanto.app.clients import moorcheh as mclients
         from memanto.app.clients import onprem

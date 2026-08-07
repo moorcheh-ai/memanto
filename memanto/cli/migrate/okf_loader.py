@@ -25,7 +25,6 @@ from memanto.app.services.okf_export_service import ENTRY_DELIMITER
 # non-greedy so the first ``\n---`` closes the block even when the body below
 # contains its own ``---`` rules.
 _FRONTMATTER_RE = re.compile(r"^---\n(.*?)\n---\n?(.*)$", re.DOTALL)
-_LINK_RE = re.compile(r"\[([^\]]+)\]\(([^)]+)\)")
 
 _SKIP_FILENAMES = {"index.md", "log.md"}
 # OKF baseline fields + Memanto's namespaced extension block. Anything else in
@@ -39,6 +38,44 @@ _KNOWN_FIELDS = {
     "timestamp",
     "x_memanto",
 }
+
+
+def _extract_links(body: str) -> list[tuple[str, str]]:
+    """Extract inline Markdown links in a single left-to-right pass.
+
+    Repeatedly applying a regular expression from every ``[`` candidate makes
+    malformed Markdown increasingly expensive to scan. ``str.find`` keeps the
+    loader linear while preserving the intentionally small link syntax handled
+    here (non-empty ``[text](target)`` pairs).
+    """
+    links: list[tuple[str, str]] = []
+    cursor = 0
+
+    while True:
+        opening = body.find("[", cursor)
+        if opening == -1:
+            break
+
+        closing = body.find("]", opening + 1)
+        if closing == -1:
+            break
+
+        if closing == opening + 1 or not body.startswith("(", closing + 1):
+            cursor = closing + 1
+            continue
+
+        target_end = body.find(")", closing + 2)
+        if target_end == -1:
+            break
+
+        if target_end == closing + 2:
+            cursor = target_end + 1
+            continue
+
+        links.append((body[opening + 1 : closing], body[closing + 2 : target_end]))
+        cursor = target_end + 1
+
+    return links
 
 
 def load_okf_bundle(path: str | Path) -> dict[str, Any]:
@@ -109,7 +146,7 @@ def _parse_entry(chunk: str, file_path: Path, rel_base: Path) -> dict[str, Any] 
         x_memanto = {}
 
     extra = {k: v for k, v in frontmatter.items() if k not in _KNOWN_FIELDS}
-    links = [f"{text} -> {target}" for text, target in _LINK_RE.findall(body)]
+    links = [f"{text} -> {target}" for text, target in _extract_links(body)]
 
     try:
         source_path = str(file_path.relative_to(rel_base))
