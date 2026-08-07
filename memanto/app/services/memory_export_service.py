@@ -5,7 +5,7 @@ Generates a structured memory.md file with all 13 memory types
 organized into sections, ready for agent consumption.
 """
 
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -138,7 +138,9 @@ class MemoryExportService:
         Returns:
             Formatted Markdown string.
         """
-        generated_at = generated_at or datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        generated_at = generated_at or datetime.now(timezone.utc).strftime(
+            "%Y-%m-%dT%H:%M:%SZ"
+        )
 
         total = sum(len(mems) for mems in memories_by_type.values())
         type_counts = {t: len(mems) for t, mems in memories_by_type.items() if mems}

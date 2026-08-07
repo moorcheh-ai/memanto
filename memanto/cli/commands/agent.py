@@ -109,7 +109,11 @@ def agent_list():
 def agent_activate(
     agent_id: str = typer.Argument(..., help="Agent ID to activate"),
     duration_hours: int = typer.Option(
-        6, "--hours", "-h", help="Activation duration in hours (default: 6)"
+        6,
+        "--hours",
+        "-h",
+        min=1,
+        help="Activation duration in hours (default: 6)",
     ),
 ):
     """Activate an agent and start its active session."""
