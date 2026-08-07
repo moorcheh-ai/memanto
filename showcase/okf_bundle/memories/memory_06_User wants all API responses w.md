@@ -1,6 +1,6 @@
 ---
 type: preference
-title: User wants all API responses wrapped in a Result<T, E> type pattern, not exce...
+title: User wants all API responses wrapped in a Result type pattern not exceptions
 tags: ["preferences", "professional_info"]
 timestamp: 2026-07-20 12:08:15.467706+00:00
 ---
