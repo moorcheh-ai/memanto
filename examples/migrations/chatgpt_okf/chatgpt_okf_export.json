@@ -1,0 +1,35 @@
+{
+  "version": "1.0",
+  "source": "ChatGPT",
+  "format": "OKF (Open Knowledge Format)",
+  "created_at": "2026-08-07T07:36:35.507702Z",
+  "memories": [
+    {
+      "id": "mem_conv_001",
+      "type": "conversation",
+      "title": "Python async debugging patterns",
+      "content": "## Python async debugging patterns\n\n_Source: ChatGPT conversation conv_001_\n\n**Q:** How do I debug asyncio deadlocks?\n\n**A:** Use asyncio.timeout() context manager and enable PYTHONASYNCDEBUG=1. Log lock acquisition/release points.\n\n",
+      "source_id": "conv_001",
+      "created_at": "2024-06-15T10:00:00Z",
+      "message_count": 2
+    },
+    {
+      "id": "mem_conv_002",
+      "type": "conversation",
+      "title": "Agent memory portability problem",
+      "content": "## Agent memory portability problem\n\n_Source: ChatGPT conversation conv_002_\n\n**Q:** Why is agentic memory lock-in dangerous?\n\n**A:** Each tool (Mem0, Letta, etc.) stores memories in proprietary formats. Switching tools = amnesia. Open formats like OKF solve this.\n\n",
+      "source_id": "conv_002",
+      "created_at": "2024-07-20T14:30:00Z",
+      "message_count": 2
+    },
+    {
+      "id": "mem_conv_003",
+      "type": "conversation",
+      "title": "Open Knowledge Format specification",
+      "content": "## Open Knowledge Format specification\n\n_Source: ChatGPT conversation conv_003_\n\n**Q:** What makes OKF vendor-neutral?\n\n**A:** OKF is Google Cloud's open spec. Stores knowledge as plain markdown + metadata. Git-friendly, human-readable, portable.\n\n",
+      "source_id": "conv_003",
+      "created_at": "2024-08-01T09:00:00Z",
+      "message_count": 2
+    }
+  ]
+}
