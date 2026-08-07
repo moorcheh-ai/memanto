@@ -20,7 +20,7 @@ class ConversationMemoryExtractionService:
 
     MAX_MESSAGES = 200
     MAX_MEMORIES = 100
-    MAX_CONTENT_CHARS = 12_000
+    MAX_CONTENT_CHARS = 120_000
     MAX_MEMORY_CONTENT_CHARS = 10_000
 
     def __init__(self, client: Any) -> None:
@@ -42,7 +42,7 @@ class ConversationMemoryExtractionService:
         max_memories = max(1, min(max_memories, self.MAX_MEMORIES))
 
         generate_kwargs: dict[str, Any] = {
-            "namespace": namespace,
+            "namespace": "",  # Empty namespace invokes the raw LLM mode directly
             "query": self._conversation_text(messages),
             "top_k": 1,
             "temperature": 0,
