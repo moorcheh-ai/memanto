@@ -247,22 +247,30 @@ class TestSessionService:
 
     def test_validate_expired_session(self, session_service):
         """Test session validation fails for expired session"""
-        # Create session with very short duration
-        session_service.create_session(
+        # duration_hours <= 0 is now rejected at creation (fail-closed), so
+        # build an expired session by post-dating a valid one's expires_at.
+        session = session_service.create_session(
             agent_id="test-agent",
-            duration_hours=0,  # Expires immediately
+            duration_hours=1,
+        )
+        from datetime import datetime, timedelta, timezone
+
+        session.expires_at = datetime.now(timezone.utc) - timedelta(hours=1)
+        session_service._save_session(session)
+
+        # The stored session is now expired: validation must reject it.
+        # (The JWT payload still carries the original expiry, so validation
+        # reaches the stored-session check and must fail closed there.)
+        from memanto.app.utils.errors import (
+            InvalidSessionTokenError,
+            SessionExpiredError,
         )
 
-        # Manually expire the session by modifying the token
-        # (In real scenario, we'd wait for expiration)
-        import time
-
-        time.sleep(1)
-
-        # This should fail because session is expired
-        # Note: We can't easily test this without manipulating time
-        # Just verify the logic exists
-        print("✅ Session expiration logic exists")
+        try:
+            session_service.validate_session(session.session_token)
+            raise AssertionError("expired session must fail validation")
+        except (SessionExpiredError, InvalidSessionTokenError):
+            pass
 
     def test_auto_renew_is_single_flight_per_agent(self, session_service, monkeypatch):
         """Parallel near-expiry requests must not mint competing tokens."""

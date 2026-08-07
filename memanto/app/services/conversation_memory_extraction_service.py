@@ -98,12 +98,25 @@ class ConversationMemoryExtractionService:
     def _conversation_text(self, messages: list[dict[str, str]]) -> str:
         lines: list[str] = []
         total = 0
-        for message in messages:
+        # Messages arrive in chronological order; the newest turns are the
+        # ones this extraction request is actually about. Walk from the END
+        # so truncation drops the oldest messages first and the query always
+        # ends with the latest context. Without this, an oversized transcript
+        # was cut from the front, leaving a query of stale messages — or, for
+        # a single oversized message, an empty string that made the caller
+        # raise a 400 on input that should be accepted.
+        for message in reversed(messages):
             line = f"{message['role'].strip()}: {message['content'].strip()}"
-            total += len(line)
-            if total > self.MAX_CONTENT_CHARS:
+            if lines and total + len(line) > self.MAX_CONTENT_CHARS:
+                # Budget exhausted before this (older) message: stop.
                 break
             lines.append(line)
+            total += len(line)
+            if total > self.MAX_CONTENT_CHARS:
+                # A single message exceeds the budget on its own; keep it
+                # anyway (truncated) rather than returning an empty query.
+                break
+        lines.reverse()
         return "\n".join(lines)
 
     def _header_prompt(self, max_memories: int) -> str:

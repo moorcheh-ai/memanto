@@ -311,6 +311,18 @@ class SessionService:
         if duration_hours is None:
             duration_hours = settings.SESSION_DEFAULT_DURATION_HOURS
 
+        # Fail closed on non-positive durations: timedelta(hours=0) makes the
+        # session expire at its start instant and negative values mint an
+        # already-expired token. The CLI would otherwise print "OK Agent
+        # activated!" for a session whose very first validate_session call
+        # raises SessionExpiredError (and every subsequent remember/recall
+        # fails), so reject the contract violation before signing anything.
+        if not isinstance(duration_hours, (int, float)) or duration_hours <= 0:
+            raise ValueError(
+                "duration_hours must be a positive number of hours, "
+                f"got {duration_hours!r}"
+            )
+
         session_id = self._generate_session_id()
         namespace = self._generate_namespace(agent_id)
         started_at = utc_now()
@@ -367,8 +379,18 @@ class SessionService:
             # Decode JWT
             payload = jwt.decode(session_token, self.secret_key, algorithms=["HS256"])
 
-            # Convert to SessionToken
-            token = SessionToken(**payload)
+            # Convert to SessionToken. A signature-valid token can still be
+            # missing required payload fields (hand-rolled tokens, tokens
+            # signed by a previous schema version, corrupted-but-valid-sig
+            # payloads). ValidationError is a ValueError subclass that the
+            # JWT except branches below do not catch; without this guard it
+            # escapes as an unhandled 500 instead of a clean client error.
+            try:
+                token = SessionToken(**payload)
+            except (ValidationError, TypeError, ValueError) as exc:
+                raise InvalidSessionTokenError(
+                    f"Session token payload is invalid: {exc}"
+                ) from exc
 
             # Validate expiration
             if utc_now() > as_utc_aware(token.expires_at):
@@ -615,10 +637,16 @@ class SessionService:
             memory_record: The MemoryRecord object
             memory_id: The Moorcheh memory ID (if available)
         """
-        # Get the timestamp of memory to determine the date string
+        # Archive the summary under the WRITE time, not memory.created_at.
+        # Daily analysis globs f"{agent_id}_{today}_*_summary.md"; a memory
+        # imported/backfilled with an old created_at (provenance="imported")
+        # would otherwise be filed under its historical date and never appear
+        # in any daily summary — today's activity permanently lost, and
+        # deletion entries (written with the current time) would land in a
+        # different file than the memory they refer to.
         validate_safe_id(agent_id, "agent_id")
         validate_safe_id(session_id, "session_id")
-        dt_now = getattr(memory_record, "created_at", utc_now())
+        dt_now = utc_now()
         timestamp = dt_now.strftime("%Y-%m-%d %H:%M:%S")
         date_str = dt_now.strftime("%Y-%m-%d")
 
