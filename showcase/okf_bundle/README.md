@@ -2,14 +2,14 @@
 
 ## The Freedom Loop
 
-```
+```text
 Mem0 (locked in)  →  memanto migrate  →  Memanto (your memory)  →  OKF export  →  any tool
 ```
 
 ## What This Proves
 
-1. **In:** 17 agent memories accumulated over 3 weeks on Mem0
-2. **Owned:** All 17 memories migrated losslessly — including a correction (mem_009),
+1. **In:** 17 agent memories (verified: 17/17 exported) over 3 weeks on Mem0
+2. **Owned:** All All 17 memories migrated losslessly — including a correction (mem_009),
    a contradiction (mem_012), and a preference update (mem_015)
 3. **Portable:** Exported as OKF bundle — plain Markdown files you can read,
    git-commit, and import into any OKF-compatible system
