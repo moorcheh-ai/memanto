@@ -63,3 +63,19 @@ def test_no_current_node_falls_back_to_all_nodes(tmp_path):
     result = load_chatgpt(export)[0]
     texts = [t["text"] for t in result["turns"]]
     assert texts == ["I prefer Postgres.", "I prefer offline docs."]
+
+
+def test_unusable_current_node_value_falls_back(tmp_path):
+    """A current_node that does not resolve to a dict in mapping also falls
+    back to all nodes instead of dropping the conversation."""
+    root = _node("r", "user", "I prefer Postgres.", 1.0, None)
+    n2 = _node("n2", "user", "I prefer offline docs.", 2.0, "r")
+    conv = {
+        "id": "c3", "title": "Missing current", "create_time": 1.0,
+        "current_node": "missing-node",
+        "mapping": {"r": root, "n2": n2},
+    }
+    export = _write_export(tmp_path, [conv])
+    result = load_chatgpt(export)[0]
+    texts = [t["text"] for t in result["turns"]]
+    assert texts == ["I prefer Postgres.", "I prefer offline docs."]
