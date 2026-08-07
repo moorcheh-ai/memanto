@@ -121,11 +121,9 @@ def test_conversation_text_includes_first_message_when_oversized():
     service = ConversationMemoryExtractionService(FakeClient("[]"))
     long_content = "x" * (service.MAX_CONTENT_CHARS + 500)
     text = service._conversation_text([{"role": "user", "content": long_content}])
-    # The text must include the role prefix and truncated content, not just "user:"
-    assert text.startswith("user: ")
-    assert "x" in text  # actual content was retained
-    assert len(text) <= service.MAX_CONTENT_CHARS
-    assert len(text) > len("user: ")  # more than just the prefix
+    expected_text = f"user: {long_content}"[:service.MAX_CONTENT_CHARS]
+    assert text == expected_text
+    assert len(text) == service.MAX_CONTENT_CHARS
 
 
 def test_conversation_text_truncates_after_budget():
@@ -140,7 +138,38 @@ def test_conversation_text_truncates_after_budget():
         ]
     )
     # First message must be complete with its content
-    assert text.startswith("user: ")
-    assert "a" in text  # first message content retained
-    assert "assistant:" not in text  # second message excluded
+    expected = f"user: {'a' * half}"
+    assert text == expected
     assert len(text) <= service.MAX_CONTENT_CHARS
+
+def test_conversation_text_exact_budget_boundary_with_separator():
+    """Verify that when line lengths plus the newline separator exactly reach
+    MAX_CONTENT_CHARS, the second message is included, but if it exceeds by 1,
+    it is excluded."""
+    service = ConversationMemoryExtractionService(FakeClient("[]"))
+    
+    prefix1 = "user: "
+    prefix2 = "assistant: "
+    
+    avail = service.MAX_CONTENT_CHARS - len(prefix1) - 1 - len(prefix2)
+    len1 = avail // 2
+    len2 = avail - len1
+    
+    text_exact = service._conversation_text(
+        [
+            {"role": "user", "content": "a" * len1},
+            {"role": "assistant", "content": "b" * len2},
+        ]
+    )
+    
+    assert "assistant: b" in text_exact
+    assert len(text_exact) == service.MAX_CONTENT_CHARS
+    
+    text_exceeds = service._conversation_text(
+        [
+            {"role": "user", "content": "a" * len1},
+            {"role": "assistant", "content": "b" * (len2 + 1)},
+        ]
+    )
+    assert "assistant:" not in text_exceeds
+    assert len(text_exceeds) == len(prefix1) + len1
