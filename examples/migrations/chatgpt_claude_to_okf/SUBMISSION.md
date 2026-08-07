@@ -5,7 +5,7 @@
 2. **Đăng 2 bài social** (draft bên dưới): X + LinkedIn, tag @memanto_ai + @Moorcheh, kèm link PR #1823
 3. Sau khi maintainer merge: comment link PR + video + recall report lên issue #1609 (tao lo comment khi video có)
 
-ĐÃ XONG (tao lo): code + 15/15 tests + PR #1823 + CodeRabbit 0 unresolved + bundle 61 memories + claim comment.
+ĐÃ XONG (tao lo): code + 19/19 tests + PR #1823 (11 commits) + CodeRabbit findings đều đã fix (3 thread đã reply xác nhận fix + commit ref, chờ full review auto-resolve) + bundle 61 memories (61/61 mapped) + claim comment.
 
 ## Checklist trước khi submit
 1. [ ] Chủ tải export ChatGPT THẬT của mình (chatgpt.com → Settings → Data controls → Export) hoặc Claude (claude.ai → Settings → Account → Export data)
