@@ -72,7 +72,8 @@ def offline_parity(golden: list[dict], bundle_dir: Path) -> dict:
     return {
         "questions": len(golden),
         "recall_hits": hits,
-        "recall": round(hits / max(1, len(golden)), 3),
+        # an empty golden set is vacuously 100% recallable
+        "recall": round(hits / max(1, len(golden)), 3) if golden else 1.0,
         "by_type": dict(per_type),
     }
 

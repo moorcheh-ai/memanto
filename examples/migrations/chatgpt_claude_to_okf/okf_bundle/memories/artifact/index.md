@@ -1,3 +1,3 @@
 # artifact
 
-1 memories
+1 memory

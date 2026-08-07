@@ -5,7 +5,7 @@
 2. **Đăng 2 bài social** (draft bên dưới): X + LinkedIn, tag @memanto_ai + @Moorcheh, kèm link PR #1823
 3. Sau khi maintainer merge: comment link PR + video + recall report lên issue #1609 (tao lo comment khi video có)
 
-ĐÃ XONG (tao lo): code + 11/11 tests + PR #1823 (4 commits) + CodeRabbit 0 unresolved + bundle 61 memories + claim comment.
+ĐÃ XONG (tao lo): code + 15/15 tests + PR #1823 + CodeRabbit 0 unresolved + bundle 61 memories + claim comment.
 
 ## Checklist trước khi submit
 1. [ ] Chủ tải export ChatGPT THẬT của mình (chatgpt.com → Settings → Data controls → Export) hoặc Claude (claude.ai → Settings → Account → Export data)
@@ -33,8 +33,8 @@ EN (X):
 >
 > I just liberated 90 days of my ChatGPT history into portable markdown (OKF):
 > 🧠 61 memories · 11 types · preferences, decisions, goals, corrections
-> 📦 `memanto migrate okf` dry-run: 61/61 nodes mapped, 0 lost
-> ✅ Offline keyword recall: 1.0 — nothing lost in extraction
+> 📦 `memanto migrate okf` dry-run: 61/61 nodes mapped, 0 skipped
+> ✅ Offline keyword recall: 1.0 (61/61 golden answers recoverable from the bundle)
 >
 > In → owned → portable. The freedom loop is real.
 > PR → github.com/moorcheh-ai/memanto/pull/1823 | Bounty #1609 @bountyhub

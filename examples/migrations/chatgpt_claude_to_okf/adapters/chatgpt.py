@@ -70,10 +70,27 @@ def load_chatgpt(export_dir: str | Path) -> list[dict]:
         conv_id = str(conv.get("id") or conv.get("conversation_id") or "")
         title = conv.get("title") or conv.get("name") or f"conversation-{conv_id[:8] or len(conversations)}"
         mapping = conv.get("mapping") or {}
+
+        # Follow only the ACTIVE path (current_node -> parent chain): abandoned
+        # branches from regenerated replies are not part of the conversation.
+        current = conv.get("current_node")
+        path_nodes: list[dict] = []
+        if current and isinstance(mapping.get(current), dict):
+            visited: set[int] = set()
+            node = mapping[current]
+            while isinstance(node, dict) and id(node) not in visited:
+                visited.add(id(node))
+                path_nodes.append(node)
+                parent = node.get("parent")
+                node = mapping.get(parent) if parent else None
+            path_nodes.reverse()
+        else:
+            # No usable current_node in this export: fall back to all nodes so
+            # real exports without the field are not silently dropped.
+            path_nodes = [n for n in mapping.values() if isinstance(n, dict)]
+
         turns = []
-        for node in mapping.values():
-            if not isinstance(node, dict):
-                continue
+        for node in path_nodes:
             msg = node.get("message")
             if not isinstance(msg, dict):
                 continue

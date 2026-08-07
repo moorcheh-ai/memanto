@@ -2,9 +2,9 @@
 """Generate a realistic, lived-in ChatGPT export for demos and tests.
 
 This is NOT toy data: it mirrors the exact conversations.json schema, spans
-~12 conversations / ~200 turns across work, coding preferences, health,
-family, travel and side projects — the kind of store a real user builds over
-months. `convert.py` must produce a meaningful multi-type bundle from it.
+12 conversations / 51 turns across work, coding preferences, health, family,
+travel and side projects — the kind of store a real user builds over months.
+`convert.py` must produce a meaningful multi-type bundle from it.
 
 Usage:
     python generate_sample.py --out sample_data/chatgpt_export

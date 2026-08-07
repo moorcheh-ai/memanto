@@ -52,6 +52,12 @@ def _slug(s: str, max_len: int = 48) -> str:
     return s[:max_len].rstrip("-") or "memory"
 
 
+def _plural(text: str, count: int) -> str:
+    if count == 1:
+        return text.replace(" memories", " memory")
+    return text
+
+
 def _type_index(types: list[str], counts: Counter) -> str:
     lines = ["# Memories by type", ""]
     for t in sorted(set(types)):
@@ -137,7 +143,7 @@ def _write_bundle_contents(memories: list[dict], sessions: list[dict], stats: di
             path.write_text(_fmt_frontmatter(m) + "\n\n" + body, encoding="utf-8")
             type_files[mem_type].append(fname)
         (tdir / "index.md").write_text(
-            f"# {mem_type}\n\n{len(items)} memories\n", encoding="utf-8")
+            _plural(f"# {mem_type}\n\n{len(items)} memories\n", len(items)), encoding="utf-8")
 
     (memories_dir / "index.md").write_text(_type_index(by_type.keys(), counts), encoding="utf-8")
 

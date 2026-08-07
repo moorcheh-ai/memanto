@@ -41,3 +41,10 @@ def test_offline_parity_does_not_aggregate_across_memories(tmp_path):
         "alpha beta gamma delta epsilon zeta eta", encoding="utf-8")
     result2 = offline_parity(golden, tmp_path)
     assert result2["recall_hits"] == 1
+
+
+def test_offline_parity_empty_golden_is_vacuously_full_recall(tmp_path):
+    """An empty golden set must report recall 1.0, not 0.0."""
+    result = offline_parity([], tmp_path)
+    assert result["recall"] == 1.0
+    assert result["questions"] == 0

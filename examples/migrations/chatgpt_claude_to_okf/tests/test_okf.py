@@ -89,6 +89,11 @@ def test_atomic_replacement_failure_preserves_previous(tmp_path, monkeypatch):
     real_replace = os.replace
     calls = {"n": 0}
 
+    # a pre-existing file must survive the rollback — proves the previous
+    # DIRECTORY is restored, not just identical index content
+    sentinel = tmp_path / "preexisting-only.md"
+    sentinel.write_text("must survive rollback", encoding="utf-8")
+
     def failing_replace(src, dst):
         calls["n"] += 1
         if calls["n"] == 2:  # the tmp -> out step
@@ -105,6 +110,7 @@ def test_atomic_replacement_failure_preserves_previous(tmp_path, monkeypatch):
         monkeypatch.undo()
     assert raised, "expected write_bundle to raise on replacement failure"
     assert (tmp_path / "index.md").read_text(encoding="utf-8") == old_index, "previous bundle was not preserved"
+    assert sentinel.read_text(encoding="utf-8") == "must survive rollback", "rollback did not restore the full previous dir"
     leftovers = list(tmp_path.parent.glob(f".{tmp_path.name}.old-*")) + \
                 list(tmp_path.parent.glob(f".{tmp_path.name}.tmp-*"))
     assert not leftovers, f"leftover temp/rollback dirs: {leftovers}"

@@ -25,7 +25,7 @@ It does NOT re-implement the CLI. It feeds it.
 | **Claude.ai export → OKF adapter** | **THIS PROJECT** |
 | Per-conversation provenance logs (`sessions/`) | THIS PROJECT |
 | Metrics + ASCII breakdown (`metrics/overview.md`) | THIS PROJECT |
-| Round-trip recall validation (offline + LLM judge) | THIS PROJECT |
+| Offline bundle recall validation (per-file, + optional LLM judge) | THIS PROJECT |
 
 ## Quickstart (under 15 minutes)
 
@@ -47,8 +47,9 @@ memanto migrate okf ./okf_bundle_real --dry-run
 # 4) Import into your agent's memory
 memanto migrate okf ./okf_bundle_real --agent my-agent
 
-# 5) Prove the round trip
-python validate_roundtrip.py chatgpt ./path/to/export okf_bundle_real
+# 5) Prove the round trip (use the same source as your convert command)
+python validate_roundtrip.py <source> ./path/to/export okf_bundle_real
+#   <source> = chatgpt | claude
 ```
 
 Or one command: `./run.sh` (generates the lived-in sample, converts, tests, validates).
@@ -96,8 +97,9 @@ schema exactly):
 | "I noticed that…" | `observation` | inferred |
 | substantive first-person statement, no strong signal | `fact` | confidence=0.55, provenance=inferred |
 
-Unmapped source content is preserved per-conversation in `sessions/` logs — nothing
-is silently dropped.
+Unmapped source content is preserved per-conversation in `sessions/` logs
+(only supported, valid unmatched sentences, at most the first 20 per session;
+malformed, empty, or unsupported records are skipped at parse time).
 
 ## Scoring self-assessment (against the bounty's 100-pt matrix)
 
@@ -105,7 +107,7 @@ is silently dropped.
 |---|---|---|
 | Migration value & fidelity (30) | New adapters for 2 unsupported sources, real-format parsing, offline keyword recall 1.0, honest mapping table | this README, `convert.py`, `validate_roundtrip.py` |
 | OKF portability story (15) | Human-inspectable bundle, per-type index, metrics, provenance logs | `okf_bundle/` committed |
-| Reusability & cleanliness (20) | Single-command `run.sh`, `requirements.txt` (pinned), 15 pytest tests, clean layout ready to merge into `examples/migrations/` | `tests/` |
+| Reusability & cleanliness (20) | Single-command `run.sh`, `requirements.txt` (pinned), 18 pytest tests, clean layout ready to merge into `examples/migrations/` | `tests/` |
 | Use case & storytelling (10) | "Escape lock-in" narrative, lived-in sample store, before/after recall proof | README + SUBMISSION demo script |
 | Social virality (25) | Launch posts + demo video drafted | SUBMISSION.md |
 
