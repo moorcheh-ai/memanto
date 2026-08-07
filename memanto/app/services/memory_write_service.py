@@ -431,7 +431,6 @@ class MemoryWriteService:
                         "source",
                         "session_id",
                         "namespace",
-                        "original_id",
                     }
                 )
                 for key in existing_meta:
