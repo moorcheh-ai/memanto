@@ -673,10 +673,9 @@ class DirectClient:
 
         # Log to local session Markdown summary only after a durable write.
         if self.session_token and is_successful_write_result(result):
-            session_id = "unknown"
             self._get_session_service().try_log_memory_to_session_summary(
                 agent_id=agent_id,
-                session_id=session_id,
+                session_id=session.session_id,
                 memory_record=memory,
                 memory_id=result.get("id"),
             )
@@ -774,7 +773,6 @@ class DirectClient:
 
         # Log each memory to local session Markdown summary
         if self.session_token:
-            session_id = "unknown"
             session_svc = self._get_session_service()
 
             # Extract per-memory IDs from the batch result
@@ -807,7 +805,7 @@ class DirectClient:
                 )
                 session_svc.try_log_memory_to_session_summary(
                     agent_id=agent_id,
-                    session_id=session_id,
+                    session_id=session.session_id,
                     memory_record=mem,
                     memory_id=mem_id,
                 )
