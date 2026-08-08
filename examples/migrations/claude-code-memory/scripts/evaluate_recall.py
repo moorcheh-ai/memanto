@@ -1,14 +1,20 @@
-"""Golden-set recall evaluation for the Claude Code -> Memanto showcase.
+"""Golden-set content-retention evaluation for the Claude Code -> Memanto
+showcase.
 
-Compares recall on the source archive ("before") with recall after the full
-migration pipeline ("after"): source JSONL -> OKF bundle -> memanto's own
-``okf_loader`` -> ``mappers.map_okf`` payloads.
+Compares golden-set coverage on the source archive ("before") with coverage
+after the migration pipeline ("after"): source JSONL -> OKF bundle ->
+memanto's own ``okf_loader`` -> ``mappers.map_okf`` payloads.
 
 The evaluator is deterministic and offline, so the showcase is reproducible
 without an API key or network access. Each golden question carries answer
 keywords; a side answers a question when a single candidate record contains
-every keyword (case-insensitive). Recall is the fraction of questions
-answered; parity is after/before, where 1.0 means "zero amnesia".
+every keyword (case-insensitive). Retention is the fraction of questions
+answered; parity is after/before, where 1.0 means every golden answer
+survived migration.
+
+This is an offline content-retention check, not a live semantic-recall pass:
+Memanto recall requires the Moorcheh API. A live recall pass after import
+with ``memanto migrate okf`` is demonstrated in the showcase demo video.
 
 Usage:
 
@@ -105,22 +111,23 @@ def _recall(
     return (answered / total if total else 0.0), details
 
 
-def evaluate_recall(
+def evaluate_content_retention(
     archive: Path,
     bundle: Path,
     questions: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
-    """Run before/after recall scoring and return the parity report."""
+    """Run before/after content-retention scoring and return the parity
+    report."""
     question_set = questions if questions is not None else _load_questions()
     before_candidates = _before_candidates(archive)
     after_candidates = _after_candidates(archive, bundle)
 
-    before_recall, before_details = _recall(before_candidates, question_set)
-    after_recall, after_details = _recall(after_candidates, question_set)
+    before_retention, before_details = _recall(before_candidates, question_set)
+    after_retention, after_details = _recall(after_candidates, question_set)
     parity = (
-        after_recall / before_recall
-        if before_recall
-        else (1.0 if after_recall else 0.0)
+        after_retention / before_retention
+        if before_retention
+        else (1.0 if after_retention else 0.0)
     )
 
     return {
@@ -128,8 +135,8 @@ def evaluate_recall(
         "bundle": str(bundle),
         "before_candidates": len(before_candidates),
         "after_candidates": len(after_candidates),
-        "before_recall": round(before_recall, 3),
-        "after_recall": round(after_recall, 3),
+        "before_retention": round(before_retention, 3),
+        "after_retention": round(after_retention, 3),
         "parity": round(parity, 3),
         "before_details": before_details,
         "after_details": after_details,
@@ -141,7 +148,9 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--archive",
-        default="demo_source/demo_session.jsonl",
+        default=str(
+            Path(__file__).resolve().parents[1] / "demo_source" / "demo_session.jsonl"
+        ),
         help="Source Claude Code JSONL archive",
     )
     parser.add_argument(
@@ -157,16 +166,16 @@ def main(argv: list[str] | None = None) -> int:
         if args.bundle
         else Path(tempfile.mkdtemp(prefix="recall-bundle-"))
     )
-    report = evaluate_recall(archive, bundle)
+    report = evaluate_content_retention(archive, bundle)
 
     print(json.dumps(report, indent=2, ensure_ascii=False))
-    ok = report["parity"] >= 1.0 and report["after_recall"] >= 0.9
+    ok = report["parity"] >= 1.0 and report["after_retention"] >= 0.9
     print(
         "RESULT: "
         + (
-            "ZERO AMNESIA - migration preserved every golden answer"
+            "CONTENT PRESERVED - migration retained every golden answer"
             if ok
-            else "PARITY LOST - inspect the per-question details above"
+            else "RETENTION LOST - inspect the per-question details above"
         )
     )
     return 0 if ok else 1

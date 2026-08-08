@@ -160,6 +160,52 @@ def test_write_okf_bundle_roundtrip(tmp_path):
     assert "source: claude-code" in sample
 
 
+def test_repeated_write_removes_stale_memories(tmp_path):
+    """Re-running into an existing bundle dir must not leave old memories."""
+    from memanto.cli.migrate.okf_loader import load_okf_bundle
+
+    first = _sample_turns(tmp_path)
+    bundle = tmp_path / "bundle"
+    write_okf_bundle(
+        extract_memories(parse_claude_jsonl(first), source_path=str(first)),
+        bundle,
+    )
+    first_loaded = load_okf_bundle(bundle)
+    assert any("pydantic" in (m.get("body") or "") for m in first_loaded["memories"])
+
+    second = tmp_path / "second.jsonl"
+    second.write_text(
+        _line(
+            {
+                "type": "user",
+                "uuid": "u-second",
+                "timestamp": "2026-07-29T10:00:00Z",
+                "sessionId": "sess-2",
+                "cwd": r"D:\work\mobile-app",
+                "gitBranch": "feat/onboarding",
+                "message": {
+                    "role": "user",
+                    "content": (
+                        "I decided to use SwiftUI for the mobile app "
+                        "and prefer dark mode by default."
+                    ),
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+    second_memories = extract_memories(
+        parse_claude_jsonl(second), source_path=str(second)
+    )
+    write_okf_bundle(second_memories, bundle)
+
+    second_loaded = load_okf_bundle(bundle)
+    assert len(second_loaded["memories"]) == len(second_memories)
+    assert not any(
+        "pydantic" in (m.get("body") or "") for m in second_loaded["memories"]
+    )
+
+
 def test_okf_bundle_loadable_by_memanto_loader(tmp_path):
     """The bundle must be parseable by memanto's own OKF loader.
 
@@ -263,17 +309,54 @@ def test_real_shape_fixture_parses_and_extracts():
     turns = parse_claude_jsonl(fixture)
     assert any(t.role == "user" for t in turns)
     assert not any(t.is_meta for t in turns)
+
+    # The assistant turn carrying the Bash tool_use is preserved as tool
+    # metadata, never as memory text.
+    tool_turn = next(t for t in turns if t.role == "assistant" and t.tool_uses)
+    assert any(u.get("name") == "Bash" for u in tool_turn.tool_uses)
+
+    # Per the Claude message contract, the tool_result arrives in a user
+    # message immediately after the tool_use, and is excluded from memory.
+    result_turn = next(
+        t
+        for t in turns
+        if t.role == "user"
+        and any(
+            isinstance(b, dict) and b.get("type") == "tool_result"
+            for b in (t.raw.get("message") or {}).get("content") or []
+        )
+    )
+    assert turns.index(result_turn) == turns.index(tool_turn) + 1
+    blocks = (result_turn.raw.get("message") or {}).get("content") or []
+    assert any(
+        isinstance(b, dict)
+        and b.get("type") == "tool_result"
+        and b.get("tool_use_id") == "toolu_01JX7K9Q2ABC"
+        for b in blocks
+    )
+
     memories = extract_memories(turns, source_path=str(fixture))
     assert memories
+    assert all("uvicorn" not in (m.get("body") or "") for m in memories)
 
 
-def test_golden_questions_recall_parity(tmp_path):
-    """Migrating the demo session must not lose any golden-set answers."""
+def test_golden_questions_content_retention_parity(tmp_path):
+    """Migrating the demo session must retain every golden-set answer."""
     sys.path.insert(0, str(ROOT / "scripts"))
-    from evaluate_recall import evaluate_recall
+    from evaluate_recall import evaluate_content_retention
 
     archive = ROOT / "demo_source" / "demo_session.jsonl"
-    report = evaluate_recall(archive, tmp_path / "bundle")
-    assert report["before_recall"] >= 0.9
-    assert report["after_recall"] >= report["before_recall"]
+    report = evaluate_content_retention(archive, tmp_path / "bundle")
+    assert report["before_retention"] >= 0.9
+    assert report["after_retention"] >= report["before_retention"]
     assert report["parity"] >= 1.0
+
+
+def test_cli_reports_unreadable_archive(tmp_path, capsys):
+    """A missing archive produces a clear error instead of a traceback."""
+    missing = tmp_path / "missing.jsonl"
+    exit_code = cli_main(["--archive", str(missing), "--output", str(tmp_path / "out")])
+    captured = capsys.readouterr()
+    assert exit_code == 1
+    assert "Failed to read archive" in captured.err
+    assert str(missing) in captured.err

@@ -76,8 +76,8 @@ python -m memanto migrate okf \
 ### 5. Round-trip validation
 
 Run the adapter tests to confirm parsing, extraction, OKF loadability, and
-recall parity. Execute from the **memanto repository root** so the `memanto`
-package is importable:
+golden-set content retention. Execute from the **memanto repository root**
+so the `memanto` package is importable:
 
 ```bash
 cd <memanto-repo-root>
@@ -86,9 +86,9 @@ python -m pytest examples/migrations/claude-code-memory/tests/
 
 The test suite hard-requires that the generated bundle is loadable by
 Memanto's own `memanto.cli.migrate.okf_loader`, and includes a golden-set
-recall parity check (below).
+content-retention check (below).
 
-### 6. Golden-set recall evaluation (zero-amnesia proof)
+### 6. Golden-set content-retention evaluation
 
 `scripts/golden_questions.json` is a fixed Q&A set drawn from the demo
 session. `scripts/evaluate_recall.py` answers it twice:
@@ -108,9 +108,15 @@ Expected result: `parity: 1.0` (7/7 questions answered before and after).
 The evaluation is deterministic and offline, so it reproduces anywhere
 without API keys or network access.
 
+This is a content-retention check: it proves the golden answers survive the
+JSONL -> OKF -> Memanto-loadable pipeline byte-for-byte at the data level.
+Live semantic recall against Memanto requires the Moorcheh API key and is
+demonstrated end-to-end in the demo video (import via `memanto migrate okf`,
+then ask the same questions in Memanto recall).
+
 The checked-in `okf_bundle/` is the exact output of the migration pipeline;
 import it with `memanto migrate okf` and the same golden questions are
-answerable from Memanto recall.
+answerable from Memanto recall (shown in the demo video).
 
 ---
 

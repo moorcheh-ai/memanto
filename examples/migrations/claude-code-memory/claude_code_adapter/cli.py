@@ -94,7 +94,11 @@ def main(argv: list[str] | None = None) -> int:
     memories = []
     total_turns = 0
     for archive in archives:
-        turns = parse_claude_jsonl(archive)
+        try:
+            turns = parse_claude_jsonl(archive)
+        except OSError as exc:
+            print(f"Failed to read archive {archive}: {exc}", file=sys.stderr)
+            return 1
         total_turns += len(turns)
         # Extract per archive so each memory's resource references the exact
         # archive it came from instead of a joined list of sources.

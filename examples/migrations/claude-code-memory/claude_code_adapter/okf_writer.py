@@ -17,6 +17,7 @@ block) so imports are lossless.
 from __future__ import annotations
 
 import re
+import shutil
 from pathlib import Path
 from typing import Any
 
@@ -119,6 +120,23 @@ def _write_index(
     (directory / "index.md").write_text("\n".join(lines), encoding="utf-8")
 
 
+def _clear_bundle_dir(output: Path) -> None:
+    """Remove previously written bundle artifacts from the output directory.
+
+    Re-running a conversion into an existing output directory must never
+    leave memories from an older archive behind: a later ``memanto migrate
+    okf`` would load stale entries and produce a false migration result.
+    """
+    if not output.exists():
+        return
+    memories_dir = output / "memories"
+    if memories_dir.exists():
+        shutil.rmtree(memories_dir)
+    index = output / "index.md"
+    if index.exists():
+        index.unlink()
+
+
 def write_okf_bundle(
     memories: list[dict[str, Any]],
     output_dir: str | Path,
@@ -130,6 +148,7 @@ def write_okf_bundle(
     Returns a dict with the output path and per-type counts.
     """
     output = Path(output_dir)
+    _clear_bundle_dir(output)
     output.mkdir(parents=True, exist_ok=True)
     memories_dir = output / "memories"
     memories_dir.mkdir(parents=True, exist_ok=True)
