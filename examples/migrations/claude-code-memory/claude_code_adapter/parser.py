@@ -16,10 +16,11 @@ migration fidelity (session id, cwd, branch, timestamps, uuid).
 from __future__ import annotations
 
 import json
+from collections.abc import Iterator
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Iterator
+from typing import Any
 
 # Message kinds we know how to interpret.
 _USER = "user"
@@ -130,9 +131,9 @@ def _normalise_line(raw: dict[str, Any]) -> ConversationTurn | None:
 
     content = message.get("content")
     text = _extract_plain_text(content)
-    # Skip meta/local-command wrappers that carry no durable user knowledge.
-    is_meta = bool(raw.get("isMeta"))
-    if is_meta and not text:
+    # Skip meta/local-command wrappers: they are tooling noise, not durable
+    # user knowledge, regardless of whether they contain extracted text.
+    if raw.get("isMeta"):
         return None
 
     return ConversationTurn(
@@ -143,7 +144,7 @@ def _normalise_line(raw: dict[str, Any]) -> ConversationTurn | None:
         session_id=str(raw.get("sessionId")) if raw.get("sessionId") else None,
         cwd=str(raw.get("cwd")) if raw.get("cwd") else None,
         git_branch=str(raw.get("gitBranch")) if raw.get("gitBranch") else None,
-        is_meta=is_meta,
+        is_meta=bool(raw.get("isMeta")),
         tool_uses=_extract_tool_uses(content),
         raw=raw,
     )

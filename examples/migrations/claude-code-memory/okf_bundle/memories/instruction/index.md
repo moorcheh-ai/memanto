@@ -1,7 +1,7 @@
 ---
 type: index
 title: instruction
-timestamp: 2026-07-31T02:44:03+00:00
+timestamp: '2026-07-28T09:00:00+00:00'
 ---
 
 # instruction (1)

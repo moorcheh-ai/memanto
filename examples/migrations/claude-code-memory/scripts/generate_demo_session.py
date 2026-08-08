@@ -18,12 +18,18 @@ import uuid
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
+# Fixed namespace so every run produces the exact same archive (byte-stable
+# demo artifact). Labels identify each record within the session.
+_DEMO_NS = uuid.UUID("d13f8f06-9b63-4b3a-9f04-7f9a1c2d3e4f")
 
-def _uuid() -> str:
-    return str(uuid.uuid4())
+
+def _uuid(label: str) -> str:
+    """Return a deterministic UUID for a demo record label."""
+    return str(uuid.uuid5(_DEMO_NS, label))
 
 
 def _ts(base: datetime, minutes: int) -> str:
+    """Return an ISO-8601 timestamp offset from the session start."""
     return (base + timedelta(minutes=minutes)).isoformat(timespec="milliseconds")
 
 
@@ -40,6 +46,7 @@ def _turn(
     parent: str | None = None,
     is_meta: bool = False,
 ) -> dict:
+    """Build one Claude Code JSONL record from its parts."""
     return {
         "parentUuid": parent,
         "isSidechain": False,
@@ -60,10 +67,12 @@ def _turn(
 
 
 def _user_text(text: str, **kwargs) -> dict:
+    """Build a user message record with string content."""
     return _turn(msg_type="user", role="user", content=text, **kwargs)
 
 
 def _assistant_text(text: str, **kwargs) -> dict:
+    """Build an assistant message record with a text content block."""
     content = [{"type": "text", "text": text}]
     return _turn(
         msg_type="assistant",
@@ -75,7 +84,7 @@ def _assistant_text(text: str, **kwargs) -> dict:
 
 def generate_session(output: Path) -> Path:
     """Generate and write a realistic demo session archive."""
-    session_id = str(uuid.uuid4())
+    session_id = _uuid("demo-session")
     cwd = r"I:\project\payments-api"
     branch = "main"
     base = datetime(2026, 7, 28, 9, 0, tzinfo=timezone.utc)
@@ -87,14 +96,18 @@ def generate_session(output: Path) -> Path:
     lines.append(
         {
             "type": "file-history-snapshot",
-            "messageId": _uuid(),
-            "snapshot": {"messageId": _uuid(), "trackedFileBackups": {}, "timestamp": _ts(base, 0)},
+            "messageId": _uuid("snapshot-message"),
+            "snapshot": {
+                "messageId": _uuid("snapshot-inner"),
+                "trackedFileBackups": {},
+                "timestamp": _ts(base, 0),
+            },
             "isSnapshotUpdate": False,
         }
     )
 
     # Turn 1: user asks to build a payment service.
-    m1 = _uuid()
+    m1 = _uuid("turn-1-user")
     message_ids.append(m1)
     lines.append(
         _user_text(
@@ -109,7 +122,7 @@ def generate_session(output: Path) -> Path:
     )
 
     # Turn 1 assistant: confirms plan.
-    m2 = _uuid()
+    m2 = _uuid("turn-1-assistant")
     message_ids.append(m2)
     lines.append(
         _assistant_text(
@@ -125,7 +138,7 @@ def generate_session(output: Path) -> Path:
     )
 
     # Turn 2: user preference + instruction.
-    m3 = _uuid()
+    m3 = _uuid("turn-2-user")
     message_ids.append(m3)
     lines.append(
         _user_text(
@@ -141,7 +154,7 @@ def generate_session(output: Path) -> Path:
     )
 
     # Turn 2 assistant: acknowledges + decision.
-    m4 = _uuid()
+    m4 = _uuid("turn-2-assistant")
     message_ids.append(m4)
     lines.append(
         _assistant_text(
@@ -158,7 +171,7 @@ def generate_session(output: Path) -> Path:
     )
 
     # Turn 3: user states a fact/goal and commitment.
-    m5 = _uuid()
+    m5 = _uuid("turn-3-user")
     message_ids.append(m5)
     lines.append(
         _user_text(
@@ -174,7 +187,7 @@ def generate_session(output: Path) -> Path:
     )
 
     # Turn 3 assistant: plan summary.
-    m6 = _uuid()
+    m6 = _uuid("turn-3-assistant")
     message_ids.append(m6)
     lines.append(
         _assistant_text(
@@ -190,7 +203,7 @@ def generate_session(output: Path) -> Path:
     )
 
     # Turn 4: user context about team/relationship.
-    m7 = _uuid()
+    m7 = _uuid("turn-4-user")
     message_ids.append(m7)
     lines.append(
         _user_text(
@@ -206,7 +219,7 @@ def generate_session(output: Path) -> Path:
     )
 
     # Turn 4 assistant: closing summary.
-    m8 = _uuid()
+    m8 = _uuid("turn-4-assistant")
     message_ids.append(m8)
     lines.append(
         _assistant_text(
@@ -222,7 +235,7 @@ def generate_session(output: Path) -> Path:
     )
 
     # Tool traffic (excluded from memory text by the adapter).
-    m9 = _uuid()
+    m9 = _uuid("turn-5-tool")
     message_ids.append(m9)
     lines.append(
         _turn(
@@ -262,6 +275,7 @@ def generate_session(output: Path) -> Path:
 
 
 def main() -> int:
+    """Generate the demo session archive from the command line."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--output",

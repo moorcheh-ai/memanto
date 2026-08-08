@@ -17,7 +17,6 @@ block) so imports are lossless.
 from __future__ import annotations
 
 import re
-from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -39,14 +38,21 @@ _MEMORY_TYPE_ORDER = [
     "error",
 ]
 
+# Fixed timestamp so regenerated bundles are byte-stable across runs. The
+# demo session and its bundle are deterministic artifacts; index documents
+# must not drift with the wall clock.
+_BUNDLE_TIMESTAMP = "2026-07-28T09:00:00+00:00"
+
 
 def _slugify(title: str) -> str:
+    """Turn a memory title into a lowercase, filesystem-safe slug."""
     slug = re.sub(r"[^a-z0-9]+", "-", title.lower())
     slug = re.sub(r"-{2,}", "-", slug).strip("-")
     return slug[:60].rstrip("-") or "memory"
 
 
 def _unique_slug(title: str, used: set[str]) -> str:
+    """Return a slug that does not collide with any already-used slug."""
     base = _slugify(title)
     slug = base
     counter = 2
@@ -90,13 +96,20 @@ def _render_doc(entry: dict[str, Any], mem_type: str) -> str:
 def _write_index(
     directory: Path, title: str, heading: str, links: list[tuple[str, str]]
 ) -> None:
-    now = datetime.now(timezone.utc).isoformat(timespec="seconds")
+    """Write a navigation index document with deterministic frontmatter."""
+    frontmatter = {
+        "type": "index",
+        "title": title,
+        "timestamp": _BUNDLE_TIMESTAMP,
+    }
+    front = yaml.safe_dump(
+        frontmatter,
+        sort_keys=False,
+        allow_unicode=True,
+        default_flow_style=False,
+    ).strip()
     lines = [
-        "---",
-        "type: index",
-        f"title: {title}",
-        f"timestamp: {now}",
-        "---",
+        f"---\n{front}\n---",
         "",
         f"# {heading}",
         "",
@@ -154,13 +167,19 @@ def write_okf_bundle(
         [(mem_type, f"{mem_type}/index.md") for mem_type in per_type],
     )
 
-    now = datetime.now(timezone.utc).isoformat(timespec="seconds")
+    root_frontmatter = {
+        "type": "index",
+        "title": bundle_title,
+        "timestamp": _BUNDLE_TIMESTAMP,
+    }
+    front = yaml.safe_dump(
+        root_frontmatter,
+        sort_keys=False,
+        allow_unicode=True,
+        default_flow_style=False,
+    ).strip()
     root_lines = [
-        "---",
-        "type: index",
-        f"title: {bundle_title}",
-        f"timestamp: {now}",
-        "---",
+        f"---\n{front}\n---",
         "",
         f"# {bundle_title}",
         "",

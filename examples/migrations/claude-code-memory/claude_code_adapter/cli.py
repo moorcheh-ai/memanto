@@ -15,40 +15,45 @@ Usage examples:
 from __future__ import annotations
 
 import argparse
+import os
 import sys
 from pathlib import Path
 
+from claude_code_adapter.extractor import extract_memories
+from claude_code_adapter.okf_writer import write_okf_bundle
 from claude_code_adapter.parser import (
     iter_project_archives,
     parse_claude_jsonl,
 )
-from claude_code_adapter.extractor import extract_memories
-from claude_code_adapter.okf_writer import write_okf_bundle
 
 
-def _collect_turns(args: argparse.Namespace) -> tuple[list, list[str]]:
-    """Parse archives from CLI args, returning (turns, sources)."""
-    turns: list = []
-    sources: list[str] = []
+def _collect_archives(args: argparse.Namespace) -> list[Path]:
+    """Return the deduplicated, ordered list of archive paths from CLI args.
+
+    ``--archive`` and ``--projects`` may overlap (e.g. the same session inside
+    a scanned projects directory); each file is parsed exactly once so source
+    counts and memory resources stay accurate.
+    """
+    paths: list[Path] = []
+    seen: set[str] = set()
+
+    def _add(path: Path) -> None:
+        """Append a path unless its normalized form was already seen."""
+        key = os.path.normcase(str(path.absolute()))
+        if key not in seen:
+            seen.add(key)
+            paths.append(path)
 
     if args.archive:
-        path = Path(args.archive)
-        turns.extend(parse_claude_jsonl(path))
-        sources.append(str(path))
-
+        _add(Path(args.archive))
     if args.projects:
         for archive in iter_project_archives(args.projects):
-            turns.extend(parse_claude_jsonl(archive))
-            sources.append(str(archive))
-
-    if not turns:
-        print("No conversation turns found. Check --archive / --projects paths.", file=sys.stderr)
-        sys.exit(1)
-
-    return turns, sources
+            _add(archive)
+    return paths
 
 
 def main(argv: list[str] | None = None) -> int:
+    """Parse CLI args, migrate archive(s) to OKF, and print the summary."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--archive",
@@ -78,14 +83,37 @@ def main(argv: list[str] | None = None) -> int:
     if not args.archive and not args.projects:
         parser.error("Provide --archive and/or --projects")
 
-    turns, sources = _collect_turns(args)
-    print(f"Parsed {len(turns)} conversation turns from {len(sources)} archive(s).")
+    archives = _collect_archives(args)
+    if not archives:
+        print(
+            "No conversation archives found. Check --archive / --projects paths.",
+            file=sys.stderr,
+        )
+        sys.exit(1)
 
-    memories = extract_memories(
-        turns,
-        source_path=";".join(sources) if len(sources) > 1 else sources[0],
-        include_assistant=not args.user_only,
-    )
+    memories = []
+    total_turns = 0
+    for archive in archives:
+        turns = parse_claude_jsonl(archive)
+        total_turns += len(turns)
+        # Extract per archive so each memory's resource references the exact
+        # archive it came from instead of a joined list of sources.
+        memories.extend(
+            extract_memories(
+                turns,
+                source_path=str(archive),
+                include_assistant=not args.user_only,
+            )
+        )
+
+    if total_turns == 0:
+        print(
+            "No conversation turns found in the given archive(s).",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+
+    print(f"Parsed {total_turns} conversation turns from {len(archives)} archive(s).")
     print(f"Extracted {len(memories)} durable memory candidate(s).")
 
     result = write_okf_bundle(

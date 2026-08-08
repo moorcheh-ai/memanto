@@ -123,6 +123,7 @@ def _clean_text(text: str) -> str:
 
 
 def _extract_tags(text: str, cwd: str | None = None) -> list[str]:
+    """Collect tech and project tags mentioned in a conversation turn."""
     tags: list[str] = []
     for pattern, tag in _TAG_PATTERNS:
         if re.search(pattern, text, re.IGNORECASE) and tag not in tags:
@@ -162,6 +163,7 @@ def _classify(text: str) -> str:
 
 
 def _title_from(text: str, mem_type: str) -> str:
+    """Build a readable memory title from the source statement."""
     clean = _clean_text(text)
     if len(clean) <= 80:
         return clean
@@ -176,6 +178,8 @@ def _memory_id(turn: ConversationTurn, index: int) -> str:
 
 def _is_usable_turn(turn: ConversationTurn) -> bool:
     """Skip turns that are too short, tool-only, or meta wrappers."""
+    if turn.is_meta:
+        return False
     if not turn.text:
         return False
     text = turn.text.strip()
@@ -208,13 +212,17 @@ def _build_okf_entry(
     timestamp = (turn.timestamp or datetime.now(timezone.utc)).isoformat()
     mem_id = _memory_id(turn, index)
 
+    # OKF resource URIs are portable across platforms: always use forward
+    # slashes even when the source archive lives on Windows.
+    portable_source = source_path.replace("\\", "/")
+
     return {
         "type": mem_type,
         "title": _title_from(text, mem_type),
         "description": _clean_text(text)[:200],
         "tags": tags,
         "timestamp": timestamp,
-        "resource": f"{source_path}#{turn.message_id or index}",
+        "resource": f"{portable_source}#{turn.message_id or index}",
         "body": text,
         "x_memanto": {
             "id": mem_id,
@@ -251,9 +259,7 @@ def extract_memories(
         if turn.role == "user":
             if not _is_usable_turn(turn):
                 continue
-            memories.append(
-                _build_okf_entry(turn, index, source_path, confidence=0.9)
-            )
+            memories.append(_build_okf_entry(turn, index, source_path, confidence=0.9))
         elif include_assistant and turn.role == "assistant":
             if not _is_usable_turn(turn):
                 continue
@@ -262,7 +268,5 @@ def extract_memories(
             # with every assistant reply.
             if not _DECISION_RE.search(turn.text) and not _GOAL_RE.search(turn.text):
                 continue
-            memories.append(
-                _build_okf_entry(turn, index, source_path, confidence=0.7)
-            )
+            memories.append(_build_okf_entry(turn, index, source_path, confidence=0.7))
     return memories

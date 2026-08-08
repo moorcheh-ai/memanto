@@ -32,6 +32,9 @@ pip install -r requirements.txt
 ```
 
 The parser/extractor are stdlib-only. PyYAML is required for the OKF writer.
+`pytest` is needed for the validation suite; the suite also imports the
+`memanto` package (the OKF loader used by the round-trip check), so run it
+from the memanto repository root where that package is importable.
 
 ### 2. Generate a demo source (reproducible)
 
@@ -72,14 +75,42 @@ python -m memanto migrate okf \
 
 ### 5. Round-trip validation
 
-Run the adapter tests to confirm parsing, extraction, and OKF loadability:
+Run the adapter tests to confirm parsing, extraction, OKF loadability, and
+recall parity. Execute from the **memanto repository root** so the `memanto`
+package is importable:
 
 ```bash
-python -m pytest tests/ -c /dev/null -p no:cacheprovider
+cd <memanto-repo-root>
+python -m pytest examples/migrations/claude-code-memory/tests/
 ```
 
-The test suite includes a check that the generated bundle is loadable by
-Memanto's own `memanto.cli.migrate.okf_loader`.
+The test suite hard-requires that the generated bundle is loadable by
+Memanto's own `memanto.cli.migrate.okf_loader`, and includes a golden-set
+recall parity check (below).
+
+### 6. Golden-set recall evaluation (zero-amnesia proof)
+
+`scripts/golden_questions.json` is a fixed Q&A set drawn from the demo
+session. `scripts/evaluate_recall.py` answers it twice:
+
+- **Before**: against the raw source archive (the "old agent" with only its
+  JSONL as memory)
+- **After**: against the full migration pipeline - extract to OKF, load with
+  `memanto.cli.migrate.okf_loader`, map with `mappers.map_okf`
+
+```bash
+python scripts/evaluate_recall.py \
+  --archive demo_source/demo_session.jsonl \
+  --bundle /tmp/recall-bundle
+```
+
+Expected result: `parity: 1.0` (7/7 questions answered before and after).
+The evaluation is deterministic and offline, so it reproduces anywhere
+without API keys or network access.
+
+The checked-in `okf_bundle/` is the exact output of the migration pipeline;
+import it with `memanto migrate okf` and the same golden questions are
+answerable from Memanto recall.
 
 ---
 
@@ -104,6 +135,16 @@ Each line in a Claude Code session archive is a JSON object. Relevant shapes:
 The parser handles string content (user turns) and block-list content
 (assistant turns). Tool traffic is treated as metadata, never as durable
 knowledge. File-history snapshots and `last-prompt` sentinels are skipped.
+
+### Real-shape fixture
+
+`fixtures/real_session_excerpt.jsonl` mirrors the schema of a genuine
+Claude Code 2.x session archive (parent links, sidechains, `tool_use` /
+`tool_result` blocks, `isMeta` wrappers, sentinels). Message text is
+sanitized demo content so the fixture is safe to commit; the parser and
+extractor run over it exactly as they would over a private real archive.
+To verify against your own real data, point `--projects` at
+`~/.claude/projects` (see Quick start step 3).
 
 ---
 
@@ -173,7 +214,11 @@ claude-code-memory/
 │   ├── okf_writer.py    # OKF bundle writer
 │   └── cli.py           # command-line entry point
 ├── scripts/
-│   └── generate_demo_session.py
+│   ├── generate_demo_session.py
+│   ├── golden_questions.json
+│   └── evaluate_recall.py
+├── fixtures/
+│   └── real_session_excerpt.jsonl
 ├── demo_source/
 │   └── demo_session.jsonl
 ├── okf_bundle/          # sample output (importable)

@@ -8,9 +8,9 @@ tags:
 - payments-api
 - branch=main
 timestamp: '2026-07-28T09:15:00+00:00'
-resource: demo_source\demo_session.jsonl#7482e376-16a6-4ffb-9d17-4d60633b6130
+resource: demo_source/demo_session.jsonl#aee59257-12c8-591a-96e2-fdc2442cb508
 x_memanto:
-  id: claude_e3b22e8a9470
+  id: claude_271a96884938
   confidence: 0.7
   provenance: imported
   source: claude-code
