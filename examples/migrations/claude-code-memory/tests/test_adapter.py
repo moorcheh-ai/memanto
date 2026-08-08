@@ -90,6 +90,15 @@ def _sample_turns(tmp_path: Path) -> Path:
     return archive
 
 
+def _bundle_snapshot(bundle: Path) -> dict[str, bytes]:
+    """Snapshot every file in a bundle keyed by its relative path."""
+    return {
+        path.relative_to(bundle): path.read_bytes()
+        for path in sorted(bundle.rglob("*"))
+        if path.is_file()
+    }
+
+
 def test_parse_skips_snapshots_and_last_prompt(tmp_path):
     """Snapshots and last-prompt sentinels are not conversation turns."""
     archive = _sample_turns(tmp_path)
@@ -214,8 +223,7 @@ def test_write_failure_keeps_previous_bundle(tmp_path, monkeypatch):
     bundle = tmp_path / "bundle"
     first_memories = extract_memories(parse_claude_jsonl(first), source_path=str(first))
     write_okf_bundle(first_memories, bundle)
-    before = load_okf_bundle(bundle)
-    assert len(before["memories"]) == len(first_memories)
+    before = _bundle_snapshot(bundle)
 
     def _fail_write(self, *args, **kwargs):
         """Fail every Path.write_text call to simulate a write error."""
@@ -225,9 +233,11 @@ def test_write_failure_keeps_previous_bundle(tmp_path, monkeypatch):
     with pytest.raises(OSError, match="injected write failure"):
         write_okf_bundle(first_memories, bundle)
 
+    assert _bundle_snapshot(bundle) == before
     after = load_okf_bundle(bundle)
     assert len(after["memories"]) == len(first_memories)
-    assert any("pydantic" in (m.get("body") or "") for m in after["memories"])
+    assert not list(bundle.parent.glob(f".{bundle.name}.bak-*"))
+    assert not list(bundle.parent.glob(f".{bundle.name}.tmp-*"))
 
 
 def test_publish_failure_rolls_back_previous_bundle(tmp_path, monkeypatch):
@@ -238,6 +248,7 @@ def test_publish_failure_rolls_back_previous_bundle(tmp_path, monkeypatch):
     bundle = tmp_path / "bundle"
     first_memories = extract_memories(parse_claude_jsonl(first), source_path=str(first))
     write_okf_bundle(first_memories, bundle)
+    before = _bundle_snapshot(bundle)
 
     original_rename = Path.rename
 
@@ -251,10 +262,10 @@ def test_publish_failure_rolls_back_previous_bundle(tmp_path, monkeypatch):
     with pytest.raises(OSError, match="injected publish failure"):
         write_okf_bundle(first_memories, bundle)
 
-    # Rollback restored the previous bundle; no backup debris remains.
+    # Rollback restored the previous bundle byte-for-byte; no debris remains.
+    assert _bundle_snapshot(bundle) == before
     after = load_okf_bundle(bundle)
     assert len(after["memories"]) == len(first_memories)
-    assert any("pydantic" in (m.get("body") or "") for m in after["memories"])
     assert not list(bundle.parent.glob(f".{bundle.name}.bak-*"))
     assert not list(bundle.parent.glob(f".{bundle.name}.tmp-*"))
 
