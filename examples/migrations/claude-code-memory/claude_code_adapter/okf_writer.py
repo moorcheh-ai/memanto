@@ -19,6 +19,7 @@ from __future__ import annotations
 import re
 import shutil
 import tempfile
+import uuid
 from pathlib import Path
 from typing import Any
 
@@ -201,10 +202,11 @@ def write_okf_bundle(
 ) -> dict[str, Any]:
     """Write extracted memories to an OKF bundle directory.
 
-    The bundle is first generated in a temporary sibling directory and only
-    swapped into place once every file has been written successfully, so a
-    failure never destroys a previously valid bundle and readers never
-    observe a half-written replacement.
+    The bundle is first generated in a temporary sibling directory, then
+    published by moving the previous bundle to a backup path and moving the
+    staging tree into place. The previous bundle is never deleted before the
+    replacement is durable: if publishing fails, the backup is moved back, so
+    the active bundle always stays recoverable.
 
     Returns a dict with the output path and per-type counts.
     """
@@ -217,16 +219,28 @@ def write_okf_bundle(
             dir=str(output.parent),
         )
     )
+    backup: Path | None = None
     try:
         per_type, total = _write_bundle_contents(
             staging,
             memories,
             bundle_title=bundle_title,
         )
-        # Generation succeeded: atomically replace any previous bundle.
+        # Generation succeeded: move the old bundle aside, then move the new
+        # bundle into place. The old tree is only removed after the new one
+        # is live.
         if output.exists():
-            shutil.rmtree(output)
+            backup = output.parent / f".{output.name}.bak-{uuid.uuid4().hex}"
+            output.rename(backup)
         staging.rename(output)
+        if backup is not None and backup.exists():
+            shutil.rmtree(backup)
+    except Exception:
+        # Publishing failed: restore the previous bundle so the output path
+        # stays valid and the active bundle remains recoverable.
+        if backup is not None and backup.exists() and not output.exists():
+            backup.rename(output)
+        raise
     finally:
         if staging.exists():
             shutil.rmtree(staging, ignore_errors=True)

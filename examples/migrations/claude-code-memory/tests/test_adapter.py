@@ -230,6 +230,35 @@ def test_write_failure_keeps_previous_bundle(tmp_path, monkeypatch):
     assert any("pydantic" in (m.get("body") or "") for m in after["memories"])
 
 
+def test_publish_failure_rolls_back_previous_bundle(tmp_path, monkeypatch):
+    """A failed publish step must restore the previous bundle."""
+    from memanto.cli.migrate.okf_loader import load_okf_bundle
+
+    first = _sample_turns(tmp_path)
+    bundle = tmp_path / "bundle"
+    first_memories = extract_memories(parse_claude_jsonl(first), source_path=str(first))
+    write_okf_bundle(first_memories, bundle)
+
+    original_rename = Path.rename
+
+    def _fail_staging_rename(self, target):
+        """Fail only the publish move (staging -> output)."""
+        if self.name.startswith(f".{bundle.name}.tmp-"):
+            raise OSError("injected publish failure")
+        return original_rename(self, target)
+
+    monkeypatch.setattr(Path, "rename", _fail_staging_rename)
+    with pytest.raises(OSError, match="injected publish failure"):
+        write_okf_bundle(first_memories, bundle)
+
+    # Rollback restored the previous bundle; no backup debris remains.
+    after = load_okf_bundle(bundle)
+    assert len(after["memories"]) == len(first_memories)
+    assert any("pydantic" in (m.get("body") or "") for m in after["memories"])
+    assert not list(bundle.parent.glob(f".{bundle.name}.bak-*"))
+    assert not list(bundle.parent.glob(f".{bundle.name}.tmp-*"))
+
+
 def test_okf_bundle_loadable_by_memanto_loader(tmp_path):
     """The bundle must be parseable by memanto's own OKF loader.
 
