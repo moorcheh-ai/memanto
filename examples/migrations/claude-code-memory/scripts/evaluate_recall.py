@@ -14,7 +14,9 @@ survived migration.
 
 This is an offline content-retention check, not a live semantic-recall pass:
 Memanto recall requires the Moorcheh API. A live recall pass after import
-with ``memanto migrate okf`` is demonstrated in the showcase demo video.
+with ``memanto migrate okf`` is planned for the showcase demo video, which
+will walk through importing the bundle and asking the golden questions in
+Memanto recall.
 
 Usage:
 
@@ -129,6 +131,7 @@ def evaluate_content_retention(
         if before_retention
         else (1.0 if after_retention else 0.0)
     )
+    complete_retention = before_retention == 1.0 and after_retention == 1.0
 
     return {
         "archive": str(archive),
@@ -138,6 +141,7 @@ def evaluate_content_retention(
         "before_retention": round(before_retention, 3),
         "after_retention": round(after_retention, 3),
         "parity": round(parity, 3),
+        "complete_retention": complete_retention,
         "before_details": before_details,
         "after_details": after_details,
     }
@@ -169,7 +173,7 @@ def main(argv: list[str] | None = None) -> int:
     report = evaluate_content_retention(archive, bundle)
 
     print(json.dumps(report, indent=2, ensure_ascii=False))
-    ok = report["parity"] >= 1.0 and report["after_retention"] >= 0.9
+    ok = report["complete_retention"]
     print(
         "RESULT: "
         + (

@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import re
 import shutil
+import tempfile
 from pathlib import Path
 from typing import Any
 
@@ -120,35 +121,17 @@ def _write_index(
     (directory / "index.md").write_text("\n".join(lines), encoding="utf-8")
 
 
-def _clear_bundle_dir(output: Path) -> None:
-    """Remove previously written bundle artifacts from the output directory.
-
-    Re-running a conversion into an existing output directory must never
-    leave memories from an older archive behind: a later ``memanto migrate
-    okf`` would load stale entries and produce a false migration result.
-    """
-    if not output.exists():
-        return
-    memories_dir = output / "memories"
-    if memories_dir.exists():
-        shutil.rmtree(memories_dir)
-    index = output / "index.md"
-    if index.exists():
-        index.unlink()
-
-
-def write_okf_bundle(
+def _write_bundle_contents(
+    output: Path,
     memories: list[dict[str, Any]],
-    output_dir: str | Path,
     *,
     bundle_title: str = "Claude Code memory bundle",
-) -> dict[str, Any]:
-    """Write extracted memories to an OKF bundle directory.
+) -> tuple[dict[str, int], int]:
+    """Write the complete bundle tree into ``output``.
 
-    Returns a dict with the output path and per-type counts.
+    Returns ``(per_type_counts, total_memories)``. The caller is responsible
+    for staging this tree somewhere safe before it becomes visible.
     """
-    output = Path(output_dir)
-    _clear_bundle_dir(output)
     output.mkdir(parents=True, exist_ok=True)
     memories_dir = output / "memories"
     memories_dir.mkdir(parents=True, exist_ok=True)
@@ -207,8 +190,49 @@ def write_okf_bundle(
     ]
     (output / "index.md").write_text("\n".join(root_lines), encoding="utf-8")
 
+    return per_type, total
+
+
+def write_okf_bundle(
+    memories: list[dict[str, Any]],
+    output_dir: str | Path,
+    *,
+    bundle_title: str = "Claude Code memory bundle",
+) -> dict[str, Any]:
+    """Write extracted memories to an OKF bundle directory.
+
+    The bundle is first generated in a temporary sibling directory and only
+    swapped into place once every file has been written successfully, so a
+    failure never destroys a previously valid bundle and readers never
+    observe a half-written replacement.
+
+    Returns a dict with the output path and per-type counts.
+    """
+    output = Path(output_dir).resolve()
+    output.parent.mkdir(parents=True, exist_ok=True)
+
+    staging = Path(
+        tempfile.mkdtemp(
+            prefix=f".{output.name}.tmp-",
+            dir=str(output.parent),
+        )
+    )
+    try:
+        per_type, total = _write_bundle_contents(
+            staging,
+            memories,
+            bundle_title=bundle_title,
+        )
+        # Generation succeeded: atomically replace any previous bundle.
+        if output.exists():
+            shutil.rmtree(output)
+        staging.rename(output)
+    finally:
+        if staging.exists():
+            shutil.rmtree(staging, ignore_errors=True)
+
     return {
-        "output_path": str(output.resolve()),
+        "output_path": str(output),
         "total_memories": total,
         "per_type_counts": per_type,
     }

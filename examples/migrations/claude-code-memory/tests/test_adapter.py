@@ -206,6 +206,30 @@ def test_repeated_write_removes_stale_memories(tmp_path):
     )
 
 
+def test_write_failure_keeps_previous_bundle(tmp_path, monkeypatch):
+    """A failed rewrite must leave the previous bundle readable."""
+    from memanto.cli.migrate.okf_loader import load_okf_bundle
+
+    first = _sample_turns(tmp_path)
+    bundle = tmp_path / "bundle"
+    first_memories = extract_memories(parse_claude_jsonl(first), source_path=str(first))
+    write_okf_bundle(first_memories, bundle)
+    before = load_okf_bundle(bundle)
+    assert len(before["memories"]) == len(first_memories)
+
+    def _fail_write(self, *args, **kwargs):
+        """Fail every Path.write_text call to simulate a write error."""
+        raise OSError("injected write failure")
+
+    monkeypatch.setattr(Path, "write_text", _fail_write)
+    with pytest.raises(OSError, match="injected write failure"):
+        write_okf_bundle(first_memories, bundle)
+
+    after = load_okf_bundle(bundle)
+    assert len(after["memories"]) == len(first_memories)
+    assert any("pydantic" in (m.get("body") or "") for m in after["memories"])
+
+
 def test_okf_bundle_loadable_by_memanto_loader(tmp_path):
     """The bundle must be parseable by memanto's own OKF loader.
 
@@ -347,9 +371,32 @@ def test_golden_questions_content_retention_parity(tmp_path):
 
     archive = ROOT / "demo_source" / "demo_session.jsonl"
     report = evaluate_content_retention(archive, tmp_path / "bundle")
-    assert report["before_retention"] >= 0.9
-    assert report["after_retention"] >= report["before_retention"]
-    assert report["parity"] >= 1.0
+    assert report["before_retention"] == 1.0
+    assert report["after_retention"] == 1.0
+    assert report["parity"] == 1.0
+    assert report["complete_retention"] is True
+
+
+def test_partial_retention_is_not_reported_as_complete(tmp_path, monkeypatch, capsys):
+    """Partial retention must not produce the complete-preservation result."""
+    sys.path.insert(0, str(ROOT / "scripts"))
+    import evaluate_recall as recall_module
+
+    partial = ["I prefer SQLAlchemy over raw SQL."]
+    monkeypatch.setattr(recall_module, "_before_candidates", lambda archive: partial)
+    monkeypatch.setattr(
+        recall_module, "_after_candidates", lambda archive, bundle: partial
+    )
+
+    archive = ROOT / "demo_source" / "demo_session.jsonl"
+    exit_code = recall_module.main(
+        ["--archive", str(archive), "--bundle", str(tmp_path / "bundle")]
+    )
+    captured = capsys.readouterr()
+    assert exit_code == 1
+    assert "complete_retention" in captured.out
+    assert "CONTENT PRESERVED" not in captured.out
+    assert "RETENTION LOST" in captured.out
 
 
 def test_cli_reports_unreadable_archive(tmp_path, capsys):
