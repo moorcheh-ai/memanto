@@ -1,21 +1,32 @@
 # Demo evidence
 
-[`memanto-okf-portability-demo.mp4`](memanto-okf-portability-demo.mp4) is a
-1280×720 recording of the one-command showcase running against the live public
-archive for `moorcheh-ai/memanto#1609` on August 4, 2026.
+## Current narrated capture
 
-Public showcase: <https://youtu.be/25Y2MVPtGzo>
+Public showcase: <https://youtu.be/BRIcby6oMF4>
 
-The recording shows:
+[`memanto-okf-portability-demo-v2.mp4`](memanto-okf-portability-demo-v2.mp4)
+is the 66-second continuous version recorded from the August 9, 2026 evidence
+run. It shows:
 
-1. the real GitHub issue and 25 comments becoming 27 OKF memories;
-2. the official `memanto migrate okf --dry-run` mapping 27 and skipping 0;
+1. the real GitHub issue and 30 comments becoming 32 OKF memories;
+2. the official `memanto migrate okf --dry-run` mapping 32 and skipping 0;
 3. the production loader, mapper, type classifier, and exporter round trip;
-4. the audit receipt: 27 source, 27 target, 0 removed, 0 changed; and
+4. the audit receipt: 32 source, 32 target, 0 removed, 0 changed; and
 5. a generated memory as human-readable Markdown.
 
-The video is silent, contains no credentials or synthetic results, and visibly
-labels the implementation as AI-assisted. Re-run the same pipeline with:
+The video uses clean synthetic narration without music or ambient sound. It
+contains no credentials or synthetic results, visibly labels the production as
+AI-assisted, and displays the exact current PR head.
+
+## Original silent capture
+
+[`memanto-okf-portability-demo.mp4`](memanto-okf-portability-demo.mp4) is the
+original 1280x720 capture from August 4, 2026. It remains available as an
+archival comparison.
+
+Original public showcase: <https://youtu.be/25Y2MVPtGzo>
+
+Re-run the same pipeline with:
 
 ```bash
 python examples/migrations/okf-portability-audit/run_demo.py

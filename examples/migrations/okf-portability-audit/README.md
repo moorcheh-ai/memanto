@@ -55,12 +55,19 @@ versions.
 
 ### Demo video
 
-Watch the [public YouTube showcase](https://youtu.be/25Y2MVPtGzo), with a
-checked-in [archival copy](demo/memanto-okf-portability-demo.mp4). It shows the
-genuine public archive entering the official Memanto dry run, the
-production round trip, the final 27→27 lossless receipt, and a readable OKF
-memory. The capture contains real command output and visibly discloses that the
+Watch the [current narrated YouTube showcase](https://youtu.be/BRIcby6oMF4),
+with a checked-in
+[archival copy](demo/memanto-okf-portability-demo-v2.mp4). It shows the
+genuine public archive entering the official Memanto dry run, the production
+round trip, the final 32-to-32 lossless receipt, and a readable OKF memory. The
+capture contains real command output and visibly discloses that the
 implementation was AI-assisted.
+
+The current 66-second version uses clean synthetic narration without music or
+ambient sound and reflects the latest reproducible run: 32 source records, 32
+mapped, 0 skipped, 32 round-tripped, 0 removed, and 0 changed. The
+[original silent capture](demo/memanto-okf-portability-demo.mp4) remains
+available for comparison.
 
 ### Mapping and honest savings report
 
