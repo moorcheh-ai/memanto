@@ -140,20 +140,33 @@ class SummaryVisualizationService:
             headings = list(self._HEADING_RE.finditer(text))
             confidences = list(self._CONFIDENCE_RE.finditer(text))
 
-            for i, match in enumerate(headings):
+            # Build a position-sorted list of confidence values so that each
+            # heading is paired with the confidence line that follows it in the
+            # document, not with the i-th confidence match overall.  DELETED
+            # entries have a heading but no confidence line, so naive index
+            # pairing silently shifts every later confidence value to the
+            # wrong heading (bounty #770).
+            conf_by_pos: dict[int, float] = {}
+            for cm in confidences:
+                try:
+                    conf_by_pos[cm.start()] = float(cm.group(1))
+                except (ValueError, IndexError):
+                    pass
+            sorted_conf_positions = sorted(conf_by_pos)
+
+            for match in headings:
                 ts_str, mem_type, title = match.groups()
                 try:
                     ts = datetime.strptime(ts_str, "%Y-%m-%d %H:%M:%S")
                 except ValueError:
                     continue
 
-                # Try to pair with the nearest confidence value
+                # Find the nearest confidence value that appears after this heading
                 conf = 0.8  # default
-                if i < len(confidences):
-                    try:
-                        conf = float(confidences[i].group(1))
-                    except (ValueError, IndexError):
-                        pass
+                for cp in sorted_conf_positions:
+                    if cp > match.start():
+                        conf = conf_by_pos[cp]
+                        break
 
                 memories.append(
                     {
