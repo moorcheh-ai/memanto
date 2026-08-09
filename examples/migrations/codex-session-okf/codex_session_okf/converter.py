@@ -27,6 +27,11 @@ PHONE_RE = re.compile(
 )
 OPEN_ID_RE = re.compile(r"\b(?:ou|oc|om)_[A-Za-z0-9_-]{8,}\b")
 SECRET_RE = re.compile(r"(?i)\b(?:sk|gh[opusr]|xox[baprs]|AIza)[A-Za-z0-9_-]{12,}\b")
+GITHUB_FINE_GRAINED_RE = re.compile(r"\bgithub_pat_[A-Za-z0-9_]{20,}\b")
+AWS_ACCESS_KEY_RE = re.compile(r"\b(?:AKIA|ASIA)[A-Z0-9]{16}\b")
+JWT_RE = re.compile(
+    r"\beyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\b"
+)
 QUERY_SECRET_RE = re.compile(r"(?i)([?&](?:sid|token|key|code|signature)=)[^&#\s]+")
 
 
@@ -116,6 +121,9 @@ def redact_text(text: str) -> tuple[str, int]:
         (PHONE_RE, "[REDACTED_PHONE]"),
         (OPEN_ID_RE, "[REDACTED_BRIDGE_ID]"),
         (SECRET_RE, "[REDACTED_SECRET]"),
+        (GITHUB_FINE_GRAINED_RE, "[REDACTED_SECRET]"),
+        (AWS_ACCESS_KEY_RE, "[REDACTED_SECRET]"),
+        (JWT_RE, "[REDACTED_SECRET]"),
         (QUERY_SECRET_RE, r"\1[REDACTED]"),
     )
     count = 0

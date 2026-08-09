@@ -83,6 +83,22 @@ def test_rejects_residual_transport_wrapper_embedded_after_text() -> None:
     assert count == 1
 
 
+def test_redacts_modern_cloud_and_repository_credentials() -> None:
+    """Redact credential forms commonly present in development sessions."""
+    github_token = "github_pat_" + "A" * 32
+    aws_access_key = "AKIA" + "B" * 16
+    jwt = "eyJ" + "c" * 12 + "." + "d" * 12 + "." + "e" * 12
+
+    clean, count = redact_text(
+        f"GitHub={github_token} AWS={aws_access_key} bearer={jwt}"
+    )
+
+    assert clean == (
+        "GitHub=[REDACTED_SECRET] AWS=[REDACTED_SECRET] bearer=[REDACTED_SECRET]"
+    )
+    assert count == 3
+
+
 def test_include_filter_and_limit(tmp_path: Path) -> None:
     """Apply the optional content filter before enforcing the export limit."""
     source = tmp_path / "session.jsonl"
