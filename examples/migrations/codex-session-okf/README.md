@@ -23,6 +23,10 @@ This adapter applies a deny-by-default boundary:
   and sensitive URL query values;
 - emits a source fingerprint rather than the source path or session ID.
 
+The recording preflight reuses the same redactor against every public sample
+file, so new credential patterns cannot be added to the adapter while leaving
+the publishing safety scan behind.
+
 Always review the generated Markdown before importing or publishing it.
 
 ## Mapping
@@ -82,7 +86,9 @@ The test suite verifies:
 2. developer instructions and tool payloads never enter the bundle;
 3. Bridge wrappers are removed and their user text is decoded;
 4. common identifiers are redacted;
-5. filtering and limiting are deterministic.
+5. filtering and limiting are deterministic;
+6. the public-sample preflight rejects every value recognized by the adapter
+   redactor without echoing that value into logs.
 
 `validate.py` adds a deterministic golden Q&A gate. For every question it
 checks that the expected facts are present in both the genuine source archive

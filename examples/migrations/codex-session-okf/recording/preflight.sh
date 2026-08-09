@@ -38,18 +38,9 @@ test -f "$demo_dir/sample/source-session.jsonl" || fail "Public source sample is
 test -f "$demo_dir/sample/golden_qa.json" || fail "Golden questions are missing"
 pass "Public sample and golden questions are present"
 
-command -v rg >/dev/null 2>&1 ||
-  fail "ripgrep is required for the recording safety scan"
-
-if rg -n --pcre2 \
-  '(?i)(gh[opusr]_[A-Za-z0-9]{20,}|sk-[A-Za-z0-9_-]{20,}|AIza[A-Za-z0-9_-]{20,}|[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,})' \
-  "$demo_dir/sample" >/dev/null; then
-  fail "Public sample contains a credential-like token or email address"
-else
-  scanner_status=$?
-  test "$scanner_status" -eq 1 ||
-    fail "Recording safety scan failed with status $scanner_status"
-fi
+PYTHONPATH="$demo_dir${PYTHONPATH:+:$PYTHONPATH}" \
+  "$python_bin" "$demo_dir/scan_public_sample.py" "$demo_dir/sample" ||
+  fail "Public sample failed the adapter-aligned privacy scan"
 pass "Public sample passes the recording safety scan"
 
 test -z "$(git status --porcelain)" || fail "Repository has uncommitted changes"
