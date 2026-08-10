@@ -31,6 +31,8 @@ count helper in ``runner.py``.
 
 from __future__ import annotations
 
+import re
+
 from collections.abc import Callable
 from datetime import datetime, timezone
 from typing import Any
@@ -487,11 +489,129 @@ def map_okf(export: dict[str, Any]) -> list[dict[str, Any]]:
     return rows
 
 
+# --------------------------------------------------------------------------
+# Agent operational log
+# --------------------------------------------------------------------------
+
+
+def _oplog_slug(channel: str) -> str:
+    """Stable tag from a free-text channel label."""
+    slug = re.sub(r"[^a-z0-9]+", "-", (channel or "").lower()).strip("-")
+    return slug[:48] or "unlabelled"
+
+
+def map_agent_oplog(export: dict[str, Any]) -> list[dict[str, Any]]:
+    """Map an autonomous agent's operational log to Memanto memories.
+
+    An oplog record is what an agent *tried* on some channel and what actually
+    happened. Unlike a chat export, its defining property is that later records
+    routinely OVERTURN earlier ones on the same channel — the agent tests a
+    belief, it fails, and it records the correction.
+
+    That correction structure is the part worth migrating. A plain content dump
+    loses it: the stale belief and the finding that killed it arrive as two
+    equally-confident memories, and retrieval is free to surface whichever is
+    more lexically similar to the query. So records are grouped by channel and
+    ordered by time; every record but the newest in a channel is marked
+    superseded and carries a pointer to the record that replaced it, while the
+    newest is tagged ``oplog-current``.
+    """
+    rows: list[dict[str, Any]] = []
+    migrated_at = _now_utc()
+
+    records = [r for r in (export.get("records") or []) if isinstance(r, dict)]
+
+    # Order by source timestamp so "newest in channel" is well defined.
+    def _sort_key(rec: dict[str, Any]) -> str:
+        dt = _pick_first_dt(rec, ("at", "created_at", "createdAt"))
+        return dt.isoformat() if dt else ""
+
+    records.sort(key=_sort_key)
+
+    by_channel: dict[str, list[int]] = {}
+    for idx, rec in enumerate(records):
+        by_channel.setdefault(str(rec.get("channel") or ""), []).append(idx)
+
+    superseded_by: dict[int, dict[str, Any]] = {}
+    for idxs in by_channel.values():
+        if len(idxs) < 2:
+            continue
+        newest = idxs[-1]
+        for older in idxs[:-1]:
+            superseded_by[older] = records[newest]
+
+    for idx, rec in enumerate(records):
+        channel = str(rec.get("channel") or "").strip()
+        action = str(rec.get("action") or "").strip()
+        result = str(rec.get("result") or "").strip()
+        if not (action or result):
+            continue
+
+        parts = []
+        if channel:
+            parts.append(f"Channel: {channel}")
+        if action:
+            parts.append(f"What I tried: {action}")
+        if result:
+            parts.append(f"What actually happened: {result}")
+        content = "\n".join(parts)
+
+        created_at = _pick_first_dt(rec, ("at", "created_at", "createdAt"))
+
+        tags = ["oplog"]
+        if channel:
+            tags.append(_oplog_slug(channel))
+
+        replacement = superseded_by.get(idx)
+        if replacement is None:
+            tags.append("oplog-current")
+            supersede_note = None
+        else:
+            tags.append("oplog-superseded")
+            r_dt = _pick_first_dt(replacement, ("at", "created_at", "createdAt"))
+            supersede_note = (
+                f"SUPERSEDED by a later finding on the same channel"
+                + (f" at {r_dt.isoformat()}" if r_dt else "")
+                + f": {(replacement.get('result') or '')[:240]}"
+            )
+
+        # An oplog entry whose result overturns its own attempt is an error the
+        # agent recorded about itself; the rest are learnings.
+        memory_type = "error" if replacement is not None else "learning"
+
+        footer = _format_supporting_data(
+            [
+                ("Source", f"agent_oplog:{rec.get('id')}" if rec.get("id") else None),
+                ("Channel", channel or None),
+                ("Evidence", rec.get("evidence")),
+                ("Source created_at", created_at.isoformat() if created_at else None),
+                ("Supersession", supersede_note),
+            ]
+        )
+
+        rows.append(
+            {
+                "title": _title_from(content),
+                "content": _attach_footer(content, footer),
+                "type": memory_type,
+                "tags": list(dict.fromkeys(tags)),
+                "confidence": 0.6 if replacement is not None else 0.85,
+                "source": "agent_oplog",
+                "source_ref": str(rec.get("id")) if rec.get("id") else None,
+                "provenance": "imported",
+                "created_at": created_at,
+                "updated_at": migrated_at,
+            }
+        )
+    return rows
+
+
 MAPPERS: dict[str, Callable[[dict[str, Any]], list[dict[str, Any]]]] = {
     "mem0": map_mem0,
     "letta": map_letta,
     "supermemory": map_supermemory,
     "okf": map_okf,
+    "agent_oplog": map_agent_oplog,
 }
 
 

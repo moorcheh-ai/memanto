@@ -1,0 +1,60 @@
+{
+  "_about": "Falsification answer key for a genuinely lived-in agent memory. Each entry is a belief the agent HELD and then ABANDONED on evidence. A healthy memory layer must answer with `current` and must NOT answer with `superseded`. This is what makes the corpus a memory-integrity test rather than a recall demo: the wrong answer is not absent from the corpus, it is present, older, and confidently worded.",
+  "_source": "196 dated outcome records from a single autonomous agent run (2026-07-24 -> 2026-07-26).",
+  "cases": [
+    {
+      "id": "bidcount-source",
+      "question": "How should I read the number of bids on a freelancer.com project?",
+      "current": "Call the public API (projects/0.1/projects/active/) and read bid_stats.bid_count -- exact, server-side, 100 projects per call.",
+      "superseded": "Scrape the number out of the rendered project page in a headless browser, polling until two consecutive reads agree.",
+      "current_at": "2026-07-26T02:49:15Z",
+      "superseded_at": "2026-07-26T02:43:28Z",
+      "why_hard": "The superseded answer is the MORE elaborate one and was written 6 minutes earlier. A memory that ranks by specificity or confidence will prefer the wrong one."
+    },
+    {
+      "id": "booking-arrival-rate",
+      "question": "What share of freelancer.com arrivals are booking or scheduling jobs?",
+      "current": "About 2.0% (10 of 495) under a strict filter.",
+      "superseded": "About 15.6% (77 of 495).",
+      "current_at": "2026-07-26T03:27:10Z",
+      "superseded_at": "2026-07-26T03:27:10Z",
+      "why_hard": "Both numbers appear in the SAME record. Retrieval must carry the correction, not just the sentence containing a percentage."
+    },
+    {
+      "id": "widget-payer-seam",
+      "question": "Which audience is the highest-yield reachable widget-payer?",
+      "current": "Integrative / functional-medicine solo practitioners.",
+      "superseded": "Cosmetic, dental and aesthetic clinics and small practices.",
+      "current_at": "2026-07-25T06:26Z",
+      "superseded_at": "2026-07-25T06:20Z",
+      "why_hard": "A refinement six minutes later, same channel, same vocabulary. Pure recency-vs-similarity conflict."
+    },
+    {
+      "id": "vercel-analytics",
+      "question": "Does the Vercel analytics insights script work on the deployed site?",
+      "current": "Yes -- /_vercel/insights/script.js returns 200 and the funnel collects traffic.",
+      "superseded": "No -- it 404s; the integration is only partial.",
+      "current_at": "2026-07-24T08:43Z",
+      "superseded_at": "2026-07-24T08:35Z",
+      "why_hard": "A broken->fixed transition. This is the classic timeline-amnesia case: the failure is more emphatically worded than the fix."
+    },
+    {
+      "id": "tally-submit",
+      "question": "Can the Tally form be submitted programmatically?",
+      "current": "Yes -- submitted successfully, confirmation page captured.",
+      "superseded": "No -- deferred, because programmatic submit needs field block UUIDs.",
+      "current_at": "2026-07-24T12:54Z",
+      "superseded_at": "2026-07-24T12:44Z",
+      "why_hard": "Blocked->unblocked. Agents routinely re-report a stale blocker as current; that is the exact failure this case catches."
+    },
+    {
+      "id": "hydration-browser",
+      "question": "Does using a real browser instead of an anonymous fetch fix the pre-hydration zero?",
+      "current": "No. A real browser returns the same pre-hydration zero if read too early; only waiting for a stable value helped, and the API removed the problem entirely.",
+      "superseded": "Yes -- the zero was an artifact of anonymous fetching, so read it in a browser.",
+      "current_at": "2026-07-26T02:43:28Z",
+      "superseded_at": "2026-07-25T21:00Z",
+      "why_hard": "The superseded belief was itself a correction of an earlier error, so the corpus contains a CHAIN. A memory that stops at the first correction returns the middle link."
+    }
+  ]
+}
