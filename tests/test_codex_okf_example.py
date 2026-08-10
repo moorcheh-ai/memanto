@@ -217,7 +217,8 @@ def test_checked_in_bundle_matches_canonical_fixture():
 
     assert report["source"]["sha256"] == digest
     expected_session = f"session-{digest[:16]}"
-    memory_files = (report_path.parent / "memories").rglob("*.md")
+    memory_files = list((report_path.parent / "memories").rglob("*.md"))
+    assert memory_files, "The checked-in bundle must contain memory files"
     assert all(
         expected_session in path.read_text(encoding="utf-8") for path in memory_files
     )
