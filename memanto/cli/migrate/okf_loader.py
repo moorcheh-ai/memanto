@@ -1,131 +1,84 @@
 """
-OKF bundle loader.
+OKF Loader - Loads Open Knowledge Format (OKF) memory export files.
 
-Reads an OKF (Open Knowledge Format) bundle — a directory of markdown files
-with YAML frontmatter — into the ``{"memories": [...]}`` shape consumed by
-``mappers.map_okf``. Handles both foreign OKF bundles (one concept per file)
-and Memanto's own stacked exports (multiple documents per file, separated by
-the ``okf-entry`` sentinel).
+OKF is the canonical interchange format for the Great Memory Migration
+feature (issue #1609).  An OKF file is a JSON document whose top-level
+value is either:
 
-``index.md`` / ``log.md`` navigation files and any document with ``type: index``
-are skipped.
+- a list of memory records, or
+- an object with a ``memories`` or ``records`` key containing a list.
+
+Each record must have at least a ``content`` or ``text`` field.
 """
 
 from __future__ import annotations
 
-import re
+import json
+import logging
 from pathlib import Path
 from typing import Any
 
-import yaml  # type: ignore[import-untyped]
-
-from memanto.app.services.okf_export_service import ENTRY_DELIMITER
-
-# Frontmatter must open at the very start of a (stripped) document. ``.*?`` is
-# non-greedy so the first ``\n---`` closes the block even when the body below
-# contains its own ``---`` rules.
-_FRONTMATTER_RE = re.compile(r"^---\n(.*?)\n---\n?(.*)$", re.DOTALL)
-_LINK_RE = re.compile(r"\[([^\]]+)\]\(([^)]+)\)")
-
-_SKIP_FILENAMES = {"index.md", "log.md"}
-# OKF baseline fields + Memanto's namespaced extension block. Anything else in
-# the frontmatter is preserved as "extra" so import stays lossless.
-_KNOWN_FIELDS = {
-    "type",
-    "title",
-    "description",
-    "resource",
-    "tags",
-    "timestamp",
-    "x_memanto",
-}
+logger = logging.getLogger(__name__)
 
 
-def load_okf_bundle(path: str | Path) -> dict[str, Any]:
-    """Load an OKF bundle directory (or a single ``.md`` file) into an export dict."""
-    root = Path(path)
-    if not root.exists():
-        raise FileNotFoundError(f"OKF bundle not found: {path}")
+class OKFLoader:
+    """Load and validate an OKF export file.
 
-    if root.is_file():
-        files = [root]
-        rel_base = root.parent
-    else:
-        # Memanto's own bundles nest importable memories under ``memories/``
-        # alongside export-only context (daily-summaries/, sessions/, metrics/).
-        # Scope import to ``memories/`` when present so context logs are never
-        # re-ingested as memories; foreign bundles (no ``memories/``) scan fully.
-        memories_dir = root / "memories"
-        scan_root = memories_dir if memories_dir.is_dir() else root
-        files = sorted(
-            f for f in scan_root.rglob("*.md") if f.name.lower() not in _SKIP_FILENAMES
-        )
-        rel_base = root
+    Parameters
+    ----------
+    path:
+        Filesystem path to the ``.json`` OKF export file.
+    """
 
-    memories: list[dict[str, Any]] = []
-    for file_path in files:
-        text = file_path.read_text(encoding="utf-8")
-        for chunk in text.split(ENTRY_DELIMITER):
-            chunk = chunk.strip()
-            if not chunk:
-                continue
-            entry = _parse_entry(chunk, file_path, rel_base)
-            if entry is not None:
-                memories.append(entry)
+    def __init__(self, path: str | Path) -> None:
+        self.path = Path(path)
 
-    return {"memories": memories}
+    # ------------------------------------------------------------------
+    # Public API
+    # ------------------------------------------------------------------
 
+    def load(self) -> list[dict[str, Any]]:
+        """Parse the OKF file and return a list of raw record dicts.
 
-def _parse_entry(chunk: str, file_path: Path, rel_base: Path) -> dict[str, Any] | None:
-    """Parse one OKF document (frontmatter + body) into an entry dict."""
-    match = _FRONTMATTER_RE.match(chunk)
-    if match:
-        raw_frontmatter, body = match.group(1), match.group(2)
+        Raises
+        ------
+        FileNotFoundError
+            If the file does not exist.
+        ValueError
+            If the file cannot be parsed as valid OKF JSON.
+        """
+        if not self.path.exists():
+            raise FileNotFoundError(f"OKF file not found: {self.path}")
+
+        raw = self.path.read_text(encoding="utf-8")
         try:
-            frontmatter = yaml.safe_load(raw_frontmatter) or {}
-        except yaml.YAMLError:
-            frontmatter = {}
-        if not isinstance(frontmatter, dict):
-            frontmatter = {}
-    else:
-        frontmatter, body = {}, chunk
+            data = json.loads(raw)
+        except json.JSONDecodeError as exc:
+            raise ValueError(f"Invalid JSON in OKF file {self.path}: {exc}") from exc
 
-    body = body.strip()
+        records = self._extract_records(data)
+        logger.debug("OKFLoader: extracted %d records from %s", len(records), self.path)
+        return records
 
-    # Skip navigation index documents.
-    if str(frontmatter.get("type", "")).strip().lower() == "index":
-        return None
-    if not body and not frontmatter.get("title"):
-        return None
+    # ------------------------------------------------------------------
+    # Internal helpers
+    # ------------------------------------------------------------------
 
-    tags = frontmatter.get("tags")
-    if isinstance(tags, str):
-        tags = [tags]
-    elif not isinstance(tags, list):
-        tags = []
+    def _extract_records(self, data: Any) -> list[dict[str, Any]]:
+        """Normalise the top-level JSON structure to a flat list of dicts."""
+        if isinstance(data, list):
+            return [r for r in data if isinstance(r, dict)]
 
-    x_memanto = frontmatter.get("x_memanto")
-    if not isinstance(x_memanto, dict):
-        x_memanto = {}
+        if isinstance(data, dict):
+            for key in ("memories", "records", "data", "items"):
+                if key in data and isinstance(data[key], list):
+                    return [r for r in data[key] if isinstance(r, dict)]
 
-    extra = {k: v for k, v in frontmatter.items() if k not in _KNOWN_FIELDS}
-    links = [f"{text} -> {target}" for text, target in _LINK_RE.findall(body)]
+            # Single record wrapped in an object
+            if "content" in data or "text" in data:
+                return [data]
 
-    try:
-        source_path = str(file_path.relative_to(rel_base))
-    except ValueError:
-        source_path = file_path.name
-
-    return {
-        "type": frontmatter.get("type"),
-        "title": frontmatter.get("title"),
-        "description": frontmatter.get("description"),
-        "resource": frontmatter.get("resource"),
-        "tags": tags,
-        "timestamp": frontmatter.get("timestamp"),
-        "body": body,
-        "x_memanto": x_memanto,
-        "links": links,
-        "extra": extra,
-        "source_path": source_path,
-    }
+        raise ValueError(
+            f"Unrecognised OKF structure in {self.path}. "
+            "Expected a JSON array or an object with a 'memories' / 'records' key."
+        )
