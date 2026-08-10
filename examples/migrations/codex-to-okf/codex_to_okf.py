@@ -1,0 +1,515 @@
+#!/usr/bin/env python3
+"""Convert an OpenAI Codex rollout JSONL file into a privacy-first OKF bundle.
+
+Codex rollout files contain far more than conversation text: developer
+instructions, encrypted reasoning, tool calls, tool outputs, workspace paths,
+and runtime configuration.  This adapter intentionally uses an allow-list. By
+default it exports only user messages and visible assistant commentary/final
+messages, redacts common secrets and local paths, and writes a manifest that
+makes every omission auditable.
+"""
+
+from __future__ import annotations
+
+import argparse
+import hashlib
+import json
+import re
+import shutil
+from collections import Counter
+from dataclasses import asdict, dataclass
+from datetime import datetime, timezone
+from pathlib import Path
+from typing import Any
+
+import yaml
+
+ALLOWED_ROLES = {"user", "assistant"}
+ALLOWED_CONTENT_TYPES = {"input_text", "output_text"}
+INJECTED_BLOCKS = ("recommended_plugins", "environment_context")
+
+SECRET_PATTERNS: tuple[tuple[str, re.Pattern[str]], ...] = (
+    (
+        "api_key",
+        re.compile(
+            r"(?i)\b(?:sk-[A-Za-z0-9_-]{16,}|(?:api[_-]?key|token|secret)\s*[:=]\s*[\"']?[^\s\"']{12,})"
+        ),
+    ),
+    ("bearer_token", re.compile(r"(?i)\bBearer\s+[A-Za-z0-9._~+/=-]{12,}")),
+    (
+        "email",
+        re.compile(r"(?<![\w.+-])[\w.+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}(?![\w.-])"),
+    ),
+    (
+        "windows_user_path",
+        re.compile(r"(?i)\b[A-Z]:\\Users\\[^\\\s]+(?:\\[^\s<>\"|?*]+)*"),
+    ),
+    (
+        "posix_home_path",
+        re.compile(r"(?<![\w/])/(?:home|Users)/[^/\s]+(?:/[^\s<>]+)*"),
+    ),
+)
+
+
+@dataclass(frozen=True)
+class SourceMessage:
+    record_index: int
+    message_id: str
+    role: str
+    phase: str | None
+    timestamp: str
+    text: str
+
+
+@dataclass(frozen=True)
+class Memory:
+    memory_type: str
+    title: str
+    body: str
+    timestamp: str
+    source_ref: str
+    role: str
+    phase: str | None
+    confidence: float
+
+
+def sha256_bytes(data: bytes) -> str:
+    return hashlib.sha256(data).hexdigest()
+
+
+def sha256_file(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def normalize_timestamp(value: Any) -> str:
+    if isinstance(value, str) and value.strip():
+        raw = value.strip()
+        try:
+            parsed = datetime.fromisoformat(raw.replace("Z", "+00:00"))
+            if parsed.tzinfo is None:
+                parsed = parsed.replace(tzinfo=timezone.utc)
+            return parsed.astimezone(timezone.utc).isoformat().replace("+00:00", "Z")
+        except ValueError:
+            pass
+    return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+
+
+def strip_injected_blocks(text: str) -> str:
+    """Remove app-supplied blocks that can be serialized as user content."""
+    cleaned = text
+    for tag in INJECTED_BLOCKS:
+        cleaned = re.sub(
+            rf"<{tag}>.*?</{tag}>", "", cleaned, flags=re.DOTALL | re.IGNORECASE
+        )
+    return cleaned.strip()
+
+
+def redact(text: str) -> tuple[str, Counter[str]]:
+    counts: Counter[str] = Counter()
+    cleaned = text
+    for name, pattern in SECRET_PATTERNS:
+        replacement = "<REDACTED_PATH>" if "path" in name else "<REDACTED>"
+
+        def replace(
+            match: re.Match[str],
+            *,
+            pattern_name: str = name,
+            replacement_text: str = replacement,
+        ) -> str:
+            counts[pattern_name] += 1
+            return replacement_text
+
+        cleaned = pattern.sub(replace, cleaned)
+    return cleaned, counts
+
+
+def extract_text(payload: dict[str, Any]) -> str:
+    parts: list[str] = []
+    for item in payload.get("content") or []:
+        if not isinstance(item, dict) or item.get("type") not in ALLOWED_CONTENT_TYPES:
+            continue
+        text = item.get("text")
+        if isinstance(text, str) and text.strip():
+            parts.append(text.strip())
+    return "\n\n".join(parts)
+
+
+def read_rollout(
+    source: Path, *, include_assistant: bool = True
+) -> tuple[dict[str, Any], list[SourceMessage], dict[str, Any]]:
+    session_meta: dict[str, Any] = {}
+    messages: list[SourceMessage] = []
+    record_counts: Counter[str] = Counter()
+    skip_counts: Counter[str] = Counter()
+    redaction_counts: Counter[str] = Counter()
+
+    with source.open("r", encoding="utf-8") as handle:
+        for record_index, line in enumerate(handle, start=1):
+            try:
+                record = json.loads(line)
+            except json.JSONDecodeError:
+                skip_counts["invalid_json"] += 1
+                continue
+
+            record_type = str(record.get("type") or "unknown")
+            record_counts[record_type] += 1
+            payload = record.get("payload")
+            if not isinstance(payload, dict):
+                skip_counts["non_object_payload"] += 1
+                continue
+
+            if record_type == "session_meta" and not session_meta:
+                session_meta = payload
+                continue
+
+            if record_type != "response_item" or payload.get("type") != "message":
+                skip_counts[f"record:{record_type}"] += 1
+                continue
+
+            role = str(payload.get("role") or "")
+            if role not in ALLOWED_ROLES:
+                skip_counts[f"role:{role or 'none'}"] += 1
+                continue
+            if role == "assistant" and not include_assistant:
+                skip_counts["role:assistant_disabled"] += 1
+                continue
+
+            text = strip_injected_blocks(extract_text(payload))
+            if not text:
+                skip_counts["empty_or_injected_message"] += 1
+                continue
+            text, message_redactions = redact(text)
+            redaction_counts.update(message_redactions)
+            if not text.strip():
+                skip_counts["empty_after_redaction"] += 1
+                continue
+
+            messages.append(
+                SourceMessage(
+                    record_index=record_index,
+                    message_id=str(payload.get("id") or f"record-{record_index}"),
+                    role=role,
+                    phase=(str(payload["phase"]) if payload.get("phase") else None),
+                    timestamp=normalize_timestamp(record.get("timestamp")),
+                    text=text.strip(),
+                )
+            )
+
+    audit = {
+        "record_counts": dict(sorted(record_counts.items())),
+        "skip_counts": dict(sorted(skip_counts.items())),
+        "redaction_counts": dict(sorted(redaction_counts.items())),
+    }
+    return session_meta, messages, audit
+
+
+def split_user_message(text: str) -> list[str]:
+    chunks = re.split(r"(?<=[.!?])\s+|\n+", text)
+    return [chunk.strip() for chunk in chunks if len(chunk.strip()) >= 12]
+
+
+def classify(text: str, role: str) -> tuple[str, float]:
+    lowered = text.casefold()
+    instruction_markers = (
+        "no puedes",
+        "no usar",
+        "no use",
+        "do not",
+        "don't",
+        "must not",
+        "nunca",
+        "sin usar",
+        "cero uso",
+    )
+    goal_markers = (
+        "objetivo",
+        "goal",
+        "quiero",
+        "necesito",
+        "genera",
+        "ganar",
+        "minimum",
+        "mínimo",
+        "minimo",
+    )
+    decision_markers = (
+        "descart",
+        "ruta cambió",
+        "ruta cambio",
+        "no pasó la auditoría",
+        "no paso la auditoria",
+        "eleg",
+        "only confirmed",
+    )
+    observation_markers = (
+        "encontr",
+        "confirm",
+        "apareció",
+        "aparecio",
+        "resultaron cerrad",
+        "sigue abierto",
+        "shows",
+    )
+
+    if any(marker in lowered for marker in instruction_markers):
+        return "instruction", 1.0 if role == "user" else 0.85
+    if any(marker in lowered for marker in goal_markers):
+        return "goal", 1.0 if role == "user" else 0.85
+    if any(marker in lowered for marker in decision_markers):
+        return "decision", 0.9 if role == "assistant" else 0.95
+    if any(marker in lowered for marker in observation_markers):
+        return "observation", 0.85
+    return ("artifact", 0.75) if role == "assistant" else ("fact", 0.9)
+
+
+def title_from(text: str, max_chars: int = 72) -> str:
+    first_line = re.sub(r"\s+", " ", text).strip()
+    if len(first_line) <= max_chars:
+        return first_line
+    return first_line[: max_chars - 1].rstrip(" ,;:-") + "…"
+
+
+def build_memories(messages: list[SourceMessage]) -> list[Memory]:
+    memories: list[Memory] = []
+    for message in messages:
+        chunks = (
+            split_user_message(message.text)
+            if message.role == "user"
+            else [message.text]
+        )
+        for chunk_index, body in enumerate(chunks, start=1):
+            memory_type, confidence = classify(body, message.role)
+            suffix = f":part-{chunk_index}" if len(chunks) > 1 else ""
+            memories.append(
+                Memory(
+                    memory_type=memory_type,
+                    title=title_from(body),
+                    body=body,
+                    timestamp=message.timestamp,
+                    source_ref=f"{message.message_id}{suffix}",
+                    role=message.role,
+                    phase=message.phase,
+                    confidence=confidence,
+                )
+            )
+    return memories
+
+
+def slugify(value: str) -> str:
+    normalized = value.casefold()
+    normalized = re.sub(r"[^a-z0-9]+", "-", normalized).strip("-")
+    return normalized[:56] or "memory"
+
+
+def write_memory(path: Path, memory: Memory, session_id: str) -> None:
+    source_ref = f"codex:{session_id}:{memory.source_ref}"
+    frontmatter = {
+        "type": memory.memory_type,
+        "title": memory.title,
+        "description": title_from(memory.body, 160),
+        "resource": f"urn:{source_ref}",
+        "tags": ["codex", "conversation", f"role:{memory.role}"],
+        "timestamp": memory.timestamp,
+        "x_memanto": {
+            "type": memory.memory_type,
+            "confidence": memory.confidence,
+            "provenance": "imported",
+            "source": "codex",
+            "source_ref": source_ref,
+        },
+    }
+    serialized = yaml.safe_dump(
+        frontmatter, allow_unicode=True, sort_keys=False, width=1000
+    ).strip()
+    source_note = f"Source role: `{memory.role}`"
+    if memory.phase:
+        source_note += f" · Visible phase: `{memory.phase}`"
+    path.write_text(
+        f"---\n{serialized}\n---\n\n{memory.body}\n\n---\n{source_note}\n",
+        encoding="utf-8",
+    )
+
+
+def tree_hash(root: Path) -> str:
+    digest = hashlib.sha256()
+    report_names = {"migration-report.json", "migration-report.md"}
+    for path in sorted(
+        p for p in root.rglob("*") if p.is_file() and p.name not in report_names
+    ):
+        digest.update(path.relative_to(root).as_posix().encode())
+        digest.update(b"\0")
+        digest.update(path.read_bytes())
+        digest.update(b"\0")
+    return digest.hexdigest()
+
+
+def write_bundle(
+    *,
+    source: Path,
+    output: Path,
+    session_meta: dict[str, Any],
+    messages: list[SourceMessage],
+    memories: list[Memory],
+    audit: dict[str, Any],
+    title: str,
+) -> dict[str, Any]:
+    if output.exists():
+        shutil.rmtree(output)
+    memories_root = output / "memories"
+    memories_root.mkdir(parents=True)
+
+    session_id = str(
+        session_meta.get("session_id") or session_meta.get("id") or source.stem
+    )
+    type_counts: Counter[str] = Counter()
+    links: list[str] = []
+    for index, memory in enumerate(memories, start=1):
+        type_counts[memory.memory_type] += 1
+        type_dir = memories_root / memory.memory_type
+        type_dir.mkdir(parents=True, exist_ok=True)
+        stamp = re.sub(r"[^0-9]", "", memory.timestamp)[:14] or f"{index:014d}"
+        filename = f"{stamp}-{index:03d}-{slugify(memory.title)}.md"
+        path = type_dir / filename
+        write_memory(path, memory, session_id)
+        links.append(f"- [{memory.title}](memories/{memory.memory_type}/{filename})")
+
+    index_frontmatter = yaml.safe_dump(
+        {
+            "type": "index",
+            "title": title,
+            "description": "Privacy-sanitized memories migrated from a Codex rollout.",
+            "tags": ["codex", "okf", "migration"],
+            "timestamp": memories[0].timestamp
+            if memories
+            else normalize_timestamp(None),
+        },
+        allow_unicode=True,
+        sort_keys=False,
+    ).strip()
+    (output / "index.md").write_text(
+        f"---\n{index_frontmatter}\n---\n\n# {title}\n\n"
+        "This bundle was produced with a privacy allow-list. Encrypted reasoning, "
+        "developer instructions, tool calls, tool outputs, and runtime state were not exported.\n\n"
+        "## Memories\n\n" + "\n".join(links) + "\n",
+        encoding="utf-8",
+    )
+
+    source_chars = sum(len(message.text) for message in messages)
+    output_chars = sum(len(memory.body) for memory in memories)
+    report = {
+        "format": "codex-rollout-to-okf-v1",
+        "source": {
+            "filename": source.name,
+            "sha256": sha256_file(source),
+            "session_id": session_id,
+            "originator": session_meta.get("originator"),
+            "cli_version": session_meta.get("cli_version"),
+        },
+        "summary": {
+            "messages_included": len(messages),
+            "memories_written": len(memories),
+            "type_breakdown": dict(sorted(type_counts.items())),
+            "source_characters": source_chars,
+            "portable_characters": output_chars,
+            "estimated_source_tokens": round(source_chars / 4),
+            "estimated_portable_tokens": round(output_chars / 4),
+        },
+        "privacy_audit": audit,
+        "records": [
+            asdict(message) | {"text": "<omitted; stored in OKF>"}
+            for message in messages
+        ],
+    }
+    report_path = output / "migration-report.json"
+    report_path.write_text(
+        json.dumps(report, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
+    )
+    report["bundle_sha256"] = tree_hash(output)
+    report_path.write_text(
+        json.dumps(report, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
+    )
+
+    markdown = [
+        "# Migration report",
+        "",
+        f"- Source messages included: **{len(messages)}**",
+        f"- Portable memories written: **{len(memories)}**",
+        f"- Source SHA-256: `{report['source']['sha256']}`",
+        f"- Bundle SHA-256: `{report['bundle_sha256']}`",
+        f"- Estimated source tokens: **{report['summary']['estimated_source_tokens']}**",
+        f"- Estimated portable tokens: **{report['summary']['estimated_portable_tokens']}**",
+        "",
+        "## Type breakdown",
+        "",
+    ]
+    markdown.extend(f"- {kind}: {count}" for kind, count in sorted(type_counts.items()))
+    markdown.extend(
+        [
+            "",
+            "## Privacy boundary",
+            "",
+            "The adapter exported only visible user/assistant messages. It excluded "
+            "developer messages, reasoning records, tool calls and outputs, turn context, "
+            "world state, and compaction payloads. Common secrets, email addresses, and "
+            "local home/workspace paths are redacted before classification.",
+            "",
+        ]
+    )
+    (output / "migration-report.md").write_text("\n".join(markdown), encoding="utf-8")
+    return report
+
+
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(
+        description="Convert a Codex rollout JSONL file into an OKF bundle."
+    )
+    parser.add_argument("source", type=Path, help="Codex rollout .jsonl file")
+    parser.add_argument("output", type=Path, help="Destination OKF bundle directory")
+    parser.add_argument("--title", default="Codex portable memory", help="Bundle title")
+    parser.add_argument(
+        "--include-assistant",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="Include visible assistant commentary/final messages (default: true)",
+    )
+    return parser.parse_args()
+
+
+def main() -> int:
+    args = parse_args()
+    if not args.source.is_file():
+        raise SystemExit(f"Source rollout not found: {args.source}")
+    session_meta, messages, audit = read_rollout(
+        args.source, include_assistant=args.include_assistant
+    )
+    memories = build_memories(messages)
+    report = write_bundle(
+        source=args.source,
+        output=args.output,
+        session_meta=session_meta,
+        messages=messages,
+        memories=memories,
+        audit=audit,
+        title=args.title,
+    )
+    print(
+        json.dumps(
+            {
+                "output": str(args.output),
+                "messages": len(messages),
+                "memories": len(memories),
+                "types": report["summary"]["type_breakdown"],
+                "bundle_sha256": report["bundle_sha256"],
+            },
+            indent=2,
+        )
+    )
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

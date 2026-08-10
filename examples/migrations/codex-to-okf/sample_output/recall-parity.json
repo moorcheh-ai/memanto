@@ -1,0 +1,54 @@
+{
+  "bundle": "okf-bundle",
+  "documents": 17,
+  "structural_errors": [],
+  "golden_questions": 4,
+  "golden_passed": 4,
+  "recall_parity_percent": 100.0,
+  "cases": [
+    {
+      "question": "¿Cuál es el objetivo económico mínimo de esta tarea?",
+      "retrieved": "memories/goal/20260810172828-003-tu-objetivo-es-ganar-200-como-minimo.md",
+      "expected_type": "goal",
+      "actual_type": "goal",
+      "expected_terms": [
+        "$200",
+        "objetivo"
+      ],
+      "passed": true
+    },
+    {
+      "question": "¿Qué restricción existe sobre las redes sociales?",
+      "retrieved": "memories/instruction/20260810172839-007-voy-a-tratarlo-como-una-misi-n-real-no-como-una-lluvia-d.md",
+      "expected_type": "instruction",
+      "actual_type": "instruction",
+      "expected_terms": [
+        "restricción",
+        "redes sociales"
+      ],
+      "passed": true
+    },
+    {
+      "question": "¿Por qué se descartó la primera plataforma de recompensas?",
+      "retrieved": "memories/decision/20260810173342-010-la-primera-plataforma-que-parec-a-prometer-usd-500-no-pa.md",
+      "expected_type": "decision",
+      "actual_type": "decision",
+      "expected_terms": [
+        "api pública",
+        "usd 1"
+      ],
+      "passed": true
+    },
+    {
+      "question": "¿Qué recompensa de 200 dólares quedó como candidata vigente?",
+      "retrieved": "memories/observation/20260810174552-015-el-bounty-de-azerothcore-tambi-n-fue-cerrado-por-los-man.md",
+      "expected_type": "observation",
+      "actual_type": "observation",
+      "expected_terms": [
+        "memanto",
+        "usd 200"
+      ],
+      "passed": true
+    }
+  ]
+}

@@ -1,0 +1,169 @@
+{
+  "schema": "codex-okf-memanto-portability/v1",
+  "pipeline": [
+    "OKF source bundle",
+    "memanto.cli.migrate.okf_loader.load_okf_bundle",
+    "memanto.cli.migrate.mappers.map_okf",
+    "memanto.app.services.okf_export_service.OkfExportService",
+    "deterministic presentation normalization",
+    "re-exported OKF bundle"
+  ],
+  "source_memories": 17,
+  "mapped_memories": 17,
+  "reexported_memories": 17,
+  "resources_preserved": 17,
+  "types_preserved": 17,
+  "titles_preserved": 17,
+  "content_preserved": 17,
+  "passed": 17,
+  "parity_percent": 100.0,
+  "export_result": {
+    "total_memories": 17,
+    "per_type_counts": {
+      "instruction": 2,
+      "fact": 2,
+      "decision": 2,
+      "goal": 5,
+      "observation": 4,
+      "artifact": 2
+    }
+  },
+  "cases": [
+    {
+      "resource": "urn:codex:sanitized-2667e0ff43ac6eac:message-001:part-1",
+      "found": true,
+      "type_preserved": true,
+      "title_preserved": true,
+      "content_preserved": true,
+      "passed": true
+    },
+    {
+      "resource": "urn:codex:sanitized-2667e0ff43ac6eac:message-001:part-2",
+      "found": true,
+      "type_preserved": true,
+      "title_preserved": true,
+      "content_preserved": true,
+      "passed": true
+    },
+    {
+      "resource": "urn:codex:sanitized-2667e0ff43ac6eac:message-001:part-3",
+      "found": true,
+      "type_preserved": true,
+      "title_preserved": true,
+      "content_preserved": true,
+      "passed": true
+    },
+    {
+      "resource": "urn:codex:sanitized-2667e0ff43ac6eac:message-001:part-4",
+      "found": true,
+      "type_preserved": true,
+      "title_preserved": true,
+      "content_preserved": true,
+      "passed": true
+    },
+    {
+      "resource": "urn:codex:sanitized-2667e0ff43ac6eac:message-001:part-5",
+      "found": true,
+      "type_preserved": true,
+      "title_preserved": true,
+      "content_preserved": true,
+      "passed": true
+    },
+    {
+      "resource": "urn:codex:sanitized-2667e0ff43ac6eac:message-001:part-6",
+      "found": true,
+      "type_preserved": true,
+      "title_preserved": true,
+      "content_preserved": true,
+      "passed": true
+    },
+    {
+      "resource": "urn:codex:sanitized-2667e0ff43ac6eac:message-002",
+      "found": true,
+      "type_preserved": true,
+      "title_preserved": true,
+      "content_preserved": true,
+      "passed": true
+    },
+    {
+      "resource": "urn:codex:sanitized-2667e0ff43ac6eac:message-003",
+      "found": true,
+      "type_preserved": true,
+      "title_preserved": true,
+      "content_preserved": true,
+      "passed": true
+    },
+    {
+      "resource": "urn:codex:sanitized-2667e0ff43ac6eac:message-004",
+      "found": true,
+      "type_preserved": true,
+      "title_preserved": true,
+      "content_preserved": true,
+      "passed": true
+    },
+    {
+      "resource": "urn:codex:sanitized-2667e0ff43ac6eac:message-005",
+      "found": true,
+      "type_preserved": true,
+      "title_preserved": true,
+      "content_preserved": true,
+      "passed": true
+    },
+    {
+      "resource": "urn:codex:sanitized-2667e0ff43ac6eac:message-006",
+      "found": true,
+      "type_preserved": true,
+      "title_preserved": true,
+      "content_preserved": true,
+      "passed": true
+    },
+    {
+      "resource": "urn:codex:sanitized-2667e0ff43ac6eac:message-007",
+      "found": true,
+      "type_preserved": true,
+      "title_preserved": true,
+      "content_preserved": true,
+      "passed": true
+    },
+    {
+      "resource": "urn:codex:sanitized-2667e0ff43ac6eac:message-008",
+      "found": true,
+      "type_preserved": true,
+      "title_preserved": true,
+      "content_preserved": true,
+      "passed": true
+    },
+    {
+      "resource": "urn:codex:sanitized-2667e0ff43ac6eac:message-009",
+      "found": true,
+      "type_preserved": true,
+      "title_preserved": true,
+      "content_preserved": true,
+      "passed": true
+    },
+    {
+      "resource": "urn:codex:sanitized-2667e0ff43ac6eac:message-010",
+      "found": true,
+      "type_preserved": true,
+      "title_preserved": true,
+      "content_preserved": true,
+      "passed": true
+    },
+    {
+      "resource": "urn:codex:sanitized-2667e0ff43ac6eac:message-011",
+      "found": true,
+      "type_preserved": true,
+      "title_preserved": true,
+      "content_preserved": true,
+      "passed": true
+    },
+    {
+      "resource": "urn:codex:sanitized-2667e0ff43ac6eac:message-012",
+      "found": true,
+      "type_preserved": true,
+      "title_preserved": true,
+      "content_preserved": true,
+      "passed": true
+    }
+  ]
+}

@@ -1,0 +1,22 @@
+[
+  {
+    "question": "¿Cuál es el objetivo económico mínimo de esta tarea?",
+    "expected_type": "goal",
+    "expected_terms": ["$200", "objetivo"]
+  },
+  {
+    "question": "¿Qué restricción existe sobre las redes sociales?",
+    "expected_type": "instruction",
+    "expected_terms": ["restricción", "redes sociales"]
+  },
+  {
+    "question": "¿Por qué se descartó la primera plataforma de recompensas?",
+    "expected_type": "decision",
+    "expected_terms": ["api pública", "usd 1"]
+  },
+  {
+    "question": "¿Qué recompensa de 200 dólares quedó como candidata vigente?",
+    "expected_type": "observation",
+    "expected_terms": ["memanto", "usd 200"]
+  }
+]

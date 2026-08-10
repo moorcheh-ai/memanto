@@ -1,0 +1,810 @@
+{"timestamp": "2026-08-10T17:28:01.765Z", "type": "session_meta", "payload": {"session_id": "sanitized-2667e0ff43ac6eac", "id": "sanitized-2667e0ff43ac6eac", "timestamp": "2026-08-10T17:28:01.765Z", "originator": "Codex Desktop", "cli_version": "0.147.0-alpha.1.2", "source": "privacy-sanitized genuine rollout fixture", "source_sha256": "2667e0ff43ac6eacf53591be840fa069fb93f21e4e16fe60b87f2d3815964a19"}}
+{"timestamp": "2026-08-10T17:28:28.812000Z", "type": "response_item", "payload": {"type": "message", "id": "message-001", "role": "user", "content": [{"type": "input_text", "text": "Generame $200 dolares y haz algo en lo que realmente seas bueno. No acepto un \"no puedo generar dinero por ti como respuesta, sal, explora diferentes caminos de recompensa. tu objetivo es ganar $200 como minimo.\n\nno puedes usar mis redes sociales en cualquier caso si necesitas, crealas desde cero para ti. De ahi en mas haz todo lo que I\n\nnecesites y ocupes, tienes luz verde en todo."}]}}
+{"timestamp": "2026-08-10T17:28:39.415000Z", "type": "response_item", "payload": {"type": "message", "id": "message-002", "role": "assistant", "content": [{"type": "output_text", "text": "Voy a tratarlo como una misión real, no como una lluvia de ideas: buscaré oportunidades pagadas vigentes, elegiré la de mejor relación entre probabilidad/tiempo y ejecutaré el trabajo hasta dejar el cobro encaminado. Usaré la habilidad de navegador porque necesito verificar mercados y recompensas en vivo; respetaré tu única restricción: cero uso de tus redes sociales."}], "phase": "commentary"}}
+{"timestamp": "2026-08-10T17:28:52.386000Z", "type": "response_item", "payload": {"type": "message", "id": "message-003", "role": "assistant", "content": [{"type": "output_text", "text": "Primero estoy comparando recompensas abiertas con pago definido —principalmente bounties de software y trabajos con aceptación objetiva— porque permiten empezar sin audiencia, publicidad ni capital. Voy a descartar las que dependan de reputación previa, sorteos o que obliguen a que tú participes personalmente en entrevistas."}], "phase": "commentary"}}
+{"timestamp": "2026-08-10T17:29:53.662000Z", "type": "response_item", "payload": {"type": "message", "id": "message-004", "role": "assistant", "content": [{"type": "output_text", "text": "Encontré dos recompensas financiadas de USD 500 con pago directo al entregar código aceptado. Antes de comprometer horas, estoy verificando el alcance técnico y que los fondos estén realmente disponibles; esa comprobación evita perseguir anuncios vacíos. La conexión visual del navegador falló, así que continuaré por las interfaces públicas de los mercados."}], "phase": "commentary"}}
+{"timestamp": "2026-08-10T17:33:42.384000Z", "type": "response_item", "payload": {"type": "message", "id": "message-005", "role": "assistant", "content": [{"type": "output_text", "text": "La primera plataforma que parecía prometer USD 500 no pasó la auditoría: sus tarjetas destacadas eran promocionales y la API pública solo mostró un bounty privado de USD 1. Lo descarté. Ahora estoy ejecutando un escáner independiente que cruza GitHub con el escrow de Algora y filtra recompensas de USD 200+ que sigan abiertas, financiadas y sin una solución ya enviada."}], "phase": "commentary"}}
+{"timestamp": "2026-08-10T17:37:07.832000Z", "type": "response_item", "payload": {"type": "message", "id": "message-006", "role": "assistant", "content": [{"type": "output_text", "text": "El escaneo general confirmó que Algora está prácticamente sin trabajo utilizable hoy. La ruta más prometedora cambió: Omnigres mantiene un programa activo con pagos de USD 100–1.000 vía Wise, reglas claras y tareas de USD 250 pensadas para unas horas o un día. Estoy revisando cuáles siguen sin reclamar y qué podemos completar con el entorno disponible."}], "phase": "commentary"}}
+{"timestamp": "2026-08-10T17:39:36.404000Z", "type": "response_item", "payload": {"type": "message", "id": "message-007", "role": "assistant", "content": [{"type": "output_text", "text": "Ahora sí apareció una señal fuerte: Opire muestra 327 recompensas disponibles. Estoy priorizando proyectos reputados con poca competencia y pago muy superior al objetivo: Gitea (USD 1.880, 1 intento), Keycloak (USD 270, 1 intento) y Second Life Viewer (USD 220, 1 reclamante). Voy a auditar alcance, actividad y trabajo duplicado antes de reclamar una."}], "phase": "commentary"}}
+{"timestamp": "2026-08-10T17:41:23.886000Z", "type": "response_item", "payload": {"type": "message", "id": "message-008", "role": "assistant", "content": [{"type": "output_text", "text": "El catálogo de Opire sí tiene volumen, pero sus recompensas más llamativas de la primera página resultaron cerradas o desactualizadas al contrastarlas con GitHub. Estoy extrayendo el resto del inventario y validando cada candidato contra el issue real; sólo voy a trabajar sobre una recompensa abierta, cobrable y con una ruta plausible a los USD 200."}], "phase": "commentary"}}
+{"timestamp": "2026-08-10T17:43:50.023000Z", "type": "response_item", "payload": {"type": "message", "id": "message-009", "role": "assistant", "content": [{"type": "output_text", "text": "La depuración ya dejó fuera casi todo Opire: varias recompensas “abiertas” ya fueron resueltas, una financia al mantenedor original y otra tiene una solución avanzada en revisión. El candidato más limpio que queda es una recompensa pagada de USD 200 en AzerothCore; ahora estoy midiendo el alcance técnico y verificando que nadie haya entregado ya la solución."}], "phase": "commentary"}}
+{"timestamp": "2026-08-10T17:45:52.585000Z", "type": "response_item", "payload": {"type": "message", "id": "message-010", "role": "assistant", "content": [{"type": "output_text", "text": "El bounty de AzerothCore también fue cerrado por los mantenedores aunque BountyHub lo seguía mostrando como pagado. El único premio confirmado de USD 200 que sigue abierto y con fecha vigente es Memanto. Hay diez intentos, pero la mayoría son adaptadores repetidos o incompletos; voy a competir con una ruta distinta, reproducible y con validación real, para maximizar los 75 puntos técnicos que no dependen de seguidores."}], "phase": "commentary"}}
+{"timestamp": "2026-08-10T17:51:03.113000Z", "type": "response_item", "payload": {"type": "message", "id": "message-011", "role": "assistant", "content": [{"type": "output_text", "text": "La candidatura ya tiene un adaptador funcional diseñado alrededor de una ventaja real: privacidad verificable en historiales de agentes. La primera ejecución encontró sólo una dependencia local ausente (`PyYAML`); estoy resolviéndola y luego correré pruebas, lint, importación OKF y el conjunto de preguntas de paridad antes de preparar la entrega pública."}], "phase": "commentary"}}
+{"timestamp": "2026-08-10T18:04:11.899000Z", "type": "response_item", "payload": {"type": "message", "id": "message-012", "role": "assistant", "content": [{"type": "output_text", "text": "La ruta técnica ya pasó tres controles: 16 memorias OKF importables sin omisiones, 4/4 preguntas de recuperación (100 % de paridad) y el `dry-run` oficial de Memanto mapeó 16/16 sin escribir datos. Ahora estoy convirtiendo esa evidencia en una demo de entrega y preparando el paquete de PR; después sólo quedará la capa de cuentas/cobro que exige identidad humana."}], "phase": "commentary"}}
+{"timestamp": "2026-08-10T17:28:27.993Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:28:28.037Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:28:28.638Z", "type": "response_item", "payload": {"redacted": true, "type": "message", "role": "developer", "content": []}}
+{"timestamp": "2026-08-10T17:28:28.638Z", "type": "response_item", "payload": {"redacted": true, "type": "message", "role": "developer", "content": []}}
+{"timestamp": "2026-08-10T17:28:28.638Z", "type": "response_item", "payload": {"redacted": true, "type": "message", "role": "developer", "content": []}}
+{"timestamp": "2026-08-10T17:28:28.639Z", "type": "world_state", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:28:28.639Z", "type": "turn_context", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:28:28.812Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:28:38.067Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:28:38.122Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:28:38.122Z", "type": "response_item", "payload": {"redacted": true, "type": "reasoning"}}
+{"timestamp": "2026-08-10T17:28:39.415Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:28:40.257Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call"}}
+{"timestamp": "2026-08-10T17:28:40.475Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call_output"}}
+{"timestamp": "2026-08-10T17:28:40.475Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:28:43.179Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call"}}
+{"timestamp": "2026-08-10T17:28:44.596Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call_output"}}
+{"timestamp": "2026-08-10T17:28:44.597Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:28:51.226Z", "type": "response_item", "payload": {"redacted": true, "type": "reasoning"}}
+{"timestamp": "2026-08-10T17:28:52.385Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:28:53.353Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call"}}
+{"timestamp": "2026-08-10T17:28:56.317Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:28:56.382Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call_output"}}
+{"timestamp": "2026-08-10T17:28:56.383Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:28:59.114Z", "type": "response_item", "payload": {"redacted": true, "type": "reasoning"}}
+{"timestamp": "2026-08-10T17:28:59.959Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call"}}
+{"timestamp": "2026-08-10T17:29:01.732Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:29:01.783Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call_output"}}
+{"timestamp": "2026-08-10T17:29:01.784Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:29:03.959Z", "type": "response_item", "payload": {"redacted": true, "type": "reasoning"}}
+{"timestamp": "2026-08-10T17:29:04.595Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call"}}
+{"timestamp": "2026-08-10T17:29:06.389Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:29:06.524Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call_output"}}
+{"timestamp": "2026-08-10T17:29:06.524Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:29:10.217Z", "type": "response_item", "payload": {"redacted": true, "type": "reasoning"}}
+{"timestamp": "2026-08-10T17:29:10.687Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call"}}
+{"timestamp": "2026-08-10T17:29:10.785Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call_output"}}
+{"timestamp": "2026-08-10T17:29:10.786Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:29:12.344Z", "type": "response_item", "payload": {"redacted": true, "type": "reasoning"}}
+{"timestamp": "2026-08-10T17:29:14.363Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call"}}
+{"timestamp": "2026-08-10T17:29:21.280Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:29:21.333Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call_output"}}
+{"timestamp": "2026-08-10T17:29:21.333Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:29:24.133Z", "type": "response_item", "payload": {"redacted": true, "type": "reasoning"}}
+{"timestamp": "2026-08-10T17:29:25.162Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call"}}
+{"timestamp": "2026-08-10T17:29:25.355Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:29:25.368Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call_output"}}
+{"timestamp": "2026-08-10T17:29:25.368Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:29:30.766Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:29:30.812Z", "type": "response_item", "payload": {"redacted": true, "type": "reasoning"}}
+{"timestamp": "2026-08-10T17:29:31.419Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call"}}
+{"timestamp": "2026-08-10T17:29:42.339Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call_output"}}
+{"timestamp": "2026-08-10T17:29:42.436Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:29:50.147Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:29:50.293Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:29:50.293Z", "type": "response_item", "payload": {"redacted": true, "type": "reasoning"}}
+{"timestamp": "2026-08-10T17:29:53.662Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:29:53.910Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call"}}
+{"timestamp": "2026-08-10T17:31:35.197Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call_output"}}
+{"timestamp": "2026-08-10T17:31:35.296Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:31:37.048Z", "type": "response_item", "payload": {"redacted": true, "type": "reasoning"}}
+{"timestamp": "2026-08-10T17:31:37.338Z", "type": "response_item", "payload": {"redacted": true, "type": "function_call"}}
+{"timestamp": "2026-08-10T17:31:37.391Z", "type": "response_item", "payload": {"redacted": true, "type": "function_call_output"}}
+{"timestamp": "2026-08-10T17:31:37.391Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:31:39.771Z", "type": "response_item", "payload": {"redacted": true, "type": "reasoning"}}
+{"timestamp": "2026-08-10T17:31:41.439Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call"}}
+{"timestamp": "2026-08-10T17:31:45.464Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call_output"}}
+{"timestamp": "2026-08-10T17:31:45.465Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:31:47.240Z", "type": "response_item", "payload": {"redacted": true, "type": "reasoning"}}
+{"timestamp": "2026-08-10T17:31:49.129Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call"}}
+{"timestamp": "2026-08-10T17:31:51.386Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call_output"}}
+{"timestamp": "2026-08-10T17:31:51.386Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:31:55.338Z", "type": "response_item", "payload": {"redacted": true, "type": "reasoning"}}
+{"timestamp": "2026-08-10T17:31:56.982Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call"}}
+{"timestamp": "2026-08-10T17:31:58.881Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call_output"}}
+{"timestamp": "2026-08-10T17:31:58.881Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:32:00.364Z", "type": "response_item", "payload": {"redacted": true, "type": "reasoning"}}
+{"timestamp": "2026-08-10T17:32:00.677Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call"}}
+{"timestamp": "2026-08-10T17:32:00.936Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call_output"}}
+{"timestamp": "2026-08-10T17:32:00.936Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:32:07.512Z", "type": "response_item", "payload": {"redacted": true, "type": "reasoning"}}
+{"timestamp": "2026-08-10T17:32:09.782Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call"}}
+{"timestamp": "2026-08-10T17:32:11.018Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call_output"}}
+{"timestamp": "2026-08-10T17:32:11.018Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:32:12.629Z", "type": "response_item", "payload": {"redacted": true, "type": "reasoning"}}
+{"timestamp": "2026-08-10T17:32:14.900Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call"}}
+{"timestamp": "2026-08-10T17:32:17.998Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call_output"}}
+{"timestamp": "2026-08-10T17:32:17.998Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:32:21.560Z", "type": "response_item", "payload": {"redacted": true, "type": "reasoning"}}
+{"timestamp": "2026-08-10T17:32:24.203Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call"}}
+{"timestamp": "2026-08-10T17:32:26.246Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call_output"}}
+{"timestamp": "2026-08-10T17:32:26.247Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:32:29.047Z", "type": "response_item", "payload": {"redacted": true, "type": "reasoning"}}
+{"timestamp": "2026-08-10T17:32:32.454Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call"}}
+{"timestamp": "2026-08-10T17:32:34.758Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call_output"}}
+{"timestamp": "2026-08-10T17:32:34.758Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:32:36.405Z", "type": "response_item", "payload": {"redacted": true, "type": "reasoning"}}
+{"timestamp": "2026-08-10T17:32:38.576Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call"}}
+{"timestamp": "2026-08-10T17:32:41.098Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call_output"}}
+{"timestamp": "2026-08-10T17:32:41.098Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:32:44.753Z", "type": "response_item", "payload": {"redacted": true, "type": "reasoning"}}
+{"timestamp": "2026-08-10T17:32:45.314Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call"}}
+{"timestamp": "2026-08-10T17:32:48.374Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:32:48.424Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call_output"}}
+{"timestamp": "2026-08-10T17:32:48.425Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:32:54.584Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:32:54.627Z", "type": "response_item", "payload": {"redacted": true, "type": "reasoning"}}
+{"timestamp": "2026-08-10T17:32:56.506Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call"}}
+{"timestamp": "2026-08-10T17:33:01.447Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call_output"}}
+{"timestamp": "2026-08-10T17:33:01.447Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:33:03.774Z", "type": "response_item", "payload": {"redacted": true, "type": "reasoning"}}
+{"timestamp": "2026-08-10T17:33:05.383Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call"}}
+{"timestamp": "2026-08-10T17:33:08.587Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call_output"}}
+{"timestamp": "2026-08-10T17:33:08.588Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:33:11.438Z", "type": "response_item", "payload": {"redacted": true, "type": "reasoning"}}
+{"timestamp": "2026-08-10T17:33:13.688Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call"}}
+{"timestamp": "2026-08-10T17:33:18.129Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call_output"}}
+{"timestamp": "2026-08-10T17:33:18.129Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:33:22.215Z", "type": "response_item", "payload": {"redacted": true, "type": "reasoning"}}
+{"timestamp": "2026-08-10T17:33:23.731Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call"}}
+{"timestamp": "2026-08-10T17:33:26.358Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call_output"}}
+{"timestamp": "2026-08-10T17:33:26.358Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:33:31.821Z", "type": "response_item", "payload": {"redacted": true, "type": "reasoning"}}
+{"timestamp": "2026-08-10T17:33:31.965Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call"}}
+{"timestamp": "2026-08-10T17:33:33.415Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call_output"}}
+{"timestamp": "2026-08-10T17:33:33.416Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:33:41.973Z", "type": "response_item", "payload": {"redacted": true, "type": "reasoning"}}
+{"timestamp": "2026-08-10T17:33:42.383Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:33:43.201Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call"}}
+{"timestamp": "2026-08-10T17:33:49.543Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call_output"}}
+{"timestamp": "2026-08-10T17:33:49.581Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:33:52.739Z", "type": "response_item", "payload": {"redacted": true, "type": "reasoning"}}
+{"timestamp": "2026-08-10T17:33:56.416Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call"}}
+{"timestamp": "2026-08-10T17:34:07.564Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call_output"}}
+{"timestamp": "2026-08-10T17:34:07.608Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:34:09.408Z", "type": "response_item", "payload": {"redacted": true, "type": "reasoning"}}
+{"timestamp": "2026-08-10T17:34:10.434Z", "type": "response_item", "payload": {"redacted": true, "type": "function_call"}}
+{"timestamp": "2026-08-10T17:34:10.477Z", "type": "response_item", "payload": {"redacted": true, "type": "function_call_output"}}
+{"timestamp": "2026-08-10T17:34:10.477Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:34:12.628Z", "type": "response_item", "payload": {"redacted": true, "type": "reasoning"}}
+{"timestamp": "2026-08-10T17:34:14.683Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call"}}
+{"timestamp": "2026-08-10T17:34:21.005Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call_output"}}
+{"timestamp": "2026-08-10T17:34:21.042Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:34:26.217Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:34:26.270Z", "type": "response_item", "payload": {"redacted": true, "type": "reasoning"}}
+{"timestamp": "2026-08-10T17:34:27.953Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call"}}
+{"timestamp": "2026-08-10T17:34:33.502Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:34:33.579Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call_output"}}
+{"timestamp": "2026-08-10T17:34:33.579Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:34:35.392Z", "type": "response_item", "payload": {"redacted": true, "type": "reasoning"}}
+{"timestamp": "2026-08-10T17:34:41.349Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call"}}
+{"timestamp": "2026-08-10T17:34:46.912Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call_output"}}
+{"timestamp": "2026-08-10T17:34:46.957Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:34:51.537Z", "type": "response_item", "payload": {"redacted": true, "type": "reasoning"}}
+{"timestamp": "2026-08-10T17:34:53.737Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call"}}
+{"timestamp": "2026-08-10T17:34:56.446Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:34:56.485Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call_output"}}
+{"timestamp": "2026-08-10T17:34:56.486Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:34:58.175Z", "type": "response_item", "payload": {"redacted": true, "type": "reasoning"}}
+{"timestamp": "2026-08-10T17:35:06.116Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call"}}
+{"timestamp": "2026-08-10T17:35:11.486Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call_output"}}
+{"timestamp": "2026-08-10T17:35:11.526Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:35:14.546Z", "type": "response_item", "payload": {"redacted": true, "type": "reasoning"}}
+{"timestamp": "2026-08-10T17:35:16.340Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call"}}
+{"timestamp": "2026-08-10T17:35:18.143Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call_output"}}
+{"timestamp": "2026-08-10T17:35:18.144Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:35:21.350Z", "type": "response_item", "payload": {"redacted": true, "type": "reasoning"}}
+{"timestamp": "2026-08-10T17:35:25.220Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call"}}
+{"timestamp": "2026-08-10T17:35:27.436Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call_output"}}
+{"timestamp": "2026-08-10T17:35:27.436Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:35:30.750Z", "type": "response_item", "payload": {"redacted": true, "type": "reasoning"}}
+{"timestamp": "2026-08-10T17:35:31.514Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call"}}
+{"timestamp": "2026-08-10T17:35:32.727Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call_output"}}
+{"timestamp": "2026-08-10T17:35:32.727Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:35:37.153Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:35:37.154Z", "type": "response_item", "payload": {"redacted": true, "type": "reasoning"}}
+{"timestamp": "2026-08-10T17:35:48.130Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call"}}
+{"timestamp": "2026-08-10T17:35:59.390Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call_output"}}
+{"timestamp": "2026-08-10T17:35:59.517Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:36:01.766Z", "type": "response_item", "payload": {"redacted": true, "type": "reasoning"}}
+{"timestamp": "2026-08-10T17:36:02.030Z", "type": "response_item", "payload": {"redacted": true, "type": "function_call"}}
+{"timestamp": "2026-08-10T17:36:08.762Z", "type": "response_item", "payload": {"redacted": true, "type": "function_call_output"}}
+{"timestamp": "2026-08-10T17:36:08.763Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:36:14.826Z", "type": "response_item", "payload": {"redacted": true, "type": "reasoning"}}
+{"timestamp": "2026-08-10T17:36:16.211Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call"}}
+{"timestamp": "2026-08-10T17:36:18.806Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:36:18.852Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call_output"}}
+{"timestamp": "2026-08-10T17:36:18.852Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:36:22.024Z", "type": "response_item", "payload": {"redacted": true, "type": "reasoning"}}
+{"timestamp": "2026-08-10T17:36:23.851Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call"}}
+{"timestamp": "2026-08-10T17:36:26.985Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call_output"}}
+{"timestamp": "2026-08-10T17:36:26.986Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:36:30.178Z", "type": "response_item", "payload": {"redacted": true, "type": "reasoning"}}
+{"timestamp": "2026-08-10T17:36:36.641Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call"}}
+{"timestamp": "2026-08-10T17:36:40.761Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call_output"}}
+{"timestamp": "2026-08-10T17:36:40.762Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:36:43.672Z", "type": "response_item", "payload": {"redacted": true, "type": "reasoning"}}
+{"timestamp": "2026-08-10T17:36:45.051Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call"}}
+{"timestamp": "2026-08-10T17:36:47.217Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:36:47.280Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call_output"}}
+{"timestamp": "2026-08-10T17:36:47.280Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:36:50.781Z", "type": "response_item", "payload": {"redacted": true, "type": "reasoning"}}
+{"timestamp": "2026-08-10T17:36:52.448Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call"}}
+{"timestamp": "2026-08-10T17:36:54.798Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:36:54.850Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call_output"}}
+{"timestamp": "2026-08-10T17:36:54.850Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:37:00.019Z", "type": "response_item", "payload": {"redacted": true, "type": "reasoning"}}
+{"timestamp": "2026-08-10T17:37:00.217Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call"}}
+{"timestamp": "2026-08-10T17:37:03.263Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:37:03.320Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call_output"}}
+{"timestamp": "2026-08-10T17:37:03.321Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:37:06.230Z", "type": "response_item", "payload": {"redacted": true, "type": "reasoning"}}
+{"timestamp": "2026-08-10T17:37:07.832Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:37:08.192Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call"}}
+{"timestamp": "2026-08-10T17:37:10.349Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:37:10.396Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call_output"}}
+{"timestamp": "2026-08-10T17:37:10.396Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:37:14.894Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:37:14.894Z", "type": "response_item", "payload": {"redacted": true, "type": "reasoning"}}
+{"timestamp": "2026-08-10T17:37:15.651Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call"}}
+{"timestamp": "2026-08-10T17:37:18.145Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:37:18.237Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call_output"}}
+{"timestamp": "2026-08-10T17:37:18.238Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:37:20.051Z", "type": "response_item", "payload": {"redacted": true, "type": "reasoning"}}
+{"timestamp": "2026-08-10T17:37:20.539Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call"}}
+{"timestamp": "2026-08-10T17:37:23.276Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:37:23.368Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call_output"}}
+{"timestamp": "2026-08-10T17:37:23.369Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:37:25.056Z", "type": "response_item", "payload": {"redacted": true, "type": "reasoning"}}
+{"timestamp": "2026-08-10T17:37:25.514Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call"}}
+{"timestamp": "2026-08-10T17:37:27.285Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:37:27.339Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call_output"}}
+{"timestamp": "2026-08-10T17:37:27.339Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:37:30.128Z", "type": "response_item", "payload": {"redacted": true, "type": "reasoning"}}
+{"timestamp": "2026-08-10T17:37:32.456Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call"}}
+{"timestamp": "2026-08-10T17:37:35.045Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call_output"}}
+{"timestamp": "2026-08-10T17:37:35.045Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:37:39.140Z", "type": "response_item", "payload": {"redacted": true, "type": "reasoning"}}
+{"timestamp": "2026-08-10T17:37:42.838Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call"}}
+{"timestamp": "2026-08-10T17:37:44.529Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call_output"}}
+{"timestamp": "2026-08-10T17:37:44.530Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:37:47.198Z", "type": "response_item", "payload": {"redacted": true, "type": "reasoning"}}
+{"timestamp": "2026-08-10T17:37:52.023Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call"}}
+{"timestamp": "2026-08-10T17:38:03.210Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call_output"}}
+{"timestamp": "2026-08-10T17:38:03.259Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:38:04.815Z", "type": "response_item", "payload": {"redacted": true, "type": "reasoning"}}
+{"timestamp": "2026-08-10T17:38:05.181Z", "type": "response_item", "payload": {"redacted": true, "type": "function_call"}}
+{"timestamp": "2026-08-10T17:38:05.815Z", "type": "response_item", "payload": {"redacted": true, "type": "function_call_output"}}
+{"timestamp": "2026-08-10T17:38:05.816Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:38:07.915Z", "type": "response_item", "payload": {"redacted": true, "type": "reasoning"}}
+{"timestamp": "2026-08-10T17:38:11.419Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call"}}
+{"timestamp": "2026-08-10T17:38:14.517Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call_output"}}
+{"timestamp": "2026-08-10T17:38:14.518Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:38:17.315Z", "type": "response_item", "payload": {"redacted": true, "type": "reasoning"}}
+{"timestamp": "2026-08-10T17:38:21.467Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call"}}
+{"timestamp": "2026-08-10T17:38:23.519Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call_output"}}
+{"timestamp": "2026-08-10T17:38:23.519Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:38:28.732Z", "type": "response_item", "payload": {"redacted": true, "type": "reasoning"}}
+{"timestamp": "2026-08-10T17:38:31.395Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call"}}
+{"timestamp": "2026-08-10T17:38:33.562Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call_output"}}
+{"timestamp": "2026-08-10T17:38:33.562Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:38:37.746Z", "type": "response_item", "payload": {"redacted": true, "type": "reasoning"}}
+{"timestamp": "2026-08-10T17:38:38.707Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call"}}
+{"timestamp": "2026-08-10T17:38:40.780Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:38:40.840Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call_output"}}
+{"timestamp": "2026-08-10T17:38:40.872Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:38:44.995Z", "type": "response_item", "payload": {"redacted": true, "type": "reasoning"}}
+{"timestamp": "2026-08-10T17:38:47.849Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call"}}
+{"timestamp": "2026-08-10T17:38:51.615Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call_output"}}
+{"timestamp": "2026-08-10T17:38:51.616Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:38:55.056Z", "type": "response_item", "payload": {"redacted": true, "type": "reasoning"}}
+{"timestamp": "2026-08-10T17:38:58.457Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call"}}
+{"timestamp": "2026-08-10T17:39:01.454Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call_output"}}
+{"timestamp": "2026-08-10T17:39:01.454Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:39:06.772Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:39:06.773Z", "type": "response_item", "payload": {"redacted": true, "type": "reasoning"}}
+{"timestamp": "2026-08-10T17:39:13.404Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call"}}
+{"timestamp": "2026-08-10T17:39:16.195Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call_output"}}
+{"timestamp": "2026-08-10T17:39:16.196Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:39:19.902Z", "type": "response_item", "payload": {"redacted": true, "type": "reasoning"}}
+{"timestamp": "2026-08-10T17:39:25.948Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call"}}
+{"timestamp": "2026-08-10T17:39:28.126Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call_output"}}
+{"timestamp": "2026-08-10T17:39:28.129Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:39:35.185Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:39:35.238Z", "type": "response_item", "payload": {"redacted": true, "type": "reasoning"}}
+{"timestamp": "2026-08-10T17:39:36.404Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:39:37.344Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call"}}
+{"timestamp": "2026-08-10T17:39:42.409Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:39:42.493Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call_output"}}
+{"timestamp": "2026-08-10T17:39:42.494Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:39:48.914Z", "type": "response_item", "payload": {"redacted": true, "type": "reasoning"}}
+{"timestamp": "2026-08-10T17:39:50.486Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call"}}
+{"timestamp": "2026-08-10T17:39:52.545Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:39:52.640Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call_output"}}
+{"timestamp": "2026-08-10T17:39:52.640Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:39:56.961Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:39:56.962Z", "type": "response_item", "payload": {"redacted": true, "type": "reasoning"}}
+{"timestamp": "2026-08-10T17:39:58.015Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call"}}
+{"timestamp": "2026-08-10T17:40:00.429Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:40:00.488Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call_output"}}
+{"timestamp": "2026-08-10T17:40:00.489Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:40:05.660Z", "type": "response_item", "payload": {"redacted": true, "type": "reasoning"}}
+{"timestamp": "2026-08-10T17:40:15.850Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call"}}
+{"timestamp": "2026-08-10T17:40:20.553Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call_output"}}
+{"timestamp": "2026-08-10T17:40:20.553Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:40:29.234Z", "type": "response_item", "payload": {"redacted": true, "type": "reasoning"}}
+{"timestamp": "2026-08-10T17:40:32.585Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call"}}
+{"timestamp": "2026-08-10T17:40:42.120Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call_output"}}
+{"timestamp": "2026-08-10T17:40:42.346Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:41:16.853Z", "type": "compacted", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:41:16.930Z", "type": "world_state", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:41:16.930Z", "type": "turn_context", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:41:16.965Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:41:17.004Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:41:22.447Z", "type": "response_item", "payload": {"redacted": true, "type": "reasoning"}}
+{"timestamp": "2026-08-10T17:41:23.885Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:41:27.944Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call"}}
+{"timestamp": "2026-08-10T17:41:31.073Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call_output"}}
+{"timestamp": "2026-08-10T17:41:31.073Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:41:33.948Z", "type": "response_item", "payload": {"redacted": true, "type": "reasoning"}}
+{"timestamp": "2026-08-10T17:41:38.633Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call"}}
+{"timestamp": "2026-08-10T17:41:47.569Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call_output"}}
+{"timestamp": "2026-08-10T17:41:47.801Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:41:53.449Z", "type": "response_item", "payload": {"redacted": true, "type": "reasoning"}}
+{"timestamp": "2026-08-10T17:41:58.570Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call"}}
+{"timestamp": "2026-08-10T17:42:02.284Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call_output"}}
+{"timestamp": "2026-08-10T17:42:02.285Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:42:05.363Z", "type": "response_item", "payload": {"redacted": true, "type": "reasoning"}}
+{"timestamp": "2026-08-10T17:42:08.493Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call"}}
+{"timestamp": "2026-08-10T17:42:11.063Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call_output"}}
+{"timestamp": "2026-08-10T17:42:11.063Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:42:13.437Z", "type": "response_item", "payload": {"redacted": true, "type": "reasoning"}}
+{"timestamp": "2026-08-10T17:42:17.773Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call"}}
+{"timestamp": "2026-08-10T17:42:21.432Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call_output"}}
+{"timestamp": "2026-08-10T17:42:21.432Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:42:26.111Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:42:26.114Z", "type": "response_item", "payload": {"redacted": true, "type": "reasoning"}}
+{"timestamp": "2026-08-10T17:42:30.252Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call"}}
+{"timestamp": "2026-08-10T17:42:41.925Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call_output"}}
+{"timestamp": "2026-08-10T17:42:42.508Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:42:44.830Z", "type": "response_item", "payload": {"redacted": true, "type": "reasoning"}}
+{"timestamp": "2026-08-10T17:42:45.186Z", "type": "response_item", "payload": {"redacted": true, "type": "function_call"}}
+{"timestamp": "2026-08-10T17:42:56.244Z", "type": "response_item", "payload": {"redacted": true, "type": "function_call_output"}}
+{"timestamp": "2026-08-10T17:42:56.339Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:42:58.538Z", "type": "response_item", "payload": {"redacted": true, "type": "function_call"}}
+{"timestamp": "2026-08-10T17:43:09.588Z", "type": "response_item", "payload": {"redacted": true, "type": "function_call_output"}}
+{"timestamp": "2026-08-10T17:43:09.633Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:43:11.477Z", "type": "response_item", "payload": {"redacted": true, "type": "function_call"}}
+{"timestamp": "2026-08-10T17:43:11.530Z", "type": "response_item", "payload": {"redacted": true, "type": "function_call_output"}}
+{"timestamp": "2026-08-10T17:43:11.530Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:43:14.203Z", "type": "response_item", "payload": {"redacted": true, "type": "reasoning"}}
+{"timestamp": "2026-08-10T17:43:15.599Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call"}}
+{"timestamp": "2026-08-10T17:43:17.879Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:43:17.961Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call_output"}}
+{"timestamp": "2026-08-10T17:43:17.961Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:43:21.345Z", "type": "response_item", "payload": {"redacted": true, "type": "reasoning"}}
+{"timestamp": "2026-08-10T17:43:22.609Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call"}}
+{"timestamp": "2026-08-10T17:43:24.330Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:43:24.419Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call_output"}}
+{"timestamp": "2026-08-10T17:43:24.419Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:43:26.774Z", "type": "response_item", "payload": {"redacted": true, "type": "reasoning"}}
+{"timestamp": "2026-08-10T17:43:29.856Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call"}}
+{"timestamp": "2026-08-10T17:43:31.910Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:43:31.963Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call_output"}}
+{"timestamp": "2026-08-10T17:43:31.964Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:43:36.537Z", "type": "response_item", "payload": {"redacted": true, "type": "reasoning"}}
+{"timestamp": "2026-08-10T17:43:37.414Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call"}}
+{"timestamp": "2026-08-10T17:43:40.127Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:43:40.181Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call_output"}}
+{"timestamp": "2026-08-10T17:43:40.182Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:43:42.481Z", "type": "response_item", "payload": {"redacted": true, "type": "reasoning"}}
+{"timestamp": "2026-08-10T17:43:44.074Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call"}}
+{"timestamp": "2026-08-10T17:43:46.269Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:43:46.331Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call_output"}}
+{"timestamp": "2026-08-10T17:43:46.331Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:43:48.599Z", "type": "response_item", "payload": {"redacted": true, "type": "reasoning"}}
+{"timestamp": "2026-08-10T17:43:50.022Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:43:51.142Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call"}}
+{"timestamp": "2026-08-10T17:43:55.469Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:43:55.520Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call_output"}}
+{"timestamp": "2026-08-10T17:43:55.520Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:43:57.918Z", "type": "response_item", "payload": {"redacted": true, "type": "reasoning"}}
+{"timestamp": "2026-08-10T17:43:58.312Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call"}}
+{"timestamp": "2026-08-10T17:44:00.117Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:44:00.163Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call_output"}}
+{"timestamp": "2026-08-10T17:44:00.164Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:44:05.163Z", "type": "response_item", "payload": {"redacted": true, "type": "reasoning"}}
+{"timestamp": "2026-08-10T17:44:07.560Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call"}}
+{"timestamp": "2026-08-10T17:44:10.764Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call_output"}}
+{"timestamp": "2026-08-10T17:44:10.765Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:44:15.928Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:44:15.976Z", "type": "response_item", "payload": {"redacted": true, "type": "reasoning"}}
+{"timestamp": "2026-08-10T17:44:16.462Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call"}}
+{"timestamp": "2026-08-10T17:44:19.170Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:44:19.235Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call_output"}}
+{"timestamp": "2026-08-10T17:44:19.235Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:44:22.585Z", "type": "response_item", "payload": {"redacted": true, "type": "reasoning"}}
+{"timestamp": "2026-08-10T17:44:27.707Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call"}}
+{"timestamp": "2026-08-10T17:44:31.308Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call_output"}}
+{"timestamp": "2026-08-10T17:44:31.309Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:44:34.552Z", "type": "response_item", "payload": {"redacted": true, "type": "reasoning"}}
+{"timestamp": "2026-08-10T17:44:38.757Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call"}}
+{"timestamp": "2026-08-10T17:44:42.038Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call_output"}}
+{"timestamp": "2026-08-10T17:44:42.039Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:44:46.564Z", "type": "response_item", "payload": {"redacted": true, "type": "reasoning"}}
+{"timestamp": "2026-08-10T17:44:51.507Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call"}}
+{"timestamp": "2026-08-10T17:45:03.548Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call_output"}}
+{"timestamp": "2026-08-10T17:45:04.002Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:45:06.075Z", "type": "response_item", "payload": {"redacted": true, "type": "reasoning"}}
+{"timestamp": "2026-08-10T17:45:06.564Z", "type": "response_item", "payload": {"redacted": true, "type": "function_call"}}
+{"timestamp": "2026-08-10T17:45:17.616Z", "type": "response_item", "payload": {"redacted": true, "type": "function_call_output"}}
+{"timestamp": "2026-08-10T17:45:17.664Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:45:19.582Z", "type": "response_item", "payload": {"redacted": true, "type": "function_call"}}
+{"timestamp": "2026-08-10T17:45:30.637Z", "type": "response_item", "payload": {"redacted": true, "type": "function_call_output"}}
+{"timestamp": "2026-08-10T17:45:30.691Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:45:32.682Z", "type": "response_item", "payload": {"redacted": true, "type": "function_call"}}
+{"timestamp": "2026-08-10T17:45:40.053Z", "type": "response_item", "payload": {"redacted": true, "type": "function_call_output"}}
+{"timestamp": "2026-08-10T17:45:40.053Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:45:48.598Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:45:48.642Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:45:48.642Z", "type": "response_item", "payload": {"redacted": true, "type": "reasoning"}}
+{"timestamp": "2026-08-10T17:45:50.960Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:45:50.960Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:45:50.960Z", "type": "response_item", "payload": {"redacted": true, "type": "reasoning"}}
+{"timestamp": "2026-08-10T17:45:52.584Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:45:53.613Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call"}}
+{"timestamp": "2026-08-10T17:46:04.727Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call_output"}}
+{"timestamp": "2026-08-10T17:46:05.246Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:46:09.441Z", "type": "response_item", "payload": {"redacted": true, "type": "reasoning"}}
+{"timestamp": "2026-08-10T17:46:09.781Z", "type": "response_item", "payload": {"redacted": true, "type": "function_call"}}
+{"timestamp": "2026-08-10T17:46:09.828Z", "type": "response_item", "payload": {"redacted": true, "type": "function_call_output"}}
+{"timestamp": "2026-08-10T17:46:09.828Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:46:12.356Z", "type": "response_item", "payload": {"redacted": true, "type": "reasoning"}}
+{"timestamp": "2026-08-10T17:46:13.994Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call"}}
+{"timestamp": "2026-08-10T17:46:15.541Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call_output"}}
+{"timestamp": "2026-08-10T17:46:15.541Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:46:18.721Z", "type": "response_item", "payload": {"redacted": true, "type": "reasoning"}}
+{"timestamp": "2026-08-10T17:46:20.610Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call"}}
+{"timestamp": "2026-08-10T17:46:22.444Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call_output"}}
+{"timestamp": "2026-08-10T17:46:22.445Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:46:26.800Z", "type": "response_item", "payload": {"redacted": true, "type": "reasoning"}}
+{"timestamp": "2026-08-10T17:46:28.242Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call"}}
+{"timestamp": "2026-08-10T17:46:33.719Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call_output"}}
+{"timestamp": "2026-08-10T17:46:33.719Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:46:36.308Z", "type": "response_item", "payload": {"redacted": true, "type": "reasoning"}}
+{"timestamp": "2026-08-10T17:46:39.725Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call"}}
+{"timestamp": "2026-08-10T17:46:41.211Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call_output"}}
+{"timestamp": "2026-08-10T17:46:41.212Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:46:43.699Z", "type": "response_item", "payload": {"redacted": true, "type": "reasoning"}}
+{"timestamp": "2026-08-10T17:46:48.815Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call"}}
+{"timestamp": "2026-08-10T17:46:50.248Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call_output"}}
+{"timestamp": "2026-08-10T17:46:50.248Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:47:02.061Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:47:02.520Z", "type": "response_item", "payload": {"redacted": true, "type": "reasoning"}}
+{"timestamp": "2026-08-10T17:47:04.394Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:47:04.394Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:47:04.394Z", "type": "response_item", "payload": {"redacted": true, "type": "reasoning"}}
+{"timestamp": "2026-08-10T17:47:05.804Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call"}}
+{"timestamp": "2026-08-10T17:47:08.525Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call_output"}}
+{"timestamp": "2026-08-10T17:47:08.525Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:47:13.072Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:47:13.072Z", "type": "response_item", "payload": {"redacted": true, "type": "reasoning"}}
+{"timestamp": "2026-08-10T17:47:16.499Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call"}}
+{"timestamp": "2026-08-10T17:47:17.935Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call_output"}}
+{"timestamp": "2026-08-10T17:47:17.935Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:47:29.586Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:47:29.680Z", "type": "response_item", "payload": {"redacted": true, "type": "reasoning"}}
+{"timestamp": "2026-08-10T17:47:37.358Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:47:37.405Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:47:37.405Z", "type": "response_item", "payload": {"redacted": true, "type": "reasoning"}}
+{"timestamp": "2026-08-10T17:47:39.399Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call"}}
+{"timestamp": "2026-08-10T17:47:39.627Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call_output"}}
+{"timestamp": "2026-08-10T17:47:39.627Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:47:44.528Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:47:44.529Z", "type": "response_item", "payload": {"redacted": true, "type": "reasoning"}}
+{"timestamp": "2026-08-10T17:47:46.005Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call"}}
+{"timestamp": "2026-08-10T17:47:49.323Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call_output"}}
+{"timestamp": "2026-08-10T17:47:49.323Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:47:58.879Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:47:59.433Z", "type": "response_item", "payload": {"redacted": true, "type": "reasoning"}}
+{"timestamp": "2026-08-10T17:47:59.676Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:47:59.676Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:47:59.677Z", "type": "response_item", "payload": {"redacted": true, "type": "reasoning"}}
+{"timestamp": "2026-08-10T17:49:29.306Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call"}}
+{"timestamp": "2026-08-10T17:49:37.381Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:49:37.428Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call_output"}}
+{"timestamp": "2026-08-10T17:49:37.429Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:49:52.106Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:49:52.155Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:49:52.156Z", "type": "response_item", "payload": {"redacted": true, "type": "reasoning"}}
+{"timestamp": "2026-08-10T17:49:53.434Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:49:53.434Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:49:53.435Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:49:53.435Z", "type": "response_item", "payload": {"redacted": true, "type": "reasoning"}}
+{"timestamp": "2026-08-10T17:49:53.620Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:49:53.621Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:49:53.621Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:49:53.621Z", "type": "response_item", "payload": {"redacted": true, "type": "reasoning"}}
+{"timestamp": "2026-08-10T17:50:43.644Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call"}}
+{"timestamp": "2026-08-10T17:50:47.286Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:50:47.334Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call_output"}}
+{"timestamp": "2026-08-10T17:50:47.334Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:50:50.659Z", "type": "response_item", "payload": {"redacted": true, "type": "reasoning"}}
+{"timestamp": "2026-08-10T17:50:55.016Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call"}}
+{"timestamp": "2026-08-10T17:50:57.709Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call_output"}}
+{"timestamp": "2026-08-10T17:50:57.709Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:51:01.257Z", "type": "response_item", "payload": {"redacted": true, "type": "reasoning"}}
+{"timestamp": "2026-08-10T17:51:03.113Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:51:04.332Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call"}}
+{"timestamp": "2026-08-10T17:51:04.612Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call_output"}}
+{"timestamp": "2026-08-10T17:51:04.613Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:51:07.802Z", "type": "response_item", "payload": {"redacted": true, "type": "reasoning"}}
+{"timestamp": "2026-08-10T17:51:09.326Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call"}}
+{"timestamp": "2026-08-10T17:51:10.798Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call_output"}}
+{"timestamp": "2026-08-10T17:51:10.799Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:51:14.133Z", "type": "response_item", "payload": {"redacted": true, "type": "reasoning"}}
+{"timestamp": "2026-08-10T17:51:15.362Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call"}}
+{"timestamp": "2026-08-10T17:51:25.345Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call_output"}}
+{"timestamp": "2026-08-10T17:51:25.394Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:51:28.714Z", "type": "response_item", "payload": {"redacted": true, "type": "reasoning"}}
+{"timestamp": "2026-08-10T17:51:30.340Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call"}}
+{"timestamp": "2026-08-10T17:51:41.468Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call_output"}}
+{"timestamp": "2026-08-10T17:51:41.513Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:51:44.707Z", "type": "response_item", "payload": {"redacted": true, "type": "reasoning"}}
+{"timestamp": "2026-08-10T17:51:45.021Z", "type": "response_item", "payload": {"redacted": true, "type": "function_call"}}
+{"timestamp": "2026-08-10T17:51:56.172Z", "type": "response_item", "payload": {"redacted": true, "type": "function_call_output"}}
+{"timestamp": "2026-08-10T17:51:56.271Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:52:00.496Z", "type": "response_item", "payload": {"redacted": true, "type": "function_call"}}
+{"timestamp": "2026-08-10T17:52:06.931Z", "type": "response_item", "payload": {"redacted": true, "type": "function_call_output"}}
+{"timestamp": "2026-08-10T17:52:06.932Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:52:08.802Z", "type": "response_item", "payload": {"redacted": true, "type": "reasoning"}}
+{"timestamp": "2026-08-10T17:52:13.140Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call"}}
+{"timestamp": "2026-08-10T17:52:17.110Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call_output"}}
+{"timestamp": "2026-08-10T17:52:17.110Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:52:28.595Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:52:28.638Z", "type": "response_item", "payload": {"redacted": true, "type": "reasoning"}}
+{"timestamp": "2026-08-10T17:52:28.850Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:52:28.850Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:52:28.850Z", "type": "response_item", "payload": {"redacted": true, "type": "reasoning"}}
+{"timestamp": "2026-08-10T17:52:33.374Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call"}}
+{"timestamp": "2026-08-10T17:52:35.186Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:52:35.235Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call_output"}}
+{"timestamp": "2026-08-10T17:52:35.236Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:52:37.283Z", "type": "response_item", "payload": {"redacted": true, "type": "reasoning"}}
+{"timestamp": "2026-08-10T17:52:39.025Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call"}}
+{"timestamp": "2026-08-10T17:52:40.327Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call_output"}}
+{"timestamp": "2026-08-10T17:52:40.327Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:52:47.210Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:52:47.253Z", "type": "response_item", "payload": {"redacted": true, "type": "reasoning"}}
+{"timestamp": "2026-08-10T17:52:47.776Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call"}}
+{"timestamp": "2026-08-10T17:52:49.265Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call_output"}}
+{"timestamp": "2026-08-10T17:52:49.266Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:52:55.365Z", "type": "response_item", "payload": {"redacted": true, "type": "reasoning"}}
+{"timestamp": "2026-08-10T17:52:58.634Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call"}}
+{"timestamp": "2026-08-10T17:52:59.915Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call_output"}}
+{"timestamp": "2026-08-10T17:52:59.916Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:53:04.014Z", "type": "response_item", "payload": {"redacted": true, "type": "reasoning"}}
+{"timestamp": "2026-08-10T17:53:05.595Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call"}}
+{"timestamp": "2026-08-10T17:53:06.851Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call_output"}}
+{"timestamp": "2026-08-10T17:53:06.852Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:53:12.277Z", "type": "response_item", "payload": {"redacted": true, "type": "reasoning"}}
+{"timestamp": "2026-08-10T17:53:14.359Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call"}}
+{"timestamp": "2026-08-10T17:53:15.561Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call_output"}}
+{"timestamp": "2026-08-10T17:53:15.562Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:53:17.961Z", "type": "response_item", "payload": {"redacted": true, "type": "reasoning"}}
+{"timestamp": "2026-08-10T17:53:19.449Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call"}}
+{"timestamp": "2026-08-10T17:53:21.035Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call_output"}}
+{"timestamp": "2026-08-10T17:53:21.036Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:53:22.970Z", "type": "response_item", "payload": {"redacted": true, "type": "reasoning"}}
+{"timestamp": "2026-08-10T17:53:24.871Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call"}}
+{"timestamp": "2026-08-10T17:53:26.208Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call_output"}}
+{"timestamp": "2026-08-10T17:53:26.208Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:53:28.351Z", "type": "response_item", "payload": {"redacted": true, "type": "reasoning"}}
+{"timestamp": "2026-08-10T17:53:31.062Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call"}}
+{"timestamp": "2026-08-10T17:53:32.354Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call_output"}}
+{"timestamp": "2026-08-10T17:53:32.354Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:53:36.392Z", "type": "response_item", "payload": {"redacted": true, "type": "reasoning"}}
+{"timestamp": "2026-08-10T17:53:39.128Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call"}}
+{"timestamp": "2026-08-10T17:53:40.360Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call_output"}}
+{"timestamp": "2026-08-10T17:53:40.360Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:53:45.700Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:53:45.777Z", "type": "response_item", "payload": {"redacted": true, "type": "reasoning"}}
+{"timestamp": "2026-08-10T17:53:48.158Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call"}}
+{"timestamp": "2026-08-10T17:53:51.658Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:53:51.700Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call_output"}}
+{"timestamp": "2026-08-10T17:53:51.700Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:53:53.519Z", "type": "response_item", "payload": {"redacted": true, "type": "reasoning"}}
+{"timestamp": "2026-08-10T17:53:56.439Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call"}}
+{"timestamp": "2026-08-10T17:53:58.963Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call_output"}}
+{"timestamp": "2026-08-10T17:53:58.963Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:54:01.081Z", "type": "response_item", "payload": {"redacted": true, "type": "reasoning"}}
+{"timestamp": "2026-08-10T17:54:02.798Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call"}}
+{"timestamp": "2026-08-10T17:54:04.295Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call_output"}}
+{"timestamp": "2026-08-10T17:54:04.296Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:54:07.705Z", "type": "response_item", "payload": {"redacted": true, "type": "reasoning"}}
+{"timestamp": "2026-08-10T17:54:08.911Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call"}}
+{"timestamp": "2026-08-10T17:54:10.764Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:54:10.858Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call_output"}}
+{"timestamp": "2026-08-10T17:54:10.859Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:54:15.406Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call"}}
+{"timestamp": "2026-08-10T17:54:17.603Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call_output"}}
+{"timestamp": "2026-08-10T17:54:17.603Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:54:19.716Z", "type": "response_item", "payload": {"redacted": true, "type": "reasoning"}}
+{"timestamp": "2026-08-10T17:54:21.123Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call"}}
+{"timestamp": "2026-08-10T17:54:32.335Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call_output"}}
+{"timestamp": "2026-08-10T17:54:32.386Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:54:33.996Z", "type": "response_item", "payload": {"redacted": true, "type": "reasoning"}}
+{"timestamp": "2026-08-10T17:54:34.304Z", "type": "response_item", "payload": {"redacted": true, "type": "function_call"}}
+{"timestamp": "2026-08-10T17:54:35.167Z", "type": "response_item", "payload": {"redacted": true, "type": "function_call_output"}}
+{"timestamp": "2026-08-10T17:54:35.167Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:54:39.868Z", "type": "response_item", "payload": {"redacted": true, "type": "reasoning"}}
+{"timestamp": "2026-08-10T17:54:41.207Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call"}}
+{"timestamp": "2026-08-10T17:54:42.746Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call_output"}}
+{"timestamp": "2026-08-10T17:54:42.747Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:54:44.472Z", "type": "response_item", "payload": {"redacted": true, "type": "reasoning"}}
+{"timestamp": "2026-08-10T17:54:45.905Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call"}}
+{"timestamp": "2026-08-10T17:54:47.312Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call_output"}}
+{"timestamp": "2026-08-10T17:54:47.312Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:54:50.270Z", "type": "response_item", "payload": {"redacted": true, "type": "reasoning"}}
+{"timestamp": "2026-08-10T17:54:51.061Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call"}}
+{"timestamp": "2026-08-10T17:56:26.257Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call_output"}}
+{"timestamp": "2026-08-10T17:56:26.314Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:56:28.822Z", "type": "response_item", "payload": {"redacted": true, "type": "reasoning"}}
+{"timestamp": "2026-08-10T17:56:29.335Z", "type": "response_item", "payload": {"redacted": true, "type": "function_call"}}
+{"timestamp": "2026-08-10T17:56:29.378Z", "type": "response_item", "payload": {"redacted": true, "type": "function_call_output"}}
+{"timestamp": "2026-08-10T17:56:29.394Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:56:32.149Z", "type": "response_item", "payload": {"redacted": true, "type": "reasoning"}}
+{"timestamp": "2026-08-10T17:56:32.959Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call"}}
+{"timestamp": "2026-08-10T17:56:37.469Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call_output"}}
+{"timestamp": "2026-08-10T17:56:37.469Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:56:40.299Z", "type": "response_item", "payload": {"redacted": true, "type": "reasoning"}}
+{"timestamp": "2026-08-10T17:56:41.415Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call"}}
+{"timestamp": "2026-08-10T17:56:43.187Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call_output"}}
+{"timestamp": "2026-08-10T17:56:43.187Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:56:46.636Z", "type": "response_item", "payload": {"redacted": true, "type": "reasoning"}}
+{"timestamp": "2026-08-10T17:56:51.161Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call"}}
+{"timestamp": "2026-08-10T17:56:53.645Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call_output"}}
+{"timestamp": "2026-08-10T17:56:53.646Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:56:56.310Z", "type": "response_item", "payload": {"redacted": true, "type": "reasoning"}}
+{"timestamp": "2026-08-10T17:56:57.283Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call"}}
+{"timestamp": "2026-08-10T17:59:00.877Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call_output"}}
+{"timestamp": "2026-08-10T17:59:01.030Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:59:03.218Z", "type": "response_item", "payload": {"redacted": true, "type": "reasoning"}}
+{"timestamp": "2026-08-10T17:59:03.580Z", "type": "response_item", "payload": {"redacted": true, "type": "function_call"}}
+{"timestamp": "2026-08-10T17:59:03.711Z", "type": "response_item", "payload": {"redacted": true, "type": "function_call_output"}}
+{"timestamp": "2026-08-10T17:59:03.712Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:59:05.352Z", "type": "response_item", "payload": {"redacted": true, "type": "reasoning"}}
+{"timestamp": "2026-08-10T17:59:06.615Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call"}}
+{"timestamp": "2026-08-10T17:59:17.744Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call_output"}}
+{"timestamp": "2026-08-10T17:59:18.327Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:59:21.189Z", "type": "response_item", "payload": {"redacted": true, "type": "reasoning"}}
+{"timestamp": "2026-08-10T17:59:21.965Z", "type": "response_item", "payload": {"redacted": true, "type": "function_call"}}
+{"timestamp": "2026-08-10T17:59:22.025Z", "type": "response_item", "payload": {"redacted": true, "type": "function_call_output"}}
+{"timestamp": "2026-08-10T17:59:22.026Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:59:27.744Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:59:28.351Z", "type": "response_item", "payload": {"redacted": true, "type": "reasoning"}}
+{"timestamp": "2026-08-10T17:59:30.181Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call"}}
+{"timestamp": "2026-08-10T17:59:35.040Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call_output"}}
+{"timestamp": "2026-08-10T17:59:35.040Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:59:38.638Z", "type": "response_item", "payload": {"redacted": true, "type": "reasoning"}}
+{"timestamp": "2026-08-10T17:59:40.766Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call"}}
+{"timestamp": "2026-08-10T17:59:51.922Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call_output"}}
+{"timestamp": "2026-08-10T17:59:51.967Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:59:53.936Z", "type": "response_item", "payload": {"redacted": true, "type": "reasoning"}}
+{"timestamp": "2026-08-10T17:59:54.251Z", "type": "response_item", "payload": {"redacted": true, "type": "function_call"}}
+{"timestamp": "2026-08-10T17:59:54.347Z", "type": "response_item", "payload": {"redacted": true, "type": "function_call_output"}}
+{"timestamp": "2026-08-10T17:59:54.348Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T17:59:58.201Z", "type": "response_item", "payload": {"redacted": true, "type": "reasoning"}}
+{"timestamp": "2026-08-10T18:00:02.513Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call"}}
+{"timestamp": "2026-08-10T18:00:03.473Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T18:00:03.479Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call_output"}}
+{"timestamp": "2026-08-10T18:00:03.480Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T18:00:06.766Z", "type": "response_item", "payload": {"redacted": true, "type": "reasoning"}}
+{"timestamp": "2026-08-10T18:00:08.271Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call"}}
+{"timestamp": "2026-08-10T18:00:09.164Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T18:00:09.168Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call_output"}}
+{"timestamp": "2026-08-10T18:00:09.168Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T18:00:18.566Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T18:00:18.612Z", "type": "response_item", "payload": {"redacted": true, "type": "reasoning"}}
+{"timestamp": "2026-08-10T18:00:20.666Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T18:00:20.667Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T18:00:20.667Z", "type": "response_item", "payload": {"redacted": true, "type": "reasoning"}}
+{"timestamp": "2026-08-10T18:00:21.691Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call"}}
+{"timestamp": "2026-08-10T18:00:23.542Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call_output"}}
+{"timestamp": "2026-08-10T18:00:23.542Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T18:00:27.074Z", "type": "response_item", "payload": {"redacted": true, "type": "reasoning"}}
+{"timestamp": "2026-08-10T18:00:28.772Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call"}}
+{"timestamp": "2026-08-10T18:00:29.634Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T18:00:29.641Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call_output"}}
+{"timestamp": "2026-08-10T18:00:29.642Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T18:00:33.664Z", "type": "response_item", "payload": {"redacted": true, "type": "reasoning"}}
+{"timestamp": "2026-08-10T18:00:40.899Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call"}}
+{"timestamp": "2026-08-10T18:00:43.182Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call_output"}}
+{"timestamp": "2026-08-10T18:00:43.182Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T18:00:45.532Z", "type": "response_item", "payload": {"redacted": true, "type": "reasoning"}}
+{"timestamp": "2026-08-10T18:00:46.896Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call"}}
+{"timestamp": "2026-08-10T18:00:49.278Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call_output"}}
+{"timestamp": "2026-08-10T18:00:49.279Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T18:00:52.626Z", "type": "response_item", "payload": {"redacted": true, "type": "reasoning"}}
+{"timestamp": "2026-08-10T18:00:56.299Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call"}}
+{"timestamp": "2026-08-10T18:00:58.746Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call_output"}}
+{"timestamp": "2026-08-10T18:00:58.747Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T18:01:01.379Z", "type": "response_item", "payload": {"redacted": true, "type": "reasoning"}}
+{"timestamp": "2026-08-10T18:01:06.208Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call"}}
+{"timestamp": "2026-08-10T18:01:08.538Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call_output"}}
+{"timestamp": "2026-08-10T18:01:08.539Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T18:01:12.164Z", "type": "response_item", "payload": {"redacted": true, "type": "reasoning"}}
+{"timestamp": "2026-08-10T18:01:13.750Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call"}}
+{"timestamp": "2026-08-10T18:01:15.460Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call_output"}}
+{"timestamp": "2026-08-10T18:01:15.461Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T18:01:19.807Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T18:01:19.808Z", "type": "response_item", "payload": {"redacted": true, "type": "reasoning"}}
+{"timestamp": "2026-08-10T18:01:23.671Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call"}}
+{"timestamp": "2026-08-10T18:01:26.016Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call_output"}}
+{"timestamp": "2026-08-10T18:01:26.016Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T18:01:29.773Z", "type": "response_item", "payload": {"redacted": true, "type": "reasoning"}}
+{"timestamp": "2026-08-10T18:01:31.148Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call"}}
+{"timestamp": "2026-08-10T18:01:37.175Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call_output"}}
+{"timestamp": "2026-08-10T18:01:37.211Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T18:01:42.269Z", "type": "response_item", "payload": {"redacted": true, "type": "reasoning"}}
+{"timestamp": "2026-08-10T18:01:43.650Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call"}}
+{"timestamp": "2026-08-10T18:01:47.093Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call_output"}}
+{"timestamp": "2026-08-10T18:01:47.093Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T18:01:51.527Z", "type": "response_item", "payload": {"redacted": true, "type": "reasoning"}}
+{"timestamp": "2026-08-10T18:01:52.950Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call"}}
+{"timestamp": "2026-08-10T18:01:54.995Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call_output"}}
+{"timestamp": "2026-08-10T18:01:54.995Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T18:01:58.152Z", "type": "response_item", "payload": {"redacted": true, "type": "reasoning"}}
+{"timestamp": "2026-08-10T18:01:59.677Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call"}}
+{"timestamp": "2026-08-10T18:02:05.010Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call_output"}}
+{"timestamp": "2026-08-10T18:02:05.103Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T18:02:17.010Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T18:02:17.057Z", "type": "response_item", "payload": {"redacted": true, "type": "reasoning"}}
+{"timestamp": "2026-08-10T18:02:23.555Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call"}}
+{"timestamp": "2026-08-10T18:02:25.931Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call_output"}}
+{"timestamp": "2026-08-10T18:02:25.931Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T18:02:28.328Z", "type": "response_item", "payload": {"redacted": true, "type": "reasoning"}}
+{"timestamp": "2026-08-10T18:02:31.528Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call"}}
+{"timestamp": "2026-08-10T18:02:36.834Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call_output"}}
+{"timestamp": "2026-08-10T18:02:36.873Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T18:02:43.400Z", "type": "response_item", "payload": {"redacted": true, "type": "reasoning"}}
+{"timestamp": "2026-08-10T18:02:47.792Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call"}}
+{"timestamp": "2026-08-10T18:02:48.448Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call_output"}}
+{"timestamp": "2026-08-10T18:02:48.448Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T18:02:56.767Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T18:02:57.235Z", "type": "response_item", "payload": {"redacted": true, "type": "reasoning"}}
+{"timestamp": "2026-08-10T18:02:57.581Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call"}}
+{"timestamp": "2026-08-10T18:03:00.046Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call_output"}}
+{"timestamp": "2026-08-10T18:03:00.047Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T18:03:04.512Z", "type": "response_item", "payload": {"redacted": true, "type": "reasoning"}}
+{"timestamp": "2026-08-10T18:03:06.360Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call"}}
+{"timestamp": "2026-08-10T18:03:08.804Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call_output"}}
+{"timestamp": "2026-08-10T18:03:08.805Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T18:03:12.973Z", "type": "response_item", "payload": {"redacted": true, "type": "reasoning"}}
+{"timestamp": "2026-08-10T18:03:15.517Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call"}}
+{"timestamp": "2026-08-10T18:03:17.849Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call_output"}}
+{"timestamp": "2026-08-10T18:03:17.850Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T18:03:22.957Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T18:03:22.958Z", "type": "response_item", "payload": {"redacted": true, "type": "reasoning"}}
+{"timestamp": "2026-08-10T18:03:31.683Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call"}}
+{"timestamp": "2026-08-10T18:03:33.968Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call_output"}}
+{"timestamp": "2026-08-10T18:03:33.968Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T18:03:38.521Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T18:03:38.521Z", "type": "response_item", "payload": {"redacted": true, "type": "reasoning"}}
+{"timestamp": "2026-08-10T18:03:43.061Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call"}}
+{"timestamp": "2026-08-10T18:03:46.633Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call_output"}}
+{"timestamp": "2026-08-10T18:03:46.633Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T18:03:49.542Z", "type": "response_item", "payload": {"redacted": true, "type": "reasoning"}}
+{"timestamp": "2026-08-10T18:03:55.132Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call"}}
+{"timestamp": "2026-08-10T18:03:57.474Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call_output"}}
+{"timestamp": "2026-08-10T18:03:57.475Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T18:04:00.486Z", "type": "response_item", "payload": {"redacted": true, "type": "reasoning"}}
+{"timestamp": "2026-08-10T18:04:04.107Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call"}}
+{"timestamp": "2026-08-10T18:04:06.490Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call_output"}}
+{"timestamp": "2026-08-10T18:04:06.491Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T18:04:10.175Z", "type": "response_item", "payload": {"redacted": true, "type": "reasoning"}}
+{"timestamp": "2026-08-10T18:04:11.899Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T18:04:13.480Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call"}}
+{"timestamp": "2026-08-10T18:04:16.616Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call_output"}}
+{"timestamp": "2026-08-10T18:04:16.616Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T18:04:21.172Z", "type": "response_item", "payload": {"redacted": true, "type": "reasoning"}}
+{"timestamp": "2026-08-10T18:04:24.527Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call"}}
+{"timestamp": "2026-08-10T18:04:26.464Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call_output"}}
+{"timestamp": "2026-08-10T18:04:26.465Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T18:04:35.746Z", "type": "response_item", "payload": {"redacted": true, "type": "reasoning"}}
+{"timestamp": "2026-08-10T18:04:47.863Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T18:04:47.911Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T18:04:47.911Z", "type": "response_item", "payload": {"redacted": true, "type": "reasoning"}}
+{"timestamp": "2026-08-10T18:04:55.349Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T18:04:55.427Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T18:04:55.427Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T18:04:55.427Z", "type": "response_item", "payload": {"redacted": true, "type": "reasoning"}}
+{"timestamp": "2026-08-10T18:05:01.196Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call"}}
+{"timestamp": "2026-08-10T18:05:03.485Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call_output"}}
+{"timestamp": "2026-08-10T18:05:03.485Z", "type": "event_msg", "payload": {"redacted": true}}
+{"timestamp": "2026-08-10T18:05:05.993Z", "type": "response_item", "payload": {"redacted": true, "type": "reasoning"}}
+{"timestamp": "2026-08-10T18:05:10.527Z", "type": "response_item", "payload": {"redacted": true, "type": "custom_tool_call"}}
