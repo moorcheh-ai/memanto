@@ -149,8 +149,8 @@ python -m pip install -r requirements-demo.txt
 python make_demo_video.py ./codex-okf-demo.mp4
 ```
 
-The generated video is intentionally not checked in. Attach it to the pull
-request or upload it to a public video host for challenge review.
+The checked-in [`demo.m4v`](./demo.m4v) is the reproducible 80-second render
+used for challenge review. Re-run the command above to regenerate it.
 
 ## Recreate the publishable fixture
 
