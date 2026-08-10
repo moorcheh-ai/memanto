@@ -1,6 +1,6 @@
 # Metrics — aggregate
 
-> 17 memories
+> 16 memories
 
 
 ---
@@ -15,27 +15,27 @@ Hour  00  03  06  09  12  15  18  21  24
                           ●●●●●
 ```
 
-**17** memories across **2** active hours
+**16** memories across **2** active hours
 
 ### Memory Type Distribution
 
 ```
-GOAL         ████████████████████ 5
-OBSERVATION  ████████████████ 4
-ARTIFACT     ████████ 2
-DECISION     ████████ 2
-FACT         ████████ 2
-INSTRUCTION  ████████ 2
+GOAL         ████████████████████ 4
+OBSERVATION  ████████████████████ 4
+INSTRUCTION  ███████████████ 3
+ARTIFACT     ██████████ 2
+DECISION     ██████████ 2
+FACT         █████ 1
 ```
 
 ### Confidence Overview
 
 | Metric          | Value |
 |-----------------|-------|
-| Total Memories  | 17     |
-| Avg Confidence  | 0.89  |
-| High (≥0.8)     | 15     |
+| Total Memories  | 16     |
+| Avg Confidence  | 0.88  |
+| High (≥0.8)     | 14     |
 | Medium (0.5–0.8)| 2     |
 | Low (<0.5)      | 0     |
 
-*Visualizations auto-generated at Aug 10, 2026 03:16 PM*
+*Visualizations auto-generated at Aug 10, 2026 06:33 PM*

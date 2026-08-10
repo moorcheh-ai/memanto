@@ -48,7 +48,14 @@ def _normalize_generated_markdown(root: Path, timestamp: str) -> None:
             rendered = re.sub(
                 r"(?m)^timestamp:.*$", f"timestamp: '{timestamp}'", rendered
             )
-        normalized = "\n".join(line.rstrip() for line in rendered.splitlines())
+        lines: list[str] = []
+        for line in rendered.splitlines():
+            normalized_line = line.rstrip()
+            if normalized_line.startswith("- OKF source: "):
+                prefix, value = normalized_line.split(": ", 1)
+                normalized_line = f"{prefix}: {value.replace(chr(92), '/')}"
+            lines.append(normalized_line)
+        normalized = "\n".join(lines)
         path.write_text(normalized.rstrip() + "\n", encoding="utf-8")
 
 

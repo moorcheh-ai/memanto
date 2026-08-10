@@ -71,16 +71,16 @@ The single command:
 3. writes JSON and Markdown migration reports;
 4. runs structural validation and the four-question recall-parity suite;
 5. maps and re-exports the bundle with Memanto's official implementation;
-6. verifies 17/17 resource, type, title, and content parity; and
-7. runs Memanto's shipped OKF dry-run and verifies 17 mapped, 0 skipped.
+6. verifies 16/16 resource, type, title, and content parity; and
+7. runs Memanto's shipped OKF dry-run and verifies 16 mapped, 0 skipped.
 
 Expected result:
 
 ```text
 4/4 golden questions passed
 recall_parity_percent: 100.0
-portability parity: 17/17 (100.0%)
-Memanto dry run: 17 mapped, 0 skipped
+portability parity: 16/16 (100.0%)
+Memanto dry run: 16 mapped, 0 skipped
 ```
 
 ## Use your own Codex rollout
@@ -136,7 +136,7 @@ python validate_portability.py ./sample_output/okf-bundle \
   --report ./sample_output/portability-parity.json --replace
 ```
 
-The checked-in report records 17/17 resources, types, titles, and bodies
+The checked-in report records 16/16 resources, types, titles, and bodies
 preserved. A configured Moorcheh account is still required for the live import
 and semantic-recall recording described above.
 

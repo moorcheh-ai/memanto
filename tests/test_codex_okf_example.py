@@ -6,6 +6,8 @@ import shutil
 import sys
 from pathlib import Path
 
+import pytest
+
 from memanto.cli.migrate.mappers import map_okf
 from memanto.cli.migrate.okf_loader import load_okf_bundle
 
@@ -42,11 +44,33 @@ def _record(record_type: str, payload: dict, index: int) -> dict:
     }
 
 
+def test_privacy_helpers_are_deterministic_and_merge_soft_wraps():
+    assert adapter.normalize_timestamp(None) == "1970-01-01T00:00:00Z"
+    assert adapter.normalize_timestamp("not-a-timestamp") == "1970-01-01T00:00:00Z"
+    assert (
+        adapter.strip_injected_blocks(
+            "Visible text. <environment_context>unterminated private state"
+        )
+        == "Visible text."
+    )
+    assert adapter.split_user_message(
+        "De ahi en mas haz todo lo que I\n\nnecesites y ocupes."
+    ) == ["De ahi en mas haz todo lo que I necesites y ocupes."]
+
+
 def test_adapter_exports_only_visible_messages_and_redacts():
     tmp_path = _workdir("privacy")
     source = tmp_path / "rollout.jsonl"
     records = [
-        _record("session_meta", {"session_id": "session-1"}, 0),
+        _record(
+            "session_meta",
+            {
+                "session_id": "raw-session-private-123",
+                "originator": "private-originator-value",
+                "cli_version": "private-cli-version-value",
+            },
+            0,
+        ),
         _record(
             "response_item",
             {
@@ -61,14 +85,16 @@ def test_adapter_exports_only_visible_messages_and_redacts():
             "response_item",
             {
                 "type": "message",
-                "id": "user-1",
+                "id": "raw-user-message-private-456",
                 "role": "user",
                 "content": [
                     {
                         "type": "input_text",
                         "text": (
                             "My goal is to migrate memory. Do not expose "
-                            "sk-1234567890abcdefghijkl or C:\\Users\\alice\\private.txt."
+                            "sk-1234567890abcdefghijkl, C:\\Users\\alice\\private.txt, "
+                            "/root/private/notes.txt, or alice@example.com. "
+                            "<environment_context>private injected runtime metadata"
                         ),
                     }
                 ],
@@ -96,7 +122,7 @@ def test_adapter_exports_only_visible_messages_and_redacts():
             "response_item",
             {
                 "type": "message",
-                "id": "assistant-1",
+                "id": "raw-assistant-message-private-789",
                 "role": "assistant",
                 "phase": "commentary",
                 "content": [
@@ -127,7 +153,7 @@ def test_adapter_exports_only_visible_messages_and_redacts():
     )
 
     rendered = "\n".join(
-        path.read_text(encoding="utf-8") for path in output.rglob("*.md")
+        path.read_text(encoding="utf-8") for path in output.rglob("*") if path.is_file()
     )
     assert "private policy" not in rendered
     assert "never export me" not in rendered
@@ -135,8 +161,43 @@ def test_adapter_exports_only_visible_messages_and_redacts():
     assert "C:\\Users\\alice" not in rendered
     assert "<REDACTED>" in rendered
     assert "<REDACTED_PATH>" in rendered
+    assert "/root/private" not in rendered
+    assert "alice@example.com" not in rendered
+    assert "private injected runtime metadata" not in rendered
+    assert "raw-session-private-123" not in rendered
+    assert "raw-user-message-private-456" not in rendered
+    assert "raw-assistant-message-private-789" not in rendered
+    assert "private-originator-value" not in rendered
+    assert "private-cli-version-value" not in rendered
+    assert "Visible phase" not in rendered
     assert report["summary"]["messages_included"] == 2
     assert audit["skip_counts"]["role:developer"] == 1
+
+    repeated = adapter.write_bundle(
+        source=source,
+        output=output,
+        session_meta=session_meta,
+        messages=messages,
+        memories=memories,
+        audit=audit,
+        title="Test bundle",
+        replace=True,
+    )
+    assert repeated["bundle_sha256"] == report["bundle_sha256"]
+
+    unowned = tmp_path / "unowned"
+    unowned.mkdir()
+    with pytest.raises(ValueError, match="refusing to replace unowned"):
+        adapter.write_bundle(
+            source=source,
+            output=unowned,
+            session_meta=session_meta,
+            messages=messages,
+            memories=memories,
+            audit=audit,
+            title="Must not replace",
+            replace=True,
+        )
 
     imported = map_okf(load_okf_bundle(output))
     assert len(imported) == len(memories)
@@ -157,6 +218,7 @@ resource: urn:codex:test:goal
 timestamp: '2026-08-10T12:00:00Z'
 x_memanto:
   source: codex
+  type: goal
 ---
 
 The objective is to earn $200.
@@ -188,8 +250,8 @@ def test_official_memanto_mapper_exporter_roundtrip():
 
     report = portability.validate_portability(source_bundle, output_bundle)
 
-    assert report["source_memories"] == 17
-    assert report["mapped_memories"] == 17
-    assert report["reexported_memories"] == 17
+    assert report["source_memories"] == 16
+    assert report["mapped_memories"] == 16
+    assert report["reexported_memories"] == 16
     assert report["parity_percent"] == 100.0
     assert all(case["passed"] for case in report["cases"])

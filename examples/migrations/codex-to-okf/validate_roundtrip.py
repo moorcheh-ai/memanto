@@ -16,6 +16,10 @@ import yaml
 FRONTMATTER_RE = re.compile(r"^---\n(.*?)\n---\n?(.*)$", re.DOTALL)
 WORD_RE = re.compile(r"[\w$]+", re.UNICODE)
 
+MEMORY_TYPES = frozenset(
+    {"goal", "instruction", "decision", "observation", "artifact", "fact"}
+)
+
 
 @dataclass(frozen=True)
 class Document:
@@ -89,12 +93,22 @@ def validate(bundle: Path, golden_path: Path) -> dict[str, Any]:
             if not metadata.get(field):
                 structural_errors.append(f"{document.path}: missing {field}")
         resource = str(metadata.get("resource") or "")
+        memory_type = metadata.get("type")
+        if memory_type not in MEMORY_TYPES:
+            structural_errors.append(
+                f"{document.path}: unsupported type {memory_type!r}"
+            )
         if resource in resources:
             structural_errors.append(f"{document.path}: duplicate resource {resource}")
         resources.add(resource)
-        x_memanto = metadata.get("x_memanto") or {}
+        x_memanto = metadata.get("x_memanto")
+        if not isinstance(x_memanto, dict):
+            structural_errors.append(f"{document.path}: x_memanto is not a mapping")
+            continue
         if x_memanto.get("source") != "codex":
             structural_errors.append(f"{document.path}: source is not codex")
+        if x_memanto.get("type") != memory_type:
+            structural_errors.append(f"{document.path}: x_memanto type mismatch")
 
     golden = json.loads(golden_path.read_text(encoding="utf-8"))
     cases: list[dict[str, Any]] = []

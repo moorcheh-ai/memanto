@@ -2,7 +2,7 @@
 type: decision
 title: La primera plataforma que parecía prometer USD 500 no pasó la auditoría…
 description: 'La primera plataforma que parecía prometer USD 500 no pasó la auditoría: sus tarjetas destacadas eran promocionales y la API pública solo mostró un bounty priv…'
-resource: urn:codex:sanitized-2667e0ff43ac6eac:message-005
+resource: urn:codex:session-c036d91beddbfd8a:message-005
 tags:
 - codex
 - conversation
@@ -13,10 +13,10 @@ x_memanto:
   confidence: 0.9
   provenance: imported
   source: codex
-  source_ref: codex:sanitized-2667e0ff43ac6eac:message-005
+  source_ref: codex:session-c036d91beddbfd8a:message-005
 ---
 
 La primera plataforma que parecía prometer USD 500 no pasó la auditoría: sus tarjetas destacadas eran promocionales y la API pública solo mostró un bounty privado de USD 1. Lo descarté. Ahora estoy ejecutando un escáner independiente que cruza GitHub con el escrow de Algora y filtra recompensas de USD 200+ que sigan abiertas, financiadas y sin una solución ya enviada.
 
 ---
-Source role: `assistant` · Visible phase: `commentary`
+Source role: `assistant`

@@ -1,25 +1,21 @@
 {
   "format": "codex-rollout-to-okf-v1",
   "source": {
-    "filename": "codex-rollout-sanitized.jsonl",
-    "sha256": "302513994904938c671c67c51ceec0e561e69b52d38f2ce9c923aefba7e424a2",
-    "session_id": "sanitized-2667e0ff43ac6eac",
-    "originator": "Codex Desktop",
-    "cli_version": "0.147.0-alpha.1.2"
+    "sha256": "c036d91beddbfd8a33cd5f01001e13ad8cfa98edd5914c1aae47ab4dae888e64"
   },
   "summary": {
     "messages_included": 12,
-    "memories_written": 17,
+    "memories_written": 16,
     "type_breakdown": {
       "artifact": 2,
       "decision": 2,
-      "fact": 2,
-      "goal": 5,
-      "instruction": 2,
+      "fact": 1,
+      "goal": 4,
+      "instruction": 3,
       "observation": 4
     },
     "source_characters": 4368,
-    "portable_characters": 4361,
+    "portable_characters": 4362,
     "estimated_source_tokens": 1092,
     "estimated_portable_tokens": 1090
   },
@@ -44,101 +40,77 @@
   },
   "records": [
     {
-      "record_index": 2,
-      "message_id": "message-001",
+      "message_ref": "message-001",
       "role": "user",
-      "phase": null,
       "timestamp": "2026-08-10T17:28:28.812000Z",
       "text": "<omitted; stored in OKF>"
     },
     {
-      "record_index": 3,
-      "message_id": "message-002",
+      "message_ref": "message-002",
       "role": "assistant",
-      "phase": "commentary",
       "timestamp": "2026-08-10T17:28:39.415000Z",
       "text": "<omitted; stored in OKF>"
     },
     {
-      "record_index": 4,
-      "message_id": "message-003",
+      "message_ref": "message-003",
       "role": "assistant",
-      "phase": "commentary",
       "timestamp": "2026-08-10T17:28:52.386000Z",
       "text": "<omitted; stored in OKF>"
     },
     {
-      "record_index": 5,
-      "message_id": "message-004",
+      "message_ref": "message-004",
       "role": "assistant",
-      "phase": "commentary",
       "timestamp": "2026-08-10T17:29:53.662000Z",
       "text": "<omitted; stored in OKF>"
     },
     {
-      "record_index": 6,
-      "message_id": "message-005",
+      "message_ref": "message-005",
       "role": "assistant",
-      "phase": "commentary",
       "timestamp": "2026-08-10T17:33:42.384000Z",
       "text": "<omitted; stored in OKF>"
     },
     {
-      "record_index": 7,
-      "message_id": "message-006",
+      "message_ref": "message-006",
       "role": "assistant",
-      "phase": "commentary",
       "timestamp": "2026-08-10T17:37:07.832000Z",
       "text": "<omitted; stored in OKF>"
     },
     {
-      "record_index": 8,
-      "message_id": "message-007",
+      "message_ref": "message-007",
       "role": "assistant",
-      "phase": "commentary",
       "timestamp": "2026-08-10T17:39:36.404000Z",
       "text": "<omitted; stored in OKF>"
     },
     {
-      "record_index": 9,
-      "message_id": "message-008",
+      "message_ref": "message-008",
       "role": "assistant",
-      "phase": "commentary",
       "timestamp": "2026-08-10T17:41:23.886000Z",
       "text": "<omitted; stored in OKF>"
     },
     {
-      "record_index": 10,
-      "message_id": "message-009",
+      "message_ref": "message-009",
       "role": "assistant",
-      "phase": "commentary",
       "timestamp": "2026-08-10T17:43:50.023000Z",
       "text": "<omitted; stored in OKF>"
     },
     {
-      "record_index": 11,
-      "message_id": "message-010",
+      "message_ref": "message-010",
       "role": "assistant",
-      "phase": "commentary",
       "timestamp": "2026-08-10T17:45:52.585000Z",
       "text": "<omitted; stored in OKF>"
     },
     {
-      "record_index": 12,
-      "message_id": "message-011",
+      "message_ref": "message-011",
       "role": "assistant",
-      "phase": "commentary",
       "timestamp": "2026-08-10T17:51:03.113000Z",
       "text": "<omitted; stored in OKF>"
     },
     {
-      "record_index": 13,
-      "message_id": "message-012",
+      "message_ref": "message-012",
       "role": "assistant",
-      "phase": "commentary",
       "timestamp": "2026-08-10T18:04:11.899000Z",
       "text": "<omitted; stored in OKF>"
     }
   ],
-  "bundle_sha256": "cb4ef8e1d689e723db95e4015dddcfa4e33fae572bc5a8f6c1d498107f47cee2"
+  "bundle_sha256": "016f7d32617aea0cc739a73985fea300fb75750c5590a90d76c217d6291d6478"
 }

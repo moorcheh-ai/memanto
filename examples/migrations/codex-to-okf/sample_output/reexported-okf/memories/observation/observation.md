@@ -8,7 +8,7 @@ tags:
 - conversation
 - role:assistant
 timestamp: '2026-08-10 17:29:53.662000+00:00'
-resource: urn:codex:sanitized-2667e0ff43ac6eac:message-004
+resource: urn:codex:session-c036d91beddbfd8a:message-004
 x_memanto:
   confidence: 0.85
   provenance: imported
@@ -21,12 +21,12 @@ Encontré dos recompensas financiadas de USD 500 con pago directo al entregar c�
 Encontré dos recompensas financiadas de USD 500 con pago directo al entregar código aceptado. Antes de comprometer horas, estoy verificando el alcance técnico y que los fondos estén realmente disponibles; esa comprobación evita perseguir anuncios vacíos. La conexión visual del navegador falló, así que continuaré por las interfaces públicas de los mercados.
 
 ---
-Source role: `assistant` · Visible phase: `commentary`
+Source role: `assistant`
 
 ---
 [Supporting data]
-- OKF source: memories\observation\20260810172953-009-encontr-dos-recompensas-financiadas-de-usd-500-con-pago-.md
-- OKF resource: urn:codex:sanitized-2667e0ff43ac6eac:message-004
+- OKF source: memories/observation/20260810172953-008-encontr-dos-recompensas-financiadas-de-usd-500-con-pago-.md
+- OKF resource: urn:codex:session-c036d91beddbfd8a:message-004
 
 <!-- okf-entry -->
 ---
@@ -40,7 +40,7 @@ tags:
 - conversation
 - role:assistant
 timestamp: '2026-08-10 17:41:23.886000+00:00'
-resource: urn:codex:sanitized-2667e0ff43ac6eac:message-008
+resource: urn:codex:session-c036d91beddbfd8a:message-008
 x_memanto:
   confidence: 0.85
   provenance: imported
@@ -53,12 +53,12 @@ El catálogo de Opire sí tiene volumen, pero sus recompensas más llamativas de
 El catálogo de Opire sí tiene volumen, pero sus recompensas más llamativas de la primera página resultaron cerradas o desactualizadas al contrastarlas con GitHub. Estoy extrayendo el resto del inventario y validando cada candidato contra el issue real; sólo voy a trabajar sobre una recompensa abierta, cobrable y con una ruta plausible a los USD 200.
 
 ---
-Source role: `assistant` · Visible phase: `commentary`
+Source role: `assistant`
 
 ---
 [Supporting data]
-- OKF source: memories\observation\20260810174123-013-el-cat-logo-de-opire-s-tiene-volumen-pero-sus-recompensa.md
-- OKF resource: urn:codex:sanitized-2667e0ff43ac6eac:message-008
+- OKF source: memories/observation/20260810174123-012-el-cat-logo-de-opire-s-tiene-volumen-pero-sus-recompensa.md
+- OKF resource: urn:codex:session-c036d91beddbfd8a:message-008
 
 <!-- okf-entry -->
 ---
@@ -72,7 +72,7 @@ tags:
 - conversation
 - role:assistant
 timestamp: '2026-08-10 17:45:52.585000+00:00'
-resource: urn:codex:sanitized-2667e0ff43ac6eac:message-010
+resource: urn:codex:session-c036d91beddbfd8a:message-010
 x_memanto:
   confidence: 0.85
   provenance: imported
@@ -85,12 +85,12 @@ El bounty de AzerothCore también fue cerrado por los mantenedores aunque Bounty
 El bounty de AzerothCore también fue cerrado por los mantenedores aunque BountyHub lo seguía mostrando como pagado. El único premio confirmado de USD 200 que sigue abierto y con fecha vigente es Memanto. Hay diez intentos, pero la mayoría son adaptadores repetidos o incompletos; voy a competir con una ruta distinta, reproducible y con validación real, para maximizar los 75 puntos técnicos que no dependen de seguidores.
 
 ---
-Source role: `assistant` · Visible phase: `commentary`
+Source role: `assistant`
 
 ---
 [Supporting data]
-- OKF source: memories\observation\20260810174552-015-el-bounty-de-azerothcore-tambi-n-fue-cerrado-por-los-man.md
-- OKF resource: urn:codex:sanitized-2667e0ff43ac6eac:message-010
+- OKF source: memories/observation/20260810174552-014-el-bounty-de-azerothcore-tambi-n-fue-cerrado-por-los-man.md
+- OKF resource: urn:codex:session-c036d91beddbfd8a:message-010
 
 <!-- okf-entry -->
 ---
@@ -104,7 +104,7 @@ tags:
 - conversation
 - role:assistant
 timestamp: '2026-08-10 17:51:03.113000+00:00'
-resource: urn:codex:sanitized-2667e0ff43ac6eac:message-011
+resource: urn:codex:session-c036d91beddbfd8a:message-011
 x_memanto:
   confidence: 0.85
   provenance: imported
@@ -117,9 +117,9 @@ La candidatura ya tiene un adaptador funcional diseñado alrededor de una ventaj
 La candidatura ya tiene un adaptador funcional diseñado alrededor de una ventaja real: privacidad verificable en historiales de agentes. La primera ejecución encontró sólo una dependencia local ausente (`PyYAML`); estoy resolviéndola y luego correré pruebas, lint, importación OKF y el conjunto de preguntas de paridad antes de preparar la entrega pública.
 
 ---
-Source role: `assistant` · Visible phase: `commentary`
+Source role: `assistant`
 
 ---
 [Supporting data]
-- OKF source: memories\observation\20260810175103-016-la-candidatura-ya-tiene-un-adaptador-funcional-dise-ado-.md
-- OKF resource: urn:codex:sanitized-2667e0ff43ac6eac:message-011
+- OKF source: memories/observation/20260810175103-015-la-candidatura-ya-tiene-un-adaptador-funcional-dise-ado-.md
+- OKF resource: urn:codex:session-c036d91beddbfd8a:message-011

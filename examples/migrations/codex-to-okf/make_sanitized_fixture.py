@@ -25,7 +25,10 @@ def main() -> int:
     session_meta, messages, _audit = read_rollout(args.source)
     source_digest = sha256_file(args.source)
     fixture_id = f"sanitized-{source_digest[:16]}"
-    meta_timestamp = str(session_meta.get("timestamp") or messages[0].timestamp)
+    meta_timestamp = str(
+        session_meta.get("timestamp")
+        or (messages[0].timestamp if messages else "1970-01-01T00:00:00Z")
+    )
     records: list[dict[str, object]] = [
         {
             "timestamp": meta_timestamp,
@@ -34,8 +37,6 @@ def main() -> int:
                 "session_id": fixture_id,
                 "id": fixture_id,
                 "timestamp": meta_timestamp,
-                "originator": session_meta.get("originator", "codex"),
-                "cli_version": session_meta.get("cli_version"),
                 "source": "privacy-sanitized genuine rollout fixture",
                 "source_sha256": source_digest,
             },
@@ -49,8 +50,6 @@ def main() -> int:
             "role": message.role,
             "content": [{"type": content_type, "text": message.text}],
         }
-        if message.phase:
-            payload["phase"] = message.phase
         records.append(
             {
                 "timestamp": message.timestamp,

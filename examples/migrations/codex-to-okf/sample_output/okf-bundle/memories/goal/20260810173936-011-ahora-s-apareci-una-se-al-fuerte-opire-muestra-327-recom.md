@@ -2,7 +2,7 @@
 type: goal
 title: 'Ahora sí apareció una señal fuerte: Opire muestra 327 recompensas dispo…'
 description: 'Ahora sí apareció una señal fuerte: Opire muestra 327 recompensas disponibles. Estoy priorizando proyectos reputados con poca competencia y pago muy superior a…'
-resource: urn:codex:sanitized-2667e0ff43ac6eac:message-007
+resource: urn:codex:session-c036d91beddbfd8a:message-007
 tags:
 - codex
 - conversation
@@ -13,10 +13,10 @@ x_memanto:
   confidence: 0.85
   provenance: imported
   source: codex
-  source_ref: codex:sanitized-2667e0ff43ac6eac:message-007
+  source_ref: codex:session-c036d91beddbfd8a:message-007
 ---
 
 Ahora sí apareció una señal fuerte: Opire muestra 327 recompensas disponibles. Estoy priorizando proyectos reputados con poca competencia y pago muy superior al objetivo: Gitea (USD 1.880, 1 intento), Keycloak (USD 270, 1 intento) y Second Life Viewer (USD 220, 1 reclamante). Voy a auditar alcance, actividad y trabajo duplicado antes de reclamar una.
 
 ---
-Source role: `assistant` · Visible phase: `commentary`
+Source role: `assistant`

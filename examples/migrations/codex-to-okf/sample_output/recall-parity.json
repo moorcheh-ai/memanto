@@ -1,6 +1,6 @@
 {
   "bundle": "okf-bundle",
-  "documents": 17,
+  "documents": 16,
   "structural_errors": [],
   "golden_questions": 4,
   "golden_passed": 4,
@@ -19,7 +19,7 @@
     },
     {
       "question": "¿Qué restricción existe sobre las redes sociales?",
-      "retrieved": "memories/instruction/20260810172839-007-voy-a-tratarlo-como-una-misi-n-real-no-como-una-lluvia-d.md",
+      "retrieved": "memories/instruction/20260810172839-006-voy-a-tratarlo-como-una-misi-n-real-no-como-una-lluvia-d.md",
       "expected_type": "instruction",
       "actual_type": "instruction",
       "expected_terms": [
@@ -30,7 +30,7 @@
     },
     {
       "question": "¿Por qué se descartó la primera plataforma de recompensas?",
-      "retrieved": "memories/decision/20260810173342-010-la-primera-plataforma-que-parec-a-prometer-usd-500-no-pa.md",
+      "retrieved": "memories/decision/20260810173342-009-la-primera-plataforma-que-parec-a-prometer-usd-500-no-pa.md",
       "expected_type": "decision",
       "actual_type": "decision",
       "expected_terms": [
@@ -41,7 +41,7 @@
     },
     {
       "question": "¿Qué recompensa de 200 dólares quedó como candidata vigente?",
-      "retrieved": "memories/observation/20260810174552-015-el-bounty-de-azerothcore-tambi-n-fue-cerrado-por-los-man.md",
+      "retrieved": "memories/observation/20260810174552-014-el-bounty-de-azerothcore-tambi-n-fue-cerrado-por-los-man.md",
       "expected_type": "observation",
       "actual_type": "observation",
       "expected_terms": [

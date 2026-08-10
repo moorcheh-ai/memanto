@@ -126,6 +126,7 @@ def prepare_stages() -> list[Stage]:
             str(bundle),
             "--title",
             "A real Codex task: from changing context to portable memory",
+            "--replace",
         ]
     )
     validate_output = capture(
@@ -186,8 +187,8 @@ def prepare_stages() -> list[Stage]:
             f"source memories      : {portability_result['source_memories']}",
             f"mapped by Memanto    : {portability_result['mapped_memories']}",
             f"re-exported to OKF   : {portability_result['reexported_memories']}",
-            f"resources preserved  : {portability_result['resources_preserved']}/17",
-            f"types/titles/content : {portability_result['passed']}/17",
+            f"resources preserved  : {portability_result['resources_preserved']}/{portability_result['source_memories']}",
+            f"types/titles/content : {portability_result['passed']}/{portability_result['source_memories']}",
             f"field parity         : {portability_result['parity_percent']}%",
             "",
             f"Official-code-path output captured: {len(portability_output)} chars",
@@ -253,7 +254,9 @@ def prepare_stages() -> list[Stage]:
             8,
             "The freedom loop is complete",
             "$ codex rollout -> privacy boundary -> typed OKF -> Memanto -> OKF",
-            "17 mapped | 17 re-exported | 100% field parity | 100% recall parity\n\n"
+            f"{portability_result['mapped_memories']} mapped | "
+            f"{portability_result['reexported_memories']} re-exported | "
+            "100% field parity | 100% recall parity\n\n"
             "Readable Markdown. Git-friendly history. No hidden state. No lock-in.",
             GREEN,
         ),

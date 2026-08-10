@@ -2,7 +2,7 @@
 type: observation
 title: Encontré dos recompensas financiadas de USD 500 con pago directo al ent…
 description: Encontré dos recompensas financiadas de USD 500 con pago directo al entregar código aceptado. Antes de comprometer horas, estoy verificando el alcance técnico…
-resource: urn:codex:sanitized-2667e0ff43ac6eac:message-004
+resource: urn:codex:session-c036d91beddbfd8a:message-004
 tags:
 - codex
 - conversation
@@ -13,10 +13,10 @@ x_memanto:
   confidence: 0.85
   provenance: imported
   source: codex
-  source_ref: codex:sanitized-2667e0ff43ac6eac:message-004
+  source_ref: codex:session-c036d91beddbfd8a:message-004
 ---
 
 Encontré dos recompensas financiadas de USD 500 con pago directo al entregar código aceptado. Antes de comprometer horas, estoy verificando el alcance técnico y que los fondos estén realmente disponibles; esa comprobación evita perseguir anuncios vacíos. La conexión visual del navegador falló, así que continuaré por las interfaces públicas de los mercados.
 
 ---
-Source role: `assistant` · Visible phase: `commentary`
+Source role: `assistant`

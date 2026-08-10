@@ -11,7 +11,8 @@ if (-not $Output) { $Output = Join-Path $Root 'sample_output\okf-bundle' }
 $Reexported = Join-Path $Root 'sample_output\reexported-okf'
 $PortabilityReport = Join-Path $Root 'sample_output\portability-parity.json'
 python (Join-Path $Root 'codex_to_okf.py') $Source $Output `
-    --title 'A real Codex task: from changing context to portable memory'
+    --title 'A real Codex task: from changing context to portable memory' `
+    --replace
 python (Join-Path $Root 'validate_roundtrip.py') $Output `
     --golden (Join-Path $Root 'golden_qa.json') `
     --report (Join-Path $Root 'sample_output\recall-parity.json')
