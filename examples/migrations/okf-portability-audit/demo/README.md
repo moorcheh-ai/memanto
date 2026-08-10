@@ -2,6 +2,17 @@
 
 ## Current narrated capture
 
+[`memanto-okf-portability-demo-v3.mp4`](memanto-okf-portability-demo-v3.mp4)
+is the current continuous capture from the August 10, 2026 evidence run. It
+shows 1 real issue plus 31 comments becoming 33 OKF memories, the official
+dry run mapping 33 and skipping 0, a 33-to-33 lossless round trip, and 5/5
+golden-question recall before and after migration. It visibly identifies PR
+head `ef77062` and distinguishes generated narration from real command output.
+
+Public showcase: <https://youtu.be/E_r7tzmHtq0>
+
+## Previous narrated capture
+
 Public showcase: <https://youtu.be/BRIcby6oMF4>
 
 [`memanto-okf-portability-demo-v2.mp4`](memanto-okf-portability-demo-v2.mp4)
