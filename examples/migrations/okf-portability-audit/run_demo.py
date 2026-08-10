@@ -52,9 +52,12 @@ def run_showcase(
     source = workdir / "github-memory"
     target = workdir / "round-tripped"
     report_path = workdir / "audit.json"
+    recall_report_path = workdir / "recall-parity.json"
     generator = root / "github_issue_to_okf.py"
     roundtrip = root / "roundtrip_demo.py"
     audit = root / "okf_audit.py"
+    recall = root / "recall_parity.py"
+    questions = root / "golden_questions.json"
 
     started = time.perf_counter()
     generator_command = [
@@ -102,6 +105,20 @@ def run_showcase(
     if audit_error is not None:
         raise audit_error
 
+    _run(
+        [
+            sys.executable,
+            str(recall),
+            str(source),
+            str(target),
+            str(questions),
+            "--output",
+            str(recall_report_path),
+            "--fail-on-regression",
+        ]
+    )
+    recall_report = json.loads(recall_report_path.read_text(encoding="utf-8"))
+
     elapsed = round(time.perf_counter() - started, 2)
     summary = {
         "repository": repository,
@@ -112,8 +129,13 @@ def run_showcase(
         "removed": len(report["removed"]),
         "changed": len(report["changed"]),
         "is_lossless": report["is_lossless"],
+        "golden_questions": recall_report["questions"],
+        "source_recall": recall_report["source_recall"],
+        "target_recall": recall_report["target_recall"],
+        "is_recall_preserved": recall_report["is_recall_preserved"],
         "elapsed_seconds": elapsed,
         "report": str(report_path.resolve()),
+        "recall_report": str(recall_report_path.resolve()),
     }
     print("\nSHOWCASE SUMMARY", flush=True)
     print(json.dumps(summary, indent=2, ensure_ascii=False), flush=True)

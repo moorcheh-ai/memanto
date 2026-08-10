@@ -23,6 +23,7 @@ def _load_module(name: str, filename: str):
 okf_audit = _load_module("okf_audit", "okf_audit.py")
 github_issue_to_okf = _load_module("github_issue_to_okf", "github_issue_to_okf.py")
 roundtrip_demo = _load_module("roundtrip_demo", "roundtrip_demo.py")
+recall_parity = _load_module("recall_parity", "recall_parity.py")
 run_demo = _load_module("run_demo", "run_demo.py")
 
 
@@ -50,6 +51,15 @@ def _write_entry(
         f"  provenance: {provenance}\n"
         "---\n\n"
         f"{body}\n",
+        encoding="utf-8",
+    )
+
+
+def _write_questions(path: Path, expected: str) -> None:
+    """Write one explicit golden question for parity tests."""
+    path.write_text(
+        '[{"id":"cache","question":"Which cache was chosen?",'
+        f'"accepted_answers":["{expected}"]}}]\n',
         encoding="utf-8",
     )
 
@@ -254,6 +264,63 @@ def test_cli_writes_json_and_fails_on_change(tmp_path):
 
     assert exit_code == 1
     assert '"is_lossless": false' in output.read_text(encoding="utf-8")
+
+
+def test_golden_question_recall_survives_round_trip(tmp_path):
+    """A recalled source fact remains recallable from the target bundle."""
+    before = tmp_path / "before"
+    after = tmp_path / "after"
+    questions = tmp_path / "questions.json"
+    _write_entry(
+        before,
+        "choice.md",
+        mem_id="m1",
+        title="Cache choice",
+        body="The team selected Redis for session caching.",
+    )
+    _write_entry(
+        after,
+        "choice.md",
+        mem_id="m2",
+        title="Cache choice",
+        body="The team selected Redis for session caching.",
+    )
+    _write_questions(questions, "Redis")
+
+    report = recall_parity.compare_recall(before, after, questions)
+
+    assert report["source_recall"] == 1.0
+    assert report["target_recall"] == 1.0
+    assert report["is_recall_preserved"]
+
+
+def test_golden_question_recall_detects_regression(tmp_path):
+    """A target that lost the expected answer fails the parity receipt."""
+    before = tmp_path / "before"
+    after = tmp_path / "after"
+    questions = tmp_path / "questions.json"
+    _write_entry(
+        before,
+        "choice.md",
+        mem_id="m1",
+        title="Cache choice",
+        body="The team selected Redis for session caching.",
+    )
+    _write_entry(
+        after,
+        "choice.md",
+        mem_id="m2",
+        title="Cache choice",
+        body="The team selected Valkey for session caching.",
+    )
+    _write_questions(questions, "Redis")
+
+    report = recall_parity.compare_recall(before, after, questions)
+
+    assert report["source_recall"] == 1.0
+    assert report["target_recall"] == 0.0
+    assert report["regressions"] == ["cache"]
+    assert not report["is_recall_preserved"]
 
 
 def test_report_output_cannot_modify_an_input(tmp_path):

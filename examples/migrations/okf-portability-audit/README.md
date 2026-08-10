@@ -30,6 +30,10 @@ python examples/migrations/okf-portability-audit/roundtrip_demo.py \
   ./github-memory ./round-tripped
 python examples/migrations/okf-portability-audit/okf_audit.py \
   ./github-memory ./round-tripped --fail-on-change
+python examples/migrations/okf-portability-audit/recall_parity.py \
+  ./github-memory ./round-tripped \
+  examples/migrations/okf-portability-audit/golden_questions.json \
+  --output ./recall-parity.json --fail-on-regression
 ```
 
 At the time this showcase was validated, issue #1609 contained one issue and 25
@@ -47,11 +51,14 @@ python examples/migrations/okf-portability-audit/run_demo.py
 ```
 
 The command creates a new isolated work directory, prints every executed step,
-and leaves an `audit.json` receipt. It performs no cloud writes and needs no API
-key. Pass `--show-report` to print the complete JSON instead of only the compact
-summary. Results depend on the public issue archive at execution time, the local
-generator, Memanto CLI, round-trip and audit code, and their installed dependency
-versions.
+and leaves both an `audit.json` fidelity receipt and a `recall-parity.json`
+golden-question receipt. The five explicit questions are retrieved independently
+from the source and round-tripped bundles; accepted answers are used only after
+ranking, so they cannot steer document selection. The command performs no cloud
+writes and needs no API key. Pass `--show-report` to print the complete fidelity
+JSON instead of only the compact summary. Results depend on the public issue
+archive at execution time, the local generator, Memanto CLI, round-trip, audit,
+and retrieval code, and their installed dependency versions.
 
 ### Demo video
 
@@ -151,5 +158,5 @@ pytest examples/migrations/okf-portability-audit/tests -q
 ```
 
 The suite covers lossless moves, changed and removed nodes, duplicate IDs,
-provenance gaps, exact long-body reconstruction, safe paths, JSON output, and
-the CI exit code.
+provenance gaps, exact long-body reconstruction, safe paths, JSON output,
+golden-question recall parity and regression detection, and the CI exit codes.

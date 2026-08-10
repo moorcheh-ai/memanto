@@ -1,0 +1,27 @@
+[
+  {
+    "id": "portable-format",
+    "question": "Which vendor-neutral format keeps the migrated memory portable?",
+    "accepted_answers": ["Open Knowledge Format (OKF)"]
+  },
+  {
+    "id": "freedom-loop",
+    "question": "What three-stage workflow proves freedom from memory lock-in?",
+    "accepted_answers": ["in → owned → portable"]
+  },
+  {
+    "id": "social-measurement",
+    "question": "How are the social-virality points measured?",
+    "accepted_answers": ["public engagement metrics"]
+  },
+  {
+    "id": "deadline",
+    "question": "When is the final submission deadline?",
+    "accepted_answers": ["August 31st, 2026 (11:59 PM UTC)"]
+  },
+  {
+    "id": "prize",
+    "question": "What is the prize for the top leaderboard submission?",
+    "accepted_answers": ["$200 USD"]
+  }
+]
