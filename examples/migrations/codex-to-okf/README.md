@@ -72,7 +72,7 @@ The single command:
 4. runs structural validation and the four-question recall-parity suite;
 5. maps and re-exports the bundle with Memanto's official implementation;
 6. verifies 17/17 resource, type, title, and content parity; and
-7. prints the exact cloud-free Memanto dry-run command.
+7. runs Memanto's shipped OKF dry-run and verifies 17 mapped, 0 skipped.
 
 Expected result:
 
@@ -80,6 +80,7 @@ Expected result:
 4/4 golden questions passed
 recall_parity_percent: 100.0
 portability parity: 17/17 (100.0%)
+Memanto dry run: 17 mapped, 0 skipped
 ```
 
 ## Use your own Codex rollout

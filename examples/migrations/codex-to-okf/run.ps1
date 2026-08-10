@@ -21,4 +21,4 @@ python (Join-Path $Root 'validate_portability.py') $Output $Reexported `
     --replace
 
 Write-Host 'Dry-run with Memanto:'
-Write-Host "  memanto migrate okf `"$Output`" --dry-run"
+memanto migrate okf $Output --dry-run

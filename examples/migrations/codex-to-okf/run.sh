@@ -16,5 +16,5 @@ python "$ROOT/validate_roundtrip.py" "$OUTPUT" \
 python "$ROOT/validate_portability.py" "$OUTPUT" "$REEXPORTED" \
   --report "$PORTABILITY_REPORT" \
   --replace
-printf '%s\n' "  memanto migrate okf \"$OUTPUT\" --dry-run"
 printf '%s\n' "Dry-run with Memanto:"
+memanto migrate okf "$OUTPUT" --dry-run
