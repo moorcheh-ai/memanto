@@ -51,6 +51,8 @@ def _normalize_generated_markdown(root: Path, timestamp: str) -> None:
         lines: list[str] = []
         for line in rendered.splitlines():
             normalized_line = line.rstrip()
+            if normalized_line.startswith("*Visualizations auto-generated at "):
+                continue
             if normalized_line.startswith("- OKF source: "):
                 prefix, value = normalized_line.split(": ", 1)
                 normalized_line = f"{prefix}: {value.replace(chr(92), '/')}"

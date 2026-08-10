@@ -8,20 +8,19 @@
     "deterministic presentation normalization",
     "re-exported OKF bundle"
   ],
-  "source_memories": 16,
-  "mapped_memories": 16,
-  "reexported_memories": 16,
-  "resources_preserved": 16,
-  "types_preserved": 16,
-  "titles_preserved": 16,
-  "content_preserved": 16,
-  "passed": 16,
+  "source_memories": 15,
+  "mapped_memories": 15,
+  "reexported_memories": 15,
+  "resources_preserved": 15,
+  "types_preserved": 15,
+  "titles_preserved": 15,
+  "content_preserved": 15,
+  "passed": 15,
   "parity_percent": 100.0,
   "export_result": {
-    "total_memories": 16,
+    "total_memories": 15,
     "per_type_counts": {
       "instruction": 3,
-      "fact": 1,
       "decision": 2,
       "goal": 4,
       "observation": 4,
@@ -30,7 +29,7 @@
   },
   "cases": [
     {
-      "resource": "urn:codex:session-c036d91beddbfd8a:message-001:part-1",
+      "resource": "urn:codex:session-54ffa06cbca16128:message-001:part-1",
       "found": true,
       "type_preserved": true,
       "title_preserved": true,
@@ -38,7 +37,7 @@
       "passed": true
     },
     {
-      "resource": "urn:codex:session-c036d91beddbfd8a:message-001:part-2",
+      "resource": "urn:codex:session-54ffa06cbca16128:message-001:part-2",
       "found": true,
       "type_preserved": true,
       "title_preserved": true,
@@ -46,7 +45,7 @@
       "passed": true
     },
     {
-      "resource": "urn:codex:session-c036d91beddbfd8a:message-001:part-3",
+      "resource": "urn:codex:session-54ffa06cbca16128:message-001:part-3",
       "found": true,
       "type_preserved": true,
       "title_preserved": true,
@@ -54,7 +53,7 @@
       "passed": true
     },
     {
-      "resource": "urn:codex:session-c036d91beddbfd8a:message-001:part-4",
+      "resource": "urn:codex:session-54ffa06cbca16128:message-001:part-4",
       "found": true,
       "type_preserved": true,
       "title_preserved": true,
@@ -62,7 +61,7 @@
       "passed": true
     },
     {
-      "resource": "urn:codex:session-c036d91beddbfd8a:message-001:part-5",
+      "resource": "urn:codex:session-54ffa06cbca16128:message-002",
       "found": true,
       "type_preserved": true,
       "title_preserved": true,
@@ -70,7 +69,7 @@
       "passed": true
     },
     {
-      "resource": "urn:codex:session-c036d91beddbfd8a:message-002",
+      "resource": "urn:codex:session-54ffa06cbca16128:message-003",
       "found": true,
       "type_preserved": true,
       "title_preserved": true,
@@ -78,7 +77,7 @@
       "passed": true
     },
     {
-      "resource": "urn:codex:session-c036d91beddbfd8a:message-003",
+      "resource": "urn:codex:session-54ffa06cbca16128:message-004",
       "found": true,
       "type_preserved": true,
       "title_preserved": true,
@@ -86,7 +85,7 @@
       "passed": true
     },
     {
-      "resource": "urn:codex:session-c036d91beddbfd8a:message-004",
+      "resource": "urn:codex:session-54ffa06cbca16128:message-005",
       "found": true,
       "type_preserved": true,
       "title_preserved": true,
@@ -94,7 +93,7 @@
       "passed": true
     },
     {
-      "resource": "urn:codex:session-c036d91beddbfd8a:message-005",
+      "resource": "urn:codex:session-54ffa06cbca16128:message-006",
       "found": true,
       "type_preserved": true,
       "title_preserved": true,
@@ -102,7 +101,7 @@
       "passed": true
     },
     {
-      "resource": "urn:codex:session-c036d91beddbfd8a:message-006",
+      "resource": "urn:codex:session-54ffa06cbca16128:message-007",
       "found": true,
       "type_preserved": true,
       "title_preserved": true,
@@ -110,7 +109,7 @@
       "passed": true
     },
     {
-      "resource": "urn:codex:session-c036d91beddbfd8a:message-007",
+      "resource": "urn:codex:session-54ffa06cbca16128:message-008",
       "found": true,
       "type_preserved": true,
       "title_preserved": true,
@@ -118,7 +117,7 @@
       "passed": true
     },
     {
-      "resource": "urn:codex:session-c036d91beddbfd8a:message-008",
+      "resource": "urn:codex:session-54ffa06cbca16128:message-009",
       "found": true,
       "type_preserved": true,
       "title_preserved": true,
@@ -126,7 +125,7 @@
       "passed": true
     },
     {
-      "resource": "urn:codex:session-c036d91beddbfd8a:message-009",
+      "resource": "urn:codex:session-54ffa06cbca16128:message-010",
       "found": true,
       "type_preserved": true,
       "title_preserved": true,
@@ -134,7 +133,7 @@
       "passed": true
     },
     {
-      "resource": "urn:codex:session-c036d91beddbfd8a:message-010",
+      "resource": "urn:codex:session-54ffa06cbca16128:message-011",
       "found": true,
       "type_preserved": true,
       "title_preserved": true,
@@ -142,15 +141,7 @@
       "passed": true
     },
     {
-      "resource": "urn:codex:session-c036d91beddbfd8a:message-011",
-      "found": true,
-      "type_preserved": true,
-      "title_preserved": true,
-      "content_preserved": true,
-      "passed": true
-    },
-    {
-      "resource": "urn:codex:session-c036d91beddbfd8a:message-012",
+      "resource": "urn:codex:session-54ffa06cbca16128:message-012",
       "found": true,
       "type_preserved": true,
       "title_preserved": true,

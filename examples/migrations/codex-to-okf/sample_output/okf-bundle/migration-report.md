@@ -1,17 +1,16 @@
 # Migration report
 
 - Source messages included: **12**
-- Portable memories written: **16**
-- Source SHA-256: `c036d91beddbfd8a33cd5f01001e13ad8cfa98edd5914c1aae47ab4dae888e64`
-- Bundle SHA-256: `016f7d32617aea0cc739a73985fea300fb75750c5590a90d76c217d6291d6478`
+- Portable memories written: **15**
+- Source SHA-256: `54ffa06cbca1612868fabb6b7a915605e8aa821c8eb65b51ded97f00baa1ec55`
+- Bundle SHA-256: `e6b5f24202f48742438ebff66a377241f12eb0c77727ddb3de27907d6c4d0e97`
 - Estimated source tokens: **1092**
-- Estimated portable tokens: **1090**
+- Estimated portable tokens: **1071**
 
 ## Type breakdown
 
 - artifact: 2
 - decision: 2
-- fact: 1
 - goal: 4
 - instruction: 3
 - observation: 4

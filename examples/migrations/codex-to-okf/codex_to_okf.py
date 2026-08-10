@@ -279,6 +279,19 @@ def classify(text: str, role: str) -> tuple[str, float]:
     return ("artifact", 0.75) if role == "assistant" else ("fact", 0.9)
 
 
+def is_unscoped_authorization(text: str) -> bool:
+    """Exclude broad consent that is unsafe to retrieve outside its source turn."""
+    lowered = text.casefold()
+    markers = (
+        "luz verde en todo",
+        "haz todo lo que necesites",
+        "haz todo lo que ocupes",
+        "do whatever you need",
+        "you have permission to do anything",
+    )
+    return any(marker in lowered for marker in markers)
+
+
 def title_from(text: str, max_chars: int = 72) -> str:
     first_line = re.sub(r"\s+", " ", text).strip()
     if len(first_line) <= max_chars:
@@ -295,6 +308,8 @@ def build_memories(messages: list[SourceMessage]) -> list[Memory]:
             else [message.text]
         )
         for chunk_index, body in enumerate(chunks, start=1):
+            if is_unscoped_authorization(body):
+                continue
             memory_type, confidence = classify(body, message.role)
             suffix = f":part-{chunk_index}" if len(chunks) > 1 else ""
             memories.append(
@@ -367,6 +382,32 @@ def available_sibling(target: Path, prefix: str) -> Path:
     raise FileExistsError(f"could not reserve a staging path beside {target}")
 
 
+def validate_owned_bundle(
+    path: Path, *, expected_identity: tuple[int, int] | None = None
+) -> tuple[int, int]:
+    """Validate the tool-owned directory object at ``path`` before replacement."""
+    try:
+        stat = path.stat(follow_symlinks=False)
+        identity = (stat.st_dev, stat.st_ino)
+        marker = path / OWNER_MARKER
+        owned = (
+            path.is_dir()
+            and not path.is_symlink()
+            and marker.is_file()
+            and not marker.is_symlink()
+            and marker.read_text(encoding="utf-8") == OWNER_MARKER_TEXT
+        )
+    except OSError as exc:
+        raise ValueError(
+            f"refusing to replace unowned directory without a valid {OWNER_MARKER}: {path}"
+        ) from exc
+    if not owned or (expected_identity is not None and identity != expected_identity):
+        raise ValueError(
+            f"refusing to replace unowned directory without a valid {OWNER_MARKER}: {path}"
+        )
+    return identity
+
+
 def write_bundle(
     *,
     source: Path,
@@ -382,14 +423,7 @@ def write_bundle(
     if target.exists():
         if not replace:
             raise FileExistsError(f"output bundle already exists: {target}")
-        marker = target / OWNER_MARKER
-        if (
-            not marker.is_file()
-            or marker.read_text(encoding="utf-8") != OWNER_MARKER_TEXT
-        ):
-            raise ValueError(
-                f"refusing to replace unowned directory without a valid {OWNER_MARKER}: {target}"
-            )
+        validate_owned_bundle(target)
     target.parent.mkdir(parents=True, exist_ok=True)
     output = available_sibling(target, "c")
     output.mkdir()
@@ -496,9 +530,16 @@ def write_bundle(
     (output / "migration-report.md").write_text("\n".join(markdown), encoding="utf-8")
 
     backup: Path | None = None
+    backup_identity: tuple[int, int] | None = None
     if target.exists():
         backup = available_sibling(target, "b")
         target.rename(backup)
+        try:
+            backup_identity = validate_owned_bundle(backup)
+        except Exception:
+            if backup.exists() and not target.exists():
+                backup.rename(target)
+            raise
     try:
         output.rename(target)
     except Exception:
@@ -507,6 +548,7 @@ def write_bundle(
         raise
     else:
         if backup is not None:
+            validate_owned_bundle(backup, expected_identity=backup_identity)
             shutil.rmtree(backup)
 
     return report

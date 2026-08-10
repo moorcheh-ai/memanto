@@ -9,7 +9,7 @@ tags:
 - conversation
 - role:assistant
 timestamp: '2026-08-10 17:43:50.023000+00:00'
-resource: urn:codex:session-c036d91beddbfd8a:message-009
+resource: urn:codex:session-54ffa06cbca16128:message-009
 x_memanto:
   confidence: 0.75
   provenance: imported
@@ -26,8 +26,8 @@ Source role: `assistant`
 
 ---
 [Supporting data]
-- OKF source: memories/artifact/20260810174350-013-la-depuraci-n-ya-dej-fuera-casi-todo-opire-varias-recomp.md
-- OKF resource: urn:codex:session-c036d91beddbfd8a:message-009
+- OKF source: memories/artifact/20260810174350-012-la-depuraci-n-ya-dej-fuera-casi-todo-opire-varias-recomp.md
+- OKF resource: urn:codex:session-54ffa06cbca16128:message-009
 
 <!-- okf-entry -->
 ---
@@ -41,7 +41,7 @@ tags:
 - conversation
 - role:assistant
 timestamp: '2026-08-10 18:04:11.899000+00:00'
-resource: urn:codex:session-c036d91beddbfd8a:message-012
+resource: urn:codex:session-54ffa06cbca16128:message-012
 x_memanto:
   confidence: 0.75
   provenance: imported
@@ -58,5 +58,5 @@ Source role: `assistant`
 
 ---
 [Supporting data]
-- OKF source: memories/artifact/20260810180411-016-la-ruta-t-cnica-ya-pas-tres-controles-16-memorias-okf-im.md
-- OKF resource: urn:codex:session-c036d91beddbfd8a:message-012
+- OKF source: memories/artifact/20260810180411-015-la-ruta-t-cnica-ya-pas-tres-controles-16-memorias-okf-im.md
+- OKF resource: urn:codex:session-54ffa06cbca16128:message-012

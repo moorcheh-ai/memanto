@@ -348,7 +348,7 @@ def main() -> int:
         "output",
         type=Path,
         nargs="?",
-        default=ROOT / "sample_output" / "codex-okf-demo.mp4",
+        default=ROOT / "demo.m4v",
     )
     args = parser.parse_args()
     stages = prepare_stages()

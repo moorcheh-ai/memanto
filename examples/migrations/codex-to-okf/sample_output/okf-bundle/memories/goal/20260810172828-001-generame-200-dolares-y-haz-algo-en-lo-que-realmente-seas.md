@@ -2,7 +2,7 @@
 type: goal
 title: Generame $200 dolares y haz algo en lo que realmente seas bueno.
 description: Generame $200 dolares y haz algo en lo que realmente seas bueno.
-resource: urn:codex:session-c036d91beddbfd8a:message-001:part-1
+resource: urn:codex:session-54ffa06cbca16128:message-001:part-1
 tags:
 - codex
 - conversation
@@ -13,7 +13,7 @@ x_memanto:
   confidence: 1.0
   provenance: imported
   source: codex
-  source_ref: codex:session-c036d91beddbfd8a:message-001:part-1
+  source_ref: codex:session-54ffa06cbca16128:message-001:part-1
 ---
 
 Generame $200 dolares y haz algo en lo que realmente seas bueno.

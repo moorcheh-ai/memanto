@@ -2,7 +2,7 @@
 type: artifact
 title: 'La depuración ya dejó fuera casi todo Opire: varias recompensas “abiert…'
 description: 'La depuración ya dejó fuera casi todo Opire: varias recompensas “abiertas” ya fueron resueltas, una financia al mantenedor original y otra tiene una solución a…'
-resource: urn:codex:session-c036d91beddbfd8a:message-009
+resource: urn:codex:session-54ffa06cbca16128:message-009
 tags:
 - codex
 - conversation
@@ -13,7 +13,7 @@ x_memanto:
   confidence: 0.75
   provenance: imported
   source: codex
-  source_ref: codex:session-c036d91beddbfd8a:message-009
+  source_ref: codex:session-54ffa06cbca16128:message-009
 ---
 
 La depuración ya dejó fuera casi todo Opire: varias recompensas “abiertas” ya fueron resueltas, una financia al mantenedor original y otra tiene una solución avanzada en revisión. El candidato más limpio que queda es una recompensa pagada de USD 200 en AzerothCore; ahora estoy midiendo el alcance técnico y verificando que nadie haya entregado ya la solución.

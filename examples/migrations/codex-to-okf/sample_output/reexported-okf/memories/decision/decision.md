@@ -8,7 +8,7 @@ tags:
 - conversation
 - role:assistant
 timestamp: '2026-08-10 17:28:52.386000+00:00'
-resource: urn:codex:session-c036d91beddbfd8a:message-003
+resource: urn:codex:session-54ffa06cbca16128:message-003
 x_memanto:
   confidence: 0.9
   provenance: imported
@@ -25,8 +25,8 @@ Source role: `assistant`
 
 ---
 [Supporting data]
-- OKF source: memories/decision/20260810172852-007-primero-estoy-comparando-recompensas-abiertas-con-pago-d.md
-- OKF resource: urn:codex:session-c036d91beddbfd8a:message-003
+- OKF source: memories/decision/20260810172852-006-primero-estoy-comparando-recompensas-abiertas-con-pago-d.md
+- OKF resource: urn:codex:session-54ffa06cbca16128:message-003
 
 <!-- okf-entry -->
 ---
@@ -40,7 +40,7 @@ tags:
 - conversation
 - role:assistant
 timestamp: '2026-08-10 17:33:42.384000+00:00'
-resource: urn:codex:session-c036d91beddbfd8a:message-005
+resource: urn:codex:session-54ffa06cbca16128:message-005
 x_memanto:
   confidence: 0.9
   provenance: imported
@@ -57,5 +57,5 @@ Source role: `assistant`
 
 ---
 [Supporting data]
-- OKF source: memories/decision/20260810173342-009-la-primera-plataforma-que-parec-a-prometer-usd-500-no-pa.md
-- OKF resource: urn:codex:session-c036d91beddbfd8a:message-005
+- OKF source: memories/decision/20260810173342-008-la-primera-plataforma-que-parec-a-prometer-usd-500-no-pa.md
+- OKF resource: urn:codex:session-54ffa06cbca16128:message-005

@@ -71,16 +71,16 @@ The single command:
 3. writes JSON and Markdown migration reports;
 4. runs structural validation and the four-question recall-parity suite;
 5. maps and re-exports the bundle with Memanto's official implementation;
-6. verifies 16/16 resource, type, title, and content parity; and
-7. runs Memanto's shipped OKF dry-run and verifies 16 mapped, 0 skipped.
+6. verifies 15/15 resource, type, title, and content parity; and
+7. runs Memanto's shipped OKF dry-run and verifies 15 mapped, 0 skipped.
 
 Expected result:
 
 ```text
 4/4 golden questions passed
 recall_parity_percent: 100.0
-portability parity: 16/16 (100.0%)
-Memanto dry run: 16 mapped, 0 skipped
+portability parity: 15/15 (100.0%)
+Memanto dry run: 15 mapped, 0 skipped
 ```
 
 ## Use your own Codex rollout
@@ -136,7 +136,7 @@ python validate_portability.py ./sample_output/okf-bundle \
   --report ./sample_output/portability-parity.json --replace
 ```
 
-The checked-in report records 16/16 resources, types, titles, and bodies
+The checked-in report records 15/15 resources, types, titles, and bodies
 preserved. A configured Moorcheh account is still required for the live import
 and semantic-recall recording described above.
 
@@ -147,7 +147,7 @@ again before recording their privacy-sanitized output:
 
 ```bash
 python -m pip install -r requirements-demo.txt
-python make_demo_video.py ./codex-okf-demo.mp4
+python make_demo_video.py ./demo.m4v
 ```
 
 The checked-in [`demo.m4v`](./demo.m4v) is the reproducible 80-second render
@@ -172,7 +172,9 @@ Raw agent logs are not ordinary chat exports. They may include privileged
 instructions, hidden reasoning envelopes, command arguments, command outputs,
 environment values, and absolute paths. This example treats every record as
 private unless its type, payload type, role, and content type are explicitly
-allowed.
+allowed. Unscoped, broad authorization (for example, "do whatever you need")
+is excluded because it is unsafe to retrieve as standing permission outside its
+source turn.
 
 The redactor is defense in depth, not a guarantee. A human review remains
 mandatory before publishing an OKF bundle generated from personal data.

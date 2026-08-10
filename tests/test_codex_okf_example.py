@@ -56,6 +56,9 @@ def test_privacy_helpers_are_deterministic_and_merge_soft_wraps():
     assert adapter.split_user_message(
         "De ahi en mas haz todo lo que I\n\nnecesites y ocupes."
     ) == ["De ahi en mas haz todo lo que I necesites y ocupes."]
+    assert adapter.is_unscoped_authorization(
+        "De ahi en mas haz todo lo que necesites, tienes luz verde en todo."
+    )
 
 
 def test_adapter_exports_only_visible_messages_and_redacts():
@@ -250,8 +253,10 @@ def test_official_memanto_mapper_exporter_roundtrip():
 
     report = portability.validate_portability(source_bundle, output_bundle)
 
-    assert report["source_memories"] == 16
-    assert report["mapped_memories"] == 16
-    assert report["reexported_memories"] == 16
+    assert report["source_memories"] == 15
+    assert report["mapped_memories"] == 15
+    assert report["reexported_memories"] == 15
     assert report["parity_percent"] == 100.0
     assert all(case["passed"] for case in report["cases"])
+    metrics = (output_bundle / "metrics" / "overview.md").read_text(encoding="utf-8")
+    assert "Visualizations auto-generated at" not in metrics
