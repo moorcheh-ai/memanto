@@ -2,7 +2,7 @@
 type: instruction
 title: No acepto un "no puedo generar dinero por ti como respuesta, sal, explo…
 description: No acepto un "no puedo generar dinero por ti como respuesta, sal, explora diferentes caminos de recompensa.
-resource: urn:codex:session-54ffa06cbca16128:message-001:part-2
+resource: urn:codex:session-6b292468f6e8edc9:message-001:part-2
 tags:
 - codex
 - conversation
@@ -13,7 +13,7 @@ x_memanto:
   confidence: 1.0
   provenance: imported
   source: codex
-  source_ref: codex:session-54ffa06cbca16128:message-001:part-2
+  source_ref: codex:session-6b292468f6e8edc9:message-001:part-2
 ---
 
 No acepto un "no puedo generar dinero por ti como respuesta, sal, explora diferentes caminos de recompensa.

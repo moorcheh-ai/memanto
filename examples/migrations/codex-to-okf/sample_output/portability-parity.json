@@ -29,7 +29,7 @@
   },
   "cases": [
     {
-      "resource": "urn:codex:session-54ffa06cbca16128:message-001:part-1",
+      "resource": "urn:codex:session-6b292468f6e8edc9:message-001:part-1",
       "found": true,
       "type_preserved": true,
       "title_preserved": true,
@@ -37,7 +37,7 @@
       "passed": true
     },
     {
-      "resource": "urn:codex:session-54ffa06cbca16128:message-001:part-2",
+      "resource": "urn:codex:session-6b292468f6e8edc9:message-001:part-2",
       "found": true,
       "type_preserved": true,
       "title_preserved": true,
@@ -45,7 +45,7 @@
       "passed": true
     },
     {
-      "resource": "urn:codex:session-54ffa06cbca16128:message-001:part-3",
+      "resource": "urn:codex:session-6b292468f6e8edc9:message-001:part-3",
       "found": true,
       "type_preserved": true,
       "title_preserved": true,
@@ -53,7 +53,7 @@
       "passed": true
     },
     {
-      "resource": "urn:codex:session-54ffa06cbca16128:message-001:part-4",
+      "resource": "urn:codex:session-6b292468f6e8edc9:message-001:part-4",
       "found": true,
       "type_preserved": true,
       "title_preserved": true,
@@ -61,7 +61,7 @@
       "passed": true
     },
     {
-      "resource": "urn:codex:session-54ffa06cbca16128:message-002",
+      "resource": "urn:codex:session-6b292468f6e8edc9:message-002",
       "found": true,
       "type_preserved": true,
       "title_preserved": true,
@@ -69,7 +69,7 @@
       "passed": true
     },
     {
-      "resource": "urn:codex:session-54ffa06cbca16128:message-003",
+      "resource": "urn:codex:session-6b292468f6e8edc9:message-003",
       "found": true,
       "type_preserved": true,
       "title_preserved": true,
@@ -77,7 +77,7 @@
       "passed": true
     },
     {
-      "resource": "urn:codex:session-54ffa06cbca16128:message-004",
+      "resource": "urn:codex:session-6b292468f6e8edc9:message-004",
       "found": true,
       "type_preserved": true,
       "title_preserved": true,
@@ -85,7 +85,7 @@
       "passed": true
     },
     {
-      "resource": "urn:codex:session-54ffa06cbca16128:message-005",
+      "resource": "urn:codex:session-6b292468f6e8edc9:message-005",
       "found": true,
       "type_preserved": true,
       "title_preserved": true,
@@ -93,7 +93,7 @@
       "passed": true
     },
     {
-      "resource": "urn:codex:session-54ffa06cbca16128:message-006",
+      "resource": "urn:codex:session-6b292468f6e8edc9:message-006",
       "found": true,
       "type_preserved": true,
       "title_preserved": true,
@@ -101,7 +101,7 @@
       "passed": true
     },
     {
-      "resource": "urn:codex:session-54ffa06cbca16128:message-007",
+      "resource": "urn:codex:session-6b292468f6e8edc9:message-007",
       "found": true,
       "type_preserved": true,
       "title_preserved": true,
@@ -109,7 +109,7 @@
       "passed": true
     },
     {
-      "resource": "urn:codex:session-54ffa06cbca16128:message-008",
+      "resource": "urn:codex:session-6b292468f6e8edc9:message-008",
       "found": true,
       "type_preserved": true,
       "title_preserved": true,
@@ -117,7 +117,7 @@
       "passed": true
     },
     {
-      "resource": "urn:codex:session-54ffa06cbca16128:message-009",
+      "resource": "urn:codex:session-6b292468f6e8edc9:message-009",
       "found": true,
       "type_preserved": true,
       "title_preserved": true,
@@ -125,7 +125,7 @@
       "passed": true
     },
     {
-      "resource": "urn:codex:session-54ffa06cbca16128:message-010",
+      "resource": "urn:codex:session-6b292468f6e8edc9:message-010",
       "found": true,
       "type_preserved": true,
       "title_preserved": true,
@@ -133,7 +133,7 @@
       "passed": true
     },
     {
-      "resource": "urn:codex:session-54ffa06cbca16128:message-011",
+      "resource": "urn:codex:session-6b292468f6e8edc9:message-011",
       "found": true,
       "type_preserved": true,
       "title_preserved": true,
@@ -141,7 +141,7 @@
       "passed": true
     },
     {
-      "resource": "urn:codex:session-54ffa06cbca16128:message-012",
+      "resource": "urn:codex:session-6b292468f6e8edc9:message-012",
       "found": true,
       "type_preserved": true,
       "title_preserved": true,

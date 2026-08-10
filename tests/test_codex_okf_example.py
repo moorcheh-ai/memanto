@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import importlib.util
 import json
 import shutil
@@ -206,6 +207,20 @@ def test_adapter_exports_only_visible_messages_and_redacts():
     assert len(imported) == len(memories)
     assert all(row["source"] == "codex" for row in imported)
     assert {row["type"] for row in imported} >= {"goal", "instruction"}
+
+
+def test_checked_in_bundle_matches_canonical_fixture():
+    source = EXAMPLE_DIR / "sample_data" / "codex-rollout-sanitized.jsonl"
+    report_path = EXAMPLE_DIR / "sample_output" / "okf-bundle" / "migration-report.json"
+    report = json.loads(report_path.read_text(encoding="utf-8"))
+    digest = hashlib.sha256(source.read_bytes()).hexdigest()
+
+    assert report["source"]["sha256"] == digest
+    expected_session = f"session-{digest[:16]}"
+    memory_files = (report_path.parent / "memories").rglob("*.md")
+    assert all(
+        expected_session in path.read_text(encoding="utf-8") for path in memory_files
+    )
 
 
 def test_golden_retrieval_validation():

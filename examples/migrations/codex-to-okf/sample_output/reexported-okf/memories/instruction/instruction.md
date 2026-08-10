@@ -8,7 +8,7 @@ tags:
 - conversation
 - role:user
 timestamp: '2026-08-10 17:28:28.812000+00:00'
-resource: urn:codex:session-54ffa06cbca16128:message-001:part-2
+resource: urn:codex:session-6b292468f6e8edc9:message-001:part-2
 x_memanto:
   confidence: 1.0
   provenance: imported
@@ -24,7 +24,7 @@ Source role: `user`
 ---
 [Supporting data]
 - OKF source: memories/instruction/20260810172828-002-no-acepto-un-no-puedo-generar-dinero-por-ti-como-respues.md
-- OKF resource: urn:codex:session-54ffa06cbca16128:message-001:part-2
+- OKF resource: urn:codex:session-6b292468f6e8edc9:message-001:part-2
 
 <!-- okf-entry -->
 ---
@@ -37,7 +37,7 @@ tags:
 - conversation
 - role:user
 timestamp: '2026-08-10 17:28:28.812000+00:00'
-resource: urn:codex:session-54ffa06cbca16128:message-001:part-4
+resource: urn:codex:session-6b292468f6e8edc9:message-001:part-4
 x_memanto:
   confidence: 1.0
   provenance: imported
@@ -53,7 +53,7 @@ Source role: `user`
 ---
 [Supporting data]
 - OKF source: memories/instruction/20260810172828-004-no-puedes-usar-mis-redes-sociales-en-cualquier-caso-si-n.md
-- OKF resource: urn:codex:session-54ffa06cbca16128:message-001:part-4
+- OKF resource: urn:codex:session-6b292468f6e8edc9:message-001:part-4
 
 <!-- okf-entry -->
 ---
@@ -66,7 +66,7 @@ tags:
 - conversation
 - role:assistant
 timestamp: '2026-08-10 17:28:39.415000+00:00'
-resource: urn:codex:session-54ffa06cbca16128:message-002
+resource: urn:codex:session-6b292468f6e8edc9:message-002
 x_memanto:
   confidence: 0.85
   provenance: imported
@@ -84,4 +84,4 @@ Source role: `assistant`
 ---
 [Supporting data]
 - OKF source: memories/instruction/20260810172839-005-voy-a-tratarlo-como-una-misi-n-real-no-como-una-lluvia-d.md
-- OKF resource: urn:codex:session-54ffa06cbca16128:message-002
+- OKF resource: urn:codex:session-6b292468f6e8edc9:message-002

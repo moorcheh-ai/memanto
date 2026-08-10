@@ -2,8 +2,8 @@
 
 - Source messages included: **12**
 - Portable memories written: **15**
-- Source SHA-256: `54ffa06cbca1612868fabb6b7a915605e8aa821c8eb65b51ded97f00baa1ec55`
-- Bundle SHA-256: `e6b5f24202f48742438ebff66a377241f12eb0c77727ddb3de27907d6c4d0e97`
+- Source SHA-256: `6b292468f6e8edc9afc372913803db536b122d683572e5f9d970236d7b4718d4`
+- Bundle SHA-256: `fd2375057f4aa717fb21388997a844079f18947cc93e2fbf560e0f30be96b624`
 - Estimated source tokens: **1092**
 - Estimated portable tokens: **1071**
 

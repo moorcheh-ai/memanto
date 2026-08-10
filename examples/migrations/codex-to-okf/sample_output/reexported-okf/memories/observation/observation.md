@@ -8,7 +8,7 @@ tags:
 - conversation
 - role:assistant
 timestamp: '2026-08-10 17:29:53.662000+00:00'
-resource: urn:codex:session-54ffa06cbca16128:message-004
+resource: urn:codex:session-6b292468f6e8edc9:message-004
 x_memanto:
   confidence: 0.85
   provenance: imported
@@ -26,7 +26,7 @@ Source role: `assistant`
 ---
 [Supporting data]
 - OKF source: memories/observation/20260810172953-007-encontr-dos-recompensas-financiadas-de-usd-500-con-pago-.md
-- OKF resource: urn:codex:session-54ffa06cbca16128:message-004
+- OKF resource: urn:codex:session-6b292468f6e8edc9:message-004
 
 <!-- okf-entry -->
 ---
@@ -40,7 +40,7 @@ tags:
 - conversation
 - role:assistant
 timestamp: '2026-08-10 17:41:23.886000+00:00'
-resource: urn:codex:session-54ffa06cbca16128:message-008
+resource: urn:codex:session-6b292468f6e8edc9:message-008
 x_memanto:
   confidence: 0.85
   provenance: imported
@@ -58,7 +58,7 @@ Source role: `assistant`
 ---
 [Supporting data]
 - OKF source: memories/observation/20260810174123-011-el-cat-logo-de-opire-s-tiene-volumen-pero-sus-recompensa.md
-- OKF resource: urn:codex:session-54ffa06cbca16128:message-008
+- OKF resource: urn:codex:session-6b292468f6e8edc9:message-008
 
 <!-- okf-entry -->
 ---
@@ -72,7 +72,7 @@ tags:
 - conversation
 - role:assistant
 timestamp: '2026-08-10 17:45:52.585000+00:00'
-resource: urn:codex:session-54ffa06cbca16128:message-010
+resource: urn:codex:session-6b292468f6e8edc9:message-010
 x_memanto:
   confidence: 0.85
   provenance: imported
@@ -90,7 +90,7 @@ Source role: `assistant`
 ---
 [Supporting data]
 - OKF source: memories/observation/20260810174552-013-el-bounty-de-azerothcore-tambi-n-fue-cerrado-por-los-man.md
-- OKF resource: urn:codex:session-54ffa06cbca16128:message-010
+- OKF resource: urn:codex:session-6b292468f6e8edc9:message-010
 
 <!-- okf-entry -->
 ---
@@ -104,7 +104,7 @@ tags:
 - conversation
 - role:assistant
 timestamp: '2026-08-10 17:51:03.113000+00:00'
-resource: urn:codex:session-54ffa06cbca16128:message-011
+resource: urn:codex:session-6b292468f6e8edc9:message-011
 x_memanto:
   confidence: 0.85
   provenance: imported
@@ -122,4 +122,4 @@ Source role: `assistant`
 ---
 [Supporting data]
 - OKF source: memories/observation/20260810175103-014-la-candidatura-ya-tiene-un-adaptador-funcional-dise-ado-.md
-- OKF resource: urn:codex:session-54ffa06cbca16128:message-011
+- OKF resource: urn:codex:session-6b292468f6e8edc9:message-011

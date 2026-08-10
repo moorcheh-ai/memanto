@@ -83,6 +83,12 @@ portability parity: 15/15 (100.0%)
 Memanto dry run: 15 mapped, 0 skipped
 ```
 
+The final assistant message in the sanitized source is retained verbatim and
+mentions 16/16 from an earlier run. It is historical input, not current
+validation evidence: the current privacy policy excludes unscoped consent and
+therefore exports 15 durable memories. The generated reports above are the
+authoritative current counts.
+
 ## Use your own Codex rollout
 
 Codex rollout files are commonly stored beneath the Codex data directory in a

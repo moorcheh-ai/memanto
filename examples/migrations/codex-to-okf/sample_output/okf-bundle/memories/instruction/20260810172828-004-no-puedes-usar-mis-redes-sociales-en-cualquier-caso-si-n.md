@@ -2,7 +2,7 @@
 type: instruction
 title: no puedes usar mis redes sociales en cualquier caso si necesitas, creal…
 description: no puedes usar mis redes sociales en cualquier caso si necesitas, crealas desde cero para ti.
-resource: urn:codex:session-54ffa06cbca16128:message-001:part-4
+resource: urn:codex:session-6b292468f6e8edc9:message-001:part-4
 tags:
 - codex
 - conversation
@@ -13,7 +13,7 @@ x_memanto:
   confidence: 1.0
   provenance: imported
   source: codex
-  source_ref: codex:session-54ffa06cbca16128:message-001:part-4
+  source_ref: codex:session-6b292468f6e8edc9:message-001:part-4
 ---
 
 no puedes usar mis redes sociales en cualquier caso si necesitas, crealas desde cero para ti.
