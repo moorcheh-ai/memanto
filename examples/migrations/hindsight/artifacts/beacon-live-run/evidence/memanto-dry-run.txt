@@ -1,0 +1,22 @@
+# Captured from a real dry run; local absolute paths are normalized.
+$ <repo>/.venv/bin/memanto migrate okf <repo>/examples/migrations/hindsight/artifacts/beacon-live-run/hindsight-okf --dry-run
+
+╭─────────────────────────╮
+│ OKF -> Memanto  Dry run │
+╰─────────────────────────╯
+  … Loading OKF bundle from
+<repo>/examples/migrations/hindsight/artifacts/be
+acon-live-run/hindsight-okf
+  … Mapping OKF nodes onto Memanto schema...
+
+╭────────────────────────────── Dry run complete ──────────────────────────────╮
+│ OKF nodes: 32                                                                │
+│ Mapped memories: 32  (skipped 0)                                             │
+│ Type breakdown: event: 12, fact: 17, learning: 3                             │
+│                                                                              │
+│ Dry run — no writes performed.                                               │
+│                                                                              │
+│ Run dir: ~/.memanto/migrate/okf/20260725_053303                   │
+│ Mapped preview:                                                              │
+│ ~/.memanto/migrate/okf/20260725_053303/mapped_preview.json        │
+╰──────────────────────────────────────────────────────────────────────────────╯

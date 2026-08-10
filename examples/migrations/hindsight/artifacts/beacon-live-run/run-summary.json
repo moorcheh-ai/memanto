@@ -1,0 +1,42 @@
+{
+  "bundle": "hindsight-okf",
+  "migration": {
+    "archived_records": 3,
+    "archived_type_counts": {
+      "fact": 3
+    },
+    "importable_records": 32,
+    "mapping": {
+      "experience": "event",
+      "observation": "learning",
+      "unknown": "observation",
+      "world": "fact"
+    },
+    "source_fact_type_counts": {
+      "experience": 12,
+      "observation": 3,
+      "world": 20
+    },
+    "source_records": 35,
+    "type_counts": {
+      "event": 12,
+      "fact": 17,
+      "learning": 3
+    }
+  },
+  "schema": "hindsight-okf-demo-run/v1",
+  "snapshot_sha256": "620d50a301d9107c3c69bf1e9b4baa6805a36b2bbf6636d1316b16dfde54557b",
+  "source_runtime": {
+    "bank_id": "beacon-release-copilot",
+    "curated_invalidations": 3,
+    "hindsight": "0.8.x",
+    "llm_model": "qwen3:4b",
+    "llm_provider": "ollama",
+    "retained_sessions": 8
+  },
+  "source_validation": {
+    "average_score": 1.0,
+    "passed": 8,
+    "questions": 8
+  }
+}

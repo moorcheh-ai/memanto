@@ -1,0 +1,2406 @@
+{
+  "average_score": 1.0,
+  "cases": [
+    {
+      "answer": "Release Copilot completed final Beacon rehearsal using current runbook | When: 2026-07-24 | Involving: Release Copilot\nDana preparing Helios API release named Beacon | When: 2026-07-06 | Involving: Dana\nRelease Copilot recorded tentative date, owner, and data-store versions | When: 2026-07-06 | Involving: Release Copilot (assistant)\nRelease Copilot ran Beacon database migration in staging | When: 2026-07-13 | Involving: Release Copilot (assistant)\nDana confirms Beacon releases on Tuesday, August 4 at 14:00 UTC with Luis Ortega as DRI and Priya Shah as backup | When: 2026-08-04 | Involving: Dana (user), Luis Ortega (DRI), Priya Shah (backup)\nHelios API release Beacon uses PostgreSQL 16 and Redis 7.2\nBeacon releases never occur on Fridays\nDana states Maya is on leave during release and no longer Beacon DRI | When: 2026-07-20 | Involving: Dana (user)\nRelease Copilot enabled pg_trgm extension, reran migration successfully in 3 minutes 42 seconds | When: 2026-07-13 | Involving: Release Copilot (assistant)\nRelease Copilot added PostgreSQL 16 pg_trgm preflight check to runbook | When: 2026-07-13 | Involving: Release Copilot (assistant)",
+      "evidence": [
+        {
+          "chunk_id": "beacon-release-copilot_session-07-final-rehearsal_0",
+          "context": "The release copilot completes the final rehearsal",
+          "document_id": "session-07-final-rehearsal",
+          "entities": null,
+          "id": "e1a11d3d-85a7-452c-98b5-ce5179870bcb",
+          "mentioned_at": "2026-07-24T17:40:00+00:00",
+          "metadata": {
+            "scenario": "beacon-release",
+            "session_id": "session-07-final-rehearsal",
+            "source": "scripted-live-agent-run"
+          },
+          "occurred_end": null,
+          "occurred_start": null,
+          "scores": {
+            "final": 1.0997397780672755,
+            "keyword": 0.699999988079071,
+            "reranker": null,
+            "semantic": 0.7775915132517538
+          },
+          "source_fact_ids": null,
+          "tags": [
+            "demo:hindsight-okf",
+            "project:beacon"
+          ],
+          "text": "Release Copilot completed final Beacon rehearsal using current runbook | When: 2026-07-24 | Involving: Release Copilot",
+          "type": "experience"
+        },
+        {
+          "chunk_id": "beacon-release-copilot_session-01-kickoff_0",
+          "context": "Beacon release kickoff between Dana and the release copilot",
+          "document_id": "session-01-kickoff",
+          "entities": null,
+          "id": "dd088698-e8d2-4908-b425-12677179c011",
+          "mentioned_at": "2026-07-06T09:00:00+00:00",
+          "metadata": {
+            "scenario": "beacon-release",
+            "session_id": "session-01-kickoff",
+            "source": "scripted-live-agent-run"
+          },
+          "occurred_end": null,
+          "occurred_start": null,
+          "scores": {
+            "final": 1.058043056371828,
+            "keyword": 0.6000000238418579,
+            "reranker": null,
+            "semantic": 0.7878326177597046
+          },
+          "source_fact_ids": null,
+          "tags": [
+            "demo:hindsight-okf",
+            "project:beacon"
+          ],
+          "text": "Dana preparing Helios API release named Beacon | When: 2026-07-06 | Involving: Dana",
+          "type": "world"
+        },
+        {
+          "chunk_id": "beacon-release-copilot_session-01-kickoff_0",
+          "context": "Beacon release kickoff between Dana and the release copilot",
+          "document_id": "session-01-kickoff",
+          "entities": null,
+          "id": "3cd50df6-b420-4e14-aa73-d2478f6042de",
+          "mentioned_at": "2026-07-06T09:00:00.040000+00:00",
+          "metadata": {
+            "scenario": "beacon-release",
+            "session_id": "session-01-kickoff",
+            "source": "scripted-live-agent-run"
+          },
+          "occurred_end": null,
+          "occurred_start": null,
+          "scores": {
+            "final": 1.0264072177159378,
+            "keyword": 0.699999988079071,
+            "reranker": null,
+            "semantic": 0.7411081636612527
+          },
+          "source_fact_ids": null,
+          "tags": [
+            "demo:hindsight-okf",
+            "project:beacon"
+          ],
+          "text": "Release Copilot recorded tentative date, owner, and data-store versions | When: 2026-07-06 | Involving: Release Copilot (assistant)",
+          "type": "experience"
+        },
+        {
+          "chunk_id": "beacon-release-copilot_session-03-staging-migration_0",
+          "context": "The release copilot performs the first staging rehearsal",
+          "document_id": "session-03-staging-migration",
+          "entities": null,
+          "id": "87687b43-e9e7-4ae4-9aea-e345fa9f6c49",
+          "mentioned_at": "2026-07-13T11:45:00+00:00",
+          "metadata": {
+            "scenario": "beacon-release",
+            "session_id": "session-03-staging-migration",
+            "source": "scripted-live-agent-run"
+          },
+          "occurred_end": null,
+          "occurred_start": null,
+          "scores": {
+            "final": 0.9983302421850376,
+            "keyword": 0.6000000238418579,
+            "reranker": null,
+            "semantic": 0.7622395753860474
+          },
+          "source_fact_ids": null,
+          "tags": [
+            "demo:hindsight-okf",
+            "project:beacon"
+          ],
+          "text": "Release Copilot ran Beacon database migration in staging | When: 2026-07-13 | Involving: Release Copilot (assistant)",
+          "type": "experience"
+        },
+        {
+          "chunk_id": "beacon-release-copilot_session-08-current-truth_0",
+          "context": "Dana signs off the current truth and identifies superseded values",
+          "document_id": "session-08-current-truth",
+          "entities": null,
+          "id": "f820ac21-15b2-470e-a775-10eefcc3fe0d",
+          "mentioned_at": "2026-07-25T08:15:00+00:00",
+          "metadata": {
+            "scenario": "beacon-release",
+            "session_id": "session-08-current-truth",
+            "source": "scripted-live-agent-run"
+          },
+          "occurred_end": null,
+          "occurred_start": null,
+          "scores": {
+            "final": 0.9722580645161292,
+            "keyword": 0.4000000059604645,
+            "reranker": null,
+            "semantic": 0.8046893361025668
+          },
+          "source_fact_ids": null,
+          "tags": [
+            "demo:hindsight-okf",
+            "project:beacon"
+          ],
+          "text": "Dana confirms Beacon releases on Tuesday, August 4 at 14:00 UTC with Luis Ortega as DRI and Priya Shah as backup | When: 2026-08-04 | Involving: Dana (user), Luis Ortega (DRI), Priya Shah (backup)",
+          "type": "world"
+        },
+        {
+          "chunk_id": "beacon-release-copilot_session-01-kickoff_0",
+          "context": "Beacon release kickoff between Dana and the release copilot",
+          "document_id": "session-01-kickoff",
+          "entities": null,
+          "id": "e8d02e32-023f-4988-8d1d-1f7a5d851a3e",
+          "mentioned_at": "2026-07-06T09:00:00.030000+00:00",
+          "metadata": {
+            "scenario": "beacon-release",
+            "session_id": "session-01-kickoff",
+            "source": "scripted-live-agent-run"
+          },
+          "occurred_end": null,
+          "occurred_start": null,
+          "scores": {
+            "final": 0.9314997009551137,
+            "keyword": 0.6000000238418579,
+            "reranker": null,
+            "semantic": 0.7265457131429233
+          },
+          "source_fact_ids": null,
+          "tags": [
+            "demo:hindsight-okf",
+            "project:beacon"
+          ],
+          "text": "Helios API release Beacon uses PostgreSQL 16 and Redis 7.2",
+          "type": "world"
+        },
+        {
+          "chunk_id": "beacon-release-copilot_session-08-current-truth_0",
+          "context": "Dana signs off the current truth and identifies superseded values",
+          "document_id": "session-08-current-truth",
+          "entities": null,
+          "id": "b53baf4d-1d08-4b33-a830-a33f4c4a3292",
+          "mentioned_at": "2026-07-25T08:15:00.010000+00:00",
+          "metadata": {
+            "scenario": "beacon-release",
+            "session_id": "session-08-current-truth",
+            "source": "scripted-live-agent-run"
+          },
+          "occurred_end": null,
+          "occurred_start": null,
+          "scores": {
+            "final": 0.9083870967741936,
+            "keyword": 0.4000000059604645,
+            "reranker": null,
+            "semantic": 0.7362840018441691
+          },
+          "source_fact_ids": null,
+          "tags": [
+            "demo:hindsight-okf",
+            "project:beacon"
+          ],
+          "text": "Beacon releases never occur on Fridays",
+          "type": "world"
+        },
+        {
+          "chunk_id": "beacon-release-copilot_session-05-owner-handoff_0",
+          "context": "The original release owner hands off responsibility",
+          "document_id": "session-05-owner-handoff",
+          "entities": null,
+          "id": "0ae5e0a8-7034-40e3-8054-17b472172085",
+          "mentioned_at": "2026-07-20T08:30:00+00:00",
+          "metadata": {
+            "scenario": "beacon-release",
+            "session_id": "session-05-owner-handoff",
+            "source": "scripted-live-agent-run"
+          },
+          "occurred_end": null,
+          "occurred_start": null,
+          "scores": {
+            "final": 0.8743311677958432,
+            "keyword": 0.4000000059604645,
+            "reranker": null,
+            "semantic": 0.6930655241012573
+          },
+          "source_fact_ids": null,
+          "tags": [
+            "demo:hindsight-okf",
+            "project:beacon"
+          ],
+          "text": "Dana states Maya is on leave during release and no longer Beacon DRI | When: 2026-07-20 | Involving: Dana (user)",
+          "type": "world"
+        },
+        {
+          "chunk_id": "beacon-release-copilot_session-03-staging-migration_0",
+          "context": "The release copilot performs the first staging rehearsal",
+          "document_id": "session-03-staging-migration",
+          "entities": null,
+          "id": "22ef33c5-5ef0-4549-a6d8-f643a2b981b3",
+          "mentioned_at": "2026-07-13T11:45:00.010000+00:00",
+          "metadata": {
+            "scenario": "beacon-release",
+            "session_id": "session-03-staging-migration",
+            "source": "scripted-live-agent-run"
+          },
+          "occurred_end": null,
+          "occurred_start": null,
+          "scores": {
+            "final": 0.8395851507202056,
+            "keyword": 0.4000000059604645,
+            "reranker": null,
+            "semantic": 0.6761214733123779
+          },
+          "source_fact_ids": null,
+          "tags": [
+            "demo:hindsight-okf",
+            "project:beacon"
+          ],
+          "text": "Release Copilot enabled pg_trgm extension, reran migration successfully in 3 minutes 42 seconds | When: 2026-07-13 | Involving: Release Copilot (assistant)",
+          "type": "experience"
+        },
+        {
+          "chunk_id": "beacon-release-copilot_session-03-staging-migration_0",
+          "context": "The release copilot performs the first staging rehearsal",
+          "document_id": "session-03-staging-migration",
+          "entities": null,
+          "id": "e001c9d2-a30a-4702-b98d-abb6fcca569f",
+          "mentioned_at": "2026-07-13T11:45:00.030000+00:00",
+          "metadata": {
+            "scenario": "beacon-release",
+            "session_id": "session-03-staging-migration",
+            "source": "scripted-live-agent-run"
+          },
+          "occurred_end": null,
+          "occurred_start": null,
+          "scores": {
+            "final": 0.8078361325093574,
+            "keyword": 0.4000000059604645,
+            "reranker": null,
+            "semantic": 0.6694984436035156
+          },
+          "source_fact_ids": null,
+          "tags": [
+            "demo:hindsight-okf",
+            "project:beacon"
+          ],
+          "text": "Release Copilot added PostgreSQL 16 pg_trgm preflight check to runbook | When: 2026-07-13 | Involving: Release Copilot (assistant)",
+          "type": "experience"
+        }
+      ],
+      "expected_groups": [
+        [
+          "august 4"
+        ],
+        [
+          "14:00",
+          "14:00 utc"
+        ]
+      ],
+      "id": "release-window",
+      "passed": true,
+      "question": "When is the current Beacon production release window?",
+      "score": 1.0
+    },
+    {
+      "answer": "Dana confirms Beacon releases on Tuesday, August 4 at 14:00 UTC with Luis Ortega as DRI and Priya Shah as backup | When: 2026-08-04 | Involving: Dana (user), Luis Ortega (DRI), Priya Shah (backup)\nLuis Ortega is current release DRI and Priya Shah is backup DRI | When: 2026-07-20 | Involving: Luis Ortega (current release DRI), Priya Shah (backup DRI)\nHelios API release Beacon uses PostgreSQL 16 and Redis 7.2\nRelease Copilot replaced Maya with Luis as current DRI and listed Priya as backup | When: 2026-07-20 | Involving: Release Copilot (assistant)\nDana states Maya is on leave during release and no longer Beacon DRI | When: 2026-07-20 | Involving: Dana (user)\nRelease Copilot completed final Beacon rehearsal using current runbook | When: 2026-07-24 | Involving: Release Copilot\nRelease Copilot recorded tentative date, owner, and data-store versions | When: 2026-07-06 | Involving: Release Copilot (assistant)\nDana preparing Helios API release named Beacon | When: 2026-07-06 | Involving: Dana\nLuis Ortega is current release DRI and Priya Shah is backup DRI\nRelease Copilot ran Beacon database migration in staging | When: 2026-07-13 | Involving: Release Copilot (assistant)",
+      "evidence": [
+        {
+          "chunk_id": "beacon-release-copilot_session-08-current-truth_0",
+          "context": "Dana signs off the current truth and identifies superseded values",
+          "document_id": "session-08-current-truth",
+          "entities": null,
+          "id": "f820ac21-15b2-470e-a775-10eefcc3fe0d",
+          "mentioned_at": "2026-07-25T08:15:00+00:00",
+          "metadata": {
+            "scenario": "beacon-release",
+            "session_id": "session-08-current-truth",
+            "source": "scripted-live-agent-run"
+          },
+          "occurred_end": null,
+          "occurred_start": null,
+          "scores": {
+            "final": 1.1,
+            "keyword": 1.0,
+            "reranker": null,
+            "semantic": 0.8211515439243059
+          },
+          "source_fact_ids": null,
+          "tags": [
+            "demo:hindsight-okf",
+            "project:beacon"
+          ],
+          "text": "Dana confirms Beacon releases on Tuesday, August 4 at 14:00 UTC with Luis Ortega as DRI and Priya Shah as backup | When: 2026-08-04 | Involving: Dana (user), Luis Ortega (DRI), Priya Shah (backup)",
+          "type": "world"
+        },
+        {
+          "chunk_id": "beacon-release-copilot_session-05-owner-handoff_0",
+          "context": "The original release owner hands off responsibility",
+          "document_id": "session-05-owner-handoff",
+          "entities": null,
+          "id": "fd799eff-c5a0-4b9f-85a8-b0bf6126256f",
+          "mentioned_at": "2026-07-20T08:30:00.010000+00:00",
+          "metadata": {
+            "scenario": "beacon-release",
+            "session_id": "session-05-owner-handoff",
+            "source": "scripted-live-agent-run"
+          },
+          "occurred_end": null,
+          "occurred_start": null,
+          "scores": {
+            "final": 1.0654804903995312,
+            "keyword": 1.2000000476837158,
+            "reranker": null,
+            "semantic": 0.761594295501709
+          },
+          "source_fact_ids": null,
+          "tags": [
+            "demo:hindsight-okf",
+            "project:beacon"
+          ],
+          "text": "Luis Ortega is current release DRI and Priya Shah is backup DRI | When: 2026-07-20 | Involving: Luis Ortega (current release DRI), Priya Shah (backup DRI)",
+          "type": "world"
+        },
+        {
+          "chunk_id": "beacon-release-copilot_session-01-kickoff_0",
+          "context": "Beacon release kickoff between Dana and the release copilot",
+          "document_id": "session-01-kickoff",
+          "entities": null,
+          "id": "e8d02e32-023f-4988-8d1d-1f7a5d851a3e",
+          "mentioned_at": "2026-07-06T09:00:00.030000+00:00",
+          "metadata": {
+            "scenario": "beacon-release",
+            "session_id": "session-01-kickoff",
+            "source": "scripted-live-agent-run"
+          },
+          "occurred_end": null,
+          "occurred_start": null,
+          "scores": {
+            "final": 1.0264072161123896,
+            "keyword": 0.6000000238418579,
+            "reranker": null,
+            "semantic": 0.7204056596876881
+          },
+          "source_fact_ids": null,
+          "tags": [
+            "demo:hindsight-okf",
+            "project:beacon"
+          ],
+          "text": "Helios API release Beacon uses PostgreSQL 16 and Redis 7.2",
+          "type": "world"
+        },
+        {
+          "chunk_id": "beacon-release-copilot_session-05-owner-handoff_0",
+          "context": "The original release owner hands off responsibility",
+          "document_id": "session-05-owner-handoff",
+          "entities": null,
+          "id": "7b0a8bc1-66e1-4b96-8ba8-5cc31e2985b4",
+          "mentioned_at": "2026-07-20T08:30:00.020000+00:00",
+          "metadata": {
+            "scenario": "beacon-release",
+            "session_id": "session-05-owner-handoff",
+            "source": "scripted-live-agent-run"
+          },
+          "occurred_end": null,
+          "occurred_start": null,
+          "scores": {
+            "final": 1.0017640491710766,
+            "keyword": 0.699999988079071,
+            "reranker": null,
+            "semantic": 0.7151552865001742
+          },
+          "source_fact_ids": null,
+          "tags": [
+            "demo:hindsight-okf",
+            "project:beacon"
+          ],
+          "text": "Release Copilot replaced Maya with Luis as current DRI and listed Priya as backup | When: 2026-07-20 | Involving: Release Copilot (assistant)",
+          "type": "experience"
+        },
+        {
+          "chunk_id": "beacon-release-copilot_session-05-owner-handoff_0",
+          "context": "The original release owner hands off responsibility",
+          "document_id": "session-05-owner-handoff",
+          "entities": null,
+          "id": "0ae5e0a8-7034-40e3-8054-17b472172085",
+          "mentioned_at": "2026-07-20T08:30:00+00:00",
+          "metadata": {
+            "scenario": "beacon-release",
+            "session_id": "session-05-owner-handoff",
+            "source": "scripted-live-agent-run"
+          },
+          "occurred_end": null,
+          "occurred_start": null,
+          "scores": {
+            "final": 0.9699058284139506,
+            "keyword": 0.6000000238418579,
+            "reranker": null,
+            "semantic": 0.7231186032295227
+          },
+          "source_fact_ids": null,
+          "tags": [
+            "demo:hindsight-okf",
+            "project:beacon"
+          ],
+          "text": "Dana states Maya is on leave during release and no longer Beacon DRI | When: 2026-07-20 | Involving: Dana (user)",
+          "type": "world"
+        },
+        {
+          "chunk_id": "beacon-release-copilot_session-07-final-rehearsal_0",
+          "context": "The release copilot completes the final rehearsal",
+          "document_id": "session-07-final-rehearsal",
+          "entities": null,
+          "id": "e1a11d3d-85a7-452c-98b5-ce5179870bcb",
+          "mentioned_at": "2026-07-24T17:40:00+00:00",
+          "metadata": {
+            "scenario": "beacon-release",
+            "session_id": "session-07-final-rehearsal",
+            "source": "scripted-live-agent-run"
+          },
+          "occurred_end": null,
+          "occurred_start": null,
+          "scores": {
+            "final": 0.9401001314628998,
+            "keyword": 0.699999988079071,
+            "reranker": null,
+            "semantic": 0.6551995667934171
+          },
+          "source_fact_ids": null,
+          "tags": [
+            "demo:hindsight-okf",
+            "project:beacon"
+          ],
+          "text": "Release Copilot completed final Beacon rehearsal using current runbook | When: 2026-07-24 | Involving: Release Copilot",
+          "type": "experience"
+        },
+        {
+          "chunk_id": "beacon-release-copilot_session-01-kickoff_0",
+          "context": "Beacon release kickoff between Dana and the release copilot",
+          "document_id": "session-01-kickoff",
+          "entities": null,
+          "id": "3cd50df6-b420-4e14-aa73-d2478f6042de",
+          "mentioned_at": "2026-07-06T09:00:00.040000+00:00",
+          "metadata": {
+            "scenario": "beacon-release",
+            "session_id": "session-01-kickoff",
+            "source": "scripted-live-agent-run"
+          },
+          "occurred_end": null,
+          "occurred_start": null,
+          "scores": {
+            "final": 0.8998638607536452,
+            "keyword": 0.699999988079071,
+            "reranker": null,
+            "semantic": 0.6557561549995049
+          },
+          "source_fact_ids": null,
+          "tags": [
+            "demo:hindsight-okf",
+            "project:beacon"
+          ],
+          "text": "Release Copilot recorded tentative date, owner, and data-store versions | When: 2026-07-06 | Involving: Release Copilot (assistant)",
+          "type": "experience"
+        },
+        {
+          "chunk_id": "beacon-release-copilot_session-01-kickoff_0",
+          "context": "Beacon release kickoff between Dana and the release copilot",
+          "document_id": "session-01-kickoff",
+          "entities": null,
+          "id": "dd088698-e8d2-4908-b425-12677179c011",
+          "mentioned_at": "2026-07-06T09:00:00+00:00",
+          "metadata": {
+            "scenario": "beacon-release",
+            "session_id": "session-01-kickoff",
+            "source": "scripted-live-agent-run"
+          },
+          "occurred_end": null,
+          "occurred_start": null,
+          "scores": {
+            "final": 0.8682280216969005,
+            "keyword": 0.6000000238418579,
+            "reranker": null,
+            "semantic": 0.695550799369812
+          },
+          "source_fact_ids": null,
+          "tags": [
+            "demo:hindsight-okf",
+            "project:beacon"
+          ],
+          "text": "Dana preparing Helios API release named Beacon | When: 2026-07-06 | Involving: Dana",
+          "type": "world"
+        },
+        {
+          "chunk_id": null,
+          "context": null,
+          "document_id": null,
+          "entities": null,
+          "id": "c9b4eef9-121b-44be-8d6d-dafff2ed09b1",
+          "mentioned_at": "2026-07-20T08:30:00.010000+00:00",
+          "metadata": {},
+          "occurred_end": null,
+          "occurred_start": null,
+          "scores": {
+            "final": 0.8424729458973038,
+            "keyword": 0.5,
+            "reranker": null,
+            "semantic": 0.71361986236336
+          },
+          "source_fact_ids": [
+            "fd799eff-c5a0-4b9f-85a8-b0bf6126256f"
+          ],
+          "tags": [
+            "demo:hindsight-okf",
+            "project:beacon"
+          ],
+          "text": "Luis Ortega is current release DRI and Priya Shah is backup DRI",
+          "type": "observation"
+        },
+        {
+          "chunk_id": "beacon-release-copilot_session-03-staging-migration_0",
+          "context": "The release copilot performs the first staging rehearsal",
+          "document_id": "session-03-staging-migration",
+          "entities": null,
+          "id": "87687b43-e9e7-4ae4-9aea-e345fa9f6c49",
+          "mentioned_at": "2026-07-13T11:45:00+00:00",
+          "metadata": {
+            "scenario": "beacon-release",
+            "session_id": "session-03-staging-migration",
+            "source": "scripted-live-agent-run"
+          },
+          "occurred_end": null,
+          "occurred_start": null,
+          "scores": {
+            "final": 0.8078361311580826,
+            "keyword": 0.6000000238418579,
+            "reranker": null,
+            "semantic": 0.6756888031959534
+          },
+          "source_fact_ids": null,
+          "tags": [
+            "demo:hindsight-okf",
+            "project:beacon"
+          ],
+          "text": "Release Copilot ran Beacon database migration in staging | When: 2026-07-13 | Involving: Release Copilot (assistant)",
+          "type": "experience"
+        }
+      ],
+      "expected_groups": [
+        [
+          "luis ortega"
+        ],
+        [
+          "priya shah"
+        ]
+      ],
+      "id": "release-owner",
+      "passed": true,
+      "question": "Who is the current Beacon release DRI and who is backup?",
+      "score": 1.0
+    },
+    {
+      "answer": "Release Copilot ran Beacon database migration in staging | When: 2026-07-13 | Involving: Release Copilot (assistant)\nRelease Copilot added PostgreSQL 16 pg_trgm preflight check to runbook | When: 2026-07-13 | Involving: Release Copilot (assistant)\nRelease Copilot enabled pg_trgm extension, reran migration successfully in 3 minutes 42 seconds | When: 2026-07-13 | Involving: Release Copilot (assistant)\nDana instructed Release Copilot to keep failed first attempt as evidence | When: 2026-07-13 | Involving: Dana (user)\nRelease Copilot measured API p95 latency at 185 milliseconds | When: 2026-07-13 | Involving: Release Copilot (assistant)\nHelios API release Beacon uses PostgreSQL 16 and Redis 7.2\nThe approved production TTL for the feature-flag cache is 6 hours | When: 2026-07-21 | Involving: user (Dana)\nCache TTL is 6 hours\npg_trgm preflight passed, migration completed in 3 minutes 39 seconds, 10 percent canary simulation stayed at 0.3 percent errors, p95 latency was 181 milliseconds | When: 2026-07-24 | Involving: Release Copilot\nDana preparing Helios API release named Beacon | When: 2026-07-06 | Involving: Dana",
+      "evidence": [
+        {
+          "chunk_id": "beacon-release-copilot_session-03-staging-migration_0",
+          "context": "The release copilot performs the first staging rehearsal",
+          "document_id": "session-03-staging-migration",
+          "entities": null,
+          "id": "87687b43-e9e7-4ae4-9aea-e345fa9f6c49",
+          "mentioned_at": "2026-07-13T11:45:00+00:00",
+          "metadata": {
+            "scenario": "beacon-release",
+            "session_id": "session-03-staging-migration",
+            "source": "scripted-live-agent-run"
+          },
+          "occurred_end": null,
+          "occurred_start": null,
+          "scores": {
+            "final": 1.0935772940745117,
+            "keyword": 0.5,
+            "reranker": null,
+            "semantic": 0.7092903083139854
+          },
+          "source_fact_ids": null,
+          "tags": [
+            "demo:hindsight-okf",
+            "project:beacon"
+          ],
+          "text": "Release Copilot ran Beacon database migration in staging | When: 2026-07-13 | Involving: Release Copilot (assistant)",
+          "type": "experience"
+        },
+        {
+          "chunk_id": "beacon-release-copilot_session-03-staging-migration_0",
+          "context": "The release copilot performs the first staging rehearsal",
+          "document_id": "session-03-staging-migration",
+          "entities": null,
+          "id": "e001c9d2-a30a-4702-b98d-abb6fcca569f",
+          "mentioned_at": "2026-07-13T11:45:00.030000+00:00",
+          "metadata": {
+            "scenario": "beacon-release",
+            "session_id": "session-03-staging-migration",
+            "source": "scripted-live-agent-run"
+          },
+          "occurred_end": null,
+          "occurred_start": null,
+          "scores": {
+            "final": 1.0618282760441802,
+            "keyword": 0.10000000149011612,
+            "reranker": null,
+            "semantic": 0.643338360985421
+          },
+          "source_fact_ids": null,
+          "tags": [
+            "demo:hindsight-okf",
+            "project:beacon"
+          ],
+          "text": "Release Copilot added PostgreSQL 16 pg_trgm preflight check to runbook | When: 2026-07-13 | Involving: Release Copilot (assistant)",
+          "type": "experience"
+        },
+        {
+          "chunk_id": "beacon-release-copilot_session-03-staging-migration_0",
+          "context": "The release copilot performs the first staging rehearsal",
+          "document_id": "session-03-staging-migration",
+          "entities": null,
+          "id": "22ef33c5-5ef0-4549-a6d8-f643a2b981b3",
+          "mentioned_at": "2026-07-13T11:45:00.010000+00:00",
+          "metadata": {
+            "scenario": "beacon-release",
+            "session_id": "session-03-staging-migration",
+            "source": "scripted-live-agent-run"
+          },
+          "occurred_end": null,
+          "occurred_start": null,
+          "scores": {
+            "final": 1.0300792577041158,
+            "keyword": 0.20000000298023224,
+            "reranker": null,
+            "semantic": 0.6111101276344147
+          },
+          "source_fact_ids": null,
+          "tags": [
+            "demo:hindsight-okf",
+            "project:beacon"
+          ],
+          "text": "Release Copilot enabled pg_trgm extension, reran migration successfully in 3 minutes 42 seconds | When: 2026-07-13 | Involving: Release Copilot (assistant)",
+          "type": "experience"
+        },
+        {
+          "chunk_id": "beacon-release-copilot_session-03-staging-migration_0",
+          "context": "The release copilot performs the first staging rehearsal",
+          "document_id": "session-03-staging-migration",
+          "entities": null,
+          "id": "5126ee8b-5392-4689-9751-857573adf897",
+          "mentioned_at": "2026-07-13T11:45:00.040000+00:00",
+          "metadata": {
+            "scenario": "beacon-release",
+            "session_id": "session-03-staging-migration",
+            "source": "scripted-live-agent-run"
+          },
+          "occurred_end": null,
+          "occurred_start": null,
+          "scores": {
+            "final": 0.9983302396608961,
+            "keyword": 0.10000000149011612,
+            "reranker": null,
+            "semantic": 0.6113544239228277
+          },
+          "source_fact_ids": null,
+          "tags": [
+            "demo:hindsight-okf",
+            "project:beacon"
+          ],
+          "text": "Dana instructed Release Copilot to keep failed first attempt as evidence | When: 2026-07-13 | Involving: Dana (user)",
+          "type": "world"
+        },
+        {
+          "chunk_id": "beacon-release-copilot_session-03-staging-migration_0",
+          "context": "The release copilot performs the first staging rehearsal",
+          "document_id": "session-03-staging-migration",
+          "entities": null,
+          "id": "91302433-de54-43c9-868b-eae24cf6b565",
+          "mentioned_at": "2026-07-13T11:45:00.020000+00:00",
+          "metadata": {
+            "scenario": "beacon-release",
+            "session_id": "session-03-staging-migration",
+            "source": "scripted-live-agent-run"
+          },
+          "occurred_end": null,
+          "occurred_start": null,
+          "scores": {
+            "final": 0.9665812213263553,
+            "keyword": 0.10000000149011612,
+            "reranker": null,
+            "semantic": 0.5573394034707201
+          },
+          "source_fact_ids": null,
+          "tags": [
+            "demo:hindsight-okf",
+            "project:beacon"
+          ],
+          "text": "Release Copilot measured API p95 latency at 185 milliseconds | When: 2026-07-13 | Involving: Release Copilot (assistant)",
+          "type": "experience"
+        },
+        {
+          "chunk_id": "beacon-release-copilot_session-01-kickoff_0",
+          "context": "Beacon release kickoff between Dana and the release copilot",
+          "document_id": "session-01-kickoff",
+          "entities": null,
+          "id": "e8d02e32-023f-4988-8d1d-1f7a5d851a3e",
+          "mentioned_at": "2026-07-06T09:00:00.030000+00:00",
+          "metadata": {
+            "scenario": "beacon-release",
+            "session_id": "session-01-kickoff",
+            "source": "scripted-live-agent-run"
+          },
+          "occurred_end": null,
+          "occurred_start": null,
+          "scores": {
+            "final": 0.9314996983746641,
+            "keyword": null,
+            "reranker": null,
+            "semantic": 0.6346353263826963
+          },
+          "source_fact_ids": null,
+          "tags": [
+            "demo:hindsight-okf",
+            "project:beacon"
+          ],
+          "text": "Helios API release Beacon uses PostgreSQL 16 and Redis 7.2",
+          "type": "world"
+        },
+        {
+          "chunk_id": "beacon-release-copilot_session-06-cache-correction_0",
+          "context": "A proposed cache setting is corrected before release",
+          "document_id": "session-06-cache-correction",
+          "entities": null,
+          "id": "db5dae1e-09a4-4ac6-8f25-b039f747e690",
+          "mentioned_at": "2026-07-21T13:05:00.010000+00:00",
+          "metadata": {
+            "scenario": "beacon-release",
+            "session_id": "session-06-cache-correction",
+            "source": "scripted-live-agent-run"
+          },
+          "occurred_end": null,
+          "occurred_start": null,
+          "scores": {
+            "final": 0.906728297027775,
+            "keyword": null,
+            "reranker": null,
+            "semantic": 0.634502091080076
+          },
+          "source_fact_ids": null,
+          "tags": [
+            "demo:hindsight-okf",
+            "project:beacon"
+          ],
+          "text": "The approved production TTL for the feature-flag cache is 6 hours | When: 2026-07-21 | Involving: user (Dana)",
+          "type": "world"
+        },
+        {
+          "chunk_id": "beacon-release-copilot_session-08-current-truth_0",
+          "context": "Dana signs off the current truth and identifies superseded values",
+          "document_id": "session-08-current-truth",
+          "entities": null,
+          "id": "133e6f34-bf84-45c1-8ee3-64b69aa31a9c",
+          "mentioned_at": "2026-07-25T08:15:00.030000+00:00",
+          "metadata": {
+            "scenario": "beacon-release",
+            "session_id": "session-08-current-truth",
+            "source": "scripted-live-agent-run"
+          },
+          "occurred_end": null,
+          "occurred_start": null,
+          "scores": {
+            "final": 0.8764516129032258,
+            "keyword": null,
+            "reranker": null,
+            "semantic": 0.6307593584060713
+          },
+          "source_fact_ids": null,
+          "tags": [
+            "demo:hindsight-okf",
+            "project:beacon"
+          ],
+          "text": "Cache TTL is 6 hours",
+          "type": "world"
+        },
+        {
+          "chunk_id": "beacon-release-copilot_session-07-final-rehearsal_0",
+          "context": "The release copilot completes the final rehearsal",
+          "document_id": "session-07-final-rehearsal",
+          "entities": null,
+          "id": "8c9fbc3a-b05e-473a-9d27-c8e20ab9f534",
+          "mentioned_at": "2026-07-24T17:40:00.010000+00:00",
+          "metadata": {
+            "scenario": "beacon-release",
+            "session_id": "session-07-final-rehearsal",
+            "source": "scripted-live-agent-run"
+          },
+          "occurred_end": null,
+          "occurred_start": null,
+          "scores": {
+            "final": 0.8443163434731269,
+            "keyword": null,
+            "reranker": null,
+            "semantic": 0.6254170909772581
+          },
+          "source_fact_ids": null,
+          "tags": [
+            "demo:hindsight-okf",
+            "project:beacon"
+          ],
+          "text": "pg_trgm preflight passed, migration completed in 3 minutes 39 seconds, 10 percent canary simulation stayed at 0.3 percent errors, p95 latency was 181 milliseconds | When: 2026-07-24 | Involving: Release Copilot",
+          "type": "experience"
+        },
+        {
+          "chunk_id": "beacon-release-copilot_session-01-kickoff_0",
+          "context": "Beacon release kickoff between Dana and the release copilot",
+          "document_id": "session-01-kickoff",
+          "entities": null,
+          "id": "dd088698-e8d2-4908-b425-12677179c011",
+          "mentioned_at": "2026-07-06T09:00:00+00:00",
+          "metadata": {
+            "scenario": "beacon-release",
+            "session_id": "session-01-kickoff",
+            "source": "scripted-live-agent-run"
+          },
+          "occurred_end": null,
+          "occurred_start": null,
+          "scores": {
+            "final": 0.8049563429832205,
+            "keyword": null,
+            "reranker": null,
+            "semantic": 0.6250228062285677
+          },
+          "source_fact_ids": null,
+          "tags": [
+            "demo:hindsight-okf",
+            "project:beacon"
+          ],
+          "text": "Dana preparing Helios API release named Beacon | When: 2026-07-06 | Involving: Dana",
+          "type": "world"
+        }
+      ],
+      "expected_groups": [
+        [
+          "postgresql 16",
+          "postgres 16"
+        ],
+        [
+          "pg_trgm"
+        ]
+      ],
+      "id": "database-preflight",
+      "passed": true,
+      "question": "What database prerequisite did staging reveal?",
+      "score": 1.0
+    },
+    {
+      "answer": "Dana decided to start Beacon with 10% canary rollout for 30 minutes, promoting only if error rate < 1% and p95 latency < 250ms, with immediate rollback on threshold breach | When: 2026-07-16 | Involving: Dana (user)\nRelease Copilot updated go/no-go checklist with 10% canary rollout, 30-minute duration, and error rate < 1% and p95 latency < 250ms thresholds for rollback | When: 2026-07-16 | Involving: Release Copilot (assistant)\nCanary deployment is 10 percent for 30 minutes; roll back if errors exceed 1 percent or p95 latency exceeds 250 milliseconds\nHelios API release Beacon uses PostgreSQL 16 and Redis 7.2\nDana preparing Helios API release named Beacon | When: 2026-07-06 | Involving: Dana\nDana confirms Beacon releases on Tuesday, August 4 at 14:00 UTC with Luis Ortega as DRI and Priya Shah as backup | When: 2026-08-04 | Involving: Dana (user), Luis Ortega (DRI), Priya Shah (backup)\nRelease Copilot ran Beacon database migration in staging | When: 2026-07-13 | Involving: Release Copilot (assistant)\nBeacon releases never occur on Fridays\npg_trgm preflight passed, migration completed in 3 minutes 39 seconds, 10 percent canary simulation stayed at 0.3 percent errors, p95 latency was 181 milliseconds | When: 2026-07-24 | Involving: Release Copilot\nDana states Maya is on leave during release and no longer Beacon DRI | When: 2026-07-20 | Involving: Dana (user)",
+      "evidence": [
+        {
+          "chunk_id": "beacon-release-copilot_session-04-rollout-decision_0",
+          "context": "The team chooses a canary and rollback policy",
+          "document_id": "session-04-rollout-decision",
+          "entities": null,
+          "id": "3e3caf33-5810-4b86-b204-193dd543336d",
+          "mentioned_at": "2026-07-16T16:10:00+00:00",
+          "metadata": {
+            "scenario": "beacon-release",
+            "session_id": "session-04-rollout-decision",
+            "source": "scripted-live-agent-run"
+          },
+          "occurred_end": null,
+          "occurred_start": null,
+          "scores": {
+            "final": 1.095321965341616,
+            "keyword": 0.9000000357627869,
+            "reranker": null,
+            "semantic": 0.8129552845047503
+          },
+          "source_fact_ids": null,
+          "tags": [
+            "demo:hindsight-okf",
+            "project:beacon"
+          ],
+          "text": "Dana decided to start Beacon with 10% canary rollout for 30 minutes, promoting only if error rate < 1% and p95 latency < 250ms, with immediate rollback on threshold breach | When: 2026-07-16 | Involving: Dana (user)",
+          "type": "world"
+        },
+        {
+          "chunk_id": "beacon-release-copilot_session-04-rollout-decision_0",
+          "context": "The team chooses a canary and rollback policy",
+          "document_id": "session-04-rollout-decision",
+          "entities": null,
+          "id": "c6fa0c1a-a745-4190-89c9-b20744478014",
+          "mentioned_at": "2026-07-16T16:10:00.010000+00:00",
+          "metadata": {
+            "scenario": "beacon-release",
+            "session_id": "session-04-rollout-decision",
+            "source": "scripted-live-agent-run"
+          },
+          "occurred_end": null,
+          "occurred_start": null,
+          "scores": {
+            "final": 1.0635222954416634,
+            "keyword": 0.699999988079071,
+            "reranker": null,
+            "semantic": 0.7405149561320236
+          },
+          "source_fact_ids": null,
+          "tags": [
+            "demo:hindsight-okf",
+            "project:beacon"
+          ],
+          "text": "Release Copilot updated go/no-go checklist with 10% canary rollout, 30-minute duration, and error rate < 1% and p95 latency < 250ms thresholds for rollback | When: 2026-07-16 | Involving: Release Copilot (assistant)",
+          "type": "experience"
+        },
+        {
+          "chunk_id": "beacon-release-copilot_session-08-current-truth_0",
+          "context": "Dana signs off the current truth and identifies superseded values",
+          "document_id": "session-08-current-truth",
+          "entities": null,
+          "id": "5ba3437c-6320-4503-97c3-92a82a4ada02",
+          "mentioned_at": "2026-07-25T08:15:00.020000+00:00",
+          "metadata": {
+            "scenario": "beacon-release",
+            "session_id": "session-08-current-truth",
+            "source": "scripted-live-agent-run"
+          },
+          "occurred_end": null,
+          "occurred_start": null,
+          "scores": {
+            "final": 1.0361290322580645,
+            "keyword": 0.20000000298023224,
+            "reranker": null,
+            "semantic": 0.7680756173224047
+          },
+          "source_fact_ids": null,
+          "tags": [
+            "demo:hindsight-okf",
+            "project:beacon"
+          ],
+          "text": "Canary deployment is 10 percent for 30 minutes; roll back if errors exceed 1 percent or p95 latency exceeds 250 milliseconds",
+          "type": "world"
+        },
+        {
+          "chunk_id": "beacon-release-copilot_session-01-kickoff_0",
+          "context": "Beacon release kickoff between Dana and the release copilot",
+          "document_id": "session-01-kickoff",
+          "entities": null,
+          "id": "e8d02e32-023f-4988-8d1d-1f7a5d851a3e",
+          "mentioned_at": "2026-07-06T09:00:00.030000+00:00",
+          "metadata": {
+            "scenario": "beacon-release",
+            "session_id": "session-01-kickoff",
+            "source": "scripted-live-agent-run"
+          },
+          "occurred_end": null,
+          "occurred_start": null,
+          "scores": {
+            "final": 0.9947713746418569,
+            "keyword": 0.30000001192092896,
+            "reranker": null,
+            "semantic": 0.696317931899963
+          },
+          "source_fact_ids": null,
+          "tags": [
+            "demo:hindsight-okf",
+            "project:beacon"
+          ],
+          "text": "Helios API release Beacon uses PostgreSQL 16 and Redis 7.2",
+          "type": "world"
+        },
+        {
+          "chunk_id": "beacon-release-copilot_session-01-kickoff_0",
+          "context": "Beacon release kickoff between Dana and the release copilot",
+          "document_id": "session-01-kickoff",
+          "entities": null,
+          "id": "dd088698-e8d2-4908-b425-12677179c011",
+          "mentioned_at": "2026-07-06T09:00:00+00:00",
+          "metadata": {
+            "scenario": "beacon-release",
+            "session_id": "session-01-kickoff",
+            "source": "scripted-live-agent-run"
+          },
+          "occurred_end": null,
+          "occurred_start": null,
+          "scores": {
+            "final": 0.9631355357041637,
+            "keyword": 0.30000001192092896,
+            "reranker": null,
+            "semantic": 0.6506716012954712
+          },
+          "source_fact_ids": null,
+          "tags": [
+            "demo:hindsight-okf",
+            "project:beacon"
+          ],
+          "text": "Dana preparing Helios API release named Beacon | When: 2026-07-06 | Involving: Dana",
+          "type": "world"
+        },
+        {
+          "chunk_id": "beacon-release-copilot_session-08-current-truth_0",
+          "context": "Dana signs off the current truth and identifies superseded values",
+          "document_id": "session-08-current-truth",
+          "entities": null,
+          "id": "f820ac21-15b2-470e-a775-10eefcc3fe0d",
+          "mentioned_at": "2026-07-25T08:15:00+00:00",
+          "metadata": {
+            "scenario": "beacon-release",
+            "session_id": "session-08-current-truth",
+            "source": "scripted-live-agent-run"
+          },
+          "occurred_end": null,
+          "occurred_start": null,
+          "scores": {
+            "final": 0.9403225806451614,
+            "keyword": 0.20000000298023224,
+            "reranker": null,
+            "semantic": 0.6583714877588456
+          },
+          "source_fact_ids": null,
+          "tags": [
+            "demo:hindsight-okf",
+            "project:beacon"
+          ],
+          "text": "Dana confirms Beacon releases on Tuesday, August 4 at 14:00 UTC with Luis Ortega as DRI and Priya Shah as backup | When: 2026-08-04 | Involving: Dana (user), Luis Ortega (DRI), Priya Shah (backup)",
+          "type": "world"
+        },
+        {
+          "chunk_id": "beacon-release-copilot_session-03-staging-migration_0",
+          "context": "The release copilot performs the first staging rehearsal",
+          "document_id": "session-03-staging-migration",
+          "entities": null,
+          "id": "87687b43-e9e7-4ae4-9aea-e345fa9f6c49",
+          "mentioned_at": "2026-07-13T11:45:00+00:00",
+          "metadata": {
+            "scenario": "beacon-release",
+            "session_id": "session-03-staging-migration",
+            "source": "scripted-live-agent-run"
+          },
+          "occurred_end": null,
+          "occurred_start": null,
+          "scores": {
+            "final": 0.9030831835554429,
+            "keyword": 0.20000000298023224,
+            "reranker": null,
+            "semantic": 0.6658692359924316
+          },
+          "source_fact_ids": null,
+          "tags": [
+            "demo:hindsight-okf",
+            "project:beacon"
+          ],
+          "text": "Release Copilot ran Beacon database migration in staging | When: 2026-07-13 | Involving: Release Copilot (assistant)",
+          "type": "experience"
+        },
+        {
+          "chunk_id": "beacon-release-copilot_session-08-current-truth_0",
+          "context": "Dana signs off the current truth and identifies superseded values",
+          "document_id": "session-08-current-truth",
+          "entities": null,
+          "id": "b53baf4d-1d08-4b33-a830-a33f4c4a3292",
+          "mentioned_at": "2026-07-25T08:15:00.010000+00:00",
+          "metadata": {
+            "scenario": "beacon-release",
+            "session_id": "session-08-current-truth",
+            "source": "scripted-live-agent-run"
+          },
+          "occurred_end": null,
+          "occurred_start": null,
+          "scores": {
+            "final": 0.8764516129032258,
+            "keyword": 0.20000000298023224,
+            "reranker": null,
+            "semantic": 0.6571131144233426
+          },
+          "source_fact_ids": null,
+          "tags": [
+            "demo:hindsight-okf",
+            "project:beacon"
+          ],
+          "text": "Beacon releases never occur on Fridays",
+          "type": "world"
+        },
+        {
+          "chunk_id": "beacon-release-copilot_session-07-final-rehearsal_0",
+          "context": "The release copilot completes the final rehearsal",
+          "document_id": "session-07-final-rehearsal",
+          "entities": null,
+          "id": "8c9fbc3a-b05e-473a-9d27-c8e20ab9f534",
+          "mentioned_at": "2026-07-24T17:40:00.010000+00:00",
+          "metadata": {
+            "scenario": "beacon-release",
+            "session_id": "session-07-final-rehearsal",
+            "source": "scripted-live-agent-run"
+          },
+          "occurred_end": null,
+          "occurred_start": null,
+          "scores": {
+            "final": 0.8443163423308478,
+            "keyword": 0.20000000298023224,
+            "reranker": null,
+            "semantic": 0.6657819747924805
+          },
+          "source_fact_ids": null,
+          "tags": [
+            "demo:hindsight-okf",
+            "project:beacon"
+          ],
+          "text": "pg_trgm preflight passed, migration completed in 3 minutes 39 seconds, 10 percent canary simulation stayed at 0.3 percent errors, p95 latency was 181 milliseconds | When: 2026-07-24 | Involving: Release Copilot",
+          "type": "experience"
+        },
+        {
+          "chunk_id": "beacon-release-copilot_session-05-owner-handoff_0",
+          "context": "The original release owner hands off responsibility",
+          "document_id": "session-05-owner-handoff",
+          "entities": null,
+          "id": "0ae5e0a8-7034-40e3-8054-17b472172085",
+          "mentioned_at": "2026-07-20T08:30:00+00:00",
+          "metadata": {
+            "scenario": "beacon-release",
+            "session_id": "session-05-owner-handoff",
+            "source": "scripted-live-agent-run"
+          },
+          "occurred_end": null,
+          "occurred_start": null,
+          "scores": {
+            "final": 0.8106147230890272,
+            "keyword": 0.20000000298023224,
+            "reranker": null,
+            "semantic": 0.6327045559883118
+          },
+          "source_fact_ids": null,
+          "tags": [
+            "demo:hindsight-okf",
+            "project:beacon"
+          ],
+          "text": "Dana states Maya is on leave during release and no longer Beacon DRI | When: 2026-07-20 | Involving: Dana (user)",
+          "type": "world"
+        }
+      ],
+      "expected_groups": [
+        [
+          "10 percent",
+          "10%"
+        ],
+        [
+          "30 minutes",
+          "30-minute"
+        ],
+        [
+          "1 percent",
+          "1%"
+        ],
+        [
+          "250 milliseconds",
+          "250 ms",
+          "250ms"
+        ]
+      ],
+      "id": "canary-policy",
+      "passed": true,
+      "question": "What is the Beacon canary and rollback policy?",
+      "score": 1.0
+    },
+    {
+      "answer": "The approved production TTL for the feature-flag cache is 6 hours | When: 2026-07-21 | Involving: user (Dana)\nThe draft runbook has been corrected to state the feature-flag cache TTL as 6 hours | When: 2026-07-21 | Involving: Release Copilot\nCache TTL is 6 hours\nThe shorter TTL (6 hours) is required to unwind the feature-flag on the same shift | When: 2026-07-21 | Involving: user (Dana)\nThe old July 31 date with Maya-as-DRI and 24-hour TTL are superseded historical values | When: 2026-07-31 | Involving: Maya (user)\nRelease Copilot added PostgreSQL 16 pg_trgm preflight check to runbook | When: 2026-07-13 | Involving: Release Copilot (assistant)\nRelease Copilot updated go/no-go checklist with 10% canary rollout, 30-minute duration, and error rate < 1% and p95 latency < 250ms thresholds for rollback | When: 2026-07-16 | Involving: Release Copilot (assistant)\nHelios API release Beacon uses PostgreSQL 16 and Redis 7.2\npg_trgm preflight passed, migration completed in 3 minutes 39 seconds, 10 percent canary simulation stayed at 0.3 percent errors, p95 latency was 181 milliseconds | When: 2026-07-24 | Involving: Release Copilot\nRelease Copilot set reporting preferences for future updates: Markdown with at most five bullets and no tables | Involving: Release Copilot (assistant)",
+      "evidence": [
+        {
+          "chunk_id": "beacon-release-copilot_session-06-cache-correction_0",
+          "context": "A proposed cache setting is corrected before release",
+          "document_id": "session-06-cache-correction",
+          "entities": null,
+          "id": "db5dae1e-09a4-4ac6-8f25-b039f747e690",
+          "mentioned_at": "2026-07-21T13:05:00.010000+00:00",
+          "metadata": {
+            "scenario": "beacon-release",
+            "session_id": "session-06-cache-correction",
+            "source": "scripted-live-agent-run"
+          },
+          "occurred_end": null,
+          "occurred_start": null,
+          "scores": {
+            "final": 1.0979912943856227,
+            "keyword": 1.0,
+            "reranker": null,
+            "semantic": 0.8568094458097565
+          },
+          "source_fact_ids": null,
+          "tags": [
+            "demo:hindsight-okf",
+            "project:beacon"
+          ],
+          "text": "The approved production TTL for the feature-flag cache is 6 hours | When: 2026-07-21 | Involving: user (Dana)",
+          "type": "world"
+        },
+        {
+          "chunk_id": "beacon-release-copilot_session-06-cache-correction_0",
+          "context": "A proposed cache setting is corrected before release",
+          "document_id": "session-06-cache-correction",
+          "entities": null,
+          "id": "faa97c13-4f1a-4fb0-aff5-ebec7b4ac271",
+          "mentioned_at": "2026-07-21T13:05:00.030000+00:00",
+          "metadata": {
+            "scenario": "beacon-release",
+            "session_id": "session-06-cache-correction",
+            "source": "scripted-live-agent-run"
+          },
+          "occurred_end": null,
+          "occurred_start": null,
+          "scores": {
+            "final": 1.0661141278975839,
+            "keyword": 0.9000000357627869,
+            "reranker": null,
+            "semantic": 0.8193611717985664
+          },
+          "source_fact_ids": null,
+          "tags": [
+            "demo:hindsight-okf",
+            "project:beacon"
+          ],
+          "text": "The draft runbook has been corrected to state the feature-flag cache TTL as 6 hours | When: 2026-07-21 | Involving: Release Copilot",
+          "type": "experience"
+        },
+        {
+          "chunk_id": "beacon-release-copilot_session-08-current-truth_0",
+          "context": "Dana signs off the current truth and identifies superseded values",
+          "document_id": "session-08-current-truth",
+          "entities": null,
+          "id": "133e6f34-bf84-45c1-8ee3-64b69aa31a9c",
+          "mentioned_at": "2026-07-25T08:15:00.030000+00:00",
+          "metadata": {
+            "scenario": "beacon-release",
+            "session_id": "session-08-current-truth",
+            "source": "scripted-live-agent-run"
+          },
+          "occurred_end": null,
+          "occurred_start": null,
+          "scores": {
+            "final": 1.0361290322580645,
+            "keyword": 0.4000000059604645,
+            "reranker": null,
+            "semantic": 0.7846859950201517
+          },
+          "source_fact_ids": null,
+          "tags": [
+            "demo:hindsight-okf",
+            "project:beacon"
+          ],
+          "text": "Cache TTL is 6 hours",
+          "type": "world"
+        },
+        {
+          "chunk_id": "beacon-release-copilot_session-06-cache-correction_0",
+          "context": "A proposed cache setting is corrected before release",
+          "document_id": "session-06-cache-correction",
+          "entities": null,
+          "id": "11b0bc6b-0f41-496b-b69a-91782b40840a",
+          "mentioned_at": "2026-07-21T13:05:00.020000+00:00",
+          "metadata": {
+            "scenario": "beacon-release",
+            "session_id": "session-06-cache-correction",
+            "source": "scripted-live-agent-run"
+          },
+          "occurred_end": null,
+          "occurred_start": null,
+          "scores": {
+            "final": 1.0023597946099323,
+            "keyword": 0.800000011920929,
+            "reranker": null,
+            "semantic": 0.774817585945135
+          },
+          "source_fact_ids": null,
+          "tags": [
+            "demo:hindsight-okf",
+            "project:beacon"
+          ],
+          "text": "The shorter TTL (6 hours) is required to unwind the feature-flag on the same shift | When: 2026-07-21 | Involving: user (Dana)",
+          "type": "world"
+        },
+        {
+          "chunk_id": "beacon-release-copilot_session-08-current-truth_0",
+          "context": "Dana signs off the current truth and identifies superseded values",
+          "document_id": "session-08-current-truth",
+          "entities": null,
+          "id": "1f19f991-1902-42e3-aa79-5d7a49465d99",
+          "mentioned_at": "2026-07-25T08:15:00.040000+00:00",
+          "metadata": {
+            "scenario": "beacon-release",
+            "session_id": "session-08-current-truth",
+            "source": "scripted-live-agent-run"
+          },
+          "occurred_end": null,
+          "occurred_start": null,
+          "scores": {
+            "final": 0.9722580645161292,
+            "keyword": 0.20000000298023224,
+            "reranker": null,
+            "semantic": 0.6522668600082444
+          },
+          "source_fact_ids": null,
+          "tags": [
+            "demo:hindsight-okf",
+            "project:beacon"
+          ],
+          "text": "The old July 31 date with Maya-as-DRI and 24-hour TTL are superseded historical values | When: 2026-07-31 | Involving: Maya (user)",
+          "type": "world"
+        },
+        {
+          "chunk_id": "beacon-release-copilot_session-03-staging-migration_0",
+          "context": "The release copilot performs the first staging rehearsal",
+          "document_id": "session-03-staging-migration",
+          "entities": null,
+          "id": "e001c9d2-a30a-4702-b98d-abb6fcca569f",
+          "mentioned_at": "2026-07-13T11:45:00.030000+00:00",
+          "metadata": {
+            "scenario": "beacon-release",
+            "session_id": "session-03-staging-migration",
+            "source": "scripted-live-agent-run"
+          },
+          "occurred_end": null,
+          "occurred_start": null,
+          "scores": {
+            "final": 0.9348322007713075,
+            "keyword": null,
+            "reranker": null,
+            "semantic": 0.671702344912152
+          },
+          "source_fact_ids": null,
+          "tags": [
+            "demo:hindsight-okf",
+            "project:beacon"
+          ],
+          "text": "Release Copilot added PostgreSQL 16 pg_trgm preflight check to runbook | When: 2026-07-13 | Involving: Release Copilot (assistant)",
+          "type": "experience"
+        },
+        {
+          "chunk_id": "beacon-release-copilot_session-04-rollout-decision_0",
+          "context": "The team chooses a canary and rollback policy",
+          "document_id": "session-04-rollout-decision",
+          "entities": null,
+          "id": "c6fa0c1a-a745-4190-89c9-b20744478014",
+          "mentioned_at": "2026-07-16T16:10:00.010000+00:00",
+          "metadata": {
+            "scenario": "beacon-release",
+            "session_id": "session-04-rollout-decision",
+            "source": "scripted-live-agent-run"
+          },
+          "occurred_end": null,
+          "occurred_start": null,
+          "scores": {
+            "final": 0.9045239445441483,
+            "keyword": null,
+            "reranker": null,
+            "semantic": 0.6444210814112128
+          },
+          "source_fact_ids": null,
+          "tags": [
+            "demo:hindsight-okf",
+            "project:beacon"
+          ],
+          "text": "Release Copilot updated go/no-go checklist with 10% canary rollout, 30-minute duration, and error rate < 1% and p95 latency < 250ms thresholds for rollback | When: 2026-07-16 | Involving: Release Copilot (assistant)",
+          "type": "experience"
+        },
+        {
+          "chunk_id": "beacon-release-copilot_session-01-kickoff_0",
+          "context": "Beacon release kickoff between Dana and the release copilot",
+          "document_id": "session-01-kickoff",
+          "entities": null,
+          "id": "e8d02e32-023f-4988-8d1d-1f7a5d851a3e",
+          "mentioned_at": "2026-07-06T09:00:00.030000+00:00",
+          "metadata": {
+            "scenario": "beacon-release",
+            "session_id": "session-01-kickoff",
+            "source": "scripted-live-agent-run"
+          },
+          "occurred_end": null,
+          "occurred_start": null,
+          "scores": {
+            "final": 0.8682280185210772,
+            "keyword": null,
+            "reranker": null,
+            "semantic": 0.6309882810417355
+          },
+          "source_fact_ids": null,
+          "tags": [
+            "demo:hindsight-okf",
+            "project:beacon"
+          ],
+          "text": "Helios API release Beacon uses PostgreSQL 16 and Redis 7.2",
+          "type": "world"
+        },
+        {
+          "chunk_id": "beacon-release-copilot_session-07-final-rehearsal_0",
+          "context": "The release copilot completes the final rehearsal",
+          "document_id": "session-07-final-rehearsal",
+          "entities": null,
+          "id": "8c9fbc3a-b05e-473a-9d27-c8e20ab9f534",
+          "mentioned_at": "2026-07-24T17:40:00.010000+00:00",
+          "metadata": {
+            "scenario": "beacon-release",
+            "session_id": "session-07-final-rehearsal",
+            "source": "scripted-live-agent-run"
+          },
+          "occurred_end": null,
+          "occurred_start": null,
+          "scores": {
+            "final": 0.8443163413261761,
+            "keyword": null,
+            "reranker": null,
+            "semantic": 0.6237467155607523
+          },
+          "source_fact_ids": null,
+          "tags": [
+            "demo:hindsight-okf",
+            "project:beacon"
+          ],
+          "text": "pg_trgm preflight passed, migration completed in 3 minutes 39 seconds, 10 percent canary simulation stayed at 0.3 percent errors, p95 latency was 181 milliseconds | When: 2026-07-24 | Involving: Release Copilot",
+          "type": "experience"
+        },
+        {
+          "chunk_id": "beacon-release-copilot_session-02-policy-correction_0",
+          "context": "Dana corrects a scheduling conflict and sets reporting preferences",
+          "document_id": "session-02-policy-correction",
+          "entities": null,
+          "id": "04cfb942-86b0-4cce-b5ea-2431bd5f81db",
+          "mentioned_at": "2026-07-08T15:20:00.010000+00:00",
+          "metadata": {
+            "scenario": "beacon-release",
+            "session_id": "session-02-policy-correction",
+            "source": "scripted-live-agent-run"
+          },
+          "occurred_end": null,
+          "occurred_start": null,
+          "scores": {
+            "final": 0.8058727007620177,
+            "keyword": null,
+            "reranker": null,
+            "semantic": 0.619452081951376
+          },
+          "source_fact_ids": null,
+          "tags": [
+            "demo:hindsight-okf",
+            "project:beacon"
+          ],
+          "text": "Release Copilot set reporting preferences for future updates: Markdown with at most five bullets and no tables | Involving: Release Copilot (assistant)",
+          "type": "experience"
+        }
+      ],
+      "expected_groups": [
+        [
+          "6 hours",
+          "six hours"
+        ]
+      ],
+      "id": "cache-ttl",
+      "passed": true,
+      "question": "What is the approved feature-flag cache TTL?",
+      "score": 1.0
+    },
+    {
+      "answer": "Release Copilot enabled pg_trgm extension, reran migration successfully in 3 minutes 42 seconds | When: 2026-07-13 | Involving: Release Copilot (assistant)\nRelease Copilot set reporting preferences for future updates: Markdown with at most five bullets and no tables | Involving: Release Copilot (assistant)\nRelease Copilot measured API p95 latency at 185 milliseconds | When: 2026-07-13 | Involving: Release Copilot (assistant)\nRelease Copilot ran Beacon database migration in staging | When: 2026-07-13 | Involving: Release Copilot (assistant)\nRelease Copilot updated go/no-go checklist with 10% canary rollout, 30-minute duration, and error rate < 1% and p95 latency < 250ms thresholds for rollback | When: 2026-07-16 | Involving: Release Copilot (assistant)\nHelios API release Beacon uses PostgreSQL 16 and Redis 7.2\nRelease Copilot added PostgreSQL 16 pg_trgm preflight check to runbook | When: 2026-07-13 | Involving: Release Copilot (assistant)\nThe draft runbook has been corrected to state the feature-flag cache TTL as 6 hours | When: 2026-07-21 | Involving: Release Copilot\nRelease Copilot recorded tentative date, owner, and data-store versions | When: 2026-07-06 | Involving: Release Copilot (assistant)\nRelease Copilot completed final Beacon rehearsal using current runbook | When: 2026-07-24 | Involving: Release Copilot",
+      "evidence": [
+        {
+          "chunk_id": "beacon-release-copilot_session-03-staging-migration_0",
+          "context": "The release copilot performs the first staging rehearsal",
+          "document_id": "session-03-staging-migration",
+          "entities": null,
+          "id": "22ef33c5-5ef0-4549-a6d8-f643a2b981b3",
+          "mentioned_at": "2026-07-13T11:45:00.010000+00:00",
+          "metadata": {
+            "scenario": "beacon-release",
+            "session_id": "session-03-staging-migration",
+            "source": "scripted-live-agent-run"
+          },
+          "occurred_end": null,
+          "occurred_start": null,
+          "scores": {
+            "final": 1.093577289846937,
+            "keyword": 0.4000000059604645,
+            "reranker": null,
+            "semantic": 0.6347781259086027
+          },
+          "source_fact_ids": null,
+          "tags": [
+            "demo:hindsight-okf",
+            "project:beacon"
+          ],
+          "text": "Release Copilot enabled pg_trgm extension, reran migration successfully in 3 minutes 42 seconds | When: 2026-07-13 | Involving: Release Copilot (assistant)",
+          "type": "experience"
+        },
+        {
+          "chunk_id": "beacon-release-copilot_session-02-policy-correction_0",
+          "context": "Dana corrects a scheduling conflict and sets reporting preferences",
+          "document_id": "session-02-policy-correction",
+          "entities": null,
+          "id": "04cfb942-86b0-4cce-b5ea-2431bd5f81db",
+          "mentioned_at": "2026-07-08T15:20:00.010000+00:00",
+          "metadata": {
+            "scenario": "beacon-release",
+            "session_id": "session-02-policy-correction",
+            "source": "scripted-live-agent-run"
+          },
+          "occurred_end": null,
+          "occurred_start": null,
+          "scores": {
+            "final": 1.0592475222578714,
+            "keyword": 0.4000000059604645,
+            "reranker": null,
+            "semantic": 0.6468213621590944
+          },
+          "source_fact_ids": null,
+          "tags": [
+            "demo:hindsight-okf",
+            "project:beacon"
+          ],
+          "text": "Release Copilot set reporting preferences for future updates: Markdown with at most five bullets and no tables | Involving: Release Copilot (assistant)",
+          "type": "experience"
+        },
+        {
+          "chunk_id": "beacon-release-copilot_session-03-staging-migration_0",
+          "context": "The release copilot performs the first staging rehearsal",
+          "document_id": "session-03-staging-migration",
+          "entities": null,
+          "id": "91302433-de54-43c9-868b-eae24cf6b565",
+          "mentioned_at": "2026-07-13T11:45:00.020000+00:00",
+          "metadata": {
+            "scenario": "beacon-release",
+            "session_id": "session-03-staging-migration",
+            "source": "scripted-live-agent-run"
+          },
+          "occurred_end": null,
+          "occurred_start": null,
+          "scores": {
+            "final": 1.0300792537220131,
+            "keyword": 0.4000000059604645,
+            "reranker": null,
+            "semantic": 0.6129838689584932
+          },
+          "source_fact_ids": null,
+          "tags": [
+            "demo:hindsight-okf",
+            "project:beacon"
+          ],
+          "text": "Release Copilot measured API p95 latency at 185 milliseconds | When: 2026-07-13 | Involving: Release Copilot (assistant)",
+          "type": "experience"
+        },
+        {
+          "chunk_id": "beacon-release-copilot_session-03-staging-migration_0",
+          "context": "The release copilot performs the first staging rehearsal",
+          "document_id": "session-03-staging-migration",
+          "entities": null,
+          "id": "87687b43-e9e7-4ae4-9aea-e345fa9f6c49",
+          "mentioned_at": "2026-07-13T11:45:00+00:00",
+          "metadata": {
+            "scenario": "beacon-release",
+            "session_id": "session-03-staging-migration",
+            "source": "scripted-live-agent-run"
+          },
+          "occurred_end": null,
+          "occurred_start": null,
+          "scores": {
+            "final": 0.9983302355120495,
+            "keyword": 0.4000000059604645,
+            "reranker": null,
+            "semantic": 0.619915173063858
+          },
+          "source_fact_ids": null,
+          "tags": [
+            "demo:hindsight-okf",
+            "project:beacon"
+          ],
+          "text": "Release Copilot ran Beacon database migration in staging | When: 2026-07-13 | Involving: Release Copilot (assistant)",
+          "type": "experience"
+        },
+        {
+          "chunk_id": "beacon-release-copilot_session-04-rollout-decision_0",
+          "context": "The team chooses a canary and rollback policy",
+          "document_id": "session-04-rollout-decision",
+          "entities": null,
+          "id": "c6fa0c1a-a745-4190-89c9-b20744478014",
+          "mentioned_at": "2026-07-16T16:10:00.010000+00:00",
+          "metadata": {
+            "scenario": "beacon-release",
+            "session_id": "session-04-rollout-decision",
+            "source": "scripted-live-agent-run"
+          },
+          "occurred_end": null,
+          "occurred_start": null,
+          "scores": {
+            "final": 0.9681232830739229,
+            "keyword": 0.4000000059604645,
+            "reranker": null,
+            "semantic": 0.6035534795921977
+          },
+          "source_fact_ids": null,
+          "tags": [
+            "demo:hindsight-okf",
+            "project:beacon"
+          ],
+          "text": "Release Copilot updated go/no-go checklist with 10% canary rollout, 30-minute duration, and error rate < 1% and p95 latency < 250ms thresholds for rollback | When: 2026-07-16 | Involving: Release Copilot (assistant)",
+          "type": "experience"
+        },
+        {
+          "chunk_id": "beacon-release-copilot_session-01-kickoff_0",
+          "context": "Beacon release kickoff between Dana and the release copilot",
+          "document_id": "session-01-kickoff",
+          "entities": null,
+          "id": "e8d02e32-023f-4988-8d1d-1f7a5d851a3e",
+          "mentioned_at": "2026-07-06T09:00:00.030000+00:00",
+          "metadata": {
+            "scenario": "beacon-release",
+            "session_id": "session-01-kickoff",
+            "source": "scripted-live-agent-run"
+          },
+          "occurred_end": null,
+          "occurred_start": null,
+          "scores": {
+            "final": 0.9314996947065561,
+            "keyword": 0.30000001192092896,
+            "reranker": null,
+            "semantic": 0.622191671533144
+          },
+          "source_fact_ids": null,
+          "tags": [
+            "demo:hindsight-okf",
+            "project:beacon"
+          ],
+          "text": "Helios API release Beacon uses PostgreSQL 16 and Redis 7.2",
+          "type": "world"
+        },
+        {
+          "chunk_id": "beacon-release-copilot_session-03-staging-migration_0",
+          "context": "The release copilot performs the first staging rehearsal",
+          "document_id": "session-03-staging-migration",
+          "entities": null,
+          "id": "e001c9d2-a30a-4702-b98d-abb6fcca569f",
+          "mentioned_at": "2026-07-13T11:45:00.030000+00:00",
+          "metadata": {
+            "scenario": "beacon-release",
+            "session_id": "session-03-staging-migration",
+            "source": "scripted-live-agent-run"
+          },
+          "occurred_end": null,
+          "occurred_start": null,
+          "scores": {
+            "final": 0.9030831813976988,
+            "keyword": 0.4000000059604645,
+            "reranker": null,
+            "semantic": 0.615257309048501
+          },
+          "source_fact_ids": null,
+          "tags": [
+            "demo:hindsight-okf",
+            "project:beacon"
+          ],
+          "text": "Release Copilot added PostgreSQL 16 pg_trgm preflight check to runbook | When: 2026-07-13 | Involving: Release Copilot (assistant)",
+          "type": "experience"
+        },
+        {
+          "chunk_id": "beacon-release-copilot_session-06-cache-correction_0",
+          "context": "A proposed cache setting is corrected before release",
+          "document_id": "session-06-cache-correction",
+          "entities": null,
+          "id": "faa97c13-4f1a-4fb0-aff5-ebec7b4ac271",
+          "mentioned_at": "2026-07-21T13:05:00.030000+00:00",
+          "metadata": {
+            "scenario": "beacon-release",
+            "session_id": "session-06-cache-correction",
+            "source": "scripted-live-agent-run"
+          },
+          "occurred_end": null,
+          "occurred_start": null,
+          "scores": {
+            "final": 0.8748511270175009,
+            "keyword": 0.30000001192092896,
+            "reranker": null,
+            "semantic": 0.629657811583673
+          },
+          "source_fact_ids": null,
+          "tags": [
+            "demo:hindsight-okf",
+            "project:beacon"
+          ],
+          "text": "The draft runbook has been corrected to state the feature-flag cache TTL as 6 hours | When: 2026-07-21 | Involving: Release Copilot",
+          "type": "experience"
+        },
+        {
+          "chunk_id": "beacon-release-copilot_session-01-kickoff_0",
+          "context": "Beacon release kickoff between Dana and the release copilot",
+          "document_id": "session-01-kickoff",
+          "entities": null,
+          "id": "3cd50df6-b420-4e14-aa73-d2478f6042de",
+          "mentioned_at": "2026-07-06T09:00:00.040000+00:00",
+          "metadata": {
+            "scenario": "beacon-release",
+            "session_id": "session-01-kickoff",
+            "source": "scripted-live-agent-run"
+          },
+          "occurred_end": null,
+          "occurred_start": null,
+          "scores": {
+            "final": 0.8365921786908044,
+            "keyword": 0.5,
+            "reranker": null,
+            "semantic": 0.5661189218688745
+          },
+          "source_fact_ids": null,
+          "tags": [
+            "demo:hindsight-okf",
+            "project:beacon"
+          ],
+          "text": "Release Copilot recorded tentative date, owner, and data-store versions | When: 2026-07-06 | Involving: Release Copilot (assistant)",
+          "type": "experience"
+        },
+        {
+          "chunk_id": "beacon-release-copilot_session-07-final-rehearsal_0",
+          "context": "The release copilot completes the final rehearsal",
+          "document_id": "session-07-final-rehearsal",
+          "entities": null,
+          "id": "e1a11d3d-85a7-452c-98b5-ce5179870bcb",
+          "mentioned_at": "2026-07-24T17:40:00+00:00",
+          "metadata": {
+            "scenario": "beacon-release",
+            "session_id": "session-07-final-rehearsal",
+            "source": "scripted-live-agent-run"
+          },
+          "occurred_end": null,
+          "occurred_start": null,
+          "scores": {
+            "final": 0.8123884113016131,
+            "keyword": 0.4000000059604645,
+            "reranker": null,
+            "semantic": 0.5699721235053556
+          },
+          "source_fact_ids": null,
+          "tags": [
+            "demo:hindsight-okf",
+            "project:beacon"
+          ],
+          "text": "Release Copilot completed final Beacon rehearsal using current runbook | When: 2026-07-24 | Involving: Release Copilot",
+          "type": "experience"
+        }
+      ],
+      "expected_groups": [
+        [
+          "markdown"
+        ],
+        [
+          "five bullets",
+          "5 bullets"
+        ],
+        [
+          "no tables",
+          "without tables"
+        ]
+      ],
+      "id": "update-format",
+      "passed": true,
+      "question": "How should release updates be formatted?",
+      "score": 1.0
+    },
+    {
+      "answer": "Release Copilot ran Beacon database migration in staging | When: 2026-07-13 | Involving: Release Copilot (assistant)\nDana marked rehearsal successful and plan ready | When: 2026-07-24 | Involving: Dana\nRelease Copilot enabled pg_trgm extension, reran migration successfully in 3 minutes 42 seconds | When: 2026-07-13 | Involving: Release Copilot (assistant)\nDana instructed Release Copilot to keep failed first attempt as evidence | When: 2026-07-13 | Involving: Dana (user)\npg_trgm preflight passed, migration completed in 3 minutes 39 seconds, 10 percent canary simulation stayed at 0.3 percent errors, p95 latency was 181 milliseconds | When: 2026-07-24 | Involving: Release Copilot\nRelease Copilot completed final Beacon rehearsal using current runbook | When: 2026-07-24 | Involving: Release Copilot\nRelease Copilot added PostgreSQL 16 pg_trgm preflight check to runbook | When: 2026-07-13 | Involving: Release Copilot (assistant)\nRelease Copilot measured API p95 latency at 185 milliseconds | When: 2026-07-13 | Involving: Release Copilot (assistant)\nPriya Shah is backup for Tuesday, August 4 at 14:00 UTC | When: 2026-08-04 | Involving: Priya Shah (backup)\nLuis Ortega is DRI for Tuesday, August 4 at 14:00 UTC | When: 2026-08-04 | Involving: Luis Ortega (DRI)",
+      "evidence": [
+        {
+          "chunk_id": "beacon-release-copilot_session-03-staging-migration_0",
+          "context": "The release copilot performs the first staging rehearsal",
+          "document_id": "session-03-staging-migration",
+          "entities": null,
+          "id": "87687b43-e9e7-4ae4-9aea-e345fa9f6c49",
+          "mentioned_at": "2026-07-13T11:45:00+00:00",
+          "metadata": {
+            "scenario": "beacon-release",
+            "session_id": "session-03-staging-migration",
+            "source": "scripted-live-agent-run"
+          },
+          "occurred_end": null,
+          "occurred_start": null,
+          "scores": {
+            "final": 1.0935772884722477,
+            "keyword": 0.699999988079071,
+            "reranker": null,
+            "semantic": 0.6780070662498474
+          },
+          "source_fact_ids": null,
+          "tags": [
+            "demo:hindsight-okf",
+            "project:beacon"
+          ],
+          "text": "Release Copilot ran Beacon database migration in staging | When: 2026-07-13 | Involving: Release Copilot (assistant)",
+          "type": "experience"
+        },
+        {
+          "chunk_id": "beacon-release-copilot_session-07-final-rehearsal_0",
+          "context": "The release copilot completes the final rehearsal",
+          "document_id": "session-07-final-rehearsal",
+          "entities": null,
+          "id": "60b9b948-8608-4ceb-aa82-99eb0f6bb220",
+          "mentioned_at": "2026-07-24T17:40:00.040000+00:00",
+          "metadata": {
+            "scenario": "beacon-release",
+            "session_id": "session-07-final-rehearsal",
+            "source": "scripted-live-agent-run"
+          },
+          "occurred_end": null,
+          "occurred_start": null,
+          "scores": {
+            "final": 1.0678118409023074,
+            "keyword": 0.30000001192092896,
+            "reranker": null,
+            "semantic": 0.6573798256331633
+          },
+          "source_fact_ids": null,
+          "tags": [
+            "demo:hindsight-okf",
+            "project:beacon"
+          ],
+          "text": "Dana marked rehearsal successful and plan ready | When: 2026-07-24 | Involving: Dana",
+          "type": "world"
+        },
+        {
+          "chunk_id": "beacon-release-copilot_session-03-staging-migration_0",
+          "context": "The release copilot performs the first staging rehearsal",
+          "document_id": "session-03-staging-migration",
+          "entities": null,
+          "id": "22ef33c5-5ef0-4549-a6d8-f643a2b981b3",
+          "mentioned_at": "2026-07-13T11:45:00.010000+00:00",
+          "metadata": {
+            "scenario": "beacon-release",
+            "session_id": "session-03-staging-migration",
+            "source": "scripted-live-agent-run"
+          },
+          "occurred_end": null,
+          "occurred_start": null,
+          "scores": {
+            "final": 1.0300792524271445,
+            "keyword": 0.6000000238418579,
+            "reranker": null,
+            "semantic": 0.6168982982635498
+          },
+          "source_fact_ids": null,
+          "tags": [
+            "demo:hindsight-okf",
+            "project:beacon"
+          ],
+          "text": "Release Copilot enabled pg_trgm extension, reran migration successfully in 3 minutes 42 seconds | When: 2026-07-13 | Involving: Release Copilot (assistant)",
+          "type": "experience"
+        },
+        {
+          "chunk_id": "beacon-release-copilot_session-03-staging-migration_0",
+          "context": "The release copilot performs the first staging rehearsal",
+          "document_id": "session-03-staging-migration",
+          "entities": null,
+          "id": "5126ee8b-5392-4689-9751-857573adf897",
+          "mentioned_at": "2026-07-13T11:45:00.040000+00:00",
+          "metadata": {
+            "scenario": "beacon-release",
+            "session_id": "session-03-staging-migration",
+            "source": "scripted-live-agent-run"
+          },
+          "occurred_end": null,
+          "occurred_start": null,
+          "scores": {
+            "final": 0.998330234546571,
+            "keyword": 0.5,
+            "reranker": null,
+            "semantic": 0.5811670172910115
+          },
+          "source_fact_ids": null,
+          "tags": [
+            "demo:hindsight-okf",
+            "project:beacon"
+          ],
+          "text": "Dana instructed Release Copilot to keep failed first attempt as evidence | When: 2026-07-13 | Involving: Dana (user)",
+          "type": "world"
+        },
+        {
+          "chunk_id": "beacon-release-copilot_session-07-final-rehearsal_0",
+          "context": "The release copilot completes the final rehearsal",
+          "document_id": "session-07-final-rehearsal",
+          "entities": null,
+          "id": "8c9fbc3a-b05e-473a-9d27-c8e20ab9f534",
+          "mentioned_at": "2026-07-24T17:40:00.010000+00:00",
+          "metadata": {
+            "scenario": "beacon-release",
+            "session_id": "session-07-final-rehearsal",
+            "source": "scripted-live-agent-run"
+          },
+          "occurred_end": null,
+          "occurred_start": null,
+          "scores": {
+            "final": 0.9720280543409129,
+            "keyword": 0.30000001192092896,
+            "reranker": null,
+            "semantic": 0.6303241848945618
+          },
+          "source_fact_ids": null,
+          "tags": [
+            "demo:hindsight-okf",
+            "project:beacon"
+          ],
+          "text": "pg_trgm preflight passed, migration completed in 3 minutes 39 seconds, 10 percent canary simulation stayed at 0.3 percent errors, p95 latency was 181 milliseconds | When: 2026-07-24 | Involving: Release Copilot",
+          "type": "experience"
+        },
+        {
+          "chunk_id": "beacon-release-copilot_session-07-final-rehearsal_0",
+          "context": "The release copilot completes the final rehearsal",
+          "document_id": "session-07-final-rehearsal",
+          "entities": null,
+          "id": "e1a11d3d-85a7-452c-98b5-ce5179870bcb",
+          "mentioned_at": "2026-07-24T17:40:00+00:00",
+          "metadata": {
+            "scenario": "beacon-release",
+            "session_id": "session-07-final-rehearsal",
+            "source": "scripted-live-agent-run"
+          },
+          "occurred_end": null,
+          "occurred_start": null,
+          "scores": {
+            "final": 0.9401001254944796,
+            "keyword": 0.20000000298023224,
+            "reranker": null,
+            "semantic": 0.6341386219345713
+          },
+          "source_fact_ids": null,
+          "tags": [
+            "demo:hindsight-okf",
+            "project:beacon"
+          ],
+          "text": "Release Copilot completed final Beacon rehearsal using current runbook | When: 2026-07-24 | Involving: Release Copilot",
+          "type": "experience"
+        },
+        {
+          "chunk_id": "beacon-release-copilot_session-03-staging-migration_0",
+          "context": "The release copilot performs the first staging rehearsal",
+          "document_id": "session-03-staging-migration",
+          "entities": null,
+          "id": "e001c9d2-a30a-4702-b98d-abb6fcca569f",
+          "mentioned_at": "2026-07-13T11:45:00.030000+00:00",
+          "metadata": {
+            "scenario": "beacon-release",
+            "session_id": "session-03-staging-migration",
+            "source": "scripted-live-agent-run"
+          },
+          "occurred_end": null,
+          "occurred_start": null,
+          "scores": {
+            "final": 0.9030831803148439,
+            "keyword": 0.30000001192092896,
+            "reranker": null,
+            "semantic": 0.5283297300338745
+          },
+          "source_fact_ids": null,
+          "tags": [
+            "demo:hindsight-okf",
+            "project:beacon"
+          ],
+          "text": "Release Copilot added PostgreSQL 16 pg_trgm preflight check to runbook | When: 2026-07-13 | Involving: Release Copilot (assistant)",
+          "type": "experience"
+        },
+        {
+          "chunk_id": "beacon-release-copilot_session-03-staging-migration_0",
+          "context": "The release copilot performs the first staging rehearsal",
+          "document_id": "session-03-staging-migration",
+          "entities": null,
+          "id": "91302433-de54-43c9-868b-eae24cf6b565",
+          "mentioned_at": "2026-07-13T11:45:00.020000+00:00",
+          "metadata": {
+            "scenario": "beacon-release",
+            "session_id": "session-03-staging-migration",
+            "source": "scripted-live-agent-run"
+          },
+          "occurred_end": null,
+          "occurred_start": null,
+          "scores": {
+            "final": 0.8713341622063691,
+            "keyword": 0.30000001192092896,
+            "reranker": null,
+            "semantic": 0.5200340151786804
+          },
+          "source_fact_ids": null,
+          "tags": [
+            "demo:hindsight-okf",
+            "project:beacon"
+          ],
+          "text": "Release Copilot measured API p95 latency at 185 milliseconds | When: 2026-07-13 | Involving: Release Copilot (assistant)",
+          "type": "experience"
+        },
+        {
+          "chunk_id": "beacon-release-copilot_session-07-final-rehearsal_0",
+          "context": "The release copilot completes the final rehearsal",
+          "document_id": "session-07-final-rehearsal",
+          "entities": null,
+          "id": "a298a440-9c06-414e-b514-868893d9ac58",
+          "mentioned_at": "2026-07-24T17:40:00.030000+00:00",
+          "metadata": {
+            "scenario": "beacon-release",
+            "session_id": "session-07-final-rehearsal",
+            "source": "scripted-live-agent-run"
+          },
+          "occurred_end": null,
+          "occurred_start": null,
+          "scores": {
+            "final": 0.8443163392694135,
+            "keyword": 0.10000000149011612,
+            "reranker": null,
+            "semantic": 0.5022192747062231
+          },
+          "source_fact_ids": null,
+          "tags": [
+            "demo:hindsight-okf",
+            "project:beacon"
+          ],
+          "text": "Priya Shah is backup for Tuesday, August 4 at 14:00 UTC | When: 2026-08-04 | Involving: Priya Shah (backup)",
+          "type": "world"
+        },
+        {
+          "chunk_id": "beacon-release-copilot_session-07-final-rehearsal_0",
+          "context": "The release copilot completes the final rehearsal",
+          "document_id": "session-07-final-rehearsal",
+          "entities": null,
+          "id": "3a3b7054-5867-45b0-aedd-0b93ecb7302f",
+          "mentioned_at": "2026-07-24T17:40:00.020000+00:00",
+          "metadata": {
+            "scenario": "beacon-release",
+            "session_id": "session-07-final-rehearsal",
+            "source": "scripted-live-agent-run"
+          },
+          "occurred_end": null,
+          "occurred_start": null,
+          "scores": {
+            "final": 0.8123884104266629,
+            "keyword": 0.10000000149011612,
+            "reranker": null,
+            "semantic": 0.4808035934210897
+          },
+          "source_fact_ids": null,
+          "tags": [
+            "demo:hindsight-okf",
+            "project:beacon"
+          ],
+          "text": "Luis Ortega is DRI for Tuesday, August 4 at 14:00 UTC | When: 2026-08-04 | Involving: Luis Ortega (DRI)",
+          "type": "world"
+        }
+      ],
+      "expected_groups": [
+        [
+          "failed"
+        ],
+        [
+          "pg_trgm"
+        ],
+        [
+          "3 minutes 42 seconds",
+          "3m42"
+        ],
+        [
+          "185 milliseconds",
+          "185 ms"
+        ]
+      ],
+      "id": "staging-experience",
+      "passed": true,
+      "question": "What happened during the first staging migration rehearsal?",
+      "score": 1.0
+    },
+    {
+      "answer": "Dana corrected scheduling conflict by cancelling July 31 deployment and moving release to Tuesday, August 4, 2026 at 14:00 UTC | When: 2026-07-08 | Involving: Dana (user)\nCanary deployment is 10 percent for 30 minutes; roll back if errors exceed 1 percent or p95 latency exceeds 250 milliseconds\nBeacon releases never occur on Fridays\nThe shorter TTL (6 hours) is required to unwind the feature-flag on the same shift | When: 2026-07-21 | Involving: user (Dana)\nThe draft runbook has been corrected to state the feature-flag cache TTL as 6 hours | When: 2026-07-21 | Involving: Release Copilot\nThe approved production TTL for the feature-flag cache is 6 hours | When: 2026-07-21 | Involving: user (Dana)\nRelease Copilot ran Beacon database migration in staging | When: 2026-07-13 | Involving: Release Copilot (assistant)\nPriya Shah is backup for Tuesday, August 4 at 14:00 UTC | When: 2026-08-04 | Involving: Priya Shah (backup)\nCache TTL is 6 hours\nDana decided to start Beacon with 10% canary rollout for 30 minutes, promoting only if error rate < 1% and p95 latency < 250ms, with immediate rollback on threshold breach | When: 2026-07-16 | Involving: Dana (user)",
+      "evidence": [
+        {
+          "chunk_id": "beacon-release-copilot_session-02-policy-correction_0",
+          "context": "Dana corrects a scheduling conflict and sets reporting preferences",
+          "document_id": "session-02-policy-correction",
+          "entities": null,
+          "id": "aa11ef0a-eaa1-4a7c-a63f-c4dda436df24",
+          "mentioned_at": "2026-07-08T15:20:00+00:00",
+          "metadata": {
+            "scenario": "beacon-release",
+            "session_id": "session-02-policy-correction",
+            "source": "scripted-live-agent-run"
+          },
+          "occurred_end": null,
+          "occurred_start": null,
+          "scores": {
+            "final": 1.090919372289263,
+            "keyword": 0.10000000149011612,
+            "reranker": null,
+            "semantic": 0.7518683967747268
+          },
+          "source_fact_ids": null,
+          "tags": [
+            "demo:hindsight-okf",
+            "project:beacon"
+          ],
+          "text": "Dana corrected scheduling conflict by cancelling July 31 deployment and moving release to Tuesday, August 4, 2026 at 14:00 UTC | When: 2026-07-08 | Involving: Dana (user)",
+          "type": "world"
+        },
+        {
+          "chunk_id": "beacon-release-copilot_session-08-current-truth_0",
+          "context": "Dana signs off the current truth and identifies superseded values",
+          "document_id": "session-08-current-truth",
+          "entities": null,
+          "id": "5ba3437c-6320-4503-97c3-92a82a4ada02",
+          "mentioned_at": "2026-07-25T08:15:00.020000+00:00",
+          "metadata": {
+            "scenario": "beacon-release",
+            "session_id": "session-08-current-truth",
+            "source": "scripted-live-agent-run"
+          },
+          "occurred_end": null,
+          "occurred_start": null,
+          "scores": {
+            "final": 1.0680645161290323,
+            "keyword": 0.20000000298023224,
+            "reranker": null,
+            "semantic": 0.6970834370951031
+          },
+          "source_fact_ids": null,
+          "tags": [
+            "demo:hindsight-okf",
+            "project:beacon"
+          ],
+          "text": "Canary deployment is 10 percent for 30 minutes; roll back if errors exceed 1 percent or p95 latency exceeds 250 milliseconds",
+          "type": "world"
+        },
+        {
+          "chunk_id": "beacon-release-copilot_session-08-current-truth_0",
+          "context": "Dana signs off the current truth and identifies superseded values",
+          "document_id": "session-08-current-truth",
+          "entities": null,
+          "id": "b53baf4d-1d08-4b33-a830-a33f4c4a3292",
+          "mentioned_at": "2026-07-25T08:15:00.010000+00:00",
+          "metadata": {
+            "scenario": "beacon-release",
+            "session_id": "session-08-current-truth",
+            "source": "scripted-live-agent-run"
+          },
+          "occurred_end": null,
+          "occurred_start": null,
+          "scores": {
+            "final": 1.0361290322580645,
+            "keyword": null,
+            "reranker": null,
+            "semantic": 0.6966733155651889
+          },
+          "source_fact_ids": null,
+          "tags": [
+            "demo:hindsight-okf",
+            "project:beacon"
+          ],
+          "text": "Beacon releases never occur on Fridays",
+          "type": "world"
+        },
+        {
+          "chunk_id": "beacon-release-copilot_session-06-cache-correction_0",
+          "context": "A proposed cache setting is corrected before release",
+          "document_id": "session-06-cache-correction",
+          "entities": null,
+          "id": "11b0bc6b-0f41-496b-b69a-91782b40840a",
+          "mentioned_at": "2026-07-21T13:05:00.020000+00:00",
+          "metadata": {
+            "scenario": "beacon-release",
+            "session_id": "session-06-cache-correction",
+            "source": "scripted-live-agent-run"
+          },
+          "occurred_end": null,
+          "occurred_start": null,
+          "scores": {
+            "final": 1.0023597907531707,
+            "keyword": null,
+            "reranker": null,
+            "semantic": 0.6888633184947573
+          },
+          "source_fact_ids": null,
+          "tags": [
+            "demo:hindsight-okf",
+            "project:beacon"
+          ],
+          "text": "The shorter TTL (6 hours) is required to unwind the feature-flag on the same shift | When: 2026-07-21 | Involving: user (Dana)",
+          "type": "world"
+        },
+        {
+          "chunk_id": "beacon-release-copilot_session-06-cache-correction_0",
+          "context": "A proposed cache setting is corrected before release",
+          "document_id": "session-06-cache-correction",
+          "entities": null,
+          "id": "faa97c13-4f1a-4fb0-aff5-ebec7b4ac271",
+          "mentioned_at": "2026-07-21T13:05:00.030000+00:00",
+          "metadata": {
+            "scenario": "beacon-release",
+            "session_id": "session-06-cache-correction",
+            "source": "scripted-live-agent-run"
+          },
+          "occurred_end": null,
+          "occurred_start": null,
+          "scores": {
+            "final": 0.970482624318842,
+            "keyword": null,
+            "reranker": null,
+            "semantic": 0.6767204000520479
+          },
+          "source_fact_ids": null,
+          "tags": [
+            "demo:hindsight-okf",
+            "project:beacon"
+          ],
+          "text": "The draft runbook has been corrected to state the feature-flag cache TTL as 6 hours | When: 2026-07-21 | Involving: Release Copilot",
+          "type": "experience"
+        },
+        {
+          "chunk_id": "beacon-release-copilot_session-06-cache-correction_0",
+          "context": "A proposed cache setting is corrected before release",
+          "document_id": "session-06-cache-correction",
+          "entities": null,
+          "id": "db5dae1e-09a4-4ac6-8f25-b039f747e690",
+          "mentioned_at": "2026-07-21T13:05:00.010000+00:00",
+          "metadata": {
+            "scenario": "beacon-release",
+            "session_id": "session-06-cache-correction",
+            "source": "scripted-live-agent-run"
+          },
+          "occurred_end": null,
+          "occurred_start": null,
+          "scores": {
+            "final": 0.9386054577181904,
+            "keyword": null,
+            "reranker": null,
+            "semantic": 0.6652933359146118
+          },
+          "source_fact_ids": null,
+          "tags": [
+            "demo:hindsight-okf",
+            "project:beacon"
+          ],
+          "text": "The approved production TTL for the feature-flag cache is 6 hours | When: 2026-07-21 | Involving: user (Dana)",
+          "type": "world"
+        },
+        {
+          "chunk_id": "beacon-release-copilot_session-03-staging-migration_0",
+          "context": "The release copilot performs the first staging rehearsal",
+          "document_id": "session-03-staging-migration",
+          "entities": null,
+          "id": "87687b43-e9e7-4ae4-9aea-e345fa9f6c49",
+          "mentioned_at": "2026-07-13T11:45:00+00:00",
+          "metadata": {
+            "scenario": "beacon-release",
+            "session_id": "session-03-staging-migration",
+            "source": "scripted-live-agent-run"
+          },
+          "occurred_end": null,
+          "occurred_start": null,
+          "scores": {
+            "final": 0.9030831789859859,
+            "keyword": null,
+            "reranker": null,
+            "semantic": 0.6559330224990845
+          },
+          "source_fact_ids": null,
+          "tags": [
+            "demo:hindsight-okf",
+            "project:beacon"
+          ],
+          "text": "Release Copilot ran Beacon database migration in staging | When: 2026-07-13 | Involving: Release Copilot (assistant)",
+          "type": "experience"
+        },
+        {
+          "chunk_id": "beacon-release-copilot_session-07-final-rehearsal_0",
+          "context": "The release copilot completes the final rehearsal",
+          "document_id": "session-07-final-rehearsal",
+          "entities": null,
+          "id": "a298a440-9c06-414e-b514-868893d9ac58",
+          "mentioned_at": "2026-07-24T17:40:00.030000+00:00",
+          "metadata": {
+            "scenario": "beacon-release",
+            "session_id": "session-07-final-rehearsal",
+            "source": "scripted-live-agent-run"
+          },
+          "occurred_end": null,
+          "occurred_start": null,
+          "scores": {
+            "final": 0.8762442669347685,
+            "keyword": null,
+            "reranker": null,
+            "semantic": 0.6484461023940478
+          },
+          "source_fact_ids": null,
+          "tags": [
+            "demo:hindsight-okf",
+            "project:beacon"
+          ],
+          "text": "Priya Shah is backup for Tuesday, August 4 at 14:00 UTC | When: 2026-08-04 | Involving: Priya Shah (backup)",
+          "type": "world"
+        },
+        {
+          "chunk_id": "beacon-release-copilot_session-08-current-truth_0",
+          "context": "Dana signs off the current truth and identifies superseded values",
+          "document_id": "session-08-current-truth",
+          "entities": null,
+          "id": "133e6f34-bf84-45c1-8ee3-64b69aa31a9c",
+          "mentioned_at": "2026-07-25T08:15:00.030000+00:00",
+          "metadata": {
+            "scenario": "beacon-release",
+            "session_id": "session-08-current-truth",
+            "source": "scripted-live-agent-run"
+          },
+          "occurred_end": null,
+          "occurred_start": null,
+          "scores": {
+            "final": 0.8445161290322581,
+            "keyword": null,
+            "reranker": null,
+            "semantic": 0.6430754874303658
+          },
+          "source_fact_ids": null,
+          "tags": [
+            "demo:hindsight-okf",
+            "project:beacon"
+          ],
+          "text": "Cache TTL is 6 hours",
+          "type": "world"
+        },
+        {
+          "chunk_id": "beacon-release-copilot_session-04-rollout-decision_0",
+          "context": "The team chooses a canary and rollback policy",
+          "document_id": "session-04-rollout-decision",
+          "entities": null,
+          "id": "3e3caf33-5810-4b86-b204-193dd543336d",
+          "mentioned_at": "2026-07-16T16:10:00+00:00",
+          "metadata": {
+            "scenario": "beacon-release",
+            "session_id": "session-04-rollout-decision",
+            "source": "scripted-live-agent-run"
+          },
+          "occurred_end": null,
+          "occurred_start": null,
+          "scores": {
+            "final": 0.8091249316003168,
+            "keyword": null,
+            "reranker": null,
+            "semantic": 0.6411711168638208
+          },
+          "source_fact_ids": null,
+          "tags": [
+            "demo:hindsight-okf",
+            "project:beacon"
+          ],
+          "text": "Dana decided to start Beacon with 10% canary rollout for 30 minutes, promoting only if error rate < 1% and p95 latency < 250ms, with immediate rollback on threshold breach | When: 2026-07-16 | Involving: Dana (user)",
+          "type": "world"
+        }
+      ],
+      "expected_groups": [
+        [
+          "never deploy on fridays",
+          "never occur on fridays",
+          "no friday",
+          "not friday"
+        ]
+      ],
+      "id": "friday-policy",
+      "passed": true,
+      "question": "What day-of-week deployment constraint applies?",
+      "score": 1.0
+    }
+  ],
+  "passed": 8,
+  "questions": 8,
+  "retriever": "hindsight"
+}

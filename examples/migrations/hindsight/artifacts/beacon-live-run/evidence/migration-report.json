@@ -1,0 +1,42 @@
+{
+  "dry_run": {
+    "mapped_memories": 32,
+    "okf_nodes": 32,
+    "skipped": 0,
+    "type_counts": {
+      "event": 12,
+      "fact": 17,
+      "learning": 3
+    }
+  },
+  "okf_input_bundle": {
+    "bytes": 128341,
+    "files": 45,
+    "human_readable": true,
+    "snapshot_sha256": "620d50a301d9107c3c69bf1e9b4baa6805a36b2bbf6636d1316b16dfde54557b"
+  },
+  "provider_savings": {
+    "available": false,
+    "reason": "The shipped OKF importer has no --report option, and the local Hindsight source has no provider token, latency, or billing baseline. No synthetic savings are claimed.",
+    "storage_delta_bytes": 88123,
+    "storage_ratio": 3.1911
+  },
+  "schema": "hindsight-okf-migration-report/v1",
+  "source": {
+    "active_records": 32,
+    "archived_records": 3,
+    "fact_type_counts": {
+      "experience": 12,
+      "observation": 3,
+      "world": 20
+    },
+    "provider": "hindsight",
+    "records": 35,
+    "snapshot_bytes": 40218
+  },
+  "source_recall": {
+    "average_score": 1.0,
+    "passed": 8,
+    "questions": 8
+  }
+}

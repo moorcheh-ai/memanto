@@ -1,0 +1,23 @@
+# Captured from a real command; local absolute paths are normalized.
+$ <repo>/.venv/bin/memanto migrate okf <repo>/examples/migrations/hindsight/artifacts/beacon-live-run/hindsight-okf --agent hindsight-okf-beacon-20260726b
+
+╭─────────────────────────╮
+│ OKF -> Memanto  Migrate │
+╰─────────────────────────╯
+  … Loading OKF bundle from
+<repo>/examples/migrations/hindsight/artifacts/be
+acon-live-run/hindsight-okf
+  … Mapping OKF nodes onto Memanto schema...
+  … Importing batch 1/1 (32 memories)...
+
+╭────────────────────────────── Import complete ───────────────────────────────╮
+│ OKF nodes: 32                                                                │
+│ Mapped memories: 32  (skipped 0)                                             │
+│ Type breakdown: event: 12, fact: 17, learning: 3                             │
+│ Imported: 32  Failed: 0  Batches: 1                                          │
+│ Target agent: hindsight-okf-beacon-20260726b                                 │
+│                                                                              │
+│ Run dir: ~/.memanto/migrate/okf/20260726_020619                   │
+│ Mapped preview:                                                              │
+│ ~/.memanto/migrate/okf/20260726_020619/mapped_preview.json        │
+╰──────────────────────────────────────────────────────────────────────────────╯

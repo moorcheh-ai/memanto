@@ -1,0 +1,21 @@
+# Captured from a real command; local absolute paths are normalized.
+$ <repo>/.venv/bin/memanto memory export --okf --split type --limit 100 --agent hindsight-okf-beacon-20260726b --output ~/.memanto/exports/hindsight-okf-beacon-20260726b_roundtrip_okf
+
+╭───────────────────────────────────────────────────────────────────────────╮
+│ OKF Export                                                                │
+│ Agent: hindsight-okf-beacon-20260726b  •  Split: type  •  Limit: 100/type │
+╰───────────────────────────────────────────────────────────────────────────╯
+
+  OKF Bundle Counts
+┏━━━━━━━━━━━┳━━━━━━━┓
+┃ Type      ┃ Count ┃
+┡━━━━━━━━━━━╇━━━━━━━┩
+│ Facts     │    17 │
+│ Events    │    12 │
+│ Learnings │     3 │
+└───────────┴───────┘
+
+OK Exported 32 memories to OKF bundle!
+Bundle:
+~/.memanto/exports/hindsight-okf-beacon-20260726b_roundtrip_okf
+Completed in 7.53s
