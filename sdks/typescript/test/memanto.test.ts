@@ -18,6 +18,23 @@ function startFakeApi(agentId = "test-agent"): Promise<{
   recorded: Recorded[];
   close: () => void;
 }> {
+  return startFakeApiWithAuth(agentId, null);
+}
+
+/**
+ * Variant of the fake API that enforces `X-Api-Key` on management endpoints.
+ * When `requiredKey` is set, agent lookup/creation/activation/deletion/status
+ * return 401 unless the request carries the matching key. Memory endpoints
+ * stay open to any caller so the session-token path is unaffected.
+ */
+function startFakeApiWithAuth(
+  agentId = "test-agent",
+  requiredKey: string | null,
+): Promise<{
+  url: string;
+  recorded: Recorded[];
+  close: () => void;
+}> {
   const encodedAgentId = encodeURIComponent(agentId);
   return new Promise((resolve) => {
     const recorded: Recorded[] = [];
@@ -37,6 +54,28 @@ function startFakeApi(agentId = "test-agent"): Promise<{
         };
 
         if (url === "/health") return reply(200, { status: "ok" });
+
+        const isMemoryOp =
+          /\/remember(\/|$|\?)/.test(url) ||
+          /\/recall(\/|$|\?)/.test(url) ||
+          /\/answer(\/|$|\?)/.test(url) ||
+          /\/upload-file(\/|$|\?)/.test(url) ||
+          /\/daily-summary(\/|$|\?)/.test(url) ||
+          /\/conflicts(\/|$|\?)/.test(url) ||
+          /\/memories(\/|$|\?)/.test(url) ||
+          /\/extract(\/|$|\?)/.test(url);
+        const isManagement =
+          !isMemoryOp &&
+          (url === "/api/v2/status" ||
+            url === "/api/v2/agents" ||
+            url.startsWith(`/api/v2/agents/${encodedAgentId}`));
+        if (isManagement && requiredKey) {
+          const supplied = req.headers["x-api-key"];
+          if (supplied !== requiredKey) {
+            return reply(401, { detail: "missing or invalid api key" });
+          }
+        }
+
         if (url === "/api/v2/status" && req.method === "GET")
           return reply(200, {
             session_id: "existing-session",
@@ -221,6 +260,68 @@ describe("Memanto", () => {
 
   it("rejects empty agentId", () => {
     expect(() => new Memanto({ agentId: "" })).toThrow(/agentId is required/);
+  });
+
+  it("attaches X-Api-Key to management requests but not memory ops", async () => {
+    const api = await startFakeApi();
+    cleanupFns.push(api.close);
+
+    const m = new Memanto({
+      agentId: "test-agent",
+      baseUrl: api.url,
+      apiKey: "secret-mgmt-key",
+    });
+    cleanupFns.push(() => m.close());
+
+    await m.remember({ content: "Het likes coffee" });
+
+    // Management calls: agent lookup, creation, activation.
+    const mgmt = api.recorded.filter((r) => !r.url.endsWith("/remember"));
+    expect(mgmt.length).toBeGreaterThanOrEqual(3);
+    for (const r of mgmt) {
+      expect(r.headers["x-api-key"]).toBe("secret-mgmt-key");
+      expect(r.headers["x-session-token"]).toBeUndefined();
+    }
+
+    // Session-scoped memory call: X-Session-Token only, never the API key.
+    const memory = api.recorded.find((r) => r.url.endsWith("/remember"));
+    expect(memory?.headers["x-session-token"]).toBe("fake-token");
+    expect(memory?.headers["x-api-key"]).toBeUndefined();
+  });
+
+  it("authenticates management requests against a protected server", async () => {
+    const api = await startFakeApiWithAuth("test-agent", "secret-mgmt-key");
+    cleanupFns.push(api.close);
+
+    // First, a client WITHOUT the API key fails bootstrap with 401.
+    const anonymous = new Memanto({ agentId: "test-agent", baseUrl: api.url });
+    cleanupFns.push(() => anonymous.close());
+    await expect(anonymous.remember({ content: "no key" })).rejects.toThrow(
+      /401/,
+    );
+
+    // Then the same bootstrap succeeds when the key is provided.
+    api.recorded.length = 0;
+    const authed = new Memanto({
+      agentId: "test-agent",
+      baseUrl: api.url,
+      apiKey: "secret-mgmt-key",
+    });
+    cleanupFns.push(() => authed.close());
+    await expect(
+      authed.remember({ content: "with key" }),
+    ).resolves.toMatchObject({ memory_id: "mem-1" });
+  });
+
+  it("does not send X-Api-Key when none is configured", async () => {
+    const api = await startFakeApi();
+    cleanupFns.push(api.close);
+
+    const m = new Memanto({ agentId: "test-agent", baseUrl: api.url });
+    cleanupFns.push(() => m.close());
+
+    await m.status();
+    expect(api.recorded[0]?.headers["x-api-key"]).toBeUndefined();
   });
 
   it("percent-encodes agentId in URL path segments", async () => {

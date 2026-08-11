@@ -1,0 +1,1721 @@
+{
+  "provider": "qdrant",
+  "collection": "memories",
+  "exported_at": "2026-08-07T05:54:21.079429+00:00",
+  "memories": [
+    {
+      "id": "1",
+      "content": "Prefers deep work blocks before noon; meetings after 14:00 only.",
+      "memory": "Prefers deep work blocks before noon; meetings after 14:00 only.",
+      "type": "preference",
+      "tags": [
+        "schedule"
+      ],
+      "created_at": "2026-06-27T05:54:21.005000+00:00",
+      "source": "qdrant",
+      "payload": {
+        "metadata": {
+          "created_at": 1782539661005,
+          "memory_type": "preference",
+          "user_id": "tim@moorcheh.ai",
+          "agent_id": "assistant-v1",
+          "run_id": "run-8503"
+        },
+        "score": 0.959,
+        "hash": "28854874f5ccefb6",
+        "categories": [
+          "schedule"
+        ],
+        "created_at": 1782539661005,
+        "memory_type": "preference",
+        "user_id": "tim@moorcheh.ai",
+        "agent_id": "assistant-v1",
+        "run_id": "run-8503"
+      },
+      "collection": "memories",
+      "has_vector": false
+    },
+    {
+      "id": "2",
+      "content": "Strong preference for Python over TypeScript for backend services.",
+      "memory": "Strong preference for Python over TypeScript for backend services.",
+      "type": "preference",
+      "tags": [
+        "language"
+      ],
+      "created_at": "2026-06-29T05:54:21+00:00",
+      "source": "agent-memory.log",
+      "payload": {
+        "metadata": {
+          "source": "agent-memory.log",
+          "created_at": 1782712461,
+          "type": "preference",
+          "tags": [
+            "language"
+          ]
+        },
+        "source": "agent-memory.log",
+        "created_at": 1782712461,
+        "type": "preference",
+        "tags": [
+          "language"
+        ]
+      },
+      "collection": "memories",
+      "has_vector": false
+    },
+    {
+      "id": "3",
+      "content": "note: Dislikes auto-generated commit messages — writes manual, detailed commit bodies.\nkind: preference\ncreated_at: 1783058061005",
+      "memory": "note: Dislikes auto-generated commit messages — writes manual, detailed commit bodies.\nkind: preference\ncreated_at: 1783058061005",
+      "type": "preference",
+      "tags": [
+        "git"
+      ],
+      "created_at": "2026-07-03T05:54:21.005000+00:00",
+      "source": "qdrant",
+      "payload": {
+        "note": "Dislikes auto-generated commit messages — writes manual, detailed commit bodies.",
+        "kind": "preference",
+        "created_at": 1783058061005,
+        "tags": [
+          "git"
+        ]
+      },
+      "collection": "memories",
+      "has_vector": false
+    },
+    {
+      "id": "4",
+      "content": "Prefers weekly planning on Monday mornings over daily standups.",
+      "memory": "Prefers weekly planning on Monday mornings over daily standups.",
+      "type": "preference",
+      "tags": [
+        "process"
+      ],
+      "created_at": "2026-07-05T05:54:21.006000+00:00",
+      "source": "qdrant",
+      "payload": {
+        "metadata": {
+          "created_at": 1783230861006,
+          "memory_type": "preference",
+          "user_id": "tim@moorcheh.ai",
+          "agent_id": "assistant-v1",
+          "run_id": "run-4703"
+        },
+        "score": 0.939,
+        "hash": "31e4db0106ff4274",
+        "categories": [
+          "process"
+        ],
+        "created_at": 1783230861006,
+        "memory_type": "preference",
+        "user_id": "tim@moorcheh.ai",
+        "agent_id": "assistant-v1",
+        "run_id": "run-4703"
+      },
+      "collection": "memories",
+      "has_vector": false
+    },
+    {
+      "id": "5",
+      "content": "Wants test suites to fail loudly on missing AI answers rather than degrade silently.",
+      "memory": "Wants test suites to fail loudly on missing AI answers rather than degrade silently.",
+      "type": "preference",
+      "tags": [
+        "testing"
+      ],
+      "created_at": "2026-07-17T05:54:21+00:00",
+      "source": "agent-memory.log",
+      "payload": {
+        "metadata": {
+          "source": "agent-memory.log",
+          "created_at": 1784267661,
+          "type": "preference",
+          "tags": [
+            "testing"
+          ]
+        },
+        "source": "agent-memory.log",
+        "created_at": 1784267661,
+        "type": "preference",
+        "tags": [
+          "testing"
+        ]
+      },
+      "collection": "memories",
+      "has_vector": false
+    },
+    {
+      "id": "6",
+      "content": "note: Prefers Postgres over MySQL for new projects.\nkind: preference\ncreated_at: 1784526861006",
+      "memory": "note: Prefers Postgres over MySQL for new projects.\nkind: preference\ncreated_at: 1784526861006",
+      "type": "preference",
+      "tags": [
+        "database"
+      ],
+      "created_at": "2026-07-20T05:54:21.006000+00:00",
+      "source": "qdrant",
+      "payload": {
+        "note": "Prefers Postgres over MySQL for new projects.",
+        "kind": "preference",
+        "created_at": 1784526861006,
+        "tags": [
+          "database"
+        ]
+      },
+      "collection": "memories",
+      "has_vector": false
+    },
+    {
+      "id": "7",
+      "content": "Prefers RFC-style design docs before large refactors.",
+      "memory": "Prefers RFC-style design docs before large refactors.",
+      "type": "preference",
+      "tags": [
+        "process"
+      ],
+      "created_at": "2026-07-24T05:54:21.006000+00:00",
+      "source": "qdrant",
+      "payload": {
+        "metadata": {
+          "created_at": 1784872461006,
+          "memory_type": "preference",
+          "user_id": "tim@moorcheh.ai",
+          "agent_id": "assistant-v1",
+          "run_id": "run-4940"
+        },
+        "score": 0.913,
+        "hash": "dc78eede7e9a936f",
+        "categories": [
+          "process"
+        ],
+        "created_at": 1784872461006,
+        "memory_type": "preference",
+        "user_id": "tim@moorcheh.ai",
+        "agent_id": "assistant-v1",
+        "run_id": "run-4940"
+      },
+      "collection": "memories",
+      "has_vector": false
+    },
+    {
+      "id": "8",
+      "content": "Enjoys dark-mode UIs with purple accents.",
+      "memory": "Enjoys dark-mode UIs with purple accents.",
+      "type": "preference",
+      "tags": [
+        "design"
+      ],
+      "created_at": "2026-07-26T05:54:21+00:00",
+      "source": "agent-memory.log",
+      "payload": {
+        "metadata": {
+          "source": "agent-memory.log",
+          "created_at": 1785045261,
+          "type": "preference",
+          "tags": [
+            "design"
+          ]
+        },
+        "source": "agent-memory.log",
+        "created_at": 1785045261,
+        "type": "preference",
+        "tags": [
+          "design"
+        ]
+      },
+      "collection": "memories",
+      "has_vector": false
+    },
+    {
+      "id": "9",
+      "content": "note: Avoids meetings on Fridays; uses them for deep work.\nkind: preference\ncreated_at: 1785304461006",
+      "memory": "note: Avoids meetings on Fridays; uses them for deep work.\nkind: preference\ncreated_at: 1785304461006",
+      "type": "preference",
+      "tags": [
+        "schedule"
+      ],
+      "created_at": "2026-07-29T05:54:21.006000+00:00",
+      "source": "qdrant",
+      "payload": {
+        "note": "Avoids meetings on Fridays; uses them for deep work.",
+        "kind": "preference",
+        "created_at": 1785304461006,
+        "tags": [
+          "schedule"
+        ]
+      },
+      "collection": "memories",
+      "has_vector": false
+    },
+    {
+      "id": "10",
+      "content": "Prefers small, focused PRs under 300 lines.",
+      "memory": "Prefers small, focused PRs under 300 lines.",
+      "type": "preference",
+      "tags": [
+        "code-review"
+      ],
+      "created_at": "2026-08-01T05:54:21.007000+00:00",
+      "source": "qdrant",
+      "payload": {
+        "metadata": {
+          "created_at": 1785563661007,
+          "memory_type": "preference",
+          "user_id": "tim@moorcheh.ai",
+          "agent_id": "assistant-v1",
+          "run_id": "run-1809"
+        },
+        "score": 0.583,
+        "hash": "878fbc1ae83f06c9",
+        "categories": [
+          "code-review"
+        ],
+        "created_at": 1785563661007,
+        "memory_type": "preference",
+        "user_id": "tim@moorcheh.ai",
+        "agent_id": "assistant-v1",
+        "run_id": "run-1809"
+      },
+      "collection": "memories",
+      "has_vector": false
+    },
+    {
+      "id": "11",
+      "content": "Wants dependency upgrades reviewed separately from feature work.",
+      "memory": "Wants dependency upgrades reviewed separately from feature work.",
+      "type": "preference",
+      "tags": [
+        "dependencies"
+      ],
+      "created_at": "2026-08-03T05:54:21+00:00",
+      "source": "agent-memory.log",
+      "payload": {
+        "metadata": {
+          "source": "agent-memory.log",
+          "created_at": 1785736461,
+          "type": "preference",
+          "tags": [
+            "dependencies"
+          ]
+        },
+        "source": "agent-memory.log",
+        "created_at": 1785736461,
+        "type": "preference",
+        "tags": [
+          "dependencies"
+        ]
+      },
+      "collection": "memories",
+      "has_vector": false
+    },
+    {
+      "id": "12",
+      "content": "note: Prefers async communication over real-time chat for non-urgent items.\nkind: preference\ncreated_at: 1785909261007",
+      "memory": "note: Prefers async communication over real-time chat for non-urgent items.\nkind: preference\ncreated_at: 1785909261007",
+      "type": "preference",
+      "tags": [
+        "communication"
+      ],
+      "created_at": "2026-08-05T05:54:21.007000+00:00",
+      "source": "qdrant",
+      "payload": {
+        "note": "Prefers async communication over real-time chat for non-urgent items.",
+        "kind": "preference",
+        "created_at": 1785909261007,
+        "tags": [
+          "communication"
+        ]
+      },
+      "collection": "memories",
+      "has_vector": false
+    },
+    {
+      "id": "13",
+      "content": "Likes LLM output to be concise; hates corporate boilerplate.",
+      "memory": "Likes LLM output to be concise; hates corporate boilerplate.",
+      "type": "preference",
+      "tags": [
+        "writing"
+      ],
+      "created_at": "2026-08-06T05:54:21.007000+00:00",
+      "source": "qdrant",
+      "payload": {
+        "metadata": {
+          "created_at": 1785995661007,
+          "memory_type": "preference",
+          "user_id": "tim@moorcheh.ai",
+          "agent_id": "assistant-v1",
+          "run_id": "run-4271"
+        },
+        "score": 0.599,
+        "hash": "cc97d333fb719757",
+        "categories": [
+          "writing"
+        ],
+        "created_at": 1785995661007,
+        "memory_type": "preference",
+        "user_id": "tim@moorcheh.ai",
+        "agent_id": "assistant-v1",
+        "run_id": "run-4271"
+      },
+      "collection": "memories",
+      "has_vector": false
+    },
+    {
+      "id": "14",
+      "content": "Works at Moorcheh as a backend engineer on the memory platform.",
+      "memory": "Works at Moorcheh as a backend engineer on the memory platform.",
+      "type": "fact",
+      "tags": [
+        "work"
+      ],
+      "created_at": "2026-06-28T05:54:21+00:00",
+      "source": "agent-memory.log",
+      "payload": {
+        "metadata": {
+          "source": "agent-memory.log",
+          "created_at": 1782626061,
+          "type": "fact",
+          "tags": [
+            "work"
+          ]
+        },
+        "source": "agent-memory.log",
+        "created_at": 1782626061,
+        "type": "fact",
+        "tags": [
+          "work"
+        ]
+      },
+      "collection": "memories",
+      "has_vector": false
+    },
+    {
+      "id": "15",
+      "content": "note: Team uses mem0 for long-term agent memory in production.\nkind: fact\ncreated_at: 1782798861008",
+      "memory": "note: Team uses mem0 for long-term agent memory in production.\nkind: fact\ncreated_at: 1782798861008",
+      "type": "fact",
+      "tags": [
+        "work",
+        "stack"
+      ],
+      "created_at": "2026-06-30T05:54:21.008000+00:00",
+      "source": "qdrant",
+      "payload": {
+        "note": "Team uses mem0 for long-term agent memory in production.",
+        "kind": "fact",
+        "created_at": 1782798861008,
+        "tags": [
+          "work",
+          "stack"
+        ]
+      },
+      "collection": "memories",
+      "has_vector": false
+    },
+    {
+      "id": "16",
+      "content": "The memory service stores embeddings in a Qdrant collection named 'memories'.",
+      "memory": "The memory service stores embeddings in a Qdrant collection named 'memories'.",
+      "type": "fact",
+      "tags": [
+        "work",
+        "infra"
+      ],
+      "created_at": "2026-07-01T05:54:21.008000+00:00",
+      "source": "qdrant",
+      "payload": {
+        "metadata": {
+          "created_at": 1782885261008,
+          "memory_type": "fact",
+          "user_id": "tim@moorcheh.ai",
+          "agent_id": "assistant-v1",
+          "run_id": "run-4049"
+        },
+        "score": 0.561,
+        "hash": "b06b09aa715af741",
+        "categories": [
+          "work",
+          "infra"
+        ],
+        "created_at": 1782885261008,
+        "memory_type": "fact",
+        "user_id": "tim@moorcheh.ai",
+        "agent_id": "assistant-v1",
+        "run_id": "run-4049"
+      },
+      "collection": "memories",
+      "has_vector": false
+    },
+    {
+      "id": "17",
+      "content": "Deploys to Kubernetes on AWS EKS.",
+      "memory": "Deploys to Kubernetes on AWS EKS.",
+      "type": "fact",
+      "tags": [
+        "work",
+        "infra"
+      ],
+      "created_at": "2026-07-08T05:54:21+00:00",
+      "source": "agent-memory.log",
+      "payload": {
+        "metadata": {
+          "source": "agent-memory.log",
+          "created_at": 1783490061,
+          "type": "fact",
+          "tags": [
+            "work",
+            "infra"
+          ]
+        },
+        "source": "agent-memory.log",
+        "created_at": 1783490061,
+        "type": "fact",
+        "tags": [
+          "work",
+          "infra"
+        ]
+      },
+      "collection": "memories",
+      "has_vector": false
+    },
+    {
+      "id": "18",
+      "content": "note: Uses VS Code with the Vim extension as the primary editor.\nkind: fact\ncreated_at: 1783662861008",
+      "memory": "note: Uses VS Code with the Vim extension as the primary editor.\nkind: fact\ncreated_at: 1783662861008",
+      "type": "fact",
+      "tags": [
+        "tools"
+      ],
+      "created_at": "2026-07-10T05:54:21.008000+00:00",
+      "source": "qdrant",
+      "payload": {
+        "note": "Uses VS Code with the Vim extension as the primary editor.",
+        "kind": "fact",
+        "created_at": 1783662861008,
+        "tags": [
+          "tools"
+        ]
+      },
+      "collection": "memories",
+      "has_vector": false
+    },
+    {
+      "id": "19",
+      "content": "Runs a homelab with a NAS and two mini-PCs for self-hosted services.",
+      "memory": "Runs a homelab with a NAS and two mini-PCs for self-hosted services.",
+      "type": "fact",
+      "tags": [
+        "personal"
+      ],
+      "created_at": "2026-07-12T05:54:21.009000+00:00",
+      "source": "qdrant",
+      "payload": {
+        "metadata": {
+          "created_at": 1783835661009,
+          "memory_type": "fact",
+          "user_id": "tim@moorcheh.ai",
+          "agent_id": "assistant-v1",
+          "run_id": "run-4476"
+        },
+        "score": 0.958,
+        "hash": "e57e63614be993b0",
+        "categories": [
+          "personal"
+        ],
+        "created_at": 1783835661009,
+        "memory_type": "fact",
+        "user_id": "tim@moorcheh.ai",
+        "agent_id": "assistant-v1",
+        "run_id": "run-4476"
+      },
+      "collection": "memories",
+      "has_vector": false
+    },
+    {
+      "id": "20",
+      "content": "Has a cat named Pixel.",
+      "memory": "Has a cat named Pixel.",
+      "type": "fact",
+      "tags": [
+        "personal"
+      ],
+      "created_at": "2026-07-13T05:54:21+00:00",
+      "source": "agent-memory.log",
+      "payload": {
+        "metadata": {
+          "source": "agent-memory.log",
+          "created_at": 1783922061,
+          "type": "fact",
+          "tags": [
+            "personal"
+          ]
+        },
+        "source": "agent-memory.log",
+        "created_at": 1783922061,
+        "type": "fact",
+        "tags": [
+          "personal"
+        ]
+      },
+      "collection": "memories",
+      "has_vector": false
+    },
+    {
+      "id": "21",
+      "content": "note: Maintains an open-source memory migration tool used by ~2k developers.\nkind: fact\ncreated_at: 1784181261009",
+      "memory": "note: Maintains an open-source memory migration tool used by ~2k developers.\nkind: fact\ncreated_at: 1784181261009",
+      "type": "fact",
+      "tags": [
+        "work",
+        "oss"
+      ],
+      "created_at": "2026-07-16T05:54:21.009000+00:00",
+      "source": "qdrant",
+      "payload": {
+        "note": "Maintains an open-source memory migration tool used by ~2k developers.",
+        "kind": "fact",
+        "created_at": 1784181261009,
+        "tags": [
+          "work",
+          "oss"
+        ]
+      },
+      "collection": "memories",
+      "has_vector": false
+    },
+    {
+      "id": "22",
+      "content": "Lives in Lisbon, Portugal.",
+      "memory": "Lives in Lisbon, Portugal.",
+      "type": "fact",
+      "tags": [
+        "personal"
+      ],
+      "created_at": "2026-07-18T05:54:21.009000+00:00",
+      "source": "qdrant",
+      "payload": {
+        "metadata": {
+          "created_at": 1784354061009,
+          "memory_type": "fact",
+          "user_id": "tim@moorcheh.ai",
+          "agent_id": "assistant-v1",
+          "run_id": "run-3031"
+        },
+        "score": 0.809,
+        "hash": "00596f456880bb2c",
+        "categories": [
+          "personal"
+        ],
+        "created_at": 1784354061009,
+        "memory_type": "fact",
+        "user_id": "tim@moorcheh.ai",
+        "agent_id": "assistant-v1",
+        "run_id": "run-3031"
+      },
+      "collection": "memories",
+      "has_vector": false
+    },
+    {
+      "id": "23",
+      "content": "The OKF format is a Google Cloud spec for portable knowledge as markdown.",
+      "memory": "The OKF format is a Google Cloud spec for portable knowledge as markdown.",
+      "type": "fact",
+      "tags": [
+        "work",
+        "standards"
+      ],
+      "created_at": "2026-07-19T05:54:21+00:00",
+      "source": "agent-memory.log",
+      "payload": {
+        "metadata": {
+          "source": "agent-memory.log",
+          "created_at": 1784440461,
+          "type": "fact",
+          "tags": [
+            "work",
+            "standards"
+          ]
+        },
+        "source": "agent-memory.log",
+        "created_at": 1784440461,
+        "type": "fact",
+        "tags": [
+          "work",
+          "standards"
+        ]
+      },
+      "collection": "memories",
+      "has_vector": false
+    },
+    {
+      "id": "24",
+      "content": "note: Attends the Lisbon AI meetup monthly.\nkind: fact\ncreated_at: 1784786061009",
+      "memory": "note: Attends the Lisbon AI meetup monthly.\nkind: fact\ncreated_at: 1784786061009",
+      "type": "fact",
+      "tags": [
+        "personal",
+        "events"
+      ],
+      "created_at": "2026-07-23T05:54:21.009000+00:00",
+      "source": "qdrant",
+      "payload": {
+        "note": "Attends the Lisbon AI meetup monthly.",
+        "kind": "fact",
+        "created_at": 1784786061009,
+        "tags": [
+          "personal",
+          "events"
+        ]
+      },
+      "collection": "memories",
+      "has_vector": false
+    },
+    {
+      "id": "25",
+      "content": "Coffee order is a flat white with oat milk.",
+      "memory": "Coffee order is a flat white with oat milk.",
+      "type": "fact",
+      "tags": [
+        "personal"
+      ],
+      "created_at": "2026-07-27T05:54:21.009000+00:00",
+      "source": "qdrant",
+      "payload": {
+        "metadata": {
+          "created_at": 1785131661009,
+          "memory_type": "fact",
+          "user_id": "tim@moorcheh.ai",
+          "agent_id": "assistant-v1",
+          "run_id": "run-2479"
+        },
+        "score": 0.593,
+        "hash": "28d19a452c8b9710",
+        "categories": [
+          "personal"
+        ],
+        "created_at": 1785131661009,
+        "memory_type": "fact",
+        "user_id": "tim@moorcheh.ai",
+        "agent_id": "assistant-v1",
+        "run_id": "run-2479"
+      },
+      "collection": "memories",
+      "has_vector": false
+    },
+    {
+      "id": "26",
+      "content": "Team ships a nightly release train with a canary stage.",
+      "memory": "Team ships a nightly release train with a canary stage.",
+      "type": "fact",
+      "tags": [
+        "work"
+      ],
+      "created_at": "2026-07-30T05:54:21+00:00",
+      "source": "agent-memory.log",
+      "payload": {
+        "metadata": {
+          "source": "agent-memory.log",
+          "created_at": 1785390861,
+          "type": "fact",
+          "tags": [
+            "work"
+          ]
+        },
+        "source": "agent-memory.log",
+        "created_at": 1785390861,
+        "type": "fact",
+        "tags": [
+          "work"
+        ]
+      },
+      "collection": "memories",
+      "has_vector": false
+    },
+    {
+      "id": "27",
+      "content": "note: The agent memory store hit 1M embeddings last quarter.\nkind: fact\ncreated_at: 1785650061009",
+      "memory": "note: The agent memory store hit 1M embeddings last quarter.\nkind: fact\ncreated_at: 1785650061009",
+      "type": "fact",
+      "tags": [
+        "work",
+        "metrics"
+      ],
+      "created_at": "2026-08-02T05:54:21.009000+00:00",
+      "source": "qdrant",
+      "payload": {
+        "note": "The agent memory store hit 1M embeddings last quarter.",
+        "kind": "fact",
+        "created_at": 1785650061009,
+        "tags": [
+          "work",
+          "metrics"
+        ]
+      },
+      "collection": "memories",
+      "has_vector": false
+    },
+    {
+      "id": "28",
+      "content": "Uses Notion for personal notes and docs.",
+      "memory": "Uses Notion for personal notes and docs.",
+      "type": "fact",
+      "tags": [
+        "tools"
+      ],
+      "created_at": "2026-08-04T05:54:21.010000+00:00",
+      "source": "qdrant",
+      "payload": {
+        "metadata": {
+          "created_at": 1785822861010,
+          "memory_type": "fact",
+          "user_id": "tim@moorcheh.ai",
+          "agent_id": "assistant-v1",
+          "run_id": "run-6826"
+        },
+        "score": 0.956,
+        "hash": "1a2117c2b1207499",
+        "categories": [
+          "tools"
+        ],
+        "created_at": 1785822861010,
+        "memory_type": "fact",
+        "user_id": "tim@moorcheh.ai",
+        "agent_id": "assistant-v1",
+        "run_id": "run-6826"
+      },
+      "collection": "memories",
+      "has_vector": false
+    },
+    {
+      "id": "29",
+      "content": "Works closely with Ana (ML engineer) on the retrieval pipeline.",
+      "memory": "Works closely with Ana (ML engineer) on the retrieval pipeline.",
+      "type": "relationship",
+      "tags": [
+        "work"
+      ],
+      "created_at": "2026-07-02T05:54:21+00:00",
+      "source": "agent-memory.log",
+      "payload": {
+        "metadata": {
+          "source": "agent-memory.log",
+          "created_at": 1782971661,
+          "type": "relationship",
+          "tags": [
+            "work"
+          ]
+        },
+        "source": "agent-memory.log",
+        "created_at": 1782971661,
+        "type": "relationship",
+        "tags": [
+          "work"
+        ]
+      },
+      "collection": "memories",
+      "has_vector": false
+    },
+    {
+      "id": "30",
+      "content": "note: Mentors a junior engineer named Rui on the migration tooling.\nkind: relationship\ncreated_at: 1784008461010",
+      "memory": "note: Mentors a junior engineer named Rui on the migration tooling.\nkind: relationship\ncreated_at: 1784008461010",
+      "type": "relationship",
+      "tags": [
+        "work"
+      ],
+      "created_at": "2026-07-14T05:54:21.010000+00:00",
+      "source": "qdrant",
+      "payload": {
+        "note": "Mentors a junior engineer named Rui on the migration tooling.",
+        "kind": "relationship",
+        "created_at": 1784008461010,
+        "tags": [
+          "work"
+        ]
+      },
+      "collection": "memories",
+      "has_vector": false
+    },
+    {
+      "id": "31",
+      "content": "Reports to the CTO, Marta.",
+      "memory": "Reports to the CTO, Marta.",
+      "type": "relationship",
+      "tags": [
+        "work"
+      ],
+      "created_at": "2026-07-21T05:54:21.011000+00:00",
+      "source": "qdrant",
+      "payload": {
+        "metadata": {
+          "created_at": 1784613261011,
+          "memory_type": "relationship",
+          "user_id": "tim@moorcheh.ai",
+          "agent_id": "assistant-v1",
+          "run_id": "run-7459"
+        },
+        "score": 0.927,
+        "hash": "59101fee89ea253f",
+        "categories": [
+          "work"
+        ],
+        "created_at": 1784613261011,
+        "memory_type": "relationship",
+        "user_id": "tim@moorcheh.ai",
+        "agent_id": "assistant-v1",
+        "run_id": "run-7459"
+      },
+      "collection": "memories",
+      "has_vector": false
+    },
+    {
+      "id": "32",
+      "content": "Collaborates with the design team lead, Sofia, on UX for the CLI.",
+      "memory": "Collaborates with the design team lead, Sofia, on UX for the CLI.",
+      "type": "relationship",
+      "tags": [
+        "work"
+      ],
+      "created_at": "2026-07-28T05:54:21+00:00",
+      "source": "agent-memory.log",
+      "payload": {
+        "metadata": {
+          "source": "agent-memory.log",
+          "created_at": 1785218061,
+          "type": "relationship",
+          "tags": [
+            "work"
+          ]
+        },
+        "source": "agent-memory.log",
+        "created_at": 1785218061,
+        "type": "relationship",
+        "tags": [
+          "work"
+        ]
+      },
+      "collection": "memories",
+      "has_vector": false
+    },
+    {
+      "id": "33",
+      "content": "note: Pixel the cat is 4 years old and answers to 'Pixel' only when food is involved.\nkind: relationship\ncreated_at: 1785477261011",
+      "memory": "note: Pixel the cat is 4 years old and answers to 'Pixel' only when food is involved.\nkind: relationship\ncreated_at: 1785477261011",
+      "type": "relationship",
+      "tags": [
+        "personal"
+      ],
+      "created_at": "2026-07-31T05:54:21.011000+00:00",
+      "source": "qdrant",
+      "payload": {
+        "note": "Pixel the cat is 4 years old and answers to 'Pixel' only when food is involved.",
+        "kind": "relationship",
+        "created_at": 1785477261011,
+        "tags": [
+          "personal"
+        ]
+      },
+      "collection": "memories",
+      "has_vector": false
+    },
+    {
+      "id": "34",
+      "content": "Migrate all legacy memory stores to OKF by end of quarter.",
+      "memory": "Migrate all legacy memory stores to OKF by end of quarter.",
+      "type": "goal",
+      "tags": [
+        "work"
+      ],
+      "created_at": "2026-07-04T05:54:21.011000+00:00",
+      "source": "qdrant",
+      "payload": {
+        "metadata": {
+          "created_at": 1783144461011,
+          "memory_type": "goal",
+          "user_id": "tim@moorcheh.ai",
+          "agent_id": "assistant-v1",
+          "run_id": "run-6663"
+        },
+        "score": 0.796,
+        "hash": "b000bd17d892c68b",
+        "categories": [
+          "work"
+        ],
+        "created_at": 1783144461011,
+        "memory_type": "goal",
+        "user_id": "tim@moorcheh.ai",
+        "agent_id": "assistant-v1",
+        "run_id": "run-6663"
+      },
+      "collection": "memories",
+      "has_vector": false
+    },
+    {
+      "id": "35",
+      "content": "Ship v2 of the migration CLI with dry-run previews.",
+      "memory": "Ship v2 of the migration CLI with dry-run previews.",
+      "type": "goal",
+      "tags": [
+        "work"
+      ],
+      "created_at": "2026-07-15T05:54:21+00:00",
+      "source": "agent-memory.log",
+      "payload": {
+        "metadata": {
+          "source": "agent-memory.log",
+          "created_at": 1784094861,
+          "type": "goal",
+          "tags": [
+            "work"
+          ]
+        },
+        "source": "agent-memory.log",
+        "created_at": 1784094861,
+        "type": "goal",
+        "tags": [
+          "work"
+        ]
+      },
+      "collection": "memories",
+      "has_vector": false
+    },
+    {
+      "id": "36",
+      "content": "note: Publish the OKF adapter showcase to the community.\nkind: goal\ncreated_at: 1784699661011",
+      "memory": "note: Publish the OKF adapter showcase to the community.\nkind: goal\ncreated_at: 1784699661011",
+      "type": "goal",
+      "tags": [
+        "work",
+        "oss"
+      ],
+      "created_at": "2026-07-22T05:54:21.011000+00:00",
+      "source": "qdrant",
+      "payload": {
+        "note": "Publish the OKF adapter showcase to the community.",
+        "kind": "goal",
+        "created_at": 1784699661011,
+        "tags": [
+          "work",
+          "oss"
+        ]
+      },
+      "collection": "memories",
+      "has_vector": false
+    },
+    {
+      "id": "37",
+      "content": "Run a 10k in October.",
+      "memory": "Run a 10k in October.",
+      "type": "goal",
+      "tags": [
+        "personal"
+      ],
+      "created_at": "2026-07-25T05:54:21.011000+00:00",
+      "source": "qdrant",
+      "payload": {
+        "metadata": {
+          "created_at": 1784958861011,
+          "memory_type": "goal",
+          "user_id": "tim@moorcheh.ai",
+          "agent_id": "assistant-v1",
+          "run_id": "run-2695"
+        },
+        "score": 0.824,
+        "hash": "c6f9b7d31f355db8",
+        "categories": [
+          "personal"
+        ],
+        "created_at": 1784958861011,
+        "memory_type": "goal",
+        "user_id": "tim@moorcheh.ai",
+        "agent_id": "assistant-v1",
+        "run_id": "run-2695"
+      },
+      "collection": "memories",
+      "has_vector": false
+    },
+    {
+      "id": "38",
+      "content": "Reduce p95 retrieval latency under 120ms.",
+      "memory": "Reduce p95 retrieval latency under 120ms.",
+      "type": "goal",
+      "tags": [
+        "work",
+        "metrics"
+      ],
+      "created_at": "2026-08-04T05:54:21+00:00",
+      "source": "agent-memory.log",
+      "payload": {
+        "metadata": {
+          "source": "agent-memory.log",
+          "created_at": 1785822861,
+          "type": "goal",
+          "tags": [
+            "work",
+            "metrics"
+          ]
+        },
+        "source": "agent-memory.log",
+        "created_at": 1785822861,
+        "type": "goal",
+        "tags": [
+          "work",
+          "metrics"
+        ]
+      },
+      "collection": "memories",
+      "has_vector": false
+    },
+    {
+      "id": "39",
+      "content": "note: Write monthly OSS blog posts documenting the migration journeys.\nkind: goal\ncreated_at: 1785995661012",
+      "memory": "note: Write monthly OSS blog posts documenting the migration journeys.\nkind: goal\ncreated_at: 1785995661012",
+      "type": "goal",
+      "tags": [
+        "work",
+        "writing"
+      ],
+      "created_at": "2026-08-06T05:54:21.012000+00:00",
+      "source": "qdrant",
+      "payload": {
+        "note": "Write monthly OSS blog posts documenting the migration journeys.",
+        "kind": "goal",
+        "created_at": 1785995661012,
+        "tags": [
+          "work",
+          "writing"
+        ]
+      },
+      "collection": "memories",
+      "has_vector": false
+    },
+    {
+      "id": "40",
+      "content": "Sprint planning on Monday — Q3 memory roadmap.",
+      "memory": "Sprint planning on Monday — Q3 memory roadmap.",
+      "type": "event",
+      "tags": [
+        "work"
+      ],
+      "created_at": "2026-07-07T05:54:21.012000+00:00",
+      "source": "qdrant",
+      "payload": {
+        "metadata": {
+          "created_at": 1783403661012,
+          "memory_type": "event",
+          "user_id": "tim@moorcheh.ai",
+          "agent_id": "assistant-v1",
+          "run_id": "run-3510"
+        },
+        "score": 0.694,
+        "hash": "705a3d5b8e505fe1",
+        "categories": [
+          "work"
+        ],
+        "created_at": 1783403661012,
+        "memory_type": "event",
+        "user_id": "tim@moorcheh.ai",
+        "agent_id": "assistant-v1",
+        "run_id": "run-3510"
+      },
+      "collection": "memories",
+      "has_vector": false
+    },
+    {
+      "id": "41",
+      "content": "Lisbon AI meetup talk: 'Portable agent memory with OKF'.",
+      "memory": "Lisbon AI meetup talk: 'Portable agent memory with OKF'.",
+      "type": "event",
+      "tags": [
+        "events"
+      ],
+      "created_at": "2026-07-23T05:54:21+00:00",
+      "source": "agent-memory.log",
+      "payload": {
+        "metadata": {
+          "source": "agent-memory.log",
+          "created_at": 1784786061,
+          "type": "event",
+          "tags": [
+            "events"
+          ]
+        },
+        "source": "agent-memory.log",
+        "created_at": 1784786061,
+        "type": "event",
+        "tags": [
+          "events"
+        ]
+      },
+      "collection": "memories",
+      "has_vector": false
+    },
+    {
+      "id": "42",
+      "content": "note: Team offsite in Porto next month.\nkind: event\ncreated_at: 1785045261012",
+      "memory": "note: Team offsite in Porto next month.\nkind: event\ncreated_at: 1785045261012",
+      "type": "event",
+      "tags": [
+        "work"
+      ],
+      "created_at": "2026-07-26T05:54:21.012000+00:00",
+      "source": "qdrant",
+      "payload": {
+        "note": "Team offsite in Porto next month.",
+        "kind": "event",
+        "created_at": 1785045261012,
+        "tags": [
+          "work"
+        ]
+      },
+      "collection": "memories",
+      "has_vector": false
+    },
+    {
+      "id": "43",
+      "content": "Migrated the analytics service to the new retrieval stack.",
+      "memory": "Migrated the analytics service to the new retrieval stack.",
+      "type": "event",
+      "tags": [
+        "work"
+      ],
+      "created_at": "2026-07-29T05:54:21.012000+00:00",
+      "source": "qdrant",
+      "payload": {
+        "metadata": {
+          "created_at": 1785304461012,
+          "memory_type": "event",
+          "user_id": "tim@moorcheh.ai",
+          "agent_id": "assistant-v1",
+          "run_id": "run-4235"
+        },
+        "score": 0.879,
+        "hash": "8cf99fd3c47d4a8d",
+        "categories": [
+          "work"
+        ],
+        "created_at": 1785304461012,
+        "memory_type": "event",
+        "user_id": "tim@moorcheh.ai",
+        "agent_id": "assistant-v1",
+        "run_id": "run-4235"
+      },
+      "collection": "memories",
+      "has_vector": false
+    },
+    {
+      "id": "44",
+      "content": "Upgraded Qdrant to 1.12 across all environments.",
+      "memory": "Upgraded Qdrant to 1.12 across all environments.",
+      "type": "event",
+      "tags": [
+        "work",
+        "infra"
+      ],
+      "created_at": "2026-07-31T05:54:21+00:00",
+      "source": "agent-memory.log",
+      "payload": {
+        "metadata": {
+          "source": "agent-memory.log",
+          "created_at": 1785477261,
+          "type": "event",
+          "tags": [
+            "work",
+            "infra"
+          ]
+        },
+        "source": "agent-memory.log",
+        "created_at": 1785477261,
+        "type": "event",
+        "tags": [
+          "work",
+          "infra"
+        ]
+      },
+      "collection": "memories",
+      "has_vector": false
+    },
+    {
+      "id": "45",
+      "content": "note: Gave a brown-bag on memory migration best practices.\nkind: event\ncreated_at: 1785650061013",
+      "memory": "note: Gave a brown-bag on memory migration best practices.\nkind: event\ncreated_at: 1785650061013",
+      "type": "event",
+      "tags": [
+        "work"
+      ],
+      "created_at": "2026-08-02T05:54:21.013000+00:00",
+      "source": "qdrant",
+      "payload": {
+        "note": "Gave a brown-bag on memory migration best practices.",
+        "kind": "event",
+        "created_at": 1785650061013,
+        "tags": [
+          "work"
+        ]
+      },
+      "collection": "memories",
+      "has_vector": false
+    },
+    {
+      "id": "46",
+      "content": "Chose Qdrant over Pinecone for the embedding store (self-hosted, OSS).",
+      "memory": "Chose Qdrant over Pinecone for the embedding store (self-hosted, OSS).",
+      "type": "decision",
+      "tags": [
+        "work",
+        "infra"
+      ],
+      "created_at": "2026-06-29T05:54:21.013000+00:00",
+      "source": "qdrant",
+      "payload": {
+        "metadata": {
+          "created_at": 1782712461013,
+          "memory_type": "decision",
+          "user_id": "tim@moorcheh.ai",
+          "agent_id": "assistant-v1",
+          "run_id": "run-9317"
+        },
+        "score": 0.764,
+        "hash": "d05b37f6d567f530",
+        "categories": [
+          "work",
+          "infra"
+        ],
+        "created_at": 1782712461013,
+        "memory_type": "decision",
+        "user_id": "tim@moorcheh.ai",
+        "agent_id": "assistant-v1",
+        "run_id": "run-9317"
+      },
+      "collection": "memories",
+      "has_vector": false
+    },
+    {
+      "id": "47",
+      "content": "Adopted OKF as the canonical export format for all memory exports.",
+      "memory": "Adopted OKF as the canonical export format for all memory exports.",
+      "type": "decision",
+      "tags": [
+        "work",
+        "standards"
+      ],
+      "created_at": "2026-07-05T05:54:21+00:00",
+      "source": "agent-memory.log",
+      "payload": {
+        "metadata": {
+          "source": "agent-memory.log",
+          "created_at": 1783230861,
+          "type": "decision",
+          "tags": [
+            "work",
+            "standards"
+          ]
+        },
+        "source": "agent-memory.log",
+        "created_at": 1783230861,
+        "type": "decision",
+        "tags": [
+          "work",
+          "standards"
+        ]
+      },
+      "collection": "memories",
+      "has_vector": false
+    },
+    {
+      "id": "48",
+      "content": "note: Standardized on uv for Python dependency management.\nkind: decision\ncreated_at: 1783749261013",
+      "memory": "note: Standardized on uv for Python dependency management.\nkind: decision\ncreated_at: 1783749261013",
+      "type": "decision",
+      "tags": [
+        "tools"
+      ],
+      "created_at": "2026-07-11T05:54:21.013000+00:00",
+      "source": "qdrant",
+      "payload": {
+        "note": "Standardized on uv for Python dependency management.",
+        "kind": "decision",
+        "created_at": 1783749261013,
+        "tags": [
+          "tools"
+        ]
+      },
+      "collection": "memories",
+      "has_vector": false
+    },
+    {
+      "id": "49",
+      "content": "Decided the migration CLI must never silently drop unmapped fields.",
+      "memory": "Decided the migration CLI must never silently drop unmapped fields.",
+      "type": "decision",
+      "tags": [
+        "work"
+      ],
+      "created_at": "2026-07-18T05:54:21.013000+00:00",
+      "source": "qdrant",
+      "payload": {
+        "metadata": {
+          "created_at": 1784354061013,
+          "memory_type": "decision",
+          "user_id": "tim@moorcheh.ai",
+          "agent_id": "assistant-v1",
+          "run_id": "run-2193"
+        },
+        "score": 0.867,
+        "hash": "b8e1dc5d86ae6b54",
+        "categories": [
+          "work"
+        ],
+        "created_at": 1784354061013,
+        "memory_type": "decision",
+        "user_id": "tim@moorcheh.ai",
+        "agent_id": "assistant-v1",
+        "run_id": "run-2193"
+      },
+      "collection": "memories",
+      "has_vector": false
+    },
+    {
+      "id": "50",
+      "content": "Picked ruff + mypy as the lint/type gate.",
+      "memory": "Picked ruff + mypy as the lint/type gate.",
+      "type": "decision",
+      "tags": [
+        "tools"
+      ],
+      "created_at": "2026-07-22T05:54:21+00:00",
+      "source": "agent-memory.log",
+      "payload": {
+        "metadata": {
+          "source": "agent-memory.log",
+          "created_at": 1784699661,
+          "type": "decision",
+          "tags": [
+            "tools"
+          ]
+        },
+        "source": "agent-memory.log",
+        "created_at": 1784699661,
+        "type": "decision",
+        "tags": [
+          "tools"
+        ]
+      },
+      "collection": "memories",
+      "has_vector": false
+    },
+    {
+      "id": "51",
+      "content": "note: Moved CI to GitHub Actions with a 5-min warm cache.\nkind: decision\ncreated_at: 1785390861013",
+      "memory": "note: Moved CI to GitHub Actions with a 5-min warm cache.\nkind: decision\ncreated_at: 1785390861013",
+      "type": "decision",
+      "tags": [
+        "work",
+        "ci"
+      ],
+      "created_at": "2026-07-30T05:54:21.013000+00:00",
+      "source": "qdrant",
+      "payload": {
+        "note": "Moved CI to GitHub Actions with a 5-min warm cache.",
+        "kind": "decision",
+        "created_at": 1785390861013,
+        "tags": [
+          "work",
+          "ci"
+        ]
+      },
+      "collection": "memories",
+      "has_vector": false
+    },
+    {
+      "id": "52",
+      "content": "Draft the OKF migration adapter PR by Friday.",
+      "memory": "Draft the OKF migration adapter PR by Friday.",
+      "type": "commitment",
+      "tags": [
+        "work"
+      ],
+      "created_at": "2026-08-01T05:54:21.013000+00:00",
+      "source": "qdrant",
+      "payload": {
+        "metadata": {
+          "created_at": 1785563661013,
+          "memory_type": "commitment",
+          "user_id": "tim@moorcheh.ai",
+          "agent_id": "assistant-v1",
+          "run_id": "run-1941"
+        },
+        "score": 0.926,
+        "hash": "68a430c9c8fa6401",
+        "categories": [
+          "work"
+        ],
+        "created_at": 1785563661013,
+        "memory_type": "commitment",
+        "user_id": "tim@moorcheh.ai",
+        "agent_id": "assistant-v1",
+        "run_id": "run-1941"
+      },
+      "collection": "memories",
+      "has_vector": false
+    },
+    {
+      "id": "53",
+      "content": "Review Ana's retrieval pipeline PR before Wednesday.",
+      "memory": "Review Ana's retrieval pipeline PR before Wednesday.",
+      "type": "commitment",
+      "tags": [
+        "work"
+      ],
+      "created_at": "2026-08-02T05:54:21+00:00",
+      "source": "agent-memory.log",
+      "payload": {
+        "metadata": {
+          "source": "agent-memory.log",
+          "created_at": 1785650061,
+          "type": "commitment",
+          "tags": [
+            "work"
+          ]
+        },
+        "source": "agent-memory.log",
+        "created_at": 1785650061,
+        "type": "commitment",
+        "tags": [
+          "work"
+        ]
+      },
+      "collection": "memories",
+      "has_vector": false
+    },
+    {
+      "id": "54",
+      "content": "note: Book flights for the Porto offsite.\nkind: commitment\ncreated_at: 1785736461015",
+      "memory": "note: Book flights for the Porto offsite.\nkind: commitment\ncreated_at: 1785736461015",
+      "type": "commitment",
+      "tags": [
+        "personal"
+      ],
+      "created_at": "2026-08-03T05:54:21.015000+00:00",
+      "source": "qdrant",
+      "payload": {
+        "note": "Book flights for the Porto offsite.",
+        "kind": "commitment",
+        "created_at": 1785736461015,
+        "tags": [
+          "personal"
+        ]
+      },
+      "collection": "memories",
+      "has_vector": false
+    },
+    {
+      "id": "55",
+      "content": "Fix the p95 latency regression in the recall service.",
+      "memory": "Fix the p95 latency regression in the recall service.",
+      "type": "commitment",
+      "tags": [
+        "work"
+      ],
+      "created_at": "2026-08-05T05:54:21.016000+00:00",
+      "source": "qdrant",
+      "payload": {
+        "metadata": {
+          "created_at": 1785909261016,
+          "memory_type": "commitment",
+          "user_id": "tim@moorcheh.ai",
+          "agent_id": "assistant-v1",
+          "run_id": "run-8457"
+        },
+        "score": 0.901,
+        "hash": "392d20edceb33a7d",
+        "categories": [
+          "work"
+        ],
+        "created_at": 1785909261016,
+        "memory_type": "commitment",
+        "user_id": "tim@moorcheh.ai",
+        "agent_id": "assistant-v1",
+        "run_id": "run-8457"
+      },
+      "collection": "memories",
+      "has_vector": false
+    },
+    {
+      "id": "56",
+      "content": "Record the demo video for the migration showcase.",
+      "memory": "Record the demo video for the migration showcase.",
+      "type": "commitment",
+      "tags": [
+        "work",
+        "oss"
+      ],
+      "created_at": "2026-08-06T05:54:21+00:00",
+      "source": "agent-memory.log",
+      "payload": {
+        "metadata": {
+          "source": "agent-memory.log",
+          "created_at": 1785995661,
+          "type": "commitment",
+          "tags": [
+            "work",
+            "oss"
+          ]
+        },
+        "source": "agent-memory.log",
+        "created_at": 1785995661,
+        "type": "commitment",
+        "tags": [
+          "work",
+          "oss"
+        ]
+      },
+      "collection": "memories",
+      "has_vector": false
+    },
+    {
+      "id": "57",
+      "content": "note: Retrieval latency spiked after the 1.12 upgrade — likely cold segments.\nkind: observation\ncreated_at: 1785477261017",
+      "memory": "note: Retrieval latency spiked after the 1.12 upgrade — likely cold segments.\nkind: observation\ncreated_at: 1785477261017",
+      "type": "observation",
+      "tags": [
+        "work",
+        "metrics"
+      ],
+      "created_at": "2026-07-31T05:54:21.017000+00:00",
+      "source": "qdrant",
+      "payload": {
+        "note": "Retrieval latency spiked after the 1.12 upgrade — likely cold segments.",
+        "kind": "observation",
+        "created_at": 1785477261017,
+        "tags": [
+          "work",
+          "metrics"
+        ]
+      },
+      "collection": "memories",
+      "has_vector": false
+    },
+    {
+      "id": "58",
+      "content": "Users of the migration CLI often ask for a Qdrant source adapter.",
+      "memory": "Users of the migration CLI often ask for a Qdrant source adapter.",
+      "type": "observation",
+      "tags": [
+        "work",
+        "oss"
+      ],
+      "created_at": "2026-08-01T05:54:21.017000+00:00",
+      "source": "qdrant",
+      "payload": {
+        "metadata": {
+          "created_at": 1785563661017,
+          "memory_type": "observation",
+          "user_id": "tim@moorcheh.ai",
+          "agent_id": "assistant-v1",
+          "run_id": "run-3175"
+        },
+        "score": 0.777,
+        "hash": "e6e4f06faf964c91",
+        "categories": [
+          "work",
+          "oss"
+        ],
+        "created_at": 1785563661017,
+        "memory_type": "observation",
+        "user_id": "tim@moorcheh.ai",
+        "agent_id": "assistant-v1",
+        "run_id": "run-3175"
+      },
+      "collection": "memories",
+      "has_vector": false
+    },
+    {
+      "id": "59",
+      "content": "Daily summaries are more useful when they include token savings numbers.",
+      "memory": "Daily summaries are more useful when they include token savings numbers.",
+      "type": "observation",
+      "tags": [
+        "work"
+      ],
+      "created_at": "2026-08-03T05:54:21+00:00",
+      "source": "agent-memory.log",
+      "payload": {
+        "metadata": {
+          "source": "agent-memory.log",
+          "created_at": 1785736461,
+          "type": "observation",
+          "tags": [
+            "work"
+          ]
+        },
+        "source": "agent-memory.log",
+        "created_at": 1785736461,
+        "type": "observation",
+        "tags": [
+          "work"
+        ]
+      },
+      "collection": "memories",
+      "has_vector": false
+    },
+    {
+      "id": "60",
+      "content": "note: The canary caught a regression in export timestamps last night.\nkind: observation\ncreated_at: 1785909261018",
+      "memory": "note: The canary caught a regression in export timestamps last night.\nkind: observation\ncreated_at: 1785909261018",
+      "type": "observation",
+      "tags": [
+        "work"
+      ],
+      "created_at": "2026-08-05T05:54:21.018000+00:00",
+      "source": "qdrant",
+      "payload": {
+        "note": "The canary caught a regression in export timestamps last night.",
+        "kind": "observation",
+        "created_at": 1785909261018,
+        "tags": [
+          "work"
+        ]
+      },
+      "collection": "memories",
+      "has_vector": false
+    },
+    {
+      "id": "61",
+      "content": "Community PRs for adapters tend to arrive in bursts after release notes.",
+      "memory": "Community PRs for adapters tend to arrive in bursts after release notes.",
+      "type": "observation",
+      "tags": [
+        "work",
+        "oss"
+      ],
+      "created_at": "2026-08-06T05:54:21.018000+00:00",
+      "source": "qdrant",
+      "payload": {
+        "metadata": {
+          "created_at": 1785995661018,
+          "memory_type": "observation",
+          "user_id": "tim@moorcheh.ai",
+          "agent_id": "assistant-v1",
+          "run_id": "run-5267"
+        },
+        "score": 0.885,
+        "hash": "606b11fba0e135e9",
+        "categories": [
+          "work",
+          "oss"
+        ],
+        "created_at": 1785995661018,
+        "memory_type": "observation",
+        "user_id": "tim@moorcheh.ai",
+        "agent_id": "assistant-v1",
+        "run_id": "run-5267"
+      },
+      "collection": "memories",
+      "has_vector": false
+    }
+  ]
+}

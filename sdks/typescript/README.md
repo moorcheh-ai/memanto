@@ -72,6 +72,20 @@ const memanto = new Memanto({ agentId: "my-agent" });
 
 The spawned `memanto serve` inherits the on-prem config from `~/.memanto/`, and the client authenticates with a session token only. Alternatively, point `baseUrl` at an on-prem server you started yourself.
 
+### Connecting to an existing server (`baseUrl`)
+
+When `baseUrl` points to an existing Memanto server (a container, a shared dev server, or a remote/on-prem installation), the client sends the configured `apiKey` as an `X-Api-Key` header on **management requests** — agent lookup, creation, activation, deletion, listing, and status. This is required when the server protects management access with an API key.
+
+```ts
+const memanto = new Memanto({
+  agentId: "my-agent",
+  baseUrl: "https://memanto.example.com",
+  apiKey: process.env.MEMANTO_MGMT_KEY, // required by the protected server
+});
+```
+
+Session-scoped **memory operations** (`remember`, `recall`, `answer`, uploads, …) do **not** send `X-Api-Key` — after activation they authenticate with the `X-Session-Token` issued by the server. If the server does not require a management key, simply omit `apiKey`; no `X-Api-Key` header is sent.
+
 > Requires Docker (for the Moorcheh on-prem server) in addition to `uv`. The SDK does not start the Moorcheh container itself — the `uvx memanto` setup does.
 
 ## API
@@ -81,7 +95,7 @@ The spawned `memanto serve` inherits the on-prem config from `~/.memanto/`, and 
 | Option | Type | Default | Description |
 | --- | --- | --- | --- |
 | `agentId` | `string` | — | **Required.** Agent identifier. |
-| `apiKey` | `string` | — | Moorcheh API key, passed to the server as `MOORCHEH_API_KEY`. |
+| `apiKey` | `string` | — | Moorcheh API key. Passed to a spawned server as `MOORCHEH_API_KEY`; sent as `X-Api-Key` on management requests when `baseUrl` points to an existing server. |
 | `autoCreate` | `boolean` | `true` | Create the agent if it does not exist. |
 | `baseUrl` | `string` | — | Use an already-running server at this URL instead of spawning one. |
 | `port` | `number` | auto | Bind the spawned server to this port. |

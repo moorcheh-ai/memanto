@@ -405,6 +405,72 @@ def map_supermemory(export: dict[str, Any]) -> list[dict[str, Any]]:
 
 
 # --------------------------------------------------------------------------
+# Qdrant (vector-store memory backend)
+# --------------------------------------------------------------------------
+
+
+def map_qdrant(export: dict[str, Any]) -> list[dict[str, Any]]:
+    """Map a Qdrant collection export to rich Memanto memory payloads.
+
+    Qdrant is a storage backend, not a memory app, so the source records are
+    opaque points: a text field, optional tags/timestamps, and a payload dict
+    of backend-specific metadata (Mem0 scopes, LangChain metadata, RAG chunk
+    ids, scores, hashes). ``qdrant_export.py`` normalizes the common payload
+    shapes; this mapper slots the fields that map naturally and packs the
+    rest into the ``[Supporting data]`` footer so nothing is lost.
+
+    Payload ``type`` values (Mem0 memory categories, RAG doc kinds, ...) are
+    coerced onto Memanto's type vocabulary when possible; otherwise the row
+    is left untyped for auto-classification.
+    """
+    rows: list[dict[str, Any]] = []
+    migrated_at = _now_utc()
+
+    for mem in export.get("memories", []) or []:
+        content = (
+            mem.get("content") or mem.get("memory") or mem.get("text") or ""
+        ).strip()
+        if not content:
+            continue
+
+        mem_type = _coerce_type(mem.get("type"))
+        tags = [str(t) for t in (mem.get("tags") or []) if str(t).strip()]
+        created_at = _pick_first_dt(mem, ("created_at", "createdAt", "timestamp"))
+
+        payload = mem.get("payload") or {}
+        # Payload metadata that belongs in the footer.
+        footer = _format_supporting_data(
+            [
+                ("Source", f"qdrant:{mem.get('id')}" if mem.get("id") else None),
+                ("Collection", mem.get("collection")),
+                ("Qdrant point id", mem.get("id")),
+                ("Has vector", mem.get("has_vector")),
+                ("Qdrant metadata", payload if payload else None),
+                (
+                    "Source created_at",
+                    created_at.isoformat() if created_at else None,
+                ),
+            ]
+        )
+
+        rows.append(
+            {
+                "title": _title_from(content),
+                "content": _attach_footer(content, footer),
+                "type": mem_type,
+                "tags": tags,
+                "confidence": 0.8,
+                "source": "qdrant",
+                "source_ref": str(mem.get("id")) if mem.get("id") else None,
+                "provenance": "imported",
+                "created_at": created_at,
+                "updated_at": migrated_at,
+            }
+        )
+    return rows
+
+
+# --------------------------------------------------------------------------
 # OKF (Open Knowledge Format)
 # --------------------------------------------------------------------------
 
@@ -491,6 +557,7 @@ MAPPERS: dict[str, Callable[[dict[str, Any]], list[dict[str, Any]]]] = {
     "mem0": map_mem0,
     "letta": map_letta,
     "supermemory": map_supermemory,
+    "qdrant": map_qdrant,
     "okf": map_okf,
 }
 

@@ -1,0 +1,4 @@
+# Qdrant -> Memanto -> OKF showcase dependencies.
+# The repo's own dependencies cover the Memanto side; this file only adds
+# what the Qdrant adapter needs beyond the base install.
+qdrant-client>=1.9,<2
