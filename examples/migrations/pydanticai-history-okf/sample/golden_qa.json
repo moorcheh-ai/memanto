@@ -1,0 +1,32 @@
+[
+  {
+    "id": "source-version",
+    "question": "What PydanticAI source package and version did the project record?",
+    "expected_substrings": ["pydantic-ai-slim", "2.27.1"]
+  },
+  {
+    "id": "corrected-folder",
+    "question": "Which merge-ready output folder replaced the earlier folder name?",
+    "expected_substrings": ["examples/migrations/pydanticai-history-okf", "not pydanticai-to-okf"]
+  },
+  {
+    "id": "deadline-and-prize",
+    "question": "What are the bounty deadline and prize?",
+    "expected_substrings": ["August 31, 2026", "11:59 PM UTC", "USD 200"]
+  },
+  {
+    "id": "required-evidence",
+    "question": "What did I commit to include for the migration submission?",
+    "expected_substrings": ["real framework run", "mapping table", "CLI dry run", "recall parity", "sample OKF bundle"]
+  },
+  {
+    "id": "live-import-honesty",
+    "question": "When is it acceptable to claim a live Moorcheh import?",
+    "expected_substrings": ["Do not claim", "MOORCHEH_API_KEY", "actually used"]
+  },
+  {
+    "id": "privacy-rule",
+    "question": "What privacy behavior must generated bundles use?",
+    "expected_substrings": ["fail closed on secrets"]
+  }
+]

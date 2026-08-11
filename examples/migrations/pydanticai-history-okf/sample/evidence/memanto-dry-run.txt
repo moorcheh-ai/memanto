@@ -1,0 +1,17 @@
+╭─────────────────────────╮
+│ OKF -> Memanto  Dry run │
+╰─────────────────────────╯
+  … Loading OKF bundle from $REPO/examples/migrations/pydanticai-history-okf/sample/okf
+  … Mapping OKF nodes onto Memanto schema...
+
+╭────────────────────────────── Dry run complete ──────────────────────────────╮
+│ OKF nodes: 20                                                                │
+│ Mapped memories: 20  (skipped 0)                                             │
+│ Type breakdown: artifact: 4, auto: 16                                        │
+│                                                                              │
+│ Dry run — no writes performed.                                               │
+│                                                                              │
+│ Run dir: $HOME/.memanto/migrate/okf/20260811_141645               │
+│ Mapped preview:                                                              │
+│ $HOME/.memanto/migrate/okf/20260811_141645/mapped_preview.json    │
+╰──────────────────────────────────────────────────────────────────────────────╯

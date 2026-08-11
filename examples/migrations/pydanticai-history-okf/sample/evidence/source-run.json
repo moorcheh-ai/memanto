@@ -1,0 +1,39 @@
+{
+  "api_key_required": false,
+  "conversation_id": "memanto-bounty-1609-pydanticai",
+  "generator": "generate_source.py",
+  "honesty_note": "The archive comes from real PydanticAI Agent runs and tool dispatch. The deterministic FunctionModel supplies scripted public demo prose; no live LLM generation is claimed.",
+  "messages": 20,
+  "model": "pydanticai-migration-evidence-model",
+  "model_kind": "FunctionModel",
+  "official_schema_round_trip": true,
+  "outputs": [
+    "Recorded project memory: For this PydanticAI migration adapter, keep bundles deterministic and fail closed on secrets.",
+    "Recorded project memory: The source is pydantic-ai-slim 2.27.1 and Memanto's current shipped OKF importer uses OKF v0.1.",
+    "The deadline is August 31, 2026 at 11:59 PM UTC, and the top submission earns USD 200.",
+    "Recorded project memory: Correction: the merge-ready folder is examples/migrations/pydanticai-history-okf, not pydanticai-to-okf.",
+    "Recorded project memory: I commit to include a real framework run, mapping table, CLI dry run, recall parity, and a sample OKF bundle.",
+    "Recorded validation milestone migration-adapter: adapter, reconstruction, privacy, and parity tests required.",
+    "Recorded project memory: Do not claim a live Moorcheh import unless MOORCHEH_API_KEY was actually used.",
+    "Use PydanticAI 2.27.1 ModelMessage JSON, migrate it into examples/migrations/pydanticai-history-okf, preserve canonical sidecars, fail closed on secrets, validate recall parity, and use Memanto's shipped OKF v0.1 importer. The bounty deadline is August 31, 2026 at 11:59 PM UTC and the prize is USD 200."
+  ],
+  "run_ids": [
+    "memanto-pydanticai-run-01",
+    "memanto-pydanticai-run-02",
+    "memanto-pydanticai-run-03",
+    "memanto-pydanticai-run-04",
+    "memanto-pydanticai-run-05",
+    "memanto-pydanticai-run-06",
+    "memanto-pydanticai-run-07",
+    "memanto-pydanticai-run-08"
+  ],
+  "source_framework": "pydantic-ai-slim",
+  "source_framework_version": "2.27.1",
+  "source_sha256": "77eced0aa7d3b8bcd082e05cbcc746a5cc64951e28733d49dedccc095b6b7e11",
+  "tool_dispatches": 2,
+  "tool_names": [
+    "lookup_bounty",
+    "record_validation"
+  ],
+  "turns": 8
+}
