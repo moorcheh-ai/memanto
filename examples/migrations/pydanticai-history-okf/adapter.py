@@ -215,8 +215,8 @@ def scan_history(messages: tuple[dict[str, Any], ...]) -> list[Finding]:
                 )
                 if (
                     normalized_key in _SENSITIVE_KEYS
-                    and isinstance(item, str)
-                    and item.strip()
+                    and item is not None
+                    and (not isinstance(item, str) or item.strip())
                 ):
                     add_finding(
                         "named_secret_field", item_path, message_index, "secret"
@@ -267,8 +267,8 @@ def redact_history(
                 )
                 if (
                     normalized_key in _SENSITIVE_KEYS
-                    and isinstance(item, str)
-                    and item.strip()
+                    and item is not None
+                    and (not isinstance(item, str) or item.strip())
                 ):
                     redacted[output_key] = "[REDACTED:named_secret_field]"
                     replacements += 1

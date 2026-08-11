@@ -189,6 +189,32 @@ def test_secret_scanner_distinguishes_providers_and_named_fields(tmp_path: Path)
     assert report["privacy"]["redaction_count"] == 2
 
 
+@pytest.mark.parametrize(
+    "structured_secret",
+    [
+        {"value": "opaque-secret"},
+        ["opaque-secret", {"nested": "value"}],
+    ],
+)
+def test_sensitive_named_fields_redact_structured_values(
+    tmp_path: Path,
+    structured_secret: object,
+):
+    messages = _message_history()
+    messages[0]["metadata"] = {"api_key": structured_secret}
+    source = tmp_path / "history.json"
+    _write_source(source, messages)
+
+    findings = adapter.scan_history(adapter.load_history(source).messages)
+    assert [finding.category for finding in findings] == ["named_secret_field"]
+
+    bundle = tmp_path / "redacted"
+    report = adapter.migrate(source, bundle, redact=True)
+    archived = json.loads((bundle / "source" / "history.json").read_text())
+    assert archived[0]["metadata"]["api_key"] == "[REDACTED:named_secret_field]"
+    assert report["privacy"]["redaction_count"] == 1
+
+
 def test_secret_scanner_and_redactor_handle_sensitive_dictionary_keys(
     tmp_path: Path,
 ):
