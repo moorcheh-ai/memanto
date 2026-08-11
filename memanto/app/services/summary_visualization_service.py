@@ -147,13 +147,21 @@ class SummaryVisualizationService:
                 except ValueError:
                     continue
 
-                # Try to pair with the nearest confidence value
+                # Pair with the confidence line that falls between this
+                # heading and the next heading (or end of text). The previous
+                # index-based pairing (confidences[i]) misaligned when any
+                # heading lacked a confidence line — e.g. a manually edited
+                # summary or a malformed entry — causing every subsequent
+                # heading to inherit the wrong confidence value.
                 conf = 0.8  # default
-                if i < len(confidences):
-                    try:
-                        conf = float(confidences[i].group(1))
-                    except (ValueError, IndexError):
-                        pass
+                heading_end = headings[i + 1].start() if i + 1 < len(headings) else len(text)
+                for conf_match in confidences:
+                    if match.start() < conf_match.start() < heading_end:
+                        try:
+                            conf = float(conf_match.group(1))
+                        except (ValueError, IndexError):
+                            pass
+                        break
 
                 memories.append(
                     {
