@@ -581,8 +581,15 @@ def _prepare_output(output: Path, force: bool) -> None:
         raise MigrationError(f"output path is not a directory: {output}")
     if output.exists() and any(output.iterdir()):
         marker_path = output / "index.md"
-        marker = marker_path.read_text("utf-8") if marker_path.is_file() else ""
-        if GENERATOR_MARKER not in marker:
+        marker_is_valid = False
+        if not marker_path.is_symlink() and marker_path.is_file():
+            try:
+                with marker_path.open(encoding="utf-8") as marker_file:
+                    first_line = marker_file.readline().rstrip("\r\n")
+            except OSError:
+                first_line = ""
+            marker_is_valid = first_line == GENERATOR_MARKER
+        if not marker_is_valid:
             raise MigrationError(
                 f"refusing to overwrite non-adapter directory: {output}"
             )

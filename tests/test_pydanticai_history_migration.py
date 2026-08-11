@@ -324,6 +324,32 @@ def test_refuses_to_replace_foreign_output_directory(tmp_path: Path):
     assert (output / "owner.txt").read_text() == "do not replace"
 
 
+def test_refuses_embedded_or_symlinked_ownership_markers(tmp_path: Path):
+    source = tmp_path / "history.json"
+    _write_source(source, _message_history())
+
+    embedded = tmp_path / "embedded-marker"
+    embedded.mkdir()
+    (embedded / "index.md").write_text(
+        f"Project notes\n{adapter.GENERATOR_MARKER}\n", "utf-8"
+    )
+    (embedded / "owner.txt").write_text("preserve me", "utf-8")
+    with pytest.raises(adapter.MigrationError, match="non-adapter directory"):
+        adapter.migrate(source, embedded, force=True)
+    assert (embedded / "owner.txt").read_text() == "preserve me"
+
+    marker_target = tmp_path / "outside-index.md"
+    marker_target.write_text(f"{adapter.GENERATOR_MARKER}\n", "utf-8")
+    linked = tmp_path / "linked-marker"
+    linked.mkdir()
+    (linked / "index.md").symlink_to(marker_target)
+    (linked / "owner.txt").write_text("preserve me", "utf-8")
+    with pytest.raises(adapter.MigrationError, match="non-adapter directory"):
+        adapter.migrate(source, linked, force=True)
+    assert (linked / "owner.txt").read_text() == "preserve me"
+    assert marker_target.read_text() == f"{adapter.GENERATOR_MARKER}\n"
+
+
 def test_refuses_file_and_symlink_output_paths(tmp_path: Path):
     source = tmp_path / "history.json"
     _write_source(source, _message_history())
