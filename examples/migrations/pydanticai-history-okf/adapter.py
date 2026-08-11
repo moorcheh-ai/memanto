@@ -104,10 +104,15 @@ def canonical_json(value: Any) -> bytes:
     """Return the stable UTF-8 representation used by hashes and sidecars."""
     return json.dumps(
         value,
+        allow_nan=False,
         ensure_ascii=False,
         sort_keys=True,
         separators=(",", ":"),
     ).encode("utf-8")
+
+
+def _reject_non_finite(constant: str) -> None:
+    raise MigrationError(f"non-finite JSON number is not supported: {constant}")
 
 
 def load_history(path: str | Path) -> History:
@@ -118,7 +123,10 @@ def load_history(path: str | Path) -> History:
     except OSError as exc:
         raise MigrationError(f"cannot read source history: {source_path}") from exc
     try:
-        data = json.loads(raw.decode("utf-8-sig"))
+        data = json.loads(
+            raw.decode("utf-8-sig"),
+            parse_constant=_reject_non_finite,
+        )
     except (UnicodeDecodeError, json.JSONDecodeError) as exc:
         raise MigrationError("source history must be a UTF-8 JSON array") from exc
     if not isinstance(data, list):
@@ -184,9 +192,25 @@ def scan_history(messages: tuple[dict[str, Any], ...]) -> list[Finding]:
 
     def visit(value: Any, path: str, message_index: int) -> None:
         if isinstance(value, dict):
-            for key, item in value.items():
-                item_path = f"{path}.{key}"
-                normalized_key = re.sub(r"[^a-z0-9]+", "_", str(key).casefold()).strip(
+            for key_index, (key, item) in enumerate(value.items()):
+                key_text = str(key)
+                key_findings: list[tuple[str, str]] = []
+                for category, pattern in _SECRET_PATTERNS:
+                    if pattern.search(key_text):
+                        key_findings.append((category, "secret"))
+                for category, pattern in _PII_PATTERNS:
+                    if pattern.search(key_text):
+                        key_findings.append((category, "pii"))
+
+                item_path = (
+                    f"{path}.<redacted-key:{key_index}>"
+                    if key_findings
+                    else f"{path}.{key_text}"
+                )
+                for category, severity in key_findings:
+                    add_finding(category, item_path, message_index, severity)
+
+                normalized_key = re.sub(r"[^a-z0-9]+", "_", key_text.casefold()).strip(
                     "_"
                 )
                 if (
@@ -224,8 +248,21 @@ def redact_history(
         nonlocal replacements
         if isinstance(value, dict):
             redacted: dict[str, Any] = {}
-            for key, item in value.items():
-                normalized_key = re.sub(r"[^a-z0-9]+", "_", str(key).casefold()).strip(
+            for key_index, (key, item) in enumerate(value.items()):
+                key_text = str(key)
+                key_categories = [
+                    category
+                    for category, pattern in (*_SECRET_PATTERNS, *_PII_PATTERNS)
+                    if pattern.search(key_text)
+                ]
+                output_key = key_text
+                if key_categories:
+                    output_key = f"[REDACTED:{key_categories[0]}_key:{key_index}]"
+                    while output_key in redacted:
+                        output_key += "_"
+                    replacements += 1
+
+                normalized_key = re.sub(r"[^a-z0-9]+", "_", key_text.casefold()).strip(
                     "_"
                 )
                 if (
@@ -233,10 +270,10 @@ def redact_history(
                     and isinstance(item, str)
                     and item.strip()
                 ):
-                    redacted[key] = "[REDACTED:named_secret_field]"
+                    redacted[output_key] = "[REDACTED:named_secret_field]"
                     replacements += 1
                 else:
-                    redacted[key] = redact(item)
+                    redacted[output_key] = redact(item)
             return redacted
         if isinstance(value, list):
             return [redact(item) for item in value]
@@ -274,7 +311,7 @@ def _markdown_text(value: Any) -> str:
     if isinstance(value, str):
         return value
     if isinstance(value, (int, float, bool)) or value is None:
-        return json.dumps(value, ensure_ascii=False)
+        return json.dumps(value, allow_nan=False, ensure_ascii=False)
     if isinstance(value, list):
         blocks: list[str] = []
         for item in value:
@@ -293,7 +330,13 @@ def _markdown_text(value: Any) -> str:
 
 
 def _json_fence(value: Any) -> str:
-    payload = json.dumps(value, ensure_ascii=False, indent=2, sort_keys=True)
+    payload = json.dumps(
+        value,
+        allow_nan=False,
+        ensure_ascii=False,
+        indent=2,
+        sort_keys=True,
+    )
     longest = max((len(run) for run in re.findall(r"`+", payload)), default=0)
     fence = "`" * max(3, longest + 1)
     return f"{fence}json\n{payload}\n{fence}"
@@ -301,6 +344,29 @@ def _json_fence(value: Any) -> str:
 
 def _escape_loader_delimiter(text: str) -> str:
     return text.replace(ENTRY_DELIMITER, "<!-- okf-entry-escaped -->")
+
+
+def _plain_title_seed(part: dict[str, Any], heading: str) -> str:
+    """Return title-safe text without rendering structured content as Markdown."""
+    kind = str(part.get("part_kind") or "unknown")
+    if kind in {"tool-call", "tool-return"}:
+        return heading
+
+    content = part.get("content")
+    if isinstance(content, str):
+        return _single_line(content)
+    if isinstance(content, list):
+        text_items: list[str] = []
+        for item in content:
+            if isinstance(item, str):
+                text_items.append(item)
+            elif isinstance(item, dict):
+                text = item.get("text") or item.get("content")
+                if isinstance(text, str):
+                    text_items.append(text)
+        if text_items:
+            return _single_line(" ".join(text_items))
+    return heading
 
 
 def _part_heading(part: dict[str, Any]) -> tuple[str, str, bool]:
@@ -362,8 +428,8 @@ def render_message(message: dict[str, Any], index: int) -> RenderedMessage:
             continue
         clean = _escape_loader_delimiter(text.strip())
         sections.append(f"## {heading}\n\n{clean}".rstrip())
-        if not title_seed and clean:
-            title_seed = _single_line(clean)
+        if not title_seed:
+            title_seed = _escape_loader_delimiter(_plain_title_seed(part, heading))
 
     kind = str(message.get("kind"))
     if not title_seed:
@@ -419,7 +485,7 @@ def _slug(value: str) -> str:
 
 def _yaml(value: Any) -> str:
     """JSON values are valid YAML and avoid a dependency in this adapter."""
-    return json.dumps(value, ensure_ascii=False)
+    return json.dumps(value, allow_nan=False, ensure_ascii=False)
 
 
 def _message_doc(
@@ -629,7 +695,10 @@ def migrate(
         links.append((rendered.title, relative))
 
     source_bytes = (
-        json.dumps(list(messages), ensure_ascii=False, indent=2).encode("utf-8") + b"\n"
+        json.dumps(
+            list(messages), allow_nan=False, ensure_ascii=False, indent=2
+        ).encode("utf-8")
+        + b"\n"
         if redact
         else history.raw_bytes
     )
@@ -666,7 +735,7 @@ def migrate(
         },
     }
     (metrics_root / "migration-report.json").write_text(
-        json.dumps(report, indent=2, sort_keys=True) + "\n",
+        json.dumps(report, allow_nan=False, indent=2, sort_keys=True) + "\n",
         encoding="utf-8",
     )
     manifest = {
@@ -674,7 +743,7 @@ def migrate(
         "files": _file_hashes(output_path),
     }
     (output_path / "migration-manifest.json").write_text(
-        json.dumps(manifest, indent=2, sort_keys=True) + "\n",
+        json.dumps(manifest, allow_nan=False, indent=2, sort_keys=True) + "\n",
         encoding="utf-8",
     )
     return report

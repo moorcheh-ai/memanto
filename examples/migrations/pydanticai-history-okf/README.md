@@ -31,13 +31,13 @@ ModelMessage JSON ── adapter.py ──► OKF Markdown + canonical sidecars
 | Privacy findings | 0 |
 
 The sample is a genuine run of `pydantic-ai-slim==2.27.1`: PydanticAI creates
-the message objects, timestamps, usage, run IDs, conversation IDs, tool calls,
-tool returns, and serialized archive. The generator also validates and
-byte-round-trips that archive with PydanticAI's official
-`ModelMessagesTypeAdapter`. A deterministic `FunctionModel` supplies the public
-demo responses so reproduction requires no model API key or spend. That
-distinction is recorded in `sample/evidence/source-run.json`; no live LLM
-generation is claimed.
+the message objects, usage, run IDs, conversation IDs, tool calls, tool returns,
+and serialized archive. After the run, the generator copies the public message
+dataclasses with fixed timestamps and serializes them through PydanticAI's
+official `ModelMessagesTypeAdapter`, making repeated generation byte-identical.
+A deterministic `FunctionModel` supplies the public demo responses so
+reproduction requires no model API key or spend. That distinction is recorded
+in `sample/evidence/source-run.json`; no live LLM generation is claimed.
 
 The messages capture decisions and corrections from building this migration
 adapter itself, rather than hand-authored JSON pretending to be a provider
@@ -58,6 +58,8 @@ python run_demo.py --work-dir ./demo-output
 
 Use `--force` only when intentionally replacing a prior adapter-generated demo
 under that work directory.
+Each child command has a 120-second timeout by default; override it with
+`--command-timeout-seconds` when a slower local environment requires it.
 
 The command fails on the first error and performs the complete credential-free
 loop:
@@ -103,9 +105,11 @@ were run unless a corresponding real report is present.
 
 ## Privacy before portability
 
-OKF is deliberately plaintext. The adapter recursively scans all source
-strings and refuses to write when it sees likely secrets or PII. Reports record
-only category, JSON path, severity, and a hash prefix—never the matched value.
+OKF is deliberately plaintext. The adapter recursively scans source dictionary
+keys and values and refuses to write when it sees likely secrets or PII.
+Sensitive keys use opaque path placeholders and are replaced in redaction mode.
+Reports record only category, sanitized JSON path, severity, and a hash
+prefix—never the matched value.
 
 ```bash
 # Recommended: sanitize the archive, then run normally.
@@ -146,11 +150,12 @@ decision, or correction from syntax alone.
   deterministic model caveat.
 - `sample/golden_qa.json` contains the six versioned questions.
 
-Measured context-byte reduction is reported; token, price, storage-service, and
-network-latency savings are not invented. A live Moorcheh import, public demo
-video, and public social metrics are owner-run bounty evidence and must be added
-before claiming the bounty. Follow [DEMO_SCRIPT.md](DEMO_SCRIPT.md) for the
-recording.
+Measured context-byte reduction compares the sum of selected context across all
+six queries with sending the complete context separately for each query. Token,
+price, storage-service, and network-latency savings are not invented. A live
+Moorcheh import, public demo video, and public social metrics are owner-run
+bounty evidence and must be added before claiming the bounty. Follow
+[DEMO_SCRIPT.md](DEMO_SCRIPT.md) for the recording.
 
 For a credentialed import, export-back, and recall evidence checklist, follow
 [OWNER_VALIDATION.md](OWNER_VALIDATION.md). It deliberately requires the owner

@@ -4,7 +4,7 @@ title: "Response 020 · Use PydanticAI 2.27.1 ModelMessage JSON, migrate it into
 description: "Use PydanticAI 2.27.1 ModelMessage JSON, migrate it into examples/migrations/pydanticai-history-okf, preserve canonical sidecars, fail closed on secrets, validate recall parity, and use Memanto's ship"
 resource: "pydantic-ai://conversations/memanto-bounty-1609-pydanticai/runs/memanto-pydanticai-run-08/messages/19"
 tags: ["pydantic-ai", "message:response", "conversation:memanto-bounty-1609-pydanticai", "run:memanto-pydanticai-run-08", "part:text"]
-timestamp: "2026-08-11T14:16:43.631882Z"
+timestamp: "2026-08-11T12:00:19Z"
 x_memanto:
   source: "pydantic-ai-message-history"
   confidence: 0.75
@@ -18,7 +18,7 @@ pydantic_ai:
   model_name: "pydanticai-migration-evidence-model"
   provider_name: null
   source_sidecar: "source/messages/0019.json"
-  source_sidecar_sha256: "5fc6bc879bf2ee8edbb8c1d2e2b01180c6ca6d122b8cf81e2318327f7d53ceb7"
+  source_sidecar_sha256: "46cb767884996b4f54fbf90266e89ad59aa2be5d538b7517c29c6e67d6d6a0f1"
   omitted_part_kinds: []
 ---
 

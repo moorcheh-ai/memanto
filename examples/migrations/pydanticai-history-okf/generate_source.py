@@ -3,8 +3,10 @@
 
 The scenario records decisions made while building this migration example.  A
 deterministic FunctionModel keeps reproduction free of API keys, but the Agent
-run loop, tool dispatch, run/conversation identifiers, timestamps, usage
-accounting, and serialized ``ModelMessage`` objects all come from PydanticAI.
+run loop, tool dispatch, run/conversation identifiers, usage accounting, and
+serialized ``ModelMessage`` objects all come from PydanticAI. Timestamps are
+normalized after the run through the public message dataclasses so repeated
+generation is byte-reproducible.
 """
 
 from __future__ import annotations
@@ -12,9 +14,11 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+from dataclasses import fields, replace
+from datetime import datetime, timedelta, timezone
 from importlib.metadata import version
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 from pydantic_ai import Agent
 from pydantic_ai.messages import (
@@ -30,6 +34,7 @@ from pydantic_ai.models.function import AgentInfo, FunctionModel
 
 CONVERSATION_ID = "memanto-bounty-1609-pydanticai"
 MODEL_NAME = "pydanticai-migration-evidence-model"
+FIXED_TIMESTAMP = datetime(2026, 8, 11, 12, 0, tzinfo=timezone.utc)
 
 PROMPTS = (
     "For this PydanticAI migration adapter, keep bundles deterministic and fail closed on secrets.",
@@ -111,6 +116,32 @@ def model_function(messages: list[ModelMessage], _info: AgentInfo) -> ModelRespo
     return ModelResponse(parts=[TextPart("Recorded project memory: " + prompt)])
 
 
+def normalize_timestamps(messages: list[ModelMessage]) -> list[ModelMessage]:
+    """Copy framework messages with deterministic message and part timestamps."""
+    normalized: list[ModelMessage] = []
+    for index, message in enumerate(messages):
+        timestamp = FIXED_TIMESTAMP + timedelta(seconds=index)
+        normalized_parts = []
+        for part in message.parts:
+            part_fields = {field.name for field in fields(part)}
+            normalized_parts.append(
+                replace(cast(Any, part), timestamp=timestamp)
+                if "timestamp" in part_fields
+                else part
+            )
+        normalized.append(
+            cast(
+                ModelMessage,
+                replace(
+                    cast(Any, message),
+                    parts=normalized_parts,
+                    timestamp=timestamp,
+                ),
+            )
+        )
+    return normalized
+
+
 def generate(output: Path, report_path: Path) -> dict[str, Any]:
     model = FunctionModel(model_function, model_name=MODEL_NAME)
     agent = Agent(
@@ -150,7 +181,8 @@ def generate(output: Path, report_path: Path) -> dict[str, Any]:
         outputs.append(str(result.output))
         run_ids.append(result.run_id)
 
-    data = result.all_messages_json()
+    history = normalize_timestamps(history)
+    data = ModelMessagesTypeAdapter.dump_json(history)
     validated_messages = ModelMessagesTypeAdapter.validate_json(data)
     if ModelMessagesTypeAdapter.dump_json(validated_messages) != data:
         raise RuntimeError("PydanticAI schema round-trip changed the source archive")
@@ -170,17 +202,23 @@ def generate(output: Path, report_path: Path) -> dict[str, Any]:
         "tool_names": ["lookup_bounty", "record_validation"],
         "tool_dispatches": 2,
         "official_schema_round_trip": True,
+        "timestamp_policy": (
+            "Framework messages normalized from 2026-08-11T12:00:00Z at "
+            "one-second intervals"
+        ),
         "source_sha256": hashlib.sha256(data + b"\n").hexdigest(),
         "outputs": outputs,
         "honesty_note": (
             "The archive comes from real PydanticAI Agent runs and tool dispatch. "
             "The deterministic FunctionModel supplies scripted public demo prose; "
-            "no live LLM generation is claimed."
+            "timestamps are normalized after the run for byte reproduction; no "
+            "live LLM generation is claimed."
         ),
     }
     report_path.parent.mkdir(parents=True, exist_ok=True)
     report_path.write_text(
-        json.dumps(report, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+        json.dumps(report, allow_nan=False, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
     )
     return report
 

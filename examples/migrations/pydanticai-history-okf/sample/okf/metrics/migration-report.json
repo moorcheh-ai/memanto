@@ -13,7 +13,7 @@
   },
   "okf_version": "0.1",
   "omitted_human_readable_part_counts": {},
-  "output_canonical_sha256": "a8facb5d7e93f26ff009700aaad3b745da90132556c054bf248ffa0af5222913",
+  "output_canonical_sha256": "65c8915c03b03894421d79654a96ca863f583fcf77129dbf227541599a733bf5",
   "part_kind_counts": {
     "text": 8,
     "tool-call": 2,
@@ -27,8 +27,8 @@
     "redaction_count": 0
   },
   "skipped_messages": 0,
-  "source_canonical_sha256": "a8facb5d7e93f26ff009700aaad3b745da90132556c054bf248ffa0af5222913",
+  "source_canonical_sha256": "65c8915c03b03894421d79654a96ca863f583fcf77129dbf227541599a733bf5",
   "source_filename": "history.json",
   "source_messages": 20,
-  "source_sha256": "77eced0aa7d3b8bcd082e05cbcc746a5cc64951e28733d49dedccc095b6b7e11"
+  "source_sha256": "ee56537ff54916a7a7aa3ca50c10c4800c810552d792c9b255c2c3b76661067f"
 }

@@ -4,7 +4,7 @@ title: "Request 017 · Do not claim a live Moorcheh import unless MOORCHEH_API_K
 description: "Do not claim a live Moorcheh import unless MOORCHEH_API_KEY was actually used."
 resource: "pydantic-ai://conversations/memanto-bounty-1609-pydanticai/runs/memanto-pydanticai-run-07/messages/16"
 tags: ["pydantic-ai", "message:request", "conversation:memanto-bounty-1609-pydanticai", "run:memanto-pydanticai-run-07", "part:user-prompt"]
-timestamp: "2026-08-11T14:16:43.622330Z"
+timestamp: "2026-08-11T12:00:16Z"
 x_memanto:
   source: "pydantic-ai-message-history"
   confidence: 0.95
@@ -18,7 +18,7 @@ pydantic_ai:
   model_name: null
   provider_name: null
   source_sidecar: "source/messages/0016.json"
-  source_sidecar_sha256: "0ed31eabb4aac0257383932a98672d384f381368702d8f2b53354f96e749a9c3"
+  source_sidecar_sha256: "2df1d94faf77161ba43e3d3ac532d9b1b783c49f2a88af13783a092493bdf812"
   omitted_part_kinds: []
 ---
 

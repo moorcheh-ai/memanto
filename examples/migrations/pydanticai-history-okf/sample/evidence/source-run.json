@@ -2,7 +2,7 @@
   "api_key_required": false,
   "conversation_id": "memanto-bounty-1609-pydanticai",
   "generator": "generate_source.py",
-  "honesty_note": "The archive comes from real PydanticAI Agent runs and tool dispatch. The deterministic FunctionModel supplies scripted public demo prose; no live LLM generation is claimed.",
+  "honesty_note": "The archive comes from real PydanticAI Agent runs and tool dispatch. The deterministic FunctionModel supplies scripted public demo prose; timestamps are normalized after the run for byte reproduction; no live LLM generation is claimed.",
   "messages": 20,
   "model": "pydanticai-migration-evidence-model",
   "model_kind": "FunctionModel",
@@ -29,7 +29,8 @@
   ],
   "source_framework": "pydantic-ai-slim",
   "source_framework_version": "2.27.1",
-  "source_sha256": "77eced0aa7d3b8bcd082e05cbcc746a5cc64951e28733d49dedccc095b6b7e11",
+  "source_sha256": "ee56537ff54916a7a7aa3ca50c10c4800c810552d792c9b255c2c3b76661067f",
+  "timestamp_policy": "Framework messages normalized from 2026-08-11T12:00:00Z at one-second intervals",
   "tool_dispatches": 2,
   "tool_names": [
     "lookup_bounty",

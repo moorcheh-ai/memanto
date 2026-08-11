@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import subprocess
 import sys
 from pathlib import Path
 
@@ -26,6 +27,7 @@ def _load(name: str, filename: str):
 
 adapter = _load("pydanticai_okf_adapter", "adapter.py")
 reconstruct_module = _load("pydanticai_okf_reconstruct", "reconstruct.py")
+run_demo_module = _load("pydanticai_okf_run_demo", "run_demo.py")
 
 
 def _message_history(content: str = "Use metric units.") -> list[dict]:
@@ -67,6 +69,23 @@ def test_load_rejects_non_array(tmp_path: Path):
     source.write_text("{}", "utf-8")
     with pytest.raises(adapter.MigrationError, match="JSON array"):
         adapter.load_history(source)
+
+
+@pytest.mark.parametrize("constant", ["NaN", "Infinity", "-Infinity"])
+def test_load_rejects_non_finite_numbers(tmp_path: Path, constant: str):
+    source = tmp_path / "history.json"
+    source.write_text(
+        '[{"kind":"request","parts":['
+        '{"part_kind":"user-prompt","content":'
+        f"{constant}"
+        "}]}]",
+        "utf-8",
+    )
+
+    with pytest.raises(adapter.MigrationError, match="non-finite JSON number"):
+        adapter.load_history(source)
+    with pytest.raises(ValueError, match="Out of range float values"):
+        adapter.canonical_json([float("nan")])
 
 
 @pytest.mark.parametrize(
@@ -170,6 +189,54 @@ def test_secret_scanner_distinguishes_providers_and_named_fields(tmp_path: Path)
     assert report["privacy"]["redaction_count"] == 2
 
 
+def test_secret_scanner_and_redactor_handle_sensitive_dictionary_keys(
+    tmp_path: Path,
+):
+    secret_key = "sk-" + "keyinsideobjectname123456789012345"
+    email_key = "migration-owner@example.com"
+    messages = _message_history()
+    messages[0]["metadata"] = {secret_key: "secret-key-value", email_key: "pii-key"}
+    source = tmp_path / "history.json"
+    _write_source(source, messages)
+
+    findings = adapter.scan_history(adapter.load_history(source).messages)
+    categories = {finding.category for finding in findings}
+    serialized_findings = json.dumps([finding.__dict__ for finding in findings])
+    assert {"openai_api_key", "email"} <= categories
+    assert secret_key not in serialized_findings
+    assert email_key not in serialized_findings
+    assert all("<redacted-key:" in finding.path for finding in findings)
+
+    bundle = tmp_path / "redacted"
+    report = adapter.migrate(source, bundle, redact=True)
+    archived = (bundle / "source" / "history.json").read_text()
+    assert secret_key not in archived
+    assert email_key not in archived
+    assert "[REDACTED:openai_api_key_key:" in archived
+    assert "[REDACTED:email_key:" in archived
+    assert report["privacy"]["redaction_count"] == 2
+
+
+def test_tool_titles_use_plain_heading_and_keep_rendered_details():
+    message = {
+        "kind": "response",
+        "parts": [
+            {
+                "part_kind": "tool-call",
+                "tool_name": "lookup_bounty",
+                "tool_call_id": "lookup-1",
+                "args": {"nested": "value" * 30},
+            }
+        ],
+    }
+
+    rendered = adapter.render_message(message, 0)
+
+    assert rendered.title == "Response 001 · Tool call · lookup_bounty"
+    assert "`" not in rendered.title
+    assert "```json" in rendered.body
+
+
 def test_redaction_is_explicitly_non_lossless(tmp_path: Path):
     source = tmp_path / "history.json"
     _write_source(
@@ -246,6 +313,97 @@ def test_refuses_file_and_symlink_output_paths(tmp_path: Path):
     symlink.symlink_to(real_output, target_is_directory=True)
     with pytest.raises(adapter.MigrationError, match="symlink"):
         adapter.migrate(source, symlink)
+
+
+@pytest.mark.parametrize("kind", ["absolute", "traversal", "symlink"])
+def test_reconstruct_rejects_manifest_paths_outside_bundle(tmp_path: Path, kind: str):
+    source = tmp_path / "history.json"
+    bundle = tmp_path / "okf"
+    outside = tmp_path / "outside.json"
+    outside.write_text("outside", "utf-8")
+    _write_source(source, _message_history())
+    adapter.migrate(source, bundle)
+
+    if kind == "absolute":
+        malicious_path = str(outside.resolve())
+        expected_error = "absolute manifest path"
+    elif kind == "traversal":
+        malicious_path = "../outside.json"
+        expected_error = "escapes bundle"
+    else:
+        link = bundle / "linked-outside.json"
+        link.symlink_to(outside)
+        malicious_path = "linked-outside.json"
+        expected_error = "escapes bundle"
+
+    manifest_path = bundle / "migration-manifest.json"
+    manifest = json.loads(manifest_path.read_text())
+    manifest["files"][malicious_path] = "unused"
+    manifest_path.write_text(json.dumps(manifest, sort_keys=True), "utf-8")
+
+    with pytest.raises(reconstruct_module.ReconstructionError, match=expected_error):
+        reconstruct_module.reconstruct(bundle)
+
+
+def test_demo_child_timeout_preserves_partial_output(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
+    def timeout(*_args, **kwargs):
+        raise subprocess.TimeoutExpired(
+            cmd=["blocked"], timeout=kwargs["timeout"], output=b"partial output\n"
+        )
+
+    monkeypatch.setattr(run_demo_module.subprocess, "run", timeout)
+    transcript: list[str] = []
+
+    with pytest.raises(SystemExit) as exc:
+        run_demo_module.run(
+            ["blocked"],
+            cwd=tmp_path,
+            transcript=transcript,
+            timeout_seconds=0.25,
+        )
+
+    assert exc.value.code == 124
+    assert "partial output" in "".join(transcript)
+    assert "timed out after 0.25 seconds" in "".join(transcript)
+
+
+def test_demo_selects_only_preview_matching_current_bundle(tmp_path: Path):
+    from memanto.cli.migrate.mappers import map_okf
+    from memanto.cli.migrate.okf_loader import load_okf_bundle
+
+    source = tmp_path / "history.json"
+    bundle = tmp_path / "okf"
+    run_root = tmp_path / "runs"
+    stale = run_root / "old" / "mapped_preview.json"
+    stale.parent.mkdir(parents=True)
+    stale.write_text("[]", "utf-8")
+    _write_source(source, _message_history())
+    adapter.migrate(source, bundle)
+
+    before = run_demo_module.preview_snapshot(run_root)
+    current = run_root / "current" / "mapped_preview.json"
+    current.parent.mkdir()
+    expected = map_okf(load_okf_bundle(bundle))
+    current.write_text(json.dumps(expected, ensure_ascii=False, default=str), "utf-8")
+
+    selected = run_demo_module.select_invocation_preview(run_root, before, bundle)
+
+    assert selected == current.resolve()
+
+
+def test_generated_source_is_byte_reproducible(tmp_path: Path):
+    pytest.importorskip("pydantic_ai")
+    generator = _load("pydanticai_okf_generate_source", "generate_source.py")
+    first = tmp_path / "first.json"
+    second = tmp_path / "second.json"
+
+    first_report = generator.generate(first, tmp_path / "first-report.json")
+    second_report = generator.generate(second, tmp_path / "second-report.json")
+
+    assert first.read_bytes() == second.read_bytes()
+    assert first_report["source_sha256"] == second_report["source_sha256"]
 
 
 def test_committed_sample_is_importable_reconstructable_and_private():

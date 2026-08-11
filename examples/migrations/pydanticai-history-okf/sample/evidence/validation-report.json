@@ -153,18 +153,22 @@
     "source_score": 1.0
   },
   "reconstruction": {
-    "canonical_sha256": "a8facb5d7e93f26ff009700aaad3b745da90132556c054bf248ffa0af5222913",
+    "canonical_sha256": "65c8915c03b03894421d79654a96ca863f583fcf77129dbf227541599a733bf5",
     "lossless": true,
     "matches_manifest": true,
     "messages": 20
   },
   "savings": {
     "honesty_note": "These are measured UTF-8 context bytes, not invented token, cost, or network-latency claims. Live Moorcheh metrics require a real key.",
-    "okf_full_context_bytes": 18031,
-    "okf_retrieval_reduction_percent": 80.4,
-    "okf_selected_context_bytes": 21202,
-    "source_full_context_bytes": 5783,
-    "source_selected_context_bytes": 7131
+    "measurement_basis": "Selected bytes summed across all recall queries versus sending the complete context separately for every query.",
+    "okf_full_context_bytes_across_queries": 103260,
+    "okf_full_context_bytes_per_query": 17210,
+    "okf_retrieval_reduction_percent": 80.16,
+    "okf_selected_context_bytes_across_queries": 20486,
+    "recall_queries": 6,
+    "source_full_context_bytes_across_queries": 34698,
+    "source_full_context_bytes_per_query": 5783,
+    "source_selected_context_bytes_across_queries": 7131
   },
   "source_messages": 20,
   "type_breakdown": {

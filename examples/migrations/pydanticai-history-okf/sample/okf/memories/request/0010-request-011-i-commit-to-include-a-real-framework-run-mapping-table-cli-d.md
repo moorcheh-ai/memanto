@@ -4,7 +4,7 @@ title: "Request 011 · I commit to include a real framework run, mapping table, 
 description: "I commit to include a real framework run, mapping table, CLI dry run, recall parity, and a sample OKF bundle."
 resource: "pydantic-ai://conversations/memanto-bounty-1609-pydanticai/runs/memanto-pydanticai-run-05/messages/10"
 tags: ["pydantic-ai", "message:request", "conversation:memanto-bounty-1609-pydanticai", "run:memanto-pydanticai-run-05", "part:user-prompt"]
-timestamp: "2026-08-11T14:16:43.603597Z"
+timestamp: "2026-08-11T12:00:10Z"
 x_memanto:
   source: "pydantic-ai-message-history"
   confidence: 0.95
@@ -18,7 +18,7 @@ pydantic_ai:
   model_name: null
   provider_name: null
   source_sidecar: "source/messages/0010.json"
-  source_sidecar_sha256: "7cf9fea5108c0934a020bcdee48eb933e1814ede7a64ef4fb9a21884784a5cff"
+  source_sidecar_sha256: "39fd5a6778f240320f78ed6ec98a4b0d538265b4591b20e1c9bf17f826037b11"
   omitted_part_kinds: []
 ---
 

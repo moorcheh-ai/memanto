@@ -123,6 +123,8 @@ def validate(
     total = len(questions)
     source_full_bytes = sum(len(document.encode("utf-8")) for document in source_docs)
     okf_full_bytes = sum(len(document.encode("utf-8")) for document in okf_docs)
+    source_full_across_queries = source_full_bytes * total
+    okf_full_across_queries = okf_full_bytes * total
     findings = scan_history(history.messages)
     recall_parity = source_hits == okf_hits == total
     privacy_pass = not findings
@@ -153,12 +155,19 @@ def validate(
                 "These are measured UTF-8 context bytes, not invented token, cost, "
                 "or network-latency claims. Live Moorcheh metrics require a real key."
             ),
-            "source_full_context_bytes": source_full_bytes,
-            "okf_full_context_bytes": okf_full_bytes,
-            "source_selected_context_bytes": selected_source_bytes,
-            "okf_selected_context_bytes": selected_okf_bytes,
+            "measurement_basis": (
+                "Selected bytes summed across all recall queries versus sending the "
+                "complete context separately for every query."
+            ),
+            "recall_queries": total,
+            "source_full_context_bytes_per_query": source_full_bytes,
+            "okf_full_context_bytes_per_query": okf_full_bytes,
+            "source_full_context_bytes_across_queries": source_full_across_queries,
+            "okf_full_context_bytes_across_queries": okf_full_across_queries,
+            "source_selected_context_bytes_across_queries": selected_source_bytes,
+            "okf_selected_context_bytes_across_queries": selected_okf_bytes,
             "okf_retrieval_reduction_percent": round(
-                (1 - selected_okf_bytes / max(1, okf_full_bytes * total)) * 100,
+                (1 - selected_okf_bytes / max(1, okf_full_across_queries)) * 100,
                 2,
             ),
         },
@@ -185,7 +194,8 @@ def main() -> int:
     report = validate(args.source, args.bundle, args.questions)
     args.report.parent.mkdir(parents=True, exist_ok=True)
     args.report.write_text(
-        json.dumps(report, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+        json.dumps(report, allow_nan=False, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
     )
     print(f"Messages        : {report['source_messages']}")
     print(f"Memanto mapped  : {report['memanto_mapped']}")

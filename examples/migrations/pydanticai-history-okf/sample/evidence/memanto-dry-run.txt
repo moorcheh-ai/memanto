@@ -11,7 +11,7 @@
 │                                                                              │
 │ Dry run — no writes performed.                                               │
 │                                                                              │
-│ Run dir: $HOME/.memanto/migrate/okf/20260811_141645               │
+│ Run dir: $HOME/.memanto/migrate/okf/20260811_151405               │
 │ Mapped preview:                                                              │
-│ $HOME/.memanto/migrate/okf/20260811_141645/mapped_preview.json    │
+│ $HOME/.memanto/migrate/okf/20260811_151405/mapped_preview.json    │
 ╰──────────────────────────────────────────────────────────────────────────────╯

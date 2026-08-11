@@ -4,7 +4,7 @@ title: "Response 010 · Recorded project memory: Correction: the merge-ready fol
 description: "Recorded project memory: Correction: the merge-ready folder is examples/migrations/pydanticai-history-okf, not pydanticai-to-okf."
 resource: "pydantic-ai://conversations/memanto-bounty-1609-pydanticai/runs/memanto-pydanticai-run-04/messages/9"
 tags: ["pydantic-ai", "message:response", "conversation:memanto-bounty-1609-pydanticai", "run:memanto-pydanticai-run-04", "part:text"]
-timestamp: "2026-08-11T14:16:43.597777Z"
+timestamp: "2026-08-11T12:00:09Z"
 x_memanto:
   source: "pydantic-ai-message-history"
   confidence: 0.75
@@ -18,7 +18,7 @@ pydantic_ai:
   model_name: "pydanticai-migration-evidence-model"
   provider_name: null
   source_sidecar: "source/messages/0009.json"
-  source_sidecar_sha256: "bd496279a41e59ba0a4d7f667c5885d7fc6f49f96c81fc501cab58413a2663de"
+  source_sidecar_sha256: "145d0872e5493774c36f64f89bc41c66a065cdd9754826ff12a1cdadbec15f81"
   omitted_part_kinds: []
 ---
 

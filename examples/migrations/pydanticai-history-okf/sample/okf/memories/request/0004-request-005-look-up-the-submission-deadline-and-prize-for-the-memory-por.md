@@ -4,7 +4,7 @@ title: "Request 005 · Look up the submission deadline and prize for the memory 
 description: "Look up the submission deadline and prize for the memory portability bounty."
 resource: "pydantic-ai://conversations/memanto-bounty-1609-pydanticai/runs/memanto-pydanticai-run-03/messages/4"
 tags: ["pydantic-ai", "message:request", "conversation:memanto-bounty-1609-pydanticai", "run:memanto-pydanticai-run-03", "part:user-prompt"]
-timestamp: "2026-08-11T14:16:43.584758Z"
+timestamp: "2026-08-11T12:00:04Z"
 x_memanto:
   source: "pydantic-ai-message-history"
   confidence: 0.95
@@ -18,7 +18,7 @@ pydantic_ai:
   model_name: null
   provider_name: null
   source_sidecar: "source/messages/0004.json"
-  source_sidecar_sha256: "3da53d2f9889a611a6242073decf2fc02c03c4c599c776584d94c061b5702a0d"
+  source_sidecar_sha256: "3463b231eadc687f1c15a60fb3de64878674a31eab1cd34ea8b37af219bf8af5"
   omitted_part_kinds: []
 ---
 

@@ -38,11 +38,13 @@ separately from data loss: unknown or thinking parts remain in the sidecar.
 
 ## Privacy contract
 
-The adapter scans every string recursively before writing anything. It fails
-closed on likely API keys, GitHub tokens, JWTs, private keys, email addresses,
-phone numbers, and non-empty values under sensitive field names such as
-`api_key`, `access_token`, or `password`. Users must then do one of three
-explicit things:
+The adapter scans dictionary keys as well as values recursively before writing
+anything. It fails closed on likely API keys, GitHub tokens, JWTs, private keys,
+email addresses, phone numbers, and non-empty values under sensitive field
+names such as `api_key`, `access_token`, or `password`. Matching keys use an
+opaque path placeholder in reports and are replaced in redaction mode, so a key
+cannot leak through either Markdown or canonical sidecars. Users must then do
+one of three explicit things:
 
 - sanitize the source themselves (recommended for public bundles);
 - use `--redact`, which marks the migration `lossless: false`; or

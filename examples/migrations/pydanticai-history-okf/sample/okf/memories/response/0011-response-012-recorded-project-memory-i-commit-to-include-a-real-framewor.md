@@ -4,7 +4,7 @@ title: "Response 012 · Recorded project memory: I commit to include a real fram
 description: "Recorded project memory: I commit to include a real framework run, mapping table, CLI dry run, recall parity, and a sample OKF bundle."
 resource: "pydantic-ai://conversations/memanto-bounty-1609-pydanticai/runs/memanto-pydanticai-run-05/messages/11"
 tags: ["pydantic-ai", "message:response", "conversation:memanto-bounty-1609-pydanticai", "run:memanto-pydanticai-run-05", "part:text"]
-timestamp: "2026-08-11T14:16:43.605112Z"
+timestamp: "2026-08-11T12:00:11Z"
 x_memanto:
   source: "pydantic-ai-message-history"
   confidence: 0.75
@@ -18,7 +18,7 @@ pydantic_ai:
   model_name: "pydanticai-migration-evidence-model"
   provider_name: null
   source_sidecar: "source/messages/0011.json"
-  source_sidecar_sha256: "646c9abb94f35d54d9d7981df7b4db00108b719c9d0e5d0e95e3b937814f028c"
+  source_sidecar_sha256: "d85def321d1cc4a35c773769e3e97b1d252cea8a59bb63c0120128895a31a5ff"
   omitted_part_kinds: []
 ---
 

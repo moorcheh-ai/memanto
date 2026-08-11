@@ -24,13 +24,13 @@ $ $REPO/.venv/bin/python -m memanto migrate okf $REPO/examples/migrations/pydant
 │                                                                              │
 │ Dry run — no writes performed.                                               │
 │                                                                              │
-│ Run dir: $HOME/.memanto/migrate/okf/20260811_141645               │
+│ Run dir: $HOME/.memanto/migrate/okf/20260811_151405               │
 │ Mapped preview:                                                              │
-│ $HOME/.memanto/migrate/okf/20260811_141645/mapped_preview.json    │
+│ $HOME/.memanto/migrate/okf/20260811_151405/mapped_preview.json    │
 ╰──────────────────────────────────────────────────────────────────────────────╯
 $ $REPO/.venv/bin/python $REPO/examples/migrations/pydanticai-history-okf/reconstruct.py $REPO/examples/migrations/pydanticai-history-okf/sample/okf --output $REPO/examples/migrations/pydanticai-history-okf/sample/evidence/reconstructed-history.json --report $REPO/examples/migrations/pydanticai-history-okf/sample/evidence/reconstruction-report.json
 {
-  "canonical_sha256": "a8facb5d7e93f26ff009700aaad3b745da90132556c054bf248ffa0af5222913",
+  "canonical_sha256": "65c8915c03b03894421d79654a96ca863f583fcf77129dbf227541599a733bf5",
   "lossless": true,
   "matches_manifest": true,
   "messages": 20

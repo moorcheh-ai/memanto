@@ -36,6 +36,7 @@ code alone.
 Run the six questions from `sample/golden_qa.json` against the dedicated agent:
 
 ```bash
+memanto agent activate YOUR_AGENT_ID
 memanto recall "What PydanticAI source package and version did the project record?"
 memanto recall "Which merge-ready output folder replaced the earlier folder name?"
 memanto recall "What are the bounty deadline and prize?"

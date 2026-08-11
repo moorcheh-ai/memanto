@@ -8,12 +8,12 @@
       {
         "content": "For this PydanticAI migration adapter, keep bundles deterministic and fail closed on secrets.",
         "part_kind": "user-prompt",
-        "timestamp": "2026-08-11T14:16:43.556381Z"
+        "timestamp": "2026-08-11T12:00:00Z"
       }
     ],
     "run_id": "memanto-pydanticai-run-01",
     "state": "complete",
-    "timestamp": "2026-08-11T14:16:43.557031Z"
+    "timestamp": "2026-08-11T12:00:00Z"
   },
   {
     "conversation_id": "memanto-bounty-1609-pydanticai",
@@ -36,7 +36,7 @@
     "provider_url": null,
     "run_id": "memanto-pydanticai-run-01",
     "state": "complete",
-    "timestamp": "2026-08-11T14:16:43.558863Z",
+    "timestamp": "2026-08-11T12:00:01Z",
     "usage": {
       "cache_audio_read_tokens": 0,
       "cache_read_tokens": 0,
@@ -58,12 +58,12 @@
       {
         "content": "The source is pydantic-ai-slim 2.27.1 and Memanto's current shipped OKF importer uses OKF v0.1.",
         "part_kind": "user-prompt",
-        "timestamp": "2026-08-11T14:16:43.576429Z"
+        "timestamp": "2026-08-11T12:00:02Z"
       }
     ],
     "run_id": "memanto-pydanticai-run-02",
     "state": "complete",
-    "timestamp": "2026-08-11T14:16:43.577006Z"
+    "timestamp": "2026-08-11T12:00:02Z"
   },
   {
     "conversation_id": "memanto-bounty-1609-pydanticai",
@@ -86,7 +86,7 @@
     "provider_url": null,
     "run_id": "memanto-pydanticai-run-02",
     "state": "complete",
-    "timestamp": "2026-08-11T14:16:43.578727Z",
+    "timestamp": "2026-08-11T12:00:03Z",
     "usage": {
       "cache_audio_read_tokens": 0,
       "cache_read_tokens": 0,
@@ -108,12 +108,12 @@
       {
         "content": "Look up the submission deadline and prize for the memory portability bounty.",
         "part_kind": "user-prompt",
-        "timestamp": "2026-08-11T14:16:43.584191Z"
+        "timestamp": "2026-08-11T12:00:04Z"
       }
     ],
     "run_id": "memanto-pydanticai-run-03",
     "state": "complete",
-    "timestamp": "2026-08-11T14:16:43.584758Z"
+    "timestamp": "2026-08-11T12:00:04Z"
   },
   {
     "conversation_id": "memanto-bounty-1609-pydanticai",
@@ -141,7 +141,7 @@
     "provider_url": null,
     "run_id": "memanto-pydanticai-run-03",
     "state": "complete",
-    "timestamp": "2026-08-11T14:16:43.586255Z",
+    "timestamp": "2026-08-11T12:00:05Z",
     "usage": {
       "cache_audio_read_tokens": 0,
       "cache_read_tokens": 0,
@@ -170,7 +170,7 @@
         "metadata": null,
         "outcome": "success",
         "part_kind": "tool-return",
-        "timestamp": "2026-08-11T14:16:43.588248Z",
+        "timestamp": "2026-08-11T12:00:06Z",
         "tool_call_id": "lookup-bounty-1609",
         "tool_kind": null,
         "tool_name": "lookup_bounty"
@@ -178,7 +178,7 @@
     ],
     "run_id": "memanto-pydanticai-run-03",
     "state": "complete",
-    "timestamp": "2026-08-11T14:16:43.588925Z"
+    "timestamp": "2026-08-11T12:00:06Z"
   },
   {
     "conversation_id": "memanto-bounty-1609-pydanticai",
@@ -201,7 +201,7 @@
     "provider_url": null,
     "run_id": "memanto-pydanticai-run-03",
     "state": "complete",
-    "timestamp": "2026-08-11T14:16:43.590280Z",
+    "timestamp": "2026-08-11T12:00:07Z",
     "usage": {
       "cache_audio_read_tokens": 0,
       "cache_read_tokens": 0,
@@ -223,12 +223,12 @@
       {
         "content": "Correction: the merge-ready folder is examples/migrations/pydanticai-history-okf, not pydanticai-to-okf.",
         "part_kind": "user-prompt",
-        "timestamp": "2026-08-11T14:16:43.595777Z"
+        "timestamp": "2026-08-11T12:00:08Z"
       }
     ],
     "run_id": "memanto-pydanticai-run-04",
     "state": "complete",
-    "timestamp": "2026-08-11T14:16:43.596324Z"
+    "timestamp": "2026-08-11T12:00:08Z"
   },
   {
     "conversation_id": "memanto-bounty-1609-pydanticai",
@@ -251,7 +251,7 @@
     "provider_url": null,
     "run_id": "memanto-pydanticai-run-04",
     "state": "complete",
-    "timestamp": "2026-08-11T14:16:43.597777Z",
+    "timestamp": "2026-08-11T12:00:09Z",
     "usage": {
       "cache_audio_read_tokens": 0,
       "cache_read_tokens": 0,
@@ -273,12 +273,12 @@
       {
         "content": "I commit to include a real framework run, mapping table, CLI dry run, recall parity, and a sample OKF bundle.",
         "part_kind": "user-prompt",
-        "timestamp": "2026-08-11T14:16:43.603047Z"
+        "timestamp": "2026-08-11T12:00:10Z"
       }
     ],
     "run_id": "memanto-pydanticai-run-05",
     "state": "complete",
-    "timestamp": "2026-08-11T14:16:43.603597Z"
+    "timestamp": "2026-08-11T12:00:10Z"
   },
   {
     "conversation_id": "memanto-bounty-1609-pydanticai",
@@ -301,7 +301,7 @@
     "provider_url": null,
     "run_id": "memanto-pydanticai-run-05",
     "state": "complete",
-    "timestamp": "2026-08-11T14:16:43.605112Z",
+    "timestamp": "2026-08-11T12:00:11Z",
     "usage": {
       "cache_audio_read_tokens": 0,
       "cache_read_tokens": 0,
@@ -323,12 +323,12 @@
       {
         "content": "Record a validation milestone for the adapter test suite.",
         "part_kind": "user-prompt",
-        "timestamp": "2026-08-11T14:16:43.610338Z"
+        "timestamp": "2026-08-11T12:00:12Z"
       }
     ],
     "run_id": "memanto-pydanticai-run-06",
     "state": "complete",
-    "timestamp": "2026-08-11T14:16:43.610909Z"
+    "timestamp": "2026-08-11T12:00:12Z"
   },
   {
     "conversation_id": "memanto-bounty-1609-pydanticai",
@@ -357,7 +357,7 @@
     "provider_url": null,
     "run_id": "memanto-pydanticai-run-06",
     "state": "complete",
-    "timestamp": "2026-08-11T14:16:43.612429Z",
+    "timestamp": "2026-08-11T12:00:13Z",
     "usage": {
       "cache_audio_read_tokens": 0,
       "cache_read_tokens": 0,
@@ -385,7 +385,7 @@
         "metadata": null,
         "outcome": "success",
         "part_kind": "tool-return",
-        "timestamp": "2026-08-11T14:16:43.614410Z",
+        "timestamp": "2026-08-11T12:00:14Z",
         "tool_call_id": "record-validation-1",
         "tool_kind": null,
         "tool_name": "record_validation"
@@ -393,7 +393,7 @@
     ],
     "run_id": "memanto-pydanticai-run-06",
     "state": "complete",
-    "timestamp": "2026-08-11T14:16:43.615104Z"
+    "timestamp": "2026-08-11T12:00:14Z"
   },
   {
     "conversation_id": "memanto-bounty-1609-pydanticai",
@@ -416,7 +416,7 @@
     "provider_url": null,
     "run_id": "memanto-pydanticai-run-06",
     "state": "complete",
-    "timestamp": "2026-08-11T14:16:43.616565Z",
+    "timestamp": "2026-08-11T12:00:15Z",
     "usage": {
       "cache_audio_read_tokens": 0,
       "cache_read_tokens": 0,
@@ -438,12 +438,12 @@
       {
         "content": "Do not claim a live Moorcheh import unless MOORCHEH_API_KEY was actually used.",
         "part_kind": "user-prompt",
-        "timestamp": "2026-08-11T14:16:43.621785Z"
+        "timestamp": "2026-08-11T12:00:16Z"
       }
     ],
     "run_id": "memanto-pydanticai-run-07",
     "state": "complete",
-    "timestamp": "2026-08-11T14:16:43.622330Z"
+    "timestamp": "2026-08-11T12:00:16Z"
   },
   {
     "conversation_id": "memanto-bounty-1609-pydanticai",
@@ -466,7 +466,7 @@
     "provider_url": null,
     "run_id": "memanto-pydanticai-run-07",
     "state": "complete",
-    "timestamp": "2026-08-11T14:16:43.623806Z",
+    "timestamp": "2026-08-11T12:00:17Z",
     "usage": {
       "cache_audio_read_tokens": 0,
       "cache_read_tokens": 0,
@@ -488,12 +488,12 @@
       {
         "content": "Summarize the current migration plan, deadline, and correction.",
         "part_kind": "user-prompt",
-        "timestamp": "2026-08-11T14:16:43.629810Z"
+        "timestamp": "2026-08-11T12:00:18Z"
       }
     ],
     "run_id": "memanto-pydanticai-run-08",
     "state": "complete",
-    "timestamp": "2026-08-11T14:16:43.630382Z"
+    "timestamp": "2026-08-11T12:00:18Z"
   },
   {
     "conversation_id": "memanto-bounty-1609-pydanticai",
@@ -516,7 +516,7 @@
     "provider_url": null,
     "run_id": "memanto-pydanticai-run-08",
     "state": "complete",
-    "timestamp": "2026-08-11T14:16:43.631882Z",
+    "timestamp": "2026-08-11T12:00:19Z",
     "usage": {
       "cache_audio_read_tokens": 0,
       "cache_read_tokens": 0,

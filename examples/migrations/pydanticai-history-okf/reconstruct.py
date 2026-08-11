@@ -16,22 +16,49 @@ class ReconstructionError(ValueError):
 
 def canonical_json(value: Any) -> bytes:
     return json.dumps(
-        value, ensure_ascii=False, sort_keys=True, separators=(",", ":")
+        value,
+        allow_nan=False,
+        ensure_ascii=False,
+        sort_keys=True,
+        separators=(",", ":"),
     ).encode("utf-8")
 
 
+def _reject_non_finite(constant: str) -> None:
+    raise ReconstructionError(f"non-finite JSON number is not supported: {constant}")
+
+
+def _bundle_path(bundle_root: Path, relative: str) -> Path:
+    relative_path = Path(relative)
+    if relative_path.is_absolute():
+        raise ReconstructionError(f"absolute manifest path: {relative}")
+    candidate = (bundle_root / relative_path).resolve()
+    try:
+        candidate.relative_to(bundle_root)
+    except ValueError as exc:
+        raise ReconstructionError(f"manifest path escapes bundle: {relative}") from exc
+    return candidate
+
+
 def reconstruct(bundle: Path) -> tuple[list[dict[str, Any]], dict[str, Any]]:
-    manifest_path = bundle / "migration-manifest.json"
+    bundle_root = bundle.resolve()
+    manifest_path = _bundle_path(bundle_root, "migration-manifest.json")
     if not manifest_path.is_file():
         raise ReconstructionError("migration-manifest.json is missing")
-    manifest = json.loads(manifest_path.read_text("utf-8"))
+    manifest = json.loads(
+        manifest_path.read_text("utf-8"), parse_constant=_reject_non_finite
+    )
     expected_files = manifest.get("files")
     if not isinstance(expected_files, dict):
         raise ReconstructionError("manifest file hashes are missing")
 
     mismatches: list[str] = []
+    validated_paths: dict[str, Path] = {}
     for relative, expected in expected_files.items():
-        path = bundle / relative
+        if not isinstance(relative, str):
+            raise ReconstructionError("manifest paths must be strings")
+        path = _bundle_path(bundle_root, relative)
+        validated_paths[relative] = path
         actual = (
             hashlib.sha256(path.read_bytes()).hexdigest() if path.is_file() else None
         )
@@ -42,8 +69,15 @@ def reconstruct(bundle: Path) -> tuple[list[dict[str, Any]], dict[str, Any]]:
             "bundle file hash mismatch: " + ", ".join(sorted(mismatches))
         )
 
-    sidecars = sorted((bundle / "source" / "messages").glob("*.json"))
-    messages = [json.loads(path.read_text("utf-8")) for path in sidecars]
+    sidecars = [
+        path
+        for relative, path in sorted(validated_paths.items())
+        if relative.startswith("source/messages/") and relative.endswith(".json")
+    ]
+    messages = [
+        json.loads(path.read_text("utf-8"), parse_constant=_reject_non_finite)
+        for path in sidecars
+    ]
     canonical_sha = hashlib.sha256(canonical_json(messages)).hexdigest()
     expected_sha = manifest.get("output_canonical_sha256")
     if canonical_sha != expected_sha:
@@ -68,15 +102,16 @@ def main() -> int:
     if args.output:
         args.output.parent.mkdir(parents=True, exist_ok=True)
         args.output.write_text(
-            json.dumps(messages, indent=2, ensure_ascii=False) + "\n",
+            json.dumps(messages, allow_nan=False, indent=2, ensure_ascii=False) + "\n",
             encoding="utf-8",
         )
     if args.report:
         args.report.parent.mkdir(parents=True, exist_ok=True)
         args.report.write_text(
-            json.dumps(report, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+            json.dumps(report, allow_nan=False, indent=2, sort_keys=True) + "\n",
+            encoding="utf-8",
         )
-    print(json.dumps(report, indent=2, sort_keys=True))
+    print(json.dumps(report, allow_nan=False, indent=2, sort_keys=True))
     return 0
 
 
