@@ -10,7 +10,6 @@ from pathlib import Path
 
 from PIL import Image, ImageDraw, ImageFont
 
-
 WIDTH = 1280
 HEIGHT = 720
 FPS = 24
@@ -132,7 +131,9 @@ def _base_frame(progress: float, seconds: float) -> Image.Image:
     # Footer remains honest and visibly discloses assistance.
     draw.rounded_rectangle((24, 662, 1256, 704), radius=12, fill="#0b1a2b")
     _text(draw, (44, 674), "PR #1813  •  current head ef77062", MONO_17, MUTED)
-    _text(draw, (818, 674), "AI-assisted production • real command output", MONO_17, MUTED)
+    _text(
+        draw, (818, 674), "AI-assisted production • real command output", MONO_17, MUTED
+    )
     return frame
 
 
@@ -192,7 +193,12 @@ def _render_frame(index: int, total_frames: int, duration: float) -> Image.Image
         rd.text((548, 504), "33 → 33", font=BOLD_66, fill=TEXT)
         rd.text((846, 520), "0 removed", font=BOLD_24, fill=GREEN)
         rd.text((1010, 520), "0 changed", font=BOLD_24, fill=GREEN)
-        rd.text((548, 582), "lossless: true  •  recall preserved: true", font=MONO_20, fill=CYAN)
+        rd.text(
+            (548, 582),
+            "lossless: true  •  recall preserved: true",
+            font=MONO_20,
+            fill=CYAN,
+        )
         frame = Image.alpha_composite(frame.convert("RGBA"), receipt).convert("RGB")
 
     if progress >= 0.90:
@@ -205,7 +211,9 @@ def _render_frame(index: int, total_frames: int, duration: float) -> Image.Image
             radius=18,
             fill=(13, 27, 45, int(250 * md_alpha)),
         )
-        md_draw.text((72, 122), "memories/artifact/memanto-1609.md", font=MONO_17, fill=CYAN)
+        md_draw.text(
+            (72, 122), "memories/artifact/memanto-1609.md", font=MONO_17, fill=CYAN
+        )
         markdown = [
             "---",
             'title: "The Great Memory Migration"',
@@ -217,10 +225,19 @@ def _render_frame(index: int, total_frames: int, duration: float) -> Image.Image
         ]
         yy = 174
         for line in markdown:
-            md_draw.text((82, yy), line, font=MONO_20, fill=TEXT if not line.startswith("resource") else AMBER)
+            md_draw.text(
+                (82, yy),
+                line,
+                font=MONO_20,
+                fill=TEXT if not line.startswith("resource") else AMBER,
+            )
             yy += 48
-        md_draw.text((72, 560), "READ IT  •  VERSION IT  •  CARRY IT", font=BOLD_34, fill=GREEN)
-        md_draw.text((72, 610), "Deadline: 31 Aug 2026  •  PR #1813", font=REG_22, fill=MUTED)
+        md_draw.text(
+            (72, 560), "READ IT  •  VERSION IT  •  CARRY IT", font=BOLD_34, fill=GREEN
+        )
+        md_draw.text(
+            (72, 610), "Deadline: 31 Aug 2026  •  PR #1813", font=REG_22, fill=MUTED
+        )
         frame = Image.alpha_composite(frame.convert("RGBA"), md).convert("RGB")
 
     # Active progress line provides continuous motion and chronology.
