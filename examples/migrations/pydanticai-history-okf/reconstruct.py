@@ -11,10 +11,13 @@ from typing import Any
 
 
 class ReconstructionError(ValueError):
+    """Raised when a bundle cannot be reconstructed without loss or ambiguity."""
+
     pass
 
 
 def canonical_json(value: Any) -> bytes:
+    """Return the canonical UTF-8 JSON encoding used for integrity hashes."""
     return json.dumps(
         value,
         allow_nan=False,
@@ -25,10 +28,12 @@ def canonical_json(value: Any) -> bytes:
 
 
 def _reject_non_finite(constant: str) -> None:
+    """Reject non-standard non-finite constants during JSON decoding."""
     raise ReconstructionError(f"non-finite JSON number is not supported: {constant}")
 
 
 def _bundle_path(bundle_root: Path, relative: str) -> Path:
+    """Resolve a manifest path while requiring it to remain inside the bundle."""
     relative_path = Path(relative)
     if relative_path.is_absolute():
         raise ReconstructionError(f"absolute manifest path: {relative}")
@@ -41,6 +46,7 @@ def _bundle_path(bundle_root: Path, relative: str) -> Path:
 
 
 def reconstruct(bundle: Path) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+    """Verify a bundle and reconstruct its canonical PydanticAI messages."""
     bundle_root = bundle.resolve()
     manifest_path = _bundle_path(bundle_root, "migration-manifest.json")
     if not manifest_path.is_file():
@@ -93,6 +99,7 @@ def reconstruct(bundle: Path) -> tuple[list[dict[str, Any]], dict[str, Any]]:
 
 
 def main() -> int:
+    """Run bundle reconstruction and optionally write messages and a report."""
     parser = argparse.ArgumentParser()
     parser.add_argument("bundle", type=Path)
     parser.add_argument("--output", type=Path)

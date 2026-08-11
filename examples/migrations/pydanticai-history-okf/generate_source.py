@@ -49,6 +49,7 @@ PROMPTS = (
 
 
 def _last_user_prompt(messages: list[ModelMessage]) -> str:
+    """Return the most recent user prompt from a PydanticAI history."""
     for message in reversed(messages):
         for part in reversed(message.parts):
             if isinstance(part, UserPromptPart):
@@ -57,6 +58,7 @@ def _last_user_prompt(messages: list[ModelMessage]) -> str:
 
 
 def model_function(messages: list[ModelMessage], _info: AgentInfo) -> ModelResponse:
+    """Provide deterministic model responses for the public migration fixture."""
     last = messages[-1]
     for part in last.parts:
         if isinstance(part, ToolReturnPart):
@@ -143,6 +145,7 @@ def normalize_timestamps(messages: list[ModelMessage]) -> list[ModelMessage]:
 
 
 def generate(output: Path, report_path: Path) -> dict[str, Any]:
+    """Generate deterministic framework history and its provenance report."""
     model = FunctionModel(model_function, model_name=MODEL_NAME)
     agent = Agent(
         model,
@@ -224,6 +227,7 @@ def generate(output: Path, report_path: Path) -> dict[str, Any]:
 
 
 def main() -> int:
+    """Generate the fixture requested by command-line arguments."""
     parser = argparse.ArgumentParser()
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--report", type=Path, required=True)

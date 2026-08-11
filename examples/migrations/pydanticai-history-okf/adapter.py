@@ -112,6 +112,7 @@ def canonical_json(value: Any) -> bytes:
 
 
 def _reject_non_finite(constant: str) -> None:
+    """Reject JavaScript-style non-finite constants during JSON decoding."""
     raise MigrationError(f"non-finite JSON number is not supported: {constant}")
 
 
@@ -173,6 +174,7 @@ def scan_history(messages: tuple[dict[str, Any], ...]) -> list[Finding]:
     def add_finding(
         category: str, path: str, message_index: int, severity: str
     ) -> None:
+        """Record one de-duplicated finding using only safe location metadata."""
         identity = (category, path, message_index)
         if identity in seen:
             return
@@ -191,6 +193,7 @@ def scan_history(messages: tuple[dict[str, Any], ...]) -> list[Finding]:
         )
 
     def visit(value: Any, path: str, message_index: int) -> None:
+        """Recursively scan JSON values and keys for sensitive material."""
         if isinstance(value, dict):
             for key_index, (key, item) in enumerate(value.items()):
                 key_text = str(key)
@@ -245,6 +248,7 @@ def redact_history(
     replacements = 0
 
     def redact(value: Any) -> Any:
+        """Recursively redact sensitive JSON keys and scalar values."""
         nonlocal replacements
         if isinstance(value, dict):
             redacted: dict[str, Any] = {}
@@ -289,6 +293,7 @@ def redact_history(
 
 
 def _normalize_timestamp(value: Any) -> str | None:
+    """Normalize an ISO timestamp to UTC, or return None when it is invalid."""
     if not isinstance(value, str) or not value.strip():
         return None
     text = value.strip()
@@ -303,6 +308,7 @@ def _normalize_timestamp(value: Any) -> str | None:
 
 
 def _single_line(value: str) -> str:
+    """Collapse multi-line text into a trimmed single line."""
     return " ".join(value.replace("\r", "\n").splitlines()).strip()
 
 
@@ -330,6 +336,7 @@ def _markdown_text(value: Any) -> str:
 
 
 def _json_fence(value: Any) -> str:
+    """Render JSON in a Markdown fence that embedded backticks cannot close."""
     payload = json.dumps(
         value,
         allow_nan=False,
@@ -343,6 +350,7 @@ def _json_fence(value: Any) -> str:
 
 
 def _escape_loader_delimiter(text: str) -> str:
+    """Neutralize OKF entry delimiters embedded in source text."""
     return text.replace(ENTRY_DELIMITER, "<!-- okf-entry-escaped -->")
 
 
@@ -370,6 +378,7 @@ def _plain_title_seed(part: dict[str, Any], heading: str) -> str:
 
 
 def _part_heading(part: dict[str, Any]) -> tuple[str, str, bool]:
+    """Return a readable heading, body, and omission flag for one message part."""
     kind = str(part.get("part_kind") or "unknown")
     if kind == "system-prompt":
         return "System instruction", _markdown_text(part.get("content")), False
@@ -479,6 +488,7 @@ def render_message(message: dict[str, Any], index: int) -> RenderedMessage:
 
 
 def _slug(value: str) -> str:
+    """Create a bounded, filesystem-safe slug for a memory filename."""
     slug = re.sub(r"[^a-z0-9]+", "-", value.casefold()).strip("-")
     return slug[:72].rstrip("-") or "message"
 
@@ -495,6 +505,7 @@ def _message_doc(
     sidecar_path: str,
     sidecar_sha256: str,
 ) -> str:
+    """Build one OKF Markdown document and its provenance front matter."""
     kind = str(message["kind"])
     timestamp = _normalize_timestamp(message.get("timestamp"))
     if timestamp is None:
@@ -563,6 +574,7 @@ def _message_doc(
 
 
 def _prepare_output(output: Path, force: bool) -> None:
+    """Create a safe output directory, replacing only adapter-owned output."""
     if output.is_symlink():
         raise MigrationError(f"refusing to write through output symlink: {output}")
     if output.exists() and not output.is_dir():
@@ -583,6 +595,7 @@ def _prepare_output(output: Path, force: bool) -> None:
 
 
 def _write_index(output: Path, files: list[tuple[str, str]], source_count: int) -> None:
+    """Write the bundle index linking memories and validation evidence."""
     lines = [
         GENERATOR_MARKER,
         "---",
@@ -617,6 +630,7 @@ def _write_index(output: Path, files: list[tuple[str, str]], source_count: int) 
 
 
 def _file_hashes(output: Path) -> dict[str, str]:
+    """Hash generated bundle files except the self-referential manifest."""
     return {
         str(path.relative_to(output)): hashlib.sha256(path.read_bytes()).hexdigest()
         for path in sorted(output.rglob("*"))
@@ -750,6 +764,7 @@ def migrate(
 
 
 def build_parser() -> argparse.ArgumentParser:
+    """Build the command-line parser for the migration adapter."""
     parser = argparse.ArgumentParser(
         description="Convert PydanticAI ModelMessage JSON to a portable OKF bundle."
     )
@@ -771,6 +786,7 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def main(argv: list[str] | None = None) -> int:
+    """Run the command-line migration and return its process exit status."""
     args = build_parser().parse_args(argv)
     try:
         report = migrate(

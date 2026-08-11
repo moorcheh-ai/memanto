@@ -29,6 +29,7 @@ _STOP = {
 
 
 def _tokens(value: str) -> set[str]:
+    """Tokenize text for the dependency-free lexical recall baseline."""
     # Preserve useful word boundaries in identifiers such as PydanticAI and in
     # package/path names such as pydantic-ai-slim.  This is intentionally a
     # small, dependency-free lexical baseline rather than a semantic model.
@@ -39,6 +40,7 @@ def _tokens(value: str) -> set[str]:
 
 
 def _retrieve(query: str, documents: list[str], limit: int = 4) -> list[int]:
+    """Return top document indexes ranked by normalized token overlap."""
     query_tokens = _tokens(query)
     scored: list[tuple[float, int]] = []
     for index, document in enumerate(documents):
@@ -54,6 +56,7 @@ def _retrieve(query: str, documents: list[str], limit: int = 4) -> list[int]:
 
 
 def _contains_expected(text: str, expected: list[str]) -> bool:
+    """Check whether every expected substring occurs case-insensitively."""
     folded = text.casefold()
     return all(item.casefold() in folded for item in expected)
 
@@ -63,6 +66,7 @@ def validate(
     bundle: Path,
     questions_path: Path,
 ) -> dict[str, Any]:
+    """Validate reconstruction, importability, privacy, and recall parity."""
     history = load_history(source)
     reconstructed, reconstruction = reconstruct(bundle)
     if reconstructed != list(history.messages):
@@ -185,6 +189,7 @@ def validate(
 
 
 def main() -> int:
+    """Validate one generated bundle and write its machine-readable report."""
     parser = argparse.ArgumentParser()
     parser.add_argument("--source", type=Path, required=True)
     parser.add_argument("--bundle", type=Path, required=True)

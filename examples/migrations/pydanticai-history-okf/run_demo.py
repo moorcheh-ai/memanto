@@ -24,6 +24,7 @@ def run(
     transcript: list[str],
     timeout_seconds: float,
 ) -> str:
+    """Run one bounded child command while preserving transcript output."""
     printable = " ".join(command)
     print(f"\n$ {printable}")
     try:
@@ -108,6 +109,7 @@ def select_invocation_preview(
     def without_runtime_timestamp(
         rows: list[dict[str, object]],
     ) -> list[dict[str, object]]:
+        """Remove the mapper's invocation-time field before comparison."""
         return [
             {key: value for key, value in row.items() if key != "updated_at"}
             for row in rows
@@ -124,6 +126,7 @@ def portable_text(value: str, repo: Path) -> str:
     """Remove machine-specific paths, including paths Rich wrapped over lines."""
 
     def replace_path(text: str, path: Path, replacement: str) -> str:
+        """Replace a literal path even when terminal wrapping adds whitespace."""
         pattern = re.escape(str(path)).replace(r"\ ", r"\s+")
         return re.sub(pattern, lambda _match: replacement, text)
 
@@ -138,6 +141,7 @@ def reproduce(
     force: bool,
     timeout_seconds: float,
 ) -> Path:
+    """Execute the complete generation, migration, and validation workflow."""
     example = Path(__file__).resolve().parent
     repo = example.parents[2]
     source = work / "source" / "history.json"
@@ -249,6 +253,7 @@ def reproduce(
 
 
 def main() -> int:
+    """Parse demo options and run in persistent or temporary storage."""
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--work-dir",
