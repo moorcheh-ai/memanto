@@ -23,23 +23,29 @@ does not use a hand-written fixture or require a GitHub token for public repos.
 Issue bodies and comments are split losslessly when necessary, and each chunk
 retains the original GitHub URL and a unique portable identifier.
 
+Every manual run must use a fresh, non-overlapping work directory. The example
+below creates one so its source, round-trip target, and receipt paths cannot
+collide with a previous run:
+
 ```bash
+RUN_DIR="$(mktemp -d)"
 python examples/migrations/okf-portability-audit/github_issue_to_okf.py \
-  moorcheh-ai/memanto 1609 ./github-memory
+  moorcheh-ai/memanto 1609 "$RUN_DIR/github-memory"
 python examples/migrations/okf-portability-audit/roundtrip_demo.py \
-  ./github-memory ./round-tripped
+  "$RUN_DIR/github-memory" "$RUN_DIR/round-tripped"
 python examples/migrations/okf-portability-audit/okf_audit.py \
-  ./github-memory ./round-tripped --fail-on-change
+  "$RUN_DIR/github-memory" "$RUN_DIR/round-tripped" --fail-on-change
 python examples/migrations/okf-portability-audit/recall_parity.py \
-  ./github-memory ./round-tripped \
+  "$RUN_DIR/github-memory" "$RUN_DIR/round-tripped" \
   examples/migrations/okf-portability-audit/golden_questions.json \
-  --output ./recall-parity.json --fail-on-regression
+  --output "$RUN_DIR/recall-parity.json" --fail-on-regression
 ```
 
-At the time this showcase was validated, issue #1609 contained one issue and 25
-comments. The long issue body was split at paragraph boundaries to respect the
-Memanto content limit, producing 27 real memory nodes. The importer/exporter
-round trip kept all 27 portable records with no removals or changed fields.
+In the first validated snapshot on August 4, 2026, issue #1609 contained one
+issue and 25 comments. The long issue body was split at paragraph boundaries to
+respect the Memanto content limit, producing 27 real memory nodes. The
+importer/exporter round trip kept all 27 portable records with no removals or
+changed fields.
 
 ### One-command showcase
 
@@ -62,19 +68,26 @@ and retrieval code, and their installed dependency versions.
 
 ### Demo video
 
-Watch the [current narrated YouTube showcase](https://youtu.be/BRIcby6oMF4),
+Watch the [current narrated YouTube showcase](https://youtu.be/E_r7tzmHtq0),
 with a checked-in
-[archival copy](demo/memanto-okf-portability-demo-v2.mp4). It shows the
-genuine public archive entering the official Memanto dry run, the production
-round trip, the final 32-to-32 lossless receipt, and a readable OKF memory. The
-capture contains real command output and visibly discloses that the
-implementation was AI-assisted.
+[archival copy](demo/memanto-okf-portability-demo-v3.mp4). It shows the genuine
+public archive entering the official Memanto dry run, the production round
+trip, the final 33-to-33 lossless receipt, 5/5 golden-question recall before
+and after migration, and a readable OKF memory. The capture contains real
+command output and visibly discloses that the implementation was AI-assisted.
 
-The current 66-second version uses clean synthetic narration without music or
-ambient sound and reflects the latest reproducible run: 32 source records, 32
-mapped, 0 skipped, 32 round-tripped, 0 removed, and 0 changed. The
-[original silent capture](demo/memanto-okf-portability-demo.mp4) remains
-available for comparison.
+The archive changed while the PR was under review, so the checked-in evidence
+captures intentionally describe three separate snapshots:
+
+| Validation date | Public archive snapshot | Records and receipt | Capture |
+| --- | --- | --- | --- |
+| August 4, 2026 | 1 issue + 25 comments | 27 mapped, 0 skipped; 27-to-27, 0 removed, 0 changed | [original silent capture](demo/memanto-okf-portability-demo.mp4) |
+| August 9, 2026 | 1 issue + 30 comments | 32 mapped, 0 skipped; 32-to-32, 0 removed, 0 changed | [previous narrated capture](demo/memanto-okf-portability-demo-v2.mp4) |
+| August 10, 2026 | 1 issue + 31 comments | 33 mapped, 0 skipped; 33-to-33, 0 removed, 0 changed; recall 5/5 before and after | [current narrated capture](demo/memanto-okf-portability-demo-v3.mp4) |
+
+The current version uses clean synthetic narration without music or ambient
+sound. Older captures remain available because they are accurate receipts for
+their dated public-archive snapshots, not stale claims about the current run.
 
 ### Mapping and honest savings report
 
@@ -86,11 +99,13 @@ available for comparison.
 | Source IDs | `x_memanto.id` | Preserved as origin metadata; destination runtime IDs may change |
 | Source URL | `resource` | Used with type/title semantics as a stable identity |
 
-The validated run used 1 issue plus 25 public comments: 27 source records, 27
-mapped records, 0 skipped, 27 round-tripped records, 0 removals, and 0 changed
-portable fields. Token and retrieval-latency savings are **not applicable** to
-this Path C workflow: it audits at-rest portability and makes no invented model
-or retrieval baseline. Storage remains human-readable Markdown at both ends.
+The August 4, 2026 baseline used 1 issue plus 25 public comments: 27 source
+records, 27 mapped records, 0 skipped, 27 round-tripped records, 0 removals, and
+0 changed portable fields. The dated table above distinguishes that baseline
+from the later 32- and 33-record archive snapshots. Token and retrieval-latency
+savings are **not applicable** to this Path C workflow: it audits at-rest
+portability and makes no invented model or retrieval baseline. Storage remains
+human-readable Markdown at both ends.
 
 ## Run the included lossless example
 

@@ -323,6 +323,22 @@ def test_golden_question_recall_detects_regression(tmp_path):
     assert not report["is_recall_preserved"]
 
 
+def test_accepted_answer_requires_contiguous_tokens_in_one_field():
+    """Answer words cannot be reordered or assembled across separate fields."""
+    separated = {
+        "title": "Open migration",
+        "description": "Knowledge remains portable",
+        "body": "Use a documented format",
+    }
+    reordered = {"body": "Format knowledge open"}
+    contiguous = {"description": "Uses the Open Knowledge Format standard"}
+
+    assert not recall_parity._contains_answer(separated, ["Open Knowledge Format"])
+    assert not recall_parity._contains_answer(reordered, ["Open Knowledge Format"])
+    assert recall_parity._contains_answer(contiguous, ["Open Knowledge Format"])
+    assert recall_parity._contains_answer({"tags": ["OKF"]}, ["OKF"])
+
+
 def test_report_output_cannot_modify_an_input(tmp_path):
     """Report output is rejected inside a bundle or over a single-file input."""
     source = tmp_path / "source"

@@ -37,7 +37,31 @@ archival comparison.
 
 Original public showcase: <https://youtu.be/25Y2MVPtGzo>
 
-Re-run the same pipeline with:
+## Rendering prerequisites
+
+The renderer has an explicit Python dependency set in
+[`requirements.txt`](requirements.txt). Install it from the repository root:
+
+```bash
+python -m pip install -r examples/migrations/okf-portability-audit/demo/requirements.txt
+```
+
+Rendering also requires `ffmpeg` on `PATH`. Narration generation requires
+Windows, the .NET `System.Speech` assembly, and at least one enabled system
+voice. The script prefers `Microsoft Zira Desktop` when it is installed and
+enabled; otherwise it retains the synthesizer's default enabled voice.
+
+Generate narration and render the continuous MP4 with:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File `
+  examples/migrations/okf-portability-audit/demo/render-narration.ps1
+python examples/migrations/okf-portability-audit/demo/render-enhanced-demo.py `
+  examples/migrations/okf-portability-audit/demo/memanto-okf-portability-demo-v3.wav `
+  examples/migrations/okf-portability-audit/demo/memanto-okf-portability-demo-v3.mp4
+```
+
+Re-run the evidence pipeline itself with:
 
 ```bash
 python examples/migrations/okf-portability-audit/run_demo.py

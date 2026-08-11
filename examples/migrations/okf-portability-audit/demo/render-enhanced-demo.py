@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import math
+import shutil
 import subprocess
 import wave
 from pathlib import Path
@@ -249,11 +250,17 @@ def _render_frame(index: int, total_frames: int, duration: float) -> Image.Image
 
 def render(audio: Path, output: Path) -> None:
     """Stream frames to ffmpeg and mux the clean narration."""
+    ffmpeg = shutil.which("ffmpeg")
+    if ffmpeg is None:
+        raise RuntimeError(
+            "ffmpeg is required to render the demo; install it and ensure the "
+            "ffmpeg executable is available on PATH"
+        )
     with wave.open(str(audio), "rb") as wav:
         duration = wav.getnframes() / wav.getframerate()
     total_frames = math.ceil(duration * FPS)
     command = [
-        "ffmpeg",
+        ffmpeg,
         "-y",
         "-f",
         "rawvideo",

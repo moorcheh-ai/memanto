@@ -73,16 +73,22 @@ def _rank(
     return [(score, entry) for score, _, entry in ranked[:top_k]]
 
 
+def _contains_token_sequence(tokens: list[str], phrase: list[str]) -> bool:
+    """Return whether a contiguous, ordered token phrase is present."""
+    return any(
+        tokens[index : index + len(phrase)] == phrase
+        for index in range(len(tokens) - len(phrase) + 1)
+    )
+
+
 def _contains_answer(entry: dict[str, Any], accepted_answers: list[str]) -> bool:
     """Match an accepted answer without using it to rank the documents."""
-    searchable = " ".join(
-        _field_text(entry, field)
-        for field in ("title", "description", "tags", "body", "resource")
-    )
-    entry_tokens = set(_tokens(searchable))
     return any(
-        bool(answer_tokens := set(_tokens(answer)))
-        and answer_tokens.issubset(entry_tokens)
+        bool(answer_tokens := _tokens(answer))
+        and any(
+            _contains_token_sequence(_tokens(_field_text(entry, field)), answer_tokens)
+            for field in ("title", "description", "tags", "body", "resource")
+        )
         for answer in accepted_answers
     )
 

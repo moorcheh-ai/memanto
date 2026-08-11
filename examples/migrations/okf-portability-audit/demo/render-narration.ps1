@@ -12,7 +12,15 @@ Your AI agent can remember everything, until the platform changes. This is a rea
 
 $speaker = [System.Speech.Synthesis.SpeechSynthesizer]::new()
 try {
-    $speaker.SelectVoice('Microsoft Zira Desktop')
+    $ziraVoice = $speaker.GetInstalledVoices() |
+        Where-Object {
+            $_.VoiceInfo.Name -eq 'Microsoft Zira Desktop' -and
+            $_.VoiceInfo.Enabled
+        } |
+        Select-Object -First 1
+    if ($null -ne $ziraVoice) {
+        $speaker.SelectVoice($ziraVoice.VoiceInfo.Name)
+    }
     $speaker.Rate = 1
     $speaker.Volume = 100
     $speaker.SetOutputToWaveFile($OutputPath)
