@@ -199,6 +199,34 @@ class TestOnPremClient:
 
 
 class TestSingletonDispatch:
+    def test_direct_call_falls_back_to_configured_api_key(self):
+        """Calling the FastAPI dependency as a plain function must use the
+        configured key, not the unresolved ``Header`` default.
+
+        ``get_moorcheh_client`` is a FastAPI dependency, but route and service
+        code also calls it directly. FastAPI only substitutes a real value when
+        it injects the dependency, so a direct call passes the ``Header(...)``
+        object itself - which is truthy, so it used to be forwarded to the SDK
+        as if it were an API key. That made every direct caller blow up inside
+        httpx, and callers wrapping it in ``except Exception`` (such as the
+        agent memory-count lookup) silently degraded to zero.
+        """
+        from memanto.app.clients import moorcheh as mclients
+        from memanto.app.config import settings
+
+        cloud_client = object()
+        mclients.moorcheh_client.reset_client()
+        try:
+            with patch.object(
+                mclients, "MoorchehClient", return_value=cloud_client
+            ) as cloud_constructor:
+                assert mclients.get_moorcheh_client() is cloud_client
+                cloud_constructor.assert_called_once_with(
+                    api_key=settings.MOORCHEH_API_KEY
+                )
+        finally:
+            mclients.moorcheh_client.reset_client()
+
     def test_backend_switch_rebuilds_cached_client_without_manual_reset(self):
         from memanto.app.clients import moorcheh as mclients
         from memanto.app.clients import onprem

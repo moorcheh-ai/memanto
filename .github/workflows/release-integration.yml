@@ -31,6 +31,31 @@ jobs:
         TAG="${GITHUB_REF#refs/tags/}"
         INTEGRATION=$(echo "$TAG" | cut -d'/' -f2)
         VERSION=$(echo "$TAG" | cut -d'/' -f3 | sed 's/^v//')
+
+        # The tag is attacker-controllable by anyone who can push one, and
+        # these values end up in shell commands and paths. Constrain them to a
+        # safe shape and require the directory to exist before going further.
+        if ! printf '%s' "$INTEGRATION" | grep -qE '^[a-z0-9][a-z0-9-]*$'; then
+          echo "::error::Refusing tag '$TAG': integration name must match ^[a-z0-9][a-z0-9-]*$"
+          exit 1
+        fi
+        if ! printf '%s' "$VERSION" | grep -qE '^[0-9][0-9A-Za-z.+-]*$'; then
+          echo "::error::Refusing tag '$TAG': version must start with a digit"
+          exit 1
+        fi
+        if [ ! -d "integrations/$INTEGRATION" ]; then
+          echo "::error::No such integration directory: integrations/$INTEGRATION"
+          exit 1
+        fi
+
+        # The tag version and the packaged version are read independently, so
+        # a mismatch would publish something other than what the tag names.
+        DECLARED=$(grep -m1 '^version = ' "integrations/$INTEGRATION/pyproject.toml" | sed 's/.*"\(.*\)".*/\1/')
+        if [ "$DECLARED" != "$VERSION" ]; then
+          echo "::error::Tag says v$VERSION but integrations/$INTEGRATION/pyproject.toml declares $DECLARED"
+          exit 1
+        fi
+
         echo "integration=$INTEGRATION" >> $GITHUB_OUTPUT
         echo "version=$VERSION" >> $GITHUB_OUTPUT
         echo "tag=$TAG" >> $GITHUB_OUTPUT
@@ -44,9 +69,70 @@ jobs:
     - name: Install uv
       uses: astral-sh/setup-uv@v4
 
+    # Gate the publish on the integration's own tests. Nothing else runs them:
+    # ci.yml covers `tests/` at the repo root only, so without this a broken
+    # integration reaches PyPI on a tag push.
+    #
+    # Written to suit every integration as it stands today: `crewai` and
+    # `langgraph` have tests but no `dev` extra, so the extra is optional and
+    # the test runner is installed explicitly. Core is installed from the
+    # checkout rather than PyPI so the tag is tested against the code being
+    # released, not the last published core.
+    - name: Install core and integration
+      env:
+        # Passed through the environment rather than interpolated into the
+        # script, so a crafted tag cannot inject shell.
+        INTEGRATION: ${{ steps.info.outputs.integration }}
+      run: |
+        python -m pip install --upgrade pip
+        python -m pip install -e .
+
+        # Only reach for the `dev` extra when the package actually declares
+        # one — `crewai` and `langgraph` do not. Selecting on that rather than
+        # on install failure keeps genuine build or resolution errors fatal.
+        #
+        # tomli is the 3.10 stand-in for tomllib, which is stdlib only from
+        # 3.11; this job builds on the minimum supported Python on purpose.
+        python -m pip install tomli
+        if python -c "
+        import sys
+        try:
+            import tomllib
+        except ModuleNotFoundError:
+            import tomli as tomllib
+        with open(f'integrations/{sys.argv[1]}/pyproject.toml', 'rb') as fh:
+            extras = tomllib.load(fh)['project'].get('optional-dependencies', {})
+        sys.exit(0 if 'dev' in extras else 1)
+        " "$INTEGRATION"; then
+          python -m pip install -e "integrations/$INTEGRATION[dev]"
+        else
+          python -m pip install -e "integrations/$INTEGRATION"
+        fi
+
+        # pytest-timeout: integrations without their own [tool.pytest.ini_options]
+        # inherit the repo-root pytest.ini, whose `timeout` option is a hard
+        # error under --strict-config unless the plugin is present.
+        python -m pip install pytest pytest-asyncio pytest-mock pytest-timeout
+
+    - name: Run integration tests
+      env:
+        INTEGRATION: ${{ steps.info.outputs.integration }}
+        # Mocked at the client boundary; no real Moorcheh call is made.
+        MOORCHEH_API_KEY: test-api-key
+      run: |
+        cd "integrations/$INTEGRATION"
+        if [ -d tests ]; then
+          python -m pytest tests/ -v --tb=short
+        else
+          echo "No tests/ directory for $INTEGRATION — skipping."
+        fi
+
     - name: Build Python package
-      working-directory: ./integrations/${{ steps.info.outputs.integration }}
-      run: uv build --out-dir dist
+      env:
+        INTEGRATION: ${{ steps.info.outputs.integration }}
+      run: |
+        cd "integrations/$INTEGRATION"
+        uv build --out-dir dist
 
     - name: Publish Python package to PyPI
       uses: pypa/gh-action-pypi-publish@release/v1

@@ -2694,6 +2694,90 @@
         }
       }
     },
+    "/api/ui/migrate/langfuse/discover": {
+      "post": {
+        "tags": [
+          "Web UI"
+        ],
+        "summary": "Migrate Langfuse Discover",
+        "description": "Report what is actually in a Langfuse project, so the user can configure it.\n\nScore names, value ranges, and per-operation latency/cost are all\nproject-specific, so the tile shows the user their own data rather than\nasking them to guess at thresholds. Writes nothing.",
+        "operationId": "migrate_langfuse_discover_api_ui_migrate_langfuse_discover_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": true,
+                "type": "object",
+                "title": "Body"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/ui/migrate/langfuse/config": {
+      "post": {
+        "tags": [
+          "Web UI"
+        ],
+        "summary": "Migrate Langfuse Config",
+        "description": "Read or persist per-project Langfuse capture settings.\n\n``{\"action\": \"save\", ...}`` stores the supplied settings for the project\nthe credential belongs to; anything else just reads them back.",
+        "operationId": "migrate_langfuse_config_api_ui_migrate_langfuse_config_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": true,
+                "type": "object",
+                "title": "Body"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/ui/migrate/import": {
       "post": {
         "tags": [

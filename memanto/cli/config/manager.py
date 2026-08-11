@@ -192,6 +192,42 @@ class ConfigManager:
         """Save Letta API key to ~/.memanto/.env."""
         self._set_env_var("LETTA_API_KEY", _normalize_duplicated_api_key(api_key))
 
+    def get_langfuse_api_key(self) -> str | None:
+        """Get the Langfuse credential from ~/.memanto/.env.
+
+        Langfuse authenticates with a key *pair*, so the credential is stored
+        as ``"<public_key>:<secret_key>"``. The vendor-native
+        ``LANGFUSE_PUBLIC_KEY``/``LANGFUSE_SECRET_KEY`` pair is also accepted
+        and joined, since anyone already using Langfuse has those set.
+        """
+        if self.env_file.exists():
+            load_dotenv(self.env_file, override=True)
+
+        combined = (os.environ.get("LANGFUSE_API_KEY") or "").strip()
+        if combined:
+            return combined
+
+        public_key = (os.environ.get("LANGFUSE_PUBLIC_KEY") or "").strip()
+        secret_key = (os.environ.get("LANGFUSE_SECRET_KEY") or "").strip()
+        if public_key and secret_key:
+            return f"{public_key}:{secret_key}"
+        return None
+
+    def set_langfuse_api_key(self, api_key: str) -> None:
+        """Save the combined Langfuse credential to ~/.memanto/.env."""
+        self._set_env_var("LANGFUSE_API_KEY", api_key.strip())
+
+    def get_langfuse_host(self) -> str | None:
+        """Get the Langfuse base URL (cloud EU/US or self-hosted)."""
+        if self.env_file.exists():
+            load_dotenv(self.env_file, override=True)
+        host = (os.environ.get("LANGFUSE_HOST") or "").strip()
+        return host or None
+
+    def set_langfuse_host(self, host: str) -> None:
+        """Save the Langfuse base URL to ~/.memanto/.env."""
+        self._set_env_var("LANGFUSE_HOST", host.strip().rstrip("/"))
+
     def _set_env_var(self, name: str, value: str) -> None:
         """Write a single variable to ~/.memanto/.env and update os.environ."""
         self.config_dir.mkdir(parents=True, exist_ok=True)

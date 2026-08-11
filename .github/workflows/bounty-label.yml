@@ -1,18 +1,18 @@
-name: Auto-label bounty PRs
+name: Auto-label Bounties and PRs
 
-# Labels any pull request that references a bounty issue with "bounty" plus
-# a per-issue "Bounty#N" label (N = the referenced issue number), creating
-# the numbered label if it doesn't exist yet, so PRs submitted against an
-# active bounty are labeled automatically instead of relying on a
-# maintainer to do it by hand.
-#
-# The workflow_dispatch trigger runs the same logic across every open PR,
-# for backfilling PRs that were opened before this labeling existed.
+# Automatically assigns incremental "Bounty #N" labels to bounty issues.
+# Also labels any pull request that references a bounty issue with the
+# specific "Bounty #N" label from the issue.
 
 on:
+  issues:
+    types: [opened, edited]
   pull_request_target:
     types: [opened, edited, synchronize, reopened]
-  workflow_dispatch: {}
+
+concurrency:
+  group: bounty-labeling
+  cancel-in-progress: false
 
 permissions:
   pull-requests: write
@@ -26,9 +26,135 @@ jobs:
         uses: actions/github-script@v7
         with:
           script: |
-            // Matches "#123", "issue #123", "closes #123", "fixes #123",
-            // "resolves #123", "refs #123" (case-insensitive), anywhere in
-            // the PR title or body.
+            function extractSpecificBountyLabel(labels) {
+              for (const label of labels) {
+                const name = typeof label === "string" ? label : label.name;
+                if (/^bounty\s*#?\d+/i.test(name)) {
+                  return name;
+                }
+              }
+              return null;
+            }
+
+            async function ensureLabelExists(name) {
+              try {
+                await github.rest.issues.getLabel({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  name,
+                });
+              } catch (error) {
+                if (error.status === 404) {
+                  // A palette of visually distinct colors
+                  const palette = [
+                    "b60205", // red
+                    "0e8a16", // green
+                    "fbca04", // yellow
+                    "1d76db", // blue
+                    "5319e7", // purple
+                    "d93f0b", // orange
+                    "006b75", // teal
+                    "c5def5", // light blue
+                    "f9d0c4", // light pink
+                    "d4c5f9", // light purple
+                  ];
+                  
+                  // Extract bounty number to deterministically pick a color
+                  const match = name.match(/\d+/);
+                  const num = match ? parseInt(match[0], 10) : 0;
+                  const color = palette[num % palette.length];
+
+                  core.info(`Creating missing label "${name}" with color ${color}.`);
+                  try {
+                    await github.rest.issues.createLabel({
+                      owner: context.repo.owner,
+                      repo: context.repo.repo,
+                      name,
+                      color,
+                    });
+                  } catch (createError) {
+                    // Another concurrent run may create the same label first.
+                    if (createError.status !== 422) {
+                      throw createError;
+                    }
+                  }
+                } else {
+                  throw new Error(`Failed to check label "${name}": ${error.message}`);
+                }
+              }
+            }
+
+            async function findOpenPrsReferencingIssue(issueNumber) {
+              const prs = await github.paginate(github.rest.pulls.list, {
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                state: "open",
+                per_page: 100,
+              });
+
+              const refPattern = new RegExp(`#${issueNumber}(?!\\d)`);
+              return prs.filter((pr) => {
+                const text = `${pr.title}\n${pr.body ?? ""}`;
+                return refPattern.test(text);
+              });
+            }
+
+            async function applyLabelsToPr(prNumber, labels) {
+              await github.rest.issues.addLabels({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: prNumber,
+                labels,
+              });
+            }
+
+            async function labelIssue(issue) {
+              const isMaintainer = ["OWNER", "MEMBER", "COLLABORATOR"].includes(issue.author_association);
+              const hasBountyInTitle = /bounty/i.test(issue.title);
+              
+              if (!isMaintainer || !hasBountyInTitle) {
+                return null;
+              }
+
+              const existingSpecificBounty = extractSpecificBountyLabel(issue.labels);
+
+              if (existingSpecificBounty) {
+                return existingSpecificBounty;
+              }
+
+              const allLabels = await github.paginate(github.rest.issues.listLabelsForRepo, {
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                per_page: 100
+              });
+
+              let maxBountyNum = 0;
+              for (const label of allLabels) {
+                const match = label.name.match(/^bounty\s*#?(\d+)/i);
+                if (match) {
+                  const num = parseInt(match[1], 10);
+                  if (num > maxBountyNum) {
+                    maxBountyNum = num;
+                  }
+                }
+              }
+              
+              const nextBountyNumber = maxBountyNum + 1;
+              const newLabel = `Bounty #${nextBountyNumber}`;
+              
+              await ensureLabelExists(newLabel);
+
+              core.info(`Issue #${issue.number}: applying label ${newLabel}`);
+              await github.rest.issues.addLabels({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issue.number,
+                labels: [newLabel],
+              });
+
+              return newLabel;
+            }
+
             async function labelPr(pr) {
               const text = `${pr.title}\n${pr.body ?? ""}`;
               const issueNumbers = new Set(
@@ -55,18 +181,9 @@ jobs:
                   // Skip closed issues so only "active" bounties apply.
                   if (issue.state !== "open") continue;
 
-                  const hasBountyLabel = issue.labels.some((label) => {
-                    const name = typeof label === "string" ? label : label.name;
-                    return name === "bounty" || /^Bounty#\d+$/.test(name);
-                  });
-                  if (!hasBountyLabel) continue;
+                  const existingSpecificBounty = extractSpecificBountyLabel(issue.labels);
 
-                  // Every bounty issue gets its own "Bounty#<issue number>"
-                  // label so PRs against different bounties are visually
-                  // distinguishable, instead of all showing the generic
-                  // "bounty" label.
-                  bountyLabels.add("bounty");
-                  bountyLabels.add(`Bounty#${number}`);
+                  if (existingSpecificBounty) bountyLabels.add(existingSpecificBounty);
                 } catch (error) {
                   core.info(`PR #${pr.number}: could not read issue #${number}: ${error?.message ?? String(error)}`);
                 }
@@ -78,21 +195,7 @@ jobs:
               }
 
               for (const name of bountyLabels) {
-                try {
-                  await github.rest.issues.getLabel({
-                    owner: context.repo.owner,
-                    repo: context.repo.repo,
-                    name,
-                  });
-                } catch (error) {
-                  core.info(`Creating missing label "${name}".`);
-                  await github.rest.issues.createLabel({
-                    owner: context.repo.owner,
-                    repo: context.repo.repo,
-                    name,
-                    color: "fcf22a",
-                  });
-                }
+                await ensureLabelExists(name);
               }
 
               core.info(`PR #${pr.number}: applying labels: ${[...bountyLabels].join(", ")}`);
@@ -104,16 +207,15 @@ jobs:
               });
             }
 
-            if (context.eventName === "workflow_dispatch") {
-              const prs = await github.paginate(github.rest.pulls.list, {
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                state: "open",
-                per_page: 100,
-              });
-              core.info(`Backfilling labels across ${prs.length} open PR(s).`);
-              for (const pr of prs) {
-                await labelPr(pr);
+            if (context.eventName === "issues") {
+              const bountyLabel = await labelIssue(context.payload.issue);
+              if (bountyLabel) {
+                const referencingPrs = await findOpenPrsReferencingIssue(context.payload.issue.number);
+                for (const pr of referencingPrs) {
+                  core.info(`Issue #${context.payload.issue.number}: propagating ${bountyLabel} to PR #${pr.number}`);
+                  await ensureLabelExists(bountyLabel);
+                  await applyLabelsToPr(pr.number, [bountyLabel]);
+                }
               }
             } else {
               await labelPr(context.payload.pull_request);
