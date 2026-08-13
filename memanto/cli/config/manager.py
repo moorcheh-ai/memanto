@@ -9,13 +9,16 @@ Handles configuration persistence:
 
 import importlib
 import json
+import math
 import os
 from pathlib import Path
 from urllib.parse import urlsplit, urlunsplit
 
 from dotenv import load_dotenv, set_key
+from filelock import FileLock
 
 from memanto.app.clients.backend import Backend, parse_backend
+from memanto.app.utils.atomic_write import atomic_write_text
 from memanto.app.utils.validation import validate_recall_limit
 from memanto.cli.schedule_time import normalize_schedule_time
 
@@ -83,7 +86,7 @@ def _validate_float_range(name: str, value, minimum: float, maximum: float) -> f
         validated = float(value)
     except (TypeError, ValueError) as exc:
         raise ValueError(f"{name} must be between {minimum} and {maximum}") from exc
-    if validated < minimum or validated > maximum:
+    if not math.isfinite(validated) or validated < minimum or validated > maximum:
         raise ValueError(f"{name} must be between {minimum} and {maximum}")
     return validated
 
@@ -189,6 +192,42 @@ class ConfigManager:
         """Save Letta API key to ~/.memanto/.env."""
         self._set_env_var("LETTA_API_KEY", _normalize_duplicated_api_key(api_key))
 
+    def get_langfuse_api_key(self) -> str | None:
+        """Get the Langfuse credential from ~/.memanto/.env.
+
+        Langfuse authenticates with a key *pair*, so the credential is stored
+        as ``"<public_key>:<secret_key>"``. The vendor-native
+        ``LANGFUSE_PUBLIC_KEY``/``LANGFUSE_SECRET_KEY`` pair is also accepted
+        and joined, since anyone already using Langfuse has those set.
+        """
+        if self.env_file.exists():
+            load_dotenv(self.env_file, override=True)
+
+        combined = (os.environ.get("LANGFUSE_API_KEY") or "").strip()
+        if combined:
+            return combined
+
+        public_key = (os.environ.get("LANGFUSE_PUBLIC_KEY") or "").strip()
+        secret_key = (os.environ.get("LANGFUSE_SECRET_KEY") or "").strip()
+        if public_key and secret_key:
+            return f"{public_key}:{secret_key}"
+        return None
+
+    def set_langfuse_api_key(self, api_key: str) -> None:
+        """Save the combined Langfuse credential to ~/.memanto/.env."""
+        self._set_env_var("LANGFUSE_API_KEY", api_key.strip())
+
+    def get_langfuse_host(self) -> str | None:
+        """Get the Langfuse base URL (cloud EU/US or self-hosted)."""
+        if self.env_file.exists():
+            load_dotenv(self.env_file, override=True)
+        host = (os.environ.get("LANGFUSE_HOST") or "").strip()
+        return host or None
+
+    def set_langfuse_host(self, host: str) -> None:
+        """Save the Langfuse base URL to ~/.memanto/.env."""
+        self._set_env_var("LANGFUSE_HOST", host.strip().rstrip("/"))
+
     def _set_env_var(self, name: str, value: str) -> None:
         """Write a single variable to ~/.memanto/.env and update os.environ."""
         self.config_dir.mkdir(parents=True, exist_ok=True)
@@ -256,9 +295,11 @@ class ConfigManager:
         """Merge ``updates`` into the on-prem state.json (creates dir if needed)."""
         p = self._onprem_state_path()
         p.parent.mkdir(parents=True, exist_ok=True)
-        data = self.get_onprem_state()
-        data.update({k: v for k, v in updates.items() if v is not None})
-        p.write_text(json.dumps(data, indent=2))
+        lock = FileLock(str(p) + ".lock")
+        with lock:
+            data = self.get_onprem_state()
+            data.update({k: v for k, v in updates.items() if v is not None})
+            atomic_write_text(p, json.dumps(data, indent=2))
 
     def get_onprem_config(self) -> dict:
         """Get on-prem config dict (url, embedding_provider, llm_model, ...).
@@ -578,43 +619,48 @@ class ConfigManager:
 
     def _save_connections(self, data: dict) -> None:
         """Atomically write the connections registry."""
-        self.config_dir.mkdir(parents=True, exist_ok=True)
-        tmp = self.connections_file.with_suffix(".json.tmp")
-        with open(tmp, "w", encoding="utf-8") as f:
-            json.dump(data, f, indent=2, sort_keys=True)
-        os.replace(tmp, self.connections_file)
-        try:
-            self.connections_file.chmod(0o600)
-        except OSError:
-            pass
+        atomic_write_text(
+            self.connections_file,
+            json.dumps(data, indent=2, sort_keys=True),
+        )
 
     def add_connection(
         self, agent_name: str, project_dir: str | None, is_global: bool
     ) -> None:
         """Record that ``agent_name`` was installed at ``project_dir`` (or globally)."""
-        data = self.load_connections()
-        entry = data.setdefault(agent_name, {"projects": [], "installed_global": False})
-        if is_global:
-            entry["installed_global"] = True
-        elif project_dir:
-            abs_path = str(Path(project_dir).resolve())
-            if abs_path not in entry["projects"]:
-                entry["projects"].append(abs_path)
-        self._save_connections(data)
+        self.connections_file.parent.mkdir(parents=True, exist_ok=True)
+        lock = FileLock(str(self.connections_file) + ".lock")
+        with lock:
+            data = self.load_connections()
+            entry = data.setdefault(
+                agent_name, {"projects": [], "installed_global": False}
+            )
+            if is_global:
+                entry["installed_global"] = True
+            elif project_dir:
+                abs_path = str(Path(project_dir).resolve())
+                if abs_path not in entry["projects"]:
+                    entry["projects"].append(abs_path)
+            self._save_connections(data)
 
     def remove_connection(
         self, agent_name: str, project_dir: str | None, is_global: bool
     ) -> None:
         """Inverse of ``add_connection``."""
-        data = self.load_connections()
-        if agent_name not in data:
-            return
-        entry = data[agent_name]
-        if is_global:
-            entry["installed_global"] = False
-        elif project_dir:
-            abs_path = str(Path(project_dir).resolve())
-            entry["projects"] = [p for p in entry.get("projects", []) if p != abs_path]
-        if not entry.get("projects") and not entry.get("installed_global"):
-            del data[agent_name]
-        self._save_connections(data)
+        self.connections_file.parent.mkdir(parents=True, exist_ok=True)
+        lock = FileLock(str(self.connections_file) + ".lock")
+        with lock:
+            data = self.load_connections()
+            if agent_name not in data:
+                return
+            entry = data[agent_name]
+            if is_global:
+                entry["installed_global"] = False
+            elif project_dir:
+                abs_path = str(Path(project_dir).resolve())
+                entry["projects"] = [
+                    p for p in entry.get("projects", []) if p != abs_path
+                ]
+            if not entry.get("projects") and not entry.get("installed_global"):
+                del data[agent_name]
+            self._save_connections(data)

@@ -36,6 +36,49 @@ def parse_iso_timestamp(ts_str: str) -> datetime:
     return dt.astimezone(timezone.utc)
 
 
+# The end-of-day instant used whenever a date-only cutoff is widened to cover the
+# whole day. Defined once so every entry point agrees to the microsecond; when the
+# REST layer used time(23, 59, 59) and this module used time.max, memories written
+# in the final second of a day fell inside the cutoff on one path and outside it on
+# the other.
+END_OF_DAY = time.max
+
+
+def parse_date_only(ts_str: str) -> date:
+    """Parse a calendar date, accepting both ISO-8601 date forms.
+
+    ``date.fromisoformat`` only learned the basic (un-hyphenated) ``20260726``
+    form in Python 3.11, but this project supports 3.10 (see ``requires-python``
+    and the CI matrix). The basic form is handled explicitly so date-only
+    detection behaves identically on every supported interpreter instead of
+    silently depending on the runtime's stdlib version.
+
+    Raises ``ValueError`` for anything that is not a calendar date.
+    """
+    if len(ts_str) == 8 and ts_str.isdigit():
+        return date(int(ts_str[:4]), int(ts_str[4:6]), int(ts_str[6:8]))
+    return date.fromisoformat(ts_str)
+
+
+def is_date_only(ts_str: str) -> bool:
+    """True when the string is a calendar date with no time component.
+
+    Detected by PARSING rather than by shape. The previous shape check
+    (``len == 10 and s[4] == "-" and s[7] == "-"``) silently rejected the
+    ISO-8601 basic format ``20260726`` -- a valid date -- which then fell
+    through to the datetime parser and became midnight, i.e. the START of the
+    day, flipping the documented end-of-day semantics by nearly 24 hours with
+    no error raised.
+    """
+    if not ts_str or "T" in ts_str or " " in ts_str:
+        return False
+    try:
+        parse_date_only(ts_str)
+    except ValueError:
+        return False
+    return True
+
+
 def parse_as_of_timestamp(ts_str: str) -> datetime:
     """Parse a point-in-time cutoff, treating a date as the end of that day.
 
@@ -45,10 +88,10 @@ def parse_as_of_timestamp(ts_str: str) -> datetime:
     Normalizing at the service boundary keeps every caller consistent without
     changing the meaning of full ISO timestamps.
     """
-    if len(ts_str) == 10 and ts_str[4] == "-" and ts_str[7] == "-":
+    if is_date_only(ts_str):
         try:
             return datetime.combine(
-                date.fromisoformat(ts_str), time.max, tzinfo=timezone.utc
+                parse_date_only(ts_str), END_OF_DAY, tzinfo=timezone.utc
             )
         except ValueError:
             pass
@@ -240,12 +283,21 @@ def build_temporal_query(
           }
         }
     """
-    # Parse relative time if provided and no absolute time given
+    # Parse relative time if provided and no absolute time given. Most relative
+    # phrases describe an open-ended lookback window, but "yesterday" is a
+    # closed calendar-day window. Supplying only its start would also return
+    # today's memories, which contradicts the caller's requested time range.
     if relative_time and not created_after:
-        parsed_relative_time = parse_relative_time(relative_time)
-        if parsed_relative_time is None:
-            raise ValueError(f"Invalid relative_time: {relative_time!r}")
-        created_after = parsed_relative_time
+        normalized_relative_time = relative_time.lower().strip()
+        if normalized_relative_time == "yesterday":
+            created_after, yesterday_end = get_yesterday_range()
+            if not created_before:
+                created_before = yesterday_end
+        else:
+            parsed_relative_time = parse_relative_time(relative_time)
+            if parsed_relative_time is None:
+                raise ValueError(f"Invalid relative_time: {relative_time!r}")
+            created_after = parsed_relative_time
 
     body: dict[str, Any] = {"query": query, "limit": limit}
     if created_after:

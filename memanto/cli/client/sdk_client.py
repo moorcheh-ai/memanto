@@ -12,6 +12,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, cast
 
+from memanto.app.config import get_data_dir
 from memanto.app.constants import (
     ALLOWED_UPDATE_FIELDS as _ALLOWED_UPDATE_FIELDS,
 )
@@ -43,6 +44,7 @@ from memanto.app.utils.validation import (
     InputLimits,
     is_successful_write_result,
     validate_recall_limit,
+    validate_safe_id,
 )
 from memanto.cli.config.manager import ConfigManager
 
@@ -287,15 +289,15 @@ class SdkClient:
         agent_info = self._get_agent_service().create_agent(agent_create, self.api_key)
         return cast(dict[str, Any], agent_info.model_dump(mode="json"))
 
-    def list_agents(self) -> list[dict[str, Any]]:
+    def list_agents(self) -> dict[str, Any]:
         """
         List all registered agents.
 
         Returns:
-            List of agent info dicts.
+            Dictionary with 'agents', 'count', and 'warnings'.
         """
         agent_list = self._get_agent_service().list_agents()
-        return [a.model_dump(mode="json") for a in agent_list.agents]
+        return cast(dict[str, Any], agent_list.model_dump(mode="json"))
 
     def get_agent(self, agent_id: str) -> dict[str, Any]:
         """
@@ -502,7 +504,7 @@ class SdkClient:
         # Log to local session Markdown summary only after a durable write.
         if self.session_token and is_successful_write_result(result):
             session_id = "unknown"
-            self._get_session_service().log_memory_to_session_summary(
+            self._get_session_service().try_log_memory_to_session_summary(
                 agent_id=agent_id,
                 session_id=session_id,
                 memory_record=memory,
@@ -629,8 +631,10 @@ class SdkClient:
                     )
                 if not is_successful_write_result(item_result):
                     continue
-                mem_id = item_result.get("id") if item_result else None
-                session_svc.log_memory_to_session_summary(
+                mem_id = (
+                    item_result.get("id") if isinstance(item_result, dict) else None
+                )
+                session_svc.try_log_memory_to_session_summary(
                     agent_id=agent_id,
                     session_id=session_id,
                     memory_record=mem,
@@ -797,7 +801,7 @@ class SdkClient:
 
         # Log deletion to local session Markdown summary
         if self.session_token:
-            self._get_session_service().log_memory_deletion_to_session_summary(
+            self._get_session_service().try_log_memory_deletion_to_session_summary(
                 agent_id=agent_id,
                 session_id=session.session_id,
                 memory_id=memory_id,
@@ -1447,13 +1451,27 @@ class SdkClient:
             (``"cache"``, ``"fresh"``, or ``"stale-cache"`` if a refresh
             failed and a previous export was reused instead).
         """
-        cache_path = Path.home() / ".memanto" / "exports" / f"{agent_id}_memory.md"
+        validate_safe_id(agent_id, "agent_id")
+        cache_path = get_data_dir() / "exports" / f"{agent_id}_memory.md"
         target_path = Path(project_dir) / "MEMORY.md"
         target_path.parent.mkdir(parents=True, exist_ok=True)
 
+        if cache_path.exists():
+            # Fast path: copy cached export without an API-backed refresh.
+            shutil.copy2(str(cache_path), str(target_path))
+            content = cache_path.read_text(encoding="utf-8")
+            mem_count = content.count("### ")
+            return {
+                "output_path": str(target_path.resolve()),
+                "total_memories": mem_count,
+                "source": "cache",
+            }
+
         try:
             # Run export function first (ensures ~/.memanto/exports/... is fresh)
-            self.export_memory_md(agent_id=agent_id, limit_per_type=limit_per_type)
+            export_result = self.export_memory_md(
+                agent_id=agent_id, limit_per_type=limit_per_type
+            )
         except ConnectionError:
             if cache_path.exists():
                 # Backend unreachable, but we have a previously good export —
@@ -1468,20 +1486,13 @@ class SdkClient:
                 }
             raise
 
-        if cache_path.exists():
-            # Copy freshly updated cache to project
-            shutil.copy2(str(cache_path), str(target_path))
-            content = cache_path.read_text(encoding="utf-8")
-            mem_count = content.count("### ")
-            return {
-                "output_path": str(target_path.resolve()),
-                "total_memories": mem_count,
-                "source": "cache",
-            }
+        exported_path = Path(export_result["output_path"])
+        if exported_path.exists():
+            shutil.copy2(str(exported_path), str(target_path))
 
         return {
             "output_path": str(target_path.resolve()),
-            "total_memories": 0,
+            "total_memories": export_result.get("total_memories", 0),
             "source": "fresh",
         }
 

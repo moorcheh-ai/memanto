@@ -12,6 +12,7 @@ backends expose it.
 
 from typing import Any
 
+from fastapi import Header
 from moorcheh_sdk import AsyncMoorchehClient, MoorchehClient
 
 from memanto.app.clients.backend import Backend, parse_backend
@@ -118,11 +119,28 @@ class MoorchehClientSingleton:
 moorcheh_client = MoorchehClientSingleton()
 
 
-def get_moorcheh_client() -> Any:
+def _resolved_api_key(api_key: Any) -> str | None:
+    """Return *api_key* only when FastAPI actually resolved it to a header value.
+
+    These are FastAPI dependencies, but service and route code also calls them
+    directly as plain functions. In that case the ``Header(...)`` default is
+    passed through untouched, and because that object is truthy it would be
+    forwarded to the SDK as if it were a real key (raising ``TypeError`` inside
+    httpx). Treat anything that is not a string as "no key supplied" so direct
+    callers fall back to the configured key.
+    """
+    return api_key if isinstance(api_key, str) else None
+
+
+def get_moorcheh_client(
+    api_key: str | None = Header(None, alias="X-Api-Key"),
+) -> Any:
     """Dependency injection function (cloud or on-prem)."""
-    return moorcheh_client.get_client()
+    return moorcheh_client.get_client(api_key=_resolved_api_key(api_key))
 
 
-def get_async_moorcheh_client() -> Any:
+def get_async_moorcheh_client(
+    api_key: str | None = Header(None, alias="X-Api-Key"),
+) -> Any:
     """Dependency injection function for async client (cloud or on-prem)."""
-    return moorcheh_client.get_async_client()
+    return moorcheh_client.get_async_client(api_key=_resolved_api_key(api_key))

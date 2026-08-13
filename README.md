@@ -1,38 +1,22 @@
-<p align="center">
+﻿<p align="center">
     <a href="https://www.memanto.ai/">
     <img alt="MEMANTO Logo" src="https://github.com/moorcheh-ai/memanto/raw/main/assets/memanto-logo.svg" width="500">
     </a>
 </p>
 
-<div align="center">
-  <h1>Memory that AI Agents Love!</h1>
-</div>
 <h2 align="center">
-  <em>Memanto is a companion Memory Agent; an agent whose whole job is managing your other agents' memories. It curates what's worth keeping, consolidates it across sessions, and briefs your agents the moment they start, while you keep ownership of everything they learn.</em>
+  <em>Memanto is a companion Memory Agent; an agent whose whole job is managing your other agents' memories.</em>
 </h2>
+<p align="center"> <strong>⭐ Star the repo</strong> if Memanto is helping your agentic fleet. </p> <p align="center">
 
 <p align="center">
-  Works automatically with Claude Code, Cursor, Codex, and 20+ other agents. Fully convertible between semantic backend and Open Knowledge Format (*.md files in llm wiki style), so your memory estate is yours to inspect, export, and migrate anywhere — <code>memanto migrate</code> and it moves with you.
+   It curates what's worth keeping, consolidates it across sessions, and briefs your agents the moment they need it, while you keep ownership of everything they learn. Works automatically with Claude Code, Cursor, Codex, and 20+ other agents. Fully convertible between semantic backend and Open Knowledge Format (*.md files in llm wiki style), so your memory estate is yours to inspect, export, and migrate anywhere — <code>memanto migrate</code> and it moves with you.
 </p>
 
 <p align="center">
   <code>pip install memanto</code>
 </p>
 
-<p align="center">
-  <a href="https://memanto.ai/discord">
-    <img src="https://img.shields.io/badge/Join-Discord-5865F2?style=for-the-badge&logo=discord&logoColor=white" alt="Join Discord">
-  </a>
-  <a href="https://www.reddit.com/r/Memanto/">
-    <img src="https://img.shields.io/badge/Join-Reddit-FF4500?style=for-the-badge&logo=reddit&logoColor=white" alt="Join Reddit">
-  </a>
-  <a href="https://www.youtube.com/watch?v=vEtOaoweIG4">
-    <img src="https://img.shields.io/badge/Setup-Video-FF0000?style=for-the-badge&logo=youtube&logoColor=white" alt="Setup Video">
-  </a>
-  <a href="https://docs.memanto.ai">
-    <img src="https://img.shields.io/badge/Docs-memanto.ai-000000?style=for-the-badge&logo=readthedocs&logoColor=white" alt="Docs">
-  </a>
-</p>
 
 <p align="center">
     <a href="https://pepy.tech/projects/memanto"><img alt="PyPI - Total Downloads" src="https://static.pepy.tech/personalized-badge/memanto?period=total&units=INTERNATIONAL_SYSTEM&left_color=BLACK&right_color=GREEN&left_text=downloads"></a>
@@ -42,32 +26,9 @@
     <a href="https://x.com/moorcheh_ai" target="_blank"><img src="https://img.shields.io/twitter/url/https/twitter.com/langchain.svg?style=social&label=Follow%20%40Moorcheh.ai" alt="Twitter / X"></a>
 </p>
 
-
+<p align="center"><a href="https://mcptoplist.com/server/glama%2Fmoorcheh-ai%2Fmemanto"><img src="https://mcptoplist.com/badge/glama%2Fmoorcheh-ai%2Fmemanto.svg" alt="mcp top list" width="250" height="30"></a></p>
 <p align="center"><a href="https://trendshift.io/repositories/27378" target="_blank"><img src="https://trendshift.io/api/badge/repositories/27378" alt="moorcheh-ai%2Fmemanto | Trendshift" style="width: 250px; height: 55px;" width="250" height="55"/></a></p>
 
-
-
-
----
-## What Is MEMANTO?
-
-**MEMANTO is a memory agent. It remembers, recalls, and answers — so your agents can achieve long-term goals and avoid confusion.**
-
-Most memory tools today are passive infrastructure: agents have to query them, parse the results, and figure out what to do next. MEMANTO is built differently. It's an active memory agent designed from the gaps agents themselves named when asked about their memory — three operations (`remember`, `recall`, `answer`) that give your agents persistent context across sessions, with state-of-the-art retrieval and zero ingestion latency.
-
-<div align="center">
-  <h1>Memanto in action</h1>
-  <div style="display: flex; justify-content: center; gap: 20px; flex-wrap: wrap; margin: 20px 0;">
-    <div style="text-align: center;">
-      <h2 style="margin-top: 8px;">Without Memanto</strong></h2>
-      <img src="https://github.com/moorcheh-ai/memanto/raw/main/assets/Before.gif" alt="Before" width="1100" style="border-radius: 8px;">
-    </div>
-    <div style="text-align: center;">
-        <h2 style="margin-top: 8px;">With Memanto Connected</strong></h2>
-        <img src="https://github.com/moorcheh-ai/memanto/raw/main/assets/After.gif" alt="After" width="1100" style="border-radius: 8px;">
-    </div>
-  </div>
-</div>
 
 ## Get started in 2 minutes
 
@@ -93,40 +54,59 @@ Switch between local and cloud at any time with `memanto config backend`.
 
 ## What you get
 
-- **No more re-explaining your codebase** after every context reset. Memanto persists across sessions, your agent picks up where it left off.
-- **Fewer tokens burned on repeated context.** Memories are retrieved only when relevant, so context windows go further.
-- **Memories searchable the instant they're stored.** Zero indexing wait, no LLM extraction tax at write time.
-- **One `pip install`.** No vector DB to provision, no schema, no rerankers, no backend service to babysit.
-- **Flexible deployment.** Choose between running the backend fully local, using it as a cloud SaaS, hosting in your own VPC, or switching between any of these options anytime you want.
+### Your fleet of agents start working 
 
----
+**One memory, shared across the fleet.**
+Your Cursor session doesn't know what Claude Code decided this morning. Your review agent doesn't know what your test agent already tried and rejected. Memanto gives them one shared memory; what any agent learns, every agent knows.
 
-## Integrations
+**Every agent starts briefed.**
+`memanto agent bootstrap` hands a new agent an intelligence snapshot of what the fleet already knows: the decisions, the constraints, the things that were tried and reversed. No warm-up prompt. No context-loading ritual before real work starts.
 
-Works with Claude Code, Cursor, Codex, Windsurf, Cline, Continue, Goose, GitHub Copilot, and more. See the [full list →](https://docs.memanto.ai/integrations/overview)
+**Scoped memory per agent.**
+Each agent gets its own namespace, so your production-ops agent isn't reading your scratch experiments. Provision exactly what each one should know; nothing more.
 
-```bash
-memanto connect <integration-tool-id> # integrates in one command
-#eg: memanto connect claude-code    
-```
+### The fleet gets smarter without you baby sitting it
 
----
+**Consolidation runs on schedule.**
+`memanto schedule` runs daily: new memories curated, duplicates merged across agents, contradictions flagged for review. You come back to a fleet that knows more than it did yesterday, without having sorted anything yourself.
 
-## The Six Gaps
+**Contradictions surface instead of compounding.**
+Two agents learn opposite things about the same system. `memanto conflicts` catches it, versions both, and brings it to you; rather than letting whichever wrote last silently win and propagate to everything downstream.
 
-Most memory tools are passive infrastructure — agents have to query them, parse the results, and figure out what to do. Memanto is an active memory agent built from the gaps models themselves named:
+**Memory that knows *when*.**
+Query what the fleet knew last Tuesday (`--as-of`), or what changed since your last release (`--changed-since`). A preference from six months ago doesn't outrank yesterday's deadline.
 
-| # | Gap | What MEMANTO does about it |
-| --- | --- | --- |
-| 1 | **Static injection** — memory arrives as a blob, not queryable by relevance | Queryable, not injectable |
-| 2 | **No temporal decay** — a preference from 6 months ago weighs the same as yesterday's deadline | Versioning, recency signals, temporal queries |
-| 3 | **No provenance** — can't tell explicit facts from inferred patterns or outdated info | Confidence + provenance metadata on every memory |
-| 4 | **Flat memory** — episodic, semantic, and procedural all collapsed to one layer | Typed and hierarchical — 13 built-in memory categories |
-| 5 | **No writeback** — contradictions silently coexist | Conflict detection, explicit versioning, no silent overwrites |
-| 6 | **Indexing delay** — mandatory LLM extraction, graph construction bottleneck | Zero-overhead ingestion, available at write time |
+### See what your fleet knows
 
+**Full visibility over the memory estate.**
+`memanto status` for registered agents, active sessions, and server health. `memanto ui` opens a local dashboard over everything the fleet has learned; browse it, search it, audit it.
 
-> *"My memory exists as a static snapshot injected into context — useful, but fundamentally passive."* — A model quote that became Memanto's design brief.
+**Every memory carries reference and origin.**
+Confidence score, source, timestamp, and what it superseded. When an agent acts on something, you can trace where that belief came from and when it entered the fleet.
+
+**Daily briefings on request.**
+`memanto daily-summary` turns raw memory churn into a readable digest of what changed across your agents.
+
+### Nothing to provision, nothing to rewrite
+
+**One `pip install`.**
+No vector DB, no embedding pipeline, no reranker, no schema migration, no backend to babysit. The retrieval engine ships in the box.
+
+**Works with the agents you already run.**
+`memanto connect claude-code` — same for Cursor, Codex, Windsurf, Cline, Continue, Goose, Copilot and more. One command per agent. No code changes, no wrapper SDK, no rewrite of your agent loop.
+
+**Searchable the moment it's written.**
+No LLM extraction at write time. No graph to rebuild. No indexing queue. `remember` returns and it's already retrievable — by every agent in the fleet.
+
+### It stays yours
+
+**Your fleet's memory is a file, not a hostage.**
+`memanto memory export --okf` gives you plain Markdown — readable, diffable, committable. Switch stacks and take it with you. There's no lock-in because there's nothing to lock.
+
+**Runs entirely on your own machine.**
+Local Docker + Ollama, no account, no API key, nothing leaves your infrastructure. Or free cloud, or your own hosting — switch any time with one command.
+
+**MIT licensed.** No open-core bait, no feature gate, no rug pull.
 
 ---
 
@@ -139,29 +119,37 @@ Most memory tools are passive infrastructure — agents have to query them, pars
 
 ---
 
-## Architecture
-
-Memanto's retrieval is powered by [Moorcheh](https://moorcheh.ai), an information-theoretic semantic engine. It runs as a local Docker container (free, no account) or as a free cloud service (100K free operations) the `memanto` CLI manages either for you.
 
 <p align="center">
-  <img alt="MEMANTO architecture" src="https://github.com/moorcheh-ai/memanto/raw/main/assets/Architecture-diagram.png" width="1000">
+  <a href="https://memanto.ai/discord">
+    <img src="https://img.shields.io/badge/Join-Discord-5865F2?style=for-the-badge&logo=discord&logoColor=white" alt="Join Discord">
+  </a>
+  <a href="https://www.reddit.com/r/Memanto/">
+    <img src="https://img.shields.io/badge/Join-Reddit-FF4500?style=for-the-badge&logo=reddit&logoColor=white" alt="Join Reddit">
+  </a>
+  <a href="https://www.youtube.com/watch?v=vEtOaoweIG4">
+    <img src="https://img.shields.io/badge/Setup-Video-FF0000?style=for-the-badge&logo=youtube&logoColor=white" alt="Setup Video">
+  </a>
+  <a href="https://docs.memanto.ai">
+    <img src="https://img.shields.io/badge/Docs-memanto.ai-000000?style=for-the-badge&logo=readthedocs&logoColor=white" alt="Docs">
+  </a>
 </p>
 
-### On-Prem
+
+---
+## See it in action
 
 <p align="center">
-  <img alt="MEMANTO architecture" src="https://github.com/moorcheh-ai/memanto/raw/main/assets/On-prem-architecture-diagram.png" width="1000">
+  <a href="https://youtu.be/zoKP4b_rUhY">
+    <img src="https://img.youtube.com/vi/zoKP4b_rUhY/maxresdefault.jpg" alt="Watch Memanto in action" width="900">
+  </a>
 </p>
 
----
+<p align="center">
+  <em>▶ 
+Retrieving memory for an AI agentic workflow is much more than a search — 6:20 min</em>
+</p>
 
-## Why Moorcheh?
-
-Moorcheh is the semantic engine behind Memanto's retrieval. Unlike vector databases that rely on approximate search and require indexing pipelines, Moorcheh uses an information-theoretic approach that returns exact results with zero indexing delay, write a memory and it's searchable immediately.
-
-This means Memanto doesn't need a separate vector DB, embedding pipeline, or reranking stage. The Moorcheh engine runs as a local Docker container for on-prem users (no account needed) or as a managed cloud service with a free tier. Either way, it's invisible - the `memanto` CLI handles it.
-
----
 
 ## Setup & Demo
 
@@ -177,6 +165,22 @@ This means Memanto doesn't need a separate vector DB, embedding pipeline, or rer
   <a href="https://www.youtube.com/watch?v=5n976CmzohE">
     <img src="https://github.com/moorcheh-ai/memanto/raw/main/assets/video-uidashboard.png" alt="Local dashboard demo">
   </a>
+</p>
+
+---
+
+## Architecture
+
+Memanto's retrieval is powered by [Moorcheh](https://moorcheh.ai), an information-theoretic semantic engine. It runs as a local Docker container (free, no account) or as a free cloud service (100K free operations) the `memanto` CLI manages either for you.
+
+<p align="center">
+  <img alt="MEMANTO architecture" src="https://github.com/moorcheh-ai/memanto/raw/main/assets/Architecture-diagram.png" width="1000">
+</p>
+
+### On-Prem
+
+<p align="center">
+  <img alt="MEMANTO architecture" src="https://github.com/moorcheh-ai/memanto/raw/main/assets/On-prem-architecture-diagram.png" width="1000">
 </p>
 
 ---
@@ -260,3 +264,8 @@ Have questions or feedback? We're here to help:
 ---
 
 **MIT License**
+
+<br>
+<p align="center">
+  <a href="README.md">English</a> | <a href="i18n/README_es.md">Español</a> | <a href="i18n/README_zh-CN.md">&#31616;&#20307;&#20013;&#25991;</a> | <a href="i18n/README_ja.md">&#26085;&#26412;&#35486;</a>
+</p>

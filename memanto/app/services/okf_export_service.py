@@ -23,7 +23,7 @@ frontmatter keys.
 
 import re
 import shutil
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -257,19 +257,24 @@ class OkfExportService:
 
     @staticmethod
     def _parse_ts(value: Any) -> datetime:
-        """Best-effort parse of a stored ``created_at`` into a datetime; falls
-        back to now so the activity timeline always has an hour bucket."""
+        """Best-effort parse of a stored ``created_at`` into an aware UTC datetime;
+        falls back to now so the activity timeline always has an hour bucket."""
         if isinstance(value, datetime):
-            return value
+            if value.tzinfo is None or value.utcoffset() is None:
+                return value.replace(tzinfo=timezone.utc)
+            return value.astimezone(timezone.utc)
         if isinstance(value, str) and value.strip():
             text = value.strip()
             if text.endswith("Z"):
                 text = text[:-1] + "+00:00"
             try:
-                return datetime.fromisoformat(text)
+                dt = datetime.fromisoformat(text)
+                if dt.tzinfo is None or dt.utcoffset() is None:
+                    return dt.replace(tzinfo=timezone.utc)
+                return dt.astimezone(timezone.utc)
             except ValueError:
                 pass
-        return datetime.now()
+        return datetime.now(timezone.utc)
 
     # Rendering helpers
     def _render_okf_doc(self, mem: dict[str, Any], mem_type: str) -> str:

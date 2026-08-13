@@ -144,3 +144,4 @@ class AgentList(BaseModel):
 
     agents: list[AgentInfo]
     count: int
+    warnings: list[str] = Field(default_factory=list)

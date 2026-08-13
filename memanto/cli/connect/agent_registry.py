@@ -73,9 +73,18 @@ class AgentDef:
         if is_global:
             if self.config_global_dir:
                 base = Path.home() / self.config_global_dir.lstrip("~/")
+                instruction_path = Path(self.instruction_file)
+                if self.config_local_dir:
+                    try:
+                        instruction_path = instruction_path.relative_to(
+                            self.config_local_dir
+                        )
+                    except ValueError:
+                        pass
             else:
                 base = Path.home()
-            return base / self.instruction_file
+                instruction_path = Path(self.instruction_file)
+            return base / instruction_path
         return project_dir / self.instruction_file
 
 
