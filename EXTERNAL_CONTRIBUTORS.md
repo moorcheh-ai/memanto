@@ -62,3 +62,4 @@ GitHub on [https://memanto.ai/contributor-onboard](https://memanto.ai/contributo
 • @Dashboarrd
 • @cwjcwj95
 • @2077196405-commits
+- @Xenogents
