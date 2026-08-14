@@ -1,0 +1,10 @@
+Memanto live import verification (2026-08-06 UTC)
+Agent: crewai-okf-verified
+
+OKF nodes: 8
+Mapped memories: 8 (skipped 0)
+Imported: 8
+Failed: 0
+Batches: 1
+Type breakdown: decision: 2, error: 1, goal: 1, instruction: 1,
+learning: 1, preference: 1, relationship: 1

@@ -1,0 +1,9 @@
+Memanto live OKF export verification (2026-08-06 UTC)
+Agent: crewai-okf-verified
+Split: type
+
+Exported memories: 8
+Reloaded with Memanto OKF loader: 8
+Mapped with Memanto OKF mapper: 8
+Type breakdown: decision: 2, error: 1, goal: 1, instruction: 1,
+learning: 1, preference: 1, relationship: 1

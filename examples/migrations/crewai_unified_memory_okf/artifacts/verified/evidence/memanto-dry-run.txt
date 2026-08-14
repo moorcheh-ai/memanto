@@ -1,0 +1,19 @@
+┌─────────────────────────┐
+│ OKF -> Memanto  Dry run │
+└─────────────────────────┘
+  … Loading OKF bundle from
+<OKF_BUNDLE>
+  … Mapping OKF nodes onto Memanto schema...
+
+┌───────────────────────────── Dry run complete ──────────────────────────────┐
+│ OKF nodes: 8                                                                │
+│ Mapped memories: 8  (skipped 0)                                             │
+│ Type breakdown: decision: 2, error: 1, goal: 1, instruction: 1, learning:   │
+│ 1, preference: 1, relationship: 1                                           │
+│                                                                             │
+│ Dry run — no writes performed.                                              │
+│                                                                             │
+│ Run dir: <USER_HOME>\.memanto\migrate\okf\20260806_004251                  │
+│ Mapped preview:                                                             │
+│ <USER_HOME>\.memanto\migrate\okf\20260806_004251\mapped_preview.json       │
+└─────────────────────────────────────────────────────────────────────────────┘

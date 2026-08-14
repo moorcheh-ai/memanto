@@ -8,7 +8,12 @@ foreign OKF bundle whose free-form ``type`` and unknown keys must land in the
 ``[Supporting data]`` footer without loss.
 """
 
+from datetime import datetime
+
 from memanto.app.services.okf_export_service import OkfExportService
+from memanto.app.services.summary_visualization_service import (
+    SummaryVisualizationService,
+)
 from memanto.cli.migrate.mappers import map_okf
 from memanto.cli.migrate.okf_loader import load_okf_bundle
 
@@ -186,3 +191,51 @@ def test_loader_splits_stacked_file(tmp_path):
     assert {m["title"] for m in export["memories"]} == {
         f"Standup {i}" for i in range(5)
     }
+
+
+def test_loader_uses_portable_posix_source_paths(tmp_path):
+    """Keep OKF provenance portable when imported on Windows."""
+
+    nested = tmp_path / "memories" / "fact"
+    nested.mkdir(parents=True)
+    (nested / "portable.md").write_text(
+        "---\ntype: fact\ntitle: Portable\n---\n\nContent.\n",
+        encoding="utf-8",
+    )
+
+    export = load_okf_bundle(tmp_path)
+    assert export["memories"][0]["source_path"] == "memories/fact/portable.md"
+
+
+def test_visualizations_use_typed_fences_and_singular_hours():
+    """Render portable Markdown and grammatically correct activity totals."""
+
+    markdown = SummaryVisualizationService().build_visualization_markdown(
+        [
+            {
+                "timestamp": datetime(2026, 8, 5, 14, 0, 0),
+                "type": "fact",
+                "title": "Portable",
+                "confidence": 0.9,
+            }
+        ]
+    )
+    assert markdown.count("```text") == 2
+    assert "**1** memories across **1** active hour\n" in markdown
+
+
+def test_visualization_parser_accepts_current_and_legacy_headings(tmp_path):
+    """Keep old H3 summaries readable after new entries move to H2."""
+
+    summary = tmp_path / "agent_2026-08-05_session_summary.md"
+    summary.write_text(
+        "## [2026-08-05 14:00:00] [FACT] Current\n"
+        "- **Confidence**: `0.9`\n"
+        "### [2026-08-05 15:00:00] [GOAL] Legacy\n"
+        "- **Confidence**: `0.8`\n",
+        encoding="utf-8",
+    )
+    memories = SummaryVisualizationService()._parse_session_files(
+        "agent", "2026-08-05", tmp_path
+    )
+    assert [memory["title"] for memory in memories] == ["Current", "Legacy"]

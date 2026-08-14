@@ -1,0 +1,51 @@
+{
+  "verified_at": "2026-08-06T00:43:00Z",
+  "agent": "crewai-okf-verified",
+  "query_count": 6,
+  "expected_in_top_3": 6,
+  "expected_at_rank_1": 6,
+  "queries": [
+    {
+      "question": "Which database was selected for concurrent writers and point-in-time recovery?",
+      "expected_key": "database-decision-current",
+      "source_ref": "crewai://unified-memory/84b237f2-3188-4230-9776-67ec3c5e4db6",
+      "rank": 1,
+      "score": 0.207
+    },
+    {
+      "question": "What is the analytics email privacy rule?",
+      "expected_key": "privacy-instruction",
+      "source_ref": "crewai://unified-memory/85450f4d-2eb3-4f62-bf51-2f1d0bc71c99",
+      "rank": 1,
+      "score": 0.503
+    },
+    {
+      "question": "What caused incident AUR-218 duplicate invoices?",
+      "expected_key": "incident-learning",
+      "source_ref": "crewai://unified-memory/bc26de54-75d1-47bd-938b-d185650124b8",
+      "rank": 1,
+      "score": 0.481
+    },
+    {
+      "question": "What idempotency remediation prevents duplicate invoices?",
+      "expected_key": "incident-remediation",
+      "source_ref": "crewai://unified-memory/b380bc30-d008-4fee-b554-8e390ec2a3ac",
+      "rank": 1,
+      "score": 0.316
+    },
+    {
+      "question": "What is the Aurora EU pilot deadline and checkout p95 goal?",
+      "expected_key": "pilot-goal",
+      "source_ref": "crewai://unified-memory/87b70ac8-30d2-41d0-8453-b5d2502383b0",
+      "rank": 1,
+      "score": 0.388
+    },
+    {
+      "question": "Who owns Aurora checkout and who approves security?",
+      "expected_key": "ownership-relationship",
+      "source_ref": "crewai://unified-memory/9f451abf-0167-42e6-9d16-8dcd4317ce0f",
+      "rank": 1,
+      "score": 0.399
+    }
+  ]
+}
