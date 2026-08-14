@@ -8,6 +8,7 @@ import json
 import logging
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import Any
 
 from filelock import FileLock, Timeout
 from moorcheh_sdk.exceptions import ConflictError
@@ -18,7 +19,11 @@ from memanto.app.config import get_data_dir
 from memanto.app.core import agent_namespace
 from memanto.app.models.session import AgentCreate, AgentInfo, AgentList
 from memanto.app.utils.atomic_write import atomic_write_text
-from memanto.app.utils.errors import AgentAlreadyExistsError, AgentNotFoundError
+from memanto.app.utils.errors import (
+    AgentAlreadyExistsError,
+    AgentNamespaceConflictError,
+    AgentNotFoundError,
+)
 from memanto.app.utils.temporal_helpers import as_utc_aware
 from memanto.app.utils.validation import validate_safe_id
 
@@ -44,6 +49,25 @@ class AgentService:
         Format: memanto_agent_{agent_id}
         """
         return agent_namespace(agent_id)
+
+    def _namespace_is_empty(self, client: Any, namespace: str) -> bool:
+        """Return True when the namespace has no retrievable documents (MEM-03).
+
+        Best-effort check used when a namespace already exists: an empty
+        namespace cannot carry attacker-injected memories, so adopting it is
+        safe; any content at all means a foreign tenant may have planted data.
+        """
+        try:
+            # Use the same document-listing API the read service uses.
+            docs = client.documents.fetch_text_data(namespace=namespace, limit=1)
+            if docs is None:
+                return True
+            if isinstance(docs, dict):
+                return not docs.get("items") and not docs.get("documents") and not docs.get("results")
+            return len(docs) == 0
+        except Exception:
+            # Cannot verify → fail closed (treat as non-empty).
+            return False
 
     def _get_agent_file(self, agent_id: str) -> Path:
         """Get file path for agent metadata"""
@@ -97,13 +121,31 @@ class AgentService:
                 client.namespaces.create(namespace, type="text")
                 print(f"[OK] Namespace created in Moorcheh: {namespace}")
             except ConflictError:
-                print(f"[OK] Namespace already exists in Moorcheh: {namespace}")
+                # MEM-03: a deterministic namespace (memanto_agent_{id}) can be
+                # pre-created by another tenant on a globally-addressable backend.
+                # Adopting it silently would read/write attacker-controlled
+                # memories. Fail closed unless we can verify the namespace is
+                # empty (nothing to poison) — treat any existing content as a
+                # conflict and refuse to claim the agent.
+                if not self._namespace_is_empty(client, namespace):
+                    raise AgentNamespaceConflictError(
+                        f"Namespace '{namespace}' already exists with content; "
+                        "refusing to adopt a foreign namespace"
+                    )
+                print(f"[OK] Namespace already exists (empty) in Moorcheh: {namespace}")
             except Exception as exc:
                 message = str(exc).lower()
                 if (
                     "namespace" in message and "already exists" in message
                 ) or "conflict" in message:
-                    print(f"[OK] Namespace already exists in Moorcheh: {namespace}")
+                    if not self._namespace_is_empty(client, namespace):
+                        raise AgentNamespaceConflictError(
+                            f"Namespace '{namespace}' already exists with content; "
+                            "refusing to adopt a foreign namespace"
+                        )
+                    print(
+                        f"[OK] Namespace already exists (empty) in Moorcheh: {namespace}"
+                    )
                 else:
                     raise Exception(
                         f"Failed to create namespace '{namespace}' in Moorcheh: {exc}"

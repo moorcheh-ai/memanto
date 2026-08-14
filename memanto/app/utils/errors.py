@@ -88,6 +88,17 @@ class AgentAlreadyExistsError(AgentError):
     pass
 
 
+class AgentNamespaceConflictError(AgentError):
+    """Raised when an agent's namespace already exists with foreign content (MEM-03).
+
+    A deterministic namespace (``memanto_agent_{id}``) can be pre-created by
+    another tenant on a globally-addressable backend. Adopting it would make the
+    agent read/write attacker-controlled memories, so creation fails closed.
+    """
+
+    pass
+
+
 def map_error_to_http_exception(error: Exception) -> HTTPException:
     """Map internal errors to HTTP exceptions"""
 
