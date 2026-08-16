@@ -127,7 +127,6 @@ _PROVIDER_BUNDLES: dict[str, dict[str, Any]] = {
         "report": build_supermemory_report_markdown,
         "export_filename": "supermemory_export.json",
     },
-<<<<<<< HEAD
     # Langfuse carries no savings report: it is an observability backend, not
     # a memory store to benchmark Memanto against. It also runs its own flow
     # (`_run_langfuse_flow`) because it reconciles against a sync ledger, so
@@ -136,7 +135,7 @@ _PROVIDER_BUNDLES: dict[str, dict[str, Any]] = {
         "label": "Langfuse",
         "exporter": run_langfuse_export,
         "export_filename": "langfuse_export.json",
-=======
+    },
     "chatgpt": {
         "label": "ChatGPT",
         "exporter": None,
@@ -144,7 +143,6 @@ _PROVIDER_BUNDLES: dict[str, dict[str, Any]] = {
         "prompt": build_chatgpt_llm_prompt,
         "report": build_chatgpt_report_markdown,
         "export_filename": "conversations.json",
->>>>>>> 29b5915 (feat(migration): add ChatGPT conversations migration adapter)
     },
 }
 
@@ -707,7 +705,6 @@ def migrate_supermemory(
     )
 
 
-<<<<<<< HEAD
 # --------------------------------------------------------------------------
 # Langfuse — a repeatable sync, so it runs its own reconciling flow.
 # --------------------------------------------------------------------------
