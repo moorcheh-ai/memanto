@@ -123,6 +123,11 @@ class SummaryVisualizationService:
 
         Returns a list of dicts:
             {"timestamp": datetime, "type": str, "title": str, "confidence": float}
+
+        Bug fix (ref #770): Parse headings and confidences sequentially by scanning
+        the text line by line, matching each heading with its nearest following
+        confidence. This avoids index-based pairing which can misalign when
+        the heading regex fails to match (e.g., empty titles).
         """
         pattern = f"{agent_id}_{date}_*_summary.md"
         session_files = list(sessions_dir.glob(pattern))
@@ -137,36 +142,46 @@ class SummaryVisualizationService:
             except Exception:
                 continue
 
-            headings = list(self._HEADING_RE.finditer(text))
-            confidences = list(self._CONFIDENCE_RE.finditer(text))
+            # Parse sequentially: find each heading and its nearest following confidence
+            lines = text.splitlines()
+            i = 0
+            while i < len(lines):
+                line = lines[i]
 
-            for i, match in enumerate(headings):
-                ts_str, mem_type, title = match.groups()
-                try:
-                    ts = datetime.strptime(ts_str, "%Y-%m-%d %H:%M:%S")
-                except ValueError:
-                    continue
-
-                # Try to pair with the nearest confidence value
-                conf = 0.8  # default
-                if i < len(confidences):
+                # Try to match a heading
+                heading_match = self._HEADING_RE.match(line)
+                if heading_match:
+                    ts_str, mem_type, title = heading_match.groups()
                     try:
-                        conf = float(confidences[i].group(1))
-                    except (ValueError, IndexError):
-                        pass
+                        ts = datetime.strptime(ts_str, "%Y-%m-%d %H:%M:%S")
+                    except ValueError:
+                        i += 1
+                        continue
 
-                memories.append(
-                    {
+                    # Look for the nearest following confidence (within 10 lines)
+                    conf = 0.8  # default
+                    for j in range(i + 1, min(i + 10, len(lines))):
+                        conf_match = self._CONFIDENCE_RE.match(lines[j])
+                        if conf_match:
+                            try:
+                                conf = float(conf_match.group(1))
+                            except (ValueError, IndexError):
+                                pass
+                            break  # Found the nearest confidence
+
+                    memories.append({
                         "timestamp": ts,
                         "type": mem_type.upper(),
                         "title": title.strip(),
                         "confidence": conf,
-                    }
-                )
+                    })
+
+                i += 1
 
         # Sort by timestamp
         memories.sort(key=lambda m: m["timestamp"])
         return memories
+
 
     # Visualizations
     def _build_activity_timeline(self, memories: list[dict]) -> str:
