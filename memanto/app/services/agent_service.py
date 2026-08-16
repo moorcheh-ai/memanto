@@ -50,28 +50,6 @@ class AgentService:
         """
         return agent_namespace(agent_id)
 
-    def _namespace_is_empty(self, client: Any, namespace: str) -> bool:
-        """Return True when the namespace has no retrievable documents (MEM-03).
-
-        Best-effort check used when a namespace already exists: an empty
-        namespace cannot carry attacker-injected memories, so adopting it is
-        safe; any content at all means a foreign tenant may have planted data.
-        """
-        try:
-            # Use the documented parameter name (namespace_name) — CodeRabbit review.
-            # Fail closed: None, unknown dict shapes and unsupported types all
-            # count as non-empty, so we never authorize adoption on ambiguity.
-            docs = client.documents.fetch_text_data(namespace_name=namespace, limit=1)
-            if docs is None:
-                return False
-            if isinstance(docs, dict):
-                has_items = any(docs.get(k) for k in ("items", "documents", "results"))
-                return not has_items
-            return False
-        except Exception:
-            # Cannot verify → fail closed (treat as non-empty).
-            return False
-
     def _get_agent_file(self, agent_id: str) -> Path:
         """Get file path for agent metadata"""
         validate_safe_id(agent_id, "agent_id")
@@ -131,29 +109,24 @@ class AgentService:
             except ConflictError:
                 # MEM-03: a deterministic namespace (memanto_agent_{id}) can be
                 # pre-created by another tenant on a globally-addressable backend.
-                # Adopting it silently would read/write attacker-controlled memories.
-                # Per CodeRabbit review: an emptiness check is NOT an ownership check
-                # (TOCTOU — another tenant can write between the check and adoption),
-                # so reject EVERY pre-existing namespace unless Moorcheh provides an
-                # atomic namespace-claim/ownership operation.
-                if not self._namespace_is_empty(client, namespace):
-                    raise AgentNamespaceConflictError(
-                        f"Namespace '{namespace}' already exists with content; "
-                        "refusing to adopt a foreign namespace"
-                    )
-                print(f"[OK] Namespace already exists (empty) in Moorcheh: {namespace}")
+                # Per CodeRabbit review (round 2): reject EVERY pre-existing
+                # namespace — an emptiness check cannot establish ownership
+                # (TOCTOU: another tenant can write between the check and
+                # adoption). Fail closed unconditionally unless Moorcheh
+                # provides an atomic namespace-claim/ownership operation.
+                raise AgentNamespaceConflictError(
+                    f"Namespace '{namespace}' already exists; refusing to adopt a "
+                    "pre-existing namespace (possible cross-tenant memory poisoning)"
+                )
             except Exception as exc:
                 message = str(exc).lower()
                 if (
                     "namespace" in message and "already exists" in message
                 ) or "conflict" in message:
-                    if not self._namespace_is_empty(client, namespace):
-                        raise AgentNamespaceConflictError(
-                            f"Namespace '{namespace}' already exists with content; "
-                            "refusing to adopt a foreign namespace"
-                        )
-                    print(
-                        f"[OK] Namespace already exists (empty) in Moorcheh: {namespace}"
+                    # Same unconditional rejection as ConflictError above.
+                    raise AgentNamespaceConflictError(
+                        f"Namespace '{namespace}' already exists; refusing to adopt a "
+                        "pre-existing namespace (possible cross-tenant memory poisoning)"
                     )
                 else:
                     raise Exception(
