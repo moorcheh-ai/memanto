@@ -205,6 +205,19 @@ def map_error_to_http_exception(error: Exception) -> HTTPException:
             },
         )
 
+    elif isinstance(error, AgentNamespaceConflictError):
+        # MEM-03 / CodeRabbit: namespace conflict must surface as 409, not 500.
+        # Use a stable public message — never leak the backend namespace or
+        # exception text in the response.
+        return HTTPException(
+            status_code=409,
+            detail={
+                "error": "AgentNamespaceConflict",
+                "message": "Agent namespace is already in use by another tenant; refusing to adopt it.",
+                "details": {},
+            },
+        )
+
     else:
         # Generic server error
         return HTTPException(

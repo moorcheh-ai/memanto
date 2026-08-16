@@ -58,13 +58,16 @@ class AgentService:
         safe; any content at all means a foreign tenant may have planted data.
         """
         try:
-            # Use the same document-listing API the read service uses.
-            docs = client.documents.fetch_text_data(namespace=namespace, limit=1)
+            # Use the documented parameter name (namespace_name) — CodeRabbit review.
+            # Fail closed: None, unknown dict shapes and unsupported types all
+            # count as non-empty, so we never authorize adoption on ambiguity.
+            docs = client.documents.fetch_text_data(namespace_name=namespace, limit=1)
             if docs is None:
-                return True
+                return False
             if isinstance(docs, dict):
-                return not docs.get("items") and not docs.get("documents") and not docs.get("results")
-            return len(docs) == 0
+                has_items = any(docs.get(k) for k in ("items", "documents", "results"))
+                return not has_items
+            return False
         except Exception:
             # Cannot verify → fail closed (treat as non-empty).
             return False
@@ -75,14 +78,16 @@ class AgentService:
         return self.agents_dir / f"{agent_id}.json"
 
     def create_agent(
-        self, agent_create: AgentCreate, moorcheh_api_key: str
+        self, agent_create: AgentCreate, moorcheh_api_key: str | None = None
     ) -> AgentInfo:
         """
         Create a new agent
 
         Args:
             agent_create: Agent creation request
-            moorcheh_api_key: Moorcheh API key for namespace creation
+            moorcheh_api_key: DEPRECATED — ignored. The server-configured
+                MOORCHEH_API_KEY is always used (MEM-02 / CodeRabbit: caller
+                credentials must never drive backend operations).
 
         Returns:
             AgentInfo object
@@ -115,7 +120,10 @@ class AgentService:
                 )
 
             namespace = self._generate_namespace(agent_create.agent_id)
-            client = get_moorcheh_client(api_key=moorcheh_api_key)
+            # CodeRabbit review: always use the server-configured credential —
+            # never a caller-supplied key (the parameter was removed from the
+            # dependency wrapper to prevent ?api_key= overrides).
+            client = get_moorcheh_client()
 
             try:
                 client.namespaces.create(namespace, type="text")
@@ -123,10 +131,11 @@ class AgentService:
             except ConflictError:
                 # MEM-03: a deterministic namespace (memanto_agent_{id}) can be
                 # pre-created by another tenant on a globally-addressable backend.
-                # Adopting it silently would read/write attacker-controlled
-                # memories. Fail closed unless we can verify the namespace is
-                # empty (nothing to poison) — treat any existing content as a
-                # conflict and refuse to claim the agent.
+                # Adopting it silently would read/write attacker-controlled memories.
+                # Per CodeRabbit review: an emptiness check is NOT an ownership check
+                # (TOCTOU — another tenant can write between the check and adoption),
+                # so reject EVERY pre-existing namespace unless Moorcheh provides an
+                # atomic namespace-claim/ownership operation.
                 if not self._namespace_is_empty(client, namespace):
                     raise AgentNamespaceConflictError(
                         f"Namespace '{namespace}' already exists with content; "

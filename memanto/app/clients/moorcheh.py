@@ -118,9 +118,7 @@ class MoorchehClientSingleton:
 moorcheh_client = MoorchehClientSingleton()
 
 
-def get_moorcheh_client(
-    api_key: str | None = None,
-) -> Any:
+def get_moorcheh_client() -> Any:
     """Dependency injection function (cloud or on-prem).
 
     The backend credential is ALWAYS the server-configured key
@@ -130,16 +128,16 @@ def get_moorcheh_client(
     server-side memory/LLM operations under their own Moorcheh credentials,
     bypassing the server key's quotas, billing and audit, and potentially
     reaching other tenants' namespaces. Server-to-backend credentials must
-    never be decided by the request.
+    never be decided by the request. The ``api_key`` parameter was removed
+    entirely — FastAPI would otherwise expose it as a query parameter
+    (``?api_key=...``), re-opening the same bypass (CodeRabbit review).
     """
-    return moorcheh_client.get_client(api_key=api_key)
+    return moorcheh_client.get_client()
 
-def get_async_moorcheh_client(
-    api_key: str | None = None,
-) -> Any:
+def get_async_moorcheh_client() -> Any:
     """Dependency injection function for async client (cloud or on-prem).
 
     Credentials are always the server-configured key (see get_moorcheh_client,
-    MEM-02); the request header is never used.
+    MEM-02); the request header and query parameter are never used.
     """
-    return moorcheh_client.get_async_client(api_key=api_key)
+    return moorcheh_client.get_async_client()
