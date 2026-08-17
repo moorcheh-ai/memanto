@@ -18,10 +18,15 @@ MemoryType = Literal[
 ]
 
 # Source Types
-SourceType = str  # e.g., "user", "agent", "tool", "system", or specific "agent_name"
+# Open by design: a source names *who wrote the memory* — "user", "agent",
+# "cursor", "codex", "claude_code", "mem0", any integration or MCP client — so
+# recall can be attributed and filtered per writer. This lenient alias is for
+# reading back stored records; writes go through ``core.MemorySource``, which
+# bounds the label so it stays a valid `#source:<value>` filter token.
+SourceType = str
 
 # Status Types
-StatusType = Literal["active", "superseded", "deleted", "provisional"]
+StatusType = Literal["active"]
 
 # Provenance Types
 ProvenanceType = Literal[

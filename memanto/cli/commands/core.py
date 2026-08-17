@@ -10,8 +10,10 @@ import subprocess
 import sys
 import threading
 import time
+import webbrowser
 from datetime import datetime
 from pathlib import Path
+from urllib.parse import urlparse
 
 import httpx
 import typer
@@ -329,6 +331,34 @@ def _prompt_embedding_provider() -> tuple[str, str, str]:
     return "ollama", "nomic-embed-text", ""
 
 
+def _import_user_config() -> tuple:
+    """Import moorcheh-client's user-config helpers across its layouts.
+
+    moorcheh-client 0.1.5 reorganised the package into ``client`` and ``cli``
+    subpackages, moving ``moorcheh/user_config.py`` to
+    ``moorcheh/cli/user_config.py``. Because the dependency is declared as
+    ``moorcheh-client>=0.1.3`` with no upper bound, a fresh install resolves to
+    0.1.5 and the old import path raises ImportError, which aborted on-prem
+    setup entirely. Try the new location first, then fall back to the old one so
+    0.1.3 through 0.1.5 all work.
+    """
+    try:
+        from moorcheh.cli.user_config import (  # type: ignore[import-not-found]
+            EmbeddingConfig,
+            LlmConfig,
+            default_base_url,
+            save_runtime_config,
+        )
+    except ImportError:
+        from moorcheh.user_config import (  # type: ignore[import-not-found]
+            EmbeddingConfig,
+            LlmConfig,
+            default_base_url,
+            save_runtime_config,
+        )
+    return EmbeddingConfig, LlmConfig, default_base_url, save_runtime_config
+
+
 # Valid on-prem LLM identifiers, sourced from moorcheh.user_config. Listed
 # explicitly so the prompt is stable even if moorcheh-client adds/removes
 # models. Keep in sync with ``moorcheh.user_config.LLM_PROVIDER_MODELS``.
@@ -437,12 +467,12 @@ def _persist_moorcheh_llm_config(
     ``save_runtime_config`` helper so the schema stays in sync.
     """
     try:
-        from moorcheh.user_config import (  # type: ignore[import-not-found]
+        (
             EmbeddingConfig,
             LlmConfig,
             default_base_url,
             save_runtime_config,
-        )
+        ) = _import_user_config()
     except ImportError as e:
         _error(f"moorcheh.user_config unavailable: {e}")
         return
@@ -649,7 +679,6 @@ def status():
 
     # Configuration
     is_configured = config_manager.is_configured()
-    server_cfg = config_manager.get_server_config()
 
     cfg_table = Table(show_header=False, box=None, padding=(0, 2))
     cfg_table.add_column("Key", style="dim")
@@ -675,7 +704,7 @@ def status():
         except Exception:
             cfg_table.add_row("On-Prem Server", "[red]● offline[/red]")
 
-    server_url = f"http://{server_cfg['url']}:{server_cfg['port']}"
+    server_url = config_manager.get_server_url()
     if is_configured:
         cfg_table.add_row("Local REST API URL", server_url)
         if backend == Backend.CLOUD:
@@ -983,13 +1012,43 @@ def serve(
 # ============================================================================
 
 
+def _open_dashboard_window(url: str) -> None:
+    """Open ``url`` safely in the user's default browser.
+
+    Validates that the URL uses an HTTP/HTTPS scheme and avoids shell interpolation
+    to prevent command injection.
+    """
+    parsed = urlparse(url)
+    if parsed.scheme not in ("http", "https") or not parsed.netloc:
+        console.print(f"[{WARNING}]Refusing to open non-HTTP(S) URL:[/{WARNING}] {url}")
+        return
+
+    # On Windows, try to open Edge or Chrome in standalone app mode for a native feel.
+    success = False
+    if sys.platform == "win32":
+        for browser in ("msedge", "chrome"):
+            try:
+                subprocess.Popen(
+                    ["cmd", "/c", "start", "", browser, f"--app={url}"],
+                    shell=False,
+                )
+                success = True
+                break
+            except (FileNotFoundError, OSError):
+                continue
+
+    # Fallback to default browser (POSIX / macOS, or Windows when both
+    # Edge and Chrome are missing).
+    if not success:
+        webbrowser.open_new(url)
+
+
 @app.command()
 def ui(
     host: str = typer.Option(None, "--host", help="Server host (defaults to config)"),
     port: int = typer.Option(None, "--port", help="Server port (defaults to config)"),
 ):
     """Start MEMANTO server and open the Web UI Dashboard."""
-    import webbrowser
 
     server_cfg = config_manager.get_server_config()
     host = host or server_cfg.get("url", "0.0.0.0")
@@ -1022,28 +1081,6 @@ def ui(
     sock.close()
 
     ui_url = f"http://localhost:{port}/ui"
-
-    def _open_dashboard_window(url: str):
-        import subprocess
-        import sys
-
-        # On Windows, try to open Edge or Chrome in standalone app mode for a native feel
-        success = False
-        if sys.platform == "win32":
-            try:
-                # Need shell=True for `start` command to resolve registry paths
-                subprocess.Popen(f'start msedge --app="{url}"', shell=True)
-                success = True
-            except Exception:
-                try:
-                    subprocess.Popen(f'start chrome --app="{url}"', shell=True)
-                    success = True
-                except Exception:
-                    pass
-
-        # Fallback to default browser
-        if not success:
-            webbrowser.open_new(url)
 
     if port_in_use:
         console.print(f"\n[green]Server already running on port {port}.[/green]")

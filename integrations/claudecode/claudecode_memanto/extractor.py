@@ -18,11 +18,11 @@ Why ``answer()`` for extraction?
 
 from __future__ import annotations
 
-import json
 import re
 from typing import Any
 
 from memanto.app.constants import VALID_MEMORY_TYPES
+from memanto.app.utils.json_extraction import iter_json_arrays
 from memanto.app.utils.validation import InputLimits
 
 # Sourced from the SDK so this never drifts if Memanto adds a 14th type.
@@ -78,23 +78,15 @@ def parse_llm_memories(answer_text: str) -> list[dict[str, Any]]:
     if not answer_text:
         return []
 
-    payload = _extract_json_array(answer_text)
-    if payload is None:
-        return []
-
-    try:
-        raw = json.loads(payload)
-    except (json.JSONDecodeError, ValueError):
-        return []
-    if not isinstance(raw, list):
-        return []
-
-    out: list[dict[str, Any]] = []
-    for item in raw:
-        mem = _coerce_memory(item)
-        if mem is not None:
-            out.append(mem)
-    return out
+    for raw in iter_json_arrays(answer_text):
+        out: list[dict[str, Any]] = []
+        for item in raw:
+            mem = _coerce_memory(item)
+            if mem is not None:
+                out.append(mem)
+        if out:
+            return out
+    return []
 
 
 def heuristic_memories(summary: str) -> list[dict[str, Any]]:
@@ -137,17 +129,6 @@ def heuristic_memories(summary: str) -> list[dict[str, Any]]:
 # --------------------------------------------------------------------------- #
 # Internals
 # --------------------------------------------------------------------------- #
-
-_FENCE_RE = re.compile(r"```(?:json)?", re.IGNORECASE)
-
-
-def _extract_json_array(text: str) -> str | None:
-    cleaned = _FENCE_RE.sub("", text).strip()
-    start = cleaned.find("[")
-    end = cleaned.rfind("]")
-    if start == -1 or end == -1 or end <= start:
-        return None
-    return cleaned[start : end + 1]
 
 
 def _coerce_memory(item: Any) -> dict[str, Any] | None:

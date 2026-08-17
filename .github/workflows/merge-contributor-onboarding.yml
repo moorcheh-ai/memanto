@@ -1,0 +1,139 @@
+name: Merge contributor onboarding PRs
+
+on:
+  pull_request_target:
+    types: [opened, reopened, synchronize]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  merge:
+    if: >-
+      github.event.pull_request.user.login == 'memanto-contributor[bot]' &&
+      github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    steps:
+      - name: Generate Approver Token
+        id: generate_token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.APPROVER_APP_ID }}
+          private-key: ${{ secrets.APPROVER_APP_PRIVATE_KEY }}
+
+      - name: Validate and merge onboarding PR
+        uses: actions/github-script@v7
+        env:
+          APPROVER_TOKEN: ${{ steps.generate_token.outputs.token }}
+        with:
+          script: |
+            const pr = context.payload.pull_request;
+            const expectedBot = "memanto-contributor[bot]";
+            const expectedRepository = `${context.repo.owner}/${context.repo.repo}`;
+
+            const fail = (message) => core.setFailed(`Contributor onboarding PR rejected: ${message}`);
+            const escapeRegex = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+            if (pr.user.login !== expectedBot) return fail("unexpected PR author.");
+            if (pr.head.repo.full_name !== expectedRepository) return fail("PR must originate from this repository.");
+
+            const files = await github.paginate(github.rest.pulls.listFiles, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: pr.number,
+              per_page: 100,
+            });
+
+            if (files.length !== 1 || files[0].filename !== "EXTERNAL_CONTRIBUTORS.md" ||
+                !["added", "modified"].includes(files[0].status)) {
+              return fail("only EXTERNAL_CONTRIBUTORS.md may be added or modified.");
+            }
+
+            const commits = await github.paginate(github.rest.pulls.listCommits, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: pr.number,
+              per_page: 100,
+            });
+
+            if (commits.length !== 1) return fail("PR must contain exactly one commit.");
+
+            const commit = commits[0];
+            const contributor = commit.author?.login;
+            if (!contributor || commit.committer?.login !== expectedBot) {
+              return fail("commit must be authored by a GitHub user and committed by the onboarding app.");
+            }
+
+            const branchPattern = new RegExp(`^contributor/${escapeRegex(contributor)}-\\d+$`, "i");
+            if (!branchPattern.test(pr.head.ref)) return fail("unexpected branch name.");
+            if (pr.title !== `Automated: Add @${contributor} to contributors`) {
+              return fail("unexpected PR title.");
+            }
+
+            async function readFileAt(ref) {
+              try {
+                const { data } = await github.rest.repos.getContent({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  path: "EXTERNAL_CONTRIBUTORS.md",
+                  ref,
+                });
+                if (Array.isArray(data) || data.type !== "file") throw new Error("path is not a file");
+                return Buffer.from(data.content, "base64").toString("utf8");
+              } catch (error) {
+                if (error.status === 404) return null;
+                throw error;
+              }
+            }
+
+            const baseContent = await readFileAt(pr.base.sha);
+            const headContent = await readFileAt(pr.head.sha);
+            const entry = `- @${contributor}\n`;
+            const expectedContent = baseContent === null
+              ? `# External Contributors\n\n${entry}`
+              : baseContent.endsWith("\n") ? `${baseContent}${entry}` : `${baseContent}\n${entry}`;
+
+            if (headContent !== expectedContent) {
+              return fail("file contents do not match one appended contributor entry.");
+            }
+
+            // Approve the PR using the Approver Bot identity
+            const approveRes = await fetch(`https://api.github.com/repos/${context.repo.owner}/${context.repo.repo}/pulls/${pr.number}/reviews`, {
+              method: "POST",
+              headers: {
+                "Authorization": `Bearer ${process.env.APPROVER_TOKEN}`,
+                "Accept": "application/vnd.github.v3+json",
+                "X-GitHub-Api-Version": "2022-11-28",
+                "User-Agent": "actions/github-script"
+              },
+              body: JSON.stringify({ event: "APPROVE" })
+            });
+
+            if (!approveRes.ok) {
+              const errText = await approveRes.text();
+              return fail(`Failed to approve PR via token: ${errText}`);
+            }
+            core.info(`Approved onboarding PR #${pr.number} via Approver Token.`);
+
+            // Merge the PR
+            await github.rest.pulls.merge({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: pr.number,
+              sha: pr.head.sha,
+              merge_method: "rebase",
+            });
+            core.info(`Merged onboarding PR #${pr.number} for @${contributor}.`);
+
+            // Delete the branch after successful merge
+            try {
+              await github.rest.git.deleteRef({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                ref: `heads/${pr.head.ref}`
+              });
+              core.info(`Deleted branch ${pr.head.ref}.`);
+            } catch (error) {
+              core.warning(`Could not delete branch ${pr.head.ref}: ${error.message}`);
+            }
