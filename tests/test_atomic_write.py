@@ -6,7 +6,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from memanto.app.utils import file_lock
+from memanto.app.utils import atomic_write
 
 
 def test_windows_lock_retries_contention_without_deadline(tmp_path, monkeypatch):
@@ -21,12 +21,12 @@ def test_windows_lock_retries_contention_without_deadline(tmp_path, monkeypatch)
             raise OSError(errno.EACCES, "lock is held")
 
     fake_msvcrt = SimpleNamespace(LK_NBLCK=1, locking=locking)
-    monkeypatch.setattr(file_lock.sys, "platform", "win32")
-    monkeypatch.setattr(file_lock.time, "sleep", lambda _seconds: None)
+    monkeypatch.setattr(atomic_write.sys, "platform", "win32")
+    monkeypatch.setattr(atomic_write.time, "sleep", lambda _seconds: None)
     monkeypatch.setitem(sys.modules, "msvcrt", fake_msvcrt)
 
     with (tmp_path / "lock").open("a+b") as handle:
-        file_lock._acquire(handle, shared=True)
+        atomic_write._acquire(handle, shared=True)
 
     assert attempts == 3
 
@@ -38,10 +38,10 @@ def test_windows_lock_does_not_retry_unexpected_errors(tmp_path, monkeypatch):
         raise OSError(errno.EBADF, "bad handle")
 
     fake_msvcrt = SimpleNamespace(LK_NBLCK=1, locking=locking)
-    monkeypatch.setattr(file_lock.sys, "platform", "win32")
+    monkeypatch.setattr(atomic_write.sys, "platform", "win32")
     monkeypatch.setitem(sys.modules, "msvcrt", fake_msvcrt)
 
     with (tmp_path / "lock").open("a+b") as handle:
         with pytest.raises(OSError) as exc_info:
-            file_lock._acquire(handle, shared=False)
+            atomic_write._acquire(handle, shared=False)
         assert exc_info.value.errno == errno.EBADF

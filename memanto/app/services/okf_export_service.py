@@ -31,7 +31,7 @@ from typing import Any
 import yaml  # type: ignore[import-untyped]
 
 from memanto.app.services.memory_export_service import MEMORY_TYPE_ORDER
-from memanto.app.utils.file_lock import okf_bundle_lock
+from memanto.app.utils.atomic_write import okf_bundle_lock
 from memanto.app.utils.validation import validate_output_path, validate_safe_id
 
 # Stacked files hold multiple OKF documents. This sentinel separates them so

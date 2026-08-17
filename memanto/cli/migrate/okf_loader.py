@@ -20,7 +20,7 @@ from typing import Any
 import yaml  # type: ignore[import-untyped]
 
 from memanto.app.services.okf_export_service import ENTRY_DELIMITER
-from memanto.app.utils.file_lock import okf_bundle_lock
+from memanto.app.utils.atomic_write import okf_bundle_lock
 
 # Frontmatter must open at the very start of a (stripped) document. ``.*?`` is
 # non-greedy so the first ``\n---`` closes the block even when the body below
