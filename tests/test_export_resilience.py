@@ -53,9 +53,10 @@ class TestExportMemoryMdRefusesEmptyOnTotalFailure:
             client.export_memory_md(agent_id="test-agent")
 
     @pytest.mark.parametrize("client_cls", [SdkClient, DirectClient])
-    def test_partial_failure_still_exports(self, client_cls, monkeypatch, tmp_path):
-        """One type erroring while others succeed must not raise — only a
-        *total* outage (every type failing) should refuse to write."""
+    def test_partial_failure_refuses_incomplete_export(
+        self, client_cls, monkeypatch, tmp_path
+    ):
+        """One failed type must not be represented as a genuinely empty type."""
         client = _build_client(client_cls, monkeypatch, tmp_path)
 
         def fake_recall(agent_id, query, limit, type):
@@ -65,18 +66,17 @@ class TestExportMemoryMdRefusesEmptyOnTotalFailure:
 
         monkeypatch.setattr(client, "recall", MagicMock(side_effect=fake_recall))
 
-        result = client.export_memory_md(agent_id="test-agent")
-        assert result["total_memories"] > 0
+        with pytest.raises(
+            ConnectionError,
+            match=f"incomplete.*{MEMORY_TYPE_ORDER[0]}|{MEMORY_TYPE_ORDER[0]}.*incomplete",
+        ):
+            client.export_memory_md(agent_id="test-agent")
 
 
-class TestSyncFallsBackToStaleCacheOnOutage:
-    """``sync_memory_to_project`` (SdkClient) always re-exports before
-    copying its cache. When the backend is briefly unreachable, it must
-    reuse the last good export rather than propagate the now-empty write —
-    or, if there is no prior export at all, surface the outage instead of
-    creating an empty ``MEMORY.md``."""
+class TestSyncUsesCacheFastPath:
+    """A cached export is copied without requiring a reachable backend."""
 
-    def test_stale_cache_used_when_backend_down(self, monkeypatch, tmp_path):
+    def test_cache_used_when_backend_down(self, monkeypatch, tmp_path):
         client = _build_client(SdkClient, monkeypatch, tmp_path)
 
         cache_file = tmp_path / ".memanto" / "exports" / "test-agent_memory.md"
@@ -92,7 +92,8 @@ class TestSyncFallsBackToStaleCacheOnOutage:
             agent_id="test-agent", project_dir=str(project_dir)
         )
 
-        assert result["source"] == "stale-cache"
+        client.recall.assert_not_called()
+        assert result["source"] == "cache"
         assert result["total_memories"] == 1
         written = (project_dir / "MEMORY.md").read_text(encoding="utf-8")
         assert "good content" in written
@@ -107,3 +108,20 @@ class TestSyncFallsBackToStaleCacheOnOutage:
             client.sync_memory_to_project(
                 agent_id="test-agent", project_dir=str(tmp_path / "project")
             )
+
+    @pytest.mark.parametrize("client_cls", [SdkClient, DirectClient])
+    def test_rejects_path_traversal_before_cache_lookup(
+        self, client_cls, monkeypatch, tmp_path
+    ):
+        client = _build_client(client_cls, monkeypatch, tmp_path)
+
+        # Patch get_data_dir in the specific client module to prove it's never reached
+        mock_get_data_dir = MagicMock()
+        monkeypatch.setattr(f"{client_cls.__module__}.get_data_dir", mock_get_data_dir)
+
+        with pytest.raises(ValueError, match="invalid characters"):
+            client.sync_memory_to_project(
+                agent_id="../outside", project_dir=str(tmp_path / "project")
+            )
+
+        mock_get_data_dir.assert_not_called()

@@ -6,11 +6,13 @@ Uses the official moorcheh_sdk to interact with Moorcheh API.
 
 import json
 import logging
+import re
 import shutil
 from datetime import datetime
 from pathlib import Path
 from typing import Any, cast
 
+from memanto.app.config import get_data_dir
 from memanto.app.constants import (
     ALLOWED_UPDATE_FIELDS as _ALLOWED_UPDATE_FIELDS,
 )
@@ -25,6 +27,7 @@ from memanto.app.constants import (
 )
 from memanto.app.constants import (
     MemoryType,
+    SourceType,
 )
 from memanto.app.constants import (
     ProvenanceType as MemoryProvenance,
@@ -32,11 +35,18 @@ from memanto.app.constants import (
 from memanto.app.utils.errors import (
     AgentNotFoundError,
     InvalidSessionTokenError,
+    MemoryError,
     SessionError,
     SessionExpiredError,
     SessionNotFoundError,
 )
-from memanto.app.utils.validation import InputLimits, validate_recall_limit
+from memanto.app.utils.temporal_helpers import utc_date_str
+from memanto.app.utils.validation import (
+    InputLimits,
+    is_successful_write_result,
+    validate_recall_limit,
+    validate_safe_id,
+)
 from memanto.cli.config.manager import ConfigManager
 
 logger = logging.getLogger(__name__)
@@ -108,10 +118,10 @@ class SdkClient:
         either way.
         """
         if self._moorcheh is None:
-            from memanto.app.clients.moorcheh import get_moorcheh_client
+            from memanto.app.clients.moorcheh import moorcheh_client
 
             logger.debug("Initializing Moorcheh client via backend dispatcher")
-            self._moorcheh = get_moorcheh_client()
+            self._moorcheh = moorcheh_client.get_client(api_key=self.api_key)
         return self._moorcheh
 
     def _get_write_service(self):
@@ -257,6 +267,12 @@ class SdkClient:
             ValueError: If *pattern* is invalid.
             AgentAlreadyExistsError: If agent already exists.
         """
+        if not agent_id:
+            raise ValueError("agent_id must not be empty")
+        if not re.fullmatch(r"^[a-zA-Z0-9_-]+$", agent_id):
+            raise ValueError(
+                f"Invalid agent_id: '{agent_id}'. Only alphanumeric characters, hyphens, and underscores are allowed."
+            )
         if pattern not in _VALID_PATTERNS:
             raise ValueError(
                 f"Invalid pattern '{pattern}'. Must be one of: {', '.join(sorted(_VALID_PATTERNS))}"
@@ -274,15 +290,15 @@ class SdkClient:
         agent_info = self._get_agent_service().create_agent(agent_create, self.api_key)
         return cast(dict[str, Any], agent_info.model_dump(mode="json"))
 
-    def list_agents(self) -> list[dict[str, Any]]:
+    def list_agents(self) -> dict[str, Any]:
         """
         List all registered agents.
 
         Returns:
-            List of agent info dicts.
+            Dictionary with 'agents', 'count', and 'warnings'.
         """
         agent_list = self._get_agent_service().list_agents()
-        return [a.model_dump(mode="json") for a in agent_list.agents]
+        return cast(dict[str, Any], agent_list.model_dump(mode="json"))
 
     def get_agent(self, agent_id: str) -> dict[str, Any]:
         """
@@ -313,11 +329,12 @@ class SdkClient:
             Confirmation dict with ``status`` and ``agent_id``.
         """
         logger.debug("Deleting agent '%s'", agent_id)
-        self._get_agent_service().delete_agent(agent_id)
+        self._get_session_service().delete_session(agent_id)
         if self.agent_id == agent_id:
             self.session_token = None
             self.agent_id = None
             self._cached_session = None
+        self._get_agent_service().delete_agent(agent_id)
         return {"status": "deleted", "agent_id": agent_id}
 
     # Session Management
@@ -425,7 +442,7 @@ class SdkClient:
         content: str,
         confidence: float = 0.8,
         tags: list[str] | None = None,
-        source: str = "user",
+        source: SourceType = "user",
         provenance: str | None = None,
     ) -> dict[str, Any]:
         """
@@ -486,10 +503,10 @@ class SdkClient:
         logger.debug("Storing memory for agent '%s' (type=%s)", agent_id, memory_type)
         result = self._get_write_service().store_memory(memory)
 
-        # Log to local session Markdown summary
-        if self.session_token:
+        # Log to local session Markdown summary only after a durable write.
+        if self.session_token and is_successful_write_result(result):
             session_id = "unknown"
-            self._get_session_service().log_memory_to_session_summary(
+            self._get_session_service().try_log_memory_to_session_summary(
                 agent_id=agent_id,
                 session_id=session_id,
                 memory_record=memory,
@@ -592,11 +609,34 @@ class SdkClient:
             session_svc = self._get_session_service()
 
             # Extract per-memory IDs from the batch result
+            if not isinstance(result, dict):
+                raise MemoryError(
+                    message="Data corruption detected: Received malformed batch result from storage layer.",
+                    details={"item_preview": str(result)[:100]},
+                )
+
             batch_results = result.get("results", [])
+            if not isinstance(batch_results, list):
+                raise MemoryError(
+                    message="Data corruption detected: Received malformed batch result array from storage layer.",
+                    details={"item_preview": str(batch_results)[:100]},
+                )
 
             for i, mem in enumerate(memory_records):
-                mem_id = batch_results[i].get("id") if i < len(batch_results) else None
-                session_svc.log_memory_to_session_summary(
+                item_result = batch_results[i] if i < len(batch_results) else None
+                if item_result is not None and (
+                    not isinstance(item_result, dict) or not item_result
+                ):
+                    raise MemoryError(
+                        message="Data corruption detected: Received malformed batch result from storage layer.",
+                        details={"item_preview": str(item_result)[:100]},
+                    )
+                if not is_successful_write_result(item_result):
+                    continue
+                mem_id = (
+                    item_result.get("id") if isinstance(item_result, dict) else None
+                )
+                session_svc.try_log_memory_to_session_summary(
                     agent_id=agent_id,
                     session_id=session_id,
                     memory_record=mem,
@@ -763,7 +803,7 @@ class SdkClient:
 
         # Log deletion to local session Markdown summary
         if self.session_token:
-            self._get_session_service().log_memory_deletion_to_session_summary(
+            self._get_session_service().try_log_memory_deletion_to_session_summary(
                 agent_id=agent_id,
                 session_id=session.session_id,
                 memory_id=memory_id,
@@ -840,6 +880,7 @@ class SdkClient:
         min_similarity: float | None = None,
         created_after: datetime | None = None,
         created_before: datetime | None = None,
+        min_confidence: float | None = None,
     ) -> dict[str, Any]:
         """
         Search memories by semantic similarity.
@@ -853,6 +894,7 @@ class SdkClient:
             min_similarity: Minimum similarity threshold.
             created_after: Only memories created after this datetime.
             created_before: Only memories created before this datetime.
+            min_confidence: Minimum confidence threshold.
 
         Returns:
             Dict with ``agent_id``, ``query``, ``memories``, ``count``.
@@ -876,6 +918,7 @@ class SdkClient:
             agent_id=agent_id,
             type=type,
             tags=tags,
+            min_confidence=min_confidence,
             min_similarity_score=min_similarity,
             created_after=created_after.isoformat() if created_after else None,
             created_before=created_before.isoformat() if created_before else None,
@@ -1194,10 +1237,11 @@ class SdkClient:
             date: Date string (YYYY-MM-DD). Defaults to today.
 
         Returns:
-            List of unresolved conflict dicts.
+            List of unresolved conflict dicts, each with a stable ``index``
+            into the full conflict report.
         """
         if not date:
-            date = datetime.now().strftime("%Y-%m-%d")
+            date = utc_date_str()
 
         json_path = (
             Path.home() / ".memanto" / "conflicts" / f"{agent_id}_{date}_conflicts.json"
@@ -1209,8 +1253,12 @@ class SdkClient:
         with open(json_path, encoding="utf-8") as f:
             all_conflicts = json.load(f)
 
-        # Return only unresolved conflicts
-        return [c for c in all_conflicts if not c.get("resolved", False)]
+        # Keep unresolved conflicts but preserve each full-report index.
+        return [
+            {**c, "index": idx}
+            for idx, c in enumerate(all_conflicts)
+            if not c.get("resolved", False)
+        ]
 
     def resolve_conflict(
         self,
@@ -1227,7 +1275,8 @@ class SdkClient:
         Args:
             agent_id: Target agent.
             date: Date string (YYYY-MM-DD).
-            conflict_index: 0-based index into the full conflicts list.
+            conflict_index: Stable 0-based index into the full conflict report
+                (use ``list_conflicts(...)[i]["index"]``).
             action: Resolution action — ``keep_old``, ``keep_new``,
                 ``keep_both``, ``remove_both``, or ``manual``.
             manual_content: Required when action is ``manual``.
@@ -1257,6 +1306,15 @@ class SdkClient:
             )
 
         conflict = all_conflicts[conflict_index]
+
+        # Guard against stale/desynced conflict indexes.
+        if conflict.get("resolved", False):
+            raise ValueError(
+                f"Conflict at index {conflict_index} is already resolved. "
+                "Re-list conflicts and resolve using the 'index' field returned "
+                "by list_conflicts."
+            )
+
         old_id = conflict.get("old_memory_id")
         new_id = conflict.get("new_memory_id")
 
@@ -1370,6 +1428,8 @@ class SdkClient:
         Returns:
             Dict with ``output_path``, ``total_memories``, ``per_type_counts``.
         """
+        self._validate_export_limit(limit_per_type)
+
         # Ensure there is a valid, non-expired session for this agent
         self._get_validated_session_for_agent(agent_id)
 
@@ -1411,13 +1471,27 @@ class SdkClient:
             (``"cache"``, ``"fresh"``, or ``"stale-cache"`` if a refresh
             failed and a previous export was reused instead).
         """
-        cache_path = Path.home() / ".memanto" / "exports" / f"{agent_id}_memory.md"
+        validate_safe_id(agent_id, "agent_id")
+        cache_path = get_data_dir() / "exports" / f"{agent_id}_memory.md"
         target_path = Path(project_dir) / "MEMORY.md"
         target_path.parent.mkdir(parents=True, exist_ok=True)
 
+        if cache_path.exists():
+            # Fast path: copy cached export without an API-backed refresh.
+            shutil.copy2(str(cache_path), str(target_path))
+            content = cache_path.read_text(encoding="utf-8")
+            mem_count = content.count("### ")
+            return {
+                "output_path": str(target_path.resolve()),
+                "total_memories": mem_count,
+                "source": "cache",
+            }
+
         try:
             # Run export function first (ensures ~/.memanto/exports/... is fresh)
-            self.export_memory_md(agent_id=agent_id, limit_per_type=limit_per_type)
+            export_result = self.export_memory_md(
+                agent_id=agent_id, limit_per_type=limit_per_type
+            )
         except ConnectionError:
             if cache_path.exists():
                 # Backend unreachable, but we have a previously good export —
@@ -1432,20 +1506,13 @@ class SdkClient:
                 }
             raise
 
-        if cache_path.exists():
-            # Copy freshly updated cache to project
-            shutil.copy2(str(cache_path), str(target_path))
-            content = cache_path.read_text(encoding="utf-8")
-            mem_count = content.count("### ")
-            return {
-                "output_path": str(target_path.resolve()),
-                "total_memories": mem_count,
-                "source": "cache",
-            }
+        exported_path = Path(export_result["output_path"])
+        if exported_path.exists():
+            shutil.copy2(str(exported_path), str(target_path))
 
         return {
             "output_path": str(target_path.resolve()),
-            "total_memories": 0,
+            "total_memories": export_result.get("total_memories", 0),
             "source": "fresh",
         }
 
@@ -1454,13 +1521,13 @@ class SdkClient:
     ) -> dict[str, list]:
         """Recall memories for every type, grouped by type.
 
-        Raises ``ConnectionError`` when *every* type recall fails (backend
-        unreachable) so callers don't overwrite a good export with nothing.
+        Raises ``ConnectionError`` when any type recall fails so callers don't
+        overwrite a good export with an incomplete snapshot.
         """
         from memanto.app.services.memory_export_service import MEMORY_TYPE_ORDER
 
         memories_by_type: dict[str, list] = {}
-        failed_types = 0
+        failed_types: list[str] = []
 
         for mem_type in MEMORY_TYPE_ORDER:
             try:
@@ -1473,13 +1540,16 @@ class SdkClient:
                 memories_by_type[mem_type] = result.get("memories", [])
             except Exception:
                 memories_by_type[mem_type] = []
-                failed_types += 1
+                failed_types.append(mem_type)
 
-        if failed_types == len(MEMORY_TYPE_ORDER):
+        if failed_types:
+            if len(failed_types) == len(MEMORY_TYPE_ORDER):
+                detail = "the backend appears unreachable"
+            else:
+                detail = f"failed types: {', '.join(failed_types)}"
             raise ConnectionError(
-                f"Failed to recall any memories for agent '{agent_id}' — "
-                "the backend appears unreachable. Refusing to write an "
-                "empty export."
+                f"Failed to recall a complete memory set for agent '{agent_id}' — "
+                f"{detail}. Refusing to write an incomplete export."
             )
         return memories_by_type
 
@@ -1616,3 +1686,13 @@ class SdkClient:
         if not query or not query.strip():
             raise ValueError("Search query must be a non-empty string")
         validate_recall_limit(limit)
+
+    @staticmethod
+    def _validate_export_limit(limit_per_type: int) -> None:
+        """Validate per-type export limits before querying every memory type."""
+        if not isinstance(limit_per_type, int) or isinstance(limit_per_type, bool):
+            raise ValueError("limit_per_type must be an integer between 1 and 100")
+        if not 1 <= limit_per_type <= 100:
+            raise ValueError(
+                f"limit_per_type must be between 1 and 100, got {limit_per_type}"
+            )

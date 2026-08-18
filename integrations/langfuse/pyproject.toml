@@ -1,0 +1,82 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "langfuse-memanto"
+version = "0.1.0"
+description = "Turn Langfuse observability signal into Memanto memories, live from your app"
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.10,<4"
+authors = [
+    { name = "Memanto", email = "info@memanto.ai" }
+]
+keywords = [
+    "memanto",
+    "moorcheh",
+    "langfuse",
+    "observability",
+    "opentelemetry",
+    "agent memory",
+    "llm monitoring",
+    "tracing",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+]
+dependencies = [
+    # The handler is an OpenTelemetry SpanProcessor, so it needs the OTel SDK
+    # directly. `langfuse` itself is NOT a dependency: it already brings OTel,
+    # and depending on it would pin this package to the SDK's release cadence
+    # for an API it never calls.
+    "opentelemetry-sdk>=1.20.0",
+    # Grouping, signatures, and payload shaping are shared with
+    # `memanto migrate langfuse` so a memory reads the same either way.
+    # 0.2.14 is the first release carrying memanto.cli.migrate.langfuse_*;
+    # anything older resolves but fails at handler construction.
+    "memanto>=0.2.14",
+    "pydantic>=2.0.0",
+    "pydantic-settings>=2.0.0",
+    "python-dotenv>=1.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.2.0,<9",
+    "pytest-asyncio>=0.21.0",
+    "pytest-mock>=3.12.0,<4",
+    "ruff>=0.14.6,<0.15",
+    "mypy>=1.10.0,<2",
+    "langfuse>=3",
+]
+
+[project.urls]
+Homepage = "https://www.memanto.ai"
+Documentation = "https://docs.memanto.ai"
+Repository = "https://github.com/moorcheh-ai/memanto"
+"Bug Tracker" = "https://github.com/moorcheh-ai/memanto/issues"
+
+[tool.hatch.build.targets.wheel]
+packages = ["langfuse_memanto"]
+
+[tool.ruff]
+target-version = "py310"
+line-length = 88
+
+[tool.ruff.lint]
+select = ["E", "W", "F", "I", "B", "C4", "UP"]
+ignore = ["B904", "E501", "B008", "C901"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]

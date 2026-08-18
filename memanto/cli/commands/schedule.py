@@ -3,11 +3,11 @@ MEMANTO CLI - Schedule commands (enable, disable, status).
 """
 
 import time
-from datetime import datetime
 
 import typer
 from rich.panel import Panel
 
+from memanto.app.utils.temporal_helpers import utc_date_str
 from memanto.cli.commands._shared import (
     SUCCESS,
     WARNING,
@@ -76,7 +76,7 @@ def schedule_run_internal(
             )
         agent_id = active_agent_id
     if not date:
-        date = datetime.now().strftime("%Y-%m-%d")
+        date = utc_date_str()
 
     client = get_client()
     failed = False

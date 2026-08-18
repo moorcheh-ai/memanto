@@ -230,6 +230,17 @@ def validate_output_path(
     return resolved
 
 
+_SUCCESSFUL_WRITE_STATUSES = {"queued", "success", "ok"}
+
+
+def is_successful_write_result(item: object) -> bool:
+    """Check if a Moorcheh API response represents a successful write."""
+    return (
+        isinstance(item, dict)
+        and str(item.get("status", "")).lower() in _SUCCESSFUL_WRITE_STATUSES
+    )
+
+
 def validate_recall_limit(limit: int) -> None:
     """Reject recall/temporal-recall limits outside [1, InputLimits.MAX_K].
 

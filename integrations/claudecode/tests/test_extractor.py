@@ -22,6 +22,16 @@ class TestParseLlmMemories:
         assert len(mems) == 1
         assert mems[0]["type"] == "fact"
 
+    def test_ignores_non_json_brackets_before_memory_array(self) -> None:
+        text = (
+            "Extraction status [draft]: found durable memories.\n"
+            '[{"type":"instruction","title":"Tests","content":"Always run the '
+            'focused regression tests before pushing.","confidence":0.9}]'
+        )
+        mems = extractor.parse_llm_memories(text)
+        assert len(mems) == 1
+        assert mems[0]["type"] == "instruction"
+
     def test_invalid_type_coerced_to_learning(self) -> None:
         mems = extractor.parse_llm_memories(
             '[{"type":"nonsense","content":"something durable"}]'

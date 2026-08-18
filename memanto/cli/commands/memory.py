@@ -8,10 +8,14 @@ import sys
 import time
 from datetime import datetime
 from pathlib import Path
+from typing import cast
 
 import typer
 from rich.panel import Panel
 
+from memanto.app.constants import SourceType
+from memanto.app.core import is_valid_source
+from memanto.app.utils.temporal_helpers import get_yesterday_range, utc_date_str
 from memanto.cli.commands._shared import (
     BOLD_PRIMARY,
     BRIGHT,
@@ -26,6 +30,20 @@ from memanto.cli.commands._shared import (
     get_client,
     parse_relative_time,
 )
+
+
+def _as_float(value: object, default: float = 0.0) -> float:
+    """Coerce API display fields to float without crashing CLI rendering."""
+    if value is None:
+        return default
+    if isinstance(value, (int, float)):
+        return float(value)
+    if isinstance(value, str):
+        try:
+            return float(value)
+        except ValueError:
+            return default
+    return default
 
 
 @app.command()
@@ -45,7 +63,10 @@ def remember(
     ),
     tags: str | None = typer.Option(None, "--tags", help="Comma-separated tags"),
     source: str = typer.Option(
-        "user", "--source", "-s", help="Source of the memory (e.g., user, agent_name)"
+        "user",
+        "--source",
+        "-s",
+        help="Who wrote the memory (e.g., user, agent, cursor, codex, claude_code)",
     ),
     provenance: str = typer.Option(
         "explicit_statement",
@@ -157,7 +178,7 @@ def remember(
                         f"[bold]{item.get('title', 'Untitled')}[/bold]\n\n"
                         f"{item.get('content', '')}\n\n"
                         f"[dim]Type: {item.get('type', 'fact')} | "
-                        f"Confidence: {item.get('confidence', 0.8):.2f}[/dim]",
+                        f"Confidence: {_as_float(item.get('confidence'), 0.8):.2f}[/dim]",
                         title=f"Candidate {i}",
                         border_style="yellow" if dry_run else SUCCESS,
                     )
@@ -247,6 +268,13 @@ def remember(
     # Parse tags
     tag_list = [t.strip() for t in tags.split(",")] if tags else None
 
+    if not is_valid_source(source):
+        _error(
+            f"Invalid source: '{source}'.",
+            hint="A source names who wrote the memory (e.g. user, agent, cursor, "
+            "codex, claude_code). Use up to 64 letters, digits, '.', '_', or '-'.",
+        )
+
     try:
         with console.status("[cyan]Storing memory...", spinner="dots"):
             result = client.remember(
@@ -256,7 +284,7 @@ def remember(
                 content=content,
                 confidence=confidence,
                 tags=tag_list,
-                source=source,
+                source=cast(SourceType, source),
                 provenance=provenance,
             )
         elapsed = time.perf_counter() - start
@@ -459,6 +487,13 @@ def recall(
     min_similarity: float | None = typer.Option(
         None, "--min-similarity", help="Minimum similarity score"
     ),
+    min_confidence: float | None = typer.Option(
+        None,
+        "--min-confidence",
+        min=0.0,
+        max=1.0,
+        help="Minimum stored confidence score (0.0-1.0)",
+    ),
     tags: str | None = typer.Option(
         None, "--tags", help="Filter by tags (comma-separated)"
     ),
@@ -512,6 +547,14 @@ def recall(
 
         if not ts:
             return ts
+
+        # ``--as-of yesterday`` means the state at the end of that calendar
+        # day. The generic relative helper returns the start of the day because
+        # its normal consumer is a changed-since / created-after query; using
+        # that value here drops almost all memories created yesterday.
+        if flag_name == "--as-of" and ts.lower().strip() == "yesterday":
+            _, yesterday_end = get_yesterday_range()
+            return yesterday_end
 
         # Try parsing as relative time (e.g., "today", "last 2 hours")
         rel_ts = parse_relative_time(ts)
@@ -575,6 +618,7 @@ def recall(
                     type=type,
                     tags=tag_list,
                     min_similarity=min_similarity,
+                    min_confidence=min_confidence,
                 )
             else:
                 _error(
@@ -604,10 +648,11 @@ def recall(
         )
 
         for i, memory in enumerate(memories, 1):
-            score = memory.get("score") or 0.0
+            score = _as_float(memory.get("score"))
             mem_type = memory.get("type") or "unknown"
-            conf = memory.get("confidence") or 0.0
-            comp_conf = memory.get("computed_confidence")
+            conf = _as_float(memory.get("confidence"))
+            comp_conf_raw = memory.get("computed_confidence")
+            comp_conf = _as_float(comp_conf_raw) if comp_conf_raw is not None else None
             title = memory.get("title") or "Untitled"
             content = memory.get("content") or ""
             created = memory.get("created_at") or ""
@@ -730,7 +775,7 @@ def answer(
             console.print(f"\n[dim]Used {len(context)} memories as context:[/dim]")
             for i, mem in enumerate(context, 1):
                 console.print(
-                    f"  {i}. {mem.get('title', 'Untitled')} (score: {mem.get('score', 0):.3f})"
+                    f"  {i}. {mem.get('title', 'Untitled')} (score: {_as_float(mem.get('score')):.3f})"
                 )
 
         console.print(f"[dim]Completed in {elapsed:.2f}s[/dim]")
@@ -766,7 +811,7 @@ def daily_summary(
 
     # Resolve date
     if not date:
-        date = datetime.now().strftime("%Y-%m-%d")
+        date = utc_date_str()
 
     client = get_client()
 
@@ -843,7 +888,7 @@ def detect_conflicts(
         agent_id = active_agent_id
 
     if not date:
-        date = datetime.now().strftime("%Y-%m-%d")
+        date = utc_date_str()
 
     client = get_client()
 
@@ -916,7 +961,7 @@ def conflicts(
 
     # Resolve date
     if not date:
-        date = datetime.now().strftime("%Y-%m-%d")
+        date = utc_date_str()
 
     client = get_client()
 

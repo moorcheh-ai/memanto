@@ -20,12 +20,12 @@ from typing import Any
 import yaml  # type: ignore[import-untyped]
 
 from memanto.app.services.okf_export_service import ENTRY_DELIMITER
+from memanto.app.utils.atomic_write import okf_bundle_lock
 
 # Frontmatter must open at the very start of a (stripped) document. ``.*?`` is
 # non-greedy so the first ``\n---`` closes the block even when the body below
 # contains its own ``---`` rules.
 _FRONTMATTER_RE = re.compile(r"^---\n(.*?)\n---\n?(.*)$", re.DOTALL)
-_LINK_RE = re.compile(r"\[([^\]]+)\]\(([^)]+)\)")
 
 _SKIP_FILENAMES = {"index.md", "log.md"}
 # OKF baseline fields + Memanto's namespaced extension block. Anything else in
@@ -41,11 +41,74 @@ _KNOWN_FIELDS = {
 }
 
 
+def _extract_links(body: str) -> list[tuple[str, str]]:
+    """Extract inline Markdown links in a single left-to-right pass.
+
+    Repeatedly applying a regular expression from every ``[`` candidate makes
+    malformed Markdown increasingly expensive to scan. ``str.find`` keeps the
+    loader linear while preserving the intentionally small link syntax handled
+    here (non-empty ``[text](target)`` pairs).
+    """
+    links: list[tuple[str, str]] = []
+    cursor = 0
+
+    while True:
+        opening = body.find("[", cursor)
+        if opening == -1:
+            break
+
+        closing = body.find("]", opening + 1)
+        if closing == -1:
+            break
+
+        if closing == opening + 1 or not body.startswith("(", closing + 1):
+            cursor = closing + 1
+            continue
+
+        target_end = body.find(")", closing + 2)
+        if target_end == -1:
+            break
+
+        if target_end == closing + 2:
+            cursor = target_end + 1
+            continue
+
+        links.append((body[opening + 1 : closing], body[closing + 2 : target_end]))
+        cursor = target_end + 1
+
+    return links
+
+
 def load_okf_bundle(path: str | Path) -> dict[str, Any]:
     """Load an OKF bundle directory (or a single ``.md`` file) into an export dict."""
     root = Path(path)
+    # Hold the corresponding reader lock through discovery and every file
+    # read, so an exporter cannot move the bundle aside midway through a load.
+    with okf_bundle_lock(_bundle_lock_root(root), shared=True):
+        return _load_okf_bundle(root, path)
+
+
+def _bundle_lock_root(path: Path) -> Path:
+    """Return the bundle path whose lock protects a requested import path."""
+    if path.suffix.lower() != ".md":
+        return path
+
+    # A Memanto entry lives at ``<bundle>/memories/<type>/<entry>.md``.
+    # Resolve this lexically so the same bundle lock is selected even while
+    # the exporter has temporarily moved the bundle directory aside.
+    for parent in path.parents:
+        if parent.name == "memories":
+            return parent.parent
+
+    # Root-level documents belong to their containing bundle. For a standalone
+    # Markdown import this merely serializes imports from the same directory.
+    return path.parent
+
+
+def _load_okf_bundle(root: Path, display_path: str | Path) -> dict[str, Any]:
+    """Load ``root`` while the caller holds its bundle reader lock."""
     if not root.exists():
-        raise FileNotFoundError(f"OKF bundle not found: {path}")
+        raise FileNotFoundError(f"OKF bundle not found: {display_path}")
 
     if root.is_file():
         files = [root]
@@ -109,7 +172,7 @@ def _parse_entry(chunk: str, file_path: Path, rel_base: Path) -> dict[str, Any] 
         x_memanto = {}
 
     extra = {k: v for k, v in frontmatter.items() if k not in _KNOWN_FIELDS}
-    links = [f"{text} -> {target}" for text, target in _LINK_RE.findall(body)]
+    links = [f"{text} -> {target}" for text, target in _extract_links(body)]
 
     try:
         source_path = str(file_path.relative_to(rel_base))
