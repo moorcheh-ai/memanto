@@ -16,7 +16,7 @@ EXPECTED_SCRIPTS = {
 class ScriptParser(HTMLParser):
     def __init__(self) -> None:
         super().__init__()
-        self.scripts: dict[str, dict[str, str]] = {}
+        self.scripts: dict[str, list[dict[str, str]]] = {}
 
     def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
         if tag != "script":
@@ -24,7 +24,7 @@ class ScriptParser(HTMLParser):
         attributes = {name: value or "" for name, value in attrs}
         src = attributes.get("src")
         if src in EXPECTED_SCRIPTS:
-            self.scripts[src] = attributes
+            self.scripts.setdefault(src, []).append(attributes)
 
 
 def test_external_ui_scripts_use_subresource_integrity() -> None:
@@ -33,6 +33,8 @@ def test_external_ui_scripts_use_subresource_integrity() -> None:
 
     assert set(parser.scripts) == set(EXPECTED_SCRIPTS)
     for src, expected_integrity in EXPECTED_SCRIPTS.items():
-        script = parser.scripts[src]
+        entries = parser.scripts[src]
+        assert len(entries) == 1
+        script = entries[0]
         assert script["integrity"] == expected_integrity
         assert script["crossorigin"] == "anonymous"
