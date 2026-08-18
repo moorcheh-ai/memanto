@@ -77,6 +77,11 @@ class TestLoopbackDetection:
 
         assert _is_loopback("127.0.0.1") is True
 
+    def test_localhost_name_accepted(self):
+        from memanto.app.ui.routes.ui_router import _is_loopback
+
+        assert _is_loopback("localhost") is True
+
     def test_ipv6_loopback_accepted(self):
         from memanto.app.ui.routes.ui_router import _is_loopback
 
@@ -110,6 +115,7 @@ class TestLoopbackDetection:
 
         mock_request = MagicMock()
         mock_request.client.host = "127.0.0.1"
+        mock_request.headers = {}
         asyncio.run(_require_local(mock_request))  # must not raise
 
     def test_require_local_allows_ipv4_mapped_loopback(self):
@@ -118,4 +124,44 @@ class TestLoopbackDetection:
 
         mock_request = MagicMock()
         mock_request.client.host = "::ffff:127.0.0.1"
+        mock_request.headers = {}
         asyncio.run(_require_local(mock_request))  # must not raise
+
+    def test_require_local_allows_localhost_origin(self):
+        """Same-local browser origins must pass the local UI guard."""
+        from memanto.app.ui.routes.ui_router import _require_local
+
+        mock_request = MagicMock()
+        mock_request.client.host = "127.0.0.1"
+        mock_request.headers = {"origin": "http://localhost:8000"}
+        asyncio.run(_require_local(mock_request))  # must not raise
+
+    def test_require_local_rejects_cross_site_origin(self):
+        """A malicious page must not be able to POST to localhost management APIs."""
+        import pytest
+        from fastapi import HTTPException
+
+        from memanto.app.ui.routes.ui_router import _require_local
+
+        mock_request = MagicMock()
+        mock_request.client.host = "127.0.0.1"
+        mock_request.headers = {"origin": "https://evil.example"}
+
+        with pytest.raises(HTTPException) as exc:
+            asyncio.run(_require_local(mock_request))
+        assert exc.value.status_code == 403
+
+    def test_require_local_rejects_cross_site_referer(self):
+        """Reject hostile referers even when Origin is absent."""
+        import pytest
+        from fastapi import HTTPException
+
+        from memanto.app.ui.routes.ui_router import _require_local
+
+        mock_request = MagicMock()
+        mock_request.client.host = "127.0.0.1"
+        mock_request.headers = {"referer": "https://evil.example/page"}
+
+        with pytest.raises(HTTPException) as exc:
+            asyncio.run(_require_local(mock_request))
+        assert exc.value.status_code == 403
