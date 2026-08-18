@@ -7,7 +7,11 @@ ships a new version.
 
 Endpoints (Mem0 Platform REST API — https://docs.mem0.ai/api-reference):
     GET  /v1/entities/                                 list users/agents/apps/runs
-    GET  /v1/memories/?<scope>&page=&page_size=        list memories scoped to one entity
+    POST /v3/memories/?page=&page_size=                list memories scoped to one entity
+
+Mem0 v3 requires entity identifiers inside a JSON ``filters`` object. Passing
+them as top-level query parameters, as the retired v1 endpoint allowed, is
+rejected by the current Platform API.
 
 Auth: ``Authorization: Token <api_key>`` (Mem0's convention — not Bearer).
 """
@@ -51,6 +55,19 @@ def _get_json(
     resp = client.get(path, params=params or {})
     if resp.status_code >= 400:
         raise RuntimeError(f"GET {path} -> {resp.status_code}: {resp.text[:500]}")
+    return resp.json() if resp.content else {}
+
+
+def _post_json(
+    client: httpx.Client,
+    path: str,
+    *,
+    params: dict[str, Any] | None = None,
+    json: dict[str, Any] | None = None,
+) -> Any:
+    resp = client.post(path, params=params or {}, json=json or {})
+    if resp.status_code >= 400:
+        raise RuntimeError(f"POST {path} -> {resp.status_code}: {resp.text[:500]}")
     return resp.json() if resp.content else {}
 
 
@@ -122,14 +139,48 @@ def paginate_memories(
     last_page: dict[str, Any] = {}
 
     while True:
-        params = {**filters, "page": page, "page_size": page_size}
-        response = _get_json(client, "/v1/memories/", params=params)
-        last_page = response if isinstance(response, dict) else {}
-        batch = last_page.get("results") or []
+        params = {"page": page, "page_size": page_size}
+        response = _post_json(
+            client,
+            "/v3/memories/",
+            params=params,
+            json={"filters": filters},
+        )
+
+        if not isinstance(response, dict):
+            raise RuntimeError(
+                f"Mem0 /v3/memories/ returned non-JSON object: {response!r}"
+            )
+
+        if "results" not in response:
+            raise RuntimeError(
+                f"Mem0 /v3/memories/ response missing 'results' array: {response!r}"
+            )
+
+        batch = response["results"]
+        if not isinstance(batch, list):
+            raise RuntimeError(
+                f"Mem0 /v3/memories/ 'results' is not a list: {response!r}"
+            )
+
+        last_page = response
         if not batch:
             break
         all_memories.extend(batch)
-        if not last_page.get("next"):
+
+        if "next" not in last_page or (
+            last_page["next"] is not None and not last_page["next"]
+        ):
+            raise RuntimeError(
+                f"Mem0 /v3/memories/ response missing 'next' field: {response!r}"
+            )
+
+        if last_page["next"] is not None and not isinstance(last_page["next"], str):
+            raise RuntimeError(
+                f"Mem0 /v3/memories/ 'next' field must be a URL string or null: {response!r}"
+            )
+
+        if not last_page["next"]:
             break
         page += 1
 

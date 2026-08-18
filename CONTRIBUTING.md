@@ -6,6 +6,7 @@ Thank you for your interest in contributing to MEMANTO — the universal memory 
 
 ## Table of Contents
 
+- [Contributor Onboarding (Required)](#contributor-onboarding-required)
 - [Code of Conduct](#code-of-conduct)
 - [Ways to Contribute](#ways-to-contribute)
 - [Reporting Bugs](#reporting-bugs)
@@ -17,6 +18,18 @@ Thank you for your interest in contributing to MEMANTO — the universal memory 
 - [Submitting a Pull Request](#submitting-a-pull-request)
 - [Commit Message Convention](#commit-message-convention)
 - [Community](#community)
+
+---
+
+## Contributor Onboarding (Required)
+
+To protect the repository from low-effort spam and ensure a healthy community, **all contributors must complete a brief onboarding process** before they can open issues, submit pull requests, or leave comments.
+
+1. Visit the [Memanto Contributor Onboarding Page](https://memanto.ai/contributor-onboard).
+2. Read through the brief expectations regarding AI usage and community standards.
+3. Authenticate with GitHub at the end of the flow to link your username and automatically be added to the approved contributors list.
+
+If you attempt to open an issue or PR without completing this step, our automated systems will block the action and direct you to the onboarding link.
 
 ---
 

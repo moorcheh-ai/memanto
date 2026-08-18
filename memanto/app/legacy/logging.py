@@ -82,7 +82,6 @@ class MemantoLogger:
     def log_memory_write(
         request_id: str,
         memory_type: str,
-        provisional: bool,
         confidence_in: float,
         confidence_stored: float,
         ttl_seconds: int | None,
@@ -101,7 +100,6 @@ class MemantoLogger:
             "logger": "memanto.memory.write",
             "request_id": request_id,
             "memory_type": memory_type,
-            "provisional": provisional,
             "confidence_in": confidence_in,
             "confidence_stored": confidence_stored,
             "ttl_seconds": ttl_seconds,

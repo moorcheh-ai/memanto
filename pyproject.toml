@@ -46,6 +46,7 @@ dependencies = [
     "rich>=13.0.0",
     "python-multipart>=0.0.7",
     "rapidfuzz>=3.0.0",
+    "filelock>=3.13.0",
 ]
 
 [project.urls]
@@ -76,6 +77,7 @@ build-backend = "hatchling.build"
 
 [tool.hatch.version]
 source = "vcs"
+fallback-version = "0.0.0"
 
 [tool.hatch.version.raw-options]
 git_describe_command = "git describe --dirty --tags --long --match v*"
@@ -97,6 +99,7 @@ dev = [
     "twine>=6.1.0,<7",
     "pre-commit>=4.4.0,<5",
     "ruff>=0.14.6,<0.15",
+    "types-requests>=2.33.0.20260712",
 ]
 
 # Optional: Configure MyPy

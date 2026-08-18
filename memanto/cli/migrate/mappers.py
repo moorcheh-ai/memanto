@@ -35,7 +35,7 @@ from collections.abc import Callable
 from datetime import datetime, timezone
 from typing import Any
 
-from memanto.app.constants import VALID_MEMORY_TYPES
+from memanto.app.constants import VALID_MEMORY_TYPES, VALID_PROVENANCE_TYPES
 
 # Mem0 ships category labels per memory. Map the common ones to Memanto's
 # typed primitives; everything else falls through to None (auto-classify).
@@ -55,6 +55,7 @@ _MEM0_CATEGORY_TO_TYPE: dict[str, str] = {
 }
 
 _DEFAULT_TITLE_CHARS = 80
+_MAX_TITLE_CHARS = 100  # MemoryRecord.title max_length
 _MAX_CONTENT_CHARS = 10000  # MemoryRecord.content max_length
 _MAX_FOOTER_CHARS = 800  # cap supporting-data footer so it never dominates
 
@@ -71,6 +72,26 @@ def _coerce_type(raw: str | None) -> str | None:
         return None
     t = raw.strip().lower()
     return t if t in VALID_MEMORY_TYPES else None
+
+
+def _coerce_provenance(raw: Any) -> str:
+    if not isinstance(raw, str):
+        return "imported"
+    provenance = raw.strip().lower()
+    return provenance if provenance in VALID_PROVENANCE_TYPES else "imported"
+
+
+def _normalize_mem0_categories(raw: Any) -> list[str]:
+    """Normalize Mem0 category payloads into lower-case category labels."""
+    if raw in (None, "", [], {}):
+        return []
+    if isinstance(raw, str):
+        values: list[Any] = [raw]
+    elif isinstance(raw, (list, tuple, set)):
+        values = list(raw)
+    else:
+        values = [raw]
+    return [text for item in values if (text := str(item).strip().lower())]
 
 
 def _scope_tag(scope: dict[str, Any] | None) -> str | None:
@@ -187,7 +208,7 @@ def map_mem0(export: dict[str, Any]) -> list[dict[str, Any]]:
         if not content:
             continue
 
-        categories = [str(c).lower() for c in (mem.get("categories") or []) if c]
+        categories = _normalize_mem0_categories(mem.get("categories"))
         memory_type: str | None = None
         for cat in categories:
             memory_type = _MEM0_CATEGORY_TO_TYPE.get(cat) or _coerce_type(cat)
@@ -476,9 +497,16 @@ def map_okf(export: dict[str, Any]) -> list[dict[str, Any]]:
         confidence = min(1.0, max(0.0, confidence))
 
         source = x_memanto.get("source") or "okf"
+        provenance = _coerce_provenance(x_memanto.get("provenance"))
         created_at = _parse_dt(entry.get("timestamp"))
 
+        original_title = None
+        if title and len(title) > _MAX_TITLE_CHARS:
+            original_title = title
+            title = title[: _MAX_TITLE_CHARS - 3].rstrip() + "..."
+
         footer_items: list[tuple[str, Any]] = [
+            ("Original OKF title", original_title),
             ("OKF source", entry.get("source_path")),
             # Only surface the OKF type when we couldn't map it to a slot.
             ("OKF type", okf_type if not memory_type else None),
@@ -503,7 +531,7 @@ def map_okf(export: dict[str, Any]) -> list[dict[str, Any]]:
                 "confidence": confidence,
                 "source": source,
                 "source_ref": str(resource) if resource else None,
-                "provenance": "imported",
+                "provenance": provenance,
                 "created_at": created_at,
                 "updated_at": migrated_at,
             }
@@ -511,6 +539,10 @@ def map_okf(export: dict[str, Any]) -> list[dict[str, Any]]:
     return rows
 
 
+# Langfuse is deliberately absent: its rows are observability events, not
+# memories, so one incident collapses into a single grouped payload rather
+# than mapping row-for-row. That needs the user's capture settings, which
+# this registry's signature cannot carry — see ``langfuse_rules.build_rows``.
 MAPPERS: dict[str, Callable[[dict[str, Any]], list[dict[str, Any]]]] = {
     "mem0": map_mem0,
     "letta": map_letta,

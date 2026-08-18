@@ -14,11 +14,18 @@ at tool-registration time, and we use closure-scoped type aliases (e.g.
 """
 
 import logging
+import re
 from typing import Annotated, Any, Literal, TypeVar
 
+from mcp.server.fastmcp import Context
 from memanto.app.constants import (
     VALID_MEMORY_TYPES,
     VALID_PROVENANCE_TYPES,
+)
+from memanto.app.core import (
+    SOURCE_MAX_LENGTH,
+    SOURCE_PATTERN,
+    is_valid_source,
 )
 from memanto.app.utils.errors import (
     AgentAlreadyExistsError,
@@ -63,6 +70,27 @@ ProvenanceLiteral = Literal[
     "observed",
     "imported",
 ]
+
+# Attribution fallback when the transport carries no client identity.
+DEFAULT_SOURCE = "mcp-agent"
+
+# A source names the writer of a memory. Memanto keeps it open ("user",
+# "agent", "cursor", "codex", ...) but bounded, so reuse core's own rule rather
+# than restating it here: the schema we advertise then matches what core will
+# accept at write time.
+SOURCE_CONSTRAINT = Field(
+    default=None,
+    description=(
+        "Who wrote this memory. Defaults to the connected MCP client "
+        "(e.g. 'cursor', 'codex', 'claude-ai'), falling back to "
+        f"'{DEFAULT_SOURCE}'. Up to {SOURCE_MAX_LENGTH} letters, digits, "
+        "'.', '_', or '-'."
+    ),
+    max_length=SOURCE_MAX_LENGTH,
+    pattern=SOURCE_PATTERN,
+)
+
+_SOURCE_SANITIZE_RE = re.compile(r"[^A-Za-z0-9._-]+")
 
 # Hard caps mirroring the Memanto core service (see SdkClient).
 _MAX_CONTENT_LENGTH = InputLimits.MAX_TEXT_LENGTH
@@ -203,6 +231,34 @@ def _format_exception(exc: Exception) -> str:
     return f"{type(exc).__name__}: {exc}"
 
 
+def _sanitize_source(raw: Any) -> str | None:
+    """Coerce a client-supplied name into a valid Memanto source label.
+
+    Client names are free text ("Visual Studio Code", "Claude Code"), so fold
+    them to the bounded label shape instead of dropping the attribution.
+    """
+    if not raw:
+        return None
+    token = _SOURCE_SANITIZE_RE.sub("-", str(raw).strip().lower()).strip("-")
+    return token[:SOURCE_MAX_LENGTH] or None
+
+
+def _client_source(ctx: Context | None) -> str:
+    """Name the MCP client behind this call so writes stay attributable.
+
+    Clients identify themselves during the initialize handshake ("cursor",
+    "codex", "claude-ai", ...), which is exactly the per-writer observability
+    Memanto's open ``source`` field is for. Falls back to a generic label when
+    no client info reached us (direct calls, clients that omit it).
+    """
+    try:
+        client_params = ctx.session.client_params if ctx is not None else None
+        name = client_params.clientInfo.name if client_params else None
+    except AttributeError:
+        name = None
+    return _sanitize_source(name) or DEFAULT_SOURCE
+
+
 def _normalize_tags(raw: Any) -> list[str]:
     """Accept MCP client tag shapes while preserving SDK list semantics."""
     if raw is None:
@@ -323,16 +379,9 @@ def register_tools(mcp: Any, lifecycle: MemantoLifecycle) -> None:
                 ),
             ),
         ] = "explicit_statement",
-        source: Annotated[
-            str,
-            Field(
-                description=(
-                    "Free-form label for the source of this memory "
-                    "(e.g. 'user', 'web', 'tool-call', or your agent name)."
-                ),
-            ),
-        ] = "mcp-agent",
+        source: Annotated[str | None, SOURCE_CONSTRAINT] = None,
         agent_id: AgentIdField = None,
+        ctx: Context | None = None,
     ) -> RememberResult:
         """Store a single memory for the resolved agent."""
         try:
@@ -350,7 +399,7 @@ def register_tools(mcp: Any, lifecycle: MemantoLifecycle) -> None:
                 content=content,
                 confidence=confidence,
                 tags=_normalize_tags(tags),
-                source=source,
+                source=source or _client_source(ctx),
                 provenance=provenance,
             )
             return RememberResult(
@@ -389,17 +438,21 @@ def register_tools(mcp: Any, lifecycle: MemantoLifecycle) -> None:
                 description=(
                     "List of memory dicts. Each item supports the same fields "
                     "as `remember` (content [required], type, title, "
-                    "confidence, tags, source, provenance). Max 100 items."
+                    "confidence, tags, source, provenance) with the same "
+                    "allowed values; an item without a source is attributed to "
+                    "the calling client. Max 100 items."
                 ),
                 min_length=1,
                 max_length=_MAX_BATCH_SIZE,
             ),
         ],
         agent_id: AgentIdField = None,
+        ctx: Context | None = None,
     ) -> BatchRememberResult:
         """Validate and store multiple memories for the resolved agent."""
         try:
             resolved = lifecycle.resolve_agent_id(agent_id)
+            default_source = _client_source(ctx)
             # Validate before round-trip so we fail fast with a clear error.
             normalized_memories: list[dict[str, Any]] = []
             for i, item in enumerate(memories):
@@ -423,8 +476,17 @@ def register_tools(mcp: Any, lifecycle: MemantoLifecycle) -> None:
                         f"memories[{i}].provenance={prov!r} is not valid. "
                         f"Choose one of: {sorted(VALID_PROVENANCE_TYPES)}"
                     )
+                src = item.get("source") or default_source
+                if not is_valid_source(src):
+                    raise ValueError(
+                        f"memories[{i}].source={src!r} is not valid. Use up to "
+                        f"{SOURCE_MAX_LENGTH} letters, digits, '.', '_', or '-'."
+                    )
                 normalized_item = dict(item)
                 normalized_item["tags"] = _normalize_tags(item.get("tags"))
+                # The SDK defaults a missing source to "user"; attribute the
+                # write to the calling client instead, like `remember` does.
+                normalized_item["source"] = src
                 normalized_memories.append(normalized_item)
 
             client = lifecycle.ensure_ready(resolved)
@@ -500,7 +562,11 @@ def register_tools(mcp: Any, lifecycle: MemantoLifecycle) -> None:
                 default=None,
                 ge=0.0,
                 le=1.0,
-                description="Minimum similarity score 0-1.",
+                description=(
+                    "Minimum similarity score 0-1. Applied by the search "
+                    "backend, so the top-N is filled with results that pass "
+                    "the threshold. Defaults to the server config value."
+                ),
             ),
         ] = None,
         agent_id: AgentIdField = None,
@@ -514,10 +580,9 @@ def register_tools(mcp: Any, lifecycle: MemantoLifecycle) -> None:
                 query=query,
                 limit=limit,
                 type=list(type) if type else None,
+                min_similarity=min_similarity,
             )
             hits = [_to_memory_hit(m) for m in result.get("memories", [])]
-            if min_similarity is not None:
-                hits = [h for h in hits if (h.score or 0.0) >= min_similarity]
             return RecallResult(
                 status="ok",
                 agent_id=resolved,
@@ -742,15 +807,16 @@ def register_tools(mcp: Any, lifecycle: MemantoLifecycle) -> None:
             ),
         ] = None,
         kiosk_mode: Annotated[
-            bool,
+            bool | None,
             Field(
+                default=None,
                 description=(
                     "If true, refuses to answer when no memory clears the "
                     "similarity threshold (useful for strictly grounded "
-                    "applications)."
+                    "applications). Defaults to the server config value."
                 ),
             ),
-        ] = False,
+        ] = None,
         agent_id: AgentIdField = None,
     ) -> AnswerResult:
         """Answer a question using memories from the resolved agent."""
@@ -855,8 +921,26 @@ def _register_admin_tools(mcp: Any, lifecycle: MemantoLifecycle) -> None:
     def list_agents() -> AgentListResult:
         """List available Memanto agents through the admin client."""
         try:
-            agents = lifecycle.client.list_agents()
-            return AgentListResult(status="ok", count=len(agents), agents=agents)
+            # SdkClient returned a bare list of agents up to memanto 0.2.12 and
+            # a {"agents", "count", "warnings"} envelope after it. Both are in
+            # our supported range, so accept either. The warnings flag agents
+            # whose local metadata could not be read: surface them instead of
+            # silently reporting a short list.
+            response = lifecycle.client.list_agents()
+            if isinstance(response, dict):
+                agents = response.get("agents", [])
+                count = response.get("count", len(agents))
+                warnings = response.get("warnings", [])
+            else:
+                agents = list(response)
+                count = len(agents)
+                warnings = []
+            return AgentListResult(
+                status="ok",
+                count=count,
+                agents=agents,
+                message="; ".join(warnings) if warnings else None,
+            )
         except Exception as exc:
             logger.exception("list_agents failed")
             return _error_payload(AgentListResult, _format_exception(exc))

@@ -55,6 +55,20 @@ class MemoryParsingService:
             MemoryRule(re.compile(pattern, re.IGNORECASE), score)
             for pattern, score in [
                 (
+                    r"\b(?:i|we|they|he|she|user|client|customer)\s+"
+                    r"(?:really\s+)?"
+                    r"(?:(?:do|does|did)\s+not|don['’]t|doesn['’]t|didn['’]t|"
+                    r"no longer|never)\s+(?:really\s+)?"
+                    r"(?:like(?:d)?|love(?:d)?|prefer(?:red)?|enjoy(?:ed)?|favou?r(?:ed)?)\b",
+                    6,
+                ),
+                (
+                    r"\b(?:i|we|they|he|she|user|client|customer)\s+"
+                    r"(?:can['’]t|cannot)\s+stand\b",
+                    6,
+                ),
+                (r"\b(?:prefer|prefers)\s+not\s+to\b", 5),
+                (
                     r"\b(?:i|we|they|he|she|user|client|customer)\s+(?:really\s+)?(?:like|likes|love|loves|prefer|prefers|enjoy|enjoys|favor|favors)\b",
                     4,
                 ),

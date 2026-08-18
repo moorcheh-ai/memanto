@@ -3,35 +3,20 @@ Memory Write Service
 """
 
 from datetime import datetime, timezone
-from typing import TYPE_CHECKING, Any, cast
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from moorcheh_sdk import MoorchehClient
 
-from memanto.app.core import MemoryRecord
+from memanto.app.constants import REMOVED_TRUST_FIELDS
+from memanto.app.core import MemoryRecord, is_valid_source
 from memanto.app.services.memory_parsing_service import MemoryParsingService
-from memanto.app.services.memory_validation_service import MemoryValidationService
 from memanto.app.utils.errors import MemoryError
 from memanto.app.utils.ids import generate_memory_id
 from memanto.app.utils.temporal_helpers import as_utc_aware
 
 SUCCESSFUL_UPLOAD_STATUSES = {"queued", "success", "ok"}
 
-# Trust fields removed from the active schema on 2026-06-29 (see
-# memanto/app/legacy/REMOVED.md). Old on-prem data_store.json records may still
-# carry them; they must never be copied forward on update or we resurrect dead
-# schema that no live read/write flow populates.
-_REMOVED_TRUST_FIELDS = frozenset(
-    {
-        "superseded_by",
-        "supersedes",
-        "validated_at",
-        "validation_count",
-        "contradiction_detected",
-    }
-)
-
-_SUCCESSFUL_UPLOAD_STATUSES = {"queued", "success", "ok"}
 
 
 class MemoryWriteService:
@@ -42,7 +27,6 @@ class MemoryWriteService:
 
         self.client = moorcheh_client
         self._parser = MemoryParsingService()
-        self.validation_service = MemoryValidationService(moorcheh_client)
         self._namespace_service = None
 
     @property
@@ -92,11 +76,15 @@ class MemoryWriteService:
             # Add namespace
             namespace = memory.namespace()
 
-            # Validate memory (write-time contradiction resolution)
-            validation_result = self.validation_service.validate_memory(memory, context)
-            # Use validated memory if modified
-            if "memory" in validation_result:
-                memory = validation_result["memory"]
+            # skip validation for speed
+            ## Validate memory
+            # validation_result = self.validation_service.validate_memory(memory, context)
+            ## Use validated memory if modified
+            # if "memory" in validation_result:
+            #     memory = validation_result["memory"]
+            validation_result = {"action": "store", "reason": "MVP direct store"}
+
+            from typing import cast
 
             from moorcheh_sdk.types.document import Document
 
@@ -108,7 +96,7 @@ class MemoryWriteService:
                 namespace_name=namespace, documents=[document]
             )
 
-            response = {
+            return {
                 "id": memory.id,
                 "namespace": namespace,
                 "status": result.get("status", "unknown"),
@@ -118,9 +106,6 @@ class MemoryWriteService:
                 "memory_status": memory.status,
                 "type": memory.type,
             }
-            if validation_result.get("superseded_ids"):
-                response["superseded_ids"] = validation_result["superseded_ids"]
-            return response
 
         except Exception as e:
             raise MemoryError(f"Failed to store memory: {e}")
@@ -151,7 +136,6 @@ class MemoryWriteService:
             first_namespace = None
             results = []
             validated_documents = []
-            prepared: list[MemoryRecord] = []
 
             # Enforce server-side timestamps for batch (single timestamp for all)
             now = datetime.now(timezone.utc)
@@ -184,81 +168,37 @@ class MemoryWriteService:
                         )
                         continue
 
-                    prepared.append(memory)
+                    # skip validation for speed
+                    ## Validate memory
+                    # validation_result = self.validation_service.validate_memory(memory, context)
+                    ## Use validated memory if modified
+                    # if "memory" in validation_result:
+                    #     memory = validation_result["memory"]
+                    validation_result = {
+                        "action": "store",
+                        "reason": "MVP direct store",
+                    }
 
-                except Exception as e:
-                    results.append(
-                        {
-                            "id": memory.id
-                            if hasattr(memory, "id") and memory.id
-                            else "unknown",
-                            "status": "failed",
-                            "action": "rejected",
-                            "error": str(e),
-                        }
-                    )
-
-            # Resolve contradictions within the batch itself: for memories of
-            # the same type and title with different content, the last one
-            # wins and earlier ones are stored as superseded history.
-            superseded_in_batch = self.validation_service.resolve_batch_contradictions(
-                prepared
-            )
-
-            to_validate = [
-                memory for memory in prepared if memory.id not in superseded_in_batch
-            ]
-            prefetched_conflicts = self.validation_service.prefetch_contradictions(
-                to_validate
-            )
-
-            for memory in prepared:
-                try:
-                    batch_note = superseded_in_batch.get(memory.id)
-                    if batch_note:
-                        validation_result = {
-                            "action": "store_superseded",
-                            "reason": f"contradiction resolved: superseded within batch by {batch_note}",
-                        }
-                    elif memory.id in prefetched_conflicts:
-                        validation_result = self.validation_service.validate_memory(
-                            memory,
-                            context,
-                            prefetched_conflicts=prefetched_conflicts[memory.id],
-                        )
-                    else:
-                        validation_result = self.validation_service.validate_memory(
-                            memory, context
-                        )
-                        # Use validated memory if modified
-                        if "memory" in validation_result:
-                            memory = cast(MemoryRecord, validation_result["memory"])
+                    from typing import cast
 
                     from moorcheh_sdk.types.document import Document
 
                     # Convert to Moorcheh document
-                    document_payload = memory.to_moorcheh_document()
-                    if batch_note:
-                        document_payload["superseded_by"] = batch_note
-                        document_payload["superseded_at"] = now.isoformat()
-                    document = cast(Document, document_payload)
+                    document = cast(Document, memory.to_moorcheh_document())
                     validated_documents.append(document)
 
                     # Store validation result for later
-                    result_entry = {
-                        "id": memory.id,
-                        "status": "pending",
-                        "action": validation_result.get("action", "store"),
-                        "reason": validation_result.get(
-                            "reason", "Validated successfully"
-                        ),
-                        "type": memory.type or "fact",
-                    }
-                    if validation_result.get("superseded_ids"):
-                        result_entry["superseded_ids"] = validation_result[
-                            "superseded_ids"
-                        ]
-                    results.append(result_entry)
+                    results.append(
+                        {
+                            "id": memory.id,
+                            "status": "pending",
+                            "action": validation_result.get("action", "store"),
+                            "reason": validation_result.get(
+                                "reason", "Validated successfully"
+                            ),
+                            "type": memory.type,
+                        }
+                    )
 
                 except Exception as e:
                     results.append(
@@ -274,6 +214,8 @@ class MemoryWriteService:
 
             # Upload all validated documents in single batch to Moorcheh
             if validated_documents and first_namespace:
+                from typing import cast
+
                 upload_result = self.client.documents.upload(
                     namespace_name=cast(str, first_namespace),
                     documents=validated_documents,
@@ -283,7 +225,7 @@ class MemoryWriteService:
                 moorcheh_status = str(upload_result.get("status", "unknown")).lower()
                 for result in results:
                     if result["status"] == "pending":
-                        if moorcheh_status in _SUCCESSFUL_UPLOAD_STATUSES:
+                        if moorcheh_status in SUCCESSFUL_UPLOAD_STATUSES:
                             result["status"] = moorcheh_status
                         else:
                             result["status"] = "failed"
@@ -293,18 +235,22 @@ class MemoryWriteService:
 
             # Count successes, failures, and namespace-rejected items separately
             # so that successful + failed + rejected == total_submitted always.
-            _known = set(SUCCESSFUL_UPLOAD_STATUSES) | {"failed", "rejected"}
-            successful = sum(
-                1
-                for r in results
-                if str(r["status"]).lower() in SUCCESSFUL_UPLOAD_STATUSES
-            )
-            failed = sum(1 for r in results if str(r["status"]).lower() == "failed")
-            rejected = sum(1 for r in results if str(r["status"]).lower() == "rejected")
-            # Absorb any non-standard upload statuses into failed so the invariant holds
-            failed += len(results) - successful - failed - rejected
+            successful = 0
+            failed = 0
+            rejected = 0
             for r in results:
-                if str(r["status"]).lower() not in _known:
+                status = str(r["status"]).lower()
+                if status in SUCCESSFUL_UPLOAD_STATUSES:
+                    successful += 1
+                elif status == "rejected":
+                    rejected += 1
+                else:
+                    # Validation failures carry status="failed"/action="rejected"
+                    # and must stay in `failed`: the batch endpoints return only
+                    # successful/failed (see routes/memory.py), so counting them
+                    # as `rejected` would drop them from the response entirely.
+                    # Non-standard upload statuses are absorbed here too.
+                    failed += 1
                     r["status"] = "failed"
 
             return {
@@ -374,9 +320,12 @@ class MemoryWriteService:
                     f"in namespace {namespace}"
                 )
 
-            # Normalize legacy source values
+            # Sources are open labels (the writer's name), so keep whatever the
+            # record carries. Only a value MemoryRecord would reject — blank, or
+            # one holding characters that break `#source:` filters — falls back,
+            # so an edit cannot fail on data written before the label was bounded.
             source_val = updates.get("source", metadata.get("source", "system"))
-            if source_val not in {"user", "agent", "tool", "system"}:
+            if not is_valid_source(source_val):
                 source_val = "system"
 
             # Build updated memory record
@@ -394,6 +343,7 @@ class MemoryWriteService:
                 confidence=updates.get("confidence", metadata.get("confidence", 0.8)),
                 status=updates.get("status", metadata.get("status", "active")),
                 tags=updates.get("tags", metadata.get("tags", [])),
+                provenance=metadata.get("provenance") or "explicit_statement",
             )
 
             # Update timestamps (preserve created_at, set updated_at to now)
@@ -436,8 +386,7 @@ class MemoryWriteService:
 
             document = cast(Document, updated_memory.to_moorcheh_document())
 
-            # Preserve extra metadata fields from the existing record (e.g. original_id
-            # in on-prem data_store.json) that aren't part of the MemoryRecord schema.
+            # Preserve extra metadata fields from the existing record not in MemoryRecord schema.
             existing_meta = existing_memory_data.get("metadata", existing_memory_data)
             if isinstance(existing_meta, dict):
                 # ``document`` is a TypedDict; cast to a plain dict to attach
@@ -447,7 +396,7 @@ class MemoryWriteService:
                     if (
                         key not in document
                         and key != "text"
-                        and key not in _REMOVED_TRUST_FIELDS
+                        and key not in REMOVED_TRUST_FIELDS
                     ):
                         extra_document[key] = existing_meta[key]
 
@@ -458,16 +407,24 @@ class MemoryWriteService:
             except Exception as e:
                 raise MemoryError(f"Upload failed. Error: {e}")
 
+            status = upload_result.get("status", "unknown")
+            if str(status).lower() not in SUCCESSFUL_UPLOAD_STATUSES:
+                raise MemoryError(
+                    f"Failed to upload updated memory {memory_id}: {status}"
+                )
+
             return {
                 "id": memory_id,
                 "namespace": namespace,
-                "status": upload_result.get("status", "unknown"),
+                "status": status,
                 "action": "updated",
                 "reason": "Memory updated successfully via overwrite",
                 "validation": validation_result.get("action", "validated"),
                 "updated_fields": list(updates.keys()),
             }
 
+        except MemoryError:
+            raise
         except Exception as e:
             raise MemoryError(f"Failed to update memory: {e}")
 

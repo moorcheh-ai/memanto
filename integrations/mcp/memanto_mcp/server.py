@@ -75,6 +75,16 @@ def build_server(settings: MCPServerSettings | None = None) -> FastMCP:
         port=settings.port,
     )
 
+    # FastMCP has no `version` argument and the low-level server falls back to
+    # the MCP SDK's own version, so every release announced itself as the SDK
+    # release (e.g. "1.29.0") in the initialize handshake. Clients surface that
+    # string when reporting which server they are talking to, so set ours.
+    # Imported here rather than at module scope: memanto_mcp/__init__ imports
+    # this module, so the package is only fully initialized by call time.
+    from memanto_mcp import __version__
+
+    mcp._mcp_server.version = __version__
+
     lifecycle = MemantoLifecycle(settings)
     register_tools(mcp, lifecycle)
 

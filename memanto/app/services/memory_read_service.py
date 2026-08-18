@@ -3,7 +3,9 @@ Memory Read Service
 """
 
 import re
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
+from time import monotonic
 from typing import TYPE_CHECKING, Any, cast
 
 if TYPE_CHECKING:
@@ -11,7 +13,7 @@ if TYPE_CHECKING:
 
 from memanto.app.clients.backend import get_active_llm_model
 from memanto.app.config import settings
-from memanto.app.constants import VALID_MEMORY_TYPES
+from memanto.app.constants import REMOVED_TRUST_FIELDS, VALID_MEMORY_TYPES
 from memanto.app.core import agent_namespace
 from memanto.app.utils.errors import MemoryError
 
@@ -141,17 +143,31 @@ class MemoryReadService:
             if not namespaces:
                 return {"results": [], "total_found": 0, "execution_time": 0}
 
-            # Build enhanced query with Moorcheh metadata filters
-            enhanced_query = self._build_filtered_query(
-                query=query,
-                type=type,
-                tags=tags,
-                min_confidence=min_confidence,
-                status_filter=status_filter,
-                created_after=created_after,
-                created_before=created_before,
-                metadata_filters=metadata_filters,
+            # Moorcheh combines repeated exact-match filters. A document cannot
+            # satisfy both ``#memory_type:fact`` and
+            # ``#memory_type:preference``, so a list of requested types must be
+            # issued as one search per type and merged as a union. Build every
+            # query before dispatch so an invalid later type cannot trigger a
+            # partial set of backend calls.
+            distinct_types = list(dict.fromkeys(type or []))
+            type_variants: list[list[str] | None] = (
+                [[memory_type] for memory_type in distinct_types]
+                if len(distinct_types) > 1
+                else [distinct_types or None]
             )
+            enhanced_queries = [
+                self._build_filtered_query(
+                    query=query,
+                    type=type_variant,
+                    tags=tags,
+                    min_confidence=min_confidence,
+                    status_filter=status_filter,
+                    created_after=created_after,
+                    created_before=created_before,
+                    metadata_filters=metadata_filters,
+                )
+                for type_variant in type_variants
+            ]
 
             # Build query parameters
             # Request extra results to handle offset (Moorcheh doesn't have native offset support)
@@ -178,37 +194,86 @@ class MemoryReadService:
             # threshold; min_similarity=0.0 means "no filter", but on-prem
             # kiosk_mode + threshold=0.0 still filters everything out.
             use_kiosk = min_similarity_score is not None and min_similarity_score > 0
-            search_result = self.client.similarity_search.query(
-                query=enhanced_query,
-                namespaces=namespaces,
-                top_k=top_k,
-                threshold=min_similarity_score if use_kiosk else None,
-                kiosk_mode=use_kiosk,
-            )
 
-            if not isinstance(search_result, dict):
-                try:
-                    search_result_dict = dict(search_result)
-                    search_result = search_result_dict
-                except (TypeError, ValueError):
-                    raise MemoryError(
-                        message="Data corruption detected: Received malformed search result from storage layer.",
-                        details={"result_preview": str(search_result)[:100]},
-                    )
-
-            search_items = (
-                search_result.get("results", [])
-                if isinstance(search_result, dict)
-                else []
-            )
-            if not isinstance(search_items, list):
-                raise MemoryError(
-                    message="Data corruption detected: Received malformed search result array from storage layer.",
-                    details={"items_preview": str(search_items)[:100]},
+            def _dispatch(enhanced_query: str) -> Any:
+                """Run one exact-filter search with the shared request options."""
+                return self.client.similarity_search.query(
+                    query=enhanced_query,
+                    namespaces=namespaces,
+                    top_k=top_k,
+                    threshold=min_similarity_score if use_kiosk else None,
+                    kiosk_mode=use_kiosk,
                 )
+
+            dispatch_start = monotonic()
+            if len(enhanced_queries) == 1:
+                search_results = [_dispatch(enhanced_queries[0])]
+            else:
+                # The variants are independent network calls. Dispatch them in
+                # parallel so the latency of a multi-type union is bounded by
+                # the slowest search rather than the sum of every round trip.
+                # pool.map preserves enhanced-query order for deterministic
+                # result aggregation while capping concurrency for direct
+                # service callers that pass every supported type.
+                max_workers = min(len(enhanced_queries), 8)
+                with ThreadPoolExecutor(max_workers=max_workers) as pool:
+                    search_results = list(pool.map(_dispatch, enhanced_queries))
+            execution_time = monotonic() - dispatch_start
+
+            search_items: list[Any] = []
+            for search_result in search_results:
+                if not isinstance(search_result, dict):
+                    try:
+                        search_result = dict(search_result)
+                    except (TypeError, ValueError):
+                        raise MemoryError(
+                            message=(
+                                "Data corruption detected: Received malformed "
+                                "search result from storage layer."
+                            ),
+                            details={"result_preview": str(search_result)[:100]},
+                        )
+
+                result_items = search_result.get("results", [])
+                if not isinstance(result_items, list):
+                    raise MemoryError(
+                        message=(
+                            "Data corruption detected: Received malformed "
+                            "search result array from storage layer."
+                        ),
+                        details={"items_preview": str(result_items)[:100]},
+                    )
+                search_items.extend(result_items)
 
             # Format results
             all_results = [self._format_memory_item(item) for item in search_items]
+
+            if len(enhanced_queries) > 1:
+                # Scores from the per-type searches share the same backend
+                # scale. Re-rank the union before applying offset/limit and
+                # de-duplicate defensively in case malformed metadata causes a
+                # row to be returned by more than one variant.
+                def _score(memory: dict[str, Any]) -> float:
+                    """Return a sortable backend score, placing missing values last."""
+                    raw_score = memory.get("score")
+                    if raw_score is None:
+                        return float("-inf")
+                    try:
+                        return float(raw_score)
+                    except (TypeError, ValueError):
+                        return float("-inf")
+
+                all_results.sort(key=_score, reverse=True)
+                unique_results: list[dict[str, Any]] = []
+                seen_ids: set[Any] = set()
+                for memory in all_results:
+                    memory_id = memory.get("id")
+                    if memory_id is not None and memory_id in seen_ids:
+                        continue
+                    if memory_id is not None:
+                        seen_ids.add(memory_id)
+                    unique_results.append(memory)
+                all_results = unique_results
 
             # Apply temporal filtering (post-processing since Moorcheh metadata filters are string-based)
             if created_after or created_before:
@@ -238,8 +303,8 @@ class MemoryReadService:
                 "limit": limit,
                 "has_more": has_more,
                 "query": query,
-                "enhanced_query": enhanced_query,
-                "execution_time": search_result.get("execution_time", 0),
+                "enhanced_query": " OR ".join(enhanced_queries),
+                "execution_time": execution_time,
             }
 
         except MemoryError:
@@ -286,7 +351,13 @@ class MemoryReadService:
                     "temporal_mode": "as_of",
                 }
 
-            all_memories = self._fetch_all_memories(namespaces, type=type, tags=tags)
+            all_memories = self._fetch_all_memories(
+                namespaces,
+                type=type,
+                tags=tags,
+                filter_expired=False,
+                created_before=as_of_dt.isoformat(),
+            )
             all_memories = self._apply_temporal_filter(
                 all_memories, created_before=as_of_dt.isoformat()
             )
@@ -294,14 +365,29 @@ class MemoryReadService:
             # Filter to only include memories valid at as_of_date
             valid_memories = []
             for memory in all_memories:
-                # Skip if expired before as_of_date
+                # Skip if expired before as_of_date. Mirror the datetime
+                # handling in _filter_expired_memories so a datetime-valued
+                # expires_at cannot crash a historical recall (bounty #770).
                 expires_at = memory.get("expires_at")
                 if expires_at:
                     try:
-                        expires_dt = parse_iso_timestamp(expires_at)
-                        if expires_dt <= as_of_dt:
+                        if isinstance(expires_at, str):
+                            expires_dt = parse_iso_timestamp(expires_at)
+                        elif isinstance(expires_at, datetime):
+                            expires_dt = (
+                                expires_at
+                                if expires_at.tzinfo
+                                else expires_at.replace(tzinfo=timezone.utc)
+                            )
+                        else:
+                            expires_dt = None  # Unknown type: fail open
+                        if expires_dt is not None and expires_dt <= as_of_dt:
                             continue  # Already expired at as_of_date
-                    except (ValueError, AttributeError):
+                    except (ValueError, AttributeError, TypeError):
+                        # Fail open: a malformed expires_at is not proof the
+                        # memory had expired at as_of. Falling through to the
+                        # append below keeps it in the historical result rather
+                        # than silently dropping it (timeline amnesia).
                         pass
 
                 valid_memories.append(memory)
@@ -475,6 +561,8 @@ class MemoryReadService:
         namespaces: list[str],
         type: list[str] | None = None,
         tags: list[str] | None = None,
+        filter_expired: bool = True,
+        created_before: str | None = None,
     ) -> list[dict[str, Any]]:
         """
         List all stored memories across the given namespaces via Moorcheh's
@@ -483,7 +571,29 @@ class MemoryReadService:
 
         Iterates through all pages using cursor-based pagination (next_token)
         so results are not truncated at the 100-item per-page cap.
+
+        ``filter_expired`` controls whether memories expired at the current
+        wall-clock time are dropped. Point-in-time callers such as
+        ``search_as_of`` must pass ``filter_expired=False`` and apply their
+        own expiry check against the target date, otherwise memories that
+        were valid at that past date but have since expired are silently
+        dropped (timeline amnesia).
+
+        ``created_before`` drops any version whose ``created_at`` is after the
+        given ISO timestamp *before* de-duplication, so point-in-time callers
+        can stop a delete-and-recreate that happened after ``as_of`` from
+        evicting the version that was valid then during newest-version
+        selection (bounty #770).
         """
+        from memanto.app.utils.temporal_helpers import parse_iso_timestamp
+
+        before_dt: datetime | None = None
+        if created_before:
+            try:
+                before_dt = parse_iso_timestamp(created_before)
+            except (TypeError, ValueError, AttributeError):
+                pass  # Fail open: keep newest-version dedup behaviour.
+
         items: list[Any] = []
         for ns in namespaces:
             next_token: str | None = None
@@ -512,6 +622,19 @@ class MemoryReadService:
             if not mid:
                 continue
 
+            # Point-in-time dedup: only versions that existed at the target
+            # date compete for the newest-version slot, so a delete-and-recreate
+            # after as_of cannot displace the version valid then (bounty #770).
+            if before_dt is not None:
+                raw_created = formatted.get("created_at")
+                if not raw_created:
+                    continue
+                try:
+                    if parse_iso_timestamp(str(raw_created)) > before_dt:
+                        continue
+                except (TypeError, ValueError):
+                    continue
+
             version_key = self._memory_version_key(formatted, index)
             existing = latest_by_id.get(cast(str, mid))
             if existing is None or version_key >= existing[0]:
@@ -528,7 +651,9 @@ class MemoryReadService:
 
             memories.append(formatted)
 
-        return self._filter_expired_memories(memories)
+        if filter_expired:
+            return self._filter_expired_memories(memories)
+        return memories
 
     def _memory_version_key(
         self, memory: dict[str, Any], fetch_index: int
@@ -607,8 +732,10 @@ class MemoryReadService:
 
         # Combine query with filters
         if filter_parts:
-            return f"{query} {' '.join(filter_parts)}"
-        return query
+            base = (query or "").strip()
+            joined = " ".join(filter_parts)
+            return f"{base} {joined}".strip() if base else joined
+        return (query or "").strip()
 
     def _apply_temporal_filter(
         self,
@@ -805,7 +932,7 @@ class MemoryReadService:
             filtered = [
                 r
                 for r in filtered
-                if any(tag in r.get("tags", "").split(",") for tag in tags)
+                if any(tag in self._normalize_tags(r.get("tags")) for tag in tags)
             ]
 
         # Apply limit
@@ -846,19 +973,7 @@ class MemoryReadService:
         # Parse tags - can be comma-separated string or array. External imports
         # and older documents may include spaces after commas, so normalize
         # before exact tag filters run.
-        tags_value = get_field("tags")
-        if isinstance(tags_value, str):
-            tags = [
-                tag_value for tag in tags_value.split(",") if (tag_value := tag.strip())
-            ]
-        elif isinstance(tags_value, list):
-            tags = [
-                tag_value
-                for tag in tags_value
-                if tag is not None and (tag_value := str(tag).strip())
-            ]
-        else:
-            tags = []
+        tags = self._normalize_tags(get_field("tags"))
 
         # Extract provenance
         provenance = get_field("provenance") or "explicit_statement"
@@ -869,25 +984,39 @@ class MemoryReadService:
         content = raw_text
 
         if raw_text:
-            # Wire format (see MemoryRecord.to_moorcheh_document):
-            #   "[TYPE] {title}\n\n{content}"  with an optional trailing
-            #   "\n\nTags: {tags}" block appended only when the record has tags.
-            # Split off the title on the FIRST blank line; everything after it is
-            # the content, which may itself contain blank lines.
-            first_line, _, rest = raw_text.partition("\n\n")
+            first_line, separator, body = raw_text.partition("\n\n")
 
-            title_match = re.match(r"^\[.*?\]\s*(.*)$", first_line)
-            title = title_match.group(1).strip() if title_match else first_line.strip()
-
-            # Strip ONLY a genuine trailing tags block, and only when this record
-            # actually has tags (the serializer appends the block iff tags exist).
-            # Prevents (a) wiping content that merely begins with "Tags: " and
-            # (b) leaking the tags line into multi-paragraph content.
-            body, sep, last = rest.rpartition("\n\n")
-            if tags and sep and last.startswith("Tags: "):
-                content = body
+            # Treat bracketed prefixes as typed headers only for known
+            # memory types; otherwise keep the raw first line as title.
+            title_match = re.match(r"^\[(.*?)\]\s*(.*)$", first_line, flags=re.DOTALL)
+            if title_match and title_match.group(1).lower() in VALID_MEMORY_TYPES:
+                title = title_match.group(2).strip()
             else:
-                content = rest
+                title_match = None
+                title = first_line.strip()
+
+            if separator:
+                content = body
+            elif title_match:
+                content = ""
+            else:
+                content = raw_text
+
+            # ``MemoryRecord.to_moorcheh_document`` appends a display-only
+            # tags footer after the content.  Remove exactly that generated
+            # footer while preserving arbitrary paragraphs (including a
+            # user-authored ``Tags:`` paragraph) in the original content.
+            if tags:
+                footer_marker = "\n\nTags: "
+                content_without_footer, marker, footer_tags = content.rpartition(
+                    footer_marker
+                )
+                normalized_footer_tags = [
+                    value.strip() for value in footer_tags.split(",") if value.strip()
+                ]
+                normalized_metadata_tags = [str(value).strip() for value in tags]
+                if marker and normalized_footer_tags == normalized_metadata_tags:
+                    content = content_without_footer
 
         # Build basic formatted item
         formatted = {
@@ -914,4 +1043,32 @@ class MemoryReadService:
             "provenance": provenance,
         }
 
+        # Preserve extra metadata keys (e.g. original_id) not in the schema.
+        # Exclude known keys, removed fields, and "memory_type" (duplicate of "type").
+        known_keys = set(formatted.keys()) | {"text", "memory_type"}
+        if isinstance(metadata, dict):
+            for key, value in metadata.items():
+                if key not in known_keys and key not in REMOVED_TRUST_FIELDS:
+                    formatted[key] = value
+
         return formatted
+
+    @staticmethod
+    def _normalize_tags(tags_value: Any) -> list[str]:
+        if isinstance(tags_value, str):
+            parsed_tags = tags_value.split(",")
+        elif isinstance(tags_value, list):
+            parsed_tags = tags_value
+        else:
+            return []
+
+        normalized = []
+        for tag in parsed_tags:
+            if tag is None:
+                continue
+
+            clean_tag = str(tag).strip()
+            if clean_tag:
+                normalized.append(clean_tag)
+
+        return normalized

@@ -100,7 +100,6 @@ class MetricsCollector:
     def record_memory_write(
         agent_id: str,
         memory_type: str,
-        provisional: bool,
         validation_outcome: str,
         validation_reason: str,
         payload_bytes: int,
@@ -111,7 +110,6 @@ class MetricsCollector:
         labels = {
             "agent_id": agent_id,
             "memory_type": memory_type,
-            "provisional": str(provisional),
         }
         metrics.increment_counter("memory_writes_total", labels)
 

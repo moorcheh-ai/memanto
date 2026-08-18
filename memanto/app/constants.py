@@ -18,12 +18,15 @@ MemoryType = Literal[
 ]
 
 # Source Types
-SourceType = Literal[
-    "user", "agent", "tool", "system"
-]  # Valid sources for memory creation
+# Open by design: a source names *who wrote the memory* — "user", "agent",
+# "cursor", "codex", "claude_code", "mem0", any integration or MCP client — so
+# recall can be attributed and filtered per writer. This lenient alias is for
+# reading back stored records; writes go through ``core.MemorySource``, which
+# bounds the label so it stays a valid `#source:<value>` filter token.
+SourceType = str
 
 # Status Types
-StatusType = Literal["active", "superseded", "deleted", "provisional"]
+StatusType = Literal["active"]
 
 # Provenance Types
 ProvenanceType = Literal[
@@ -80,3 +83,14 @@ ALLOWED_UPDATE_FIELDS = {
 }
 
 VALID_PATTERNS = {"support", "project", "tool"}
+
+# Trust fields removed from the schema. Must not be resurrected during update.
+REMOVED_TRUST_FIELDS = frozenset(
+    {
+        "superseded_by",
+        "supersedes",
+        "validated_at",
+        "validation_count",
+        "contradiction_detected",
+    }
+)

@@ -162,8 +162,6 @@ class Settings(BaseSettings):
 
     # Validation Configuration
     REQUIRE_VALIDATION_FOR: list[str] = ["fact", "preference"]
-    PROVISIONAL_TTL_SECONDS: int = 3600  # 1 hour
-    PROVISIONAL_MAX_CONFIDENCE: float = 0.5
 
     # Schedule Configuration
     MEMANTO_SCHEDULE_TIME: str = "23:55"
