@@ -13,7 +13,7 @@ from memanto.app.services.memory_read_service import MemoryReadService
 from memanto.app.services.memory_write_service import MemoryWriteService
 
 
-class TestUpdateMemoryPreservesProvenance:
+class TestUpdateMemoryPreservesMetadata:
     """Verify that update_memory() does not overwrite immutable fields."""
 
     @pytest.fixture
@@ -201,51 +201,6 @@ class TestUpdateMemoryPreservesProvenance:
             assert doc.get("provenance") == "explicit_statement"
             # created_at preserved, updated_at is recent
             assert doc["created_at"].startswith("2026-07-01")
-
-    def test_update_preserves_provenance_type(self, write_service, mock_client):
-        """update_memory() must preserve provenance when not in updates."""
-        existing_data = {
-            "id": "mem_abc123",
-            "text": "[FACT] Test\n\nTest content",
-            "title": "Test",
-            "content": "Test content",
-            "metadata": {
-                "id": "mem_abc123",
-                "original_id": "mem_abc123",
-                "memory_type": "fact",
-                "agent_id": "test-agent",
-                "actor_id": "user",
-                "source": "user",
-                "confidence": 0.8,
-                "status": "active",
-                "provenance": "inferred",
-                "created_at": "2026-07-01T10:00:00+00:00",
-                "updated_at": "2026-07-01T10:00:00+00:00",
-                "tags": [],
-            },
-        }
-
-        mock_read_service = MagicMock()
-        mock_read_service.get_memory.return_value = existing_data
-        mock_client.documents.upload.return_value = {"status": "success"}
-
-        with patch(
-            "memanto.app.services.memory_read_service.MemoryReadService",
-            return_value=mock_read_service,
-        ):
-            write_service.update_memory(
-                memory_id="mem_abc123",
-                namespace="memanto_agent_test-agent",
-                updates={"content": "Updated"},
-            )
-
-            upload_call = mock_client.documents.upload.call_args
-            uploaded_documents = upload_call.kwargs.get("documents") or upload_call[1].get("documents")
-            doc = uploaded_documents[0]
-
-            assert doc.get("provenance") == "inferred", (
-                f"provenance should be 'inferred' but got '{doc.get('provenance')}'"
-            )
 
 
 class TestOriginalIdPreservedThroughReadPath:

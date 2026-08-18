@@ -315,7 +315,7 @@ class MemoryWriteService:
                 confidence=updates.get("confidence", metadata.get("confidence", 0.8)),
                 status=updates.get("status", metadata.get("status", "active")),
                 tags=updates.get("tags", metadata.get("tags", [])),
-                provenance=updates.get("provenance", metadata.get("provenance", "explicit_statement")),
+                provenance=metadata.get("provenance") or "explicit_statement",
             )
 
             # Update timestamps (preserve created_at, set updated_at to now)
