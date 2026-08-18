@@ -11,6 +11,8 @@ import sys
 from pathlib import Path
 from typing import Any
 
+from memanto.cli.schedule_time import normalize_schedule_time, parse_schedule_time
+
 
 class ScheduleManager:
     """Manages OS-level scheduled tasks for MEMANTO."""
@@ -75,6 +77,11 @@ class ScheduleManager:
     # Windows (schtasks)
 
     def _enable_windows(self, time_str: str = "23:55") -> dict[str, Any]:
+        try:
+            schedule_time = normalize_schedule_time(time_str)
+        except ValueError as e:
+            return {"status": "error", "message": str(e)}
+
         command = [
             "schtasks",
             "/create",
@@ -85,14 +92,14 @@ class ScheduleManager:
             "/sc",
             "daily",
             "/st",
-            time_str,
+            schedule_time,
             "/f",
         ]
         try:
             subprocess.run(command, capture_output=True, text=True, check=True)
             return {
                 "status": "success",
-                "message": f"Scheduled task created for {time_str} daily.",
+                "message": f"Scheduled task created for {schedule_time} daily.",
             }
         except subprocess.CalledProcessError as e:
             return {
@@ -132,10 +139,10 @@ class ScheduleManager:
 
     def _enable_unix(self, time_str: str = "23:55") -> dict[str, Any]:
         try:
-            parts = time_str.split(":")
-            hour, minute = int(parts[0]), int(parts[1])
-        except (ValueError, IndexError):
-            hour, minute = 23, 55
+            hour, minute = parse_schedule_time(time_str)
+            schedule_time = f"{hour:02d}:{minute:02d}"
+        except ValueError as e:
+            return {"status": "error", "message": str(e)}
 
         marker = f"# {self.TASK_NAME}"
         cron_entry = f"{minute} {hour} * * * {self._command()}  {marker}"
@@ -149,7 +156,7 @@ class ScheduleManager:
             subprocess.run(["crontab", "-"], input=new_cron, text=True, check=True)
             return {
                 "status": "success",
-                "message": f"Crontab entry added for {time_str} daily.",
+                "message": f"Crontab entry added for {schedule_time} daily.",
             }
         except Exception as e:
             return {"status": "error", "message": f"Failed to update crontab: {str(e)}"}

@@ -3,11 +3,56 @@
 from unittest.mock import MagicMock
 
 from memanto.app.core import MemoryRecord
+from memanto.app.models import RecallResponse, TemporalRecallResponse
 from memanto.app.services.memory_read_service import MemoryReadService
 
 
 def _make_read_service():
     return MemoryReadService(MagicMock())
+
+
+def _formatted_memory_with_source_ref():
+    memory = MemoryRecord(
+        type="fact",
+        title="Imported fact",
+        content="This memory came from an external document.",
+        agent_id="test-agent",
+        actor_id="user",
+        source="system",
+        source_ref="document://guide/section-2",
+    )
+
+    return _make_read_service()._format_memory_item(memory.to_moorcheh_document())
+
+
+def test_recall_response_preserves_formatted_source_ref():
+    formatted = _formatted_memory_with_source_ref()
+
+    response = RecallResponse(
+        agent_id="test-agent",
+        session_id="test-session",
+        query="external document",
+        memories=[formatted],
+        count=1,
+    )
+
+    assert formatted["source_ref"] == "document://guide/section-2"
+    assert response.model_dump()["memories"][0]["source_ref"] == formatted["source_ref"]
+
+
+def test_temporal_recall_response_preserves_formatted_source_ref():
+    formatted = _formatted_memory_with_source_ref()
+
+    response = TemporalRecallResponse(
+        agent_id="test-agent",
+        session_id="test-session",
+        memories=[formatted],
+        count=1,
+        temporal_mode="recent",
+    )
+
+    assert formatted["source_ref"] == "document://guide/section-2"
+    assert response.model_dump()["memories"][0]["source_ref"] == formatted["source_ref"]
 
 
 def test_content_with_newlines_and_tags_preserves_content_integrity():
@@ -25,7 +70,7 @@ def test_content_with_newlines_and_tags_preserves_content_integrity():
         content="This is paragraph one.\n\nThis is paragraph two.",
         agent_id="test-agent",
         actor_id="user",
-        source="test",
+        source="system",
         tags=["important", "test"],
     )
 
@@ -54,7 +99,7 @@ def test_content_without_newlines_is_unchanged():
         content="Single line content.",
         agent_id="test-agent",
         actor_id="user",
-        source="test",
+        source="system",
         tags=["tag1"],
     )
 
@@ -75,7 +120,7 @@ def test_content_with_multiple_newlines_and_no_tags():
         content="Para one.\n\nPara two.\n\nPara three.",
         agent_id="test-agent",
         actor_id="user",
-        source="test",
+        source="system",
     )
 
     document = memory.to_moorcheh_document()
@@ -118,7 +163,7 @@ def test_memory_with_tags_in_middle_paragraph_does_not_leak():
         content="Use the #Tags: feature for organization.\n\nThis is fine.",
         agent_id="test-agent",
         actor_id="user",
-        source="test",
+        source="system",
         tags=["label"],
     )
 
@@ -140,7 +185,7 @@ def test_content_only_tag_line_not_confused_with_tags_suffix():
         content="Tags: this is not a tag line\n\nActual second paragraph.",
         agent_id="test-agent",
         actor_id="user",
-        source="test",
+        source="system",
         tags=["foo"],
     )
 
@@ -168,7 +213,7 @@ def test_content_with_tags_line_but_no_metadata_tags_is_not_stripped():
         content="First paragraph.\n\nTags: this is not actually tag metadata",
         agent_id="test-agent",
         actor_id="user",
-        source="test",
+        source="system",
         tags=[],  # No tags stored — "Tags: ..." is content, not metadata
     )
 
@@ -200,7 +245,7 @@ def test_content_with_tags_line_and_real_tags_keeps_content_intact():
         content="Tags: this is inline in the content\n\nMore content here.",
         agent_id="test-agent",
         actor_id="user",
-        source="test",
+        source="system",
         tags=["real-tag"],
     )
 
@@ -215,3 +260,50 @@ def test_content_with_tags_line_and_real_tags_keeps_content_intact():
         f"Inline Tags: line was incorrectly stripped: {formatted['content']!r}"
     )
     assert formatted["tags"] == ["real-tag"]
+
+
+def test_format_memory_item_coerces_epoch_timestamps_to_iso_strings():
+    """
+    Documents written outside Memanto's own store path (e.g. manual test
+    data sharing a namespace) can carry raw Unix-epoch numbers instead of
+    ISO strings for created_at/updated_at. The MemoryItem response model
+    requires a string, so a raw int previously made FastAPI's response
+    serialization raise ResponseValidationError and 500 the whole recall.
+    """
+    document = {
+        "id": "mem-legacy",
+        "text": "[FACT] Legacy\n\nImported without ISO timestamps",
+        "metadata": {
+            "memory_type": "fact",
+            "created_at": 1778461885,
+            "updated_at": 1778461885,
+        },
+    }
+
+    formatted = MemoryReadService._format_memory_item(
+        MemoryReadService(MagicMock()), document
+    )
+
+    assert isinstance(formatted["created_at"], str)
+    assert isinstance(formatted["updated_at"], str)
+    assert formatted["created_at"] == "2026-05-11T01:11:25+00:00"
+
+
+def test_format_memory_item_preserves_iso_string_timestamps():
+    """Normal ISO string timestamps must pass through unchanged."""
+    document = {
+        "id": "mem-normal",
+        "text": "[FACT] Normal\n\nWritten via Memanto",
+        "metadata": {
+            "memory_type": "fact",
+            "created_at": "2026-05-11T01:11:25+00:00",
+            "updated_at": "2026-05-11T01:11:25+00:00",
+        },
+    }
+
+    formatted = MemoryReadService._format_memory_item(
+        MemoryReadService(MagicMock()), document
+    )
+
+    assert formatted["created_at"] == "2026-05-11T01:11:25+00:00"
+    assert formatted["updated_at"] == "2026-05-11T01:11:25+00:00"

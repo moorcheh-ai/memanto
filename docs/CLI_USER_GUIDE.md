@@ -773,9 +773,9 @@ print(results)
 4. **Monitoring**: Track memory growth and query patterns
 
 For more information:
-- [API Documentation](./API_REFERENCE.md)
-- [Agent Patterns](./AGENT_RUNTIME_GUIDE.md)
+- [Agent Integration Guide](./AGENT_INTEGRATION_GUIDE.md)
 - [Memory Best Practices](./AGENT_MEMORY_BEST_PRACTICES.md)
+- [Session Architecture](./SESSION_ARCHITECTURE.md)
 
 ---
 

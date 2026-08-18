@@ -1,3 +1,5 @@
+"""Expose Memanto memory tools for LangGraph agents."""
+
 from __future__ import annotations
 
 from typing import Annotated
@@ -5,6 +7,7 @@ from typing import Annotated
 from langchain_core.tools import tool
 from pydantic import Field
 
+from memanto.app.utils.errors import SessionError
 from memanto.cli.client.sdk_client import SdkClient
 
 # Valid Memanto memory types with definitions for the LLM
@@ -26,6 +29,8 @@ VALID_MEMORY_TYPES = (
 
 
 def create_memanto_tools(client: SdkClient, agent_id: str):
+    """Create LangGraph tools bound to a Memanto client and agent."""
+
     import copy
     import threading
 
@@ -46,7 +51,8 @@ def create_memanto_tools(client: SdkClient, agent_id: str):
                 client.activate_agent(agent_id, duration_hours=6)
             except Exception:
                 pass
-            _setup_done = True
+            else:
+                _setup_done = True
 
     @tool
     def memanto_remember(
@@ -65,13 +71,17 @@ def create_memanto_tools(client: SdkClient, agent_id: str):
         title: Annotated[
             str,
             Field(
-                description="Short title for the memory (max 100 characters).",
+                min_length=1,
+                max_length=100,
+                description="Short title for the memory (1-100 characters).",
             ),
         ],
         content: Annotated[
             str,
             Field(
-                description="The memory content to store (max 10000 characters). Be concise and atomic.",
+                min_length=1,
+                max_length=10000,
+                description="The memory content to store (1-10000 characters). Be concise and atomic.",
             ),
         ],
         confidence: Annotated[
@@ -108,7 +118,7 @@ def create_memanto_tools(client: SdkClient, agent_id: str):
                 tags=tag_list,
                 source="langgraph-agent",
             )
-        except Exception:
+        except SessionError:
             _do_setup()
             result = client.remember(
                 agent_id=agent_id,

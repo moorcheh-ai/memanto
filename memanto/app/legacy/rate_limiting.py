@@ -50,7 +50,13 @@ class RateLimiter:
         Returns: (allowed, retry_after_seconds)
         """
         if operation not in self.limits:
-            return True, None
+            raise HTTPException(
+                status_code=400,
+                detail={
+                    "error": "invalid_rate_limit_operation",
+                    "message": f"Unknown rate limit operation: {operation}",
+                },
+            )
 
         limit = self.limits[operation]
         key = self._get_key(operation, agent_id)

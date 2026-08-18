@@ -15,7 +15,7 @@ from memanto.app.constants import ScopeType
 from memanto.app.core import MemoryRecord
 from memanto.app.services.memory_read_service import MemoryReadService
 from memanto.app.services.memory_write_service import MemoryWriteService
-from memanto.app.utils.errors import MemoryError
+from memanto.app.utils.errors import MemoryOperationError
 from memanto.app.utils.ids import generate_memory_id
 
 
@@ -65,7 +65,7 @@ class ContextSummarizationService:
             memories = search_result.get("results", [])
 
             if not memories:
-                raise MemoryError("No memories found in scope to summarize")
+                raise MemoryOperationError("No memories found in scope to summarize")
 
             # Step 2: Build context for AI summarization
             memory_texts = []
@@ -109,7 +109,7 @@ Provide a clear, organized summary that an AI agent could use to understand the 
             summary_text = answer_result.get("answer", "")
 
             if not summary_text:
-                raise MemoryError("Failed to generate summary - empty response from AI")
+                raise MemoryOperationError("Failed to generate summary - empty response from AI")
 
             # Step 4: Create summary memory
             summary_metadata = {
@@ -162,7 +162,7 @@ Provide a clear, organized summary that an AI agent could use to understand the 
             }
 
         except Exception as e:
-            raise MemoryError(f"Failed to summarize context: {e}")
+            raise MemoryOperationError(f"Failed to summarize context: {e}")
 
     def summarize_by_memory_ids(
         self,
@@ -196,7 +196,7 @@ Provide a clear, organized summary that an AI agent could use to understand the 
                     memories.append(memory)
 
             if not memories:
-                raise MemoryError("No valid memories found to summarize")
+                raise MemoryOperationError("No valid memories found to summarize")
 
             # Build summarization context
             memory_texts = [
@@ -221,7 +221,7 @@ Create a clear, organized summary preserving key information."""
             summary_text = answer_result.get("answer", "")
 
             if not summary_text:
-                raise MemoryError("Failed to generate summary")
+                raise MemoryOperationError("Failed to generate summary")
 
             resolved_scope_type = cast(
                 ScopeType,
@@ -258,7 +258,7 @@ Create a clear, organized summary preserving key information."""
             }
 
         except Exception as e:
-            raise MemoryError(f"Failed to summarize specified memories: {e}")
+            raise MemoryOperationError(f"Failed to summarize specified memories: {e}")
 
     def compress_conversation_history(
         self,
@@ -327,4 +327,4 @@ Create a clear, organized summary preserving key information."""
             }
 
         except Exception as e:
-            raise MemoryError(f"Failed to compress conversation history: {e}")
+            raise MemoryOperationError(f"Failed to compress conversation history: {e}")

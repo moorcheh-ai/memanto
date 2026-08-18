@@ -173,6 +173,8 @@ def test_do_put_success(mock_sdk_client):
     store = MemantoStore(api_key="test_key")
     client_instance = MagicMock()
     mock_sdk_client.return_value = client_instance
+    client_instance.recall_recent.return_value = {"memories": []}
+    client_instance.recall.return_value = {"memories": []}
 
     op = PutOp(
         namespace=("my_ns",),
@@ -211,6 +213,53 @@ def test_do_put_escapes_commas_in_key_tags(mock_sdk_client):
 def test_tags_to_key_unescapes_encoded_key_tags():
     assert MemantoStore._tags_to_key(["lg:key:v1:thread%2Ccheckpoint"]) == (
         "thread,checkpoint"
+    )
+
+
+def test_do_put_upsert_behavior(mock_sdk_client):
+    """LangGraph put acts as an upsert, preserves existing types, and fails safe."""
+    store = MemantoStore(api_key="test_key")
+    client_instance = MagicMock()
+    mock_sdk_client.return_value = client_instance
+
+    # 1. Test update
+    client_instance.recall_recent.return_value = {
+        "memories": [{"id": "mem-1", "tags": ["lg:key:my_key"], "type": "fact"}]
+    }
+    store._do_put(PutOp(namespace=("my_ns",), key="my_key", value={"content": "new"}))
+    client_instance.update_memory.assert_called_once()
+    assert "type" not in client_instance.update_memory.call_args.kwargs["updates"]
+    client_instance.remember.assert_not_called()
+
+    # 2. Test failure safe
+    client_instance.reset_mock()
+    client_instance.recall_recent.return_value = {"memories": []}
+    client_instance.recall.side_effect = RuntimeError("backend down")
+    import pytest
+
+    with pytest.raises(RuntimeError, match="Cannot safely determine"):
+        store._do_put(PutOp(namespace=("my_ns",), key="my_key", value={"content": "x"}))
+    client_instance.update_memory.assert_not_called()
+    client_instance.remember.assert_not_called()
+
+
+def test_do_put_stringifies_non_string_content(mock_sdk_client):
+    store = MemantoStore(api_key="test_key")
+    client_instance = MagicMock()
+    mock_sdk_client.return_value = client_instance
+
+    op = PutOp(namespace=("my_ns",), key="answer", value={"content": 42})
+    store._do_put(op)
+
+    client_instance.remember.assert_called_once_with(
+        agent_id="langgraph_my_ns",
+        memory_type=None,
+        title="42",
+        content="42",
+        confidence=0.8,
+        tags=["lg:key:answer"],
+        source="langgraph-store",
+        provenance="explicit_statement",
     )
 
 
@@ -319,6 +368,78 @@ def test_do_search_semantic(mock_sdk_client):
         tags=None,
         min_similarity=None,
     )
+
+
+def test_do_search_filters_min_confidence_without_changing_similarity(
+    mock_sdk_client,
+):
+    store = MemantoStore(api_key="test_key")
+    client_instance = MagicMock()
+    mock_sdk_client.return_value = client_instance
+
+    client_instance.recall.return_value = {
+        "memories": [
+            {
+                "id": "mem-high",
+                "tags": ["lg:key:key-high"],
+                "type": "fact",
+                "content": "high confidence",
+                "confidence": 0.95,
+            },
+            {
+                "id": "mem-low",
+                "tags": ["lg:key:key-low"],
+                "type": "fact",
+                "content": "low confidence",
+                "confidence": 0.4,
+            },
+        ]
+    }
+
+    op = SearchOp(
+        namespace_prefix=("my_ns",),
+        query="test query",
+        filter={"min_confidence": 0.9, "min_similarity": 0.2},
+        limit=10,
+    )
+    items = store._do_search(op)
+
+    assert [item.key for item in items] == ["key-high"]
+    client_instance.recall.assert_called_once_with(
+        agent_id="langgraph_my_ns",
+        query="test query",
+        limit=store._MEMANTO_RECALL_CAP,
+        type=None,
+        tags=None,
+        min_similarity=0.2,
+    )
+
+
+def test_do_search_min_confidence_zero_keeps_legacy_memories(mock_sdk_client):
+    store = MemantoStore(api_key="test_key")
+    client_instance = MagicMock()
+    mock_sdk_client.return_value = client_instance
+
+    client_instance.recall_recent.return_value = {
+        "memories": [
+            {
+                "id": "legacy-memory",
+                "tags": ["lg:key:legacy"],
+                "type": "fact",
+                "content": "stored before confidence existed",
+            }
+        ]
+    }
+
+    op = SearchOp(
+        namespace_prefix=("my_ns",),
+        query="*",
+        filter={"min_confidence": 0.0},
+        limit=10,
+    )
+    items = store._do_search(op)
+
+    assert [item.key for item in items] == ["legacy"]
 
 
 def test_do_search_accepts_string_tag_filter(mock_sdk_client):

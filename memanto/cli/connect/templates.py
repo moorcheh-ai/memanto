@@ -63,7 +63,8 @@ Always categorize the source of the memory. Valid options:
 
 Always specify the tool or agent creating the memory.
 - For AI agents: Use the agent name (e.g., `--source claude_code` or `--source cursor`)
-- Valid base sources (if not using specific agent name): `user`, `agent`, `tool`, `system`
+- Generic fallbacks when no specific writer applies: `user`, `agent`, `tool`, `system`
+- Any label works, up to 64 letters, digits, `.`, `_`, or `-` (no spaces)
 
 ## Tagging Best Practices
 
