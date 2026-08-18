@@ -208,13 +208,6 @@ Format the output as a Markdown report:
             "date": date,
         }
 
-    # Maximum query length for conflict detection (chars).
-    # The ``query`` parameter is embedded for retrieval, so it must stay
-    # within the embedding model's context window.  6000 chars is a
-    # conservative limit that maps to roughly 1500 tokens (well under the
-    # default nomic-embed-text window of 2048 tokens).
-    _MAX_CONFLICT_QUERY_CHARS: int = 6000
-
     def generate_conflict_report(self, agent_id: str, date: str) -> dict[str, Any]:
         """
         Generate a structured conflict report (Contradictions, Conflicts, Updates, Duplicates).
@@ -283,7 +276,10 @@ Example response format:
         # Use a truncated digest of the session content as the retrieval
         # query so it stays within the embedding context window.  The full
         # text is still available to the LLM via header_prompt.
-        query_digest = full_text[: self._MAX_CONFLICT_QUERY_CHARS]
+        query_digest = _truncate_embedding_query(
+            full_text,
+            model=get_active_embedding_model(),
+        )
 
         try:
             generate_kwargs = {

@@ -21,12 +21,6 @@ from memanto.app.services import daily_analysis_service as module
 # Helpers
 # ---------------------------------------------------------------------------
 
-# Conservative char-to-token estimate: 1 token ~ 4 chars for English text.
-# 2048 tokens x 4 chars/token = 8192 chars.  We use a safety margin of
-# roughly 6000 chars to account for tokeniser variability.
-_MAX_QUERY_CHARS = 6000
-
-
 def _make_service_with_session_content(tmp_path, session_content, monkeypatch):
     """Create a DailyAnalysisService with faked session file and client."""
     sessions_dir = tmp_path / "sessions"
@@ -41,6 +35,7 @@ def _make_service_with_session_content(tmp_path, session_content, monkeypatch):
     client.answer.generate.return_value = {"answer": "[]"}
     monkeypatch.setattr(module, "get_moorcheh_client", lambda: client)
     monkeypatch.setattr(module, "get_active_llm_model", lambda _: "test-model")
+    monkeypatch.setattr(module, "get_active_embedding_model", lambda: "test-embedding")
     monkeypatch.setattr(module.Path, "home", classmethod(lambda cls: tmp_path))
 
     service = module.DailyAnalysisService(
@@ -76,12 +71,14 @@ class TestConflictQueryContextOverflow:
         call_kwargs = client.answer.generate.call_args.kwargs
         query = call_kwargs["query"]
 
-        # The query must be short enough to fit within an embedding model's
-        # context window (conservative limit: 6000 chars ~ 1500 tokens).
-        assert len(query) <= _MAX_QUERY_CHARS, (
-            f"Query is {len(query)} chars -- exceeds safe embedding context limit "
-            f"of {_MAX_QUERY_CHARS} chars. This will break with nomic-embed-text "
-            f"(2048 token context window) on days with substantial session content."
+        # The query must be truncated using the embedding model's context window budget.
+        expected_query = module._truncate_embedding_query(
+            long_content,
+            model="test-embedding",
+        )
+        assert query == expected_query, (
+            "Query should be truncated using _truncate_embedding_query to respect "
+            "the embedding model's context window."
         )
 
     def test_conflict_report_uses_header_and_footer_prompts(
