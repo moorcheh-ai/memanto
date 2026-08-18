@@ -35,3 +35,11 @@ def test_map_mem0_accepts_single_category_string():
     assert len(rows) == 1
     assert rows[0]["type"] == "preference"
     assert rows[0]["tags"] == ["personal_preferences"]
+
+
+def test_supermemory_migration_fixes():
+    """Test Supermemory migration fixes (pagination, mixed accounts, and tag deduplication)."""
+    from unittest.mock import patch
+    from memanto.cli.analyze.supermemory_export import collect_memories_deduped, paginate_memories_for_tag
+    from memanto.cli.migrate.mappers import map_supermemory
+    from memanto.cli.migrate.runner import source_count

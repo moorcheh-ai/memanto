@@ -2186,12 +2186,7 @@ def test_batch_upload_error_counts_each_pending_memory_as_failed():
     )
 
 
-def test_supermemory_migration_fixes():
-    """Test Supermemory migration fixes (pagination, mixed accounts, and tag deduplication)."""
-    from unittest.mock import patch
-    from memanto.cli.analyze.supermemory_export import collect_memories_deduped, paginate_memories_for_tag
-    from memanto.cli.migrate.mappers import map_supermemory
-    from memanto.cli.migrate.runner import source_count
+
 
     # 1. Pagination uses singular containerTag
     response = {"memoryEntries": [{"id": "memory-1", "content": "A fact"}], "pagination": {"totalPages": 1}}
