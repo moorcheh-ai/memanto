@@ -31,6 +31,7 @@ Security context (bounty #1852 - The Memanto Security Challenge):
 from __future__ import annotations
 
 import re
+from typing import Any
 
 # Instruction-shaped patterns. Tuned for recall-time text, not prose.
 _INJECTION_PATTERNS: tuple[re.Pattern[str], ...] = (
@@ -115,3 +116,58 @@ UNTRUSTED_DATA_GUARD = (
 def untrusted_data_framing() -> str:
     """Return the constant guard clause for memory-ingesting LLM prompts."""
     return UNTRUSTED_DATA_GUARD
+
+
+def flag_suspicious_memories(
+    items: list[dict[str, Any]],
+    text_getter: Any = None,
+    threshold: float = 0.5,
+) -> list[str]:
+    """Scan retrieved memory items and return ids of suspicious ones.
+
+    Intended to run on the *server side* right after a backend recall, before
+    the items are forwarded to any LLM. It only *flags* (returns ids) so the
+    caller can log/audit; it never drops data. Raw memory content is never
+    returned or logged.
+
+    Args:
+        items: list of memory dicts (Moorcheh documents / formatted items).
+        text_getter: optional callable that extracts the textual body from an
+            item; defaults to checking common text/content/title keys.
+        threshold: risk score at/above which an item is considered suspicious.
+
+    Returns:
+        list of item ids (or ``<no-id>`` markers) that scored suspicious.
+    """
+    if not items:
+        return []
+
+    def _body(item: dict[str, Any]) -> str:
+        if text_getter is not None:
+            try:
+                return str(text_getter(item) or "")
+            except Exception:
+                return ""
+        for key in ("text", "content", "title", "body"):
+            val = item.get(key)
+            if isinstance(val, str) and val.strip():
+                return val
+        # Some backends nest content under metadata.
+        meta = item.get("metadata")
+        if isinstance(meta, dict):
+            for key in ("text", "content", "title", "body"):
+                val = meta.get(key)
+                if isinstance(val, str) and val.strip():
+                    return val
+        return ""
+
+    flagged: list[str] = []
+    for item in items:
+        if not isinstance(item, dict):
+            continue
+        body = _body(item)
+        if not body:
+            continue
+        if score_injection_risk(body) >= threshold:
+            flagged.append(str(item.get("id", "<no-id>")))
+    return flagged
