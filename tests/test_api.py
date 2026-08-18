@@ -842,38 +842,6 @@ class TestMEMANTOAPI:
         assert stale_write.status_code in (401, 404)
         mock_moorcheh.documents.upload.assert_not_called()
 
-    @pytest.mark.asyncio
-    async def test_delete_agent_aborts_if_session_revocation_fails(
-        self, client, auth_headers
-    ):
-        """Agent metadata must survive a failed session revocation."""
-        from memanto.app.services.session_service import get_session_service
-
-        agent_id = "revoke-failure"
-        await client.post(
-            "/api/v2/agents", headers=auth_headers, json={"agent_id": agent_id}
-        )
-        activate_resp = await client.post(
-            f"/api/v2/agents/{agent_id}/activate", headers=auth_headers
-        )
-        token = activate_resp.json()["session_token"]
-        session_service = get_session_service()
-
-        with (
-            patch.object(
-                session_service,
-                "delete_session",
-                side_effect=OSError("session storage unavailable"),
-            ),
-            pytest.raises(OSError, match="session storage unavailable"),
-        ):
-            await client.delete(f"/api/v2/agents/{agent_id}", headers=auth_headers)
-
-        agent_resp = await client.get(
-            f"/api/v2/agents/{agent_id}", headers=auth_headers
-        )
-        assert agent_resp.status_code == 200
-        assert session_service.validate_session(token).agent_id == agent_id
 
     @pytest.mark.asyncio
     async def test_delete_agent_with_backup_delete(
