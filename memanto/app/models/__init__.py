@@ -5,13 +5,23 @@ MEMANTO API Models
 from datetime import datetime
 from typing import Any, Literal
 
-from pydantic import BaseModel, Field, field_validator, model_validator
+from pydantic import (
+    BaseModel,
+    Field,
+    field_validator,
+    model_validator,
+)
 
 from memanto.app.constants import (
     VALID_PROVENANCE_TYPES,
     MemoryType,
     SourceType,
     StatusType,
+)
+from memanto.app.core import (
+    BoundedSourceRef,
+    BoundedTags,
+    MemorySource,
 )
 
 
@@ -31,10 +41,10 @@ class MemoryStoreRequest(BaseModel):
     content: str = Field(max_length=10000)
     agent_id: str
     actor_id: str
-    source: SourceType
-    source_ref: str | None = None
+    source: MemorySource
+    source_ref: BoundedSourceRef | None = None
     confidence: float = Field(ge=0.0, le=1.0, default=0.8)
-    tags: list[str] = Field(default_factory=list)
+    tags: BoundedTags = Field(default_factory=list)
     ttl_seconds: int | None = Field(default=None, gt=0)
     user_confirmed: bool = False
 
@@ -51,10 +61,10 @@ class MemoryBatchItem(BaseModel):
     type: MemoryType
     title: str = Field(max_length=100)
     content: str = Field(max_length=10000)
-    source: SourceType
-    source_ref: str | None = None
+    source: MemorySource
+    source_ref: BoundedSourceRef | None = None
     confidence: float = Field(ge=0.0, le=1.0, default=0.8)
-    tags: list[str] = Field(default_factory=list)
+    tags: BoundedTags = Field(default_factory=list)
     ttl_seconds: int | None = Field(default=None, gt=0)
     id: str | None = None  # Optional custom ID
 
@@ -88,8 +98,14 @@ class BatchRememberItem(BaseModel):
         None, max_length=100, description="Memory title (defaults to truncated content)"
     )
     confidence: float = Field(0.8, ge=0.0, le=1.0, description="Confidence score (0-1)")
-    tags: list[str] | None = Field(None, description="Tags for this memory")
-    source: str = Field("agent", description="Source of memory")
+    tags: BoundedTags | None = Field(None, description="Tags for this memory")
+    source: MemorySource = Field(
+        "agent",
+        description=(
+            "Who wrote this memory — 'user', 'agent', or a specific writer "
+            "such as 'cursor', 'codex', or 'claude_code'."
+        ),
+    )
     provenance: str = Field(
         "explicit_statement",
         description="How memory was obtained (explicit_statement, inferred, observed, etc.)",
@@ -419,6 +435,7 @@ class MemoryItem(BaseModel):
     ttl_seconds: int | None = None
     actor_id: str | None = None
     source: str | None = None
+    source_ref: str | None = None
     agent_id: str | None = None
     score: float | None = None
     provenance: str = "explicit_statement"

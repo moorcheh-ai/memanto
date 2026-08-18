@@ -2,18 +2,55 @@
 MEMANTO Core Architecture - Namespace Strategy & Memory Records
 """
 
+import re
 import uuid
 from datetime import datetime, timedelta, timezone
-from typing import Any
+from typing import Annotated, Any
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, StringConstraints, field_validator
 
 from memanto.app.constants import (
     MemoryType,
     ProvenanceType,
-    SourceType,
     StatusType,
 )
+
+MemoryTag = Annotated[
+    str, StringConstraints(strip_whitespace=True, min_length=1, max_length=64)
+]
+BoundedTags = Annotated[list[MemoryTag], Field(max_length=20)]
+
+BoundedSourceRef = Annotated[
+    str, StringConstraints(strip_whitespace=True, min_length=1, max_length=512)
+]
+
+# Who wrote the memory: "user", "agent", "cursor", "codex", "claude_code",
+# "mem0", ... Deliberately open so every writer is identifiable in recall and
+# in the UI, but bounded to the Moorcheh filter-token charset so that
+# `#source:<value>` stays a usable observability filter — a space or a '#' in
+# the label would corrupt the query syntax it is embedded in.
+SOURCE_MAX_LENGTH = 64
+SOURCE_PATTERN = r"^[A-Za-z0-9._-]+$"
+
+MemorySource = Annotated[
+    str,
+    StringConstraints(
+        strip_whitespace=True,
+        min_length=1,
+        max_length=SOURCE_MAX_LENGTH,
+        pattern=SOURCE_PATTERN,
+    ),
+]
+
+_SOURCE_RE = re.compile(SOURCE_PATTERN)
+
+
+def is_valid_source(value: Any) -> bool:
+    """Return True when *value* is a source label ``MemorySource`` accepts."""
+    if not isinstance(value, str):
+        return False
+    token = value.strip()
+    return bool(_SOURCE_RE.fullmatch(token)) and len(token) <= SOURCE_MAX_LENGTH
 
 
 def agent_namespace(agent_id: str) -> str:
@@ -30,14 +67,30 @@ class MemoryRecord(BaseModel):
     title: str = Field(max_length=100)
     content: str = Field(max_length=10000)
 
+    @field_validator("title", mode="before")
+    @classmethod
+    def _normalize_title_newlines(cls, value: Any) -> Any:
+        """Collapse line breaks in titles to single spaces.
+
+        Titles are single-line labels: the serialized document format is
+        ``[TYPE] title\\n\\ncontent``, so a newline inside the title corrupts
+        the title/content boundary on readback (the ``[TYPE]`` prefix leaks
+        into the recalled title and compounds on every update). Newline titles
+        arrive from any caller, including the derived-title fallback that
+        slices multi-line content.
+        """
+        if isinstance(value, str) and ("\n" in value or "\r" in value):
+            return re.sub(r"[ \t]*[\r\n]+[ \t]*", " ", value).strip()
+        return value
+
     # Metadata fields
     agent_id: str
     actor_id: str
-    source: SourceType
-    source_ref: str | None = None
+    source: MemorySource
+    source_ref: BoundedSourceRef | None = None
     confidence: float = Field(ge=0.0, le=1.0, default=0.8)
     status: StatusType = "active"
-    tags: list[str] = Field(default_factory=list)
+    tags: BoundedTags = Field(default_factory=list)
 
     # Provenance
     provenance: ProvenanceType = "explicit_statement"
@@ -86,7 +139,10 @@ class MemoryRecord(BaseModel):
         if self.tags:
             document["tags"] = ",".join(self.tags)  # Comma-separated for filtering
         if self.expires_at:
-            document["expires_at"] = self.expires_at.isoformat()
+            if isinstance(self.expires_at, datetime):
+                document["expires_at"] = self.expires_at.isoformat()
+            else:
+                document["expires_at"] = str(self.expires_at)
         if self.ttl_seconds:
             document["ttl_seconds"] = self.ttl_seconds
 

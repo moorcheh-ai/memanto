@@ -487,6 +487,10 @@ def map_okf(export: dict[str, Any]) -> list[dict[str, Any]]:
     return rows
 
 
+# Langfuse is deliberately absent: its rows are observability events, not
+# memories, so one incident collapses into a single grouped payload rather
+# than mapping row-for-row. That needs the user's capture settings, which
+# this registry's signature cannot carry — see ``langfuse_rules.build_rows``.
 MAPPERS: dict[str, Callable[[dict[str, Any]], list[dict[str, Any]]]] = {
     "mem0": map_mem0,
     "letta": map_letta,

@@ -8,11 +8,11 @@ from typing import TYPE_CHECKING, Any
 if TYPE_CHECKING:
     from moorcheh_sdk import MoorchehClient
 
-from memanto.app.core import MemoryRecord
+from memanto.app.core import MemoryRecord, is_valid_source
 from memanto.app.services.memory_parsing_service import MemoryParsingService
 from memanto.app.utils.errors import MemoryError
 from memanto.app.utils.ids import generate_memory_id
-from memanto.app.utils.temporal_helpers import as_utc_naive
+from memanto.app.utils.temporal_helpers import as_utc_aware
 
 SUCCESSFUL_UPLOAD_STATUSES = {"queued", "success", "ok"}
 
@@ -54,8 +54,18 @@ class MemoryWriteService:
     def _apply_timestamps(self, memory: MemoryRecord, now: datetime) -> None:
         """Apply server timestamps while preserving imported source chronology."""
         if memory.provenance == "imported":
-            memory.created_at = as_utc_naive(memory.created_at)
-            memory.updated_at = as_utc_naive(memory.updated_at)
+            memory.created_at = as_utc_aware(memory.created_at)
+            memory.updated_at = as_utc_aware(memory.updated_at)
+
+            # Clamp to current time if in the future
+            if memory.created_at > now:
+                memory.created_at = now
+            if memory.updated_at > now:
+                memory.updated_at = now
+
+            # Enforce created_at <= updated_at invariant
+            if memory.created_at > memory.updated_at:
+                memory.created_at = memory.updated_at
             return
         memory.created_at = now
         memory.updated_at = now
@@ -224,25 +234,35 @@ class MemoryWriteService:
                 )
 
                 # Update results with upload status
-                moorcheh_status = upload_result.get("status", "unknown")
+                moorcheh_status = str(upload_result.get("status", "unknown")).lower()
                 for result in results:
                     if result["status"] == "pending":
-                        result["status"] = moorcheh_status
+                        if moorcheh_status in SUCCESSFUL_UPLOAD_STATUSES:
+                            result["status"] = moorcheh_status
+                        else:
+                            result["status"] = "failed"
+                            result["error"] = (
+                                f"Batch upload returned status '{moorcheh_status}'"
+                            )
 
             # Count successes, failures, and namespace-rejected items separately
             # so that successful + failed + rejected == total_submitted always.
-            _known = set(SUCCESSFUL_UPLOAD_STATUSES) | {"failed", "rejected"}
-            successful = sum(
-                1
-                for r in results
-                if str(r["status"]).lower() in SUCCESSFUL_UPLOAD_STATUSES
-            )
-            failed = sum(1 for r in results if str(r["status"]).lower() == "failed")
-            rejected = sum(1 for r in results if str(r["status"]).lower() == "rejected")
-            # Absorb any non-standard upload statuses into failed so the invariant holds
-            failed += len(results) - successful - failed - rejected
+            successful = 0
+            failed = 0
+            rejected = 0
             for r in results:
-                if str(r["status"]).lower() not in _known:
+                status = str(r["status"]).lower()
+                if status in SUCCESSFUL_UPLOAD_STATUSES:
+                    successful += 1
+                elif status == "rejected":
+                    rejected += 1
+                else:
+                    # Validation failures carry status="failed"/action="rejected"
+                    # and must stay in `failed`: the batch endpoints return only
+                    # successful/failed (see routes/memory.py), so counting them
+                    # as `rejected` would drop them from the response entirely.
+                    # Non-standard upload statuses are absorbed here too.
+                    failed += 1
                     r["status"] = "failed"
 
             return {
@@ -312,6 +332,14 @@ class MemoryWriteService:
                     f"in namespace {namespace}"
                 )
 
+            # Sources are open labels (the writer's name), so keep whatever the
+            # record carries. Only a value MemoryRecord would reject — blank, or
+            # one holding characters that break `#source:` filters — falls back,
+            # so an edit cannot fail on data written before the label was bounded.
+            source_val = updates.get("source", metadata.get("source", "system"))
+            if not is_valid_source(source_val):
+                source_val = "system"
+
             # Build updated memory record
             updated_memory = MemoryRecord(
                 id=memory_id,  # Keep same ID
@@ -322,11 +350,12 @@ class MemoryWriteService:
                 content=updates.get("content", existing_memory_data.get("content", "")),
                 agent_id=agent_id,
                 actor_id=updates.get("actor_id", metadata.get("actor_id", "unknown")),
-                source=updates.get("source", metadata.get("source", "system")),
+                source=source_val,
                 source_ref=updates.get("source_ref", metadata.get("source_ref")),
                 confidence=updates.get("confidence", metadata.get("confidence", 0.8)),
                 status=updates.get("status", metadata.get("status", "active")),
                 tags=updates.get("tags", metadata.get("tags", [])),
+                provenance=metadata.get("provenance") or "explicit_statement",
             )
 
             # Update timestamps (preserve created_at, set updated_at to now)
@@ -391,16 +420,24 @@ class MemoryWriteService:
             except Exception as e:
                 raise MemoryError(f"Upload failed. Error: {e}")
 
+            status = upload_result.get("status", "unknown")
+            if str(status).lower() not in SUCCESSFUL_UPLOAD_STATUSES:
+                raise MemoryError(
+                    f"Failed to upload updated memory {memory_id}: {status}"
+                )
+
             return {
                 "id": memory_id,
                 "namespace": namespace,
-                "status": upload_result.get("status", "unknown"),
+                "status": status,
                 "action": "updated",
                 "reason": "Memory updated successfully via overwrite",
                 "validation": validation_result.get("action", "validated"),
                 "updated_fields": list(updates.keys()),
             }
 
+        except MemoryError:
+            raise
         except Exception as e:
             raise MemoryError(f"Failed to update memory: {e}")
 

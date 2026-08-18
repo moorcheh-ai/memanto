@@ -8,6 +8,10 @@ foreign OKF bundle whose free-form ``type`` and unknown keys must land in the
 ``[Supporting data]`` footer without loss.
 """
 
+from time import perf_counter
+
+import yaml  # type: ignore[import-untyped]
+
 from memanto.app.services.okf_export_service import OkfExportService
 from memanto.cli.migrate.mappers import map_okf
 from memanto.cli.migrate.okf_loader import load_okf_bundle
@@ -186,3 +190,74 @@ def test_loader_splits_stacked_file(tmp_path):
     assert {m["title"] for m in export["memories"]} == {
         f"Standup {i}" for i in range(5)
     }
+
+
+def test_loader_extracts_multiple_links_around_malformed_markup(tmp_path):
+    """Malformed candidates do not hide valid links that follow them."""
+    okf_file = tmp_path / "links.md"
+    okf_file.write_text(
+        "---\ntype: fact\ntitle: Links\n---\n"
+        "Broken [label] text, then [first](/one) and [](ignored), "
+        "then [second](https://example.com/two).\n",
+        encoding="utf-8",
+    )
+
+    memory = load_okf_bundle(okf_file)["memories"][0]
+
+    assert memory["links"] == [
+        "first -> /one",
+        "second -> https://example.com/two",
+    ]
+
+
+def test_loader_handles_many_unclosed_link_markers_quickly(tmp_path):
+    """A malformed large note must not make link extraction scale quadratically."""
+    okf_file = tmp_path / "malformed-links.md"
+    okf_file.write_text(
+        "---\ntype: fact\ntitle: Malformed links\n---\n" + "[" * 25_000,
+        encoding="utf-8",
+    )
+
+    started = perf_counter()
+    memory = load_okf_bundle(okf_file)["memories"][0]
+    elapsed = perf_counter() - started
+
+    assert memory["links"] == []
+    assert elapsed < 1.0
+
+
+def test_okf_export_splits_comma_separated_tags(tmp_path):
+    """Tags serialized by Moorcheh arrive as a comma-separated string. The
+    export must emit one frontmatter list entry per tag, not split the string
+    character-by-character.
+
+    Regression for BountyHub #770: with tags='project,db' the old
+    ``list(tags)`` wrote ["p", "r", "o", "j", "e", "c", "t", ",", "d", "b"].
+    """
+    svc = OkfExportService(exports_dir=tmp_path / "exports")
+    # Moorcheh wire format: flat ``tags`` field is a comma-joined string.
+    memories_by_type = {
+        "fact": [
+            _mem("f1", "Postgres", "Use PG 16.", tags="project, db, prod"),
+        ],
+    }
+    svc.write_okf_bundle("agent1", memories_by_type, split="file")
+    fact_md = svc.exports_dir / "agent1_okf" / "memories" / "fact" / "postgres.md"
+    front = fact_md.read_text(encoding="utf-8").split("---", 2)[1]
+    fm = yaml.safe_load(front)
+    assert set(fm["tags"]) == {"project", "db", "prod"}
+
+
+def test_okf_export_preserves_list_tags(tmp_path):
+    """Tags from the in-memory recall path arrive as a list; the export must
+    still emit a proper frontmatter list of those tags (unchanged behaviour)."""
+    svc = OkfExportService(exports_dir=tmp_path / "exports")
+    memories_by_type = {
+        "fact": [
+            _mem("f1", "A fact", "Body.", tags=["infra", "db"]),
+        ],
+    }
+    svc.write_okf_bundle("agent1", memories_by_type, split="file")
+    fact_md = svc.exports_dir / "agent1_okf" / "memories" / "fact" / "a-fact.md"
+    fm = yaml.safe_load(fact_md.read_text(encoding="utf-8").split("---", 2)[1])
+    assert set(fm["tags"]) == {"infra", "db"}
