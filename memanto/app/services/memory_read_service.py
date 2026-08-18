@@ -297,7 +297,7 @@ class MemoryReadService:
 
             return {
                 "results": paginated_results,
-                "total_found": len(paginated_results),
+                "total_found": len(all_results),
                 "total_available": len(all_results),
                 "offset": offset,
                 "limit": limit,
