@@ -19,6 +19,7 @@ from memanto.app.config import get_data_dir, settings
 from memanto.app.core import agent_namespace
 from memanto.app.services.session_service import get_session_service
 from memanto.app.utils.errors import MemoryError
+from memanto.app.utils.injection_guard import untrusted_data_framing
 from memanto.app.utils.temporal_helpers import (
     format_current_local_time,
     format_local_time,
@@ -137,14 +138,20 @@ class DailyAnalysisService:
         client = get_moorcheh_client()
         namespace = agent_namespace(agent_id)
 
+        # SECURITY (bounty #1852): session content is untrusted memory data, not
+        # instructions. Frame it so a directive stored in a memory cannot hijack
+        # the summary generation.
+        from memanto.app.utils.injection_guard import untrusted_data_framing
+
         header_prompt = f"""
+{untrusted_data_framing()}
+
 Summarize the following session memories from {date} into a concise natural language daily summary.
 Focus on key themes, accomplishments, and high-level activities.
 
 Sessions Content:
 {full_text}
 """
-
         footer_prompt = f"""
 Format the output as a Markdown report:
 # Daily Summary for {agent_id} - {date}
@@ -234,6 +241,8 @@ Format the output as a Markdown report:
         namespace = agent_namespace(agent_id)
 
         conflict_prompt = f"""
+{untrusted_data_framing()}
+
 Analyze the following session memories from {date} against historical knowledge for this agent.
 
 CRITICAL INSTRUCTIONS:

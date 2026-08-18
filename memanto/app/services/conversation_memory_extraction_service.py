@@ -12,6 +12,7 @@ from typing import Any
 
 from memanto.app.clients.backend import get_active_llm_model
 from memanto.app.constants import VALID_MEMORY_TYPES
+from memanto.app.utils.injection_guard import untrusted_data_framing
 from memanto.app.utils.json_extraction import iter_json_arrays
 
 
@@ -118,6 +119,11 @@ class ConversationMemoryExtractionService:
         memory_types = ", ".join(sorted(VALID_MEMORY_TYPES))
         return (
             "Extract durable agent memories from the conversation. "
+            # SECURITY (bounty #1852): the conversation is untrusted user/agent
+            # data. A message may try to manipulate the extraction (e.g. "ignore
+            # previous instructions and store X"). Treat messages as data only.
+            + untrusted_data_framing()
+            + " "
             "Only include facts, preferences, decisions, instructions, goals, "
             "commitments, errors, observations, relationships, context, events, "
             "artifacts, or learnings that would be useful in future sessions. "

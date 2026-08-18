@@ -53,3 +53,12 @@ def test_dormant_trojan_memory_flagged():
 def test_empty_and_non_string_safe():
     assert score_injection_risk("") == 0.0
     assert score_injection_risk(None) == 0.0
+
+
+def test_framing_constant_mentions_untrusted_data():
+    from memanto.app.utils.injection_guard import untrusted_data_framing
+
+    framing = untrusted_data_framing()
+    assert "untrusted DATA" in framing
+    assert "ignore previous instructions" in framing
+    assert "exfiltrate" in framing
