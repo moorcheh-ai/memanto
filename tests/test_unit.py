@@ -1115,6 +1115,54 @@ class TestMemoryWriteServiceUpdateIntegrity:
         )
         client.documents.delete.assert_not_called()
 
+    def test_original_id_survives_read_format_update_cycle(self):
+        """original_id must survive get_memory() -> _format_memory_item() -> update_memory()."""
+        from unittest.mock import MagicMock, patch
+        from memanto.app.services.memory_write_service import MemoryWriteService
+        from memanto.app.services.memory_read_service import MemoryReadService
+        
+        mock_client = MagicMock()
+        mock_client.documents.upload.return_value = {"status": "success"}
+
+        raw_moorcheh_document = {
+            "id": "mem_abc123",
+            "text": "[FACT] Original Title\n\nOriginal content\n\nTags: tag1, tag2",
+            "metadata": {
+                "id": "mem_abc123",
+                "original_id": "mem_abc123",
+                "memory_type": "fact",
+                "agent_id": "test-agent",
+                "actor_id": "user",
+                "source": "user",
+                "confidence": 0.8,
+                "status": "active",
+                "provenance": "explicit_statement",
+                "created_at": "2026-07-01T10:00:00+00:00",
+                "updated_at": "2026-07-01T10:00:00+00:00",
+                "superseded_by": "mem_new_001",
+                "tags": "tag1,tag2",
+            },
+        }
+
+        read_service = MemoryReadService(mock_client)
+        formatted = read_service._format_memory_item(raw_moorcheh_document)
+
+        assert "original_id" in formatted
+        assert "superseded_by" not in formatted
+
+        with patch(
+            "memanto.app.services.memory_read_service.MemoryReadService.get_memory",
+            return_value=formatted,
+        ):
+            MemoryWriteService(mock_client).update_memory(
+                memory_id="mem_abc123",
+                namespace="memanto_agent_test-agent",
+                updates={"content": "Updated content"},
+            )
+
+            uploaded_documents = mock_client.documents.upload.call_args.kwargs["documents"]
+            assert uploaded_documents[0].get("original_id") == "mem_abc123"
+
 
 class TestMemoryReadServiceFormatting:
     def test_plain_single_paragraph_text_keeps_content(self):

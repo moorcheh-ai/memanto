@@ -1043,15 +1043,8 @@ class MemoryReadService:
             "provenance": provenance,
         }
 
-        # Preserve extra metadata keys (e.g. original_id in on-prem
-        # data_store.json) that are not part of the known MemoryRecord schema.
-        # These extra fields must survive the read-format-update cycle so that
-        # update_memory() can carry them through to the rewritten document.
-        # Without this, original_id and other on-prem fields are silently
-        # dropped on read, making the extra-metadata preservation in
-        # update_memory() ineffective.
-        # "memory_type" is the raw storage field name for the formatted
-        # "type" key and must be excluded to avoid leaking a duplicate.
+        # Preserve extra metadata keys (e.g. original_id) not in the schema.
+        # Exclude known keys, removed fields, and "memory_type" (duplicate of "type").
         known_keys = set(formatted.keys()) | {"text", "memory_type"}
         if isinstance(metadata, dict):
             for key, value in metadata.items():

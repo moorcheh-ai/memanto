@@ -386,8 +386,7 @@ class MemoryWriteService:
 
             document = cast(Document, updated_memory.to_moorcheh_document())
 
-            # Preserve extra metadata fields from the existing record (e.g. original_id
-            # in on-prem data_store.json) that aren't part of the MemoryRecord schema.
+            # Preserve extra metadata fields from the existing record not in MemoryRecord schema.
             existing_meta = existing_memory_data.get("metadata", existing_memory_data)
             if isinstance(existing_meta, dict):
                 # ``document`` is a TypedDict; cast to a plain dict to attach
