@@ -104,6 +104,22 @@
             }
           },
           {
+            "name": "X-Api-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          },
+          {
             "name": "memanto_session_token",
             "in": "cookie",
             "required": false,
@@ -187,6 +203,22 @@
                 }
               ],
               "title": "X-Session-Token"
+            }
+          },
+          {
+            "name": "X-Api-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
             }
           },
           {
@@ -285,6 +317,22 @@
             }
           },
           {
+            "name": "X-Api-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          },
+          {
             "name": "memanto_session_token",
             "in": "cookie",
             "required": false,
@@ -376,6 +424,22 @@
             }
           },
           {
+            "name": "X-Api-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          },
+          {
             "name": "memanto_session_token",
             "in": "cookie",
             "required": false,
@@ -447,6 +511,22 @@
                 }
               ],
               "title": "X-Session-Token"
+            }
+          },
+          {
+            "name": "X-Api-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
             }
           },
           {
@@ -617,6 +697,22 @@
                 }
               ],
               "title": "X-Session-Token"
+            }
+          },
+          {
+            "name": "X-Api-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
             }
           },
           {
@@ -1134,6 +1230,22 @@
             }
           },
           {
+            "name": "X-Api-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          },
+          {
             "name": "memanto_session_token",
             "in": "cookie",
             "required": false,
@@ -1220,6 +1332,22 @@
             }
           },
           {
+            "name": "X-Api-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          },
+          {
             "name": "memanto_session_token",
             "in": "cookie",
             "required": false,
@@ -1303,6 +1431,22 @@
                 }
               ],
               "title": "X-Session-Token"
+            }
+          },
+          {
+            "name": "X-Api-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
             }
           },
           {
@@ -2550,6 +2694,90 @@
         }
       }
     },
+    "/api/ui/migrate/langfuse/discover": {
+      "post": {
+        "tags": [
+          "Web UI"
+        ],
+        "summary": "Migrate Langfuse Discover",
+        "description": "Report what is actually in a Langfuse project, so the user can configure it.\n\nScore names, value ranges, and per-operation latency/cost are all\nproject-specific, so the tile shows the user their own data rather than\nasking them to guess at thresholds. Writes nothing.",
+        "operationId": "migrate_langfuse_discover_api_ui_migrate_langfuse_discover_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": true,
+                "type": "object",
+                "title": "Body"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/ui/migrate/langfuse/config": {
+      "post": {
+        "tags": [
+          "Web UI"
+        ],
+        "summary": "Migrate Langfuse Config",
+        "description": "Read or persist per-project Langfuse capture settings.\n\n``{\"action\": \"save\", ...}`` stores the supplied settings for the project\nthe credential belongs to; anything else just reads them back.",
+        "operationId": "migrate_langfuse_config_api_ui_migrate_langfuse_config_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": true,
+                "type": "object",
+                "title": "Body"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/ui/migrate/import": {
       "post": {
         "tags": [
@@ -2723,6 +2951,13 @@
           "count": {
             "type": "integer",
             "title": "Count"
+          },
+          "warnings": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Warnings"
           }
         },
         "type": "object",
@@ -2916,9 +3151,12 @@
             "anyOf": [
               {
                 "items": {
-                  "type": "string"
+                  "type": "string",
+                  "maxLength": 64,
+                  "minLength": 1
                 },
-                "type": "array"
+                "type": "array",
+                "maxItems": 20
               },
               {
                 "type": "null"
@@ -2929,8 +3167,11 @@
           },
           "source": {
             "type": "string",
+            "maxLength": 64,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9._-]+$",
             "title": "Source",
-            "description": "Source of memory",
+            "description": "Who wrote this memory \u2014 'user', 'agent', or a specific writer such as 'cursor', 'codex', or 'claude_code'.",
             "default": "agent"
           },
           "provenance": {
@@ -3344,7 +3585,22 @@
           "type": {
             "anyOf": [
               {
-                "type": "string"
+                "type": "string",
+                "enum": [
+                  "fact",
+                  "preference",
+                  "goal",
+                  "decision",
+                  "artifact",
+                  "learning",
+                  "event",
+                  "instruction",
+                  "relationship",
+                  "context",
+                  "observation",
+                  "commitment",
+                  "error"
+                ]
               },
               {
                 "type": "null"
@@ -3369,9 +3625,12 @@
             "anyOf": [
               {
                 "items": {
-                  "type": "string"
+                  "type": "string",
+                  "maxLength": 64,
+                  "minLength": 1
                 },
-                "type": "array"
+                "type": "array",
+                "maxItems": 20
               },
               {
                 "type": "null"
@@ -3382,7 +3641,10 @@
           "source": {
             "anyOf": [
               {
-                "type": "string"
+                "type": "string",
+                "maxLength": 64,
+                "minLength": 1,
+                "pattern": "^[A-Za-z0-9._-]+$"
               },
               {
                 "type": "null"
@@ -3528,6 +3790,17 @@
               }
             ],
             "title": "Source"
+          },
+          "source_ref": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Ref"
           },
           "agent_id": {
             "anyOf": [
@@ -3734,6 +4007,40 @@
             ],
             "title": "Tags",
             "description": "Tag filters"
+          },
+          "created_after": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created After",
+            "description": "Include only memories created at or after this timestamp. Date-only values (YYYY-MM-DD) use the start of that day."
+          },
+          "created_before": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created Before",
+            "description": "Include only memories created at or before this timestamp. Date-only values (YYYY-MM-DD) use the end of that day."
           }
         },
         "type": "object",
@@ -3943,9 +4250,12 @@
             "anyOf": [
               {
                 "items": {
-                  "type": "string"
+                  "type": "string",
+                  "maxLength": 64,
+                  "minLength": 1
                 },
-                "type": "array"
+                "type": "array",
+                "maxItems": 20
               },
               {
                 "type": "null"
@@ -3956,8 +4266,11 @@
           },
           "source": {
             "type": "string",
+            "maxLength": 64,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9._-]+$",
             "title": "Source",
-            "description": "Source of memory",
+            "description": "Who wrote this memory \u2014 'user', 'agent', or a specific writer such as 'cursor', 'codex', or 'claude_code'.",
             "default": "agent"
           },
           "provenance": {

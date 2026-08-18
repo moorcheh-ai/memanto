@@ -23,13 +23,16 @@ frontmatter keys.
 
 import re
 import shutil
-from datetime import datetime
+import tempfile
+import unicodedata
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
 import yaml  # type: ignore[import-untyped]
 
 from memanto.app.services.memory_export_service import MEMORY_TYPE_ORDER
+from memanto.app.utils.atomic_write import okf_bundle_lock
 from memanto.app.utils.validation import validate_output_path, validate_safe_id
 
 # Stacked files hold multiple OKF documents. This sentinel separates them so
@@ -106,37 +109,52 @@ class OkfExportService:
             )
             assert validated is not None
             base = validated
-        base.mkdir(parents=True, exist_ok=True)
+        if base.exists() and not base.is_dir():
+            raise NotADirectoryError(f"OKF bundle path is not a directory: {base}")
+        base.parent.mkdir(parents=True, exist_ok=True)
 
-        # Section order mirrors how an agent would read the bundle.
-        sections: dict[str, str] = {}
-
-        type_entries = self._write_memories_section(
-            base / "memories", memories_by_type, split, threshold
+        # Render the complete snapshot away from the current bundle. Writing
+        # directly into ``base`` overlays new files on old ones, which can
+        # resurrect deleted or renamed memories on the next import. Staging
+        # also leaves the last good bundle intact if rendering fails midway.
+        staging = Path(
+            tempfile.mkdtemp(prefix=f".{base.name}.tmp-", dir=str(base.parent))
         )
-        per_type_counts = dict(type_entries)
-        total = sum(per_type_counts.values())
-        if type_entries:
-            sections["memories"] = (
-                f"{total} memories across {len(type_entries)} type(s)"
+
+        try:
+            # Section order mirrors how an agent would read the bundle.
+            sections: dict[str, str] = {}
+
+            type_entries = self._write_memories_section(
+                staging / "memories", memories_by_type, split, threshold
             )
+            per_type_counts = dict(type_entries)
+            total = sum(per_type_counts.values())
+            if type_entries:
+                sections["memories"] = (
+                    f"{total} memories across {len(type_entries)} type(s)"
+                )
 
-        n_summaries = self._write_docs_section(
-            base / "daily-summaries", summaries or [], "Daily Summaries"
-        )
-        if n_summaries:
-            sections["daily-summaries"] = f"{n_summaries} daily-summary file(s)"
+            n_summaries = self._write_docs_section(
+                staging / "daily-summaries", summaries or [], "Daily Summaries"
+            )
+            if n_summaries:
+                sections["daily-summaries"] = f"{n_summaries} daily-summary file(s)"
 
-        n_sessions = self._write_docs_section(
-            base / "sessions", sessions or [], "Sessions"
-        )
-        if n_sessions:
-            sections["sessions"] = f"{n_sessions} session log file(s)"
+            n_sessions = self._write_docs_section(
+                staging / "sessions", sessions or [], "Sessions"
+            )
+            if n_sessions:
+                sections["sessions"] = f"{n_sessions} session log file(s)"
 
-        if self._write_metrics_section(base / "metrics", memories_by_type):
-            sections["metrics"] = "aggregate stats & visualizations"
+            if self._write_metrics_section(staging / "metrics", memories_by_type):
+                sections["metrics"] = "aggregate stats & visualizations"
 
-        self._write_root_index(base, agent_id, sections)
+            self._write_root_index(staging, agent_id, sections)
+            self._replace_bundle(staging, base)
+        finally:
+            if staging.exists():
+                shutil.rmtree(staging)
 
         return {
             "output_path": str(base.resolve()),
@@ -144,6 +162,34 @@ class OkfExportService:
             "per_type_counts": per_type_counts,
             "sections": list(sections),
         }
+
+    @staticmethod
+    def _replace_bundle(staging: Path, target: Path) -> None:
+        """Swap a fully rendered bundle into place, restoring the previous
+        snapshot if the final rename fails."""
+        # Readers share this path-scoped lock with the loader, and competing
+        # exporters take the same exclusive lock. No caller can therefore
+        # observe or interfere with the brief target -> backup -> target swap.
+        with okf_bundle_lock(target, shared=False):
+            backup: Path | None = None
+            if target.exists():
+                backup = Path(
+                    tempfile.mkdtemp(
+                        prefix=f".{target.name}.backup-", dir=str(target.parent)
+                    )
+                )
+                backup.rmdir()
+                target.rename(backup)
+
+            try:
+                staging.rename(target)
+            except Exception:
+                if backup is not None and backup.exists() and not target.exists():
+                    backup.rename(target)
+                raise
+            else:
+                if backup is not None:
+                    shutil.rmtree(backup)
 
     # Section writers
     def _write_memories_section(
@@ -204,17 +250,41 @@ class OkfExportService:
 
         These are export-only context — the loader ignores everything outside
         ``memories/`` — so they are copied as-is rather than re-wrapped as OKF
-        nodes.
+        nodes. Destination names are planned before copying and remain distinct
+        after NFC normalization plus case folding, so the bundle is portable to
+        case-insensitive filesystems.
         """
+        if section_dir.exists():
+            for existing_file in section_dir.iterdir():
+                if existing_file.is_file():
+                    existing_file.unlink(missing_ok=True)
+
         existing = sorted(f for f in files if f.exists())
         if not existing:
             return 0
 
+        def canonical_name(name: str) -> str:
+            return unicodedata.normalize("NFC", name).casefold()
+
+        # index.md belongs to the generated section index. Plan every payload
+        # name first so no copy can overwrite another payload or the index,
+        # including on case-insensitive / normalization-aware filesystems.
+        used_names = {canonical_name("index.md")}
+        planned: list[tuple[Path, str]] = []
+        for src in existing:
+            destination_name = src.name
+            suffix_number = 2
+            while canonical_name(destination_name) in used_names:
+                destination_name = f"{src.stem}-{suffix_number}{src.suffix}"
+                suffix_number += 1
+            used_names.add(canonical_name(destination_name))
+            planned.append((src, destination_name))
+
         section_dir.mkdir(parents=True, exist_ok=True)
         links: list[tuple[str, str]] = []
-        for src in existing:
-            shutil.copy2(str(src), str(section_dir / src.name))
-            links.append((src.name, src.name))
+        for src, destination_name in planned:
+            shutil.copy2(str(src), str(section_dir / destination_name))
+            links.append((destination_name, destination_name))
 
         self._write_index(section_dir, title, f"{title} ({len(links)})", links)
         return len(links)
@@ -257,19 +327,24 @@ class OkfExportService:
 
     @staticmethod
     def _parse_ts(value: Any) -> datetime:
-        """Best-effort parse of a stored ``created_at`` into a datetime; falls
-        back to now so the activity timeline always has an hour bucket."""
+        """Best-effort parse of a stored ``created_at`` into an aware UTC datetime;
+        falls back to now so the activity timeline always has an hour bucket."""
         if isinstance(value, datetime):
-            return value
+            if value.tzinfo is None or value.utcoffset() is None:
+                return value.replace(tzinfo=timezone.utc)
+            return value.astimezone(timezone.utc)
         if isinstance(value, str) and value.strip():
             text = value.strip()
             if text.endswith("Z"):
                 text = text[:-1] + "+00:00"
             try:
-                return datetime.fromisoformat(text)
+                dt = datetime.fromisoformat(text)
+                if dt.tzinfo is None or dt.utcoffset() is None:
+                    return dt.replace(tzinfo=timezone.utc)
+                return dt.astimezone(timezone.utc)
             except ValueError:
                 pass
-        return datetime.now()
+        return datetime.now(timezone.utc)
 
     # Rendering helpers
     def _render_okf_doc(self, mem: dict[str, Any], mem_type: str) -> str:
@@ -283,9 +358,21 @@ class OkfExportService:
         if description:
             frontmatter["description"] = description
 
-        tags = mem.get("tags") or []
-        if tags:
-            frontmatter["tags"] = list(tags)
+        # Tags arrive in two shapes depending on where the record came from:
+        # Moorcheh serializes the flat ``tags`` field as a comma-separated string,
+        # while the in-memory recall path already hands back a list.  Normalize so
+        # the OKF frontmatter always carries one list entry per tag instead of
+        # splitting a comma-joined string character-by-character (e.g.
+        # ``["project", "db"]`` was previously written as
+        # ``["p", "r", "o", "j", "e", "c", "t", ",", "d", "b"]``).
+        raw_tags = mem.get("tags") or []
+        if raw_tags:
+            if isinstance(raw_tags, str):
+                frontmatter["tags"] = [
+                    t.strip() for t in raw_tags.split(",") if t.strip()
+                ]
+            else:
+                frontmatter["tags"] = list(raw_tags)
 
         created_at = mem.get("created_at")
         if created_at:

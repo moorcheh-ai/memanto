@@ -18,13 +18,14 @@ from pydantic import BaseModel, Field, field_validator
 from memanto.app.clients.backend import get_active_llm_model
 from memanto.app.clients.moorcheh import get_moorcheh_client
 from memanto.app.config import settings
-from memanto.app.constants import VALID_MEMORY_TYPES
-from memanto.app.core import MemoryRecord
+from memanto.app.constants import VALID_MEMORY_TYPES, MemoryType
+from memanto.app.core import MemoryRecord, MemorySource
 from memanto.app.models import (
     AnswerRequest,
     AnswerResponse,
     BatchRememberRequest,
     BatchRememberResponse,
+    BoundedTags,
     ConflictResolveRequest,
     ExtractMemoriesRequest,
     RecallResponse,
@@ -40,8 +41,22 @@ from memanto.app.services.conversation_memory_extraction_service import (
 )
 from memanto.app.services.memory_read_service import MemoryReadService
 from memanto.app.services.memory_write_service import MemoryWriteService
-from memanto.app.utils.errors import AuthorizationError, map_error_to_http_exception
-from memanto.app.utils.validation import CostGuard, validate_safe_id
+from memanto.app.utils.errors import (
+    AuthorizationError,
+    MemoryError,
+    map_error_to_http_exception,
+)
+from memanto.app.utils.temporal_helpers import (
+    END_OF_DAY,
+    is_date_only,
+    parse_date_only,
+    utc_date_str,
+)
+from memanto.app.utils.validation import (
+    CostGuard,
+    is_successful_write_result,
+    validate_safe_id,
+)
 from memanto.cli.client.direct_client import DirectClient
 from memanto.cli.config.manager import ConfigManager
 
@@ -106,6 +121,8 @@ class RecallRequest(BaseModel):
     @field_validator("created_after", mode="before")
     @classmethod
     def parse_created_after(cls, v: object) -> datetime | None:
+        """Parse the inclusive lower timestamp bound for recall."""
+
         if v is None:
             return None
         return _parse_recall_temporal_bound(v, end_of_day=False)
@@ -113,6 +130,8 @@ class RecallRequest(BaseModel):
     @field_validator("created_before", mode="before")
     @classmethod
     def parse_created_before(cls, v: object) -> datetime | None:
+        """Parse the inclusive upper timestamp bound for recall."""
+
         if v is None:
             return None
         return _parse_recall_temporal_bound(v, end_of_day=True)
@@ -133,17 +152,22 @@ class RecallRequest(BaseModel):
 
 
 def _parse_recall_temporal_bound(v: object, *, end_of_day: bool) -> datetime:
+    # End-of-day must be END_OF_DAY (23:59:59.999999), matching
+    # parse_as_of_timestamp: the temporal filter compares with a strict `>`,
+    # so a 23:59:59 bound silently drops memories created in the final
+    # sub-second of the requested day. Date-only detection is delegated to the
+    # shared helper for the same reason as RecallAsOfRequest.parse_as_of.
     if isinstance(v, datetime):
         return v if v.tzinfo else v.replace(tzinfo=timezone.utc)
     if isinstance(v, date):
-        boundary = time(23, 59, 59) if end_of_day else time(0, 0, 0)
+        boundary = END_OF_DAY if end_of_day else time(0, 0, 0)
         return datetime.combine(v, boundary, tzinfo=timezone.utc)
     if isinstance(v, str):
-        if "T" not in v and " " not in v:
+        if is_date_only(v):
             try:
-                boundary = time(23, 59, 59) if end_of_day else time(0, 0, 0)
+                boundary = END_OF_DAY if end_of_day else time(0, 0, 0)
                 return datetime.combine(
-                    date.fromisoformat(v), boundary, tzinfo=timezone.utc
+                    parse_date_only(v), boundary, tzinfo=timezone.utc
                 )
             except ValueError:
                 pass
@@ -181,13 +205,14 @@ class RecallAsOfRequest(BaseModel):
         if isinstance(v, datetime):
             return v if v.tzinfo else v.replace(tzinfo=timezone.utc)
         if isinstance(v, date):
-            return datetime.combine(v, time(23, 59, 59), tzinfo=timezone.utc)
+            return datetime.combine(v, END_OF_DAY, tzinfo=timezone.utc)
         if isinstance(v, str):
-            # Date-only (no time component) → end of day
-            if "T" not in v and " " not in v:
+            # Date-only (no time component) → end of day. Delegated to the shared
+            # helper so this route and the read service cannot drift apart.
+            if is_date_only(v):
                 try:
                     return datetime.combine(
-                        date.fromisoformat(v), time(23, 59, 59), tzinfo=timezone.utc
+                        parse_date_only(v), END_OF_DAY, tzinfo=timezone.utc
                     )
                 except ValueError:
                     pass
@@ -227,11 +252,13 @@ class RecallChangedSinceRequest(BaseModel):
         if isinstance(v, date):
             return datetime.combine(v, time(0, 0, 0), tzinfo=timezone.utc)
         if isinstance(v, str):
-            # Date-only (no time component) → start of day
-            if "T" not in v and " " not in v:
+            # Date-only (no time component) → start of day. Uses the same shared
+            # helper as the other date-only paths in this module so all three
+            # agree on what counts as a date, on every supported Python.
+            if is_date_only(v):
                 try:
                     return datetime.combine(
-                        date.fromisoformat(v), time(0, 0, 0), tzinfo=timezone.utc
+                        parse_date_only(v), time(0, 0, 0), tzinfo=timezone.utc
                     )
                 except ValueError:
                     pass
@@ -251,6 +278,20 @@ class RecallRecentRequest(BaseModel):
     limit: int | None = Field(default=None, ge=1, description="Max results")
     type: list[str] | None = Field(default=None, description="Memory type filters")
     tags: list[str] | None = Field(default=None, description="Tag filters")
+    created_after: datetime | date | None = Field(
+        default=None,
+        description=(
+            "Include only memories created at or after this timestamp. "
+            "Date-only values (YYYY-MM-DD) use the start of that day."
+        ),
+    )
+    created_before: datetime | date | None = Field(
+        default=None,
+        description=(
+            "Include only memories created at or before this timestamp. "
+            "Date-only values (YYYY-MM-DD) use the end of that day."
+        ),
+    )
 
     @field_validator("type")
     @classmethod
@@ -258,16 +299,34 @@ class RecallRecentRequest(BaseModel):
         """Reject recent-recall filters that are not supported memory types."""
         return _validate_memory_type_filters(value)
 
+    @field_validator("created_after", mode="before")
+    @classmethod
+    def parse_created_after(cls, v: object) -> datetime | None:
+        """Parse the inclusive lower timestamp bound for recent recall."""
+
+        if v is None:
+            return None
+        return _parse_recall_temporal_bound(v, end_of_day=False)
+
+    @field_validator("created_before", mode="before")
+    @classmethod
+    def parse_created_before(cls, v: object) -> datetime | None:
+        """Parse the inclusive upper timestamp bound for recent recall."""
+
+        if v is None:
+            return None
+        return _parse_recall_temporal_bound(v, end_of_day=True)
+
 
 class MemoryEditRequest(BaseModel):
     """Request body for partial memory record updates."""
 
     title: str | None = Field(default=None, max_length=100)
     content: str | None = Field(default=None, max_length=10000)
-    type: str | None = None
+    type: MemoryType | None = None
     confidence: float | None = Field(default=None, ge=0.0, le=1.0)
-    tags: list[str] | None = None
-    source: str | None = None
+    tags: BoundedTags | None = None
+    source: MemorySource | None = None
 
     def to_updates(self) -> dict[str, object]:
         """Return only fields the caller explicitly wants to update."""
@@ -285,6 +344,8 @@ def enforce_session_scope(session: Session, agent_id: str) -> None:
 
 
 def resolve_recall_limit(request_limit: int | None) -> int:
+    """Resolve and validate the effective recall result limit."""
+
     recall_cfg = _config_manager.get_recall_config()
     raw_limit = (
         request_limit
@@ -362,22 +423,26 @@ async def remember(
 
         # Store memory in agent's namespace.
         result = await asyncio.to_thread(write_service.store_memory, memory)
+        status = str(result.get("status", "unknown"))
+        response_status = "queued" if is_successful_write_result(result) else status
 
-        # Log to local session Markdown summary
-        session_service = get_session_service()
-        await asyncio.to_thread(
-            session_service.log_memory_to_session_summary,
-            agent_id=agent_id,
-            session_id=session.session_id,
-            memory_record=memory,
-        )
+        # Log to local session Markdown summary only after a durable write.
+        if is_successful_write_result(result):
+            session_service = get_session_service()
+            await asyncio.to_thread(
+                session_service.try_log_memory_to_session_summary,
+                agent_id=agent_id,
+                session_id=session.session_id,
+                memory_record=memory,
+                memory_id=result.get("id"),
+            )
 
         return {
             "memory_id": result["id"],
             "agent_id": agent_id,
             "session_id": session.session_id,
             "namespace": session.namespace,
-            "status": "queued",
+            "status": response_status,
             "provenance": request.provenance,
             "confidence": request.confidence,
             # Resolved memory type (auto-parsed when not explicitly provided)
@@ -445,12 +510,18 @@ async def batch_remember(
         # Log each memory to local MD summary
         session_service = get_session_service()
 
-        for record in memory_records:
+        batch_results = result.get("results", [])
+        for index, record in enumerate(memory_records):
+            item_result = batch_results[index] if index < len(batch_results) else None
+            if not is_successful_write_result(item_result):
+                continue
+            memory_id = item_result.get("id") if isinstance(item_result, dict) else None
             await asyncio.to_thread(
-                session_service.log_memory_to_session_summary,
+                session_service.try_log_memory_to_session_summary,
                 agent_id=agent_id,
                 session_id=session.session_id,
                 memory_record=record,
+                memory_id=memory_id,
             )
 
         return {
@@ -610,13 +681,35 @@ async def extract_memories_from_conversation(
         )
 
         session_service = get_session_service()
-        for index, record in enumerate(memory_records):
-            batch_results = result.get("results", [])
-            memory_id = (
-                batch_results[index].get("id") if index < len(batch_results) else None
+
+        if not isinstance(result, dict):
+            raise MemoryError(
+                message="Data corruption detected: Received malformed batch result from storage layer.",
+                details={"item_preview": str(result)[:100]},
             )
+
+        batch_results = result.get("results", [])
+        if not isinstance(batch_results, list):
+            raise MemoryError(
+                message="Data corruption detected: Received malformed batch result array from storage layer.",
+                details={"item_preview": str(batch_results)[:100]},
+            )
+
+        for index, record in enumerate(memory_records):
+            item_result = batch_results[index] if index < len(batch_results) else None
+            if item_result is not None and (
+                not isinstance(item_result, dict) or not item_result
+            ):
+                raise MemoryError(
+                    message="Data corruption detected: Received malformed batch result from storage layer.",
+                    details={"item_preview": str(item_result)[:100]},
+                )
+
+            memory_id = item_result.get("id") if item_result else None
+            if not is_successful_write_result(item_result):
+                continue
             await asyncio.to_thread(
-                session_service.log_memory_to_session_summary,
+                session_service.try_log_memory_to_session_summary,
                 agent_id=agent_id,
                 session_id=session.session_id,
                 memory_record=record,
@@ -987,7 +1080,7 @@ async def generate_daily_summary(
     """
     enforce_session_scope(session, agent_id)
 
-    resolved_date = request.date or datetime.now().strftime("%Y-%m-%d")
+    resolved_date = request.date or utc_date_str()
     _validate_summary_key(agent_id, resolved_date)
     try:
         result = await asyncio.to_thread(
@@ -1019,7 +1112,7 @@ async def generate_conflict_report(
     """
     enforce_session_scope(session, agent_id)
 
-    resolved_date = request.date or datetime.now().strftime("%Y-%m-%d")
+    resolved_date = request.date or utc_date_str()
     _validate_summary_key(agent_id, resolved_date)
     try:
         result = await asyncio.to_thread(
@@ -1054,7 +1147,7 @@ async def list_conflicts(
     # Enforce session scope
     enforce_session_scope(session, agent_id)
 
-    resolved_date = date or datetime.now().strftime("%Y-%m-%d")
+    resolved_date = date or utc_date_str()
     _validate_summary_key(agent_id, resolved_date)
     try:
         conflicts = await asyncio.to_thread(
@@ -1086,7 +1179,7 @@ async def resolve_conflict(
     """
     enforce_session_scope(session, agent_id)
 
-    resolved_date = request.date or datetime.now().strftime("%Y-%m-%d")
+    resolved_date = request.date or utc_date_str()
     _validate_summary_key(agent_id, resolved_date)
     try:
         result = await asyncio.to_thread(
@@ -1233,6 +1326,12 @@ async def recall_recent(
             type=request.type,
             tags=request.tags,
             limit=limit,
+            created_after=request.created_after.isoformat()
+            if request.created_after
+            else None,
+            created_before=request.created_before.isoformat()
+            if request.created_before
+            else None,
         )
 
         return {
