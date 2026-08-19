@@ -1,0 +1,80 @@
+{
+  "conversations": [
+    {
+      "name": "FastAPI backend setup",
+      "chat_messages": [
+        {
+          "sender": "human",
+          "text": "I prefer dark themes in my editor and terminal.",
+          "created_at": "2026-08-01T00:00:00+00:00",
+          "uuid": "m741f33"
+        },
+        {
+          "sender": "human",
+          "text": "Let's build a FastAPI service for our todo app.",
+          "created_at": "2026-08-01T00:05:00+00:00",
+          "uuid": "m82c88d"
+        },
+        {
+          "sender": "human",
+          "text": "Pin all dependency versions — I've been burned by float updates.",
+          "created_at": "2026-08-01T00:10:00+00:00",
+          "uuid": "m1bc368"
+        },
+        {
+          "sender": "human",
+          "text": "I use a Dell XPS 15 for work.",
+          "created_at": "2026-08-01T00:15:00+00:00",
+          "uuid": "mfa0271"
+        },
+        {
+          "sender": "human",
+          "text": "Ship the MVP by Friday.",
+          "created_at": "2026-08-01T00:20:00+00:00",
+          "uuid": "m9c9a42"
+        },
+        {
+          "sender": "assistant",
+          "text": "Got it — I'll pin versions and target a Friday MVP.",
+          "created_at": "2026-08-01T00:25:00+00:00",
+          "uuid": "m11024e"
+        }
+      ]
+    },
+    {
+      "name": "auth debugging",
+      "chat_messages": [
+        {
+          "sender": "human",
+          "text": "The JWT auth is failing in production but works locally.",
+          "created_at": "2026-08-01T00:00:00+00:00",
+          "uuid": "m7441d3"
+        },
+        {
+          "sender": "human",
+          "text": "We use Azure AD as our identity provider.",
+          "created_at": "2026-08-01T00:05:00+00:00",
+          "uuid": "m332b75"
+        },
+        {
+          "sender": "assistant",
+          "text": "Classic — let's compare the clock skew and token lifecycle.",
+          "created_at": "2026-08-01T00:10:00+00:00",
+          "uuid": "mf44954"
+        },
+        {
+          "sender": "human",
+          "text": "Always add tests before you merge.",
+          "created_at": "2026-08-01T00:15:00+00:00",
+          "uuid": "me1f14e"
+        },
+        {
+          "sender": "human",
+          "text": "I prefer async SQLAlchemy over the sync ORM.",
+          "created_at": "2026-08-01T00:20:00+00:00",
+          "uuid": "m2aa514"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,104 @@
+{
+  "conversations": [
+    {
+      "title": "refactor payment service",
+      "mapping": {
+        "71c1289f": {
+          "message": {
+            "author": {
+              "role": "user"
+            },
+            "content": {
+              "content_type": "text",
+              "parts": [
+                "I decided to use Stripe for payments."
+              ]
+            },
+            "create_time": 1785542400
+          },
+          "parent": null
+        },
+        "00c73c10": {
+          "message": {
+            "author": {
+              "role": "user"
+            },
+            "content": {
+              "content_type": "text",
+              "parts": [
+                "Use webhooks for async confirmation."
+              ]
+            },
+            "create_time": 1785543300
+          },
+          "parent": "71c1289f"
+        },
+        "e1397b53": {
+          "message": {
+            "author": {
+              "role": "user"
+            },
+            "content": {
+              "content_type": "text",
+              "parts": [
+                "My goal: cut payment latency under 800ms."
+              ]
+            },
+            "create_time": 1785544200
+          },
+          "parent": "00c73c10"
+        },
+        "3e55414c": {
+          "message": {
+            "author": {
+              "role": "assistant"
+            },
+            "content": {
+              "content_type": "text",
+              "parts": [
+                "Stripe webhooks it is — I'll sketch the flow."
+              ]
+            },
+            "create_time": 1785545100
+          },
+          "parent": "e1397b53"
+        }
+      }
+    },
+    {
+      "title": "observation",
+      "mapping": {
+        "5b39177a": {
+          "message": {
+            "author": {
+              "role": "user"
+            },
+            "content": {
+              "content_type": "text",
+              "parts": [
+                "I like coffee with oat milk."
+              ]
+            },
+            "create_time": 1785542400
+          },
+          "parent": null
+        },
+        "b28ca5cf": {
+          "message": {
+            "author": {
+              "role": "assistant"
+            },
+            "content": {
+              "content_type": "text",
+              "parts": [
+                "Noted. I'll remember the oat milk."
+              ]
+            },
+            "create_time": 1785543300
+          },
+          "parent": "5b39177a"
+        }
+      }
+    }
+  ]
+}

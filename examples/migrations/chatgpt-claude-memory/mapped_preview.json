@@ -1,0 +1,113 @@
+{
+  "claude": [
+    {
+      "title": "I prefer dark themes in my editor and terminal.  Let's build a FastAPI servic...",
+      "content": "I prefer dark themes in my editor and terminal.\n\nLet's build a FastAPI service for our todo app.\n\nPin all dependency versions — I've been burned by float updates.\n\nI use a Dell XPS 15 for work.\n\nShip the MVP by Friday.\n\n---\n[Supporting data]\n- Source: claude\n- Role: user\n- Message refs: m741f33; m82c88d; m1bc368; mfa0271; m9c9a42\n- Original timestamp: 2026-08-01 00:00:00+00:00",
+      "type": "preference",
+      "tags": [
+        "genai",
+        "claude"
+      ],
+      "confidence": 0.6,
+      "source": "claude",
+      "source_ref": "m741f33|m82c88d|m1bc368|mfa0271|m9c9a42",
+      "provenance": "imported",
+      "created_at": "2026-08-01 00:00:00+00:00",
+      "updated_at": "2026-08-19 13:56:07.037948+00:00"
+    },
+    {
+      "title": "Got it — I'll pin versions and target a Friday MVP.",
+      "content": "Got it — I'll pin versions and target a Friday MVP.\n\n---\n[Supporting data]\n- Source: claude\n- Role: assistant\n- Message refs: m11024e\n- Original timestamp: 2026-08-01 00:25:00+00:00",
+      "type": "learning",
+      "tags": [
+        "genai",
+        "claude",
+        "assistant"
+      ],
+      "confidence": 0.7,
+      "source": "claude",
+      "source_ref": "m11024e",
+      "provenance": "imported",
+      "created_at": "2026-08-01 00:25:00+00:00",
+      "updated_at": "2026-08-19 13:56:07.037948+00:00"
+    },
+    {
+      "title": "The JWT auth is failing in production but works locally.  We use Azure AD as...",
+      "content": "The JWT auth is failing in production but works locally.\n\nWe use Azure AD as our identity provider.\n\n---\n[Supporting data]\n- Source: claude\n- Role: user\n- Message refs: m7441d3; m332b75\n- Original timestamp: 2026-08-01 00:00:00+00:00",
+      "type": null,
+      "tags": [
+        "genai",
+        "claude"
+      ],
+      "confidence": 0.6,
+      "source": "claude",
+      "source_ref": "m7441d3|m332b75",
+      "provenance": "imported",
+      "created_at": "2026-08-01 00:00:00+00:00",
+      "updated_at": "2026-08-19 13:56:07.038302+00:00"
+    },
+    {
+      "title": "Classic — let's compare the clock skew and token lifecycle.",
+      "content": "Classic — let's compare the clock skew and token lifecycle.\n\n---\n[Supporting data]\n- Source: claude\n- Role: assistant\n- Message refs: mf44954\n- Original timestamp: 2026-08-01 00:10:00+00:00",
+      "type": "context",
+      "tags": [
+        "genai",
+        "claude",
+        "assistant"
+      ],
+      "confidence": 0.7,
+      "source": "claude",
+      "source_ref": "mf44954",
+      "provenance": "imported",
+      "created_at": "2026-08-01 00:10:00+00:00",
+      "updated_at": "2026-08-19 13:56:07.038302+00:00"
+    },
+    {
+      "title": "Always add tests before you merge.  I prefer async SQLAlchemy over the sync ORM.",
+      "content": "Always add tests before you merge.\n\nI prefer async SQLAlchemy over the sync ORM.\n\n---\n[Supporting data]\n- Source: claude\n- Role: user\n- Message refs: me1f14e; m2aa514\n- Original timestamp: 2026-08-01 00:15:00+00:00",
+      "type": "preference",
+      "tags": [
+        "genai",
+        "claude"
+      ],
+      "confidence": 0.6,
+      "source": "claude",
+      "source_ref": "me1f14e|m2aa514",
+      "provenance": "imported",
+      "created_at": "2026-08-01 00:15:00+00:00",
+      "updated_at": "2026-08-19 13:56:07.038302+00:00"
+    }
+  ],
+  "chatgpt": [
+    {
+      "title": "I decided to use Stripe for payments.  Use webhooks for async confirmation....",
+      "content": "I decided to use Stripe for payments.\n\nUse webhooks for async confirmation.\n\nMy goal: cut payment latency under 800ms.\n\n---\n[Supporting data]\n- Source: chatgpt\n- Role: user\n- Message refs: 71c1289f; 00c73c10; e1397b53\n- Original timestamp: 2026-08-01 00:00:00+00:00",
+      "type": "goal",
+      "tags": [
+        "genai",
+        "chatgpt"
+      ],
+      "confidence": 0.6,
+      "source": "chatgpt",
+      "source_ref": "71c1289f|00c73c10|e1397b53",
+      "provenance": "imported",
+      "created_at": "2026-08-01 00:00:00+00:00",
+      "updated_at": "2026-08-19 13:56:07.038495+00:00"
+    },
+    {
+      "title": "I like coffee with oat milk.",
+      "content": "I like coffee with oat milk.\n\n---\n[Supporting data]\n- Source: chatgpt\n- Role: user\n- Message refs: 5b39177a\n- Original timestamp: 2026-08-01 00:00:00+00:00",
+      "type": "preference",
+      "tags": [
+        "genai",
+        "chatgpt"
+      ],
+      "confidence": 0.6,
+      "source": "chatgpt",
+      "source_ref": "5b39177a",
+      "provenance": "imported",
+      "created_at": "2026-08-01 00:00:00+00:00",
+      "updated_at": "2026-08-19 13:56:07.038542+00:00"
+    }
+  ]
+}

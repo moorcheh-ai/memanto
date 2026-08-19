@@ -1,0 +1,12 @@
+# Minimal deps to run the ChatGPT/Claude migration demo against the local
+# Memanto adapter + OKF exporter. The adapter code itself lives in
+# `memanto/cli/migrate/mappers.py`; these are the transitive imports it
+# reaches (fastapi for path-safety validation, pydantic-settings for config,
+# pyyaml for OKF frontmatter).
+#
+# Note: if you already cloned the full memanto repo and installed it with
+# `pip install -e .`, you can skip this and just run `./run_migration.sh`.
+fastapi>=0.110
+pydantic>=2.0
+pydantic-settings>=2.0
+PyYAML>=6.0

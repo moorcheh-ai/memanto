@@ -7,11 +7,7 @@ source_ref / provenance so they round-trip through OKF, and (5) the MAPPERS
 registry exposes both providers end-to-end.
 """
 
-import json
-import sys
-from pathlib import Path
 
-import pytest
 
 from memanto.cli.migrate.mappers import (
     MAPPERS,
