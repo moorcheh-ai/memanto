@@ -3,8 +3,13 @@ name: CI
 on:
   push:
     branches: main
+    paths-ignore:
+      - 'EXTERNAL_CONTRIBUTORS.md'
   pull_request_review:
     types: [submitted]
+
+permissions:
+  contents: read
 
 jobs:
   lint-and-type-check:

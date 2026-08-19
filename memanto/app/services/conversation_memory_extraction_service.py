@@ -7,11 +7,12 @@ Moorcheh answer-generation path used by the RAG answer endpoint.
 
 from __future__ import annotations
 
-import json
 import re
 from typing import Any
 
+from memanto.app.clients.backend import get_active_llm_model
 from memanto.app.constants import VALID_MEMORY_TYPES
+from memanto.app.utils.json_extraction import iter_json_arrays
 
 
 class ConversationMemoryExtractionService:
@@ -19,7 +20,8 @@ class ConversationMemoryExtractionService:
 
     MAX_MESSAGES = 200
     MAX_MEMORIES = 100
-    MAX_CONTENT_CHARS = 12_000
+    MAX_CONTENT_CHARS = 120_000
+    MAX_MEMORY_CONTENT_CHARS = 10_000
 
     def __init__(self, client: Any) -> None:
         self.client = client
@@ -39,20 +41,41 @@ class ConversationMemoryExtractionService:
         self._validate_messages(messages)
         max_memories = max(1, min(max_memories, self.MAX_MEMORIES))
 
-        response = self.client.answer.generate(
-            namespace=namespace,
-            query=self._conversation_text(messages),
-            top_k=1,
-            temperature=0,
-            ai_model=ai_model or settings.ANSWER_MODEL,
-            kiosk_mode=False,
-            header_prompt=self._header_prompt(max_memories),
-            footer_prompt=self._footer_prompt(),
+        generate_kwargs: dict[str, Any] = {
+            "namespace": "",  # Empty namespace invokes the raw LLM mode directly
+            "query": self._conversation_text(messages),
+            "top_k": 1,
+            "temperature": 0,
+            "kiosk_mode": False,
+            "header_prompt": self._header_prompt(max_memories),
+            "footer_prompt": self._footer_prompt(),
+        }
+        resolved_ai_model = (
+            ai_model
+            if ai_model is not None
+            else get_active_llm_model(settings.ANSWER_MODEL)
         )
+        if resolved_ai_model is not None:
+            generate_kwargs["ai_model"] = resolved_ai_model
+
+        response = self.client.answer.generate(**generate_kwargs)
 
         raw_answer = response.get("answer", "")
-        parsed = self._parse_json_answer(raw_answer)
-        return self._normalize_candidates(parsed, max_memories=max_memories)
+        text = raw_answer.strip()
+        if not text:
+            raise ValueError("Memory extraction returned an empty response")
+
+        for parsed in iter_json_arrays(text):
+            try:
+                normalized = self._normalize_candidates(
+                    parsed, max_memories=max_memories
+                )
+                if normalized:
+                    return normalized
+            except ValueError:
+                continue
+
+        raise ValueError("Memory extraction did not return valid JSON")
 
     def _validate_messages(self, messages: list[dict[str, str]]) -> None:
         if not messages:
@@ -75,10 +98,18 @@ class ConversationMemoryExtractionService:
     def _conversation_text(self, messages: list[dict[str, str]]) -> str:
         lines: list[str] = []
         total = 0
-        for message in messages:
+        for i, message in enumerate(messages):
             line = f"{message['role'].strip()}: {message['content'].strip()}"
-            total += len(line)
+            # Account for the newline separator that join() adds between
+            # accepted messages.  Without this, two lines whose lengths sum
+            # to exactly MAX_CONTENT_CHARS produce a query that exceeds it.
+            separator_len = 1 if lines else 0
+            total += len(line) + separator_len
             if total > self.MAX_CONTENT_CHARS:
+                # Always include at least the first message so the query is
+                # never empty.  Truncate it if it alone exceeds the budget.
+                if i == 0 and not lines:
+                    lines.append(line[: self.MAX_CONTENT_CHARS])
                 break
             lines.append(line)
         return "\n".join(lines)
@@ -91,6 +122,7 @@ class ConversationMemoryExtractionService:
             "commitments, errors, observations, relationships, context, events, "
             "artifacts, or learnings that would be useful in future sessions. "
             "Do not include secrets, API keys, passwords, tokens, or transient chatter. "
+            f"Keep each memory content at or below {self.MAX_MEMORY_CONTENT_CHARS} characters. "
             f"Return at most {max_memories} memories. Valid types: {memory_types}."
         )
 
@@ -99,24 +131,6 @@ class ConversationMemoryExtractionService:
             "Return only JSON. The JSON must be an array of objects with keys: "
             "type, title, content, confidence. Confidence must be 0.0 to 1.0."
         )
-
-    def _parse_json_answer(self, answer: str) -> Any:
-        text = answer.strip()
-        if not text:
-            raise ValueError("Memory extraction returned an empty response")
-
-        fenced = re.search(r"```(?:json)?\s*(.*?)```", text, flags=re.DOTALL)
-        if fenced:
-            text = fenced.group(1).strip()
-
-        try:
-            return json.loads(text)
-        except json.JSONDecodeError:
-            start = text.find("[")
-            end = text.rfind("]")
-            if start != -1 and end != -1 and end > start:
-                return json.loads(text[start : end + 1])
-            raise ValueError("Memory extraction did not return valid JSON")
 
     def _normalize_candidates(
         self, parsed: Any, *, max_memories: int
@@ -134,6 +148,8 @@ class ConversationMemoryExtractionService:
             content = str(item.get("content", "")).strip()
             if not content:
                 continue
+            if len(content) > self.MAX_MEMORY_CONTENT_CHARS:
+                content = content[: self.MAX_MEMORY_CONTENT_CHARS - 3].rstrip() + "..."
 
             memory_type = item.get("type")
             if memory_type:
@@ -163,7 +179,7 @@ class ConversationMemoryExtractionService:
                     "title": title,
                     "content": content,
                     "confidence": confidence,
-                    "source": "conversation",
+                    "source": "system",
                     "provenance": "inferred",
                 }
             )

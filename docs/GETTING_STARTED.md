@@ -283,8 +283,6 @@ You'll see all 17 API endpoints with interactive testing!
       "source": "agent",
       "source_ref": null,
       "provenance": "explicit_statement",
-      "validation_count": 0,
-      "contradiction_detected": false,
       "score": 0.92,
       "created_at": "2025-12-28T10:30:00Z",
       "updated_at": "2025-12-28T10:30:00Z"
@@ -525,8 +523,8 @@ Now that MEMANTO is running, you're ready to build memory-enabled AI agents!
 
 **Recommended reading order:**
 1. ✅ You are here: GETTING_STARTED.md
-2. → [AGENT_INTEGRATION_GUIDE.md](AGENT_INTEGRATION_GUIDE.md) - Complete code examples
-3. → [AGENT_PATTERNS_OVERVIEW.md](AGENT_PATTERNS_OVERVIEW.md) - Choose your pattern
+2. → [AGENT_INTEGRATION_GUIDE.md](AGENT_INTEGRATION_GUIDE.md) — Agent integration patterns
+3. → [SESSION_ARCHITECTURE.md](SESSION_ARCHITECTURE.md) — Session & memory architecture
 4. → [ENHANCEMENTS_SUMMARY.md](ENHANCEMENTS_SUMMARY.md) - Advanced features
 5. → [ARCHITECTURE_ONE_PAGER.md](ARCHITECTURE_ONE_PAGER.md) - System design
 

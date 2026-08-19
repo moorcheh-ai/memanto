@@ -2,7 +2,7 @@
 MEMANTO CLI - Legacy session aliases for agent activation commands.
 """
 
-from datetime import datetime
+from datetime import datetime, timezone
 
 import jwt
 from rich.table import Table
@@ -38,11 +38,13 @@ def session_info():
         payload = jwt.decode(active_session_token, options={"verify_signature": False})
         expires_at_str = payload.get("expires_at")
         if expires_at_str:
-            # Handle fromisoformat replacing Z if needed
+            # Normalize JWT UTC offsets to the CLI's existing naive UTC clock.
             if expires_at_str.endswith("Z"):
-                expires_at_str = expires_at_str[:-1]
+                expires_at_str = expires_at_str[:-1] + "+00:00"
             expires_at = datetime.fromisoformat(expires_at_str)
-            now = datetime.utcnow()
+            if expires_at.tzinfo is None:
+                expires_at = expires_at.replace(tzinfo=timezone.utc)
+            now = datetime.now(timezone.utc)
 
             if now > expires_at:
                 status = "[red]Expired[/red]"

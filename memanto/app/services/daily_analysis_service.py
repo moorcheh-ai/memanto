@@ -6,19 +6,77 @@ the AI daily summary and the conflict report.
 """
 
 import json
+from functools import lru_cache
 from pathlib import Path
 from typing import Any, cast
 
-from memanto.app.clients.backend import get_active_llm_model
+from memanto.app.clients.backend import (
+    get_active_embedding_model,
+    get_active_llm_model,
+)
 from memanto.app.clients.moorcheh import get_moorcheh_client
 from memanto.app.config import get_data_dir, settings
-from memanto.app.core import create_memory_scope
+from memanto.app.core import agent_namespace
 from memanto.app.services.session_service import get_session_service
-from memanto.app.utils.errors import MemoryError
+from memanto.app.utils.errors import MemoryOperationError
 from memanto.app.utils.temporal_helpers import (
     format_current_local_time,
     format_local_time,
 )
+from memanto.app.utils.validation import validate_output_path, validate_safe_id
+
+# Context window of the embedding models Memanto targets. The query budget sits
+# below it so the retrieval query still fits after the backend adds its own
+# framing. Asserted against in tests/test_daily_summary_query_length.py.
+_EMBEDDING_CONTEXT_TOKENS = 2_048
+_EMBEDDING_QUERY_TOKEN_BUDGET = 1_800
+
+
+@lru_cache(maxsize=8)
+def _get_embedding_tokenizer(model: str | None) -> Any | None:
+    """Load the active model's tokenizer without adding a hard dependency.
+
+    ``tiktoken`` is used only when it is already installed and recognizes the
+    configured model. Unknown and server-managed models fall back to the
+    byte-bound path below; this function never downloads tokenizer assets.
+    """
+    if not model:
+        return None
+    try:
+        import tiktoken  # type: ignore[import-not-found]
+    except ImportError:
+        return None
+    try:
+        return tiktoken.encoding_for_model(model)
+    except KeyError:
+        return None
+
+
+def _truncate_embedding_query(
+    text: str,
+    *,
+    model: str | None,
+    token_budget: int = _EMBEDDING_QUERY_TOKEN_BUDGET,
+) -> str:
+    """Fit text within the embedding budget using a tokenizer or safe bound."""
+    tokenizer = _get_embedding_tokenizer(model)
+    if tokenizer is not None:
+        # disallowed_special=() treats tokens like "<|endoftext|>" as ordinary
+        # text. Session content is arbitrary user prose, and tiktoken's default
+        # raises ValueError on those markers -- here that would escape before
+        # generate_summary's try/except turns failures into MemoryOperationError.
+        token_ids = tokenizer.encode(text, disallowed_special=())
+        if len(token_ids) <= token_budget:
+            return text
+        return str(tokenizer.decode(token_ids[:token_budget]))
+
+    # Byte-level BPE and SentencePiece token counts cannot exceed the number
+    # of UTF-8 bytes in their input. Limiting bytes is conservative for normal
+    # prose and also bounds dense Unicode when the backend tokenizer is hidden.
+    encoded = text.encode("utf-8")
+    if len(encoded) <= token_budget:
+        return text
+    return encoded[:token_budget].decode("utf-8", errors="ignore")
 
 
 class DailyAnalysisService:
@@ -49,6 +107,13 @@ class DailyAnalysisService:
         """
         Generate a daily natural language summary for an agent and date.
         """
+        validate_safe_id(agent_id, "agent_id")
+        validate_safe_id(date, "date")
+        # Validate output_path before any I/O so traversal attempts fail fast.
+        resolved_output = validate_output_path(
+            output_path,
+            base_dir=self.summaries_dir.parent,
+        )
         # Find all relevant session MD files
         pattern = f"{agent_id}_{date}_*_summary.md"
         session_files = list(self.sessions_dir.glob(pattern))
@@ -70,16 +135,17 @@ class DailyAnalysisService:
         full_text = "\n\n---\n\n".join(combined_content)
 
         client = get_moorcheh_client()
-        scope = create_memory_scope("agent", agent_id)
-        namespace = scope.to_namespace()
+        namespace = agent_namespace(agent_id)
 
-        summary_prompt = f"""
+        header_prompt = f"""
 Summarize the following session memories from {date} into a concise natural language daily summary.
 Focus on key themes, accomplishments, and high-level activities.
 
 Sessions Content:
 {full_text}
+"""
 
+        footer_prompt = f"""
 Format the output as a Markdown report:
 # Daily Summary for {agent_id} - {date}
 **Generated at:** {format_current_local_time()}
@@ -89,21 +155,29 @@ Format the output as a Markdown report:
 ## Key Themes & Activities
 ...
 """
+        retrieval_query = _truncate_embedding_query(
+            full_text,
+            model=get_active_embedding_model(),
+        )
         try:
-            result = client.answer.generate(
-                namespace=namespace,
-                query=summary_prompt,
-                ai_model=get_active_llm_model(settings.SUMMARY_MODEL),
-                top_k=50,
-            )
+            generate_kwargs: dict[str, Any] = {
+                "namespace": namespace,
+                "query": retrieval_query,
+                "top_k": 50,
+                "header_prompt": header_prompt,
+                "footer_prompt": footer_prompt,
+            }
+            ai_model = get_active_llm_model(settings.SUMMARY_MODEL)
+            if ai_model is not None:
+                generate_kwargs["ai_model"] = ai_model
+            result = client.answer.generate(**generate_kwargs)
             summary_text = result.get("answer", "Failed to generate summary.")
         except Exception as e:
-            raise MemoryError(f"AI summarization failed: {str(e)}")
+            raise MemoryOperationError(f"AI summarization failed: {str(e)}")
 
-        if output_path:
-            summary_path = Path(output_path)
-            # Ensure parent directories exist
-            summary_path.parent.mkdir(parents=True, exist_ok=True)
+        if resolved_output is not None:
+            resolved_output.parent.mkdir(parents=True, exist_ok=True)
+            summary_path = resolved_output
         else:
             summary_path = self.summaries_dir / f"{agent_id}_{date}.md"
 
@@ -138,9 +212,11 @@ Format the output as a Markdown report:
         """
         Generate a structured conflict report (Contradictions, Conflicts, Updates, Duplicates).
         """
-        conflicts_dir = Path.home() / ".memanto" / "conflicts"
-        conflicts_dir.mkdir(parents=True, exist_ok=True)
+        validate_safe_id(agent_id, "agent_id")
+        validate_safe_id(date, "date")
 
+        conflicts_dir = get_data_dir() / "conflicts"
+        conflicts_dir.mkdir(parents=True, exist_ok=True)
         pattern = f"{agent_id}_{date}_*_summary.md"
         session_files = list(self.sessions_dir.glob(pattern))
 
@@ -155,11 +231,16 @@ Format the output as a Markdown report:
         full_text = "\n\n---\n\n".join(combined_content)
 
         client = get_moorcheh_client()
-        scope = create_memory_scope("agent", agent_id)
-        namespace = scope.to_namespace()
+        namespace = agent_namespace(agent_id)
 
-        conflict_prompt = f"""
-Analyze the following session memories from {date} against historical knowledge for this agent.
+        # --- Decouple instructions from the embedded query (issue #1329) ---
+        # The ``query`` parameter is embedded for similarity retrieval and
+        # must stay within the embedding model's context window (e.g. 2048
+        # tokens for nomic-embed-text).  Instructions and full session content
+        # go into ``header_prompt`` / ``footer_prompt`` which are passed to
+        # the LLM but NOT embedded.
+
+        header_prompt = f"""Analyze the following session memories from {date} against historical knowledge for this agent.
 
 CRITICAL INSTRUCTIONS:
 1. ONLY report conflicts, contradictions, updates, or duplicates that involve AT LEAST ONE of the memories from the "Recent Sessions Content" provided below.
@@ -174,9 +255,9 @@ Identify:
 4. Conflicts: Semantic disagreements between new and historical memories.
 
 Recent Sessions Content:
-{full_text}
+{full_text}"""
 
-You MUST respond with ONLY a valid JSON array. No markdown, no explanation, no code fences.
+        footer_prompt = """You MUST respond with ONLY a valid JSON array. No markdown, no explanation, no code fences.
 Each element must be an object with these exact keys:
 - "type": one of "contradiction", "update", "duplicate", "conflict"
 - "title": short description of the issue
@@ -190,18 +271,31 @@ Each element must be an object with these exact keys:
 If there are NO conflicts, return an empty array: []
 
 Example response format:
-[{{"type": "contradiction", "title": "Database preference changed", "old_memory_id": "abc-123", "old_content": "We use PostgreSQL", "new_memory_id": "def-456", "new_content": "We migrated to MongoDB", "description": "New memory contradicts old database preference", "recommendation": "keep_new"}}]
-"""
+[{"type": "contradiction", "title": "Database preference changed", "old_memory_id": "abc-123", "old_content": "We use PostgreSQL", "new_memory_id": "def-456", "new_content": "We migrated to MongoDB", "description": "New memory contradicts old database preference", "recommendation": "keep_new"}]"""
+
+        # Use a truncated digest of the session content as the retrieval
+        # query so it stays within the embedding context window.  The full
+        # text is still available to the LLM via header_prompt.
+        query_digest = _truncate_embedding_query(
+            full_text,
+            model=get_active_embedding_model(),
+        )
+
         try:
-            result = client.answer.generate(
-                namespace=namespace,
-                query=conflict_prompt,
-                ai_model=get_active_llm_model(settings.SUMMARY_MODEL),
-                top_k=50,
-            )
+            generate_kwargs = {
+                "namespace": namespace,
+                "query": query_digest,
+                "top_k": 50,
+                "header_prompt": header_prompt,
+                "footer_prompt": footer_prompt,
+            }
+            ai_model = get_active_llm_model(settings.SUMMARY_MODEL)
+            if ai_model is not None:
+                generate_kwargs["ai_model"] = ai_model
+            result = client.answer.generate(**generate_kwargs)
             conflict_text = result.get("answer", "[]")
         except Exception as e:
-            raise MemoryError(f"Conflict detection failed: {str(e)}")
+            raise MemoryOperationError(f"Conflict detection failed: {str(e)}")
 
         # Parse JSON from the AI response
         conflicts_data = []
@@ -219,62 +313,68 @@ Example response format:
                 clean_text = clean_text[:-3].strip()
 
             parsed = json.loads(clean_text)
-            if isinstance(parsed, list):
-                # Filter out self-referencing conflicts (same ID on both sides)
-                parsed = [
-                    item
-                    for item in parsed
-                    if not (
-                        item.get("old_memory_id")
-                        and item.get("new_memory_id")
-                        and item["old_memory_id"] == item["new_memory_id"]
-                    )
-                ]
-                # Add resolved=False, resolution, and timestamps to each conflict
-                for item in parsed:
-                    item.setdefault("resolved", False)
-                    item.setdefault("resolution", None)
+            if not isinstance(parsed, list) or not all(
+                isinstance(item, dict) for item in parsed
+            ):
+                raise ValueError(
+                    "AI response parsed as JSON but is not a list of objects"
+                )
 
-                    # Fetch timestamps and source
-                    for prefix in ["old", "new"]:
-                        mem_id = item.get(f"{prefix}_memory_id")
-                        # Default values
-                        item[f"{prefix}_created_at"] = None
-                        item[f"{prefix}_source"] = "unknown"
+            # Filter out self-referencing conflicts (same ID on both sides)
+            parsed = [
+                item
+                for item in parsed
+                if not (
+                    item.get("old_memory_id")
+                    and item.get("new_memory_id")
+                    and item["old_memory_id"] == item["new_memory_id"]
+                )
+            ]
+            # Add resolved=False, resolution, and timestamps to each conflict
+            for item in parsed:
+                item.setdefault("resolved", False)
+                item.setdefault("resolution", None)
 
-                        if mem_id:
-                            try:
-                                doc_result = client.documents.get(
-                                    namespace_name=namespace, ids=[mem_id]
+                # Fetch timestamps and source
+                for prefix in ["old", "new"]:
+                    mem_id = item.get(f"{prefix}_memory_id")
+                    # Default values
+                    item[f"{prefix}_created_at"] = None
+                    item[f"{prefix}_source"] = "unknown"
+
+                    if mem_id:
+                        try:
+                            doc_result = client.documents.get(
+                                namespace_name=namespace, ids=[mem_id]
+                            )
+                            # Note: Moorcheh SDK documents.get returns the list under "items", not "documents" contrary to its typed response model
+                            doc_dict = cast(dict[str, Any], doc_result)
+                            if doc_dict and doc_dict.get("items"):
+                                doc = doc_dict["items"][0]
+                                metadata = doc.get("metadata") or {}
+
+                                # Fallback to flat fields if metadata object is empty
+                                created_at = metadata.get("created_at") or doc.get(
+                                    "created_at"
                                 )
-                                # Note: Moorcheh SDK documents.get returns the list under "items", not "documents" contrary to its typed response model
-                                doc_dict = cast(dict[str, Any], doc_result)
-                                if doc_dict and doc_dict.get("items"):
-                                    doc = doc_dict["items"][0]
-                                    metadata = doc.get("metadata") or {}
-
-                                    # Fallback to flat fields if metadata object is empty
-                                    created_at = metadata.get("created_at") or doc.get(
-                                        "created_at"
-                                    )
-                                    source = (
-                                        metadata.get("source")
-                                        or doc.get("source")
-                                        or "unknown"
-                                    )
-
-                                    item[f"{prefix}_created_at"] = format_local_time(
-                                        created_at
-                                    )
-                                    item[f"{prefix}_source"] = source
-                            except Exception as e:
-                                print(
-                                    f"Note: Could not fetch metadata for memory {mem_id}: {e}"
+                                source = (
+                                    metadata.get("source")
+                                    or doc.get("source")
+                                    or "unknown"
                                 )
 
-                conflicts_data = parsed
+                                item[f"{prefix}_created_at"] = format_local_time(
+                                    created_at
+                                )
+                                item[f"{prefix}_source"] = source
+                        except Exception as e:
+                            print(
+                                f"Note: Could not fetch metadata for memory {mem_id}: {e}"
+                            )
+
+            conflicts_data = parsed
         except (json.JSONDecodeError, ValueError):
-            # If AI didn't return valid JSON, wrap the raw text as a single conflict
+            # If AI didn't return valid JSON (or returned wrong shape), wrap the raw text as a single conflict
             if conflict_text.strip() and conflict_text.strip() != "[]":
                 conflicts_data = [
                     {

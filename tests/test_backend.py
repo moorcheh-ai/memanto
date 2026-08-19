@@ -6,6 +6,7 @@ from unittest.mock import patch
 
 from memanto.app.clients.backend import (
     Backend,
+    get_active_embedding_model,
     get_active_llm_model,
     parse_backend,
 )
@@ -77,6 +78,44 @@ class TestActiveLlmModel:
         assert get_active_llm_model("anthropic.claude-sonnet-4-6") is None
 
 
+class TestActiveEmbeddingModel:
+    def test_on_prem_rejects_malformed_state_shapes(self, tmp_path, monkeypatch):
+        import json
+
+        from memanto.app.config import settings
+
+        monkeypatch.setattr(settings, "MEMANTO_BACKEND", "on-prem")
+        monkeypatch.setattr(
+            "memanto.app.clients.backend.Path",
+            type("P", (), {"home": classmethod(lambda cls: tmp_path)}),
+        )
+        state_dir = tmp_path / ".memanto" / "on-prem"
+        state_dir.mkdir(parents=True)
+        state_path = state_dir / "state.json"
+
+        for malformed_state in ([], "model", {"embedding_model": 42}):
+            state_path.write_text(json.dumps(malformed_state))
+            assert get_active_embedding_model() is None
+
+    def test_on_prem_reads_nonempty_embedding_model(self, tmp_path, monkeypatch):
+        import json
+
+        from memanto.app.config import settings
+
+        monkeypatch.setattr(settings, "MEMANTO_BACKEND", "on-prem")
+        monkeypatch.setattr(
+            "memanto.app.clients.backend.Path",
+            type("P", (), {"home": classmethod(lambda cls: tmp_path)}),
+        )
+        state_dir = tmp_path / ".memanto" / "on-prem"
+        state_dir.mkdir(parents=True)
+        (state_dir / "state.json").write_text(
+            json.dumps({"embedding_model": "nomic-embed-text"})
+        )
+
+        assert get_active_embedding_model() == "nomic-embed-text"
+
+
 class TestOnPremClient:
     def test_answer_generate_delegates_to_raw_client(self):
         """OnPremClient.answer.generate must pass through to the on-prem
@@ -108,8 +147,155 @@ class TestOnPremClient:
             result = client.answer.generate(namespace="x", query="y")
             assert result == {"answer": "ok", "namespace": "x"}
 
+    def test_upload_file_uses_distinct_staging_paths_for_same_basename(self, tmp_path):
+        """On-prem file uploads are async, so same-basename sources must not
+        share one staging path under ~/.moorcheh/uploads."""
+        from memanto.app.clients import onprem
+
+        class _FakeFiles:
+            def __init__(self):
+                self.uploaded_paths = []
+
+            def upload(self, namespace_name, files):
+                self.uploaded_paths.append(files[0]["path"])
+                return {"message": f"accepted {namespace_name}"}
+
+        class _FakeRaw:
+            def __init__(self):
+                self.documents = object()
+                self.files = _FakeFiles()
+
+        upload_root = tmp_path / "uploads"
+        first_dir = tmp_path / "first"
+        second_dir = tmp_path / "second"
+        first_dir.mkdir()
+        second_dir.mkdir()
+        first = first_dir / "notes.txt"
+        second = second_dir / "notes.txt"
+        first.write_text("first payload", encoding="utf-8")
+        second.write_text("second payload", encoding="utf-8")
+
+        raw = _FakeRaw()
+
+        def ensure_upload_root():
+            upload_root.mkdir(parents=True, exist_ok=True)
+            return upload_root
+
+        with patch.object(
+            onprem,
+            "_import_docker_runtime_helpers",
+            return_value=(
+                ensure_upload_root,
+                lambda host_file, _root: str(host_file),
+            ),
+        ):
+            adapter = onprem._DocumentsAdapter(raw)
+            adapter.upload_file("memanto_agent_test", first)
+            adapter.upload_file("memanto_agent_test", second)
+
+        assert len(raw.files.uploaded_paths) == 2
+        assert raw.files.uploaded_paths[0] != raw.files.uploaded_paths[1]
+        assert {p.name for p in upload_root.iterdir()} != {"notes.txt"}
+
 
 class TestSingletonDispatch:
+    def test_dependency_wrappers_plain_calls_use_none_api_key(self):
+        """Plain calls must forward ``None`` (not FastAPI ``Header`` metadata)."""
+        from memanto.app.clients import moorcheh as mclients
+
+        sync_client = object()
+        async_client = object()
+
+        with (
+            patch.object(
+                mclients.moorcheh_client,
+                "get_client",
+                return_value=sync_client,
+            ) as sync_dispatcher,
+            patch.object(
+                mclients.moorcheh_client,
+                "get_async_client",
+                return_value=async_client,
+            ) as async_dispatcher,
+        ):
+            assert mclients.get_moorcheh_client() is sync_client
+            assert mclients.get_async_moorcheh_client() is async_client
+
+        sync_dispatcher.assert_called_once_with(api_key=None)
+        async_dispatcher.assert_called_once_with(api_key=None)
+
+    def test_backend_switch_rebuilds_cached_client_without_manual_reset(self):
+        from memanto.app.clients import moorcheh as mclients
+        from memanto.app.clients import onprem
+        from memanto.app.config import settings
+
+        original = settings.MEMANTO_BACKEND
+        cloud_client = object()
+        on_prem_client = object()
+        mclients.moorcheh_client.reset_client()
+
+        try:
+            with (
+                patch.object(
+                    mclients, "MoorchehClient", return_value=cloud_client
+                ) as cloud_constructor,
+                patch.object(
+                    onprem, "OnPremClient", return_value=on_prem_client
+                ) as on_prem_constructor,
+            ):
+                settings.MEMANTO_BACKEND = "cloud"
+                assert mclients.moorcheh_client.get_client() is cloud_client
+
+                settings.MEMANTO_BACKEND = "on-prem"
+                assert mclients.moorcheh_client.get_client() is on_prem_client
+
+                cloud_constructor.assert_called_once_with(
+                    api_key=settings.MOORCHEH_API_KEY
+                )
+                on_prem_constructor.assert_called_once_with(
+                    base_url=settings.MOORCHEH_ONPREM_URL,
+                    timeout=settings.MOORCHEH_ONPREM_TIMEOUT,
+                )
+        finally:
+            settings.MEMANTO_BACKEND = original
+            mclients.moorcheh_client.reset_client()
+
+    def test_backend_switch_rebuilds_cached_async_client_without_manual_reset(self):
+        from memanto.app.clients import moorcheh as mclients
+        from memanto.app.clients import onprem
+        from memanto.app.config import settings
+
+        original = settings.MEMANTO_BACKEND
+        cloud_client = object()
+        on_prem_client = object()
+        mclients.moorcheh_client.reset_client()
+
+        try:
+            with (
+                patch.object(
+                    mclients, "AsyncMoorchehClient", return_value=cloud_client
+                ) as cloud_constructor,
+                patch.object(
+                    onprem, "AsyncOnPremClient", return_value=on_prem_client
+                ) as on_prem_constructor,
+            ):
+                settings.MEMANTO_BACKEND = "cloud"
+                assert mclients.moorcheh_client.get_async_client() is cloud_client
+
+                settings.MEMANTO_BACKEND = "on-prem"
+                assert mclients.moorcheh_client.get_async_client() is on_prem_client
+
+                cloud_constructor.assert_called_once_with(
+                    api_key=settings.MOORCHEH_API_KEY
+                )
+                on_prem_constructor.assert_called_once_with(
+                    base_url=settings.MOORCHEH_ONPREM_URL,
+                    timeout=settings.MOORCHEH_ONPREM_TIMEOUT,
+                )
+        finally:
+            settings.MEMANTO_BACKEND = original
+            mclients.moorcheh_client.reset_client()
+
     def test_cloud_returns_cloud_client(self):
         """On cloud, the dispatcher must not return an OnPremClient."""
         from memanto.app.clients import moorcheh as mclients
@@ -176,3 +362,46 @@ class TestDataDirRouting:
         result = app_config.get_data_dir()
         assert result == tmp_path / ".memanto" / "on-prem"
         assert result.exists()
+
+
+class TestExportDataDirRouting:
+    def test_export_cache_is_isolated_by_backend(self, tmp_path, monkeypatch):
+        from memanto.app import config as app_config
+        from memanto.app.services.memory_export_service import MemoryExportService
+        from memanto.cli.client.direct_client import DirectClient
+        from memanto.cli.client.sdk_client import SdkClient
+
+        monkeypatch.setattr(app_config.settings, "MEMANTO_BACKEND", "on-prem")
+        monkeypatch.setattr(app_config.Path, "home", classmethod(lambda cls: tmp_path))
+
+        cloud_cache = tmp_path / ".memanto" / "exports" / "agent-1_memory.md"
+        cloud_cache.parent.mkdir(parents=True)
+        cloud_cache.write_text("# cloud export", encoding="utf-8")
+
+        on_prem_cache = (
+            tmp_path / ".memanto" / "on-prem" / "exports" / "agent-1_memory.md"
+        )
+        on_prem_cache.parent.mkdir(parents=True)
+        on_prem_cache.write_text("# on-prem export", encoding="utf-8")
+
+        assert MemoryExportService().exports_dir == on_prem_cache.parent
+
+        for client_cls in (DirectClient, SdkClient):
+            client = client_cls(api_key="dummy-key")
+            export_calls = []
+            monkeypatch.setattr(
+                client,
+                "export_memory_md",
+                lambda export_calls=export_calls, **kwargs: export_calls.append(kwargs)
+                or {"output_path": str(on_prem_cache)},
+            )
+            project_dir = tmp_path / "projects" / client_cls.__name__
+
+            result = client.sync_memory_to_project("agent-1", str(project_dir))
+
+            assert result["source"] == "cache"
+            assert not export_calls
+            assert (project_dir / "MEMORY.md").read_text(encoding="utf-8") == (
+                "# on-prem export"
+            )
+            assert cloud_cache.read_text(encoding="utf-8") == "# cloud export"

@@ -1381,7 +1381,8 @@
 
             .charts-row,
             .form-row,
-            .conflict-memories {
+            .conflict-memories,
+            .hh-stats {
                 grid-template-columns: 1fr;
             }
         }
@@ -2504,11 +2505,20 @@
                     <h2>Memory Explorer</h2>
                     <p>Browse, search, and filter all stored memories</p>
                 </div>
-                <div class="time-machine-bar">
+                <div class="time-machine-bar" style="flex-wrap:wrap">
                     <span>🕰️</span>
-                    <label>Time Machine:</label>
-                    <input type="date" id="tmDate">
-                    <button class="btn btn-sm btn-secondary" onclick="doTimeMachine()">Travel</button>
+                    <label>View:</label>
+                    <select id="tmMode" onchange="onTmModeChange()" style="width:150px">
+                        <option value="">Latest</option>
+                        <option value="asof">As of date</option>
+                        <option value="since">Changed since</option>
+                        <option value="range">Date range</option>
+                    </select>
+                    <input type="date" id="tmDate" style="display:none">
+                    <input type="date" id="tmFrom" style="display:none">
+                    <span id="tmRangeSep" style="display:none;color:var(--text-dim)">to</span>
+                    <input type="date" id="tmTo" style="display:none">
+                    <button class="btn btn-sm btn-secondary" onclick="loadExplorer()">Apply</button>
                     <button class="btn btn-sm btn-secondary" onclick="resetTimeMachine()">Reset to Now</button>
                     <span id="tmStatus"
                         style="font-size:11px;color:var(--text-dim);font-family:var(--font-mono)"></span>
@@ -2650,14 +2660,16 @@
            ================================================================ */
 
         // State
-        const S = { config: null, agentId: null, token: null, apiKey: null, memories: [], charts: {}, connections: [], activeConnection: null, cwd: '' };
+        const S = { config: null, agentId: null, token: null, memories: [], charts: {}, connections: [], activeConnection: null, cwd: '' };
 
         // API helper
         async function api(method, path, body) {
             const headers = { 'Content-Type': 'application/json' };
-            if (S.apiKey) headers['Authorization'] = `Bearer ${S.apiKey}`;
+            // The Moorcheh API key is never sent from the browser. The UI is
+            // served same-origin over loopback, which require_management_access
+            // already accepts, so the raw credential stays server-side.
             if (S.token) headers['X-Session-Token'] = S.token;
-            const opts = { method, headers };
+            const opts = { method, headers, credentials: 'same-origin' };
             if (body) opts.body = JSON.stringify(body);
             const res = await fetch(path, opts);
             if (!res.ok) {
@@ -2668,6 +2680,10 @@
             }
             if (res.status === 204) return null;
             return res.json();
+        }
+
+        function hasActiveSession() {
+            return !!(S.agentId && (S.token || (S.config && S.config.has_active_session)));
         }
 
         // Toast
@@ -2805,10 +2821,7 @@
             try {
                 S.config = await api('GET', '/api/ui/config');
                 S.agentId = S.config.active_agent_id;
-                S.token = S.config.session_token;
-                if (S.config.api_key_configured) {
-                    S.apiKey = S.config.api_key || null;
-                }
+                S.token = null;
             } catch (e) {
                 console.warn('Config load failed:', e);
             }
@@ -2926,12 +2939,12 @@
             if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Activating...'; }
             try {
                 const session = await api('POST', `/api/v2/agents/${agentId}/activate`);
-                // Adopt the new session so all subsequent operations use it
+                // Adopt the active session; browser calls authenticate via the
+                // HttpOnly same-origin cookie set by the server.
                 S.agentId = session.agent_id;
-                S.token = session.session_token;
+                S.token = null;
                 if (S.config) {
                     S.config.active_agent_id = session.agent_id;
-                    S.config.session_token = session.session_token;
                     S.config.has_active_session = true;
                 }
                 // Invalidate cached views tied to the previous agent
@@ -2955,7 +2968,6 @@
                 S.token = null;
                 if (S.config) {
                     S.config.active_agent_id = null;
-                    S.config.session_token = null;
                     S.config.has_active_session = false;
                 }
                 S._explorerLoaded = false;
@@ -3014,33 +3026,33 @@
                     const agent = await api('GET', `/api/v2/agents/${S.agentId}`);
                     profile.innerHTML = `
                 <table class="config-table"><tbody>
-                <tr><td>Agent ID</td><td><strong style="color:var(--accent)">${agent.agent_id}</strong></td></tr>
-                <tr><td>Pattern</td><td><span class="badge badge-accent">${agent.pattern || '—'}</span></td></tr>
-                <tr><td>Description</td><td>${agent.description || '—'}</td></tr>
-                <tr><td>Namespace</td><td><code style="color:var(--cyan);font-family:var(--font-mono)">${agent.namespace || '—'}</code></td></tr>
+                <tr><td>Agent ID</td><td><strong style="color:var(--accent)">${escHtml(agent.agent_id)}</strong></td></tr>
+                <tr><td>Pattern</td><td><span class="badge badge-accent">${escHtml(agent.pattern || '—')}</span></td></tr>
+                <tr><td>Description</td><td>${escHtml(agent.description || '—')}</td></tr>
+                <tr><td>Namespace</td><td><code style="color:var(--cyan);font-family:var(--font-mono)">${escHtml(agent.namespace || '—')}</code></td></tr>
                 <tr><td>Created</td><td>${fmtDate(agent.created_at)}</td></tr>
                 <tr><td>Sessions</td><td>${agent.session_count ?? '—'}</td></tr>
                 </tbody></table>`;
-                } catch (e) { profile.innerHTML = `<p style="color:var(--text-dim)">Could not load agent: ${e.message}</p>`; }
+                } catch (e) { profile.innerHTML = `<p style="color:var(--text-dim)">Could not load agent: ${escHtml(e.message)}</p>`; }
             } else {
                 profile.innerHTML = '<p style="color:var(--text-dim)">No active agent. <a href="#" onclick="goToPage(\'agents\');return false" style="color:var(--accent);text-decoration:none">Go to the Agents page</a> to activate one.</p>';
             }
 
-            if (S.token && S.agentId) {
+            if (hasActiveSession()) {
                 try {
                     const sess = await api('GET', '/api/v2/status');
                     const hrs = Math.floor((sess.time_remaining_seconds || 0) / 3600);
                     const mins = Math.floor(((sess.time_remaining_seconds || 0) % 3600) / 60);
                     session.innerHTML = `
                 <table class="config-table"><tbody>
-                <tr><td>Status</td><td><span class="badge badge-success">${sess.status || 'active'}</span></td></tr>
-                <tr><td>Pattern</td><td>${sess.pattern || '—'}</td></tr>
-                <tr><td>Namespace</td><td><code style="color:var(--cyan);font-family:var(--font-mono)">${sess.namespace || '—'}</code></td></tr>
+                <tr><td>Status</td><td><span class="badge badge-success">${escHtml(sess.status || 'active')}</span></td></tr>
+                <tr><td>Pattern</td><td>${escHtml(sess.pattern || '—')}</td></tr>
+                <tr><td>Namespace</td><td><code style="color:var(--cyan);font-family:var(--font-mono)">${escHtml(sess.namespace || '—')}</code></td></tr>
                 <tr><td>Started</td><td>${fmtDate(sess.started_at)}</td></tr>
                 <tr><td>Expires</td><td>${fmtDate(sess.expires_at)}</td></tr>
                 <tr><td>Time Remaining</td><td><strong style="color:var(--accent)">${hrs}h ${mins}m</strong></td></tr>
                 </tbody></table>`;
-                } catch (e) { session.innerHTML = `<p style="color:var(--warning)">Session may be expired: ${e.message}</p>`; }
+                } catch (e) { session.innerHTML = `<p style="color:var(--warning)">Session may be expired: ${escHtml(e.message)}</p>`; }
             } else {
                 session.innerHTML = '<p style="color:var(--text-dim)">No active session</p>';
             }
@@ -3049,11 +3061,12 @@
         // ----------------------------------------------------------------
         // Today's-summary card (dashboard) + cross-page navigation helper
         // ----------------------------------------------------------------
+        /**
+         * Return the UTC calendar date used to bucket session summaries.
+         * Local calendar fields can select yesterday's file near UTC midnight.
+         */
         function todayKey() {
-            const d = new Date();
-            const m = String(d.getMonth() + 1).padStart(2, '0');
-            const day = String(d.getDate()).padStart(2, '0');
-            return `${d.getFullYear()}-${m}-${day}`;
+            return new Date().toISOString().slice(0, 10);
         }
 
         async function refreshTodaySummaryCard() {
@@ -3110,7 +3123,7 @@
         // PLAYGROUND - REMEMBER
         // ================================================================
         async function doRemember() {
-            if (!S.agentId || !S.token) { toast('No active agent/session. Activate via CLI first.', 'error'); return; }
+            if (!hasActiveSession()) { toast('No active agent/session. Activate via CLI first.', 'error'); return; }
             const content = document.getElementById('remContent').value.trim();
             if (!content) { toast('Memory content is required', 'error'); return; }
             const title = document.getElementById('remTitle').value.trim() || (content.length > 47 ? content.substring(0, 47) + '...' : content);
@@ -3141,7 +3154,7 @@
         // PLAYGROUND - ANSWER (RAG)
         // ================================================================
         async function doAnswer() {
-            if (!S.agentId || !S.token) { toast('No active agent/session', 'error'); return; }
+            if (!hasActiveSession()) { toast('No active agent/session', 'error'); return; }
             const input = document.getElementById('askInput');
             const q = input.value.trim();
             if (!q) return;
@@ -3155,7 +3168,7 @@
                 document.getElementById('answerLoading').remove();
                 let sourcesHtml = '';
                 if (res.sources && res.sources.length) {
-                    sourcesHtml = `<div class="chat-sources">Sources: ${res.sources.map(s => `<span class="badge badge-info" style="margin:2px">${trunc(s.title || s.id || 'memory', 30)}</span>`).join('')}</div>`;
+                    sourcesHtml = `<div class="chat-sources">Sources: ${res.sources.map(s => `<span class="badge badge-info" style="margin:2px">${escHtml(trunc(s.title || s.id || 'memory', 30))}</span>`).join('')}</div>`;
                 }
                 msgs.innerHTML += `<div class="chat-msg assistant">${escHtml(res.answer || 'No answer generated.')}${sourcesHtml}</div>`;
             } catch (e) {
@@ -3169,7 +3182,7 @@
         // PLAYGROUND - RECALL
         // ================================================================
         async function doRecall() {
-            if (!S.agentId || !S.token) { toast('No active agent/session', 'error'); return; }
+            if (!hasActiveSession()) { toast('No active agent/session', 'error'); return; }
             const q = document.getElementById('recQuery').value.trim();
             if (!q) { toast('Search query is required', 'error'); return; }
             const body = { query: q, limit: parseInt(document.getElementById('recLimit').value) || 10 };
@@ -3184,7 +3197,7 @@
                 const mems = res.memories || [];
                 if (!mems.length) { box.innerHTML = '<p style="color:var(--text-dim);padding:20px">No memories found</p>'; return; }
                 box.innerHTML = buildMemoryTable(mems, true);
-            } catch (e) { box.innerHTML = `<p style="color:var(--error);padding:20px">Error: ${e.message}</p>`; }
+            } catch (e) { box.innerHTML = `<p style="color:var(--error);padding:20px">Error: ${escHtml(e.message)}</p>`; }
         }
 
         // ================================================================
@@ -3194,7 +3207,7 @@
         const MAX_UPLOAD_BYTES = 5 * 1024 * 1024 * 1024; // 5GB — mirrors the backend/SDK limit
 
         async function doUpload() {
-            if (!S.agentId || !S.token) { toast('No active agent/session. Activate an agent first.', 'error'); return; }
+            if (!hasActiveSession()) { toast('No active agent/session. Activate an agent first.', 'error'); return; }
             const input = document.getElementById('uplFile');
             const file = input.files && input.files[0];
             if (!file) { toast('Choose a file to upload', 'error'); return; }
@@ -3211,9 +3224,8 @@
             const fd = new FormData();
             fd.append('file', file);
             // Multipart upload bypasses the JSON api() helper so the browser can set
-            // the multipart boundary itself — only the auth headers are forwarded.
+            // the multipart boundary itself — only the session header is forwarded.
             const headers = {};
-            if (S.apiKey) headers['Authorization'] = `Bearer ${S.apiKey}`;
             if (S.token) headers['X-Session-Token'] = S.token;
 
             const btn = document.getElementById('btnUpload');
@@ -3221,7 +3233,7 @@
             btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Uploading...';
             out.innerHTML = '';
             try {
-                const res = await fetch(`/api/v2/agents/${S.agentId}/upload-file`, { method: 'POST', headers, body: fd });
+                const res = await fetch(`/api/v2/agents/${S.agentId}/upload-file`, { method: 'POST', headers, body: fd, credentials: 'same-origin' });
                 const data = await res.json().catch(() => ({ detail: res.statusText }));
                 if (!res.ok) {
                     let msg = data.detail || res.statusText;
@@ -3339,35 +3351,66 @@
         // ================================================================
         // MEMORY EXPLORER
         // ================================================================
-        async function loadExplorer(asOfDate) {
-            if (!S.agentId || !S.token) {
+        async function loadExplorer() {
+            if (!hasActiveSession()) {
                 document.getElementById('explorerTable').innerHTML = '<p style="color:var(--text-dim);padding:20px">No active agent. <a href="#" onclick="goToPage(\'agents\');return false" style="color:var(--accent);text-decoration:none">Go to the Agents page</a> to activate one.</p>';
                 return;
             }
             const q = document.getElementById('expSearch').value.trim();
             const type = document.getElementById('expType').value;
+            const mode = document.getElementById('tmMode').value;
+            const tmDate = document.getElementById('tmDate').value;
+            const from = document.getElementById('tmFrom').value;
+            const to = document.getElementById('tmTo').value;
+
+            if ((mode === 'asof' || mode === 'since') && !tmDate) {
+                toast(`Select a ${mode === 'asof' ? '"as of"' : '"changed since"'} date first`, 'error');
+                return;
+            }
+            if (mode === 'range' && !from && !to) {
+                toast('Pick a From or To date for the range', 'error');
+                return;
+            }
+
             const box = document.getElementById('explorerTable');
             box.innerHTML = '<div class="loading-overlay"><span class="spinner"></span> Loading memories...</div>';
-            try {
-                let url, body;
-                if (asOfDate) {
-                    body = { as_of: asOfDate, limit: 50 };
-                    if (type) body.type = [type];
-                    url = `/api/v2/agents/${S.agentId}/recall/as-of`;
-                } else if (!q) {
-                    body = { limit: 50 };
-                    if (type) body.type = [type];
-                    url = `/api/v2/agents/${S.agentId}/recall/recent`;
-                } else {
-                    body = { query: q, limit: 50 };
-                    if (type) body.type = [type];
+            document.getElementById('tmStatus').textContent =
+                mode === 'asof' ? `Viewing memory as of ${tmDate}` :
+                mode === 'since' ? `Showing changes since ${tmDate}` :
+                mode === 'range' ? `Showing ${from || '…'} → ${to || '…'}` : '';
+
+            let url, body = { limit: 50 };
+            if (type) body.type = [type];
+
+            // Send bare YYYY-MM-DD values as-is (not Date.toISOString()) — the
+            // backend's own date-only parsing already applies the right day
+            // boundary (start-of-day for since/created_after, end-of-day for
+            // as_of/created_before) in UTC. Pre-converting here would collapse
+            // "as of" to midnight instead of end-of-day and, for the range's
+            // "to" bound, silently mix in the browser's local timezone.
+            if (mode === 'asof') {
+                body.as_of = tmDate;
+                url = `/api/v2/agents/${S.agentId}/recall/as-of`;
+            } else if (mode === 'since') {
+                body.since = tmDate;
+                url = `/api/v2/agents/${S.agentId}/recall/changed-since`;
+            } else {
+                if (from) body.created_after = from;
+                if (to) body.created_before = to;
+                if (q) {
+                    body.query = q;
                     url = `/api/v2/agents/${S.agentId}/recall`;
+                } else {
+                    url = `/api/v2/agents/${S.agentId}/recall/recent`;
                 }
+            }
+
+            try {
                 const res = await api('POST', url, body);
                 S.explorerAll = res.memories || [];
                 populateSourceFilter(S.explorerAll);
                 renderExplorer();
-            } catch (e) { box.innerHTML = `<p style="color:var(--error);padding:20px">Error: ${e.message}</p>`; }
+            } catch (e) { box.innerHTML = `<p style="color:var(--error);padding:20px">Error: ${escHtml(e.message)}</p>`; }
         }
 
         // Populate the source dropdown from the distinct sources present in the data,
@@ -3392,54 +3435,63 @@
             box.innerHTML = buildMemoryTable(S.memories, true);
         }
 
-        function doTimeMachine() {
-            const d = document.getElementById('tmDate').value;
-            if (!d) { toast('Select a date first', 'error'); return; }
-            document.getElementById('tmStatus').textContent = `Viewing memory as of ${d}`;
-            loadExplorer(new Date(d).toISOString());
+        // Toggle which date input(s) are visible for the selected Explorer view mode.
+        function onTmModeChange() {
+            const mode = document.getElementById('tmMode').value;
+            document.getElementById('tmDate').style.display = (mode === 'asof' || mode === 'since') ? '' : 'none';
+            const rangeDisplay = mode === 'range' ? '' : 'none';
+            document.getElementById('tmFrom').style.display = rangeDisplay;
+            document.getElementById('tmRangeSep').style.display = rangeDisplay;
+            document.getElementById('tmTo').style.display = rangeDisplay;
         }
         function resetTimeMachine() {
+            document.getElementById('tmMode').value = '';
             document.getElementById('tmDate').value = '';
+            document.getElementById('tmFrom').value = '';
+            document.getElementById('tmTo').value = '';
+            onTmModeChange();
             document.getElementById('tmStatus').textContent = '';
             loadExplorer();
         }
 
         function buildMemoryTable(mems, expandable = false) {
             let html = `<table><thead><tr><th>Title</th><th>Type</th><th>Source</th><th>Confidence</th><th>Status</th><th>Provenance</th><th>Created</th><th>Tags</th></tr></thead><tbody>`;
-            mems.forEach((m, i) => {
+            mems.forEach((m) => {
                 const tags = Array.isArray(m.tags) ? m.tags.filter(t => t).join(', ') : (m.tags || '');
                 const statusBadge = m.status === 'active' ? '<span class="badge badge-success">active</span>' :
                     m.status === 'superseded' ? '<span class="badge badge-warning">superseded</span>' :
-                        `<span class="badge badge-info">${m.status || '—'}</span>`;
-                const provBadge = m.provenance ? `<span class="badge badge-accent">${m.provenance}</span>` : '—';
-                const contradicted = m.contradiction_detected ? ' <span class="badge badge-error">⚠ contradicted</span>' : '';
-                const validated = (m.validation_count && m.validation_count > 0) ? ` <span class="badge badge-success">✓×${m.validation_count}</span>` : '';
+                        `<span class="badge badge-info">${escHtml(m.status || '—')}</span>`;
+                const provBadge = m.provenance ? `<span class="badge badge-accent">${escHtml(m.provenance)}</span>` : '—';
                 const mJson = attrEsc(JSON.stringify(m));
-                html += `<tr class="${expandable ? 'expandable' : ''}" onclick="toggleRow('exp-${i}')">
+                html += `<tr class="${expandable ? 'expandable' : ''}" ${expandable ? 'onclick="toggleRow(this)"' : ''}>
             <td style="color:var(--text-primary);font-weight:500">${escHtml(trunc(m.title || 'Untitled', 60))}</td>
-            <td><span class="badge badge-info">${m.type || '—'}</span></td>
+            <td><span class="badge badge-info">${escHtml(m.type || '—')}</span></td>
             <td>${m.source ? `<span class="badge badge-accent">${escHtml(m.source)}</span>` : '—'}</td>
             <td>${confBadge(m.confidence)}</td>
-            <td>${statusBadge}${contradicted}${validated}</td>
+            <td>${statusBadge}</td>
             <td>${provBadge}</td>
             <td style="white-space:nowrap">${fmtDate(m.created_at)}</td>
             <td style="font-size:11px">${escHtml(trunc(tags, 40))}</td>
         </tr>`;
                 if (expandable) {
                     const memId = m.id ? String(m.id) : '';
-                    const editBtn = memId 
+                    const editBtn = memId
                         ? `<button class="btn btn-secondary btn-sm" style="margin-right: 8px;" data-mem="${mJson}" onclick="openEditMemoryModal(JSON.parse(this.dataset.mem))">Edit</button>`
                         : '';
                     const forgetBtn = memId
-                        ? `<button class="btn btn-danger btn-sm" onclick="forgetMemory('${escHtml(memId)}', this, event)">Forget</button>`
+                        ? `<button class="btn btn-danger btn-sm" data-memory-id="${attrEsc(memId)}" onclick="forgetMemory(this.dataset.memoryId, this, event)">Forget</button>`
                         : '<span style="font-size:11px;color:var(--text-dim)">No ID — cannot forget</span>';
-                    html += `<tr class="expand-row" id="exp-${i}"><td colspan="8"><div class="expand-content">${escHtml(m.content || m.text || 'No content')}\n\nID: ${memId || '—'}\nScore: ${m.score ?? '—'}\nSource: ${m.source || '—'}\nUpdated: ${fmtDate(m.updated_at)}</div><div style="padding:8px 16px;display:flex;justify-content:flex-end">${editBtn}${forgetBtn}</div></td></tr>`;
+                    html += `<tr class="expand-row"><td colspan="8"><div class="expand-content">${escHtml(m.content || m.text || 'No content')}\n\nID: ${escHtml(memId || '—')}\nScore: ${escHtml(String(m.score ?? '—'))}\nSource: ${escHtml(m.source || '—')}\nUpdated: ${escHtml(fmtDate(m.updated_at))}</div><div style="padding:8px 16px;display:flex;justify-content:flex-end">${editBtn}${forgetBtn}</div></td></tr>`;
                 }
             });
             html += '</tbody></table>';
             return html;
         }
-        function toggleRow(id) { const r = document.getElementById(id); if (r) r.classList.toggle('open'); }
+        // Expand-row toggling is done via DOM adjacency (not a shared id lookup):
+        // buildMemoryTable() renders on several pages that stay in the DOM at once
+        // (.page uses display:none, not removal), so ids like "exp-0" collided
+        // across pages and toggled the wrong (hidden) table's row.
+        function toggleRow(rowEl) { const r = rowEl.nextElementSibling; if (r) r.classList.toggle('open'); }
 
         // Delete a single memory from the active agent. Mirrors the CLI
         // ``memanto forget`` command and the ``DELETE /api/v2/agents/{id}/
@@ -3449,7 +3501,7 @@
         // full refetch.
         async function forgetMemory(memoryId, btn, ev) {
             if (ev) { ev.stopPropagation(); ev.preventDefault(); }
-            if (!S.agentId || !S.token) { toast('No active agent/session', 'error'); return; }
+            if (!hasActiveSession()) { toast('No active agent/session', 'error'); return; }
             if (!memoryId) { toast('Memory ID missing', 'error'); return; }
             const ok = await confirmDialog({
                 title: 'Forget memory?',
@@ -3576,11 +3628,9 @@
             return isNaN(d.getTime()) ? null : d;
         }
 
+        /** Return the UTC storage bucket for a memory timestamp. */
         function dayKey(d) {
-            const y = d.getFullYear();
-            const m = String(d.getMonth() + 1).padStart(2, '0');
-            const day = String(d.getDate()).padStart(2, '0');
-            return `${y}-${m}-${day}`;
+            return d.toISOString().slice(0, 10);
         }
 
         function levelForCount(n) {
@@ -3618,7 +3668,7 @@
         }
 
         async function fetchRecentMemories() {
-            if (!S.agentId || !S.token) return;
+            if (!hasActiveSession()) return;
             try {
                 const res = await api('POST', `/api/v2/agents/${S.agentId}/recall/recent`, {});
                 S.history = res.memories || [];
@@ -3627,7 +3677,7 @@
 
         async function loadHistory() {
             const box = document.getElementById('historyContent');
-            if (!S.agentId || !S.token) {
+            if (!hasActiveSession()) {
                 box.innerHTML = '<p style="color:var(--text-dim);padding:20px">No active agent. <a href="#" onclick="goToPage(\'agents\');return false" style="color:var(--accent);text-decoration:none">Go to the Agents page</a> to activate one.</p>';
                 return;
             }
@@ -3640,7 +3690,7 @@
                 // navigated here with a specific day pre-selected).
                 renderHistory();
             } catch (e) {
-                box.innerHTML = `<p style="color:var(--error);padding:20px">Error: ${e.message}</p>`;
+                box.innerHTML = `<p style="color:var(--error);padding:20px">Error: ${escHtml(e.message)}</p>`;
             }
         }
 
@@ -3648,7 +3698,7 @@
             const mems = S.history || [];
             const box = document.getElementById('historyContent');
 
-            // Bucket by local day
+            // Bucket by the UTC day used by summaries and conflict scans.
             const byDay = new Map();
             mems.forEach(m => {
                 const d = parseMemDate(m.created_at);
@@ -3659,11 +3709,11 @@
             });
 
             // 53-week window ending the upcoming Saturday
-            const today = new Date(); today.setHours(0, 0, 0, 0);
+            const today = new Date(); today.setUTCHours(0, 0, 0, 0);
             const endDate = new Date(today);
-            endDate.setDate(endDate.getDate() + (6 - endDate.getDay()));
+            endDate.setUTCDate(endDate.getUTCDate() + (6 - endDate.getUTCDay()));
             const startDate = new Date(endDate);
-            startDate.setDate(startDate.getDate() - (53 * 7 - 1));
+            startDate.setUTCDate(startDate.getUTCDate() - (53 * 7 - 1));
 
             const weeks = [];
             const cur = new Date(startDate);
@@ -3673,7 +3723,7 @@
                     const k = dayKey(cur);
                     const count = (byDay.get(k) || []).length;
                     week.push({ date: new Date(cur), key: k, count });
-                    cur.setDate(cur.getDate() + 1);
+                    cur.setUTCDate(cur.getUTCDate() + 1);
                 }
                 weeks.push(week);
             }
@@ -3700,8 +3750,8 @@
             // Month labels — show when month changes between consecutive weeks
             const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
             const monthLabels = weeks.map((week, i) => {
-                const monthThis = week[0].date.getMonth();
-                const monthPrev = i > 0 ? weeks[i - 1][0].date.getMonth() : -1;
+                const monthThis = week[0].date.getUTCMonth();
+                const monthPrev = i > 0 ? weeks[i - 1][0].date.getUTCMonth() : -1;
                 return monthThis !== monthPrev ? monthNames[monthThis] : '';
             });
 
@@ -3732,7 +3782,7 @@
                         <div class="hh-day-labels"><span></span><span>Mon</span><span></span><span>Wed</span><span></span><span>Fri</span><span></span></div>
                         <div class="hh-weeks">${weeks.map(week => week.map(d => {
                             const stale = staleMemCountForDay(d.key);
-                            const dayLabel = d.date.toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+                            const dayLabel = d.date.toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: 'UTC' });
                             const title = `${d.count} ${d.count === 1 ? 'memory' : 'memories'} on ${dayLabel}${stale ? ` • ${stale} stored since last conflict scan — may have unreviewed conflicts` : ''}`;
                             return `<div class="hh-cell${S.historyFilter === d.key ? ' selected' : ''}${stale ? ' stale' : ''}" data-level="${levelForCount(d.count)}" data-key="${d.key}" title="${title}" onclick="filterHistoryByDay('${d.key}')"></div>`;
                         }).join('')).join('')}</div>
@@ -3923,16 +3973,16 @@
                     const db = parseMemDate(b.created_at)?.getTime() || 0;
                     return db - da;
                 });
-                const headerDate = parseMemDate(list[0].created_at);
-                const dateLabel = headerDate
-                    ? headerDate.toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })
+                const headerDate = new Date(`${dateKey}T00:00:00Z`);
+                const dateLabel = !isNaN(headerDate.getTime())
+                    ? headerDate.toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: 'UTC' })
                     : dateKey;
                 html += `<div class="hh-tl-date">${dateLabel}</div>`;
                 list.forEach(m => {
                     const shortId = (m.id || '').toString().substring(0, 7) || '———';
                     const tags = Array.isArray(m.tags) ? m.tags.filter(Boolean) : [];
                     const t = parseMemDate(m.created_at);
-                    const time = t ? t.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' }) : '';
+                    const time = t ? t.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', timeZone: 'UTC', timeZoneName: 'short' }) : '';
                     const conf = (parseFloat(m.confidence) || 0).toFixed(2);
                     const meta = [];
                     if (m.type) meta.push(`<span class="badge badge-info">${escHtml(m.type)}</span>`);
@@ -4151,7 +4201,7 @@
                 });
 
             } catch (e) {
-                document.getElementById('configContent').innerHTML = `<p style="color:var(--error)">Failed to load config: ${e.message}</p>`;
+                document.getElementById('configContent').innerHTML = `<p style="color:var(--error)">Failed to load config: ${escHtml(e.message)}</p>`;
             }
         }
 
@@ -4176,7 +4226,6 @@
             if (!newKey) { toast('API key cannot be empty', 'error'); return; }
             try {
                 await api('PUT', '/api/ui/api-key', { api_key: newKey });
-                S.apiKey = newKey;
                 toast('API key updated successfully!');
                 S.config = await api('GET', '/api/ui/config');
                 loadConfig();
@@ -4298,6 +4347,197 @@
             }
         }
 
+        function buildConflictBannerEl(scanDate, scan, staleCount) {
+            if (staleCount > 0) {
+                const div = document.createElement('div');
+                div.style.cssText = 'background:rgba(239,68,68,0.12);border:1px solid var(--error);border-radius:8px;padding:12px 14px;margin-bottom:16px;font-size:13px;color:var(--text-secondary)';
+                const strong = document.createElement('strong');
+                strong.style.color = 'var(--error)';
+                strong.textContent = `${staleCount} ${staleCount === 1 ? 'memory' : 'memories'}`;
+                div.append(document.createTextNode('⚠ '), strong);
+                if (scan) {
+                    div.append(document.createTextNode(` stored since the last conflict scan (${fmtDate(scan.scanned_at)}) for ${scanDate}. `));
+                } else {
+                    div.append(document.createTextNode(` stored since the last conflict scan — this day has never been scanned for ${scanDate}. `));
+                }
+                const tail = document.createElement('span');
+                const tailTpl = document.createElement('template');
+                tailTpl.innerHTML = 'Click <strong>Detect Conflicts Now</strong> to re-check.';
+                tail.appendChild(tailTpl.content.cloneNode(true));
+                div.appendChild(tail);
+                return div;
+            }
+            if (scan) {
+                const div = document.createElement('div');
+                div.style.cssText = 'color:var(--text-dim);font-size:12px;margin-bottom:16px';
+                div.textContent = `Last conflict scan for ${scanDate}: ${fmtDate(scan.scanned_at)}.`;
+                return div;
+            }
+            return null;
+        }
+
+        function renderConflictsEmpty(container, bannerEl) {
+            container.replaceChildren();
+            if (bannerEl) container.appendChild(bannerEl);
+            const wrap = document.createElement('div');
+            wrap.style.cssText = 'text-align:center;padding:60px 20px';
+            const icon = document.createElement('div');
+            icon.style.cssText = 'font-size:48px;margin-bottom:16px;opacity:0.3';
+            icon.textContent = '✓';
+            const title = document.createElement('p');
+            title.style.cssText = 'color:var(--success);font-size:16px;font-weight:600;margin-bottom:8px';
+            title.textContent = 'No Conflicts';
+            const descTpl = document.createElement('template');
+            descTpl.innerHTML = '<p style="color:var(--text-dim);font-size:13px">All memories are consistent. Click <strong>Detect Conflicts Now</strong> above (or run <code style="font-family:var(--font-mono);color:var(--accent)">memanto detect-conflicts</code>) to scan for new conflicts.</p>';
+            wrap.append(icon, title, descTpl.content.cloneNode(true));
+            container.appendChild(wrap);
+        }
+
+        function buildConflictMetaBlock(memoryId, timestamp, source) {
+            const block = document.createElement('div');
+            block.style.cssText = 'margin-top:12px;display:flex;flex-direction:column;gap:4px;font-size:10px;font-family:var(--font-mono);color:var(--text-dim)';
+            const idRow = document.createElement('div');
+            idRow.append('ID: ', spanSecondary(memoryId));
+            const whenRow = document.createElement('div');
+            whenRow.append('When: ', spanSecondary(fmtDate(timestamp)));
+            const srcRow = document.createElement('div');
+            srcRow.append('Source: ', spanSecondary(source || 'unknown'));
+            block.append(idRow, whenRow, srcRow);
+            return block;
+        }
+
+        function spanSecondary(text) {
+            const span = document.createElement('span');
+            span.style.color = 'var(--text-secondary)';
+            span.textContent = text ?? '—';
+            return span;
+        }
+
+        function conflictActionBtn(label, className, onClick) {
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = `btn btn-sm ${className}`;
+            btn.textContent = label;
+            btn.addEventListener('click', onClick);
+            return btn;
+        }
+
+        function buildConflictCard(c, rawAgentId, rawDate) {
+            const ctype = (c.type || 'conflict').toUpperCase();
+            const explanation = c.explanation || c.reason || 'Conflicting information detected.';
+
+            const cid = c.index;
+
+            const card = document.createElement('div');
+            card.className = 'conflict-card';
+            card.id = `conflict-${cid}`;
+
+            const header = document.createElement('div');
+            header.className = 'conflict-header';
+            const headerLeft = document.createElement('div');
+            const typeSpan = document.createElement('span');
+            typeSpan.className = 'conflict-type';
+            typeSpan.textContent = ctype;
+            const badge = document.createElement('span');
+            badge.className = 'badge badge-warning';
+            badge.style.marginLeft = '8px';
+            badge.textContent = 'Unresolved';
+            headerLeft.append(typeSpan, badge);
+            const indexSpan = document.createElement('span');
+            indexSpan.style.cssText = 'font-size:11px;color:var(--text-dim);font-family:var(--font-mono)';
+            indexSpan.textContent = `#${cid}`;
+            header.append(headerLeft, indexSpan);
+
+            const expl = document.createElement('p');
+            expl.style.cssText = 'color:var(--text-secondary);font-size:13px;margin-bottom:16px;line-height:1.6';
+            expl.textContent = explanation;
+
+            const memories = document.createElement('div');
+            memories.className = 'conflict-memories';
+
+            const oldMem = document.createElement('div');
+            oldMem.className = 'conflict-memory';
+            const oldLabel = document.createElement('div');
+            oldLabel.className = 'conflict-memory-label';
+            oldLabel.textContent = 'Old Memory';
+            const oldContent = document.createElement('div');
+            oldContent.className = 'conflict-memory-content';
+            oldContent.textContent = c.old_content || c.old_memory || '—';
+            oldMem.append(oldLabel, oldContent);
+            if (c.old_memory_id) {
+                oldMem.appendChild(buildConflictMetaBlock(c.old_memory_id, c.old_created_at || c.old_timestamp, c.old_source));
+            }
+
+            const newMem = document.createElement('div');
+            newMem.className = 'conflict-memory';
+            const newLabel = document.createElement('div');
+            newLabel.className = 'conflict-memory-label';
+            newLabel.textContent = 'New Memory';
+            const newContent = document.createElement('div');
+            newContent.className = 'conflict-memory-content';
+            newContent.textContent = c.new_content || c.new_memory || '—';
+            newMem.append(newLabel, newContent);
+            if (c.new_memory_id) {
+                newMem.appendChild(buildConflictMetaBlock(c.new_memory_id, c.new_created_at || c.new_timestamp, c.new_source));
+            }
+
+            memories.append(oldMem, newMem);
+
+            const actions = document.createElement('div');
+            actions.className = 'conflict-actions';
+            actions.append(
+                conflictActionBtn('Keep Old', 'btn-secondary', () => resolveConflict(cid, rawAgentId, rawDate, 'keep_old')),
+                conflictActionBtn('Keep New', 'btn-primary', () => resolveConflict(cid, rawAgentId, rawDate, 'keep_new')),
+                conflictActionBtn('Keep Both', 'btn-secondary', () => resolveConflict(cid, rawAgentId, rawDate, 'keep_both')),
+                conflictActionBtn('Remove Both', 'btn-danger', () => resolveConflict(cid, rawAgentId, rawDate, 'remove_both')),
+                conflictActionBtn('Manual', 'btn-secondary', () => showManualResolve(cid)),
+            );
+
+            const manual = document.createElement('div');
+            manual.id = `manual-${cid}`;
+            manual.style.cssText = 'display:none;margin-top:12px';
+            const formGroup = document.createElement('div');
+            formGroup.className = 'form-group';
+            const manualLabel = document.createElement('label');
+            manualLabel.textContent = 'Manual Replacement Content';
+            const textarea = document.createElement('textarea');
+            textarea.id = `manualContent-${cid}`;
+            textarea.placeholder = 'Enter the correct merged content...';
+            textarea.style.minHeight = '60px';
+            formGroup.append(manualLabel, textarea);
+            const submitBtn = conflictActionBtn('Submit Manual Resolution', 'btn-primary', () => {
+                const content = textarea.value.trim();
+                if (!content) {
+                    toast('Enter manual replacement content before submitting.', 'warning');
+                    textarea.focus();
+                    return;
+                }
+                resolveConflict(cid, rawAgentId, rawDate, 'manual', content);
+            });
+            manual.append(formGroup, submitBtn);
+
+            card.append(header, expl, memories, actions, manual);
+            return card;
+        }
+
+        function renderConflictsList(container, bannerEl, conflicts, rawAgentId, rawDate) {
+            container.replaceChildren();
+            if (bannerEl) container.appendChild(bannerEl);
+
+            const summary = document.createElement('p');
+            summary.style.cssText = 'color:var(--text-secondary);margin-bottom:20px;font-size:13px';
+            const countStrong = document.createElement('strong');
+            countStrong.style.color = 'var(--warning)';
+            countStrong.textContent = String(conflicts.length);
+            const agentStrong = document.createElement('strong');
+            agentStrong.style.color = 'var(--accent)';
+            agentStrong.textContent = rawAgentId;
+            summary.append('Found ', countStrong, ' unresolved conflict(s) for ', agentStrong, ` on ${rawDate}`);
+
+            container.appendChild(summary);
+            conflicts.forEach(c => container.appendChild(buildConflictCard(c, rawAgentId, rawDate)));
+        }
+
         async function loadConflicts() {
             const container = document.getElementById('conflictsContent');
             container.innerHTML = '<div class="loading-overlay"><span class="spinner"></span> Loading conflicts...</div>';
@@ -4314,79 +4554,22 @@
                 const scanDate = data.date || date;
                 const scan = (S.conflictScans || {})[scanDate];
                 const staleCount = staleMemCountForDay(scanDate);
-                let banner = '';
-                if (staleCount > 0) {
-                    banner = `<div style="background:rgba(239,68,68,0.12);border:1px solid var(--error);border-radius:8px;padding:12px 14px;margin-bottom:16px;font-size:13px;color:var(--text-secondary)">⚠ <strong style="color:var(--error)">${staleCount} ${staleCount === 1 ? 'memory' : 'memories'}</strong> stored since the last conflict scan${scan ? ` (${fmtDate(scan.scanned_at)})` : ' — this day has never been scanned'} for ${scanDate}. Click <strong>Detect Conflicts Now</strong> to re-check.</div>`;
-                } else if (scan) {
-                    banner = `<div style="color:var(--text-dim);font-size:12px;margin-bottom:16px">Last conflict scan for ${scanDate}: ${fmtDate(scan.scanned_at)}.</div>`;
-                }
+                const rawAgentId = data.agent_id || '';
+                const rawDate = data.date || date;
+                const bannerEl = buildConflictBannerEl(scanDate, scan, staleCount);
 
                 if (!conflicts.length) {
-                    container.innerHTML = banner + `
-                <div style="text-align:center;padding:60px 20px">
-                    <div style="font-size:48px;margin-bottom:16px;opacity:0.3">✓</div>
-                    <p style="color:var(--success);font-size:16px;font-weight:600;margin-bottom:8px">No Conflicts</p>
-                    <p style="color:var(--text-dim);font-size:13px">All memories are consistent. Click <strong>Detect Conflicts Now</strong> above (or run <code style="font-family:var(--font-mono);color:var(--accent)">memanto detect-conflicts</code>) to scan for new conflicts.</p>
-                </div>`;
+                    renderConflictsEmpty(container, bannerEl);
                     return;
                 }
 
-                let html = banner + `<p style="color:var(--text-secondary);margin-bottom:20px;font-size:13px">Found <strong style="color:var(--warning)">${conflicts.length}</strong> unresolved conflict(s) for <strong style="color:var(--accent)">${data.agent_id}</strong> on ${data.date}</p>`;
-
-                conflicts.forEach((c, i) => {
-                    const ctype = (c.type || 'conflict').toUpperCase();
-                    const explanation = c.explanation || c.reason || 'Conflicting information detected.';
-
-                    html += `
-            <div class="conflict-card" id="conflict-${i}">
-                <div class="conflict-header">
-                    <div>
-                        <span class="conflict-type">${escHtml(ctype)}</span>
-                        <span class="badge badge-warning" style="margin-left:8px">Unresolved</span>
-                    </div>
-                    <span style="font-size:11px;color:var(--text-dim);font-family:var(--font-mono)">#${i}</span>
-                </div>
-                <p style="color:var(--text-secondary);font-size:13px;margin-bottom:16px;line-height:1.6">${escHtml(explanation)}</p>
-                <div class="conflict-memories">
-                    <div class="conflict-memory">
-                        <div class="conflict-memory-label">Old Memory</div>
-                        <div class="conflict-memory-content">${escHtml(c.old_content || c.old_memory || '—')}</div>
-                        ${c.old_memory_id ? `<div style="margin-top:12px;display:flex;flex-direction:column;gap:4px;font-size:10px;font-family:var(--font-mono);color:var(--text-dim)">
-                            <div>ID: <span style="color:var(--text-secondary)">${c.old_memory_id}</span></div>
-                            <div>When: <span style="color:var(--text-secondary)">${fmtDate(c.old_created_at || c.old_timestamp)}</span></div>
-                            <div>Source: <span style="color:var(--text-secondary)">${escHtml(c.old_source || 'unknown')}</span></div>
-                        </div>` : ''}
-                    </div>
-                    <div class="conflict-memory">
-                        <div class="conflict-memory-label">New Memory</div>
-                        <div class="conflict-memory-content">${escHtml(c.new_content || c.new_memory || '—')}</div>
-                        ${c.new_memory_id ? `<div style="margin-top:12px;display:flex;flex-direction:column;gap:4px;font-size:10px;font-family:var(--font-mono);color:var(--text-dim)">
-                            <div>ID: <span style="color:var(--text-secondary)">${c.new_memory_id}</span></div>
-                            <div>When: <span style="color:var(--text-secondary)">${fmtDate(c.new_created_at || c.new_timestamp)}</span></div>
-                            <div>Source: <span style="color:var(--text-secondary)">${escHtml(c.new_source || 'unknown')}</span></div>
-                        </div>` : ''}
-                    </div>
-                </div>
-                <div class="conflict-actions">
-                    <button class="btn btn-sm btn-secondary" onclick="resolveConflict(${i}, '${data.agent_id}', '${data.date}', 'keep_old')">Keep Old</button>
-                    <button class="btn btn-sm btn-primary" onclick="resolveConflict(${i}, '${data.agent_id}', '${data.date}', 'keep_new')">Keep New</button>
-                    <button class="btn btn-sm btn-secondary" onclick="resolveConflict(${i}, '${data.agent_id}', '${data.date}', 'keep_both')">Keep Both</button>
-                    <button class="btn btn-sm btn-danger" onclick="resolveConflict(${i}, '${data.agent_id}', '${data.date}', 'remove_both')">Remove Both</button>
-                    <button class="btn btn-sm btn-secondary" onclick="showManualResolve(${i}, '${data.agent_id}', '${data.date}')">Manual</button>
-                </div>
-                <div id="manual-${i}" style="display:none;margin-top:12px">
-                    <div class="form-group">
-                        <label>Manual Replacement Content</label>
-                        <textarea id="manualContent-${i}" placeholder="Enter the correct merged content..." style="min-height:60px"></textarea>
-                    </div>
-                    <button class="btn btn-sm btn-primary" onclick="resolveConflict(${i}, '${data.agent_id}', '${data.date}', 'manual', document.getElementById('manualContent-${i}').value)">Submit Manual Resolution</button>
-                </div>
-            </div>`;
-                });
-
-                container.innerHTML = html;
+                renderConflictsList(container, bannerEl, conflicts, rawAgentId, rawDate);
             } catch (e) {
-                container.innerHTML = `<p style="color:var(--error);padding:20px">Failed to load conflicts: ${e.message}</p>`;
+                container.replaceChildren();
+                const err = document.createElement('p');
+                err.style.cssText = 'color:var(--error);padding:20px';
+                err.textContent = `Failed to load conflicts: ${e.message}`;
+                container.appendChild(err);
             }
         }
 
@@ -4430,7 +4613,7 @@
         // ANALYTICS
         // ================================================================
         async function loadAnalytics() {
-            if (!S.agentId || !S.token) {
+            if (!hasActiveSession()) {
                 document.getElementById('analyticsCards').innerHTML = '<p style="color:var(--text-dim);padding:20px">Activate an agent to see analytics</p>';
                 return;
             }
@@ -4541,7 +4724,7 @@
                     tagsContainer.innerHTML = cloudHtml;
                 }
             } catch (e) {
-                cards.innerHTML = `<p style="color:var(--error);padding:20px">Failed to load analytics: ${e.message}</p>`;
+                cards.innerHTML = `<p style="color:var(--error);padding:20px">Failed to load analytics: ${escHtml(e.message)}</p>`;
             }
         }
         // ================================================================
@@ -4591,6 +4774,19 @@
             { id: 'mem0', label: 'Mem0', tagline: 'Distilled user facts and preferences', docs: 'https://app.mem0.ai' },
             { id: 'letta', label: 'Letta', tagline: 'Archival memory passages', docs: 'https://docs.letta.com' },
             { id: 'supermemory', label: 'Supermemory', tagline: 'Documents and chunks', docs: 'https://supermemory.ai/docs' },
+            { id: 'okf', label: 'Open Knowledge Format', tagline: 'Portable local memory bundles (.md)', docs: 'https://github.com/GoogleCloudPlatform/knowledge-catalog/tree/main/okf' },
+            { id: 'langfuse', label: 'Langfuse', tagline: 'Errors, failed evals, and cost/latency anomalies', docs: 'https://langfuse.com/docs/api-and-data-platform/features/public-api' },
+        ];
+
+        // Langfuse is a repeatable sync, not a one-shot import: the user picks
+        // which signals to capture, and re-running reconciles against a ledger
+        // instead of duplicating. Labels here map to the backend's capture modes.
+        const LF_CAPTURE_MODES = [
+            { id: 'errors',    label: 'Errors',            hint: 'Failed spans and exceptions' },
+            { id: 'low-score', label: 'Failed evals',      hint: 'Scored below the threshold' },
+            { id: 'slow',      label: 'Latency anomalies', hint: 'Slower than the budget' },
+            { id: 'costly',    label: 'Cost anomalies',    hint: 'More expensive than the budget' },
+            { id: 'success',   label: 'What worked',       hint: 'Scored at or above the threshold' },
         ];
 
         // Official brand logos. Primary uses each org's GitHub avatar
@@ -4599,9 +4795,11 @@
         // Fallback is DuckDuckGo's favicon service. Final fallback is
         // letter initials — same 3-tier chain as AGENT_LOGOS above.
         const MIG_PROVIDER_LOGOS = {
-            'mem0':        { src: 'https://github.com/mem0ai.png',        fallback: 'https://icons.duckduckgo.com/ip3/mem0.ai.ico' },
-            'letta':       { src: 'https://github.com/letta-ai.png',      fallback: 'https://icons.duckduckgo.com/ip3/letta.com.ico' },
-            'supermemory': { src: 'https://github.com/supermemoryai.png', fallback: 'https://icons.duckduckgo.com/ip3/supermemory.ai.ico' },
+            'mem0':        { src: 'https://github.com/mem0ai.png',           fallback: 'https://icons.duckduckgo.com/ip3/mem0.ai.ico' },
+            'letta':       { src: 'https://github.com/letta-ai.png',         fallback: 'https://icons.duckduckgo.com/ip3/letta.com.ico' },
+            'supermemory': { src: 'https://github.com/supermemoryai.png',    fallback: 'https://icons.duckduckgo.com/ip3/supermemory.ai.ico' },
+            'okf':         { src: 'https://github.com/GoogleCloudPlatform.png', fallback: 'https://icons.duckduckgo.com/ip3/cloud.google.com.ico' },
+            'langfuse':    { src: 'https://github.com/langfuse.png',           fallback: 'https://icons.duckduckgo.com/ip3/langfuse.com.ico' },
         };
 
         function migProviderLogo(id, label) {
@@ -4618,8 +4816,24 @@
             return `<div class="mig-tile-icon">${initials}</div>`;
         }
 
+        function migrateInitialState() {
+            return {
+                provider: null, source: 'file', file: '', apiKey: '', preview: null,
+                // Langfuse guarantees nothing about score meaning or what counts
+                // as slow/expensive, so every budget starts empty and the mode
+                // stays inert (and says so) until the user fills it in.
+                lf: {
+                    capture: ['errors'], host: '', publicKey: '', secretKey: '', sinceDays: '',
+                    scoreFail: '', scorePass: '',
+                    latencyMs: '', latencyPct: '', costUsd: '', costPct: '',
+                    groupBy: '', discovery: null, loadedFor: null,
+                },
+            };
+        }
+
         function openMigrate() {
-            S.migrate = S.migrate || { provider: null, source: 'file', file: '', apiKey: '', preview: null };
+            S.migrate = S.migrate || migrateInitialState();
+            if (!S.migrate.lf) S.migrate.lf = migrateInitialState().lf;
             renderMigrate();
         }
 
@@ -4634,7 +4848,7 @@
                 </button>
             `).join('');
 
-            const noActiveSession = !S.agentId || !S.token;
+            const noActiveSession = !hasActiveSession();
             const agentBanner = noActiveSession
                 ? `<div class="mig-error-banner" style="margin-bottom:18px">No active agent/session. <a href="#" onclick="goToPage('agents');return false" style="color:inherit;text-decoration:underline">Activate one</a> before importing.</div>`
                 : '';
@@ -4658,32 +4872,230 @@
         function selectMigrateProvider(id) {
             S.migrate.provider = id;
             S.migrate.preview = null;
+            // OKF is a local file format — there's no hosted API to pull a live export from.
+            if (id === 'okf') S.migrate.source = 'file';
+            // Langfuse's whole point is the live sync; a file is only for replays.
+            if (id === 'langfuse') S.migrate.source = 'api';
             renderMigrate();
+            // The tile must show whatever this project is already configured
+            // with — otherwise a sync started here would silently narrow
+            // settings saved from the CLI.
+            if (id === 'langfuse') loadLangfuseConfig();
+        }
+
+        // Langfuse capture settings are stored per project, shared with the
+        // CLI. Read them whenever the identified project could have changed.
+        async function loadLangfuseConfig() {
+            captureMigrateInputs();
+            const lf = S.migrate.lf;
+            const body = { provider: 'langfuse' };
+            if (lf.publicKey && lf.secretKey) body.api_key = `${lf.publicKey}:${lf.secretKey}`;
+            let res;
+            try {
+                res = await api('POST', '/api/ui/migrate/langfuse/config', body);
+            } catch { return; }   // no stored settings yet is not an error
+
+            if (res.project_key === lf.loadedFor) return;
+            const cfg = res.config || {};
+            lf.loadedFor = res.project_key;
+            lf.capture = (cfg.capture || ['errors']).map(m => m.replace(/_/g, '-'));
+            lf.scoreFail = (cfg.score_fail_rules || []).join('\n');
+            lf.scorePass = (cfg.score_pass_rules || []).join('\n');
+            lf.latencyMs = cfg.latency_ms ?? '';
+            lf.latencyPct = cfg.latency_percentile ?? '';
+            lf.costUsd = cfg.cost_usd ?? '';
+            lf.costPct = cfg.cost_percentile ?? '';
+            lf.groupBy = cfg.group_by || '';
+            S.migrate.preview = null;
+            renderMigrate();
+        }
+
+        async function saveLangfuseConfig() {
+            const body = migrateBody();
+            if (!body) return;
+            body.action = 'save';
+            try {
+                const res = await api('POST', '/api/ui/migrate/langfuse/config', body);
+                S.migrate.lf.loadedFor = res.project_key;
+                toast(`Saved capture settings for project ${res.project_key}`, 'success');
+            } catch (e) {
+                toast('Save failed: ' + e.message, 'error');
+            }
+        }
+
+        function toggleLfCapture(mode) {
+            captureMigrateInputs();
+            const set = new Set(S.migrate.lf.capture);
+            set.has(mode) ? set.delete(mode) : set.add(mode);
+            // Never leave the user with nothing selected — the sync would be a no-op.
+            if (set.size === 0) set.add(mode);
+            S.migrate.lf.capture = [...set];
+            S.migrate.preview = null;
+            renderMigrate();
+        }
+
+        function renderLangfuseOptions(st) {
+            const lf = st.lf;
+            const picked = new Set(lf.capture);
+            const chips = LF_CAPTURE_MODES.map(m => `
+                <button type="button" class="mig-source-tab ${picked.has(m.id) ? 'active' : ''}"
+                        title="${escHtml(m.hint)}" onclick="toggleLfCapture('${m.id}')">
+                    ${picked.has(m.id) ? '✓ ' : ''}${escHtml(m.label)}
+                </button>
+            `).join('');
+
+            const field = (id, label, value, hint, opts = {}) => `
+                <div>
+                    <label style="display:block;font-size:12px;color:var(--text-dim);margin-bottom:6px">${escHtml(label)}</label>
+                    <input id="${id}" ${opts.number ? `type="number" step="${opts.step || 1}"` : ''}
+                           placeholder="${escHtml(opts.placeholder || '')}" value="${escHtml(String(value ?? ''))}"
+                           oninput="invalidateMigratePreview()" style="width:100%;font-family:var(--font-mono);font-size:12px">
+                    <div style="font-size:11px;color:var(--text-dim);margin-top:4px">${hint}</div>
+                </div>`;
+
+            // Each budget is a pair: a fixed number, or a percentile of this
+            // project's own traffic. Neither is filled in by default because
+            // no value would be right across projects.
+            const budget = (mode, absId, absLabel, absStep, pctId, absVal, pctVal) => picked.has(mode) ? `
+                <div style="grid-column:1/-1;display:grid;grid-template-columns:1fr 1fr;gap:14px;padding:12px;border:1px solid var(--border);border-radius:6px">
+                    ${field(absId, absLabel, absVal, 'Fixed budget', { number: true, step: absStep })}
+                    ${field(pctId, '…or percentile', pctVal, 'e.g. 95 — calibrated per operation from your own traffic', { number: true, step: 1, placeholder: '95' })}
+                </div>` : '';
+
+            const scoreHelp = 'One rule per line — e.g. <code>correctness&lt;0.7</code>, <code>toxicity&gt;0.3</code>, <code>thumbs_up=false</code>, <code>tone in rude,evasive</code>';
+            const scoreArea = (id, label, value, hint) => `
+                <div style="grid-column:1/-1">
+                    <label style="display:block;font-size:12px;color:var(--text-dim);margin-bottom:6px">${escHtml(label)}</label>
+                    <textarea id="${id}" rows="2" oninput="invalidateMigratePreview()"
+                              style="width:100%;font-family:var(--font-mono);font-size:12px">${escHtml(value || '')}</textarea>
+                    <div style="font-size:11px;color:var(--text-dim);margin-top:4px">${hint}</div>
+                </div>`;
+
+            return `
+                <div style="margin-top:18px">
+                    <label style="display:block;font-size:12px;color:var(--text-dim);margin-bottom:8px">What to capture</label>
+                    <div class="mig-source-tabs" style="flex-wrap:wrap">${chips}</div>
+                    <div style="font-size:11px;color:var(--text-dim);margin-top:8px">
+                        Only <strong>Errors</strong> works with no setup. Score names, ranges, and what counts as
+                        slow or costly are specific to your project — run <strong>Discover</strong> to see yours.
+                    </div>
+                </div>
+                <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px;margin-top:16px">
+                    ${field('migLfSinceDays', 'Look back (days)', lf.sinceDays, 'Blank = since the last sync', { number: true })}
+                    ${field('migLfGroupBy', 'Group by field (optional)', lf.groupBy, 'e.g. metadata.error_code — use when messages group poorly', { placeholder: 'metadata.error_code' })}
+                    ${picked.has('low-score') ? scoreArea('migLfScoreFail', 'Scores that mean failure', lf.scoreFail, scoreHelp) : ''}
+                    ${picked.has('success') ? scoreArea('migLfScorePass', 'Scores that mean success', lf.scorePass, scoreHelp) : ''}
+                    ${budget('slow', 'migLfLatency', 'Latency budget (ms)', 1000, 'migLfLatencyPct', lf.latencyMs, lf.latencyPct)}
+                    ${budget('costly', 'migLfCost', 'Cost budget (USD)', 0.1, 'migLfCostPct', lf.costUsd, lf.costPct)}
+                </div>
+                ${lf.discovery ? renderLangfuseDiscovery(lf.discovery) : ''}`;
+        }
+
+        function renderLangfuseDiscovery(report) {
+            const win = report.window || {};
+            const scoreRows = (report.scores || []).map(s => `
+                <tr><td>${escHtml(s.name)}</td><td>${escHtml(s.data_type)}</td><td>${s.count}</td>
+                    <td>${escHtml(s.min !== undefined ? `${s.min} … ${s.max}` : (s.categories || []).join(', '))}</td>
+                    <td style="font-family:var(--font-mono);font-size:11px">${escHtml(s.suggestion)}</td></tr>`).join('');
+            const opRows = (report.operations || []).map(o => `
+                <tr><td>${escHtml(o.name)}</td><td>${o.count}</td><td>${o.latency_p50}</td>
+                    <td>${o.latency_p95}</td><td>${o.latency_p99}</td>
+                    <td>${report.has_cost_data ? '$' + o.cost_p95 : '—'}</td></tr>`).join('');
+            const errRows = ((report.errors || {}).labels || []).map(e => `
+                <tr><td>${escHtml(e.label)}</td><td>${e.count}</td></tr>`).join('');
+            const notes = (report.notes || []).map(n =>
+                `<div class="mig-error-banner" style="margin-top:8px">${escHtml(n)}</div>`).join('');
+            const table = (title, head, rows) => rows ? `
+                <div style="margin-top:18px">
+                    <div class="card-label" style="margin-bottom:6px">${escHtml(title)}</div>
+                    <div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:12px">
+                        <thead><tr style="text-align:left;color:var(--text-dim)">${head.map(h => `<th style="padding:4px 8px">${escHtml(h)}</th>`).join('')}</tr></thead>
+                        <tbody>${rows}</tbody>
+                    </table></div>
+                </div>` : '';
+
+            return `
+                <div style="margin-top:22px;padding-top:18px;border-top:1px solid var(--border)">
+                    <div class="card-label">Discovery · ${win.observation_count || 0} observations, ${win.score_count || 0} scores</div>
+                    ${table('Scores', ['Name', 'Type', 'Count', 'Observed', 'Suggested rule'], scoreRows)}
+                    ${table('Latency & cost by operation', ['Operation', 'Count', 'p50 ms', 'p95 ms', 'p99 ms', 'cost p95'], opRows)}
+                    ${table('Error labels', ['Label', 'Count'], errRows)}
+                    ${notes}
+                </div>`;
+        }
+
+        async function runLangfuseDiscover() {
+            const body = migrateBody();
+            if (!body) return;
+            body.discover = true;
+            setMigStep('load', 'Sampling your Langfuse project...');
+            try {
+                const res = await api('POST', '/api/ui/migrate/langfuse/discover', body);
+                S.migrate.lf.discovery = res;
+                S.migrate.preview = null;
+                renderMigrate();
+            } catch (e) {
+                renderMigrate();
+                toast('Discovery failed: ' + e.message, 'error');
+            }
         }
 
         function renderMigrateSource(st) {
             const p = MIG_PROVIDERS.find(x => x.id === st.provider);
-            const fileActive = st.source === 'file';
+            const isOkf = st.provider === 'okf';
+            const fileActive = st.source === 'file' || isOkf;
+            const fileField = isOkf
+                ? `<div>
+                        <label style="display:block;font-size:12px;color:var(--text-dim);margin-bottom:6px">Server-side path to an OKF bundle directory (or a single .md file)</label>
+                        <input id="migFile" placeholder="e.g. C:/Users/you/okf-export" value="${escHtml(st.file || '')}" oninput="invalidateMigratePreview()" style="width:100%;font-family:var(--font-mono);font-size:12px">
+                    </div>`
+                : `<div>
+                        <label style="display:block;font-size:12px;color:var(--text-dim);margin-bottom:6px">Server-side path to a JSON export file</label>
+                        <input id="migFile" placeholder="e.g. C:/Users/you/Downloads/mem0_export.json" value="${escHtml(st.file || '')}" oninput="invalidateMigratePreview()" style="width:100%;font-family:var(--font-mono);font-size:12px">
+                    </div>`;
+            const isLangfuse = st.provider === 'langfuse';
+            // Langfuse authenticates with a key *pair*; they're joined as
+            // "public:secret" in migrateBody() because the backend carries one
+            // credential string per provider.
+            const apiField = isLangfuse
+                ? `<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+                        <div>
+                            <label style="display:block;font-size:12px;color:var(--text-dim);margin-bottom:6px">Public key  ·  <a href="${p.docs}" target="_blank" style="color:var(--accent);text-decoration:none">where?</a></label>
+                            <input id="migLfPublic" placeholder="pk-lf-..." value="${escHtml(st.lf.publicKey || '')}" oninput="invalidateMigratePreview()" onchange="loadLangfuseConfig()" style="width:100%;font-family:var(--font-mono);font-size:12px">
+                        </div>
+                        <div>
+                            <label style="display:block;font-size:12px;color:var(--text-dim);margin-bottom:6px">Secret key</label>
+                            <input id="migLfSecret" type="password" placeholder="sk-lf-..." value="${escHtml(st.lf.secretKey || '')}" oninput="invalidateMigratePreview()" style="width:100%;font-family:var(--font-mono);font-size:12px">
+                        </div>
+                        <div style="grid-column:1/-1">
+                            <label style="display:block;font-size:12px;color:var(--text-dim);margin-bottom:6px">Host</label>
+                            <input id="migLfHost" placeholder="https://cloud.langfuse.com" value="${escHtml(st.lf.host || '')}" oninput="invalidateMigratePreview()" style="width:100%;font-family:var(--font-mono);font-size:12px">
+                            <div style="font-size:11px;color:var(--text-dim);margin-top:6px">Blank = Langfuse Cloud (EU). Use your own URL if self-hosted.</div>
+                        </div>
+                    </div>`
+                : `<div>
+                    <label style="display:block;font-size:12px;color:var(--text-dim);margin-bottom:6px">${escHtml(p.label)} API key  ·  <a href="${p.docs}" target="_blank" style="color:var(--accent);text-decoration:none">get one</a></label>
+                    <input id="migApiKey" type="password" placeholder="${st.provider === 'mem0' ? 'm0_...' : st.provider === 'letta' ? 'sk-let-...' : 'sm_...'}" value="${escHtml(st.apiKey || '')}" oninput="invalidateMigratePreview()" style="width:100%;font-family:var(--font-mono);font-size:12px">
+                    <div style="font-size:11px;color:var(--text-dim);margin-top:6px">Used once for this export — not saved to disk.</div>
+                </div>`;
+            const lfNote = isLangfuse
+                ? `<p style="color:var(--text-dim);font-size:12px;margin:0 0 14px 0">Groups observations into one memory per <strong>error signature</strong>, not one per occurrence. Safe to re-run — recurring signatures are updated in place, not duplicated.</p>`
+                : '';
             return `
                 <div class="card" style="margin-bottom:18px">
                     <div class="card-label" style="margin-bottom:14px">2. Provide source data</div>
-                    <div class="mig-source-tabs">
+                    ${lfNote}
+                    ${isOkf ? '' : `<div class="mig-source-tabs">
                         <button class="mig-source-tab ${fileActive ? 'active' : ''}" onclick="setMigrateSource('file')">From file</button>
-                        <button class="mig-source-tab ${!fileActive ? 'active' : ''}" onclick="setMigrateSource('api')">Live export (API key)</button>
-                    </div>
-                    ${fileActive
-                    ? `<div>
-                            <label style="display:block;font-size:12px;color:var(--text-dim);margin-bottom:6px">Server-side path to a JSON export file</label>
-                            <input id="migFile" placeholder="e.g. C:/Users/you/Downloads/mem0_export.json" value="${escHtml(st.file || '')}" oninput="invalidateMigratePreview()" style="width:100%;font-family:var(--font-mono);font-size:12px">
-                        </div>`
-                    : `<div>
-                            <label style="display:block;font-size:12px;color:var(--text-dim);margin-bottom:6px">${escHtml(p.label)} API key  ·  <a href="${p.docs}" target="_blank" style="color:var(--accent);text-decoration:none">get one</a></label>
-                            <input id="migApiKey" type="password" placeholder="${st.provider === 'mem0' ? 'm0_...' : st.provider === 'letta' ? 'sk-let-...' : 'sm_...'}" value="${escHtml(st.apiKey || '')}" oninput="invalidateMigratePreview()" style="width:100%;font-family:var(--font-mono);font-size:12px">
-                            <div style="font-size:11px;color:var(--text-dim);margin-top:6px">Used once for this export — not saved to disk.</div>
-                        </div>`}
+                        <button class="mig-source-tab ${!fileActive ? 'active' : ''}" onclick="setMigrateSource('api')">${isLangfuse ? 'Live sync (API keys)' : 'Live export (API key)'}</button>
+                    </div>`}
+                    ${fileActive ? fileField : apiField}
+                    ${isLangfuse ? renderLangfuseOptions(st) : ''}
                     <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:18px">
+                        ${isLangfuse ? `<button class="btn btn-secondary" onclick="runLangfuseDiscover()" title="See this project's scores, latency spread, and error labels">Discover</button>
+                        <button class="btn btn-secondary" onclick="saveLangfuseConfig()" title="Store these capture settings for this Langfuse project (shared with the CLI)">Save settings</button>` : ''}
                         <button class="btn btn-secondary" onclick="runMigratePreview()">Preview (dry run)</button>
-                        <button class="btn btn-primary" onclick="runMigrateImport()" ${(S.agentId && S.token) ? '' : 'disabled style="opacity:0.5;cursor:not-allowed"'}>Import now</button>
+                        <button class="btn btn-primary" onclick="runMigrateImport()" ${hasActiveSession() ? '' : 'disabled style="opacity:0.5;cursor:not-allowed"'}>${isLangfuse ? 'Sync now' : 'Import now'}</button>
                     </div>
                 </div>
             `;
@@ -4716,18 +5128,70 @@
             if (fileEl) S.migrate.file = fileEl.value.trim();
             const keyEl = document.getElementById('migApiKey');
             if (keyEl) S.migrate.apiKey = keyEl.value.trim();
+
+            const lf = S.migrate.lf;
+            if (!lf) return;
+            const grab = (id, key, cast) => {
+                const el = document.getElementById(id);
+                if (!el) return;
+                const raw = el.value.trim();
+                lf[key] = cast && raw !== '' ? cast(raw) : raw;
+            };
+            grab('migLfPublic', 'publicKey');
+            grab('migLfSecret', 'secretKey');
+            grab('migLfHost', 'host');
+            grab('migLfSinceDays', 'sinceDays');
+            grab('migLfGroupBy', 'groupBy');
+            grab('migLfScoreFail', 'scoreFail');
+            grab('migLfScorePass', 'scorePass');
+            grab('migLfLatency', 'latencyMs');
+            grab('migLfLatencyPct', 'latencyPct');
+            grab('migLfCost', 'costUsd');
+            grab('migLfCostPct', 'costPct');
+        }
+
+        function lfRules(text) {
+            return (text || '').split('\n').map(s => s.trim()).filter(Boolean);
         }
 
         function migrateBody() {
             captureMigrateInputs();
             const st = S.migrate;
             const body = { provider: st.provider };
+            const isLangfuse = st.provider === 'langfuse';
+
             if (st.source === 'file') {
                 if (!st.file) { toast('Pick a file path first', 'error'); return null; }
                 body.file = st.file;
+            } else if (isLangfuse) {
+                const lf = st.lf;
+                if (!lf.publicKey || !lf.secretKey) {
+                    toast('Enter both the Langfuse public and secret keys', 'error');
+                    return null;
+                }
+                // The backend carries one credential string per provider.
+                body.api_key = `${lf.publicKey}:${lf.secretKey}`;
+                if (lf.host) body.host = lf.host;
+                if (lf.sinceDays) body.since_days = Number(lf.sinceDays);
             } else {
                 if (!st.apiKey) { toast(`Enter a ${st.provider} API key`, 'error'); return null; }
                 body.api_key = st.apiKey;
+            }
+
+            // Capture settings shape the mapping, so send them for file replays
+            // too. Empty values are omitted so stored per-project settings show
+            // through instead of being overwritten with blanks.
+            if (isLangfuse) {
+                const lf = st.lf;
+                body.capture = lf.capture;
+                const put = (key, value) => { if (value !== '' && value != null) body[key] = value; };
+                put('latency_ms', lf.latencyMs);
+                put('latency_percentile', lf.latencyPct);
+                put('cost_usd', lf.costUsd);
+                put('cost_percentile', lf.costPct);
+                put('group_by', lf.groupBy);
+                if (lfRules(lf.scoreFail).length) body.score_fail_rules = lfRules(lf.scoreFail);
+                if (lfRules(lf.scorePass).length) body.score_pass_rules = lfRules(lf.scorePass);
             }
             return body;
         }
@@ -4790,38 +5254,55 @@
         }
 
         async function runMigrateImport() {
-            if (!S.agentId || !S.token) { toast('Activate an agent/session first', 'error'); return; }
+            if (!hasActiveSession()) { toast('Activate an agent/session first', 'error'); return; }
             const body = migrateBody();
             if (!body) return;
+            const isLangfuse = body.provider === 'langfuse';
             const ok = await confirmDialog({
-                title: 'Import into Memanto?',
-                message: `This will write all mapped memories into agent "${S.agentId}". The mapped supporting data and original timestamps are preserved.`,
-                confirmLabel: 'Import',
+                title: isLangfuse ? 'Sync Langfuse into Memanto?' : 'Import into Memanto?',
+                message: isLangfuse
+                    ? `This will write one memory per new error signature into agent "${S.agentId}", and update signatures that have recurred since the last sync. Existing memories are not duplicated.`
+                    : `This will write all mapped memories into agent "${S.agentId}". The mapped supporting data and original timestamps are preserved.`,
+                confirmLabel: isLangfuse ? 'Sync' : 'Import',
             });
             if (!ok) return;
 
-            setMigStep('load', `Loading ${body.provider} export...`);
+            setMigStep('load', isLangfuse ? 'Pulling Langfuse observations...' : `Loading ${body.provider} export...`);
             await new Promise(r => setTimeout(r, 200));
-            setMigStep('map', 'Mapping onto Memanto schema...');
+            setMigStep('map', isLangfuse ? 'Grouping into signatures...' : 'Mapping onto Memanto schema...');
             await new Promise(r => setTimeout(r, 200));
-            setMigStep('write', 'Sending batches of 100...');
+            setMigStep('write', isLangfuse ? 'Reconciling against the sync ledger...' : 'Sending batches of 100...');
 
             let res;
             try {
                 res = await api('POST', '/api/ui/migrate/import', body);
             } catch (e) {
                 renderMigrate();
-                toast('Import failed: ' + e.message, 'error');
+                toast((isLangfuse ? 'Sync' : 'Import') + ' failed: ' + e.message, 'error');
                 return;
             }
 
             S.migrate.lastResult = res;
-            // Drop the live API key from page state once import is done — it's
-            // no longer needed and shouldn't linger in memory.
+            // Drop the live credentials from page state once the run is done —
+            // they're no longer needed and shouldn't linger in memory.
             S.migrate.apiKey = '';
+            if (S.migrate.lf) S.migrate.lf.secretKey = '';
             renderMigrateResult(res);
             postMigrateRefresh();
-            toast(`Imported ${res.summary.imported} memories from ${body.provider}`, 'success');
+            const sum = res.summary || {};
+            toast(isLangfuse
+                ? `Synced Langfuse: ${sum.imported || 0} new, ${sum.updated || 0} updated`
+                : `Imported ${sum.imported} memories from ${body.provider}`, 'success');
+        }
+
+        // A mode that is switched on but has no rule or budget captures nothing.
+        // Saying so is the difference between "no problems found" and "never
+        // actually looked".
+        function migWarnings(warnings) {
+            if (!warnings || !warnings.length) return '';
+            return warnings.map(w =>
+                `<div class="mig-error-banner" style="margin-top:10px">${escHtml(w)}</div>`
+            ).join('');
         }
 
         // ----- Preview (after dry-run) ----------------------------------
@@ -4836,19 +5317,36 @@
             `).join('') || '<p style="color:var(--text-dim);font-size:13px">No mapped rows.</p>';
 
             const sv = preview.savings || {};
+            // OKF has no cost/latency baseline to compare against (it's a local
+            // format, not a hosted provider we benchmark) — the backend returns
+            // an empty savings object for it, so those tiles are omitted here.
+            const savingsTiles = Object.keys(sv).length ? `
+                        <div class="mig-stat"><div class="label">Tokens saved</div><div class="value success">${(sv.tokens_saved || 0).toLocaleString()}</div><div class="sub">vs. ${escHtml(preview.provider)} extraction</div></div>
+                        <div class="mig-stat"><div class="label">Read latency</div><div class="value">${sv.read_ms_memanto || '—'} ms</div><div class="sub">~${sv.latency_speedup_x || '—'}× faster than ~${sv.read_ms_source || '—'}ms</div></div>
+                        <div class="mig-stat"><div class="label">Storage saved</div><div class="value">${escHtml(sv.storage_saved_human || '—')}</div><div class="sub">~${sv.storage_compression_ratio || '—'}× smaller</div></div>` : '';
+            // Langfuse reconciles against a ledger, so the useful preview is
+            // "what would change", not "what would be written".
+            const plan = preview.plan || {};
+            const statTiles = Object.keys(plan).length ? `
+                        <div class="mig-stat"><div class="label">Observations</div><div class="value">${preview.source_count.toLocaleString()}</div><div class="sub">pulled from Langfuse</div></div>
+                        <div class="mig-stat"><div class="label">Signatures</div><div class="value accent">${preview.mapped_count.toLocaleString()}</div><div class="sub">distinct issues</div></div>
+                        <div class="mig-stat"><div class="label">New</div><div class="value success">${plan.new}</div><div class="sub">would be written</div></div>
+                        <div class="mig-stat"><div class="label">Changed</div><div class="value">${plan.changed}</div><div class="sub">updated in place</div></div>
+                        <div class="mig-stat"><div class="label">Unchanged</div><div class="value">${plan.unchanged}</div><div class="sub">already synced</div></div>`
+                : `
+                        <div class="mig-stat"><div class="label">Source records</div><div class="value">${preview.source_count.toLocaleString()}</div></div>
+                        <div class="mig-stat"><div class="label">Would import</div><div class="value accent">${preview.mapped_count.toLocaleString()}</div><div class="sub">${preview.skipped} skipped (empty)</div></div>
+                        <div class="mig-stat"><div class="label">Batches</div><div class="value">${preview.batch_count}</div><div class="sub">100 / req</div></div>`;
             return `
                 <div class="card">
                     <div class="card-label" style="margin-bottom:6px">3. Dry-run preview · ${escHtml(preview.provider)}</div>
                     <p style="color:var(--text-dim);font-size:12px;margin:0 0 14px 0;font-family:var(--font-mono)">${escHtml(preview.source_label)}</p>
                     <div class="mig-stats">
-                        <div class="mig-stat"><div class="label">Source records</div><div class="value">${preview.source_count.toLocaleString()}</div></div>
-                        <div class="mig-stat"><div class="label">Would import</div><div class="value accent">${preview.mapped_count.toLocaleString()}</div><div class="sub">${preview.skipped} skipped (empty)</div></div>
-                        <div class="mig-stat"><div class="label">Batches</div><div class="value">${preview.batch_count}</div><div class="sub">100 / req</div></div>
-                        <div class="mig-stat"><div class="label">Tokens saved</div><div class="value success">${(sv.tokens_saved || 0).toLocaleString()}</div><div class="sub">vs. ${escHtml(preview.provider)} extraction</div></div>
-                        <div class="mig-stat"><div class="label">Read latency</div><div class="value">${sv.read_ms_memanto || '—'} ms</div><div class="sub">~${sv.latency_speedup_x || '—'}× faster than ~${sv.read_ms_source || '—'}ms</div></div>
-                        <div class="mig-stat"><div class="label">Storage saved</div><div class="value">${escHtml(sv.storage_saved_human || '—')}</div><div class="sub">~${sv.storage_compression_ratio || '—'}× smaller</div></div>
+                        ${statTiles}
+                        ${savingsTiles}
                     </div>
                     <div class="mig-type-chips">${chips || '<span style="color:var(--text-dim);font-size:12px">No type breakdown</span>'}</div>
+                    ${migWarnings(preview.warnings)}
                     <div style="margin-top:22px">
                         <div class="card-label" style="margin-bottom:6px">Sample (first 5)</div>
                         ${sample}
@@ -4867,31 +5365,43 @@
             const errBox = sum.failed
                 ? `<div class="mig-error-banner" style="margin-top:14px"><strong>${sum.failed} failed</strong>${errors ? '<br>' + errors : ''}</div>`
                 : '';
+            const savingsTiles = Object.keys(sv).length ? `
+                        <div class="mig-stat"><div class="label">Tokens saved</div><div class="value">${(sv.tokens_saved || 0).toLocaleString()}</div><div class="sub">~$${Number(sv.extraction_cost_usd || 0).toFixed(2)}</div></div>
+                        <div class="mig-stat"><div class="label">Latency</div><div class="value accent">${sv.read_ms_memanto || '—'} ms</div><div class="sub">~${sv.latency_speedup_x || '—'}× faster than ${sv.read_ms_source || '—'}ms</div></div>` : '';
 
-            root.innerHTML = `
-                <div class="card" style="border-color:${sum.failed ? 'var(--warning)' : 'var(--success)'}">
-                    <div class="card-label" style="margin-bottom:6px">Import complete · ${escHtml(res.provider)} → ${escHtml(res.agent_id)}</div>
-                    <p style="color:var(--text-dim);font-size:12px;margin:0 0 14px 0;font-family:var(--font-mono)">${escHtml(res.source_label)} · ${(res.elapsed_ms / 1000).toFixed(1)}s</p>
-                    <div class="mig-stats">
+            const isLangfuse = res.provider === 'langfuse';
+            const resultTiles = isLangfuse ? `
+                        <div class="mig-stat"><div class="label">New memories</div><div class="value success">${(sum.imported || 0).toLocaleString()}</div><div class="sub">written to ${escHtml(res.agent_id)}</div></div>
+                        <div class="mig-stat"><div class="label">Updated</div><div class="value accent">${sum.updated || 0}</div><div class="sub">recurring signatures</div></div>
+                        <div class="mig-stat"><div class="label">Unchanged</div><div class="value">${sum.unchanged || 0}</div><div class="sub">already synced</div></div>
+                        <div class="mig-stat"><div class="label">Observations</div><div class="value">${(sum.observation_count || 0).toLocaleString()}</div><div class="sub">grouped into ${sum.signature_count || 0} signatures</div></div>
+                        <div class="mig-stat"><div class="label">Failed</div><div class="value ${sum.failed ? 'error' : ''}">${sum.failed || 0}</div></div>` : `
                         <div class="mig-stat"><div class="label">Imported</div><div class="value success">${(sum.imported || 0).toLocaleString()}</div><div class="sub">written to ${escHtml(res.agent_id)}</div></div>
                         <div class="mig-stat"><div class="label">Failed</div><div class="value ${sum.failed ? 'error' : ''}">${sum.failed || 0}</div></div>
                         <div class="mig-stat"><div class="label">Skipped</div><div class="value warning">${sum.skipped || 0}</div><div class="sub">empty content</div></div>
-                        <div class="mig-stat"><div class="label">Batches</div><div class="value">${sum.batches || 0}</div><div class="sub">100 / req</div></div>
-                        <div class="mig-stat"><div class="label">Tokens saved</div><div class="value">${(sv.tokens_saved || 0).toLocaleString()}</div><div class="sub">~$${Number(sv.extraction_cost_usd || 0).toFixed(2)}</div></div>
-                        <div class="mig-stat"><div class="label">Latency</div><div class="value accent">${sv.read_ms_memanto || '—'} ms</div><div class="sub">~${sv.latency_speedup_x || '—'}× faster than ${sv.read_ms_source || '—'}ms</div></div>
+                        <div class="mig-stat"><div class="label">Batches</div><div class="value">${sum.batches || 0}</div><div class="sub">100 / req</div></div>`;
+
+            root.innerHTML = `
+                <div class="card" style="border-color:${sum.failed ? 'var(--warning)' : 'var(--success)'}">
+                    <div class="card-label" style="margin-bottom:6px">${isLangfuse ? 'Sync complete' : 'Import complete'} · ${escHtml(res.provider)} → ${escHtml(res.agent_id)}</div>
+                    <p style="color:var(--text-dim);font-size:12px;margin:0 0 14px 0;font-family:var(--font-mono)">${escHtml(res.source_label)} · ${(res.elapsed_ms / 1000).toFixed(1)}s</p>
+                    <div class="mig-stats">
+                        ${resultTiles}
+                        ${savingsTiles}
                     </div>
                     <div class="mig-type-chips">${chips}</div>
+                    ${migWarnings(sum.warnings)}
                     ${errBox}
                     <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:22px">
                         <button class="btn btn-secondary" onclick="goToPage('explorer')">Open Explorer</button>
-                        <button class="btn btn-primary" onclick="resetMigrate()">Migrate another</button>
+                        <button class="btn btn-primary" onclick="resetMigrate()">${isLangfuse ? 'Sync another source' : 'Migrate another'}</button>
                     </div>
                 </div>
             `;
         }
 
         function resetMigrate() {
-            S.migrate = { provider: null, source: 'file', file: '', apiKey: '', preview: null };
+            S.migrate = migrateInitialState();
             renderMigrate();
         }
 
@@ -5016,7 +5526,7 @@
         async function loadConnectionMemories(conn) {
             const box = document.getElementById('connMemories');
             if (!box) return;
-            if (!S.agentId || !S.token) {
+            if (!hasActiveSession()) {
                 box.innerHTML = '<p style="color:var(--text-dim);padding:12px 0;font-size:13px">No active Memanto agent. <a href="#" onclick="goToPage(\'agents\');return false" style="color:var(--accent);text-decoration:none">Activate one</a> to see memories from this connection.</p>';
                 return;
             }

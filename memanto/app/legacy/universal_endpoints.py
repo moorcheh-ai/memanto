@@ -19,7 +19,7 @@ from memanto.app.models.universal_endpoints import (
 )
 from memanto.app.utils.auth import extract_tenant_from_auth
 from memanto.app.utils.logging import get_logger
-from memanto.app.utils.rate_limiting import rate_limiter
+from memanto.app.legacy.rate_limiting import rate_limiter
 
 router = APIRouter()
 logger = get_logger(__name__)
