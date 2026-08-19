@@ -1,7 +1,5 @@
 # Claude export guide
 
-<!-- VIDEO -->
-
 ## How to get your data
 
 1. Sign in to [claude.ai](https://claude.ai)

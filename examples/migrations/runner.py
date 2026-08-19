@@ -1,57 +1,30 @@
 """
-Standalone migration runner for examples/migrations.
+Migration runner for examples/migrations.
 
-Thin wrapper around the core logic in memanto.cli.migrate.runner,
-using the local MAPPERS registry that includes new providers.
+Imports core types and helpers from memanto.cli.migrate.runner directly.
+Extends source_count and run_migration to cover the custom providers added
+in this example (chatgpt, claude, gemini, zep, hindsight, langgraph, notion,
+obsidian, chroma) that are not part of the core package.
 """
 
 from __future__ import annotations
 
-import json
 from collections.abc import Callable
-from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+from memanto.cli.migrate.runner import (
+    BATCH_LIMIT,
+    MigrationSummary,
+    load_export,
+    chunked,
+)
+from memanto.cli.migrate.mappers import type_breakdown
+
 try:
-    from .mappers import MAPPERS, type_breakdown
+    from .mappers import MAPPERS
 except ImportError:
-    from mappers import MAPPERS, type_breakdown  # type: ignore[no-redef]
-
-BATCH_LIMIT = 100
-
-
-@dataclass
-class MigrationSummary:
-    provider: str
-    source_count: int = 0
-    mapped_count: int = 0
-    imported: int = 0
-    failed: int = 0
-    skipped: int = 0
-    type_counts: dict[str, int] = field(default_factory=dict)
-    batches: int = 0
-    errors: list[str] = field(default_factory=list)
-
-    def as_dict(self) -> dict[str, Any]:
-        return {
-            "provider": self.provider,
-            "source_count": self.source_count,
-            "mapped_count": self.mapped_count,
-            "imported": self.imported,
-            "failed": self.failed,
-            "skipped": self.skipped,
-            "type_counts": self.type_counts,
-            "batches": self.batches,
-            "errors": self.errors[:20],
-        }
-
-
-def load_export(file_path: Path) -> dict[str, Any]:
-    if not file_path.exists():
-        raise FileNotFoundError(f"Export file not found: {file_path}")
-    from typing import cast
-    return cast(dict[str, Any], json.loads(file_path.read_text(encoding="utf-8")))
+    from mappers import MAPPERS  # type: ignore[no-redef]
 
 
 def map_export(provider: str, export: dict[str, Any]) -> list[dict[str, Any]]:
@@ -59,11 +32,6 @@ def map_export(provider: str, export: dict[str, Any]) -> list[dict[str, Any]]:
     if mapper is None:
         raise ValueError(f"Unknown provider '{provider}'. Supported: {sorted(MAPPERS)}")
     return mapper(export)
-
-
-def _chunked(items: list[dict[str, Any]], size: int = BATCH_LIMIT):
-    for i in range(0, len(items), size):
-        yield items[i : i + size]
 
 
 def source_count(provider: str, export: dict[str, Any]) -> int:
@@ -150,7 +118,7 @@ def run_migration(
     if dry_run or not rows:
         return summary, rows
 
-    batches = list(_chunked(rows, BATCH_LIMIT))
+    batches = list(chunked(rows, BATCH_LIMIT))
     summary.batches = len(batches)
 
     for idx, batch in enumerate(batches, 1):

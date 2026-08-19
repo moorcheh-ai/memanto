@@ -1,18 +1,16 @@
 ---
-type: event
+type: context
 title: Comparing LLM embedding models
 description: Comparing text-embedding-3-small vs bge-m3 for a semantic search index
   over Rust docs. My queries are short, documents are medium length. Which would you
   pick?
-timestamp: '2025-07-08T08:12:02.211448+00:00'
+timestamp: '2025-07-08 08:12:02.211448+00:00'
 resource: 5be6128e-18c2-6797-6142-ea7d17be3111
 x_memanto:
-  id: 144366dd-efcf-4beb-b927-272285310cdf
   confidence: 0.8
   provenance: imported
   source: chatgpt
-  status: active
-  type: event
+  type: context
 ---
 
 Comparing text-embedding-3-small vs bge-m3 for a semantic search index over Rust docs. My queries are short, documents are medium length. Which would you pick?

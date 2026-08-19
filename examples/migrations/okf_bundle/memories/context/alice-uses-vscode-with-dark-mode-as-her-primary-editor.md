@@ -1,18 +1,16 @@
 ---
-type: fact
+type: context
 title: Alice uses VSCode with dark mode as her primary editor.
 description: Alice uses VSCode with dark mode as her primary editor.
 tags:
 - user/alice/memories
-timestamp: '2026-07-25T16:23:16.568424+00:00'
+timestamp: '2026-08-19 20:19:47.294356+00:00'
 resource: pref-editor
 x_memanto:
-  id: ed96a3f5-1047-4e5a-9a5a-b201c2d950e4
   confidence: 0.8
   provenance: imported
   source: langgraph
-  status: active
-  type: fact
+  type: context
 ---
 
 Alice uses VSCode with dark mode as her primary editor.

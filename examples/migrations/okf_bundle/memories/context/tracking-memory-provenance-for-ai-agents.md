@@ -1,17 +1,15 @@
 ---
-type: instruction
+type: context
 title: Tracking memory provenance for AI agents
 description: I need a simple way to track which memories my AI agent added vs which
   it inherited from a migration. Is there a provenance field I should use?
-timestamp: '2025-08-15T01:21:15.566602+00:00'
+timestamp: '2025-08-15 01:21:15.566602+00:00'
 resource: 3d4cbf37-4eb9-3eff-ce88-cb2dd4e80839
 x_memanto:
-  id: b9862297-fcf2-439d-b60e-5c6ccad8920c
   confidence: 0.8
   provenance: imported
   source: claude
-  status: active
-  type: instruction
+  type: context
 ---
 
 I need a simple way to track which memories my AI agent added vs which it inherited from a migration. Is there a provenance field I should use?

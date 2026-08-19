@@ -1,10 +1,10 @@
 """
-Standalone mapper registry for the migrations example.
+Mapper registry for the migrations example.
 
-Existing providers (mem0, letta, supermemory, okf) are imported directly
-from the installed memanto package. New providers added in this example
-(chatgpt, claude, gemini, zep, hindsight, langgraph, notion, obsidian,
-chroma) are implemented here so this directory stays self-contained.
+Core providers (mem0, letta, supermemory, okf) and their shared helpers are
+imported directly from the installed memanto package. Custom providers added
+in this example (chatgpt, claude, gemini, zep, hindsight, langgraph, notion,
+obsidian, chroma) are implemented here.
 """
 
 from __future__ import annotations
@@ -13,105 +13,24 @@ from collections.abc import Callable
 from datetime import datetime, timezone
 from typing import Any
 
-# Re-export existing mappers from the installed package.
+from memanto.app.constants import VALID_MEMORY_TYPES
 from memanto.cli.migrate.mappers import (
-    map_mem0,
+    _attach_footer,
+    _coerce_type,
+    _format_supporting_data,
+    _now_utc,
+    _parse_dt,
+    _title_from,
     map_letta,
-    map_supermemory,
+    map_mem0,
     map_okf,
+    map_supermemory,
     type_breakdown,
 )
-
-# ---------------------------------------------------------------------------
-# Shared helpers (mirrors memanto/cli/migrate/mappers.py internals)
-# ---------------------------------------------------------------------------
-
-_VALID_MEMORY_TYPES = {
-    "fact", "preference", "goal", "decision", "artifact", "learning",
-    "event", "instruction", "relationship", "context", "observation",
-    "commitment", "error",
-}
 
 _DEFAULT_TITLE_CHARS = 80
 _MAX_CONTENT_CHARS = 10000
 _MAX_FOOTER_CHARS = 800
-
-
-def _title_from(content: str) -> str:
-    text = content.strip().replace("\n", " ")
-    if len(text) <= _DEFAULT_TITLE_CHARS:
-        return text
-    return text[: _DEFAULT_TITLE_CHARS - 3].rstrip() + "..."
-
-
-def _coerce_type(raw: str | None) -> str | None:
-    if not raw:
-        return None
-    t = raw.strip().lower()
-    return t if t in _VALID_MEMORY_TYPES else None
-
-
-def _parse_dt(value: Any) -> datetime | None:
-    if value in (None, "", 0):
-        return None
-    if isinstance(value, datetime):
-        return value if value.tzinfo else value.replace(tzinfo=timezone.utc)
-    if isinstance(value, (int, float)):
-        try:
-            return datetime.fromtimestamp(float(value), tz=timezone.utc)
-        except (OverflowError, OSError, ValueError):
-            return None
-    if isinstance(value, str):
-        text = value.strip()
-        if not text:
-            return None
-        if text.endswith("Z"):
-            text = text[:-1] + "+00:00"
-        try:
-            dt = datetime.fromisoformat(text)
-        except ValueError:
-            return None
-        return dt if dt.tzinfo else dt.replace(tzinfo=timezone.utc)
-    return None
-
-
-def _format_supporting_data(items: list[tuple[str, Any]]) -> str:
-    lines: list[str] = []
-    for label, value in items:
-        if value in (None, "", [], {}):
-            continue
-        if isinstance(value, (list, tuple)):
-            value = ", ".join(str(v) for v in value if v not in (None, ""))
-            if not value:
-                continue
-        elif isinstance(value, dict):
-            value = "; ".join(f"{k}={v}" for k, v in value.items() if v not in (None, ""))
-            if not value:
-                continue
-        text = str(value)
-        if len(text) > 200:
-            text = text[:197] + "..."
-        lines.append(f"- {label}: {text}")
-    if not lines:
-        return ""
-    body = "\n".join(lines)
-    if len(body) > _MAX_FOOTER_CHARS:
-        body = body[: _MAX_FOOTER_CHARS - 4] + "\n..."
-    return "\n\n---\n[Supporting data]\n" + body
-
-
-def _attach_footer(content: str, footer: str) -> str:
-    if not footer:
-        return content
-    budget = _MAX_CONTENT_CHARS - len(footer)
-    if budget < 0:
-        return content[:_MAX_CONTENT_CHARS]
-    trimmed = content if len(content) <= budget else content[: budget - 4] + "\n..."
-    return trimmed + footer
-
-
-def _now_utc() -> datetime:
-    return datetime.now(timezone.utc)
 
 
 # ---------------------------------------------------------------------------
@@ -425,7 +344,7 @@ def map_langgraph(export: dict[str, Any]) -> list[dict[str, Any]]:
 
 
 # ---------------------------------------------------------------------------
-# Notion / Obsidian (shared markdown entry helper)
+# Notion / Obsidian
 # ---------------------------------------------------------------------------
 
 def _map_markdown_entry(

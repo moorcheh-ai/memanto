@@ -322,7 +322,7 @@ def verify_chatgpt(zip_bytes: bytes) -> int:
     Returns:
     	int: Number of mapped memories produced from the export.
     """
-    from memanto.cli.migrate.mappers import map_chatgpt
+    from examples.migrations.mappers import map_chatgpt
     return _verify(zip_bytes, "conversations.json", lambda raw: raw, map_chatgpt)
 
 
@@ -400,7 +400,7 @@ def verify_claude(zip_bytes: bytes) -> int:
     Returns:
     	int: Number of mapped memories produced from the archive.
     """
-    from memanto.cli.migrate.mappers import map_claude
+    from examples.migrations.mappers import map_claude
     return _verify(zip_bytes, "conversations.json", lambda raw: raw, map_claude)
 
 
@@ -454,7 +454,7 @@ def verify_gemini(zip_bytes: bytes) -> int:
     Returns:
     	int: Number of mapped memories produced from matching Gemini entries.
     """
-    from memanto.cli.migrate.mappers import map_gemini
+    from examples.migrations.mappers import map_gemini
 
     def to_memories(raw: list) -> list:
         """Convert matching Gemini activity entries into memory objects.

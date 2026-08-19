@@ -12,21 +12,17 @@
 ```
 Hour  00  03  06  09  12  15  18  21  24
       ╠═══╬═══╬═══╬═══╬═══╬═══╬═══╬═══╣
-      ●●● ●   ●   ●●  ●●  ●●●●    ●●● 
+      ●●● ●   ●   ●●  ●●  ●●● ●●●●●●● 
 ```
 
-**19** memories across **12** active hours
+**19** memories across **13** active hours
 
 ### Memory Type Distribution
 
 ```
-FACT          ████████████████████ 5
-INSTRUCTION   ████████████████ 4
-EVENT         ████████████████ 4
-GOAL          ████████ 2
-RELATIONSHIP  ████████ 2
-PREFERENCE    ████ 1
-OBSERVATION   ████ 1
+CONTEXT     ████████████████████ 17
+FACT        █ 1
+PREFERENCE  █ 1
 ```
 
 ### Confidence Overview
@@ -39,5 +35,5 @@ OBSERVATION   ████ 1
 | Medium (0.5–0.8)| 0     |
 | Low (<0.5)      | 0     |
 
-*Visualizations auto-generated at Jul 25, 2026 05:23 PM*
+*Visualizations auto-generated at Aug 19, 2026 09:19 PM*
 

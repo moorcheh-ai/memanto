@@ -1,7 +1,5 @@
 # Gemini export guide
 
-<!-- VIDEO -->
-
 ## How to get your data
 
 > Gemini conversation history lives under **My Activity**, not the "Gemini" product entry.

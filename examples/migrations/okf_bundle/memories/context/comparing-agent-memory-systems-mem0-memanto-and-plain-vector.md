@@ -1,18 +1,16 @@
 ---
-type: event
+type: context
 title: 'Comparing agent memory systems: mem0, Memanto, and plain vector DB'
 description: My LLM agent needs persistent memory across sessions. I am evaluating
   mem0, Memanto and a plain vector DB. What are the tradeoffs from an architecture
   standpoint?
-timestamp: '2025-06-21T16:33:11.410060+00:00'
+timestamp: '2025-06-21 16:33:11.410060+00:00'
 resource: 3139d32c-93cd-59bf-5c94-1cf0dc98d2c1
 x_memanto:
-  id: eedbfc64-3013-4418-b0ab-e1059b82b3a2
   confidence: 0.8
   provenance: imported
   source: chatgpt
-  status: active
-  type: event
+  type: context
 ---
 
 My LLM agent needs persistent memory across sessions. I am evaluating mem0, Memanto and a plain vector DB. What are the tradeoffs from an architecture standpoint?

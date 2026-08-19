@@ -1,17 +1,15 @@
 ---
-type: instruction
+type: context
 title: Building a RAG pipeline for a codebase
 description: Building a RAG pipeline for a codebase. Should I chunk by file, by function,
   or by token window?
-timestamp: '2025-07-27T21:34:33.592529+00:00'
+timestamp: '2025-07-27 21:34:33.592529+00:00'
 resource: 77d21e02-ff01-cf99-988c-24c961b1cd22
 x_memanto:
-  id: 56e48657-5fbc-4a43-a269-bb9848c5cca5
   confidence: 0.8
   provenance: imported
   source: claude
-  status: active
-  type: instruction
+  type: context
 ---
 
 Building a RAG pipeline for a codebase. Should I chunk by file, by function, or by token window?

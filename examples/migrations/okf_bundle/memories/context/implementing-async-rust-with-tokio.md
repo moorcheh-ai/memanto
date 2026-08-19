@@ -1,17 +1,15 @@
 ---
-type: instruction
+type: context
 title: Implementing async Rust with Tokio
 description: I am working on a Rust library for async file I/O using Tokio. The read_to_string
   calls are blocking — should I use spawn_blocking or tokio::fs?
-timestamp: '2025-06-28T17:56:59.261382+00:00'
+timestamp: '2025-06-28 17:56:59.261382+00:00'
 resource: 23b8c1e9-3924-56de-3eb1-3b9046685257
 x_memanto:
-  id: c5e9c893-7ebe-4415-8b64-a325ed498acd
   confidence: 0.8
   provenance: imported
   source: chatgpt
-  status: active
-  type: instruction
+  type: context
 ---
 
 I am working on a Rust library for async file I/O using Tokio. The read_to_string calls are blocking — should I use spawn_blocking or tokio::fs?
