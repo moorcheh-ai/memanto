@@ -41,11 +41,6 @@ from memanto.app.services.conversation_memory_extraction_service import (
 )
 from memanto.app.services.memory_read_service import MemoryReadService
 from memanto.app.services.memory_write_service import MemoryWriteService
-from memanto.app.utils.rate_limiting import (
-    enforce_answer_rate_limit,
-    enforce_delete_rate_limit,
-    enforce_read_rate_limit,
-    enforce_write_rate_limit,
 from memanto.app.utils.errors import (
     AuthorizationError,
     MemoryError,
@@ -397,7 +392,6 @@ async def remember(
 
     # Enforce session scope: token must match agent_id
     enforce_session_scope(session, agent_id)
-    enforce_write_rate_limit(agent_id)
 
     try:
         # Initialize memory write service
@@ -481,7 +475,6 @@ async def batch_remember(
     """
     # Enforce session scope: token must match agent_id
     enforce_session_scope(session, agent_id)
-    enforce_write_rate_limit(agent_id)
 
     try:
         # Initialize memory write service
@@ -566,7 +559,6 @@ async def edit_memory(
     The session must be for the specified agent_id.
     """
     enforce_session_scope(session, agent_id)
-    enforce_write_rate_limit(agent_id)
 
     updates = request.to_updates()
     if not updates:
@@ -864,7 +856,6 @@ async def delete_memory(
     The session must be for the specified agent_id.
     """
     enforce_session_scope(session, agent_id)
-    enforce_delete_rate_limit(agent_id)
 
     try:
         write_service = MemoryWriteService(client)
@@ -912,7 +903,6 @@ async def recall(
 
     # Enforce session scope
     enforce_session_scope(session, agent_id)
-    enforce_read_rate_limit(agent_id)
 
     recall_cfg = _config_manager.get_recall_config()
     raw_min_similarity = (
@@ -983,7 +973,6 @@ async def answer(
 
     # Enforce session scope
     enforce_session_scope(session, agent_id)
-    enforce_answer_rate_limit(agent_id)
 
     client = get_moorcheh_client()
 
