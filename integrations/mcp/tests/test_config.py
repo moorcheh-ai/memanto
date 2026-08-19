@@ -26,6 +26,8 @@ def test_minimal_valid_settings(fake_api_key: str) -> None:
     assert settings.api_key_value() == fake_api_key
     assert settings.transport is TransportType.STDIO
     assert settings.default_agent_id is None
+    assert settings.allowed_agent_ids == ""
+    assert settings.authorized_agent_ids() == frozenset()
     assert settings.expose_admin_tools is False
     assert settings.agent_auto_create is True
     assert settings.agent_pattern == "tool"
@@ -43,6 +45,21 @@ def test_default_agent_loaded_from_env(
     monkeypatch.setenv("MEMANTO_DEFAULT_AGENT_ID", "my-assistant")
     settings = MCPServerSettings()  # type: ignore[call-arg]
     assert settings.default_agent_id == "my-assistant"
+    assert settings.authorized_agent_ids() == frozenset({"my-assistant"})
+
+
+def test_allowed_agents_loaded_from_env(
+    fake_api_key: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("MEMANTO_DEFAULT_AGENT_ID", "default-agent")
+    monkeypatch.setenv(
+        "MEMANTO_ALLOWED_AGENT_IDS", " shared-agent,other-agent,shared-agent "
+    )
+    settings = MCPServerSettings()  # type: ignore[call-arg]
+
+    assert settings.authorized_agent_ids() == frozenset(
+        {"default-agent", "shared-agent", "other-agent"}
+    )
 
 
 @pytest.mark.parametrize("pattern", ["support", "project", "tool"])

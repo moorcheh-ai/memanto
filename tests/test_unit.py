@@ -2311,6 +2311,10 @@ def test_ui_static_xss_escapes():
     assert "${escHtml(m.provenance)}" in ui_html
     assert "${escHtml(e.message)}" in ui_html
     assert 'data-memory-id="${attrEsc(memId)}"' in ui_html
+    assert "sel.replaceChildren(new Option('All Sources', ''))" in ui_html
+    assert "sel.add(new Option(value, value))" in ui_html
+    assert 'title="${attrEsc(m.id || \'\')}"' in ui_html
+    assert "${escHtml(fmtDate(m.created_at))}" in ui_html
 
     forbidden_raw_interpolations = [
         "${agent.agent_id}",
@@ -2328,6 +2332,9 @@ def test_ui_static_xss_escapes():
         "${m.source ||",
         ">${m.source}</span>",
         "Source: ${m.source ||",
+        'sources.map(s => `<option value="${escHtml(s)}"',
+        'title="${escHtml(m.id || \'\')}"',
+        "${fmtDate(m.created_at)}",
         "${m.content || m.text",
         "ID: ${memId ||",
         "Score: ${m.score",

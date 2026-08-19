@@ -10,8 +10,17 @@ from memanto.app.utils.errors import AgentNotFoundError, SessionError
 
 import memanto_mcp.lifecycle as lifecycle_module
 from memanto_mcp.config import MCPServerSettings
-from memanto_mcp.lifecycle import MemantoLifecycle
+from memanto_mcp.lifecycle import AgentAccessDeniedError, MemantoLifecycle
 from memanto_mcp.tools import register_tools
+
+
+@pytest.fixture(autouse=True)
+def _authorize_fixture_agents(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Keep existing lifecycle tests explicit about their trusted agent set."""
+    monkeypatch.setenv(
+        "MEMANTO_ALLOWED_AGENT_IDS",
+        "agent-a,agent-b,agent-c,project-agent,attacker-agent",
+    )
 
 
 class _FakeSdkClient:
@@ -49,6 +58,39 @@ def lifecycle(fake_api_key: str, monkeypatch: pytest.MonkeyPatch) -> MemantoLife
     _FakeSdkClient.instances.clear()
     monkeypatch.setattr(lifecycle_module, "SdkClient", _FakeSdkClient)
     return MemantoLifecycle(MCPServerSettings())  # type: ignore[call-arg]
+
+
+def test_model_supplied_agent_id_cannot_cross_configured_boundary(
+    fake_api_key: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Knowing another existing agent ID must not authorize a session for it."""
+    _FakeSdkClient.instances.clear()
+    monkeypatch.setattr(lifecycle_module, "SdkClient", _FakeSdkClient)
+    monkeypatch.setenv("MEMANTO_DEFAULT_AGENT_ID", "agent-a")
+    monkeypatch.setenv("MEMANTO_ALLOWED_AGENT_IDS", "")
+    lifecycle = MemantoLifecycle(MCPServerSettings())  # type: ignore[call-arg]
+
+    assert lifecycle.resolve_agent_id(None) == "agent-a"
+    with pytest.raises(AgentAccessDeniedError, match="not authorized"):
+        lifecycle.resolve_agent_id("agent-b")
+    with pytest.raises(AgentAccessDeniedError, match="not authorized"):
+        lifecycle.client_for("agent-b")
+
+    assert len(_FakeSdkClient.instances) == 1
+    assert lifecycle._session_clients == {}
+
+
+def test_explicit_server_allowlist_authorizes_additional_agent(
+    fake_api_key: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _FakeSdkClient.instances.clear()
+    monkeypatch.setattr(lifecycle_module, "SdkClient", _FakeSdkClient)
+    monkeypatch.setenv("MEMANTO_DEFAULT_AGENT_ID", "agent-a")
+    monkeypatch.setenv("MEMANTO_ALLOWED_AGENT_IDS", "agent-b")
+    lifecycle = MemantoLifecycle(MCPServerSettings())  # type: ignore[call-arg]
+
+    assert lifecycle.resolve_agent_id("agent-b") == "agent-b"
+    assert lifecycle.client_for("agent-b").agent_id == "agent-b"
 
 
 def test_different_agents_keep_independent_session_clients(

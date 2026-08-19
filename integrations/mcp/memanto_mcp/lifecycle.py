@@ -3,8 +3,8 @@
 MCP tool calls are stateless from the model's perspective — the agent decides
 to call ``recall`` and expects it to "just work". This module owns:
 
-* Resolving which Memanto agent_id a given tool call targets (explicit arg
-  wins; otherwise the configured default).
+* Resolving which Memanto agent_id a given tool call targets while enforcing
+  the server-configured authorization boundary.
 * Lazily creating the default agent on first use (if enabled).
 * Lazily creating one independently activated ``SdkClient`` per agent. The
   underlying ``SdkClient._get_validated_session_for_agent`` already auto-renews
@@ -44,6 +44,10 @@ class NoAgentConfiguredError(ValueError):
     """Raised when a tool call omits agent_id and no default is configured."""
 
 
+class AgentAccessDeniedError(ValueError):
+    """Raised when a tool call targets an agent outside the server allowlist."""
+
+
 class MemantoLifecycle:
     """Owns an administrative client and isolated per-agent session clients."""
 
@@ -74,19 +78,25 @@ class MemantoLifecycle:
         return self._settings
 
     def resolve_agent_id(self, agent_id: str | None) -> str:
-        """Pick the explicit ``agent_id`` if given, else fall back to default.
+        """Resolve and authorize an explicit or default ``agent_id``.
 
         Raises:
             NoAgentConfiguredError: If neither was provided.
+            AgentAccessDeniedError: If the resolved agent is not authorized.
         """
         if agent_id and agent_id.strip():
-            return agent_id.strip()
-        if self._settings.default_agent_id:
-            return self._settings.default_agent_id
-        raise NoAgentConfiguredError(
-            "No agent_id was supplied and no MEMANTO_DEFAULT_AGENT_ID is "
-            "configured. Either pass agent_id explicitly or set the env var."
-        )
+            resolved = agent_id.strip()
+        elif self._settings.default_agent_id:
+            resolved = self._settings.default_agent_id.strip()
+        else:
+            raise NoAgentConfiguredError(
+                "No agent_id was supplied and no MEMANTO_DEFAULT_AGENT_ID is "
+                "configured. Set MEMANTO_DEFAULT_AGENT_ID or authorize an explicit "
+                "agent with MEMANTO_ALLOWED_AGENT_IDS."
+            )
+
+        self._require_authorized_agent(resolved)
+        return resolved
 
     def ensure_ready(self, agent_id: str) -> SdkClient:
         """Make sure the agent exists and a session is active for it.
@@ -105,6 +115,8 @@ class MemantoLifecycle:
         one client per agent prevents a concurrent call for another agent from
         replacing that state between readiness checks and the actual operation.
         """
+        self._require_authorized_agent(agent_id)
+
         with self._lock:
             client = self._session_clients.get(agent_id)
             is_new_client = client is None
@@ -152,6 +164,15 @@ class MemantoLifecycle:
     # ------------------------------------------------------------------ #
     # Internals
     # ------------------------------------------------------------------ #
+
+    def _require_authorized_agent(self, agent_id: str) -> None:
+        """Reject agent selection not authorized by server configuration."""
+        if agent_id not in self._settings.authorized_agent_ids():
+            raise AgentAccessDeniedError(
+                f"Agent '{agent_id}' is not authorized for MCP memory tools. "
+                "Set it as MEMANTO_DEFAULT_AGENT_ID or add it to "
+                "MEMANTO_ALLOWED_AGENT_IDS on the server."
+            )
 
     def _ensure_agent_exists_locked(self, client: SdkClient, agent_id: str) -> None:
         """Verify an agent exists, auto-creating it when configured."""

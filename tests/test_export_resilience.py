@@ -98,6 +98,34 @@ class TestSyncUsesCacheFastPath:
         written = (project_dir / "MEMORY.md").read_text(encoding="utf-8")
         assert "good content" in written
 
+    @pytest.mark.parametrize("client_cls", [SdkClient, DirectClient])
+    def test_memory_md_symlink_is_replaced_not_followed(
+        self, client_cls, monkeypatch, tmp_path
+    ):
+        client = _build_client(client_cls, monkeypatch, tmp_path)
+
+        cache_file = tmp_path / ".memanto" / "exports" / "test-agent_memory.md"
+        cache_file.parent.mkdir(parents=True, exist_ok=True)
+        cache_file.write_text("### Safe Memory\n\nproject context\n", encoding="utf-8")
+
+        project_dir = tmp_path / "project"
+        project_dir.mkdir()
+        outside = tmp_path / "outside.txt"
+        outside.write_text("must remain unchanged", encoding="utf-8")
+        memory_md = project_dir / "MEMORY.md"
+        memory_md.symlink_to(outside)
+
+        result = client.sync_memory_to_project(
+            agent_id="test-agent", project_dir=str(project_dir)
+        )
+
+        assert result["source"] == "cache"
+        assert outside.read_text(encoding="utf-8") == "must remain unchanged"
+        assert not memory_md.is_symlink()
+        assert memory_md.read_text(encoding="utf-8") == cache_file.read_text(
+            encoding="utf-8"
+        )
+
     def test_raises_when_no_cache_and_backend_down(self, monkeypatch, tmp_path):
         client = _build_client(SdkClient, monkeypatch, tmp_path)
         monkeypatch.setattr(

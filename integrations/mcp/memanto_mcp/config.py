@@ -36,6 +36,8 @@ class MCPServerSettings(BaseSettings):
         default_agent_id: When set, callers may omit ``agent_id`` from tool
             calls and this value is used. Strongly recommended in MCP setups
             since most clients invoke a tool per turn with no shared state.
+        allowed_agent_ids: Comma-separated additional agents that memory tools
+            may access. The default agent is always allowed.
         agent_pattern: Pattern used when auto-creating the default agent
             (``support``, ``project``, or ``tool``).
         agent_auto_create: If True (default), the default agent is created
@@ -69,6 +71,14 @@ class MCPServerSettings(BaseSettings):
         description=(
             "Default agent used when a tool call omits agent_id. "
             "Set this to a stable per-project identifier."
+        ),
+    )
+    allowed_agent_ids: str = Field(
+        default="",
+        validation_alias="MEMANTO_ALLOWED_AGENT_IDS",
+        description=(
+            "Comma-separated additional agent IDs authorized for memory tools. "
+            "The configured default agent is always authorized."
         ),
     )
     agent_pattern: str = Field(
@@ -152,3 +162,14 @@ class MCPServerSettings(BaseSettings):
     # Convenience accessor — never logged.
     def api_key_value(self) -> str:
         return self.moorcheh_api_key.get_secret_value()
+
+    def authorized_agent_ids(self) -> frozenset[str]:
+        """Return the server-configured memory-tool authorization boundary."""
+        agent_ids = {
+            agent_id.strip()
+            for agent_id in self.allowed_agent_ids.split(",")
+            if agent_id.strip()
+        }
+        if self.default_agent_id and self.default_agent_id.strip():
+            agent_ids.add(self.default_agent_id.strip())
+        return frozenset(agent_ids)

@@ -32,6 +32,7 @@ from memanto.app.constants import (
 from memanto.app.constants import (
     ProvenanceType as MemoryProvenance,
 )
+from memanto.app.utils.atomic_write import atomic_write_text
 from memanto.app.utils.errors import (
     AgentNotFoundError,
     InvalidSessionTokenError,
@@ -329,6 +330,8 @@ class SdkClient:
             Confirmation dict with ``status`` and ``agent_id``.
         """
         logger.debug("Deleting agent '%s'", agent_id)
+        # Revoke first so no bearer token remains usable after metadata removal.
+        self._get_session_service().delete_session(agent_id)
         self._get_agent_service().delete_agent(agent_id)
         if self.agent_id == agent_id:
             self.session_token = None
@@ -1476,9 +1479,10 @@ class SdkClient:
         target_path.parent.mkdir(parents=True, exist_ok=True)
 
         if cache_path.exists():
-            # Fast path: copy cached export without an API-backed refresh.
-            shutil.copy2(str(cache_path), str(target_path))
+            # Replace the project entry atomically so a repository-controlled
+            # MEMORY.md symlink cannot redirect this write outside the project.
             content = cache_path.read_text(encoding="utf-8")
+            atomic_write_text(target_path, content)
             mem_count = content.count("### ")
             return {
                 "output_path": str(target_path.resolve()),
@@ -1495,8 +1499,8 @@ class SdkClient:
             if cache_path.exists():
                 # Backend unreachable, but we have a previously good export —
                 # serve that instead of wiping the project's MEMORY.md.
-                shutil.copy2(str(cache_path), str(target_path))
                 content = cache_path.read_text(encoding="utf-8")
+                atomic_write_text(target_path, content)
                 mem_count = content.count("### ")
                 return {
                     "output_path": str(target_path.resolve()),
@@ -1507,7 +1511,7 @@ class SdkClient:
 
         exported_path = Path(export_result["output_path"])
         if exported_path.exists():
-            shutil.copy2(str(exported_path), str(target_path))
+            atomic_write_text(target_path, exported_path.read_text(encoding="utf-8"))
 
         return {
             "output_path": str(target_path.resolve()),

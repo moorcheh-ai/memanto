@@ -2774,6 +2774,12 @@
         // Escape HTML
         function escHtml(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
 
+        // Escape a value for a double-quoted HTML attribute.
+        function attrEsc(s) {
+            if (s == null) return '';
+            return String(s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        }
+
         // Navigation
         document.querySelectorAll('.nav-item').forEach(btn => {
             btn.addEventListener('click', () => {
@@ -2926,7 +2932,7 @@
                     <td style="font-size:12px">${escHtml(trunc(a.description || '—', 60))}</td>
                     <td>${a.memory_count ?? '—'}</td>
                     <td>${a.session_count ?? 0}</td>
-                    <td style="white-space:nowrap">${fmtDate(a.created_at)}</td>
+                    <td style="white-space:nowrap">${escHtml(fmtDate(a.created_at))}</td>
                     <td>${statusBadge}</td>
                     <td style="text-align:right;white-space:nowrap">${actions}</td>
                 </tr>`;
@@ -3030,7 +3036,7 @@
                 <tr><td>Pattern</td><td><span class="badge badge-accent">${escHtml(agent.pattern || '—')}</span></td></tr>
                 <tr><td>Description</td><td>${escHtml(agent.description || '—')}</td></tr>
                 <tr><td>Namespace</td><td><code style="color:var(--cyan);font-family:var(--font-mono)">${escHtml(agent.namespace || '—')}</code></td></tr>
-                <tr><td>Created</td><td>${fmtDate(agent.created_at)}</td></tr>
+                <tr><td>Created</td><td>${escHtml(fmtDate(agent.created_at))}</td></tr>
                 <tr><td>Sessions</td><td>${agent.session_count ?? '—'}</td></tr>
                 </tbody></table>`;
                 } catch (e) { profile.innerHTML = `<p style="color:var(--text-dim)">Could not load agent: ${escHtml(e.message)}</p>`; }
@@ -3048,8 +3054,8 @@
                 <tr><td>Status</td><td><span class="badge badge-success">${escHtml(sess.status || 'active')}</span></td></tr>
                 <tr><td>Pattern</td><td>${escHtml(sess.pattern || '—')}</td></tr>
                 <tr><td>Namespace</td><td><code style="color:var(--cyan);font-family:var(--font-mono)">${escHtml(sess.namespace || '—')}</code></td></tr>
-                <tr><td>Started</td><td>${fmtDate(sess.started_at)}</td></tr>
-                <tr><td>Expires</td><td>${fmtDate(sess.expires_at)}</td></tr>
+                <tr><td>Started</td><td>${escHtml(fmtDate(sess.started_at))}</td></tr>
+                <tr><td>Expires</td><td>${escHtml(fmtDate(sess.expires_at))}</td></tr>
                 <tr><td>Time Remaining</td><td><strong style="color:var(--accent)">${hrs}h ${mins}m</strong></td></tr>
                 </tbody></table>`;
                 } catch (e) { session.innerHTML = `<p style="color:var(--warning)">Session may be expired: ${escHtml(e.message)}</p>`; }
@@ -3419,8 +3425,11 @@
             const sel = document.getElementById('expSource');
             const current = sel.value;
             const sources = [...new Set(mems.map(m => m.source).filter(Boolean))].sort();
-            sel.innerHTML = '<option value="">All Sources</option>' +
-                sources.map(s => `<option value="${escHtml(s)}">${escHtml(s)}</option>`).join('');
+            sel.replaceChildren(new Option('All Sources', ''));
+            sources.forEach(source => {
+                const value = String(source);
+                sel.add(new Option(value, value));
+            });
             sel.value = sources.includes(current) ? current : '';
         }
 
@@ -3470,7 +3479,7 @@
             <td>${confBadge(m.confidence)}</td>
             <td>${statusBadge}</td>
             <td>${provBadge}</td>
-            <td style="white-space:nowrap">${fmtDate(m.created_at)}</td>
+            <td style="white-space:nowrap">${escHtml(fmtDate(m.created_at))}</td>
             <td style="font-size:11px">${escHtml(trunc(tags, 40))}</td>
         </tr>`;
                 if (expandable) {
@@ -3959,7 +3968,7 @@
                 if (staleCount > 0) {
                     const scan = (S.conflictScans || {})[filter];
                     const reason = scan
-                        ? `${staleCount} ${staleCount === 1 ? 'memory was' : 'memories were'} stored after the last conflict scan (${fmtDate(scan.scanned_at)})`
+                        ? `${staleCount} ${staleCount === 1 ? 'memory was' : 'memories were'} stored after the last conflict scan (${escHtml(fmtDate(scan.scanned_at))})`
                         : `${staleCount} ${staleCount === 1 ? 'memory has' : 'memories have'} never been scanned`;
                     html += `<div style="background:rgba(239,68,68,0.12);border:1px solid var(--error);border-radius:8px;padding:12px 14px;margin-bottom:14px;font-size:13px;color:var(--text-secondary);display:flex;align-items:center;gap:12px;flex-wrap:wrap">
                         <span>⚠ ${reason} for <strong>${filter}</strong>. Run conflict detection to review.</span>
@@ -3977,7 +3986,7 @@
                 const dateLabel = !isNaN(headerDate.getTime())
                     ? headerDate.toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: 'UTC' })
                     : dateKey;
-                html += `<div class="hh-tl-date">${dateLabel}</div>`;
+                html += `<div class="hh-tl-date">${escHtml(dateLabel)}</div>`;
                 list.forEach(m => {
                     const shortId = (m.id || '').toString().substring(0, 7) || '———';
                     const tags = Array.isArray(m.tags) ? m.tags.filter(Boolean) : [];
@@ -3991,7 +4000,7 @@
                     tags.forEach(tg => meta.push(`<span class="hh-tl-tag">${escHtml(tg)}</span>`));
                     html += `<div class="hh-tl-item" onclick="this.classList.toggle('expanded')">
                         <div class="hh-tl-row">
-                            <span class="hh-tl-hash" title="${escHtml(m.id || '')}">${escHtml(shortId)}</span>
+                            <span class="hh-tl-hash" title="${attrEsc(m.id || '')}">${escHtml(shortId)}</span>
                             <span class="hh-tl-title">${escHtml(m.title || 'Untitled')}</span>
                         </div>
                         <div class="hh-tl-meta">
@@ -5312,7 +5321,7 @@
             const sample = (preview.sample || []).map(s => `
                 <div class="mig-sample-row">
                     <div class="ttl">${escHtml(s.title || '')}</div>
-                    <div class="meta">${escHtml(s.type)}${s.source_ref ? ' · ' + escHtml(s.source_ref) : ''}${s.created_at ? ' · ' + fmtDate(s.created_at) : ''}</div>
+                    <div class="meta">${escHtml(s.type)}${s.source_ref ? ' · ' + escHtml(s.source_ref) : ''}${s.created_at ? ' · ' + escHtml(fmtDate(s.created_at)) : ''}</div>
                 </div>
             `).join('') || '<p style="color:var(--text-dim);font-size:13px">No mapped rows.</p>';
 
@@ -5615,11 +5624,6 @@
         // Folder browser inside the connect modal — server-side via /api/ui/browse.
         // All path-bearing controls use data-browse-path attrs + event delegation
         // so Windows backslashes are not mangled by inline-onclick JS parsing.
-        function attrEsc(s) {
-            if (s == null) return '';
-            return String(s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-        }
-
         async function browseTo(path) {
             const box = document.getElementById('folderBrowser');
             if (!box) return;
