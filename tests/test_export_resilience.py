@@ -102,6 +102,7 @@ class TestSyncUsesCacheFastPath:
     def test_memory_md_symlink_is_replaced_not_followed(
         self, client_cls, monkeypatch, tmp_path
     ):
+        """Project sync must replace a symlink instead of writing through it."""
         client = _build_client(client_cls, monkeypatch, tmp_path)
 
         cache_file = tmp_path / ".memanto" / "exports" / "test-agent_memory.md"

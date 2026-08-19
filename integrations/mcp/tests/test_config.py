@@ -51,6 +51,7 @@ def test_default_agent_loaded_from_env(
 def test_default_agent_is_normalized(
     fake_api_key: str, monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    """Whitespace must not create a second authorization identity."""
     monkeypatch.setenv("MEMANTO_DEFAULT_AGENT_ID", "  my-assistant  ")
     settings = MCPServerSettings()  # type: ignore[call-arg]
 
@@ -61,6 +62,7 @@ def test_default_agent_is_normalized(
 def test_allowed_agents_loaded_from_env(
     fake_api_key: str, monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    """Additional authorized IDs are trimmed and deduplicated."""
     monkeypatch.setenv("MEMANTO_DEFAULT_AGENT_ID", "default-agent")
     monkeypatch.setenv(
         "MEMANTO_ALLOWED_AGENT_IDS", " shared-agent,other-agent,shared-agent "

@@ -83,6 +83,7 @@ def test_model_supplied_agent_id_cannot_cross_configured_boundary(
 def test_explicit_server_allowlist_authorizes_additional_agent(
     fake_api_key: str, monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    """Only a server-side allowlist may expand the default boundary."""
     _FakeSdkClient.instances.clear()
     monkeypatch.setattr(lifecycle_module, "SdkClient", _FakeSdkClient)
     monkeypatch.setenv("MEMANTO_DEFAULT_AGENT_ID", "agent-a")
