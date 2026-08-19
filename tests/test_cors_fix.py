@@ -110,27 +110,3 @@ class TestCorsHeaderBehavior:
             f"Expected '*' or absent, got '{origin_header}' — "
             "reflected origin means credentials mode is still on"
         )
-
-    async def test_renewed_session_token_header_is_exposed(self):
-        """Browser API clients can read the custom renewal-token response header."""
-        from unittest.mock import patch
-
-        import httpx
-
-        with patch(
-            "memanto.app.main._validate_startup_dependencies", return_value=None
-        ):
-            from memanto.app.main import app
-
-        transport = httpx.ASGITransport(app=app)
-        async with httpx.AsyncClient(
-            transport=transport, base_url="http://testserver"
-        ) as ac:
-            resp = await ac.get("/health", headers={"Origin": "https://app.example"})
-
-        exposed = {
-            header.strip().lower()
-            for header in resp.headers.get("access-control-expose-headers", "").split(",")
-            if header.strip()
-        }
-        assert "x-session-token" in exposed

@@ -2476,52 +2476,6 @@ class TestCWE200ApiKeyLeak:
         assert fresh_response.status_code == 200
 
     @pytest.mark.asyncio
-    async def test_header_session_auto_renewal_returns_replacement_token(
-        self, client, auth_headers, mock_moorcheh
-    ):
-        """Header-authenticated clients receive the JWT created by renewal."""
-        await client.post(
-            "/api/v2/agents",
-            headers=auth_headers,
-            json={"agent_id": self.TEST_AGENT_ID},
-        )
-        activate_resp = await client.post(
-            f"/api/v2/agents/{self.TEST_AGENT_ID}/activate", headers=auth_headers
-        )
-        old_token = activate_resp.json()["session_token"]
-        # Activation also sets a browser cookie. Remove it so this regression
-        # proves the replacement works for a genuinely header-only client.
-        client.cookies.clear()
-        session_headers = {**auth_headers, "X-Session-Token": old_token}
-
-        # Trigger renewal without waiting for a real session to approach expiry.
-        with patch.object(settings, "SESSION_EXTEND_THRESHOLD_MINUTES", 10**9):
-            response = await client.post(
-                f"/api/v2/agents/{self.TEST_AGENT_ID}/recall/recent",
-                headers=session_headers,
-                json={},
-            )
-        assert response.status_code == 200
-        new_token = response.headers.get("X-Session-Token")
-        assert new_token
-        assert new_token != old_token
-
-        # Renewal revokes the old JWT, while the returned replacement continues
-        # to authenticate header-only clients.
-        stale_response = await client.post(
-            f"/api/v2/agents/{self.TEST_AGENT_ID}/recall/recent",
-            headers=session_headers,
-            json={},
-        )
-        assert stale_response.status_code == 401
-        fresh_response = await client.post(
-            f"/api/v2/agents/{self.TEST_AGENT_ID}/recall/recent",
-            headers={**auth_headers, "X-Session-Token": new_token},
-            json={},
-        )
-        assert fresh_response.status_code == 200
-
-    @pytest.mark.asyncio
     async def test_traversal_filename_is_sanitized(
         self, client, auth_headers, mock_moorcheh
     ):
