@@ -33,20 +33,23 @@ source archives, a *shipped* adapter, and a *lossless* round trip.
 
 ## The migration summary
 
-Source records → mapped memories → per-type breakdown (real output):
+Source records → mapped memories → per-type breakdown (real output). Each
+row counts the **user-signal turns** that survived distillation; assistant
+chatter is deliberately dropped:
 
 | source | source records | memories mapped |
 |--------|---------------|-----------------|
-| claude | 5             | 5               |
-| chatgpt| 2             | 2               |
+| claude | 11            | 9               |
+| chatgpt| 6             | 4               |
 
 ```
-7 memories mapped, by type:
+13 memories mapped, by type:
+  auto-classify 6
   preference   3
-  learning     1
-  goal         1
   context      1
-  auto-classify 1
+  instruction  1
+  decision     1
+  goal         1
 ```
 
 Assistant chatter is deliberately **dropped** — a greeting like *"How can I
@@ -126,18 +129,22 @@ I prefer dark themes in my editor and terminal.
 - Message refs: …
 ```
 
-The bundle round-trips losslessly: `memanto`'s own loader reads all 7 memories
-back (verified in step 3 of `run_migration.sh`).
+The bundle round-trips losslessly: `memanto`'s own loader reads all 13
+memories back (verified in step 3 of `run_migration.sh`).
 
 ## Reproducible setup
 
-- Needs Python 3.10+ (`pip install -r requirements.txt` — or just use an
-  existing memanto checkout's venv).
-- No API key, no network, no Moorcheh account required — the adapter and
-  exporter run entirely against the local SDK.
+- Needs Python 3.10+ and the exact-pinned deps in `requirements.txt` (or just
+  reuse an existing memanto checkout's venv).
+- No API key and no Moorcheh account required. The **migration itself runs
+  fully offline** against the local SDK — but the one-time environment setup
+  (`pip install -r requirements.txt`) needs package access, and
+  `./run_migration.sh` will bootstrap a local venv over the network the first
+  time it runs.
 
 ```bash
-./run_migration.sh
+pip install -r requirements.txt   # one time (needs network)
+./run_migration.sh                # then runs fully offline
 ```
 
 ## Build on it / try your own data

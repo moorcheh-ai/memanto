@@ -511,30 +511,137 @@ def map_okf(export: dict[str, Any]) -> list[dict[str, Any]]:
 # win. The dict maps a tuple of substrings to a type; anything with no match
 # stays untyped (auto-classify).
 _GENAI_TYPE_RULES: list[tuple[tuple[str, ...], str]] = [
-    (("i prefer ", "i'd prefer ", "i like ", "i love ", "i enjoy ", "my favorite ",
-      "i'd rather ", "i would rather ", "preferred ", "preference "), "preference"),
-    (("i want to ", "my goal ", "i'm trying to ", "i aim to ", "my plan ", "plan to ",
-      "i intend ", "i'll learn ", "i'm learning ", "goal", "objective"), "goal"),
-    (("i decided ", "we decided ", "let's go with ", "made the call ", "decision"), "decision"),
-    (("always ", "never ", "please ", "remember to ", "make sure ", "rule ", "from now on ",
-      "do not ", "don't "), "instruction"),
-    (("turns out ", "i learned ", "i found ", "good to know ", "interesting ", "discovered ",
-      "turns out ", "tip", "trick", "how to "), "learning"),
-    (("my partner ", "my friend ", "my brother ", "my sister ", "my mom ", "my dad ",
-      "my colleague ", "my manager ", "my wife ", "my husband ", "relationship"), "relationship"),
-    (("tomorrow ", "next week ", "on monday ", "on tuesday ", "on wednesday ", "on thursday ",
-      "on friday ", "on saturday ", "on sunday ", "this weekend ", "meeting on ", "event "), "event"),
-    (("i use ", "i work ", "i'm working on ", "i built ", "i run ", "my project ", "i made ",
-      "artifact", "repo", "app ", "tool "), "context"),
-    (("key", "password", "token", "apikey", "api key ", "credentials", "connection string",
-      "endpoint"), "context"),
+    (
+        (
+            "i prefer ",
+            "i'd prefer ",
+            "i like ",
+            "i love ",
+            "i enjoy ",
+            "my favorite ",
+            "i'd rather ",
+            "i would rather ",
+            "preferred ",
+            "preference ",
+        ),
+        "preference",
+    ),
+    (
+        (
+            "i want to ",
+            "my goal ",
+            "i'm trying to ",
+            "i aim to ",
+            "my plan ",
+            "plan to ",
+            "i intend ",
+            "i'll learn ",
+            "i'm learning ",
+            "goal",
+            "objective",
+        ),
+        "goal",
+    ),
+    (
+        ("i decided ", "we decided ", "let's go with ", "made the call ", "decision"),
+        "decision",
+    ),
+    (
+        (
+            "always ",
+            "never ",
+            "please ",
+            "remember to ",
+            "make sure ",
+            "rule ",
+            "from now on ",
+            "do not ",
+            "don't ",
+        ),
+        "instruction",
+    ),
+    (
+        (
+            "turns out ",
+            "i learned ",
+            "i found ",
+            "good to know ",
+            "interesting ",
+            "discovered ",
+            "turns out ",
+            "tip",
+            "trick",
+            "how to ",
+        ),
+        "learning",
+    ),
+    (
+        (
+            "my partner ",
+            "my friend ",
+            "my brother ",
+            "my sister ",
+            "my mom ",
+            "my dad ",
+            "my colleague ",
+            "my manager ",
+            "my wife ",
+            "my husband ",
+            "relationship",
+        ),
+        "relationship",
+    ),
+    (
+        (
+            "tomorrow ",
+            "next week ",
+            "on monday ",
+            "on tuesday ",
+            "on wednesday ",
+            "on thursday ",
+            "on friday ",
+            "on saturday ",
+            "on sunday ",
+            "this weekend ",
+            "meeting on ",
+            "event ",
+        ),
+        "event",
+    ),
+    (
+        (
+            "i use ",
+            "i work ",
+            "i'm working on ",
+            "i built ",
+            "i run ",
+            "my project ",
+            "i made ",
+            "artifact",
+            "repo",
+            "app ",
+            "tool ",
+        ),
+        "context",
+    ),
+    (
+        (
+            "key",
+            "password",
+            "token",
+            "apikey",
+            "api key ",
+            "credentials",
+            "connection string",
+            "endpoint",
+        ),
+        "context",
+    ),
 ]
 
-# Patterns that look like code snippets / markers worth tagging as an artifact.
-_GENAI_CODE_RE = re.compile(
-    r"```|(?:def |class |function |=>|->|\bimport |\bfrom |\n[ \t]{2,}[a-z_]+\(|"
-    r"(get|post|put|delete)\s+)", re.I
-)
+# The provenance footer marker; used to strip the footer before deduplicating
+# so identical statements made in different messages still collapse together.
+_SUPPORTING_DATA_LABEL = "[Supporting data]"
 
 
 def _classify_conversation_type(text: str) -> str | None:
@@ -574,60 +681,69 @@ def _msg_text(content: Any) -> str:
     return str(content).strip()
 
 
+_GREETING_RE = re.compile(
+    r"^\s*(hi|hello|hey|ok|okay|thanks|thank you|got it|cool|sure|yes|no|yep|"
+    r"nope|right|certainly|great)[!?,.]*\s*$",
+    re.I,
+)
+
+
 def _dedupe(candidates: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    """Drop near-duplicate memory candidates (same normalized content)."""
-    seen: set[str] = set()
+    """Drop near-duplicate memory candidates (same durable text).
+
+    Dedupe on the *durable surface* of each candidate — the memory text, with
+    the appended provenance footer stripped — so identical statements made in
+    different messages still collapse into one row. Source references from
+    dropped duplicates are merged into the surviving row so provenance stays
+    complete.
+    """
+    seen: dict[str, dict[str, Any]] = {}
     out: list[dict[str, Any]] = []
     for c in candidates:
-        key = re.sub(r"\s+", " ", (c.get("content") or "").lower()).strip()
-        if not key or key in seen:
+        body = (c.get("content") or "").split(_SUPPORTING_DATA_LABEL)[0]
+        key = re.sub(r"\s+", " ", body).strip().lower()
+        if not key:
             continue
-        seen.add(key)
+        prior = seen.get(key)
+        if prior is not None:
+            left = prior.get("source_ref") or ""
+            right = c.get("source_ref") or ""
+            for x in right.split("|"):
+                if x and x not in left.split("|"):
+                    left = f"{left}|{x}" if left else x
+            if left:
+                prior["source_ref"] = left
+            continue
+        seen[key] = c
         out.append(c)
     return out
 
 
 def _distill_turns(turns: list[dict[str, Any]], source: str) -> list[dict[str, Any]]:
-    """Turn a chronological list of {role, text, time, ref} into memory rows."""
+    """Turn a chronological list of {role, text, time, ref} into memory rows.
+
+    Only *durable user turns* become memories. Assistant acknowledgements,
+    commitments ("Got it — I'll pin versions"), debugging chatter and greetings
+    aren't memories about the user, so they're deliberately dropped rather than
+    echoed into the destination store.
+    """
     migrated_at = _now_utc()
     candidates: list[dict[str, Any]] = []
-    # Join adjacent same-role turns so long assistant answers collapse into one
-    # candidate instead of one file per sentence.
-    grouped: list[dict[str, Any]] = []
     for t in turns:
-        role, text, ts, ref = t["role"], t.get("text", ""), t.get("time"), t.get("ref")
-        text = (text or "").strip()
-        if not text:
+        text = (t.get("text") or "").strip()
+        if t.get("role") != "user" or not text:
             continue
-        if grouped and grouped[-1]["role"] == role:
-            grouped[-1]["text"] = f"{grouped[-1]['text']}\n\n{text}"
-            grouped[-1].setdefault("refs", []).append(ref)
-            grouped[-1]["time"] = grouped[-1]["time"] or ts
-        else:
-            grouped.append(
-                {"role": role, "text": text, "time": ts, "refs": [ref] if ref else []}
-            )
+        if len(text) < 4 or _GREETING_RE.match(text):
+            continue
 
-    for g in grouped:
-        text = g["text"].strip()
-        if len(text) < 2:
-            continue
-        # User turns are the primary memory signal; assistant turns that carry
-        # a strong signal (containing specific durable facts) are kept as
-        # "learning" candidates rather than echo.
         mtype = _classify_conversation_type(text)
-        if g["role"] == "assistant" and mtype != "learning":
-            # keep assistant answers that look like a concrete artifact/how-to
-            if not _GENAI_CODE_RE.search(text) and mtype is None:
-                continue
-            mtype = mtype or "learning"
-
-        created_at = _parse_dt(g["time"])
+        ref = t.get("ref")
+        created_at = _parse_dt(t.get("time"))
         footer_items: list[tuple[str, Any]] = [
             ("Source", "claude" if source == "claude" else "chatgpt"),
-            ("Role", g["role"]),
-            ("Message refs", "; ".join(ref for ref in g["refs"] if ref) or None),
-            ("Original timestamp", _parse_dt(g["time"])),
+            ("Role", "user"),
+            ("Message refs", ref or None),
+            ("Original timestamp", created_at),
         ]
         footer = _format_supporting_data(footer_items)
         content = _attach_footer(text, footer) if footer else text
@@ -637,69 +753,107 @@ def _distill_turns(turns: list[dict[str, Any]], source: str) -> list[dict[str, A
                 "title": _title_from(text),
                 "content": content,
                 "type": mtype,
-                "tags": ["genai", source] + (["assistant"] if g["role"] == "assistant" else []),
-                "confidence": 0.6 if g["role"] == "user" else 0.7,
+                "tags": ["genai", source],
+                "confidence": 0.6,
                 "source": source,
-                "source_ref": "|".join(ref for ref in g["refs"] if ref) or None,
+                "source_ref": ref or None,
                 "provenance": "imported",
                 "created_at": created_at,
                 "updated_at": migrated_at,
             }
         )
-    return _dedupe(candidates)
+    return candidates
+
+
+def _main_branch(node_map: dict[str, Any]) -> list[dict[str, Any]]:
+    """Return the message chain (oldest -> newest) of the primary ChatGPT branch.
+
+    ChatGPT ``mapping`` is a tree — edits and retries create sibling branches
+    under a shared parent. Only the lineage reaching the latest leaf is the
+    "current" conversation; walking its ``parent`` chain keeps alternate
+    branches from being imported and merged into incompatible memories.
+    """
+    roles = {"user", "assistant"}
+    branch_nodes = {
+        nid: node
+        for nid, node in node_map.items()
+        if (node.get("message") or {}).get("author", {}).get("role") in roles
+    }
+    if not branch_nodes:
+        return []
+    children: dict[str, list[str]] = {}
+    for nid, node in node_map.items():
+        p = node.get("parent")
+        if p:
+            children.setdefault(p, []).append(nid)
+
+    def _ts(nid: str) -> float:
+        msg = node_map[nid].get("message") or {}
+        return float(msg.get("create_time") or 0)
+
+    leaves = [nid for nid in branch_nodes if not children.get(nid)]
+    current = max(leaves, key=_ts)
+
+    chain: list[dict[str, Any]] = []
+    seen: set[str] = set()
+    while current and current in branch_nodes and current not in seen:
+        seen.add(current)
+        node = node_map[current]
+        msg = node.get("message") or {}
+        chain.append(
+            {
+                "role": msg["author"].get("role") or msg.get("role"),
+                "text": _msg_text(msg.get("content")),
+                "time": msg.get("create_time"),
+                "ref": current,
+            }
+        )
+        current = node_map[current].get("parent")
+    chain.reverse()
+    return chain
 
 
 def map_claude(export: dict[str, Any]) -> list[dict[str, Any]]:
     """Map a Claude.ai ``conversations.json`` export into memory rows.
 
     Claude's export maps conversation uuid -> {name, chat_messages:[{sender,
-    text, created_at, uuid}, ...]}. ``sender`` is 'human' or 'assistant'.
+    text, created_at, uuid}, ...]}. ``sender`` is 'human' for the user and
+    'assistant' for the model; only 'human' turns carry durable user memory.
     """
     rows: list[dict[str, Any]] = []
-    for convo in (export.get("conversations") or []):
+    for convo in export.get("conversations") or []:
         turns: list[dict[str, Any]] = []
         for msg in convo.get("chat_messages", []) or []:
             sender = (msg.get("sender") or "").lower()
-            role = "assistant" if sender in ("assistant", "bot") else "user"
+            # Skip system/tool/unknown senders; only real user turns are kept.
+            if sender not in ("human", "user"):
+                continue
             turns.append(
                 {
-                    "role": role,
+                    "role": "user",
                     "text": msg.get("text") or "",
                     "time": msg.get("created_at"),
                     "ref": msg.get("uuid"),
                 }
             )
         rows.extend(_distill_turns(turns, "claude"))
-    return rows
+    return _dedupe(rows)
 
 
 def map_chatgpt(export: dict[str, Any]) -> list[dict[str, Any]]:
     """Map a ChatGPT export ``conversations.json`` into memory rows.
 
     ChatGPT's export is a list of conversations; each has a ``mapping`` tree
-    of message nodes with ``parent`` links. We walk nodes in time order.
+    of message nodes with ``parent`` links. We follow the main branch's parent
+    lineage (see :func:`_main_branch`) and keep only user turns.
     """
     rows: list[dict[str, Any]] = []
     for convo in export.get("conversations", []):
         node_map = convo.get("mapping") or {}
-        records: list[tuple[float, dict[str, Any]]] = []
-        for node_id, node in node_map.items():
-            msg = node.get("message") or {}
-            role = msg.get("author", {}).get("role") or msg.get("role")
-            if role not in ("user", "assistant"):
-                continue
-            records.append(
-                (float(msg.get("create_time") or 0), {
-                    "role": role,
-                    "text": _msg_text(msg.get("content")),
-                    "time": msg.get("create_time"),
-                    "ref": node_id,
-                })
-            )
-        records.sort(key=lambda r: r[0])
-        turns = [r[1] for r in records]
+        chain = _main_branch(node_map)
+        turns = [r for r in chain if r["role"] == "user"]
         rows.extend(_distill_turns(turns, "chatgpt"))
-    return rows
+    return _dedupe(rows)
 
 
 # Langfuse is deliberately absent: its rows are observability events, not

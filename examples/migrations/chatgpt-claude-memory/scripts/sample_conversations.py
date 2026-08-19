@@ -19,10 +19,17 @@ hand-written Memanto payloads — they are source-tool archives.
 
 from __future__ import annotations
 
+import hashlib
 import json
-import uuid
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
+
+
+def _stable_id(seed: str, size: int = 6) -> str:
+    """Deterministic short id from a stable seed, so repeated executions of
+    the generator produce byte-identical archives and committed fixtures."""
+    return hashlib.sha1(seed.encode("utf-8")).hexdigest()[:size]
+
 
 HERE = Path(__file__).resolve().parent
 DATA = HERE.parent / "data"
@@ -33,19 +40,21 @@ DATA = HERE.parent / "data"
 _CLAUDE_START = datetime(2026, 8, 1, tzinfo=timezone.utc)
 
 
-def _claude_messages(*turns: str) -> list[dict]:
+def _claude_messages(convo: str, *turns: str) -> list[dict]:
     """Build Claude chat_messages dicts from sender/text pairs, with sequential
-    timestamps and stable uuid-like ids (reproducible)."""
+    timestamps and stable, reproducible message ids."""
     out: list[dict] = []
     ts = _CLAUDE_START
     for i in range(0, len(turns), 2):
         sender, text = turns[i], turns[i + 1]
-        out.append({
-            "sender": sender,
-            "text": text,
-            "created_at": ts.isoformat(),
-            "uuid": f"m{uuid.uuid4().hex[:6]}",
-        })
+        out.append(
+            {
+                "sender": sender,
+                "text": text,
+                "created_at": ts.isoformat(),
+                "uuid": f"m{_stable_id(f'{convo}::{i}::{text}')}",
+            }
+        )
         ts += timedelta(minutes=5)
     return out
 
@@ -54,22 +63,35 @@ CLAUDE_CONVOS = [
     {
         "name": "FastAPI backend setup",
         "chat_messages": _claude_messages(
-            "human", "I prefer dark themes in my editor and terminal.",
-            "human", "Let's build a FastAPI service for our todo app.",
-            "human", "Pin all dependency versions — I've been burned by float updates.",
-            "human", "I use a Dell XPS 15 for work.",
-            "human", "Ship the MVP by Friday.",
-            "assistant", "Got it — I'll pin versions and target a Friday MVP.",
+            "fastapi",
+            "human",
+            "I prefer dark themes in my editor and terminal.",
+            "human",
+            "Let's build a FastAPI service for our todo app.",
+            "human",
+            "Pin all dependency versions — I've been burned by float updates.",
+            "human",
+            "I use a Dell XPS 15 for work.",
+            "human",
+            "Ship the MVP by Friday.",
+            "assistant",
+            "Got it — I'll pin versions and target a Friday MVP.",
         ),
     },
     {
         "name": "auth debugging",
         "chat_messages": _claude_messages(
-            "human", "The JWT auth is failing in production but works locally.",
-            "human", "We use Azure AD as our identity provider.",
-            "assistant", "Classic — let's compare the clock skew and token lifecycle.",
-            "human", "Always add tests before you merge.",
-            "human", "I prefer async SQLAlchemy over the sync ORM.",
+            "auth",
+            "human",
+            "The JWT auth is failing in production but works locally.",
+            "human",
+            "We use Azure AD as our identity provider.",
+            "assistant",
+            "Classic — let's compare the clock skew and token lifecycle.",
+            "human",
+            "Always add tests before you merge.",
+            "human",
+            "I prefer async SQLAlchemy over the sync ORM.",
         ),
     },
 ]
@@ -79,14 +101,15 @@ CLAUDE_CONVOS = [
 # create_time}, parent}. parent links build the thread.
 
 
-def _chatgpt_chain(*turns: str) -> dict:
-    """Build a ChatGPT mapping dict from role/text pairs in order."""
+def _chatgpt_chain(convo: str, *turns: str) -> dict:
+    """Build a ChatGPT mapping dict from role/text pairs in order, with stable,
+    reproducible node ids."""
     nodes: dict[str, dict] = {}
     parent: str | None = None
     ts = datetime(2026, 8, 1, tzinfo=timezone.utc)
     for i in range(0, len(turns), 2):
         role, text = turns[i], turns[i + 1]
-        mid = uuid.uuid4().hex[:8]
+        mid = _stable_id(f"{convo}::{i}::{text}", size=8)
         nodes[mid] = {
             "message": {
                 "author": {"role": role},
@@ -104,17 +127,25 @@ CHATGPT_CONVOS = [
     {
         "title": "refactor payment service",
         "mapping": _chatgpt_chain(
-            "user", "I decided to use Stripe for payments.",
-            "user", "Use webhooks for async confirmation.",
-            "user", "My goal: cut payment latency under 800ms.",
-            "assistant", "Stripe webhooks it is — I'll sketch the flow.",
+            "payment",
+            "user",
+            "I decided to use Stripe for payments.",
+            "user",
+            "Use webhooks for async confirmation.",
+            "user",
+            "My goal: cut payment latency under 800ms.",
+            "assistant",
+            "Stripe webhooks it is — I'll sketch the flow.",
         ),
     },
     {
         "title": "observation",
         "mapping": _chatgpt_chain(
-            "user", "I like coffee with oat milk.",
-            "assistant", "Noted. I'll remember the oat milk.",
+            "obs",
+            "user",
+            "I like coffee with oat milk.",
+            "assistant",
+            "Noted. I'll remember the oat milk.",
         ),
     },
 ]
@@ -131,8 +162,12 @@ def _main() -> None:
     with (DATA / "chatgpt_conversations.json").open("w") as fh:
         json.dump(chatgpt, fh, indent=2, ensure_ascii=False)
 
-    print(f"Wrote {DATA/'claude_conversations.json'} ({len(CLAUDE_CONVOS)} conversations)")
-    print(f"Wrote {DATA/'chatgpt_conversations.json'} ({len(CHATGPT_CONVOS)} conversations)")
+    print(
+        f"Wrote {DATA / 'claude_conversations.json'} ({len(CLAUDE_CONVOS)} conversations)"
+    )
+    print(
+        f"Wrote {DATA / 'chatgpt_conversations.json'} ({len(CHATGPT_CONVOS)} conversations)"
+    )
 
 
 if __name__ == "__main__":

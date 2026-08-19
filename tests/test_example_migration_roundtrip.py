@@ -46,10 +46,14 @@ def test_map_yields_typed_memories():
     claude_rows = map_claude(load("claude"))
     chatgpt_rows = map_chatgpt(load("chatgpt"))
     rows = claude_rows + chatgpt_rows
-    assert len(rows) == 7
+    # 9 claude + 4 chatgpt user-signal turns => 13 typed memories total.
+    assert len(claude_rows) == 9
+    assert len(chatgpt_rows) == 4
+    assert len(rows) == 13
     types = {r["type"] for r in rows}
     assert "preference" in types
     assert "goal" in types
+    assert "decision" in types
 
 
 def test_source_provenance_carried():
@@ -67,6 +71,7 @@ def test_okf_bundle_roundtrips_losslessly(tmp_path):
         by_type.setdefault(r["type"] or "context", []).append(r)
 
     from memanto.app.services.okf_export_service import OkfExportService
+
     # Anchor the exporter's agent-data dir under tmp_path so the bundle stays
     # inside the validated base while keeping the test hermetic.
     service = OkfExportService(exports_dir=tmp_path)
@@ -77,7 +82,7 @@ def test_okf_bundle_roundtrips_losslessly(tmp_path):
     )
     reloaded = load_okf_bundle(Path(result["output_path"]))
     assert len(reloaded["memories"]) == len(all_rows)
-    assert result["total_memories"] == 7
+    assert result["total_memories"] == 13
 
 
 def test_golden_qa_recall_after_migration(tmp_path):
@@ -90,7 +95,8 @@ def test_golden_qa_recall_after_migration(tmp_path):
         by_type.setdefault(r["type"] or "context", []).append(r)
     service = OkfExportService(exports_dir=tmp_path)
     result = service.write_okf_bundle(
-        agent_id="demo-user", memories_by_type=by_type,
+        agent_id="demo-user",
+        memories_by_type=by_type,
         output_dir=tmp_path / "bundle",
     )
     bundle = load_okf_bundle(Path(result["output_path"]))
@@ -99,7 +105,14 @@ def test_golden_qa_recall_after_migration(tmp_path):
         for m in bundle["memories"]
     ).lower()
     golden_terms = [
-        "dark", "xps", "friday", "sqlalchemy", "tests", "azure", "webhook", "stripe",
+        "dark",
+        "xps",
+        "friday",
+        "sqlalchemy",
+        "tests",
+        "azure",
+        "webhook",
+        "stripe",
     ]
     for term in golden_terms:
         assert term in corpus, f"golden term lost after migration: {term}"

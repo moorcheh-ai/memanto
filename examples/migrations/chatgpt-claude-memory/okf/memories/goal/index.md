@@ -1,9 +1,9 @@
 ---
 type: index
 title: goal
-timestamp: 2026-08-19T09:56:07
+timestamp: 2026-08-19T10:55:01
 ---
 
 # goal (1)
 
-- [I decided to use Stripe for payments.  Use webhooks for async confirmation....](i-decided-to-use-stripe-for-payments-use-webhooks-for-async.md)
+- [My goal: cut payment latency under 800ms.](my-goal-cut-payment-latency-under-800ms.md)

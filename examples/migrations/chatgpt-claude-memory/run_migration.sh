@@ -32,18 +32,18 @@ fi
 echo "Using interpreter: $PY"
 
 echo "==> [1/5] Generating source archives (Claude + ChatGPT exports)"
-$PY scripts/sample_conversations.py
+"$PY" scripts/sample_conversations.py
 
 echo "==> [2/5] Mapping source conversations -> Memanto memory"
-$PY scripts/run_migration.py
+"$PY" scripts/run_migration.py
 
 echo "==> [3/5] Exporting mapped memory as an OKF bundle"
-$PY scripts/run_migration.py --export-okf
+"$PY" scripts/run_migration.py --export-okf
 
 echo "==> [4/5] Migration summary + type breakdown (see output above)"
 
 echo "==> [5/5] Round-trip validation (recall parity check)"
-$PY scripts/roundtrip_check.py
+"$PY" scripts/roundtrip_check.py
 
 echo ""
 echo "Done. OKF bundle: okf/"

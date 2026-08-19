@@ -7,37 +7,37 @@
           "sender": "human",
           "text": "I prefer dark themes in my editor and terminal.",
           "created_at": "2026-08-01T00:00:00+00:00",
-          "uuid": "m741f33"
+          "uuid": "m4f198e"
         },
         {
           "sender": "human",
           "text": "Let's build a FastAPI service for our todo app.",
           "created_at": "2026-08-01T00:05:00+00:00",
-          "uuid": "m82c88d"
+          "uuid": "m206ecf"
         },
         {
           "sender": "human",
           "text": "Pin all dependency versions — I've been burned by float updates.",
           "created_at": "2026-08-01T00:10:00+00:00",
-          "uuid": "m1bc368"
+          "uuid": "mc6ea7f"
         },
         {
           "sender": "human",
           "text": "I use a Dell XPS 15 for work.",
           "created_at": "2026-08-01T00:15:00+00:00",
-          "uuid": "mfa0271"
+          "uuid": "m075666"
         },
         {
           "sender": "human",
           "text": "Ship the MVP by Friday.",
           "created_at": "2026-08-01T00:20:00+00:00",
-          "uuid": "m9c9a42"
+          "uuid": "m5efc0e"
         },
         {
           "sender": "assistant",
           "text": "Got it — I'll pin versions and target a Friday MVP.",
           "created_at": "2026-08-01T00:25:00+00:00",
-          "uuid": "m11024e"
+          "uuid": "mebda5a"
         }
       ]
     },
@@ -48,31 +48,31 @@
           "sender": "human",
           "text": "The JWT auth is failing in production but works locally.",
           "created_at": "2026-08-01T00:00:00+00:00",
-          "uuid": "m7441d3"
+          "uuid": "me1e00c"
         },
         {
           "sender": "human",
           "text": "We use Azure AD as our identity provider.",
           "created_at": "2026-08-01T00:05:00+00:00",
-          "uuid": "m332b75"
+          "uuid": "mc89bb3"
         },
         {
           "sender": "assistant",
           "text": "Classic — let's compare the clock skew and token lifecycle.",
           "created_at": "2026-08-01T00:10:00+00:00",
-          "uuid": "mf44954"
+          "uuid": "m0f5fbd"
         },
         {
           "sender": "human",
           "text": "Always add tests before you merge.",
           "created_at": "2026-08-01T00:15:00+00:00",
-          "uuid": "me1f14e"
+          "uuid": "m06161b"
         },
         {
           "sender": "human",
           "text": "I prefer async SQLAlchemy over the sync ORM.",
           "created_at": "2026-08-01T00:20:00+00:00",
-          "uuid": "m2aa514"
+          "uuid": "m779926"
         }
       ]
     }

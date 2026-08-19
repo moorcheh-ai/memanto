@@ -64,13 +64,16 @@ def llm_recall() -> tuple[int, int] | None:
             f"--- MEMORY STORE ---\n{corpus}\n--- END ---\n\n"
             + "\n".join(f"Q: {q} | FACT: {', '.join(t)}" for q, t in GOLDEN_QA)
         )
-        body = json.dumps({
-            "model": "deepseek-v4-flash",
-            "messages": [{"role": "user", "content": prompt}],
-            "temperature": 0.0,
-        }).encode()
-        req = urllib.request.Request(DEEPSEEK_URL, data=body,
-                                     headers={"Content-Type": "application/json"})
+        body = json.dumps(
+            {
+                "model": "deepseek-v4-flash",
+                "messages": [{"role": "user", "content": prompt}],
+                "temperature": 0.0,
+            }
+        ).encode()
+        req = urllib.request.Request(
+            DEEPSEEK_URL, data=body, headers={"Content-Type": "application/json"}
+        )
         with urllib.request.urlopen(req, timeout=30) as resp:
             data = json.loads(resp.read().decode())
         verdicts = (data["choices"][0]["message"]["content"] or "").strip().splitlines()
@@ -96,29 +99,48 @@ def main() -> None:
 
     def _recall(corpus: str) -> tuple[int, int]:
         blob = corpus.lower()
-        return (sum(1 for _q, terms in GOLDEN_QA
-                    if any(t in blob for t in terms)), len(GOLDEN_QA))
+        return (
+            sum(1 for _q, terms in GOLDEN_QA if any(t in blob for t in terms)),
+            len(GOLDEN_QA),
+        )
 
     print("=" * 60)
     print("ROUND-TRIP RECALL PARITY (golden Q&A set)")
     print("=" * 60)
     raw = _recall(source_corpus)
     bundle = _recall(bundle_corpus())
-    print(f"Before migration (raw source archive): {raw[0]}/{raw[1]} "
-          f"({100 * raw[0] // max(raw[1], 1)}%)")
-    print(f"After migration  (OKF bundle):        {bundle[0]}/{bundle[1]} "
-          f"({100 * bundle[0] // max(bundle[1], 1)}%)")
+    print(
+        f"Before migration (raw source archive): {raw[0]}/{raw[1]} "
+        f"({100 * raw[0] // max(raw[1], 1)}%)"
+    )
+    print(
+        f"After migration  (OKF bundle):        {bundle[0]}/{bundle[1]} "
+        f"({100 * bundle[0] // max(bundle[1], 1)}%)"
+    )
 
     judge = llm_recall()
     if judge:
-        print(f"LLM-as-judge recall (local DeepSeek):  {judge[0]}/{judge[1]} "
-              f"({100 * judge[0] // max(judge[1], 1)}%)")
+        print(
+            f"LLM-as-judge recall (local DeepSeek):  {judge[0]}/{judge[1]} "
+            f"({100 * judge[0] // max(judge[1], 1)}%)"
+        )
     else:
-        print("LLM-as-judge: local DeepSeek not reachable — using keyword recall "
-              "(deterministic, honest).")
+        print(
+            "LLM-as-judge: local DeepSeek not reachable — using keyword recall "
+            "(deterministic, honest)."
+        )
 
-    print("\nResult: memory survives migration if after >= before and bundle "
-          "recall is high.")
+    parity = bundle[0] >= raw[0] and bundle[0] == bundle[1]
+    if parity:
+        print(
+            "\nResult: PASS — no amnesia; the migrated bundle retains every "
+            "golden fact."
+        )
+    else:
+        print(
+            "\nResult: FAIL — the migrated bundle lost a golden fact.", file=sys.stderr
+        )
+        raise SystemExit(1)
 
 
 if __name__ == "__main__":
