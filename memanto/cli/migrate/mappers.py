@@ -31,6 +31,7 @@ count helper in ``runner.py``.
 
 from __future__ import annotations
 
+import re
 from collections.abc import Callable
 from datetime import datetime, timezone
 from typing import Any
@@ -487,6 +488,220 @@ def map_okf(export: dict[str, Any]) -> list[dict[str, Any]]:
     return rows
 
 
+# --------------------------------------------------------------------------
+# Claude.ai / ChatGPT (GenAI conversation memory)
+# --------------------------------------------------------------------------
+#
+# Unlike store-based providers (mem0/letta) which already expose extracted
+# memories, a raw conversation export is just a sequence of user/assistant
+# turns. We distill those turns into typed, deduplicated "memory candidates"
+# so the migration doesn't echo every message verbatim (which would drown
+# the memory store in noise). Mapping heuristics are intentionally
+# conservative: if a message doesn't clearly signal a durable fact we tag it
+# ``type=None`` and let the parsing service auto-classify, rather than guess.
+#
+# Two export shapes are handled under one core:
+#   * Claude.ai  -> {"<uuid>": {"name": ..., "chat_messages": [{sender,
+#                    text, created_at, uuid}, ...]}}
+#   * ChatGPT    -> [{"title": ..., "create_time": ..., "mapping":
+#                    {"<id>": {"message": {"role", "content", "create_time"},
+#                    "parent": <id>}}}]
+
+# Signal phrases -> Memanto type. Order matters: earlier, more specific rules
+# win. The dict maps a tuple of substrings to a type; anything with no match
+# stays untyped (auto-classify).
+_GENAI_TYPE_RULES: list[tuple[tuple[str, ...], str]] = [
+    (("i prefer ", "i'd prefer ", "i like ", "i love ", "i enjoy ", "my favorite ",
+      "i'd rather ", "i would rather ", "preferred ", "preference "), "preference"),
+    (("i want to ", "my goal ", "i'm trying to ", "i aim to ", "my plan ", "plan to ",
+      "i intend ", "i'll learn ", "i'm learning ", "goal", "objective"), "goal"),
+    (("i decided ", "we decided ", "let's go with ", "made the call ", "decision"), "decision"),
+    (("always ", "never ", "please ", "remember to ", "make sure ", "rule ", "from now on ",
+      "do not ", "don't "), "instruction"),
+    (("turns out ", "i learned ", "i found ", "good to know ", "interesting ", "discovered ",
+      "turns out ", "tip", "trick", "how to "), "learning"),
+    (("my partner ", "my friend ", "my brother ", "my sister ", "my mom ", "my dad ",
+      "my colleague ", "my manager ", "my wife ", "my husband ", "relationship"), "relationship"),
+    (("tomorrow ", "next week ", "on monday ", "on tuesday ", "on wednesday ", "on thursday ",
+      "on friday ", "on saturday ", "on sunday ", "this weekend ", "meeting on ", "event "), "event"),
+    (("i use ", "i work ", "i'm working on ", "i built ", "i run ", "my project ", "i made ",
+      "artifact", "repo", "app ", "tool "), "context"),
+    (("key", "password", "token", "apikey", "api key ", "credentials", "connection string",
+      "endpoint"), "context"),
+]
+
+# Patterns that look like code snippets / markers worth tagging as an artifact.
+_GENAI_CODE_RE = re.compile(
+    r"```|(?:def |class |function |=>|->|\bimport |\bfrom |\n[ \t]{2,}[a-z_]+\(|"
+    r"(get|post|put|delete)\s+)", re.I
+)
+
+
+def _classify_conversation_type(text: str) -> str | None:
+    """Best-effort type for a distilled conversation candidate."""
+    low = text.lower()
+    for substrings, mtype in _GENAI_TYPE_RULES:
+        if any(s in low for s in substrings):
+            return mtype
+    return None
+
+
+def _msg_text(content: Any) -> str:
+    """Extract plain text from a ChatGPT message content blob.
+
+    ChatGPT content is usually ``{"content_type": "text", "parts": ["..."]}``,
+    but can also be a bare string or a list of ``{"text": "..."}`` parts.
+    """
+    if content is None:
+        return ""
+    if isinstance(content, str):
+        return content.strip()
+    if isinstance(content, dict):
+        parts = content.get("parts") or content.get("content") or content.get("text")
+        if parts is None:
+            return ""
+        return _msg_text(parts)
+    if isinstance(content, list):
+        bits = []
+        for part in content:
+            if isinstance(part, dict):
+                p = part.get("text") or part.get("content")
+                if isinstance(p, str):
+                    bits.append(p.strip())
+            elif isinstance(part, str):
+                bits.append(part.strip())
+        return "\n".join(b for b in bits if b).strip()
+    return str(content).strip()
+
+
+def _dedupe(candidates: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Drop near-duplicate memory candidates (same normalized content)."""
+    seen: set[str] = set()
+    out: list[dict[str, Any]] = []
+    for c in candidates:
+        key = re.sub(r"\s+", " ", (c.get("content") or "").lower()).strip()
+        if not key or key in seen:
+            continue
+        seen.add(key)
+        out.append(c)
+    return out
+
+
+def _distill_turns(turns: list[dict[str, Any]], source: str) -> list[dict[str, Any]]:
+    """Turn a chronological list of {role, text, time, ref} into memory rows."""
+    migrated_at = _now_utc()
+    candidates: list[dict[str, Any]] = []
+    # Join adjacent same-role turns so long assistant answers collapse into one
+    # candidate instead of one file per sentence.
+    grouped: list[dict[str, Any]] = []
+    for t in turns:
+        role, text, ts, ref = t["role"], t.get("text", ""), t.get("time"), t.get("ref")
+        text = (text or "").strip()
+        if not text:
+            continue
+        if grouped and grouped[-1]["role"] == role:
+            grouped[-1]["text"] = f"{grouped[-1]['text']}\n\n{text}"
+            grouped[-1].setdefault("refs", []).append(ref)
+            grouped[-1]["time"] = grouped[-1]["time"] or ts
+        else:
+            grouped.append(
+                {"role": role, "text": text, "time": ts, "refs": [ref] if ref else []}
+            )
+
+    for g in grouped:
+        text = g["text"].strip()
+        if len(text) < 2:
+            continue
+        # User turns are the primary memory signal; assistant turns that carry
+        # a strong signal (containing specific durable facts) are kept as
+        # "learning" candidates rather than echo.
+        mtype = _classify_conversation_type(text)
+        if g["role"] == "assistant" and mtype != "learning":
+            # keep assistant answers that look like a concrete artifact/how-to
+            if not _GENAI_CODE_RE.search(text) and mtype is None:
+                continue
+            mtype = mtype or "learning"
+
+        created_at = _parse_dt(g["time"])
+        footer_items: list[tuple[str, Any]] = [
+            ("Source", "claude" if source == "claude" else "chatgpt"),
+            ("Role", g["role"]),
+            ("Message refs", "; ".join(ref for ref in g["refs"] if ref) or None),
+            ("Original timestamp", _parse_dt(g["time"])),
+        ]
+        footer = _format_supporting_data(footer_items)
+        content = _attach_footer(text, footer) if footer else text
+
+        candidates.append(
+            {
+                "title": _title_from(text),
+                "content": content,
+                "type": mtype,
+                "tags": ["genai", source] + (["assistant"] if g["role"] == "assistant" else []),
+                "confidence": 0.6 if g["role"] == "user" else 0.7,
+                "source": source,
+                "source_ref": "|".join(ref for ref in g["refs"] if ref) or None,
+                "provenance": "imported",
+                "created_at": created_at,
+                "updated_at": migrated_at,
+            }
+        )
+    return _dedupe(candidates)
+
+
+def map_claude(export: dict[str, Any]) -> list[dict[str, Any]]:
+    """Map a Claude.ai ``conversations.json`` export into memory rows.
+
+    Claude's export maps conversation uuid -> {name, chat_messages:[{sender,
+    text, created_at, uuid}, ...]}. ``sender`` is 'human' or 'assistant'.
+    """
+    rows: list[dict[str, Any]] = []
+    for convo in (export.get("conversations") or []):
+        turns: list[dict[str, Any]] = []
+        for msg in convo.get("chat_messages", []) or []:
+            sender = (msg.get("sender") or "").lower()
+            role = "assistant" if sender in ("assistant", "bot") else "user"
+            turns.append(
+                {
+                    "role": role,
+                    "text": msg.get("text") or "",
+                    "time": msg.get("created_at"),
+                    "ref": msg.get("uuid"),
+                }
+            )
+        rows.extend(_distill_turns(turns, "claude"))
+    return rows
+
+
+def map_chatgpt(export: dict[str, Any]) -> list[dict[str, Any]]:
+    """Map a ChatGPT export ``conversations.json`` into memory rows.
+
+    ChatGPT's export is a list of conversations; each has a ``mapping`` tree
+    of message nodes with ``parent`` links. We walk nodes in time order.
+    """
+    rows: list[dict[str, Any]] = []
+    for convo in export.get("conversations", []):
+        node_map = convo.get("mapping") or {}
+        records: list[tuple[float, dict[str, Any]]] = []
+        for node_id, node in node_map.items():
+            msg = node.get("message") or {}
+            role = msg.get("author", {}).get("role") or msg.get("role")
+            if role not in ("user", "assistant"):
+                continue
+            records.append(
+                (float(msg.get("create_time") or 0), {
+                    "role": role,
+                    "text": _msg_text(msg.get("content")),
+                    "time": msg.get("create_time"),
+                    "ref": node_id,
+                })
+            )
+        records.sort(key=lambda r: r[0])
+        turns = [r[1] for r in records]
+        rows.extend(_distill_turns(turns, "chatgpt"))
+    return rows
+
+
 # Langfuse is deliberately absent: its rows are observability events, not
 # memories, so one incident collapses into a single grouped payload rather
 # than mapping row-for-row. That needs the user's capture settings, which
@@ -496,6 +711,8 @@ MAPPERS: dict[str, Callable[[dict[str, Any]], list[dict[str, Any]]]] = {
     "letta": map_letta,
     "supermemory": map_supermemory,
     "okf": map_okf,
+    "claude": map_claude,
+    "chatgpt": map_chatgpt,
 }
 
 
