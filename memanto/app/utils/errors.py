@@ -22,7 +22,7 @@ class ValidationError(MemantoError):
     pass
 
 
-class MemoryError(MemantoError):
+class MemoryOperationError(MemantoError):
     """Memory operation error"""
 
     pass
@@ -104,11 +104,11 @@ def map_error_to_http_exception(error: Exception) -> HTTPException:
             },
         )
 
-    elif isinstance(error, MemoryError):
+    elif isinstance(error, MemoryOperationError):
         return HTTPException(
             status_code=500,
             detail={
-                "error": "MemoryError",
+                "error": "MemoryOperationError",
                 "message": error.message,
                 "details": error.details,
             },

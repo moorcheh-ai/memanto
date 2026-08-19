@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Any
 
 from fastapi import HTTPException
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, field_validator
 
 
 class InputLimits:
@@ -113,11 +113,13 @@ class ValidatedMemoryWriteRequest(BaseModel):
     text: str = Field(..., description="Memory text content")
     metadata: dict[str, Any] = Field(default_factory=dict)
 
-    @validator("text")
+    @field_validator("text")
+    @classmethod
     def validate_text(cls, v):
         return CostGuard.validate_text_length(v, "text")
 
-    @validator("metadata")
+    @field_validator("metadata")
+    @classmethod
     def validate_metadata(cls, v):
         return CostGuard.validate_metadata_size(v)
 
@@ -128,11 +130,13 @@ class ValidatedMemoryReadRequest(BaseModel):
     query: str = Field(..., description="Search query")
     k: int = Field(default=10, ge=1, description="Number of results")
 
-    @validator("query")
+    @field_validator("query")
+    @classmethod
     def validate_query(cls, v):
         return CostGuard.validate_query_length(v)
 
-    @validator("k")
+    @field_validator("k")
+    @classmethod
     def validate_k(cls, v):
         return CostGuard.validate_k_limit(v)
 
@@ -142,7 +146,8 @@ class ValidatedMemoryAnswerRequest(BaseModel):
 
     question: str = Field(..., description="Question to answer")
 
-    @validator("question")
+    @field_validator("question")
+    @classmethod
     def validate_question(cls, v):
         return CostGuard.validate_query_length(v)
 
@@ -228,3 +233,31 @@ def validate_output_path(
             ),
         )
     return resolved
+
+
+_SUCCESSFUL_WRITE_STATUSES = {"queued", "success", "ok"}
+
+
+def is_successful_write_result(item: object) -> bool:
+    """Check if a Moorcheh API response represents a successful write."""
+    return (
+        isinstance(item, dict)
+        and str(item.get("status", "")).lower() in _SUCCESSFUL_WRITE_STATUSES
+    )
+
+
+def validate_recall_limit(limit: int) -> None:
+    """Reject recall/temporal-recall limits outside [1, InputLimits.MAX_K].
+
+    Shared by DirectClient, SdkClient, and ConfigManager.set_recall_config so
+    the same bound is enforced everywhere a caller-supplied recall limit is
+    accepted, rather than each keeping its own copy of the check.
+    """
+    if (
+        isinstance(limit, bool)
+        or not isinstance(limit, int)
+        or not 1 <= limit <= InputLimits.MAX_K
+    ):
+        raise ValueError(
+            f"Limit must be an integer between 1 and {InputLimits.MAX_K}, got {limit}"
+        )

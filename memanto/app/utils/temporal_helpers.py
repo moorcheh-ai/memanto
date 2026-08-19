@@ -4,20 +4,25 @@ Temporal Query Helpers
 Utility functions to make temporal queries easier for agents.
 """
 
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, time, timedelta, timezone
 from typing import Any
 
 
 def utc_now() -> datetime:
-    """Current UTC time as a naive datetime (matches legacy session storage)."""
-    return datetime.now(timezone.utc).replace(tzinfo=None)
+    """Current UTC time as an aware datetime."""
+    return datetime.now(timezone.utc)
 
 
-def as_utc_naive(dt: datetime) -> datetime:
-    """Normalize aware datetimes to the naive UTC format used in session storage."""
+def utc_date_str() -> str:
+    """Current UTC calendar date in ``YYYY-MM-DD`` format."""
+    return utc_now().date().isoformat()
+
+
+def as_utc_aware(dt: datetime) -> datetime:
+    """Normalize datetimes to an aware UTC format."""
     if dt.tzinfo is None:
-        return dt
-    return dt.astimezone(timezone.utc).replace(tzinfo=None)
+        return dt.replace(tzinfo=timezone.utc)
+    return dt.astimezone(timezone.utc)
 
 
 def parse_iso_timestamp(ts_str: str) -> datetime:
@@ -34,6 +39,69 @@ def parse_iso_timestamp(ts_str: str) -> datetime:
     if dt.tzinfo is None:
         dt = dt.replace(tzinfo=timezone.utc)
     return dt.astimezone(timezone.utc)
+
+
+# The end-of-day instant used whenever a date-only cutoff is widened to cover the
+# whole day. Defined once so every entry point agrees to the microsecond; when the
+# REST layer used time(23, 59, 59) and this module used time.max, memories written
+# in the final second of a day fell inside the cutoff on one path and outside it on
+# the other.
+END_OF_DAY = time.max
+
+
+def parse_date_only(ts_str: str) -> date:
+    """Parse a calendar date, accepting both ISO-8601 date forms.
+
+    ``date.fromisoformat`` only learned the basic (un-hyphenated) ``20260726``
+    form in Python 3.11, but this project supports 3.10 (see ``requires-python``
+    and the CI matrix). The basic form is handled explicitly so date-only
+    detection behaves identically on every supported interpreter instead of
+    silently depending on the runtime's stdlib version.
+
+    Raises ``ValueError`` for anything that is not a calendar date.
+    """
+    if len(ts_str) == 8 and ts_str.isdigit():
+        return date(int(ts_str[:4]), int(ts_str[4:6]), int(ts_str[6:8]))
+    return date.fromisoformat(ts_str)
+
+
+def is_date_only(ts_str: str) -> bool:
+    """True when the string is a calendar date with no time component.
+
+    Detected by PARSING rather than by shape. The previous shape check
+    (``len == 10 and s[4] == "-" and s[7] == "-"``) silently rejected the
+    ISO-8601 basic format ``20260726`` -- a valid date -- which then fell
+    through to the datetime parser and became midnight, i.e. the START of the
+    day, flipping the documented end-of-day semantics by nearly 24 hours with
+    no error raised.
+    """
+    if not ts_str or "T" in ts_str or " " in ts_str:
+        return False
+    try:
+        parse_date_only(ts_str)
+    except ValueError:
+        return False
+    return True
+
+
+def parse_as_of_timestamp(ts_str: str) -> datetime:
+    """Parse a point-in-time cutoff, treating a date as the end of that day.
+
+    ``recall_as_of`` is exposed through REST, the Python clients, CLI, and MCP.
+    The REST request model already documents date-only values as end-of-day,
+    while the lower-level clients pass strings directly to the read service.
+    Normalizing at the service boundary keeps every caller consistent without
+    changing the meaning of full ISO timestamps.
+    """
+    if is_date_only(ts_str):
+        try:
+            return datetime.combine(
+                parse_date_only(ts_str), END_OF_DAY, tzinfo=timezone.utc
+            )
+        except ValueError:
+            pass
+
+    return parse_iso_timestamp(ts_str)
 
 
 def format_local_time(ts) -> str:
@@ -124,6 +192,21 @@ def get_this_month_range() -> tuple[str, str]:
     )
 
 
+# Module-level lookup tables for parse_relative_time. Defined once at import
+# rather than rebuilt on every call (perf; flagged by static analysis).
+_NATURAL_UNIT_DAYS = {"week": 7, "month": 30, "year": 365}
+
+# Word-number map covers zero through twenty plus common tens; falls back to
+# int() parsing for numeric strings (e.g. "last 7 days").
+_WORD_NUMBERS = {
+    "zero": 0, "one": 1, "two": 2, "three": 3, "four": 4, "five": 5,
+    "six": 6, "seven": 7, "eight": 8, "nine": 9, "ten": 10,
+    "eleven": 11, "twelve": 12, "thirteen": 13, "fourteen": 14,
+    "fifteen": 15, "sixteen": 16, "seventeen": 17, "eighteen": 18,
+    "nineteen": 19, "twenty": 20, "thirty": 30, "forty": 40, "fifty": 50,
+}
+
+
 def parse_relative_time(relative: str) -> str | None:
     """
     Parse relative time strings to ISO timestamps
@@ -131,13 +214,23 @@ def parse_relative_time(relative: str) -> str | None:
     Supports:
     - "today", "yesterday"
     - "last 7 days", "last 24 hours"
+    - "last week", "last month", "last year" (natural-language singular units)
+    - "past N days/hours" (synonym for "last N ...")
+    - Word numbers: "last seven days", "last twelve hours"
     - "this week", "this month"
 
     Examples:
         parse_relative_time("today") -> "2025-12-27T00:00:00Z"
         parse_relative_time("last 7 days") -> "2025-12-20T00:00:00Z"
+        parse_relative_time("last week") -> "2025-12-20T00:00:00Z"
+        parse_relative_time("last month") -> "2025-11-27T00:00:00Z"
+        parse_relative_time("last year") -> "2024-12-27T00:00:00Z"
+        parse_relative_time("past 7 days") -> "2025-12-20T00:00:00Z"
+        parse_relative_time("last seven days") -> "2025-12-20T00:00:00Z"
     """
     relative = relative.lower().strip()
+    # Collapse multiple spaces so "last  7  days" parses like "last 7 days"
+    relative = " ".join(relative.split())
 
     if relative == "today":
         start, _ = get_today_range()
@@ -155,20 +248,43 @@ def parse_relative_time(relative: str) -> str | None:
         start, _ = get_this_month_range()
         return start
 
-    # Parse "last N days/hours"
-    if relative.startswith("last "):
-        parts = relative.split()
-        if len(parts) == 3:
-            try:
-                number = int(parts[1])
+    # Natural-language singular units: "last week", "last month", "last year"
+    # (and "past ..." synonym). These use fixed-day lookbacks (30 for month,
+    # 365 for year) rather than calendar-window arithmetic because months
+    # vary in length and the function returns a single ISO timestamp.
+    for prefix in ("last ", "past "):
+        for unit, days in _NATURAL_UNIT_DAYS.items():
+            if relative == f"{prefix}{unit}":
+                return get_last_n_days(days)
+
+    # Parse "last/past N days/hours" with optional word-numbers.
+    for prefix in ("last", "past"):
+        if relative.startswith(prefix + " "):
+            parts = relative.split()
+            if len(parts) == 3:
+                raw_number = parts[1]
+                if raw_number in _WORD_NUMBERS:
+                    number = _WORD_NUMBERS[raw_number]
+                else:
+                    try:
+                        number = int(raw_number)
+                    except ValueError:
+                        continue  # Not a number we recognize; fall through to return None
                 unit = parts[2]
 
-                if unit in ["day", "days"]:
-                    return get_last_n_days(number)
-                elif unit in ["hour", "hours"]:
-                    return get_last_n_hours(number)
-            except ValueError:
-                pass
+                if number <= 0:
+                    return None
+
+                # Guard against pathological inputs (e.g. "last 9999999999 days")
+                # whose timedelta construction raises OverflowError. Treat as
+                # unparseable rather than crashing the caller.
+                try:
+                    if unit in ("day", "days"):
+                        return get_last_n_days(number)
+                    elif unit in ("hour", "hours"):
+                        return get_last_n_hours(number)
+                except OverflowError:
+                    return None
 
     return None
 
@@ -217,9 +333,21 @@ def build_temporal_query(
           }
         }
     """
-    # Parse relative time if provided and no absolute time given
+    # Parse relative time if provided and no absolute time given. Most relative
+    # phrases describe an open-ended lookback window, but "yesterday" is a
+    # closed calendar-day window. Supplying only its start would also return
+    # today's memories, which contradicts the caller's requested time range.
     if relative_time and not created_after:
-        created_after = parse_relative_time(relative_time)
+        normalized_relative_time = relative_time.lower().strip()
+        if normalized_relative_time == "yesterday":
+            created_after, yesterday_end = get_yesterday_range()
+            if not created_before:
+                created_before = yesterday_end
+        else:
+            parsed_relative_time = parse_relative_time(relative_time)
+            if parsed_relative_time is None:
+                raise ValueError(f"Invalid relative_time: {relative_time!r}")
+            created_after = parsed_relative_time
 
     body: dict[str, Any] = {"query": query, "limit": limit}
     if created_after:

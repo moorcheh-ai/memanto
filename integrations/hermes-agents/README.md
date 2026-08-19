@@ -111,8 +111,9 @@ ruff check .
 | `integrations/mcp` | `memanto-mcp` | MCP server for any MCP-compatible client (Claude, Cursor). |
 | `integrations/crewai` | `crewai-memanto` | CrewAI tools for multi-agent memory sharing. |
 | `integrations/hermes-agents` | `hermes-memanto` | **This** — a memory provider for the Hermes agent. |
+| `integrations/langfuse` | `langfuse-memanto` | Turns Langfuse errors and anomalies into memories, live from your app. |
 
-All three talk to the same Moorcheh-backed Memanto agents, so memory written by
+They all talk to the same Moorcheh-backed Memanto agents, so memory written by
 one is recallable from the others when they share an `agent_id`.
 
 ## Support
