@@ -44,6 +44,9 @@ def test_detect_negated_preferences_instead_of_instructions():
         "I never liked Vim",
         "They can't stand noisy notifications",
         "The client prefers not to receive phone calls",
+        "The client detests email",
+        "The customer loathes the new UI",
+        "My client despises late meetings",
     ]
 
     for content in cases:

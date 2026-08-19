@@ -81,7 +81,7 @@ class MemoryParsingService:
                     r"\b(?:would rather|rather use|prefer to|prefers to|preference for|likes to)\b",
                     4,
                 ),
-                (r"\b(?:dislike|dislikes|hate|hates|detest|detests|loathe|loathes|despise|despises|avoid using|not a fan of)\b", 3),
+                (r"\b(?:dislike|dislikes|hate|hates|detest|detests|loathe|loathes|despise|despises|avoid using|not a fan of)\b", 5),
                 (
                     r"\b(?:works best for|feels better with|is more comfortable with)\b",
                     3,
