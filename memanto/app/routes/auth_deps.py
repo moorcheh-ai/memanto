@@ -107,11 +107,9 @@ def _get_expected_management_credential() -> str | None:
 
     if backend == Backend.ON_PREM:
         secret = (settings.MEMANTO_SECRET_KEY or "").strip()
-
         return secret or None
 
     api_key = (settings.MOORCHEH_API_KEY or "").strip()
-
     return api_key or None
 
 
@@ -136,16 +134,11 @@ def require_management_access(
         X-Api-Key: <key>
 
     No request IP address is treated as automatically trusted.
-    This prevents deployments behind reverse proxies from accidentally
-    converting an apparent loopback request into an authorization bypass.
     """
 
-    # Keep Request in the dependency signature for FastAPI compatibility
-    # and future request-context auditing.
     del request
 
     server_key = get_moorcheh_api_key()
-
     expected = _get_expected_management_credential()
 
     if expected is None:
@@ -229,25 +222,20 @@ def get_current_session(
     session_service = get_session_service()
 
     try:
-        # Validate the presented credential before using its identity.
         token_payload = session_service.validate_session(
             session_token
         )
 
-        # IMPORTANT:
-        # Never obtain this identity from an untrusted request parameter.
+        # Identity comes only from the validated session.
         agent_id = token_payload.agent_id
 
-        session = session_service.get_session(
-            agent_id
-        )
+        session = session_service.get_session(agent_id)
 
         if session is None:
             raise SessionNotFoundError(
                 f"Session for agent {agent_id} not found"
             )
 
-        # Renew sessions approaching expiration.
         renewed = session_service.check_and_auto_renew(
             agent_id=agent_id,
         )
@@ -255,8 +243,6 @@ def get_current_session(
         if renewed is not None:
             session = renewed
 
-            # Refresh the browser cookie when renewal generates
-            # a replacement session token.
             if session_cookie:
                 set_session_cookie(
                     response=response,
