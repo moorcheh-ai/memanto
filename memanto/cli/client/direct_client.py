@@ -807,7 +807,7 @@ class DirectClient:
                 )
                 session_svc.try_log_memory_to_session_summary(
                     agent_id=agent_id,
-                    session_id=session_id,
+                    session_id=session.session_id,
                     memory_record=mem,
                     memory_id=mem_id,
                 )
