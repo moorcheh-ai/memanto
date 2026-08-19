@@ -48,6 +48,16 @@ def test_default_agent_loaded_from_env(
     assert settings.authorized_agent_ids() == frozenset({"my-assistant"})
 
 
+def test_default_agent_is_normalized(
+    fake_api_key: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("MEMANTO_DEFAULT_AGENT_ID", "  my-assistant  ")
+    settings = MCPServerSettings()  # type: ignore[call-arg]
+
+    assert settings.default_agent_id == "my-assistant"
+    assert settings.authorized_agent_ids() == frozenset({"my-assistant"})
+
+
 def test_allowed_agents_loaded_from_env(
     fake_api_key: str, monkeypatch: pytest.MonkeyPatch
 ) -> None:

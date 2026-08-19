@@ -138,6 +138,15 @@ class MCPServerSettings(BaseSettings):
             raise ValueError(f"agent_pattern must be one of: {allowed} (got {v!r})")
         return v
 
+    @field_validator("default_agent_id")
+    @classmethod
+    def _normalize_default_agent_id(cls, v: str | None) -> str | None:
+        """Normalize the configured authorization and auto-create target."""
+        if v is None:
+            return None
+        normalized = v.strip()
+        return normalized or None
+
     @field_validator("log_level")
     @classmethod
     def _validate_log_level(cls, v: str) -> str:
@@ -170,6 +179,6 @@ class MCPServerSettings(BaseSettings):
             for agent_id in self.allowed_agent_ids.split(",")
             if agent_id.strip()
         }
-        if self.default_agent_id and self.default_agent_id.strip():
-            agent_ids.add(self.default_agent_id.strip())
+        if self.default_agent_id:
+            agent_ids.add(self.default_agent_id)
         return frozenset(agent_ids)

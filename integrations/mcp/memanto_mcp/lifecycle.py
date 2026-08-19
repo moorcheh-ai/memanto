@@ -87,7 +87,7 @@ class MemantoLifecycle:
         if agent_id and agent_id.strip():
             resolved = agent_id.strip()
         elif self._settings.default_agent_id:
-            resolved = self._settings.default_agent_id.strip()
+            resolved = self._settings.default_agent_id
         else:
             raise NoAgentConfiguredError(
                 "No agent_id was supplied and no MEMANTO_DEFAULT_AGENT_ID is "

@@ -330,6 +330,25 @@ def test_missing_agent_is_created_with_scoped_client(
     assert lifecycle.ensure_ready("agent-a") is client
 
 
+def test_whitespace_padded_default_agent_can_be_auto_created(
+    fake_api_key: str, monkeypatch
+) -> None:
+    """Authorization and auto-creation must use one normalized default ID."""
+    monkeypatch.setattr("memanto_mcp.lifecycle.SdkClient", FakeSdkClient)
+    FakeSdkClient.instances = []
+    FakeSdkClient.missing_agents = {"agent-a"}
+    FakeSdkClient.fail_activate_agents = set()
+
+    monkeypatch.setenv("MEMANTO_DEFAULT_AGENT_ID", "  agent-a  ")
+    lifecycle = MemantoLifecycle(MCPServerSettings())  # type: ignore[call-arg]
+    resolved = lifecycle.resolve_agent_id(None)
+    client = lifecycle.ensure_ready(resolved)
+
+    assert resolved == "agent-a"
+    assert client.created_agents == ["agent-a"]
+    assert client.activated_agents == ["agent-a"]
+
+
 def test_failed_first_activation_does_not_cache_new_client(
     fake_api_key: str, monkeypatch
 ) -> None:
