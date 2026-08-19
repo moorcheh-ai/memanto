@@ -296,10 +296,11 @@ def run_migration(
     grouped_rows: dict[str, list[dict[str, Any]]] = {}
     for row in rows:
         target = row.get("agent_id") or agent_id
-        if not target:
-            # Should be caught by _resolve_target_agent, but safe-guard here.
+        if not isinstance(target, str) or not target.strip():
             summary.failed += 1
-            summary.errors.append(f"Skipping record: no target agent_id available.")
+            summary.errors.append(
+                f"Skipping record: invalid or missing target agent_id '{target}'."
+            )
             continue
         grouped_rows.setdefault(target, []).append(row)
 
@@ -321,6 +322,15 @@ def run_migration(
             on_progress(f"{msg}...")
 
         try:
+            # Ensure the client has an active session for this specific agent
+            if client and client.agent_id != target_agent:
+                try:
+                    client.activate_agent(target_agent)
+                except Exception as exc:
+                    summary.failed += len(batch)
+                    summary.errors.append(f"batch {idx}: failed to activate agent '{target_agent}': {exc}")
+                    continue
+
             result = client.batch_remember(agent_id=target_agent, memories=batch)
         except MemoryError:
             raise
