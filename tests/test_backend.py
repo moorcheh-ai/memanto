@@ -199,33 +199,30 @@ class TestOnPremClient:
 
 
 class TestSingletonDispatch:
-    def test_direct_call_falls_back_to_configured_api_key(self):
-        """Calling the FastAPI dependency as a plain function must use the
-        configured key, not the unresolved ``Header`` default.
-
-        ``get_moorcheh_client`` is a FastAPI dependency, but route and service
-        code also calls it directly. FastAPI only substitutes a real value when
-        it injects the dependency, so a direct call passes the ``Header(...)``
-        object itself - which is truthy, so it used to be forwarded to the SDK
-        as if it were an API key. That made every direct caller blow up inside
-        httpx, and callers wrapping it in ``except Exception`` (such as the
-        agent memory-count lookup) silently degraded to zero.
-        """
+    def test_dependency_wrappers_plain_calls_use_none_api_key(self):
+        """Plain calls must forward ``None`` (not FastAPI ``Header`` metadata)."""
         from memanto.app.clients import moorcheh as mclients
-        from memanto.app.config import settings
 
-        cloud_client = object()
-        mclients.moorcheh_client.reset_client()
-        try:
-            with patch.object(
-                mclients, "MoorchehClient", return_value=cloud_client
-            ) as cloud_constructor:
-                assert mclients.get_moorcheh_client() is cloud_client
-                cloud_constructor.assert_called_once_with(
-                    api_key=settings.MOORCHEH_API_KEY
-                )
-        finally:
-            mclients.moorcheh_client.reset_client()
+        sync_client = object()
+        async_client = object()
+
+        with (
+            patch.object(
+                mclients.moorcheh_client,
+                "get_client",
+                return_value=sync_client,
+            ) as sync_dispatcher,
+            patch.object(
+                mclients.moorcheh_client,
+                "get_async_client",
+                return_value=async_client,
+            ) as async_dispatcher,
+        ):
+            assert mclients.get_moorcheh_client() is sync_client
+            assert mclients.get_async_moorcheh_client() is async_client
+
+        sync_dispatcher.assert_called_once_with(api_key=None)
+        async_dispatcher.assert_called_once_with(api_key=None)
 
     def test_backend_switch_rebuilds_cached_client_without_manual_reset(self):
         from memanto.app.clients import moorcheh as mclients

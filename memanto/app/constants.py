@@ -26,7 +26,7 @@ MemoryType = Literal[
 SourceType = str
 
 # Status Types
-StatusType = Literal["active", "superseded", "deleted", "provisional"]
+StatusType = Literal["active"]
 
 # Provenance Types
 ProvenanceType = Literal[

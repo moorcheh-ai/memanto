@@ -13,6 +13,11 @@ def utc_now() -> datetime:
     return datetime.now(timezone.utc)
 
 
+def utc_date_str() -> str:
+    """Current UTC calendar date in ``YYYY-MM-DD`` format."""
+    return utc_now().date().isoformat()
+
+
 def as_utc_aware(dt: datetime) -> datetime:
     """Normalize datetimes to an aware UTC format."""
     if dt.tzinfo is None:

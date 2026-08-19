@@ -20,7 +20,7 @@ class ConversationMemoryExtractionService:
 
     MAX_MESSAGES = 200
     MAX_MEMORIES = 100
-    MAX_CONTENT_CHARS = 12_000
+    MAX_CONTENT_CHARS = 120_000
     MAX_MEMORY_CONTENT_CHARS = 10_000
 
     def __init__(self, client: Any) -> None:
@@ -42,7 +42,7 @@ class ConversationMemoryExtractionService:
         max_memories = max(1, min(max_memories, self.MAX_MEMORIES))
 
         generate_kwargs: dict[str, Any] = {
-            "namespace": namespace,
+            "namespace": "",  # Empty namespace invokes the raw LLM mode directly
             "query": self._conversation_text(messages),
             "top_k": 1,
             "temperature": 0,
@@ -98,10 +98,18 @@ class ConversationMemoryExtractionService:
     def _conversation_text(self, messages: list[dict[str, str]]) -> str:
         lines: list[str] = []
         total = 0
-        for message in messages:
+        for i, message in enumerate(messages):
             line = f"{message['role'].strip()}: {message['content'].strip()}"
-            total += len(line)
+            # Account for the newline separator that join() adds between
+            # accepted messages.  Without this, two lines whose lengths sum
+            # to exactly MAX_CONTENT_CHARS produce a query that exceeds it.
+            separator_len = 1 if lines else 0
+            total += len(line) + separator_len
             if total > self.MAX_CONTENT_CHARS:
+                # Always include at least the first message so the query is
+                # never empty.  Truncate it if it alone exceeds the budget.
+                if i == 0 and not lines:
+                    lines.append(line[: self.MAX_CONTENT_CHARS])
                 break
             lines.append(line)
         return "\n".join(lines)

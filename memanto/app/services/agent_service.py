@@ -9,6 +9,7 @@ import logging
 from datetime import datetime, timezone
 from pathlib import Path
 
+from filelock import FileLock, Timeout
 from moorcheh_sdk.exceptions import ConflictError
 from pydantic import ValidationError
 
@@ -71,19 +72,24 @@ class AgentService:
                 f"Agent '{agent_create.agent_id}' already exists"
             )
 
-        lock_file = agent_file.with_suffix(".json.lock")
         self.agents_dir.mkdir(parents=True, exist_ok=True)
+        lock = FileLock(str(agent_file) + ".lock")
 
-        # Atomically claim the agent ID before creating its namespace.
         try:
-            with open(lock_file, "x"):
-                pass
-        except FileExistsError:
+            lock.acquire(timeout=0)
+        except Timeout as exc:
             raise AgentAlreadyExistsError(
                 f"Agent '{agent_create.agent_id}' already exists"
-            )
+            ) from exc
 
         try:
+            # Re-check after taking the inter-process lock. Another creator may
+            # have completed between the optimistic check above and acquisition.
+            if agent_file.exists():
+                raise AgentAlreadyExistsError(
+                    f"Agent '{agent_create.agent_id}' already exists"
+                )
+
             namespace = self._generate_namespace(agent_create.agent_id)
             client = get_moorcheh_client(api_key=moorcheh_api_key)
 
@@ -116,7 +122,9 @@ class AgentService:
             self._save_agent(agent)
             return agent
         finally:
-            lock_file.unlink(missing_ok=True)
+            # FileLock uses an OS-backed lock. The marker file may remain, but
+            # the lock itself is released automatically even if the process dies.
+            lock.release()
 
     def get_agent(self, agent_id: str) -> AgentInfo | None:
         """
@@ -220,10 +228,13 @@ class AgentService:
             AgentNotFoundError: If agent doesn't exist
         """
         agent_file = self._get_agent_file(agent_id)
-        if not agent_file.exists():
-            raise AgentNotFoundError(f"Agent '{agent_id}' not found")
+        lock_file = agent_file.with_suffix(".json.lock")
 
-        agent_file.unlink()
+        with FileLock(str(lock_file), timeout=5):
+            if not agent_file.exists():
+                raise AgentNotFoundError(f"Agent '{agent_id}' not found")
+
+            agent_file.unlink()
 
     def agent_exists(self, agent_id: str) -> bool:
         """

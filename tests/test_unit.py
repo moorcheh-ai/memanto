@@ -20,6 +20,7 @@ from memanto.app.config import settings
 from memanto.app.core import MemoryRecord
 from memanto.app.models.session import AgentCreate, AgentPattern, Session, SessionStatus
 from memanto.app.services.agent_service import AgentService
+from memanto.app.services.memory_write_service import MemoryWriteService
 from memanto.app.services.session_service import SessionService
 from memanto.app.utils.errors import InvalidSessionTokenError
 
@@ -659,6 +660,89 @@ class TestMemoryRecord:
                 memory.set_ttl(ttl)
 
 
+class TestMemoryWriteService:
+    """Unit tests for memory write/update behavior."""
+
+    def test_update_memory_preserves_existing_provenance(self):
+        """Partial updates must not silently downgrade provenance metadata.
+
+        The update path rebuilds a MemoryRecord from stored document metadata.
+        If provenance is omitted there, a `validated`/`corrected`/`inferred`
+        memory is rewritten as the default `explicit_statement`, corrupting
+        memory integrity and future provenance-aware retrieval.
+        """
+        mock_client = MagicMock()
+        mock_client.documents.get.return_value = {
+            "items": [
+                {
+                    "id": "mem-123",
+                    "text": "[FACT] Billing plan\n\nCustomer confirmed enterprise plan.",
+                    "metadata": {
+                        "memory_type": "fact",
+                        "agent_id": "agent-1",
+                        "actor_id": "agent-1",
+                        "source": "user",
+                        "confidence": 0.91,
+                        "status": "active",
+                        "provenance": "validated",
+                        "created_at": "2026-01-01T00:00:00+00:00",
+                        "updated_at": "2026-01-01T00:00:00+00:00",
+                    },
+                }
+            ]
+        }
+        mock_client.documents.delete.return_value = {"actual_deletions": 1}
+        mock_client.documents.upload.return_value = {"status": "success"}
+
+        service = MemoryWriteService(mock_client)
+        service.update_memory(
+            "mem-123",
+            "memanto_agent_agent-1",
+            {"content": "Customer confirmed enterprise plus plan."},
+        )
+
+        uploaded_doc = mock_client.documents.upload.call_args.kwargs["documents"][0]
+        assert uploaded_doc["provenance"] == "validated"
+
+    def test_update_memory_allows_explicit_provenance_override(self):
+        """Explicit provenance updates must take precedence over stored metadata."""
+        mock_client = MagicMock()
+        mock_client.documents.get.return_value = {
+            "items": [
+                {
+                    "id": "mem-123",
+                    "text": "[FACT] Billing plan\n\nCustomer confirmed enterprise plan.",
+                    "metadata": {
+                        "memory_type": "fact",
+                        "agent_id": "agent-1",
+                        "actor_id": "agent-1",
+                        "source": "user",
+                        "confidence": 0.91,
+                        "status": "active",
+                        "provenance": "validated",
+                        "created_at": "2026-01-01T00:00:00+00:00",
+                        "updated_at": "2026-01-01T00:00:00+00:00",
+                    },
+                }
+            ]
+        }
+        mock_client.documents.delete.return_value = {"actual_deletions": 1}
+        mock_client.documents.upload.return_value = {"status": "success"}
+
+        service = MemoryWriteService(mock_client)
+        service.update_memory(
+            "mem-123",
+            "memanto_agent_agent-1",
+            {
+                "content": "Customer confirmed enterprise plus plan.",
+                "provenance": "corrected",
+            },
+        )
+
+        uploaded_doc = mock_client.documents.upload.call_args.kwargs["documents"][0]
+        assert uploaded_doc["provenance"] == "corrected"
+
+
 class TestAgentService:
     """Unit tests for AgentService"""
 
@@ -712,6 +796,23 @@ class TestAgentService:
         print("✅ Agent created successfully")
         print(f"   Agent ID: {agent.agent_id}")
         print(f"   Namespace: {agent.namespace}")
+
+    def test_create_agent_recovers_from_stale_lock_file(self, agent_service):
+        """A crash-left lock marker must not permanently reserve an agent ID."""
+        agent_service.agents_dir.mkdir(parents=True)
+        stale_lock = agent_service.agents_dir / "recovered-agent.json.lock"
+        stale_lock.write_text("orphaned by a terminated process", encoding="utf-8")
+
+        agent = agent_service.create_agent(
+            AgentCreate(
+                agent_id="recovered-agent",
+                pattern=AgentPattern.SUPPORT,
+            ),
+            settings.MOORCHEH_API_KEY,
+        )
+
+        assert agent.agent_id == "recovered-agent"
+        assert agent_service.agent_exists("recovered-agent")
 
     def test_list_agents(self, agent_service):
         """Test listing agents"""
@@ -795,6 +896,13 @@ class TestAgentService:
         agent_create = AgentCreate(agent_id="test-agent", pattern=AgentPattern.SUPPORT)
         agent_service.create_agent(agent_create, settings.MOORCHEH_API_KEY)
 
+        # Simulate a stale per-agent lock left by an interrupted create flow.
+        lock_file = agent_service._get_agent_file("test-agent").with_suffix(
+            ".json.lock"
+        )
+        lock_file.write_text("")
+        assert lock_file.exists()
+
         # Verify exists
         assert agent_service.agent_exists("test-agent")
 
@@ -803,6 +911,10 @@ class TestAgentService:
 
         # Verify deleted
         assert not agent_service.agent_exists("test-agent")
+
+        # Verify it can be recreated even if the lock file was left behind
+        agent_service.create_agent(agent_create, settings.MOORCHEH_API_KEY)
+        assert agent_service.agent_exists("test-agent")
 
         print("✅ Agent deleted successfully")
 
@@ -850,6 +962,7 @@ class TestMemoryWriteServiceDelete:
         ],
     )
     def test_delete_memory_handles_backend_shapes(self, response, expected):
+        """Translate known backend delete responses into boolean outcomes."""
         from memanto.app.services.memory_write_service import MemoryWriteService
 
         client = MagicMock()
@@ -1403,6 +1516,54 @@ class TestClientApiKeyDispatch:
 
         assert client._get_moorcheh() is fake_backend
         assert calls == ["mk_instance_specific_key"]
+
+
+class TestSummaryVisualizationService:
+    """Daily summary visualizations should keep per-memory metadata aligned."""
+
+    def test_confidence_lines_do_not_shift_across_memory_blocks(self, tmp_path):
+        """Missing confidence metadata must not consume the next block's value."""
+        from memanto.app.services.summary_visualization_service import (
+            SummaryVisualizationService,
+        )
+
+        sessions_dir = tmp_path / "sessions"
+        sessions_dir.mkdir()
+        summary_path = sessions_dir / "agent-a_2026-06-28_sess-1_summary.md"
+        summary_path.write_text(
+            "\n".join(
+                [
+                    "# Session Summary for agent-a",
+                    "",
+                    "### [2026-06-28 09:00:00] [FACT] Missing confidence",
+                    "- **Content**:",
+                    "> This block intentionally has no confidence line.",
+                    "",
+                    "---",
+                    "",
+                    "### [2026-06-28 10:00:00] [DECISION] Has confidence",
+                    "- **Confidence**: `0.42`",
+                    "- **Content**:",
+                    "> This block has its own confidence line.",
+                    "",
+                    "---",
+                    "",
+                ]
+            ),
+            encoding="utf-8",
+        )
+
+        memories = SummaryVisualizationService()._parse_session_files(
+            "agent-a",
+            "2026-06-28",
+            sessions_dir,
+        )
+
+        assert [m["title"] for m in memories] == [
+            "Missing confidence",
+            "Has confidence",
+        ]
+        assert [m["confidence"] for m in memories] == [0.8, 0.42]
 
 
 class TestForgetEndToEnd:
@@ -2316,3 +2477,46 @@ def test_ui_static_xss_escapes():
 
     for raw in forbidden_raw_interpolations:
         assert raw not in ui_html
+
+
+def test_client_delete_agent_clears_session_state(
+    tmp_path, monkeypatch, mock_moorcheh_for_tests
+):
+    """Deleting an agent via DirectClient and SdkClient clears persisted session state."""
+    from memanto.app.services.session_service import get_session_service
+    from memanto.cli.client import direct_client as direct_mod
+    from memanto.cli.client.direct_client import DirectClient
+    from memanto.cli.client.sdk_client import SdkClient
+
+    monkeypatch.setattr(
+        "memanto.app.services.agent_service.get_data_dir", lambda: tmp_path
+    )
+    monkeypatch.setattr(
+        "memanto.app.services.session_service.get_data_dir", lambda: tmp_path
+    )
+    monkeypatch.setattr(
+        direct_mod, "MoorchehClient", lambda **_: mock_moorcheh_for_tests
+    )
+
+    session_svc = get_session_service()
+
+    # Test DirectClient
+    d_client = DirectClient(api_key="test-key")
+    d_client._moorcheh = mock_moorcheh_for_tests
+    d_client.create_agent("agent-d", "tool", "direct client test")
+    d_client.activate_agent("agent-d")
+    assert session_svc.get_session("agent-d") is not None
+    assert session_svc.get_active_session() is not None
+
+    d_client.delete_agent("agent-d")
+    assert session_svc.get_session("agent-d") is None
+    assert session_svc.get_active_session() is None
+
+    # Test SdkClient
+    s_client = SdkClient(api_key="test-key")
+    s_client.create_agent("agent-s", "tool", "sdk client test")
+    s_client.activate_agent("agent-s")
+    assert session_svc.get_session("agent-s") is not None
+
+    s_client.delete_agent("agent-s")
+    assert session_svc.get_session("agent-s") is None

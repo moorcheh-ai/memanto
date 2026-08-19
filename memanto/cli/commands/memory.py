@@ -15,7 +15,7 @@ from rich.panel import Panel
 
 from memanto.app.constants import SourceType
 from memanto.app.core import is_valid_source
-from memanto.app.utils.temporal_helpers import get_yesterday_range
+from memanto.app.utils.temporal_helpers import get_yesterday_range, utc_date_str
 from memanto.cli.commands._shared import (
     BOLD_PRIMARY,
     BRIGHT,
@@ -487,6 +487,13 @@ def recall(
     min_similarity: float | None = typer.Option(
         None, "--min-similarity", help="Minimum similarity score"
     ),
+    min_confidence: float | None = typer.Option(
+        None,
+        "--min-confidence",
+        min=0.0,
+        max=1.0,
+        help="Minimum stored confidence score (0.0-1.0)",
+    ),
     tags: str | None = typer.Option(
         None, "--tags", help="Filter by tags (comma-separated)"
     ),
@@ -611,6 +618,7 @@ def recall(
                     type=type,
                     tags=tag_list,
                     min_similarity=min_similarity,
+                    min_confidence=min_confidence,
                 )
             else:
                 _error(
@@ -803,7 +811,7 @@ def daily_summary(
 
     # Resolve date
     if not date:
-        date = datetime.now().strftime("%Y-%m-%d")
+        date = utc_date_str()
 
     client = get_client()
 
@@ -880,7 +888,7 @@ def detect_conflicts(
         agent_id = active_agent_id
 
     if not date:
-        date = datetime.now().strftime("%Y-%m-%d")
+        date = utc_date_str()
 
     client = get_client()
 
@@ -953,7 +961,7 @@ def conflicts(
 
     # Resolve date
     if not date:
-        date = datetime.now().strftime("%Y-%m-%d")
+        date = utc_date_str()
 
     client = get_client()
 

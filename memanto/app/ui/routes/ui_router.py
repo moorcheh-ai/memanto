@@ -28,6 +28,7 @@ from fastapi.staticfiles import StaticFiles
 from memanto.app.clients.backend import Backend
 from memanto.app.config import settings
 from memanto.app.routes.auth_deps import clear_session_cookie, set_session_cookie
+from memanto.app.utils.temporal_helpers import utc_date_str
 from memanto.app.utils.validation import validate_safe_id
 from memanto.cli.client.direct_client import DirectClient
 from memanto.cli.config.manager import ConfigManager, _validate_server_port
@@ -503,15 +504,13 @@ async def list_conflicts(
     List unresolved conflicts for an agent.
     Uses DirectClient.list_conflicts under the hood.
     """
-    from datetime import datetime as dt
-
     if not agent_id:
         aid, _session_token = _config_manager.get_active_session()
         if not aid:
             return {"conflicts": [], "count": 0, "message": "No active agent"}
         agent_id = aid
     if not date:
-        date = dt.now().strftime("%Y-%m-%d")
+        date = utc_date_str()
     _validate_summary_key(str(agent_id), str(date))
 
     try:
@@ -594,8 +593,6 @@ async def read_daily_summary(
 
     Response: {exists, agent_id, date, path, content}
     """
-    from datetime import datetime as dt
-
     from memanto.app.config import get_data_dir
 
     if not agent_id:
@@ -604,7 +601,7 @@ async def read_daily_summary(
             return {"exists": False, "message": "No active agent"}
         agent_id = aid
     if not date:
-        date = dt.now().strftime("%Y-%m-%d")
+        date = utc_date_str()
 
     _validate_summary_key(str(agent_id), str(date))
     path = get_data_dir() / "summaries" / f"{agent_id}_{date}.md"
@@ -636,8 +633,6 @@ async def generate_daily_summary(
     Trigger an on-demand daily summary for the active agent.
     Expects (optional): {"agent_id": "...", "date": "YYYY-MM-DD"}
     """
-    from datetime import datetime as dt
-
     body = body or {}
     agent_id = body.get("agent_id")
     if not agent_id:
@@ -645,7 +640,7 @@ async def generate_daily_summary(
         if not aid:
             raise HTTPException(status_code=400, detail="No active agent")
         agent_id = aid
-    date = body.get("date") or dt.now().strftime("%Y-%m-%d")
+    date = body.get("date") or utc_date_str()
     _validate_summary_key(str(agent_id), str(date))
 
     client = _build_ui_direct_client()
@@ -670,8 +665,6 @@ async def generate_conflict_report(
     same work the scheduled task performs.
     Expects (optional): {"agent_id": "...", "date": "YYYY-MM-DD"}
     """
-    from datetime import datetime as dt
-
     body = body or {}
     agent_id = body.get("agent_id")
     if not agent_id:
@@ -679,7 +672,7 @@ async def generate_conflict_report(
         if not aid:
             raise HTTPException(status_code=400, detail="No active agent")
         agent_id = aid
-    date = body.get("date") or dt.now().strftime("%Y-%m-%d")
+    date = body.get("date") or utc_date_str()
     _validate_summary_key(str(agent_id), str(date))
 
     client = _build_ui_direct_client()
