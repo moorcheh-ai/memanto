@@ -1,0 +1,89 @@
+name: SOLFORGE review fixes v2
+
+on:
+  push:
+    branches:
+      - security-bounty-1852-conflict-id-binding
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  patch-test-commit:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: security-bounty-1852-conflict-id-binding
+          fetch-depth: 0
+          persist-credentials: false
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Apply review fixes
+        shell: python
+        run: |
+          from pathlib import Path
+
+          # 1) API route: propagate the already validated FastAPI session into DirectClient.
+          p = Path('memanto/app/routes/memory.py')
+          text = p.read_text(encoding='utf-8')
+          old = '''    try:\n        result = await asyncio.to_thread(\n            DirectClient(settings.MOORCHEH_API_KEY).resolve_conflict,\n            agent_id,\n            resolved_date,\n            request.conflict_index,\n            request.action,\n            request.manual_content,\n            request.manual_type,\n        )\n'''
+          new = '''    try:\n        direct_client = DirectClient(settings.MOORCHEH_API_KEY)\n        # The route dependency has already validated this session and its agent scope.\n        # Reuse that exact session so DirectClient can enforce the same authorization\n        # before any conflict resolution or destructive mutation.\n        direct_client.agent_id = agent_id\n        direct_client.session_token = session.session_token\n        direct_client._cached_session = session\n        result = await asyncio.to_thread(\n            direct_client.resolve_conflict,\n            agent_id,\n            resolved_date,\n            request.conflict_index,\n            request.action,\n            request.manual_content,\n            request.manual_type,\n        )\n'''
+          if old not in text:
+              raise SystemExit('API conflict route anchor not found')
+          p.write_text(text.replace(old, new, 1), encoding='utf-8')
+
+          # 2) CLI: fail closed for missing/malformed/unknown binding states.
+          p = Path('memanto/cli/commands/memory.py')
+          text = p.read_text(encoding='utf-8')
+          text = text.replace(
+              '            if binding.get("status") == "blocked":\n',
+              '            if binding.get("status") != "bound":\n',
+              1,
+          )
+          text = text.replace(
+              '        unverified = binding.get("status") == "blocked"\n',
+              '        unverified = binding.get("status") != "bound"\n',
+              1,
+          )
+          p.write_text(text, encoding='utf-8')
+
+          # 3) Browser UI: same fail-closed presentation/action rule.
+          p = Path('memanto/app/ui/static/index.html')
+          text = p.read_text(encoding='utf-8')
+          old = "            const unverified = binding.status === 'blocked';\n"
+          new = "            const unverified = binding.status !== 'bound';\n"
+          if old not in text:
+              raise SystemExit('browser binding status anchor not found')
+          p.write_text(text.replace(old, new, 1), encoding='utf-8')
+
+          # 4) Strengthen regression guards and add docstrings for CodeRabbit coverage.
+          p = Path('tests/test_conflict_resolution_review_guards.py')
+          p.write_text('''"""Regression guards for conflict-resolution authorization and fail-closed UI behavior."""\n\nfrom pathlib import Path\n\n\ndef test_conflict_resolution_requires_validated_agent_session():\n    """Resolver must authorize the requested agent and use the validated namespace."""\n    source = Path("memanto/cli/client/direct_client.py").read_text(encoding="utf-8")\n    start = source.index("    def resolve_conflict(")\n    end = source.index("    def ", start + 8)\n    body = source[start:end]\n    assert "self._get_validated_session_for_agent(agent_id)" in body\n    assert "namespace = session.namespace" in body\n\n\ndef test_api_route_propagates_validated_session_to_direct_client():\n    """FastAPI route must pass its validated session into DirectClient before resolution."""\n    route = Path("memanto/app/routes/memory.py").read_text(encoding="utf-8")\n    assert "direct_client.agent_id = agent_id" in route\n    assert "direct_client.session_token = session.session_token" in route\n    assert "direct_client._cached_session = session" in route\n    assert "direct_client.resolve_conflict" in route\n\n\ndef test_unverified_conflicts_disable_destructive_ui_actions():\n    """Any binding state other than bound must be presented as unverified and non-actionable."""\n    cli = Path("memanto/cli/commands/memory.py").read_text(encoding="utf-8")\n    ui = Path("memanto/app/ui/static/index.html").read_text(encoding="utf-8")\n    assert 'binding.get("status") != "bound"' in cli\n    assert "Destructive resolution disabled for this unverified conflict" in cli\n    assert "binding.status !== 'bound'" in ui\n    assert "btn.disabled = true" in ui\n''', encoding='utf-8')
+
+      - name: Install test dependencies
+        run: python -m pip install -e . pytest pytest-asyncio pytest-timeout ruff
+
+      - name: Run focused regression tests
+        run: python -m pytest tests/test_conflict_reference_binding.py tests/test_conflict_resolution_review_guards.py -q
+
+      - name: Ruff and syntax sanity
+        run: |
+          python -m compileall -q memanto/app/routes/memory.py memanto/cli/client/direct_client.py memanto/cli/commands/memory.py tests/test_conflict_resolution_review_guards.py
+          ruff check memanto/app/routes/memory.py memanto/cli/client/direct_client.py memanto/cli/commands/memory.py tests/test_conflict_resolution_review_guards.py
+
+      - name: Commit review fixes
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          rm .github/workflows/solforge-review-fixes-v2.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add memanto/app/routes/memory.py memanto/cli/commands/memory.py memanto/app/ui/static/index.html tests/test_conflict_resolution_review_guards.py .github/workflows/solforge-review-fixes-v2.yml
+          git commit -m "security: fix API session propagation and fail-closed conflict UI"
+          git push "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" HEAD:security-bounty-1852-conflict-id-binding
