@@ -1061,6 +1061,7 @@ class DirectClient:
 
     def get_policy(self, agent_id: str) -> dict[str, Any]:
         """Return the agent's expiry policy as a plain dict."""
+        self._get_validated_session_for_agent(agent_id)
         policy = self._get_policy_service().load_policy(agent_id)
         return {
             "agent_id": agent_id,
@@ -1073,6 +1074,8 @@ class DirectClient:
 
         Saving does not expire anything; run :meth:`apply_policy` afterwards.
         """
+        self._get_validated_session_for_agent(agent_id)
+
         from memanto.app.services.memory_policy_service import MemoryPolicy
 
         parsed = MemoryPolicy(**policy)
@@ -1106,6 +1109,8 @@ class DirectClient:
 
     def apply_policy_preset(self, agent_id: str, name: str) -> dict[str, Any]:
         """Adopt a predefined policy bundle as the agent's policy."""
+        self._get_validated_session_for_agent(agent_id)
+
         from memanto.app.services.policy_presets import load_preset
 
         policy = load_preset(name)

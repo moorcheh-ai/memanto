@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import threading
 from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import TimeoutError as FutureTimeoutError
 from pathlib import Path
 from typing import Any
 
@@ -78,7 +79,8 @@ def test_delete_revokes_session_from_inflight_activation(
         assert activation_persisted.wait(timeout=3)
         deletion = pool.submit(delete_agent)
         assert deletion_started.wait(timeout=3)
-        assert not deletion.done()
+        with pytest.raises(FutureTimeoutError):
+            deletion.result(timeout=0.5)
         release_activation.set()
         activation_result = activation.result(timeout=3)
         deletion_result = deletion.result(timeout=3)
@@ -121,7 +123,8 @@ def test_activation_rechecks_agent_after_concurrent_delete(
         assert deletion_entered.wait(timeout=3)
         activation = pool.submit(activate_agent)
         assert activation_started.wait(timeout=3)
-        assert not activation.done()
+        with pytest.raises(FutureTimeoutError):
+            activation.result(timeout=0.5)
         release_deletion.set()
         assert deletion.result(timeout=3) == {
             "status": "deleted",
