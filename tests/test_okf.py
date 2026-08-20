@@ -8,9 +8,9 @@ foreign OKF bundle whose free-form ``type`` and unknown keys must land in the
 ``[Supporting data]`` footer without loss.
 """
 
+import os
 from concurrent.futures import ThreadPoolExecutor
 from concurrent.futures import TimeoutError as FutureTimeout
-import os
 from pathlib import Path
 from threading import Event
 from time import perf_counter
@@ -18,9 +18,10 @@ from time import perf_counter
 import pytest
 import yaml  # type: ignore[import-untyped]
 
+import memanto.cli.migrate.okf_loader as okf_loader
 from memanto.app.services.okf_export_service import OkfExportService
 from memanto.cli.migrate.mappers import map_okf
-from memanto.cli.migrate.okf_loader import _SECURE_DIR_FD, load_okf_bundle
+from memanto.cli.migrate.okf_loader import load_okf_bundle
 
 
 def _mem(mem_id, title, content, **extra):
@@ -444,7 +445,7 @@ def test_loader_rejects_symlinked_memories_directory(tmp_path):
 
 def test_loader_rejects_document_swapped_to_symlink_before_open(tmp_path, monkeypatch):
     """A pathname swap after listing must not redirect the opened document."""
-    if not _SECURE_DIR_FD:
+    if not okf_loader._SECURE_DIR_FD:
         pytest.skip("descriptor-relative no-follow opens are unavailable")
 
     outside = tmp_path / "outside.txt"
@@ -474,7 +475,7 @@ def test_loader_rejects_document_swapped_to_symlink_before_open(tmp_path, monkey
 
 def test_loader_reads_pinned_root_when_selected_path_is_replaced(tmp_path, monkeypatch):
     """Replacing the selected pathname must not redirect an opened root."""
-    if not _SECURE_DIR_FD:
+    if not okf_loader._SECURE_DIR_FD:
         pytest.skip("descriptor-relative no-follow opens are unavailable")
 
     bundle = tmp_path / "bundle"
@@ -524,6 +525,24 @@ def test_loader_fails_closed_without_secure_directory_descriptors(
 
     with pytest.raises(RuntimeError, match="descriptor-relative no-follow"):
         load_okf_bundle(bundle)
+
+
+def test_loader_preserves_nested_document_read_errors(tmp_path, monkeypatch):
+    """A nested file error must not be mislabeled as an unsafe parent directory."""
+    if not okf_loader._SECURE_DIR_FD:
+        pytest.skip("descriptor-relative no-follow opens are unavailable")
+
+    nested = tmp_path / "bundle" / "memories" / "nested"
+    nested.mkdir(parents=True)
+    (nested / "memory.md").write_text("Ordinary content", encoding="utf-8")
+
+    def fail_document_read(directory_fd, name, display_path):
+        raise PermissionError("synthetic nested read failure")
+
+    monkeypatch.setattr(okf_loader, "_read_document_at", fail_document_read)
+
+    with pytest.raises(PermissionError, match="synthetic nested read failure"):
+        load_okf_bundle(tmp_path / "bundle")
 
 
 def test_loader_extracts_multiple_links_around_malformed_markup(tmp_path):

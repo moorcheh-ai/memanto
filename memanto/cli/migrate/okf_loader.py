@@ -52,6 +52,16 @@ _SECURE_DIR_FD = (
     and os.scandir in os.supports_fd
 )
 _READ_FLAGS = os.O_RDONLY | getattr(os, "O_CLOEXEC", 0) | getattr(os, "O_NONBLOCK", 0)
+_NOFOLLOW_ERRNOS: set[int] = {
+    code
+    for code in (
+        errno.ELOOP,
+        errno.ENOTDIR,
+        getattr(errno, "EMLINK", None),
+        getattr(errno, "EFTYPE", None),
+    )
+    if isinstance(code, int)
+}
 
 
 def _read_open_regular_file(fd: int, display_path: Path) -> str:
@@ -74,7 +84,7 @@ def _read_document_at(directory_fd: int, name: str, display_path: Path) -> str:
         )
         return _read_open_regular_file(document_fd, display_path)
     except OSError as exc:
-        if exc.errno in {errno.ELOOP, errno.ENOTDIR}:
+        if exc.errno in _NOFOLLOW_ERRNOS:
             raise ValueError(
                 f"OKF bundle contains a symbolic-link path: {display_path}"
             ) from exc
@@ -121,25 +131,24 @@ def _read_directory_documents(
         if stat.S_ISDIR(entry_stat.st_mode):
             if is_markdown:
                 raise ValueError(f"OKF document is not a regular file: {relative_path}")
-            child_fd: int | None = None
             try:
                 child_fd = os.open(
                     name,
                     _READ_FLAGS | os.O_DIRECTORY | os.O_NOFOLLOW,
                     dir_fd=directory_fd,
                 )
+            except OSError as exc:
+                raise ValueError(
+                    f"OKF bundle contains an unsafe directory: {relative_path}"
+                ) from exc
+            try:
                 if not stat.S_ISDIR(os.fstat(child_fd).st_mode):
                     raise ValueError(
                         f"OKF bundle contains an unsafe directory: {relative_path}"
                     )
                 documents.extend(_read_directory_documents(child_fd, relative_path))
-            except OSError as exc:
-                raise ValueError(
-                    f"OKF bundle contains an unsafe directory: {relative_path}"
-                ) from exc
             finally:
-                if child_fd is not None:
-                    os.close(child_fd)
+                os.close(child_fd)
             continue
         if not is_markdown:
             continue
@@ -202,7 +211,7 @@ def _load_documents_secure(
     except FileNotFoundError as exc:
         raise FileNotFoundError(f"OKF bundle not found: {original_path}") from exc
     except OSError as exc:
-        if exc.errno in {errno.ELOOP, errno.ENOTDIR}:
+        if exc.errno in _NOFOLLOW_ERRNOS:
             raise ValueError(
                 f"OKF bundle path must not be a symbolic link: {original_path}"
             ) from exc
