@@ -1444,10 +1444,24 @@ class DirectClient:
         old_id = conflict.get("old_memory_id")
         new_id = conflict.get("new_memory_id")
 
-        # Get namespace for memory operations
-        from memanto.app.core import agent_namespace
+        # Conflict resolution mutates persistent state, so authorize the caller
+        # against the target agent before resolving or deleting anything.
+        session = self._get_validated_session_for_agent(agent_id)
+        namespace = session.namespace
 
-        namespace = agent_namespace(agent_id)
+        # LLM-generated conflict IDs are untrusted capability references.
+        # Destructive actions must revalidate the server-generated binding
+        # immediately before any delete/store operation.
+        if action in {"keep_old", "keep_new", "remove_both", "manual"}:
+            from memanto.app.utils.conflict_binding import (
+                validate_conflict_reference_binding,
+            )
+
+            validate_conflict_reference_binding(
+                conflict,
+                client=self._get_moorcheh(),
+                namespace=namespace,
+            )
 
         write_service = self._get_write_service()
         result_details = {"action": action}

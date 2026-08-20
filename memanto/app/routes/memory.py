@@ -1182,8 +1182,15 @@ async def resolve_conflict(
     resolved_date = request.date or utc_date_str()
     _validate_summary_key(agent_id, resolved_date)
     try:
+        direct_client = DirectClient(settings.MOORCHEH_API_KEY)
+        # The route dependency has already validated this session and its agent scope.
+        # Reuse that exact session so DirectClient can enforce the same authorization
+        # before any conflict resolution or destructive mutation.
+        direct_client.agent_id = agent_id
+        direct_client.session_token = session.session_token
+        direct_client._cached_session = session
         result = await asyncio.to_thread(
-            DirectClient(settings.MOORCHEH_API_KEY).resolve_conflict,
+            direct_client.resolve_conflict,
             agent_id,
             resolved_date,
             request.conflict_index,

@@ -4438,10 +4438,12 @@
             const typeSpan = document.createElement('span');
             typeSpan.className = 'conflict-type';
             typeSpan.textContent = ctype;
+            const binding = c._reference_binding || {};
+            const unverified = binding.status !== 'bound';
             const badge = document.createElement('span');
-            badge.className = 'badge badge-warning';
+            badge.className = unverified ? 'badge badge-danger' : 'badge badge-warning';
             badge.style.marginLeft = '8px';
-            badge.textContent = 'Unresolved';
+            badge.textContent = unverified ? 'Unverified' : 'Unresolved';
             headerLeft.append(typeSpan, badge);
             const indexSpan = document.createElement('span');
             indexSpan.style.cssText = 'font-size:11px;color:var(--text-dim);font-family:var(--font-mono)';
@@ -4485,13 +4487,22 @@
 
             const actions = document.createElement('div');
             actions.className = 'conflict-actions';
-            actions.append(
-                conflictActionBtn('Keep Old', 'btn-secondary', () => resolveConflict(cid, rawAgentId, rawDate, 'keep_old')),
-                conflictActionBtn('Keep New', 'btn-primary', () => resolveConflict(cid, rawAgentId, rawDate, 'keep_new')),
-                conflictActionBtn('Keep Both', 'btn-secondary', () => resolveConflict(cid, rawAgentId, rawDate, 'keep_both')),
-                conflictActionBtn('Remove Both', 'btn-danger', () => resolveConflict(cid, rawAgentId, rawDate, 'remove_both')),
-                conflictActionBtn('Manual', 'btn-secondary', () => showManualResolve(cid)),
-            );
+            const keepOldBtn = conflictActionBtn('Keep Old', 'btn-secondary', () => resolveConflict(cid, rawAgentId, rawDate, 'keep_old'));
+            const keepNewBtn = conflictActionBtn('Keep New', 'btn-primary', () => resolveConflict(cid, rawAgentId, rawDate, 'keep_new'));
+            const keepBothBtn = conflictActionBtn('Keep Both', 'btn-secondary', () => resolveConflict(cid, rawAgentId, rawDate, 'keep_both'));
+            const removeBothBtn = conflictActionBtn('Remove Both', 'btn-danger', () => resolveConflict(cid, rawAgentId, rawDate, 'remove_both'));
+            const manualBtn = conflictActionBtn('Manual', 'btn-secondary', () => showManualResolve(cid));
+            if (unverified) {
+                [keepOldBtn, keepNewBtn, removeBothBtn, manualBtn].forEach(btn => {
+                    btn.disabled = true;
+                    btn.title = 'Disabled: conflict references are unverified';
+                });
+                const warning = document.createElement('div');
+                warning.style.cssText = 'color:var(--danger);font-size:12px;margin:8px 0';
+                warning.textContent = `Unverified references: ${binding.reason || 'reference validation failed'}. Destructive actions are disabled.`;
+                card.appendChild(warning);
+            }
+            actions.append(keepOldBtn, keepNewBtn, keepBothBtn, removeBothBtn, manualBtn);
 
             const manual = document.createElement('div');
             manual.id = `manual-${cid}`;

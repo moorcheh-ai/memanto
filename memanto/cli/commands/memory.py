@@ -1003,9 +1003,15 @@ def conflicts(
                 console.print(f"     [dim]Old: {c['old_content'][:80]}[/dim]")
             if c.get("new_content"):
                 console.print(f"     [dim]New: {c['new_content'][:80]}[/dim]")
-            console.print(
-                f"     [dim]Recommendation: {c.get('recommendation', '—')}[/dim]"
-            )
+            binding = c.get("_reference_binding") or {}
+            if binding.get("status") != "bound":
+                console.print(
+                    f"     [red]UNVERIFIED: {binding.get('reason', 'reference validation failed')}[/red]"
+                )
+            else:
+                console.print(
+                    f"     [dim]Recommendation: {c.get('recommendation', '—')}[/dim]"
+                )
             console.print()
         return
 
@@ -1044,6 +1050,8 @@ def conflicts(
         }
         color = type_colors.get(ctype, "white")
         rec = c.get("recommendation", "merge")
+        binding = c.get("_reference_binding") or {}
+        unverified = binding.get("status") != "bound"
 
         # Build the display panel
         lines = []
@@ -1077,7 +1085,13 @@ def conflicts(
             "merge": "[yellow]Merge/Manual[/yellow]",
             "remove_both": "[red]Remove Both[/red]",
         }
-        lines.append(f"[bold]AI Recommendation:[/bold]  {rec_display.get(rec, rec)}")
+        if unverified:
+            lines.append(
+                f"[bold red]UNVERIFIED REFERENCES:[/bold red] "
+                f"{binding.get('reason', 'reference validation failed')}"
+            )
+        else:
+            lines.append(f"[bold]AI Recommendation:[/bold]  {rec_display.get(rec, rec)}")
 
         console.print(
             Panel(
@@ -1086,6 +1100,16 @@ def conflicts(
                 border_style=color,
             )
         )
+
+        # Blocked references are intentionally not actionable. The user must
+        # regenerate a verified report before any destructive choice is offered.
+        if unverified:
+            console.print(
+                "[red]Destructive resolution disabled for this unverified conflict. "
+                "Regenerate the conflict report after fixing the reference issue.[/red]\n"
+            )
+            skipped_count += 1
+            continue
 
         # Prompt options with recommendation markers
         def _opt(key, label, rec_val, current_rec=rec):
