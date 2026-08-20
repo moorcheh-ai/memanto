@@ -103,8 +103,12 @@ Total volume processed: $10,000.
         if all_passed:
             print("\n🏆 SHOWCASE SUCCESS: All Manzoma branches migrated with perfect isolation!")
             print("Proof of the 'Freedom Loop': Data -> OKF -> Multi-Agent Memanto.")
+            return True
         else:
             print("\n❌ SHOWCASE FAILED: Verification errors found.")
+            return False
 
 if __name__ == "__main__":
-    run_manzoma_freedom_showcase()
+    success = run_manzoma_freedom_showcase()
+    if not success:
+        sys.exit(1)
