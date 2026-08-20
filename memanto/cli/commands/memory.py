@@ -197,7 +197,7 @@ def remember(
         batch_path = Path(batch)
         if not batch_path.exists():
             _error(
-                f"File not found: {batch}", hint="Provide a valid path to a JSON file."
+                f"File not found: {batch}", hint="Provide a valid file path."
             )
 
         try:
@@ -221,7 +221,6 @@ def remember(
                 hint="Split the file into smaller batches.",
             )
 
-        # Validate each item has at least 'content'
         for i, item in enumerate(memories):
             if not isinstance(item, dict) or "content" not in item:
                 _error(
@@ -257,7 +256,6 @@ def remember(
 
         return
 
-    # Single memory mode
     if not content:
         _error(
             "Missing argument 'CONTENT'.",
@@ -265,7 +263,6 @@ def remember(
             "Try 'memanto remember --help' for help.",
         )
 
-    # Parse tags
     tag_list = [t.strip() for t in tags.split(",")] if tags else None
 
     if not is_valid_source(source):
@@ -397,7 +394,6 @@ def forget(
                 memory_id=memory_id,
             )
         elapsed = time.perf_counter() - start
-
         console.print("[green]Memory deleted successfully![/green]")
         console.print(f"[dim]Memory ID: {result.get('memory_id', memory_id)}[/dim]")
         console.print(f"[dim]Agent: {result.get('agent_id', active_agent_id)}[/dim]")
@@ -522,7 +518,6 @@ def recall(
             "No active agent.", hint="Run 'memanto agent activate <agent-id>' first."
         )
 
-    # Check for mutually exclusive temporal flags
     temporal_flags = [as_of, changed_since, recent]
     temporal_count = sum(1 for flag in temporal_flags if flag)
     if temporal_count > 1:
@@ -531,7 +526,6 @@ def recall(
             hint="Use only one of: --as-of, --changed-since, --recent",
         )
 
-    # Temporal queries list memories directly and don't take a query argument.
     if query and (as_of or changed_since or recent):
         _error(
             "Cannot provide a search query with temporal flags.",
@@ -541,26 +535,16 @@ def recall(
     client = get_client()
     agent_id = active_agent_id
 
-    # CLI-side validation for timestamps to fail fast with a clear error
     def _validate_and_parse_timestamp(ts: str, flag_name: str) -> str:
         """Normalize an ISO or relative timestamp passed to a temporal flag."""
-
         if not ts:
             return ts
-
-        # ``--as-of yesterday`` means the state at the end of that calendar
-        # day. The generic relative helper returns the start of the day because
-        # its normal consumer is a changed-since / created-after query; using
-        # that value here drops almost all memories created yesterday.
         if flag_name == "--as-of" and ts.lower().strip() == "yesterday":
             _, yesterday_end = get_yesterday_range()
             return yesterday_end
-
-        # Try parsing as relative time (e.g., "today", "last 2 hours")
         rel_ts = parse_relative_time(ts)
         if isinstance(rel_ts, str):
             return rel_ts
-
         try:
             datetime.fromisoformat(ts.replace("Z", "+00:00"))
             return ts
@@ -575,12 +559,10 @@ def recall(
     if changed_since:
         changed_since = _validate_and_parse_timestamp(changed_since, "--changed-since")
 
-    # Parse filters
     type = [memory_type] if memory_type else None
     tag_list = [t.strip() for t in tags.split(",")] if tags else None
 
     try:
-        # Determine which API method to call based on temporal flags
         temporal_mode = "standard"
         with console.status("[cyan]Searching memories...", spinner="dots"):
             if as_of:
@@ -610,7 +592,6 @@ def recall(
                 )
                 temporal_mode = "recent"
             elif query:
-                # Standard recall
                 results = client.recall(
                     agent_id=agent_id,
                     query=query,
@@ -634,7 +615,6 @@ def recall(
             console.print(f"[dim]Completed in {elapsed:.2f}s[/dim]")
             return
 
-        # Display temporal mode information
         mode_labels = {
             "as_of": f"Point-in-time (as of {as_of})",
             "changed_since": f"Differential (since {changed_since})",
@@ -662,8 +642,6 @@ def recall(
             source_ref = memory.get("source_ref") or ""
             provenance = memory.get("provenance") or ""
             mem_tags = memory.get("tags") or []
-
-            # Determine memory source from ID pattern
             id_str = memory.get("id", "unknown")
             if "_summary_" in id_str:
                 source_tag = "[yellow] · file upload · summary [/yellow]"
@@ -672,10 +650,7 @@ def recall(
             else:
                 source_tag = "[cyan] · memory [/cyan]"
 
-            # Create panel for each memory
             panel_content = f"[bold]{title}[/bold]\n\n{content[:200]}{'...' if len(content) > 200 else ''}\n\n"
-
-            # Show ID and confidence (computed if available)
             if comp_conf is not None:
                 panel_content += f"[dim]ID: {id_str} | Type: {mem_type} | Confidence: {comp_conf:.2f} (computed) | Score: {score:.3f}[/dim]"
             else:
@@ -686,9 +661,6 @@ def recall(
             elif "_summary_" in id_str or "_chunk_" in id_str:
                 panel_content += "\n[dim]Created: not available (file upload)[/dim]"
 
-            # Show provenance metadata. `source` is unified: it holds the
-            # uploaded file name for file-upload memories and the origin
-            # (user, agent, ...) for everything else.
             origin_parts = []
             if source:
                 origin_parts.append(f"Source: {source}")
@@ -698,20 +670,13 @@ def recall(
                 origin_parts.append(f"Provenance: {provenance}")
             if origin_parts:
                 panel_content += f"\n[dim]{' | '.join(origin_parts)}[/dim]"
-
-            # Show tags when present
             if mem_tags:
                 panel_content += f"\n[dim]Tags: {', '.join(mem_tags)}[/dim]"
-
-            # Show status for non-standard queries
             if temporal_mode != "standard" and status != "active":
                 panel_content += f"\n[dim]Status: {status}[/dim]"
-
-            # Show change type for differential queries
             if change_type:
                 panel_content += f"\n[yellow]Change: {change_type}[/yellow]"
 
-            # Determine border style
             border_style = BRIGHT if score > 0.8 else PRIMARY
             if status == "superseded":
                 border_style = DIM
@@ -759,8 +724,6 @@ def answer(
 
         answer = result.get("answer", "No answer generated")
         context = result.get("context_memories", [])
-
-        # Display answer
         console.print(
             Panel(
                 f"[{BOLD_PRIMARY}]Question:[/{BOLD_PRIMARY}] {question}\n\n"
@@ -770,7 +733,6 @@ def answer(
             )
         )
 
-        # Display context
         if context:
             console.print(f"\n[dim]Used {len(context)} memories as context:[/dim]")
             for i, mem in enumerate(context, 1):
@@ -800,7 +762,6 @@ def daily_summary(
     start = time.perf_counter()
     active_agent_id, _ = config_manager.get_active_session()
 
-    # Resolve agent_id
     if not agent_id:
         if not active_agent_id:
             _error(
@@ -809,7 +770,6 @@ def daily_summary(
             )
         agent_id = active_agent_id
 
-    # Resolve date
     if not date:
         date = utc_date_str()
 
@@ -826,8 +786,6 @@ def daily_summary(
         elapsed = time.perf_counter() - start
 
         summary = result.get("summary", {})
-
-        # Display Summary Status
         if summary.get("status") == "success":
             console.print(
                 f"[green]Daily summary generated:[/green] {summary.get('summary_path')}"
@@ -835,7 +793,6 @@ def daily_summary(
         else:
             console.print(f"[yellow]! Summary:[/yellow] {summary.get('status')}")
 
-        # Display Auto-Export Status
         export = result.get("export")
         if export:
             if export.get("status") != "error":
@@ -950,7 +907,6 @@ def conflicts(
     """
     active_agent_id, active_session_token = config_manager.get_active_session()
 
-    # Resolve agent_id
     if not agent_id:
         if not active_agent_id:
             _error(
@@ -959,13 +915,11 @@ def conflicts(
             )
         agent_id = active_agent_id
 
-    # Resolve date
     if not date:
         date = utc_date_str()
 
     client = get_client()
 
-    # Load unresolved conflicts
     try:
         unresolved = client.list_conflicts(agent_id=agent_id, date=date)
     except Exception as e:
@@ -985,7 +939,6 @@ def conflicts(
         f"[dim]for agent '{agent_id}' on {date}[/dim]\n"
     )
 
-    # List-only mode
     if list_only:
         for i, c in enumerate(unresolved, 1):
             ctype = c.get("type", "conflict").upper()
@@ -1015,7 +968,6 @@ def conflicts(
             console.print()
         return
 
-    # Interactive mode
     if not active_session_token:
         _error(
             "No active agent activation.",
@@ -1023,15 +975,12 @@ def conflicts(
             "Run 'memanto agent activate <agent-id>' first.",
         )
 
-    # Load full conflict list to get original indices
-
     json_path = (
         Path.home() / ".memanto" / "conflicts" / f"{agent_id}_{date}_conflicts.json"
     )
     with open(json_path, encoding="utf-8") as f:
         all_conflicts = json.load(f)
 
-    # Map unresolved conflicts to their original indices
     unresolved_indices = [
         idx for idx, c in enumerate(all_conflicts) if not c.get("resolved", False)
     ]
@@ -1053,7 +1002,6 @@ def conflicts(
         binding = c.get("_reference_binding") or {}
         unverified = binding.get("status") != "bound"
 
-        # Build the display panel
         lines = []
         lines.append(
             f"[bold][{color}][{ctype}][/{color}][/bold]  {c.get('title', 'Untitled')}\n"
@@ -1062,7 +1010,6 @@ def conflicts(
             lines.append(f"[italic]{c['description']}[/italic]\n")
         lines.append("")
 
-        # Memory A (old)
         old_id = c.get("old_memory_id") or "unknown"
         old_content = c.get("old_content") or "—"
         old_ts_str = format_local_time(c.get("old_created_at"))
@@ -1070,7 +1017,6 @@ def conflicts(
         lines.append(f"[bold]Memory A (old):[/bold]  [dim]ID: {old_id}{old_ts}[/dim]")
         lines.append(f"  {old_content}\n")
 
-        # Memory B (new)
         new_id = c.get("new_memory_id") or "unknown"
         new_content = c.get("new_content") or "—"
         new_ts_str = format_local_time(c.get("new_created_at"))
@@ -1078,7 +1024,6 @@ def conflicts(
         lines.append(f"[bold]Memory B (new):[/bold]  [dim]ID: {new_id}{new_ts}[/dim]")
         lines.append(f"  {new_content}\n")
 
-        # Recommendation badge
         rec_display = {
             "keep_new": "[green]Keep B (new)[/green]",
             "keep_old": f"[{BRIGHT}]Keep A (old)[/{BRIGHT}]",
@@ -1101,39 +1046,35 @@ def conflicts(
             )
         )
 
-        # Blocked references are intentionally not actionable. The user must
-        # regenerate a verified report before any destructive choice is offered.
-        if unverified:
-            console.print(
-                "[red]Destructive resolution disabled for this unverified conflict. "
-                "Regenerate the conflict report after fixing the reference issue.[/red]\n"
-            )
-            skipped_count += 1
-            continue
-
-        # Prompt options with recommendation markers
         def _opt(key, label, rec_val, current_rec=rec):
             """Print a conflict-resolution choice with its recommendation marker."""
-
             marker = " [green]<< recommended[/green]" if current_rec == rec_val else ""
             console.print(f"  [{BRIGHT}][{key}][/{BRIGHT}] {label}{marker}")
 
-        _opt("1", "Keep A (old memory)", "keep_old")
-        _opt("2", "Keep B (new memory)", "keep_new")
-        _opt("3", "Keep both", None)
-        _opt("4", "Remove both", "remove_both")
-        _opt("5", "Manual: type replacement", "merge")
-        console.print("  [dim]\\[s] Skip  \\[q] Quit[/dim]\n")
+        if unverified:
+            console.print(
+                "[yellow]Destructive resolution is disabled for this unverified conflict. "
+                "Keep Both, Skip, and Quit remain available.[/yellow]\n"
+            )
+            _opt("3", "Keep both", None)
+            console.print("  [dim]\\[s] Skip  \\[q] Quit[/dim]\n")
+            action_map = {"3": "keep_both"}
+        else:
+            _opt("1", "Keep A (old memory)", "keep_old")
+            _opt("2", "Keep B (new memory)", "keep_new")
+            _opt("3", "Keep both", None)
+            _opt("4", "Remove both", "remove_both")
+            _opt("5", "Manual: type replacement", "merge")
+            console.print("  [dim]\\[s] Skip  \\[q] Quit[/dim]\n")
+            action_map = {
+                "1": "keep_old",
+                "2": "keep_new",
+                "3": "keep_both",
+                "4": "remove_both",
+                "5": "manual",
+            }
 
         choice = typer.prompt("Choose", default="s").strip().lower()
-
-        action_map = {
-            "1": "keep_old",
-            "2": "keep_new",
-            "3": "keep_both",
-            "4": "remove_both",
-            "5": "manual",
-        }
 
         if choice == "q":
             console.print("\n[dim]Quitting conflict resolution.[/dim]")
@@ -1157,7 +1098,6 @@ def conflicts(
                 skipped_count += 1
                 continue
 
-        # Execute resolution
         try:
             result = client.resolve_conflict(
                 agent_id=agent_id,
@@ -1188,12 +1128,10 @@ def conflicts(
 
         console.print()
 
-    # Summary
     console.print(
         f"\n[bold]Done:[/bold] [green]{resolved_count} resolved[/green], [dim]{skipped_count} skipped[/dim]"
     )
 
-    # Auto-export if any conflicts were resolved to update the local MD cache
     if resolved_count > 0:
         try:
             with console.status(
