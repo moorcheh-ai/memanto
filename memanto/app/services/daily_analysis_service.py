@@ -18,6 +18,10 @@ from memanto.app.clients.moorcheh import get_moorcheh_client
 from memanto.app.config import get_data_dir, settings
 from memanto.app.core import agent_namespace
 from memanto.app.services.session_service import get_session_service
+from memanto.app.utils.conflict_binding import (
+    bind_conflict_references,
+    extract_recent_memory_ids,
+)
 from memanto.app.utils.errors import MemoryError
 from memanto.app.utils.temporal_helpers import (
     format_current_local_time,
@@ -314,6 +318,16 @@ Example response format:
                     and item["old_memory_id"] == item["new_memory_id"]
                 )
             ]
+            # Bind all model-generated object references to authoritative
+            # memories before they can be displayed or used for deletion.
+            # The new side must come from the recent session text being analyzed.
+            parsed = bind_conflict_references(
+                parsed,
+                client=client,
+                namespace=namespace,
+                recent_memory_ids=extract_recent_memory_ids(full_text),
+            )
+
             # Add resolved=False, resolution, and timestamps to each conflict
             for item in parsed:
                 item.setdefault("resolved", False)

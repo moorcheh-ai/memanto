@@ -1449,6 +1449,20 @@ class DirectClient:
 
         namespace = agent_namespace(agent_id)
 
+        # LLM-generated conflict IDs are untrusted capability references.
+        # Destructive actions must revalidate the server-generated binding
+        # immediately before any delete/store operation.
+        if action in {"keep_old", "keep_new", "remove_both", "manual"}:
+            from memanto.app.utils.conflict_binding import (
+                validate_conflict_reference_binding,
+            )
+
+            validate_conflict_reference_binding(
+                conflict,
+                client=self._get_moorcheh(),
+                namespace=namespace,
+            )
+
         write_service = self._get_write_service()
         result_details = {"action": action}
 
