@@ -4,6 +4,8 @@ Authentication Dependencies for V2 API
 Shared authentication utilities to avoid circular imports.
 """
 
+from urllib.parse import urlsplit
+
 from fastapi import Cookie, Header, HTTPException, Request, Response
 
 from memanto.app.models.session import Session
@@ -103,6 +105,21 @@ def _is_loopback_host(host: str | None) -> bool:
     return ipv4_mapped is not None and ipv4_mapped.is_loopback
 
 
+def _origin_is_local(origin: str | None) -> bool:
+    """Return True when a browser Origin/Referer URL targets localhost."""
+    if not origin:
+        return True
+    if not isinstance(origin, str):
+        return True
+    try:
+        parsed = urlsplit(origin)
+    except ValueError:
+        return False
+    if parsed.scheme not in {"http", "https"}:
+        return False
+    return _is_loopback_host(parsed.hostname)
+
+
 def require_management_access(
     request: Request,
     authorization: str | None = Header(None),
@@ -151,6 +168,16 @@ def require_management_access(
 
     client_host = request.client.host if request.client else None
     if _is_loopback_host(client_host):
+        origin = request.headers.get("origin")
+        referer = request.headers.get("referer")
+        if not _origin_is_local(origin) or not _origin_is_local(referer):
+            raise HTTPException(
+                status_code=403,
+                detail=(
+                    "Agent management endpoints only accept same-local browser "
+                    "origins unless a valid management credential is supplied."
+                ),
+            )
         return server_key
 
     raise HTTPException(

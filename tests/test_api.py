@@ -231,6 +231,35 @@ class TestMEMANTOAPI:
             assert response.json()["agent_id"] == "remote-ok-agent"
 
     @pytest.mark.asyncio
+    async def test_loopback_create_agent_rejects_cross_site_origin(self):
+        """Loopback-only management access must not be triggerable by hostile pages."""
+        transport = ASGITransport(app=app, client=("127.0.0.1", 54321))
+        async with AsyncClient(
+            transport=transport, base_url="http://localhost"
+        ) as local:
+            response = await local.post(
+                "/api/v2/agents",
+                headers={"Origin": "https://evil.example"},
+                json={"agent_id": "csrf-agent", "pattern": "support"},
+            )
+            assert response.status_code == 403
+
+    @pytest.mark.asyncio
+    async def test_cross_site_origin_with_valid_credential_succeeds(self, auth_headers):
+        """Explicit management credentials still authorize API clients."""
+        transport = ASGITransport(app=app, client=("127.0.0.1", 54321))
+        async with AsyncClient(
+            transport=transport, base_url="http://localhost"
+        ) as local:
+            response = await local.post(
+                "/api/v2/agents",
+                headers={**auth_headers, "Origin": "https://automation.example"},
+                json={"agent_id": "credential-origin-agent", "pattern": "support"},
+            )
+            assert response.status_code == 201
+            assert response.json()["agent_id"] == "credential-origin-agent"
+
+    @pytest.mark.asyncio
     async def test_status_requires_management_access(self):
         """Active session status must not be readable by unauthenticated remote peers."""
         transport = ASGITransport(app=app, client=("203.0.113.10", 54321))
