@@ -179,8 +179,10 @@ async def delete_agent(
                 # and continue removing local metadata.
                 pass
 
-        agent_service.delete_agent(agent_id)
-        get_session_service().delete_session(agent_id)
+        session_service = get_session_service()
+        with session_service.lock_agent_lifecycle(agent_id):
+            agent_service.delete_agent(agent_id)
+            session_service.delete_session(agent_id)
         return {
             "message": (
                 f"Agent '{agent_id}' successfully deleted"
@@ -217,30 +219,31 @@ async def activate_agent(
 
     Returns session token for use in memory operations.
     """
-    # Check if agent exists
-    agent = agent_service.get_agent(agent_id)
-    if not agent:
-        raise map_error_to_http_exception(
-            AgentNotFoundError(f"Agent '{agent_id}' not found")
-        )
-
     # Session duration is controlled by server defaults.
     duration_hours = settings.SESSION_DEFAULT_DURATION_HOURS
 
     try:
-        session = get_session_service().create_session(
-            agent_id=agent_id,
-            pattern=agent.pattern,
-            duration_hours=duration_hours,
-        )
-        set_session_cookie(response, session.session_token, request)
+        session_service = get_session_service()
+        with session_service.lock_agent_lifecycle(agent_id):
+            # Re-check after acquiring the same lock used by deletion. Without
+            # this, a concurrent delete can remove metadata and session state
+            # immediately before activation publishes a fresh bearer token.
+            agent = agent_service.get_agent(agent_id)
+            if not agent:
+                raise AgentNotFoundError(f"Agent '{agent_id}' not found")
 
-        # Update agent stats
-        agent_service.update_agent_stats(
-            agent_id=agent_id,
-            last_session=session.started_at,
-            increment_session_count=True,
-        )
+            session = session_service.create_session(
+                agent_id=agent_id,
+                pattern=agent.pattern,
+                duration_hours=duration_hours,
+            )
+            set_session_cookie(response, session.session_token, request)
+
+            agent_service.update_agent_stats(
+                agent_id=agent_id,
+                last_session=session.started_at,
+                increment_session_count=True,
+            )
 
         return session
 

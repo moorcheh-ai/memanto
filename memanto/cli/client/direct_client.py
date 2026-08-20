@@ -498,7 +498,10 @@ class DirectClient:
             Confirmation dict with ``status`` and ``agent_id``.
         """
         logger.debug("Deleting agent '%s'", agent_id)
-        self._get_agent_service().delete_agent(agent_id)
+        session_service = self._get_session_service()
+        with session_service.lock_agent_lifecycle(agent_id):
+            self._get_agent_service().delete_agent(agent_id)
+            session_service.delete_session(agent_id)
         if self.agent_id == agent_id:
             self.session_token = None
             self.agent_id = None
@@ -527,22 +530,24 @@ class DirectClient:
         Raises:
             AgentNotFoundError: If agent does not exist.
         """
-        agent = self._get_agent_service().get_agent(agent_id)
-        if not agent:
-            raise AgentNotFoundError(f"Agent '{agent_id}' not found")
+        session_service = self._get_session_service()
+        with session_service.lock_agent_lifecycle(agent_id):
+            agent = self._get_agent_service().get_agent(agent_id)
+            if not agent:
+                raise AgentNotFoundError(f"Agent '{agent_id}' not found")
 
-        logger.debug("Activating agent '%s' for %d hours", agent_id, duration_hours)
-        session = self._get_session_service().create_session(
-            agent_id=agent_id,
-            pattern=agent.pattern,
-            duration_hours=duration_hours,
-        )
+            logger.debug("Activating agent '%s' for %s hours", agent_id, duration_hours)
+            session = session_service.create_session(
+                agent_id=agent_id,
+                pattern=agent.pattern,
+                duration_hours=duration_hours,
+            )
 
-        self._get_agent_service().update_agent_stats(
-            agent_id,
-            last_session=session.started_at,
-            increment_session_count=True,
-        )
+            self._get_agent_service().update_agent_stats(
+                agent_id,
+                last_session=session.started_at,
+                increment_session_count=True,
+            )
 
         self.session_token = session.session_token
         self.agent_id = agent_id
