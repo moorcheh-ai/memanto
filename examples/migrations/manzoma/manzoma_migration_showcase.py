@@ -12,13 +12,18 @@ sys.path.append(str(Path(__file__).parent.parent.parent.parent))
 from memanto.cli.migrate.runner import run_migration
 from memanto.cli.migrate.okf_loader import load_okf_bundle
 
-def run_manzoma_freedom_showcase():
+def run_manzoma_freedom_showcase() -> bool:
     """
+    Execute the Manzoma multi-agent migration showcase.
+    
     SHOWCASE: The Manzoma Freedom Loop 🦋
     
     Scenario: A retail business in Egypt (Manzoma ERP) wants to migrate 
     memories for 3 different branches (Alpha, Beta, Gamma) into Memanto 
     without losing agent context.
+    
+    Returns:
+        bool: True if verification succeeds, False otherwise.
     """
     print("🚀 Starting Manzoma -> Memanto Multi-Agent Migration Showcase")
     
