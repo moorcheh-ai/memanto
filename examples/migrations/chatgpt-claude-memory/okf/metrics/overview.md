@@ -9,7 +9,7 @@
 
 ### Memory Activity Timeline
 
-```
+```text
 Hour  00  03  06  09  12  15  18  21  24
       ╠═══╬═══╬═══╬═══╬═══╬═══╬═══╬═══╣
       ●●●●                            
@@ -19,7 +19,7 @@ Hour  00  03  06  09  12  15  18  21  24
 
 ### Memory Type Distribution
 
-```
+```text
 CONTEXT      ████████████████████ 7
 PREFERENCE   █████████ 3
 INSTRUCTION  ███ 1
@@ -37,5 +37,5 @@ GOAL         ███ 1
 | Medium (0.5–0.8)| 13     |
 | Low (<0.5)      | 0     |
 
-*Visualizations auto-generated at Aug 19, 2026 10:55 AM*
+*Visualizations auto-generated at Aug 20, 2026 01:04 AM*
 

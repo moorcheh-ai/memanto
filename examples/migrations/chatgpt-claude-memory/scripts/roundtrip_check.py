@@ -85,16 +85,27 @@ def llm_recall() -> tuple[int, int] | None:
 
 def main() -> None:
     if not OKF_DIR.exists():
-        print("No OKF bundle found. Run: python3 scripts/run_migration.py --export-okf")
-        return
+        print(
+            "No OKF bundle found. Run: python3 scripts/run_migration.py --export-okf",
+            file=sys.stderr,
+        )
+        raise SystemExit(1)
 
     # Baseline: what the RAW source archive already encodes (should be ~0-1 —
     # the whole point is the assistant's memory lives in agent-owned stores).
+    # We fail closed here: a missing archive would silently empty source_corpus
+    # and let a stale bundle pass parity, so require every input up front.
     source_terms = []
+    missing = []
     for name in ("claude", "chatgpt"):
         path = DATA / f"{name}_conversations.json"
         if path.exists():
             source_terms.append(path.read_text().lower())
+        else:
+            missing.append(path)
+    if missing:
+        print(f"Missing source archives: {[str(m) for m in missing]}", file=sys.stderr)
+        raise SystemExit(1)
     source_corpus = "\n".join(source_terms)
 
     def _recall(corpus: str) -> tuple[int, int]:

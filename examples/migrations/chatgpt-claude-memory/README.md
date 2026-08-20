@@ -33,9 +33,10 @@ source archives, a *shipped* adapter, and a *lossless* round trip.
 
 ## The migration summary
 
-Source records → mapped memories → per-type breakdown (real output). Each
-row counts the **user-signal turns** that survived distillation; assistant
-chatter is deliberately dropped:
+Source records → mapped memories → per-type breakdown (real output).
+**Source records** are raw nonempty source messages and may include assistant
+messages; only **memories mapped** counts the user-signal turns that survived
+distillation — assistant chatter is deliberately dropped:
 
 | source | source records | memories mapped |
 |--------|---------------|-----------------|

@@ -214,7 +214,7 @@ class SummaryVisualizationService:
 
         lines = [
             "### Memory Activity Timeline\n",
-            "```",
+            "```text",
             label_row,
             bar,
             marker_row,
@@ -249,7 +249,7 @@ class SummaryVisualizationService:
         # Determine label width for alignment
         max_label_len = max(len(t) for t, _ in sorted_types)
 
-        lines = ["### Memory Type Distribution\n", "```"]
+        lines = ["### Memory Type Distribution\n", "```text"]
         for mem_type, count in sorted_types:
             bar_len = max(1, round(count * scale))
             bar = "█" * bar_len

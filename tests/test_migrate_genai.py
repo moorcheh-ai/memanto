@@ -251,6 +251,57 @@ class TestMapChatgpt:
         assert any("Flask" in t for t in titles)
         assert len(rows) == 2
 
+    def test_unsupported_tool_child_does_not_break_lineage(self):
+        # A user -> assistant -> tool chain: the assistant node's only child is
+        # an unsupported tool node, so it is not a leaf. The traversal must walk
+        # through the tool node to reach the latest leaf and still emit the
+        # user/assistant turns in order (no ValueError, no dropped turns).
+        export = {
+            "conversations": [
+                {
+                    "title": "tool call",
+                    "mapping": {
+                        "a": {
+                            "message": {
+                                "author": {"role": "user"},
+                                "content": {
+                                    "content_type": "text",
+                                    "parts": ["I prefer async SQLAlchemy."],
+                                },
+                                "create_time": 100,
+                            },
+                            "parent": None,
+                        },
+                        "b": {
+                            "message": {
+                                "author": {"role": "assistant"},
+                                "content": {
+                                    "content_type": "text",
+                                    "parts": ["Let me check the docs."],
+                                },
+                                "create_time": 200,
+                            },
+                            "parent": "a",
+                        },
+                        "c": {
+                            "message": {
+                                "author": {"role": "tool"},
+                                "content": {
+                                    "content_type": "text",
+                                    "parts": ["async SQLAlchemy is supported."],
+                                },
+                                "create_time": 300,
+                            },
+                            "parent": "b",
+                        },
+                    },
+                }
+            ]
+        }
+        rows = map_chatgpt(export)
+        assert len(rows) == 1
+        assert "SQLAlchemy" in rows[0]["title"]
+
     def test_identical_user_facts_deduped_with_refs_merged(self):
         # The same durable fact stated twice (in two conversations) collapses
         # into one memory whose source_ref points at both messages.

@@ -772,14 +772,14 @@ def _main_branch(node_map: dict[str, Any]) -> list[dict[str, Any]]:
     under a shared parent. Only the lineage reaching the latest leaf is the
     "current" conversation; walking its ``parent`` chain keeps alternate
     branches from being imported and merged into incompatible memories.
+
+    The lineage is selected and walked over *all* nodes, including unsupported
+    ones (tool/system children that can sit between user/assistant turns);
+    roles are filtered only when appending emitted turns. This keeps the
+    traversal connected when a supported node's only child is unsupported, so
+    the latest leaf is always reachable and the walk never dead-ends.
     """
-    roles = {"user", "assistant"}
-    branch_nodes = {
-        nid: node
-        for nid, node in node_map.items()
-        if (node.get("message") or {}).get("author", {}).get("role") in roles
-    }
-    if not branch_nodes:
+    if not node_map:
         return []
     children: dict[str, list[str]] = {}
     for nid, node in node_map.items():
@@ -791,23 +791,28 @@ def _main_branch(node_map: dict[str, Any]) -> list[dict[str, Any]]:
         msg = node_map[nid].get("message") or {}
         return float(msg.get("create_time") or 0)
 
-    leaves = [nid for nid in branch_nodes if not children.get(nid)]
+    leaves = [nid for nid in node_map if not children.get(nid)]
+    if not leaves:
+        return []
     current = max(leaves, key=_ts)
 
+    roles = {"user", "assistant"}
     chain: list[dict[str, Any]] = []
     seen: set[str] = set()
-    while current and current in branch_nodes and current not in seen:
+    while current and current in node_map and current not in seen:
         seen.add(current)
         node = node_map[current]
         msg = node.get("message") or {}
-        chain.append(
-            {
-                "role": msg["author"].get("role") or msg.get("role"),
-                "text": _msg_text(msg.get("content")),
-                "time": msg.get("create_time"),
-                "ref": current,
-            }
-        )
+        role = (msg.get("author") or {}).get("role") or msg.get("role")
+        if role in roles:
+            chain.append(
+                {
+                    "role": role,
+                    "text": _msg_text(msg.get("content")),
+                    "time": msg.get("create_time"),
+                    "ref": current,
+                }
+            )
         current = node_map[current].get("parent")
     chain.reverse()
     return chain

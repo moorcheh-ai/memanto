@@ -99,17 +99,77 @@ def main() -> None:
         print(f"\nOKF bundle -> {OKF_DIR}")
         print(f"  total: {result['total_memories']}, sections: {result['sections']}")
 
-        # Sanity: the OKF bundle must round-trip losslessly (loader reads back
-        # exactly the memories we exported, no more, no fewer).
+        # Sanity: the OKF bundle must round-trip losslessly — not just the same
+        # *count*, but every field that survived export. Compare a canonical
+        # signature per memory (type, title, body, description, tags, source,
+        # provenance, confidence, resource, timestamp) between what we handed
+        # the exporter and what the shipped loader reads back, and fail on any
+        # content drift (a count match would pass if one memory was lost and
+        # another duplicated or mutated).
         from memanto.cli.migrate.okf_loader import load_okf_bundle
 
+        def _first_line(content: str) -> str:
+            for line in content.splitlines():
+                stripped = line.strip().lstrip("#").strip()
+                if stripped:
+                    return stripped[:200]
+            return ""
+
+        def _canonical_exported(mem_type: str, mem: dict) -> tuple:
+            raw_tags = mem.get("tags") or []
+            if isinstance(raw_tags, str):
+                tags = tuple(t.strip() for t in raw_tags.split(",") if t.strip())
+            else:
+                tags = tuple(sorted(raw_tags))
+            content = (mem.get("content") or "").strip()
+            # created_at is a datetime; the loader returns the same value as a
+            # string. Canonicalize both to a plain string so we compare value,
+            # not Python type.
+            created = mem.get("created_at")
+            return (
+                mem_type,
+                mem.get("title"),
+                content,
+                _first_line(content),
+                tags,
+                mem.get("source"),
+                mem.get("provenance"),
+                mem.get("confidence"),
+                mem.get("source_ref"),
+                str(created) if created else None,
+            )
+
+        def _canonical_reloaded(m: dict) -> tuple:
+            x = m.get("x_memanto") or {}
+            timestamp = m.get("timestamp")
+            return (
+                m.get("type"),
+                m.get("title"),
+                (m.get("body") or "").strip(),
+                m.get("description"),
+                tuple(sorted(m.get("tags") or [])),
+                x.get("source"),
+                x.get("provenance"),
+                x.get("confidence"),
+                m.get("resource"),
+                str(timestamp) if timestamp else None,
+            )
+
+        exported_canon = Counter(
+            _canonical_exported(t, m) for t, mems in by_type.items() for m in mems
+        )
         reloaded = load_okf_bundle(OKF_DIR)
+        reloaded_canon = Counter(
+            _canonical_reloaded(m) for m in reloaded.get("memories", [])
+        )
         count = len(reloaded.get("memories", []))
         print(f"Round-trip load: {count} memories read back from the bundle")
-        if count != result["total_memories"]:
+
+        if count != result["total_memories"] or exported_canon != reloaded_canon:
             raise SystemExit(
                 f"Round-trip FAILED: exported {result['total_memories']} memories "
-                f"but loaded back {count}."
+                f"but loaded back {count}; canonical signatures "
+                f"{'differ' if exported_canon != reloaded_canon else 'match'}."
             )
 
 

@@ -1,10 +1,12 @@
-# Exact-pinned deps for the ChatGPT/Claude migration demo.
+# Direct-dependency pins for the ChatGPT/Claude migration demo.
 #
 # These are the transitive imports the adapter and OKF exporter reach
 # (fastapi for path-safety validation, pydantic-settings for config, pyyaml
-# for OKF frontmatter). They are pinned so every run resolves identically —
-# the reproducibility contract of the showcase. Versions match a memanto
-# checkout's locked environment.
+# for OKF frontmatter). Only the four *direct* packages are pinned here; their
+# transitive dependencies are resolved by the installer at setup time. For a
+# fully reproducible environment, install the memanto checkout itself with
+# `pip install -e .` (its locked environment pins the whole graph) — this file
+# is a minimal fallback for running the demo standalone.
 #
 # If you already cloned the full memanto repo and installed it with
 # `pip install -e .`, you can skip this file and just run ./run_migration.sh.
