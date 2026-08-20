@@ -4,7 +4,7 @@ MEMANTO Core Architecture - Namespace Strategy & Memory Records
 
 import re
 import uuid
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 from typing import Annotated, Any
 
 from pydantic import BaseModel, Field, StringConstraints, field_validator
@@ -44,6 +44,22 @@ MemorySource = Annotated[
 
 _SOURCE_RE = re.compile(SOURCE_PATTERN)
 
+# Why a memory was expired: a policy rule name, "manual", or
+# "conflict-resolution". Bounded to the same filter-token charset as
+# ``MemorySource`` so `#expired_by:<value>` stays a usable Moorcheh filter.
+EXPIRED_BY_MAX_LENGTH = 64
+EXPIRED_BY_PATTERN = SOURCE_PATTERN
+
+BoundedExpiredBy = Annotated[
+    str,
+    StringConstraints(
+        strip_whitespace=True,
+        min_length=1,
+        max_length=EXPIRED_BY_MAX_LENGTH,
+        pattern=EXPIRED_BY_PATTERN,
+    ),
+]
+
 
 def is_valid_source(value: Any) -> bool:
     """Return True when *value* is a source label ``MemorySource`` accepts."""
@@ -51,6 +67,14 @@ def is_valid_source(value: Any) -> bool:
         return False
     token = value.strip()
     return bool(_SOURCE_RE.fullmatch(token)) and len(token) <= SOURCE_MAX_LENGTH
+
+
+def is_valid_expired_by(value: Any) -> bool:
+    """Return True when *value* is a reason label ``BoundedExpiredBy`` accepts."""
+    if not isinstance(value, str):
+        return False
+    token = value.strip()
+    return bool(_SOURCE_RE.fullmatch(token)) and len(token) <= EXPIRED_BY_MAX_LENGTH
 
 
 def agent_namespace(agent_id: str) -> str:
@@ -98,8 +122,13 @@ class MemoryRecord(BaseModel):
     # Timestamps (auto-populated by server)
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
-    expires_at: datetime | None = None
-    ttl_seconds: int | None = Field(default=None, gt=0)
+
+    # Expiry stamp. Both are set together when a memory moves to `expired` and
+    # cleared together on restore, so `status == "expired"` always carries a
+    # when and a why. ``expired_by`` names the cause: a policy rule name,
+    # ``manual``, or ``conflict-resolution``.
+    expired_at: datetime | None = None
+    expired_by: BoundedExpiredBy | None = None
 
     def to_moorcheh_document(self) -> dict[str, Any]:
         """
@@ -138,13 +167,13 @@ class MemoryRecord(BaseModel):
             document["source_ref"] = self.source_ref
         if self.tags:
             document["tags"] = ",".join(self.tags)  # Comma-separated for filtering
-        if self.expires_at:
-            if isinstance(self.expires_at, datetime):
-                document["expires_at"] = self.expires_at.isoformat()
+        if self.expired_at:
+            if isinstance(self.expired_at, datetime):
+                document["expired_at"] = self.expired_at.isoformat()
             else:
-                document["expires_at"] = str(self.expires_at)
-        if self.ttl_seconds:
-            document["ttl_seconds"] = self.ttl_seconds
+                document["expired_at"] = str(self.expired_at)
+        if self.expired_by:
+            document["expired_by"] = self.expired_by
 
         return document
 
@@ -152,9 +181,14 @@ class MemoryRecord(BaseModel):
         """The Moorcheh namespace this memory belongs to."""
         return agent_namespace(self.agent_id)
 
-    def set_ttl(self, seconds: int):
-        """Set TTL and expiration"""
-        if seconds <= 0:
-            raise ValueError("ttl_seconds must be greater than 0")
-        self.ttl_seconds = seconds
-        self.expires_at = datetime.now(timezone.utc) + timedelta(seconds=seconds)
+    def expire(self, reason: str, when: datetime | None = None) -> None:
+        """Mark this memory expired, stamping when it happened and why."""
+        self.status = "expired"
+        self.expired_at = when or datetime.now(timezone.utc)
+        self.expired_by = reason
+
+    def restore(self) -> None:
+        """Return this memory to the active state, clearing the expiry stamp."""
+        self.status = "active"
+        self.expired_at = None
+        self.expired_by = None

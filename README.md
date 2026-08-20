@@ -114,7 +114,48 @@ There is no lock-in because there is nothing to lock.
 
 **Scoped by default.** Each agent gets its own namespace. Your production-ops agent doesn't read your scratch experiments; you provision exactly what each one should know and nothing more.
 
-**Every belief is traceable.** Confidence score, source, timestamp, and what it superseded. When an agent acts on something, you can walk back to where that belief entered the fleet and when — which is the difference between an auditable estate and a black box.
+**Every belief is traceable.** Confidence score, source, provenance, and timestamp. When an agent acts on something, you can walk back to where that belief entered the fleet and when — which is the difference between an auditable estate and a black box.
+
+**Forgetting is a decision you make, not a side effect.** A memory is `active` or `expired` — nothing else. It becomes expired only because a policy you wrote says so, and it carries the date and the rule name that did it. Expired memories still recall, clearly labelled, and `memanto memory restore` puts one back. Deleting is a separate, explicit act.
+
+---
+
+## Memory that expires on your terms
+
+Every memory is **active** until a policy retires it. Expiry is stamped, auditable, and reversible — the content survives, and the memory keeps showing up in recall marked `[EXPIRED]` with the reason it aged out.
+
+```bash
+memanto policy list-preset          # conservative / balanced / aggressive
+memanto policy apply-preset balanced  # shows it in full, then asks
+memanto policy apply --dry-run      # exactly what would expire, per rule
+memanto policy apply                # shows the policy + matches, then confirms
+```
+
+Policies live in `~/.memanto/policies/<agent>.yaml` and have two halves — a per-type retention table for broad strokes, and named rules for everything sharper. The first matching rule wins, so a rule can also *pin* a memory that the table would otherwise expire:
+
+```yaml
+retention:
+  context: 7d
+  event: 30d
+  preference: never          # durable user truths don't age out
+rules:
+  - name: pinned
+    match: {tags: [pinned]}
+    expire_after: never      # an explicit pin beats the table
+  - name: low-confidence-guesses
+    match: {provenance: [inferred], confidence_below: 0.5}
+    expire_after: 14d
+purge_expired_after: never   # optional hard delete, off by default
+```
+
+Recall shows both states side by side; narrow with `--active` or `--expired`. Point-in-time recall is unaffected — `--as-of` still reconstructs what was true then, including memories that have expired since.
+
+```bash
+memanto memory expire mem-123       # retire one by hand
+memanto memory restore mem-123      # and put it back
+```
+
+The nightly job (`memanto schedule enable`) runs the sweep for you. An agent with no policy set never expires anything.
 
 ---
 

@@ -428,6 +428,117 @@ Used 3 memories as context:
 
 ---
 
+### Memory Lifecycle Commands
+
+Every memory is **active** or **expired**. Expiring is reversible and preserves
+the content; deleting (`memanto forget`) is permanent.
+
+#### `memory expire` - Retire a Memory
+
+```bash
+memanto memory expire mem-123
+memanto memory expire mem-123 --reason superseded-by-rewrite
+```
+
+The memory stays recallable, labelled `[EXPIRED]`, and records when it expired
+and why. `--reason` is stamped as `expired_by` (default `manual`).
+
+#### `memory restore` - Reactivate a Memory
+
+```bash
+memanto memory restore mem-123
+```
+
+Clears the expiry stamp and returns the memory to `active`.
+
+#### Filtering recall by state
+
+By default `recall` returns active and expired memories together, each labelled.
+
+```bash
+memanto recall "deploy process"            # both, labelled
+memanto recall "deploy process" --active   # active only
+memanto recall "deploy process" --expired  # expired only
+```
+
+`--as-of` is unaffected by these flags: point-in-time recall always reconstructs
+what was active at that date, including memories that have expired since.
+
+---
+
+### Policy Commands
+
+Policies decide what expires. Nothing expires until a sweep runs — either
+`memanto policy apply` or the nightly `memanto schedule` job.
+
+#### `policy list-preset` / `policy apply-preset` - Start From a Bundle
+
+```bash
+memanto policy list-preset        # list conservative / balanced / aggressive
+memanto policy apply-preset balanced   # shows the preset in full, then asks
+```
+
+#### `policy show` - Inspect the Current Policy
+
+```bash
+memanto policy show
+memanto policy show --agent my-agent
+```
+
+#### `policy apply` - Run the Sweep
+
+```bash
+memanto policy apply --dry-run    # what would expire, then stop
+memanto policy apply              # same preview, then asks to confirm
+memanto policy apply --yes        # skip the confirmation
+```
+
+`apply` always shows the policy in force and every matching memory before
+asking, so `--dry-run` is only needed when you want to stop at the preview.
+
+#### `policy purge` - Hard Delete Long-Expired Memories
+
+```bash
+memanto policy purge --dry-run
+memanto policy purge
+```
+
+**Destructive and irreversible.** Disabled unless the policy sets
+`purge_expired_after`.
+
+#### Policy file format
+
+Stored at `~/.memanto/policies/<agent-id>.yaml`:
+
+```yaml
+version: 1
+retention:                 # broad strokes, per memory type
+  context: 7d
+  event: 30d
+  preference: never
+rules:                     # sharper; first match wins over the table
+  - name: pinned
+    match: {tags: [pinned]}
+    expire_after: never    # pins a memory the table would expire
+  - name: low-confidence-imports
+    match:
+      provenance: [imported]
+      confidence_below: 0.5
+    expire_after: 7d
+purge_expired_after: never
+```
+
+Durations are `30m`, `12h`, `7d`, `2w`, `3mo`, `1y`, or `never` (a month is
+30 days). In the Web UI's Expiry Policy page the purge window is a number plus a
+unit — Days (1–365), Months (1–12), Years (1–10), or Never. A value set here or
+by CLI that the pair can't express (`12h`, say) is shown as-is and left
+untouched until you pick a different unit. Match conditions
+(`type`, `tags`, `source`, `provenance`, `confidence_below`) are ANDed; an empty
+`match` matches everything. Age is measured from `updated_at`, falling back to
+`created_at` — editing a memory resets its expiry clock.
+
+---
+
 ### Session Commands
 
 #### `session info` - Show Session Info

@@ -160,9 +160,6 @@ class Settings(BaseSettings):
     # Recall / Search Configuration
     RECALL_LIMIT: int = 10  # default top-N results for recall/search
 
-    # Validation Configuration
-    REQUIRE_VALIDATION_FOR: list[str] = ["fact", "preference"]
-
     # Schedule Configuration
     MEMANTO_SCHEDULE_TIME: str = "23:55"
 

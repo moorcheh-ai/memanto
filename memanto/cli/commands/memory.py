@@ -22,12 +22,14 @@ from memanto.cli.commands._shared import (
     DIM,
     PRIMARY,
     SUCCESS,
+    WARNING,
     _error,
     app,
     config_manager,
     console,
     format_local_time,
     get_client,
+    memory_app,
     parse_relative_time,
 )
 
@@ -363,6 +365,87 @@ def edit(
         _error(f"Failed to update memory: {e}")
 
 
+@memory_app.command("expire")
+def memory_expire(
+    memory_id: str = typer.Argument(..., help="Memory ID to expire"),
+    reason: str = typer.Option(
+        "manual",
+        "--reason",
+        "-r",
+        help="Why it expired, stamped as expired_by (default 'manual')",
+    ),
+):
+    """Expire a memory without deleting it.
+
+    The memory keeps its content and still appears in recall, labelled
+    [EXPIRED]. Reverse it with 'memanto memory restore <id>'.
+
+    Examples:
+        memanto memory expire mem-123
+        memanto memory expire mem-123 --reason superseded-by-rewrite
+    """
+    start = time.perf_counter()
+    active_agent_id, active_session_token = config_manager.get_active_session()
+
+    if not active_agent_id or not active_session_token:
+        _error(
+            "No active agent.", hint="Run 'memanto agent activate <agent-id>' first."
+        )
+
+    client = get_client()
+
+    try:
+        with console.status(f"[{PRIMARY}]Expiring memory...", spinner="dots"):
+            result = client.expire_memory(
+                agent_id=active_agent_id, memory_id=memory_id, reason=reason
+            )
+        elapsed = time.perf_counter() - start
+
+        console.print(f"[{WARNING}]Memory expired.[/{WARNING}]")
+        console.print(f"[dim]Memory ID: {memory_id}[/dim]")
+        console.print(f"[dim]Reason: {result.get('expired_by', reason)}[/dim]")
+        console.print(
+            "[dim]Still recallable and labelled [EXPIRED]. "
+            f"Restore with 'memanto memory restore {memory_id}'.[/dim]"
+        )
+        console.print(f"[dim]Completed in {elapsed:.2f}s[/dim]")
+
+    except Exception as e:
+        _error(f"Failed to expire memory: {e}")
+
+
+@memory_app.command("restore")
+def memory_restore(
+    memory_id: str = typer.Argument(..., help="Memory ID to restore"),
+):
+    """Return an expired memory to the active state.
+
+    Examples:
+        memanto memory restore mem-123
+    """
+    start = time.perf_counter()
+    active_agent_id, active_session_token = config_manager.get_active_session()
+
+    if not active_agent_id or not active_session_token:
+        _error(
+            "No active agent.", hint="Run 'memanto agent activate <agent-id>' first."
+        )
+
+    client = get_client()
+
+    try:
+        with console.status(f"[{PRIMARY}]Restoring memory...", spinner="dots"):
+            client.restore_memory(agent_id=active_agent_id, memory_id=memory_id)
+        elapsed = time.perf_counter() - start
+
+        console.print(f"[{SUCCESS}]Memory restored to active.[/{SUCCESS}]")
+        console.print(f"[dim]Memory ID: {memory_id}[/dim]")
+        console.print(f"[dim]Completed in {elapsed:.2f}s[/dim]")
+
+    except Exception as e:
+        _error(f"Failed to restore memory: {e}")
+
+
 @app.command()
 def forget(
     memory_id: str = typer.Argument(..., help="Memory ID to delete"),
@@ -373,7 +456,11 @@ def forget(
         help="Delete without asking for confirmation",
     ),
 ):
-    """Delete a single memory from the active agent."""
+    """Permanently delete a single memory from the active agent.
+
+    This cannot be undone. To retire a memory reversibly, use
+    'memanto memory expire <id>' instead.
+    """
     start = time.perf_counter()
     active_agent_id, active_session_token = config_manager.get_active_session()
 
@@ -512,8 +599,16 @@ def recall(
         "--recent",
         help="Chronological query: return the most recently stored memories (newest first). No search query needed.",
     ),
+    active_only: bool = typer.Option(
+        False, "--active", help="Only active memories (exclude expired)"
+    ),
+    expired_only: bool = typer.Option(False, "--expired", help="Only expired memories"),
 ):
-    """Search and retrieve memories for the active agent with temporal query support."""
+    """Search and retrieve memories for the active agent with temporal query support.
+
+    By default both active and expired memories are returned, each clearly
+    labelled. Narrow with --active or --expired.
+    """
     start = time.perf_counter()
     active_agent_id, active_session_token = config_manager.get_active_session()
 
@@ -536,6 +631,21 @@ def recall(
         _error(
             "Cannot provide a search query with temporal flags.",
             hint="Temporal queries (--as-of, --changed-since, --recent) list memories directly. Remove the search query to continue.",
+        )
+
+    if active_only and expired_only:
+        _error(
+            "Cannot use --active and --expired together.",
+            hint="Omit both to see active and expired memories side by side.",
+        )
+    status = "active" if active_only else "expired" if expired_only else "all"
+
+    # Point-in-time recall reconstructs what was live at a past date, so a
+    # present-day lifecycle filter would contradict the question being asked.
+    if as_of and status != "all":
+        _error(
+            "Cannot combine --as-of with --active/--expired.",
+            hint="--as-of already returns exactly the memories that were active at that date.",
         )
 
     client = get_client()
@@ -607,6 +717,7 @@ def recall(
                     limit=limit,
                     type=type,
                     tags=tag_list,
+                    status=status,
                 )
                 temporal_mode = "recent"
             elif query:
@@ -619,6 +730,7 @@ def recall(
                     tags=tag_list,
                     min_similarity=min_similarity,
                     min_confidence=min_confidence,
+                    status=status,
                 )
             else:
                 _error(
@@ -651,8 +763,6 @@ def recall(
             score = _as_float(memory.get("score"))
             mem_type = memory.get("type") or "unknown"
             conf = _as_float(memory.get("confidence"))
-            comp_conf_raw = memory.get("computed_confidence")
-            comp_conf = _as_float(comp_conf_raw) if comp_conf_raw is not None else None
             title = memory.get("title") or "Untitled"
             content = memory.get("content") or ""
             created = memory.get("created_at") or ""
@@ -672,14 +782,16 @@ def recall(
             else:
                 source_tag = "[cyan] · memory [/cyan]"
 
-            # Create panel for each memory
-            panel_content = f"[bold]{title}[/bold]\n\n{content[:200]}{'...' if len(content) > 200 else ''}\n\n"
+            # Create panel for each memory. Lifecycle state leads the panel so
+            # an expired memory can never be mistaken for a live one at a glance.
+            state_label = (
+                f"[{WARNING}][EXPIRED][/{WARNING}] "
+                if status == "expired"
+                else f"[{SUCCESS}][ACTIVE][/{SUCCESS}] "
+            )
+            panel_content = f"{state_label}[bold]{title}[/bold]\n\n{content[:200]}{'...' if len(content) > 200 else ''}\n\n"
 
-            # Show ID and confidence (computed if available)
-            if comp_conf is not None:
-                panel_content += f"[dim]ID: {id_str} | Type: {mem_type} | Confidence: {comp_conf:.2f} (computed) | Score: {score:.3f}[/dim]"
-            else:
-                panel_content += f"[dim]ID: {id_str} | Type: {mem_type} | Confidence: {conf:.2f} | Score: {score:.3f}[/dim]"
+            panel_content += f"[dim]ID: {id_str} | Type: {mem_type} | Confidence: {conf:.2f} | Score: {score:.3f}[/dim]"
 
             if created:
                 panel_content += f"\n[dim]Created: {format_local_time(created)}[/dim]"
@@ -703,9 +815,14 @@ def recall(
             if mem_tags:
                 panel_content += f"\n[dim]Tags: {', '.join(mem_tags)}[/dim]"
 
-            # Show status for non-standard queries
-            if temporal_mode != "standard" and status != "active":
-                panel_content += f"\n[dim]Status: {status}[/dim]"
+            # Explain the expiry: when it happened and which policy did it.
+            if status == "expired":
+                expired_at = memory.get("expired_at")
+                expired_by = memory.get("expired_by") or "unknown"
+                when = format_local_time(expired_at) if expired_at else "unknown date"
+                panel_content += (
+                    f"\n[{WARNING}]Expired {when} · policy: {expired_by}[/{WARNING}]"
+                )
 
             # Show change type for differential queries
             if change_type:
@@ -713,7 +830,7 @@ def recall(
 
             # Determine border style
             border_style = BRIGHT if score > 0.8 else PRIMARY
-            if status == "superseded":
+            if status == "expired":
                 border_style = DIM
             elif change_type == "created":
                 border_style = SUCCESS
@@ -1094,11 +1211,16 @@ def conflicts(
             marker = " [green]<< recommended[/green]" if current_rec == rec_val else ""
             console.print(f"  [{BRIGHT}][{key}][/{BRIGHT}] {label}{marker}")
 
-        _opt("1", "Keep A (old memory)", "keep_old")
-        _opt("2", "Keep B (new memory)", "keep_new")
+        console.print("  [dim]Delete the loser (permanent):[/dim]")
+        _opt("1", "Keep A (old memory) — deletes B", "keep_old")
+        _opt("2", "Keep B (new memory) — deletes A", "keep_new")
         _opt("3", "Keep both", None)
         _opt("4", "Remove both", "remove_both")
-        _opt("5", "Manual: type replacement", "merge")
+        console.print("  [dim]Expire the loser (reversible):[/dim]")
+        _opt("5", "Expire A (old memory)", None)
+        _opt("6", "Expire B (new memory)", None)
+        _opt("7", "Expire both", None)
+        _opt("8", "Manual: type replacement", "merge")
         console.print("  [dim]\\[s] Skip  \\[q] Quit[/dim]\n")
 
         choice = typer.prompt("Choose", default="s").strip().lower()
@@ -1108,7 +1230,10 @@ def conflicts(
             "2": "keep_new",
             "3": "keep_both",
             "4": "remove_both",
-            "5": "manual",
+            "5": "expire_old",
+            "6": "expire_new",
+            "7": "expire_both",
+            "8": "manual",
         }
 
         if choice == "q":
@@ -1148,6 +1273,9 @@ def conflicts(
                 "keep_new": "[green]  OK Kept B (new). Old memory deleted.[/green]",
                 "keep_both": "[green]  OK Both memories kept.[/green]",
                 "remove_both": "[green]  OK Both memories removed.[/green]",
+                "expire_old": "[green]  OK Expired A (old). Restore it any time.[/green]",
+                "expire_new": "[green]  OK Expired B (new). Restore it any time.[/green]",
+                "expire_both": "[green]  OK Both memories expired.[/green]",
             }
             if action == "manual":
                 new_id = result.get("new_memory_id", "unknown")

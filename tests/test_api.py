@@ -2797,6 +2797,58 @@ class TestCWE200ApiKeyLeak:
         )
 
     @pytest.mark.asyncio
+    async def test_header_session_auto_renewal_returns_replacement_token(
+        self, client, auth_headers, mock_moorcheh
+    ):
+        """Header clients must receive the token created by auto-renewal.
+
+        Renewing a session replaces its persisted session ID, so the token in
+        the triggering request becomes invalid immediately.  Unlike browser
+        callers, API clients do not have a cookie jar for the server to
+        refresh; the replacement must therefore be returned in a response
+        header so the next request can authenticate.
+        """
+        await client.post(
+            "/api/v2/agents",
+            headers=auth_headers,
+            json={"agent_id": self.TEST_AGENT_ID},
+        )
+        activate_resp = await client.post(
+            f"/api/v2/agents/{self.TEST_AGENT_ID}/activate", headers=auth_headers
+        )
+        assert activate_resp.status_code == 200
+        old_token = activate_resp.json()["session_token"]
+
+        # Remove the activation cookie to exercise only X-Session-Token auth.
+        client.cookies = Cookies()
+        session_headers = {**auth_headers, "X-Session-Token": old_token}
+        with patch.object(settings, "SESSION_EXTEND_THRESHOLD_MINUTES", 10**9):
+            response = await client.post(
+                f"/api/v2/agents/{self.TEST_AGENT_ID}/recall/recent",
+                headers=session_headers,
+                json={},
+            )
+        assert response.status_code == 200
+
+        new_token = response.headers.get("x-session-token")
+        assert new_token
+        assert new_token != old_token
+
+        stale_response = await client.post(
+            f"/api/v2/agents/{self.TEST_AGENT_ID}/recall/recent",
+            headers=session_headers,
+            json={},
+        )
+        assert stale_response.status_code == 401
+
+        fresh_response = await client.post(
+            f"/api/v2/agents/{self.TEST_AGENT_ID}/recall/recent",
+            headers={**auth_headers, "X-Session-Token": new_token},
+            json={},
+        )
+        assert fresh_response.status_code == 200
+
+    @pytest.mark.asyncio
     async def test_traversal_filename_is_sanitized(
         self, client, auth_headers, mock_moorcheh
     ):

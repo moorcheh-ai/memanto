@@ -1,6 +1,9 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createServer, type Server } from "node:http";
 import { AddressInfo } from "node:net";
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { ServerLifecycle } from "../src/lifecycle.js";
 
 function startFakeHealthyServer(): Promise<{ url: string; close: () => void }> {
@@ -20,6 +23,17 @@ function startFakeHealthyServer(): Promise<{ url: string; close: () => void }> {
         url: `http://127.0.0.1:${addr.port}`,
         close: () => srv.close(),
       });
+    });
+  });
+}
+
+function pickFreePort(): Promise<number> {
+  return new Promise((resolve, reject) => {
+    const srv = createServer();
+    srv.on("error", reject);
+    srv.listen(0, "127.0.0.1", () => {
+      const port = (srv.address() as AddressInfo).port;
+      srv.close(() => resolve(port));
     });
   });
 }
@@ -64,5 +78,42 @@ describe("ServerLifecycle", () => {
 
     expect(fetchSpy).not.toHaveBeenCalled();
     fetchSpy.mockRestore();
+  });
+
+  it("shares one local server start across concurrent callers", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "memanto-lifecycle-"));
+    cleanupFns.push(() => rm(dir, { recursive: true, force: true }));
+    const marker = join(dir, "starts.log");
+    const serverScript = join(dir, "fake-uvx.mjs");
+    await writeFile(
+      serverScript,
+      `
+import { appendFileSync } from "node:fs";
+import { createServer } from "node:http";
+
+const port = Number(process.argv[process.argv.indexOf("--port") + 1]);
+const host = process.argv[process.argv.indexOf("--host") + 1];
+appendFileSync(${JSON.stringify(marker)}, "start\\n");
+createServer((req, res) => {
+  res.writeHead(req.url === "/health" ? 200 : 404);
+  res.end();
+}).listen(port, host);
+`,
+    );
+    const port = await pickFreePort();
+    const life = new ServerLifecycle({
+      host: "127.0.0.1",
+      port,
+      uvxPath: process.execPath,
+      packageSpec: serverScript,
+      healthTimeoutMs: 5_000,
+    });
+    cleanupFns.push(() => life.stop());
+
+    const [first, second] = await Promise.all([life.start(), life.start()]);
+
+    expect(first).toBe(`http://127.0.0.1:${port}`);
+    expect(second).toBe(first);
+    expect((await readFile(marker, "utf8")).trim().split("\n")).toHaveLength(1);
   });
 });

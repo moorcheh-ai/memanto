@@ -13,7 +13,10 @@ import urllib.error
 import urllib.request
 from datetime import datetime
 from pathlib import Path
-from typing import Any, cast
+from typing import TYPE_CHECKING, Any, cast
+
+if TYPE_CHECKING:
+    from memanto.app.services.memory_policy_service import MemoryPolicyService
 
 from memanto.app.config import get_data_dir
 from memanto.app.constants import (
@@ -995,6 +998,134 @@ class DirectClient:
             "namespace": namespace,
         }
 
+    # Memory lifecycle
+
+    def expire_memory(
+        self, agent_id: str, memory_id: str, reason: str = "manual"
+    ) -> dict[str, Any]:
+        """
+        Expire one memory without deleting it.
+
+        The memory keeps its content and stays recallable; it is stamped
+        ``expired`` with the time and reason. Reversible via
+        :meth:`restore_memory`.
+
+        Args:
+            agent_id: Target agent.
+            memory_id: Memory to expire.
+            reason: Stamped as ``expired_by`` (default ``manual``).
+
+        Returns:
+            Dict with ``status``, ``expired_at``, and ``expired_by``.
+        """
+        session = self._get_validated_session_for_agent(agent_id)
+        result = self._get_write_service().set_lifecycle(
+            memory_id, session.namespace, expired=True, reason=reason
+        )
+        return {
+            "status": "expired",
+            "agent_id": agent_id,
+            "memory_id": memory_id,
+            "expired_at": result.get("expired_at"),
+            "expired_by": result.get("expired_by"),
+        }
+
+    def restore_memory(self, agent_id: str, memory_id: str) -> dict[str, Any]:
+        """
+        Return an expired memory to the active state, clearing its stamp.
+
+        Args:
+            agent_id: Target agent.
+            memory_id: Memory to restore.
+
+        Returns:
+            Dict with ``status`` set to ``active``.
+        """
+        session = self._get_validated_session_for_agent(agent_id)
+        self._get_write_service().set_lifecycle(
+            memory_id, session.namespace, expired=False
+        )
+        return {
+            "status": "active",
+            "agent_id": agent_id,
+            "memory_id": memory_id,
+        }
+
+    # Expiry policies
+
+    def _get_policy_service(self) -> "MemoryPolicyService":
+        """Build a policy service bound to this client's Moorcheh client."""
+        from memanto.app.services.memory_policy_service import MemoryPolicyService
+
+        return MemoryPolicyService(self._get_moorcheh())
+
+    def get_policy(self, agent_id: str) -> dict[str, Any]:
+        """Return the agent's expiry policy as a plain dict."""
+        policy = self._get_policy_service().load_policy(agent_id)
+        return {
+            "agent_id": agent_id,
+            "policy": policy.model_dump(mode="json", exclude_none=True),
+            "is_empty": policy.is_empty(),
+        }
+
+    def set_policy(self, agent_id: str, policy: dict[str, Any]) -> dict[str, Any]:
+        """Replace the agent's expiry policy.
+
+        Saving does not expire anything; run :meth:`apply_policy` afterwards.
+        """
+        from memanto.app.services.memory_policy_service import MemoryPolicy
+
+        parsed = MemoryPolicy(**policy)
+        path = self._get_policy_service().save_policy(agent_id, parsed)
+        return {
+            "agent_id": agent_id,
+            "policy": parsed.model_dump(mode="json", exclude_none=True),
+            "path": str(path),
+        }
+
+    def list_policy_presets(self) -> list[dict[str, Any]]:
+        """List the predefined policy bundles."""
+        from memanto.app.services.policy_presets import list_presets
+
+        return list_presets()
+
+    def get_policy_preset(self, name: str) -> dict[str, Any]:
+        """Return one preset's full policy without adopting it.
+
+        Lets a caller show exactly what a preset contains before committing
+        to it, which is what makes an informed confirmation possible.
+        """
+        from memanto.app.services.policy_presets import PRESETS, load_preset
+
+        policy = load_preset(name)
+        return {
+            "name": name,
+            "description": PRESETS[name]["description"],
+            "policy": policy.model_dump(mode="json", exclude_none=True),
+        }
+
+    def apply_policy_preset(self, agent_id: str, name: str) -> dict[str, Any]:
+        """Adopt a predefined policy bundle as the agent's policy."""
+        from memanto.app.services.policy_presets import load_preset
+
+        policy = load_preset(name)
+        self._get_policy_service().save_policy(agent_id, policy)
+        return {
+            "agent_id": agent_id,
+            "preset": name,
+            "policy": policy.model_dump(mode="json", exclude_none=True),
+        }
+
+    def apply_policy(self, agent_id: str, dry_run: bool = False) -> dict[str, Any]:
+        """Sweep the agent's memories, expiring everything the policy matches."""
+        self._get_validated_session_for_agent(agent_id)
+        return self._get_policy_service().apply_policies(agent_id, dry_run=dry_run)
+
+    def purge_expired(self, agent_id: str, dry_run: bool = False) -> dict[str, Any]:
+        """Permanently delete memories expired past the policy's purge window."""
+        self._get_validated_session_for_agent(agent_id)
+        return self._get_policy_service().purge_expired(agent_id, dry_run=dry_run)
+
     def recall(
         self,
         agent_id: str,
@@ -1006,6 +1137,7 @@ class DirectClient:
         min_confidence: float | None = None,
         created_after: datetime | None = None,
         created_before: datetime | None = None,
+        status: str = "all",
     ) -> dict[str, Any]:
         """
         Search memories by semantic similarity.
@@ -1020,6 +1152,8 @@ class DirectClient:
             min_confidence: Minimum confidence threshold.
             created_after: Only memories created after this datetime.
             created_before: Only memories created before this datetime.
+            status: Lifecycle filter — ``all`` (default), ``active`` or
+                ``expired``. The default returns both so callers can label them.
 
         Returns:
             Dict with ``agent_id``, ``query``, ``memories`` (list),
@@ -1048,6 +1182,7 @@ class DirectClient:
             min_similarity_score=min_similarity,
             created_after=created_after.isoformat() if created_after else None,
             created_before=created_before.isoformat() if created_before else None,
+            status=status,
             limit=limit,
         )
 
@@ -1108,6 +1243,7 @@ class DirectClient:
         limit: int | None = None,
         type: list[str] | None = None,
         tags: list[str] | None = None,
+        status: str = "all",
     ) -> dict[str, Any]:
         """
         Differential retrieval: what changed since a given date?
@@ -1134,6 +1270,7 @@ class DirectClient:
             agent_id=agent_id,
             type=type,
             tags=tags,
+            status=status,
             limit=limit,
         )
 
@@ -1150,6 +1287,7 @@ class DirectClient:
         limit: int | None = None,
         type: list[str] | None = None,
         tags: list[str] | None = None,
+        status: str = "all",
     ) -> dict[str, Any]:
         """
         Recall the most recently stored memories (newest first).
@@ -1159,6 +1297,7 @@ class DirectClient:
             limit: Max results (defaults to config).
             type: Optional type filter.
             tags: Optional tag filter.
+            status: Lifecycle filter — ``all`` (default), ``active`` or ``expired``.
 
         Returns:
             Dict with ``memories`` and ``count``.
@@ -1174,6 +1313,7 @@ class DirectClient:
             agent_id=agent_id,
             type=type,
             tags=tags,
+            status=status,
             limit=limit,
         )
 
@@ -1407,8 +1547,10 @@ class DirectClient:
             date: Date string (YYYY-MM-DD).
             conflict_index: Stable 0-based index into the full conflict report
                 (use ``list_conflicts(...)[i]["index"]``).
-            action: Resolution action — ``keep_old``, ``keep_new``,
-                ``keep_both``, ``remove_both``, or ``manual``.
+            action: Resolution action. ``keep_old`` / ``keep_new`` /
+                ``remove_both`` / ``manual`` delete the losing memory
+                permanently; ``expire_old`` / ``expire_new`` / ``expire_both``
+                retire it reversibly instead. ``keep_both`` is a no-op.
             manual_content: Required when action is ``manual``.
             manual_type: Memory type for manual replacement (default: old memory's type).
 
@@ -1416,7 +1558,16 @@ class DirectClient:
             Dict with resolution result.
         """
 
-        valid_actions = {"keep_old", "keep_new", "keep_both", "remove_both", "manual"}
+        valid_actions = {
+            "keep_old",
+            "keep_new",
+            "keep_both",
+            "remove_both",
+            "expire_old",
+            "expire_new",
+            "expire_both",
+            "manual",
+        }
         if action not in valid_actions:
             raise ValueError(
                 f"Invalid action '{action}'. Must be one of: {', '.join(sorted(valid_actions))}"
@@ -1478,6 +1629,31 @@ class DirectClient:
         elif action == "keep_both":
             # No-op — both memories remain active
             result_details["note"] = "Both memories kept as-is"
+
+        elif action in ("expire_old", "expire_new", "expire_both"):
+            # Retire the losing memory instead of destroying it: the content
+            # and its audit trail survive, and the decision is reversible via
+            # `memanto memory restore`.
+            targets = {
+                "expire_old": [(old_id, "old")],
+                "expire_new": [(new_id, "new")],
+                "expire_both": [(old_id, "old"), (new_id, "new")],
+            }[action]
+            for mem_id, label in targets:
+                if not mem_id:
+                    continue
+                try:
+                    write_service.set_lifecycle(
+                        mem_id,
+                        namespace,
+                        expired=True,
+                        reason="conflict-resolution",
+                    )
+                    result_details[f"expired_{label}"] = mem_id
+                except Exception as e:
+                    result_details[f"warning_{label}"] = (
+                        f"Could not expire {label} memory: {e}"
+                    )
 
         elif action == "remove_both":
             # Delete both memories

@@ -65,6 +65,7 @@ session_app = typer.Typer(help="Legacy aliases for agent activation commands")
 config_app = typer.Typer(help="Configuration commands")
 schedule_app = typer.Typer(help="Daily summary scheduling commands")
 memory_app = typer.Typer(help="Memory management commands")
+policy_app = typer.Typer(help="Memory expiry policy commands")
 connect_app = typer.Typer(help="Connect MEMANTO to external tools")
 migrate_app = typer.Typer(
     help="Migrate memories from other providers (Mem0/Letta/Supermemory) into Memanto"
@@ -75,6 +76,7 @@ app.add_typer(session_app, name="session")
 app.add_typer(config_app, name="config")
 app.add_typer(schedule_app, name="schedule")
 app.add_typer(memory_app, name="memory")
+app.add_typer(policy_app, name="policy")
 app.add_typer(connect_app, name="connect")
 app.add_typer(migrate_app, name="migrate")
 
