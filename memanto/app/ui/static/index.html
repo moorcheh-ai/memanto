@@ -4439,7 +4439,7 @@
             typeSpan.className = 'conflict-type';
             typeSpan.textContent = ctype;
             const binding = c._reference_binding || {};
-            const unverified = binding.status === 'blocked';
+            const unverified = binding.status !== 'bound';
             const badge = document.createElement('span');
             badge.className = unverified ? 'badge badge-danger' : 'badge badge-warning';
             badge.style.marginLeft = '8px';

@@ -1004,7 +1004,7 @@ def conflicts(
             if c.get("new_content"):
                 console.print(f"     [dim]New: {c['new_content'][:80]}[/dim]")
             binding = c.get("_reference_binding") or {}
-            if binding.get("status") == "blocked":
+            if binding.get("status") != "bound":
                 console.print(
                     f"     [red]UNVERIFIED: {binding.get('reason', 'reference validation failed')}[/red]"
                 )
@@ -1051,7 +1051,7 @@ def conflicts(
         color = type_colors.get(ctype, "white")
         rec = c.get("recommendation", "merge")
         binding = c.get("_reference_binding") or {}
-        unverified = binding.get("status") == "blocked"
+        unverified = binding.get("status") != "bound"
 
         # Build the display panel
         lines = []
