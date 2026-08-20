@@ -82,6 +82,8 @@ def _extract_links(body: str) -> list[tuple[str, str]]:
 def load_okf_bundle(path: str | Path) -> dict[str, Any]:
     """Load an OKF bundle directory (or a single ``.md`` file) into an export dict."""
     root = Path(path)
+    if root.is_symlink():
+        raise ValueError(f"OKF bundle path must not be a symbolic link: {path}")
     # Hold the corresponding reader lock through discovery and every file
     # read, so an exporter cannot move the bundle aside midway through a load.
     with okf_bundle_lock(_bundle_lock_root(root), shared=True):
@@ -110,8 +112,11 @@ def _load_okf_bundle(root: Path, display_path: str | Path) -> dict[str, Any]:
     if not root.exists():
         raise FileNotFoundError(f"OKF bundle not found: {display_path}")
 
+    root = root.resolve()
+
     if root.is_file():
         files = [root]
+        bundle_root = root.parent
         rel_base = root.parent
     else:
         # Memanto's own bundles nest importable memories under ``memories/``
@@ -119,20 +124,39 @@ def _load_okf_bundle(root: Path, display_path: str | Path) -> dict[str, Any]:
         # Scope import to ``memories/`` when present so context logs are never
         # re-ingested as memories; foreign bundles (no ``memories/``) scan fully.
         memories_dir = root / "memories"
+        if memories_dir.is_symlink():
+            raise ValueError(
+                f"OKF bundle directory must not be a symbolic link: {memories_dir}"
+            )
         scan_root = memories_dir if memories_dir.is_dir() else root
         files = sorted(
             f for f in scan_root.rglob("*.md") if f.name.lower() not in _SKIP_FILENAMES
         )
+        bundle_root = root
         rel_base = root
 
     memories: list[dict[str, Any]] = []
     for file_path in files:
-        text = file_path.read_text(encoding="utf-8")
+        if file_path.is_symlink():
+            raise ValueError(
+                f"OKF bundle contains a symbolic-link document: {file_path}"
+            )
+        resolved_file = file_path.resolve(strict=True)
+        try:
+            resolved_file.relative_to(bundle_root)
+        except ValueError as exc:
+            raise ValueError(
+                f"OKF document escapes the selected bundle: {file_path}"
+            ) from exc
+        if not resolved_file.is_file():
+            raise ValueError(f"OKF document is not a regular file: {file_path}")
+
+        text = resolved_file.read_text(encoding="utf-8")
         for chunk in text.split(ENTRY_DELIMITER):
             chunk = chunk.strip()
             if not chunk:
                 continue
-            entry = _parse_entry(chunk, file_path, rel_base)
+            entry = _parse_entry(chunk, resolved_file, rel_base)
             if entry is not None:
                 memories.append(entry)
 

@@ -376,6 +376,71 @@ def test_single_file_loader_uses_bundle_lock(tmp_path, monkeypatch):
     assert [memory["body"] for memory in imported] == ["New snapshot."]
 
 
+def test_loader_rejects_symlinked_document_outside_bundle(tmp_path):
+    """An untrusted bundle must not import a local file through a .md symlink."""
+    outside = tmp_path / "synthetic-private.txt"
+    outside.write_text("SYNTHETIC_PRIVATE_VALUE", encoding="utf-8")
+    memories = tmp_path / "attacker-bundle" / "memories"
+    memories.mkdir(parents=True)
+    link = memories / "innocent-memory.md"
+    try:
+        link.symlink_to(outside)
+    except (NotImplementedError, OSError):
+        pytest.skip("symbolic links are unavailable on this platform")
+
+    with pytest.raises(ValueError, match="symbolic-link document"):
+        load_okf_bundle(memories.parent)
+
+
+def test_loader_rejects_symlinked_bundle_root(tmp_path):
+    """Selecting a symlink as the bundle root must fail before traversal."""
+    real_bundle = tmp_path / "real-bundle"
+    real_bundle.mkdir()
+    (real_bundle / "memory.md").write_text("Synthetic memory", encoding="utf-8")
+    bundle_link = tmp_path / "selected-bundle"
+    try:
+        bundle_link.symlink_to(real_bundle, target_is_directory=True)
+    except (NotImplementedError, OSError):
+        pytest.skip("symbolic links are unavailable on this platform")
+
+    with pytest.raises(ValueError, match="bundle path must not be a symbolic link"):
+        load_okf_bundle(bundle_link)
+
+
+def test_loader_rejects_symlinked_single_document(tmp_path):
+    """The single-file import form must not follow a selected symlink."""
+    outside = tmp_path / "synthetic-private.md"
+    outside.write_text("Synthetic private value", encoding="utf-8")
+    link = tmp_path / "selected-memory.md"
+    try:
+        link.symlink_to(outside)
+    except (NotImplementedError, OSError):
+        pytest.skip("symbolic links are unavailable on this platform")
+
+    with pytest.raises(ValueError, match="bundle path must not be a symbolic link"):
+        load_okf_bundle(link)
+
+
+def test_loader_rejects_symlinked_memories_directory(tmp_path):
+    """A Memanto bundle must not redirect its import subtree elsewhere."""
+    outside = tmp_path / "outside-memories"
+    outside.mkdir()
+    (outside / "synthetic-private.md").write_text(
+        "Synthetic private value", encoding="utf-8"
+    )
+    bundle = tmp_path / "attacker-bundle"
+    bundle.mkdir()
+    try:
+        (bundle / "memories").symlink_to(outside, target_is_directory=True)
+    except (NotImplementedError, OSError):
+        pytest.skip("symbolic links are unavailable on this platform")
+
+    with pytest.raises(
+        ValueError, match="bundle directory must not be a symbolic link"
+    ):
+        load_okf_bundle(bundle)
+
+
 def test_loader_extracts_multiple_links_around_malformed_markup(tmp_path):
     """Malformed candidates do not hide valid links that follow them."""
     okf_file = tmp_path / "links.md"
