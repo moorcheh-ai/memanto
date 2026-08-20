@@ -137,6 +137,7 @@ All config is via environment variables (load order: process env →
 |---|---|---|---|
 | `MOORCHEH_API_KEY` | **yes** | — | Moorcheh API key. |
 | `MEMANTO_DEFAULT_AGENT_ID` | recommended | _none_ | Default agent. When set, tool calls may omit `agent_id`. |
+| `MEMANTO_ALLOWED_AGENT_IDS` | no | _none_ | Comma-separated additional agents authorized for memory tools. The default agent is always authorized. |
 | `MEMANTO_AGENT_PATTERN` | no | `tool` | Pattern (`support`/`project`/`tool`) used when auto-creating the default agent. |
 | `MEMANTO_AGENT_AUTO_CREATE` | no | `true` | Create the default agent on first use if missing. Explicit non-default agents must already exist. |
 | `MEMANTO_SESSION_DURATION_HOURS` | no | server default (6) | Session lifetime in hours. |
@@ -181,7 +182,10 @@ clients.
 
 - On startup, settings are validated; the API key is verified lazily on
   first tool call.
-- On the first memory tool invocation for a given agent, the server
+- Memory tools can access only the configured default agent and IDs explicitly
+  listed in `MEMANTO_ALLOWED_AGENT_IDS`; model-supplied IDs are not treated as
+  authorization.
+- On the first memory tool invocation for an authorized agent, the server
   ensures the agent exists (auto-creates if needed) and activates a JWT
   session. Sessions auto-renew before expiry, so long-running MCP
   connections never hit a session-expired error mid-conversation.

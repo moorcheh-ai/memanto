@@ -20,6 +20,7 @@ from pathlib import Path
 from typing import Any
 
 import jwt
+from filelock import FileLock
 from pydantic import ValidationError
 
 from memanto.app.config import get_data_dir, settings
@@ -79,6 +80,7 @@ class SessionService:
         # process-wide active marker on its own narrower lock so unrelated
         # agents can create, renew, and terminate sessions concurrently.
         self._agent_locks: dict[str, threading.RLock] = {}
+        self._agent_file_locks: dict[str, FileLock] = {}
         self._agent_locks_guard = threading.Lock()
         self._active_marker_lock = threading.RLock()
         self._summary_lock = threading.Lock()
@@ -99,6 +101,33 @@ class SessionService:
                 lock = threading.RLock()
                 self._agent_locks[agent_id] = lock
             return lock
+
+    def _file_lock_for_agent(self, agent_id: str) -> FileLock:
+        """Return the stable cross-process lifecycle lock for one agent."""
+        validate_safe_id(agent_id, "agent_id")
+        self._harden_session_storage()
+        with self._agent_locks_guard:
+            lock = self._agent_file_locks.get(agent_id)
+            if lock is None:
+                lock_path = self.sessions_dir / f".{agent_id}.lifecycle.lock"
+                lock = FileLock(
+                    str(lock_path),
+                    timeout=5,
+                    mode=self._PRIVATE_FILE_MODE,
+                )
+                self._agent_file_locks[agent_id] = lock
+            return lock
+
+    @contextmanager
+    def lock_agent_lifecycle(self, agent_id: str) -> Iterator[None]:
+        """Serialize agent/session lifecycle changes across threads and processes.
+
+        Agent metadata and bearer-session state live in separate services. Callers
+        that need to inspect or delete both must hold this shared lock so an
+        activation cannot publish a fresh token after deletion has started.
+        """
+        with self._lock_for_agent(agent_id), self._file_lock_for_agent(agent_id):
+            yield
 
     @staticmethod
     def _set_private_permissions(path: Path, mode: int) -> None:
@@ -297,7 +326,7 @@ class SessionService:
         Returns:
             Session object with JWT token
         """
-        with self._lock_for_agent(agent_id):
+        with self.lock_agent_lifecycle(agent_id):
             return self._create_session(agent_id, pattern, duration_hours)
 
     def _create_session(
@@ -465,7 +494,7 @@ class SessionService:
         Raises:
             SessionNotFoundError: If session doesn't exist
         """
-        with self._lock_for_agent(agent_id):
+        with self.lock_agent_lifecycle(agent_id):
             return self._end_session(agent_id)
 
     def _end_session(self, agent_id: str) -> SessionSummary:
@@ -548,7 +577,7 @@ class SessionService:
         # near-expiry session, mint competing tokens, and immediately
         # invalidate every replacement except the last file write. The same
         # lock also makes logout authoritative over an in-flight renewal.
-        with self._lock_for_agent(agent_id):
+        with self.lock_agent_lifecycle(agent_id):
             session = self.get_session(agent_id)
             if not session or not session.is_active():
                 return None
@@ -816,7 +845,7 @@ class SessionService:
         Used when an agent is deleted: the agent metadata is gone, so a saved
         session for that agent must not remain usable through X-Session-Token.
         """
-        with self._lock_for_agent(agent_id), self._active_marker_lock:
+        with self.lock_agent_lifecycle(agent_id), self._active_marker_lock:
             active_link = self.sessions_dir / "active"
             active_agent_id: str | None = None
 

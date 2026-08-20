@@ -35,6 +35,7 @@ from memanto.app.constants import (
 from memanto.app.constants import (
     ProvenanceType as MemoryProvenance,
 )
+from memanto.app.utils.atomic_write import atomic_write_text
 from memanto.app.utils.errors import (
     AgentNotFoundError,
     InvalidSessionTokenError,
@@ -332,8 +333,10 @@ class SdkClient:
             Confirmation dict with ``status`` and ``agent_id``.
         """
         logger.debug("Deleting agent '%s'", agent_id)
-        self._get_agent_service().delete_agent(agent_id)
-        self._get_session_service().delete_session(agent_id)
+        session_service = self._get_session_service()
+        with session_service.lock_agent_lifecycle(agent_id):
+            self._get_agent_service().delete_agent(agent_id)
+            session_service.delete_session(agent_id)
         if self.agent_id == agent_id:
             self.session_token = None
             self.agent_id = None
@@ -359,22 +362,24 @@ class SdkClient:
         Raises:
             AgentNotFoundError: If agent does not exist.
         """
-        agent = self._get_agent_service().get_agent(agent_id)
-        if not agent:
-            raise AgentNotFoundError(f"Agent '{agent_id}' not found")
+        session_service = self._get_session_service()
+        with session_service.lock_agent_lifecycle(agent_id):
+            agent = self._get_agent_service().get_agent(agent_id)
+            if not agent:
+                raise AgentNotFoundError(f"Agent '{agent_id}' not found")
 
-        logger.debug("Activating agent '%s' for %s hours", agent_id, duration_hours)
-        session = self._get_session_service().create_session(
-            agent_id=agent_id,
-            pattern=agent.pattern,
-            duration_hours=duration_hours,
-        )
+            logger.debug("Activating agent '%s' for %s hours", agent_id, duration_hours)
+            session = session_service.create_session(
+                agent_id=agent_id,
+                pattern=agent.pattern,
+                duration_hours=duration_hours,
+            )
 
-        self._get_agent_service().update_agent_stats(
-            agent_id,
-            last_session=session.started_at,
-            increment_session_count=True,
-        )
+            self._get_agent_service().update_agent_stats(
+                agent_id,
+                last_session=session.started_at,
+                increment_session_count=True,
+            )
 
         self.session_token = session.session_token
         self.agent_id = agent_id
@@ -882,6 +887,7 @@ class SdkClient:
 
     def get_policy(self, agent_id: str) -> dict[str, Any]:
         """Return the agent's expiry policy as a plain dict."""
+        self._get_validated_session_for_agent(agent_id)
         policy = self._get_policy_service().load_policy(agent_id)
         return {
             "agent_id": agent_id,
@@ -894,6 +900,8 @@ class SdkClient:
 
         Saving does not expire anything; run :meth:`apply_policy` afterwards.
         """
+        self._get_validated_session_for_agent(agent_id)
+
         from memanto.app.services.memory_policy_service import MemoryPolicy
 
         parsed = MemoryPolicy(**policy)
@@ -927,6 +935,8 @@ class SdkClient:
 
     def apply_policy_preset(self, agent_id: str, name: str) -> dict[str, Any]:
         """Adopt a predefined policy bundle as the agent's policy."""
+        self._get_validated_session_for_agent(agent_id)
+
         from memanto.app.services.policy_presets import load_preset
 
         policy = load_preset(name)
@@ -1653,9 +1663,10 @@ class SdkClient:
         target_path.parent.mkdir(parents=True, exist_ok=True)
 
         if cache_path.exists():
-            # Fast path: copy cached export without an API-backed refresh.
-            shutil.copy2(str(cache_path), str(target_path))
+            # Replace the project entry atomically so a repository-controlled
+            # MEMORY.md symlink cannot redirect this write outside the project.
             content = cache_path.read_text(encoding="utf-8")
+            atomic_write_text(target_path, content)
             mem_count = content.count("### ")
             return {
                 "output_path": str(target_path.resolve()),
@@ -1672,8 +1683,8 @@ class SdkClient:
             if cache_path.exists():
                 # Backend unreachable, but we have a previously good export —
                 # serve that instead of wiping the project's MEMORY.md.
-                shutil.copy2(str(cache_path), str(target_path))
                 content = cache_path.read_text(encoding="utf-8")
+                atomic_write_text(target_path, content)
                 mem_count = content.count("### ")
                 return {
                     "output_path": str(target_path.resolve()),
@@ -1684,7 +1695,7 @@ class SdkClient:
 
         exported_path = Path(export_result["output_path"])
         if exported_path.exists():
-            shutil.copy2(str(exported_path), str(target_path))
+            atomic_write_text(target_path, exported_path.read_text(encoding="utf-8"))
 
         return {
             "output_path": str(target_path.resolve()),
