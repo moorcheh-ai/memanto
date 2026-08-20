@@ -8,6 +8,10 @@ from datetime import datetime, timezone
 from time import monotonic
 from typing import TYPE_CHECKING, Any, cast
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 if TYPE_CHECKING:
     from moorcheh_sdk import MoorchehClient
 
@@ -294,6 +298,28 @@ class MemoryReadService:
             # Apply pagination (offset + limit)
             paginated_results = all_results[offset : offset + limit]
             has_more = len(all_results) > offset + limit
+
+            # SECURITY (bounty #1852): scan the *full* candidate set for
+            # instruction-shaped text before any subset is forwarded to an LLM.
+            # We flag (never drop) so operators keep an audit trail without
+            # losing memory. Raw content is intentionally not logged.
+            try:
+                from memanto.app.utils.injection_guard import (
+                    flag_suspicious_memories,
+                )
+
+                flagged = flag_suspicious_memories(all_results)
+                if flagged:
+                    logger.warning(
+                        "Potential indirect prompt-injection in recalled memories "
+                        "(agent=%s, namespace=%s, flagged_ids=%s). Memory retained; "
+                        "treated as untrusted data by the answer prompt.",
+                        agent_id,
+                        namespaces,
+                        flagged,
+                    )
+            except Exception:  # never let the guard break recall
+                pass
 
             return {
                 "results": paginated_results,
