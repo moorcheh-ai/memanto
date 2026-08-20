@@ -302,6 +302,101 @@ class TestMapChatgpt:
         assert len(rows) == 1
         assert "SQLAlchemy" in rows[0]["title"]
 
+    def test_current_node_selects_older_active_branch(self):
+        # Two sibling branches under one parent: b is the *active* branch the
+        # export's current_node points at, while c is a newer-but-inactive
+        # retry/regeneration (higher create_time, not shown in the UI). The
+        # mapper must follow current_node, not the newest timestamped leaf, so
+        # the inactive retry never leaks into the migrated memory store.
+        export = {
+            "conversations": [
+                {
+                    "title": "retry debate",
+                    "current_node": "b",
+                    "mapping": {
+                        "a": {
+                            "message": {
+                                "author": {"role": "user"},
+                                "content": {
+                                    "content_type": "text",
+                                    "parts": ["I prefer Django."],
+                                },
+                                "create_time": 100,
+                            },
+                            "parent": None,
+                        },
+                        "b": {
+                            "message": {
+                                "author": {"role": "assistant"},
+                                "content": {
+                                    "content_type": "text",
+                                    "parts": ["Django it is."],
+                                },
+                                "create_time": 200,
+                            },
+                            "parent": "a",
+                        },
+                        "c": {
+                            "message": {
+                                "author": {"role": "assistant"},
+                                "content": {
+                                    "content_type": "text",
+                                    "parts": ["Actually, Flask is better."],
+                                },
+                                "create_time": 300,
+                            },
+                            "parent": "a",
+                        },
+                    },
+                }
+            ]
+        }
+        rows = map_chatgpt(export)
+        titles = [r["title"] for r in rows]
+        assert any("Django" in t for t in titles)
+        assert not any("Flask" in t for t in titles)
+        assert len(rows) == 1
+
+    def test_invalid_current_node_falls_back_to_latest_leaf(self):
+        # A current_node that names a node outside the mapping (or is absent)
+        # must not crash or import nothing: the mapper falls back to the
+        # newest timestamped leaf, preserving the pre-current_node behavior.
+        export = {
+            "conversations": [
+                {
+                    "title": "fallback",
+                    "current_node": "ghost",
+                    "mapping": {
+                        "a": {
+                            "message": {
+                                "author": {"role": "user"},
+                                "content": {
+                                    "content_type": "text",
+                                    "parts": ["I prefer Django."],
+                                },
+                                "create_time": 100,
+                            },
+                            "parent": None,
+                        },
+                        "b": {
+                            "message": {
+                                "author": {"role": "assistant"},
+                                "content": {
+                                    "content_type": "text",
+                                    "parts": ["Django it is."],
+                                },
+                                "create_time": 200,
+                            },
+                            "parent": "a",
+                        },
+                    },
+                }
+            ]
+        }
+        rows = map_chatgpt(export)
+        assert len(rows) == 1
+        assert "Django" in rows[0]["title"]
+
     def test_identical_user_facts_deduped_with_refs_merged(self):
         # The same durable fact stated twice (in two conversations) collapses
         # into one memory whose source_ref points at both messages.

@@ -765,19 +765,27 @@ def _distill_turns(turns: list[dict[str, Any]], source: str) -> list[dict[str, A
     return candidates
 
 
-def _main_branch(node_map: dict[str, Any]) -> list[dict[str, Any]]:
+def _main_branch(
+    node_map: dict[str, Any], current_node: str | None = None
+) -> list[dict[str, Any]]:
     """Return the message chain (oldest -> newest) of the primary ChatGPT branch.
 
     ChatGPT ``mapping`` is a tree — edits and retries create sibling branches
-    under a shared parent. Only the lineage reaching the latest leaf is the
+    under a shared parent. Only the lineage reaching the active leaf is the
     "current" conversation; walking its ``parent`` chain keeps alternate
     branches from being imported and merged into incompatible memories.
+
+    The export's ``current_node`` names the active leaf of the visible
+    conversation and is preferred when present and valid: the newest
+    *timestamped* leaf can be an inactive retry/regeneration the UI no longer
+    shows, so timestamp-based leaf selection is only a fallback for exports
+    that omit ``current_node``.
 
     The lineage is selected and walked over *all* nodes, including unsupported
     ones (tool/system children that can sit between user/assistant turns);
     roles are filtered only when appending emitted turns. This keeps the
     traversal connected when a supported node's only child is unsupported, so
-    the latest leaf is always reachable and the walk never dead-ends.
+    the active leaf is always reachable and the walk never dead-ends.
     """
     if not node_map:
         return []
@@ -791,10 +799,13 @@ def _main_branch(node_map: dict[str, Any]) -> list[dict[str, Any]]:
         msg = node_map[nid].get("message") or {}
         return float(msg.get("create_time") or 0)
 
-    leaves = [nid for nid in node_map if not children.get(nid)]
-    if not leaves:
-        return []
-    current = max(leaves, key=_ts)
+    if current_node in node_map:
+        current = current_node
+    else:
+        leaves = [nid for nid in node_map if not children.get(nid)]
+        if not leaves:
+            return []
+        current = max(leaves, key=_ts)
 
     roles = {"user", "assistant"}
     chain: list[dict[str, Any]] = []
@@ -849,13 +860,14 @@ def map_chatgpt(export: dict[str, Any]) -> list[dict[str, Any]]:
     """Map a ChatGPT export ``conversations.json`` into memory rows.
 
     ChatGPT's export is a list of conversations; each has a ``mapping`` tree
-    of message nodes with ``parent`` links. We follow the main branch's parent
+    of message nodes with ``parent`` links and a ``current_node`` naming the
+    active leaf of the visible conversation. We follow that leaf's parent
     lineage (see :func:`_main_branch`) and keep only user turns.
     """
     rows: list[dict[str, Any]] = []
     for convo in export.get("conversations", []):
         node_map = convo.get("mapping") or {}
-        chain = _main_branch(node_map)
+        chain = _main_branch(node_map, convo.get("current_node"))
         turns = [r for r in chain if r["role"] == "user"]
         rows.extend(_distill_turns(turns, "chatgpt"))
     return _dedupe(rows)

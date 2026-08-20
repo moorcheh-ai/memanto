@@ -1,7 +1,7 @@
 ---
 type: index
 title: preference
-timestamp: 2026-08-20T01:04:14
+timestamp: 2026-08-20T00:00:00
 ---
 
 # preference (3)

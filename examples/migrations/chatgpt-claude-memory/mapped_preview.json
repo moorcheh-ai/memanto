@@ -13,7 +13,7 @@
       "source_ref": "m4f198e",
       "provenance": "imported",
       "created_at": "2026-08-01 00:00:00+00:00",
-      "updated_at": "2026-08-20 05:04:14.916517+00:00"
+      "updated_at": "2026-08-19 12:00:00+00:00"
     },
     {
       "title": "Let's build a FastAPI service for our todo app.",
@@ -28,7 +28,7 @@
       "source_ref": "m206ecf",
       "provenance": "imported",
       "created_at": "2026-08-01 00:05:00+00:00",
-      "updated_at": "2026-08-20 05:04:14.916517+00:00"
+      "updated_at": "2026-08-19 12:00:00+00:00"
     },
     {
       "title": "Pin all dependency versions — I've been burned by float updates.",
@@ -43,7 +43,7 @@
       "source_ref": "mc6ea7f",
       "provenance": "imported",
       "created_at": "2026-08-01 00:10:00+00:00",
-      "updated_at": "2026-08-20 05:04:14.916517+00:00"
+      "updated_at": "2026-08-19 12:00:00+00:00"
     },
     {
       "title": "I use a Dell XPS 15 for work.",
@@ -58,7 +58,7 @@
       "source_ref": "m075666",
       "provenance": "imported",
       "created_at": "2026-08-01 00:15:00+00:00",
-      "updated_at": "2026-08-20 05:04:14.916517+00:00"
+      "updated_at": "2026-08-19 12:00:00+00:00"
     },
     {
       "title": "Ship the MVP by Friday.",
@@ -73,7 +73,7 @@
       "source_ref": "m5efc0e",
       "provenance": "imported",
       "created_at": "2026-08-01 00:20:00+00:00",
-      "updated_at": "2026-08-20 05:04:14.916517+00:00"
+      "updated_at": "2026-08-19 12:00:00+00:00"
     },
     {
       "title": "The JWT auth is failing in production but works locally.",
@@ -88,7 +88,7 @@
       "source_ref": "me1e00c",
       "provenance": "imported",
       "created_at": "2026-08-01 00:00:00+00:00",
-      "updated_at": "2026-08-20 05:04:14.917091+00:00"
+      "updated_at": "2026-08-19 12:00:00+00:00"
     },
     {
       "title": "We use Azure AD as our identity provider.",
@@ -103,7 +103,7 @@
       "source_ref": "mc89bb3",
       "provenance": "imported",
       "created_at": "2026-08-01 00:05:00+00:00",
-      "updated_at": "2026-08-20 05:04:14.917091+00:00"
+      "updated_at": "2026-08-19 12:00:00+00:00"
     },
     {
       "title": "Always add tests before you merge.",
@@ -118,7 +118,7 @@
       "source_ref": "m06161b",
       "provenance": "imported",
       "created_at": "2026-08-01 00:15:00+00:00",
-      "updated_at": "2026-08-20 05:04:14.917091+00:00"
+      "updated_at": "2026-08-19 12:00:00+00:00"
     },
     {
       "title": "I prefer async SQLAlchemy over the sync ORM.",
@@ -133,7 +133,7 @@
       "source_ref": "m779926",
       "provenance": "imported",
       "created_at": "2026-08-01 00:20:00+00:00",
-      "updated_at": "2026-08-20 05:04:14.917091+00:00"
+      "updated_at": "2026-08-19 12:00:00+00:00"
     }
   ],
   "chatgpt": [
@@ -150,7 +150,7 @@
       "source_ref": "90d8bd80",
       "provenance": "imported",
       "created_at": "2026-08-01 00:00:00+00:00",
-      "updated_at": "2026-08-20 05:04:14.917453+00:00"
+      "updated_at": "2026-08-19 12:00:00+00:00"
     },
     {
       "title": "Use webhooks for async confirmation.",
@@ -165,7 +165,7 @@
       "source_ref": "335909e6",
       "provenance": "imported",
       "created_at": "2026-08-01 00:15:00+00:00",
-      "updated_at": "2026-08-20 05:04:14.917453+00:00"
+      "updated_at": "2026-08-19 12:00:00+00:00"
     },
     {
       "title": "My goal: cut payment latency under 800ms.",
@@ -180,7 +180,7 @@
       "source_ref": "b272bf9d",
       "provenance": "imported",
       "created_at": "2026-08-01 00:30:00+00:00",
-      "updated_at": "2026-08-20 05:04:14.917453+00:00"
+      "updated_at": "2026-08-19 12:00:00+00:00"
     },
     {
       "title": "I like coffee with oat milk.",
@@ -195,7 +195,7 @@
       "source_ref": "80fa0e6b",
       "provenance": "imported",
       "created_at": "2026-08-01 00:00:00+00:00",
-      "updated_at": "2026-08-20 05:04:14.917489+00:00"
+      "updated_at": "2026-08-19 12:00:00+00:00"
     }
   ]
 }

@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import shutil
 import sys
 from collections import Counter
@@ -70,8 +71,19 @@ def main() -> None:
     for t, n in types.most_common():
         print(f"  {str(t or 'auto-classify'):<14}{n:>3}")
 
+    # The mapper stamps updated_at with the migration wall-clock time, which
+    # would make this generated fixture non-reproducible (microseconds change
+    # on every run). Pin it to a fixed demo timestamp so regenerating the
+    # showcase is byte-identical when the source archives are unchanged.
+    DEMO_MIGRATED_AT = "2026-08-19 12:00:00+00:00"
+    preview_rows = {
+        source: [{**row, "updated_at": DEMO_MIGRATED_AT} for row in rows]
+        for source, rows in providers.items()
+    }
     preview = HERE.parent / "mapped_preview.json"
-    preview.write_text(json.dumps(providers, indent=2, ensure_ascii=False, default=str))
+    preview.write_text(
+        json.dumps(preview_rows, indent=2, ensure_ascii=False, default=str)
+    )
     print(f"\nMapped preview -> {preview}")
 
     if args.export_okf:
@@ -96,6 +108,28 @@ def main() -> None:
         if OKF_DIR.exists():
             shutil.rmtree(OKF_DIR)
         shutil.copytree(src, OKF_DIR)
+        # The exporter and visualization service stamp wall-clock timestamps
+        # into the bundle (every index frontmatter + the metrics footer),
+        # which would make this generated artifact non-reproducible. Pin them
+        # to fixed demo values so regenerating the showcase is byte-identical
+        # when the source archives are unchanged.
+        DEMO_BUNDLE_TS = "2026-08-20T00:00:00"
+        for index in OKF_DIR.rglob("index.md"):
+            index.write_text(
+                re.sub(
+                    r"(?m)^timestamp: .*$",
+                    f"timestamp: {DEMO_BUNDLE_TS}",
+                    index.read_text(),
+                )
+            )
+        overview = OKF_DIR / "metrics" / "overview.md"
+        overview.write_text(
+            re.sub(
+                r"\*Visualizations auto-generated at .*\*",
+                "*Visualizations auto-generated at Aug 20, 2026 12:00 AM*",
+                overview.read_text(),
+            )
+        )
         print(f"\nOKF bundle -> {OKF_DIR}")
         print(f"  total: {result['total_memories']}, sections: {result['sections']}")
 
