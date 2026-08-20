@@ -53,6 +53,35 @@ def get_agent_service():
     return agent_service
 
 
+def _delete_agent_locally(agent_id: str) -> None:
+    """Delete agent metadata and session state under one lifecycle lock."""
+    session_service = get_session_service()
+    with session_service.lock_agent_lifecycle(agent_id):
+        agent_service.delete_agent(agent_id)
+        session_service.delete_session(agent_id)
+
+
+def _activate_agent_locked(agent_id: str, duration_hours: int) -> Session:
+    """Create a session only while its agent still exists under the lock."""
+    session_service = get_session_service()
+    with session_service.lock_agent_lifecycle(agent_id):
+        agent = agent_service.get_agent(agent_id)
+        if not agent:
+            raise AgentNotFoundError(f"Agent '{agent_id}' not found")
+
+        session = session_service.create_session(
+            agent_id=agent_id,
+            pattern=agent.pattern,
+            duration_hours=duration_hours,
+        )
+        agent_service.update_agent_stats(
+            agent_id=agent_id,
+            last_session=session.started_at,
+            increment_session_count=True,
+        )
+        return session
+
+
 async def _namespace_item_counts(moorcheh_api_key: str) -> dict[str, int]:
     """Map namespace_name -> live document count from Moorcheh.
 
@@ -179,10 +208,7 @@ async def delete_agent(
                 # and continue removing local metadata.
                 pass
 
-        session_service = get_session_service()
-        with session_service.lock_agent_lifecycle(agent_id):
-            agent_service.delete_agent(agent_id)
-            session_service.delete_session(agent_id)
+        await asyncio.to_thread(_delete_agent_locally, agent_id)
         return {
             "message": (
                 f"Agent '{agent_id}' successfully deleted"
@@ -223,28 +249,10 @@ async def activate_agent(
     duration_hours = settings.SESSION_DEFAULT_DURATION_HOURS
 
     try:
-        session_service = get_session_service()
-        with session_service.lock_agent_lifecycle(agent_id):
-            # Re-check after acquiring the same lock used by deletion. Without
-            # this, a concurrent delete can remove metadata and session state
-            # immediately before activation publishes a fresh bearer token.
-            agent = agent_service.get_agent(agent_id)
-            if not agent:
-                raise AgentNotFoundError(f"Agent '{agent_id}' not found")
-
-            session = session_service.create_session(
-                agent_id=agent_id,
-                pattern=agent.pattern,
-                duration_hours=duration_hours,
-            )
-            set_session_cookie(response, session.session_token, request)
-
-            agent_service.update_agent_stats(
-                agent_id=agent_id,
-                last_session=session.started_at,
-                increment_session_count=True,
-            )
-
+        session = await asyncio.to_thread(
+            _activate_agent_locked, agent_id, duration_hours
+        )
+        set_session_cookie(response, session.session_token, request)
         return session
 
     except Exception as e:
