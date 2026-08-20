@@ -23,10 +23,18 @@ def test_api_route_propagates_validated_session_to_direct_client():
 
 
 def test_unverified_conflicts_disable_destructive_ui_actions():
-    """Any binding state other than bound must be presented as unverified and non-actionable."""
+    """Any binding state other than bound must be presented as unverified."""
     cli = Path("memanto/cli/commands/memory.py").read_text(encoding="utf-8")
     ui = Path("memanto/app/ui/static/index.html").read_text(encoding="utf-8")
     assert 'binding.get("status") != "bound"' in cli
-    assert "Destructive resolution disabled for this unverified conflict" in cli
+    assert "Destructive resolution is disabled for this unverified conflict" in cli
     assert "binding.status !== 'bound'" in ui
     assert "btn.disabled = true" in ui
+
+
+def test_unverified_cli_keeps_only_non_destructive_resolution_available():
+    """Unverified conflicts must still offer Keep Both, Skip, and Quit."""
+    cli = Path("memanto/cli/commands/memory.py").read_text(encoding="utf-8")
+    assert "Keep Both, Skip, and Quit remain available" in cli
+    assert 'action_map = {"3": "keep_both"}' in cli
+    assert '_opt("3", "Keep both", None)' in cli
