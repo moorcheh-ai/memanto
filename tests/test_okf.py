@@ -10,6 +10,7 @@ foreign OKF bundle whose free-form ``type`` and unknown keys must land in the
 
 from concurrent.futures import ThreadPoolExecutor
 from concurrent.futures import TimeoutError as FutureTimeout
+import os
 from pathlib import Path
 from threading import Event
 from time import perf_counter
@@ -19,7 +20,7 @@ import yaml  # type: ignore[import-untyped]
 
 from memanto.app.services.okf_export_service import OkfExportService
 from memanto.cli.migrate.mappers import map_okf
-from memanto.cli.migrate.okf_loader import load_okf_bundle
+from memanto.cli.migrate.okf_loader import _SECURE_DIR_FD, load_okf_bundle
 
 
 def _mem(mem_id, title, content, **extra):
@@ -438,6 +439,90 @@ def test_loader_rejects_symlinked_memories_directory(tmp_path):
     with pytest.raises(
         ValueError, match="bundle directory must not be a symbolic link"
     ):
+        load_okf_bundle(bundle)
+
+
+def test_loader_rejects_document_swapped_to_symlink_before_open(tmp_path, monkeypatch):
+    """A pathname swap after listing must not redirect the opened document."""
+    if not _SECURE_DIR_FD:
+        pytest.skip("descriptor-relative no-follow opens are unavailable")
+
+    outside = tmp_path / "outside.txt"
+    outside.write_text("SYNTHETIC_RACE_VALUE", encoding="utf-8")
+    memories = tmp_path / "bundle" / "memories"
+    memories.mkdir(parents=True)
+    victim = memories / "memory.md"
+    victim.write_text("Ordinary content", encoding="utf-8")
+
+    real_open = os.open
+    swapped = False
+
+    def swap_then_open(path, flags, *args, **kwargs):
+        nonlocal swapped
+        if path == "memory.md" and kwargs.get("dir_fd") is not None and not swapped:
+            victim.unlink()
+            victim.symlink_to(outside)
+            swapped = True
+        return real_open(path, flags, *args, **kwargs)
+
+    monkeypatch.setattr(os, "open", swap_then_open)
+
+    with pytest.raises(ValueError, match="symbolic-link path"):
+        load_okf_bundle(memories.parent)
+    assert swapped
+
+
+def test_loader_reads_pinned_root_when_selected_path_is_replaced(tmp_path, monkeypatch):
+    """Replacing the selected pathname must not redirect an opened root."""
+    if not _SECURE_DIR_FD:
+        pytest.skip("descriptor-relative no-follow opens are unavailable")
+
+    bundle = tmp_path / "bundle"
+    memories = bundle / "memories"
+    memories.mkdir(parents=True)
+    (memories / "memory.md").write_text("Ordinary content", encoding="utf-8")
+
+    outside = tmp_path / "outside"
+    outside_memories = outside / "memories"
+    outside_memories.mkdir(parents=True)
+    (outside_memories / "memory.md").write_text(
+        "SYNTHETIC_OUTSIDE_VALUE", encoding="utf-8"
+    )
+    moved_bundle = tmp_path / "opened-bundle"
+
+    real_fstat = os.fstat
+    swapped = False
+
+    def replace_path_after_root_open(fd):
+        nonlocal swapped
+        result = real_fstat(fd)
+        if not swapped:
+            bundle.rename(moved_bundle)
+            bundle.symlink_to(outside, target_is_directory=True)
+            swapped = True
+        return result
+
+    monkeypatch.setattr(os, "fstat", replace_path_after_root_open)
+
+    export = load_okf_bundle(bundle)
+
+    assert swapped
+    assert export["memories"][0]["body"] == "Ordinary content"
+
+
+def test_loader_fails_closed_without_secure_directory_descriptors(
+    tmp_path, monkeypatch
+):
+    """A platform without no-follow directory handles must not use path checks."""
+    bundle = tmp_path / "bundle"
+    bundle.mkdir()
+    (bundle / "memory.md").write_text("Ordinary content", encoding="utf-8")
+    monkeypatch.setattr(
+        "memanto.cli.migrate.okf_loader._SECURE_DIR_FD",
+        False,
+    )
+
+    with pytest.raises(RuntimeError, match="descriptor-relative no-follow"):
         load_okf_bundle(bundle)
 
 
