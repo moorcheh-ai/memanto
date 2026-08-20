@@ -93,6 +93,8 @@ def _is_loopback_host(host: str | None) -> bool:
     """Return True when *host* is a loopback address (IPv4/IPv6/mapped)."""
     if not host:
         return False
+    if host.lower().rstrip(".") == "localhost":
+        return True
     import ipaddress
 
     try:

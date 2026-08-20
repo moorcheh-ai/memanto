@@ -85,6 +85,20 @@ async def test_loopback_management_rejects_cross_site_origin():
 
 
 @pytest.mark.asyncio
+async def test_loopback_management_accepts_localhost_origin_without_credential():
+    transport = ASGITransport(app=app, client=("127.0.0.1", 54321))
+    async with AsyncClient(transport=transport, base_url="http://localhost") as client:
+        response = await client.post(
+            "/api/v2/agents",
+            headers={"Origin": "http://localhost:8000"},
+            json={"agent_id": "localhost-origin-agent", "pattern": "support"},
+        )
+
+    assert response.status_code == 201
+    assert response.json()["agent_id"] == "localhost-origin-agent"
+
+
+@pytest.mark.asyncio
 async def test_valid_management_credential_allows_nonlocal_origin():
     transport = ASGITransport(app=app, client=("127.0.0.1", 54321))
     async with AsyncClient(transport=transport, base_url="http://localhost") as client:
