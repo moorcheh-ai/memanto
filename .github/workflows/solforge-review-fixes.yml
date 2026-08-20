@@ -89,7 +89,7 @@ jobs:
           p.write_text('''from pathlib import Path\n\n\ndef test_conflict_resolution_requires_validated_agent_session():\n    source = Path("memanto/cli/client/direct_client.py").read_text(encoding="utf-8")\n    start = source.index("    def resolve_conflict(")\n    end = source.index("    def ", start + 8)\n    body = source[start:end]\n    assert "self._get_validated_session_for_agent(agent_id)" in body\n    assert "namespace = session.namespace" in body\n\n\ndef test_unverified_conflicts_disable_destructive_ui_actions():\n    cli = Path("memanto/cli/commands/memory.py").read_text(encoding="utf-8")\n    ui = Path("memanto/app/ui/static/index.html").read_text(encoding="utf-8")\n    assert "Destructive resolution disabled for this unverified conflict" in cli\n    assert "binding.status === 'blocked'" in ui\n    assert "btn.disabled = true" in ui\n''', encoding='utf-8')
 
       - name: Install test dependencies
-        run: python -m pip install -e . pytest pytest-asyncio
+        run: python -m pip install -e . pytest pytest-asyncio pytest-timeout
 
       - name: Run focused regression tests
         run: python -m pytest tests/test_conflict_reference_binding.py tests/test_conflict_resolution_review_guards.py -q
