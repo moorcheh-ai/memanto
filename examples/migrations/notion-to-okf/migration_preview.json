@@ -1,0 +1,207 @@
+[
+  {
+    "title": "LLM Memory Architecture Survey",
+    "content": "RAG-based memory systems suffer from retrieval-rank collapse when context windows exceed 32k tokens. Active companion memory (Memanto model) outperforms passive vector stores by 40% on preference drift benchmarks. Key finding: contradiction resolution is the primary failure mode in production memory systems \u2014 flat vector stores return stale facts when newer contradicting facts share high semantic similarity with the query.\n\n---\n[Supporting data]\n- Source: notion:a1b2c3d4-e5f6-7890-abcd-ef1234567890\n- Notion database: Research Notes\n- Notion URL: https://notion.so/a1b2c3d4e5f6\n- Notion status: In Progress\n- Priority: High\n- Last edited: 2025-11-02T14:20:00+00:00\n- Source created_at: 2025-09-15T08:30:00+00:00",
+    "type": "fact",
+    "tags": [
+      "AI",
+      "memory",
+      "research",
+      "LLM",
+      "notion-db:research-notes"
+    ],
+    "confidence": 0.9,
+    "source": "notion",
+    "source_ref": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+    "provenance": "imported",
+    "created_at": "2025-09-15 08:30:00+00:00",
+    "updated_at": "2026-08-21 10:37:29.340181+00:00"
+  },
+  {
+    "title": "Switch primary memory backend from Pinecone to Memanto",
+    "content": "Decided to migrate the agent memory layer from Pinecone to Memanto. Rationale: Pinecone returns stale preference data in 3/5 contradiction test cases. Memanto's active recall scored 85.6% accuracy vs 54.1% for Mem0. Migration path: export Pinecone vectors -> Memanto batch_remember API. Estimated savings: 65% fewer tokens retrieved per query, 4.8x lower p95 recall latency.\n\n---\n[Supporting data]\n- Source: notion:b2c3d4e5-f6a7-8901-bcde-f12345678901\n- Notion database: Project Decisions\n- Notion URL: https://notion.so/b2c3d4e5f6a7\n- Notion status: Decided\n- Priority: Critical\n- Last edited: 2025-10-01T09:45:00+00:00\n- Source created_at: 2025-10-01T09:00:00+00:00",
+    "type": "decision",
+    "tags": [
+      "infrastructure",
+      "decision",
+      "memory",
+      "notion-db:project-decisions"
+    ],
+    "confidence": 0.95,
+    "source": "notion",
+    "source_ref": "b2c3d4e5-f6a7-8901-bcde-f12345678901",
+    "provenance": "imported",
+    "created_at": "2025-10-01 09:00:00+00:00",
+    "updated_at": "2026-08-21 10:37:29.340181+00:00"
+  },
+  {
+    "title": "User prefers concise API responses under 500ms",
+    "content": "User explicitly stated preference for API responses under 500ms p95. Tolerates up to 1s for complex recall operations but considers anything above 2s a UX failure. Prefers streaming for long outputs over waiting for complete response. Dislikes verbose error messages.\n\n---\n[Supporting data]\n- Source: notion:c3d4e5f6-a7b8-9012-cdef-123456789012\n- Notion database: Research Notes\n- Notion URL: https://notion.so/c3d4e5f6a7b8\n- Notion status: Active\n- Priority: Medium\n- Last edited: 2025-09-10T16:30:00+00:00\n- Source created_at: 2025-08-20T11:15:00+00:00",
+    "type": "preference",
+    "tags": [
+      "preference",
+      "UX",
+      "performance",
+      "notion-db:research-notes"
+    ],
+    "confidence": 0.8,
+    "source": "notion",
+    "source_ref": "c3d4e5f6-a7b8-9012-cdef-123456789012",
+    "provenance": "imported",
+    "created_at": "2025-08-20 11:15:00+00:00",
+    "updated_at": "2026-08-21 10:37:29.340181+00:00"
+  },
+  {
+    "title": "Q3 planning: memory system roadmap",
+    "content": "Q3 planning session. Agreed to prioritize: (1) temporal recall API, (2) contradiction detection pipeline, (3) multi-agent namespace isolation. Mitchell owns temporal recall. Deadline: end of Q3. Budget approved for Moorcheh infrastructure scaling to 10k req/min.\n\n---\n[Supporting data]\n- Source: notion:d4e5f6a7-b8c9-0123-def0-234567890123\n- Notion database: Meeting Notes\n- Notion URL: https://notion.so/d4e5f6a7b8c9\n- Notion status: Done\n- Priority: High\n- Last edited: 2025-10-15T15:30:00+00:00\n- Source created_at: 2025-10-15T14:00:00+00:00\n- Attendees: Mitchell, Neel, Alex\n- Meeting date: 2025-10-15",
+    "type": "event",
+    "tags": [
+      "planning",
+      "roadmap",
+      "meeting",
+      "notion-db:meeting-notes"
+    ],
+    "confidence": 0.9,
+    "source": "notion",
+    "source_ref": "d4e5f6a7-b8c9-0123-def0-234567890123",
+    "provenance": "imported",
+    "created_at": "2025-10-15 14:00:00+00:00",
+    "updated_at": "2026-08-21 10:37:29.340181+00:00"
+  },
+  {
+    "title": "LoCoMo: Long-Conversation Memory Benchmark",
+    "content": "LoCoMo is a long-conversation dataset for evaluating memory systems. Contains 50-turn conversations with ground-truth annotations. Used in Memanto vs Mem0 benchmark: Memanto scored R@20=83.3% vs Mem0 63.3%. Dataset is freely available via HuggingFace.\n\n---\n[Supporting data]\n- Source: notion:e5f6a7b8-c9d0-1234-ef01-345678901234\n- Notion database: Bookmarks & Resources\n- Notion URL: https://notion.so/e5f6a7b8c9d0\n- Notion status: Active\n- Priority: Medium\n- Last edited: 2025-09-05T10:00:00+00:00\n- Source created_at: 2025-09-05T10:00:00+00:00",
+    "type": "fact",
+    "tags": [
+      "benchmark",
+      "research",
+      "dataset",
+      "notion-db:bookmarks-&-resources"
+    ],
+    "confidence": 0.8,
+    "source": "notion",
+    "source_ref": "e5f6a7b8-c9d0-1234-ef01-345678901234",
+    "provenance": "imported",
+    "created_at": "2025-09-05 10:00:00+00:00",
+    "updated_at": "2026-08-21 10:37:29.340181+00:00"
+  },
+  {
+    "title": "Adopt UTC-aware datetimes throughout memory write pipeline",
+    "content": "Decision: replace all datetime.utcnow() calls with datetime.now(timezone.utc) in memory_write_service.py and core.py (12 locations). Root cause: naive timestamps written to storage, timezone-aware timestamps used in temporal filters \u2014 silent TypeError causing temporal filters to fail open.\n\n---\n[Supporting data]\n- Source: notion:f6a7b8c9-d0e1-2345-f012-456789012345\n- Notion database: Project Decisions\n- Notion URL: https://notion.so/f6a7b8c9d0e1\n- Notion status: Decided\n- Priority: High\n- Last edited: 2026-06-24T09:30:00+00:00\n- Source created_at: 2026-06-24T09:00:00+00:00",
+    "type": "decision",
+    "tags": [
+      "bug-fix",
+      "datetime",
+      "decision",
+      "notion-db:project-decisions"
+    ],
+    "confidence": 0.9,
+    "source": "notion",
+    "source_ref": "f6a7b8c9-d0e1-2345-f012-456789012345",
+    "provenance": "imported",
+    "created_at": "2026-06-24 09:00:00+00:00",
+    "updated_at": "2026-08-21 10:37:29.340181+00:00"
+  },
+  {
+    "title": "Agent committed to shipping temporal recall by end of Q3",
+    "content": "Mitchell committed to delivering the temporal recall endpoints (recall/as-of, recall/changed-since) by October 31, 2025. Commitment made during Q3 planning meeting. Budget approved. This is a blocker for the Moorcheh v0.2.x release.\n\n---\n[Supporting data]\n- Source: notion:a7b8c9d0-e1f2-3456-0123-567890123456\n- Notion database: Research Notes\n- Notion URL: https://notion.so/a7b8c9d0e1f2\n- Notion status: Active\n- Priority: High\n- Last edited: 2025-10-20T09:00:00+00:00\n- Source created_at: 2025-10-15T15:30:00+00:00",
+    "type": "commitment",
+    "tags": [
+      "commitment",
+      "roadmap",
+      "temporal",
+      "notion-db:research-notes"
+    ],
+    "confidence": 0.9,
+    "source": "notion",
+    "source_ref": "a7b8c9d0-e1f2-3456-0123-567890123456",
+    "provenance": "imported",
+    "created_at": "2025-10-15 15:30:00+00:00",
+    "updated_at": "2026-08-21 10:37:29.340181+00:00"
+  },
+  {
+    "title": "Observation: LLM judge variance increases above temperature 0.1",
+    "content": "Observed significant score variance in LLM-as-judge eval runs when temperature > 0.1. At temperature=0.0, GPT-4o-mini with seed=42 produces deterministic scores. Recommendation: always pin temperature=0.0 and document judge model and version in benchmark methodology.\n\n---\n[Supporting data]\n- Source: notion:b8c9d0e1-f2a3-4567-1234-678901234567\n- Notion database: Research Notes\n- Notion URL: https://notion.so/b8c9d0e1f2a3\n- Notion status: Active\n- Priority: Low\n- Last edited: 2025-11-10T14:00:00+00:00\n- Source created_at: 2025-11-10T13:45:00+00:00",
+    "type": "observation",
+    "tags": [
+      "observation",
+      "evaluation",
+      "LLM",
+      "notion-db:research-notes"
+    ],
+    "confidence": 0.7,
+    "source": "notion",
+    "source_ref": "b8c9d0e1-f2a3-4567-1234-678901234567",
+    "provenance": "imported",
+    "created_at": "2025-11-10 13:45:00+00:00",
+    "updated_at": "2026-08-21 10:37:29.340181+00:00"
+  },
+  {
+    "title": "Neel (Moorcheh co-founder) primary technical contact",
+    "content": "Neel at Moorcheh is the primary technical contact for API access, credits, and architecture questions. Email: neel@edgeaiinnovations.com. Prefers GitHub issues over email for bug reports. Has approved 2 bounty PRs for mitchellecm7 account.\n\n---\n[Supporting data]\n- Source: notion:c9d0e1f2-a3b4-5678-2345-789012345678\n- Notion database: Bookmarks & Resources\n- Notion URL: https://notion.so/c9d0e1f2a3b4\n- Notion status: Active\n- Priority: High\n- Last edited: 2026-03-15T10:30:00+00:00\n- Source created_at: 2026-01-10T08:00:00+00:00",
+    "type": "relationship",
+    "tags": [
+      "relationship",
+      "contact",
+      "Moorcheh",
+      "notion-db:bookmarks-&-resources"
+    ],
+    "confidence": 0.9,
+    "source": "notion",
+    "source_ref": "c9d0e1f2-a3b4-5678-2345-789012345678",
+    "provenance": "imported",
+    "created_at": "2026-01-10 08:00:00+00:00",
+    "updated_at": "2026-08-21 10:37:29.340181+00:00"
+  },
+  {
+    "title": "Goal: win Memanto bug bounty with 3+ Critical/High severity bugs",
+    "content": "Goal: submit PR #784 with at minimum 3 reproducible High-severity bugs in Memanto's temporal recall pipeline. Found bugs: (1) naive/aware datetime mismatch in 12 locations, (2) recall/as-of has no query field causing timeline amnesia, (3) 100-memory silent cap in _fetch_all_memories. All submitted with reproducible failing tests and actual fixes.\n\n---\n[Supporting data]\n- Source: notion:d0e1f2a3-b4c5-6789-3456-890123456789\n- Notion database: Research Notes\n- Notion URL: https://notion.so/d0e1f2a3b4c5\n- Notion status: In Progress\n- Priority: High\n- Last edited: 2026-06-24T09:45:00+00:00\n- Source created_at: 2026-06-20T07:00:00+00:00",
+    "type": "goal",
+    "tags": [
+      "goal",
+      "bounty",
+      "security",
+      "notion-db:research-notes"
+    ],
+    "confidence": 0.9,
+    "source": "notion",
+    "source_ref": "d0e1f2a3-b4c5-6789-3456-890123456789",
+    "provenance": "imported",
+    "created_at": "2026-06-20 07:00:00+00:00",
+    "updated_at": "2026-08-21 10:37:29.340181+00:00"
+  },
+  {
+    "title": "Memanto bounty kickoff \u2014 issue #639 scoping",
+    "content": "Kicked off work on Memanto benchmarking bounty #639. Decided to implement Scenario B: Shifting Persona benchmark. Target: 5 sessions, 22 turns, 7 explicit contradictions. LLM-as-judge with 3 query types. Also including LangGraph integration as differentiator.\n\n---\n[Supporting data]\n- Source: notion:e1f2a3b4-c5d6-7890-4567-901234567890\n- Notion database: Meeting Notes\n- Notion URL: https://notion.so/e1f2a3b4c5d6\n- Notion status: Done\n- Priority: Medium\n- Last edited: 2026-05-28T10:30:00+00:00\n- Source created_at: 2026-05-28T09:00:00+00:00\n- Attendees: Mitchell\n- Meeting date: 2026-05-28",
+    "type": "event",
+    "tags": [
+      "meeting",
+      "bounty",
+      "planning",
+      "notion-db:meeting-notes"
+    ],
+    "confidence": 0.8,
+    "source": "notion",
+    "source_ref": "e1f2a3b4-c5d6-7890-4567-901234567890",
+    "provenance": "imported",
+    "created_at": "2026-05-28 09:00:00+00:00",
+    "updated_at": "2026-08-21 10:37:29.340181+00:00"
+  },
+  {
+    "title": "Use BountyHub for all open-source contribution payouts",
+    "content": "Decided to track and claim all open-source bounties via BountyHub platform. Account: mitchellecm7. Note: always claim on BountyHub before the deadline \u2014 even if PR is merged, unclaimed is ineligible for payout.\n\n---\n[Supporting data]\n- Source: notion:f2a3b4c5-d6e7-8901-5678-012345678901\n- Notion database: Project Decisions\n- Notion URL: https://notion.so/f2a3b4c5d6e7\n- Notion status: Decided\n- Priority: Low\n- Last edited: 2026-05-01T10:15:00+00:00\n- Source created_at: 2026-05-01T10:00:00+00:00",
+    "type": "decision",
+    "tags": [
+      "decision",
+      "process",
+      "bounty",
+      "notion-db:project-decisions"
+    ],
+    "confidence": 0.7,
+    "source": "notion",
+    "source_ref": "f2a3b4c5-d6e7-8901-5678-012345678901",
+    "provenance": "imported",
+    "created_at": "2026-05-01 10:00:00+00:00",
+    "updated_at": "2026-08-21 10:37:29.340181+00:00"
+  }
+]
