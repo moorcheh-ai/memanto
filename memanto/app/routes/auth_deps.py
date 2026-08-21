@@ -87,6 +87,37 @@ def _extract_presented_credential(
     return None
 
 
+def _origin_is_allowed(request: Request) -> bool:
+    """Reject management requests carrying a non-whitelisted Origin header.
+
+    The loopback trust in require_management_access is only safe when the
+    browser-side origin is also trusted. Without this check, any web page can
+    drive the victim's browser to issue requests to 127.0.0.1 (DNS rebinding /
+    localhost XSS); the TCP peer is loopback, so the request passes, and a
+    wildcard CORS config would let the page read the response (session tokens,
+    memories). Browsers always send the Origin header on cross-origin and
+    same-origin POST requests, so rejecting non-whitelisted Origins closes the
+    browser-driven bypass (MEM-01) without breaking CLI/curl callers (which
+    send no Origin).
+    """
+    origin = request.headers.get("origin")
+    if not origin or not isinstance(origin, str):
+        return True  # non-browser caller (CLI, curl, SDK) or mock/test request
+    from memanto.app.config import settings
+
+    allowed = [o.rstrip("/") for o in settings.ALLOWED_ORIGINS]
+    return origin.rstrip("/") in allowed
+
+
+def _require_allowed_origin(request: Request) -> None:
+    """FastAPI dependency raising 403 for disallowed browser origins."""
+    if not _origin_is_allowed(request):
+        raise HTTPException(
+            status_code=403,
+            detail="Origin not allowed for management endpoints",
+        )
+
+
 def _is_loopback_host(host: str | None) -> bool:
     """Return True when *host* is a loopback address (IPv4/IPv6/mapped)."""
     if not host:
@@ -148,6 +179,11 @@ def require_management_access(
 
     if presented and expected and secrets.compare_digest(presented, expected):
         return server_key
+
+    # Reject browser-originated requests from non-whitelisted origins even when
+    # the TCP peer is loopback (MEM-01: DNS rebinding / localhost XSS lets any
+    # web page reach 127.0.0.1 and read admin responses under a wildcard CORS).
+    _require_allowed_origin(request)
 
     client_host = request.client.host if request.client else None
     if _is_loopback_host(client_host):

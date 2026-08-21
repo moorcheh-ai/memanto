@@ -8,6 +8,7 @@ import json
 import logging
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import Any
 
 from filelock import FileLock, Timeout
 from moorcheh_sdk.exceptions import ConflictError
@@ -18,7 +19,11 @@ from memanto.app.config import get_data_dir
 from memanto.app.core import agent_namespace
 from memanto.app.models.session import AgentCreate, AgentInfo, AgentList
 from memanto.app.utils.atomic_write import atomic_write_text
-from memanto.app.utils.errors import AgentAlreadyExistsError, AgentNotFoundError
+from memanto.app.utils.errors import (
+    AgentAlreadyExistsError,
+    AgentNamespaceConflictError,
+    AgentNotFoundError,
+)
 from memanto.app.utils.temporal_helpers import as_utc_aware
 from memanto.app.utils.validation import validate_safe_id
 
@@ -51,14 +56,16 @@ class AgentService:
         return self.agents_dir / f"{agent_id}.json"
 
     def create_agent(
-        self, agent_create: AgentCreate, moorcheh_api_key: str
+        self, agent_create: AgentCreate, moorcheh_api_key: str | None = None
     ) -> AgentInfo:
         """
         Create a new agent
 
         Args:
             agent_create: Agent creation request
-            moorcheh_api_key: Moorcheh API key for namespace creation
+            moorcheh_api_key: DEPRECATED — ignored. The server-configured
+                MOORCHEH_API_KEY is always used (MEM-02 / CodeRabbit: caller
+                credentials must never drive backend operations).
 
         Returns:
             AgentInfo object
@@ -91,19 +98,36 @@ class AgentService:
                 )
 
             namespace = self._generate_namespace(agent_create.agent_id)
-            client = get_moorcheh_client(api_key=moorcheh_api_key)
+            # CodeRabbit review: always use the server-configured credential —
+            # never a caller-supplied key (the parameter was removed from the
+            # dependency wrapper to prevent ?api_key= overrides).
+            client = get_moorcheh_client()
 
             try:
                 client.namespaces.create(namespace, type="text")
                 print(f"[OK] Namespace created in Moorcheh: {namespace}")
             except ConflictError:
-                print(f"[OK] Namespace already exists in Moorcheh: {namespace}")
+                # MEM-03: a deterministic namespace (memanto_agent_{id}) can be
+                # pre-created by another tenant on a globally-addressable backend.
+                # Per CodeRabbit review (round 2): reject EVERY pre-existing
+                # namespace — an emptiness check cannot establish ownership
+                # (TOCTOU: another tenant can write between the check and
+                # adoption). Fail closed unconditionally unless Moorcheh
+                # provides an atomic namespace-claim/ownership operation.
+                raise AgentNamespaceConflictError(
+                    f"Namespace '{namespace}' already exists; refusing to adopt a "
+                    "pre-existing namespace (possible cross-tenant memory poisoning)"
+                )
             except Exception as exc:
                 message = str(exc).lower()
                 if (
                     "namespace" in message and "already exists" in message
                 ) or "conflict" in message:
-                    print(f"[OK] Namespace already exists in Moorcheh: {namespace}")
+                    # Same unconditional rejection as ConflictError above.
+                    raise AgentNamespaceConflictError(
+                        f"Namespace '{namespace}' already exists; refusing to adopt a "
+                        "pre-existing namespace (possible cross-tenant memory poisoning)"
+                    )
                 else:
                     raise Exception(
                         f"Failed to create namespace '{namespace}' in Moorcheh: {exc}"

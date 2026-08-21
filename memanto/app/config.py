@@ -130,7 +130,17 @@ class Settings(BaseSettings):
     DEBUG: bool = False
 
     # CORS Configuration
-    ALLOWED_ORIGINS: list[str] = ["*"]
+    # Default to the local UI origins only. A wildcard ("*") combined with the
+    # loopback trust in management endpoints lets any web page (or DNS-rebinding
+    # attacker) read admin responses, steal session tokens, and exfiltrate
+    # memories. Operators exposing the UI on other origins must list them
+    # explicitly (CVE/MEM-01).
+    ALLOWED_ORIGINS: list[str] = [
+        "http://localhost:8000",
+        "http://127.0.0.1:8000",
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+    ]
     # Setting allow_credentials=True with a wildcard origin causes Starlette to
     # reflect any request Origin back, allowing any site to make credentialed
     # cross-origin requests.  Default to False; set to True only when ALLOWED_ORIGINS

@@ -83,6 +83,14 @@ async def _require_local(request: Request) -> None:
     network addresses would let any reachable host kill the server, enumerate
     the filesystem, or replace API credentials without authentication.
     """
+    # MEM-01: a browser page on any other origin can drive fetches to
+    # 127.0.0.1 (DNS rebinding / localhost XSS). Reject non-whitelisted
+    # browser origins before the loopback check so admin endpoints stay
+    # unreadable from arbitrary web pages.
+    from memanto.app.routes.auth_deps import _require_allowed_origin
+
+    _require_allowed_origin(request)
+
     client_host = request.client.host if request.client else None
     if not _is_loopback(client_host):
         raise HTTPException(

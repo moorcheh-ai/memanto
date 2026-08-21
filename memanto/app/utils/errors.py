@@ -88,6 +88,17 @@ class AgentAlreadyExistsError(AgentError):
     pass
 
 
+class AgentNamespaceConflictError(AgentError):
+    """Raised when an agent's namespace already exists with foreign content (MEM-03).
+
+    A deterministic namespace (``memanto_agent_{id}``) can be pre-created by
+    another tenant on a globally-addressable backend. Adopting it would make the
+    agent read/write attacker-controlled memories, so creation fails closed.
+    """
+
+    pass
+
+
 def map_error_to_http_exception(error: Exception) -> HTTPException:
     """Map internal errors to HTTP exceptions"""
 
@@ -191,6 +202,19 @@ def map_error_to_http_exception(error: Exception) -> HTTPException:
                 "error": "AgentAlreadyExists",
                 "message": error.message,
                 "details": error.details,
+            },
+        )
+
+    elif isinstance(error, AgentNamespaceConflictError):
+        # MEM-03 / CodeRabbit: namespace conflict must surface as 409, not 500.
+        # Use a stable public message — never leak the backend namespace or
+        # exception text in the response.
+        return HTTPException(
+            status_code=409,
+            detail={
+                "error": "AgentNamespaceConflict",
+                "message": "Agent namespace is already in use by another tenant; refusing to adopt it.",
+                "details": {},
             },
         )
 
