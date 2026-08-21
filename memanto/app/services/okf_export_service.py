@@ -337,6 +337,10 @@ class OkfExportService:
         if source_ref:
             frontmatter["resource"] = source_ref
 
+        agent_id = mem.get("agent_id")
+        if agent_id:
+            frontmatter["agent_id"] = agent_id
+
         x_memanto: dict[str, Any] = {}
         for key in ("id", "confidence", "provenance", "source", "status"):
             val = mem.get(key)

@@ -36,6 +36,7 @@ _KNOWN_FIELDS = {
     "resource",
     "tags",
     "timestamp",
+    "agent_id",
     "x_memanto",
 }
 
@@ -160,6 +161,7 @@ def _parse_entry(chunk: str, file_path: Path, rel_base: Path) -> dict[str, Any] 
         "resource": frontmatter.get("resource"),
         "tags": tags,
         "timestamp": frontmatter.get("timestamp"),
+        "agent_id": frontmatter.get("agent_id"),
         "body": body,
         "x_memanto": x_memanto,
         "links": links,

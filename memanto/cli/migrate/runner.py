@@ -291,18 +291,47 @@ def run_migration(
     if dry_run or not rows:
         return summary, rows
 
-    batches = list(chunked(rows, BATCH_LIMIT))
-    summary.batches = len(batches)
+    # Group rows by effective agent_id. If a row carries its own agent_id, it
+    # takes precedence over the CLI-supplied target_agent (the fallback).
+    grouped_rows: dict[str, list[dict[str, Any]]] = {}
+    for row in rows:
+        target = row.get("agent_id") or agent_id
+        if not isinstance(target, str) or not target.strip():
+            summary.failed += 1
+            summary.errors.append(
+                f"Skipping record: invalid or missing target agent_id '{target}'."
+            )
+            continue
+        grouped_rows.setdefault(target, []).append(row)
+
+    # Flatten back into chunked batches, but now grouped by agent.
+    all_batches: list[tuple[str, list[dict[str, Any]]]] = []
+    for target_agent, agent_rows in grouped_rows.items():
+        for batch in chunked(agent_rows, BATCH_LIMIT):
+            all_batches.append((target_agent, batch))
+
+    summary.batches = len(all_batches)
 
     from memanto.app.utils.errors import MemoryError
 
-    for idx, batch in enumerate(batches, 1):
+    for idx, (target_agent, batch) in enumerate(all_batches, 1):
         if on_progress:
-            on_progress(
-                f"Importing batch {idx}/{len(batches)} ({len(batch)} memories)..."
-            )
+            msg = f"Importing batch {idx}/{len(all_batches)} ({len(batch)} memories)"
+            if len(grouped_rows) > 1:
+                msg += f" for agent '{target_agent}'"
+            on_progress(f"{msg}...")
+
         try:
-            result = client.batch_remember(agent_id=agent_id, memories=batch)
+            # Ensure the client has an active session for this specific agent
+            if client and client.agent_id != target_agent:
+                try:
+                    client.activate_agent(target_agent)
+                except Exception as exc:
+                    summary.failed += len(batch)
+                    summary.errors.append(f"batch {idx}: failed to activate agent '{target_agent}': {exc}")
+                    continue
+
+            result = client.batch_remember(agent_id=target_agent, memories=batch)
         except MemoryError:
             raise
         except Exception as exc:

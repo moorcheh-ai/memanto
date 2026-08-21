@@ -196,6 +196,7 @@ def map_mem0(export: dict[str, Any]) -> list[dict[str, Any]]:
 
         tags = list(dict.fromkeys(categories))
         scope = mem.get("export_scope") or {}
+        agent_id = scope.get("agent_id")
         scope_tag = _scope_tag(scope)
         if scope_tag:
             tags.append(scope_tag)
@@ -223,6 +224,7 @@ def map_mem0(export: dict[str, Any]) -> list[dict[str, Any]]:
                 "title": _title_from(content),
                 "content": _attach_footer(content, footer),
                 "type": memory_type,
+                "agent_id": agent_id,
                 "tags": tags,
                 "confidence": 0.8,
                 "source": "mem0",
@@ -282,6 +284,7 @@ def map_letta(export: dict[str, Any]) -> list[dict[str, Any]]:
                 "title": _title_from(content),
                 "content": _attach_footer(content, footer),
                 "type": "observation",
+                "agent_id": agent_id,
                 "tags": tags,
                 "confidence": 0.8,
                 "source": "letta",
@@ -344,6 +347,7 @@ def map_supermemory(export: dict[str, Any]) -> list[dict[str, Any]]:
                 "title": _title_from(content),
                 "content": _attach_footer(content, footer),
                 "type": None,
+                "agent_id": None,
                 "tags": tags,
                 "confidence": 0.8,
                 "source": "supermemory",
@@ -392,6 +396,7 @@ def map_supermemory(export: dict[str, Any]) -> list[dict[str, Any]]:
                     "title": _title_from(content),
                     "content": _attach_footer(content, footer),
                     "type": "artifact",
+                    "agent_id": None,
                     "tags": doc_tags,
                     "confidence": 0.7,
                     "source": "supermemory",
@@ -441,6 +446,8 @@ def map_okf(export: dict[str, Any]) -> list[dict[str, Any]]:
         okf_type = entry.get("type")
         memory_type = _coerce_type(x_memanto.get("type")) or _coerce_type(okf_type)
 
+        agent_id = entry.get("agent_id")
+
         tags = [str(t) for t in (entry.get("tags") or []) if t]
         resource = entry.get("resource")
 
@@ -475,6 +482,7 @@ def map_okf(export: dict[str, Any]) -> list[dict[str, Any]]:
                 "title": title or _title_from(content),
                 "content": content,
                 "type": memory_type,
+                "agent_id": agent_id,
                 "tags": tags,
                 "confidence": confidence,
                 "source": source,
