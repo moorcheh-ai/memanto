@@ -38,7 +38,8 @@ def check_env():
     if not os.getenv("MOORCHEH_API_KEY"):
         missing.append("MOORCHEH_API_KEY")
     if not os.getenv("OPENROUTER_API_KEY") and not os.getenv("OPENAI_API_KEY"):
-        missing.append("OPENROUTER_API_KEY or OPENAI_API_KEY")
+        if not os.getenv("ORCAROUTER_API_KEY"):
+            missing.append("OPENROUTER_API_KEY, OPENAI_API_KEY, or ORCAROUTER_API_KEY")
     if missing:
         print("❌ Missing environment variables: " + ", ".join(missing))
         print("   Copy .env.example to .env and add your keys.")

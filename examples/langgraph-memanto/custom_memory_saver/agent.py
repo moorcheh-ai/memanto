@@ -44,7 +44,6 @@ import os
 from typing import Literal
 
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage, ToolMessage
-from langchain_openai import ChatOpenAI
 from langgraph.checkpoint.memory import MemorySaver
 from langgraph.graph import END, START, MessagesState, StateGraph
 from langgraph_memanto import create_memanto_tools
@@ -128,13 +127,9 @@ def get_memanto_client_and_tools():
 
 def create_llm():
     """Create the LLM with Memanto tools bound."""
-    llm = ChatOpenAI(
-        model=os.environ.get("LLM_MODEL", "openai/gpt-4o-mini"),
-        temperature=0,
-        api_key=os.environ.get("OPENROUTER_API_KEY")
-        or os.environ.get("OPENAI_API_KEY"),
-        base_url=os.environ.get("OPENAI_API_BASE", "https://openrouter.ai/api/v1"),
-    )
+    from orcarouter_llm import build_orcarouter_llm
+
+    llm = build_orcarouter_llm(temperature=0)
     _, tools = get_memanto_client_and_tools()
     return llm.bind_tools(tools)
 

@@ -12,6 +12,27 @@ cp .env.example .env
 # Edit .env with your Memanto and LLM API keys
 `
 
+## Using OrcaRouter as your LLM gateway
+
+Every example routes its LangGraph agent through a **named** OpenAI-compatible
+provider. By default they use OpenRouter (or OpenAI), but setting
+`ORCAROUTER_API_KEY` in `.env` switches the whole fleet to
+[OrcaRouter](https://www.orcarouter.ai) — a smart model-routing gateway at
+`https://api.orcarouter.ai/v1`:
+
+```bash
+# .env
+ORCAROUTER_API_KEY=sk-orca-...
+# Optional: pick a specific gateway model (default is the smart-routing `orcarouter/auto`)
+# ORCAROUTER_MODEL=orcarouter/auto
+```
+
+When OrcaRouter is configured, the agent uses its smart-routing model
+`orcarouter/auto` — OrcaRouter picks the best upstream model for each request.
+It also runs gateway-level, zero-trust security for AI agents on the same
+endpoint — screening every prompt/response and governing every tool call on a
+default-deny basis, with no application code changes.
+
 ## Running the Examples
 
 Because the examples share the core tools module, you should run them as Python modules from this root directory:
