@@ -20,7 +20,8 @@ generated:
   by: memanto-liberate/1.0
   at: '2026-08-21T06:54:21.323047+00:00'
 sources:
-- id: claude:60bf29e2-4c44-418c-aa94-aa0af1c868cf
+- resource: conversation 60bf29e2-4c44-418c-aa94-aa0af1c868cf in a claude data export
+  id: claude:60bf29e2-4c44-418c-aa94-aa0af1c868cf
   author: claude
   title: 'MLOps on Kubernetes: comprehensive analysis across resources'
 ---

@@ -63,6 +63,14 @@ fi
 if ! create_output=$("$MEMANTO" agent create "$AGENT" --pattern tool 2>&1); then
   # Only an existing agent is survivable; anything else is a real failure.
   if echo "$create_output" | grep -qi "already exists"; then
+    if [ "${FRESH:-0}" = "1" ]; then
+      # The delete above is allowed to fail quietly, so this is where a failed
+      # reset actually surfaces. Importing now would stack onto the memories
+      # FRESH was meant to clear and inflate every total the run reports.
+      echo "FRESH=1 was requested but '$AGENT' still exists, so the reset failed." >&2
+      echo "Delete it manually before re-running, or the totals will be wrong." >&2
+      exit 1
+    fi
     echo "    (already exists, re-run with FRESH=1 for clean totals)"
   else
     echo "$create_output" >&2

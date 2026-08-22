@@ -2,7 +2,7 @@
 Upgrade a Memanto-written OKF bundle from spec v0.1 to v0.2.
 
 Memanto's ``OkfExportService`` targets OKF v0.1: it emits ``timestamp`` and puts
-YAML frontmatter into every ``index.md``. The spec moved to v0.2 on 19 Aug 2026
+YAML frontmatter into every ``index.md``. The spec moved to v0.2 on 24 Jul 2026
 (https://github.com/GoogleCloudPlatform/knowledge-catalog/blob/main/okf/SPEC.md),
 which supersedes ``timestamp`` with a ``generated`` block, adds a ``sources``
 provenance family, and permits frontmatter in an index file only at the bundle
@@ -47,6 +47,11 @@ def _split(text: str) -> tuple[dict[str, Any], str]:
 
 
 def _join(frontmatter: dict[str, Any], body: str) -> str:
+    """Re-serialize a document from its frontmatter and body.
+
+    ``sort_keys=False`` is deliberate: it keeps the key order the upgrade
+    built, so a re-run produces a byte-identical file rather than a diff.
+    """
     front = yaml.safe_dump(
         frontmatter, sort_keys=False, allow_unicode=True, default_flow_style=False
     ).strip()
@@ -59,7 +64,15 @@ def _source_entry(record: dict[str, Any]) -> dict[str, Any] | None:
     if not ref:
         return None
     source = record.get("source") or "unknown"
+    # Spec 5.1 makes resource REQUIRED on every entry. A conversation inside a
+    # private data export is not an artifact a consumer can follow, so this is
+    # the scope descriptor form that 5.1 and 6.2 both allow, not a path.
+    if str(ref).endswith("saved-memories"):
+        resource = f"saved memory list pasted from {source}"
+    else:
+        resource = f"conversation {ref} in a {source} data export"
     entry: dict[str, Any] = {
+        "resource": resource,
         "id": ref if ":" in str(ref) else f"{source}:{ref}",
         "author": f"{source}",
     }

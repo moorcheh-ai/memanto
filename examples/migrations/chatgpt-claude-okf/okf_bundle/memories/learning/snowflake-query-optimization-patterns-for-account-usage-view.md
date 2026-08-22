@@ -20,7 +20,8 @@ generated:
   by: memanto-liberate/1.0
   at: '2026-07-31T11:08:51.471094+00:00'
 sources:
-- id: claude:d9692fc2-a237-49d9-a0b7-a568198c89d9
+- resource: conversation d9692fc2-a237-49d9-a0b7-a568198c89d9 in a claude data export
+  id: claude:d9692fc2-a237-49d9-a0b7-a568198c89d9
   author: claude
   title: Optimizing Snowflake grants and user activity query
 ---

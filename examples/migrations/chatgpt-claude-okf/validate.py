@@ -58,6 +58,11 @@ def judge(question: str, expected: str, actual: str, model: str) -> dict[str, st
 
 
 def _judge(question: str, expected: str, actual: str, model: str) -> dict[str, str]:
+    """Ask the judge model whether the migrated answer preserved the meaning.
+
+    Imports OpenAI lazily so that ``--help`` and argument errors work without
+    the dependency installed.
+    """
     from openai import OpenAI
 
     client = OpenAI(
@@ -82,12 +87,23 @@ def _judge(question: str, expected: str, actual: str, model: str) -> dict[str, s
     text = (response.choices[0].message.content or "").strip()
     text = text.removeprefix("```json").removeprefix("```").removesuffix("```")
     try:
-        return json.loads(text)
+        parsed = json.loads(text)
     except json.JSONDecodeError:
         return {"verdict": "fail", "why": f"unparseable judge reply: {text[:80]}"}
+    if not isinstance(parsed, dict):
+        # A bare array or scalar is valid JSON. Returning it would blow up on
+        # .get() at the call site and take the whole run down with it.
+        return {"verdict": "fail", "why": f"judge reply was not an object: {text[:80]}"}
+    return parsed
 
 
 def main() -> int:
+    """Score recall parity across the golden question set.
+
+    Exits 0 when every row passed, 1 when a row failed, and 2 when a judge
+    call errored, because an incomplete score is not the same as a failing
+    one and a caller needs to tell them apart.
+    """
     parser = argparse.ArgumentParser(description="Round-trip recall parity check")
     parser.add_argument("--agent", required=True)
     parser.add_argument("--golden", type=Path, default=Path("golden_qa.json"))

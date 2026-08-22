@@ -85,7 +85,11 @@ def _parse_dt(value: Any) -> datetime | None:
             parsed = datetime.fromisoformat(text)
         except ValueError:
             return None
-        return parsed if parsed.tzinfo else parsed.replace(tzinfo=timezone.utc)
+        # An offset-aware value still has to be converted, not just accepted,
+        # or a +05:30 source timestamp stays +05:30 in the bundle.
+        if parsed.tzinfo:
+            return parsed.astimezone(timezone.utc)
+        return parsed.replace(tzinfo=timezone.utc)
     return None
 
 
@@ -165,14 +169,23 @@ def read_chatgpt(path: Path) -> Iterator[Conversation]:
     for conv in _load_conversations(path):
         if not isinstance(conv, dict):
             continue
-        mapping = conv.get("mapping") or {}
+        mapping = conv.get("mapping")
+        if not isinstance(mapping, dict):
+            # A valid JSON document can still carry the wrong shape here. Walking
+            # a list or a scalar would raise rather than skip the conversation.
+            continue
         node_id, seen, chain = conv.get("current_node"), set(), []
         while node_id and node_id not in seen:
             seen.add(node_id)
-            node = mapping.get(node_id) or {}
-            message = node.get("message") or {}
-            content = message.get("content") or {}
-            role = (message.get("author") or {}).get("role")
+            node = mapping.get(node_id)
+            if not isinstance(node, dict):
+                break
+            message = node.get("message")
+            message = message if isinstance(message, dict) else {}
+            content = message.get("content")
+            content = content if isinstance(content, dict) else {}
+            author = message.get("author")
+            role = author.get("role") if isinstance(author, dict) else None
             if role in ("user", "assistant") and content.get("content_type") == "text":
                 parts = content.get("parts") or []
                 text = "\n".join(p.strip() for p in parts if isinstance(p, str)).strip()
@@ -215,12 +228,18 @@ def inspect_export(path: Path, source: str) -> dict[str, Any]:
             when = _parse_dt(conv.get("create_time"))
             if when:
                 dates.append(when)
-            for node in (conv.get("mapping") or {}).values():
-                message = (node or {}).get("message") or {}
-                if not message:
+            mapping = conv.get("mapping")
+            if not isinstance(mapping, dict):
+                continue
+            for node in mapping.values():
+                if not isinstance(node, dict):
+                    continue
+                message = node.get("message")
+                if not isinstance(message, dict) or not message:
                     continue
                 counts["messages"] += 1
-                content = message.get("content") or {}
+                content = message.get("content")
+                content = content if isinstance(content, dict) else {}
                 content_type = content.get("content_type")
                 if message.get("recipient") == "bio":
                     counts["bio_writes"] += 1
@@ -248,7 +267,8 @@ def read_claude(path: Path) -> Iterator[Conversation]:
         for message in conv.get("chat_messages") or []:
             if not isinstance(message, dict):
                 continue
-            text = (message.get("text") or "").strip()
+            raw = message.get("text")
+            text = raw.strip() if isinstance(raw, str) else ""
             if not text:
                 blocks = message.get("content") or []
                 text = "\n".join(
@@ -476,12 +496,27 @@ def write_bundle(records: list[dict[str, Any]], out: Path, name: str) -> dict[st
 
 
 def main() -> int:
+    """Read the exports, distill them, and write an OKF bundle.
+
+    Ordering matters here. Paths are validated and the agent is activated
+    before any extraction call, so a typo or a missing session costs a second
+    rather than a full run of paid API calls. The privacy filter runs before
+    the bundle is written, because index documents repeat titles and deleting
+    files afterwards would leave the text behind in the listings.
+    """
     parser = argparse.ArgumentParser(
         description="Turn a ChatGPT/Claude export into a portable OKF bundle."
     )
     parser.add_argument("--chatgpt", type=Path, help="ChatGPT export zip/json")
     parser.add_argument("--claude", type=Path, help="Claude export zip/json")
     parser.add_argument("--saved", type=Path, help="Saved memories, one per line")
+    parser.add_argument(
+        "--saved-source",
+        choices=["chatgpt", "claude"],
+        help="Which assistant the --saved memories came from. A pasted list "
+        "carries no source of its own, and provenance is not worth guessing. "
+        "Inferred when only one conversation source is given.",
+    )
     parser.add_argument("--agent", help="Memanto agent used for distillation")
     parser.add_argument("--out", type=Path, default=Path("okf_bundle"))
     parser.add_argument("--max-per-conversation", type=int, default=5)
@@ -514,6 +549,9 @@ def main() -> int:
     )
     args = parser.parse_args()
 
+    if args.limit is not None and args.limit < 0:
+        parser.error("--limit must be zero or greater")
+
     # Validate every supplied path up front, before touching an agent or the API.
     _require_paths(
         (args.chatgpt, "--chatgpt"),
@@ -539,7 +577,19 @@ def main() -> int:
 
     records: list[dict[str, Any]] = []
 
-    for path, source in ((args.saved, "chatgpt"),):
+    saved_source = args.saved_source
+    if args.saved and not saved_source:
+        if args.claude and not args.chatgpt:
+            saved_source = "claude"
+        elif args.chatgpt and not args.claude:
+            saved_source = "chatgpt"
+        else:
+            parser.error(
+                "--saved-source is required (chatgpt or claude) when the saved "
+                "memories cannot be attributed from the conversation sources"
+            )
+
+    for path, source in ((args.saved, saved_source),):
         if path:
             print(f"Classifying saved memories from {path}...")
             saved = classify_saved(path, source)
@@ -574,7 +624,9 @@ def main() -> int:
                 continue
             print(f"Distilling {source} conversations from {path}...")
             threads = reader(path)
-            if args.limit:
+            if args.limit is not None:
+                # 0 is falsy, so a truthiness test here would quietly send the
+                # entire export to extraction when zero was asked for.
                 threads = (c for i, c in enumerate(threads) if i < args.limit)
             records += distill(
                 client, args.agent, threads, source, args.max_per_conversation

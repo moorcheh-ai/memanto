@@ -20,7 +20,8 @@ generated:
   by: memanto-liberate/1.0
   at: '2026-08-06T07:34:53.218765+00:00'
 sources:
-- id: claude:2f7390c5-d2ac-4fb2-b9f5-8217879c6ed1
+- resource: conversation 2f7390c5-d2ac-4fb2-b9f5-8217879c6ed1 in a claude data export
+  id: claude:2f7390c5-d2ac-4fb2-b9f5-8217879c6ed1
   author: claude
   title: Unspecified request for assistance
 ---
