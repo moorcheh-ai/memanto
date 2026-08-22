@@ -368,6 +368,13 @@ def main() -> None:
         from memanto.cli.client.sdk_client import SdkClient
 
         client = SdkClient(api_key=moorcheh_key)
+        # Create agent if it does not exist, then activate a session
+        try:
+            client.create_agent(args.agent_id)
+            print(f"  ✅ Agent '{args.agent_id}' created")
+        except Exception:
+            pass  # agent already exists
+        client.activate_agent(args.agent_id)
     except Exception as e:
         print(f"❌ Failed to initialise Memanto client: {e}")
         sys.exit(1)

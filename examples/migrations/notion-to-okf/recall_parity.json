@@ -1,0 +1,52 @@
+{
+  "timestamp": "2026-08-15T16:52:16.959552+00:00",
+  "agent_id": "notion-migration-demo",
+  "mode": "offline",
+  "questions": 6,
+  "passing": 6,
+  "recall_parity_percent": 100.0,
+  "results": [
+    {
+      "id": "Q001",
+      "question": "What decision was made about the memory backend?",
+      "query_type": "decision",
+      "score": 1.0,
+      "mode": "offline"
+    },
+    {
+      "id": "Q002",
+      "question": "What is the preferred API response time?",
+      "query_type": "preference",
+      "score": 1.0,
+      "mode": "offline"
+    },
+    {
+      "id": "Q003",
+      "question": "What was agreed in the Q3 planning meeting?",
+      "query_type": "event",
+      "score": 1.0,
+      "mode": "offline"
+    },
+    {
+      "id": "Q004",
+      "question": "What bug was found in the datetime handling?",
+      "query_type": "fact",
+      "score": 1.0,
+      "mode": "offline"
+    },
+    {
+      "id": "Q005",
+      "question": "What benchmark was used to evaluate Memanto?",
+      "query_type": "fact",
+      "score": 1.0,
+      "mode": "offline"
+    },
+    {
+      "id": "Q006",
+      "question": "What is the goal for the Memanto bug bounty?",
+      "query_type": "goal",
+      "score": 1.0,
+      "mode": "offline"
+    }
+  ]
+}
