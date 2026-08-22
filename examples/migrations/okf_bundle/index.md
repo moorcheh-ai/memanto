@@ -1,7 +1,7 @@
 ---
 type: index
 title: ai-conversations-showcase knowledge bundle
-timestamp: 2026-08-19T21:19:47
+timestamp: 2026-08-22T22:19:59
 ---
 
 # ai-conversations-showcase — OKF bundle

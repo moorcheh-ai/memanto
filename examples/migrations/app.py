@@ -380,17 +380,23 @@ def _render_api_key_panel(source: str, agent_id: str, api_key: str) -> None:
                 if live is not None:
                     with st.spinner("Migrating..."):
                         result = _do_migrate(source, live, agent_id, api_key)
-                    st.session_state[f"migrate_result_{source}"] = result
+                    st.session_state[f"migrate_result_{source}"] = {"result": result, "agent_id": agent_id}
 
     summary = st.session_state.get(f"dry_run_summary_{source}")
     rows = st.session_state.get(f"dry_run_rows_{source}")
-    migrate_result = st.session_state.get(f"migrate_result_{source}")
+    migrate_stored = st.session_state.get(f"migrate_result_{source}")
 
-    if migrate_result:
+    if migrate_stored and migrate_stored.get("agent_id") != agent_id:
+        st.session_state.pop(f"migrate_result_{source}", None)
+        migrate_stored = None
+
+    if migrate_stored:
+        migrate_result = migrate_stored["result"]
+        result_agent = migrate_stored["agent_id"]
         imported = migrate_result["imported"]
         failed = migrate_result["failed"]
         if failed == 0:
-            st.success(f"Migration complete! {imported} memories imported into `{agent_id}`.")
+            st.success(f"Migration complete! {imported} memories imported into `{result_agent}`.")
         else:
             st.warning(f"Done with errors. Imported: {imported}, Failed: {failed}")
         m1, m2, m3 = st.columns(3)

@@ -128,7 +128,15 @@ def run(agent_id: str, golden_path: Path) -> int:
     try:
         golden = _load_golden(golden_path)
         judge = _build_judge()
+    except Exception as exc:
+        print(f"ERROR: setup failed: {exc}", file=sys.stderr)
+        try:
+            client.deactivate_agent(agent_id)
+        except Exception as cleanup_exc:
+            print(f"deactivate_agent failed: {cleanup_exc}", file=sys.stderr)
+        return 1
 
+    try:
         for item in golden:
             qid = item["id"]
             question = item["question"]

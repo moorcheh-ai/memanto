@@ -421,7 +421,7 @@ def _build_gemini_entry(ci: int) -> dict:
     user_q, _ = _pick_exchange(ci + 2)
     entry: dict = {
         "header": "Gemini Apps",
-        "title": f"Prompted {user_q[:80]}",
+        "title": f"Prompted {user_q}",
         "subtitles": [],
         "time": _fake_iso(_fake_ts()),
         "products": ["Gemini Apps"],
