@@ -15,7 +15,7 @@
     "source_ref": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
     "provenance": "imported",
     "created_at": "2025-09-15 08:30:00+00:00",
-    "updated_at": "2026-08-22 03:24:13.332153+00:00"
+    "updated_at": "2026-08-22 03:28:03.505029+00:00"
   },
   {
     "title": "Switch primary memory backend from Pinecone to Memanto",
@@ -32,7 +32,7 @@
     "source_ref": "b2c3d4e5-f6a7-8901-bcde-f12345678901",
     "provenance": "imported",
     "created_at": "2025-10-01 09:00:00+00:00",
-    "updated_at": "2026-08-22 03:24:13.332153+00:00"
+    "updated_at": "2026-08-22 03:28:03.505029+00:00"
   },
   {
     "title": "User prefers concise API responses under 500ms",
@@ -49,7 +49,7 @@
     "source_ref": "c3d4e5f6-a7b8-9012-cdef-123456789012",
     "provenance": "imported",
     "created_at": "2025-08-20 11:15:00+00:00",
-    "updated_at": "2026-08-22 03:24:13.332153+00:00"
+    "updated_at": "2026-08-22 03:28:03.505029+00:00"
   },
   {
     "title": "Q3 planning: memory system roadmap",
@@ -66,7 +66,7 @@
     "source_ref": "d4e5f6a7-b8c9-0123-def0-234567890123",
     "provenance": "imported",
     "created_at": "2025-10-15 14:00:00+00:00",
-    "updated_at": "2026-08-22 03:24:13.332153+00:00"
+    "updated_at": "2026-08-22 03:28:03.505029+00:00"
   },
   {
     "title": "LoCoMo: Long-Conversation Memory Benchmark",
@@ -83,7 +83,7 @@
     "source_ref": "e5f6a7b8-c9d0-1234-ef01-345678901234",
     "provenance": "imported",
     "created_at": "2025-09-05 10:00:00+00:00",
-    "updated_at": "2026-08-22 03:24:13.332153+00:00"
+    "updated_at": "2026-08-22 03:28:03.505029+00:00"
   },
   {
     "title": "Adopt UTC-aware datetimes throughout memory write pipeline",
@@ -100,7 +100,7 @@
     "source_ref": "f6a7b8c9-d0e1-2345-f012-456789012345",
     "provenance": "imported",
     "created_at": "2026-06-24 09:00:00+00:00",
-    "updated_at": "2026-08-22 03:24:13.332153+00:00"
+    "updated_at": "2026-08-22 03:28:03.505029+00:00"
   },
   {
     "title": "Agent committed to shipping temporal recall by end of Q3",
@@ -117,7 +117,7 @@
     "source_ref": "a7b8c9d0-e1f2-3456-0123-567890123456",
     "provenance": "imported",
     "created_at": "2025-10-15 15:30:00+00:00",
-    "updated_at": "2026-08-22 03:24:13.332153+00:00"
+    "updated_at": "2026-08-22 03:28:03.505029+00:00"
   },
   {
     "title": "Observation: LLM judge variance increases above temperature 0.1",
@@ -134,7 +134,7 @@
     "source_ref": "b8c9d0e1-f2a3-4567-1234-678901234567",
     "provenance": "imported",
     "created_at": "2025-11-10 13:45:00+00:00",
-    "updated_at": "2026-08-22 03:24:13.332153+00:00"
+    "updated_at": "2026-08-22 03:28:03.505029+00:00"
   },
   {
     "title": "Neel (Moorcheh co-founder) primary technical contact",
@@ -151,7 +151,7 @@
     "source_ref": "c9d0e1f2-a3b4-5678-2345-789012345678",
     "provenance": "imported",
     "created_at": "2026-01-10 08:00:00+00:00",
-    "updated_at": "2026-08-22 03:24:13.332153+00:00"
+    "updated_at": "2026-08-22 03:28:03.505029+00:00"
   },
   {
     "title": "Goal: win Memanto bug bounty with 3+ Critical/High severity bugs",
@@ -168,7 +168,7 @@
     "source_ref": "d0e1f2a3-b4c5-6789-3456-890123456789",
     "provenance": "imported",
     "created_at": "2026-06-20 07:00:00+00:00",
-    "updated_at": "2026-08-22 03:24:13.332153+00:00"
+    "updated_at": "2026-08-22 03:28:03.505029+00:00"
   },
   {
     "title": "Memanto bounty kickoff \u2014 issue #639 scoping",
@@ -185,7 +185,7 @@
     "source_ref": "e1f2a3b4-c5d6-7890-4567-901234567890",
     "provenance": "imported",
     "created_at": "2026-05-28 09:00:00+00:00",
-    "updated_at": "2026-08-22 03:24:13.332153+00:00"
+    "updated_at": "2026-08-22 03:28:03.505029+00:00"
   },
   {
     "title": "Use BountyHub for all open-source contribution payouts",
@@ -202,6 +202,6 @@
     "source_ref": "f2a3b4c5-d6e7-8901-5678-012345678901",
     "provenance": "imported",
     "created_at": "2026-05-01 10:00:00+00:00",
-    "updated_at": "2026-08-22 03:24:13.332153+00:00"
+    "updated_at": "2026-08-22 03:28:03.505029+00:00"
   }
 ]
