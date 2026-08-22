@@ -46,7 +46,7 @@ def _load_golden(path: Path) -> list[dict]:
 
 
 def _build_judge():
-    # validate.py lives at examples/migrations/ai-conversations/validation/
+    # validate.py lives at examples/migrations/validation/
     # evaluator.py lives at examples/benchmarks/memanto-vs-mem0/
     """Create an LLM judge configured with the validation evaluator model.
     
@@ -54,6 +54,8 @@ def _build_judge():
         LLMJudge: The configured language model judge.
     """
     evaluator_path = _HERE.parent.parent / "benchmarks" / "memanto-vs-mem0" / "evaluator.py"
+    if not evaluator_path.exists():
+        raise FileNotFoundError(f"evaluator.py not found at {evaluator_path}")
     import importlib.util
     spec = importlib.util.spec_from_file_location("evaluator", evaluator_path)
     mod = importlib.util.module_from_spec(spec)
@@ -103,6 +105,11 @@ def run(agent_id: str, golden_path: Path) -> int:
         print("ERROR: MOORCHEH_API_KEY is not set", file=sys.stderr)
         return 1
 
+    openrouter_key = os.environ.get("OPENROUTER_API_KEY", "").strip()
+    if not openrouter_key:
+        print("ERROR: OPENROUTER_API_KEY is not set", file=sys.stderr)
+        return 1
+
     from memanto.cli.client.sdk_client import SdkClient
     from memanto.app.utils.errors import AgentAlreadyExistsError
 
@@ -137,32 +144,45 @@ def run(agent_id: str, golden_path: Path) -> int:
                 print(f"    answer() failed: {exc}", file=sys.stderr)
                 recalled = ""
 
-            score = judge.score(
-                system_name="memanto",
-                query_id=qid,
-                query=question,
-                golden_answer=golden_answer,
-                stale_signals=[],
-                current_signals=[golden_answer],
-                recalled_answer=recalled,
-            )
+            try:
+                score = judge.score(
+                    system_name="memanto",
+                    query_id=qid,
+                    query=question,
+                    golden_answer=golden_answer,
+                    stale_signals=[],
+                    current_signals=[golden_answer],
+                    recalled_answer=recalled,
+                )
+                ok = score.total >= MIN_SCORE_TO_PASS
+                accuracy = score.accuracy
+                staleness_avoidance = score.staleness_avoidance
+                precision = score.precision
+                reasoning = score.reasoning
+            except Exception as exc:
+                print(f"    judge.score() failed for {qid}: {exc}", file=sys.stderr)
+                ok = False
+                accuracy = staleness_avoidance = precision = 0
+                reasoning = str(exc)
 
-            ok = score.total >= MIN_SCORE_TO_PASS
             if ok:
                 passed += 1
 
             results.append({
                 "id": qid,
                 "source": source,
-                "total": score.total,
-                "accuracy": score.accuracy,
-                "staleness_avoidance": score.staleness_avoidance,
-                "precision": score.precision,
+                "total": accuracy + staleness_avoidance + precision,
+                "accuracy": accuracy,
+                "staleness_avoidance": staleness_avoidance,
+                "precision": precision,
                 "passed": ok,
-                "reasoning": score.reasoning,
+                "reasoning": reasoning,
             })
     finally:
-        client.deactivate_agent(agent_id)
+        try:
+            client.deactivate_agent(agent_id)
+        except Exception as exc:
+            print(f"deactivate_agent failed: {exc}", file=sys.stderr)
 
     _print_table(results)
 

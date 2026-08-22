@@ -9,6 +9,7 @@ obsidian, chroma) are implemented here.
 
 from __future__ import annotations
 
+import json
 from collections.abc import Callable
 from datetime import datetime, timezone
 from typing import Any
@@ -210,7 +211,7 @@ def map_zep(export: dict[str, Any]) -> list[dict[str, Any]]:
             content = (edge.get("fact") or "").strip()
             if not content:
                 continue
-            rating = edge.get("score") or edge.get("relevance")
+            rating = edge.get("score") if "score" in edge else edge.get("relevance")
             try:
                 confidence = min(1.0, max(0.0, float(rating))) if rating is not None else 0.8
             except (TypeError, ValueError):
@@ -303,7 +304,10 @@ def map_langgraph(export: dict[str, Any]) -> list[dict[str, Any]]:
             value = item.get("value")
             if isinstance(value, dict):
                 raw_content = value.get("content")
-                content = (str(raw_content) if raw_content is not None else "").strip()
+                if raw_content is not None:
+                    content = str(raw_content).strip()
+                else:
+                    content = json.dumps(value, ensure_ascii=False).strip()
             elif isinstance(value, str):
                 content = value.strip()
             else:

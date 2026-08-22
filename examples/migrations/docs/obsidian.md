@@ -7,7 +7,7 @@ No export step needed — point the CLI directly at your vault directory.
 
 Your vault is the folder you open in Obsidian. It typically looks like:
 
-```
+```text
 ~/Documents/MyVault/
   ├── Note One.md
   ├── Projects/

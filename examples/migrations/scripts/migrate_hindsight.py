@@ -26,14 +26,13 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="Migrate Hindsight memories to Memanto")
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument("--agent", default=None)
-    parser.add_argument("--api-key", default=None, help="Hindsight API key (overrides HINDSIGHT_API_KEY env)")
     parser.add_argument("--base-url", default=None, help="Hindsight base URL (overrides HINDSIGHT_BASE_URL env)")
     parser.add_argument("--bank-id", default=None, help="Hindsight bank ID (overrides HINDSIGHT_BANK_ID env)")
     args = parser.parse_args()
 
-    api_key = args.api_key or os.environ.get("HINDSIGHT_API_KEY", "")
+    api_key = os.environ.get("HINDSIGHT_API_KEY", "")
     if not api_key:
-        print("HINDSIGHT_API_KEY is not set. Export it or pass --api-key.", file=sys.stderr)
+        print("HINDSIGHT_API_KEY is not set.", file=sys.stderr)
         return 1
 
     cmd = ["memanto", "migrate", "hindsight"]

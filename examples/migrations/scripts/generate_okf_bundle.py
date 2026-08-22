@@ -103,17 +103,39 @@ async def _build_langgraph_export() -> dict:
         items = []
         seen: set[tuple] = set()
         for ns in await store.alist_namespaces():
-            for item in await store.asearch(ns):
-                key = (tuple(item.namespace), item.key)
-                if key in seen:
-                    continue
-                seen.add(key)
-                items.append({
-                    "namespace": list(item.namespace),
-                    "key": item.key,
-                    "value": item.value,
-                    "created_at": item.created_at.isoformat() if item.created_at else None,
-                })
+            offset = 0
+            limit = 1000
+            while True:
+                try:
+                    batch = await store.asearch(ns, limit=limit, offset=offset)
+                except TypeError:
+                    batch = await store.asearch(ns)
+                    for item in batch:
+                        key = (tuple(item.namespace), item.key)
+                        if key not in seen:
+                            seen.add(key)
+                            items.append({
+                                "namespace": list(item.namespace),
+                                "key": item.key,
+                                "value": item.value,
+                                "created_at": item.created_at.isoformat() if item.created_at else None,
+                            })
+                    break
+                if not batch:
+                    break
+                for item in batch:
+                    key = (tuple(item.namespace), item.key)
+                    if key not in seen:
+                        seen.add(key)
+                        items.append({
+                            "namespace": list(item.namespace),
+                            "key": item.key,
+                            "value": item.value,
+                            "created_at": item.created_at.isoformat() if item.created_at else None,
+                        })
+                if len(batch) < limit:
+                    break
+                offset += limit
         return {"items": items}
     except ImportError:
         print("  [skip] langgraph not installed — omitting LangGraph memories", file=sys.stderr)
@@ -175,6 +197,18 @@ def _clean_bundle(out_dir: Path) -> None:
 
     if not out_dir.exists():
         return
+
+    expected_markers = {"memories", "metrics", "index.md"}
+    existing = {child.name for child in out_dir.iterdir()}
+    is_empty = len(existing) == 0
+    has_bundle_markers = bool(existing & expected_markers)
+
+    if not is_empty and not has_bundle_markers:
+        raise RuntimeError(
+            f"Refusing to delete {out_dir}: directory exists but does not look like a "
+            "previously generated OKF bundle. Remove it manually if you are sure."
+        )
+
     for child in out_dir.iterdir():
         if child.is_dir():
             shutil.rmtree(child)
@@ -196,7 +230,11 @@ def main() -> int:
     print(f"\ngenerating OKF bundle  ->  {out_dir}")
     print("=" * 60)
 
-    _clean_bundle(out_dir)
+    try:
+        _clean_bundle(out_dir)
+    except RuntimeError as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return 1
 
     rows = _collect_rows()
     if not rows:

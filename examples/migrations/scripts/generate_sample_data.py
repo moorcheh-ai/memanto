@@ -16,7 +16,7 @@ from typing import Callable
 
 SCRIPT_DIR = Path(__file__).parent
 SAMPLE_DIR = SCRIPT_DIR.parent / "sample_data"
-REPO_ROOT = SCRIPT_DIR.parents[3]
+REPO_ROOT = SCRIPT_DIR.parents[2]
 
 _GEMINI_INNER = "Takeout/My Activity/Gemini Apps/My Activity.json"
 

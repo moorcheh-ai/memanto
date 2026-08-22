@@ -2,8 +2,7 @@
 │ Claude -> Memanto  Dry run │
 ╰────────────────────────────╯
   … Extracting 
-examples/migrations/ai-conversations/sample_data/claude_export.z
-ip
+examples/migrations/sample_data/claude_export.zip
   … Mapping source records onto Memanto schema...
 
 ╭────────────────────── Dry run complete ──────────────────────╮

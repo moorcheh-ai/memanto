@@ -7,7 +7,7 @@
 2. Click your profile icon → **Settings**
 3. Go to **Data controls**
 4. Click **Export data** → confirm in the modal
-5. OpenAI sends a download link by email (sometimes SMS); allow up to 24 hours for delivery. The link expires after 24 hours. Note: ChatGPT Business and Enterprise workspace accounts cannot use this export method.
+5. OpenAI sends a download link by email (sometimes SMS); allow up to 7 days for delivery. The link expires after 24 hours. Note: ChatGPT Business and Enterprise workspace accounts cannot use this export method.
 6. Download and save the ZIP — it contains `conversations.json`
 
 ## CLI command

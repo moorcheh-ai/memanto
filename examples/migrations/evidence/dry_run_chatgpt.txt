@@ -2,8 +2,7 @@
 │ Chatgpt -> Memanto  Dry run │
 ╰─────────────────────────────╯
   … Extracting 
-examples/migrations/ai-conversations/sample_data/chatgpt_export.
-zip
+examples/migrations/sample_data/chatgpt_export.zip
   … Mapping source records onto Memanto schema...
 
 ╭────────────────────── Dry run complete ──────────────────────╮

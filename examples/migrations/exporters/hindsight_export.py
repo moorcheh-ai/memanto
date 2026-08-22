@@ -68,8 +68,6 @@ def list_bank_memories(client: httpx.Client, bank_id: str) -> list[dict[str, Any
         if len(batch) < PAGE_SIZE or (total is not None and len(memories) >= total):
             break
         if pages >= MAX_PAGES:
-            if total is not None and len(memories) >= total:
-                break
             raise RuntimeError(
                 f"Pagination cap ({MAX_PAGES} pages) reached for bank '{bank_id}'. "
                 "Export may be incomplete."

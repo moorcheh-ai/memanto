@@ -79,8 +79,10 @@ async def _dump(store, postgres: bool) -> list[dict]:
         while True:
             try:
                 results = await store.asearch(ns, limit=limit, offset=offset)
+                paginated = True
             except TypeError:
                 results = await store.asearch(ns)
+                paginated = False
             if not results:
                 break
             for item in results:
@@ -95,7 +97,7 @@ async def _dump(store, postgres: bool) -> list[dict]:
                     "created_at": item.created_at.isoformat() if item.created_at else None,
                     "updated_at": item.updated_at.isoformat() if item.updated_at else None,
                 })
-            if len(results) < limit:
+            if not paginated or len(results) < limit:
                 break
             offset += limit
     return items

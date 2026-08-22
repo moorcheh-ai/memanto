@@ -2,10 +2,11 @@
 Memanto Migration UI
 
 Streamlit app for migrating AI conversation exports into Memanto.
-Covers the three conversation ZIP providers: ChatGPT, Claude, Gemini.
+Covers ZIP providers (ChatGPT, Claude, Gemini) and API-key providers
+(Mem0, Letta, Supermemory, Zep, Hindsight).
 
 Run:
-    streamlit run examples/migrations/ai-conversations/app.py
+    streamlit run examples/migrations/app.py
 """
 
 from __future__ import annotations
@@ -169,7 +170,11 @@ def _load_export_from_bytes(file_bytes: bytes, source: str) -> dict[str, Any]:
                     st.error("conversations.json not found in the ZIP. Make sure you exported the right file.")
                     st.stop()
                 json_file = candidates[0]
-            raw = json.loads(json_file.read_text(encoding="utf-8"))
+            try:
+                raw = json.loads(json_file.read_text(encoding="utf-8"))
+            except json.JSONDecodeError as exc:
+                st.error(f"conversations.json is not valid JSON: {exc}")
+                st.stop()
             return {"memories": raw} if isinstance(raw, list) else raw
 
         return _parse_gemini_archive(tmp_path)
@@ -187,7 +192,9 @@ def _fetch_export(source: str, provider_key: str, **kwargs) -> dict | None:
     Returns:
         dict | None: The fetched export, or `None` if fetching fails.
     """
-    cache_key = f"export_{source}"
+    import hashlib
+    raw = f"{source}:{provider_key}:{kwargs.get('base_url', '')}"
+    cache_key = "export_" + hashlib.sha256(raw.encode()).hexdigest()[:16]
     if st.session_state.get(cache_key):
         return st.session_state[cache_key]
     try:
@@ -236,7 +243,7 @@ def _run_dry_run(source: str, export: dict[str, Any]) -> tuple[list[dict], dict]
     Returns:
     	tuple[list[dict], dict]: Mapped memory rows and a migration summary.
     """
-    MAPPERS, run_migration, _ = _load_memanto()
+    _, run_migration, _ = _load_memanto()
     summary, rows = run_migration(
         provider=source,
         export=export,
@@ -249,28 +256,20 @@ def _run_dry_run(source: str, export: dict[str, Any]) -> tuple[list[dict], dict]
 
 
 def _do_migrate(source: str, export: dict[str, Any], agent_id: str, api_key: str) -> dict:
-    """
-    Run a provider export migration for an agent namespace.
-    
-    Parameters:
-        source (str): Provider identifier for the export.
-        export (dict[str, Any]): Normalized provider export to migrate.
-        agent_id (str): Target Memanto agent namespace identifier.
-        api_key (str): API key used to authenticate the migration client.
-    
-    Returns:
-        dict: Migration summary represented as a dictionary.
-    """
     _, run_migration, SdkClient = _load_memanto()
     client = SdkClient(api_key=api_key)
-    summary, _ = run_migration(
-        provider=source,
-        export=export,
-        client=client,
-        agent_id=agent_id,
-        dry_run=False,
-        on_progress=lambda msg: None,
-    )
+    client.activate_agent(agent_id, duration_hours=2)
+    try:
+        summary, _ = run_migration(
+            provider=source,
+            export=export,
+            client=client,
+            agent_id=agent_id,
+            dry_run=False,
+            on_progress=lambda msg: None,
+        )
+    finally:
+        client.deactivate_agent(agent_id)
     return summary.as_dict()
 
 
@@ -311,13 +310,14 @@ API_KEY_PROVIDERS = {
 }
 
 
-def _render_api_key_panel(source: str, agent_id: str) -> None:
+def _render_api_key_panel(source: str, agent_id: str, api_key: str) -> None:
     """
     Render API-key-based export controls, migration actions, and their results.
     
     Parameters:
         source (str): Provider identifier used to select the required API key and export workflow.
         agent_id (str): Target namespace identifier for migration.
+        api_key (str): Moorcheh API key from the sidebar.
     """
     env_var = API_KEY_PROVIDERS[source]
     key = st.text_input(env_var, type="password", value=os.environ.get(env_var, ""))
@@ -370,6 +370,8 @@ def _render_api_key_panel(source: str, agent_id: str) -> None:
                 st.warning("Select or create a target namespace in the sidebar.")
             elif source == "hindsight" and not base_url.strip():
                 st.warning("HINDSIGHT_BASE_URL is required.")
+            elif not api_key:
+                st.warning("Enter your Moorcheh API Key in the sidebar first.")
             else:
                 live = export
                 if live is None:
@@ -377,21 +379,30 @@ def _render_api_key_panel(source: str, agent_id: str) -> None:
                         live = _fetch_export(source, key.strip(), base_url=base_url.strip())
                 if live is not None:
                     with st.spinner("Migrating..."):
-                        result = _do_migrate(source, live, agent_id, st.session_state.get("_loaded_api_key", ""))
+                        result = _do_migrate(source, live, agent_id, api_key)
                     st.session_state[f"migrate_result_{source}"] = result
-                    st.session_state.pop(f"dry_run_rows_{source}", None)
-                    st.session_state.pop(f"dry_run_summary_{source}", None)
 
     summary = st.session_state.get(f"dry_run_summary_{source}")
     rows = st.session_state.get(f"dry_run_rows_{source}")
     migrate_result = st.session_state.get(f"migrate_result_{source}")
 
     if migrate_result:
+        imported = migrate_result["imported"]
+        failed = migrate_result["failed"]
+        if failed == 0:
+            st.success(f"Migration complete! {imported} memories imported into `{agent_id}`.")
+        else:
+            st.warning(f"Done with errors. Imported: {imported}, Failed: {failed}")
         m1, m2, m3 = st.columns(3)
-        m1.metric("Imported", migrate_result["imported"])
-        m2.metric("Failed", migrate_result["failed"])
+        m1.metric("Imported", imported)
+        m2.metric("Failed", failed)
         m3.metric("Batches", migrate_result["batches"])
-    elif summary:
+        if migrate_result.get("errors"):
+            with st.expander("Errors", expanded=False):
+                for err in migrate_result["errors"]:
+                    st.code(err)
+
+    if summary:
         st.divider()
         st.markdown("### Preview")
         m1, m2, m3 = st.columns(3)
@@ -430,56 +441,27 @@ EXPORT_INSTRUCTIONS = {
 }
 
 
-def _fetch_agents(api_key: str) -> list[str]:
-    """Retrieve the available Memanto agent namespace identifiers.
-    
-    Parameters:
-    	api_key (str): API key used to access the namespace list.
-    
-    Returns:
-    	list[str]: Agent identifiers extracted from namespaces prefixed with ``memanto_agent_``; an empty list if retrieval fails.
-    """
+def _fetch_agents(api_key: str) -> tuple[list[str], str | None]:
     try:
-        from moorcheh_sdk import MoorchehClient
-        client = MoorchehClient(api_key=api_key)
-        result = client.namespaces.list()
-        prefix = "memanto_agent_"
-        namespaces = result.get("namespaces", []) if isinstance(result, dict) else result
-        return [
-            ns["namespace_name"][len(prefix):]
-            for ns in namespaces
-            if isinstance(ns, dict) and ns.get("namespace_name", "").startswith(prefix)
-        ]
-    except Exception:
-        return []
+        _, _, SdkClient = _load_memanto()
+        client = SdkClient(api_key=api_key)
+        result = client.list_agents()
+        return [a["agent_id"] for a in (result.get("agents") or []) if a.get("agent_id")], None
+    except Exception as exc:
+        return [], str(exc)
 
 
 def _create_agent(api_key: str, agent_id: str) -> tuple[bool, str]:
-    """
-    Create a Memanto namespace for the specified agent identifier.
-    
-    Parameters:
-    	api_key (str): API key used to access Memanto.
-    	agent_id (str): Identifier for the namespace to create.
-    
-    Returns:
-    	tuple[bool, str]: A success flag and a message describing whether the namespace was created, already existed, or could not be created.
-    """
-    try:
-        from memanto.app.utils.errors import AgentAlreadyExistsError
-    except ImportError:
-        AgentAlreadyExistsError = None  # fall back to string-matching below
+    from memanto.app.utils.errors import AgentAlreadyExistsError
 
     try:
         _, _, SdkClient = _load_memanto()
         client = SdkClient(api_key=api_key)
         client.create_agent(agent_id=agent_id, pattern="tool")
         return True, f"Namespace '{agent_id}' created."
+    except AgentAlreadyExistsError:
+        return True, f"Namespace '{agent_id}' already exists — using it."
     except Exception as exc:
-        if AgentAlreadyExistsError is not None and isinstance(exc, AgentAlreadyExistsError):
-            return True, f"Namespace '{agent_id}' already exists — using it."
-        if "already exists" in str(exc).lower():
-            return True, f"Namespace '{agent_id}' already exists — using it."
         return False, str(exc)
 
 
@@ -510,13 +492,19 @@ def sidebar():
             prev_key = st.session_state.get("_loaded_api_key")
             if prev_key != api_key:
                 with st.spinner("Loading namespaces..."):
-                    st.session_state["agents"] = _fetch_agents(api_key)
+                    agents, agents_err = _fetch_agents(api_key)
+                    st.session_state["agents"] = agents
+                    st.session_state["_agents_error"] = agents_err
                 st.session_state["_loaded_api_key"] = api_key
                 # a new key means any previously selected namespace no longer applies
                 st.session_state.pop("agent_id", None)
 
             agents: list[str] = st.session_state.get("agents", [])
+            agents_err: str | None = st.session_state.get("_agents_error")
             CREATE_OPT = "+ Create new namespace"
+
+            if agents_err:
+                st.error(agents_err)
 
             if not agents:
                 # Brand new key, or a key with no namespaces yet — skip straight
@@ -543,12 +531,11 @@ def sidebar():
                     ok, msg = _create_agent(api_key, new_id.strip())
                     if ok:
                         st.success(msg)
-                        # list_agents() on some backends lags right after a create,
-                        # so make sure the new namespace shows up regardless.
-                        fetched = _fetch_agents(api_key)
+                        fetched, _ = _fetch_agents(api_key)
                         if new_id.strip() not in fetched:
                             fetched.append(new_id.strip())
                         st.session_state["agents"] = fetched
+                        st.session_state["_agents_error"] = None
                         st.session_state["agent_id"] = new_id.strip()
                         st.rerun()
                     else:
@@ -647,7 +634,7 @@ def main():
     )
 
     if source in API_KEY_PROVIDERS:
-        _render_api_key_panel(source, agent_id)
+        _render_api_key_panel(source, agent_id, api_key)
         return
 
     st.info(EXPORT_INSTRUCTIONS[source])

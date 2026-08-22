@@ -53,7 +53,7 @@ python scripts/migrate_claude.py [--dry-run] [--agent <id>]
 
 | Source field | Memanto field | Notes |
 |---|---|---|
-| `chat_messages[].text` | `content` | Only `sender == "human"`, non-empty |
+| `chat_messages[].text` | `content` | Only `sender == "human"`, non-empty; falls back to `chat_messages[].content[].text` when `text` is empty |
 | `name` | `title` | Conversation name |
 | `chat_messages[].created_at` | `created_at` | Parsed via `_parse_dt` |
 | hardcoded | `source` | `"claude"` |

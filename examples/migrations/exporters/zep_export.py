@@ -151,11 +151,11 @@ def run_zep_export(
 
 
 def _write_export_json(export: dict[str, Any], dest_dir: Path, filename: str) -> Path:
+    import tempfile
     dest_dir.mkdir(parents=True, exist_ok=True)
     out_path = dest_dir / filename
-    tmp_path = out_path.with_suffix(".json.tmp")
-    tmp_path.unlink(missing_ok=True)
-    fd = os.open(str(tmp_path), os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
+    fd, tmp_str = tempfile.mkstemp(dir=dest_dir, prefix=f".{filename}.", suffix=".tmp")
+    tmp_path = Path(tmp_str)
     try:
         with os.fdopen(fd, "w", encoding="utf-8") as f:
             json.dump(export, f, indent=2, ensure_ascii=False, default=str)

@@ -2,8 +2,7 @@
 │ Gemini -> Memanto  Dry run │
 ╰────────────────────────────╯
   … Extracting 
-examples/migrations/ai-conversations/sample_data/gemini_export.z
-ip
+examples/migrations/sample_data/gemini_export.zip
   … Mapping source records onto Memanto schema...
 
 ╭────────────────────── Dry run complete ──────────────────────╮

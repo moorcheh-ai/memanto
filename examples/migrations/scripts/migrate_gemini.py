@@ -19,6 +19,19 @@ ZIP_PATH = str(Path(__file__).parent.parent / "sample_data" / "gemini_export.zip
 # ─────────────────────────────────────────────────────────────────────────────
 
 
+def run_conversation_migration(zip_path: str, source: str, dry_run: bool, agent: str | None) -> int:
+    cmd = ["memanto", "migrate", "conversations", zip_path, "--source", source]
+    if dry_run:
+        cmd.append("--dry-run")
+    if agent:
+        cmd += ["--agent", agent]
+    try:
+        return subprocess.run(cmd).returncode
+    except FileNotFoundError:
+        print("memanto not found. Run `pip install -e .` from the repo root.", file=sys.stderr)
+        return 1
+
+
 def main() -> int:
     """
     Run the Memanto migration for a Gemini Takeout ZIP export.
@@ -36,13 +49,7 @@ def main() -> int:
         print("Set ZIP_PATH at the top of this script to your Gemini Takeout zip.", file=sys.stderr)
         return 1
 
-    cmd = ["memanto", "migrate", "conversations", ZIP_PATH, "--source", "gemini"]
-    if args.dry_run:
-        cmd.append("--dry-run")
-    if args.agent:
-        cmd += ["--agent", args.agent]
-
-    return subprocess.run(cmd).returncode
+    return run_conversation_migration(ZIP_PATH, "gemini", args.dry_run, args.agent)
 
 
 if __name__ == "__main__":

@@ -66,7 +66,7 @@ Malformed files are skipped; processing continues for the rest of the archive.
 | Source field | Memanto field | Notes |
 |---|---|---|
 | `messages[].text` | `content` | Only `role == "user"`, non-empty |
-| first user message or file-level title | `title` | Fallback to truncated content |
+| `_title_from(content)` per user message | `title` | Derived from each user message via `_title_from(content)` |
 | `createdTime` | `created_at` | Parsed via `_parse_dt` |
 | hardcoded | `source` | `"gemini"` |
 | hardcoded | `provenance` | `"imported"` |

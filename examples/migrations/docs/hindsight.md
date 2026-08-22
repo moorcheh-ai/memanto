@@ -49,7 +49,7 @@ The exporter calls `GET /v1/default/banks` to list banks, then paginates
 
 | Source field | Memanto field | Notes |
 |---|---|---|
-| `text` | `content` | The memory text |
+| `text` | `content` | The memory text; falls back to `content` when `text` is absent |
 | `fact_type` | `type` | `observation`→`observation`, `world`→`fact`, `experience`→`event`; others→`None` |
 | hardcoded | `source` | `"hindsight"` |
 | hardcoded | `provenance` | `"imported"` |

@@ -25,12 +25,11 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="Migrate Mem0 memories to Memanto")
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument("--agent", default=None)
-    parser.add_argument("--api-key", default=None, help="Mem0 API key (overrides MEM0_API_KEY env)")
     args = parser.parse_args()
 
-    api_key = args.api_key or os.environ.get("MEM0_API_KEY", "")
+    api_key = os.environ.get("MEM0_API_KEY", "")
     if not api_key:
-        print("MEM0_API_KEY is not set. Export it or pass --api-key.", file=sys.stderr)
+        print("MEM0_API_KEY is not set.", file=sys.stderr)
         return 1
 
     cmd = ["memanto", "migrate", "mem0"]
