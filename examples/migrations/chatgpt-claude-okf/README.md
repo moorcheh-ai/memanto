@@ -125,7 +125,7 @@ conversation can yield differently-titled memories on a second pass.
 
 Memanto's exporter targets OKF **v0.1**. The specification moved to
 [v0.2](https://github.com/GoogleCloudPlatform/knowledge-catalog/blob/main/okf/SPEC.md)
-on 19 August 2026. This example emits v0.2 by default and upgrades the bundle
+on 24 July 2026. This example emits v0.2 by default and upgrades the bundle
 *after* `OkfExportService` has written it, so the structure, slugs, stacking and
 index bodies remain Memanto's own. Only frontmatter changes.
 
@@ -136,6 +136,11 @@ index bodies remain Memanto's own. Only frontmatter changes.
 | Section 8 index files | frontmatter in every `index.md` | frontmatter only at the bundle root, and only `okf_version` |
 | Section 11 rule 1 | `metrics/overview.md` has no frontmatter | given a `type`, so every non-reserved document is conformant |
 | Section 12 versioning | never declared | `okf_version: "0.2"` at the bundle root |
+
+The three v0.1 gaps in that table are reported upstream as
+[#1889](https://github.com/moorcheh-ai/memanto/issues/1889). They are fixed here
+in this example's own output, not in `OkfExportService`, so nothing outside this
+folder changes.
 
 Two deliberate choices worth knowing:
 
@@ -259,3 +264,8 @@ than `instruction`. That is `MemoryParsingService`'s behaviour on every write,
 not something this example introduces, it is noted here because you will see
 it in the sample bundle, and worked around by putting such lines through
 `--chatgpt` distillation instead of `--saved`.
+
+Reported upstream as
+[#1890](https://github.com/moorcheh-ai/memanto/issues/1890), with a repro that
+needs no API key. It is a core classifier rule, so it cannot be fixed from an
+example; any bulk import is affected the same way.
