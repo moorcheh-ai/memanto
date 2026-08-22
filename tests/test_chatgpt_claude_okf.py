@@ -44,6 +44,7 @@ from liberate import (  # noqa: E402
     verify_links,
     write_bundle,
 )
+from validate import parse_verdict  # noqa: E402
 
 
 def _node(node_id, parent, role, text, content_type="text", recipient=None):
@@ -774,3 +775,44 @@ class TestReviewFixes:
         )
         assert entry is not None
         assert entry["resource"] == "saved memory list pasted from claude"
+
+
+class TestParseVerdict:
+    """The judge's reply is untrusted model output, not a typed API response."""
+
+    def test_accepts_a_well_formed_verdict(self):
+        """The happy path returns exactly the two keys the table prints."""
+        out = parse_verdict('{"verdict": "pass", "why": "information preserved"}')
+        assert out == {"verdict": "pass", "why": "information preserved"}
+
+    def test_strips_a_fenced_code_block(self):
+        """Models wrap JSON in markdown fences unprompted."""
+        out = parse_verdict('```json\n{"verdict": "fail", "why": "forgot it"}\n```')
+        assert out["verdict"] == "fail"
+
+    def test_unparseable_reply_is_an_error_not_a_failure(self):
+        """A broken judge is not evidence that recall was lost."""
+        assert parse_verdict("sorry, I cannot")["verdict"] == "error"
+
+    def test_bare_array_is_rejected(self):
+        """Valid JSON that is not an object would crash the caller's .get()."""
+        assert parse_verdict('["pass"]')["verdict"] == "error"
+
+    def test_unknown_verdict_is_rejected(self):
+        """Only the three verdicts the prompt allows may be counted."""
+        out = parse_verdict('{"verdict": "yes", "why": "sure"}')
+        assert out["verdict"] == "error"
+        assert "unknown verdict" in out["why"]
+
+    def test_verdict_without_a_reason_is_rejected(self):
+        """A pass with no reason would inflate parity with an unauditable row."""
+        out = parse_verdict('{"verdict": "pass"}')
+        assert out["verdict"] == "error"
+
+    def test_non_string_reason_is_rejected(self):
+        """A non-string reason would break the printed evidence table."""
+        assert parse_verdict('{"verdict": "pass", "why": 5}')["verdict"] == "error"
+
+    def test_blank_reason_is_rejected(self):
+        """Whitespace is not a reason."""
+        assert parse_verdict('{"verdict": "pass", "why": "  "}')["verdict"] == "error"

@@ -44,6 +44,42 @@ Reply with JSON only: {{"verdict": "pass" | "partial" | "fail", "why": "<one sho
 """
 
 
+VERDICTS = ("pass", "partial", "fail")
+
+
+def parse_verdict(text: str) -> dict[str, str]:
+    """Turn the judge's raw reply into a verdict row, or an ``error`` row.
+
+    A reply that is unparseable, is not an object, carries a verdict outside
+    the three the prompt allows, or omits its reason means no judgment was
+    obtained. That is reported as ``error`` rather than ``fail``: a failed
+    judge call is not evidence that recall was lost, and main() exits 2 for
+    an incomplete score against 1 for a genuine failure.
+    """
+    text = text.strip().removeprefix("```json").removeprefix("```").removesuffix("```")
+    try:
+        parsed = json.loads(text)
+    except json.JSONDecodeError:
+        return {"verdict": "error", "why": f"unparseable judge reply: {text[:80]}"}
+    if not isinstance(parsed, dict):
+        # A bare array or scalar is valid JSON, and would blow up on .get()
+        # at the call site and take the whole run down with it.
+        return {"verdict": "error", "why": f"reply was not an object: {text[:80]}"}
+
+    verdict = parsed.get("verdict")
+    if verdict not in VERDICTS:
+        return {
+            "verdict": "error",
+            "why": f"unknown verdict {str(verdict)[:40]!r}, expected one of {VERDICTS}",
+        }
+    why = parsed.get("why")
+    if not isinstance(why, str) or not why.strip():
+        # A verdict with no reason is not a judgment anyone can audit, and the
+        # printed table is the evidence artifact for this whole check.
+        return {"verdict": "error", "why": f"verdict {verdict!r} came with no reason"}
+    return {"verdict": verdict, "why": why.strip()}
+
+
 def judge(question: str, expected: str, actual: str, model: str) -> dict[str, str]:
     """Score one answer with an LLM judge via OpenRouter.
 
@@ -84,17 +120,7 @@ def _judge(question: str, expected: str, actual: str, model: str) -> dict[str, s
             }
         ],
     )
-    text = (response.choices[0].message.content or "").strip()
-    text = text.removeprefix("```json").removeprefix("```").removesuffix("```")
-    try:
-        parsed = json.loads(text)
-    except json.JSONDecodeError:
-        return {"verdict": "fail", "why": f"unparseable judge reply: {text[:80]}"}
-    if not isinstance(parsed, dict):
-        # A bare array or scalar is valid JSON. Returning it would blow up on
-        # .get() at the call site and take the whole run down with it.
-        return {"verdict": "fail", "why": f"judge reply was not an object: {text[:80]}"}
-    return parsed
+    return parse_verdict(response.choices[0].message.content or "")
 
 
 def main() -> int:
