@@ -21,6 +21,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import sys
 from pathlib import Path
 from typing import Any
@@ -46,6 +47,10 @@ Reply with JSON only: {{"verdict": "pass" | "partial" | "fail", "why": "<one sho
 
 VERDICTS = ("pass", "partial", "fail")
 
+# Models wrap JSON in a code fence unprompted, and the language tag varies in
+# both presence and case. Match any tag rather than the handful we have seen.
+_FENCE = re.compile(r"\A```[A-Za-z0-9_+-]*[ \t]*\r?\n?(.*?)\r?\n?```\Z", re.DOTALL)
+
 
 def parse_verdict(text: str) -> dict[str, str]:
     """Turn the judge's raw reply into a verdict row, or an ``error`` row.
@@ -56,7 +61,10 @@ def parse_verdict(text: str) -> dict[str, str]:
     judge call is not evidence that recall was lost, and main() exits 2 for
     an incomplete score against 1 for a genuine failure.
     """
-    text = text.strip().removeprefix("```json").removeprefix("```").removesuffix("```")
+    text = text.strip()
+    fenced = _FENCE.match(text)
+    if fenced:
+        text = fenced.group(1).strip()
     try:
         parsed = json.loads(text)
     except json.JSONDecodeError:

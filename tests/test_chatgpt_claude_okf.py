@@ -785,10 +785,24 @@ class TestParseVerdict:
         out = parse_verdict('{"verdict": "pass", "why": "information preserved"}')
         assert out == {"verdict": "pass", "why": "information preserved"}
 
-    def test_strips_a_fenced_code_block(self):
-        """Models wrap JSON in markdown fences unprompted."""
-        out = parse_verdict('```json\n{"verdict": "fail", "why": "forgot it"}\n```')
-        assert out["verdict"] == "fail"
+    @pytest.mark.parametrize(
+        "fence",
+        ["```json", "```JSON", "```Json", "```", "```python"],
+    )
+    def test_strips_a_code_fence_whatever_the_tag(self, fence):
+        """Models fence JSON unprompted, and the language tag varies in case."""
+        reply = f'{fence}\n{{"verdict": "fail", "why": "forgot it"}}\n```'
+        assert parse_verdict(reply)["verdict"] == "fail"
+
+    def test_unfenced_reply_still_parses(self):
+        """The fence is optional, so a bare object must survive untouched."""
+        out = parse_verdict('{"verdict": "partial", "why": "half of it"}')
+        assert out == {"verdict": "partial", "why": "half of it"}
+
+    def test_backticks_inside_the_reason_are_kept(self):
+        """Only a wrapping fence is stripped, not backticks in the text."""
+        out = parse_verdict('{"verdict": "pass", "why": "the `why` survived"}')
+        assert out["why"] == "the `why` survived"
 
     def test_unparseable_reply_is_an_error_not_a_failure(self):
         """A broken judge is not evidence that recall was lost."""
