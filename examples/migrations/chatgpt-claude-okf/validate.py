@@ -156,6 +156,14 @@ def main() -> int:
 
     golden: list[dict[str, Any]] = json.loads(args.golden.read_text(encoding="utf-8"))
     client = get_client()
+    # Recall runs against the ACTIVE session, not the --agent flag, so a session
+    # left over from another agent silently answers nothing and every row scores
+    # as a loss. Activate up front and fail loudly if the agent is not there.
+    try:
+        client.activate_agent(args.agent)
+    except Exception as exc:  # noqa: BLE001, reported as a clean message
+        print(f"Could not activate agent {args.agent!r}: {exc}", file=sys.stderr)
+        return 2
     rows, passed = [], 0
 
     for item in golden:
@@ -163,9 +171,15 @@ def main() -> int:
         print(f"  {question[:70]}...")
         try:
             answer = (client.answer(args.agent, question) or {}).get("answer", "")
-        except Exception as exc:  # noqa: BLE001, a failed recall is a data point
-            answer = ""
-            print(f"    recall failed: {exc}", file=sys.stderr)
+        except Exception as exc:  # noqa: BLE001, one bad row must not stop the run
+            # Do NOT judge an empty answer here. The judge would correctly call
+            # it a failure, and the run would report lost recall when what
+            # actually happened is that the question was never asked. An
+            # unanswered question is an incomplete score, not a failed one.
+            detail = str(exc).split("\n")[0][:110]
+            print(f"    recall failed: {detail}", file=sys.stderr)
+            rows.append((item.get("id", "?"), "error", f"recall failed: {detail}"))
+            continue
 
         verdict = judge(question, item["source_answer"], answer, args.model)
         passed += verdict.get("verdict") == "pass"
