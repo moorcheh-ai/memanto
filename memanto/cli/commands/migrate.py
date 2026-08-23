@@ -692,7 +692,10 @@ def migrate_zep(
 
     target_agent = None if dry_run else _resolve_target_agent(agent)
     progress(f"Loading export from {file}")
-    export = load_export(file)
+    try:
+        export = load_export(file)
+    except Exception as exc:
+        _error(f"Failed to load Zep export: {exc}")
     progress("Mapping Zep facts/edges/summaries onto Memanto schema...")
     client = None if dry_run else get_client()
     summary, rows = run_migration(

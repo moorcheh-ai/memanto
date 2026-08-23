@@ -256,7 +256,13 @@ def source_count(provider: str, export: dict[str, Any]) -> int:
         # Observations, not memories — many collapse into one signature.
         return len(export.get("observations", []) or [])
     if provider == "zep":
-        return len(map_export("zep", export))
+        keys = ("facts", "relevant_facts", "user_facts", "edges", "nodes", "sessions")
+        return sum(
+            1
+            for key in keys
+            for item in (export.get(key) or [])
+            if isinstance(item, dict)
+        )
     memories = export.get("memories", []) or []
     if provider == "supermemory" and not memories:
         # Mirror map_supermemory's fallback: when no extracted memories exist

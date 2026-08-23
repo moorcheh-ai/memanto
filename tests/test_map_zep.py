@@ -59,7 +59,7 @@ def test_map_zep_imports_facts_edges_nodes_and_summaries_not_chat():
     assert refs == {"fact-1", "edge-1", "n-shawn", "sess-1"}
     assert all(row["source"] == "zep" for row in rows)
     assert all(row["provenance"] == "imported" for row in rows)
-    bodies = [row["content"].split("\n---\n", 1)[0] for row in rows]
+    bodies = [row["content"] for row in rows]
     assert not any("figure something out bro" in body for body in bodies)
 
 
@@ -94,4 +94,4 @@ def test_map_zep_empty_export():
 def test_map_export_registry_and_source_count():
     rows = map_export("zep", SAMPLE)
     assert len(rows) == 4
-    assert source_count("zep", SAMPLE) == 4
+    assert source_count("zep", SAMPLE) == 5

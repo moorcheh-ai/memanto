@@ -631,11 +631,7 @@ def map_zep(export: dict[str, Any]) -> list[dict[str, Any]]:
         if not summary:
             continue
         messages = session.get("messages") or []
-        preview = [
-            f"{(msg.get('role') or '?')}: {(msg.get('content') or '')[:80]}"
-            for msg in messages[:4]
-            if isinstance(msg, dict)
-        ]
+        message_count = len(messages) if isinstance(messages, list) else 0
         _add(
             content=summary,
             source_ref=session.get("session_id") or session.get("uuid") or session.get("id"),
@@ -644,8 +640,7 @@ def map_zep(export: dict[str, Any]) -> list[dict[str, Any]]:
             created_at=session,
             extra=[
                 ("Session id", session.get("session_id")),
-                ("Message count", len(messages) if isinstance(messages, list) else 0),
-                ("Message preview", preview),
+                ("Message count", message_count),
             ],
         )
 
