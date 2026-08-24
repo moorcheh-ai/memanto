@@ -5933,12 +5933,14 @@
                 projectsHtml = projects.map(p => {
                     const missingTag = p.exists ? '' : ' <span class="badge badge-warning" style="margin-left:8px">missing</span>';
                     const btnLabel = p.exists ? 'Disconnect' : 'Untrack';
-                    const safePath = escHtml(p.path).replace(/'/g, "&#39;");
                     return `<div class="conn-project-row${p.exists ? '' : ' missing'}" id="proj-row-${btoa(unescape(encodeURIComponent(p.path))).replace(/=/g, '')}">
                         <div>
                             <div class="conn-project-path">${escHtml(p.path)}${missingTag}</div>
                         </div>
-                        <button class="btn btn-sm btn-secondary" onclick="confirmDisconnect('${escHtml(conn.name)}', '${safePath}', false, this)">${btnLabel}</button>
+                        <button class="btn btn-sm btn-secondary"
+                                data-connection-name="${attrEsc(conn.name)}"
+                                data-project-path="${attrEsc(p.path)}"
+                                onclick="confirmDisconnect(this.dataset.connectionName, this.dataset.projectPath, false, this)">${btnLabel}</button>
                     </div>`;
                 }).join('');
             }
@@ -5946,7 +5948,7 @@
             const globalHtml = conn.installed_global
                 ? `<div class="conn-project-row">
                     <div class="conn-project-path">✓ Installed at ${escHtml(conn.skill_global_path)}</div>
-                    <button class="btn btn-sm btn-danger" onclick="confirmDisconnect('${escHtml(conn.name)}', null, true, this)">Remove Global</button>
+                    <button class="btn btn-sm btn-danger" data-connection-name="${attrEsc(conn.name)}" onclick="confirmDisconnect(this.dataset.connectionName, null, true, this)">Remove Global</button>
                 </div>`
                 : `<p style="color:var(--text-dim);font-size:13px;padding:10px 0">Not installed globally.
                     <a href="#" onclick="openConnectModalGlobal('${escHtml(conn.name)}');return false" style="color:var(--accent);text-decoration:none;margin-left:6px">Install globally →</a></p>`;
