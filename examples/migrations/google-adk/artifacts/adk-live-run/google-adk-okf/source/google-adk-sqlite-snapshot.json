@@ -1,0 +1,654 @@
+{
+  "app_states": [
+    {
+      "app_name": "atlas-release-copilot",
+      "state": {
+        "commitment.release_readiness": "Beacon is ready for its approved August 4 release plan.",
+        "decision.canary_and_rollback": "Beacon starts at a 10 percent canary for 30 minutes. Promote only while errors remain below 1 percent and p95 latency remains below 250 ms; otherwise roll back immediately.",
+        "decision.feature_flag_cache_ttl": "The approved Beacon production feature-flag cache TTL is 6 hours so the flag can be unwound on the same shift.",
+        "event.final_rehearsal": "Beacon's final rehearsal succeeded on July 24, 2026. The pg_trgm preflight passed, migration took 3 minutes 39 seconds, canary errors were 0.3 percent, and p95 latency was 181 ms.",
+        "fact.project_stack": "Beacon is the Helios API release. It runs PostgreSQL 16 and Redis 7.2.",
+        "goal.release_window": "Beacon releases Tuesday, August 4, 2026 at 14:00 UTC.",
+        "instruction.deployment_calendar": "Beacon production deployments never occur on Fridays.",
+        "learning.staging_database_preflight": "The first Beacon staging migration failed because the PostgreSQL 16 pg_trgm extension was missing. After enabling pg_trgm it succeeded in 3 minutes 42 seconds with 185 ms p95 latency. The runbook now requires a pg_trgm preflight.",
+        "relationship.release_ownership": "Luis Ortega is the current Beacon release DRI, and Priya Shah is the backup."
+      },
+      "update_time": "2026-07-24T17:40:01Z"
+    }
+  ],
+  "filters": {
+    "app_name": "atlas-release-copilot",
+    "user_id": "dana"
+  },
+  "schema": "google-adk-sqlite-snapshot/v1",
+  "sessions": [
+    {
+      "app_name": "atlas-release-copilot",
+      "create_time": "2026-08-01T10:39:51.370038Z",
+      "events": [
+        {
+          "event_data": {
+            "actions": {
+              "artifact_delta": {},
+              "requested_auth_configs": {},
+              "requested_tool_confirmations": {},
+              "state_delta": {}
+            },
+            "author": "user",
+            "content": {
+              "parts": [
+                {
+                  "text": "We are preparing the Helios API release named Beacon. The tentative production window is Friday, July 31 at 14:00 UTC. Maya Chen is the release DRI. The service runs PostgreSQL 16 and Redis 7.2."
+                }
+              ],
+              "role": "user"
+            },
+            "id": "a64ae735-f3a3-4816-a8ca-39d61c7a672c",
+            "invocation_id": "inv-01-01",
+            "node_info": {
+              "path": ""
+            },
+            "timestamp": 1783328401.0
+          },
+          "id": "a64ae735-f3a3-4816-a8ca-39d61c7a672c",
+          "invocation_id": "inv-01-01",
+          "timestamp": "2026-07-06T09:00:01Z"
+        },
+        {
+          "event_data": {
+            "actions": {
+              "artifact_delta": {},
+              "requested_auth_configs": {},
+              "requested_tool_confirmations": {},
+              "state_delta": {
+                "app:fact.project_stack": "Beacon is the Helios API release. It runs PostgreSQL 16 and Redis 7.2.",
+                "app:goal.release_window": "The tentative Beacon production window is Friday, July 31, 2026 at 14:00 UTC.",
+                "app:relationship.release_ownership": "Maya Chen is the current Beacon release DRI."
+              }
+            },
+            "author": "release_copilot",
+            "content": {
+              "parts": [
+                {
+                  "text": "I recorded the tentative plan, owner, and platform stack."
+                }
+              ],
+              "role": "model"
+            },
+            "id": "9ecb564c-a567-4d95-a0f7-2bbddae4eb18",
+            "invocation_id": "inv-01-02",
+            "node_info": {
+              "path": ""
+            },
+            "timestamp": 1783328402.0
+          },
+          "id": "9ecb564c-a567-4d95-a0f7-2bbddae4eb18",
+          "invocation_id": "inv-01-02",
+          "timestamp": "2026-07-06T09:00:02Z"
+        }
+      ],
+      "session_id": "01-kickoff",
+      "state": {},
+      "update_time": "2026-07-06T09:00:02Z",
+      "user_id": "dana"
+    },
+    {
+      "app_name": "atlas-release-copilot",
+      "create_time": "2026-08-01T10:39:51.495487Z",
+      "events": [
+        {
+          "event_data": {
+            "actions": {
+              "artifact_delta": {},
+              "requested_auth_configs": {},
+              "requested_tool_confirmations": {},
+              "state_delta": {}
+            },
+            "author": "user",
+            "content": {
+              "parts": [
+                {
+                  "text": "Correction: we never deploy on Fridays. July 31 is cancelled. Move Beacon to Tuesday, August 4, 2026 at 14:00 UTC. For release updates, use Markdown with at most five bullets and no tables."
+                }
+              ],
+              "role": "user"
+            },
+            "id": "474507b7-2e14-41f7-9a3c-c42315b7d086",
+            "invocation_id": "inv-02-01",
+            "node_info": {
+              "path": ""
+            },
+            "timestamp": 1783524001.0
+          },
+          "id": "474507b7-2e14-41f7-9a3c-c42315b7d086",
+          "invocation_id": "inv-02-01",
+          "timestamp": "2026-07-08T15:20:01Z"
+        },
+        {
+          "event_data": {
+            "actions": {
+              "artifact_delta": {},
+              "requested_auth_configs": {},
+              "requested_tool_confirmations": {},
+              "state_delta": {
+                "app:goal.release_window": "Beacon releases Tuesday, August 4, 2026 at 14:00 UTC.",
+                "app:instruction.deployment_calendar": "Beacon production deployments never occur on Fridays.",
+                "user:preference.release_update_format": "Dana prefers release updates in Markdown, with at most five bullets and no tables."
+              }
+            },
+            "author": "release_copilot",
+            "content": {
+              "parts": [
+                {
+                  "text": "I replaced the Friday date and saved your update format as a user preference."
+                }
+              ],
+              "role": "model"
+            },
+            "id": "0bfc36a0-4edc-4150-bc80-58740ca66071",
+            "invocation_id": "inv-02-02",
+            "node_info": {
+              "path": ""
+            },
+            "timestamp": 1783524002.0
+          },
+          "id": "0bfc36a0-4edc-4150-bc80-58740ca66071",
+          "invocation_id": "inv-02-02",
+          "timestamp": "2026-07-08T15:20:02Z"
+        }
+      ],
+      "session_id": "02-schedule-correction",
+      "state": {},
+      "update_time": "2026-07-08T15:20:02Z",
+      "user_id": "dana"
+    },
+    {
+      "app_name": "atlas-release-copilot",
+      "create_time": "2026-08-01T10:39:51.586229Z",
+      "events": [
+        {
+          "event_data": {
+            "actions": {
+              "artifact_delta": {},
+              "requested_auth_configs": {},
+              "requested_tool_confirmations": {},
+              "state_delta": {
+                "app:learning.staging_database_preflight": "The first Beacon staging migration failed because the PostgreSQL 16 pg_trgm extension was missing. After enabling pg_trgm it succeeded in 3 minutes 42 seconds with 185 ms p95 latency. The runbook now requires a pg_trgm preflight."
+              }
+            },
+            "author": "release_copilot",
+            "content": {
+              "parts": [
+                {
+                  "text": "The first staging migration failed because pg_trgm was missing. I enabled it, reran successfully in 3 minutes 42 seconds, and measured 185 ms p95 latency."
+                }
+              ],
+              "role": "model"
+            },
+            "id": "92b47726-9c19-4098-8517-6e513cc7e21e",
+            "invocation_id": "inv-03-01",
+            "node_info": {
+              "path": ""
+            },
+            "timestamp": 1783943101.0
+          },
+          "id": "92b47726-9c19-4098-8517-6e513cc7e21e",
+          "invocation_id": "inv-03-01",
+          "timestamp": "2026-07-13T11:45:01Z"
+        },
+        {
+          "event_data": {
+            "actions": {
+              "artifact_delta": {},
+              "requested_auth_configs": {},
+              "requested_tool_confirmations": {},
+              "state_delta": {}
+            },
+            "author": "user",
+            "content": {
+              "parts": [
+                {
+                  "text": "Keep the failed first attempt as evidence; do not erase it."
+                }
+              ],
+              "role": "user"
+            },
+            "id": "6409d3ce-04b3-41df-9969-6ae04f789d4e",
+            "invocation_id": "inv-03-02",
+            "node_info": {
+              "path": ""
+            },
+            "timestamp": 1783943102.0
+          },
+          "id": "6409d3ce-04b3-41df-9969-6ae04f789d4e",
+          "invocation_id": "inv-03-02",
+          "timestamp": "2026-07-13T11:45:02Z"
+        }
+      ],
+      "session_id": "03-staging-rehearsal",
+      "state": {},
+      "update_time": "2026-07-13T11:45:02Z",
+      "user_id": "dana"
+    },
+    {
+      "app_name": "atlas-release-copilot",
+      "create_time": "2026-08-01T10:39:51.676614Z",
+      "events": [
+        {
+          "event_data": {
+            "actions": {
+              "artifact_delta": {},
+              "requested_auth_configs": {},
+              "requested_tool_confirmations": {},
+              "state_delta": {}
+            },
+            "author": "user",
+            "content": {
+              "parts": [
+                {
+                  "text": "Decision: start at a 10 percent canary for 30 minutes. Promote only below 1 percent errors and below 250 ms p95. Roll back immediately if either threshold is breached."
+                }
+              ],
+              "role": "user"
+            },
+            "id": "5785d656-4063-4325-be18-efba60324c09",
+            "invocation_id": "inv-04-01",
+            "node_info": {
+              "path": ""
+            },
+            "timestamp": 1784218201.0
+          },
+          "id": "5785d656-4063-4325-be18-efba60324c09",
+          "invocation_id": "inv-04-01",
+          "timestamp": "2026-07-16T16:10:01Z"
+        },
+        {
+          "event_data": {
+            "actions": {
+              "artifact_delta": {},
+              "requested_auth_configs": {},
+              "requested_tool_confirmations": {},
+              "state_delta": {
+                "app:decision.canary_and_rollback": "Beacon starts at a 10 percent canary for 30 minutes. Promote only while errors remain below 1 percent and p95 latency remains below 250 ms; otherwise roll back immediately."
+              }
+            },
+            "author": "release_copilot",
+            "content": {
+              "parts": [
+                {
+                  "text": "The canary and rollback decision is in the durable runbook state."
+                }
+              ],
+              "role": "model"
+            },
+            "id": "4ab30a96-a7b8-4fa2-825d-4f9bc58a4859",
+            "invocation_id": "inv-04-02",
+            "node_info": {
+              "path": ""
+            },
+            "timestamp": 1784218202.0
+          },
+          "id": "4ab30a96-a7b8-4fa2-825d-4f9bc58a4859",
+          "invocation_id": "inv-04-02",
+          "timestamp": "2026-07-16T16:10:02Z"
+        }
+      ],
+      "session_id": "04-rollout-policy",
+      "state": {},
+      "update_time": "2026-07-16T16:10:02Z",
+      "user_id": "dana"
+    },
+    {
+      "app_name": "atlas-release-copilot",
+      "create_time": "2026-08-01T10:39:51.771072Z",
+      "events": [
+        {
+          "event_data": {
+            "actions": {
+              "artifact_delta": {},
+              "requested_auth_configs": {},
+              "requested_tool_confirmations": {},
+              "state_delta": {}
+            },
+            "author": "user",
+            "content": {
+              "parts": [
+                {
+                  "text": "Maya will be on leave during release and is no longer the DRI. Luis Ortega is the current release DRI; Priya Shah is backup."
+                }
+              ],
+              "role": "user"
+            },
+            "id": "7caf5a78-880b-4ef9-add7-f1106e2b06b4",
+            "invocation_id": "inv-05-01",
+            "node_info": {
+              "path": ""
+            },
+            "timestamp": 1784536201.0
+          },
+          "id": "7caf5a78-880b-4ef9-add7-f1106e2b06b4",
+          "invocation_id": "inv-05-01",
+          "timestamp": "2026-07-20T08:30:01Z"
+        },
+        {
+          "event_data": {
+            "actions": {
+              "artifact_delta": {},
+              "requested_auth_configs": {},
+              "requested_tool_confirmations": {},
+              "state_delta": {
+                "app:relationship.release_ownership": "Luis Ortega is the current Beacon release DRI, and Priya Shah is the backup."
+              }
+            },
+            "author": "release_copilot",
+            "content": {
+              "parts": [
+                {
+                  "text": "I replaced the owner while retaining the handoff in the event log."
+                }
+              ],
+              "role": "model"
+            },
+            "id": "407a4ba1-8790-474b-8797-77f78f2a61a7",
+            "invocation_id": "inv-05-02",
+            "node_info": {
+              "path": ""
+            },
+            "timestamp": 1784536202.0
+          },
+          "id": "407a4ba1-8790-474b-8797-77f78f2a61a7",
+          "invocation_id": "inv-05-02",
+          "timestamp": "2026-07-20T08:30:02Z"
+        }
+      ],
+      "session_id": "05-owner-handoff",
+      "state": {},
+      "update_time": "2026-07-20T08:30:02Z",
+      "user_id": "dana"
+    },
+    {
+      "app_name": "atlas-release-copilot",
+      "create_time": "2026-08-01T10:39:51.850104Z",
+      "events": [
+        {
+          "event_data": {
+            "actions": {
+              "artifact_delta": {},
+              "requested_auth_configs": {},
+              "requested_tool_confirmations": {},
+              "state_delta": {
+                "app:decision.feature_flag_cache_ttl": "The draft Beacon feature-flag cache TTL is 24 hours."
+              }
+            },
+            "author": "release_copilot",
+            "content": {
+              "parts": [
+                {
+                  "text": "The draft runbook says the feature-flag cache TTL is 24 hours."
+                }
+              ],
+              "role": "model"
+            },
+            "id": "4a143a3f-d4df-461d-ab6b-7b5c138d85be",
+            "invocation_id": "inv-06-01",
+            "node_info": {
+              "path": ""
+            },
+            "timestamp": 1784639101.0
+          },
+          "id": "4a143a3f-d4df-461d-ab6b-7b5c138d85be",
+          "invocation_id": "inv-06-01",
+          "timestamp": "2026-07-21T13:05:01Z"
+        },
+        {
+          "event_data": {
+            "actions": {
+              "artifact_delta": {},
+              "requested_auth_configs": {},
+              "requested_tool_confirmations": {},
+              "state_delta": {}
+            },
+            "author": "user",
+            "content": {
+              "parts": [
+                {
+                  "text": "That draft is wrong. The approved production TTL is 6 hours, not 24, so we can unwind the flag on the same shift."
+                }
+              ],
+              "role": "user"
+            },
+            "id": "4332789b-d372-4752-b1c6-5292e97e7716",
+            "invocation_id": "inv-06-02",
+            "node_info": {
+              "path": ""
+            },
+            "timestamp": 1784639102.0
+          },
+          "id": "4332789b-d372-4752-b1c6-5292e97e7716",
+          "invocation_id": "inv-06-02",
+          "timestamp": "2026-07-21T13:05:02Z"
+        },
+        {
+          "event_data": {
+            "actions": {
+              "artifact_delta": {},
+              "requested_auth_configs": {},
+              "requested_tool_confirmations": {},
+              "state_delta": {
+                "app:decision.feature_flag_cache_ttl": "The approved Beacon production feature-flag cache TTL is 6 hours so the flag can be unwound on the same shift."
+              }
+            },
+            "author": "release_copilot",
+            "content": {
+              "parts": [
+                {
+                  "text": "Corrected: six hours is now the approved current value."
+                }
+              ],
+              "role": "model"
+            },
+            "id": "c511ba15-4c4e-4902-895d-ce8e196397ab",
+            "invocation_id": "inv-06-03",
+            "node_info": {
+              "path": ""
+            },
+            "timestamp": 1784639103.0
+          },
+          "id": "c511ba15-4c4e-4902-895d-ce8e196397ab",
+          "invocation_id": "inv-06-03",
+          "timestamp": "2026-07-21T13:05:03Z"
+        }
+      ],
+      "session_id": "06-cache-correction",
+      "state": {},
+      "update_time": "2026-07-21T13:05:03Z",
+      "user_id": "dana"
+    },
+    {
+      "app_name": "atlas-release-copilot",
+      "create_time": "2026-08-01T10:39:51.966125Z",
+      "events": [
+        {
+          "event_data": {
+            "actions": {
+              "artifact_delta": {},
+              "requested_auth_configs": {},
+              "requested_tool_confirmations": {},
+              "state_delta": {
+                "app:commitment.release_readiness": "Beacon is ready for its approved August 4 release plan.",
+                "app:event.final_rehearsal": "Beacon's final rehearsal succeeded on July 24, 2026. The pg_trgm preflight passed, migration took 3 minutes 39 seconds, canary errors were 0.3 percent, and p95 latency was 181 ms."
+              }
+            },
+            "author": "release_copilot",
+            "content": {
+              "parts": [
+                {
+                  "text": "The final rehearsal passed: pg_trgm preflight succeeded, the migration took 3 minutes 39 seconds, the canary simulation had 0.3 percent errors, and p95 was 181 ms."
+                }
+              ],
+              "role": "model"
+            },
+            "id": "9e58d750-7465-4053-a69a-b93866e1c878",
+            "invocation_id": "inv-07-01",
+            "node_info": {
+              "path": ""
+            },
+            "timestamp": 1784914801.0
+          },
+          "id": "9e58d750-7465-4053-a69a-b93866e1c878",
+          "invocation_id": "inv-07-01",
+          "timestamp": "2026-07-24T17:40:01Z"
+        },
+        {
+          "event_data": {
+            "actions": {
+              "artifact_delta": {},
+              "requested_auth_configs": {},
+              "requested_tool_confirmations": {},
+              "state_delta": {}
+            },
+            "author": "user",
+            "content": {
+              "parts": [
+                {
+                  "text": "Mark the rehearsal successful and the plan ready."
+                }
+              ],
+              "role": "user"
+            },
+            "id": "df1de5ef-8276-4394-af9a-a22bb02199ec",
+            "invocation_id": "inv-07-02",
+            "node_info": {
+              "path": ""
+            },
+            "timestamp": 1784914802.0
+          },
+          "id": "df1de5ef-8276-4394-af9a-a22bb02199ec",
+          "invocation_id": "inv-07-02",
+          "timestamp": "2026-07-24T17:40:02Z"
+        }
+      ],
+      "session_id": "07-final-rehearsal",
+      "state": {},
+      "update_time": "2026-07-24T17:40:02Z",
+      "user_id": "dana"
+    },
+    {
+      "app_name": "atlas-release-copilot",
+      "create_time": "2026-08-01T10:39:52.054188Z",
+      "events": [
+        {
+          "event_data": {
+            "actions": {
+              "artifact_delta": {},
+              "requested_auth_configs": {},
+              "requested_tool_confirmations": {},
+              "state_delta": {}
+            },
+            "author": "user",
+            "content": {
+              "parts": [
+                {
+                  "text": "Final truth check: August 4 at 14:00 UTC, Luis as DRI, Priya as backup, 10 percent canary for 30 minutes, rollback at 1 percent errors or 250 ms p95, and 6-hour TTL. The July 31 date, Maya-as-DRI, and 24-hour TTL are superseded."
+                }
+              ],
+              "role": "user"
+            },
+            "id": "e55cf7c4-4b9a-457d-a093-9ab88f2d63b0",
+            "invocation_id": "inv-08-01",
+            "node_info": {
+              "path": ""
+            },
+            "timestamp": 1784967301.0
+          },
+          "id": "e55cf7c4-4b9a-457d-a093-9ab88f2d63b0",
+          "invocation_id": "inv-08-01",
+          "timestamp": "2026-07-25T08:15:01Z"
+        },
+        {
+          "event_data": {
+            "actions": {
+              "artifact_delta": {},
+              "requested_auth_configs": {},
+              "requested_tool_confirmations": {},
+              "state_delta": {}
+            },
+            "author": "release_copilot",
+            "content": {
+              "parts": [
+                {
+                  "text": "Verified. Current state and historical event evidence agree."
+                }
+              ],
+              "role": "model"
+            },
+            "id": "22917f76-1b8a-432a-8f02-c62de9557908",
+            "invocation_id": "inv-08-02",
+            "node_info": {
+              "path": ""
+            },
+            "timestamp": 1784967302.0
+          },
+          "id": "22917f76-1b8a-432a-8f02-c62de9557908",
+          "invocation_id": "inv-08-02",
+          "timestamp": "2026-07-25T08:15:02Z"
+        }
+      ],
+      "session_id": "08-current-truth",
+      "state": {},
+      "update_time": "2026-07-25T08:15:02Z",
+      "user_id": "dana"
+    }
+  ],
+  "source": {
+    "captured_at": "2026-08-01T10:39:52.159236Z",
+    "database_name": "google-adk-sessions.db",
+    "database_sha256": "f622f1697993d042a1aa1c8573364a14ddbcda064caf07488b326be4b63d7428",
+    "google_adk_version": "2.6.0",
+    "provider": "google-adk",
+    "redacted_values": 0,
+    "redaction_enabled": true,
+    "schema": "google-adk-sqlite-json/v1",
+    "service": "SqliteSessionService",
+    "table_columns": {
+      "app_states": [
+        "app_name",
+        "state",
+        "update_time"
+      ],
+      "events": [
+        "app_name",
+        "event_data",
+        "id",
+        "invocation_id",
+        "session_id",
+        "timestamp",
+        "user_id"
+      ],
+      "sessions": [
+        "app_name",
+        "create_time",
+        "id",
+        "state",
+        "update_time",
+        "user_id"
+      ],
+      "user_states": [
+        "app_name",
+        "state",
+        "update_time",
+        "user_id"
+      ]
+    }
+  },
+  "user_states": [
+    {
+      "app_name": "atlas-release-copilot",
+      "state": {
+        "preference.release_update_format": "Dana prefers release updates in Markdown, with at most five bullets and no tables."
+      },
+      "update_time": "2026-07-08T15:20:02Z",
+      "user_id": "dana"
+    }
+  ]
+}

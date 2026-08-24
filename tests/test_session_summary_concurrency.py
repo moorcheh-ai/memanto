@@ -60,7 +60,7 @@ def test_concurrent_summary_writes_create_one_header(monkeypatch, tmp_path):
     assert summary.count("# Session Summary for agent-race") == 1
     for index in range(worker_count):
         entry = (
-            f"### [2026-07-20 12:00:0{index}] [FACT] concurrent-{index}\n"
+            f"## [2026-07-20 12:00:0{index}] [FACT] concurrent-{index}\n"
             f"- **Memory ID**: `mem-{index}`\n"
             "- **Confidence**: `0.8`\n"
             "- **Status**: `active`\n"

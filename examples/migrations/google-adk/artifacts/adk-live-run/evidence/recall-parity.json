@@ -1,0 +1,58 @@
+{
+  "average_delta": 0.0,
+  "okf_average": 1.0,
+  "questions": 8,
+  "results": [
+    {
+      "delta": 0.0,
+      "id": "release-window",
+      "okf_score": 1.0,
+      "source_score": 1.0
+    },
+    {
+      "delta": 0.0,
+      "id": "release-owner",
+      "okf_score": 1.0,
+      "source_score": 1.0
+    },
+    {
+      "delta": 0.0,
+      "id": "deployment-calendar",
+      "okf_score": 1.0,
+      "source_score": 1.0
+    },
+    {
+      "delta": 0.0,
+      "id": "update-format",
+      "okf_score": 1.0,
+      "source_score": 1.0
+    },
+    {
+      "delta": 0.0,
+      "id": "database-preflight",
+      "okf_score": 1.0,
+      "source_score": 1.0
+    },
+    {
+      "delta": 0.0,
+      "id": "canary-policy",
+      "okf_score": 1.0,
+      "source_score": 1.0
+    },
+    {
+      "delta": 0.0,
+      "id": "cache-ttl",
+      "okf_score": 1.0,
+      "source_score": 1.0
+    },
+    {
+      "delta": 0.0,
+      "id": "final-rehearsal",
+      "okf_score": 1.0,
+      "source_score": 1.0
+    }
+  ],
+  "schema": "google-adk-recall-parity/v1",
+  "source_average": 1.0,
+  "zero_amnesia": true
+}

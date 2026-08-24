@@ -431,6 +431,8 @@ def _run_migrate_flow(
             border_style=border,
         )
     )
+    if summary.failed:
+        raise typer.Exit(code=1)
 
 
 # --------------------------------------------------------------------------
@@ -641,6 +643,8 @@ def migrate_okf(
             border_style=border,
         )
     )
+    if summary.failed:
+        raise typer.Exit(code=1)
 
 
 @migrate_app.command("supermemory")

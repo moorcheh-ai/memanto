@@ -1,0 +1,18 @@
+$ memanto migrate okf <bundle> --dry-run
+
++-------------------------+
+| OKF -> Memanto  Dry run |
++-------------------------+
+  … Loading OKF bundle from examples\migrations\google-adk\artifacts\adk-live-run\google-adk-okf
+  … Mapping OKF nodes onto Memanto schema...
+
++------------------------------------------------------------------------------------------------------------- Dry run complete -------------------------------------------------------------------------------------------------------------+
+| OKF nodes: 10                                                                                                                                                                                                                              |
+| Mapped memories: 10  (skipped 0)                                                                                                                                                                                                           |
+| Type breakdown: commitment: 1, decision: 2, event: 1, fact: 1, goal: 1, instruction: 1, learning: 1, preference: 1, relationship: 1                                                                                                        |
+|                                                                                                                                                                                                                                            |
+| Dry run — no writes performed.                                                                                                                                                                                                             |
+|                                                                                                                                                                                                                                            |
+| Run dir: ~\.memanto\migrate\okf\20260801_103956                                                                                                                                                                        |
+| Mapped preview: ~\.memanto\migrate\okf\20260801_103956\mapped_preview.json                                                                                                                                             |
++--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+

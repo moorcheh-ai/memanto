@@ -35,7 +35,7 @@ from collections.abc import Callable
 from datetime import datetime, timezone
 from typing import Any
 
-from memanto.app.constants import VALID_MEMORY_TYPES
+from memanto.app.constants import VALID_MEMORY_TYPES, VALID_SOURCE_TYPES
 
 # Mem0 ships category labels per memory. Map the common ones to Memanto's
 # typed primitives; everything else falls through to None (auto-classify).
@@ -451,7 +451,12 @@ def map_okf(export: dict[str, Any]) -> list[dict[str, Any]]:
             confidence = 0.8
         confidence = min(1.0, max(0.0, confidence))
 
-        source = x_memanto.get("source") or "okf"
+        raw_source = x_memanto.get("source")
+        source = (
+            raw_source
+            if isinstance(raw_source, str) and raw_source in VALID_SOURCE_TYPES
+            else "tool"
+        )
         created_at = _parse_dt(entry.get("timestamp"))
 
         footer_items: list[tuple[str, Any]] = [
@@ -460,6 +465,10 @@ def map_okf(export: dict[str, Any]) -> list[dict[str, Any]]:
             ("OKF type", okf_type if not memory_type else None),
             ("OKF resource", resource),
             ("Links", entry.get("links")),
+            (
+                "OKF original source",
+                raw_source if raw_source and raw_source != source else None,
+            ),
         ]
         for key, value in (entry.get("extra") or {}).items():
             footer_items.append((f"OKF {key}", value))

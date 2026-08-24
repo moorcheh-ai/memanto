@@ -1,0 +1,145 @@
+{
+  "average_score": 1.0,
+  "corpus": "memanto-okf-mapped-preview",
+  "documents": 10,
+  "method": "Deterministic lexical retrieval over current durable state; each question scores the fraction of required answer groups found.",
+  "passed": 8,
+  "questions": 8,
+  "results": [
+    {
+      "answer_excerpt": "Release window\n# Release window\n\nBeacon releases Tuesday, August 4, 2026 at 14:00 UTC.\n\n## Provenance\n\n- Google ADK scope: `app`\n- State key: `goal.release_window`\n- App: `atlas-release-copilot`\n\n[Audit trail (2 persisted updates)](../../archive/state-history/adk-app-goal-release-window-09e080e30701.md)\n\n---\n[Supporting data]\n- OKF source: memories/goal/adk-app-goal-release-window-09e080e30701.md\n- OKF resource: google-adk://sqlite/f622f1697993d042/atlas-release-copilot/app/goal.release_window\n- Links: Audit trail (2 persisted updates) -> ../../archive/state-history/adk-app-goal-release-window",
+      "id": "release-window",
+      "matched_groups": [
+        true,
+        true
+      ],
+      "question": "When is the current Beacon production release window?",
+      "score": 1.0,
+      "top_document_ids": [
+        "google-adk://sqlite/f622f1697993d042/atlas-release-copilot/app/goal.release_window",
+        "google-adk://sqlite/f622f1697993d042/atlas-release-copilot/app/commitment.release_readiness",
+        "google-adk://sqlite/f622f1697993d042/atlas-release-copilot/app/relationship.release_ownership"
+      ],
+      "total_groups": 2
+    },
+    {
+      "answer_excerpt": "Release ownership\n# Release ownership\n\nLuis Ortega is the current Beacon release DRI, and Priya Shah is the backup.\n\n## Provenance\n\n- Google ADK scope: `app`\n- State key: `relationship.release_ownership`\n- App: `atlas-release-copilot`\n\n[Audit trail (2 persisted updates)](../../archive/state-history/adk-app-relationship-release-ownership-3d60036341e2.md)\n\n---\n[Supporting data]\n- OKF source: memories/relationship/adk-app-relationship-release-ownership-3d60036341e2.md\n- OKF resource: google-adk://sqlite/f622f1697993d042/atlas-release-copilot/app/relationship.release_ownership\n- Links: Audit trail",
+      "id": "release-owner",
+      "matched_groups": [
+        true,
+        true
+      ],
+      "question": "Who is the current Beacon release DRI and who is backup?",
+      "score": 1.0,
+      "top_document_ids": [
+        "google-adk://sqlite/f622f1697993d042/atlas-release-copilot/app/relationship.release_ownership",
+        "google-adk://sqlite/f622f1697993d042/atlas-release-copilot/app/commitment.release_readiness",
+        "google-adk://sqlite/f622f1697993d042/atlas-release-copilot/app/goal.release_window"
+      ],
+      "total_groups": 2
+    },
+    {
+      "answer_excerpt": "Deployment calendar\n# Deployment calendar\n\nBeacon production deployments never occur on Fridays.\n\n## Provenance\n\n- Google ADK scope: `app`\n- State key: `instruction.deployment_calendar`\n- App: `atlas-release-copilot`\n\n---\n[Supporting data]\n- OKF source: memories/instruction/adk-app-instruction-deployment-calendar-33a89d54a8ea.md\n- OKF resource: google-adk://sqlite/f622f1697993d042/atlas-release-copilot/app/instruction.deployment_calendar\n- OKF original source: google-adk\n- OKF generated: at=2026-08-01T10:39:52.159236Z; by=memanto-google-adk-okf/1.0.0\n- OKF sources: {'id': 'adk-app-instruction-",
+      "id": "deployment-calendar",
+      "matched_groups": [
+        true
+      ],
+      "question": "What day-of-week deployment rule applies to Beacon?",
+      "score": 1.0,
+      "top_document_ids": [
+        "google-adk://sqlite/f622f1697993d042/atlas-release-copilot/app/instruction.deployment_calendar",
+        "google-adk://sqlite/f622f1697993d042/atlas-release-copilot/app/goal.release_window",
+        "google-adk://sqlite/f622f1697993d042/atlas-release-copilot/app/commitment.release_readiness"
+      ],
+      "total_groups": 1
+    },
+    {
+      "answer_excerpt": "Release update format\n# Release update format\n\nDana prefers release updates in Markdown, with at most five bullets and no tables.\n\n## Provenance\n\n- Google ADK scope: `user`\n- State key: `preference.release_update_format`\n- App: `atlas-release-copilot`\n- User: `dana`\n\n---\n[Supporting data]\n- OKF source: memories/preference/adk-user-preference-release-update-format-da749525d66d.md\n- OKF resource: google-adk://sqlite/f622f1697993d042/atlas-release-copilot/user/dana/preference.release_update_format\n- OKF original source: google-adk\n- OKF generated: at=2026-08-01T10:39:52.159236Z; by=memanto-google",
+      "id": "update-format",
+      "matched_groups": [
+        true,
+        true,
+        true
+      ],
+      "question": "How should Dana's release updates be formatted?",
+      "score": 1.0,
+      "top_document_ids": [
+        "google-adk://sqlite/f622f1697993d042/atlas-release-copilot/user/dana/preference.release_update_format",
+        "google-adk://sqlite/f622f1697993d042/atlas-release-copilot/app/commitment.release_readiness",
+        "google-adk://sqlite/f622f1697993d042/atlas-release-copilot/app/goal.release_window"
+      ],
+      "total_groups": 3
+    },
+    {
+      "answer_excerpt": "Staging database preflight\n# Staging database preflight\n\nThe first Beacon staging migration failed because the PostgreSQL 16 pg_trgm extension was missing. After enabling pg_trgm it succeeded in 3 minutes 42 seconds with 185 ms p95 latency. The runbook now requires a pg_trgm preflight.\n\n## Provenance\n\n- Google ADK scope: `app`\n- State key: `learning.staging_database_preflight`\n- App: `atlas-release-copilot`\n\n---\n[Supporting data]\n- OKF source: memories/learning/adk-app-learning-staging-database-preflight-10ccf95d697a.md\n- OKF resource: google-adk://sqlite/f622f1697993d042/atlas-release-copilot",
+      "id": "database-preflight",
+      "matched_groups": [
+        true,
+        true
+      ],
+      "question": "What database prerequisite did staging reveal?",
+      "score": 1.0,
+      "top_document_ids": [
+        "google-adk://sqlite/f622f1697993d042/atlas-release-copilot/app/learning.staging_database_preflight",
+        "google-adk://sqlite/f622f1697993d042/atlas-release-copilot/app/commitment.release_readiness",
+        "google-adk://sqlite/f622f1697993d042/atlas-release-copilot/app/decision.canary_and_rollback"
+      ],
+      "total_groups": 2
+    },
+    {
+      "answer_excerpt": "Canary and rollback\n# Canary and rollback\n\nBeacon starts at a 10 percent canary for 30 minutes. Promote only while errors remain below 1 percent and p95 latency remains below 250 ms; otherwise roll back immediately.\n\n## Provenance\n\n- Google ADK scope: `app`\n- State key: `decision.canary_and_rollback`\n- App: `atlas-release-copilot`\n\n---\n[Supporting data]\n- OKF source: memories/decision/adk-app-decision-canary-and-rollback-6e8237827ebe.md\n- OKF resource: google-adk://sqlite/f622f1697993d042/atlas-release-copilot/app/decision.canary_and_rollback\n- OKF original source: google-adk\n- OKF generated: ",
+      "id": "canary-policy",
+      "matched_groups": [
+        true,
+        true,
+        true,
+        true
+      ],
+      "question": "What is the Beacon canary and rollback policy?",
+      "score": 1.0,
+      "top_document_ids": [
+        "google-adk://sqlite/f622f1697993d042/atlas-release-copilot/app/decision.canary_and_rollback",
+        "google-adk://sqlite/f622f1697993d042/atlas-release-copilot/app/event.final_rehearsal",
+        "google-adk://sqlite/f622f1697993d042/atlas-release-copilot/app/commitment.release_readiness"
+      ],
+      "total_groups": 4
+    },
+    {
+      "answer_excerpt": "Feature flag cache ttl\n# Feature flag cache ttl\n\nThe approved Beacon production feature-flag cache TTL is 6 hours so the flag can be unwound on the same shift.\n\n## Provenance\n\n- Google ADK scope: `app`\n- State key: `decision.feature_flag_cache_ttl`\n- App: `atlas-release-copilot`\n\n[Audit trail (2 persisted updates)](../../archive/state-history/adk-app-decision-feature-flag-cache-ttl-03ccade6027b.md)\n\n---\n[Supporting data]\n- OKF source: memories/decision/adk-app-decision-feature-flag-cache-ttl-03ccade6027b.md\n- OKF resource: google-adk://sqlite/f622f1697993d042/atlas-release-copilot/app/decision",
+      "id": "cache-ttl",
+      "matched_groups": [
+        true
+      ],
+      "question": "What is the approved feature-flag cache TTL?",
+      "score": 1.0,
+      "top_document_ids": [
+        "google-adk://sqlite/f622f1697993d042/atlas-release-copilot/app/decision.feature_flag_cache_ttl",
+        "google-adk://sqlite/f622f1697993d042/atlas-release-copilot/app/commitment.release_readiness",
+        "google-adk://sqlite/f622f1697993d042/atlas-release-copilot/app/decision.canary_and_rollback"
+      ],
+      "total_groups": 1
+    },
+    {
+      "answer_excerpt": "Final rehearsal\n# Final rehearsal\n\nBeacon's final rehearsal succeeded on July 24, 2026. The pg_trgm preflight passed, migration took 3 minutes 39 seconds, canary errors were 0.3 percent, and p95 latency was 181 ms.\n\n## Provenance\n\n- Google ADK scope: `app`\n- State key: `event.final_rehearsal`\n- App: `atlas-release-copilot`\n\n---\n[Supporting data]\n- OKF source: memories/event/adk-app-event-final-rehearsal-26d2c882a046.md\n- OKF resource: google-adk://sqlite/f622f1697993d042/atlas-release-copilot/app/event.final_rehearsal\n- OKF original source: google-adk\n- OKF generated: at=2026-08-01T10:39:52.15",
+      "id": "final-rehearsal",
+      "matched_groups": [
+        true,
+        true,
+        true,
+        true
+      ],
+      "question": "What were the final Beacon rehearsal results?",
+      "score": 1.0,
+      "top_document_ids": [
+        "google-adk://sqlite/f622f1697993d042/atlas-release-copilot/app/event.final_rehearsal",
+        "google-adk://sqlite/f622f1697993d042/atlas-release-copilot/app/commitment.release_readiness",
+        "google-adk://sqlite/f622f1697993d042/atlas-release-copilot/app/decision.canary_and_rollback"
+      ],
+      "total_groups": 4
+    }
+  ],
+  "schema": "google-adk-golden-validation/v1",
+  "score_distribution": {
+    "1.0": 8
+  }
+}
