@@ -1,0 +1,19 @@
+Live migration run — agent: real-data-test — 2026-08-24
+
+Provider      Source  Mapped  Imported  Failed
+-----------   ------  ------  --------  ------
+chatgpt           77      77        77       0
+claude           206     172       172       0
+gemini            72      72        72       0
+zep               12      12        12       0
+hindsight          6       6         6       0
+langgraph          4       4         4       0
+chroma             3       3         3       0
+-----------   ------  ------  --------  ------
+TOTAL            380     346       346       0
+
+OKF export: memanto memory export --okf --output real-data-test_okf --agent real-data-test
+Result: 132 memories exported across 11 types
+  Instructions: 25  |  Facts: 25  |  Events: 25  |  Errors: 14
+  Context: 13  |  Artifacts: 11  |  Commitments: 6  |  Observations: 6
+  Goals: 3  |  Decisions: 2  |  Preferences: 2

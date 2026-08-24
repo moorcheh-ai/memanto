@@ -22,7 +22,7 @@ from pathlib import Path
 _HERE = Path(__file__).parent
 _MIGRATIONS = _HERE.parent
 _REPO_ROOT = _MIGRATIONS.parent.parent
-for _p in (_MIGRATIONS, _REPO_ROOT):
+for _p in (_HERE, _MIGRATIONS, _REPO_ROOT):
     s = str(_p)
     if s not in sys.path:
         sys.path.insert(0, s)
@@ -38,7 +38,7 @@ def _fetch_chroma_collection(collection: str, host: str, port: int) -> dict | No
     try:
         client = chromadb.HttpClient(host=host, port=port)
         col = client.get_collection(collection)
-        result = col.get(include=["documents", "metadatas", "ids"])
+        result = col.get(include=["documents", "metadatas"])
     except Exception as exc:
         print(f"ChromaDB error: {exc}", file=sys.stderr)
         return None
@@ -74,26 +74,30 @@ def main() -> int:
     host = args.host or os.environ.get("CHROMA_HOST", "localhost")
     port = args.port or int(os.environ.get("CHROMA_PORT", "8000"))
 
+    from _shared import print_summary, require_agent
     from runner import run_migration
 
     print(f"Fetching collection '{collection}' from {host}:{port}...")
     export = _fetch_chroma_collection(collection, host, port)
     if export is None:
         return 1
-
     if not export["memories"]:
         print("No documents found in collection.", file=sys.stderr)
         return 1
 
     if not args.dry_run:
+        agent = require_agent(args.agent, "migrate_chroma.py")
+        if agent is None:
+            return 1
         api_key = os.environ.get("MOORCHEH_API_KEY", "")
         if not api_key:
             print("MOORCHEH_API_KEY is not set.", file=sys.stderr)
             return 1
         from memanto.cli.client.sdk_client import SdkClient
         client = SdkClient(api_key=api_key)
-        client.activate_agent(args.agent, duration_hours=2)
+        client.activate_agent(agent, duration_hours=2)
     else:
+        agent = args.agent
         client = None
 
     try:
@@ -101,27 +105,16 @@ def main() -> int:
             provider="chroma",
             export=export,
             client=client,
-            agent_id=args.agent or "",
+            agent_id=agent or "",
             dry_run=args.dry_run,
             on_progress=lambda msg: print(f"  {msg}"),
         )
     finally:
         if client is not None:
-            client.deactivate_agent(args.agent)
+            client.deactivate_agent(agent)
 
-    _print_summary(summary, args.dry_run)
+    print_summary(summary, args.dry_run)
     return 0
-
-
-def _print_summary(summary, dry_run: bool) -> None:
-    mode = "Dry run" if dry_run else "Migration"
-    print(f"\n{mode} complete")
-    print(f"  Source records : {summary.source_count}")
-    print(f"  Mapped memories: {summary.mapped_count}  (skipped {summary.skipped})")
-    types = ", ".join(f"{k}: {v}" for k, v in summary.type_counts.items()) or "auto"
-    print(f"  Type breakdown : {types}")
-    if not dry_run:
-        print(f"  Imported       : {summary.imported}  Failed: {summary.failed}")
 
 
 if __name__ == "__main__":

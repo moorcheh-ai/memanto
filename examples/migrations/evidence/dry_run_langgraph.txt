@@ -1,22 +1,9 @@
-╭───────────────────────────────╮
-│ LangGraph -> Memanto  Dry run │
-╰───────────────────────────────╯
-  … Loading export from /tmp/<tmpfile>.json
-  … Mapping source records onto Memanto schema...
+$ python examples/migrations/scripts/migrate_langgraph.py --dry-run
 
-╭────────────────────── Dry run complete ──────────────────────╮
-│ Source records: 4                                            │
-│ Mapped memories: 4  (skipped 0 empty)                        │
-│ Type breakdown: auto: 4                                      │
-│                                                              │
-│ Dry run — no writes performed.                               │
-│                                                              │
-│ Run dir:                                                     │
-│ ~/.memanto/migrate/langgraph/20260724_230100                 │
-│ Mapped preview:                                              │
-│ ~/.memanto/migrate/langgraph/20260724_230100/mapped_preview. │
-│ json                                                         │
-│ Savings report:                                              │
-│ ~/.memanto/migrate/langgraph/20260724_230100/migrate-report. │
-│ md                                                           │
-╰──────────────────────────────────────────────────────────────╯
+No LANGGRAPH_POSTGRES_URI set — using InMemoryStore with demo data.
+  Dumped 4 items from LangGraph store
+
+Dry run complete
+  Source records : 4
+  Mapped memories: 4  (skipped 0)
+  Type breakdown : auto: 4

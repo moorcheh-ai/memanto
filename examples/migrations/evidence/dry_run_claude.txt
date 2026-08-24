@@ -1,22 +1,9 @@
-╭────────────────────────────╮
-│ Claude -> Memanto  Dry run │
-╰────────────────────────────╯
-  … Extracting 
-examples/migrations/sample_data/claude_export.zip
-  … Mapping source records onto Memanto schema...
+$ python examples/migrations/scripts/migrate_claude.py --dry-run \
+    --file claude-data.zip
 
-╭────────────────────── Dry run complete ──────────────────────╮
-│ Source records: 5                                            │
-│ Mapped memories: 5  (skipped 0 empty)                        │
-│ Type breakdown: auto: 5                                      │
-│                                                              │
-│ Dry run — no writes performed.                               │
-│                                                              │
-│ Run dir:                                                     │
-│ ~/.memanto/migrate/claude/20260724_230035                    │
-│ Mapped preview:                                              │
-│ ~/.memanto/migrate/claude/20260724_230035/mapped_preview.jso │
-│ n                                                            │
-│ Savings report:                                              │
-│ ~/.memanto/migrate/claude/20260724_230035/migrate-report.md  │
-╰──────────────────────────────────────────────────────────────╯
+Dry run complete
+  Source records : 206
+  Mapped memories: 172  (skipped 34)
+  Type breakdown : auto: 172
+
+Note: 34 skipped records are empty messages (no text content in chat_messages[].text or content[].text).

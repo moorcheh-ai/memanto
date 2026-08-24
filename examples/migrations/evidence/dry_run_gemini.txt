@@ -1,22 +1,7 @@
-╭────────────────────────────╮
-│ Gemini -> Memanto  Dry run │
-╰────────────────────────────╯
-  … Extracting 
-examples/migrations/sample_data/gemini_export.zip
-  … Mapping source records onto Memanto schema...
+$ python examples/migrations/scripts/migrate_gemini.py --dry-run \
+    --file takeout-20260723T173054Z-1-001.zip
 
-╭────────────────────── Dry run complete ──────────────────────╮
-│ Source records: 5                                            │
-│ Mapped memories: 5  (skipped 0 empty)                        │
-│ Type breakdown: auto: 5                                      │
-│                                                              │
-│ Dry run — no writes performed.                               │
-│                                                              │
-│ Run dir:                                                     │
-│ ~/.memanto/migrate/gemini/20260724_230037                    │
-│ Mapped preview:                                              │
-│ ~/.memanto/migrate/gemini/20260724_230037/mapped_preview.jso │
-│ n                                                            │
-│ Savings report:                                              │
-│ ~/.memanto/migrate/gemini/20260724_230037/migrate-report.md  │
-╰──────────────────────────────────────────────────────────────╯
+Dry run complete
+  Source records : 72
+  Mapped memories: 72  (skipped 0)
+  Type breakdown : auto: 72

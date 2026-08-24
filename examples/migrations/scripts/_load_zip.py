@@ -56,12 +56,20 @@ def load_conversation_zip(zip_path: Path, provider: str) -> dict[str, Any] | Non
         return {"memories": raw} if isinstance(raw, list) else raw
 
 
-def _parse_gemini(tmp_path: Path) -> dict[str, Any]:
+def _parse_gemini(tmp_path: Path) -> dict[str, Any] | None:
     json_hits = list(tmp_path.rglob("My Activity.json"))
     if json_hits:
-        entries = json.loads(json_hits[0].read_text(encoding="utf-8"))
+        try:
+            raw = json_hits[0].read_text(encoding="utf-8")
+            entries = json.loads(raw)
+        except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
+            print(f"Could not read My Activity.json: {exc}", file=sys.stderr)
+            return None
+        if not isinstance(entries, list):
+            print("My Activity.json is not a list — unexpected format.", file=sys.stderr)
+            return None
         memories = []
-        for entry in entries or []:
+        for entry in entries:
             title = (entry.get("title") or "").strip()
             prompt = re.sub(r"^Prompted\s+", "", title).strip()
             if prompt:

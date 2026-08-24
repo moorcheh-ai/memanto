@@ -28,7 +28,6 @@ class TestMapLanggraph:
 
     def test_value_str_used_directly(self):
         export = {"items": [_lg_item("k2", "plain string value", ["ns"])]}
-        assert rows[0]["content"].startswith("plain string value") if (rows := map_langgraph(export)) else False
         rows = map_langgraph(export)
         assert rows[0]["content"].startswith("plain string value")
 
