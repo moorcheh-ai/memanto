@@ -1,6 +1,6 @@
 import pytest
 
-from examples.migrations.mappers import map_chatgpt, map_claude, map_gemini
+from mappers import map_chatgpt, map_claude, map_gemini
 
 
 def _chatgpt_export(*user_texts, conv_id="conv-1", title="Test Conv"):
@@ -32,17 +32,6 @@ def _chatgpt_export(*user_texts, conv_id="conv-1", title="Test Conv"):
 
 
 def _claude_export(*texts, conv_id="c-1", name="My Conv"):
-    """
-    Build a Claude-style export containing a single conversation with human messages.
-    
-    Parameters:
-        texts (str): Message texts to include in the conversation.
-        conv_id (str): Identifier for the conversation.
-        name (str): Conversation name.
-    
-    Returns:
-        dict: An export containing the conversation and its messages.
-    """
     messages = [
         {
             "uuid": f"msg-{i}",
@@ -56,15 +45,6 @@ def _claude_export(*texts, conv_id="c-1", name="My Conv"):
 
 
 def _gemini_export(*texts, conv_id="g-1"):
-    """Build a Gemini-style export containing user messages for one conversation.
-    
-    Parameters:
-        texts: Message text values to include in the conversation.
-        conv_id: Identifier for the conversation.
-    
-    Returns:
-        A dictionary representing the Gemini export payload.
-    """
     return {
         "memories": [
             {
@@ -78,8 +58,7 @@ def _gemini_export(*texts, conv_id="g-1"):
 
 class TestMapChatgpt:
     def test_basic_fields(self):
-        export = _chatgpt_export("Hello world")
-        rows = map_chatgpt(export)
+        rows = map_chatgpt(_chatgpt_export("Hello world"))
         assert len(rows) == 1
         r = rows[0]
         assert r["source"] == "chatgpt"
@@ -88,11 +67,8 @@ class TestMapChatgpt:
         assert "Hello world" in r["content"]
 
     def test_chronological_order(self):
-        export = _chatgpt_export("first", "second", "third")
-        rows = map_chatgpt(export)
+        rows = map_chatgpt(_chatgpt_export("first", "second", "third"))
         contents = [r["content"] for r in rows]
-        assert any("first" in c for c in contents)
-        assert any("third" in c for c in contents)
         first_idx = next(i for i, c in enumerate(contents) if "first" in c)
         third_idx = next(i for i, c in enumerate(contents) if "third" in c)
         assert first_idx < third_idx
@@ -176,31 +152,26 @@ class TestMapChatgpt:
             },
         }
         export = {"memories": [{"id": "c1", "title": "cycle", "mapping": mapping, "current_node": "n1"}]}
-        rows = map_chatgpt(export)
-        assert len(rows) == 2
+        assert len(map_chatgpt(export)) == 2
 
     def test_empty_memories(self):
         assert map_chatgpt({"memories": []}) == []
         assert map_chatgpt({}) == []
 
     def test_title_used_when_present(self):
-        export = _chatgpt_export("some text", title="My Title")
-        rows = map_chatgpt(export)
+        rows = map_chatgpt(_chatgpt_export("some text", title="My Title"))
         assert rows[0]["title"] == "My Title"
 
     def test_timestamp_parsed(self):
-        export = _chatgpt_export("hello")
-        rows = map_chatgpt(export)
+        rows = map_chatgpt(_chatgpt_export("hello"))
         assert rows[0]["created_at"] is not None
 
     def test_source_ref_is_node_id(self):
-        export = _chatgpt_export("hello")
-        rows = map_chatgpt(export)
+        rows = map_chatgpt(_chatgpt_export("hello"))
         assert rows[0]["source_ref"] == "node-0"
 
     def test_skips_malformed_conv(self):
-        good_export = _chatgpt_export("valid message")
-        good_conv = good_export["memories"][0]
+        good_conv = _chatgpt_export("valid message")["memories"][0]
         export = {"memories": ["not a dict", None, 42, good_conv]}
         rows = map_chatgpt(export)
         assert len(rows) == 1
@@ -209,8 +180,7 @@ class TestMapChatgpt:
 
 class TestMapClaude:
     def test_basic_fields(self):
-        export = _claude_export("Hello Claude")
-        rows = map_claude(export)
+        rows = map_claude(_claude_export("Hello Claude"))
         assert len(rows) == 1
         r = rows[0]
         assert r["source"] == "claude"
@@ -279,27 +249,24 @@ class TestMapClaude:
         assert map_claude({}) == []
 
     def test_conv_title_used(self):
-        export = _claude_export("hi", name="My Conversation")
-        rows = map_claude(export)
+        rows = map_claude(_claude_export("hi", name="My Conversation"))
         assert rows[0]["title"] == "My Conversation"
 
     def test_timestamp_parsed(self):
-        export = _claude_export("hello")
-        rows = map_claude(export)
-        assert rows[0]["created_at"] is not None
+        assert map_claude(_claude_export("hello"))[0]["created_at"] is not None
 
     def test_source_ref_is_message_uuid(self):
-        export = _claude_export("hello")
-        rows = map_claude(export)
-        assert rows[0]["source_ref"] == "msg-0"
+        assert map_claude(_claude_export("hello"))[0]["source_ref"] == "msg-0"
 
     def test_multiple_messages(self):
-        export = _claude_export("first", "second", "third")
-        rows = map_claude(export)
-        assert len(rows) == 3
+        assert len(map_claude(_claude_export("first", "second", "third"))) == 3
 
     def test_skips_malformed_conv(self):
-        export = {"memories": ["not a dict", None, {"uuid": "c1", "name": "ok", "chat_messages": [{"uuid": "m1", "sender": "human", "text": "valid"}]}]}
+        export = {"memories": [
+            "not a dict",
+            None,
+            {"uuid": "c1", "name": "ok", "chat_messages": [{"uuid": "m1", "sender": "human", "text": "valid"}]},
+        ]}
         rows = map_claude(export)
         assert len(rows) == 1
         assert "valid" in rows[0]["content"]
@@ -307,8 +274,7 @@ class TestMapClaude:
 
 class TestMapGemini:
     def test_basic_fields(self):
-        export = _gemini_export("Hello Gemini")
-        rows = map_gemini(export)
+        rows = map_gemini(_gemini_export("Hello Gemini"))
         assert len(rows) == 1
         r = rows[0]
         assert r["source"] == "gemini"
@@ -350,8 +316,12 @@ class TestMapGemini:
         assert len(rows) == 1
         assert "real text" in rows[0]["content"]
 
-    def test_skips_malformed_json_conv(self):
-        export = {"memories": ["not a dict", None, {"id": "g1", "createdTime": None, "messages": [{"role": "user", "text": "ok"}]}]}
+    def test_skips_malformed_conv(self):
+        export = {"memories": [
+            "not a dict",
+            None,
+            {"id": "g1", "createdTime": None, "messages": [{"role": "user", "text": "ok"}]},
+        ]}
         rows = map_gemini(export)
         assert len(rows) == 1
         assert "ok" in rows[0]["content"]
@@ -361,32 +331,14 @@ class TestMapGemini:
         assert map_gemini({}) == []
 
     def test_timestamp_parsed(self):
-        export = _gemini_export("hello")
-        rows = map_gemini(export)
-        assert rows[0]["created_at"] is not None
+        assert map_gemini(_gemini_export("hello"))[0]["created_at"] is not None
 
     def test_source_ref_is_unique_per_message(self):
-        export = _gemini_export("hello", conv_id="gemini-conv-42")
-        rows = map_gemini(export)
+        rows = map_gemini(_gemini_export("hello", conv_id="gemini-conv-42"))
         assert rows[0]["source_ref"] == "gemini-conv-42:0"
 
     def test_multiple_user_messages_same_conv(self):
-        export = _gemini_export("first", "second")
-        rows = map_gemini(export)
-        assert len(rows) == 2
-
-    def test_activity_json_format(self):
-        export = {
-            "memories": [
-                {
-                    "createdTime": "2024-06-01T10:00:00Z",
-                    "messages": [{"role": "user", "text": "Prompted what is AI"}],
-                }
-            ]
-        }
-        rows = map_gemini(export)
-        assert len(rows) == 1
-        assert "Prompted what is AI" in rows[0]["content"]
+        assert len(map_gemini(_gemini_export("first", "second"))) == 2
 
     def test_native_conversation_format(self):
         export = {

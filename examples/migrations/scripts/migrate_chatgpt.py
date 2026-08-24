@@ -10,46 +10,80 @@ Run:
 """
 
 import argparse
-import subprocess
+import os
 import sys
 from pathlib import Path
 
+_HERE = Path(__file__).parent
+_MIGRATIONS = _HERE.parent
+_REPO_ROOT = _MIGRATIONS.parent.parent
+for _p in (_MIGRATIONS, _REPO_ROOT):
+    s = str(_p)
+    if s not in sys.path:
+        sys.path.insert(0, s)
+
 # ── configure ────────────────────────────────────────────────────────────────
-ZIP_PATH = str(Path(__file__).parent.parent / "sample_data" / "chatgpt_export.zip")
+ZIP_PATH = str(_MIGRATIONS / "sample_data" / "chatgpt_export.zip")
 # ─────────────────────────────────────────────────────────────────────────────
 
 
-def run_conversation_migration(zip_path: str, source: str, dry_run: bool, agent: str | None) -> int:
-    cmd = ["memanto", "migrate", "conversations", zip_path, "--source", source]
-    if dry_run:
-        cmd.append("--dry-run")
-    if agent:
-        cmd += ["--agent", agent]
-    try:
-        return subprocess.run(cmd).returncode
-    except FileNotFoundError:
-        print("memanto not found. Run `pip install -e .` from the repo root.", file=sys.stderr)
-        return 1
-
-
 def main() -> int:
-    """
-    Run the Memanto migration for the configured ChatGPT export.
-    
-    Returns:
-    	int: The Memanto command's exit code, or 1 if the configured ZIP file does not exist.
-    """
     parser = argparse.ArgumentParser(description="Migrate ChatGPT export to Memanto")
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument("--agent", default=None)
+    parser.add_argument("--file", default=ZIP_PATH, help="Path to ChatGPT export ZIP")
     args = parser.parse_args()
 
-    if not Path(ZIP_PATH).exists():
-        print(f"ZIP not found: {ZIP_PATH}", file=sys.stderr)
-        print("Set ZIP_PATH at the top of this script to your ChatGPT export zip.", file=sys.stderr)
+    zip_path = Path(args.file)
+    if not zip_path.exists():
+        print(f"ZIP not found: {zip_path}", file=sys.stderr)
+        print("Set ZIP_PATH at the top of this script or pass --file.", file=sys.stderr)
         return 1
 
-    return run_conversation_migration(ZIP_PATH, "chatgpt", args.dry_run, args.agent)
+    from _load_zip import load_conversation_zip
+    from runner import run_migration
+
+    export = load_conversation_zip(zip_path, "chatgpt")
+    if export is None:
+        return 1
+
+    if not args.dry_run:
+        api_key = os.environ.get("MOORCHEH_API_KEY", "")
+        if not api_key:
+            print("MOORCHEH_API_KEY is not set.", file=sys.stderr)
+            return 1
+        from memanto.cli.client.sdk_client import SdkClient
+        client = SdkClient(api_key=api_key)
+        client.activate_agent(args.agent, duration_hours=2)
+    else:
+        client = None
+
+    try:
+        summary, _ = run_migration(
+            provider="chatgpt",
+            export=export,
+            client=client,
+            agent_id=args.agent or "",
+            dry_run=args.dry_run,
+            on_progress=lambda msg: print(f"  {msg}"),
+        )
+    finally:
+        if client is not None:
+            client.deactivate_agent(args.agent)
+
+    _print_summary(summary, args.dry_run)
+    return 0
+
+
+def _print_summary(summary, dry_run: bool) -> None:
+    mode = "Dry run" if dry_run else "Migration"
+    print(f"\n{mode} complete")
+    print(f"  Source records : {summary.source_count}")
+    print(f"  Mapped memories: {summary.mapped_count}  (skipped {summary.skipped})")
+    types = ", ".join(f"{k}: {v}" for k, v in summary.type_counts.items()) or "auto"
+    print(f"  Type breakdown : {types}")
+    if not dry_run:
+        print(f"  Imported       : {summary.imported}  Failed: {summary.failed}")
 
 
 if __name__ == "__main__":

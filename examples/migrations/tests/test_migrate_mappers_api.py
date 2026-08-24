@@ -2,18 +2,10 @@ from datetime import datetime, timezone
 
 import pytest
 
-from examples.migrations.mappers import map_chroma, map_hindsight, map_zep
+from mappers import map_chroma, map_hindsight, map_zep
 
 
 def _zep_export(*edges):
-    """Create a Zep-style export payload containing the provided memory edges.
-    
-    Parameters:
-    	edges: Memory edge records to include in the export.
-    
-    Returns:
-    	dict: A payload with the edges under the ``memories`` key.
-    """
     return {"memories": list(edges)}
 
 
@@ -28,26 +20,21 @@ def _chroma_export(*items):
 class TestMapZep:
     def test_fact_field_becomes_content(self):
         export = _zep_export({"fact": "User prefers dark mode", "uuid": "abc"})
-        result = map_zep(export)
-        assert result[0]["content"].startswith("User prefers dark mode")
+        assert map_zep(export)[0]["content"].startswith("User prefers dark mode")
 
     def test_type_is_always_fact(self):
-        export = _zep_export({"fact": "Some fact"})
-        assert map_zep(export)[0]["type"] == "fact"
+        assert map_zep(_zep_export({"fact": "Some fact"}))[0]["type"] == "fact"
 
     def test_valid_at_maps_to_created_at(self):
         export = _zep_export({"fact": "x", "valid_at": "2024-01-15T12:00:00Z"})
-        result = map_zep(export)
-        assert result[0]["created_at"] == datetime(2024, 1, 15, 12, 0, 0, tzinfo=timezone.utc)
+        assert map_zep(export)[0]["created_at"] == datetime(2024, 1, 15, 12, 0, 0, tzinfo=timezone.utc)
 
     def test_created_at_fallback_when_no_valid_at(self):
         export = _zep_export({"fact": "x", "created_at": "2024-03-01T00:00:00Z"})
-        result = map_zep(export)
-        assert result[0]["created_at"] == datetime(2024, 3, 1, tzinfo=timezone.utc)
+        assert map_zep(export)[0]["created_at"] == datetime(2024, 3, 1, tzinfo=timezone.utc)
 
     def test_source_and_provenance(self):
-        export = _zep_export({"fact": "x"})
-        r = map_zep(export)[0]
+        r = map_zep(_zep_export({"fact": "x"}))[0]
         assert r["source"] == "zep"
         assert r["provenance"] == "imported"
 
@@ -56,18 +43,23 @@ class TestMapZep:
         assert map_zep(export)[0]["source_ref"] == "edge-uuid-123"
 
     @pytest.mark.parametrize("field,value,expected", [
-        ("score", 0.6, 0.6),
-        ("relevance", 0.9, 0.9),
-        ("score", 1.5, 1.0),
-        ("score", -0.2, 0.0),
+        ("score",     0.6,  0.6),
+        ("relevance", 0.9,  0.9),
+        ("score",     1.5,  1.0),
+        ("score",    -0.2,  0.0),
+        ("score",     0.0,  0.0),   # 0.0 must not fall back to 0.8
     ])
     def test_confidence_from_score_or_relevance(self, field, value, expected):
         export = _zep_export({"fact": "x", field: value})
         assert map_zep(export)[0]["confidence"] == pytest.approx(expected)
 
+    def test_score_takes_precedence_over_relevance(self):
+        # both present — score wins
+        export = _zep_export({"fact": "x", "score": 0.3, "relevance": 0.9})
+        assert map_zep(export)[0]["confidence"] == pytest.approx(0.3)
+
     def test_confidence_defaults_to_0_8_when_absent(self):
-        export = _zep_export({"fact": "x"})
-        assert map_zep(export)[0]["confidence"] == pytest.approx(0.8)
+        assert map_zep(_zep_export({"fact": "x"}))[0]["confidence"] == pytest.approx(0.8)
 
     def test_empty_memories_returns_empty(self):
         assert map_zep({"memories": []}) == []
@@ -99,24 +91,20 @@ class TestMapHindsight:
         assert map_hindsight(export)[0]["content"].startswith("fallback text")
 
     @pytest.mark.parametrize("fact_type,expected_type", [
-        ("world", "fact"),
-        ("experience", "event"),
+        ("world",       "fact"),
+        ("experience",  "event"),
+        ("observation", "observation"),
     ])
     def test_hindsight_type_map(self, fact_type, expected_type):
         export = _hindsight_export({"text": "x", "fact_type": fact_type})
         assert map_hindsight(export)[0]["type"] == expected_type
-
-    def test_coerce_type_for_known_memanto_type(self):
-        export = _hindsight_export({"text": "x", "fact_type": "observation"})
-        assert map_hindsight(export)[0]["type"] == "observation"
 
     def test_unknown_fact_type_returns_none(self):
         export = _hindsight_export({"text": "x", "fact_type": "totally_unknown_type"})
         assert map_hindsight(export)[0]["type"] is None
 
     def test_source_and_provenance(self):
-        export = _hindsight_export({"text": "x"})
-        r = map_hindsight(export)[0]
+        r = map_hindsight(_hindsight_export({"text": "x"}))[0]
         assert r["source"] == "hindsight"
         assert r["provenance"] == "imported"
 
@@ -133,8 +121,7 @@ class TestMapHindsight:
         assert map_hindsight(export)[0]["tags"] == ["travel", "personal"]
 
     def test_empty_tags_when_absent(self):
-        export = _hindsight_export({"text": "x"})
-        assert map_hindsight(export)[0]["tags"] == []
+        assert map_hindsight(_hindsight_export({"text": "x"}))[0]["tags"] == []
 
     def test_empty_memories_returns_empty(self):
         assert map_hindsight({"memories": []}) == []
@@ -143,14 +130,13 @@ class TestMapHindsight:
 class TestMapChroma:
     def test_document_field_becomes_content(self):
         export = _chroma_export({"document": "some vector doc", "id": "c1", "metadata": {}})
-        result = map_chroma(export)
-        assert "some vector doc" in result[0]["content"]
+        assert "some vector doc" in map_chroma(export)[0]["content"]
 
     def test_payload_source_is_chroma(self):
         export = _chroma_export({"document": "x", "id": "c1", "metadata": {}})
         assert map_chroma(export)[0]["source"] == "chroma"
 
-    def test_metadata_source_goes_into_footer_not_payload(self):
+    def test_metadata_source_goes_into_footer(self):
         export = _chroma_export({
             "document": "doc text",
             "id": "c1",
@@ -166,12 +152,10 @@ class TestMapChroma:
         assert map_chroma(export)[0]["source_ref"] == "chroma-id-99"
 
     def test_type_is_none(self):
-        export = _chroma_export({"document": "x", "id": "c1", "metadata": {}})
-        assert map_chroma(export)[0]["type"] is None
+        assert map_chroma(_chroma_export({"document": "x", "id": "c1", "metadata": {}}))[0]["type"] is None
 
     def test_provenance_is_imported(self):
-        export = _chroma_export({"document": "x", "id": "c1", "metadata": {}})
-        assert map_chroma(export)[0]["provenance"] == "imported"
+        assert map_chroma(_chroma_export({"document": "x", "id": "c1", "metadata": {}}))[0]["provenance"] == "imported"
 
     def test_supporting_data_footer_format(self):
         export = _chroma_export({
@@ -186,10 +170,9 @@ class TestMapChroma:
     def test_empty_memories_returns_empty(self):
         assert map_chroma({"memories": []}) == []
 
-    def test_metadata_source_absent_no_footer_entry(self):
+    def test_no_metadata_no_footer(self):
         export = _chroma_export({"document": "plain doc", "id": "c1", "metadata": {}})
-        content = map_chroma(export)[0]["content"]
-        assert content == "plain doc"
+        assert map_chroma(export)[0]["content"] == "plain doc"
 
     def test_multiple_items_all_mapped(self):
         export = _chroma_export(

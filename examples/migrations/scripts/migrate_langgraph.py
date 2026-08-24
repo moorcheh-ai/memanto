@@ -10,51 +10,109 @@ Run:
 """
 
 import argparse
-import subprocess
+import asyncio
+import os
 import sys
 import tempfile
 from pathlib import Path
 
-_SCRIPTS = Path(__file__).parent
+_HERE = Path(__file__).parent
+_MIGRATIONS = _HERE.parent
+_REPO_ROOT = _MIGRATIONS.parent.parent
+for _p in (_MIGRATIONS, _REPO_ROOT):
+    s = str(_p)
+    if s not in sys.path:
+        sys.path.insert(0, s)
 
 
 def main() -> int:
-    """
-    Dump LangGraph data and migrate it into Memanto.
-    
-    The migration can be limited to an agent and run in dry-run mode through
-    the corresponding command-line options.
-    
-    Returns:
-        int: The migration command's exit code, or 1 if the LangGraph dump fails.
-    """
     parser = argparse.ArgumentParser(description="Dump LangGraph store and migrate to Memanto")
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument("--agent", default=None)
+    parser.add_argument("--file", default=None, help="Pre-dumped langgraph JSON (skips live dump)")
     args = parser.parse_args()
 
-    with tempfile.NamedTemporaryFile(suffix=".json", delete=False) as f:
-        tmp_path = f.name
+    from runner import run_migration
+
+    if args.file:
+        import json
+        export = json.loads(Path(args.file).read_text(encoding="utf-8"))
+    else:
+        import json
+        with tempfile.NamedTemporaryFile(suffix=".json", delete=False, mode="w") as f:
+            tmp_path = f.name
+        try:
+            from dump_langgraph import main as dump_main
+            asyncio.run(_run_dump(tmp_path))
+            export = json.loads(Path(tmp_path).read_text(encoding="utf-8"))
+        finally:
+            try:
+                Path(tmp_path).unlink()
+            except OSError:
+                pass
+
+    if not args.dry_run:
+        api_key = os.environ.get("MOORCHEH_API_KEY", "")
+        if not api_key:
+            print("MOORCHEH_API_KEY is not set.", file=sys.stderr)
+            return 1
+        from memanto.cli.client.sdk_client import SdkClient
+        client = SdkClient(api_key=api_key)
+        client.activate_agent(args.agent, duration_hours=2)
+    else:
+        client = None
 
     try:
-        dump_cmd = [sys.executable, str(_SCRIPTS / "dump_langgraph.py"), "--output", tmp_path]
-        result = subprocess.run(dump_cmd)
-        if result.returncode != 0:
-            print("LangGraph dump failed.", file=sys.stderr)
-            return 1
-
-        migrate_cmd = ["memanto", "migrate", "langgraph", "--file", tmp_path]
-        if args.dry_run:
-            migrate_cmd.append("--dry-run")
-        if args.agent:
-            migrate_cmd += ["--agent", args.agent]
-
-        return subprocess.run(migrate_cmd).returncode
+        summary, _ = run_migration(
+            provider="langgraph",
+            export=export,
+            client=client,
+            agent_id=args.agent or "",
+            dry_run=args.dry_run,
+            on_progress=lambda msg: print(f"  {msg}"),
+        )
     finally:
-        try:
-            Path(tmp_path).unlink()
-        except OSError:
-            pass
+        if client is not None:
+            client.deactivate_agent(args.agent)
+
+    _print_summary(summary, args.dry_run)
+    return 0
+
+
+async def _run_dump(output: str) -> None:
+    import json
+    import sys as _sys
+    # Import dump_langgraph's internals directly to avoid subprocess
+    from dump_langgraph import _get_store, _dump, _seed_demo
+
+    store, postgres = _get_store()
+    if not postgres:
+        print("No LANGGRAPH_POSTGRES_URI set — using InMemoryStore with demo data.", file=_sys.stderr)
+        await _seed_demo(store)
+        items = await _dump(store, postgres)
+    else:
+        async with store as s:
+            try:
+                await s.setup()
+            except Exception as exc:
+                print(f"Failed to set up Postgres store: {exc}", file=_sys.stderr)
+                raise SystemExit(1)
+            items = await _dump(s, postgres)
+
+    with open(output, "w", encoding="utf-8") as f:
+        json.dump({"items": items}, f, indent=2, ensure_ascii=False, default=str)
+    print(f"  Dumped {len(items)} items from LangGraph store")
+
+
+def _print_summary(summary, dry_run: bool) -> None:
+    mode = "Dry run" if dry_run else "Migration"
+    print(f"\n{mode} complete")
+    print(f"  Source records : {summary.source_count}")
+    print(f"  Mapped memories: {summary.mapped_count}  (skipped {summary.skipped})")
+    types = ", ".join(f"{k}: {v}" for k, v in summary.type_counts.items()) or "auto"
+    print(f"  Type breakdown : {types}")
+    if not dry_run:
+        print(f"  Imported       : {summary.imported}  Failed: {summary.failed}")
 
 
 if __name__ == "__main__":
