@@ -46,7 +46,9 @@ class MemantoSetup:
     """
 
     def __init__(self, api_key: str) -> None:
+        self.api_key = api_key
         self.client = SdkClient(api_key=api_key)
+        self._clients: dict[str, SdkClient] = {}
 
     def setup(
         self,
@@ -56,8 +58,9 @@ class MemantoSetup:
         duration_hours: int = 6,
     ) -> SdkClient:
         """Create agent (if needed) and activate a session."""
+        client = SdkClient(api_key=self.api_key)
         try:
-            self.client.create_agent(
+            client.create_agent(
                 agent_id=agent_id,
                 pattern=pattern,
                 description=description,
@@ -69,14 +72,18 @@ class MemantoSetup:
             logger.error("Failed to create agent '%s': %s", agent_id, e)
             raise
 
-        self.client.activate_agent(agent_id, duration_hours=duration_hours)
+        client.activate_agent(agent_id, duration_hours=duration_hours)
+        self._clients[agent_id] = client
+        self.client = client
         logger.info("Activated session for agent '%s'", agent_id)
-        return self.client
+        return client
 
     def teardown(self, agent_id: str) -> None:
         """Deactivate the agent session."""
         try:
-            self.client.deactivate_agent(agent_id)
+            client = self._clients.get(agent_id, self.client)
+            client.deactivate_agent(agent_id)
+            self._clients.pop(agent_id, None)
             logger.info("Deactivated session for agent '%s'", agent_id)
         except Exception as e:
             logger.warning("Failed to deactivate agent '%s': %s", agent_id, e)
