@@ -30,6 +30,9 @@ Documented limitations
 * **_do_get** is best-effort: uses ``recall_recent`` (unbiased by query)
   up to the 100-result cap, then a semantic fallback. A key stored long
   ago beyond the cap window may not be found.
+* **Cross-process puts** rely on backend coordination. This adapter serializes
+  puts for the same key within one ``MemantoStore`` instance, including
+  concurrent ``abatch`` calls, but cannot make separate processes atomic.
 """
 
 from __future__ import annotations
@@ -104,12 +107,11 @@ class MemantoStore(BaseStore):
         """Initialize MemantoStore with an API key."""
         self.api_key = api_key
         self._lock = threading.RLock()
+        self._key_locks: dict[tuple[tuple[str, ...], str], threading.Lock] = {}
         self._client_pool: dict[str, SdkClient] = {}
         self._agent_prefix = "langgraph_"
         # (namespace, query, limit, tags, type, min_sim, min_conf) -> (timestamp, items)
         self._search_cache: dict[tuple, tuple[float, list[SearchItem]]] = {}
-        # Survives 429s without flashing the UI panel to zero.
-        self._last_good: dict[tuple[str, ...], list[SearchItem]] = {}
 
     def _ensure_client(self, namespace: tuple[str, ...]) -> tuple[SdkClient, str]:
         ns_str = "_".join(namespace) or "default"
@@ -163,7 +165,7 @@ class MemantoStore(BaseStore):
     # GET                                                                #
     # ------------------------------------------------------------------ #
 
-    def _do_get(self, op: GetOp) -> Item | None:
+    def _do_get(self, op: GetOp, *, strict: bool = False) -> Item | None:
         """Lookup a single memory by key.
 
         Uses ``recall_recent`` first (no semantic bias) so the target memory
@@ -193,6 +195,10 @@ class MemantoStore(BaseStore):
                 tags=[key_tag],
             )
         except Exception as exc:
+            if strict:
+                raise RuntimeError(
+                    f"Cannot safely determine whether key {op.key!r} exists"
+                ) from exc
             logger.warning("MemantoStore._do_get fallback recall failed: %s", exc)
             return None
 
@@ -250,18 +256,47 @@ class MemantoStore(BaseStore):
         all_tags = user_tags + [self._key_to_tag(op.key)]
 
         client, agent_id = self._ensure_client(op.namespace)
-        client.remember(
-            agent_id=agent_id,
-            memory_type=memory_type,
-            title=title,
-            content=content,
-            confidence=confidence,
-            tags=all_tags,
-            source="langgraph-store",
-            provenance="explicit_statement",
-        )
 
-        # Invalidate cached searches for this namespace
+        lock_key = (op.namespace, op.key)
+        with self._lock:
+            if lock_key not in self._key_locks:
+                self._key_locks[lock_key] = threading.Lock()
+            key_lock = self._key_locks[lock_key]
+
+        with key_lock:
+            existing = self._do_get(
+                GetOp(namespace=op.namespace, key=op.key), strict=True
+            )
+            existing_id = existing.value.get("memory_id") if existing else None
+
+            if existing_id:
+                updates: dict[str, Any] = {
+                    "title": title,
+                    "content": str(raw_content),
+                    "confidence": confidence,
+                    "tags": all_tags,
+                    "source": "langgraph-store",
+                }
+                if memory_type is not None:
+                    updates["type"] = memory_type
+                client.update_memory(
+                    agent_id=agent_id,
+                    memory_id=str(existing_id),
+                    updates=updates,
+                )
+            else:
+                client.remember(
+                    agent_id=agent_id,
+                    memory_type=memory_type,
+                    title=title,
+                    content=str(raw_content),
+                    confidence=confidence,
+                    tags=all_tags,
+                    source="langgraph-store",
+                    provenance="explicit_statement",
+                )
+
+        # Invalidate search cache for this namespace because we mutated it
         prefix = op.namespace
         with self._lock:
             self._search_cache = {
@@ -311,7 +346,6 @@ class MemantoStore(BaseStore):
             fetch_limit = self._MEMANTO_RECALL_CAP
         else:
             fetch_limit = max(1, min(op.limit, self._MEMANTO_RECALL_CAP))
-        rate_limited = False
 
         client, agent_id = self._ensure_client(op.namespace_prefix)
 
@@ -334,18 +368,7 @@ class MemantoStore(BaseStore):
                 )
         except Exception as exc:
             logger.warning("MemantoStore._do_search recall failed: %s", exc)
-            err = str(exc)
-            if any(
-                m in err
-                for m in (
-                    "429",
-                    "Limit Exceeded",
-                )
-            ):
-                rate_limited = True
-                result = {"memories": []}
-            else:
-                return []
+            raise
 
         out: list[SearchItem] = []
         for mem in result.get("memories", []):
@@ -362,16 +385,8 @@ class MemantoStore(BaseStore):
         out = out[: op.limit]
 
         with self._lock:
-            if not out and rate_limited and op.namespace_prefix in self._last_good:
-                logger.info(
-                    "MemantoStore: rate-limited, returning last-good for %r",
-                    op.namespace_prefix,
-                )
-                return self._last_good[op.namespace_prefix]
-
-            if out and not rate_limited:
+            if out:
                 self._search_cache[cache_key] = (time.time(), out)
-                self._last_good[op.namespace_prefix] = out
 
         return out
 
@@ -388,9 +403,30 @@ class MemantoStore(BaseStore):
             logger.warning("MemantoStore: Failed to list agents: %s", e)
             return []
 
+        if isinstance(agents, dict):
+            agent_items = agents.get("agents")
+            if not isinstance(agent_items, list):
+                logger.warning(
+                    "MemantoStore: unexpected list_agents payload keys: %s",
+                    sorted(agents),
+                )
+                return []
+        elif isinstance(agents, list):
+            agent_items = agents
+        else:
+            logger.warning(
+                "MemantoStore: unexpected list_agents payload type: %s",
+                type(agents).__name__,
+            )
+            return []
+
         namespaces = []
-        for agent in agents:
+        for agent in agent_items:
+            if not isinstance(agent, dict):
+                continue
             agent_id = agent.get("agent_id") or agent.get("id") or ""
+            if not isinstance(agent_id, str):
+                continue
             if agent_id.startswith(self._agent_prefix):
                 ns_str = agent_id[len(self._agent_prefix) :]
                 if ns_str == "default":

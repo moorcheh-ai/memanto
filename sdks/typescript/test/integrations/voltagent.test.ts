@@ -98,6 +98,35 @@ describe("createMemantoVoltAgentTools", () => {
     });
   });
 
+  it.each([0, -1, 1.5, 51, Number.NaN])(
+    "rejects invalid defaultLimit %s before creating tools",
+    (defaultLimit) => {
+      expect(() =>
+        createMemantoVoltAgentTools(fakeMemanto() as unknown as Memanto, {
+          defaultLimit,
+        }),
+      ).toThrow("defaultLimit must be an integer between 1 and 50");
+    },
+  );
+
+  it("accepts the maximum recall-compatible defaultLimit", async () => {
+    const m = fakeMemanto();
+    const tools = createMemantoVoltAgentTools(m as unknown as Memanto, {
+      defaultLimit: 50,
+    });
+
+    await byName(tools, "recallMemory").execute!(
+      { query: "what milk?" },
+      execOpts,
+    );
+
+    expect(m.recall).toHaveBeenCalledWith({
+      query: "what milk?",
+      limit: 50,
+      type: undefined,
+    });
+  });
+
   it("exposes the server memory-type contract", () => {
     expect(MEMORY_TYPES).toContain("fact");
     expect(MEMORY_TYPES).toContain("preference");

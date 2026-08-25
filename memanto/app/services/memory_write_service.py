@@ -3,35 +3,73 @@ Memory Write Service
 """
 
 from datetime import datetime, timezone
-from typing import TYPE_CHECKING, Any, cast
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from moorcheh_sdk import MoorchehClient
 
-from memanto.app.core import MemoryRecord
+from memanto.app.constants import VALID_STATUS_TYPES
+from memanto.app.core import MemoryRecord, is_valid_expired_by, is_valid_source
 from memanto.app.services.memory_parsing_service import MemoryParsingService
-from memanto.app.services.memory_validation_service import MemoryValidationService
-from memanto.app.utils.errors import MemoryError
+from memanto.app.utils.errors import MemoryOperationError
 from memanto.app.utils.ids import generate_memory_id
 from memanto.app.utils.temporal_helpers import as_utc_aware
 
 SUCCESSFUL_UPLOAD_STATUSES = {"queued", "success", "ok"}
 
-# Trust fields removed from the active schema on 2026-06-29 (see
-# memanto/app/legacy/REMOVED.md). Old on-prem data_store.json records may still
-# carry them; they must never be copied forward on update or we resurrect dead
-# schema that no live read/write flow populates.
-_REMOVED_TRUST_FIELDS = frozenset(
+# Fields owned by the current MemoryRecord/document schema. They must not be
+# copied from the old document after an update because an omitted optional field
+# (for example, tags=[] or source_ref=None) represents an intentional clear.
+_MEMORY_SCHEMA_FIELDS = frozenset(
+    {
+        "id",
+        "text",
+        "memory_type",
+        "type",
+        "title",
+        "content",
+        "agent_id",
+        "actor_id",
+        "source",
+        "source_ref",
+        "confidence",
+        "status",
+        "tags",
+        "provenance",
+        "created_at",
+        "updated_at",
+        "expired_at",
+        "expired_by",
+        "score",
+        "metadata",
+        "scope_type",
+        "scope_id",
+    }
+)
+
+# Fields removed from the active schema. Old on-prem data_store.json records
+# may still carry them; they must never be copied forward on update or we
+# resurrect dead schema that no live read/write flow populates.
+#
+# The first group is the 2026-06-29 "trust" machinery. The second is the TTL
+# pair, replaced by the stamped `status` / `expired_at` / `expired_by`
+# lifecycle: a future-dated deadline no longer has any meaning, and leaving one
+# on a record would make it look expiry-bound to any external reader.
+_REMOVED_SCHEMA_FIELDS = frozenset(
     {
         "superseded_by",
         "supersedes",
         "validated_at",
         "validation_count",
         "contradiction_detected",
+        "expires_at",
+        "ttl_seconds",
     }
 )
 
-_SUCCESSFUL_UPLOAD_STATUSES = {"queued", "success", "ok"}
+# The stamp that travels with `status`. Owned by lifecycle transitions, never
+# carried forward blindly from a prior version of the record.
+_LIFECYCLE_STAMP_FIELDS = frozenset({"expired_at", "expired_by"})
 
 
 class MemoryWriteService:
@@ -42,7 +80,6 @@ class MemoryWriteService:
 
         self.client = moorcheh_client
         self._parser = MemoryParsingService()
-        self.validation_service = MemoryValidationService(moorcheh_client)
         self._namespace_service = None
 
     @property
@@ -92,11 +129,15 @@ class MemoryWriteService:
             # Add namespace
             namespace = memory.namespace()
 
-            # Validate memory (write-time contradiction resolution)
-            validation_result = self.validation_service.validate_memory(memory, context)
-            # Use validated memory if modified
-            if "memory" in validation_result:
-                memory = validation_result["memory"]
+            # skip validation for speed
+            ## Validate memory
+            # validation_result = self.validation_service.validate_memory(memory, context)
+            ## Use validated memory if modified
+            # if "memory" in validation_result:
+            #     memory = validation_result["memory"]
+            validation_result = {"action": "store", "reason": "MVP direct store"}
+
+            from typing import cast
 
             from moorcheh_sdk.types.document import Document
 
@@ -108,7 +149,7 @@ class MemoryWriteService:
                 namespace_name=namespace, documents=[document]
             )
 
-            response = {
+            return {
                 "id": memory.id,
                 "namespace": namespace,
                 "status": result.get("status", "unknown"),
@@ -118,12 +159,9 @@ class MemoryWriteService:
                 "memory_status": memory.status,
                 "type": memory.type,
             }
-            if validation_result.get("superseded_ids"):
-                response["superseded_ids"] = validation_result["superseded_ids"]
-            return response
 
         except Exception as e:
-            raise MemoryError(f"Failed to store memory: {e}")
+            raise MemoryOperationError(f"Failed to store memory: {e}")
 
     def batch_store_memories(
         self, memories: list[MemoryRecord], context: dict[str, Any] | None = None
@@ -140,10 +178,10 @@ class MemoryWriteService:
         """
         try:
             if not memories:
-                raise MemoryError("No memories provided for batch operation")
+                raise MemoryOperationError("No memories provided for batch operation")
 
             if len(memories) > 100:
-                raise MemoryError(
+                raise MemoryOperationError(
                     f"Batch size {len(memories)} exceeds Moorcheh's limit of 100 documents per request"
                 )
 
@@ -151,7 +189,6 @@ class MemoryWriteService:
             first_namespace = None
             results = []
             validated_documents = []
-            prepared: list[MemoryRecord] = []
 
             # Enforce server-side timestamps for batch (single timestamp for all)
             now = datetime.now(timezone.utc)
@@ -184,81 +221,37 @@ class MemoryWriteService:
                         )
                         continue
 
-                    prepared.append(memory)
+                    # skip validation for speed
+                    ## Validate memory
+                    # validation_result = self.validation_service.validate_memory(memory, context)
+                    ## Use validated memory if modified
+                    # if "memory" in validation_result:
+                    #     memory = validation_result["memory"]
+                    validation_result = {
+                        "action": "store",
+                        "reason": "MVP direct store",
+                    }
 
-                except Exception as e:
-                    results.append(
-                        {
-                            "id": memory.id
-                            if hasattr(memory, "id") and memory.id
-                            else "unknown",
-                            "status": "failed",
-                            "action": "rejected",
-                            "error": str(e),
-                        }
-                    )
-
-            # Resolve contradictions within the batch itself: for memories of
-            # the same type and title with different content, the last one
-            # wins and earlier ones are stored as superseded history.
-            superseded_in_batch = self.validation_service.resolve_batch_contradictions(
-                prepared
-            )
-
-            to_validate = [
-                memory for memory in prepared if memory.id not in superseded_in_batch
-            ]
-            prefetched_conflicts = self.validation_service.prefetch_contradictions(
-                to_validate
-            )
-
-            for memory in prepared:
-                try:
-                    batch_note = superseded_in_batch.get(memory.id)
-                    if batch_note:
-                        validation_result = {
-                            "action": "store_superseded",
-                            "reason": f"contradiction resolved: superseded within batch by {batch_note}",
-                        }
-                    elif memory.id in prefetched_conflicts:
-                        validation_result = self.validation_service.validate_memory(
-                            memory,
-                            context,
-                            prefetched_conflicts=prefetched_conflicts[memory.id],
-                        )
-                    else:
-                        validation_result = self.validation_service.validate_memory(
-                            memory, context
-                        )
-                        # Use validated memory if modified
-                        if "memory" in validation_result:
-                            memory = cast(MemoryRecord, validation_result["memory"])
+                    from typing import cast
 
                     from moorcheh_sdk.types.document import Document
 
                     # Convert to Moorcheh document
-                    document_payload = memory.to_moorcheh_document()
-                    if batch_note:
-                        document_payload["superseded_by"] = batch_note
-                        document_payload["superseded_at"] = now.isoformat()
-                    document = cast(Document, document_payload)
+                    document = cast(Document, memory.to_moorcheh_document())
                     validated_documents.append(document)
 
                     # Store validation result for later
-                    result_entry = {
-                        "id": memory.id,
-                        "status": "pending",
-                        "action": validation_result.get("action", "store"),
-                        "reason": validation_result.get(
-                            "reason", "Validated successfully"
-                        ),
-                        "type": memory.type or "fact",
-                    }
-                    if validation_result.get("superseded_ids"):
-                        result_entry["superseded_ids"] = validation_result[
-                            "superseded_ids"
-                        ]
-                    results.append(result_entry)
+                    results.append(
+                        {
+                            "id": memory.id,
+                            "status": "pending",
+                            "action": validation_result.get("action", "store"),
+                            "reason": validation_result.get(
+                                "reason", "Validated successfully"
+                            ),
+                            "type": memory.type,
+                        }
+                    )
 
                 except Exception as e:
                     results.append(
@@ -274,6 +267,8 @@ class MemoryWriteService:
 
             # Upload all validated documents in single batch to Moorcheh
             if validated_documents and first_namespace:
+                from typing import cast
+
                 upload_result = self.client.documents.upload(
                     namespace_name=cast(str, first_namespace),
                     documents=validated_documents,
@@ -283,7 +278,7 @@ class MemoryWriteService:
                 moorcheh_status = str(upload_result.get("status", "unknown")).lower()
                 for result in results:
                     if result["status"] == "pending":
-                        if moorcheh_status in _SUCCESSFUL_UPLOAD_STATUSES:
+                        if moorcheh_status in SUCCESSFUL_UPLOAD_STATUSES:
                             result["status"] = moorcheh_status
                         else:
                             result["status"] = "failed"
@@ -293,22 +288,26 @@ class MemoryWriteService:
 
             # Count successes, failures, and namespace-rejected items separately
             # so that successful + failed + rejected == total_submitted always.
-            _known = set(SUCCESSFUL_UPLOAD_STATUSES) | {"failed", "rejected"}
-            successful = sum(
-                1
-                for r in results
-                if str(r["status"]).lower() in SUCCESSFUL_UPLOAD_STATUSES
-            )
-            failed = sum(1 for r in results if str(r["status"]).lower() == "failed")
-            rejected = sum(1 for r in results if str(r["status"]).lower() == "rejected")
-            # Absorb any non-standard upload statuses into failed so the invariant holds
-            failed += len(results) - successful - failed - rejected
+            successful = 0
+            failed = 0
+            rejected = 0
             for r in results:
-                if str(r["status"]).lower() not in _known:
+                status = str(r["status"]).lower()
+                if status in SUCCESSFUL_UPLOAD_STATUSES:
+                    successful += 1
+                elif status == "rejected":
+                    rejected += 1
+                else:
+                    # Validation failures carry status="failed"/action="rejected"
+                    # and must stay in `failed`: the batch endpoints return only
+                    # successful/failed (see routes/memory.py), so counting them
+                    # as `rejected` would drop them from the response entirely.
+                    # Non-standard upload statuses are absorbed here too.
+                    failed += 1
                     r["status"] = "failed"
 
             return {
-                "total_submitted": len(memories),
+                "total_submitted": len(results),
                 "successful": successful,
                 "failed": failed,
                 "rejected": rejected,
@@ -317,7 +316,7 @@ class MemoryWriteService:
             }
 
         except Exception as e:
-            raise MemoryError(f"Failed to batch store memories: {e}")
+            raise MemoryOperationError(f"Failed to batch store memories: {e}")
 
     def update_memory(
         self,
@@ -351,7 +350,7 @@ class MemoryWriteService:
             existing_memory_data = read_service.get_memory(memory_id, namespace)
 
             if not existing_memory_data:
-                raise MemoryError(
+                raise MemoryOperationError(
                     f"Memory {memory_id} not found in namespace {namespace}"
                 )
 
@@ -369,15 +368,26 @@ class MemoryWriteService:
             if not agent_id and namespace.startswith("memanto_agent_"):
                 agent_id = namespace.removeprefix("memanto_agent_")
             if not agent_id:
-                raise MemoryError(
+                raise MemoryOperationError(
                     f"Cannot determine agent_id for memory {memory_id} "
                     f"in namespace {namespace}"
                 )
 
-            # Normalize legacy source values
+            # Sources are open labels (the writer's name), so keep whatever the
+            # record carries. Only a value MemoryRecord would reject — blank, or
+            # one holding characters that break `#source:` filters — falls back,
+            # so an edit cannot fail on data written before the label was bounded.
             source_val = updates.get("source", metadata.get("source", "system"))
-            if source_val not in {"user", "agent", "tool", "system"}:
+            if not is_valid_source(source_val):
                 source_val = "system"
+
+            # Records predating the two-state lifecycle can carry a retired
+            # status ("superseded", "provisional", "deleted"). Those are not
+            # valid StatusType values any more, so treat anything unrecognised
+            # as active rather than failing the edit outright.
+            status_val = updates.get("status", metadata.get("status", "active"))
+            if status_val not in VALID_STATUS_TYPES:
+                status_val = "active"
 
             # Build updated memory record
             updated_memory = MemoryRecord(
@@ -392,8 +402,11 @@ class MemoryWriteService:
                 source=source_val,
                 source_ref=updates.get("source_ref", metadata.get("source_ref")),
                 confidence=updates.get("confidence", metadata.get("confidence", 0.8)),
-                status=updates.get("status", metadata.get("status", "active")),
+                status=status_val,
                 tags=updates.get("tags", metadata.get("tags", [])),
+                provenance=updates.get(
+                    "provenance", metadata.get("provenance") or "explicit_statement"
+                ),
             )
 
             # Update timestamps (preserve created_at, set updated_at to now)
@@ -410,24 +423,33 @@ class MemoryWriteService:
                     updated_memory.created_at = raw_created
             updated_memory.updated_at = datetime.now(timezone.utc)
 
-            # Handle TTL
-            if "ttl_seconds" in updates:
-                updated_memory.set_ttl(updates["ttl_seconds"])
-            elif metadata.get("ttl_seconds"):
-                updated_memory.ttl_seconds = metadata["ttl_seconds"]
-                raw_expires_at = metadata.get("expires_at")
-                if raw_expires_at:
-                    if isinstance(raw_expires_at, str):
+            # Expiry stamp. An explicit lifecycle transition passes the stamp in
+            # `updates` and owns it outright; any other edit preserves whatever
+            # the stored record carries, so editing the text of an expired
+            # memory cannot silently revive it. Restoring leaves both fields
+            # None, which clears the stamp.
+            if _LIFECYCLE_STAMP_FIELDS & set(updates):
+                updated_memory.expired_at = updates.get("expired_at")
+                updated_memory.expired_by = updates.get("expired_by")
+            elif updated_memory.status == "expired":
+                raw_expired_at = metadata.get("expired_at")
+                if raw_expired_at:
+                    if isinstance(raw_expired_at, str):
                         try:
-                            updated_memory.expires_at = datetime.fromisoformat(
-                                raw_expires_at.replace("Z", "+00:00")
+                            updated_memory.expired_at = datetime.fromisoformat(
+                                raw_expired_at.replace("Z", "+00:00")
                             )
                         except (ValueError, AttributeError):
                             pass  # Keep the default if the stored timestamp is invalid
                     else:
-                        updated_memory.expires_at = raw_expires_at
+                        updated_memory.expired_at = raw_expired_at
+                expired_by = metadata.get("expired_by")
+                if is_valid_expired_by(expired_by):
+                    updated_memory.expired_by = expired_by
 
-            # Step 3: Upload new version (overwrites existing document with same ID)
+            # Step 3: Upload new version (overwrites existing document with same ID).
+            # Uploading with the same ID is safe — Moorcheh treats it as an upsert,
+            # so the original is never lost if the upload call fails.
             from typing import Any, cast
 
             from moorcheh_sdk.types.document import Document
@@ -438,16 +460,19 @@ class MemoryWriteService:
 
             # Preserve extra metadata fields from the existing record (e.g. original_id
             # in on-prem data_store.json) that aren't part of the MemoryRecord schema.
+            #
+            # The lifecycle stamp is deliberately excluded: `to_moorcheh_document`
+            # omits both fields when a memory is active, so copying them back
+            # from the old record would resurrect the previous expiry stamp on
+            # every restore.
             existing_meta = existing_memory_data.get("metadata", existing_memory_data)
             if isinstance(existing_meta, dict):
-                # ``document`` is a TypedDict; cast to a plain dict to attach
-                # extra schema-external keys (e.g. original_id) dynamically.
                 extra_document = cast(dict[str, Any], document)
                 for key in existing_meta:
                     if (
-                        key not in document
-                        and key != "text"
-                        and key not in _REMOVED_TRUST_FIELDS
+                        key not in _MEMORY_SCHEMA_FIELDS
+                        and key not in _REMOVED_SCHEMA_FIELDS
+                        and key not in _LIFECYCLE_STAMP_FIELDS
                     ):
                         extra_document[key] = existing_meta[key]
 
@@ -456,23 +481,91 @@ class MemoryWriteService:
                     namespace_name=namespace, documents=[document]
                 )
             except Exception as e:
-                raise MemoryError(f"Upload failed. Error: {e}")
+                raise MemoryOperationError(f"Upload failed. Error: {e}")
+
+            status = upload_result.get("status", "unknown")
+            if str(status).lower() not in SUCCESSFUL_UPLOAD_STATUSES:
+                raise MemoryOperationError(
+                    f"Failed to upload updated memory {memory_id}: {status}"
+                )
 
             return {
                 "id": memory_id,
                 "namespace": namespace,
-                "status": upload_result.get("status", "unknown"),
+                "status": status,
                 "action": "updated",
                 "reason": "Memory updated successfully via overwrite",
                 "validation": validation_result.get("action", "validated"),
                 "updated_fields": list(updates.keys()),
             }
 
+        except MemoryOperationError:
+            raise
         except Exception as e:
-            raise MemoryError(f"Failed to update memory: {e}")
+            raise MemoryOperationError(f"Failed to update memory: {e}")
+
+    def set_lifecycle(
+        self,
+        memory_id: str,
+        namespace: str,
+        *,
+        expired: bool,
+        reason: str | None = None,
+        when: datetime | None = None,
+    ) -> dict[str, Any]:
+        """Move one memory between the active and expired states.
+
+        Expiring stamps ``status``, ``expired_at`` and ``expired_by`` together;
+        restoring clears all three. This is a metadata-only rewrite — the
+        memory's text, tags, confidence and timestamps are untouched, and no
+        content is destroyed either way.
+
+        Args:
+            memory_id: ID of the memory to transition
+            namespace: Namespace containing the memory
+            expired: True to expire, False to restore
+            reason: Why it expired (policy rule name, ``manual``,
+                ``conflict-resolution``). Required when expiring.
+            when: Expiry timestamp; defaults to now. Lets a sweep stamp a whole
+                batch with one consistent time.
+
+        Returns:
+            Dict describing the transition that was applied.
+        """
+        if expired:
+            if not reason:
+                raise MemoryOperationError(
+                    "A reason is required when expiring a memory"
+                )
+            if not is_valid_expired_by(reason):
+                raise MemoryOperationError(
+                    f"Invalid expiry reason '{reason}': only letters, digits, "
+                    "'.', '_' and '-' are allowed"
+                )
+            stamped_at = when or datetime.now(timezone.utc)
+            updates: dict[str, Any] = {
+                "status": "expired",
+                "expired_at": stamped_at,
+                "expired_by": reason,
+            }
+        else:
+            stamped_at = None
+            updates = {"status": "active", "expired_at": None, "expired_by": None}
+
+        result = self.update_memory(memory_id, namespace, updates)
+
+        return {
+            **result,
+            "action": "expired" if expired else "restored",
+            "memory_id": memory_id,
+            "memory_status": updates["status"],
+            "expired_at": stamped_at.isoformat() if stamped_at else None,
+            "expired_by": reason if expired else None,
+        }
 
     def delete_memory(self, memory_id: str, namespace: str) -> bool:
-        """Delete memory by ID"""
+        """Permanently delete a memory by ID. Not reversible — prefer
+        ``set_lifecycle(expired=True)`` when the intent is to retire a memory."""
         try:
             from typing import Any, cast
 
@@ -484,7 +577,7 @@ class MemoryWriteService:
             return self._deletion_succeeded(result)
 
         except Exception as e:
-            raise MemoryError(f"Failed to delete memory: {e}")
+            raise MemoryOperationError(f"Failed to delete memory: {e}")
 
     @staticmethod
     def _deletion_succeeded(result: dict[str, Any]) -> bool:

@@ -246,6 +246,9 @@ def create_remember_node(
             return {"messages": []}
 
         content = "\n\n".join(messages_to_remember)
+        max_content = 10_000
+        if len(content) > max_content:
+            content = content[-max_content:]
         title = content if len(content) <= 50 else content[:47] + "..."
 
         agent_client, agent_lock = _cache.get(resolved_agent_id)

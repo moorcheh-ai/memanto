@@ -66,7 +66,13 @@ def agent_list():
     client = get_client()
 
     try:
-        agents = client.list_agents()
+        response = client.list_agents()
+        agents = response.get("agents", [])
+        warnings = response.get("warnings", [])
+
+        if warnings:
+            for w in warnings:
+                console.print(f"[yellow]Warning: {w}[/yellow]")
 
         if not agents:
             console.print(

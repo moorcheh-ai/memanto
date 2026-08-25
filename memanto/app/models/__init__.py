@@ -2,7 +2,6 @@
 MEMANTO API Models
 """
 
-from datetime import datetime
 from typing import Any, Literal
 
 from pydantic import (
@@ -15,12 +14,10 @@ from pydantic import (
 from memanto.app.constants import (
     VALID_PROVENANCE_TYPES,
     MemoryType,
-    SourceType,
-    StatusType,
 )
 from memanto.app.core import (
-    BoundedSourceRef,
     BoundedTags,
+    MemorySource,
 )
 
 
@@ -32,59 +29,6 @@ def _validate_non_blank_content(value: str) -> str:
 
 
 # Request Models
-class MemoryStoreRequest(BaseModel):
-    """Request body for storing a single memory."""
-
-    type: MemoryType
-    title: str = Field(max_length=100)
-    content: str = Field(max_length=10000)
-    agent_id: str
-    actor_id: str
-    source: SourceType
-    source_ref: BoundedSourceRef | None = None
-    confidence: float = Field(ge=0.0, le=1.0, default=0.8)
-    tags: BoundedTags = Field(default_factory=list)
-    ttl_seconds: int | None = Field(default=None, gt=0)
-    user_confirmed: bool = False
-
-    @field_validator("content")
-    @classmethod
-    def validate_content(cls, value: str) -> str:
-        """Ensure stored memories contain useful non-blank content."""
-        return _validate_non_blank_content(value)
-
-
-class MemoryBatchItem(BaseModel):
-    """Single memory item for batch write"""
-
-    type: MemoryType
-    title: str = Field(max_length=100)
-    content: str = Field(max_length=10000)
-    source: SourceType
-    source_ref: BoundedSourceRef | None = None
-    confidence: float = Field(ge=0.0, le=1.0, default=0.8)
-    tags: BoundedTags = Field(default_factory=list)
-    ttl_seconds: int | None = Field(default=None, gt=0)
-    id: str | None = None  # Optional custom ID
-
-    @field_validator("content")
-    @classmethod
-    def validate_content(cls, value: str) -> str:
-        """Ensure batch memory items contain useful non-blank content."""
-        return _validate_non_blank_content(value)
-
-
-class MemoryBatchWriteRequest(BaseModel):
-    """Request to write multiple memories in batch"""
-
-    memories: list[MemoryBatchItem] = Field(
-        ..., min_length=1, max_length=100, description="1-100 memories per batch"
-    )
-    agent_id: str
-    actor_id: str
-    user_confirmed: bool = False
-
-
 class BatchRememberItem(BaseModel):
     """Single memory item in a batch-remember request"""
 
@@ -98,7 +42,13 @@ class BatchRememberItem(BaseModel):
     )
     confidence: float = Field(0.8, ge=0.0, le=1.0, description="Confidence score (0-1)")
     tags: BoundedTags | None = Field(None, description="Tags for this memory")
-    source: SourceType = Field("agent", description="Source of memory")
+    source: MemorySource = Field(
+        "agent",
+        description=(
+            "Who wrote this memory — 'user', 'agent', or a specific writer "
+            "such as 'cursor', 'codex', or 'claude_code'."
+        ),
+    )
     provenance: str = Field(
         "explicit_statement",
         description="How memory was obtained (explicit_statement, inferred, observed, etc.)",
@@ -188,13 +138,22 @@ class ConflictResolveRequest(BaseModel):
     """Request body for resolving a conflict"""
 
     conflict_index: int = Field(..., ge=0, description="Conflict index to resolve")
-    action: Literal["keep_old", "keep_new", "keep_both", "remove_both", "manual"] = (
-        Field(
-            ...,
-            description=(
-                "Resolution action: keep_old, keep_new, keep_both, remove_both, manual"
-            ),
-        )
+    action: Literal[
+        "keep_old",
+        "keep_new",
+        "keep_both",
+        "remove_both",
+        "expire_old",
+        "expire_new",
+        "expire_both",
+        "manual",
+    ] = Field(
+        ...,
+        description=(
+            "Resolution action. The keep_*/remove_both/manual actions delete the "
+            "losing memory permanently; the expire_* actions retire it "
+            "reversibly instead, keeping its content and audit trail."
+        ),
     )
     date: str | None = Field(
         None, description="Conflict report date (YYYY-MM-DD). Defaults to today."
@@ -245,154 +204,7 @@ class AnswerRequest(BaseModel):
         return value
 
 
-class MemoryUpdateRequest(BaseModel):
-    """Request to update an existing memory"""
-
-    namespace: str = Field(..., description="Namespace containing the memory")
-    updates: dict[str, Any] = Field(
-        ..., description="Fields to update (title, content, confidence, tags, etc.)"
-    )
-    user_confirmed: bool = False
-
-
-class MemorySearchRequest(BaseModel):
-    query: str
-    agent_id: str | None = None
-    memory_types: list[MemoryType] | None = None
-    tags: list[str] | None = None
-    limit: int = Field(default=10, ge=1, le=100)
-
-
-class MemoryAnswerRequest(BaseModel):
-    query: str
-    agent_id: str | None = None
-
-
-class ContextSummarizationRequest(BaseModel):
-    """Request to summarize context in a scope"""
-
-    agent_id: str
-    actor_id: str
-    summary_title: str = Field(default="Context Summary", max_length=100)
-    memory_types: list[MemoryType] | None = None
-    max_memories: int = Field(default=50, ge=1, le=100)
-    link_to_originals: bool = True
-
-
-class CustomSummarizationRequest(BaseModel):
-    """Request to summarize specific memories by ID"""
-
-    memory_ids: list[str] = Field(..., min_length=1, max_length=100)
-    namespace: str
-    agent_id: str
-    actor_id: str
-    summary_title: str = Field(default="Custom Summary", max_length=100)
-
-
-class ConversationCompressionRequest(BaseModel):
-    """Request to compress old conversation history"""
-
-    agent_id: str
-    actor_id: str
-    days_to_compress: int = Field(default=7, ge=1, le=365)
-    keep_recent_count: int = Field(default=10, ge=0, le=50)
-
-
 # Response Models
-class MemoryResponse(BaseModel):
-    """Memory record returned by the API."""
-
-    id: str
-    type: MemoryType
-    title: str
-    content: str
-    agent_id: str
-    actor_id: str
-    source: SourceType
-    source_ref: str | None
-    confidence: float
-    status: StatusType
-    tags: list[str]
-    created_at: datetime
-    updated_at: datetime | None
-    expires_at: datetime | None
-
-
-class MemoryStoreResponse(BaseModel):
-    id: str
-    status: str
-    action: str
-    reason: str
-    namespace: str
-
-
-class MemoryBatchWriteResult(BaseModel):
-    """Result for a single memory in batch operation"""
-
-    id: str
-    status: str
-    action: str
-    reason: str | None = None
-    error: str | None = None
-
-
-class MemoryBatchWriteResponse(BaseModel):
-    """Response from batch write operation"""
-
-    total_submitted: int
-    successful: int
-    failed: int
-    namespace: str
-    results: list[MemoryBatchWriteResult]
-
-
-class MemoryUpdateResponse(BaseModel):
-    """Response from memory update operation"""
-
-    id: str
-    namespace: str
-    status: str
-    action: str
-    reason: str
-    updated_fields: list[str]
-
-
-class MemorySearchResponse(BaseModel):
-    results: list[dict[str, Any]]
-    total_found: int
-    query: str
-    execution_time: float
-
-
-class MemoryAnswerResponse(BaseModel):
-    answer: str
-    sources: list[str]
-    confidence: float
-    namespace: str
-
-
-class SummarizationResponse(BaseModel):
-    """Response from context summarization"""
-
-    summary_id: str
-    namespace: str
-    status: str
-    summarized_count: int
-    original_memory_ids: list[str]
-    summary_preview: str
-
-
-class CompressionResponse(BaseModel):
-    """Response from conversation compression"""
-
-    compressed: bool
-    reason: str | None = None
-    summary_id: str | None = None
-    compressed_count: int | None = None
-    compression_date: str | None = None
-    original_memory_ids: list[str] | None = None
-
-
 class ErrorResponse(BaseModel):
     """Error response returned by API endpoints."""
 
@@ -420,14 +232,15 @@ class MemoryItem(BaseModel):
     text: str = ""
     type: str | None = None
     confidence: float | None = None
-    status: str | None = None
+    status: str | None = "active"
     tags: list[str] = Field(default_factory=list)
     created_at: str | None = None
     updated_at: str | None = None
-    expires_at: str | None = None
-    ttl_seconds: int | None = None
+    expired_at: str | None = None
+    expired_by: str | None = None
     actor_id: str | None = None
     source: str | None = None
+    source_ref: str | None = None
     agent_id: str | None = None
     score: float | None = None
     provenance: str = "explicit_statement"

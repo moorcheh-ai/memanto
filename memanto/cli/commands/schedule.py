@@ -3,11 +3,11 @@ MEMANTO CLI - Schedule commands (enable, disable, status).
 """
 
 import time
-from datetime import datetime
 
 import typer
 from rich.panel import Panel
 
+from memanto.app.utils.temporal_helpers import utc_date_str
 from memanto.cli.commands._shared import (
     SUCCESS,
     WARNING,
@@ -22,7 +22,7 @@ from memanto.cli.schedule_manager import ScheduleManager
 
 @schedule_app.command("enable")
 def schedule_enable():
-    """Enable the nightly daily-summary + conflict-detection job."""
+    """Enable the nightly daily-summary + conflict-detection + expiry-sweep job."""
 
     manager = ScheduleManager()
     configured_time = config_manager.get_schedule_time()
@@ -36,7 +36,7 @@ def schedule_enable():
 
 @schedule_app.command("disable")
 def schedule_disable():
-    """Disable the nightly daily-summary + conflict-detection job."""
+    """Disable the nightly daily-summary + conflict-detection + expiry-sweep job."""
 
     manager = ScheduleManager()
     result = manager.disable()
@@ -52,9 +52,10 @@ def schedule_run_internal(
     date: str | None = typer.Option(None, "--date", "-d"),
     agent_id: str | None = typer.Option(None, "--agent", "-a"),
 ):
-    """Internal entrypoint invoked by the OS scheduler. Runs daily-summary
-    then detect-conflicts in one process. Not intended for direct use —
-    run ``memanto daily-summary`` or ``memanto detect-conflicts`` instead.
+    """Internal entrypoint invoked by the OS scheduler. Runs daily-summary,
+    then detect-conflicts, then the expiry sweep in one process. Not intended
+    for direct use — run ``memanto daily-summary``, ``memanto detect-conflicts``
+    or ``memanto policy apply`` instead.
     """
     from memanto.app.clients.backend import Backend
 
@@ -76,7 +77,7 @@ def schedule_run_internal(
             )
         agent_id = active_agent_id
     if not date:
-        date = datetime.now().strftime("%Y-%m-%d")
+        date = utc_date_str()
 
     client = get_client()
     failed = False
@@ -111,6 +112,29 @@ def schedule_run_internal(
         failed = True
         console.print(f"[red]Conflict detection failed: {e}[/red]")
 
+    # Expiry sweep. Policies only take effect when a sweep runs, so the nightly
+    # job is what makes "set a policy and forget it" actually work. An agent
+    # with no policy is a no-op, so this is safe to always run.
+    try:
+        report = client.apply_policy(agent_id=agent_id, dry_run=False)
+        if report.get("policy_is_empty"):
+            console.print("[dim]No expiry policy set; nothing swept.[/dim]")
+        else:
+            console.print(
+                f"[green]Expiry sweep:[/green] {report.get('expired', 0)} "
+                f"of {report.get('scanned', 0)} memories expired"
+            )
+        sweep_errors = report.get("errors") or []
+        if sweep_errors:
+            failed = True
+            console.print(
+                f"[yellow]! {len(sweep_errors)} memory/memories failed to expire"
+                "[/yellow]"
+            )
+    except Exception as e:
+        failed = True
+        console.print(f"[red]Expiry sweep failed: {e}[/red]")
+
     console.print(f"\n[dim]Completed in {time.perf_counter() - start:.2f}s[/dim]")
 
     if failed:
@@ -130,7 +154,7 @@ def schedule_status():
             Panel(
                 f"[green]Scheduled Job: ENABLED[/green]\n\n"
                 f"[dim]Time: {configured_time} local time daily[/dim]\n"
-                f"[dim]Runs: daily-summary && detect-conflicts[/dim]",
+                f"[dim]Runs: daily-summary && detect-conflicts && policy apply[/dim]",
                 title="Schedule Status",
                 border_style=SUCCESS,
             )
@@ -140,7 +164,7 @@ def schedule_status():
             Panel(
                 "[yellow]Scheduled Job: DISABLED[/yellow]\n\n"
                 "[dim]Run 'memanto schedule enable' to activate the nightly "
-                "daily-summary + conflict-detection job.[/dim]",
+                "daily-summary + conflict-detection + expiry-sweep job.[/dim]",
                 title="Schedule Status",
                 border_style=WARNING,
             )

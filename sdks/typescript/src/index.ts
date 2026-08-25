@@ -1,8 +1,7 @@
 import { randomUUID } from "node:crypto";
-import { createReadStream } from "node:fs";
+import { openAsBlob } from "node:fs";
 import { stat } from "node:fs/promises";
 import { basename } from "node:path";
-import { Readable } from "node:stream";
 
 import { ServerLifecycle, type ServerOptions } from "./lifecycle.js";
 
@@ -382,17 +381,36 @@ export class Memanto {
   private async ensureReady(): Promise<void> {
     if (this.sessionToken) return;
     if (!this.starting) this.starting = this.bootstrap();
+    const starting = this.starting;
     try {
-      await this.starting;
-    } catch (e) {
-      this.starting = null;
-      throw e;
+      await starting;
+    } finally {
+      if (this.starting === starting) this.starting = null;
+    }
+  }
+
+  private async refreshExpiredSession(staleToken: string | null): Promise<void> {
+    // Another request may already have refreshed the shared client while this
+    // request was waiting for its 401 response.
+    if (this.sessionToken && this.sessionToken !== staleToken) return;
+    this.sessionToken = null;
+    if (!this.starting) this.starting = this.reactivate();
+    const starting = this.starting;
+    try {
+      await starting;
+    } finally {
+      if (this.starting === starting) this.starting = null;
     }
   }
 
   private async bootstrap(): Promise<void> {
     await this.lifecycle.start();
     if (this.autoCreate) await this.createAgentIfMissing();
+    await this.activate();
+  }
+
+  private async reactivate(): Promise<void> {
+    await this.lifecycle.start();
     await this.activate();
   }
 
@@ -423,6 +441,21 @@ export class Memanto {
     this.sessionToken = session.session_token;
   }
 
+  private async sendWithSessionRetry(
+    send: () => Promise<Response>,
+    headers: Record<string, string>,
+    retryOn401: boolean,
+  ): Promise<Response> {
+    const staleToken = this.sessionToken;
+    let res = await send();
+    if (retryOn401 && res.status === 401) {
+      await this.refreshExpiredSession(staleToken);
+      headers["X-Session-Token"] = this.sessionToken ?? "";
+      res = await send();
+    }
+    return res;
+  }
+
   private async request<T = unknown>(
     method: string,
     path: string,
@@ -442,11 +475,10 @@ export class Memanto {
     if (requireSession) {
       headers["X-Session-Token"] = this.sessionToken ?? "";
     }
-    const res = await fetch(`${baseUrl}${path}`, {
-      method,
-      headers,
-      body: body === undefined ? undefined : JSON.stringify(body),
-    });
+    const serializedBody = body === undefined ? undefined : JSON.stringify(body);
+    const send = () =>
+      fetch(`${baseUrl}${path}`, { method, headers, body: serializedBody });
+    const res = await this.sendWithSessionRetry(send, headers, requireSession);
     if (!res.ok) throw await asError(res, `${method} ${path} failed`);
     if (res.status === 204) return undefined as T;
     return (await res.json()) as T;
@@ -463,39 +495,24 @@ export class Memanto {
     if (!fileStats.isFile()) {
       throw new Error(`Upload path is not a file: ${filePath}`);
     }
-    const boundary = `----memanto-${randomUUID()}`;
-    const header = Buffer.from(
-      `--${boundary}\r\n` +
-        `Content-Disposition: form-data; name="file"; filename="${escapeMultipartValue(filename)}"\r\n` +
-        "Content-Type: application/octet-stream\r\n\r\n",
-    );
-    const footer = Buffer.from(`\r\n--${boundary}--\r\n`);
-    const body = Readable.from(
-      (async function* streamMultipart() {
-        yield header;
-        for await (const chunk of createReadStream(filePath)) {
-          yield chunk;
-        }
-        yield footer;
-      })(),
-    );
-    const res = await fetch(`${baseUrl}${path}`, {
-      method: "POST",
-      headers: {
-        "X-Session-Token": this.sessionToken ?? "",
-        "Content-Type": `multipart/form-data; boundary=${boundary}`,
-        "Content-Length": String(header.length + fileStats.size + footer.length),
-      },
-      body: body as unknown as BodyInit,
-      duplex: "half",
-    } as RequestInit & { duplex: "half" });
+    const headers: Record<string, string> = {
+      "X-Session-Token": this.sessionToken ?? "",
+    };
+    const send = async () => {
+      const formData = new FormData();
+      const fileBlob = await openAsBlob(filePath);
+      formData.set("file", fileBlob, filename);
+
+      return fetch(`${baseUrl}${path}`, {
+        method: "POST",
+        headers,
+        body: formData,
+      });
+    };
+    const res = await this.sendWithSessionRetry(send, headers, true);
     if (!res.ok) throw await asError(res, `POST ${path} failed`);
     return (await res.json()) as T;
   }
-}
-
-function escapeMultipartValue(value: string): string {
-  return value.replace(/[\r\n]/g, "_").replace(/[\\"]/g, "\\$&");
 }
 
 async function asError(res: Response, prefix: string): Promise<Error> {

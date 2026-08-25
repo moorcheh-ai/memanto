@@ -7,6 +7,7 @@ Verifies that:
     when wildcard origins and allow_credentials are combined.
 3.  Wildcard origins + credentials=False does NOT send
     Access-Control-Allow-Credentials: true in responses.
+4.  Browser API clients can read replacement X-Session-Token response headers.
 """
 
 import pytest
@@ -110,3 +111,28 @@ class TestCorsHeaderBehavior:
             f"Expected '*' or absent, got '{origin_header}' — "
             "reflected origin means credentials mode is still on"
         )
+
+    async def test_replacement_session_token_header_is_exposed(self):
+        """Cross-origin header clients must be able to read renewed tokens."""
+        from unittest.mock import patch
+
+        import httpx
+
+        with patch(
+            "memanto.app.main._validate_startup_dependencies", return_value=None
+        ):
+            from memanto.app.main import app
+
+        transport = httpx.ASGITransport(app=app)
+        async with httpx.AsyncClient(
+            transport=transport, base_url="http://testserver"
+        ) as ac:
+            resp = await ac.get("/health", headers={"Origin": "https://app.example"})
+
+        exposed = {
+            header.strip().lower()
+            for header in resp.headers.get("access-control-expose-headers", "").split(
+                ","
+            )
+        }
+        assert "x-session-token" in exposed

@@ -226,6 +226,11 @@ def get_current_session(
             # fails signature/session_id validation.
             if session_cookie:
                 set_session_cookie(response, renewed.session_token, request)
+            # API clients authenticate with the request header instead of a
+            # cookie. Return the replacement token on the response so they can
+            # use it after auto-renewal invalidates the presented token.
+            if x_session_token:
+                response.headers["X-Session-Token"] = renewed.session_token
 
         return session
 
