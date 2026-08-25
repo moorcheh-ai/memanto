@@ -78,11 +78,8 @@ def _is_loopback_origin(origin: str | None) -> bool:
     """Return True when a browser Origin header points at localhost."""
     if not origin:
         return False
-    parsed = urlparse(origin)
-    hostname = parsed.hostname
-    if hostname == "localhost":
-        return True
-    return _is_loopback(hostname)
+    hostname = urlparse(origin).hostname
+    return hostname == "localhost" or _is_loopback(hostname)
 
 
 async def _require_local(request: Request) -> None:
@@ -111,8 +108,7 @@ async def _require_local(request: Request) -> None:
             detail="UI management endpoints reject cross-site browser requests.",
         )
 
-    sec_fetch_site = request.headers.get("sec-fetch-site")
-    sec_fetch_site = sec_fetch_site.lower() if isinstance(sec_fetch_site, str) else ""
+    sec_fetch_site = request.headers.get("sec-fetch-site", "").lower()
     if sec_fetch_site in {"cross-site", "same-site"}:
         raise HTTPException(
             status_code=403,
