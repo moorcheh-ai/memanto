@@ -14,6 +14,7 @@ import time
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlsplit
 
 from fastapi import (
     APIRouter,
@@ -65,6 +66,8 @@ def _is_loopback(host: str | None) -> bool:
     """Return True if *host* is any loopback address (IPv4, IPv6, or IPv4-mapped IPv6)."""
     if host is None:
         return False
+    if host.lower() == "localhost":
+        return True
     try:
         addr = ipaddress.ip_address(host)
         if addr.is_loopback:
@@ -74,6 +77,21 @@ def _is_loopback(host: str | None) -> bool:
         return ipv4_mapped is not None and ipv4_mapped.is_loopback
     except ValueError:
         return False
+
+
+def _origin_is_local(origin: str | None) -> bool:
+    """Return True when a browser Origin/Referer URL also targets localhost."""
+    if not origin:
+        return True
+    if not isinstance(origin, str):
+        return True
+    try:
+        parsed = urlsplit(origin)
+    except ValueError:
+        return False
+    if parsed.scheme not in {"http", "https"}:
+        return False
+    return _is_loopback(parsed.hostname)
 
 
 async def _require_local(request: Request) -> None:
@@ -92,6 +110,13 @@ async def _require_local(request: Request) -> None:
                 "UI management endpoints are only accessible from localhost. "
                 f"Request origin: {client_host}"
             ),
+        )
+    origin = request.headers.get("origin")
+    referer = request.headers.get("referer")
+    if not _origin_is_local(origin) or not _origin_is_local(referer):
+        raise HTTPException(
+            status_code=403,
+            detail="UI management endpoints only accept same-local browser origins.",
         )
 
 
