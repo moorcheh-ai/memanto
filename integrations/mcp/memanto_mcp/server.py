@@ -12,6 +12,9 @@ from __future__ import annotations
 import logging
 import sys
 
+import anyio
+from starlette.types import ASGIApp
+
 try:
     from mcp.server.fastmcp import FastMCP
 except ImportError as exc:  # pragma: no cover - install-time message
@@ -19,6 +22,7 @@ except ImportError as exc:  # pragma: no cover - install-time message
         "memanto-mcp requires the `mcp` package. Install with: pip install 'mcp[cli]>=1.2'"
     ) from exc
 
+from memanto_mcp.auth import MCPInboundAuthMiddleware
 from memanto_mcp.config import MCPServerSettings, TransportType
 from memanto_mcp.lifecycle import MemantoLifecycle
 from memanto_mcp.tools import register_tools
@@ -113,10 +117,44 @@ def run_server(settings: MCPServerSettings | None = None) -> None:
             # FastMCP.run() defaults to stdio when called with no transport.
             mcp.run(transport="stdio")
         elif transport is TransportType.SSE:
-            mcp.run(transport="sse")
+            anyio.run(_serve_network_transport, mcp, settings)
         elif transport is TransportType.STREAMABLE_HTTP:
-            mcp.run(transport="streamable-http")
+            anyio.run(_serve_network_transport, mcp, settings)
         else:  # pragma: no cover - exhausted by enum
             raise ValueError(f"Unsupported transport: {transport}")
     finally:
         lifecycle.shutdown()
+
+
+def _build_network_app(mcp: FastMCP, settings: MCPServerSettings) -> ASGIApp:
+    """Build and guard the Starlette app used by an HTTP transport."""
+    if settings.transport is TransportType.SSE:
+        transport_app = mcp.sse_app()
+    elif settings.transport is TransportType.STREAMABLE_HTTP:
+        transport_app = mcp.streamable_http_app()
+    else:  # pragma: no cover - called only for network transports
+        raise ValueError(f"Unsupported network transport: {settings.transport}")
+
+    return MCPInboundAuthMiddleware(transport_app, settings.auth_token_value())
+
+
+async def _serve_network_transport(
+    mcp: FastMCP, settings: MCPServerSettings
+) -> None:  # pragma: no cover - waits for a real server lifecycle
+    """Serve a guarded FastMCP app with Uvicorn.
+
+    FastMCP.run() constructs the Starlette app internally, so it cannot be
+    wrapped with the inbound-auth middleware. Building the public transport
+    app first keeps the guard on the actual serving path.
+    """
+    import uvicorn
+
+    app = _build_network_app(mcp, settings)
+    config = uvicorn.Config(
+        app,
+        host=settings.host,
+        port=settings.port,
+        log_level=settings.log_level.lower(),
+    )
+    server = uvicorn.Server(config)
+    await server.serve()

@@ -7,9 +7,10 @@ surfaces immediately at startup rather than on the first tool call.
 
 from __future__ import annotations
 
+import ipaddress
 from enum import Enum
 
-from pydantic import Field, SecretStr, field_validator
+from pydantic import Field, SecretStr, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -24,6 +25,23 @@ class TransportType(str, Enum):
 # Patterns recognized by Memanto's agent service. Kept in sync with
 # `memanto.app.constants.VALID_PATTERNS`.
 _VALID_AGENT_PATTERNS = {"support", "project", "tool"}
+
+
+def is_loopback_host(host: str) -> bool:
+    """Return whether *host* is an explicitly local bind address.
+
+    Unknown hostnames are treated as non-loopback so a typo cannot silently
+    disable the network-auth requirement.
+    """
+    normalized = host.strip().lower().rstrip(".")
+    if normalized == "localhost":
+        return True
+    if normalized.startswith("[") and normalized.endswith("]"):
+        normalized = normalized[1:-1]
+    try:
+        return ipaddress.ip_address(normalized).is_loopback
+    except ValueError:
+        return False
 
 
 class MCPServerSettings(BaseSettings):
@@ -46,6 +64,8 @@ class MCPServerSettings(BaseSettings):
             ``get_agent``, and ``delete_agent`` tools. Off by default to keep
             the surface focused on memory operations.
         transport / host / port: How the server is reached.
+        mcp_auth_token: Bearer token required by network transports. It is
+            mandatory whenever a network transport binds outside loopback.
         log_level: Logging verbosity (logs go to stderr).
     """
 
@@ -112,6 +132,14 @@ class MCPServerSettings(BaseSettings):
         validation_alias="MEMANTO_MCP_PORT",
         description="Bind port for sse / streamable-http.",
     )
+    mcp_auth_token: SecretStr | None = Field(
+        default=None,
+        validation_alias="MEMANTO_MCP_AUTH_TOKEN",
+        description=(
+            "Bearer token for inbound sse / streamable-http requests. "
+            "Required for non-loopback binds."
+        ),
+    )
 
     # ---- Logging ----
     log_level: str = Field(
@@ -149,6 +177,30 @@ class MCPServerSettings(BaseSettings):
             )
         return v
 
+    @field_validator("mcp_auth_token")
+    @classmethod
+    def _validate_mcp_auth_token(cls, v: SecretStr | None) -> SecretStr | None:
+        if v is not None and not v.get_secret_value().strip():
+            raise ValueError("MEMANTO_MCP_AUTH_TOKEN must not be empty")
+        return v
+
+    @model_validator(mode="after")
+    def _require_network_auth_for_remote_bind(self) -> MCPServerSettings:
+        network_transport = self.transport in {
+            TransportType.SSE,
+            TransportType.STREAMABLE_HTTP,
+        }
+        if network_transport and not is_loopback_host(self.host) and not self.mcp_auth_token:
+            raise ValueError(
+                "MEMANTO_MCP_AUTH_TOKEN is required when an HTTP/SSE transport "
+                "binds to a non-loopback host"
+            )
+        return self
+
     # Convenience accessor — never logged.
     def api_key_value(self) -> str:
         return self.moorcheh_api_key.get_secret_value()
+
+    def auth_token_value(self) -> str | None:
+        """Return the inbound token without ever including it in settings text."""
+        return self.mcp_auth_token.get_secret_value() if self.mcp_auth_token else None
