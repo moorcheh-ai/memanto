@@ -275,7 +275,7 @@ def _load_documents_secure(
 def _load_documents_portable(
     root: Path, original_path: str | Path
 ) -> tuple[Path, list[tuple[Path, str]]]:
-    """Fail closed when the platform cannot enforce no-follow directory reads."""
+    """Report unsupported platforms without weakening no-follow guarantees."""
     try:
         root_stat = root.lstat()
     except FileNotFoundError:
@@ -285,8 +285,8 @@ def _load_documents_portable(
             f"OKF bundle path must not be a symbolic link: {original_path}"
         )
     raise RuntimeError(
-        "Secure OKF import requires descriptor-relative no-follow filesystem "
-        "support on this platform."
+        "OKF import is unsupported on this platform because secure import "
+        "requires descriptor-relative no-follow filesystem support."
     )
 
 

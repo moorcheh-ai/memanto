@@ -511,10 +511,10 @@ def test_loader_reads_pinned_root_when_selected_path_is_replaced(tmp_path, monke
     assert export["memories"][0]["body"] == "Ordinary content"
 
 
-def test_loader_fails_closed_without_secure_directory_descriptors(
+def test_loader_reports_unsupported_without_secure_directory_descriptors(
     tmp_path, monkeypatch
 ):
-    """A platform without no-follow directory handles must not use path checks."""
+    """Unsupported platforms fail explicitly instead of using path checks."""
     bundle = tmp_path / "bundle"
     bundle.mkdir()
     (bundle / "memory.md").write_text("Ordinary content", encoding="utf-8")
@@ -523,7 +523,7 @@ def test_loader_fails_closed_without_secure_directory_descriptors(
         False,
     )
 
-    with pytest.raises(RuntimeError, match="descriptor-relative no-follow"):
+    with pytest.raises(RuntimeError, match="OKF import is unsupported"):
         load_okf_bundle(bundle)
 
 
