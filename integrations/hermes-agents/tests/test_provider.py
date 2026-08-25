@@ -6,8 +6,11 @@ monkeypatched with an in-memory fake.
 """
 
 import json
+from pathlib import Path
+from unittest.mock import MagicMock
 
 import pytest
+from memanto.app.utils.errors import InvalidSessionTokenError
 
 from hermes_memanto.provider import (
     MemantoMemoryProvider,
@@ -43,6 +46,7 @@ class FakeClient:
         self.answer_calls = []
         self.recall_results = []
         self.answer_response = {"answer": "", "sources": []}
+        self.profile_path: str | None = None
 
     @property
     def agent_id(self):
@@ -81,6 +85,9 @@ class FakeClient:
     def answer(self, question, *, limit=None):
         self.answer_calls.append({"question": question, "limit": limit})
         return self.answer_response
+
+    def set_profile_path(self, profile_path: str):
+        self.profile_path = profile_path
 
 
 @pytest.fixture
@@ -570,54 +577,12 @@ def test_installer_refuses_overwrite_without_force(tmp_path):
 # -- _MemantoClient Tests -----------------------------------------------------
 
 
-class DummySdk:
-    def __init__(self, token=""):
-        self.session_token = token
-        self.agent_id = None
-        self.remember_calls = []
-        self.recall_calls = []
-        self.answer_calls = []
-        self.raise_err = None
-
-    def get_agent(self, agent_id):
-        return {"id": agent_id}
-
-    def activate_agent(self, agent_id, duration_hours=None):
-        self.agent_id = agent_id
-        return {"session_token": "new-session-token"}
-
-    def remember(self, **kwargs):
-        if self.raise_err:
-            err = self.raise_err
-            self.raise_err = None  # Clear so retry succeeds
-            raise err
-        self.remember_calls.append(kwargs)
-        return {"memory_id": "m1"}
-
-    def recall(self, **kwargs):
-        if self.raise_err:
-            err = self.raise_err
-            self.raise_err = None
-            raise err
-        self.recall_calls.append(kwargs)
-        return {"memories": []}
-
-    def answer(self, **kwargs):
-        if self.raise_err:
-            err = self.raise_err
-            self.raise_err = None
-            raise err
-        self.answer_calls.append(kwargs)
-        return {"answer": "grounded answer"}
-
-
 def test_memanto_client_token_persistence(tmp_path):
     from hermes_memanto.provider import _MemantoClient
 
     client = _MemantoClient("api-key", "agent-1")
     # Stub the internal SDK client
-    sdk = DummySdk()
-    client._client = sdk
+    client._client = MagicMock()
 
     # Set profile path
     client.set_profile_path(str(tmp_path))
@@ -629,7 +594,7 @@ def test_memanto_client_token_persistence(tmp_path):
 
     # Loading profile path again loads the token
     client2 = _MemantoClient("api-key2", "agent-1")
-    client2._client = DummySdk()
+    client2._client = MagicMock()
     client2.set_profile_path(str(tmp_path))
     assert client2._ready is True
     assert client2._client.session_token == "token-abc"
@@ -639,16 +604,18 @@ def test_memanto_client_auto_refresh_on_expiration(tmp_path):
     from hermes_memanto.provider import _MemantoClient
 
     client = _MemantoClient("api-key", "agent-1")
-    sdk = DummySdk()
+    sdk = MagicMock()
+    sdk.activate_agent.return_value = {"session_token": "new-session-token"}
+    sdk.remember.side_effect = [
+        InvalidSessionTokenError("expired"),
+        {"memory_id": "m1"},
+    ]
     client._client = sdk
     client.set_profile_path(str(tmp_path))
 
     # Force ready with an expired token
     client._client.session_token = "expired-token"
     client._ready = True
-
-    # Configure remember to raise an expired error first
-    sdk.raise_err = RuntimeError("Token is expired or invalid")
 
     res = client.remember(
         memory_type="fact",
@@ -658,6 +625,6 @@ def test_memanto_client_auto_refresh_on_expiration(tmp_path):
     )
     assert res == {"memory_id": "m1"}
     # Verify that activate_agent was called to get a new token
-    assert sdk.agent_id == "agent-1"
+    sdk.activate_agent.assert_called_once_with("agent-1", duration_hours=None)
     assert (tmp_path / ".memanto_session_token").read_text() == "new-session-token"
 

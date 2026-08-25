@@ -33,8 +33,9 @@ import os
 import re
 import threading
 import time
+from collections.abc import Callable
 from pathlib import Path
-from typing import Any
+from typing import Any, TypeVar
 
 try:  # resolved against the host Hermes at runtime
     from agent.memory_provider import MemoryProvider
@@ -110,6 +111,10 @@ _RECALL_TAG_RE = re.compile(
     rf"{_MEMORY_OPEN_TAG}|{_MEMORY_CLOSE_TAG}",
     re.IGNORECASE,
 )
+_REFRESH_THROTTLE_SECONDS = 5.0
+_TOKEN_FILE_NAME = ".memanto_session_token"
+
+_T = TypeVar("_T")
 
 
 def _resolve_hermes_home() -> str:
@@ -309,7 +314,7 @@ class _MemantoClient:
 
     def set_profile_path(self, profile_path: str) -> None:
         self._profile_path = Path(profile_path)
-        self._token_file = self._profile_path / ".memanto_session_token"
+        self._token_file = self._profile_path / _TOKEN_FILE_NAME
 
         # Load any existing persisted token on startup
         token = self.load_token()
@@ -322,7 +327,15 @@ class _MemantoClient:
         if self._token_file:
             try:
                 self._token_file.parent.mkdir(parents=True, exist_ok=True)
-                self._token_file.write_text(token, encoding="utf-8")
+                fd = os.open(
+                    str(self._token_file),
+                    os.O_WRONLY | os.O_CREAT | os.O_TRUNC,
+                    0o600,
+                )
+                with os.fdopen(fd, "w", encoding="utf-8") as handle:
+                    handle.write(token)
+                if os.name != "nt":
+                    os.chmod(self._token_file, 0o600)
             except Exception:
                 logger.debug("Failed to save token to file", exc_info=True)
 
@@ -335,19 +348,55 @@ class _MemantoClient:
         return None
 
     def auto_refresh(self) -> bool:
-        now = time.monotonic()
-        if now - self._last_refresh < 5.0:
-            return False
-        self._last_refresh = now
         try:
             with self._lock:
+                now = time.monotonic()
+                if now - self._last_refresh < _REFRESH_THROTTLE_SECONDS:
+                    return self._ready
+                self._last_refresh = now
                 self._ready = False
                 self._retry_after = 0.0
                 self.ensure_session()
-            return True
+                return self._ready
         except Exception:
             logger.debug("Auto-refresh activation failed", exc_info=True)
             return False
+
+    def _is_refreshable_auth_error(self, error: Exception) -> bool:
+        try:
+            from memanto.app.utils.errors import (
+                AuthenticationError,
+                AuthorizationError,
+                InvalidSessionTokenError,
+                SessionExpiredError,
+            )
+
+            return isinstance(
+                error,
+                (
+                    AuthenticationError,
+                    AuthorizationError,
+                    SessionExpiredError,
+                    InvalidSessionTokenError,
+                ),
+            )
+        except Exception:
+            return False
+
+    def _call_with_auth_retry(self, operation: str, call: Callable[[], _T]) -> _T:
+        self.ensure_session()
+        try:
+            return call()
+        except Exception as error:
+            if not self._is_refreshable_auth_error(error):
+                raise
+            logger.debug(
+                "Auth failure during %s, attempting auto-refresh", operation,
+                exc_info=True,
+            )
+            if not self.auto_refresh():
+                raise
+            return call()
 
     def ensure_session(self) -> None:
         if self._ready:
@@ -403,9 +452,9 @@ class _MemantoClient:
         source: str = "hermes",
         provenance: str = "explicit_statement",
     ) -> dict:
-        try:
-            self.ensure_session()
-            return self._client.remember(
+        return self._call_with_auth_retry(
+            "remember",
+            lambda: self._client.remember(
                 agent_id=self._agent_id,
                 memory_type=memory_type,
                 title=title,
@@ -414,23 +463,8 @@ class _MemantoClient:
                 tags=tags or [],
                 source=source,
                 provenance=provenance,
-            )
-        except Exception as e:
-            msg = str(e).lower()
-            if "expired" in msg or "invalid" in msg or "401" in msg or "403" in msg:
-                logger.debug("Token expired or invalid during remember, attempting auto-refresh")
-                if self.auto_refresh():
-                    return self._client.remember(
-                        agent_id=self._agent_id,
-                        memory_type=memory_type,
-                        title=title,
-                        content=content,
-                        confidence=confidence,
-                        tags=tags or [],
-                        source=source,
-                        provenance=provenance,
-                    )
-            raise
+            ),
+        )
 
     def recall(
         self,
@@ -440,50 +474,27 @@ class _MemantoClient:
         type: list[str] | None = None,
         min_confidence: float | None = None,
     ) -> list[dict]:
-        try:
-            self.ensure_session()
-            result = self._client.recall(
+        result = self._call_with_auth_retry(
+            "recall",
+            lambda: self._client.recall(
                 agent_id=self._agent_id,
                 query=query,
                 limit=limit,
                 type=type,
                 min_confidence=min_confidence,
-            )
-            return result.get("memories", [])
-        except Exception as e:
-            msg = str(e).lower()
-            if "expired" in msg or "invalid" in msg or "401" in msg or "403" in msg:
-                logger.debug("Token expired or invalid during recall, attempting auto-refresh")
-                if self.auto_refresh():
-                    result = self._client.recall(
-                        agent_id=self._agent_id,
-                        query=query,
-                        limit=limit,
-                        type=type,
-                        min_confidence=min_confidence,
-                    )
-                    return result.get("memories", [])
-            raise
+            ),
+        )
+        return result.get("memories", [])
 
     def answer(self, question: str, *, limit: int | None = None) -> dict:
-        try:
-            self.ensure_session()
-            return self._client.answer(
+        return self._call_with_auth_retry(
+            "answer",
+            lambda: self._client.answer(
                 agent_id=self._agent_id,
                 question=question,
                 limit=limit,
-            )
-        except Exception as e:
-            msg = str(e).lower()
-            if "expired" in msg or "invalid" in msg or "401" in msg or "403" in msg:
-                logger.debug("Token expired or invalid during answer, attempting auto-refresh")
-                if self.auto_refresh():
-                    return self._client.answer(
-                        agent_id=self._agent_id,
-                        question=question,
-                        limit=limit,
-                    )
-            raise
+            ),
+        )
 
 
 # -- Tool schemas -------------------------------------------------------------
@@ -632,6 +643,7 @@ class MemantoMemoryProvider(MemoryProvider):
 
         # Resolve the agent id: env override > config, with {identity} template.
         identity = kwargs.get("agent_identity", "default") or "default"
+        safe_identity = _sanitize_agent_id(str(identity))
         raw_id = (
             os.environ.get("MEMANTO_AGENT_ID", "").strip() or self._config["agent_id"]
         )
@@ -658,7 +670,7 @@ class MemantoMemoryProvider(MemoryProvider):
                 auto_create=self._config["auto_create"],
                 session_duration_hours=self._config["session_duration_hours"],
             )
-            profile_dir = Path(self._hermes_home) / "profiles" / identity
+            profile_dir = Path(self._hermes_home) / "profiles" / safe_identity
             if hasattr(self._client, "set_profile_path"):
                 self._client.set_profile_path(str(profile_dir))
             self._active = True
