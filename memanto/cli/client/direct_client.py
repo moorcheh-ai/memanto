@@ -393,11 +393,23 @@ class DirectClient:
             # Surface the same specific session errors as the service
             raise
 
+        if token_payload.agent_id != agent_id:
+            raise SessionError(
+                f"Session token is for agent '{token_payload.agent_id}', "
+                f"cannot access '{agent_id}'"
+            )
+
         # Load the persisted session record
         session = session_service.get_session(token_payload.agent_id)
         if not session:
             raise SessionNotFoundError(
                 f"Session for agent {token_payload.agent_id} not found"
+            )
+
+        if session.agent_id != agent_id:
+            raise SessionError(
+                f"Session record is for agent '{session.agent_id}', "
+                f"cannot access '{agent_id}'"
             )
 
         # Check and auto-renew if near expiry. SessionService.renew_session

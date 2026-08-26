@@ -46,6 +46,7 @@ class MemantoSetup:
     """
 
     def __init__(self, api_key: str) -> None:
+        """Initialize MemantoSetup with the provided API key."""
         self.api_key = api_key
         self.client = SdkClient(api_key=api_key)
         self._clients: dict[str, SdkClient] = {}
@@ -57,7 +58,17 @@ class MemantoSetup:
         description: str | None = None,
         duration_hours: int = 6,
     ) -> SdkClient:
-        """Create agent (if needed) and activate a session."""
+        """Create agent (if needed) and activate an isolated session.
+
+        Args:
+            agent_id: Identifier of the agent to create and activate.
+            pattern: Agent architecture pattern (e.g. 'tool', 'support', 'project').
+            description: Optional human-readable description for the agent.
+            duration_hours: Session token validity lifetime in hours.
+
+        Returns:
+            SdkClient instance bound to the newly activated agent session.
+        """
         client = SdkClient(api_key=self.api_key)
         try:
             client.create_agent(
@@ -79,11 +90,22 @@ class MemantoSetup:
         return client
 
     def teardown(self, agent_id: str) -> None:
-        """Deactivate the agent session."""
+        """Deactivate the agent session for *agent_id*.
+
+        Args:
+            agent_id: Identifier of the agent to deactivate.
+        """
         try:
-            client = self._clients.get(agent_id, self.client)
+            client = self._clients.pop(agent_id, None)
+            if client is None:
+                if self.client and getattr(self.client, "agent_id", None) == agent_id:
+                    client = self.client
+                else:
+                    logger.warning("No tracked client for agent '%s' to deactivate", agent_id)
+                    return
             client.deactivate_agent(agent_id)
-            self._clients.pop(agent_id, None)
+            if self.client is client:
+                self.client = next(iter(self._clients.values()), None)
             logger.info("Deactivated session for agent '%s'", agent_id)
         except Exception as e:
             logger.warning("Failed to deactivate agent '%s': %s", agent_id, e)
