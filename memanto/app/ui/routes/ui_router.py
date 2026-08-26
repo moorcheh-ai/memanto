@@ -28,11 +28,7 @@ from fastapi.staticfiles import StaticFiles
 
 from memanto.app.clients.backend import Backend
 from memanto.app.config import settings
-from memanto.app.routes.auth_deps import (
-    _is_cross_site_browser_request,
-    clear_session_cookie,
-    set_session_cookie,
-)
+from memanto.app.routes.auth_deps import clear_session_cookie, set_session_cookie
 from memanto.app.utils.temporal_helpers import utc_date_str
 from memanto.app.utils.validation import validate_safe_id
 from memanto.cli.client.direct_client import DirectClient
@@ -80,6 +76,31 @@ def _is_loopback(host: str | None) -> bool:
         return False
 
 
+_TRUSTED_LOOPBACK_HOSTS = frozenset({"localhost", "127.0.0.1", "::1"})
+
+
+def _is_trusted_loopback_host(host_header: str | None) -> bool:
+    """Return True when the ``Host`` header names a loopback host.
+
+    Prevents DNS-rebinding attacks: with only a source-IP check, a malicious
+    page can resolve ``attacker.example`` to 127.0.0.1 and issue same-origin
+    requests that bypass ``_require_local``. Browsers always set ``Host``
+    from the page URL, so requiring ``localhost``/``127.0.0.1``/``[::1]``
+    closes that window while keeping genuine local CLI/browser UX working.
+    """
+    if not host_header:
+        return False
+    hostname = host_header.strip().lower()
+    if hostname.startswith("["):
+        end = hostname.find("]")
+        if end == -1:
+            return False
+        hostname = hostname[1:end]
+    else:
+        hostname = hostname.split(":", 1)[0]
+    return hostname in _TRUSTED_LOOPBACK_HOSTS
+
+
 async def _require_local(request: Request) -> None:
     """Reject requests that do not originate from the loopback interface.
 
@@ -97,11 +118,13 @@ async def _require_local(request: Request) -> None:
                 f"Request origin: {client_host}"
             ),
         )
-
-    if _is_cross_site_browser_request(request):
+    if not _is_trusted_loopback_host(request.headers.get("host")):
         raise HTTPException(
             status_code=403,
-            detail="UI management endpoints reject cross-site browser requests.",
+            detail=(
+                "UI management endpoints require a loopback Host header to "
+                "prevent DNS-rebinding access."
+            ),
         )
 
 

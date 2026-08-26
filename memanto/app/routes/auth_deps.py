@@ -4,8 +4,6 @@ Authentication Dependencies for V2 API
 Shared authentication utilities to avoid circular imports.
 """
 
-from urllib.parse import urlsplit
-
 from fastapi import Cookie, Header, HTTPException, Request, Response
 
 from memanto.app.models.session import Session
@@ -89,6 +87,9 @@ def _extract_presented_credential(
     return None
 
 
+_TRUSTED_LOOPBACK_HOSTS = frozenset({"localhost", "127.0.0.1", "::1"})
+
+
 def _is_loopback_host(host: str | None) -> bool:
     """Return True when *host* is a loopback address (IPv4/IPv6/mapped)."""
     if not host:
@@ -105,42 +106,34 @@ def _is_loopback_host(host: str | None) -> bool:
     return ipv4_mapped is not None and ipv4_mapped.is_loopback
 
 
-def _is_loopback_origin(origin: str | None) -> bool:
-    """Return True when a browser Origin points at the local Memanto host."""
-    if not origin or not isinstance(origin, str):
-        return False
-    try:
-        parsed = urlsplit(origin)
-    except ValueError:
-        return False
-    if parsed.scheme not in {"http", "https"}:
-        return False
-    return parsed.hostname == "localhost" or _is_loopback_host(parsed.hostname)
+def _is_trusted_loopback_host(host_header: str | None) -> bool:
+    """Return True when the ``Host`` header names a loopback host.
 
+    The loopback exemption in ``require_management_access`` must not apply
+    when a request arrives at a loopback address with a spoofed ``Host``
+    header (classic DNS-rebinding pattern: a browser resolves
+    ``attacker.example`` to 127.0.0.1 and issues same-origin requests that
+    the server cannot distinguish from genuine local traffic by source IP
+    alone). Browsers set ``Host`` from the URL and cannot be tricked into
+    sending ``localhost`` for an ``attacker.example`` page, so requiring a
+    loopback ``Host`` closes the rebinding window without breaking local
+    CLI/browser UX.
 
-def _is_loopback_host_header(host: str | None) -> bool:
-    """Return True when an HTTP Host header names a loopback interface."""
-    if not host or not isinstance(host, str):
+    Accepted forms: ``localhost``, ``localhost:8000``, ``127.0.0.1``,
+    ``127.0.0.1:8000``, ``[::1]``, ``[::1]:8000``.
+    """
+    if not host_header:
         return False
-    try:
-        hostname = urlsplit(f"//{host}").hostname
-    except ValueError:
-        return False
-    return hostname == "localhost" or _is_loopback_host(hostname)
-
-
-def _is_cross_site_browser_request(request: Request) -> bool:
-    """Detect browser requests that must not inherit loopback trust."""
-    origin = request.headers.get("origin")
-    if origin is not None and isinstance(origin, str):
-        return not _is_loopback_origin(origin)
-
-    fetch_site = request.headers.get("sec-fetch-site", "")
-    if isinstance(fetch_site, str):
-        fetch_site = fetch_site.strip().lower()
+    hostname = host_header.strip().lower()
+    # IPv6 literals are bracketed with an optional port: [::1]:8000
+    if hostname.startswith("["):
+        end = hostname.find("]")
+        if end == -1:
+            return False
+        hostname = hostname[1:end]
     else:
-        fetch_site = ""
-    return fetch_site in {"cross-site", "same-site"}
+        hostname = hostname.split(":", 1)[0]
+    return hostname in _TRUSTED_LOOPBACK_HOSTS
 
 
 def require_management_access(
@@ -190,10 +183,8 @@ def require_management_access(
         return server_key
 
     client_host = request.client.host if request.client else None
-    if (
-        _is_loopback_host(client_host)
-        and _is_loopback_host_header(request.headers.get("host"))
-        and not _is_cross_site_browser_request(request)
+    if _is_loopback_host(client_host) and _is_trusted_loopback_host(
+        request.headers.get("host")
     ):
         return server_key
 
