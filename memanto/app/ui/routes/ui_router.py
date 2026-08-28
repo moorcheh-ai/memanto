@@ -101,6 +101,24 @@ def _is_trusted_loopback_host(host_header: str | None) -> bool:
     return hostname in _TRUSTED_LOOPBACK_HOSTS
 
 
+def _is_trusted_loopback_origin(origin: str | None) -> bool:
+    """Return True when an ``Origin`` header (if present) is a loopback origin.
+
+    Defense-in-depth on top of the ``Host`` check: a DNS-rebinding page
+    sends ``Origin: http://evil.example:8000``. curl / CLI calls carry no
+    Origin and stay allowed.
+    """
+    if origin is None:
+        return True
+    from urllib.parse import urlparse
+
+    parsed = urlparse(origin)
+    if parsed.scheme not in ("http", "https"):
+        return False
+    hostname = parsed.hostname or ""
+    return hostname in _TRUSTED_LOOPBACK_HOSTS
+
+
 async def _require_local(request: Request) -> None:
     """Reject requests that do not originate from the loopback interface.
 
@@ -124,6 +142,13 @@ async def _require_local(request: Request) -> None:
             detail=(
                 "UI management endpoints require a loopback Host header to "
                 "prevent DNS-rebinding access."
+            ),
+        )
+    if not _is_trusted_loopback_origin(request.headers.get("origin")):
+        raise HTTPException(
+            status_code=403,
+            detail=(
+                "UI management endpoints reject cross-site Origin headers."
             ),
         )
 

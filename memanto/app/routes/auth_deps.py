@@ -136,6 +136,26 @@ def _is_trusted_loopback_host(host_header: str | None) -> bool:
     return hostname in _TRUSTED_LOOPBACK_HOSTS
 
 
+def _is_trusted_loopback_origin(origin: str | None) -> bool:
+    """Return True when an ``Origin`` header (if present) is a loopback origin.
+
+    Browsers attach ``Origin`` on cross-site and same-origin fetch requests.
+    A malicious page re-targeted at the local server via DNS rebinding sends
+    ``Origin: http://evil.example:8000``; requiring any presented origin to
+    be a loopback URL blocks that path as defense-in-depth on top of the
+    ``Host`` header check (curl / CLI calls carry no Origin and stay allowed).
+    """
+    if origin is None:
+        return True
+    from urllib.parse import urlparse
+
+    parsed = urlparse(origin)
+    if parsed.scheme not in ("http", "https"):
+        return False
+    hostname = parsed.hostname or ""
+    return hostname in _TRUSTED_LOOPBACK_HOSTS
+
+
 def require_management_access(
     request: Request,
     authorization: str | None = Header(None),
@@ -183,8 +203,10 @@ def require_management_access(
         return server_key
 
     client_host = request.client.host if request.client else None
-    if _is_loopback_host(client_host) and _is_trusted_loopback_host(
-        request.headers.get("host")
+    if (
+        _is_loopback_host(client_host)
+        and _is_trusted_loopback_host(request.headers.get("host"))
+        and _is_trusted_loopback_origin(request.headers.get("origin"))
     ):
         return server_key
 
