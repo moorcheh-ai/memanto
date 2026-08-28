@@ -245,6 +245,30 @@ def get_current_session(
             status_code=401, detail="Missing session token. Use X-Session-Token header."
         )
 
+    # A session presented via the HttpOnly *cookie* (browser transport) must
+    # come from the loopback interface targeting a loopback Host. The TCP
+    # client alone is not enough to trust: a DNS-rebinding page on an
+    # attacker domain can inherit the loopback client (the server sees a
+    # 127.0.0.1 peer) while the request's Host names the attacker origin.
+    # Mirror ``require_management_access``'s loopback boundary here so a
+    # rebinding page cannot read or write the memory store. Header-
+    # authenticated API clients (X-Session-Token) are unaffected and may be
+    # remote.
+    if session_cookie and not x_session_token:
+        client_host = request.client.host if request.client else None
+        if (
+            not _is_loopback_host(client_host)
+            or not _is_loopback_host_header(request.headers.get("host"))
+            or _is_cross_site_browser_request(request)
+        ):
+            raise HTTPException(
+                status_code=403,
+                detail=(
+                    "Cookie-authenticated session requests must originate "
+                    "from the loopback interface targeting a loopback Host."
+                ),
+            )
+
     session_service = get_session_service()
 
     try:

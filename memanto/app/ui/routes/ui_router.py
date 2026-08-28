@@ -30,6 +30,7 @@ from memanto.app.clients.backend import Backend
 from memanto.app.config import settings
 from memanto.app.routes.auth_deps import (
     _is_cross_site_browser_request,
+    _is_loopback_host_header,
     clear_session_cookie,
     set_session_cookie,
 )
@@ -102,6 +103,20 @@ async def _require_local(request: Request) -> None:
         raise HTTPException(
             status_code=403,
             detail="UI management endpoints reject cross-site browser requests.",
+        )
+
+    # A loopback TCP peer is necessary but not sufficient: a DNS-rebinding
+    # page on an attacker domain makes the server see a 127.0.0.1 client
+    # while the Host header names the attacker origin. The Host header is
+    # the only signal that distinguishes "local UI on localhost" from
+    # "attacker domain bound to loopback", so require it to name loopback.
+    if not _is_loopback_host_header(request.headers.get("host")):
+        raise HTTPException(
+            status_code=403,
+            detail=(
+                "UI management endpoints must be requested with a loopback "
+                "Host header."
+            ),
         )
 
 
