@@ -119,6 +119,35 @@ def _is_trusted_loopback_origin(origin: str | None) -> bool:
     return hostname in _TRUSTED_LOOPBACK_HOSTS
 
 
+def _is_trusted_forwarded_client(request: Request) -> bool:
+    """Return True when forwarded-client metadata (if present) names a loopback client.
+
+    Uvicorn rewrites ``request.client`` from X-Forwarded-For/Forwarded only
+    when the direct peer is trusted, so a reverse proxy connecting from the
+    loopback interface still makes a *remote* caller look local when the
+    proxy does not pass the original client address. Combined with a forged
+    ``Host: localhost`` and no Origin, a remote attacker could satisfy the
+    loopback exemption (CWE-290). Treat any explicitly forwarded client
+    address as authoritative: it must itself be loopback, otherwise the
+    request is not genuinely local.
+    """
+    forwarded_for = request.headers.get("x-forwarded-for")
+    if forwarded_for:
+        first = forwarded_for.split(",", 1)[0].strip()
+        if not _is_loopback(first):
+            return False
+    forwarded = request.headers.get("forwarded")
+    if forwarded:
+        for part in forwarded.split(","):
+            for pair in part.split(";"):
+                key, _, value = pair.strip().partition("=")
+                if key.lower() == "for":
+                    value = value.strip().strip('"')
+                    if value and value.lower() != "unknown" and not _is_loopback(value):
+                        return False
+    return True
+
+
 async def _require_local(request: Request) -> None:
     """Reject requests that do not originate from the loopback interface.
 
@@ -149,6 +178,15 @@ async def _require_local(request: Request) -> None:
             status_code=403,
             detail=(
                 "UI management endpoints reject cross-site Origin headers."
+            ),
+        )
+
+    if not _is_trusted_forwarded_client(request):
+        raise HTTPException(
+            status_code=403,
+            detail=(
+                "UI management endpoints reject requests forwarded from "
+                "non-loopback clients."
             ),
         )
 
