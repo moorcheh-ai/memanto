@@ -1,0 +1,53 @@
+name: Duplicate PR Check
+
+# Flags PRs that look like duplicates of other open or already-merged PRs.
+# Uses `pull_request_target` so it has a write token + secrets even for fork
+# PRs. This is safe ONLY because the job never checks out or runs PR code --
+# it reads PR metadata via the API.
+on:
+  pull_request_target:
+    types: [opened, reopened, edited, synchronize]
+  # Manual "Run workflow" button: Actions tab -> Duplicate PR Check -> Run workflow.
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: "PR number to scan (leave blank to scan ALL open PRs)"
+        required: false
+        type: string
+      dry_run:
+        description: "Dry run: print findings without commenting or labelling"
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+
+concurrency:
+  group: duplicate-pr-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  check-duplicates:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Script gets GITHUB_TOKEN via env; no need to leave creds in git config.
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Scan for duplicate PRs
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          MISTRAL_API_KEY: ${{ secrets.MISTRAL_API_KEY }}
+          # Empty on pull_request_target events; set only via the manual button.
+          PR_NUMBER: ${{ github.event.inputs.pr_number }}
+          DRY_RUN: ${{ github.event.inputs.dry_run }}
+        run: python .github/scripts/check_duplicate_prs.py
