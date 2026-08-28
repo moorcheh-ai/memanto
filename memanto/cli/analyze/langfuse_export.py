@@ -87,13 +87,66 @@ def split_api_key(api_key: str) -> tuple[str, str]:
     return public_key, secret_key
 
 
+import ipaddress
+import socket
+
+# Official Langfuse Cloud regions (allowed as-is).
+_ALLOWED_LANGFUSE_HOSTS = {
+    "https://cloud.langfuse.com",
+    "https://us.cloud.langfuse.com",
+    "https://eu.cloud.langfuse.com",
+}
+
+
+def _host_is_private(host: str) -> bool:
+    """Return True when *host* resolves to a private/loopback/link-local address.
+
+    SSRF defense: the Langfuse secret key is sent as HTTP Basic auth on every
+    request, so a caller-controlled host could otherwise point Memanto's
+    server-side fetch at cloud metadata (169.254.169.254), localhost, or RFC1918
+    addresses and exfiltrate the key or internal responses.
+    """
+    hostname = host.split("://", 1)[-1].split("/", 1)[0].split(":", 1)[0].strip()
+    if hostname in ("localhost", "0.0.0.0", "::1", "127.0.0.1"):
+        return True
+    try:
+        # Resolve to catch domains that map to internal IPs.
+        infos = socket.getaddrinfo(hostname, None)
+        for info in infos:
+            addr = info[4][0].split("%", 1)[0]
+            ip = ipaddress.ip_address(addr)
+            if (
+                ip.is_private
+                or ip.is_loopback
+                or ip.is_link_local
+                or ip.is_reserved
+                or ip.is_multicast
+            ):
+                return True
+    except (socket.gaierror, ValueError):
+        # Unresolvable host — treat as unsafe rather than risk a blind SSRF.
+        return True
+    return False
+
+
 def normalize_host(host: str | None) -> str:
-    """Normalize a Langfuse base URL (cloud EU/US or self-hosted)."""
+    """Normalize a Langfuse base URL (cloud EU/US or self-hosted).
+
+    SECURITY (#1852): the Langfuse secret key is transmitted as HTTP Basic auth,
+    so a host value must never point at internal infrastructure. Public
+    self-hosted domains are permitted, but any host resolving to a
+    private/loopback/link-local/metadata address is rejected (SSRF guard) and
+    falls back to the official cloud default instead of leaking the key.
+    """
     text = (host or "").strip().rstrip("/")
     if not text:
         return DEFAULT_HOST
     if not text.startswith(("http://", "https://")):
         text = f"https://{text}"
+    if text in _ALLOWED_LANGFUSE_HOSTS:
+        return text
+    if _host_is_private(text):
+        return DEFAULT_HOST
     return text
 
 
