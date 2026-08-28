@@ -80,6 +80,31 @@ def _is_loopback(host: str | None) -> bool:
         return False
 
 
+def _is_loopback_host_header(host: str | None) -> bool:
+    """Return True when the HTTP ``Host`` header names a loopback interface.
+
+    Defeats DNS-rebinding: a browser page on ``attacker.example`` (which the
+    browser resolves to 127.0.0.1) reaches the server with a loopback *TCP peer*
+    but a non-loopback ``Host`` header. The server must not treat that as local,
+    because the page can then drive cookie-authenticated routes (read/write
+    memory, enumerate filesystem) as if it were the desktop user. Browsers set
+    ``Host`` from the URL and cannot be tricked into sending ``localhost`` for an
+    ``attacker.example`` page, so requiring a loopback ``Host`` closes the
+    rebinding window without affecting CLI/header-auth (remote) clients.
+    """
+    if not host:
+        return False
+    hostname = host.strip().lower()
+    if hostname.startswith("["):  # IPv6 literal [::1]:port
+        end = hostname.find("]")
+        if end == -1:
+            return False
+        hostname = hostname[1:end]
+    else:
+        hostname = hostname.split(":", 1)[0]
+    return hostname in {"localhost", "127.0.0.1", "::1"} or _is_loopback(hostname)
+
+
 async def _require_local(request: Request) -> None:
     """Reject requests that do not originate from the loopback interface.
 
@@ -95,6 +120,15 @@ async def _require_local(request: Request) -> None:
             detail=(
                 "UI management endpoints are only accessible from localhost. "
                 f"Request origin: {client_host}"
+            ),
+        )
+
+    if not _is_loopback_host_header(request.headers.get("host")):
+        raise HTTPException(
+            status_code=403,
+            detail=(
+                "UI management endpoints require a loopback Host header "
+                "(DNS-rebinding protection)."
             ),
         )
 
