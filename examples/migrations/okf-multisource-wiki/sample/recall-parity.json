@@ -1,0 +1,82 @@
+{
+  "total": 8,
+  "source_recall": "8/8",
+  "okf_recall": "8/8",
+  "parity_pass": "8/8",
+  "is_recall_preserved": true,
+  "questions": [
+    {
+      "id": "q1",
+      "question": "What is the user's name?",
+      "source_ok": true,
+      "source_note": "matched Priya Shah",
+      "okf_ok": true,
+      "okf_note": "matched Priya Shah",
+      "parity": true
+    },
+    {
+      "id": "q2",
+      "question": "Which language does Priya prefer for internal/backend services now?",
+      "source_ok": true,
+      "source_note": "matched Python",
+      "okf_ok": true,
+      "okf_note": "matched Python",
+      "parity": true
+    },
+    {
+      "id": "q3",
+      "question": "What is the primary database?",
+      "source_ok": true,
+      "source_note": "matched PostgreSQL 16",
+      "okf_ok": true,
+      "okf_note": "matched PostgreSQL 16",
+      "parity": true
+    },
+    {
+      "id": "q4",
+      "question": "Who is the on-call buddy?",
+      "source_ok": true,
+      "source_note": "matched Marcus Chen",
+      "okf_ok": true,
+      "okf_note": "matched Marcus Chen",
+      "parity": true
+    },
+    {
+      "id": "q5",
+      "question": "What Friday deploy rule exists?",
+      "source_ok": true,
+      "source_note": "matched Never deploy on Fridays",
+      "okf_ok": true,
+      "okf_note": "matched Never deploy on Fridays",
+      "parity": true
+    },
+    {
+      "id": "q6",
+      "question": "What pgbouncer setting was raised after INC-441?",
+      "source_ok": true,
+      "source_note": "matched max_client_conn",
+      "okf_ok": true,
+      "okf_note": "matched max_client_conn",
+      "parity": true
+    },
+    {
+      "id": "q7",
+      "question": "What is the monthly LLM spend budget?",
+      "source_ok": true,
+      "source_note": "matched 200",
+      "okf_ok": true,
+      "okf_note": "matched 200",
+      "parity": true
+    },
+    {
+      "id": "q8",
+      "question": "Which timezone does Priya work in?",
+      "source_ok": true,
+      "source_note": "matched Asia/Kolkata",
+      "okf_ok": true,
+      "okf_note": "matched Asia/Kolkata",
+      "parity": true
+    }
+  ],
+  "pre_consolidation_union_recall": "8/8"
+}
