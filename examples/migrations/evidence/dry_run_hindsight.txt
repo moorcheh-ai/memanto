@@ -1,0 +1,12 @@
+$ python examples/migrations/scripts/migrate_hindsight.py --dry-run
+
+Fetching Hindsight export...
+  Listing Hindsight banks...
+  Found 1 banks
+  Fetching memories [1/1] test-bank
+    test-bank: 6 memories
+
+Dry run complete
+  Source records : 6
+  Mapped memories: 6  (skipped 0)
+  Type breakdown : observation: 3, event: 1, fact: 2
