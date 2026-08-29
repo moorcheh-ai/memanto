@@ -1,9 +1,20 @@
----
-type: index
-title: fact
-timestamp: 2026-08-22T22:19:58
----
+# fact (18)
 
-# fact (1)
-
+- [Samuel Test is a Python developer.](samuel-test-is-a-python-developer.md)
+- [Samuel Test prefers dark mode.](samuel-test-prefers-dark-mode.md)
 - [Alice is based in Berlin, Germany.](alice-is-based-in-berlin-germany.md)
+- [Samuel Test prefers the FastAPI framework.](samuel-test-prefers-the-fastapi-framework.md)
+- [The User lives in Lagos.](the-user-lives-in-lagos.md)
+- [Lagos is located in Nigeria.](lagos-is-located-in-nigeria.md)
+- [Samuel Test lives in Lagos.](samuel-test-lives-in-lagos.md)
+- [Samuel is a Python developer who prefers FastAPI over Flask. | Involving: Sam...](samuel-is-a-python-developer-who-prefers-fastapi-over-flask.md)
+- [Alice uses VSCode with dark mode as her primary editor.](alice-uses-vscode-with-dark-mode-as-her-primary-editor.md)
+- [FastAPI is preferred over JavaScript.](fastapi-is-preferred-over-javascript.md)
+- [Assistant will remember that.](assistant-will-remember-that.md)
+- [Samuel Test avoids JavaScript when possible.](samuel-test-avoids-javascript-when-possible.md)
+- [Samuel Test mostly works on open source projects.](samuel-test-mostly-works-on-open-source-projects.md)
+- [Samuel Test uses VSCode daily.](samuel-test-uses-vscode-daily.md)
+- [The User is an open source Python developer.](the-user-is-an-open-source-python-developer.md)
+- [My LLM agent needs persistent memory across sessions. I am evaluating mem0, M...](my-llm-agent-needs-persistent-memory-across-sessions-i-am-ev.md)
+- [I want to open-source my LLM memory benchmarking tool. What license and repo...](i-want-to-open-source-my-llm-memory-benchmarking-tool-what-l.md)
+- [Samuel Test Bank lives in Lagos, Nigeria and works on open source projects. |...](samuel-test-bank-lives-in-lagos-nigeria-and-works-on-open-so.md)

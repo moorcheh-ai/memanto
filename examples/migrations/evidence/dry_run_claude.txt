@@ -1,9 +1,6 @@
-$ python examples/migrations/scripts/migrate_claude.py --dry-run \
-    --file claude-data.zip
+$ python examples/migrations/scripts/migrate_claude.py --dry-run
 
 Dry run complete
-  Source records : 206
-  Mapped memories: 172  (skipped 34)
-  Type breakdown : auto: 172
-
-Note: 34 skipped records are empty messages (no text content in chat_messages[].text or content[].text).
+  Source records : 5
+  Mapped memories: 5  (skipped 0)
+  Type breakdown : auto: 5

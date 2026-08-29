@@ -1,10 +1,9 @@
 ---
-type: index
-title: ai-conversations-showcase knowledge bundle
-timestamp: 2026-08-22T22:19:59
+okf_version: "0.2"
 ---
 
-# ai-conversations-showcase — OKF bundle
+# demo-migration-showcase — OKF bundle
 
-- [memories](memories/index.md) — 19 memories across 3 type(s)
+- [memories](memories/index.md) — 37 memories across 8 type(s)
+- [sessions](sessions/index.md) — 18 session log file(s)
 - [metrics](metrics/index.md) — aggregate stats & visualizations
