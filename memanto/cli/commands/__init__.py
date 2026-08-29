@@ -16,6 +16,7 @@ from memanto.cli.commands import (
     memory,  # noqa: F401  (remember, recall, answer, daily_summary, detect_conflicts, conflicts)
     memory_mgmt,  # noqa: F401  (export, sync)
     migrate,  # noqa: F401  (mem0/letta/supermemory → Memanto)
+    policy,  # noqa: F401  (show, presets, preset, apply, purge)
     schedule,  # noqa: F401  (enable, disable, status)
     session,  # noqa: F401  (info, extend)
 )

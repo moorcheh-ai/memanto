@@ -4,6 +4,8 @@ Authentication Dependencies for V2 API
 Shared authentication utilities to avoid circular imports.
 """
 
+from urllib.parse import urlsplit
+
 from fastapi import Cookie, Header, HTTPException, Request, Response
 
 from memanto.app.models.session import Session
@@ -103,6 +105,44 @@ def _is_loopback_host(host: str | None) -> bool:
     return ipv4_mapped is not None and ipv4_mapped.is_loopback
 
 
+def _is_loopback_origin(origin: str | None) -> bool:
+    """Return True when a browser Origin points at the local Memanto host."""
+    if not origin or not isinstance(origin, str):
+        return False
+    try:
+        parsed = urlsplit(origin)
+    except ValueError:
+        return False
+    if parsed.scheme not in {"http", "https"}:
+        return False
+    return parsed.hostname == "localhost" or _is_loopback_host(parsed.hostname)
+
+
+def _is_loopback_host_header(host: str | None) -> bool:
+    """Return True when an HTTP Host header names a loopback interface."""
+    if not host or not isinstance(host, str):
+        return False
+    try:
+        hostname = urlsplit(f"//{host}").hostname
+    except ValueError:
+        return False
+    return hostname == "localhost" or _is_loopback_host(hostname)
+
+
+def _is_cross_site_browser_request(request: Request) -> bool:
+    """Detect browser requests that must not inherit loopback trust."""
+    origin = request.headers.get("origin")
+    if origin is not None and isinstance(origin, str):
+        return not _is_loopback_origin(origin)
+
+    fetch_site = request.headers.get("sec-fetch-site", "")
+    if isinstance(fetch_site, str):
+        fetch_site = fetch_site.strip().lower()
+    else:
+        fetch_site = ""
+    return fetch_site in {"cross-site", "same-site"}
+
+
 def require_management_access(
     request: Request,
     authorization: str | None = Header(None),
@@ -150,7 +190,11 @@ def require_management_access(
         return server_key
 
     client_host = request.client.host if request.client else None
-    if _is_loopback_host(client_host):
+    if (
+        _is_loopback_host(client_host)
+        and _is_loopback_host_header(request.headers.get("host"))
+        and not _is_cross_site_browser_request(request)
+    ):
         return server_key
 
     raise HTTPException(

@@ -1,7 +1,7 @@
 """
 OKF (Open Knowledge Format) Export Service
 
-Serializes an agent's memories into an OKF v0.1 bundle — a directory of
+Serializes an agent's memories into an OKF v0.2 bundle — a directory of
 markdown files with YAML frontmatter, one concept per file, grouped into a
 folder per Memanto memory type.
 
@@ -15,14 +15,15 @@ Layout is controlled by ``split``:
     - ``file``: always one file per memory.
     - ``type``: always one stacked file per type.
 
-Memanto-only fields (id, confidence, provenance, source, status) are preserved
-under a namespaced ``x_memanto`` frontmatter block so that
+Memanto-only fields (id, confidence, provenance, source, status, and temporal
+metadata) are preserved under a namespaced ``x_memanto`` frontmatter block so that
 Memanto -> OKF -> Memanto round-trips keep them. OKF consumers ignore unknown
 frontmatter keys.
 """
 
 import re
 import shutil
+import tempfile
 import unicodedata
 from datetime import datetime, timezone
 from pathlib import Path
@@ -31,6 +32,7 @@ from typing import Any
 import yaml  # type: ignore[import-untyped]
 
 from memanto.app.services.memory_export_service import MEMORY_TYPE_ORDER
+from memanto.app.utils.atomic_write import okf_bundle_lock
 from memanto.app.utils.validation import validate_output_path, validate_safe_id
 
 # Stacked files hold multiple OKF documents. This sentinel separates them so
@@ -107,37 +109,52 @@ class OkfExportService:
             )
             assert validated is not None
             base = validated
-        base.mkdir(parents=True, exist_ok=True)
+        if base.exists() and not base.is_dir():
+            raise NotADirectoryError(f"OKF bundle path is not a directory: {base}")
+        base.parent.mkdir(parents=True, exist_ok=True)
 
-        # Section order mirrors how an agent would read the bundle.
-        sections: dict[str, str] = {}
-
-        type_entries = self._write_memories_section(
-            base / "memories", memories_by_type, split, threshold
+        # Render the complete snapshot away from the current bundle. Writing
+        # directly into ``base`` overlays new files on old ones, which can
+        # resurrect deleted or renamed memories on the next import. Staging
+        # also leaves the last good bundle intact if rendering fails midway.
+        staging = Path(
+            tempfile.mkdtemp(prefix=f".{base.name}.tmp-", dir=str(base.parent))
         )
-        per_type_counts = dict(type_entries)
-        total = sum(per_type_counts.values())
-        if type_entries:
-            sections["memories"] = (
-                f"{total} memories across {len(type_entries)} type(s)"
+
+        try:
+            # Section order mirrors how an agent would read the bundle.
+            sections: dict[str, str] = {}
+
+            type_entries = self._write_memories_section(
+                staging / "memories", memories_by_type, split, threshold
             )
+            per_type_counts = dict(type_entries)
+            total = sum(per_type_counts.values())
+            if type_entries:
+                sections["memories"] = (
+                    f"{total} memories across {len(type_entries)} type(s)"
+                )
 
-        n_summaries = self._write_docs_section(
-            base / "daily-summaries", summaries or [], "Daily Summaries"
-        )
-        if n_summaries:
-            sections["daily-summaries"] = f"{n_summaries} daily-summary file(s)"
+            n_summaries = self._write_docs_section(
+                staging / "daily-summaries", summaries or [], "Daily Summaries"
+            )
+            if n_summaries:
+                sections["daily-summaries"] = f"{n_summaries} daily-summary file(s)"
 
-        n_sessions = self._write_docs_section(
-            base / "sessions", sessions or [], "Sessions"
-        )
-        if n_sessions:
-            sections["sessions"] = f"{n_sessions} session log file(s)"
+            n_sessions = self._write_docs_section(
+                staging / "sessions", sessions or [], "Sessions"
+            )
+            if n_sessions:
+                sections["sessions"] = f"{n_sessions} session log file(s)"
 
-        if self._write_metrics_section(base / "metrics", memories_by_type):
-            sections["metrics"] = "aggregate stats & visualizations"
+            if self._write_metrics_section(staging / "metrics", memories_by_type):
+                sections["metrics"] = "aggregate stats & visualizations"
 
-        self._write_root_index(base, agent_id, sections)
+            self._write_root_index(staging, agent_id, sections)
+            self._replace_bundle(staging, base)
+        finally:
+            if staging.exists():
+                shutil.rmtree(staging)
 
         return {
             "output_path": str(base.resolve()),
@@ -145,6 +162,34 @@ class OkfExportService:
             "per_type_counts": per_type_counts,
             "sections": list(sections),
         }
+
+    @staticmethod
+    def _replace_bundle(staging: Path, target: Path) -> None:
+        """Swap a fully rendered bundle into place, restoring the previous
+        snapshot if the final rename fails."""
+        # Readers share this path-scoped lock with the loader, and competing
+        # exporters take the same exclusive lock. No caller can therefore
+        # observe or interfere with the brief target -> backup -> target swap.
+        with okf_bundle_lock(target, shared=False):
+            backup: Path | None = None
+            if target.exists():
+                backup = Path(
+                    tempfile.mkdtemp(
+                        prefix=f".{target.name}.backup-", dir=str(target.parent)
+                    )
+                )
+                backup.rmdir()
+                target.rename(backup)
+
+            try:
+                staging.rename(target)
+            except Exception:
+                if backup is not None and backup.exists() and not target.exists():
+                    backup.rename(target)
+                raise
+            else:
+                if backup is not None:
+                    shutil.rmtree(backup)
 
     # Section writers
     def _write_memories_section(
@@ -238,7 +283,20 @@ class OkfExportService:
         section_dir.mkdir(parents=True, exist_ok=True)
         links: list[tuple[str, str]] = []
         for src, destination_name in planned:
-            shutil.copy2(str(src), str(section_dir / destination_name))
+            text = src.read_text(encoding="utf-8")
+            if not text.startswith("---"):
+                frontmatter = yaml.safe_dump(
+                    {"type": "Context Document", "title": src.stem},
+                    sort_keys=False,
+                    allow_unicode=True,
+                    default_flow_style=False,
+                ).strip()
+                front = f"---\n{frontmatter}\n---\n\n"
+                (section_dir / destination_name).write_text(
+                    front + text, encoding="utf-8"
+                )
+            else:
+                shutil.copy2(str(src), str(section_dir / destination_name))
             links.append((destination_name, destination_name))
 
         self._write_index(section_dir, title, f"{title} ({len(links)})", links)
@@ -273,7 +331,13 @@ class OkfExportService:
             return False
 
         metrics_dir.mkdir(parents=True, exist_ok=True)
-        body = f"# Metrics — aggregate\n\n> {len(records)} memories\n{viz}\n"
+        body = (
+            "---\n"
+            "type: Metrics Overview\n"
+            "title: Aggregate Metrics\n"
+            "---\n\n"
+            f"# Metrics — aggregate\n\n> {len(records)} memories\n{viz}\n"
+        )
         (metrics_dir / "overview.md").write_text(body, encoding="utf-8")
         self._write_index(
             metrics_dir, "metrics", "Metrics", [("overview", "overview.md")]
@@ -331,14 +395,30 @@ class OkfExportService:
 
         created_at = mem.get("created_at")
         if created_at:
-            frontmatter["timestamp"] = str(created_at)
+            source = mem.get("source") or "process:unknown"
+            if not (
+                source.startswith("human:")
+                or source.startswith("process:")
+                or "/" in source
+            ):
+                source = f"process:{source}"
+            frontmatter["generated"] = {"by": source, "at": str(created_at)}
 
         source_ref = mem.get("source_ref")
         if source_ref:
             frontmatter["resource"] = source_ref
 
         x_memanto: dict[str, Any] = {}
-        for key in ("id", "confidence", "provenance", "source", "status"):
+        for key in (
+            "id",
+            "confidence",
+            "provenance",
+            "source",
+            "status",
+            "updated_at",
+            "expires_at",
+            "ttl_seconds",
+        ):
             val = mem.get(key)
             if val not in (None, ""):
                 x_memanto[key] = val
@@ -381,14 +461,7 @@ class OkfExportService:
         self, directory: Path, title: str, heading: str, links: list[tuple[str, str]]
     ) -> None:
         """Write a navigational ``index.md`` (skipped on import)."""
-        now = datetime.now().isoformat(timespec="seconds")
         lines = [
-            "---",
-            "type: index",
-            f"title: {title}",
-            f"timestamp: {now}",
-            "---",
-            "",
             f"# {heading}",
             "",
         ]
@@ -399,12 +472,9 @@ class OkfExportService:
     def _write_root_index(
         self, base: Path, agent_id: str, sections: dict[str, str]
     ) -> None:
-        now = datetime.now().isoformat(timespec="seconds")
         lines = [
             "---",
-            "type: index",
-            f"title: {agent_id} knowledge bundle",
-            f"timestamp: {now}",
+            'okf_version: "0.2"',
             "---",
             "",
             f"# {agent_id} — OKF bundle",

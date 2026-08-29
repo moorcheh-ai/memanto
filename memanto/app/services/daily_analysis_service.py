@@ -18,7 +18,7 @@ from memanto.app.clients.moorcheh import get_moorcheh_client
 from memanto.app.config import get_data_dir, settings
 from memanto.app.core import agent_namespace
 from memanto.app.services.session_service import get_session_service
-from memanto.app.utils.errors import MemoryError
+from memanto.app.utils.errors import MemoryOperationError
 from memanto.app.utils.temporal_helpers import (
     format_current_local_time,
     format_local_time,
@@ -58,17 +58,28 @@ def _truncate_embedding_query(
     model: str | None,
     token_budget: int = _EMBEDDING_QUERY_TOKEN_BUDGET,
 ) -> str:
-    """Fit text within the embedding budget using a tokenizer or safe bound."""
+    """Fit text within the embedding budget using a bounded digest covering the complete text evenly."""
     tokenizer = _get_embedding_tokenizer(model)
     if tokenizer is not None:
         # disallowed_special=() treats tokens like "<|endoftext|>" as ordinary
         # text. Session content is arbitrary user prose, and tiktoken's default
         # raises ValueError on those markers -- here that would escape before
-        # generate_summary's try/except turns failures into MemoryError.
+        # generate_summary's try/except turns failures into MemoryOperationError.
         token_ids = tokenizer.encode(text, disallowed_special=())
         if len(token_ids) <= token_budget:
             return text
-        return str(tokenizer.decode(token_ids[:token_budget]))
+
+        num_chunks = 10
+        chunk_budget = token_budget // num_chunks
+        max_start = max(0, len(token_ids) - chunk_budget)
+
+        digest_ids = []
+        for i in range(num_chunks):
+            start = (i * max_start) // (num_chunks - 1) if num_chunks > 1 else 0
+            digest_ids.extend(token_ids[start : start + chunk_budget])
+
+        # tiktoken's decode gracefully handles partial BPE bytes
+        return str(tokenizer.decode(digest_ids, errors="ignore"))
 
     # Byte-level BPE and SentencePiece token counts cannot exceed the number
     # of UTF-8 bytes in their input. Limiting bytes is conservative for normal
@@ -76,7 +87,17 @@ def _truncate_embedding_query(
     encoded = text.encode("utf-8")
     if len(encoded) <= token_budget:
         return text
-    return encoded[:token_budget].decode("utf-8", errors="ignore")
+
+    num_chunks = 10
+    chunk_budget = token_budget // num_chunks
+    stride = max(1, len(encoded) // num_chunks)
+
+    digest_bytes = bytearray()
+    for i in range(num_chunks):
+        start = i * stride
+        digest_bytes.extend(encoded[start : start + chunk_budget])
+
+    return digest_bytes.decode("utf-8", errors="ignore")
 
 
 class DailyAnalysisService:
@@ -137,12 +158,17 @@ class DailyAnalysisService:
         client = get_moorcheh_client()
         namespace = agent_namespace(agent_id)
 
+        retrieval_query = _truncate_embedding_query(
+            full_text,
+            model=get_active_embedding_model(),
+        )
+
         header_prompt = f"""
 Summarize the following session memories from {date} into a concise natural language daily summary.
 Focus on key themes, accomplishments, and high-level activities.
 
 Sessions Content:
-{full_text}
+{retrieval_query}
 """
 
         footer_prompt = f"""
@@ -155,10 +181,6 @@ Format the output as a Markdown report:
 ## Key Themes & Activities
 ...
 """
-        retrieval_query = _truncate_embedding_query(
-            full_text,
-            model=get_active_embedding_model(),
-        )
         try:
             generate_kwargs: dict[str, Any] = {
                 "namespace": namespace,
@@ -173,7 +195,7 @@ Format the output as a Markdown report:
             result = client.answer.generate(**generate_kwargs)
             summary_text = result.get("answer", "Failed to generate summary.")
         except Exception as e:
-            raise MemoryError(f"AI summarization failed: {str(e)}")
+            raise MemoryOperationError(f"AI summarization failed: {str(e)}")
 
         if resolved_output is not None:
             resolved_output.parent.mkdir(parents=True, exist_ok=True)
@@ -215,8 +237,9 @@ Format the output as a Markdown report:
         validate_safe_id(agent_id, "agent_id")
         validate_safe_id(date, "date")
 
-        conflicts_dir = Path.home() / ".memanto" / "conflicts"
-        conflicts_dir.mkdir(parents=True, exist_ok=True)
+        from memanto.app.config import get_conflicts_dir
+
+        conflicts_dir = get_conflicts_dir()
         pattern = f"{agent_id}_{date}_*_summary.md"
         session_files = list(self.sessions_dir.glob(pattern))
 
@@ -233,8 +256,22 @@ Format the output as a Markdown report:
         client = get_moorcheh_client()
         namespace = agent_namespace(agent_id)
 
-        conflict_prompt = f"""
-Analyze the following session memories from {date} against historical knowledge for this agent.
+        # Use a truncated digest of the session content as the retrieval
+        # query so it stays within the embedding context window, and also
+        # use it in the prompt to prevent LLM context overflow.
+        query_digest = _truncate_embedding_query(
+            full_text,
+            model=get_active_embedding_model(),
+        )
+
+        # --- Decouple instructions from the embedded query (issue #1329) ---
+        # The ``query`` parameter is embedded for similarity retrieval and
+        # must stay within the embedding model's context window (e.g. 2048
+        # tokens for nomic-embed-text).  Instructions and full session content
+        # go into ``header_prompt`` / ``footer_prompt`` which are passed to
+        # the LLM but NOT embedded.
+
+        header_prompt = f"""Analyze the following session memories from {date} against historical knowledge for this agent.
 
 CRITICAL INSTRUCTIONS:
 1. ONLY report conflicts, contradictions, updates, or duplicates that involve AT LEAST ONE of the memories from the "Recent Sessions Content" provided below.
@@ -249,9 +286,9 @@ Identify:
 4. Conflicts: Semantic disagreements between new and historical memories.
 
 Recent Sessions Content:
-{full_text}
+{query_digest}"""
 
-You MUST respond with ONLY a valid JSON array. No markdown, no explanation, no code fences.
+        footer_prompt = """You MUST respond with ONLY a valid JSON array. No markdown, no explanation, no code fences.
 Each element must be an object with these exact keys:
 - "type": one of "contradiction", "update", "duplicate", "conflict"
 - "title": short description of the issue
@@ -265,13 +302,15 @@ Each element must be an object with these exact keys:
 If there are NO conflicts, return an empty array: []
 
 Example response format:
-[{{"type": "contradiction", "title": "Database preference changed", "old_memory_id": "abc-123", "old_content": "We use PostgreSQL", "new_memory_id": "def-456", "new_content": "We migrated to MongoDB", "description": "New memory contradicts old database preference", "recommendation": "keep_new"}}]
-"""
+[{"type": "contradiction", "title": "Database preference changed", "old_memory_id": "abc-123", "old_content": "We use PostgreSQL", "new_memory_id": "def-456", "new_content": "We migrated to MongoDB", "description": "New memory contradicts old database preference", "recommendation": "keep_new"}]"""
+
         try:
             generate_kwargs = {
                 "namespace": namespace,
-                "query": conflict_prompt,
+                "query": query_digest,
                 "top_k": 50,
+                "header_prompt": header_prompt,
+                "footer_prompt": footer_prompt,
             }
             ai_model = get_active_llm_model(settings.SUMMARY_MODEL)
             if ai_model is not None:
@@ -279,7 +318,7 @@ Example response format:
             result = client.answer.generate(**generate_kwargs)
             conflict_text = result.get("answer", "[]")
         except Exception as e:
-            raise MemoryError(f"Conflict detection failed: {str(e)}")
+            raise MemoryOperationError(f"Conflict detection failed: {str(e)}")
 
         # Parse JSON from the AI response
         conflicts_data = []

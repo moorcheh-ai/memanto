@@ -286,6 +286,10 @@ def get_instruction_content(agent_name: str) -> str:
             tool_phrase="the terminal",
             note_suffix="The `memanto-memory` skill in `.agents/skills/memanto/` contains detailed reference guidelines (best practices, confidence levels, tagging).",
         ),
+        "pi": _base_instruction_content(
+            tool_phrase="the terminal",
+            note_suffix="A Pi extension auto-syncs MEMORY.md on each fresh session start; the `memanto-memory` skill in `.pi/skills/memanto/` (or `~/.pi/agent/skills/memanto/`) contains detailed reference guidelines.",
+        ),
         "cursor": _get_mdc_content(),
         "windsurf": _base_instruction_content(
             tool_phrase="the terminal",
@@ -393,3 +397,53 @@ to?"). Equal priority — pick by intent.
 def get_skill_content() -> str:
     """Get the SKILL.md content (shared across all agents)."""
     return SKILL_MD_CONTENT.strip() + "\n"
+
+
+# Pi .ts extension content (auto-syncs MEMORY.md on each fresh session start).
+# Installed by `memanto connect pi` into ~/.pi/agent/extensions/ (or .pi/extensions/).
+
+EXTENSION_TS_CONTENT = """/**
+ * MEMANTO auto-sync extension for Pi.
+ *
+ * On a fresh process start, runs `memanto memory sync` in the background so the
+ * project's MEMORY.md is up to date before you begin working. It is
+ * fire-and-forget: it never blocks startup, and errors are swallowed (e.g. when
+ * memanto is not installed, not on PATH, or no agent is active).
+ *
+ * Installed by `memanto connect pi`. Remove with `memanto connect remove pi`.
+ */
+import { spawn } from "node:child_process";
+import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
+
+export default function (pi: ExtensionAPI) {
+  pi.on("session_start", (event, ctx) => {
+    // Only on a fresh process start — not on /resume, /fork, or /reload.
+    if (event.reason !== "startup") return;
+
+    const child = spawn(
+      "memanto",
+      ["memory", "sync", "--project-dir", ctx.cwd],
+      { stdio: "ignore", detached: true },
+    );
+    child.unref();
+
+    child.on("error", () => {
+      /* memanto CLI not installed / not on PATH — ignore. */
+    });
+    child.on("close", (code) => {
+      if (code === 0 && ctx.hasUI) {
+        try {
+          ctx.ui.notify("Memanto: memory synced", "info");
+        } catch {
+          /* notification unavailable in this mode — ignore. */
+        }
+      }
+    });
+  });
+}
+"""
+
+
+def get_extension_content() -> str:
+    """Get the Pi .ts extension content (memanto auto-sync on session start)."""
+    return EXTENSION_TS_CONTENT.strip() + "\n"

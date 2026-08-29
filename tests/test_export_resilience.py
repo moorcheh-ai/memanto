@@ -1,6 +1,6 @@
 """Regression coverage: ``export_memory_md`` must not silently write an
 empty export when every ``recall`` call fails (e.g. the on-prem backend is
-unreachable), and ``SdkClient.sync_memory_to_project`` must fall back to a
+unreachable), and ``sync_memory_to_project`` must fall back to a
 previous good export instead of overwriting a project's ``MEMORY.md`` with
 nothing.
 
@@ -73,11 +73,13 @@ class TestExportMemoryMdRefusesEmptyOnTotalFailure:
             client.export_memory_md(agent_id="test-agent")
 
 
-class TestSyncUsesCacheFastPath:
-    """A cached export is copied without requiring a reachable backend."""
+class TestSyncFallsBackToCache:
+    """Sync refreshes first, so a cached export is only reused when the
+    refresh fails — never in place of memories written this session."""
 
-    def test_cache_used_when_backend_down(self, monkeypatch, tmp_path):
-        client = _build_client(SdkClient, monkeypatch, tmp_path)
+    @pytest.mark.parametrize("client_cls", [SdkClient, DirectClient])
+    def test_cache_used_when_backend_down(self, client_cls, monkeypatch, tmp_path):
+        client = _build_client(client_cls, monkeypatch, tmp_path)
 
         cache_file = tmp_path / ".memanto" / "exports" / "test-agent_memory.md"
         cache_file.parent.mkdir(parents=True, exist_ok=True)
@@ -92,11 +94,36 @@ class TestSyncUsesCacheFastPath:
             agent_id="test-agent", project_dir=str(project_dir)
         )
 
-        client.recall.assert_not_called()
-        assert result["source"] == "cache"
+        client.recall.assert_called()
+        assert result["source"] == "stale-cache"
         assert result["total_memories"] == 1
         written = (project_dir / "MEMORY.md").read_text(encoding="utf-8")
         assert "good content" in written
+
+    @pytest.mark.parametrize("client_cls", [SdkClient, DirectClient])
+    def test_fresh_export_replaces_stale_cache(self, client_cls, monkeypatch, tmp_path):
+        """A cache written before this session must not shadow new memories."""
+        client = _build_client(client_cls, monkeypatch, tmp_path)
+
+        cache_file = tmp_path / ".memanto" / "exports" / "test-agent_memory.md"
+        cache_file.parent.mkdir(parents=True, exist_ok=True)
+        cache_file.write_text("### Old Memory\n\nstale content\n", encoding="utf-8")
+
+        monkeypatch.setattr(
+            client,
+            "recall",
+            MagicMock(return_value={"memories": [{"content": "fresh content"}]}),
+        )
+
+        project_dir = tmp_path / "project"
+        result = client.sync_memory_to_project(
+            agent_id="test-agent", project_dir=str(project_dir)
+        )
+
+        assert result["source"] == "fresh"
+        written = (project_dir / "MEMORY.md").read_text(encoding="utf-8")
+        assert "stale content" not in written
+        assert "fresh content" in written
 
     def test_raises_when_no_cache_and_backend_down(self, monkeypatch, tmp_path):
         client = _build_client(SdkClient, monkeypatch, tmp_path)

@@ -15,6 +15,7 @@ from memanto.cli.connect.agent_registry import AGENT_REGISTRY, AgentDef
 from memanto.cli.connect.templates import (
     MEMANTO_SENTINEL,
     MEMANTO_SENTINEL_END,
+    get_extension_content,
     get_instruction_content,
     get_skill_content,
 )
@@ -75,6 +76,15 @@ def install_agent(
                 steps.append(perm_result)
         except Exception as e:
             errors.append(f"Permissions: {e}")
+
+    # Code extension (Pi .ts extension that runs memanto memory sync on startup)
+    if agent.extension_file:
+        try:
+            ext_result = _install_extension(agent, project_path, is_global)
+            if ext_result:
+                steps.append(ext_result)
+        except Exception as e:
+            errors.append(f"Extension: {e}")
 
     if steps:
         try:
@@ -138,6 +148,15 @@ def remove_agent(
                 steps.append(perm_result)
         except Exception as e:
             errors.append(f"Permission removal: {e}")
+
+    # Remove code extension (agent-specific)
+    if agent.extension_file:
+        try:
+            ext_result = _remove_extension(agent, project_path, is_global)
+            if ext_result:
+                steps.append(ext_result)
+        except Exception as e:
+            errors.append(f"Extension removal: {e}")
 
     try:
         ConfigManager().remove_connection(
@@ -320,6 +339,47 @@ def _remove_skill(agent: AgentDef, project_path: Path, is_global: bool) -> str |
             pass
         return f"Removed skill from {_display_path(skill_dir, is_global)}"
     return None
+
+
+# Internal: Code extension deployment (Pi)
+
+
+def _install_extension(
+    agent: AgentDef, project_path: Path, is_global: bool
+) -> str | None:
+    """Deploy the agent's code extension file (e.g. the Pi .ts extension)."""
+    if not agent.extension_file:
+        return None
+
+    ext_path = agent.resolve_extension_file(project_path, is_global)
+    if not ext_path:
+        return None
+
+    ext_path.parent.mkdir(parents=True, exist_ok=True)
+    ext_path.write_text(get_extension_content(), encoding="utf-8")
+
+    return f"Deployed extension to {_display_path(ext_path, is_global)}"
+
+
+def _remove_extension(
+    agent: AgentDef, project_path: Path, is_global: bool
+) -> str | None:
+    """Remove the agent's code extension file."""
+    if not agent.extension_file:
+        return None
+
+    ext_path = agent.resolve_extension_file(project_path, is_global)
+    if not ext_path or not ext_path.exists():
+        return None
+
+    ext_path.unlink()
+    # Clean up empty parent dirs
+    try:
+        if ext_path.parent.exists() and not any(ext_path.parent.iterdir()):
+            ext_path.parent.rmdir()
+    except Exception:
+        pass
+    return f"Removed extension from {_display_path(ext_path.parent, is_global)}"
 
 
 # Internal: Hook configuration (Claude Code)

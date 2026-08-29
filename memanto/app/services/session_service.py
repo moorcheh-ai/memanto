@@ -311,6 +311,12 @@ class SessionService:
         if duration_hours is None:
             duration_hours = settings.SESSION_DEFAULT_DURATION_HOURS
 
+        if not isinstance(duration_hours, (int, float)) or duration_hours < 0:
+            raise ValueError(
+                "duration_hours must be a non-negative number of hours, "
+                f"got {duration_hours!r}"
+            )
+
         session_id = self._generate_session_id()
         namespace = self._generate_namespace(agent_id)
         started_at = utc_now()

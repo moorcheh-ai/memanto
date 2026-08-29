@@ -160,9 +160,6 @@ class Settings(BaseSettings):
     # Recall / Search Configuration
     RECALL_LIMIT: int = 10  # default top-N results for recall/search
 
-    # Validation Configuration
-    REQUIRE_VALIDATION_FOR: list[str] = ["fact", "preference"]
-
     # Schedule Configuration
     MEMANTO_SCHEDULE_TIME: str = "23:55"
 
@@ -193,3 +190,21 @@ def get_data_dir() -> Path:
         d.mkdir(parents=True, exist_ok=True)
         return d
     return base
+
+
+def get_conflicts_dir() -> Path:
+    """Return the shared directory for conflict reports."""
+    d = get_data_dir() / "conflicts"
+    d.mkdir(parents=True, exist_ok=True)
+    return d
+
+
+def get_conflict_report_path(agent_id: str, date: str) -> Path:
+    """Return a safely constructed path for a conflict report, validating components against traversal."""
+    import re
+
+    if not re.match(r"^[\w\-]+$", agent_id):
+        raise ValueError(f"Invalid agent_id format: {agent_id}")
+    if not re.match(r"^\d{4}-\d{2}-\d{2}$", date):
+        raise ValueError(f"Invalid date format: {date}")
+    return get_conflicts_dir() / f"{agent_id}_{date}_conflicts.json"

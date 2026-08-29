@@ -1500,6 +1500,865 @@
         }
       }
     },
+    "/api/v2/agents/{agent_id}/memories/{memory_id}/expire": {
+      "post": {
+        "tags": [
+          "Sessions & Agents",
+          "Memory Operations"
+        ],
+        "summary": "Expire Memory",
+        "description": "Expire one memory without deleting it (Session-based).\n\nThe memory stays recallable and keeps its content; it is stamped\n``expired`` with the time and reason, and labelled as such in recall.\nReversible via the restore endpoint.\n\nRequires:\n- X-Session-Token: {session_token}",
+        "operationId": "expire_memory_api_v2_agents__agent_id__memories__memory_id__expire_post",
+        "parameters": [
+          {
+            "name": "agent_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Agent Id"
+            }
+          },
+          {
+            "name": "memory_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Memory Id"
+            }
+          },
+          {
+            "name": "x-session-token",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Session-Token"
+            }
+          },
+          {
+            "name": "X-Api-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          },
+          {
+            "name": "memanto_session_token",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Memanto Session Token"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MemoryExpireRequest",
+                "default": {
+                  "reason": "manual"
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v2/agents/{agent_id}/memories/{memory_id}/restore": {
+      "post": {
+        "tags": [
+          "Sessions & Agents",
+          "Memory Operations"
+        ],
+        "summary": "Restore Memory",
+        "description": "Return an expired memory to the active state (Session-based).\n\nClears the expiry stamp entirely.\n\nRequires:\n- X-Session-Token: {session_token}",
+        "operationId": "restore_memory_api_v2_agents__agent_id__memories__memory_id__restore_post",
+        "parameters": [
+          {
+            "name": "agent_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Agent Id"
+            }
+          },
+          {
+            "name": "memory_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Memory Id"
+            }
+          },
+          {
+            "name": "x-session-token",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Session-Token"
+            }
+          },
+          {
+            "name": "X-Api-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          },
+          {
+            "name": "memanto_session_token",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Memanto Session Token"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v2/agents/{agent_id}/policy": {
+      "get": {
+        "tags": [
+          "Sessions & Agents",
+          "Memory Operations"
+        ],
+        "summary": "Get Policy",
+        "description": "Return the agent's expiry policy (Session-based).\n\nAn agent with no policy set returns an empty one, which expires nothing.\n\nRequires:\n- X-Session-Token: {session_token}",
+        "operationId": "get_policy_api_v2_agents__agent_id__policy_get",
+        "parameters": [
+          {
+            "name": "agent_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Agent Id"
+            }
+          },
+          {
+            "name": "x-session-token",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Session-Token"
+            }
+          },
+          {
+            "name": "X-Api-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          },
+          {
+            "name": "memanto_session_token",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Memanto Session Token"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Sessions & Agents",
+          "Memory Operations"
+        ],
+        "summary": "Set Policy",
+        "description": "Replace the agent's expiry policy (Session-based).\n\nSaving a policy does not expire anything on its own \u2014 run the apply\nendpoint, or let the nightly sweep pick it up.\n\nRequires:\n- X-Session-Token: {session_token}",
+        "operationId": "set_policy_api_v2_agents__agent_id__policy_put",
+        "parameters": [
+          {
+            "name": "agent_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Agent Id"
+            }
+          },
+          {
+            "name": "x-session-token",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Session-Token"
+            }
+          },
+          {
+            "name": "X-Api-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          },
+          {
+            "name": "memanto_session_token",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Memanto Session Token"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MemoryPolicy"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v2/agents/{agent_id}/policy/presets": {
+      "get": {
+        "tags": [
+          "Sessions & Agents",
+          "Memory Operations"
+        ],
+        "summary": "List Policy Presets",
+        "description": "List the predefined policy bundles (Session-based).\n\nRequires:\n- X-Session-Token: {session_token}",
+        "operationId": "list_policy_presets_api_v2_agents__agent_id__policy_presets_get",
+        "parameters": [
+          {
+            "name": "agent_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Agent Id"
+            }
+          },
+          {
+            "name": "x-session-token",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Session-Token"
+            }
+          },
+          {
+            "name": "memanto_session_token",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Memanto Session Token"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v2/agents/{agent_id}/policy/presets/{name}": {
+      "get": {
+        "tags": [
+          "Sessions & Agents",
+          "Memory Operations"
+        ],
+        "summary": "Get Policy Preset",
+        "description": "Return one preset's full policy without adopting it (Session-based).\n\nLets a caller preview exactly what a preset contains before committing,\nwhich is what makes an informed confirmation possible.\n\nRequires:\n- X-Session-Token: {session_token}",
+        "operationId": "get_policy_preset_api_v2_agents__agent_id__policy_presets__name__get",
+        "parameters": [
+          {
+            "name": "agent_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Agent Id"
+            }
+          },
+          {
+            "name": "name",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Name"
+            }
+          },
+          {
+            "name": "x-session-token",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Session-Token"
+            }
+          },
+          {
+            "name": "memanto_session_token",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Memanto Session Token"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v2/agents/{agent_id}/policy/preset": {
+      "post": {
+        "tags": [
+          "Sessions & Agents",
+          "Memory Operations"
+        ],
+        "summary": "Apply Policy Preset",
+        "description": "Adopt a predefined policy bundle as the agent's policy (Session-based).\n\nOverwrites any existing policy. Nothing expires until a sweep runs.\n\nRequires:\n- X-Session-Token: {session_token}",
+        "operationId": "apply_policy_preset_api_v2_agents__agent_id__policy_preset_post",
+        "parameters": [
+          {
+            "name": "agent_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Agent Id"
+            }
+          },
+          {
+            "name": "x-session-token",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Session-Token"
+            }
+          },
+          {
+            "name": "X-Api-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          },
+          {
+            "name": "memanto_session_token",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Memanto Session Token"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PolicyPresetRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v2/agents/{agent_id}/policy/apply": {
+      "post": {
+        "tags": [
+          "Sessions & Agents",
+          "Memory Operations"
+        ],
+        "summary": "Apply Policy",
+        "description": "Sweep the agent's memories and expire everything the policy matches.\n\nPass ``dry_run: true`` to see exactly what would be expired, with per-rule\ncounts, without writing anything.\n\nRequires:\n- X-Session-Token: {session_token}",
+        "operationId": "apply_policy_api_v2_agents__agent_id__policy_apply_post",
+        "parameters": [
+          {
+            "name": "agent_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Agent Id"
+            }
+          },
+          {
+            "name": "x-session-token",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Session-Token"
+            }
+          },
+          {
+            "name": "X-Api-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          },
+          {
+            "name": "memanto_session_token",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Memanto Session Token"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PolicyApplyRequest",
+                "default": {
+                  "dry_run": false
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v2/agents/{agent_id}/policy/purge": {
+      "post": {
+        "tags": [
+          "Sessions & Agents",
+          "Memory Operations"
+        ],
+        "summary": "Purge Expired Memories",
+        "description": "Permanently delete memories expired longer than the policy's purge window.\n\nDestructive and irreversible. Disabled unless the policy sets\n``purge_expired_after``. Pass ``dry_run: true`` to preview.\n\nRequires:\n- X-Session-Token: {session_token}",
+        "operationId": "purge_expired_memories_api_v2_agents__agent_id__policy_purge_post",
+        "parameters": [
+          {
+            "name": "agent_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Agent Id"
+            }
+          },
+          {
+            "name": "x-session-token",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Session-Token"
+            }
+          },
+          {
+            "name": "X-Api-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          },
+          {
+            "name": "memanto_session_token",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Memanto Session Token"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PolicyApplyRequest",
+                "default": {
+                  "dry_run": false
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v2/agents": {
       "post": {
         "tags": [
@@ -3365,10 +4224,13 @@
               "keep_new",
               "keep_both",
               "remove_both",
+              "expire_old",
+              "expire_new",
+              "expire_both",
               "manual"
             ],
             "title": "Action",
-            "description": "Resolution action: keep_old, keep_new, keep_both, remove_both, manual"
+            "description": "Resolution action. The keep_*/remove_both/manual actions delete the losing memory permanently; the expire_* actions retire it reversibly instead, keeping its content and audit trail."
           },
           "date": {
             "anyOf": [
@@ -3657,6 +4519,19 @@
         "title": "MemoryEditRequest",
         "description": "Request body for partial memory record updates."
       },
+      "MemoryExpireRequest": {
+        "properties": {
+          "reason": {
+            "type": "string",
+            "title": "Reason",
+            "description": "Why this memory expired, stamped as `expired_by`. Defaults to 'manual'. Bounded to letters, digits, '.', '_' and '-'.",
+            "default": "manual"
+          }
+        },
+        "type": "object",
+        "title": "MemoryExpireRequest",
+        "description": "Request body for expiring a single memory."
+      },
       "MemoryItem": {
         "properties": {
           "id": {
@@ -3716,7 +4591,8 @@
                 "type": "null"
               }
             ],
-            "title": "Status"
+            "title": "Status",
+            "default": "active"
           },
           "tags": {
             "items": {
@@ -3747,7 +4623,7 @@
             ],
             "title": "Updated At"
           },
-          "expires_at": {
+          "expired_at": {
             "anyOf": [
               {
                 "type": "string"
@@ -3756,18 +4632,18 @@
                 "type": "null"
               }
             ],
-            "title": "Expires At"
+            "title": "Expired At"
           },
-          "ttl_seconds": {
+          "expired_by": {
             "anyOf": [
               {
-                "type": "integer"
+                "type": "string"
               },
               {
                 "type": "null"
               }
             ],
-            "title": "Ttl Seconds"
+            "title": "Expired By"
           },
           "actor_id": {
             "anyOf": [
@@ -3844,6 +4720,189 @@
         "type": "object",
         "title": "MemoryItem",
         "description": "Single memory record as returned by recall/answer endpoints."
+      },
+      "MemoryPolicy": {
+        "properties": {
+          "version": {
+            "type": "integer",
+            "title": "Version",
+            "default": 1
+          },
+          "retention": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object",
+            "title": "Retention"
+          },
+          "rules": {
+            "items": {
+              "$ref": "#/components/schemas/PolicyRule"
+            },
+            "type": "array",
+            "title": "Rules"
+          },
+          "purge_expired_after": {
+            "type": "string",
+            "title": "Purge Expired After",
+            "default": "never"
+          }
+        },
+        "type": "object",
+        "title": "MemoryPolicy",
+        "description": "The full expiry policy for one agent."
+      },
+      "PolicyApplyRequest": {
+        "properties": {
+          "dry_run": {
+            "type": "boolean",
+            "title": "Dry Run",
+            "description": "Report what would change without writing anything",
+            "default": false
+          }
+        },
+        "type": "object",
+        "title": "PolicyApplyRequest",
+        "description": "Request body for a policy sweep or purge."
+      },
+      "PolicyMatch": {
+        "properties": {
+          "type": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string",
+                  "enum": [
+                    "fact",
+                    "preference",
+                    "goal",
+                    "decision",
+                    "artifact",
+                    "learning",
+                    "event",
+                    "instruction",
+                    "relationship",
+                    "context",
+                    "observation",
+                    "commitment",
+                    "error"
+                  ]
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Type"
+          },
+          "tags": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tags"
+          },
+          "source": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source"
+          },
+          "provenance": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string",
+                  "enum": [
+                    "explicit_statement",
+                    "inferred",
+                    "corrected",
+                    "validated",
+                    "observed",
+                    "imported"
+                  ]
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provenance"
+          },
+          "confidence_below": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 1.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Confidence Below"
+          }
+        },
+        "type": "object",
+        "title": "PolicyMatch",
+        "description": "Conditions a memory must satisfy for a rule to fire.\n\nEvery field that is set must match (AND). An empty match block matches\nevery memory, which is how a catch-all rule is written."
+      },
+      "PolicyPresetRequest": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name",
+            "description": "Preset name, e.g. 'balanced'"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name"
+        ],
+        "title": "PolicyPresetRequest",
+        "description": "Request body for adopting a predefined policy bundle."
+      },
+      "PolicyRule": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9._-]+$",
+            "title": "Name"
+          },
+          "match": {
+            "$ref": "#/components/schemas/PolicyMatch"
+          },
+          "expire_after": {
+            "type": "string",
+            "title": "Expire After",
+            "default": "never"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name"
+        ],
+        "title": "PolicyRule",
+        "description": "A named expiry rule. ``name`` is stamped onto the memory as\n``expired_by``, so it is bounded to the Moorcheh filter-token charset."
       },
       "RecallAsOfRequest": {
         "properties": {
@@ -3954,6 +5013,17 @@
             ],
             "title": "Tags",
             "description": "Tag filters"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "all",
+              "active",
+              "expired"
+            ],
+            "title": "Status",
+            "description": "Lifecycle filter: 'all' (default) returns active and expired memories together so callers can label them, 'active' or 'expired' narrows to one.",
+            "default": "all"
           }
         },
         "type": "object",
@@ -4007,6 +5077,17 @@
             ],
             "title": "Tags",
             "description": "Tag filters"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "all",
+              "active",
+              "expired"
+            ],
+            "title": "Status",
+            "description": "Lifecycle filter: 'all' (default) returns active and expired memories together so callers can label them, 'active' or 'expired' narrows to one.",
+            "default": "all"
           },
           "created_after": {
             "anyOf": [
@@ -4067,6 +5148,17 @@
             ],
             "title": "Limit",
             "description": "Max results"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "all",
+              "active",
+              "expired"
+            ],
+            "title": "Status",
+            "description": "Lifecycle filter: 'all' (default) returns active and expired memories together so callers can label them, 'active' or 'expired' narrows to one.",
+            "default": "all"
           },
           "min_similarity": {
             "anyOf": [

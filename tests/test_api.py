@@ -179,6 +179,87 @@ class TestMEMANTOAPI:
             assert response.status_code == 401
 
     @pytest.mark.asyncio
+    async def test_cross_site_loopback_cannot_create_agent(self, client):
+        """A website cannot use the loopback exemption to manage agents."""
+        response = await client.post(
+            "/api/v2/agents",
+            headers={
+                "Host": "localhost:8000",
+                "Origin": "https://evil.example",
+                "Sec-Fetch-Site": "cross-site",
+            },
+            json={"agent_id": "cross-site-agent", "pattern": "support"},
+        )
+
+        assert response.status_code == 401
+
+    @pytest.mark.asyncio
+    async def test_cross_site_loopback_cannot_activate_agent(
+        self, client, auth_headers
+    ):
+        """A website cannot mint a session token for an existing agent."""
+        await client.post(
+            "/api/v2/agents",
+            headers=auth_headers,
+            json={"agent_id": "cross-site-activate", "pattern": "support"},
+        )
+
+        response = await client.post(
+            "/api/v2/agents/cross-site-activate/activate",
+            headers={
+                "Host": "localhost:8000",
+                "Sec-Fetch-Site": "cross-site",
+            },
+        )
+
+        assert response.status_code == 401
+        assert "session_token" not in response.text
+
+    @pytest.mark.asyncio
+    async def test_loopback_origin_keeps_local_management_access(self, client):
+        """The localhost browser UI keeps the intentional loopback exemption."""
+        response = await client.post(
+            "/api/v2/agents",
+            headers={
+                "Host": "localhost:8000",
+                "Origin": "http://localhost:8000",
+                "Sec-Fetch-Site": "same-origin",
+            },
+            json={"agent_id": "localhost-origin-agent", "pattern": "support"},
+        )
+
+        assert response.status_code == 201
+
+    @pytest.mark.asyncio
+    async def test_loopback_cross_port_origin_keeps_local_access(self, client):
+        """An explicit local Origin wins over the same-site fetch fallback."""
+        response = await client.post(
+            "/api/v2/agents",
+            headers={
+                "Host": "127.0.0.1:8000",
+                "Origin": "http://localhost:3000",
+                "Sec-Fetch-Site": "same-site",
+            },
+            json={"agent_id": "localhost-cross-port", "pattern": "support"},
+        )
+
+        assert response.status_code == 201
+
+    @pytest.mark.asyncio
+    async def test_dns_rebinding_host_cannot_inherit_loopback_access(self, client):
+        """A remote Host header cannot turn a loopback socket into trust."""
+        response = await client.post(
+            "/api/v2/agents",
+            headers={
+                "Host": "attacker.example",
+                "Sec-Fetch-Site": "same-origin",
+            },
+            json={"agent_id": "dns-rebinding-agent", "pattern": "support"},
+        )
+
+        assert response.status_code == 401
+
+    @pytest.mark.asyncio
     async def test_create_agent_fails_when_server_key_missing(self, client):
         """Test failure when server API key is not configured"""
         payload = {
@@ -227,8 +308,8 @@ class TestMEMANTOAPI:
                 headers=auth_headers,
                 json={"agent_id": "remote-ok-agent", "pattern": "support"},
             )
-            assert response.status_code == 201
-            assert response.json()["agent_id"] == "remote-ok-agent"
+        assert response.status_code == 201
+        assert response.json()["agent_id"] == "remote-ok-agent"
 
     @pytest.mark.asyncio
     async def test_status_requires_management_access(self):
@@ -2834,6 +2915,7 @@ class TestCWE200ApiKeyLeak:
         assert new_token
         assert new_token != old_token
 
+        client.cookies = Cookies()
         stale_response = await client.post(
             f"/api/v2/agents/{self.TEST_AGENT_ID}/recall/recent",
             headers=session_headers,
@@ -2841,6 +2923,7 @@ class TestCWE200ApiKeyLeak:
         )
         assert stale_response.status_code == 401
 
+        client.cookies = Cookies()
         fresh_response = await client.post(
             f"/api/v2/agents/{self.TEST_AGENT_ID}/recall/recent",
             headers={**auth_headers, "X-Session-Token": new_token},

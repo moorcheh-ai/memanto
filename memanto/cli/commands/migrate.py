@@ -306,7 +306,12 @@ def _load_or_export(
     bundle = _PROVIDER_BUNDLES[provider]
     if file is not None:
         progress(f"Loading export from {file}")
-        return file, load_export(file)
+        try:
+            return file, load_export(file)
+        except (FileNotFoundError, OSError) as exc:
+            raise ValueError(f"Export file not found or unreadable: {file} ({exc})")
+        except ValueError as exc:
+            raise ValueError(f"Export file is not valid JSON: {file} ({exc})")
 
     key = _resolve_provider_key(provider, api_key)
     try:

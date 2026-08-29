@@ -16,6 +16,8 @@ accepted by ``SdkClient.batch_remember``:
         "provenance": "imported",
         "created_at": datetime, # original source timestamp (when present)
         "updated_at": datetime, # migration time = now
+        "expires_at": datetime, # source expiration timestamp (when present)
+        "ttl_seconds": int,     # source retention window (when present)
     }
 
 Mappers extract every useful field from the source. Anything that maps
@@ -35,7 +37,7 @@ from collections.abc import Callable
 from datetime import datetime, timezone
 from typing import Any
 
-from memanto.app.constants import VALID_MEMORY_TYPES
+from memanto.app.constants import VALID_MEMORY_TYPES, VALID_PROVENANCE_TYPES
 
 # Mem0 ships category labels per memory. Map the common ones to Memanto's
 # typed primitives; everything else falls through to None (auto-classify).
@@ -55,6 +57,7 @@ _MEM0_CATEGORY_TO_TYPE: dict[str, str] = {
 }
 
 _DEFAULT_TITLE_CHARS = 80
+_MAX_TITLE_CHARS = 100  # MemoryRecord.title max_length
 _MAX_CONTENT_CHARS = 10000  # MemoryRecord.content max_length
 _MAX_FOOTER_CHARS = 800  # cap supporting-data footer so it never dominates
 
@@ -73,6 +76,26 @@ def _coerce_type(raw: str | None) -> str | None:
     return t if t in VALID_MEMORY_TYPES else None
 
 
+def _coerce_provenance(raw: Any) -> str:
+    if not isinstance(raw, str):
+        return "imported"
+    provenance = raw.strip().lower()
+    return provenance if provenance in VALID_PROVENANCE_TYPES else "imported"
+
+
+def _normalize_mem0_categories(raw: Any) -> list[str]:
+    """Normalize Mem0 category payloads into lower-case category labels."""
+    if raw in (None, "", [], {}):
+        return []
+    if isinstance(raw, str):
+        values: list[Any] = [raw]
+    elif isinstance(raw, (list, tuple, set)):
+        values = list(raw)
+    else:
+        values = [raw]
+    return [text for item in values if (text := str(item).strip().lower())]
+
+
 def _scope_tag(scope: dict[str, Any] | None) -> str | None:
     if not scope:
         return None
@@ -89,6 +112,10 @@ def _parse_dt(value: Any) -> datetime | None:
     and already-parsed ``datetime`` objects. Returns ``None`` when nothing
     sensible can be extracted — the caller falls back to the server default.
     """
+    # ``bool`` subclasses ``int``; without this guard, YAML ``true`` becomes
+    # 1970-01-01T00:00:01Z and can accidentally expire a durable memory.
+    if isinstance(value, bool):
+        return None
     if value in (None, "", 0):
         return None
     if isinstance(value, datetime):
@@ -119,6 +146,19 @@ def _pick_first_dt(record: dict[str, Any], keys: tuple[str, ...]) -> datetime | 
         if dt is not None:
             return dt
     return None
+
+
+def _parse_positive_int(value: Any) -> int | None:
+    """Parse a positive integer without silently truncating fractional values."""
+    if isinstance(value, bool) or value in (None, ""):
+        return None
+    try:
+        parsed = int(value)
+    except (TypeError, ValueError, OverflowError):
+        return None
+    if isinstance(value, float) and not value.is_integer():
+        return None
+    return parsed if parsed > 0 else None
 
 
 def _format_supporting_data(items: list[tuple[str, Any]]) -> str:
@@ -187,7 +227,7 @@ def map_mem0(export: dict[str, Any]) -> list[dict[str, Any]]:
         if not content:
             continue
 
-        categories = [str(c).lower() for c in (mem.get("categories") or []) if c]
+        categories = _normalize_mem0_categories(mem.get("categories"))
         memory_type: str | None = None
         for cat in categories:
             memory_type = _MEM0_CATEGORY_TO_TYPE.get(cat) or _coerce_type(cat)
@@ -272,7 +312,7 @@ def map_letta(export: dict[str, Any]) -> list[dict[str, Any]]:
                 ("Letta agent_name", agent_name),
                 ("Letta tags", source_tags),
                 ("Letta metadata", passage.get("metadata")),
-                ("Source", passage.get("source")),  # passage may carry its own
+                ("Letta passage source", passage.get("source")),
                 ("Source created_at", created_at.isoformat() if created_at else None),
             ]
         )
@@ -309,6 +349,8 @@ def map_supermemory(export: dict[str, Any]) -> list[dict[str, Any]]:
     """
     rows: list[dict[str, Any]] = []
     seen: set[str] = set()
+    mapped_memory_ids: set[str] = set()
+    represented_document_ids: set[str] = set()
     migrated_at = _now_utc()
 
     for mem in export.get("memories", []) or []:
@@ -318,10 +360,18 @@ def map_supermemory(export: dict[str, Any]) -> list[dict[str, Any]]:
         if not content:
             continue
 
+        raw_tags = mem.get("container_tags") or mem.get("containerTags") or []
+        if isinstance(raw_tags, str):
+            raw_tags = [raw_tags]
+        elif not isinstance(raw_tags, (list, tuple, set)):
+            raw_tags = []
+
         tags: list[str] = []
-        tag = mem.get("container_tag")
-        if tag:
-            tags.append(str(tag))
+        for tag in [*raw_tags, mem.get("container_tag")]:
+            if tag:
+                tag = str(tag)
+                if tag not in tags:
+                    tags.append(tag)
 
         created_at = _pick_first_dt(mem, ("createdAt", "created_at"))
 
@@ -331,7 +381,7 @@ def map_supermemory(export: dict[str, Any]) -> list[dict[str, Any]]:
                     "Source",
                     f"supermemory:{mem.get('id')}" if mem.get("id") else None,
                 ),
-                ("Container tag", tag),
+                ("Container tags", tags),
                 ("Document id", mem.get("documentId") or mem.get("document_id")),
                 ("Supermemory metadata", mem.get("metadata")),
                 ("Score", mem.get("score")),
@@ -355,13 +405,27 @@ def map_supermemory(export: dict[str, Any]) -> list[dict[str, Any]]:
         )
         seen.add(content)
 
-    if rows:
-        return rows
+        memory_id = mem.get("id")
+        if memory_id:
+            mapped_memory_ids.add(str(memory_id))
+        document_id = mem.get("documentId") or mem.get("document_id")
+        if document_id:
+            represented_document_ids.add(str(document_id))
 
-    # Fallback: harvest chunk text when extracted memories are empty.
+    # Harvest chunks from documents that have no mapped extracted memory. This
+    # is a full fallback when memories[] is empty, and preserves fresh or
+    # still-unprocessed documents in mixed accounts that already have some
+    # extracted memories elsewhere.
     for doc in export.get("documents", []) or []:
         doc_tags = [str(t) for t in (doc.get("container_tags") or []) if t]
         doc_id = doc.get("id")
+        doc_memory_ids = {
+            str(memory_id) for memory_id in (doc.get("memory_ids") or []) if memory_id
+        }
+        if (doc_id and str(doc_id) in represented_document_ids) or (
+            doc_memory_ids & mapped_memory_ids
+        ):
+            continue
         doc_created = _pick_first_dt(
             doc.get("detail") or doc, ("createdAt", "created_at")
         )
@@ -452,9 +516,24 @@ def map_okf(export: dict[str, Any]) -> list[dict[str, Any]]:
         confidence = min(1.0, max(0.0, confidence))
 
         source = x_memanto.get("source") or "okf"
-        created_at = _parse_dt(entry.get("timestamp"))
+        provenance = _coerce_provenance(x_memanto.get("provenance"))
+
+        extra = entry.get("extra") or {}
+        generated = extra.get("generated", {})
+        gen_at = generated.get("at") if isinstance(generated, dict) else None
+        created_at = _parse_dt(gen_at) or _parse_dt(entry.get("timestamp"))
+
+        updated_at = _parse_dt(x_memanto.get("updated_at")) or migrated_at
+        expires_at = _parse_dt(x_memanto.get("expires_at"))
+        ttl_seconds = _parse_positive_int(x_memanto.get("ttl_seconds"))
+
+        original_title = None
+        if title and len(title) > _MAX_TITLE_CHARS:
+            original_title = title
+            title = title[: _MAX_TITLE_CHARS - 3].rstrip() + "..."
 
         footer_items: list[tuple[str, Any]] = [
+            ("Original OKF title", original_title),
             ("OKF source", entry.get("source_path")),
             # Only surface the OKF type when we couldn't map it to a slot.
             ("OKF type", okf_type if not memory_type else None),
@@ -479,9 +558,11 @@ def map_okf(export: dict[str, Any]) -> list[dict[str, Any]]:
                 "confidence": confidence,
                 "source": source,
                 "source_ref": str(resource) if resource else None,
-                "provenance": "imported",
+                "provenance": provenance,
                 "created_at": created_at,
-                "updated_at": migrated_at,
+                "updated_at": updated_at,
+                "expires_at": expires_at,
+                "ttl_seconds": ttl_seconds,
             }
         )
     return rows

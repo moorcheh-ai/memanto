@@ -389,18 +389,19 @@ class TestExportDataDirRouting:
         for client_cls in (DirectClient, SdkClient):
             client = client_cls(api_key="dummy-key")
             export_calls = []
-            monkeypatch.setattr(
-                client,
-                "export_memory_md",
-                lambda export_calls=export_calls, **kwargs: export_calls.append(kwargs)
-                or {"output_path": str(on_prem_cache)},
-            )
+
+            def failing_export(export_calls=export_calls, **kwargs):
+                # Force the stale-cache fallback so the cache lookup is exercised.
+                export_calls.append(kwargs)
+                raise ConnectionError("backend unreachable")
+
+            monkeypatch.setattr(client, "export_memory_md", failing_export)
             project_dir = tmp_path / "projects" / client_cls.__name__
 
             result = client.sync_memory_to_project("agent-1", str(project_dir))
 
-            assert result["source"] == "cache"
-            assert not export_calls
+            assert result["source"] == "stale-cache"
+            assert export_calls
             assert (project_dir / "MEMORY.md").read_text(encoding="utf-8") == (
                 "# on-prem export"
             )

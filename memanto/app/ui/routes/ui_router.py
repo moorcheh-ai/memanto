@@ -6,6 +6,7 @@ Serves the Web UI static files and provides UI-specific API endpoints.
 
 import asyncio
 import ipaddress
+import json
 import os
 import re
 import signal
@@ -27,7 +28,11 @@ from fastapi.staticfiles import StaticFiles
 
 from memanto.app.clients.backend import Backend
 from memanto.app.config import settings
-from memanto.app.routes.auth_deps import clear_session_cookie, set_session_cookie
+from memanto.app.routes.auth_deps import (
+    _is_cross_site_browser_request,
+    clear_session_cookie,
+    set_session_cookie,
+)
 from memanto.app.utils.temporal_helpers import utc_date_str
 from memanto.app.utils.validation import validate_safe_id
 from memanto.cli.client.direct_client import DirectClient
@@ -91,6 +96,12 @@ async def _require_local(request: Request) -> None:
                 "UI management endpoints are only accessible from localhost. "
                 f"Request origin: {client_host}"
             ),
+        )
+
+    if _is_cross_site_browser_request(request):
+        raise HTTPException(
+            status_code=403,
+            detail="UI management endpoints reject cross-site browser requests.",
         )
 
 
@@ -550,7 +561,9 @@ async def list_conflict_scans(
         agent_id = aid
     _validate_agent_id(str(agent_id))
 
-    conflicts_dir = Path.home() / ".memanto" / "conflicts"
+    from memanto.app.config import get_conflicts_dir
+
+    conflicts_dir = get_conflicts_dir()
     scans: dict[str, dict] = {}
     if conflicts_dir.exists():
         suffix = "_conflicts.json"
@@ -1168,7 +1181,13 @@ def _migrate_load_or_export(
             raise HTTPException(
                 status_code=400, detail=f"Export file not found: {file_path}"
             )
-        return str(path), load_export(path)
+        try:
+            return str(path), load_export(path)
+        except (json.JSONDecodeError, OSError, ValueError) as exc:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Export file is not valid JSON: {file_path} ({exc})",
+            )
 
     if not api_key or not api_key.strip():
         raise HTTPException(

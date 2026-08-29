@@ -188,7 +188,7 @@ def memory_sync(
         25,
         "--limit",
         "-n",
-        help="Maximum memories per type if fresh export needed (default 25)",
+        help="Maximum memories per type in the export (default 25)",
     ),
     okf: bool = typer.Option(
         False,
@@ -299,9 +299,7 @@ def memory_sync(
     source = result.get("source", "unknown")
     out_path = result.get("output_path", "unknown")
 
-    if source == "cache":
-        source_label = "cached export"
-    elif source == "stale-cache":
+    if source == "stale-cache":
         source_label = "stale cache (backend unreachable)"
     else:
         source_label = "fresh export"

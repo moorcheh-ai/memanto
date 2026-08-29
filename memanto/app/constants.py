@@ -26,7 +26,15 @@ MemoryType = Literal[
 SourceType = str
 
 # Status Types
-StatusType = Literal["active"]
+# A memory is `active` until an expiry policy, a conflict resolution, or an
+# explicit `memanto memory expire` stamps it `expired`. Expiry is reversible
+# (`restore`); hard deletion is a separate, destructive operation.
+StatusType = Literal["active", "expired"]
+
+VALID_STATUS_TYPES = {"active", "expired"}
+
+# Recall status filters: `all` returns both states, labelled.
+StatusFilter = Literal["all", "active", "expired"]
 
 # Provenance Types
 ProvenanceType = Literal[
@@ -37,15 +45,6 @@ ProvenanceType = Literal[
     "observed",
     "imported",
 ]
-
-# Validation Modes
-ValidationMode = Literal["strict", "lenient", "off"]
-
-# Actor Types
-ActorType = Literal["user", "agent", "system"]
-
-# Source Enumerations for Provenance
-ProvenanceSource = Literal["user", "agent", "tool", "system"]
 
 # Valid Lists for runtime checks
 VALID_MEMORY_TYPES = {
@@ -83,3 +82,14 @@ ALLOWED_UPDATE_FIELDS = {
 }
 
 VALID_PATTERNS = {"support", "project", "tool"}
+
+# Trust fields removed from the schema. Must not be resurrected during update.
+REMOVED_TRUST_FIELDS = frozenset(
+    {
+        "superseded_by",
+        "supersedes",
+        "validated_at",
+        "validation_count",
+        "contradiction_detected",
+    }
+)

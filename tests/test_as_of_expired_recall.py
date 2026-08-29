@@ -8,7 +8,7 @@ query asks "what was true at this point in time?", not "what is true now?".
 from memanto.app.services.memory_read_service import MemoryReadService
 
 
-def _memory(memory_id: str, created_at: str, expires_at: str | None = None) -> dict:
+def _memory(memory_id: str, created_at: str, expired_at: str | None = None) -> dict:
     m = {
         "id": memory_id,
         "text": f"[FACT] {memory_id}\n\nStored memory",
@@ -21,8 +21,8 @@ def _memory(memory_id: str, created_at: str, expires_at: str | None = None) -> d
         "created_at": created_at,
         "updated_at": created_at,
     }
-    if expires_at:
-        m["expires_at"] = expires_at
+    if expired_at:
+        m["expired_at"] = expired_at
     return m
 
 
@@ -35,7 +35,7 @@ class _FakeDocuments:
                 _memory(
                     "temporal-fact",
                     "2026-01-10T09:00:00Z",
-                    expires_at="2026-06-01T00:00:00Z",
+                    expired_at="2026-06-01T00:00:00Z",
                 ),
                 # Created before as_of, never expires -> always recalled.
                 _memory("permanent-fact", "2026-01-12T09:00:00Z"),
@@ -43,7 +43,7 @@ class _FakeDocuments:
                 _memory(
                     "stale-fact",
                     "2026-01-05T09:00:00Z",
-                    expires_at="2026-01-08T00:00:00Z",
+                    expired_at="2026-01-08T00:00:00Z",
                 ),
             ],
             "pagination": {"has_more": False},
@@ -101,7 +101,7 @@ def test_as_of_keeps_historical_version_over_post_asof_recreate():
 
 
 def test_as_of_handles_datetime_valued_expiration():
-    """expires_at stored as a datetime object (not a string) must not crash
+    """expired_at stored as a datetime object (not a string) must not crash
     search_as_of and must still be excluded when it predates as_of. Regression
     for the datetime-expiry gap flagged on PR #1617 / bounty #770."""
     from datetime import datetime, timezone
@@ -113,12 +113,12 @@ def test_as_of_handles_datetime_valued_expiration():
                     # datetime expiry BEFORE as_of -> must be excluded
                     {
                         **_memory("dt-stale", "2026-01-10T09:00:00Z"),
-                        "expires_at": datetime(2026, 1, 8, tzinfo=timezone.utc),
+                        "expired_at": datetime(2026, 1, 8, tzinfo=timezone.utc),
                     },
                     # datetime expiry AFTER as_of -> must be kept
                     {
                         **_memory("dt-valid", "2026-01-10T09:00:00Z"),
-                        "expires_at": datetime(2026, 6, 1, tzinfo=timezone.utc),
+                        "expired_at": datetime(2026, 6, 1, tzinfo=timezone.utc),
                     },
                 ],
                 "pagination": {"has_more": False},

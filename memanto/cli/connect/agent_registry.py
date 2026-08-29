@@ -52,6 +52,11 @@ class AgentDef:
     permissions_file: str | None = None  # e.g. "settings.local.json"
     permissions_payload: dict | None = None
 
+    # Code extension file (for agents that load native extensions, e.g. Pi .ts)
+    extension_file: str | None = None  # e.g. "memanto-sync.ts"
+    extension_global_dir: str | None = None  # e.g. "~/.pi/agent/extensions"
+    extension_local_dir: str | None = None  # e.g. ".pi/extensions"
+
     def resolve_skill_local(self, project_dir: Path) -> Path:
         """Resolve local skill directory path."""
         if self.skill_local_dir:
@@ -86,6 +91,20 @@ class AgentDef:
                 instruction_path = Path(self.instruction_file)
             return base / instruction_path
         return project_dir / self.instruction_file
+
+    def resolve_extension_file(self, project_dir: Path, is_global: bool) -> Path | None:
+        """Resolve code extension file path (for agents that support one)."""
+        if not self.extension_file:
+            return None
+        if is_global:
+            if not self.extension_global_dir:
+                return None
+            base = Path.home() / self.extension_global_dir.lstrip("~/")
+        else:
+            if not self.extension_local_dir:
+                return None
+            base = project_dir / self.extension_local_dir
+        return base / self.extension_file
 
 
 # Agent Definitions
@@ -127,6 +146,20 @@ CODEX = AgentDef(
     skill_global_dir="~/.codex/skills",
     config_local_dir=".agents",
     config_global_dir="~/.codex",
+)
+
+PI = AgentDef(
+    name="pi",
+    display_name="Pi (coding agent)",
+    instruction_file="AGENTS.md",
+    instruction_format="markdown",
+    skill_local_dir=".pi/skills",
+    skill_global_dir="~/.pi/agent/skills",
+    config_local_dir=".pi",
+    config_global_dir="~/.pi/agent",
+    extension_file="memanto-sync.ts",
+    extension_global_dir="~/.pi/agent/extensions",
+    extension_local_dir=".pi/extensions",
 )
 
 CURSOR = AgentDef(
@@ -257,6 +290,7 @@ AGENT_REGISTRY: dict[str, AgentDef] = {
     for a in [
         CLAUDE_CODE,
         CODEX,
+        PI,
         CURSOR,
         WINDSURF,
         ANTIGRAVITY,

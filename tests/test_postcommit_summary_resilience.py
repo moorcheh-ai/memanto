@@ -67,7 +67,9 @@ def test_batch_remember_returns_committed_result_when_summary_logging_fails(
     session_service.log_memory_to_session_summary = MagicMock(
         side_effect=OSError("summary directory is read-only")
     )
-    session = SimpleNamespace(namespace="memanto_agent_test-agent")
+    session = SimpleNamespace(
+        namespace="memanto_agent_test-agent", session_id="session-1"
+    )
 
     with (
         patch.object(

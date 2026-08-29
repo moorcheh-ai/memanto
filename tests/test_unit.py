@@ -4,12 +4,15 @@ MEMANTO Core Unit Tests (No Server Required)
 Tests the session and agent services directly without HTTP layer.
 """
 
+import errno
 import os
 import stat
+import sys
 import threading
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
+from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 import jwt
@@ -22,6 +25,7 @@ from memanto.app.models.session import AgentCreate, AgentPattern, Session, Sessi
 from memanto.app.services.agent_service import AgentService
 from memanto.app.services.memory_write_service import MemoryWriteService
 from memanto.app.services.session_service import SessionService
+from memanto.app.utils import atomic_write
 from memanto.app.utils.errors import InvalidSessionTokenError
 
 
@@ -644,20 +648,61 @@ class TestMemoryRecord:
         with pytest.raises(ValidationError):
             self._record(source=source)
 
-    def test_set_ttl_rejects_non_positive_values(self):
-        """Zero/negative TTLs should not create immediately expired memories."""
-        memory = MemoryRecord(
-            type="fact",
-            title="TTL guard",
-            content="This memory should require a positive TTL.",
-            agent_id="agent-ttl",
-            actor_id="agent-ttl",
-            source="agent",
-        )
+    def test_memory_starts_active_with_no_expiry_stamp(self):
+        """A new memory is active; the expiry stamp is empty until it expires."""
+        memory = self._record()
 
-        for ttl in (0, -60):
-            with pytest.raises(ValueError, match="ttl_seconds must be greater than 0"):
-                memory.set_ttl(ttl)
+        assert memory.status == "active"
+        assert memory.expired_at is None
+        assert memory.expired_by is None
+
+    def test_expire_stamps_status_time_and_reason_together(self):
+        """`status == "expired"` must always carry a when and a why."""
+        memory = self._record()
+
+        memory.expire("stale-context")
+
+        assert memory.status == "expired"
+        assert memory.expired_by == "stale-context"
+        assert memory.expired_at is not None
+
+    def test_restore_clears_the_whole_expiry_stamp(self):
+        """Restoring must not leave a stale expired_at/expired_by behind."""
+        memory = self._record()
+        memory.expire("stale-context")
+
+        memory.restore()
+
+        assert memory.status == "active"
+        assert memory.expired_at is None
+        assert memory.expired_by is None
+
+    def test_expire_accepts_an_explicit_timestamp(self):
+        """A sweep stamps a whole batch with one consistent time."""
+        stamped = datetime(2026, 3, 1, 12, 0, 0, tzinfo=timezone.utc)
+        memory = self._record()
+
+        memory.expire("nightly-sweep", when=stamped)
+
+        assert memory.expired_at == stamped
+
+    @pytest.mark.parametrize(
+        "reason",
+        [
+            "policy name",  # a space splits the `#expired_by:` filter token
+            "policy#hack",  # '#' opens a new Moorcheh filter clause
+            "x" * 65,
+        ],
+    )
+    def test_expired_by_rejects_labels_that_break_filter_syntax(self, reason):
+        """`#expired_by:<value>` must stay parseable, like `#source:`."""
+        memory = self._record()
+        memory.expire("placeholder")
+
+        with pytest.raises(ValidationError):
+            MemoryRecord(
+                **{**memory.model_dump(), "expired_by": reason},
+            )
 
 
 class TestMemoryWriteService:
@@ -1014,9 +1059,10 @@ class TestMemoryWriteServiceDelete:
             "content": "Original content",
             "actor_id": "tester",
             "source": "manual",
+            "source_ref": "original-source",
             "confidence": 0.8,
             "status": "active",
-            "tags": [],
+            "tags": ["old-tag"],
             # Extra field not in the MemoryRecord schema (e.g. on-prem data_store.json).
             "original_id": "orig-123",
             # Trust field removed 2026-06-29; must not be resurrected on update.
@@ -1030,12 +1076,18 @@ class TestMemoryWriteServiceDelete:
             MemoryWriteService(client).update_memory(
                 "mem-1",
                 "memanto_agent_test-agent",
-                {"content": "Updated content"},
+                {
+                    "content": "Updated content",
+                    "tags": [],
+                    "source_ref": None,
+                },
             )
 
         uploaded = client.documents.upload.call_args.kwargs["documents"][0]
         assert uploaded.get("original_id") == "orig-123"
         assert "validation_count" not in uploaded
+        assert "tags" not in uploaded
+        assert "source_ref" not in uploaded
 
     def _update_memory_with_source(self, source):
         """Run an update over a stored memory carrying *source* and return it."""
@@ -1163,7 +1215,7 @@ class TestMemoryWriteServiceUpdateIntegrity:
         self, upload_result, expected_status
     ):
         from memanto.app.services.memory_write_service import MemoryWriteService
-        from memanto.app.utils.errors import MemoryError
+        from memanto.app.utils.errors import MemoryOperationError as MemoryError
 
         client = MagicMock()
         client.documents.upload.return_value = upload_result
@@ -1195,6 +1247,57 @@ class TestMemoryWriteServiceUpdateIntegrity:
             f"Failed to upload updated memory mem-1: {expected_status}"
         )
         client.documents.delete.assert_not_called()
+
+    def test_original_id_survives_read_format_update_cycle(self):
+        """original_id must survive get_memory() -> _format_memory_item() -> update_memory()."""
+        from unittest.mock import MagicMock, patch
+
+        from memanto.app.services.memory_read_service import MemoryReadService
+        from memanto.app.services.memory_write_service import MemoryWriteService
+
+        mock_client = MagicMock()
+        mock_client.documents.upload.return_value = {"status": "success"}
+
+        raw_moorcheh_document = {
+            "id": "mem_abc123",
+            "text": "[FACT] Original Title\n\nOriginal content\n\nTags: tag1, tag2",
+            "original_id": "mem_abc123",  # Test top-level extraction
+            "metadata": {
+                "id": "mem_abc123",
+                "memory_type": "fact",
+                "agent_id": "test-agent",
+                "actor_id": "user",
+                "source": "user",
+                "confidence": 0.8,
+                "status": "active",
+                "provenance": "explicit_statement",
+                "created_at": "2026-07-01T10:00:00+00:00",
+                "updated_at": "2026-07-01T10:00:00+00:00",
+                "superseded_by": "mem_new_001",
+                "tags": "tag1,tag2",
+            },
+        }
+
+        read_service = MemoryReadService(mock_client)
+        formatted = read_service._format_memory_item(raw_moorcheh_document)
+
+        assert "original_id" in formatted
+        assert "superseded_by" not in formatted
+
+        with patch(
+            "memanto.app.services.memory_read_service.MemoryReadService.get_memory",
+            return_value=formatted,
+        ):
+            MemoryWriteService(mock_client).update_memory(
+                memory_id="mem_abc123",
+                namespace="memanto_agent_test-agent",
+                updates={"content": "Updated content"},
+            )
+
+            uploaded_documents = mock_client.documents.upload.call_args.kwargs[
+                "documents"
+            ]
+            assert uploaded_documents[0].get("original_id") == "mem_abc123"
 
 
 class TestMemoryReadServiceFormatting:
@@ -1326,42 +1429,126 @@ class TestMemoryWriteServiceBatch:
 
 
 class TestMemoryWriteServiceUpdate:
-    def test_update_memory_preserves_string_expires_at(self):
-        """Updating a TTL-backed memory should not fail when the stored
-        ``expires_at`` field comes back as an ISO string from the backend."""
-        from memanto.app.services.memory_write_service import MemoryWriteService
-
+    @staticmethod
+    def _client(**extra_metadata):
+        """A Moorcheh client returning one stored memory plus extra metadata."""
         client = MagicMock()
         client.documents.get.return_value = {
             "items": [
                 {
-                    "id": "mem-ttl",
+                    "id": "mem-1",
                     "text": "[FACT] Old title\n\nOld content",
                     "memory_type": "fact",
-                    "scope_type": "agent",
-                    "scope_id": "alpha",
+                    "agent_id": "alpha",
                     "actor_id": "user",
                     "source": "user",
                     "confidence": 0.8,
                     "status": "active",
                     "created_at": "2026-01-01T00:00:00Z",
                     "updated_at": "2026-01-01T00:00:00Z",
-                    "expires_at": "2099-01-02T00:00:00Z",
-                    "ttl_seconds": 3600,
+                    **extra_metadata,
                 }
             ]
         }
         client.documents.delete.return_value = {"actual_deletions": 1}
         client.documents.upload.return_value = {"status": "success"}
+        return client
+
+    def test_update_strips_retired_ttl_fields(self):
+        """Records predating the lifecycle carry expires_at/ttl_seconds. Those
+        must not be copied forward, or the record looks expiry-bound forever."""
+        from memanto.app.services.memory_write_service import MemoryWriteService
+
+        client = self._client(
+            expires_at="2099-01-02T00:00:00Z",
+            ttl_seconds=3600,
+        )
 
         result = MemoryWriteService(client).update_memory(
-            "mem-ttl", "memanto_agent_alpha", {"content": "New content"}
+            "mem-1", "memanto_agent_alpha", {"content": "New content"}
         )
 
         assert result["status"] == "success"
         uploaded_doc = client.documents.upload.call_args.kwargs["documents"][0]
-        assert uploaded_doc["expires_at"] == "2099-01-02T00:00:00+00:00"
-        assert uploaded_doc["ttl_seconds"] == 3600
+        assert "expires_at" not in uploaded_doc
+        assert "ttl_seconds" not in uploaded_doc
+
+    def test_update_preserves_expiry_stamp_of_an_expired_memory(self):
+        """Editing an expired memory's text must not silently revive it."""
+        from memanto.app.services.memory_write_service import MemoryWriteService
+
+        client = self._client(
+            status="expired",
+            expired_at="2026-02-01T00:00:00Z",
+            expired_by="stale-context",
+        )
+
+        MemoryWriteService(client).update_memory(
+            "mem-1", "memanto_agent_alpha", {"content": "New content"}
+        )
+
+        uploaded_doc = client.documents.upload.call_args.kwargs["documents"][0]
+        assert uploaded_doc["status"] == "expired"
+        assert uploaded_doc["expired_at"] == "2026-02-01T00:00:00+00:00"
+        assert uploaded_doc["expired_by"] == "stale-context"
+
+    def test_update_coerces_a_retired_status_to_active(self):
+        """ "superseded"/"provisional" are no longer valid; an edit must not
+        fail outright on data written before the two-state lifecycle."""
+        from memanto.app.services.memory_write_service import MemoryWriteService
+
+        client = self._client(status="superseded")
+
+        MemoryWriteService(client).update_memory(
+            "mem-1", "memanto_agent_alpha", {"content": "New content"}
+        )
+
+        uploaded_doc = client.documents.upload.call_args.kwargs["documents"][0]
+        assert uploaded_doc["status"] == "active"
+
+    def test_restore_clears_the_stored_stamp(self):
+        """A restore must not leave expired_at/expired_by on the document."""
+        from memanto.app.services.memory_write_service import MemoryWriteService
+
+        client = self._client(
+            status="expired",
+            expired_at="2026-02-01T00:00:00Z",
+            expired_by="stale-context",
+        )
+
+        MemoryWriteService(client).set_lifecycle(
+            "mem-1", "memanto_agent_alpha", expired=False
+        )
+
+        uploaded_doc = client.documents.upload.call_args.kwargs["documents"][0]
+        assert uploaded_doc["status"] == "active"
+        assert "expired_at" not in uploaded_doc
+        assert "expired_by" not in uploaded_doc
+
+    def test_expire_stamps_the_document(self):
+        """Expiring writes status, time and reason together."""
+        from memanto.app.services.memory_write_service import MemoryWriteService
+
+        client = self._client()
+
+        MemoryWriteService(client).set_lifecycle(
+            "mem-1", "memanto_agent_alpha", expired=True, reason="stale-context"
+        )
+
+        uploaded_doc = client.documents.upload.call_args.kwargs["documents"][0]
+        assert uploaded_doc["status"] == "expired"
+        assert uploaded_doc["expired_by"] == "stale-context"
+        assert uploaded_doc["expired_at"]
+
+    def test_expire_requires_a_reason(self):
+        """An expiry with no cause is not auditable, so it is rejected."""
+        from memanto.app.services.memory_write_service import MemoryWriteService
+        from memanto.app.utils.errors import MemoryError
+
+        with pytest.raises(MemoryError, match="reason is required"):
+            MemoryWriteService(self._client()).set_lifecycle(
+                "mem-1", "memanto_agent_alpha", expired=True
+            )
 
 
 class TestMemoryReadServiceTemporalFilters:
@@ -2157,6 +2344,8 @@ class TestValidateSafeId:
         ("claude-code", True, ".claude/CLAUDE.md"),
         ("windsurf", True, ".codeium/windsurf/.windsurfrules"),
         ("cursor", False, "project/.cursor/rules/memanto.mdc"),
+        ("pi", True, ".pi/agent/AGENTS.md"),
+        ("pi", False, "project/AGENTS.md"),
     ],
 )
 def test_resolve_instruction_file_paths(
@@ -2214,21 +2403,41 @@ def test_format_memory_item_tag_stripping():
     assert "Paragraph 2" in formatted.get("content", "")
 
 
-def test_to_moorcheh_document_handles_string_expires_at():
+def test_to_moorcheh_document_omits_stamp_for_an_active_memory():
     from memanto.app.core import MemoryRecord
 
     memory = MemoryRecord(
         type="fact",
-        title="String Expiry",
-        content="Expires at is a string",
+        title="Active memory",
+        content="No expiry stamp expected",
         agent_id="test-agent",
         actor_id="user",
         source="system",
     )
-    memory.expires_at = "2026-07-10T00:00:00"
 
     doc = memory.to_moorcheh_document()
-    assert doc["expires_at"] == "2026-07-10T00:00:00"
+    assert doc["status"] == "active"
+    assert "expired_at" not in doc
+    assert "expired_by" not in doc
+
+
+def test_to_moorcheh_document_serializes_the_expiry_stamp():
+    from memanto.app.core import MemoryRecord
+
+    memory = MemoryRecord(
+        type="fact",
+        title="Expired memory",
+        content="Carries a full expiry stamp",
+        agent_id="test-agent",
+        actor_id="user",
+        source="system",
+    )
+    memory.expire("stale-context", when=datetime(2026, 7, 10, tzinfo=timezone.utc))
+
+    doc = memory.to_moorcheh_document()
+    assert doc["status"] == "expired"
+    assert doc["expired_at"] == "2026-07-10T00:00:00+00:00"
+    assert doc["expired_by"] == "stale-context"
 
 
 def test_batch_upload_error_counts_each_pending_memory_as_failed():
@@ -2267,7 +2476,7 @@ def test_batch_upload_error_counts_each_pending_memory_as_failed():
     )
 
 
-def test_direct_sync_uses_cached_export_fast_path(tmp_path, monkeypatch):
+def test_direct_sync_exports_fresh_before_copying(tmp_path, monkeypatch):
     from memanto.cli.client.direct_client import DirectClient
 
     monkeypatch.setattr(Path, "home", lambda: tmp_path)
@@ -2302,13 +2511,13 @@ def test_direct_sync_uses_cached_export_fast_path(tmp_path, monkeypatch):
     )
 
     target = project_dir / "MEMORY.md"
-    assert export_calls == []
+    assert export_calls == [("agent-1", 7)]
     assert target.read_text(encoding="utf-8") == cache_path.read_text(encoding="utf-8")
-    assert "stale memory" in target.read_text(encoding="utf-8")
+    assert "stale memory" not in target.read_text(encoding="utf-8")
     assert result == {
         "output_path": str(target.resolve()),
-        "total_memories": 1,
-        "source": "cache",
+        "total_memories": 2,
+        "source": "fresh",
     }
 
 
@@ -2477,6 +2686,44 @@ def test_ui_static_xss_escapes():
 
     for raw in forbidden_raw_interpolations:
         assert raw not in ui_html
+
+
+def test_windows_lock_retries_contention_without_deadline(tmp_path, monkeypatch):
+    """Windows lock contention retries until acquisition succeeds."""
+    attempts = 0
+
+    def locking(_fileno, mode, _length):
+        nonlocal attempts
+        assert mode == 1
+        attempts += 1
+        if attempts < 3:
+            raise OSError(errno.EACCES, "lock is held")
+
+    fake_msvcrt = SimpleNamespace(LK_NBLCK=1, locking=locking)
+    monkeypatch.setattr(atomic_write.sys, "platform", "win32")
+    monkeypatch.setattr(atomic_write.time, "sleep", lambda _seconds: None)
+    monkeypatch.setitem(sys.modules, "msvcrt", fake_msvcrt)
+
+    with (tmp_path / "lock").open("a+b") as handle:
+        atomic_write._acquire(handle, shared=True)
+
+    assert attempts == 3
+
+
+def test_windows_lock_does_not_retry_unexpected_errors(tmp_path, monkeypatch):
+    """Unexpected Windows lock errors still surface immediately."""
+
+    def locking(_fileno, _mode, _length):
+        raise OSError(errno.EBADF, "bad handle")
+
+    fake_msvcrt = SimpleNamespace(LK_NBLCK=1, locking=locking)
+    monkeypatch.setattr(atomic_write.sys, "platform", "win32")
+    monkeypatch.setitem(sys.modules, "msvcrt", fake_msvcrt)
+
+    with (tmp_path / "lock").open("a+b") as handle:
+        with pytest.raises(OSError) as exc_info:
+            atomic_write._acquire(handle, shared=False)
+        assert exc_info.value.errno == errno.EBADF
 
 
 def test_client_delete_agent_clears_session_state(

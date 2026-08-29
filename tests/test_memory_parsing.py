@@ -44,6 +44,9 @@ def test_detect_negated_preferences_instead_of_instructions():
         "I never liked Vim",
         "They can't stand noisy notifications",
         "The client prefers not to receive phone calls",
+        "The client detests email",
+        "The customer loathes the new UI",
+        "My client despises late meetings",
     ]
 
     for content in cases:
@@ -55,6 +58,18 @@ def test_detect_negated_preferences_instead_of_instructions():
 
 
 def test_negative_imperative_remains_an_instruction():
+    parser = MemoryParsingService()
+
+    cases = [
+        "Avoid using unpinned dependencies in production",
+        "Never deploy on Fridays",
+        "Don't use spaces for indentation",
+    ]
+
+    for content in cases:
+        memory = make_memory(content)
+        parser.parse_memory(memory)
+        assert memory.type == "instruction", content
     parser = MemoryParsingService()
 
     memory = make_memory("Don't deploy unpinned dependencies in production")

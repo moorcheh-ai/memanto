@@ -1,0 +1,202 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 -40 140 160" fill="#9d7ad6" aria-hidden="true">
+  <style>
+    /* Memanto ant vignette — ported from memanto-landing HeroAnt */
+    .forearm,
+    .can,
+    .canTip,
+    .drops,
+    .roseLift,
+    .roseGrow {
+      transform-box: fill-box;
+    }
+
+    /* blink */
+    .eyesOpen { animation: antEyesOpen 5.5s steps(1, end) infinite; }
+    .eyesWink { animation: antEyesWink 5.5s steps(1, end) infinite; }
+
+    @keyframes antEyesOpen {
+      0%, 87% { opacity: 1; }
+      88%, 93% { opacity: 0; }
+      94%, 100% { opacity: 1; }
+    }
+
+    @keyframes antEyesWink {
+      0%, 87% { opacity: 0; }
+      88%, 93% { opacity: 1; }
+      94%, 100% { opacity: 0; }
+    }
+
+    /* dangling legs */
+    .legs {
+      transform-box: fill-box;
+      transform-origin: 50% 0%;
+      animation: antLegSway 2.6s ease-in-out infinite;
+    }
+
+    @keyframes antLegSway {
+      0%, 100% { transform: rotate(-2.5deg); }
+      50% { transform: rotate(2.5deg); }
+    }
+
+    /* forearm: out while holding the can, then the rose */
+    .forearm { animation: antForearm 12s linear infinite; }
+
+    @keyframes antForearm {
+      0%, 5% { opacity: 0; }
+      6%, 40% { opacity: 1; }
+      41%, 57% { opacity: 0; }
+      58%, 88% { opacity: 1; }
+      89%, 100% { opacity: 0; }
+    }
+
+    /* stage 1: watering can */
+    .can { animation: antCan 12s ease-in-out infinite; }
+
+    @keyframes antCan {
+      0%, 5% { opacity: 0; transform: translateY(10px); }
+      9%, 36% { opacity: 1; transform: translateY(0); }
+      40%, 100% { opacity: 0; transform: translateY(10px); }
+    }
+
+    .canTip {
+      transform-origin: 15% 60%;
+      animation: antCanTip 12s ease-in-out infinite;
+    }
+
+    @keyframes antCanTip {
+      0%, 16% { transform: rotate(0deg); }
+      22%, 32% { transform: rotate(38deg); }
+      37%, 100% { transform: rotate(0deg); }
+    }
+
+    /* stage 2: water */
+    .drops {
+      color: #4ec3ff;
+      fill: currentColor;
+      animation: antDrops 12s steps(1, end) infinite;
+    }
+
+    @keyframes antDrops {
+      0%, 20% { opacity: 0; }
+      21%, 32% { opacity: 1; }
+      33%, 100% { opacity: 0; }
+    }
+
+    .drop1,
+    .drop2,
+    .drop3 {
+      transform-box: fill-box;
+      animation: antFall 0.75s linear infinite;
+    }
+
+    .drop2 { animation-delay: 0.25s; }
+    .drop3 { animation-delay: 0.5s; }
+
+    @keyframes antFall {
+      0% { transform: translate(0, 0); opacity: 0; }
+      15% { opacity: 1; }
+      85% { opacity: 1; }
+      100% { transform: translate(-9px, 62px); opacity: 0; }
+    }
+
+    /* stage 3: rose grows, then gets picked and held out */
+    .roseGrow {
+      transform-origin: 50% 100%;
+      animation: antRoseGrow 12s ease-out infinite;
+    }
+
+    @keyframes antRoseGrow {
+      0%, 36% { opacity: 0; transform: scaleY(0); }
+      38% { opacity: 1; transform: scaleY(0.08); }
+      54%, 100% { opacity: 1; transform: scaleY(1); }
+    }
+
+    .roseLift { animation: antRoseLift 12s ease-in-out infinite; }
+
+    @keyframes antRoseLift {
+      0%, 56% { transform: translate(0, 0); opacity: 1; }
+      64%, 86% { transform: translate(-18px, -58px) rotate(-8deg); opacity: 1; }
+      92%, 100% { transform: translate(-18px, -58px) rotate(-8deg); opacity: 0; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .eyesOpen,
+      .eyesWink,
+      .legs,
+      .forearm,
+      .can,
+      .canTip,
+      .drops,
+      .drop1,
+      .drop2,
+      .drop3,
+      .roseGrow,
+      .roseLift {
+        animation: none;
+      }
+
+      .eyesWink,
+      .can,
+      .drops { opacity: 0; }
+
+      .forearm { opacity: 1; }
+      .roseLift { transform: translate(-18px, -58px); opacity: 1; }
+      .roseGrow { transform: scaleY(1); opacity: 1; }
+    }
+  </style>
+
+  <!-- BODY -->
+  <path d="M 18,0 H 78 V 24 H 66 V 12 H 60 V 24 H 36 V 12 H 30 V 24 H 18 Z M 12,24 H 18 V 48 H 12 Z M 78,24 H 84 V 48 H 78 Z M 18,48 H 78 V 60 H 66 V 72 H 30 V 60 H 18 Z" />
+
+  <!-- EYES — cross-fade groups read as a blink -->
+  <g class="eyesOpen">
+    <polygon points="42,28 46,36 42,44 38,36" fill="none" stroke="currentColor" stroke-width="1.5" />
+    <polygon points="42,32 44,36 42,40 40,36" />
+    <polygon points="54,28 58,36 54,44 50,36" fill="none" stroke="currentColor" stroke-width="1.5" />
+    <polygon points="54,32 56,36 54,40 52,36" />
+  </g>
+  <g class="eyesWink">
+    <rect x="36" y="34" width="12" height="4" />
+    <polygon points="54,28 58,36 54,44 50,36" fill="none" stroke="currentColor" stroke-width="1.5" />
+    <polygon points="54,32 56,36 54,40 52,36" />
+  </g>
+
+  <!-- LEGS — dangling over the edge, swaying -->
+  <g class="legs">
+    <path d="M 12,72 H 18 V 108 H 12 Z M 24,72 H 30 V 96 H 24 Z M 36,72 H 42 V 84 H 36 Z M 54,72 H 60 V 84 H 54 Z M 66,72 H 72 V 96 H 66 Z M 78,72 H 84 V 108 H 78 Z" />
+  </g>
+
+  <!-- forearm — extended whenever the ant is holding something -->
+  <rect class="forearm" x="84" y="26" width="13" height="6" />
+
+  <!-- stage 1: the watering can, which tips to pour -->
+  <g class="can">
+    <g class="canTip">
+      <rect x="96" y="18" width="22" height="18" fill="#b9bcc8" />
+      <rect x="100" y="12" width="14" height="6" fill="#b9bcc8" />
+      <rect x="92" y="12" width="5" height="10" fill="#9a9dab" />
+      <rect x="118" y="16" width="7" height="5" fill="#9a9dab" />
+      <rect x="125" y="11" width="6" height="5" fill="#9a9dab" />
+    </g>
+  </g>
+
+  <!-- stage 2: water falling from the spout -->
+  <g class="drops">
+    <rect class="drop1" x="126" y="24" width="5" height="5" />
+    <rect class="drop2" x="124" y="24" width="4" height="4" />
+    <rect class="drop3" x="128" y="24" width="4" height="4" />
+  </g>
+
+  <!-- stage 3+4: the rose grows from the ground, then is picked -->
+  <g class="roseLift">
+    <g class="roseGrow">
+      <rect x="112" y="72" width="5" height="36" fill="#3f8f4f" />
+      <rect x="104" y="86" width="8" height="5" fill="#4fae5f" />
+      <rect x="117" y="78" width="8" height="5" fill="#4fae5f" />
+      <rect x="106" y="58" width="18" height="6" fill="#8f2230" />
+      <rect x="102" y="64" width="26" height="6" fill="#a82b3c" />
+      <rect x="106" y="70" width="18" height="5" fill="#8f2230" />
+      <rect x="110" y="52" width="9" height="6" fill="#a82b3c" />
+    </g>
+  </g>
+</svg>

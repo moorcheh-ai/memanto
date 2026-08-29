@@ -9,5 +9,5 @@
     </g>
     <path id="legs-1" d="M 12,72 H 18 V 108 H 12 Z M 24,72 H 30 V 96 H 24 Z M 36,72 H 42 V 84 H 36 Z M 54,72 H 60 V 84 H 54 Z M 66,72 H 72 V 96 H 66 Z M 78,72 H 84 V 108 H 78 Z" />
   </g>
-  <text x="100" y="86" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace" font-size="80" font-weight="600" fill="#FFFFFF" letter-spacing="-3">Memanto</text>
+  <text x="100" y="86" font-family="'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace" font-size="80" font-weight="600" fill="#FFFFFF" letter-spacing="-3">Memanto</text>
 </svg>
