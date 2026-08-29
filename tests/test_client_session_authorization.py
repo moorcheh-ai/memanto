@@ -212,3 +212,58 @@ class TestColdValidatorCrossAgentTokenSpoofing:
             client._get_validated_session_for_agent("agent-b")
         # Cache must have been cleared
         assert client._cached_session is None
+
+    def test_session_record_mismatch_rejected_even_when_token_matches(
+        self, client_cls: type, tmp_path, monkeypatch
+    ) -> None:
+        """Verify the session-record check rejects a mismatched stored record.
+
+        This guards the second, defence-in-depth check in
+        `_get_validated_session_for_agent`:
+
+            session = session_service.get_session(token_payload.agent_id)
+            if session.agent_id != agent_id:      # <- this one
+                raise SessionError(...)
+
+        It cannot be reached through the ordinary spoofing path, because the
+        token check above it already rejects a token whose subject differs from
+        the requested agent, and the record is then loaded by that same subject.
+        The check only fires when the session store hands back a record for a
+        different agent than the one asked for -- a corrupted or tampered
+        `~/.memanto/sessions/{agent}.json`, or a store-level bug.
+
+        A mutation run showed this was necessary: replacing the condition with
+        `if False` left the whole suite green, so the guard was shipped
+        unprotected. The token-payload checks at direct_client.py:396 and
+        sdk_client.py:228 were each caught by an existing test; these two
+        record-level checks were not.
+        """
+        sessions_dir = tmp_path / "sessions"
+        service = SessionService(
+            secret_key="test-secret-key-32-bytes-long-secure!!", sessions_dir=sessions_dir
+        )
+        session_b = service.create_session(agent_id="agent-b", duration_hours=1)
+
+        client = client_cls(api_key="test-api-key")
+        monkeypatch.setattr(client, "_get_session_service", lambda: service)
+
+        # Token really is for agent-b, so the token-payload check passes.
+        client.agent_id = "agent-b"
+        client.session_token = session_b.session_token
+
+        # Simulate the store returning a record belonging to someone else.
+        real_get_session = service.get_session
+
+        def _tampered_get_session(agent_id: str):
+            record = real_get_session(agent_id)
+            if record is not None:
+                record.agent_id = "attacker-agent"
+            return record
+
+        monkeypatch.setattr(service, "get_session", _tampered_get_session)
+
+        with pytest.raises(
+            SessionError,
+            match="Session record is for agent 'attacker-agent', cannot access 'agent-b'",
+        ):
+            client._get_validated_session_for_agent("agent-b")
