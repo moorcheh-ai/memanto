@@ -380,7 +380,10 @@ class MemoryParsingService:
                 memory.tags.append("security-warning")
             if "untrusted-payload" not in memory.tags:
                 memory.tags.append("untrusted-payload")
-            memory.confidence = min(memory.confidence or 0.5, 0.3)
+            if memory.confidence is not None:
+                memory.confidence = min(memory.confidence, 0.3)
+            else:
+                memory.confidence = 0.3
 
         return memory
 
