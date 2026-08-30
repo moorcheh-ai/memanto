@@ -323,8 +323,7 @@ export class Memanto {
 
   async createAgent(input: CreateAgentInput = {}) {
     await this.lifecycle.start();
-    const baseUrl = this.lifecycle.baseUrl;
-    const res = await fetch(`${baseUrl}/api/v2/agents`, {
+    const res = await this.managementFetch("/api/v2/agents", {
       method: "POST",
       headers: this.managementHeaders(),
       body: JSON.stringify({
@@ -417,15 +416,14 @@ export class Memanto {
   }
 
   private async createAgentIfMissing(): Promise<void> {
-    const baseUrl = this.lifecycle.baseUrl;
-    const res = await fetch(`${baseUrl}/api/v2/agents/${this.encodedAgentId}`, {
+    const res = await this.managementFetch(`/api/v2/agents/${this.encodedAgentId}`, {
       headers: this.managementHeaders(),
     });
     if (res.ok) return;
     if (res.status !== 404) {
       throw await asError(res, "Failed to look up agent");
     }
-    const create = await fetch(`${baseUrl}/api/v2/agents`, {
+    const create = await this.managementFetch("/api/v2/agents", {
       method: "POST",
       headers: this.managementHeaders(),
       body: JSON.stringify({ agent_id: this.agentId }),
@@ -436,8 +434,7 @@ export class Memanto {
   }
 
   private async activate(): Promise<void> {
-    const baseUrl = this.lifecycle.baseUrl;
-    const res = await fetch(`${baseUrl}/api/v2/agents/${this.encodedAgentId}/activate`, {
+    const res = await this.managementFetch(`/api/v2/agents/${this.encodedAgentId}/activate`, {
       method: "POST",
       headers: this.managementHeaders(),
     });
@@ -484,19 +481,37 @@ export class Memanto {
     }
     const serializedBody = body === undefined ? undefined : JSON.stringify(body);
     const send = () =>
-      fetch(`${baseUrl}${path}`, { method, headers, body: serializedBody });
+      requireSession
+        ? fetch(`${baseUrl}${path}`, { method, headers, body: serializedBody })
+        : this.managementFetch(path, { method, headers, body: serializedBody });
     const res = await this.sendWithSessionRetry(send, headers, requireSession);
     if (!res.ok) throw await asError(res, `${method} ${path} failed`);
     if (res.status === 204) return undefined as T;
     return (await res.json()) as T;
   }
 
+  /** Build headers for requests that require the server management credential. */
   private managementHeaders(): Record<string, string> {
     const headers: Record<string, string> = {
       "Content-Type": "application/json",
     };
     if (this.apiKey) headers["X-Api-Key"] = this.apiKey;
     return headers;
+  }
+
+  /** Reject credentialed plaintext remote URLs and never follow redirects. */
+  private managementFetch(path: string, init: RequestInit = {}): Promise<Response> {
+    const url = new URL(`${this.lifecycle.baseUrl}${path}`);
+    const hostname = url.hostname.toLowerCase();
+    const loopback =
+      hostname === "localhost" ||
+      hostname === "127.0.0.1" ||
+      hostname === "[::1]" ||
+      hostname === "::1";
+    if (this.apiKey && url.protocol !== "https:" && !loopback) {
+      throw new Error("Management API key requires an HTTPS remote baseUrl");
+    }
+    return fetch(url, { ...init, redirect: "error" });
   }
 
   private async requestFileUpload<T = unknown>(
