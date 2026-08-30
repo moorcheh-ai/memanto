@@ -16,8 +16,8 @@ accepted by ``SdkClient.batch_remember``:
         "provenance": "imported",
         "created_at": datetime, # original source timestamp (when present)
         "updated_at": datetime, # migration time = now
-        "expires_at": datetime, # source expiration timestamp (when present)
-        "ttl_seconds": int,     # source retention window (when present)
+        "expired_at": datetime, # lifecycle expiry timestamp (when present)
+        "expired_by": str,       # lifecycle expiry reason (when present)
     }
 
 Mappers extract every useful field from the source. Anything that maps
