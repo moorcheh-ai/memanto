@@ -524,8 +524,8 @@ def map_okf(export: dict[str, Any]) -> list[dict[str, Any]]:
         created_at = _parse_dt(gen_at) or _parse_dt(entry.get("timestamp"))
 
         updated_at = _parse_dt(x_memanto.get("updated_at")) or migrated_at
-        expires_at = _parse_dt(x_memanto.get("expires_at"))
-        ttl_seconds = _parse_positive_int(x_memanto.get("ttl_seconds"))
+        expired_at = _parse_dt(x_memanto.get("expired_at"))
+        expired_by = x_memanto.get("expired_by") if isinstance(x_memanto.get("expired_by"), str) and x_memanto.get("expired_by").strip() else None
 
         original_title = None
         if title and len(title) > _MAX_TITLE_CHARS:
@@ -561,8 +561,8 @@ def map_okf(export: dict[str, Any]) -> list[dict[str, Any]]:
                 "provenance": provenance,
                 "created_at": created_at,
                 "updated_at": updated_at,
-                "expires_at": expires_at,
-                "ttl_seconds": ttl_seconds,
+                "expired_at": expired_at,
+                "expired_by": expired_by,
             }
         )
     return rows
