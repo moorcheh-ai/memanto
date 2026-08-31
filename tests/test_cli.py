@@ -1490,6 +1490,67 @@ class TestMEMANTOCLI:
         assert "mem0" in result.stdout.lower()
         assert "letta" in result.stdout.lower()
 
+    def test_migrate_okf_returns_failure_when_any_import_fails(
+        self, mock_all_clients, tmp_path
+    ):
+        """A partial OKF import must not report process-level success."""
+        bundle = tmp_path / "okf-bundle"
+        bundle.mkdir()
+        (bundle / "memory.md").write_text(
+            "---\n"
+            "type: decision\n"
+            "title: Keep UTC timestamps\n"
+            "description: All persisted timestamps use UTC.\n"
+            "---\n\n"
+            "The project decided to keep UTC timestamps.\n",
+            encoding="utf-8",
+        )
+        mock_all_clients.batch_remember.return_value = {
+            "successful": 0,
+            "failed": 1,
+            "results": [{"error": "simulated import failure"}],
+        }
+
+        with patch("memanto.cli.commands.migrate.config_manager") as mock_cfg:
+            mock_cfg.get_migrate_dir.return_value = tmp_path / "runs"
+            mock_cfg.get_active_session.return_value = ("test-agent", "test-token")
+
+            result = runner.invoke(app, ["migrate", "okf", str(bundle)])
+
+        assert result.exit_code == 1
+        assert "Import incomplete" in result.stdout
+        assert "Failed: 1" in result.stdout
+
+    def test_provider_migration_returns_failure_when_any_import_fails(
+        self, mock_all_clients, tmp_path
+    ):
+        """Provider migrations share the partial-import failure contract."""
+        export_file = self._write_export_file(
+            tmp_path,
+            "mem0_export.json",
+            {
+                "exported_at": "2026-07-26T00:00:00Z",
+                "summary": {"memory_count": 1},
+                "entities": [],
+                "memories": [{"id": "m1", "memory": "Keep timestamps in UTC"}],
+            },
+        )
+        mock_all_clients.batch_remember.return_value = {
+            "successful": 0,
+            "failed": 1,
+            "results": [{"error": "simulated import failure"}],
+        }
+
+        with patch("memanto.cli.commands.migrate.config_manager") as mock_cfg:
+            mock_cfg.get_migrate_dir.return_value = tmp_path / "runs"
+            mock_cfg.get_active_session.return_value = ("test-agent", "test-token")
+
+            result = runner.invoke(app, ["migrate", "mem0", "--file", str(export_file)])
+
+        assert result.exit_code == 1
+        assert "Migration incomplete" in result.stdout
+        assert "Failed: 1" in result.stdout
+
     def _write_export_file(self, tmp_path, name, export):
         """Helper: dump an export dict to JSON so migrate can load it via --file."""
         path = tmp_path / name
