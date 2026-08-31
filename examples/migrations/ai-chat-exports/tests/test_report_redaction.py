@@ -5,7 +5,7 @@ import sys
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 
-from generate_report import _HOME, _redact_home
+from generate_report import _HOME, _HOME_RE, _redact_home
 
 HOME_STR = str(_HOME)
 
@@ -44,5 +44,21 @@ class TestHomeRedaction:
         redacted = _redact_home(sibling)
         assert sibling == redacted
 
+    def test_underscore_sibling_not_redacted(self):
+        sibling = f"{HOME_STR}_backup"
+        redacted = _redact_home(sibling)
+        assert sibling == redacted
+
+    def test_unicode_sibling_not_redacted(self):
+        sibling = f"{HOME_STR}П"
+        redacted = _redact_home(sibling)
+        assert sibling == redacted
+
+    def test_home_before_whitespace(self):
+        text = f"from {HOME_STR} "  # trailing space before EOL
+        redacted = _redact_home(text)
+        assert HOME_STR not in redacted
+        assert "~ " in redacted
+
     def test_regex_is_literal_escaped(self):
-        assert re.compile(f"^{re.escape(HOME_STR)}$").match(HOME_STR)
+        assert re.escape(HOME_STR) in _HOME_RE.pattern

@@ -38,11 +38,12 @@ _BOX = str.maketrans(dict.fromkeys(
 
 _HOME = Path.home()
 # Redact the user's home directory so reports never leak a personal identifier.
-# Match the home prefix when any non-word character follows (path separator,
-# quote, punctuation) or end-of-string, but never a longer prefix of a
-# different path that merely starts with the same characters.
+# Match the home prefix only when a true non-word boundary follows (path
+# separator, quote, punctuation, whitespace) or end-of-string. \W (not \w)
+# is used so_, Unicode letters and other valid filename characters are NOT
+# treated as delimiters: a sibling path like <home>_backup stays untouched.
 _HOME_RE = re.compile(
-    rf"(?<![\w]){re.escape(str(_HOME))}(?=[^A-Za-z0-9]|$)",
+    rf"(?<![\w]){re.escape(str(_HOME))}(?=\W|$)",
 )
 
 
