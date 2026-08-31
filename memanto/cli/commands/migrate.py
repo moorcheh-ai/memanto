@@ -69,6 +69,15 @@ from memanto.cli.analyze.supermemory_compare import (
     compute_metrics as compute_supermemory_metrics,
 )
 from memanto.cli.analyze.supermemory_export import run_supermemory_export
+from memanto.cli.analyze.chatgpt_compare import (
+    build_llm_prompt as build_chatgpt_llm_prompt,
+)
+from memanto.cli.analyze.chatgpt_compare import (
+    build_report_markdown as build_chatgpt_report_markdown,
+)
+from memanto.cli.analyze.chatgpt_compare import (
+    compute_metrics as compute_chatgpt_metrics,
+)
 from memanto.cli.commands._shared import (
     BOLD_PRIMARY,
     BRIGHT,
@@ -126,6 +135,14 @@ _PROVIDER_BUNDLES: dict[str, dict[str, Any]] = {
         "label": "Langfuse",
         "exporter": run_langfuse_export,
         "export_filename": "langfuse_export.json",
+    },
+    "chatgpt": {
+        "label": "ChatGPT",
+        "exporter": None,
+        "metrics": compute_chatgpt_metrics,
+        "prompt": build_chatgpt_llm_prompt,
+        "report": build_chatgpt_report_markdown,
+        "export_filename": "conversations.json",
     },
 }
 
@@ -312,6 +329,9 @@ def _load_or_export(
             raise ValueError(f"Export file not found or unreadable: {file} ({exc})")
         except ValueError as exc:
             raise ValueError(f"Export file is not valid JSON: {file} ({exc})")
+
+    if provider == "chatgpt":
+        _error("ChatGPT migration requires a --file parameter.")
 
     key = _resolve_provider_key(provider, api_key)
     try:
@@ -1158,4 +1178,44 @@ def migrate_langfuse(
             ),
             border_style=border,
         )
+    )
+
+
+@migrate_app.command("chatgpt")
+def migrate_chatgpt(
+    file: Path = typer.Option(
+        ...,
+        "--file",
+        "-f",
+        exists=True,
+        file_okay=True,
+        dir_okay=False,
+        readable=True,
+        help="Path to the official ChatGPT conversations.json export file.",
+    ),
+    agent: str | None = typer.Option(
+        None,
+        "--agent",
+        "-a",
+        help="Target Memanto agent id (defaults to the active agent).",
+    ),
+    dry_run: bool = typer.Option(
+        False,
+        "--dry-run",
+        help="Preview the mapping and savings report without writing.",
+    ),
+    report: bool = typer.Option(
+        False,
+        "--report",
+        help="Also write the token/latency/storage savings report on a real run.",
+    ),
+):
+    """Migrate ChatGPT conversations history into the active (or selected) Memanto agent."""
+    _run_migrate_flow(
+        provider="chatgpt",
+        api_key=None,
+        file=file,
+        agent=agent,
+        dry_run=dry_run,
+        report=report,
     )

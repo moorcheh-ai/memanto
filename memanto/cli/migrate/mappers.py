@@ -572,10 +572,103 @@ def map_okf(export: dict[str, Any]) -> list[dict[str, Any]]:
 # memories, so one incident collapses into a single grouped payload rather
 # than mapping row-for-row. That needs the user's capture settings, which
 # this registry's signature cannot carry — see ``langfuse_rules.build_rows``.
+
+
+def map_chatgpt(export: dict[str, Any]) -> list[dict[str, Any]]:
+    """Map a ChatGPT conversation export to rich Memanto memory payloads.
+
+    Reconstructs the active branch of dialogues using a leaf-to-root tree-trace
+    of conversation message mappings.
+    """
+    rows: list[dict[str, Any]] = []
+    migrated_at = _now_utc()
+
+    for conv in export.get("conversations", []) or []:
+        title = (conv.get("title") or "").strip()
+        conv_id = conv.get("id") or conv.get("id")
+
+        mapping = conv.get("mapping") or {}
+        nodes = []
+        for k, v in mapping.items():
+            if not isinstance(v, dict):
+                continue
+            msg = v.get("message")
+            if not msg:
+                continue
+            nodes.append(v)
+
+        if not nodes:
+            continue
+
+        parent_ids = {n.get("parent") for n in nodes if n.get("parent")}
+        leaves = [n for n in nodes if n.get("id") and n.get("id") not in parent_ids]
+
+        if not leaves:
+            try:
+                nodes.sort(key=lambda x: x.get("message", {}).get("create_time") or 0)
+            except Exception:
+                pass
+            active_nodes = nodes
+        else:
+            leaf = leaves[0]
+            active_nodes = []
+            curr = leaf
+            while curr:
+                active_nodes.append(curr)
+                parent_id = curr.get("parent")
+                curr = mapping.get(parent_id) if parent_id else None
+            active_nodes.reverse()
+
+        lines = []
+        for node in active_nodes:
+            msg = node.get("message") or {}
+            author = msg.get("author") or {}
+            role = str(author.get("role") or "").capitalize()
+            content_obj = msg.get("content") or {}
+            parts = content_obj.get("parts") or []
+            text = "".join(str(p) for p in parts if p).strip()
+            if text and role:
+                lines.append(f"**{role}**: {text}")
+
+        content = "\n\n".join(lines).strip()
+        if not content:
+            continue
+
+        # Extract timestamps
+        created_at_val = conv.get("create_time")
+        created_at = _parse_dt(created_at_val)
+
+        # Pack metadata into the footer
+        footer = _format_supporting_data(
+            [
+                ("Source", f"chatgpt:{conv_id}" if conv_id else None),
+                ("Conversation title", title),
+                ("Message count", len(active_nodes)),
+                ("Source created_at", created_at.isoformat() if created_at else None),
+            ]
+        )
+
+        rows.append(
+            {
+                "title": title or _title_from(content),
+                "content": _attach_footer(content, footer),
+                "type": "observation",
+                "tags": ["chatgpt", "conversation"],
+                "confidence": 0.8,
+                "source": "chatgpt",
+                "source_ref": str(conv_id) if conv_id else None,
+                "provenance": "imported",
+                "created_at": created_at,
+                "updated_at": migrated_at,
+            }
+        )
+    return rows
+
 MAPPERS: dict[str, Callable[[dict[str, Any]], list[dict[str, Any]]]] = {
     "mem0": map_mem0,
     "letta": map_letta,
     "supermemory": map_supermemory,
+    "chatgpt": map_chatgpt,
     "okf": map_okf,
 }
 
