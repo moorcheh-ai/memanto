@@ -32,7 +32,7 @@ OKF nodes: 7
 Mapped memories: 7  (skipped 0)
 Type breakdown: context: 7
 Dry run — no writes performed.
-Run dir: /Users/lidiyamikhailova/.memanto/migrate/okf/20260830_235456/mapped_preview.json
+Run dir: ~/.memanto/migrate/okf/20260830_235456/mapped_preview.json
 ```
 
 Identical funnel for Gemini (10 → 10 → 0) and Claude (17 → 17 → 0). Full per-provider dry-run evidence can be regenerated with:

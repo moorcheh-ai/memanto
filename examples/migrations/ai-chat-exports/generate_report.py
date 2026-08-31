@@ -20,6 +20,7 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -35,12 +36,22 @@ _BOX = str.maketrans(dict.fromkeys(
     "─│┌┐└┘├┤┬┴┼╭╮╰╯╱╲╳║═╔╗╚╝╠╣╦╩╬�│。",
 ))
 
+_HOME = Path.home()
+# Redact the user's home directory so reports never leak a personal identifier.
+_HOME_RE = re.compile(
+    re.escape(str(_HOME)) + r"(?:[/\\]|$)",
+)
+
+
+def _redact_home(text: str) -> str:
+    return _HOME_RE.sub("~/", text)
+
 
 def _strip_output(text: str) -> str:
-    """Strip box-drawing decoration and stray control bytes from CLI output."""
+    """Strip box-drawing decoration, stray control bytes and personal paths."""
     lines = []
     for line in text.splitlines():
-        line = line.translate(_BOX).strip()
+        line = _redact_home(line).translate(_BOX).strip()
         if not line:
             continue
         lines.append(line.rstrip())
