@@ -1,0 +1,5 @@
+# OKF Memory Vault - dependencies
+# Only PyYAML is required at runtime; pytest is needed for the test suite.
+
+PyYAML>=6.0
+pytest>=8.2.0
