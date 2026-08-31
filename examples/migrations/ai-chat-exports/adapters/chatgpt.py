@@ -41,7 +41,7 @@ class ChatGPTAdapter:
         conversations = raw.get("conversations", [])
         for conv in conversations:
             conv_id = conv.get("id", conv.get("conversation_id", "unknown"))
-            title = conv.get("title", f"ChatGPT {conv_id[:8]}")
+            title = conv.get("title", f"ChatGPT {str(conv_id)[:8]}")
             messages = conv.get("messages") or []
             result.append(
                 {
@@ -72,7 +72,7 @@ class ChatGPTAdapter:
         self, conv: dict, filters: dict | None
     ) -> list[MemoryEntity]:
         conv_id = conv.get("id", conv.get("conversation_id", "unknown"))
-        title = conv.get("title", f"ChatGPT {conv_id[:8]}")
+        title = conv.get("title", f"ChatGPT {str(conv_id)[:8]}")
 
         if filters and filters.get("chat_ids") and conv_id not in filters["chat_ids"]:
             return []
@@ -166,13 +166,15 @@ class ChatGPTAdapter:
                     return []
 
         parts = []
-        for i in range(0, len(messages) - 1, 2):
+        i = 0
+        while i < len(messages):
             user_m = messages[i] if messages[i]["role"] == "user" else None
-            asst_m = (
-                messages[i + 1]
-                if i + 1 < len(messages) and messages[i + 1]["role"] == "assistant"
-                else None
-            )
+            asst_m = None
+            if user_m and i + 1 < len(messages) and messages[i + 1]["role"] == "assistant":
+                asst_m = messages[i + 1]
+                i += 2
+            else:
+                i += 1
 
             block = []
             if user_m:

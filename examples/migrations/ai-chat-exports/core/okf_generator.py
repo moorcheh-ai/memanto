@@ -120,6 +120,7 @@ class OKFGenerator:
         ]
 
         max_count = max(type_counts.values()) if type_counts else 1
+        lines.extend(["| Type | Count | Share |", "| --- | --- | --- |"])
         for mem_type, count in type_counts.most_common():
             bar_len = int((count / max_count) * 20) if max_count else 0
             bar = "\u2588" * bar_len

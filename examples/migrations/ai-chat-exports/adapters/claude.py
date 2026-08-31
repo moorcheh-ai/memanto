@@ -131,33 +131,6 @@ class ClaudeAdapter:
 
         return [entity]
 
-    def _pair_claude_messages(
-        self, messages: list[dict]
-    ) -> list[tuple[dict | None, dict | None]]:
-        pairs: list[tuple[dict | None, dict | None]] = []
-        i = 0
-        while i < len(messages):
-            msg = messages[i]
-            role = msg.get("sender") or msg.get("role", "unknown")
-            if role == "human":
-                user_msg = msg
-                asst_msg = None
-                if i + 1 < len(messages):
-                    next_role = messages[i + 1].get("sender") or messages[i + 1].get(
-                        "role", "unknown"
-                    )
-                    if next_role == "assistant":
-                        asst_msg = messages[i + 1]
-                        i += 2
-                    else:
-                        i += 1
-                else:
-                    i += 1
-                pairs.append((user_msg, asst_msg))
-            else:
-                i += 1
-        return pairs
-
     def _extract_text(self, msg: dict) -> str:
         if "text" in msg:
             return msg["text"] or ""

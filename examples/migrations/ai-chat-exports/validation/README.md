@@ -1,6 +1,6 @@
 # Round-trip validation
 
-`validation/validate_roundtrip.py` (at the bundle root, alongside
+`validate_roundtrip.py` (at the bundle root, alongside
 `cli.py`/`generate_report.py`) proves the "zero amnesia" claim of Path B:
 
 1. **before** — does the raw source export answer the golden questions

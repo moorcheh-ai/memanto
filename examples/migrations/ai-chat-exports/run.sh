@@ -2,6 +2,7 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+INVOCATION_DIR="$PWD"
 cd "$SCRIPT_DIR"
 
 echo "=== Universal Migration Adapter ==="
@@ -30,6 +31,11 @@ fi
 
 SOURCE="$1"
 INPUT="$2"
+
+# Resolve relative paths against the caller's dir, not the script dir.
+if [ "${INPUT#/}" = "$INPUT" ]; then
+    INPUT="$INVOCATION_DIR/$INPUT"
+fi
 
 if [ ! -f "$INPUT" ]; then
     echo "Error: input not found: $INPUT"
