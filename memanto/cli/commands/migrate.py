@@ -430,7 +430,7 @@ def _run_migrate_flow(
     body_lines = [
         f"[dim]Source records:[/dim] {summary.source_count}",
         f"[dim]Mapped memories:[/dim] {summary.mapped_count}  "
-        f"[dim](skipped {summary.skipped} empty)[/dim]",
+        f"[dim](skipped {summary.skipped} unparsed/empty)[/dim]",
         f"[dim]Type breakdown:[/dim] {type_lines}",
     ]
     if dry_run:
