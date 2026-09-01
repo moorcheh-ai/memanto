@@ -235,8 +235,9 @@ If there's a legitimate future need for cross-agent admin queries, that should b
 ## Tested On
 
 ```text
-memanto: main branch (August 2026 clone)
-Python: 3.11+
+memanto: commit `3bfde8e4eacea1a78b028f7f672ac285afc57b59` (2026-08-28)
+Python: 3.11+ (project supports >=3.10,<4 per `pyproject.toml`)
+Dependency configuration: `pyproject.toml` at the audited commit (no lockfile tracked)
 Confirmed via: static analysis + local on-prem mode test setup
 No live moorcheh.ai production user data was accessed
 ```
