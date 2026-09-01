@@ -1,0 +1,42 @@
+[
+  {
+    "question": "Which migration mappers does the CLI ship with?",
+    "expect": ["mem0", "letta", "supermemory"]
+  },
+  {
+    "question": "Why is Langfuse not in the mappers registry?",
+    "expect": ["observability"]
+  },
+  {
+    "question": "Which folder of an OKF bundle is actually importable?",
+    "expect": ["memories"]
+  },
+  {
+    "question": "How are Memanto-only fields preserved through OKF?",
+    "expect": ["x_memanto"]
+  },
+  {
+    "question": "What is the flag for choosing the target agent on import?",
+    "expect": ["--agent"]
+  },
+  {
+    "question": "Where is OKF bundle output allowed to be written?",
+    "expect": ["outside", "directory"]
+  },
+  {
+    "question": "When does the auto split mode stack a type into one file?",
+    "expect": ["50"]
+  },
+  {
+    "question": "What separates documents inside a stacked OKF file?",
+    "expect": ["okf-entry"]
+  },
+  {
+    "question": "What happens when an OKF type has no Memanto equivalent?",
+    "expect": ["auto-classification"]
+  },
+  {
+    "question": "Does CI lint the examples directory?",
+    "expect": ["ruff"]
+  }
+]

@@ -1,0 +1,42 @@
+╭─────────────────────────╮
+│ OKF -> Memanto  Dry run │
+╰─────────────────────────╯
+  … Loading OKF bundle from sample/bundle-gen0
+  … Mapping OKF nodes onto Memanto schema...
+
+╭────────────────────────────── Dry run complete ──────────────────────────────╮
+│ OKF nodes: 129                                                               │
+│ Mapped memories: 129  (skipped 0)                                            │
+│ Type breakdown: artifact: 7, commitment: 1, context: 1, decision: 1, error:  │
+│ 1, event: 1, fact: 19, goal: 1, instruction: 57, learning: 1, observation:   │
+│ 33, preference: 1, relationship: 5                                           │
+│                                                                              │
+│ Dry run — no writes performed.                                               │
+│                                                                              │
+│ Run dir: ~/.memanto/migrate/okf/20260901_212725     │
+│ Mapped preview:                                                              │
+│ ~/.memanto/migrate/okf/20260901_212725/mapped_previ │
+│ ew.json                                                                      │
+╰──────────────────────────────────────────────────────────────────────────────╯
+╭─────────────────────────╮
+│ OKF -> Memanto  Migrate │
+╰─────────────────────────╯
+  … Loading OKF bundle from sample/bundle-gen0
+  … Mapping OKF nodes onto Memanto schema...
+  … Importing batch 1/2 (100 memories)...
+  … Importing batch 2/2 (29 memories)...
+
+╭────────────────────────────── Import complete ───────────────────────────────╮
+│ OKF nodes: 129                                                               │
+│ Mapped memories: 129  (skipped 0)                                            │
+│ Type breakdown: artifact: 7, commitment: 1, context: 1, decision: 1, error:  │
+│ 1, event: 1, fact: 19, goal: 1, instruction: 57, learning: 1, observation:   │
+│ 33, preference: 1, relationship: 5                                           │
+│ Imported: 129  Failed: 0  Batches: 2                                         │
+│ Target agent: okf-fidelity-rt                                                │
+│                                                                              │
+│ Run dir: ~/.memanto/migrate/okf/20260901_212727     │
+│ Mapped preview:                                                              │
+│ ~/.memanto/migrate/okf/20260901_212727/mapped_previ │
+│ ew.json                                                                      │
+╰──────────────────────────────────────────────────────────────────────────────╯

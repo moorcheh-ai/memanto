@@ -1,0 +1,1172 @@
+[
+  {
+    "content": "Memanto's migrate CLI ships four mappers: mem0, letta, supermemory and okf. Anything else has to reach the CLI as a provider-shaped export JSON or as an OKF bundle.",
+    "type": "fact",
+    "title": "Four shipped migration mappers",
+    "tags": [
+      "migrate",
+      "okf"
+    ],
+    "source": "repo-review",
+    "provenance": "validated",
+    "source_ref": "memanto/cli/migrate/mappers.py"
+  },
+  {
+    "content": "Langfuse is deliberately absent from the MAPPERS registry: its rows are observability events, not memories, so one incident collapses into a single grouped payload instead of mapping row-for-row.",
+    "type": "decision",
+    "title": "Langfuse stays out of MAPPERS",
+    "tags": [
+      "migrate",
+      "langfuse"
+    ],
+    "source": "repo-review",
+    "provenance": "validated",
+    "source_ref": "memanto/cli/migrate/mappers.py"
+  },
+  {
+    "content": "An OKF bundle nests importable memories under memories/. The sibling daily-summaries/, sessions/ and metrics/ folders are export-only context and are skipped on import, so re-importing a bundle never re-ingests its own logs.",
+    "type": "fact",
+    "title": "Only memories/ is importable",
+    "tags": [
+      "okf",
+      "import"
+    ],
+    "source": "repo-review",
+    "provenance": "validated",
+    "source_ref": "memanto/cli/migrate/okf_loader.py"
+  },
+  {
+    "content": "Memanto-only fields (id, confidence, provenance, source, status and the temporal metadata) ride in a namespaced x_memanto frontmatter block. OKF consumers ignore unknown keys, so Memanto -> OKF -> Memanto keeps them.",
+    "type": "fact",
+    "title": "x_memanto carries the round trip",
+    "tags": [
+      "okf",
+      "roundtrip"
+    ],
+    "source": "repo-review",
+    "provenance": "validated",
+    "source_ref": "memanto/app/services/okf_export_service.py"
+  },
+  {
+    "content": "Import an OKF bundle with `memanto migrate okf <path> --agent <id>`. The flag is --agent (short -a), not --agent-id; four of the open bounty PRs document a flag that does not exist.",
+    "type": "instruction",
+    "title": "The import flag is --agent",
+    "tags": [
+      "cli",
+      "migrate"
+    ],
+    "source": "repo-review",
+    "provenance": "validated",
+    "source_ref": "memanto/cli/commands/migrate.py"
+  },
+  {
+    "content": "write_okf_bundle refuses any output_dir outside the agent data directory. To write a bundle somewhere else, construct OkfExportService with a custom exports_dir; its parent bounds what the service will accept.",
+    "type": "error",
+    "title": "Bundle output is sandboxed to ~/.memanto",
+    "tags": [
+      "okf",
+      "export"
+    ],
+    "source": "repo-review",
+    "provenance": "validated",
+    "source_ref": "memanto/app/utils/validation.py"
+  },
+  {
+    "content": "OKF layout defaults to split=auto: a type with 50 or fewer memories gets one file per memory, a larger type collapses into a single stacked file so high-volume agents do not produce thousands of files.",
+    "type": "preference",
+    "title": "auto split at 50 memories",
+    "tags": [
+      "okf",
+      "layout"
+    ],
+    "source": "repo-review",
+    "provenance": "validated",
+    "source_ref": "memanto/app/services/okf_export_service.py"
+  },
+  {
+    "content": "Stacked OKF files hold several documents separated by the <!-- okf-entry --> sentinel, so a body containing its own --- rule cannot be mistaken for a document boundary.",
+    "type": "artifact",
+    "title": "okf-entry separates stacked documents",
+    "tags": [
+      "okf",
+      "format"
+    ],
+    "source": "repo-review",
+    "provenance": "validated",
+    "source_ref": "memanto/app/services/okf_export_service.py"
+  },
+  {
+    "content": "Repeated OKF round trips used to stack one [Supporting data] footer per cycle, because _attach_footer appended unconditionally to content that already carried the previous pass's footer. Stripping it first makes the loop converge.",
+    "type": "learning",
+    "title": "Round trips must be idempotent",
+    "tags": [
+      "okf",
+      "roundtrip",
+      "fidelity"
+    ],
+    "source": "repo-review",
+    "provenance": "validated",
+    "source_ref": "memanto/cli/migrate/mappers.py"
+  },
+  {
+    "content": "map_okf leaves type=None when OKF's free-form type has no Memanto slot, deferring to server-side auto-classification, and records the original OKF type in the supporting-data footer instead.",
+    "type": "observation",
+    "title": "Unmapped OKF types defer to auto-classification",
+    "tags": [
+      "okf",
+      "types"
+    ],
+    "source": "repo-review",
+    "provenance": "validated",
+    "source_ref": "memanto/cli/migrate/mappers.py"
+  },
+  {
+    "content": "CI runs ruff check and ruff format over the whole repository; only legacy_archive is excluded. mypy skips examples/, but ruff does not, so an example with an unused import fails the build.",
+    "type": "context",
+    "title": "ruff covers examples/, mypy does not",
+    "tags": [
+      "ci",
+      "lint"
+    ],
+    "source": "repo-review",
+    "provenance": "validated",
+    "source_ref": ".github/workflows/ci.yml"
+  },
+  {
+    "content": "load_okf_bundle parses a bundle into entries, map_okf turns those entries into batch-remember rows, and run_migration imports them in batches of 100. A new adapter only has to produce the bundle.",
+    "type": "relationship",
+    "title": "How the OKF import path fits together",
+    "tags": [
+      "migrate",
+      "architecture"
+    ],
+    "source": "repo-review",
+    "provenance": "validated",
+    "source_ref": "memanto/cli/migrate/runner.py"
+  },
+  {
+    "content": "Prove the freedom loop is idempotent: carrying an agent's memory out to OKF and back must be a no-op, however many times you do it.",
+    "type": "goal",
+    "title": "Idempotent portability",
+    "tags": [
+      "okf",
+      "fidelity"
+    ],
+    "source": "repo-review",
+    "provenance": "explicit_statement"
+  },
+  {
+    "content": "Keep this example offline and key-free after the fixture exists, so anyone can reproduce the fidelity result without a Moorcheh account.",
+    "type": "commitment",
+    "title": "Harness stays key-free",
+    "tags": [
+      "examples",
+      "reproducibility"
+    ],
+    "source": "repo-review",
+    "provenance": "explicit_statement"
+  },
+  {
+    "content": "Reviewed all 65 open PRs on bounty #1609 before adding this example. Every one of them tested a single export/import hop; none tested a second one, which is where the footer drift appears.",
+    "type": "event",
+    "title": "Reviewed 65 bounty PRs",
+    "tags": [
+      "bounty",
+      "review"
+    ],
+    "source": "repo-review",
+    "provenance": "observed",
+    "source_ref": "https://github.com/moorcheh-ai/memanto/issues/1609"
+  },
+  {
+    "content": "Run `memanto agent create` to create a new agent and activate it immediately.",
+    "type": "instruction",
+    "title": "memanto agent create",
+    "tags": [
+      "cli",
+      "agent"
+    ],
+    "source": "repo-scan",
+    "provenance": "validated",
+    "source_ref": "memanto/cli/commands/agent.py"
+  },
+  {
+    "content": "Run `memanto agent list` to list all agents.",
+    "type": "instruction",
+    "title": "memanto agent list",
+    "tags": [
+      "cli",
+      "agent"
+    ],
+    "source": "repo-scan",
+    "provenance": "validated",
+    "source_ref": "memanto/cli/commands/agent.py"
+  },
+  {
+    "content": "Run `memanto agent activate` to activate an agent and start its active session.",
+    "type": "instruction",
+    "title": "memanto agent activate",
+    "tags": [
+      "cli",
+      "agent"
+    ],
+    "source": "repo-scan",
+    "provenance": "validated",
+    "source_ref": "memanto/cli/commands/agent.py"
+  },
+  {
+    "content": "Run `memanto agent deactivate` to deactivate the currently active agent.",
+    "type": "instruction",
+    "title": "memanto agent deactivate",
+    "tags": [
+      "cli",
+      "agent"
+    ],
+    "source": "repo-scan",
+    "provenance": "validated",
+    "source_ref": "memanto/cli/commands/agent.py"
+  },
+  {
+    "content": "Run `memanto agent delete` to delete an agent and optionally purge its cloud memories.",
+    "type": "instruction",
+    "title": "memanto agent delete",
+    "tags": [
+      "cli",
+      "agent"
+    ],
+    "source": "repo-scan",
+    "provenance": "validated",
+    "source_ref": "memanto/cli/commands/agent.py"
+  },
+  {
+    "content": "Run `memanto agent bootstrap` to generate an intelligence snapshot of an agent's memory.",
+    "type": "instruction",
+    "title": "memanto agent bootstrap",
+    "tags": [
+      "cli",
+      "agent"
+    ],
+    "source": "repo-scan",
+    "provenance": "validated",
+    "source_ref": "memanto/cli/commands/agent.py"
+  },
+  {
+    "content": "Run `memanto config show` to display current configuration.",
+    "type": "instruction",
+    "title": "memanto config show",
+    "tags": [
+      "cli",
+      "config"
+    ],
+    "source": "repo-scan",
+    "provenance": "validated",
+    "source_ref": "memanto/cli/commands/config_cmd.py"
+  },
+  {
+    "content": "Run `memanto config backend` to show or switch the active Moorcheh backend.",
+    "type": "instruction",
+    "title": "memanto config backend",
+    "tags": [
+      "cli",
+      "config"
+    ],
+    "source": "repo-scan",
+    "provenance": "validated",
+    "source_ref": "memanto/cli/commands/config_cmd.py"
+  },
+  {
+    "content": "Run `memanto connect claude-code` to connect MEMANTO to Claude Code.",
+    "type": "instruction",
+    "title": "memanto connect claude-code",
+    "tags": [
+      "cli",
+      "connect"
+    ],
+    "source": "repo-scan",
+    "provenance": "validated",
+    "source_ref": "memanto/cli/commands/connect.py"
+  },
+  {
+    "content": "Run `memanto connect codex` to connect MEMANTO to OpenAI Codex CLI.",
+    "type": "instruction",
+    "title": "memanto connect codex",
+    "tags": [
+      "cli",
+      "connect"
+    ],
+    "source": "repo-scan",
+    "provenance": "validated",
+    "source_ref": "memanto/cli/commands/connect.py"
+  },
+  {
+    "content": "Run `memanto connect pi` to connect MEMANTO to Pi (coding agent).",
+    "type": "instruction",
+    "title": "memanto connect pi",
+    "tags": [
+      "cli",
+      "connect"
+    ],
+    "source": "repo-scan",
+    "provenance": "validated",
+    "source_ref": "memanto/cli/commands/connect.py"
+  },
+  {
+    "content": "Run `memanto connect cursor` to connect MEMANTO to Cursor IDE.",
+    "type": "instruction",
+    "title": "memanto connect cursor",
+    "tags": [
+      "cli",
+      "connect"
+    ],
+    "source": "repo-scan",
+    "provenance": "validated",
+    "source_ref": "memanto/cli/commands/connect.py"
+  },
+  {
+    "content": "Run `memanto connect windsurf` to connect MEMANTO to Windsurf IDE.",
+    "type": "instruction",
+    "title": "memanto connect windsurf",
+    "tags": [
+      "cli",
+      "connect"
+    ],
+    "source": "repo-scan",
+    "provenance": "validated",
+    "source_ref": "memanto/cli/commands/connect.py"
+  },
+  {
+    "content": "Run `memanto connect antigravity` to connect MEMANTO to Google Antigravity.",
+    "type": "instruction",
+    "title": "memanto connect antigravity",
+    "tags": [
+      "cli",
+      "connect"
+    ],
+    "source": "repo-scan",
+    "provenance": "validated",
+    "source_ref": "memanto/cli/commands/connect.py"
+  },
+  {
+    "content": "Run `memanto connect gemini-cli` to connect MEMANTO to Google Gemini CLI.",
+    "type": "instruction",
+    "title": "memanto connect gemini-cli",
+    "tags": [
+      "cli",
+      "connect"
+    ],
+    "source": "repo-scan",
+    "provenance": "validated",
+    "source_ref": "memanto/cli/commands/connect.py"
+  },
+  {
+    "content": "Run `memanto connect cline` to connect MEMANTO to Cline VS Code extension.",
+    "type": "instruction",
+    "title": "memanto connect cline",
+    "tags": [
+      "cli",
+      "connect"
+    ],
+    "source": "repo-scan",
+    "provenance": "validated",
+    "source_ref": "memanto/cli/commands/connect.py"
+  },
+  {
+    "content": "Run `memanto connect continue` to connect MEMANTO to Continue.dev.",
+    "type": "instruction",
+    "title": "memanto connect continue",
+    "tags": [
+      "cli",
+      "connect"
+    ],
+    "source": "repo-scan",
+    "provenance": "validated",
+    "source_ref": "memanto/cli/commands/connect.py"
+  },
+  {
+    "content": "Run `memanto connect opencode` to connect MEMANTO to OpenCode CLI.",
+    "type": "instruction",
+    "title": "memanto connect opencode",
+    "tags": [
+      "cli",
+      "connect"
+    ],
+    "source": "repo-scan",
+    "provenance": "validated",
+    "source_ref": "memanto/cli/commands/connect.py"
+  },
+  {
+    "content": "Run `memanto connect goose` to connect MEMANTO to Goose AI agent.",
+    "type": "instruction",
+    "title": "memanto connect goose",
+    "tags": [
+      "cli",
+      "connect"
+    ],
+    "source": "repo-scan",
+    "provenance": "validated",
+    "source_ref": "memanto/cli/commands/connect.py"
+  },
+  {
+    "content": "Run `memanto connect roo` to connect MEMANTO to Roo Code.",
+    "type": "instruction",
+    "title": "memanto connect roo",
+    "tags": [
+      "cli",
+      "connect"
+    ],
+    "source": "repo-scan",
+    "provenance": "validated",
+    "source_ref": "memanto/cli/commands/connect.py"
+  },
+  {
+    "content": "Run `memanto connect github-copilot` to connect MEMANTO to GitHub Copilot.",
+    "type": "instruction",
+    "title": "memanto connect github-copilot",
+    "tags": [
+      "cli",
+      "connect"
+    ],
+    "source": "repo-scan",
+    "provenance": "validated",
+    "source_ref": "memanto/cli/commands/connect.py"
+  },
+  {
+    "content": "Run `memanto connect augment` to connect MEMANTO to Augment Code.",
+    "type": "instruction",
+    "title": "memanto connect augment",
+    "tags": [
+      "cli",
+      "connect"
+    ],
+    "source": "repo-scan",
+    "provenance": "validated",
+    "source_ref": "memanto/cli/commands/connect.py"
+  },
+  {
+    "content": "Run `memanto connect list` to list all supported agents and their MEMANTO installation status.",
+    "type": "instruction",
+    "title": "memanto connect list",
+    "tags": [
+      "cli",
+      "connect"
+    ],
+    "source": "repo-scan",
+    "provenance": "validated",
+    "source_ref": "memanto/cli/commands/connect.py"
+  },
+  {
+    "content": "Run `memanto connect remove` to remove MEMANTO integration from an agent.",
+    "type": "instruction",
+    "title": "memanto connect remove",
+    "tags": [
+      "cli",
+      "connect"
+    ],
+    "source": "repo-scan",
+    "provenance": "validated",
+    "source_ref": "memanto/cli/commands/connect.py"
+  },
+  {
+    "content": "Run `memanto connect multi` to interactive setup \u2014 select multiple agents to connect.",
+    "type": "instruction",
+    "title": "memanto connect multi",
+    "tags": [
+      "cli",
+      "connect"
+    ],
+    "source": "repo-scan",
+    "provenance": "validated",
+    "source_ref": "memanto/cli/commands/connect.py"
+  },
+  {
+    "content": "Run `memanto status` to show comprehensive MEMANTO scenario dashboard.",
+    "type": "instruction",
+    "title": "memanto status",
+    "tags": [
+      "cli",
+      "core"
+    ],
+    "source": "repo-scan",
+    "provenance": "validated",
+    "source_ref": "memanto/cli/commands/core.py"
+  },
+  {
+    "content": "Run `memanto serve` to start MEMANTO server.",
+    "type": "instruction",
+    "title": "memanto serve",
+    "tags": [
+      "cli",
+      "core"
+    ],
+    "source": "repo-scan",
+    "provenance": "validated",
+    "source_ref": "memanto/cli/commands/core.py"
+  },
+  {
+    "content": "Run `memanto ui` to start MEMANTO server and open the Web UI Dashboard.",
+    "type": "instruction",
+    "title": "memanto ui",
+    "tags": [
+      "cli",
+      "core"
+    ],
+    "source": "repo-scan",
+    "provenance": "validated",
+    "source_ref": "memanto/cli/commands/core.py"
+  },
+  {
+    "content": "Run `memanto remember` to store a new memory for the active agent.",
+    "type": "instruction",
+    "title": "memanto remember",
+    "tags": [
+      "cli",
+      "core"
+    ],
+    "source": "repo-scan",
+    "provenance": "validated",
+    "source_ref": "memanto/cli/commands/memory.py"
+  },
+  {
+    "content": "Run `memanto edit` to update fields on an existing memory for the active agent.",
+    "type": "instruction",
+    "title": "memanto edit",
+    "tags": [
+      "cli",
+      "core"
+    ],
+    "source": "repo-scan",
+    "provenance": "validated",
+    "source_ref": "memanto/cli/commands/memory.py"
+  },
+  {
+    "content": "Run `memanto memory expire` to expire a memory without deleting it.",
+    "type": "instruction",
+    "title": "memanto memory expire",
+    "tags": [
+      "cli",
+      "memory"
+    ],
+    "source": "repo-scan",
+    "provenance": "validated",
+    "source_ref": "memanto/cli/commands/memory.py"
+  },
+  {
+    "content": "Run `memanto memory restore` to return an expired memory to the active state.",
+    "type": "instruction",
+    "title": "memanto memory restore",
+    "tags": [
+      "cli",
+      "memory"
+    ],
+    "source": "repo-scan",
+    "provenance": "validated",
+    "source_ref": "memanto/cli/commands/memory.py"
+  },
+  {
+    "content": "Run `memanto forget` to permanently delete a single memory from the active agent.",
+    "type": "instruction",
+    "title": "memanto forget",
+    "tags": [
+      "cli",
+      "core"
+    ],
+    "source": "repo-scan",
+    "provenance": "validated",
+    "source_ref": "memanto/cli/commands/memory.py"
+  },
+  {
+    "content": "Run `memanto upload` to upload a file to the active agent's memory namespace.",
+    "type": "instruction",
+    "title": "memanto upload",
+    "tags": [
+      "cli",
+      "core"
+    ],
+    "source": "repo-scan",
+    "provenance": "validated",
+    "source_ref": "memanto/cli/commands/memory.py"
+  },
+  {
+    "content": "Run `memanto recall` to search and retrieve memories for the active agent with temporal query support.",
+    "type": "instruction",
+    "title": "memanto recall",
+    "tags": [
+      "cli",
+      "core"
+    ],
+    "source": "repo-scan",
+    "provenance": "validated",
+    "source_ref": "memanto/cli/commands/memory.py"
+  },
+  {
+    "content": "Run `memanto answer` to answer a question using RAG (Retrieval-Augmented Generation).",
+    "type": "instruction",
+    "title": "memanto answer",
+    "tags": [
+      "cli",
+      "core"
+    ],
+    "source": "repo-scan",
+    "provenance": "validated",
+    "source_ref": "memanto/cli/commands/memory.py"
+  },
+  {
+    "content": "Run `memanto daily_summary` to generate a daily AI summary from session memories.",
+    "type": "instruction",
+    "title": "memanto daily_summary",
+    "tags": [
+      "cli",
+      "core"
+    ],
+    "source": "repo-scan",
+    "provenance": "validated",
+    "source_ref": "memanto/cli/commands/memory.py"
+  },
+  {
+    "content": "Run `memanto detect-conflicts` to generate the conflict report for an agent/date.",
+    "type": "instruction",
+    "title": "memanto detect-conflicts",
+    "tags": [
+      "cli",
+      "core"
+    ],
+    "source": "repo-scan",
+    "provenance": "validated",
+    "source_ref": "memanto/cli/commands/memory.py"
+  },
+  {
+    "content": "Run `memanto conflicts` to interactively resolve memory conflicts for an agent.",
+    "type": "instruction",
+    "title": "memanto conflicts",
+    "tags": [
+      "cli",
+      "core"
+    ],
+    "source": "repo-scan",
+    "provenance": "validated",
+    "source_ref": "memanto/cli/commands/memory.py"
+  },
+  {
+    "content": "Run `memanto memory export` to export all memories into a structured memory.md file.",
+    "type": "instruction",
+    "title": "memanto memory export",
+    "tags": [
+      "cli",
+      "memory"
+    ],
+    "source": "repo-scan",
+    "provenance": "validated",
+    "source_ref": "memanto/cli/commands/memory_mgmt.py"
+  },
+  {
+    "content": "Run `memanto memory sync` to sync agent memories to a project directory's MEMORY.md.",
+    "type": "instruction",
+    "title": "memanto memory sync",
+    "tags": [
+      "cli",
+      "memory"
+    ],
+    "source": "repo-scan",
+    "provenance": "validated",
+    "source_ref": "memanto/cli/commands/memory_mgmt.py"
+  },
+  {
+    "content": "Run `memanto migrate mem0` to migrate a Mem0 account into the active (or selected) Memanto agent.",
+    "type": "instruction",
+    "title": "memanto migrate mem0",
+    "tags": [
+      "cli",
+      "migrate"
+    ],
+    "source": "repo-scan",
+    "provenance": "validated",
+    "source_ref": "memanto/cli/commands/migrate.py"
+  },
+  {
+    "content": "Run `memanto migrate letta` to migrate Letta archival passages into the active (or selected) Memanto agent.",
+    "type": "instruction",
+    "title": "memanto migrate letta",
+    "tags": [
+      "cli",
+      "migrate"
+    ],
+    "source": "repo-scan",
+    "provenance": "validated",
+    "source_ref": "memanto/cli/commands/migrate.py"
+  },
+  {
+    "content": "Run `memanto migrate okf` to import an OKF (Open Knowledge Format) bundle into the active (or selected) agent.",
+    "type": "instruction",
+    "title": "memanto migrate okf",
+    "tags": [
+      "cli",
+      "migrate"
+    ],
+    "source": "repo-scan",
+    "provenance": "validated",
+    "source_ref": "memanto/cli/commands/migrate.py"
+  },
+  {
+    "content": "Run `memanto migrate supermemory` to migrate a Supermemory account into the active (or selected) Memanto agent.",
+    "type": "instruction",
+    "title": "memanto migrate supermemory",
+    "tags": [
+      "cli",
+      "migrate"
+    ],
+    "source": "repo-scan",
+    "provenance": "validated",
+    "source_ref": "memanto/cli/commands/migrate.py"
+  },
+  {
+    "content": "Run `memanto migrate langfuse` to sync Langfuse observability signal into the active (or selected) agent.",
+    "type": "instruction",
+    "title": "memanto migrate langfuse",
+    "tags": [
+      "cli",
+      "migrate"
+    ],
+    "source": "repo-scan",
+    "provenance": "validated",
+    "source_ref": "memanto/cli/commands/migrate.py"
+  },
+  {
+    "content": "Run `memanto policy show` to show the agent's current expiry policy.",
+    "type": "instruction",
+    "title": "memanto policy show",
+    "tags": [
+      "cli",
+      "policy"
+    ],
+    "source": "repo-scan",
+    "provenance": "validated",
+    "source_ref": "memanto/cli/commands/policy.py"
+  },
+  {
+    "content": "Run `memanto policy list-preset` to list the predefined policy bundles.",
+    "type": "instruction",
+    "title": "memanto policy list-preset",
+    "tags": [
+      "cli",
+      "policy"
+    ],
+    "source": "repo-scan",
+    "provenance": "validated",
+    "source_ref": "memanto/cli/commands/policy.py"
+  },
+  {
+    "content": "Run `memanto policy apply-preset` to adopt a predefined policy bundle, replacing the current policy.",
+    "type": "instruction",
+    "title": "memanto policy apply-preset",
+    "tags": [
+      "cli",
+      "policy"
+    ],
+    "source": "repo-scan",
+    "provenance": "validated",
+    "source_ref": "memanto/cli/commands/policy.py"
+  },
+  {
+    "content": "Run `memanto policy apply` to sweep the agent's memories and expire everything the policy matches.",
+    "type": "instruction",
+    "title": "memanto policy apply",
+    "tags": [
+      "cli",
+      "policy"
+    ],
+    "source": "repo-scan",
+    "provenance": "validated",
+    "source_ref": "memanto/cli/commands/policy.py"
+  },
+  {
+    "content": "Run `memanto policy purge` to permanently delete memories expired longer than the purge window.",
+    "type": "instruction",
+    "title": "memanto policy purge",
+    "tags": [
+      "cli",
+      "policy"
+    ],
+    "source": "repo-scan",
+    "provenance": "validated",
+    "source_ref": "memanto/cli/commands/policy.py"
+  },
+  {
+    "content": "Run `memanto schedule enable` to enable the nightly daily-summary + conflict-detection + expiry-sweep job.",
+    "type": "instruction",
+    "title": "memanto schedule enable",
+    "tags": [
+      "cli",
+      "schedule"
+    ],
+    "source": "repo-scan",
+    "provenance": "validated",
+    "source_ref": "memanto/cli/commands/schedule.py"
+  },
+  {
+    "content": "Run `memanto schedule disable` to disable the nightly daily-summary + conflict-detection + expiry-sweep job.",
+    "type": "instruction",
+    "title": "memanto schedule disable",
+    "tags": [
+      "cli",
+      "schedule"
+    ],
+    "source": "repo-scan",
+    "provenance": "validated",
+    "source_ref": "memanto/cli/commands/schedule.py"
+  },
+  {
+    "content": "Run `memanto schedule _run` to internal entrypoint invoked by the OS scheduler. Runs daily-summary, then detect-conflicts, then the expiry sweep in one process. Not intended",
+    "type": "instruction",
+    "title": "memanto schedule _run",
+    "tags": [
+      "cli",
+      "schedule"
+    ],
+    "source": "repo-scan",
+    "provenance": "validated",
+    "source_ref": "memanto/cli/commands/schedule.py"
+  },
+  {
+    "content": "Run `memanto schedule status` to check the status of the scheduled job.",
+    "type": "instruction",
+    "title": "memanto schedule status",
+    "tags": [
+      "cli",
+      "schedule"
+    ],
+    "source": "repo-scan",
+    "provenance": "validated",
+    "source_ref": "memanto/cli/commands/schedule.py"
+  },
+  {
+    "content": "Run `memanto session info` to show current active agent activation information.",
+    "type": "instruction",
+    "title": "memanto session info",
+    "tags": [
+      "cli",
+      "session"
+    ],
+    "source": "repo-scan",
+    "provenance": "validated",
+    "source_ref": "memanto/cli/commands/session.py"
+  },
+  {
+    "content": "Service agent_service \u2014 agent Service for MEMANTO",
+    "type": "fact",
+    "title": "agent service",
+    "tags": [
+      "services"
+    ],
+    "source": "repo-scan",
+    "provenance": "validated",
+    "source_ref": "memanto/app/services/agent_service.py"
+  },
+  {
+    "content": "Service conversation_memory_extraction_service \u2014 conversation memory extraction service.",
+    "type": "fact",
+    "title": "conversation memory extraction service",
+    "tags": [
+      "services"
+    ],
+    "source": "repo-scan",
+    "provenance": "validated",
+    "source_ref": "memanto/app/services/conversation_memory_extraction_service.py"
+  },
+  {
+    "content": "Service daily_analysis_service \u2014 daily Analysis Service",
+    "type": "fact",
+    "title": "daily analysis service",
+    "tags": [
+      "services"
+    ],
+    "source": "repo-scan",
+    "provenance": "validated",
+    "source_ref": "memanto/app/services/daily_analysis_service.py"
+  },
+  {
+    "content": "Service memory_export_service \u2014 memory Export Service",
+    "type": "fact",
+    "title": "memory export service",
+    "tags": [
+      "services"
+    ],
+    "source": "repo-scan",
+    "provenance": "validated",
+    "source_ref": "memanto/app/services/memory_export_service.py"
+  },
+  {
+    "content": "Service memory_parsing_service \u2014 memory Parsing Service",
+    "type": "fact",
+    "title": "memory parsing service",
+    "tags": [
+      "services"
+    ],
+    "source": "repo-scan",
+    "provenance": "validated",
+    "source_ref": "memanto/app/services/memory_parsing_service.py"
+  },
+  {
+    "content": "Service memory_policy_service \u2014 memory Policy Service",
+    "type": "fact",
+    "title": "memory policy service",
+    "tags": [
+      "services"
+    ],
+    "source": "repo-scan",
+    "provenance": "validated",
+    "source_ref": "memanto/app/services/memory_policy_service.py"
+  },
+  {
+    "content": "Service memory_read_service \u2014 memory Read Service",
+    "type": "fact",
+    "title": "memory read service",
+    "tags": [
+      "services"
+    ],
+    "source": "repo-scan",
+    "provenance": "validated",
+    "source_ref": "memanto/app/services/memory_read_service.py"
+  },
+  {
+    "content": "Service memory_write_service \u2014 memory Write Service",
+    "type": "fact",
+    "title": "memory write service",
+    "tags": [
+      "services"
+    ],
+    "source": "repo-scan",
+    "provenance": "validated",
+    "source_ref": "memanto/app/services/memory_write_service.py"
+  },
+  {
+    "content": "Service namespace_service \u2014 namespace Service",
+    "type": "fact",
+    "title": "namespace service",
+    "tags": [
+      "services"
+    ],
+    "source": "repo-scan",
+    "provenance": "validated",
+    "source_ref": "memanto/app/services/namespace_service.py"
+  },
+  {
+    "content": "Service okf_export_service \u2014 oKF (Open Knowledge Format) Export Service",
+    "type": "fact",
+    "title": "okf export service",
+    "tags": [
+      "services"
+    ],
+    "source": "repo-scan",
+    "provenance": "validated",
+    "source_ref": "memanto/app/services/okf_export_service.py"
+  },
+  {
+    "content": "Service policy_presets \u2014 predefined expiry policy bundles.",
+    "type": "fact",
+    "title": "policy presets",
+    "tags": [
+      "services"
+    ],
+    "source": "repo-scan",
+    "provenance": "validated",
+    "source_ref": "memanto/app/services/policy_presets.py"
+  },
+  {
+    "content": "Service session_service \u2014 session Service for MEMANTO",
+    "type": "fact",
+    "title": "session service",
+    "tags": [
+      "services"
+    ],
+    "source": "repo-scan",
+    "provenance": "validated",
+    "source_ref": "memanto/app/services/session_service.py"
+  },
+  {
+    "content": "Service summary_visualization_service \u2014 summary Visualization Service",
+    "type": "fact",
+    "title": "summary visualization service",
+    "tags": [
+      "services"
+    ],
+    "source": "repo-scan",
+    "provenance": "validated",
+    "source_ref": "memanto/app/services/summary_visualization_service.py"
+  },
+  {
+    "content": "Router auth_deps \u2014 authentication Dependencies for V2 API",
+    "type": "relationship",
+    "title": "auth deps",
+    "tags": [
+      "routes"
+    ],
+    "source": "repo-scan",
+    "provenance": "validated",
+    "source_ref": "memanto/app/routes/auth_deps.py"
+  },
+  {
+    "content": "Router health \u2014 health Check Routes",
+    "type": "relationship",
+    "title": "health",
+    "tags": [
+      "routes"
+    ],
+    "source": "repo-scan",
+    "provenance": "validated",
+    "source_ref": "memanto/app/routes/health.py"
+  },
+  {
+    "content": "Router memory \u2014 memory Operations - Session-Based",
+    "type": "relationship",
+    "title": "memory",
+    "tags": [
+      "routes"
+    ],
+    "source": "repo-scan",
+    "provenance": "validated",
+    "source_ref": "memanto/app/routes/memory.py"
+  },
+  {
+    "content": "Router sessions \u2014 session and Agent Lifecycle Routes",
+    "type": "relationship",
+    "title": "sessions",
+    "tags": [
+      "routes"
+    ],
+    "source": "repo-scan",
+    "provenance": "validated",
+    "source_ref": "memanto/app/routes/sessions.py"
+  },
+  {
+    "content": "Utility atomic_write \u2014 crash-safe helpers for replacing small local state files.",
+    "type": "artifact",
+    "title": "atomic write",
+    "tags": [
+      "utils"
+    ],
+    "source": "repo-scan",
+    "provenance": "validated",
+    "source_ref": "memanto/app/utils/atomic_write.py"
+  },
+  {
+    "content": "Utility errors \u2014 error Handling and Mapping",
+    "type": "artifact",
+    "title": "errors",
+    "tags": [
+      "utils"
+    ],
+    "source": "repo-scan",
+    "provenance": "validated",
+    "source_ref": "memanto/app/utils/errors.py"
+  },
+  {
+    "content": "Utility ids \u2014 iD Generation Utilities",
+    "type": "artifact",
+    "title": "ids",
+    "tags": [
+      "utils"
+    ],
+    "source": "repo-scan",
+    "provenance": "validated",
+    "source_ref": "memanto/app/utils/ids.py"
+  },
+  {
+    "content": "Utility json_extraction \u2014 helpers for extracting structured JSON from LLM responses.",
+    "type": "artifact",
+    "title": "json extraction",
+    "tags": [
+      "utils"
+    ],
+    "source": "repo-scan",
+    "provenance": "validated",
+    "source_ref": "memanto/app/utils/json_extraction.py"
+  },
+  {
+    "content": "Utility temporal_helpers \u2014 temporal Query Helpers",
+    "type": "artifact",
+    "title": "temporal helpers",
+    "tags": [
+      "utils"
+    ],
+    "source": "repo-scan",
+    "provenance": "validated",
+    "source_ref": "memanto/app/utils/temporal_helpers.py"
+  },
+  {
+    "content": "Utility validation \u2014 input Validation and Cost Guards for MEMANTO",
+    "type": "artifact",
+    "title": "validation",
+    "tags": [
+      "utils"
+    ],
+    "source": "repo-scan",
+    "provenance": "validated",
+    "source_ref": "memanto/app/utils/validation.py"
+  },
+  {
+    "content": "Client backend \u2014 backend selection and protocol for Memanto's Moorcheh client.",
+    "type": "fact",
+    "title": "backend",
+    "tags": [
+      "clients"
+    ],
+    "source": "repo-scan",
+    "provenance": "validated",
+    "source_ref": "memanto/app/clients/backend.py"
+  },
+  {
+    "content": "Client moorcheh \u2014 moorcheh Client Singleton (backend-aware dispatcher).",
+    "type": "fact",
+    "title": "moorcheh",
+    "tags": [
+      "clients"
+    ],
+    "source": "repo-scan",
+    "provenance": "validated",
+    "source_ref": "memanto/app/clients/moorcheh.py"
+  },
+  {
+    "content": "Client onprem \u2014 on-prem Moorcheh client.",
+    "type": "fact",
+    "title": "onprem",
+    "tags": [
+      "clients"
+    ],
+    "source": "repo-scan",
+    "provenance": "validated",
+    "source_ref": "memanto/app/clients/onprem.py"
+  },
+  {
+    "content": "test_analyze covers: unit tests for memanto analyze pipeline (no API keys or network).",
+    "type": "observation",
+    "title": "test analyze",
+    "tags": [
+      "tests"
+    ],
+    "source": "repo-scan",
+    "provenance": "validated",
+    "source_ref": "tests/test_analyze.py"
+  },
+  {
+    "content": "test_as_of_date_only_parsing covers: regression tests for as-of date-only parsing.",
+    "type": "observation",
+    "title": "test as of date only parsing",
+    "tags": [
+      "tests"
+    ],
+    "source": "repo-scan",
+    "provenance": "validated",
+    "source_ref": "tests/test_as_of_date_only_parsing.py"
+  },
+  {
+    "content": "test_as_of_expired_recall covers: regression tests for point-in-time (``search_as_of``) recall.",
+    "type": "observation",
+    "title": "test as of expired recall",
+    "tags": [
+      "tests"
+    ],
+    "source": "repo-scan",
+    "provenance": "validated",
+    "source_ref": "tests/test_as_of_expired_recall.py"
+  }
+]
