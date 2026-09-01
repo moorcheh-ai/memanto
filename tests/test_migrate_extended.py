@@ -255,7 +255,7 @@ App listens on port 8000.
     def test_migrate_generic_cli_dry_run(self, tmp_path):
         gen_file = tmp_path / "memories.json"
         gen_file.write_text(
-            json.dumps([{"content": "Custom fact entry", "type": "fact"}]),
+            json.dumps({"memories": [{"content": "Custom fact entry", "type": "fact"}]}),
             encoding="utf-8",
         )
 
@@ -270,3 +270,58 @@ App listens on port 8000.
 
         assert result.exit_code == 0, result.stdout
         assert "Dry run complete" in result.stdout
+
+
+    def test_parse_dt_boolean_rejected(self):
+        from memanto.cli.migrate.mappers import _parse_dt
+        assert _parse_dt(True) is None
+        assert _parse_dt(False) is None
+        assert _parse_dt(1700000000) is not None
+
+    def test_map_okf_single_field_metadata(self):
+        sample_okf = """## Instructions
+### Single Field Rule
+Always sanitize untrusted user input.
+*Confidence: 0.95*
+---
+"""
+        rows = map_okf({"content": sample_okf})
+        assert len(rows) == 1
+        assert rows[0]["confidence"] == 0.95
+        assert "*Confidence:" not in rows[0]["content"]
+
+    def test_map_langchain_content_blocks(self):
+        export = {
+            "messages": [
+                {
+                    "type": "human",
+                    "content": [{"type": "text", "text": "Deploy to production cluster"}]
+                }
+            ]
+        }
+        rows = map_langchain(export)
+        assert len(rows) == 1
+        assert "Deploy to production cluster" in rows[0]["content"]
+
+    def test_map_generic_coercion(self):
+        export = {
+            "memories": [
+                {
+                    "title": 12345,
+                    "content": ["Block 1", "Block 2"],
+                    "created_at": True
+                }
+            ]
+        }
+        rows = map_generic(export)
+        assert len(rows) == 1
+        assert rows[0]["title"] == "12345"
+        assert "Block 1 Block 2" in rows[0]["content"]
+        assert rows[0]["created_at"] is None
+
+    def test_load_export_jsonl_unparsed_lines(self, tmp_path):
+        jsonl_file = tmp_path / "test.jsonl"
+        jsonl_file.write_text('{"text": "valid"}\nBAD_JSON_LINE\n{"text": "valid 2"}\n', encoding="utf-8")
+        result = load_export(jsonl_file)
+        assert len(result["memories"]) == 2
+        assert result["unparsed_lines"] == [2]

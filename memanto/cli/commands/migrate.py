@@ -331,7 +331,12 @@ def _load_or_export(
     bundle = _PROVIDER_BUNDLES.get(provider, {"label": provider.upper(), "exporter": None})
     if file is not None:
         progress(f"Loading export from {file}")
-        return file, load_export(file)
+        try:
+            return file, load_export(file)
+        except FileNotFoundError as exc:
+            _error(str(exc), hint="Check the path passed to --file.")
+        except (OSError, UnicodeDecodeError, ValueError) as exc:
+            _error(f"Could not read {file}: {exc}")
 
     exporter = bundle.get("exporter")
     if exporter is None:
@@ -680,7 +685,7 @@ def migrate_generic(
         ...,
         "--file",
         "-f",
-        help="Path to a generic memory JSON, JSONL, or Markdown file.",
+        help="Path to a generic memory JSON or JSONL file (use 'migrate okf' for Markdown).",
     ),
     agent: str | None = typer.Option(
         None,

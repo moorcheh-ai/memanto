@@ -16,6 +16,8 @@ accepted by ``SdkClient.batch_remember``:
         "provenance": "imported",
         "created_at": datetime, # original source timestamp (when present)
         "updated_at": datetime, # migration time = now
+        "expires_at": datetime, # source expiration timestamp (when present)
+        "ttl_seconds": int,     # source retention window (when present)
     }
 
 Mappers extract every useful field from the source. Anything that maps
@@ -35,7 +37,7 @@ from collections.abc import Callable
 from datetime import datetime, timezone
 from typing import Any
 
-from memanto.app.constants import VALID_MEMORY_TYPES
+from memanto.app.constants import VALID_MEMORY_TYPES, VALID_PROVENANCE_TYPES
 
 # Mem0 ships category labels per memory. Map the common ones to Memanto's
 # typed primitives; everything else falls through to None (auto-classify).
@@ -55,6 +57,7 @@ _MEM0_CATEGORY_TO_TYPE: dict[str, str] = {
 }
 
 _DEFAULT_TITLE_CHARS = 80
+_MAX_TITLE_CHARS = 100  # MemoryRecord.title max_length
 _MAX_CONTENT_CHARS = 10000  # MemoryRecord.content max_length
 _MAX_FOOTER_CHARS = 800  # cap supporting-data footer so it never dominates
 
@@ -73,6 +76,49 @@ def _coerce_type(raw: str | None) -> str | None:
     return t if t in VALID_MEMORY_TYPES else None
 
 
+def _coerce_text(val: Any) -> str:
+    """Safely coerce arbitrary values, content blocks, or structures into clean stripped text."""
+    if val is None:
+        return ""
+    if isinstance(val, str):
+        return val.strip()
+    if isinstance(val, (list, tuple)):
+        parts = []
+        for item in val:
+            if isinstance(item, str):
+                parts.append(item)
+            elif isinstance(item, dict):
+                text = item.get("text") or item.get("content") or ""
+                if text:
+                    parts.append(str(text))
+        return " ".join(parts).strip()
+    if isinstance(val, dict):
+        text = val.get("text") or val.get("content") or ""
+        if text:
+            return str(text).strip()
+    return str(val).strip()
+
+
+def _coerce_provenance(raw: Any) -> str:
+    if not isinstance(raw, str):
+        return "imported"
+    provenance = raw.strip().lower()
+    return provenance if provenance in VALID_PROVENANCE_TYPES else "imported"
+
+
+def _normalize_mem0_categories(raw: Any) -> list[str]:
+    """Normalize Mem0 category payloads into lower-case category labels."""
+    if raw in (None, "", [], {}):
+        return []
+    if isinstance(raw, str):
+        values: list[Any] = [raw]
+    elif isinstance(raw, (list, tuple, set)):
+        values = list(raw)
+    else:
+        values = [raw]
+    return [text for item in values if (text := str(item).strip().lower())]
+
+
 def _scope_tag(scope: dict[str, Any] | None) -> str | None:
     if not scope:
         return None
@@ -89,6 +135,10 @@ def _parse_dt(value: Any) -> datetime | None:
     and already-parsed ``datetime`` objects. Returns ``None`` when nothing
     sensible can be extracted — the caller falls back to the server default.
     """
+    # ``bool`` subclasses ``int``; without this guard, YAML ``true`` becomes
+    # 1970-01-01T00:00:01Z and can accidentally expire a durable memory.
+    if isinstance(value, bool):
+        return None
     if value in (None, "", 0):
         return None
     if isinstance(value, datetime):
@@ -119,6 +169,19 @@ def _pick_first_dt(record: dict[str, Any], keys: tuple[str, ...]) -> datetime | 
         if dt is not None:
             return dt
     return None
+
+
+def _parse_positive_int(value: Any) -> int | None:
+    """Parse a positive integer without silently truncating fractional values."""
+    if isinstance(value, bool) or value in (None, ""):
+        return None
+    try:
+        parsed = int(value)
+    except (TypeError, ValueError, OverflowError):
+        return None
+    if isinstance(value, float) and not value.is_integer():
+        return None
+    return parsed if parsed > 0 else None
 
 
 def _format_supporting_data(items: list[tuple[str, Any]]) -> str:
@@ -187,7 +250,7 @@ def map_mem0(export: dict[str, Any]) -> list[dict[str, Any]]:
         if not content:
             continue
 
-        categories = [str(c).lower() for c in (mem.get("categories") or []) if c]
+        categories = _normalize_mem0_categories(mem.get("categories"))
         memory_type: str | None = None
         for cat in categories:
             memory_type = _MEM0_CATEGORY_TO_TYPE.get(cat) or _coerce_type(cat)
@@ -272,7 +335,7 @@ def map_letta(export: dict[str, Any]) -> list[dict[str, Any]]:
                 ("Letta agent_name", agent_name),
                 ("Letta tags", source_tags),
                 ("Letta metadata", passage.get("metadata")),
-                ("Source", passage.get("source")),  # passage may carry its own
+                ("Letta passage source", passage.get("source")),
                 ("Source created_at", created_at.isoformat() if created_at else None),
             ]
         )
@@ -309,6 +372,8 @@ def map_supermemory(export: dict[str, Any]) -> list[dict[str, Any]]:
     """
     rows: list[dict[str, Any]] = []
     seen: set[str] = set()
+    mapped_memory_ids: set[str] = set()
+    represented_document_ids: set[str] = set()
     migrated_at = _now_utc()
 
     for mem in export.get("memories", []) or []:
@@ -318,10 +383,18 @@ def map_supermemory(export: dict[str, Any]) -> list[dict[str, Any]]:
         if not content:
             continue
 
+        raw_tags = mem.get("container_tags") or mem.get("containerTags") or []
+        if isinstance(raw_tags, str):
+            raw_tags = [raw_tags]
+        elif not isinstance(raw_tags, (list, tuple, set)):
+            raw_tags = []
+
         tags: list[str] = []
-        tag = mem.get("container_tag")
-        if tag:
-            tags.append(str(tag))
+        for tag in [*raw_tags, mem.get("container_tag")]:
+            if tag:
+                tag = str(tag)
+                if tag not in tags:
+                    tags.append(tag)
 
         created_at = _pick_first_dt(mem, ("createdAt", "created_at"))
 
@@ -331,7 +404,7 @@ def map_supermemory(export: dict[str, Any]) -> list[dict[str, Any]]:
                     "Source",
                     f"supermemory:{mem.get('id')}" if mem.get("id") else None,
                 ),
-                ("Container tag", tag),
+                ("Container tags", tags),
                 ("Document id", mem.get("documentId") or mem.get("document_id")),
                 ("Supermemory metadata", mem.get("metadata")),
                 ("Score", mem.get("score")),
@@ -355,13 +428,27 @@ def map_supermemory(export: dict[str, Any]) -> list[dict[str, Any]]:
         )
         seen.add(content)
 
-    if rows:
-        return rows
+        memory_id = mem.get("id")
+        if memory_id:
+            mapped_memory_ids.add(str(memory_id))
+        document_id = mem.get("documentId") or mem.get("document_id")
+        if document_id:
+            represented_document_ids.add(str(document_id))
 
-    # Fallback: harvest chunk text when extracted memories are empty.
+    # Harvest chunks from documents that have no mapped extracted memory. This
+    # is a full fallback when memories[] is empty, and preserves fresh or
+    # still-unprocessed documents in mixed accounts that already have some
+    # extracted memories elsewhere.
     for doc in export.get("documents", []) or []:
         doc_tags = [str(t) for t in (doc.get("container_tags") or []) if t]
         doc_id = doc.get("id")
+        doc_memory_ids = {
+            str(memory_id) for memory_id in (doc.get("memory_ids") or []) if memory_id
+        }
+        if (doc_id and str(doc_id) in represented_document_ids) or (
+            doc_memory_ids & mapped_memory_ids
+        ):
+            continue
         doc_created = _pick_first_dt(
             doc.get("detail") or doc, ("createdAt", "created_at")
         )
@@ -405,52 +492,29 @@ def map_supermemory(export: dict[str, Any]) -> list[dict[str, Any]]:
 
 
 # --------------------------------------------------------------------------
-# OKF / Markdown (Open Knowledge Format)
+# OKF (Open Knowledge Format)
 # --------------------------------------------------------------------------
 
+
 _SECTION_LABEL_TO_TYPE: dict[str, str] = {
-    "facts": "fact",
-    "fact": "fact",
-    "preferences": "preference",
-    "preference": "preference",
     "instructions": "instruction",
-    "instruction": "instruction",
+    "facts": "fact",
+    "preferences": "preference",
     "decisions": "decision",
-    "decision": "decision",
-    "events": "event",
-    "event": "event",
     "goals": "goal",
-    "goal": "goal",
-    "commitments": "commitment",
-    "commitment": "commitment",
-    "observations": "observation",
-    "observation": "observation",
-    "learnings": "learning",
-    "learning": "learning",
+    "identities": "identity",
     "relationships": "relationship",
-    "relationship": "relationship",
-    "context": "context",
+    "contexts": "context",
+    "learnings": "learning",
+    "activities": "activity",
+    "episodes": "episode",
+    "observations": "observation",
     "artifacts": "artifact",
-    "artifact": "artifact",
-    "errors": "error",
-    "error": "error",
 }
 
 
-def map_okf(export: dict[str, Any]) -> list[dict[str, Any]]:
-    """Map an Open Knowledge Format (OKF) memory.md file or dict to Memanto payloads.
-
-    Parses markdown sections (## Section), entries (### Title), metadata lines
-    (*Confidence: ... | Tags: ... | Created: ...*), and body content.
-    """
-    raw_text = ""
-    if isinstance(export, str):
-        raw_text = export
-    elif isinstance(export, dict):
-        raw_text = export.get("content") or export.get("markdown") or export.get("text") or ""
-        if not raw_text and "memories" in export:
-            return map_generic(export)
-
+def _parse_okf_markdown(raw_text: str) -> list[dict[str, Any]]:
+    """Parse OKF Markdown files with sections (## Section) and headers (### Title)."""
     rows: list[dict[str, Any]] = []
     migrated_at = _now_utc()
 
@@ -460,45 +524,48 @@ def map_okf(export: dict[str, Any]) -> list[dict[str, Any]]:
     current_type: str | None = None
     current_title: str | None = None
     current_lines: list[str] = []
-    current_meta: dict[str, Any] = {}
 
     def flush_entry() -> None:
-        nonlocal current_title, current_lines, current_meta, current_type
+        nonlocal current_title, current_lines, current_type
         if not current_title:
             return
 
         body_lines: list[str] = []
-        tags: list[str] = list(current_meta.get("tags") or [])
-        confidence = float(current_meta.get("confidence") or 0.9)
-        created_at = current_meta.get("created_at")
+        tags: list[str] = []
+        confidence = 0.9
+        created_at = None
 
         for line in current_lines:
             stripped = line.strip()
-            if stripped.startswith("*") and stripped.endswith("*") and "|" in stripped:
-                meta_content = stripped.strip("*").strip()
-                parts = [p.strip() for p in meta_content.split("|")]
-                for p in parts:
-                    if p.lower().startswith("confidence:"):
-                        try:
-                            confidence = float(p.split(":", 1)[1].strip())
-                        except ValueError:
-                            pass
-                    elif p.lower().startswith("created:"):
-                        created_at = _parse_dt(p.split(":", 1)[1].strip())
-                    elif p.lower().startswith("tags:"):
-                        tag_part = p.split(":", 1)[1].strip()
-                        extracted_tags = [
-                            t.strip().strip("`").strip("'\"")
-                            for t in tag_part.split(",")
-                            if t.strip().strip("`").strip("'\"")
-                        ]
-                        for t in extracted_tags:
-                            if t not in tags:
-                                tags.append(t)
-            elif stripped in ("*No memories of this type.*", "*End of memory export.*"):
+            if stripped in ("*No memories of this type.*", "*End of memory export.*"):
                 continue
-            else:
-                body_lines.append(line)
+            if stripped.startswith("*") and stripped.endswith("*"):
+                meta_content = stripped.strip("*").strip()
+                if (
+                    any(meta_content.lower().startswith(p) for p in ("confidence:", "created:", "tags:", "status:"))
+                    or "|" in meta_content
+                ):
+                    parts = [p.strip() for p in meta_content.split("|")]
+                    for p in parts:
+                        if p.lower().startswith("confidence:"):
+                            try:
+                                confidence = float(p.split(":", 1)[1].strip())
+                            except ValueError:
+                                pass
+                        elif p.lower().startswith("created:"):
+                            created_at = _parse_dt(p.split(":", 1)[1].strip())
+                        elif p.lower().startswith("tags:"):
+                            tag_part = p.split(":", 1)[1].strip()
+                            extracted_tags = [
+                                t.strip().strip("`").strip("'").strip('"')
+                                for t in tag_part.split(",")
+                                if t.strip().strip("`").strip("'").strip('"')
+                            ]
+                            for t in extracted_tags:
+                                if t not in tags:
+                                    tags.append(t)
+                    continue
+            body_lines.append(line)
 
         content = "\n".join(body_lines).strip()
         if not content:
@@ -527,7 +594,6 @@ def map_okf(export: dict[str, Any]) -> list[dict[str, Any]]:
 
         current_title = None
         current_lines = []
-        current_meta = {}
 
     for raw_line in raw_text.splitlines():
         line = raw_line.rstrip()
@@ -541,7 +607,6 @@ def map_okf(export: dict[str, Any]) -> list[dict[str, Any]]:
             flush_entry()
             current_title = stripped[4:].strip()
             current_lines = []
-            current_meta = {}
         elif stripped == "---":
             if current_title:
                 flush_entry()
@@ -551,6 +616,111 @@ def map_okf(export: dict[str, Any]) -> list[dict[str, Any]]:
 
     flush_entry()
     return rows
+
+
+def map_okf(export: dict[str, Any]) -> list[dict[str, Any]]:
+    """Map OKF bundle entries (from ``okf_loader.load_okf_bundle``) or raw Markdown to Memanto memory payloads.
+
+    OKF's ``type`` is free-form domain vocabulary, so it can't map onto
+    Memanto's fixed types. We use it only when it happens to equal a Memanto
+    type (or when a Memanto ``x_memanto.type`` round-trip value is present);
+    otherwise we leave ``type=None`` for auto-classification and record the
+    original OKF type in the footer. Everything with no schema slot (OKF type,
+    resource, links, unknown frontmatter keys) goes into ``[Supporting data]``.
+    """
+    # If raw Markdown export
+    if "content" in export or "markdown" in export:
+        raw_text = export.get("content") or export.get("markdown") or ""
+        return _parse_okf_markdown(raw_text)
+
+    rows: list[dict[str, Any]] = []
+    migrated_at = _now_utc()
+
+    for entry in export.get("memories", []) or []:
+        body = (entry.get("body") or "").strip()
+        description = (entry.get("description") or "").strip()
+        title = (entry.get("title") or "").strip()
+
+        if description and description not in body:
+            content = f"{description}\n\n{body}".strip()
+        else:
+            content = body
+        if not content:
+            content = title
+        if not content:
+            continue
+
+        x_memanto = entry.get("x_memanto") or {}
+        okf_type = entry.get("type")
+        memory_type = _coerce_type(x_memanto.get("type")) or _coerce_type(okf_type)
+
+        tags = [str(t) for t in (entry.get("tags") or []) if t]
+        resource = entry.get("resource")
+
+        raw_conf = x_memanto.get("confidence")
+        try:
+            confidence = float(raw_conf) if raw_conf is not None else 0.8
+        except (TypeError, ValueError):
+            confidence = 0.8
+        confidence = min(1.0, max(0.0, confidence))
+
+        source = x_memanto.get("source") or "okf"
+        provenance = _coerce_provenance(x_memanto.get("provenance"))
+
+        extra = entry.get("extra") or {}
+        generated = extra.get("generated", {})
+        gen_at = generated.get("at") if isinstance(generated, dict) else None
+        created_at = _parse_dt(gen_at) or _parse_dt(entry.get("timestamp"))
+
+        updated_at = _parse_dt(x_memanto.get("updated_at")) or migrated_at
+        expires_at = _parse_dt(x_memanto.get("expires_at"))
+        ttl_seconds = _parse_positive_int(x_memanto.get("ttl_seconds"))
+
+        original_title = None
+        if title and len(title) > _MAX_TITLE_CHARS:
+            original_title = title
+            title = title[: _MAX_TITLE_CHARS - 3].rstrip() + "..."
+
+        footer_items: list[tuple[str, Any]] = [
+            ("Original OKF title", original_title),
+            ("OKF source", entry.get("source_path")),
+            # Only surface the OKF type when we couldn't map it to a slot.
+            ("OKF type", okf_type if not memory_type else None),
+            ("OKF resource", resource),
+            ("Links", entry.get("links")),
+        ]
+        for key, value in (entry.get("extra") or {}).items():
+            footer_items.append((f"OKF {key}", value))
+        footer = _format_supporting_data(footer_items)
+
+        if footer:
+            content = _attach_footer(content, footer)
+        elif len(content) > _MAX_CONTENT_CHARS:
+            content = content[: _MAX_CONTENT_CHARS - 4] + "\n..."
+
+        rows.append(
+            {
+                "title": title or _title_from(content),
+                "content": content,
+                "type": memory_type,
+                "tags": tags,
+                "confidence": confidence,
+                "source": source,
+                "source_ref": str(resource) if resource else None,
+                "provenance": provenance,
+                "created_at": created_at,
+                "updated_at": updated_at,
+                "expires_at": expires_at,
+                "ttl_seconds": ttl_seconds,
+            }
+        )
+    return rows
+
+
+# Langfuse is deliberately absent: its rows are observability events, not
+# memories, so one incident collapses into a single grouped payload rather
+# than mapping row-for-row. That needs the user's capture settings, which
+# this registry's signature cannot carry — see ``langfuse_rules.build_rows``.
 
 
 # --------------------------------------------------------------------------
@@ -616,20 +786,19 @@ def map_langchain(export: dict[str, Any]) -> list[dict[str, Any]]:
             created_at = None
 
             if isinstance(msg, dict):
-                content = (
+                content = _coerce_text(
                     msg.get("content")
                     or msg.get("text")
                     or (msg.get("data", {}).get("content") if isinstance(msg.get("data"), dict) else "")
-                    or ""
-                ).strip()
+                )
                 msg_type = (
                     msg.get("type")
                     or (msg.get("data", {}).get("type") if isinstance(msg.get("data"), dict) else "")
                     or "message"
                 )
                 created_at = _pick_first_dt(msg, ("created_at", "createdAt", "timestamp"))
-            elif isinstance(msg, str):
-                content = msg.strip()
+            elif isinstance(msg, (str, list, tuple)):
+                content = _coerce_text(msg)
 
             if not content:
                 continue
@@ -686,18 +855,17 @@ def map_generic(export: dict[str, Any] | list[dict[str, Any]]) -> list[dict[str,
     for idx, item in enumerate(items):
         if not isinstance(item, dict):
             continue
-        content = (
+        content = _coerce_text(
             item.get("content")
             or item.get("text")
             or item.get("memory")
             or item.get("body")
             or item.get("value")
-            or ""
-        ).strip()
+        )
         if not content:
             continue
 
-        raw_title = item.get("title") or _title_from(content)
+        raw_title = _coerce_text(item.get("title")) or _title_from(content)
         raw_type = item.get("type") or item.get("category")
         mem_type = _coerce_type(raw_type)
 
@@ -731,7 +899,6 @@ def map_generic(export: dict[str, Any] | list[dict[str, Any]]) -> list[dict[str,
         )
 
     return rows
-
 
 MAPPERS: dict[str, Callable[[dict[str, Any]], list[dict[str, Any]]]] = {
     "mem0": map_mem0,
