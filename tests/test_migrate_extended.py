@@ -382,3 +382,40 @@ Low confidence test.
         )
         assert summary.skipped == 2
 
+    def test_map_okf_whitespace_content_with_valid_markdown(self):
+        export = {
+            "content": "   ",
+            "markdown": """## Facts
+### Fallback Fact
+Extracted from markdown field.
+---
+""",
+        }
+        rows = map_okf(export)
+        assert len(rows) == 1
+        assert rows[0]["title"] == "Fallback Fact"
+
+    def test_map_okf_text_field_fallback(self):
+        export = {
+            "text": """## Facts
+### Text Field Fact
+Extracted from text field.
+---
+""",
+        }
+        rows = map_okf(export)
+        assert len(rows) == 1
+        assert rows[0]["title"] == "Text Field Fact"
+
+    def test_map_langchain_scalar_string_history(self):
+        export = {
+            "history": "Human: What is Memanto?\nAI: Memanto is long-term memory for AI.",
+        }
+        count = source_count("langchain", export)
+        assert count == 1
+
+        rows = map_langchain(export)
+        assert len(rows) == 1
+        assert "What is Memanto" in rows[0]["content"]
+
+

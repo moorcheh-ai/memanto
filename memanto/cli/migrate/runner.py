@@ -31,7 +31,11 @@ from memanto.cli.migrate.langfuse_state import (
     record_updated,
     record_written,
 )
-from memanto.cli.migrate.mappers import MAPPERS, type_breakdown
+from memanto.cli.migrate.mappers import (
+    MAPPERS,
+    _extract_langchain_messages,
+    type_breakdown,
+)
 
 BATCH_LIMIT = 100
 
@@ -283,13 +287,7 @@ def source_count(provider: str, export: dict[str, Any]) -> int:
         raw_text = export.get("content") or export.get("markdown") or export.get("text") or ""
         return sum(1 for line in raw_text.splitlines() if line.strip().startswith("### "))
     if provider in ("langchain", "langgraph"):
-        msgs = (
-            export.get("messages")
-            or export.get("chat_history")
-            or export.get("history")
-            or export.get("buffer")
-            or []
-        )
+        msgs = _extract_langchain_messages(export)
         summary = 1 if export.get("summary") or export.get("conversation_summary") else 0
         entities = len(export.get("entities") or export.get("entity_store") or {})
         return len(msgs) + summary + entities

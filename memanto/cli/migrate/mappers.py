@@ -629,8 +629,13 @@ def map_okf(export: dict[str, Any]) -> list[dict[str, Any]]:
     original OKF type in the footer. Everything with no schema slot (OKF type,
     resource, links, unknown frontmatter keys) goes into ``[Supporting data]``.
     """
-    raw_text = export.get("content") or export.get("markdown") or ""
-    if isinstance(raw_text, str) and raw_text.strip():
+    raw_text = ""
+    for key in ("content", "markdown", "text"):
+        value = export.get(key)
+        if isinstance(value, str) and value.strip():
+            raw_text = value
+            break
+    if raw_text:
         return _parse_okf_markdown(raw_text)
 
     rows: list[dict[str, Any]] = []
@@ -728,6 +733,22 @@ def map_okf(export: dict[str, Any]) -> list[dict[str, Any]]:
 # --------------------------------------------------------------------------
 
 
+def _extract_langchain_messages(export: dict[str, Any]) -> list[Any]:
+    """Extract and normalize messages from LangChain export payloads."""
+    raw = (
+        export.get("messages")
+        or export.get("chat_history")
+        or export.get("history")
+        or export.get("buffer")
+        or []
+    )
+    if isinstance(raw, list):
+        return raw
+    if isinstance(raw, str) and raw.strip():
+        return [raw.strip()]
+    return []
+
+
 def map_langchain(export: dict[str, Any]) -> list[dict[str, Any]]:
     """Map LangChain/LangGraph conversation history, entities, and summaries to Memanto."""
     rows: list[dict[str, Any]] = []
@@ -772,13 +793,7 @@ def map_langchain(export: dict[str, Any]) -> list[dict[str, Any]]:
                 }
             )
 
-    messages = (
-        export.get("messages")
-        or export.get("chat_history")
-        or export.get("history")
-        or export.get("buffer")
-        or []
-    )
+    messages = _extract_langchain_messages(export)
     if isinstance(messages, list):
         for idx, msg in enumerate(messages):
             content = ""
