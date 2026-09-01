@@ -282,8 +282,14 @@ def source_count(provider: str, export: dict[str, Any]) -> int:
     if provider == "okf":
         raw_text = export.get("content") or export.get("markdown") or export.get("text") or ""
         return sum(1 for line in raw_text.splitlines() if line.strip().startswith("### "))
-    if provider == "langchain":
-        msgs = export.get("messages") or export.get("chat_history") or []
+    if provider in ("langchain", "langgraph"):
+        msgs = (
+            export.get("messages")
+            or export.get("chat_history")
+            or export.get("history")
+            or export.get("buffer")
+            or []
+        )
         summary = 1 if export.get("summary") or export.get("conversation_summary") else 0
         entities = len(export.get("entities") or export.get("entity_store") or {})
         return len(msgs) + summary + entities
@@ -340,9 +346,16 @@ def run_migration(
     summary = MigrationSummary(provider=provider)
     summary.source_count = source_count(provider, export)
 
+    unparsed_lines = export.get("unparsed_lines") or []
+    if unparsed_lines:
+        summary.skipped += len(unparsed_lines)
+        summary.errors.append(
+            f"{len(unparsed_lines)} malformed/unparsed line(s) skipped in source file"
+        )
+
     rows = map_export(provider, export)
     summary.mapped_count = len(rows)
-    summary.skipped = max(0, summary.source_count - summary.mapped_count)
+    summary.skipped = max(0, summary.source_count - summary.mapped_count) + len(unparsed_lines)
     summary.type_counts = type_breakdown(rows)
 
     if dry_run or not rows:

@@ -325,3 +325,60 @@ Always sanitize untrusted user input.
         result = load_export(jsonl_file)
         assert len(result["memories"]) == 2
         assert result["unparsed_lines"] == [2]
+
+    def test_map_okf_confidence_clamped(self):
+        sample_okf = """## Facts
+### Clamped Fact
+High confidence test.
+*Confidence: 1.5*
+---
+### Low Confidence Fact
+Low confidence test.
+*Confidence: -0.5*
+---
+"""
+        rows = map_okf({"content": sample_okf})
+        assert len(rows) == 2
+        assert rows[0]["confidence"] == 1.0
+        assert rows[1]["confidence"] == 0.0
+
+    def test_map_okf_empty_content_falls_back_to_bundle(self):
+        export = {
+            "content": "",
+            "memories": [
+                {
+                    "title": "Bundle Fact",
+                    "body": "Bundle body content",
+                    "type": "fact",
+                }
+            ],
+        }
+        rows = map_okf(export)
+        assert len(rows) == 1
+        assert rows[0]["title"] == "Bundle Fact"
+
+    def test_source_count_langchain_buffer_keys(self):
+        export = {
+            "buffer": [{"type": "human", "content": "hello"}],
+            "conversation_summary": "test summary",
+            "entity_store": {"user": "Alice"},
+        }
+        count = source_count("langchain", export)
+        assert count == 3
+
+    def test_run_migration_unparsed_lines_counted_in_skipped(self):
+        from unittest.mock import MagicMock
+        export = {
+            "memories": [{"content": "Valid line", "type": "fact"}],
+            "unparsed_lines": [2, 5],
+        }
+        mock_client = MagicMock()
+        summary, rows = run_migration(
+            provider="generic",
+            export=export,
+            client=mock_client,
+            agent_id="test-agent",
+            dry_run=True,
+        )
+        assert summary.skipped == 2
+

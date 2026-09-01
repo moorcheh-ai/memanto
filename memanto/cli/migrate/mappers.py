@@ -549,7 +549,8 @@ def _parse_okf_markdown(raw_text: str) -> list[dict[str, Any]]:
                     for p in parts:
                         if p.lower().startswith("confidence:"):
                             try:
-                                confidence = float(p.split(":", 1)[1].strip())
+                                val = float(p.split(":", 1)[1].strip())
+                                confidence = min(1.0, max(0.0, val))
                             except ValueError:
                                 pass
                         elif p.lower().startswith("created:"):
@@ -628,9 +629,8 @@ def map_okf(export: dict[str, Any]) -> list[dict[str, Any]]:
     original OKF type in the footer. Everything with no schema slot (OKF type,
     resource, links, unknown frontmatter keys) goes into ``[Supporting data]``.
     """
-    # If raw Markdown export
-    if "content" in export or "markdown" in export:
-        raw_text = export.get("content") or export.get("markdown") or ""
+    raw_text = export.get("content") or export.get("markdown") or ""
+    if isinstance(raw_text, str) and raw_text.strip():
         return _parse_okf_markdown(raw_text)
 
     rows: list[dict[str, Any]] = []
