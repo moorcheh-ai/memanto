@@ -4,9 +4,12 @@ Authentication Dependencies for V2 API
 Shared authentication utilities to avoid circular imports.
 """
 
+import ipaddress
 from urllib.parse import urlsplit
 
 from fastapi import Cookie, Header, HTTPException, Request, Response
+
+from memanto.app.config import settings
 
 from memanto.app.models.session import Session
 from memanto.app.services.session_service import get_session_service
@@ -143,6 +146,49 @@ def _is_cross_site_browser_request(request: Request) -> bool:
     return fetch_site in {"cross-site", "same-site"}
 
 
+def _request_uses_forwarded_headers(request: Request) -> bool:
+    """Return True when the caller arrived through a reverse proxy.
+
+    ``X-Forwarded-For`` / ``X-Real-IP`` / ``X-Forwarded-Host`` / ``Forwarded``
+    are only emitted by proxies, never by a direct client. Their presence is
+    the reliable signal that ``request.client.host`` is the *proxy's* address,
+    not the originating peer's.
+    """
+    return any(
+        h in request.headers
+        for h in ("x-forwarded-for", "x-real-ip", "x-forwarded-host", "forwarded")
+    )
+
+
+def _is_trusted_proxy(client_host: str | None) -> bool:
+    """Return True when *client_host* is an explicitly configured trusted proxy.
+
+    A trusted proxy is allowed to set forwarding headers on behalf of the real
+    client, so loopback trust may still apply for connections originating from
+    it. Defaults to no trusted proxies (empty ``TRUSTED_PROXIES``).
+    """
+    if not client_host:
+        return False
+    try:
+        peer = ipaddress.ip_address(client_host)
+    except ValueError:
+        # A hostname (not an IP) is never a trusted proxy entry.
+        return False
+    for entry in settings.TRUSTED_PROXIES:
+        entry = entry.strip()
+        if not entry:
+            continue
+        try:
+            if "/" in entry:
+                if peer in ipaddress.ip_network(entry, strict=False):
+                    return True
+            elif peer == ipaddress.ip_address(entry):
+                return True
+        except ValueError:
+            continue
+    return False
+
+
 def require_management_access(
     request: Request,
     authorization: str | None = Header(None),
@@ -190,11 +236,24 @@ def require_management_access(
         return server_key
 
     client_host = request.client.host if request.client else None
-    if (
+    loopback_trusted = (
         _is_loopback_host(client_host)
         and _is_loopback_host_header(request.headers.get("host"))
         and not _is_cross_site_browser_request(request)
-    ):
+    )
+    if loopback_trusted:
+        # A reverse proxy sitting on localhost (the standard way to add TLS to
+        # the shipped ``HOST=0.0.0.0`` / no-TLS deployment) makes
+        # ``request.client.host`` the proxy's loopback address for *every*
+        # external request. Never treat such a request as local unless the
+        # immediate peer is an explicitly configured trusted proxy. Otherwise
+        # any network peer reaches full agent-lifecycle + memory access
+        # (CWE-290 authentication bypass by spoofing the loopback origin).
+        if _request_uses_forwarded_headers(request) and not _is_trusted_proxy(
+            client_host
+        ):
+            loopback_trusted = False
+    if loopback_trusted:
         return server_key
 
     raise HTTPException(
