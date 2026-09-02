@@ -1,0 +1,20 @@
+.env
+venv/
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+okf_output/
+*.egg-info/
+dist/
+build/
+.DS_Store
+
+# Tool-generated symlinks (streamlit/agents skills), not project files.
+.claude/
+.agents/
+
+# Never commit a real exported chat archive or private data.
+*.json
+*.zip
+# okf_bundle/ keeps only de-identified sample memories, so it is tracked.
