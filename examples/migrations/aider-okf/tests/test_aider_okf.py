@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hashlib
+import shutil
 import sys
 from pathlib import Path
 
@@ -57,6 +58,7 @@ def test_conversion_is_lossless_and_valid_okf(tmp_path: Path) -> None:
             == hashlib.sha256(recovered[-1].encode()).hexdigest()
         )
         assert frontmatter["x_memanto"]["source"] == "aider"
+        assert frontmatter["timestamp"] == "2026-09-01T10:20:30Z"
 
     assert recovered == [message.content for message in parse_aider_history(SOURCE)]
 
@@ -69,6 +71,11 @@ def test_privacy_preflight_fails_closed_without_echoing_secret(tmp_path: Path) -
     with pytest.raises(ValueError) as error:
         convert(source, tmp_path / "out")
     assert secret not in str(error.value)
+
+
+def test_privacy_preflight_detects_bearer_authorization_header() -> None:
+    secret = "eyJhbGciOiJIUzI1NiJ9.payload.signature"
+    assert find_sensitive_data(f"Authorization: Bearer {secret}")
 
 
 def test_existing_output_is_never_overlaid(tmp_path: Path) -> None:
@@ -93,3 +100,43 @@ def test_checked_in_genuine_source_receipt() -> None:
     assert receipt["mapped_memories"] == 16
     assert receipt["exact_content_hashes"] == "16/16"
     assert receipt["golden_recall_parity"] == "4/4"
+
+
+def _mutated_bundle(tmp_path: Path, field: str, value: str) -> Path:
+    """Copy the fixture and mutate one x_aider frontmatter field."""
+
+    bundle = tmp_path / "sample_okf"
+    shutil.copytree(HERE / "sample_okf", bundle)
+    memory = bundle / "memories" / "001-tool.md"
+    text = memory.read_text(encoding="utf-8")
+    frontmatter_text, body = text.split("---", 2)[1:]
+    frontmatter = yaml.safe_load(frontmatter_text)
+    frontmatter["x_aider"][field] = value
+    memory.write_text(
+        "---\n"
+        + yaml.safe_dump(frontmatter, sort_keys=False, allow_unicode=True).strip()
+        + "\n---"
+        + body,
+        encoding="utf-8",
+    )
+    return bundle
+
+
+def test_validation_rejects_mutated_source_receipt(tmp_path: Path) -> None:
+    bundle = _mutated_bundle(tmp_path, "source_sha256", "0" * 64)
+    with pytest.raises(ValueError, match="source hash mismatch"):
+        validate(
+            HERE / "data" / "aider.chat.history.md",
+            bundle,
+            HERE / "golden_questions.yaml",
+        )
+
+
+def test_validation_rejects_mutated_role_metadata(tmp_path: Path) -> None:
+    bundle = _mutated_bundle(tmp_path, "role", "user")
+    with pytest.raises(ValueError, match="role metadata mismatch"):
+        validate(
+            HERE / "data" / "aider.chat.history.md",
+            bundle,
+            HERE / "golden_questions.yaml",
+        )

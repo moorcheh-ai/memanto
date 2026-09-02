@@ -21,6 +21,7 @@ HERE = Path(__file__).resolve().parent
 REPOSITORY = HERE.parents[2]
 ANSI = re.compile(r"\x1b\[[0-?]*[ -/]*[@-~]")
 HOME_PATH = re.compile(r"[A-Za-z]:\\Users\\[^\\\r\n]+")
+POSIX_HOME_PATH = re.compile(r"/(?:home|Users)/[^/\s]+(?:/[^\s]*)?")
 
 
 class TerminalRecorder:
@@ -33,6 +34,8 @@ class TerminalRecorder:
     rows = 27
 
     def __init__(self, output: Path) -> None:
+        """Start an ffmpeg process that accepts raw terminal frames."""
+
         ffmpeg = shutil.which("ffmpeg")
         if ffmpeg is None:
             raise RuntimeError("ffmpeg is required to record the demo")
@@ -84,10 +87,15 @@ class TerminalRecorder:
 
     @staticmethod
     def scrub(text: str) -> str:
+        """Remove ANSI escapes and machine-specific home paths from frames."""
+
         text = ANSI.sub("", text).replace(str(REPOSITORY), "<MEMANTO_REPOSITORY>")
-        return HOME_PATH.sub("<USER_HOME>", text)
+        text = HOME_PATH.sub("<USER_HOME>", text)
+        return POSIX_HOME_PATH.sub("<USER_HOME>", text)
 
     def _frame(self) -> bytes:
+        """Render the current terminal buffer as one RGB frame."""
+
         image = Image.new("RGB", (self.width, self.height), "#0b1020")
         draw = ImageDraw.Draw(image)
         draw.rectangle((0, 0, self.width, 52), fill="#111a33")
@@ -108,6 +116,8 @@ class TerminalRecorder:
         return cast(bytes, image.tobytes())
 
     def emit(self, text: str = "", *, hold: int = 3) -> None:
+        """Append sanitized text and hold each resulting frame."""
+
         cleaned = self.scrub(text).rstrip()
         rendered = []
         for line in cleaned.splitlines() or [""]:
@@ -122,6 +132,8 @@ class TerminalRecorder:
                 self.process.stdin.write(frame)
 
     def command(self, command: list[str]) -> None:
+        """Run a command and record its combined output."""
+
         self.emit("$ " + " ".join(command), hold=8)
         process = subprocess.Popen(
             command,
@@ -139,6 +151,8 @@ class TerminalRecorder:
             raise subprocess.CalledProcessError(process.returncode, command)
 
     def close(self) -> None:
+        """Finish the recording and fail if ffmpeg did not encode it."""
+
         self.emit("", hold=self.fps)
         assert self.process.stdin is not None
         self.process.stdin.close()
@@ -147,6 +161,8 @@ class TerminalRecorder:
 
 
 def main() -> int:
+    """Record the checked-in migration pipeline as an H.264 demo."""
+
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--output", type=Path, default=HERE / "demo" / "aider-okf-demo.mp4"

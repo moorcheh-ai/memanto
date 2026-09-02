@@ -20,6 +20,7 @@ SENSITIVE_PATTERNS = (
     re.compile(r"-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----"),
     re.compile(r"\b(?:sk-(?:proj-)?|gh[opusr]_|github_pat_)[A-Za-z0-9_-]{16,}\b"),
     re.compile(r"\bAKIA[0-9A-Z]{16}\b"),
+    re.compile(r"(?i)\bauthorization\s*:\s*bearer\s+[^\s]+"),
     re.compile(r"(?i)\b(?:api[_-]?key|token|password)\s*[:=]\s*[^\s]{8,}"),
 )
 
@@ -42,6 +43,8 @@ def _append(
     lines: list[str],
     started: str | None,
 ) -> None:
+    """Append a non-empty role buffer as the next source record."""
+
     content = "".join(lines).strip()
     if content:
         messages.append(
@@ -119,6 +122,8 @@ def find_sensitive_data(text: str) -> list[str]:
 
 
 def _timestamp(value: str | None) -> str:
+    """Normalize Aider session headings to UTC, treating naive values as UTC."""
+
     if not value:
         return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
     try:
@@ -126,11 +131,15 @@ def _timestamp(value: str | None) -> str:
     except ValueError:
         return value
     if parsed.tzinfo is None:
-        parsed = parsed.astimezone()
+        # Aider headings can omit an offset. Interpret those deterministically
+        # as UTC instead of inheriting the machine's local timezone.
+        parsed = parsed.replace(tzinfo=timezone.utc)
     return parsed.astimezone(timezone.utc).isoformat().replace("+00:00", "Z")
 
 
 def _title(message: AiderMessage) -> str:
+    """Build a concise title from the first non-empty content line."""
+
     first = next(
         (line.strip() for line in message.content.splitlines() if line.strip()),
         message.role,
@@ -148,7 +157,10 @@ def render_okf(message: AiderMessage, source_digest: str, message_digest: str) -
     frontmatter = {
         "type": "context" if message.role != "user" else "instruction",
         "title": _title(message),
-        "description": f"A {message.role} record imported from a genuine Aider chat history.",
+        "description": (
+            f"{'An' if message.role == 'assistant' else 'A'} {message.role} record "
+            "imported from a genuine Aider chat history."
+        ),
         "resource": f"aider://history/{source_digest}#message-{message.ordinal}",
         "tags": ["aider", "coding-agent", f"role-{message.role}"],
         "timestamp": timestamp,
@@ -225,6 +237,8 @@ def convert(
 
 
 def main(argv: Sequence[str] | None = None) -> int:
+    """Run the Aider-to-OKF converter CLI."""
+
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("source", type=Path, help="Aider .aider.chat.history.md file")
     parser.add_argument("output", type=Path, help="New OKF output directory")

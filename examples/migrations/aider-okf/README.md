@@ -50,7 +50,7 @@ uv run --python 3.12 examples/migrations/aider-okf/validate.py \
 The checked-in run reports 16 source records, 16 valid OKF nodes, 16 mapped
 Memanto memories, zero skipped records, 16/16 exact content hashes, and 4/4
 golden recall parity. The portable metadata expands this small sample from
-6,720 to 20,957 bytes (3.119x), so no storage, token, or latency savings are
+6,720 to 20,961 bytes (3.119x), so no storage, token, or latency savings are
 claimed. See `receipt.yaml` for the machine-readable evidence.
 
 To regenerate the genuine source rather than reuse the public sample:
@@ -66,8 +66,8 @@ After selecting a Memanto agent and configuring a Moorcheh API key, replace
 the dry run with the write and export commands:
 
 ```bash
-memanto migrate okf /tmp/aider-okf --agent "$AGENT_ID"
-memanto memory export --okf --agent "$AGENT_ID"
+uv run memanto migrate okf /tmp/aider-okf --agent "$AGENT_ID"
+uv run memanto memory export --okf --agent "$AGENT_ID"
 ```
 
 The adapter deliberately refuses to overwrite an existing output directory
