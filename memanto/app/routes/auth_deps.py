@@ -129,6 +129,64 @@ def _is_loopback_host_header(host: str | None) -> bool:
     return hostname == "localhost" or _is_loopback_host(hostname)
 
 
+def _forwarded_client_is_remote(request: Request) -> bool:
+    """Return whether proxy headers identify a non-loopback original client.
+
+    Management and UI endpoints intentionally allow a desktop client connected
+    directly to the loopback interface without asking it to attach a server
+    credential.  That check must not be based solely on ``request.client``:
+    a reverse proxy that connects to Memanto through 127.0.0.1 makes every
+    internet client look local.  Conventional proxies preserve the original
+    peer in ``X-Forwarded-For`` (and sometimes ``X-Real-IP`` or ``Forwarded``).
+
+    This function is deliberately fail-closed whenever such a header is
+    present but does not contain a plain loopback IP.  Headers are not used to
+    *grant* local access, so a directly connected attacker cannot forge one to
+    bypass the existing peer-address check; they can only cause their own
+    request to be denied.
+    """
+    import ipaddress
+
+    forwarded_values: list[str] = []
+    x_forwarded_for = request.headers.get("x-forwarded-for")
+    if x_forwarded_for:
+        forwarded_values.extend(x_forwarded_for.split(","))
+
+    x_real_ip = request.headers.get("x-real-ip")
+    if x_real_ip:
+        forwarded_values.append(x_real_ip)
+
+    # RFC 7239 Forwarded can contain multiple proxy elements and parameters.
+    # Extract only `for=` values; an absent or obscured `for` cannot establish
+    # that the original caller is local, so it is rejected below.
+    forwarded = request.headers.get("forwarded")
+    if forwarded:
+        for element in forwarded.split(","):
+            for parameter in element.split(";"):
+                name, separator, value = parameter.strip().partition("=")
+                if name.lower() == "for" and separator:
+                    forwarded_values.append(value.strip().strip('"'))
+
+        if not forwarded_values:
+            return True
+
+    for value in forwarded_values:
+        candidate = value.strip()
+        # RFC 7239 brackets IPv6 literals and may include a port. XFF is less
+        # formally specified, but accepting only unambiguous IP literals is
+        # safer than mistaking an attacker-controlled hostname for localhost.
+        if candidate.startswith("[") and "]" in candidate:
+            candidate = candidate[1 : candidate.index("]")]
+        try:
+            address = ipaddress.ip_address(candidate)
+        except ValueError:
+            return True
+        if not _is_loopback_host(str(address)):
+            return True
+
+    return False
+
+
 def _is_cross_site_browser_request(request: Request) -> bool:
     """Detect browser requests that must not inherit loopback trust."""
     origin = request.headers.get("origin")
@@ -193,6 +251,7 @@ def require_management_access(
     if (
         _is_loopback_host(client_host)
         and _is_loopback_host_header(request.headers.get("host"))
+        and not _forwarded_client_is_remote(request)
         and not _is_cross_site_browser_request(request)
     ):
         return server_key

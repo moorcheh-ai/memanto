@@ -311,4 +311,3 @@ class AnswerResponse(BaseModel):
     question: str
     answer: str
     sources: list[Any] = Field(default_factory=list)
-    namespace: str

@@ -132,6 +132,17 @@ def get_moorcheh_client(
     return moorcheh_client.get_client(api_key=api_key)
 
 
+def get_server_moorcheh_client() -> Any:
+    """Return a client authenticated only with the server's configured key.
+
+    Session-scoped API routes must never use a caller-supplied header as the
+    Moorcheh credential.  Their authorization is handled by the session
+    dependency; upstream calls always run under the deployment's configured
+    backend identity.
+    """
+    return moorcheh_client.get_client()
+
+
 def get_async_moorcheh_client(
     api_key: Annotated[str | None, Header(alias="X-Api-Key")] = None,
 ) -> Any:
