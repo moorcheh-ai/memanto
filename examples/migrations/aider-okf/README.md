@@ -33,6 +33,9 @@ needs Ollama with `qwen2.5-coder:3b`.
 
 ```bash
 uv sync
+uv run --python 3.12 examples/migrations/aider-okf/run_demo.py
+
+# Or run each stage separately:
 uv run --python 3.12 examples/migrations/aider-okf/aider_okf.py \
   examples/migrations/aider-okf/data/aider.chat.history.md \
   /tmp/aider-okf
@@ -46,7 +49,9 @@ uv run --python 3.12 examples/migrations/aider-okf/validate.py \
 
 The checked-in run reports 16 source records, 16 valid OKF nodes, 16 mapped
 Memanto memories, zero skipped records, 16/16 exact content hashes, and 4/4
-golden recall parity. See `receipt.yaml` for the machine-readable evidence.
+golden recall parity. The portable metadata expands this small sample from
+6,720 to 20,951 bytes (3.118x), so no storage, token, or latency savings are
+claimed. See `receipt.yaml` for the machine-readable evidence.
 
 To regenerate the genuine source rather than reuse the public sample:
 

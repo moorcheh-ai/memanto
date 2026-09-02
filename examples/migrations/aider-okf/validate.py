@@ -73,6 +73,9 @@ def validate(source: Path, bundle: Path, questions: Path) -> dict[str, object]:
             }
         )
 
+    source_bytes = source.stat().st_size
+    okf_bytes = sum(path.stat().st_size for path in bundle.rglob("*") if path.is_file())
+
     return {
         "source_records": len(source_messages),
         "okf_nodes": len(nodes),
@@ -81,6 +84,14 @@ def validate(source: Path, bundle: Path, questions: Path) -> dict[str, object]:
         "exact_content_hashes": f"{len(nodes)}/{len(nodes)}",
         "golden_recall_parity": f"{sum(bool(item['parity']) for item in qa_results)}/{len(qa_results)}",
         "source_sha256": hashlib.sha256(raw.encode("utf-8")).hexdigest(),
+        "storage_evidence": {
+            "source_bytes": source_bytes,
+            "okf_bundle_bytes": okf_bytes,
+            "delta_bytes": okf_bytes - source_bytes,
+            "ratio": round(okf_bytes / source_bytes, 3),
+            "claim": "OKF expands storage here to preserve readable metadata; no savings claimed.",
+        },
+        "token_latency_evidence": "Not measured: this offline adapter makes no provider calls.",
         "questions": qa_results,
     }
 
