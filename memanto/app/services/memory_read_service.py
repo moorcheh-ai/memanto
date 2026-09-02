@@ -15,7 +15,7 @@ from memanto.app.clients.backend import get_active_llm_model
 from memanto.app.config import settings
 from memanto.app.constants import REMOVED_TRUST_FIELDS, VALID_MEMORY_TYPES
 from memanto.app.core import agent_namespace
-from memanto.app.utils.errors import MemoryOperationError
+from memanto.app.utils.errors import AuthorizationError, MemoryOperationError
 
 _FILTER_TOKEN_RE = re.compile(r"^[A-Za-z0-9_.-]+$")
 
@@ -113,7 +113,7 @@ class MemoryReadService:
     def search_memories(
         self,
         query: str,
-        agent_id: str | None = None,
+        agent_id: str,
         type: list[str] | None = None,
         tags: list[str] | None = None,
         min_confidence: float | None = None,
@@ -842,20 +842,14 @@ class MemoryReadService:
             result for result in results if (result.get("status") or "active") == status
         ]
 
-    def generate_answer(
-        self, query: str, agent_id: str | None = None
-    ) -> dict[str, Any]:
+    def generate_answer(self, query: str, agent_id: str) -> dict[str, Any]:
         """Generate AI answer from memories"""
+        if not isinstance(agent_id, str) or not agent_id.strip():
+            raise AuthorizationError(
+                "A scoped agent_id is required for memory answer generation."
+            )
         try:
-            # Determine namespace for answer generation
-            if agent_id:
-                namespace = agent_namespace(agent_id)
-            else:
-                # Use first available namespace
-                namespaces = self.namespace_service.list_namespaces()
-                if not namespaces:
-                    raise MemoryOperationError("No namespaces found")
-                namespace = namespaces[0]
+            namespace = agent_namespace(agent_id)
 
             # Generate answer. Omit ai_model when on-prem state has no LLM
             # configured so the on-prem server uses its own default; the
@@ -875,16 +869,18 @@ class MemoryReadService:
         except Exception as e:
             raise MemoryOperationError(f"Failed to generate answer: {e}")
 
-    def _get_search_namespaces(self, agent_id: str | None = None) -> list[str]:
-        """Get namespaces to search based on filters"""
-        from typing import cast
+    def _get_search_namespaces(self, agent_id: str | None) -> list[str]:
+        """Return exactly one namespace for a validated agent scope.
 
-        if agent_id:
-            # Search a specific agent's namespace
-            return [agent_namespace(agent_id)]
-        else:
-            # Search all namespaces
-            return cast(list[str], self.namespace_service.list_namespaces())
+        This service has no session object; API routes validate that the session
+        belongs to agent_id before reaching it. Missing scope must never fall
+        back to enumerating every backend namespace.
+        """
+        if not isinstance(agent_id, str) or not agent_id.strip():
+            raise AuthorizationError(
+                "A scoped agent_id is required to search memory namespaces."
+            )
+        return [agent_namespace(agent_id)]
 
     def _filter_search_results(
         self,

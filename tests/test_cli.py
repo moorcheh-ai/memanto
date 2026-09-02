@@ -17,9 +17,40 @@ from typer.testing import CliRunner
 from memanto.app.clients.backend import Backend
 from memanto.cli.client import direct_client as direct_client_module
 from memanto.cli.client.direct_client import DirectClient
+from memanto.cli.client.sdk_client import SdkClient
 from memanto.cli.main import app
 
 runner = CliRunner()
+
+
+@pytest.mark.parametrize("client_cls", [DirectClient, SdkClient])
+@pytest.mark.parametrize(
+    ("method_name", "arguments"),
+    [
+        ("get_policy", ("other-agent",)),
+        ("set_policy", ("other-agent", {"retention": {"context": "7d"}})),
+        ("apply_policy_preset", ("other-agent", "balanced")),
+    ],
+)
+def test_policy_client_methods_require_a_session_scoped_to_the_agent(
+    client_cls, method_name, arguments
+):
+    """Direct client policy methods must not bypass agent-session authorization."""
+    from unittest.mock import patch
+
+    from memanto.app.utils.errors import SessionError
+
+    client = client_cls.__new__(client_cls)
+    with patch.object(
+        client_cls,
+        "_get_validated_session_for_agent",
+        side_effect=SessionError("wrong agent"),
+    ) as scope_check:
+        with pytest.raises(SessionError, match="wrong agent"):
+            getattr(client, method_name)(*arguments)
+
+    scope_check.assert_called_once_with("other-agent")
+
 
 # Modules that import get_client and need to be patched
 COMMAND_MODULES = [

@@ -180,6 +180,61 @@ class TestMEMANTOAPI:
             assert response.status_code == 401
 
     @pytest.mark.asyncio
+    async def test_management_route_rejects_remote_client_forwarded_by_loopback_proxy(
+        self,
+    ):
+        """A local reverse proxy must not make a remote caller management-local.
+
+        The application permits a genuinely local desktop client to use agent
+        lifecycle endpoints without sending its API key.  A proxy on 127.0.0.1
+        is only the immediate peer, however; when it reports a remote client
+        via X-Forwarded-For, the request must still require a credential.
+        """
+        transport = ASGITransport(app=app, client=("127.0.0.1", 54321))
+        async with AsyncClient(
+            transport=transport, base_url="http://127.0.0.1:8000"
+        ) as proxied:
+            response = await proxied.get(
+                "/api/v2/agents",
+                headers={"X-Forwarded-For": "203.0.113.25"},
+            )
+
+        assert response.status_code == 401
+
+    @pytest.mark.asyncio
+    async def test_memory_route_never_uses_request_api_key_for_backend_client(
+        self, client, auth_headers
+    ):
+        """Session-scoped routes must use the server backend credential only."""
+        from memanto.app.clients.moorcheh import moorcheh_client
+
+        await client.post(
+            "/api/v2/agents",
+            headers=auth_headers,
+            json={"agent_id": self.TEST_AGENT_ID},
+        )
+        activated = await client.post(
+            f"/api/v2/agents/{self.TEST_AGENT_ID}/activate",
+            headers=auth_headers,
+        )
+        token = activated.json()["session_token"]
+
+        with patch.object(
+            moorcheh_client, "get_client", wraps=moorcheh_client.get_client
+        ) as get_client:
+            response = await client.post(
+                f"/api/v2/agents/{self.TEST_AGENT_ID}/recall",
+                headers={
+                    "X-Session-Token": token,
+                    "X-Api-Key": "attacker-controlled-key",
+                },
+                json={"query": "test"},
+            )
+
+        assert response.status_code == 200
+        get_client.assert_called_once_with()
+
+    @pytest.mark.asyncio
     async def test_cross_site_loopback_cannot_create_agent(self, client):
         """A website cannot use the loopback exemption to manage agents."""
         response = await client.post(
@@ -586,6 +641,96 @@ class TestMEMANTOAPI:
         assert "mocked answer" in response.json()["answer"]
         call_kwargs = mock_moorcheh.answer.generate.call_args.kwargs
         assert "threshold" not in call_kwargs
+
+    @pytest.mark.asyncio
+    async def test_answer_redacts_raw_backend_source_metadata(
+        self, client, auth_headers, mock_moorcheh
+    ):
+        """Answer responses must not expose backend vectors or hidden metadata."""
+        await client.post(
+            "/api/v2/agents",
+            headers=auth_headers,
+            json={"agent_id": self.TEST_AGENT_ID},
+        )
+        activated = await client.post(
+            f"/api/v2/agents/{self.TEST_AGENT_ID}/activate",
+            headers=auth_headers,
+        )
+        mock_moorcheh.answer.generate.return_value = {
+            "answer": "safe answer",
+            "sources": [
+                {
+                    "id": "mem-1",
+                    "title": "Safe citation",
+                    "score": 0.91,
+                    "source_ref": "document://guide",
+                    "namespace": "internal-namespace",
+                    "vector": [0.1, 0.2],
+                    "metadata": {"internal_note": "do not disclose"},
+                }
+            ],
+        }
+
+        response = await client.post(
+            f"/api/v2/agents/{self.TEST_AGENT_ID}/answer",
+            headers={"X-Session-Token": activated.json()["session_token"]},
+            json={"question": "What changed?"},
+        )
+
+        assert response.status_code == 200
+        assert response.json()["sources"] == [
+            {
+                "id": "mem-1",
+                "title": "Safe citation",
+                "score": 0.91,
+                "source_ref": "document://guide",
+            }
+        ]
+
+    @pytest.mark.asyncio
+    async def test_answer_omits_namespace_and_sanitizes_provider_failure(
+        self, client, auth_headers, mock_moorcheh
+    ):
+        """Answer responses must not disclose provider internals on success or error."""
+        await client.post(
+            "/api/v2/agents",
+            headers=auth_headers,
+            json={"agent_id": self.TEST_AGENT_ID},
+        )
+        activated = await client.post(
+            f"/api/v2/agents/{self.TEST_AGENT_ID}/activate",
+            headers=auth_headers,
+        )
+        headers = {"X-Session-Token": activated.json()["session_token"]}
+
+        mock_moorcheh.answer.generate.return_value = {
+            "answer": "safe answer",
+            "sources": [{"id": "memory-1", "namespace": "memanto_agent_internal"}],
+        }
+        response = await client.post(
+            f"/api/v2/agents/{self.TEST_AGENT_ID}/answer",
+            headers=headers,
+            json={"question": "What is stored?"},
+        )
+
+        assert response.status_code == 200
+        assert "namespace" not in response.json()
+        assert response.json()["sources"] == [{"id": "memory-1"}]
+
+        mock_moorcheh.answer.generate.side_effect = RuntimeError(
+            "provider failed for namespace=memanto_agent_internal vector=[0.1] key=secret"
+        )
+        response = await client.post(
+            f"/api/v2/agents/{self.TEST_AGENT_ID}/answer",
+            headers=headers,
+            json={"question": "Try again"},
+        )
+
+        assert response.status_code == 502
+        assert response.json()["detail"] == {
+            "error": "AnswerGenerationFailed",
+            "message": "Unable to generate an answer from memory right now.",
+        }
 
     @pytest.mark.asyncio
     async def test_answer_omits_unset_active_ai_model(

@@ -6,6 +6,7 @@ Replaces legacy agent memory endpoints with session-based auth.
 """
 
 import asyncio
+import logging
 import os
 import re
 import tempfile
@@ -16,7 +17,9 @@ from fastapi import APIRouter, Body, Depends, File, HTTPException, Query, Upload
 from pydantic import BaseModel, Field, field_validator
 
 from memanto.app.clients.backend import get_active_llm_model
-from memanto.app.clients.moorcheh import get_moorcheh_client
+from memanto.app.clients.moorcheh import (
+    get_server_moorcheh_client,
+)
 from memanto.app.config import settings
 from memanto.app.constants import VALID_MEMORY_TYPES, MemoryType, StatusFilter
 from memanto.app.core import MemoryRecord, MemorySource
@@ -51,6 +54,7 @@ from memanto.app.utils.errors import (
     MemoryOperationError,
     map_error_to_http_exception,
 )
+from memanto.app.utils.prompt_safety import memory_answer_header_prompt
 from memanto.app.utils.temporal_helpers import (
     END_OF_DAY,
     is_date_only,
@@ -69,6 +73,48 @@ router = APIRouter()
 
 _config_manager = ConfigManager()
 _SAFE_DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
+logger = logging.getLogger(__name__)
+
+
+def _sanitize_answer_sources(raw_sources: object) -> list[dict[str, object]]:
+    """Return public citations without backend-only document data.
+
+    ``answer.generate`` is a backend boundary and its source shape is not part
+    of Memanto's public API.  In particular, returning an object unchanged can
+    disclose vector embeddings, namespace names, and provider-specific
+    metadata.  Keep only stable citation fields used by callers.
+    """
+    if not isinstance(raw_sources, list):
+        return []
+
+    sanitized: list[dict[str, object]] = []
+    for source in raw_sources:
+        if isinstance(source, str):
+            # Older backend responses can provide only a source identifier.
+            # Bound it so an unexpected document body cannot become a large
+            # response payload.
+            sanitized.append({"id": source[:256]})
+            continue
+        if not isinstance(source, dict):
+            continue
+
+        citation: dict[str, object] = {}
+        source_id = source.get("id")
+        if isinstance(source_id, str):
+            citation["id"] = source_id[:256]
+        title = source.get("title")
+        if isinstance(title, str):
+            citation["title"] = title[:512]
+        score = source.get("score")
+        if isinstance(score, int | float) and not isinstance(score, bool):
+            citation["score"] = score
+        source_ref = source.get("source_ref")
+        if isinstance(source_ref, str):
+            citation["source_ref"] = source_ref[:512]
+        if citation:
+            sanitized.append(citation)
+
+    return sanitized
 
 
 def _validate_summary_key(agent_id: str, date_str: str) -> None:
@@ -412,7 +458,7 @@ async def remember(
     agent_id: str,
     request: RememberRequest = Body(...),
     session: Session = Depends(get_current_session),
-    client=Depends(get_moorcheh_client),
+    client=Depends(get_server_moorcheh_client),
 ):
     """
     Store a memory (Session-based)
@@ -499,7 +545,7 @@ async def batch_remember(
     agent_id: str,
     request: BatchRememberRequest = Body(...),
     session: Session = Depends(get_current_session),
-    client=Depends(get_moorcheh_client),
+    client=Depends(get_server_moorcheh_client),
 ):
     """
     Store multiple memories in batch (Session-based)
@@ -585,7 +631,7 @@ async def edit_memory(
     memory_id: str,
     request: MemoryEditRequest = Body(...),
     session: Session = Depends(get_current_session),
-    client=Depends(get_moorcheh_client),
+    client=Depends(get_server_moorcheh_client),
 ):
     """
     Update one memory in the active agent's namespace (Session-based).
@@ -663,7 +709,7 @@ async def extract_memories_from_conversation(
     agent_id: str,
     request: ExtractMemoriesRequest = Body(...),
     session: Session = Depends(get_current_session),
-    client=Depends(get_moorcheh_client),
+    client=Depends(get_server_moorcheh_client),
 ):
     """
     Extract typed memory candidates from chat-style conversation turns.
@@ -795,7 +841,7 @@ async def upload_file(
     """
     enforce_session_scope(session, agent_id)
 
-    client = get_moorcheh_client()
+    client = get_server_moorcheh_client()
 
     # Validate file extension before reading
     ALLOWED_EXTENSIONS = {".pdf", ".docx", ".xlsx", ".json", ".txt", ".csv", ".md"}
@@ -882,7 +928,7 @@ async def delete_memory(
     agent_id: str,
     memory_id: str,
     session: Session = Depends(get_current_session),
-    client=Depends(get_moorcheh_client),
+    client=Depends(get_server_moorcheh_client),
 ):
     """
     Delete one memory from the active agent namespace.
@@ -926,7 +972,7 @@ async def recall(
     agent_id: str,
     request: RecallRequest = Body(...),
     session: Session = Depends(get_current_session),
-    client=Depends(get_moorcheh_client),
+    client=Depends(get_server_moorcheh_client),
 ):
     """
     Recall memories (Session-based)
@@ -1012,7 +1058,7 @@ async def answer(
     # Enforce session scope
     enforce_session_scope(session, agent_id)
 
-    client = get_moorcheh_client()
+    client = get_server_moorcheh_client()
 
     # Resolve defaults from settings
     limit = request.limit if request.limit is not None else settings.ANSWER_LIMIT
@@ -1033,11 +1079,7 @@ async def answer(
         namespace = session.namespace
 
         # Internal fixed prompts (not user-configurable via API contract)
-        header_prompt = (
-            "You are a helpful AI assistant with access to the agent's persistent memory. "
-            "Use the provided context from the agent's memories to answer the user's question accurately. "
-            "If the memories don't contain relevant information, say so clearly."
-        )
+        header_prompt = memory_answer_header_prompt()
 
         footer_prompt = (
             "Answer the question based on the memory context above. "
@@ -1068,7 +1110,7 @@ async def answer(
 
         # Extract the generated answer and sources
         answer = response.get("answer", "No answer generated.")
-        sources = response.get("sources", [])
+        sources = _sanitize_answer_sources(response.get("sources", []))
 
         return {
             "agent_id": agent_id,
@@ -1076,11 +1118,19 @@ async def answer(
             "question": request.question,
             "answer": answer,
             "sources": sources,
-            "namespace": namespace,
         }
 
-    except Exception as e:
-        raise map_error_to_http_exception(e)
+    except Exception as exc:
+        # Provider error bodies can contain request data, namespace IDs,
+        # embeddings, and service topology. Never relay those details.
+        logger.warning("Answer generation failed: %s", type(exc).__name__)
+        raise HTTPException(
+            status_code=502,
+            detail={
+                "error": "AnswerGenerationFailed",
+                "message": "Unable to generate an answer from memory right now.",
+            },
+        ) from exc
 
 
 class DailySummaryRequest(BaseModel):
@@ -1249,7 +1299,7 @@ async def recall_as_of(
     agent_id: str,
     request: RecallAsOfRequest = Body(...),
     session: Session = Depends(get_current_session),
-    client=Depends(get_moorcheh_client),
+    client=Depends(get_server_moorcheh_client),
 ):
     """
     Point-in-time recall: "What was true at this point in time?"
@@ -1296,7 +1346,7 @@ async def recall_changed_since(
     agent_id: str,
     request: RecallChangedSinceRequest = Body(...),
     session: Session = Depends(get_current_session),
-    client=Depends(get_moorcheh_client),
+    client=Depends(get_server_moorcheh_client),
 ):
     """
     Differential retrieval: "What changed recently?"
@@ -1343,7 +1393,7 @@ async def recall_recent(
     agent_id: str,
     request: RecallRecentRequest = Body(...),
     session: Session = Depends(get_current_session),
-    client=Depends(get_moorcheh_client),
+    client=Depends(get_server_moorcheh_client),
 ):
     """
     Recall the most recently stored memories.
@@ -1399,7 +1449,7 @@ async def expire_memory(
     memory_id: str,
     request: MemoryExpireRequest = Body(default=MemoryExpireRequest()),
     session: Session = Depends(get_current_session),
-    client=Depends(get_moorcheh_client),
+    client=Depends(get_server_moorcheh_client),
 ):
     """
     Expire one memory without deleting it (Session-based).
@@ -1443,7 +1493,7 @@ async def restore_memory(
     agent_id: str,
     memory_id: str,
     session: Session = Depends(get_current_session),
-    client=Depends(get_moorcheh_client),
+    client=Depends(get_server_moorcheh_client),
 ):
     """
     Return an expired memory to the active state (Session-based).
@@ -1484,7 +1534,7 @@ async def restore_memory(
 async def get_policy(
     agent_id: str,
     session: Session = Depends(get_current_session),
-    client=Depends(get_moorcheh_client),
+    client=Depends(get_server_moorcheh_client),
 ):
     """
     Return the agent's expiry policy (Session-based).
@@ -1513,7 +1563,7 @@ async def set_policy(
     agent_id: str,
     policy: MemoryPolicy = Body(...),
     session: Session = Depends(get_current_session),
-    client=Depends(get_moorcheh_client),
+    client=Depends(get_server_moorcheh_client),
 ):
     """
     Replace the agent's expiry policy (Session-based).
@@ -1587,7 +1637,7 @@ async def apply_policy_preset(
     agent_id: str,
     request: PolicyPresetRequest = Body(...),
     session: Session = Depends(get_current_session),
-    client=Depends(get_moorcheh_client),
+    client=Depends(get_server_moorcheh_client),
 ):
     """
     Adopt a predefined policy bundle as the agent's policy (Session-based).
@@ -1621,7 +1671,7 @@ async def apply_policy(
     agent_id: str,
     request: PolicyApplyRequest = Body(default=PolicyApplyRequest()),
     session: Session = Depends(get_current_session),
-    client=Depends(get_moorcheh_client),
+    client=Depends(get_server_moorcheh_client),
 ):
     """
     Sweep the agent's memories and expire everything the policy matches.
@@ -1648,7 +1698,7 @@ async def purge_expired_memories(
     agent_id: str,
     request: PolicyApplyRequest = Body(default=PolicyApplyRequest()),
     session: Session = Depends(get_current_session),
-    client=Depends(get_moorcheh_client),
+    client=Depends(get_server_moorcheh_client),
 ):
     """
     Permanently delete memories expired longer than the policy's purge window.
