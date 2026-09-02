@@ -15,13 +15,12 @@ from pathlib import Path
 from typing import cast
 
 from aider_okf import parse_aider_history
+from path_scrub import scrub_home_paths
 from PIL import Image, ImageDraw, ImageFont
 
 HERE = Path(__file__).resolve().parent
 REPOSITORY = HERE.parents[2]
 ANSI = re.compile(r"\x1b\[[0-?]*[ -/]*[@-~]")
-HOME_PATH = re.compile(r"[A-Za-z]:\\Users\\[^\\\r\n]+")
-POSIX_HOME_PATH = re.compile(r"/(?:home|Users)/[^/\s]+(?:/[^\s]*)?")
 
 
 class TerminalRecorder:
@@ -90,8 +89,7 @@ class TerminalRecorder:
         """Remove ANSI escapes and machine-specific home paths from frames."""
 
         text = ANSI.sub("", text).replace(str(REPOSITORY), "<MEMANTO_REPOSITORY>")
-        text = HOME_PATH.sub("<USER_HOME>", text)
-        return POSIX_HOME_PATH.sub("<USER_HOME>", text)
+        return scrub_home_paths(text)
 
     def _frame(self) -> bytes:
         """Render the current terminal buffer as one RGB frame."""

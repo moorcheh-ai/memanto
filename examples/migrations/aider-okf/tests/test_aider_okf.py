@@ -12,6 +12,8 @@ HERE = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(HERE))
 
 from aider_okf import convert, find_sensitive_data, parse_aider_history  # noqa: E402
+from generate_source import sanitize_history  # noqa: E402
+from path_scrub import scrub_home_paths  # noqa: E402
 from validate import validate  # noqa: E402
 
 SOURCE = (
@@ -76,6 +78,32 @@ def test_privacy_preflight_fails_closed_without_echoing_secret(tmp_path: Path) -
 def test_privacy_preflight_detects_bearer_authorization_header() -> None:
     secret = "eyJhbGciOiJIUzI1NiJ9.payload.signature"
     assert find_sensitive_data(f"Authorization: Bearer {secret}")
+
+
+@pytest.mark.parametrize(
+    ("raw", "survivor"),
+    [
+        ('"/home/alice/Very Secret Project/file.py"', "Very Secret"),
+        ("path=/Users/alice/Very Secret Project/file.py", "Project"),
+        (r"/home/alice/Very\ Secret\ Project/file.py", "alice"),
+        (r"C:\Users\alice\Documents\private.txt", "alice"),
+        (r"output: C:\Users\alice\Very Secret Project\private.txt", "Project"),
+    ],
+)
+def test_home_path_scrubber_covers_publishable_path_forms(
+    raw: str, survivor: str
+) -> None:
+    scrubbed = scrub_home_paths(raw)
+    assert "<USER_HOME>" in scrubbed
+    assert survivor not in scrubbed
+
+
+def test_source_sanitizer_keeps_non_path_text(tmp_path: Path) -> None:
+    repository = tmp_path / "memanto"
+    text = f"repo={repository}\nmessage=keep this explanation\n"
+    scrubbed = sanitize_history(text, repository)
+    assert "repo=<MEMANTO_REPOSITORY>" in scrubbed
+    assert "message=keep this explanation" in scrubbed
 
 
 def test_existing_output_is_never_overlaid(tmp_path: Path) -> None:

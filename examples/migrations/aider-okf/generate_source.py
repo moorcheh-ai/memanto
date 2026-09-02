@@ -11,13 +11,14 @@ import sys
 import tempfile
 from pathlib import Path
 
+from path_scrub import scrub_home_paths
+
 PROMPTS = (
     "Create assistant_profile.md. Record these durable preferences: concise status labels, no emoji, and ISO 8601 dates.",
     "Update assistant_profile.md with a deployment decision: store timestamps in UTC and display them in America/New_York.",
     "Correction: quiet hours are 22:00-07:00 America/New_York, not 21:00-06:00. Preserve the earlier decision and make the correction explicit.",
     "Summarize every durable preference, decision, and correction currently in assistant_profile.md without changing the file.",
 )
-POSIX_HOME_PATH = re.compile(r"/(?:home|Users)/[^/\s]+(?:/[^\s]*)?")
 
 
 def sanitize_history(text: str, repository: Path) -> str:
@@ -28,7 +29,7 @@ def sanitize_history(text: str, repository: Path) -> str:
         r"[A-Za-z]:\\Users\\[^\\\r\n]+\\(?:scoop\\persist\\uv|\.cache\\uv)"
         r"\\[^\r\n]*?\\Scripts\\aider(?:\.exe)?"
     )
-    return POSIX_HOME_PATH.sub("<USER_HOME>", executable.sub("aider", text))
+    return scrub_home_paths(executable.sub("aider", text))
 
 
 def atomic_sanitize(source: Path, destination: Path, repository: Path) -> None:
