@@ -5995,7 +5995,7 @@
                 projectsHtml = projects.map(p => {
                     const missingTag = p.exists ? '' : ' <span class="badge badge-warning" style="margin-left:8px">missing</span>';
                     const btnLabel = p.exists ? 'Disconnect' : 'Untrack';
-                    const safePath = escHtml(p.path).replace(/'/g, "&#39;");
+                    const safePath = escHtml(p.path).replace(/\\/g, '\\\\').replace(/'/g, "\\'");
                     return `<div class="conn-project-row${p.exists ? '' : ' missing'}" id="proj-row-${btoa(unescape(encodeURIComponent(p.path))).replace(/=/g, '')}">
                         <div>
                             <div class="conn-project-path">${escHtml(p.path)}${missingTag}</div>
