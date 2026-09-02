@@ -1,7 +1,7 @@
 ---
 type: instruction
-title: 'Aider user 10: Correction: quiet hours are 22:00-07:00 America/NewYork, not
-  21:00-06:00'
+title: 'Aider user 10: Correction: quiet hours are 22:00-07:00 America/New_York, not
+  21:00-06:0'
 description: A user record imported from a genuine Aider chat history.
 resource: aider://history/96ce8d7850a63728ed778ff94edd0679d26b094b3f8f294ad7cc26604cb48824#message-10
 tags:

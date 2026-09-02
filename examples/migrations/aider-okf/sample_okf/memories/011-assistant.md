@@ -1,7 +1,7 @@
 ---
 type: context
 title: 'Aider assistant 11: To correct the time range for quiet hours, we need to
-  update the quietho'
+  update the quiet_h'
 description: A assistant record imported from a genuine Aider chat history.
 resource: aider://history/96ce8d7850a63728ed778ff94edd0679d26b094b3f8f294ad7cc26604cb48824#message-11
 tags:

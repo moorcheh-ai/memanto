@@ -50,7 +50,7 @@ uv run --python 3.12 examples/migrations/aider-okf/validate.py \
 The checked-in run reports 16 source records, 16 valid OKF nodes, 16 mapped
 Memanto memories, zero skipped records, 16/16 exact content hashes, and 4/4
 golden recall parity. The portable metadata expands this small sample from
-6,720 to 20,951 bytes (3.118x), so no storage, token, or latency savings are
+6,720 to 20,957 bytes (3.119x), so no storage, token, or latency savings are
 claimed. See `receipt.yaml` for the machine-readable evidence.
 
 To regenerate the genuine source rather than reuse the public sample:
@@ -74,6 +74,19 @@ The adapter deliberately refuses to overwrite an existing output directory
 and fails privacy preflight without echoing any matched secret. Review a source
 archive before publishing it; Aider histories can contain prompts, model
 answers, command output, and paths.
+
+## Demo video
+
+`demo/aider-okf-demo.mp4` is a terminal recording generated from the actual
+commands and their stdout, not slides or staged output. Regenerate it with:
+
+```bash
+uv run --with 'Pillow>=11.3,<13' --python 3.12 \
+  examples/migrations/aider-okf/record_demo.py
+```
+
+The recorder sanitizes machine-specific home and repository paths before they
+reach the frames. It fails if any pipeline command or ffmpeg fails.
 
 ## Verification
 

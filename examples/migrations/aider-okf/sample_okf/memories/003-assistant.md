@@ -1,6 +1,6 @@
 ---
 type: context
-title: 'Aider assistant 3: assistantprofile.md'
+title: 'Aider assistant 3: assistant_profile.md'
 description: A assistant record imported from a genuine Aider chat history.
 resource: aider://history/96ce8d7850a63728ed778ff94edd0679d26b094b3f8f294ad7cc26604cb48824#message-3
 tags:

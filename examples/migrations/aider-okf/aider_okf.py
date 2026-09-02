@@ -135,7 +135,9 @@ def _title(message: AiderMessage) -> str:
         (line.strip() for line in message.content.splitlines() if line.strip()),
         message.role,
     )
-    first = re.sub(r"[`*_#]", "", first)
+    # Strip Markdown decoration without damaging code identifiers such as
+    # ``assistant_profile.md``.
+    first = re.sub(r"[`*#]", "", first)
     return f"Aider {message.role} {message.ordinal}: {first[:72]}".strip()
 
 

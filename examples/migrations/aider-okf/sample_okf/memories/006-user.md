@@ -1,6 +1,6 @@
 ---
 type: instruction
-title: 'Aider user 6: Update assistantprofile.md with a deployment decision: store
+title: 'Aider user 6: Update assistant_profile.md with a deployment decision: store
   timestamps'
 description: A user record imported from a genuine Aider chat history.
 resource: aider://history/96ce8d7850a63728ed778ff94edd0679d26b094b3f8f294ad7cc26604cb48824#message-6

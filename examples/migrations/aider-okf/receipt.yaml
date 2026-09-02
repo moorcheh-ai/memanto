@@ -7,9 +7,9 @@ golden_recall_parity: 4/4
 source_sha256: 96ce8d7850a63728ed778ff94edd0679d26b094b3f8f294ad7cc26604cb48824
 storage_evidence:
   source_bytes: 6720
-  okf_bundle_bytes: 20951
-  delta_bytes: 14231
-  ratio: 3.118
+  okf_bundle_bytes: 20957
+  delta_bytes: 14237
+  ratio: 3.119
   claim: OKF expands storage here to preserve readable metadata; no savings claimed.
 token_latency_evidence: 'Not measured: this offline adapter makes no provider calls.'
 questions:
