@@ -5,8 +5,21 @@ Defines all supported AI coding agents with their instruction file paths,
 skill directories, and integration capabilities.
 """
 
+import os
+import platform
 from dataclasses import dataclass, field
 from pathlib import Path
+
+
+def _get_vscode_prompts_dir() -> str:
+    system = platform.system()
+    if system == "Windows":
+        base = os.environ.get("APPDATA", os.path.expanduser("~\\AppData\\Roaming"))
+        return os.path.join(base, "Code", "User", "prompts", "memanto.instructions.md")
+    elif system == "Darwin":
+        return "~/Library/Application Support/Code/User/prompts/memanto.instructions.md"
+    else:
+        return "~/.config/Code/User/prompts/memanto.instructions.md"
 
 
 @dataclass
@@ -26,7 +39,8 @@ class AgentDef:
     display_name: str  # Human name, e.g. "Claude Code"
 
     # Instruction file (the main file where agent reads instructions)
-    instruction_file: str | None = None  # e.g. "CLAUDE.md"
+    instruction_local_file: str | None = None  # e.g. "CLAUDE.md"
+    instruction_global_file: str | None = None  # e.g. "~/.claude/CLAUDE.md"
     instruction_format: str = "markdown"  # "markdown" | "mdc" | "append"
 
     # Skill directory paths (relative)
@@ -68,24 +82,20 @@ class AgentDef:
         self, project_dir: Path, is_global: bool
     ) -> Path | None:
         """Resolve instruction file path."""
-        if not self.instruction_file:
-            return None
         if is_global:
-            if self.config_global_dir:
-                base = Path.home() / self.config_global_dir.lstrip("~/")
-                instruction_path = Path(self.instruction_file)
-                if self.config_local_dir:
-                    try:
-                        instruction_path = instruction_path.relative_to(
-                            self.config_local_dir
-                        )
-                    except ValueError:
-                        pass
+            if not self.instruction_global_file:
+                return None
+            p = Path(self.instruction_global_file)
+            if p.is_absolute():
+                return p
+            elif self.instruction_global_file.startswith("~/"):
+                return Path.home() / self.instruction_global_file[2:]
             else:
-                base = Path.home()
-                instruction_path = Path(self.instruction_file)
-            return base / instruction_path
-        return project_dir / self.instruction_file
+                return Path.home() / self.instruction_global_file
+        else:
+            if not self.instruction_local_file:
+                return None
+            return project_dir / self.instruction_local_file
 
 
 # Agent Definitions
@@ -93,7 +103,8 @@ class AgentDef:
 CLAUDE_CODE = AgentDef(
     name="claude-code",
     display_name="Claude Code",
-    instruction_file="CLAUDE.md",
+    instruction_local_file="CLAUDE.md",
+    instruction_global_file="~/.claude/CLAUDE.md",
     instruction_format="markdown",
     skill_local_dir=".claude/skills",
     skill_global_dir="~/.claude/skills",
@@ -121,7 +132,8 @@ CLAUDE_CODE = AgentDef(
 CODEX = AgentDef(
     name="codex",
     display_name="Codex CLI",
-    instruction_file="AGENTS.md",
+    instruction_local_file="AGENTS.md",
+    instruction_global_file="~/.codex/AGENTS.md",
     instruction_format="markdown",
     skill_local_dir=".agents/skills",
     skill_global_dir="~/.codex/skills",
@@ -132,7 +144,8 @@ CODEX = AgentDef(
 CURSOR = AgentDef(
     name="cursor",
     display_name="Cursor",
-    instruction_file=".cursor/rules/memanto.mdc",
+    instruction_local_file=".cursor/rules/memanto.mdc",
+    instruction_global_file="~/.cursor/rules/memanto.mdc",
     instruction_format="mdc",
     skill_local_dir=".cursor/skills",
     skill_global_dir="~/.cursor/skills",
@@ -143,7 +156,8 @@ CURSOR = AgentDef(
 WINDSURF = AgentDef(
     name="windsurf",
     display_name="Windsurf",
-    instruction_file=".windsurfrules",
+    instruction_local_file=".windsurfrules",
+    instruction_global_file="~/.codeium/windsurf/.windsurfrules",
     instruction_format="append",
     skill_local_dir=".windsurf/skills",
     skill_global_dir="~/.codeium/windsurf/skills",
@@ -154,7 +168,8 @@ WINDSURF = AgentDef(
 ANTIGRAVITY = AgentDef(
     name="antigravity",
     display_name="Antigravity (Google)",
-    instruction_file=None,  # Antigravity uses skills only
+    instruction_local_file=None,  # Antigravity uses skills only
+    instruction_global_file=None,
     skill_local_dir=".agent/skills",
     skill_global_dir="~/.gemini/antigravity/skills",
     config_local_dir=".agent",
@@ -164,7 +179,8 @@ ANTIGRAVITY = AgentDef(
 GEMINI_CLI = AgentDef(
     name="gemini-cli",
     display_name="Gemini CLI",
-    instruction_file="GEMINI.md",
+    instruction_local_file="GEMINI.md",
+    instruction_global_file="~/.gemini/GEMINI.md",
     instruction_format="markdown",
     skill_local_dir=".gemini/skills",
     skill_global_dir="~/.gemini/skills",
@@ -175,7 +191,8 @@ GEMINI_CLI = AgentDef(
 CLINE = AgentDef(
     name="cline",
     display_name="Cline",
-    instruction_file=".clinerules/memanto.md",
+    instruction_local_file=".clinerules/memanto.md",
+    instruction_global_file="~/.clinerules/memanto.md",
     instruction_format="markdown",
     instruction_is_dir=True,
     skill_local_dir=".agents/skills",
@@ -186,7 +203,8 @@ CLINE = AgentDef(
 CONTINUE = AgentDef(
     name="continue",
     display_name="Continue",
-    instruction_file=".continue/rules/memanto.md",
+    instruction_local_file=".continue/rules/memanto.md",
+    instruction_global_file="~/.continue/rules/memanto.md",
     instruction_format="markdown",
     instruction_is_dir=True,
     skill_local_dir=".continue/skills",
@@ -198,7 +216,8 @@ CONTINUE = AgentDef(
 OPENCODE = AgentDef(
     name="opencode",
     display_name="OpenCode",
-    instruction_file="AGENTS.md",
+    instruction_local_file="AGENTS.md",
+    instruction_global_file="~/.config/opencode/AGENTS.md",
     instruction_format="markdown",
     skill_local_dir=".agents/skills",
     skill_global_dir="~/.config/opencode/skills",
@@ -208,7 +227,8 @@ OPENCODE = AgentDef(
 GOOSE = AgentDef(
     name="goose",
     display_name="Goose",
-    instruction_file=None,  # Goose uses config.yaml + MCP, not an instruction file
+    instruction_local_file=None,
+    instruction_global_file=None,
     skill_local_dir=".goose/skills",
     skill_global_dir="~/.config/goose/skills",
     config_local_dir=".goose",
@@ -218,7 +238,8 @@ GOOSE = AgentDef(
 ROO = AgentDef(
     name="roo",
     display_name="Roo Code",
-    instruction_file=".roo/rules/memanto.md",
+    instruction_local_file=".roo/rules/memanto.md",
+    instruction_global_file="~/.roo/rules/memanto.md",
     instruction_format="markdown",
     instruction_is_dir=True,
     skill_local_dir=".roo/skills",
@@ -230,7 +251,8 @@ ROO = AgentDef(
 GITHUB_COPILOT = AgentDef(
     name="github-copilot",
     display_name="GitHub Copilot",
-    instruction_file=".github/copilot-instructions.md",
+    instruction_local_file=".github/copilot-instructions.md",
+    instruction_global_file=_get_vscode_prompts_dir(),
     instruction_format="markdown",
     skill_local_dir=".agents/skills",
     skill_global_dir="~/.copilot/skills",
@@ -240,7 +262,8 @@ GITHUB_COPILOT = AgentDef(
 AUGMENT = AgentDef(
     name="augment",
     display_name="Augment Code",
-    instruction_file=".augment/rules/memanto.md",
+    instruction_local_file=".augment/rules/memanto.md",
+    instruction_global_file="~/.augment/rules/memanto.md",
     instruction_format="markdown",
     instruction_is_dir=True,
     skill_local_dir=".augment/skills",
@@ -296,8 +319,8 @@ def detect_agents_in_project(project_dir: Path) -> list[AgentDef]:
                 detected.append(agent)
                 continue
         # Check for instruction file
-        if agent.instruction_file:
-            instr_path = project_dir / agent.instruction_file
+        if agent.instruction_local_file:
+            instr_path = project_dir / agent.instruction_local_file
             # For directory-based instruction files, check parent dir
             if agent.instruction_is_dir:
                 parent = instr_path.parent
@@ -315,7 +338,7 @@ def detect_memanto_installed(project_dir: Path) -> list[AgentDef]:
     installed = []
     for agent in AGENT_REGISTRY.values():
         if _has_memanto_skill(agent, project_dir, is_global=False) and (
-            not agent.instruction_file
+            not agent.instruction_local_file
             or _has_memanto_instruction(agent, project_dir, is_global=False)
         ):
             installed.append(agent)
@@ -327,7 +350,7 @@ def detect_memanto_installed_global() -> list[AgentDef]:
     installed = []
     for agent in AGENT_REGISTRY.values():
         if _has_memanto_skill(agent, Path.home(), is_global=True) and (
-            not agent.instruction_file
+            not agent.instruction_global_file
             or _has_memanto_instruction(agent, Path.home(), is_global=True)
         ):
             installed.append(agent)

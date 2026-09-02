@@ -429,7 +429,7 @@ def connect_list(
             det_icon,
             local_icon,
             global_icon,
-            agent.instruction_file or "[dim]skills only[/dim]",
+            agent.instruction_local_file or agent.instruction_global_file or "[dim]skills only[/dim]",
         )
 
     console.print(table)

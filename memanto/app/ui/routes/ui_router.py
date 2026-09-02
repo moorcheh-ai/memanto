@@ -758,7 +758,8 @@ async def get_connections(_: None = Depends(_require_local)):
             {
                 "name": agent.name,
                 "display_name": agent.display_name,
-                "instruction_file": agent.instruction_file,
+                "instruction_local_file": agent.instruction_local_file,
+                "instruction_global_file": agent.instruction_global_file,
                 "skill_local_template": (
                     f"{agent.skill_local_dir}/memanto"
                     if agent.skill_local_dir

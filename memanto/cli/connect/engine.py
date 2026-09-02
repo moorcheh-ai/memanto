@@ -158,8 +158,10 @@ def _install_instructions(
     agent: AgentDef, project_path: Path, is_global: bool
 ) -> str | None:
     """Install MEMANTO instructions into the agent's instruction file."""
-    if not agent.instruction_file:
-        return None  # Agent doesn't use instruction files (skills-only)
+    if is_global and not agent.instruction_global_file:
+        return None
+    if not is_global and not agent.instruction_local_file:
+        return None
 
     instr_path = agent.resolve_instruction_file(project_path, is_global)
     if not instr_path:
@@ -268,9 +270,6 @@ def _remove_instructions(
     agent: AgentDef, project_path: Path, is_global: bool
 ) -> str | None:
     """Remove MEMANTO instructions from the agent's instruction file."""
-    if not agent.instruction_file:
-        return None
-
     instr_path = agent.resolve_instruction_file(project_path, is_global)
     if not instr_path or not instr_path.exists():
         return None
