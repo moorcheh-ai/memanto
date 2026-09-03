@@ -367,6 +367,22 @@ def _remove_skill(agent: AgentDef, project_path: Path, is_global: bool) -> str |
 # Internal: Hook configuration (Claude Code)
 
 
+def _is_memanto_hook(hook_group: dict) -> bool:
+    """Helper to detect if a hook group belongs to memanto."""
+    if not isinstance(hook_group, dict):
+        return False
+    hooks = hook_group.get("hooks", [])
+    if not isinstance(hooks, list):
+        return False
+    for h in hooks:
+        if not isinstance(h, dict):
+            continue
+        cmd = h.get("command", "")
+        if "memanto" in cmd or "notify.py" in cmd or "session_start.py" in cmd:
+            return True
+    return False
+
+
 def _install_hooks(agent: AgentDef, project_path: Path, is_global: bool) -> str | None:
     """Configure auto-sync hooks for agents that support them."""
     if not agent.hook_config:
@@ -391,28 +407,60 @@ def _install_hooks(agent: AgentDef, project_path: Path, is_global: bool) -> str 
     else:
         settings = {}
 
-    # Navigate to hook location
-    hooks = settings.setdefault("hooks", {})
-    session_start = hooks.setdefault("SessionStart", [])
+    hooks_section = settings.setdefault("hooks", {})
+    changed = False
 
-    # Check if memanto hook already exists
-    memanto_exists = any(
-        isinstance(group, dict)
-        and any(
-            isinstance(h, dict) and "memanto" in h.get("command", "")
-            for h in group.get("hooks", [])
+    # 1. Try to load hooks from assets
+    assets_hooks_dir = Path(__file__).parent / "assets" / "hooks"
+    if assets_hooks_dir.exists() and (assets_hooks_dir / "hooks.json").exists():
+        target_hooks_dir = config_dir / "hooks"
+        target_hooks_dir.mkdir(parents=True, exist_ok=True)
+
+        # Copy python scripts
+        import shutil
+
+        for py_file in assets_hooks_dir.glob("*.py"):
+            shutil.copy2(py_file, target_hooks_dir / py_file.name)
+
+        # Parse and inject JSON
+        raw_json = (assets_hooks_dir / "hooks.json").read_text(encoding="utf-8")
+        raw_json = raw_json.replace(
+            "${CLAUDE_PLUGIN_ROOT}", str(config_dir).replace("\\", "/")
         )
-        for group in session_start
-    )
+        raw_json = raw_json.replace(
+            "${CLAUDE_PROJECT_DIR}", str(project_path.absolute()).replace("\\", "/")
+        )
 
-    if not memanto_exists:
+        asset_hooks_data = json.loads(raw_json)
+        asset_hooks = asset_hooks_data.get("hooks", {})
+
+        for event_name, event_payloads in asset_hooks.items():
+            target_event = hooks_section.setdefault(event_name, [])
+            if not isinstance(target_event, list):
+                continue
+
+            for payload in event_payloads:
+                if not any(_is_memanto_hook(existing) for existing in target_event):
+                    target_event.append(payload)
+                    changed = True
+
+        if changed:
+            settings_path.write_text(
+                json.dumps(settings, indent=2) + "\n", encoding="utf-8"
+            )
+            return "Installed Memanto hooks and scripts"
+        return None
+
+    # 2. Fallback to hardcoded agent payload
+    session_start = hooks_section.setdefault("SessionStart", [])
+    if not any(_is_memanto_hook(group) for group in session_start):
         session_start.append(agent.hook_config.hook_payload)
         settings_path.write_text(
             json.dumps(settings, indent=2) + "\n", encoding="utf-8"
         )
         return "Added SessionStart hook"
 
-    return None  # Already configured
+    return None
 
 
 def _remove_hooks(agent: AgentDef, project_path: Path, is_global: bool) -> str | None:
@@ -436,60 +484,53 @@ def _remove_hooks(agent: AgentDef, project_path: Path, is_global: bool) -> str |
         return None
 
     settings = json.loads(settings_path.read_text(encoding="utf-8"))
-    hooks = settings.get("hooks")
-    session_start = hooks.get("SessionStart") if isinstance(hooks, dict) else None
-    if not isinstance(session_start, list):
-        return None
-
-    expected_payload = agent.hook_config.hook_payload
-    expected_matcher = expected_payload.get("matcher")
-    expected_hooks = [
-        hook for hook in expected_payload.get("hooks", []) if isinstance(hook, dict)
-    ]
-    expected_commands = {
-        hook.get("command") for hook in expected_hooks if hook.get("command")
-    }
-    if not expected_commands:
+    hooks_section = settings.get("hooks")
+    if not isinstance(hooks_section, dict):
         return None
 
     changed = False
-    next_session_start = []
-    for group in session_start:
-        if not isinstance(group, dict) or not isinstance(group.get("hooks"), list):
-            next_session_start.append(group)
+
+    # 1. Remove from all hook events
+    empty_events = []
+    for event_name, event_payloads in hooks_section.items():
+        if not isinstance(event_payloads, list):
             continue
 
-        remaining_hooks = []
-        for hook in group["hooks"]:
-            if (
-                group.get("matcher") == expected_matcher
-                and isinstance(hook, dict)
-                and hook.get("command") in expected_commands
-                and any(hook == expected_hook for expected_hook in expected_hooks)
-            ):
-                changed = True
-                continue
-            remaining_hooks.append(hook)
-
-        if remaining_hooks:
-            updated_group = dict(group)
-            updated_group["hooks"] = remaining_hooks
-            next_session_start.append(updated_group)
-        else:
+        remaining = [group for group in event_payloads if not _is_memanto_hook(group)]
+        if len(remaining) != len(event_payloads):
+            hooks_section[event_name] = remaining
             changed = True
 
-    if not changed:
-        return None
+        if not remaining:
+            empty_events.append(event_name)
 
-    if next_session_start:
-        hooks["SessionStart"] = next_session_start
-    else:
-        hooks.pop("SessionStart", None)
-    if not hooks:
+    for event_name in empty_events:
+        hooks_section.pop(event_name, None)
+
+    if not hooks_section:
         settings.pop("hooks", None)
 
-    _write_or_remove_json(settings_path, settings)
-    return "Removed SessionStart hook"
+    # 2. Remove copied script files
+    target_hooks_dir = config_dir / "hooks"
+    if target_hooks_dir.exists():
+        for f in ["notify.py", "session_start.py"]:
+            script_path = target_hooks_dir / f
+            if script_path.exists():
+                try:
+                    script_path.unlink()
+                except Exception:
+                    pass
+        # Try to remove dir if empty
+        try:
+            target_hooks_dir.rmdir()
+        except Exception:
+            pass
+
+    if changed:
+        _write_or_remove_json(settings_path, settings)
+        return "Removed Memanto hooks and scripts"
+
+    return None
 
 
 # Internal: Permission configuration
