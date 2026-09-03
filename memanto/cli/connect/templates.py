@@ -282,11 +282,7 @@ def get_instruction_content(agent_name: str) -> str:
             tool_phrase="the terminal",
             note_suffix="Run `memanto memory sync --project-dir .` at the start of each session to inject the latest dynamic memories into your system instructions.",
         ),
-        "github-copilot": _base_instruction_content(
-            agent_id="github-copilot",
-            tool_phrase="the terminal",
-            note_suffix="Run `memanto memory sync --project-dir .` at the start of each session to inject the latest dynamic memories into your system instructions. DO NOT write project-specific rules to the global `User/prompts/` directory to avoid context dilution—rely exclusively on Memanto.",
-        ),
+        "github-copilot": _get_copilot_content(),
         "augment": _base_instruction_content(
             agent_id="augment",
             tool_phrase="the terminal",
@@ -304,6 +300,20 @@ alwaysApply: true
 ---
 
 {_base_instruction_content(agent_id=agent_id, tool_phrase="the terminal")}"""
+
+
+def _get_copilot_content() -> str:
+    """Get frontmatter-formatted rules content for GitHub Copilot."""
+    base_content = _base_instruction_content(
+        agent_id="github-copilot",
+        tool_phrase="the terminal",
+        note_suffix="Run `memanto memory sync --project-dir .` at the start of each session to inject the latest dynamic memories into your system instructions.",
+    )
+    return f"""---
+applyTo: "**/*"
+---
+
+{base_content}"""
 
 
 def get_skill_content(agent_name: str = "<agent_name>") -> str:
