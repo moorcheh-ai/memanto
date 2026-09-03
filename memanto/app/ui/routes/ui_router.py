@@ -314,14 +314,14 @@ def _update_onprem_answer(ans: dict) -> None:
         # moorcheh-client 0.1.5 moved user_config into the cli subpackage;
         # try the new path first and fall back so 0.1.3-0.1.5 all work.
         try:
-            from moorcheh.cli.user_config import (  # type: ignore[import-not-found]
+            from moorcheh.cli.user_config import (  # type: ignore[import-not-found,import-untyped]
                 EmbeddingConfig,
                 LlmConfig,
                 default_base_url,
                 save_runtime_config,
             )
         except ImportError:
-            from moorcheh.user_config import (  # type: ignore[import-not-found]
+            from moorcheh.user_config import (  # type: ignore[import-not-found,import-untyped]
                 EmbeddingConfig,
                 LlmConfig,
                 default_base_url,

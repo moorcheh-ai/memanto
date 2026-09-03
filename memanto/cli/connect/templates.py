@@ -204,12 +204,13 @@ You must actively evaluate:
 5. ENVIRONMENT: Was a key [ENVIRONMENT FACT] verified? (e.g., OS behavior, path layout, or tool version requirement)
 
 **How to Execute the Evaluation:**
-- **If you are operating in Claude Code / Anthropic Web UI:** You MUST perform this evaluation inside a `<thinking>` block at the very start of your turn.
-- **For all other tool-capable agents (VS Code Copilot, Cursor, Aider, etc.):**
-  [CRITICAL CONSTRAINT]: You MUST use the "Tool Explanation Trick" to secure your scratchpad. Before generating ANY normal chat text, you MUST immediately invoke the terminal/bash tool and use the `explanation`, `reason`, or `thought` parameter to silently write out your step-by-step evaluation. If no memory triggers apply, you MUST execute a dummy command (like `echo "memory check complete"`) solely to populate the explanation parameter.
-
-If any trigger applies, your FIRST action must be to execute the `memanto remember` command via the terminal.
-
+- **If you are operating in Claude Code, Cursor, Cline, Roo, Windsurf, Aider, or Anthropic Web UI:**
+  You MUST perform this evaluation inside a `<thinking>` block at the very start of your turn.
+- **If you are operating in VS Code Copilot:**
+  [CRITICAL SEQUENCE]: You MUST execute the following three steps in exact order ONCE at the very beginning of your turn (immediately after the user's prompt). Do NOT repeat this check before subsequent tool calls in the same turn.
+  - **Step 1:** You MUST invoke the terminal tool with the dummy command `echo "memory check"`. You will use this tool call's `explanation` parameter to silently write out your step-by-step evaluation WRAPPED inside a `<thinking>` XML tag.
+  - **Step 2:** If your evaluation in Step 1 found a matching trigger, your next immediate tool call MUST be `memanto remember`.
+  - **Step 3:** Only AFTER Step 1 (and Step 2 if applicable) are complete, you may proceed to execute productive tools or output normal chat text.
 ### 2. THE ABSTRACTION RULE (HOW TO THINK ABOUT MEMORY)
 Users speak naturally and implicitly. When you store a memory, **ELEVATE IT TO A PRINCIPLE**.
 - **WRONG (Activity Log)**: "User told me to use functional components."

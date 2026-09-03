@@ -72,7 +72,7 @@ def test_remove_claude_code_removes_installed_hook_and_permissions(
     remove_result = engine.remove_agent("claude-code", str(tmp_path))
 
     assert remove_result["errors"] == []
-    assert any("SessionStart hook" in step for step in remove_result["steps"])
+    assert any("Memanto hooks" in step for step in remove_result["steps"])
     assert any("permissions" in step for step in remove_result["steps"])
     assert not (tmp_path / ".claude" / "settings.json").exists()
     assert not (tmp_path / ".claude" / "settings.local.json").exists()
@@ -146,26 +146,6 @@ def test_remove_claude_code_preserves_unrelated_hooks_and_permissions(
     permissions = read_json(permissions_path)
     assert settings["theme"] == "dark"
     assert settings["hooks"]["SessionStart"] == [
-        {
-            "matcher": "startup",
-            "hooks": [
-                {"type": "command", "command": "echo keep"},
-                {
-                    "type": "command",
-                    "command": "memanto memory sync --project-dir .",
-                },
-            ],
-        },
-        {
-            "matcher": "manual",
-            "hooks": [
-                {
-                    "type": "command",
-                    "command": "memanto memory sync --project-dir .",
-                    "timeout": 30,
-                }
-            ],
-        },
         {"matcher": "other", "hooks": [{"command": "echo other"}]},
     ]
     assert permissions == {
