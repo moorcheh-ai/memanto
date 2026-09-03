@@ -2810,6 +2810,13 @@ def test_ui_static_xss_escapes():
     assert "${escHtml(m.provenance)}" in ui_html
     assert "${escHtml(e.message)}" in ui_html
     assert 'data-memory-id="${attrEsc(memId)}"' in ui_html
+    assert 'data-connection-name="${attrEsc(conn.name)}"' in ui_html
+    assert 'data-project-path="${attrEsc(p.path)}"' in ui_html
+    assert (
+        "confirmDisconnect(this.dataset.connectionName, "
+        "this.dataset.projectPath, false, this)" in ui_html
+    )
+    assert "confirmDisconnect(this.dataset.connectionName, null, true, this)" in ui_html
 
     forbidden_raw_interpolations = [
         "${agent.agent_id}",
@@ -2833,6 +2840,9 @@ def test_ui_static_xss_escapes():
         "Updated: ${fmtDate(",
         "forgetMemory('${memId}'",
         "forgetMemory('${escHtml(memId)}'",
+        "const safePath = escHtml(p.path)",
+        "confirmDisconnect('${escHtml(conn.name)}', '${safePath}'",
+        "confirmDisconnect('${escHtml(conn.name)}', null, true, this)",
         "Could not load agent: ${e.message}",
         "Session may be expired: ${e.message}",
         "Error loading agents: ${e.message}",
