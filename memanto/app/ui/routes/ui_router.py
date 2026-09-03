@@ -28,11 +28,7 @@ from fastapi.staticfiles import StaticFiles
 
 from memanto.app.clients.backend import Backend
 from memanto.app.config import settings
-from memanto.app.routes.auth_deps import (
-    _is_cross_site_browser_request,
-    clear_session_cookie,
-    set_session_cookie,
-)
+from memanto.app.routes.auth_deps import clear_session_cookie, set_session_cookie
 from memanto.app.utils.temporal_helpers import utc_date_str
 from memanto.app.utils.validation import validate_safe_id
 from memanto.cli.client.direct_client import DirectClient
@@ -80,6 +76,78 @@ def _is_loopback(host: str | None) -> bool:
         return False
 
 
+_TRUSTED_LOOPBACK_HOSTS = frozenset({"localhost", "127.0.0.1", "::1"})
+
+
+def _is_trusted_loopback_host(host_header: str | None) -> bool:
+    """Return True when the ``Host`` header names a loopback host.
+
+    Prevents DNS-rebinding attacks: with only a source-IP check, a malicious
+    page can resolve ``attacker.example`` to 127.0.0.1 and issue same-origin
+    requests that bypass ``_require_local``. Browsers always set ``Host``
+    from the page URL, so requiring ``localhost``/``127.0.0.1``/``[::1]``
+    closes that window while keeping genuine local CLI/browser UX working.
+    """
+    if not host_header:
+        return False
+    hostname = host_header.strip().lower()
+    if hostname.startswith("["):
+        end = hostname.find("]")
+        if end == -1:
+            return False
+        hostname = hostname[1:end]
+    else:
+        hostname = hostname.split(":", 1)[0]
+    return hostname in _TRUSTED_LOOPBACK_HOSTS
+
+
+def _is_trusted_loopback_origin(origin: str | None) -> bool:
+    """Return True when an ``Origin`` header (if present) is a loopback origin.
+
+    Defense-in-depth on top of the ``Host`` check: a DNS-rebinding page
+    sends ``Origin: http://evil.example:8000``. curl / CLI calls carry no
+    Origin and stay allowed.
+    """
+    if origin is None:
+        return True
+    from urllib.parse import urlparse
+
+    parsed = urlparse(origin)
+    if parsed.scheme not in ("http", "https"):
+        return False
+    hostname = parsed.hostname or ""
+    return hostname in _TRUSTED_LOOPBACK_HOSTS
+
+
+def _is_trusted_forwarded_client(request: Request) -> bool:
+    """Return True when forwarded-client metadata (if present) names a loopback client.
+
+    Uvicorn rewrites ``request.client`` from X-Forwarded-For/Forwarded only
+    when the direct peer is trusted, so a reverse proxy connecting from the
+    loopback interface still makes a *remote* caller look local when the
+    proxy does not pass the original client address. Combined with a forged
+    ``Host: localhost`` and no Origin, a remote attacker could satisfy the
+    loopback exemption (CWE-290). Treat any explicitly forwarded client
+    address as authoritative: it must itself be loopback, otherwise the
+    request is not genuinely local.
+    """
+    forwarded_for = request.headers.get("x-forwarded-for")
+    if forwarded_for:
+        first = forwarded_for.split(",", 1)[0].strip()
+        if not _is_loopback(first):
+            return False
+    forwarded = request.headers.get("forwarded")
+    if forwarded:
+        for part in forwarded.split(","):
+            for pair in part.split(";"):
+                key, _, value = pair.strip().partition("=")
+                if key.lower() == "for":
+                    value = value.strip().strip('"')
+                    if value and value.lower() != "unknown" and not _is_loopback(value):
+                        return False
+    return True
+
+
 async def _require_local(request: Request) -> None:
     """Reject requests that do not originate from the loopback interface.
 
@@ -97,11 +165,29 @@ async def _require_local(request: Request) -> None:
                 f"Request origin: {client_host}"
             ),
         )
-
-    if _is_cross_site_browser_request(request):
+    if not _is_trusted_loopback_host(request.headers.get("host")):
         raise HTTPException(
             status_code=403,
-            detail="UI management endpoints reject cross-site browser requests.",
+            detail=(
+                "UI management endpoints require a loopback Host header to "
+                "prevent DNS-rebinding access."
+            ),
+        )
+    if not _is_trusted_loopback_origin(request.headers.get("origin")):
+        raise HTTPException(
+            status_code=403,
+            detail=(
+                "UI management endpoints reject cross-site Origin headers."
+            ),
+        )
+
+    if not _is_trusted_forwarded_client(request):
+        raise HTTPException(
+            status_code=403,
+            detail=(
+                "UI management endpoints reject requests forwarded from "
+                "non-loopback clients."
+            ),
         )
 
 
