@@ -1,0 +1,5 @@
+__pycache__/
+*.pyc
+.env
+# transient adapter work dir (auto-cleaned; never commit)
+artifacts/_okf_work/
