@@ -80,6 +80,31 @@ def _is_loopback(host: str | None) -> bool:
         return False
 
 
+def _is_loopback_host_header(host: str | None) -> bool:
+    """Return True when the HTTP ``Host`` header names a loopback interface.
+
+    Defeats DNS-rebinding: a browser page on ``attacker.example`` (which the
+    browser resolves to 127.0.0.1) reaches the server with a loopback *TCP peer*
+    but a non-loopback ``Host`` header. The server must not treat that as local,
+    because the page can then drive cookie-authenticated routes (read/write
+    memory, enumerate filesystem) as if it were the desktop user. Browsers set
+    ``Host`` from the URL and cannot be tricked into sending ``localhost`` for an
+    ``attacker.example`` page, so requiring a loopback ``Host`` closes the
+    rebinding window without affecting CLI/header-auth (remote) clients.
+    """
+    if not host:
+        return False
+    hostname = host.strip().lower()
+    if hostname.startswith("["):  # IPv6 literal [::1]:port
+        end = hostname.find("]")
+        if end == -1:
+            return False
+        hostname = hostname[1:end]
+    else:
+        hostname = hostname.split(":", 1)[0]
+    return hostname in {"localhost", "127.0.0.1", "::1"} or _is_loopback(hostname)
+
+
 async def _require_local(request: Request) -> None:
     """Reject requests that do not originate from the loopback interface.
 
@@ -95,6 +120,15 @@ async def _require_local(request: Request) -> None:
             detail=(
                 "UI management endpoints are only accessible from localhost. "
                 f"Request origin: {client_host}"
+            ),
+        )
+
+    if not _is_loopback_host_header(request.headers.get("host")):
+        raise HTTPException(
+            status_code=403,
+            detail=(
+                "UI management endpoints require a loopback Host header "
+                "(DNS-rebinding protection)."
             ),
         )
 
@@ -1152,6 +1186,38 @@ def _migrate_savings(provider: str, export: dict) -> dict:
     return _migrate_compact_metrics(provider, _migrate_get_metrics_fn(provider)(export))
 
 
+def _safe_migrate_source_path(file_path: str, provider: str) -> Path:
+    """Resolve a caller-supplied migration ``file`` inside the migrate dir.
+
+    Migration endpoints accepted an arbitrary server-side ``file`` path, which
+    let a caller read any ``.md``/JSON document the server process can open —
+    the parsed content is reflected straight back in the dry-run/discover
+    response. Confining the source to the provider's own migrate directory
+    (where legitimate exports are written) removes the read primitive while
+    keeping the documented workflow intact.
+    """
+    base_dir = _config_manager.get_migrate_dir(provider).resolve()
+    candidate = Path(file_path).expanduser()
+    if not candidate.is_absolute():
+        candidate = base_dir / candidate
+    try:
+        resolved = candidate.resolve()
+    except (OSError, RuntimeError):
+        raise HTTPException(status_code=400, detail="Invalid `file` path")
+
+    try:
+        resolved.relative_to(base_dir)
+    except ValueError:
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                "`file` must live inside the migrate directory for this "
+                "provider. Absolute paths outside it are not allowed."
+            ),
+        )
+    return resolved
+
+
 def _migrate_load_or_export(
     provider: str,
     file_path: str | None,
@@ -1177,9 +1243,9 @@ def _migrate_load_or_export(
         if not file_path:
             raise HTTPException(
                 status_code=400,
-                detail="`file` (server-side path to an OKF bundle directory or .md file) is required for OKF.",
+                detail="`file` (path to an OKF bundle directory or .md file inside the migrate directory) is required for OKF.",
             )
-        path = Path(file_path).expanduser()
+        path = _safe_migrate_source_path(file_path, provider)
         if not path.exists():
             raise HTTPException(
                 status_code=400, detail=f"OKF bundle not found: {file_path}"
@@ -1187,7 +1253,7 @@ def _migrate_load_or_export(
         return str(path), load_okf_bundle(path)
 
     if file_path:
-        path = Path(file_path).expanduser()
+        path = _safe_migrate_source_path(file_path, provider)
         if not path.exists() or not path.is_file():
             raise HTTPException(
                 status_code=400, detail=f"Export file not found: {file_path}"

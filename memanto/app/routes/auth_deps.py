@@ -221,6 +221,26 @@ def verify_moorcheh_api_key(
     return require_management_access(request, authorization, x_api_key)
 
 
+def _is_loopback_host_header(host: str | None) -> bool:
+    """Return True when the HTTP ``Host`` header names a loopback interface.
+
+    See ``_require_local`` in ui_router for the DNS-rebinding rationale. Cookie
+    transport is only safe when the Host header is loopback; header-auth API
+    clients (X-Session-Token) are remote-safe and not gated here.
+    """
+    if not host:
+        return False
+    hostname = host.strip().lower()
+    if hostname.startswith("["):
+        end = hostname.find("]")
+        if end == -1:
+            return False
+        hostname = hostname[1:end]
+    else:
+        hostname = hostname.split(":", 1)[0]
+    return hostname in {"localhost", "127.0.0.1", "::1"} or _is_loopback_host(hostname)
+
+
 def get_current_session(
     request: Request,
     response: Response,
@@ -248,6 +268,21 @@ def get_current_session(
         raise HTTPException(
             status_code=401, detail="Missing session token. Use X-Session-Token header."
         )
+
+    # DNS-rebinding protection for cookie transport: a browser page on an
+    # attacker domain (resolved to 127.0.0.1) would otherwise be treated as a
+    # loopback client and could drive cookie-authenticated memory routes
+    # (/recall, /remember, /answer) as the local user. Header-auth clients
+    # (X-Session-Token) are remote-safe and exempt from this Host check.
+    if session_cookie and not x_session_token:
+        if not _is_loopback_host_header(request.headers.get("host")):
+            raise HTTPException(
+                status_code=403,
+                detail=(
+                    "Cookie session requires a loopback Host header "
+                    "(DNS-rebinding protection). Use X-Session-Token for remote access."
+                ),
+            )
 
     session_service = get_session_service()
 
