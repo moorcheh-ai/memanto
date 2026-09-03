@@ -506,7 +506,10 @@ def _pull_ollama_model(model: str) -> None:
     ``docker exec`` for a bundled container we can't reach over HTTP.
     """
     try:
-        from moorcheh.ollama_setup import ollama_is_reachable, pull_ollama_model_http  # type: ignore[import-untyped]
+        from moorcheh.ollama_setup import (  # type: ignore[import-untyped]
+            ollama_is_reachable,
+            pull_ollama_model_http,
+        )
     except ImportError:
         ollama_is_reachable = None
 

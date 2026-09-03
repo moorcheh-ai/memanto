@@ -24,7 +24,9 @@ _DEFAULT_URL = "http://localhost:8080"
 def _import_raw_client() -> Any:
     """Lazy import so the cloud path doesn't require ``moorcheh-client``."""
     try:
-        from moorcheh import MoorchehClient  # type: ignore[import-not-found,import-untyped]
+        from moorcheh import (
+            MoorchehClient,  # type: ignore[import-not-found,import-untyped]
+        )
     except ImportError as e:  # pragma: no cover - exercised at runtime only
         raise RuntimeError(
             "moorcheh-client is not installed. Run: pip install moorcheh-client"
