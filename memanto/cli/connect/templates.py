@@ -205,7 +205,8 @@ You must actively evaluate:
 
 **How to Execute the Evaluation:**
 - **If you are operating in Claude Code / Anthropic Web UI:** You MUST perform this evaluation inside a `<thinking>` block at the very start of your turn.
-- **For all other environments:** Evaluate SILENTLY. Do NOT output `<thinking>` blocks or internal monologue.
+- **For all other tool-capable agents (VS Code Copilot, Cursor, Aider, etc.):**
+  [CRITICAL CONSTRAINT]: You MUST use the "Tool Explanation Trick" to secure your scratchpad. Before generating ANY normal chat text, you MUST immediately invoke the terminal/bash tool and use the `explanation`, `reason`, or `thought` parameter to silently write out your step-by-step evaluation. If no memory triggers apply, you MUST execute a dummy command (like `echo "memory check complete"`) solely to populate the explanation parameter.
 
 If any trigger applies, your FIRST action must be to execute the `memanto remember` command via the terminal.
 
