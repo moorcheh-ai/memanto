@@ -305,9 +305,10 @@ alwaysApply: true
 {_base_instruction_content(agent_id=agent_id, tool_phrase="the terminal")}"""
 
 
-def get_skill_content() -> str:
+def get_skill_content(agent_name: str = "<agent_name>") -> str:
     """Get the SKILL.md content (shared across all agents)."""
     content = SKILL_MD_CONTENT.strip()
+    content = content.replace("<agent_name>", agent_name)
     # Inject the version tag right after the frontmatter
     if "---\n\n# MEMANTO Memory Skill" in content:
         content = content.replace(

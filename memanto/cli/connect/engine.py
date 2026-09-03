@@ -336,7 +336,7 @@ def _install_skill(agent: AgentDef, project_path: Path, is_global: bool) -> str:
     skill_dir.mkdir(parents=True, exist_ok=True)
     skill_path = skill_dir / "SKILL.md"
 
-    content = get_skill_content()
+    content = get_skill_content(agent.name)
 
     skill_path.write_text(content, encoding="utf-8")
 
