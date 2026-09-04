@@ -68,7 +68,8 @@ def _emit(message: str | None) -> None:
         return
     payload = {"systemMessage": f"{MARK} · {message}"}
     try:
-        sys.stdout.reconfigure(encoding="utf-8", errors="replace")  # type: ignore[attr-defined,union-attr]
+        if hasattr(sys.stdout, "reconfigure"):
+            sys.stdout.reconfigure(encoding="utf-8", errors="replace")  # type: ignore[attr-defined]
     except Exception:
         pass
     try:
@@ -83,8 +84,9 @@ def _plain(value) -> str:
         return value
     if isinstance(value, dict):
         for key in ("stdout", "output", "content", "text"):
-            if isinstance(value.get(key), str):
-                return value[key]
+            val = value.get(key)
+            if isinstance(val, str):
+                return val
         return json.dumps(value)
     if isinstance(value, list):
         return " ".join(_plain(item) for item in value)

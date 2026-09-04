@@ -29,6 +29,9 @@ class AgentHookConfig:
     settings_file: str  # e.g. "settings.json"
     hook_key: str  # e.g. "hooks.SessionStart"
     hook_payload: dict = field(default_factory=dict)
+    asset_file: str | None = (
+        None  # e.g. "hooks.json", "cursor-hooks.json", "codex-hooks.json"
+    )
 
 
 @dataclass
@@ -114,15 +117,64 @@ CLAUDE_CODE = AgentDef(
     hook_config=AgentHookConfig(
         settings_file="settings.json",
         hook_key="hooks.SessionStart",
+        asset_file="hooks.json",
         hook_payload={
-            "matcher": "startup",
-            "hooks": [
-                {
-                    "type": "command",
-                    "command": "memanto memory sync --project-dir .",
-                    "timeout": 30,
-                }
-            ],
+            "description": "MEMANTO: persistent memory for Claude Code. SessionStart refreshes MEMORY.md and installs the status line once. PreCompact re-syncs before compaction, so context about to be summarized away survives. PostToolUse replaces the raw 'Bash(memanto ...)' line in chat with a readable summary of what the memory operation actually did; it is gated by an if-filter so it never spawns for unrelated commands. Each Python hook is registered under both 'python' and 'python3' because neither spelling exists on every platform; whichever is missing fails harmlessly and every script is idempotent.",
+            "hooks": {
+                "PostToolUse": [
+                    {
+                        "hooks": [
+                            {
+                                "command": 'python "${CLAUDE_PLUGIN_ROOT}/hooks/notify.py"',
+                                "if": "Bash(memanto *)",
+                                "timeout": 10,
+                                "type": "command",
+                            },
+                            {
+                                "command": 'python3 "${CLAUDE_PLUGIN_ROOT}/hooks/notify.py"',
+                                "if": "Bash(memanto *)",
+                                "timeout": 10,
+                                "type": "command",
+                            },
+                        ],
+                        "matcher": "Bash",
+                    }
+                ],
+                "PreCompact": [
+                    {
+                        "hooks": [
+                            {
+                                "args": [
+                                    "memory",
+                                    "sync",
+                                    "--project-dir",
+                                    "${CLAUDE_PROJECT_DIR}",
+                                ],
+                                "command": "memanto",
+                                "timeout": 30,
+                                "type": "command",
+                            }
+                        ]
+                    }
+                ],
+                "SessionStart": [
+                    {
+                        "hooks": [
+                            {
+                                "command": 'python "${CLAUDE_PLUGIN_ROOT}/hooks/session_start.py"',
+                                "timeout": 30,
+                                "type": "command",
+                            },
+                            {
+                                "command": 'python3 "${CLAUDE_PLUGIN_ROOT}/hooks/session_start.py"',
+                                "timeout": 30,
+                                "type": "command",
+                            },
+                        ],
+                        "matcher": "startup|resume",
+                    }
+                ],
+            },
         },
     ),
     permissions_file="settings.local.json",
@@ -139,6 +191,40 @@ CODEX = AgentDef(
     skill_global_dir="~/.codex/skills",
     config_local_dir=".agents",
     config_global_dir="~/.codex",
+    supports_hooks=True,
+    hook_config=AgentHookConfig(
+        settings_file="hooks.json",
+        hook_key="hooks.SessionStart",
+        asset_file="codex-hooks.json",
+        hook_payload={
+            "hooks": {
+                "SessionStart": [
+                    {
+                        "hooks": [
+                            {
+                                "type": "command",
+                                "command": "memanto memory sync --project-dir .",
+                                "timeout": 30,
+                                "statusMessage": "Loading MEMANTO memory...",
+                            }
+                        ]
+                    }
+                ],
+                "PreCompact": [
+                    {
+                        "hooks": [
+                            {
+                                "type": "command",
+                                "command": "memanto memory sync --project-dir .",
+                                "timeout": 30,
+                                "statusMessage": "Saving MEMANTO memory...",
+                            }
+                        ]
+                    }
+                ],
+            }
+        },
+    ),
 )
 
 CURSOR = AgentDef(
@@ -151,6 +237,26 @@ CURSOR = AgentDef(
     skill_global_dir="~/.cursor/skills",
     config_local_dir=".cursor",
     config_global_dir="~/.cursor",
+    supports_hooks=True,
+    hook_config=AgentHookConfig(
+        settings_file="hooks.json",
+        hook_key="hooks.sessionStart",
+        asset_file="cursor-hooks.json",
+        hook_payload={
+            "hooks": {
+                "sessionStart": [
+                    {
+                        "command": 'python "${PLUGIN_ROOT}/hooks/session_start.py" --host cursor'
+                    }
+                ],
+                "preCompact": [
+                    {
+                        "command": 'python "${PLUGIN_ROOT}/hooks/session_start.py" --host cursor'
+                    }
+                ],
+            }
+        },
+    ),
 )
 
 WINDSURF = AgentDef(

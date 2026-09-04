@@ -66,7 +66,8 @@ def _claim(key: str, ttl: float = 10.0) -> bool:
 def _out(text: str) -> None:
     """Write UTF-8 regardless of the console code page (Windows cp1252)."""
     try:
-        sys.stdout.reconfigure(encoding="utf-8", errors="replace")  # type: ignore[attr-defined,union-attr]
+        if hasattr(sys.stdout, "reconfigure"):
+            sys.stdout.reconfigure(encoding="utf-8", errors="replace")  # type: ignore[attr-defined]
     except Exception:
         pass
     try:

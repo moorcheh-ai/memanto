@@ -371,15 +371,18 @@ def _is_memanto_hook(hook_group: dict) -> bool:
     """Helper to detect if a hook group belongs to memanto."""
     if not isinstance(hook_group, dict):
         return False
+    # Handle single hook dicts (e.g. Cursor: {"command": "python ..."})
+    cmd = hook_group.get("command", "")
+    if "memanto" in cmd or "notify.py" in cmd or "session_start.py" in cmd:
+        return True
     hooks = hook_group.get("hooks", [])
-    if not isinstance(hooks, list):
-        return False
-    for h in hooks:
-        if not isinstance(h, dict):
-            continue
-        cmd = h.get("command", "")
-        if "memanto" in cmd or "notify.py" in cmd or "session_start.py" in cmd:
-            return True
+    if isinstance(hooks, list):
+        for h in hooks:
+            if not isinstance(h, dict):
+                continue
+            c = h.get("command", "")
+            if "memanto" in c or "notify.py" in c or "session_start.py" in c:
+                return True
     return False
 
 
@@ -412,7 +415,10 @@ def _install_hooks(agent: AgentDef, project_path: Path, is_global: bool) -> str 
 
     # 1. Try to load hooks from assets
     assets_hooks_dir = Path(__file__).parent / "assets" / "hooks"
-    if assets_hooks_dir.exists() and (assets_hooks_dir / "hooks.json").exists():
+    asset_file_name = agent.hook_config.asset_file or f"{agent.name}-hooks.json"
+    asset_file_path = assets_hooks_dir / asset_file_name
+
+    if assets_hooks_dir.exists() and asset_file_path.exists():
         target_hooks_dir = config_dir / "hooks"
         target_hooks_dir.mkdir(parents=True, exist_ok=True)
 
@@ -423,9 +429,12 @@ def _install_hooks(agent: AgentDef, project_path: Path, is_global: bool) -> str 
             shutil.copy2(py_file, target_hooks_dir / py_file.name)
 
         # Parse and inject JSON
-        raw_json = (assets_hooks_dir / "hooks.json").read_text(encoding="utf-8")
+        raw_json = asset_file_path.read_text(encoding="utf-8")
         raw_json = raw_json.replace(
             "${CLAUDE_PLUGIN_ROOT}", str(config_dir).replace("\\", "/")
+        )
+        raw_json = raw_json.replace(
+            "${PLUGIN_ROOT}", str(config_dir).replace("\\", "/")
         )
         raw_json = raw_json.replace(
             "${CLAUDE_PROJECT_DIR}", str(project_path.absolute()).replace("\\", "/")

@@ -1,0 +1,14 @@
+{
+  "hooks": {
+    "sessionStart": [
+      {
+        "command": "python \"${PLUGIN_ROOT}/hooks/session_start.py\" --host cursor"
+      }
+    ],
+    "preCompact": [
+      {
+        "command": "python \"${PLUGIN_ROOT}/hooks/session_start.py\" --host cursor"
+      }
+    ]
+  }
+}
