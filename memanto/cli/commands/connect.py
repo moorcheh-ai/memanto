@@ -167,6 +167,28 @@ def connect_codex(
     _run_connect_for_agent("codex", project_dir, is_global)
 
 
+@connect_app.command("pi")
+def connect_pi(
+    project_dir: str = typer.Option(
+        ".", "--project-dir", "-p", help="Target project directory"
+    ),
+    is_global: bool = typer.Option(
+        False, "--global", "-g", help="Install globally to ~/.pi/agent/"
+    ),
+):
+    """Connect MEMANTO to Pi (coding agent).
+
+    Adds MEMANTO instructions to AGENTS.md, deploys the skill, and installs a
+    Pi extension that auto-syncs MEMORY.md on each fresh session start.
+
+    Examples:
+        memanto connect pi
+        memanto connect pi --project-dir ./my-project
+        memanto connect pi --global
+    """
+    _run_connect_for_agent("pi", project_dir, is_global)
+
+
 @connect_app.command("cursor")
 def connect_cursor(
     project_dir: str = typer.Option(

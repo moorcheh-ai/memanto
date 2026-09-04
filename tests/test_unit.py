@@ -2344,6 +2344,8 @@ class TestValidateSafeId:
         ("claude-code", True, ".claude/CLAUDE.md"),
         ("windsurf", True, ".codeium/windsurf/.windsurfrules"),
         ("cursor", False, "project/.cursor/rules/memanto.mdc"),
+        ("pi", True, ".pi/agent/AGENTS.md"),
+        ("pi", False, "project/AGENTS.md"),
     ],
 )
 def test_resolve_instruction_file_paths(
