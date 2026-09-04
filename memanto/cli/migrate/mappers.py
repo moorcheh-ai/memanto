@@ -507,8 +507,8 @@ def map_zep(export: dict[str, Any]) -> list[dict[str, Any]]:
     """Map a Zep Cloud/Community JSON dump onto Memanto memories.
 
     Zep's useful portable units are extracted facts, graph edges, entity
-    node summaries, and session summaries. Raw chat turns stay in the
-    footer only when they belong to a summarized session — they are not
+    node summaries, and session summaries. Migrated sessions retain only
+    the message count; raw chat turns are not stored in the footer or
     imported as their own rows.
     """
     rows: list[dict[str, Any]] = []
