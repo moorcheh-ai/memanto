@@ -572,11 +572,168 @@ def map_okf(export: dict[str, Any]) -> list[dict[str, Any]]:
 # memories, so one incident collapses into a single grouped payload rather
 # than mapping row-for-row. That needs the user's capture settings, which
 # this registry's signature cannot carry — see ``langfuse_rules.build_rows``.
+# --------------------------------------------------------------------------
+# Zep
+# --------------------------------------------------------------------------
+
+
+def _zep_text(*values: Any) -> str:
+    for value in values:
+        if isinstance(value, str) and value.strip():
+            return value.strip()
+    return ""
+
+
+def map_zep(export: dict[str, Any]) -> list[dict[str, Any]]:
+    """Map a Zep Cloud/Community JSON dump onto Memanto memories.
+
+    Zep's useful portable units are extracted facts, graph edges, entity
+    node summaries, and session summaries. Migrated sessions retain only
+    the message count; raw chat turns are not stored in the footer or
+    imported as their own rows.
+    """
+    rows: list[dict[str, Any]] = []
+    seen: set[str] = set()
+    migrated_at = _now_utc()
+    user_id = export.get("user_id") or export.get("userId")
+
+    def _add(
+        *,
+        content: str,
+        source_ref: str | None,
+        memory_type: str | None,
+        tags: list[str],
+        created_at: Any,
+        extra: list[tuple[str, Any]],
+    ) -> None:
+        content = content.strip()
+        if not content:
+            return
+        ref = str(source_ref) if source_ref else content
+        if ref in seen:
+            return
+        seen.add(ref)
+        row_tags = list(tags)
+        if user_id and f"user={user_id}" not in row_tags:
+            row_tags.append(f"user={user_id}")
+        if hasattr(created_at, "isoformat") and not isinstance(created_at, dict):
+            created = created_at
+        elif isinstance(created_at, dict):
+            created = _pick_first_dt(created_at, ("created_at", "createdAt"))
+        else:
+            created = _pick_first_dt({"created_at": created_at}, ("created_at",))
+        footer = _format_supporting_data(
+            [
+                ("Source", f"zep:{ref}" if source_ref else "zep"),
+                ("Zep user_id", user_id),
+                *extra,
+                ("Source created_at", created.isoformat() if created else None),
+            ]
+        )
+        rows.append(
+            {
+                "title": _title_from(content),
+                "content": _attach_footer(content, footer),
+                "type": memory_type,
+                "tags": row_tags,
+                "confidence": 0.8,
+                "source": "zep",
+                "source_ref": str(source_ref) if source_ref else None,
+                "provenance": "imported",
+                "created_at": created,
+                "updated_at": migrated_at,
+            }
+        )
+
+    facts = list(export.get("facts") or []) + list(
+        export.get("relevant_facts") or []
+    ) + list(export.get("user_facts") or [])
+    for fact in facts:
+        if not isinstance(fact, dict):
+            continue
+        _add(
+            content=_zep_text(fact.get("fact"), fact.get("content"), fact.get("text")),
+            source_ref=fact.get("uuid") or fact.get("id"),
+            memory_type="fact",
+            tags=["zep-fact"],
+            created_at=fact,
+            extra=[
+                ("Rating", fact.get("rating") or fact.get("score")),
+                ("Zep metadata", fact.get("metadata")),
+            ],
+        )
+
+    for edge in export.get("edges") or []:
+        if not isinstance(edge, dict):
+            continue
+        fact = _zep_text(edge.get("fact"), edge.get("name"))
+        if not fact:
+            continue
+        name = _zep_text(edge.get("name"))
+        content = f"{name}: {fact}" if name and name not in fact else fact
+        _add(
+            content=content,
+            source_ref=edge.get("uuid") or edge.get("id"),
+            memory_type="fact",
+            tags=["zep-edge"],
+            created_at=edge,
+            extra=[
+                ("Edge name", name),
+                ("Source node", edge.get("source_node_uuid") or edge.get("source")),
+                ("Target node", edge.get("target_node_uuid") or edge.get("target")),
+            ],
+        )
+
+    for node in export.get("nodes") or []:
+        if not isinstance(node, dict):
+            continue
+        summary = _zep_text(node.get("summary"), node.get("name"))
+        if not summary:
+            continue
+        labels = [str(label) for label in (node.get("labels") or []) if label]
+        memory_type = (
+            "relationship"
+            if any(label.lower() in {"user", "person", "people"} for label in labels)
+            else "fact"
+        )
+        _add(
+            content=summary,
+            source_ref=node.get("uuid") or node.get("id"),
+            memory_type=memory_type,
+            tags=["zep-node", *labels],
+            created_at=node,
+            extra=[("Node name", node.get("name")), ("Labels", labels)],
+        )
+
+    for session in export.get("sessions") or []:
+        if not isinstance(session, dict):
+            continue
+        summary = _zep_text(session.get("summary"))
+        if not summary:
+            continue
+        messages = session.get("messages") or []
+        message_count = len(messages) if isinstance(messages, list) else 0
+        _add(
+            content=summary,
+            source_ref=session.get("session_id") or session.get("uuid") or session.get("id"),
+            memory_type="observation",
+            tags=["zep-session"],
+            created_at=session,
+            extra=[
+                ("Session id", session.get("session_id")),
+                ("Message count", message_count),
+            ],
+        )
+
+    return rows
+
+
 MAPPERS: dict[str, Callable[[dict[str, Any]], list[dict[str, Any]]]] = {
     "mem0": map_mem0,
     "letta": map_letta,
     "supermemory": map_supermemory,
     "okf": map_okf,
+    "zep": map_zep,
 }
 
 
