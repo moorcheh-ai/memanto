@@ -4257,6 +4257,7 @@
                 </div>
                 <div style="display:flex;flex-direction:column;gap:12px;margin-top:8px">
                     ${cfgToggle('cfgSessAutoRenew', 'Auto-renew sessions before expiry', sess.auto_renew_enabled ?? true)}
+                    ${cfgToggle('cfgSessAutoRecreate', 'Auto-create a fresh session after expiry (next request)', sess.auto_recreate_enabled ?? true)}
                 </div>
             </div>
             <!-- ANSWER CONFIG -->
@@ -4390,6 +4391,7 @@
                         extend_threshold_minutes: parseInt(document.getElementById('cfgSessExtendThreshold').value) || 30,
                         auto_renew_enabled: document.getElementById('cfgSessAutoRenew').checked,
                         auto_renew_interval_hours: parseInt(document.getElementById('cfgSessRenewInterval').value) || 6,
+                        auto_recreate_enabled: document.getElementById('cfgSessAutoRecreate').checked,
                     },
                     answer: isOnPrem()
                         ? (() => {

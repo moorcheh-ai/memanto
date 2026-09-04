@@ -28,7 +28,11 @@ from fastapi.staticfiles import StaticFiles
 
 from memanto.app.clients.backend import Backend
 from memanto.app.config import settings
-from memanto.app.routes.auth_deps import clear_session_cookie, set_session_cookie
+from memanto.app.routes.auth_deps import (
+    _is_cross_site_browser_request,
+    clear_session_cookie,
+    set_session_cookie,
+)
 from memanto.app.utils.temporal_helpers import utc_date_str
 from memanto.app.utils.validation import validate_safe_id
 from memanto.cli.client.direct_client import DirectClient
@@ -92,6 +96,12 @@ async def _require_local(request: Request) -> None:
                 "UI management endpoints are only accessible from localhost. "
                 f"Request origin: {client_host}"
             ),
+        )
+
+    if _is_cross_site_browser_request(request):
+        raise HTTPException(
+            status_code=403,
+            detail="UI management endpoints reject cross-site browser requests.",
         )
 
 
@@ -212,6 +222,17 @@ async def update_ui_config(updates: dict, _: None = Depends(_require_local)):
             _config_manager.set_session_config(updates["session"])
         except ValueError as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+        # config.yaml is overlaid onto settings at process start, so apply the
+        # session toggles to the running server too - otherwise flipping them
+        # in the UI would not take effect until the next restart.
+        for _yaml_key, _settings_attr in (
+            ("auto_renew_enabled", "SESSION_AUTO_RENEW_ENABLED"),
+            ("auto_recreate_enabled", "SESSION_AUTO_RECREATE_ENABLED"),
+        ):
+            _toggle = updates["session"].get(_yaml_key)
+            if isinstance(_toggle, bool):
+                setattr(settings, _settings_attr, _toggle)
 
     if "cli" in updates and isinstance(updates["cli"], dict):
         data = _config_manager.load_yaml()
