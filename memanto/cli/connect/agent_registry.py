@@ -119,20 +119,6 @@ class AgentDef:
             base = project_dir / self.extension_local_dir
         return base / self.extension_file
 
-    def resolve_extension_file(self, project_dir: Path, is_global: bool) -> Path | None:
-        """Resolve code extension file path (for agents that support one)."""
-        if not self.extension_file:
-            return None
-        if is_global:
-            if not self.extension_global_dir:
-                return None
-            base = Path.home() / self.extension_global_dir.lstrip("~/")
-        else:
-            if not self.extension_local_dir:
-                return None
-            base = project_dir / self.extension_local_dir
-        return base / self.extension_file
-
 
 # Agent Definitions
 
@@ -265,20 +251,6 @@ PI = AgentDef(
     display_name="Pi (coding agent)",
     instruction_local_file="AGENTS.md",
     instruction_global_file="~/.pi/agent/AGENTS.md",
-    instruction_format="markdown",
-    skill_local_dir=".pi/skills",
-    skill_global_dir="~/.pi/agent/skills",
-    config_local_dir=".pi",
-    config_global_dir="~/.pi/agent",
-    extension_file="memanto-sync.ts",
-    extension_global_dir="~/.pi/agent/extensions",
-    extension_local_dir=".pi/extensions",
-)
-
-PI = AgentDef(
-    name="pi",
-    display_name="Pi (coding agent)",
-    instruction_file="AGENTS.md",
     instruction_format="markdown",
     skill_local_dir=".pi/skills",
     skill_global_dir="~/.pi/agent/skills",
