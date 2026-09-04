@@ -2904,24 +2904,24 @@
             try {
                 await api('POST', '/api/ui/template-status/dismiss');
                 document.getElementById('templateUpdateBanner').style.display = 'none';
-                showToast("Update dismissed for this version");
+                toast("Update dismissed for this version");
             } catch (err) {
-                showToast("Failed to dismiss update", "error");
+                toast("Failed to dismiss update", "error");
             }
         }
 
         async function updateTemplates() {
             try {
-                showToast("Updating templates...");
+                toast("Updating templates...");
                 const res = await api('POST', '/api/ui/template-status/update');
                 if (res && res.status === "success") {
                     document.getElementById('templateUpdateBanner').style.display = 'none';
-                    showToast("Templates updated successfully!");
+                    toast("Templates updated successfully!");
                 } else {
-                    showToast("Failed to update templates", "error");
+                    toast("Failed to update templates", "error");
                 }
             } catch (err) {
-                showToast("Error updating templates", "error");
+                toast("Error updating templates", "error");
             }
         }
 
