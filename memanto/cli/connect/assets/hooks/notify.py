@@ -57,6 +57,7 @@ def _claim(key: str, ttl: float = 10.0) -> bool:
                 os.close(os.open(path, os.O_CREAT | os.O_EXCL | os.O_WRONLY))
                 return True
         except Exception:
+            # Ignore errors checking or unlinking lock file
             pass
         return False
     except Exception:
@@ -71,10 +72,12 @@ def _emit(message: str | None) -> None:
         if hasattr(sys.stdout, "reconfigure"):
             sys.stdout.reconfigure(encoding="utf-8", errors="replace")  # type: ignore[attr-defined]
     except Exception:
+        # Ignore if stdout reconfigure fails or is unsupported
         pass
     try:
         sys.stdout.write(json.dumps(payload, ensure_ascii=False))
     except Exception:
+        # Ignore stdout writing errors in hook
         pass
 
 

@@ -308,6 +308,7 @@ def _remove_instructions(
             if parent.exists() and not any(parent.iterdir()):
                 parent.rmdir()
         except Exception:
+            # Ignore errors if directory is not empty or non-deletable
             pass
         return f"Removed {instr_path.name}"
 
@@ -378,6 +379,7 @@ def _remove_skill(agent: AgentDef, project_path: Path, is_global: bool) -> str |
             if skill_dir.exists() and not any(skill_dir.iterdir()):
                 skill_dir.rmdir()
         except Exception:
+            # Ignore errors if directory is not empty or non-deletable
             pass
         return f"Removed skill from {_display_path(skill_dir, is_global)}"
     return None
@@ -420,6 +422,7 @@ def _remove_extension(
         if ext_path.parent.exists() and not any(ext_path.parent.iterdir()):
             ext_path.parent.rmdir()
     except Exception:
+        # Ignore errors if directory is not empty or non-deletable
         pass
     return f"Removed extension from {_display_path(ext_path.parent, is_global)}"
 
@@ -588,11 +591,13 @@ def _remove_hooks(agent: AgentDef, project_path: Path, is_global: bool) -> str |
                 try:
                     script_path.unlink()
                 except Exception:
+                    # Ignore errors if script file cannot be unlinked
                     pass
         # Try to remove dir if empty
         try:
             target_hooks_dir.rmdir()
         except Exception:
+            # Ignore errors if directory is not empty or non-deletable
             pass
 
     if changed:

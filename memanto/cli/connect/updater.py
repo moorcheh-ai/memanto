@@ -22,6 +22,7 @@ def _extract_version(file_path: Path) -> str | None:
                 [int(x) for x in v_str.split(".")]
                 return v_str
             except ValueError:
+                # Ignore version string if parts are not valid integers
                 pass
 
         if "<!-- MEMANTO-MANAGED-SECTION -->" in content:

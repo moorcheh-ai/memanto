@@ -57,6 +57,7 @@ def _claim(key: str, ttl: float = 10.0) -> bool:
                 os.close(os.open(path, os.O_CREAT | os.O_EXCL | os.O_WRONLY))
                 return True
         except Exception:
+            # Ignore errors checking or unlinking lock file
             pass
         return False
     except Exception:
@@ -69,6 +70,7 @@ def _out(text: str) -> None:
         if hasattr(sys.stdout, "reconfigure"):
             sys.stdout.reconfigure(encoding="utf-8", errors="replace")  # type: ignore[attr-defined]
     except Exception:
+        # Ignore if stdout reconfigure fails or is unsupported
         pass
     try:
         sys.stdout.write(text + "\n")
@@ -76,6 +78,7 @@ def _out(text: str) -> None:
         try:
             sys.stdout.write(text.encode("ascii", "ignore").decode("ascii") + "\n")
         except Exception:
+            # Ignore stdout writing errors in hook
             pass
 
 
@@ -214,6 +217,7 @@ def _touch(marker: Path) -> None:
         marker.parent.mkdir(parents=True, exist_ok=True)
         marker.write_text("1", encoding="utf-8")
     except Exception:
+        # Ignore errors writing statusline installation marker
         pass
 
 
@@ -232,6 +236,7 @@ def main() -> None:
                 f"{MARK} {summary} Read MEMORY.md before acting; it carries standing instructions, decisions, and open commitments from previous sessions."
             )
     except Exception:
+        # Ignore errors syncing memory in session start hook
         pass
 
     try:
@@ -239,6 +244,7 @@ def main() -> None:
         if notice:
             lines.append(notice)
     except Exception:
+        # Ignore errors installing statusline in session start hook
         pass
 
     if lines:
