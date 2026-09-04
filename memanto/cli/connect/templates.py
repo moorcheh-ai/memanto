@@ -204,9 +204,9 @@ You must actively evaluate:
 5. ENVIRONMENT: Was a key [ENVIRONMENT FACT] verified? (e.g., OS behavior, path layout, or tool version requirement)
 
 **How to Execute the Evaluation:**
-- **If you are operating in Claude Code, Cursor, Cline, Roo, Windsurf, Aider, or Anthropic Web UI:**
+- **If you are operating in Native CLI & Integrated IDE Environments (Claude Code, Cursor, Windsurf, Gemini CLI, Cline, Roo, Continue, OpenCode, Codex, Aider, or Anthropic Web UI):**
   You MUST perform this evaluation inside a `<thinking>` block at the very start of your turn.
-- **If you are operating in VS Code Copilot:**
+- **If you are operating in VS Code Agent Environments (VS Code Copilot or VS Code Extension Agent Mode):**
   [CRITICAL SEQUENCE]: You MUST execute the following three steps in exact order ONCE at the very beginning of your turn (immediately after the user's prompt). Do NOT repeat this check before subsequent tool calls in the same turn.
   - **Step 1:** You MUST invoke the terminal tool with the dummy command `echo "memory check"`. You will use this tool call's `explanation` parameter to silently write out your step-by-step evaluation WRAPPED inside a `<thinking>` XML tag.
   - **Step 2:** If your evaluation in Step 1 found a matching trigger, your next immediate tool call MUST be `memanto remember`.
