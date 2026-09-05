@@ -68,3 +68,4 @@ GitHub on [https://memanto.ai/contributor-onboard](https://memanto.ai/contributo
 - @sasindudilshanranwadana
 - @Vansh0Sharma
 - @nwinkelman2
+- @RoaraxAli
