@@ -1,3 +1,5 @@
+"""Regression tests for browser-origin checks on management API access."""
+
 import os
 import shutil
 import tempfile
@@ -15,6 +17,7 @@ os.environ["MOORCHEH_API_KEY"] = "test-api-key"
 
 @pytest.fixture(autouse=True)
 def isolated_agent_state():
+    """Run each management API test with an isolated on-disk agent state."""
     temp_dir = tempfile.mkdtemp()
     temp_path = Path(temp_dir)
 
@@ -43,6 +46,7 @@ def isolated_agent_state():
 
 @pytest.fixture(autouse=True)
 def mock_moorcheh_client():
+    """Replace networked Moorcheh clients with deterministic in-process mocks."""
     from memanto.app.clients.moorcheh import moorcheh_client
 
     moorcheh_client.reset_client()
@@ -73,6 +77,7 @@ def mock_moorcheh_client():
 
 @pytest.mark.asyncio
 async def test_loopback_management_rejects_cross_site_origin():
+    """Reject unauthenticated loopback requests sent from non-local pages."""
     transport = ASGITransport(app=app, client=("127.0.0.1", 54321))
     async with AsyncClient(transport=transport, base_url="http://localhost") as client:
         response = await client.post(
@@ -86,6 +91,7 @@ async def test_loopback_management_rejects_cross_site_origin():
 
 @pytest.mark.asyncio
 async def test_loopback_management_accepts_localhost_origin_without_credential():
+    """Allow local browser origins to keep normal developer workflows working."""
     transport = ASGITransport(app=app, client=("127.0.0.1", 54321))
     async with AsyncClient(transport=transport, base_url="http://localhost") as client:
         response = await client.post(
@@ -100,6 +106,7 @@ async def test_loopback_management_accepts_localhost_origin_without_credential()
 
 @pytest.mark.asyncio
 async def test_valid_management_credential_allows_nonlocal_origin():
+    """Allow credentialed automation even when its browser origin is external."""
     transport = ASGITransport(app=app, client=("127.0.0.1", 54321))
     async with AsyncClient(transport=transport, base_url="http://localhost") as client:
         response = await client.post(
