@@ -139,5 +139,5 @@ class TestGlobInjectionGuard:
 
         mock_request = MagicMock()
         mock_request.client.host = "127.0.0.1"
-        mock_request.headers = {}
+        mock_request.headers = {"host": "localhost:8000"}
         asyncio.run(_require_local(mock_request))  # must not raise
