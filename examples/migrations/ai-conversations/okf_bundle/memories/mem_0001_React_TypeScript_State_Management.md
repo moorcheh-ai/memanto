@@ -21,9 +21,7 @@ Redux Toolkit is better if you need complex middleware, time-travel debugging, o
 
 [User message 3]: Can you show me how to set up Zustand with TypeScript for a todo app?
 
-[Assistant message 4]:
-
-```typescript
+[Assistant message 4]: ```typescript
 import { create } from 'zustand'
 
 type Todo = {

@@ -166,14 +166,14 @@ def map_chatgpt(export):
             messages = []
             for msg in convo.get("messages") or convo.get("chat_messages") or []:
                 role = ((msg.get("author") or {}).get("role") or msg.get("role") or "").strip()
-                content_obj = msg.get("content") or {}
-                if isinstance(content_obj, str):
-                    text = content_obj.strip()
-                elif isinstance(content_obj, dict):
+                content_obj = msg.get("content")
+                if isinstance(content_obj, dict):
                     parts = content_obj.get("parts") or []
                     text = " ".join(p for p in parts if isinstance(p, str)).strip()
+                elif isinstance(content_obj, str):
+                    text = content_obj.strip()
                 else:
-                    text = str(content_obj).strip() if content_obj else ""
+                    text = (msg.get("text") or "").strip()
                 if text and role in ("user", "human"):
                     messages.append({"text": text, "role": "user", "create_time": msg.get("create_time")})
                 elif text and role == "assistant":

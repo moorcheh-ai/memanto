@@ -310,9 +310,10 @@ def map_letta(export: dict[str, Any]) -> list[dict[str, Any]]:
 
         created_at = _pick_first_dt(passage, ("created_at", "createdAt"))
 
+        passage_source = passage.get("source")
         footer = _format_supporting_data(
             [
-                ("Source", f"letta:{passage.get('id')}" if passage.get("id") else None),
+                ("Source", passage_source or (f"letta:{passage.get('id')}" if passage.get("id") else None)),
                 ("Letta agent_id", agent_id),
                 ("Letta agent_name", agent_name),
                 ("Letta tags", source_tags),
@@ -770,12 +771,12 @@ def map_claude(export: dict[str, Any]) -> list[dict[str, Any]]:
         human_messages = []
         for msg in chat_messages:
             sender = (msg.get("sender") or msg.get("role") or "").strip()
-            content_obj = msg.get("content") or {}
-            if isinstance(content_obj, str):
-                text = content_obj.strip()
-            elif isinstance(content_obj, dict):
+            content_obj = msg.get("content")
+            if isinstance(content_obj, dict):
                 parts = content_obj.get("parts") or []
                 text = " ".join(p for p in parts if isinstance(p, str)).strip()
+            elif isinstance(content_obj, str):
+                text = content_obj.strip()
             else:
                 text = (msg.get("text") or "").strip()
             if text and sender in ("human", "user"):
