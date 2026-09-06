@@ -1,0 +1,177 @@
+# OKF portability audit
+
+Prove that an agent-memory migration preserved what matters before deleting the
+source. This example compares an original and a migrated Open Knowledge Format
+(OKF) bundle, using Memanto's production loader and no network access or API key.
+
+It reports:
+
+- added, removed, and changed memory nodes;
+- the exact portable fields that changed;
+- file moves that did not alter content;
+- duplicate stable identities; and
+- missing provenance in either bundle.
+
+The audit is read-only and deterministic, so its JSON mode can be used as a CI
+gate while Markdown gives a reviewer-friendly migration receipt.
+
+## Reproduce with real public data
+
+The included generator fetches a genuine GitHub issue archive and every public
+comment through the official API, then emits a human-readable OKF bundle. It
+does not use a hand-written fixture or require a GitHub token for public repos.
+Issue bodies and comments are split losslessly when necessary, and each chunk
+retains the original GitHub URL and a unique portable identifier.
+
+Every manual run must use a fresh, non-overlapping work directory. The example
+below creates one so its source, round-trip target, and receipt paths cannot
+collide with a previous run:
+
+```bash
+RUN_DIR="$(mktemp -d)"
+python examples/migrations/okf-portability-audit/github_issue_to_okf.py \
+  moorcheh-ai/memanto 1609 "$RUN_DIR/github-memory"
+python examples/migrations/okf-portability-audit/roundtrip_demo.py \
+  "$RUN_DIR/github-memory" "$RUN_DIR/round-tripped"
+python examples/migrations/okf-portability-audit/okf_audit.py \
+  "$RUN_DIR/github-memory" "$RUN_DIR/round-tripped" --fail-on-change
+python examples/migrations/okf-portability-audit/recall_parity.py \
+  "$RUN_DIR/github-memory" "$RUN_DIR/round-tripped" \
+  examples/migrations/okf-portability-audit/golden_questions.json \
+  --output "$RUN_DIR/recall-parity.json" --fail-on-regression
+```
+
+In the first validated snapshot on August 4, 2026, issue #1609 contained one
+issue and 25 comments. The long issue body was split at paragraph boundaries to
+respect the Memanto content limit, producing 27 real memory nodes. The
+importer/exporter round trip kept all 27 portable records with no removals or
+changed fields.
+
+### One-command showcase
+
+Run the complete real-data path—archive generation, the official Memanto CLI
+dry run, production-code round trip, and lossless audit—with one command:
+
+```bash
+python examples/migrations/okf-portability-audit/run_demo.py
+```
+
+The command creates a new isolated work directory, prints every executed step,
+and leaves both an `audit.json` fidelity receipt and a `recall-parity.json`
+golden-question receipt. The five explicit questions are retrieved independently
+from the source and round-tripped bundles; accepted answers are used only after
+ranking, so they cannot steer document selection. The command performs no cloud
+writes and needs no API key. Pass `--show-report` to print the complete fidelity
+JSON instead of only the compact summary. Results depend on the public issue
+archive at execution time, the local generator, Memanto CLI, round-trip, audit,
+and retrieval code, and their installed dependency versions.
+
+### Demo video
+
+Watch the [current narrated YouTube showcase](https://youtu.be/E_r7tzmHtq0),
+with a checked-in
+[archival copy](demo/memanto-okf-portability-demo-v3.mp4). It shows the genuine
+public archive entering the official Memanto dry run, the production round
+trip, the final 33-to-33 lossless receipt, 5/5 golden-question recall before
+and after migration, and a readable OKF memory. The capture contains real
+command output and visibly discloses that the implementation was AI-assisted.
+
+The archive changed while the PR was under review, so the checked-in evidence
+captures intentionally describe three separate snapshots:
+
+| Validation date | Public archive snapshot | Records and receipt | Capture |
+| --- | --- | --- | --- |
+| August 4, 2026 | 1 issue + 25 comments | 27 mapped, 0 skipped; 27-to-27, 0 removed, 0 changed | [original silent capture](demo/memanto-okf-portability-demo.mp4) |
+| August 9, 2026 | 1 issue + 30 comments | 32 mapped, 0 skipped; 32-to-32, 0 removed, 0 changed | [previous narrated capture](demo/memanto-okf-portability-demo-v2.mp4) |
+| August 10, 2026 | 1 issue + 31 comments | 33 mapped, 0 skipped; 33-to-33, 0 removed, 0 changed; recall 5/5 before and after | [current narrated capture](demo/memanto-okf-portability-demo-v3.mp4) |
+
+The current version uses clean synthetic narration without music or ambient
+sound. Older captures remain available because they are accurate receipts for
+their dated public-archive snapshots, not stale claims about the current run.
+
+### Mapping and honest savings report
+
+| GitHub source concept | OKF / Memanto representation | Fidelity evidence |
+| --- | --- | --- |
+| Issue body | `artifact` memory | Lossless chunks with issue URL and timestamp |
+| Issue comment | `observation` memory | Lossless chunks with original comment URL and author tag |
+| Labels and state | OKF tags | Compared as normalized portable fields |
+| Source IDs | `x_memanto.id` | Preserved as origin metadata; destination runtime IDs may change |
+| Source URL | `resource` | Used with type/title semantics as a stable identity |
+
+The August 4, 2026 baseline used 1 issue plus 25 public comments: 27 source
+records, 27 mapped records, 0 skipped, 27 round-tripped records, 0 removals, and
+0 changed portable fields. The dated table above distinguishes that baseline
+from the later 32- and 33-record archive snapshots. Token and retrieval-latency
+savings are **not applicable** to this Path C workflow: it audits at-rest
+portability and makes no invented model or retrieval baseline. Storage remains
+human-readable Markdown at both ends.
+
+## Run the included lossless example
+
+From the repository root:
+
+```bash
+python examples/migrations/okf-portability-audit/okf_audit.py \
+  examples/migrations/okf-portability-audit/sample/before \
+  examples/migrations/okf-portability-audit/sample/after
+```
+
+The example intentionally renames a file while preserving the memory's stable
+`resource`. The result passes fidelity, records the move separately, and matches
+the checked-in [`EXPECTED.md`](EXPECTED.md) receipt.
+
+To exercise Memanto's production loader, mapper, automatic type classifier, and
+exporter locally before running the audit, choose a new non-existing target:
+
+```bash
+python examples/migrations/okf-portability-audit/roundtrip_demo.py \
+  examples/migrations/okf-portability-audit/sample/before ./round-tripped
+python examples/migrations/okf-portability-audit/okf_audit.py \
+  examples/migrations/okf-portability-audit/sample/before ./round-tripped
+```
+
+## Audit a real migration
+
+Export the source, migrate it, and export the destination:
+
+```bash
+memanto memory export --okf --agent source-agent --output ./before
+memanto migrate okf ./before --agent destination-agent
+memanto memory export --okf --agent destination-agent --output ./after
+python examples/migrations/okf-portability-audit/okf_audit.py ./before ./after \
+  --format json --output audit.json --fail-on-change
+```
+
+`--fail-on-change` returns exit code 1 only when a source node or portable field
+was lost or changed, or when duplicate identities make the result ambiguous.
+Additions and file moves remain visible but do not fail a migration because the
+destination may already contain memories and OKF layout is intentionally free.
+
+## Identity and fidelity rules
+
+Nodes with a title are matched by their `resource` plus a deterministic hash of
+normalized `type` and `title`; records without a title fall back to `resource`,
+then `x_memanto.id`. This keeps separately chunked records at one source URL
+distinct. The comparison
+covers body, title, type, description, resource, links, timestamp, tags, portable
+`x_memanto` fields, and unknown frontmatter. Runtime IDs and status may be
+reassigned by a destination, so they are excluded. It also normalizes the
+reversible description and administrative footer wrapper added by `map_okf`;
+unknown supporting data is never hidden. Paths are excluded from fidelity and
+reported as moves instead.
+
+The local round-trip demo intentionally processes only the importable
+`memories/` section. Export-only context such as `daily-summaries/` and
+`sessions/` is outside its scope. It refuses existing or overlapping targets;
+the audit also refuses to write its report over or inside either input bundle.
+
+## Tests
+
+```bash
+pytest examples/migrations/okf-portability-audit/tests -q
+```
+
+The suite covers lossless moves, changed and removed nodes, duplicate IDs,
+provenance gaps, exact long-body reconstruction, safe paths, JSON output,
+golden-question recall parity and regression detection, and the CI exit codes.
