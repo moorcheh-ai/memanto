@@ -65,7 +65,7 @@ echo "  - 100% recall parity on demo data"
 
 ## Recording Command (asciinema)
 ```bash
-asciinema rec -c "bash demo_script.sh" demo_v1718.cast
+asciinema rec -c "bash run_demo.sh" demo_v1718.cast
 ```
 
 ## After Recording

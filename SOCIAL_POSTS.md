@@ -2,7 +2,7 @@
 
 ## Twitter/X Post
 
-```
+```text
 Just submitted my first open-source bounty! 🎯
 
 Built ChatGPT & Claude conversation migration adapters for @moorcheh_ai's Memanto:
@@ -19,7 +19,7 @@ Your AI memories shouldn't be trapped. PR: https://github.com/moorcheh-ai/memant
 
 ## LinkedIn Post
 
-```
+```text
 Excited to share my contribution to the Memanto project — an open-source bounty for migrating AI conversation history.
 
 The Problem:
@@ -28,7 +28,7 @@ When you switch between AI assistants (ChatGPT, Claude, etc.), your conversation
 What I Built:
 ChatGPT & Claude migration adapters that:
 • Parse ChatGPT's tree-structured conversation exports
-• Handle Claude's flat JSON format with message threading
+• Handle Claude's flat JSON format
 • Map conversations to Memanto's memory schema
 • Export as portable OKF (Open Knowledge Format) bundles
 • Validate recall parity — ensuring key facts survive the migration
