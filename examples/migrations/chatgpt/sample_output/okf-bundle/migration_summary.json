@@ -1,0 +1,20 @@
+{
+  "source": "sample_data/chatgpt-export-sample",
+  "output_bundle": "sample_output/okf-bundle",
+  "conversations_scanned": 10,
+  "bio_writes_found": 9,
+  "model_set_context_entries_found": 6,
+  "custom_instruction_blocks_found": 4,
+  "duplicates_skipped": 6,
+  "memories_by_type": {
+    "commitment": 1,
+    "decision": 1,
+    "event": 1,
+    "fact": 2,
+    "goal": 1,
+    "instruction": 2,
+    "preference": 2,
+    "relationship": 3
+  },
+  "total_memories": 13
+}
