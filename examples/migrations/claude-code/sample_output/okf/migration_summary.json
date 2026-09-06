@@ -1,0 +1,34 @@
+{
+  "adapter": "claude-code-to-okf",
+  "invalid_json_lines": 0,
+  "mapped_by_type": {
+    "context": 1,
+    "fact": 1,
+    "preference": 1
+  },
+  "mapped_memories": 3,
+  "observed_sessions": 1,
+  "okf_output": {
+    "per_type_counts": {
+      "context": 1,
+      "fact": 1,
+      "preference": 1
+    },
+    "sections": [
+      "memories",
+      "metrics"
+    ],
+    "total_memories": 3
+  },
+  "project": "auto-planmaxxer",
+  "redactions": {
+    "home-path": 2
+  },
+  "schema_version": 1,
+  "skipped_records": 0,
+  "source_by_kind": {
+    "auto-memory": 2,
+    "history-prompt": 3
+  },
+  "source_records": 5
+}
