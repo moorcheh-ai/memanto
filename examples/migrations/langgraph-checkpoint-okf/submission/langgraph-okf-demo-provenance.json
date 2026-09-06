@@ -1,0 +1,11 @@
+{
+  "artifact": "langgraph-okf-demo.mp4",
+  "sha256": "9136a0586053887b6e7ef349a027549148648e74b04c6b494979bb2a4ec7a840",
+  "generated_by": "python build_demo_video.py",
+  "inputs": [
+    "sample_output/summary.json",
+    "sample_output/validation/recall-parity-report.md",
+    "sample_output/memanto_migrate_okf_dry_run.txt"
+  ],
+  "public_branch_url": "examples/migrations/langgraph-checkpoint-okf/submission/langgraph-okf-demo.mp4"
+}
